@@ -16,6 +16,8 @@ class PROCEDURAL_API AProceduralMeshActor : public AActor
 public:
 	// Sets default values for this actor's properties
 	AProceduralMeshActor();
+	UFUNCTION(BlueprintCallable, Category = "Example Nodes")
+		void SetLevel(float level);
 
 protected:
 	// Called when the game starts or when spawned

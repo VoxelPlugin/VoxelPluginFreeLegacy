@@ -103,3 +103,8 @@ void AProceduralMeshActor::Tick(float DeltaTime)
 	mesh->SetWorldScale3D(FVector(100));
 }
 
+void AProceduralMeshActor::SetLevel(float level)
+{
+	this->level = level;
+}
+

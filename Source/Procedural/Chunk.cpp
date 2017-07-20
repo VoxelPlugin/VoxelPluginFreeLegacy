@@ -65,6 +65,7 @@ void Chunk::Process()
 	keepVertices.resize(n);
 	vertices.resize(n);
 	normals.resize(n);
+	triangles.clear();
 	for (int i = 0; i < n; i++)
 	{
 		keepVertices[i] = false;
@@ -541,6 +542,7 @@ void Chunk::Polygonise(int grid[8])
 		// We want: normals += n / norm(n) * surface
 		// <=> normals += n / 2
 		// <=> normals += n because normals are normalized
+		n.Normalize();
 		normals[a] += n;
 		normals[b] += n;
 		normals[c] += n;
