@@ -550,6 +550,7 @@ void Chunk::Polygonise(int grid[8])
 }
 
 
+
 float Chunk::GetValue(int verticeIndex)
 {
 	int x = verticeIndex % Size;

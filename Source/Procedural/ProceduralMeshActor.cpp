@@ -24,8 +24,8 @@ AProceduralMeshActor::AProceduralMeshActor()
 
 	mesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("GeneratedMesh"));
 	RootComponent = mesh;
-	oldLevel = 0;
-	level = -5;
+	chunk = Chunk();
+	chunk.Sphere();
 }
 
 // Called when the game starts or when spawned
@@ -54,36 +54,17 @@ void AProceduralMeshActor::BeginPlay()
 	//		}
 	//	}
 	//}
-	chunk = Chunk();
-	chunk.Sphere();
 }
 
 // Called every frame
 void AProceduralMeshActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
 
-	/**
-	*	Create/replace a section for this procedural mesh component.
-	*	@param	SectionIndex		Index of the section to create or replace.
-	*	@param	Vertices			Vertex buffer of all vertex positions to use for this mesh section.
-	*	@param	Triangles			Index buffer indicating which vertices make up each triangle. Length must be a multiple of 3.
-	*	@param	Normals				Optional array of normal vectors for each vertex. If supplied, must be same length as Vertices array.
-	*	@param	UV0					Optional array of texture co-ordinates for each vertex. If supplied, must be same length as Vertices array.
-	*	@param	VertexColors		Optional array of colors for each vertex. If supplied, must be same length as Vertices array.
-	*	@param	Tangents			Optional array of tangent vector for each vertex. If supplied, must be same length as Vertices array.
-	*	@param	bCreateCollision	Indicates whether collision should be created for this section. This adds significant cost.
-	*/
-	//UFUNCTION(BlueprintCallable, Category = "Components|ProceduralMesh", meta = (AutoCreateRefTerm = "Normals,UV0,VertexColors,Tangents"))
-	//	void CreateMeshSection(int32 SectionIndex, const TArray<FVector>& Vertices, const TArray<int32>& Triangles, const TArray<FVector>& Normals,
-	// const TArray<FVector2D>& UV0, const TArray<FColor>& VertexColors, const TArray<FProcMeshTangent>& Tangents, bool bCreateCollision);
-
-	if (oldLevel == level)
-	{
-		return;
-	}
+void AProceduralMeshActor::SetLevel(float level)
+{
 	chunk.Level = level;
-	oldLevel = level;
 	chunk.Process();
 
 
@@ -94,17 +75,10 @@ void AProceduralMeshActor::Tick(float DeltaTime)
 	TArray<FColor> vertexColors;
 	TArray<FProcMeshTangent> tangents;
 
+	/*UE_LOG(YourLog, Warning, TEXT("Vertices: %d"), vertices.Num());
+	UE_LOG(YourLog, Warning, TEXT("Triangles: %d"), triangles.Num());*/
 
-	UE_LOG(YourLog, Warning, TEXT("Vertices: %d"), vertices.Num());
-	UE_LOG(YourLog, Warning, TEXT("Triangles: %d"), triangles.Num());
-
-
-	mesh->CreateMeshSection(1, vertices, triangles, normals, UV0, vertexColors, tangents, false);
+	mesh->CreateMeshSection(0, vertices, triangles, normals, UV0, vertexColors, tangents, false);
 	mesh->SetWorldScale3D(FVector(100));
-}
-
-void AProceduralMeshActor::SetLevel(float level)
-{
-	this->level = level;
 }
 

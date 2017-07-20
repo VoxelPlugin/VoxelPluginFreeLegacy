@@ -31,9 +31,6 @@ private:
 	Chunk chunk;
 	UPROPERTY(VisibleAnywhere, Category = Materials)
 		UProceduralMeshComponent* mesh;
-	UPROPERTY(EditAnywhere)
-		float level;
-	float oldLevel;
 
 };
 
