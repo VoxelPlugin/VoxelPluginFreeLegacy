@@ -23,25 +23,27 @@ namespace std
 	};
 };
 
+class World;
+
 
 class Chunk
 {
 public:
-	Chunk();
+	Chunk(World* world, int x, int y, int z);
 	static const int Size = 16;
-	float Values[Size][Size][Size];
-	float Level;
+	const int X;
+	const int Y;
+	const int Z;
+	World* const world;
 
 	TArray<FVector> Vertices;
 	TArray<FVector> Normals;
 	TArray<int> Triangles;
 
-
-	void Randomize();
-	void Sphere();
 	void Process();
 
 private:
+
 	std::unordered_map<std::pair<int, int>, int> interpolationDict;
 	std::vector<FVector> vertices;
 	std::vector<FVector> normals;
@@ -55,6 +57,7 @@ private:
 	int Interpolate(int verticeIndex1, int verticeIndex2);
 	void Polygonise(int grid[8]);
 
+	float GetLevel();
 	float GetValue(int verticeIndex);
 	int GetIndex(int x, int y, int z);
 	std::pair<int, int> CreatePair(int a, int b);

@@ -1,13 +1,11 @@
 #include "Chunk.h"
+#include "World.h"
 #include <cmath>
 #include <algorithm>
 #include "AssertionMacros.h"
 
-Chunk::Chunk()
+Chunk::Chunk(World* w, int posX, int posY, int posZ) : world(w), X(posX), Y(posY), Z(posZ), vertices(Size * Size * Size)
 {
-	// vertices & normals
-	vertices = std::vector<FVector>(Size * Size * Size);
-
 	for (int x = 0; x < Size; x++)
 	{
 		for (int y = 0; y < Size; y++)
@@ -18,41 +16,10 @@ Chunk::Chunk()
 			}
 		}
 	}
-
-	// others
-	Level = 0;
 }
 
 
 
-
-void Chunk::Randomize()
-{
-	for (int x = 0; x < Size; x++)
-	{
-		for (int y = 0; y < Size; y++)
-		{
-			for (int z = 0; z < Size; z++)
-			{
-				Values[x][y][z] = FMath::FRandRange(-1, 10);
-			}
-		}
-	}
-}
-
-void Chunk::Sphere()
-{
-	for (int x = 0; x < Size; x++)
-	{
-		for (int y = 0; y < Size; y++)
-		{
-			for (int z = 0; z < Size; z++)
-			{
-				Values[x][y][z] = -FVector(x - Size / 2, y - Size / 2, z - Size / 2).Size();
-			}
-		}
-	}
-}
 
 void Chunk::Process()
 {
@@ -138,11 +105,11 @@ int Chunk::Interpolate(int verticeIndex1, int verticeIndex2)
 	{
 		int x;
 
-		if (std::abs(Level - value1) < 0.00001)
+		if (std::abs(GetLevel() - value1) < 0.00001)
 		{
 			x = verticeIndex1;
 		}
-		else if (std::abs(Level - value2) < 0.00001)
+		else if (std::abs(GetLevel() - value2) < 0.00001)
 		{
 			x = verticeIndex2;
 		}
@@ -153,7 +120,7 @@ int Chunk::Interpolate(int verticeIndex1, int verticeIndex2)
 		else
 		{
 			x = vertices.size();
-			vertices.push_back(vertices[verticeIndex1] + (Level - value1) / (value2 - value1) * (vertices[verticeIndex2] - vertices[verticeIndex1]));
+			vertices.push_back(vertices[verticeIndex1] + (GetLevel() - value1) / (value2 - value1) * (vertices[verticeIndex2] - vertices[verticeIndex1]));
 			normals.push_back(FVector::ZeroVector);
 			keepVertices.push_back(false);
 		}
@@ -468,14 +435,14 @@ void Chunk::Polygonise(int grid[8])
 	tells us which vertices are inside of the surface
 	*/
 	cubeindex = 0;
-	if (GetValue(grid[0]) < Level) cubeindex |= 1;
-	if (GetValue(grid[1]) < Level) cubeindex |= 2;
-	if (GetValue(grid[2]) < Level) cubeindex |= 4;
-	if (GetValue(grid[3]) < Level) cubeindex |= 8;
-	if (GetValue(grid[4]) < Level) cubeindex |= 16;
-	if (GetValue(grid[5]) < Level) cubeindex |= 32;
-	if (GetValue(grid[6]) < Level) cubeindex |= 64;
-	if (GetValue(grid[7]) < Level) cubeindex |= 128;
+	if (GetValue(grid[0]) < GetLevel()) cubeindex |= 1;
+	if (GetValue(grid[1]) < GetLevel()) cubeindex |= 2;
+	if (GetValue(grid[2]) < GetLevel()) cubeindex |= 4;
+	if (GetValue(grid[3]) < GetLevel()) cubeindex |= 8;
+	if (GetValue(grid[4]) < GetLevel()) cubeindex |= 16;
+	if (GetValue(grid[5]) < GetLevel()) cubeindex |= 32;
+	if (GetValue(grid[6]) < GetLevel()) cubeindex |= 64;
+	if (GetValue(grid[7]) < GetLevel()) cubeindex |= 128;
 
 	/* Cube is entirely in/out of the surface */
 	if (edgeTable[cubeindex] == 0)
@@ -558,7 +525,7 @@ float Chunk::GetValue(int verticeIndex)
 	int y = verticeIndex % Size;
 	verticeIndex /= Size;
 	int z = verticeIndex;
-	return Values[x][y][z];
+	return world->GetValue(X + x, Y + y, Z + z);
 }
 
 int Chunk::GetIndex(int x, int y, int z)
@@ -572,4 +539,9 @@ std::pair<int, int> Chunk::CreatePair(int a, int b)
 		return std::pair<int, int>(a, b);
 	else
 		return std::pair<int, int>(b, a);
+}
+
+float Chunk::GetLevel()
+{
+	return world->Level;
 }

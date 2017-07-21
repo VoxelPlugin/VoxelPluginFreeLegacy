@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "Chunk.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
@@ -28,7 +27,6 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 private:
-	Chunk chunk;
 	UPROPERTY(VisibleAnywhere, Category = Materials)
 		UProceduralMeshComponent* mesh;
 

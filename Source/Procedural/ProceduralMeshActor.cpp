@@ -19,13 +19,7 @@ DEFINE_LOG_CATEGORY(YourCriticalErrors);
 // Sets default values
 AProceduralMeshActor::AProceduralMeshActor()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
 
-	mesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("GeneratedMesh"));
-	RootComponent = mesh;
-	chunk = Chunk();
-	chunk.Sphere();
 }
 
 // Called when the game starts or when spawned
@@ -64,21 +58,6 @@ void AProceduralMeshActor::Tick(float DeltaTime)
 
 void AProceduralMeshActor::SetLevel(float level)
 {
-	chunk.Level = level;
-	chunk.Process();
-
-
-	TArray<FVector> vertices = chunk.Vertices;
-	TArray<int> triangles = chunk.Triangles;
-	TArray<FVector> normals = chunk.Normals;
-	TArray<FVector2D> UV0;
-	TArray<FColor> vertexColors;
-	TArray<FProcMeshTangent> tangents;
-
-	/*UE_LOG(YourLog, Warning, TEXT("Vertices: %d"), vertices.Num());
-	UE_LOG(YourLog, Warning, TEXT("Triangles: %d"), triangles.Num());*/
-
-	mesh->CreateMeshSection(0, vertices, triangles, normals, UV0, vertexColors, tangents, false);
-	mesh->SetWorldScale3D(FVector(100));
+	
 }
 
