@@ -95,43 +95,42 @@ void Chunk::Process()
 
 int Chunk::Interpolate(int verticeIndex1, int verticeIndex2)
 {
-	float value1, value2;
-	value1 = GetValue(verticeIndex1);
-	value2 = GetValue(verticeIndex2);
+	float value1 = GetValue(verticeIndex1);
+	float value2 = GetValue(verticeIndex2);
 
-	auto got = interpolationDict.find(CreatePair(verticeIndex1, verticeIndex2));
+	/*auto got = interpolationDict.find(CreatePair(verticeIndex1, verticeIndex2));
 
-	if (true || got == interpolationDict.end())
+	if (got == interpolationDict.end())
+	{*/
+	int x;
+
+	if (std::abs(GetLevel() - value1) < 0.00001)
 	{
-		int x;
-
-		if (std::abs(GetLevel() - value1) < 0.00001)
-		{
-			x = verticeIndex1;
-		}
-		else if (std::abs(GetLevel() - value2) < 0.00001)
-		{
-			x = verticeIndex2;
-		}
-		else if (std::abs(value1 - value2) < 0.00001)
-		{
-			x = verticeIndex1;
-		}
-		else
-		{
-			x = vertices.size();
-			vertices.push_back(vertices[verticeIndex1] + (GetLevel() - value1) / (value2 - value1) * (vertices[verticeIndex2] - vertices[verticeIndex1]));
-			normals.push_back(FVector::ZeroVector);
-			keepVertices.push_back(false);
-		}
-
-		interpolationDict.insert({ CreatePair(verticeIndex1, verticeIndex2), x });
-		return x;
+		x = verticeIndex1;
+	}
+	else if (std::abs(GetLevel() - value2) < 0.00001)
+	{
+		x = verticeIndex2;
+	}
+	else if (std::abs(value1 - value2) < 0.00001)
+	{
+		x = verticeIndex1;
 	}
 	else
 	{
-		return got->second;
+		x = vertices.size();
+		vertices.push_back(vertices[verticeIndex1] + (GetLevel() - value1) / (value2 - value1) * (vertices[verticeIndex2] - vertices[verticeIndex1]));
+		normals.push_back(FVector::ZeroVector);
+		keepVertices.push_back(false);
 	}
+
+	//interpolationDict.insert({ CreatePair(verticeIndex1, verticeIndex2), x });
+	return x;
+	/*}
+	else
+	{
+		return got->second;
+	}*/
 }
 
 void Chunk::Polygonise(int grid[8])

@@ -11,12 +11,14 @@ AChunkActor::AChunkActor()
 
 	mesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("GeneratedMesh"));
 	RootComponent = mesh;
+	bActorLabelEditable = false;
+	bLockLocation = false;
+	mesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 }
 
-void AChunkActor::Initialize(Chunk* chunk, float scale)
+void AChunkActor::Initialize(Chunk* chunk)
 {
 	this->chunk = chunk;
-	this->scale = scale;
 
 	// Lines
 	//auto drawPoint = [this](float X, float Y, float Z, FColor color)
@@ -58,8 +60,7 @@ void AChunkActor::Update()
 	TArray<FColor> vertexColors;
 	TArray<FProcMeshTangent> tangents;
 
-	mesh->CreateMeshSection(0, vertices, triangles, normals, UV0, vertexColors, tangents, false);
-	mesh->SetWorldScale3D(FVector(scale));
+	mesh->CreateMeshSection(0, vertices, triangles, normals, UV0, vertexColors, tangents, true);
 }
 
 void AChunkActor::Tick(float DeltaTime)

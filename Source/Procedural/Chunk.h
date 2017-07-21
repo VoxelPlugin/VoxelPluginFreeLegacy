@@ -44,7 +44,7 @@ public:
 
 private:
 
-	std::unordered_map<std::pair<int, int>, int> interpolationDict;
+	//std::unordered_map<std::pair<int, int>, int> interpolationDict;
 	std::vector<FVector> vertices;
 	std::vector<FVector> normals;
 	std::forward_list<int> triangles;

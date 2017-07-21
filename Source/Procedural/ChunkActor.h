@@ -15,7 +15,7 @@ class PROCEDURAL_API AChunkActor : public AActor
 
 public:
 	AChunkActor();
-	void Initialize(Chunk* chunk, float scale);
+	void Initialize(Chunk* chunk);
 	void Update();
 
 protected:
@@ -26,7 +26,6 @@ public:
 
 private:
 	Chunk* chunk;
-	float scale;
 	UPROPERTY(VisibleAnywhere, Category = Materials)
 		UProceduralMeshComponent* mesh;
 

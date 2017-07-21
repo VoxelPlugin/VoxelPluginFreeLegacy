@@ -9,7 +9,7 @@ World::World(int size) : Size(size * Chunk::Size), ChunkSize(size), Level(0), Ch
 		{
 			for (int z = 0; z < ChunkSize; z++)
 			{
-				Chunks[x + ChunkSize*y + ChunkSize*ChunkSize*z] = new Chunk(this, Chunk::Size*x, Chunk::Size*y, Chunk::Size*z);
+				Chunks[x + ChunkSize*y + ChunkSize*ChunkSize*z] = new Chunk(this, (Chunk::Size - 1)*x, (Chunk::Size - 1)*y, (Chunk::Size - 1)*z);
 			}
 		}
 	}
@@ -56,6 +56,17 @@ void World::Sphere()
 
 float World::GetValue(int x, int y, int z)
 {
-	checkf(x < Size && y < Size && z < Size && x >= 0 && y >= 0 && z >= 0, TEXT("Invalid args: %d, %d, %d"), x, y, z);
+	checkf(IsInWorld(x, y, z), TEXT("Invalid args: %d, %d, %d"), x, y, z);
 	return values[x + Size*y + Size*Size*z];
+}
+
+void World::Modify(int x, int y, int z)
+{
+	checkf(IsInWorld(x, y, z), TEXT("Invalid args: %d, %d, %d"), x, y, z);
+	values[x + Size*y + Size*Size*z] += 1;
+}
+
+bool World::IsInWorld(int x, int y, int z)
+{
+	return x < Size && y < Size && z < Size && x >= 0 && y >= 0 && z >= 0;
 }
