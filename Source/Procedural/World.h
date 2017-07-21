@@ -18,6 +18,8 @@ public:
 	void Sphere();
 
 	float GetValue(int x, int y, int z);
+	void Modify(int x, int y, int z);
+	bool IsInWorld(int x, int y, int z);
 
 private:
 	std::vector<float> values;
