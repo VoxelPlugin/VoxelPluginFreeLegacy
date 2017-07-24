@@ -49,7 +49,7 @@ void World::Plane()
 		{
 			for (int z = 0; z < Size; z++)
 			{
-				values[x + Size*y + Size*Size*z] = (z > Size / 2) ? 1 : -1;
+				values[x + Size*y + Size*Size*z] = (z > Size / 2 || x == 0 || y == 0 || z == 0 || x == Size - 1 || y == Size - 1) ? 1 : -1;
 			}
 		}
 	}
@@ -72,29 +72,39 @@ void World::Sphere()
 
 char World::GetValue(int x, int y, int z)
 {
-	if (!IsInWorld(x, y, z))
+	if (IsInWorld(x, y, z))
+	{
+		return values[x + Size*y + Size*Size*z];
+	}
+	else
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Invalid args: %d, %d, %d"), x, y, z));
+		return 0;
 	}
-	return values[x + Size*y + Size*Size*z];
 }
 
 void World::Add(int x, int y, int z)
 {
-	if (!IsInWorld(x, y, z))
+	if (IsInWorld(x, y, z))
+	{
+		values[x + Size*y + Size*Size*z] -= 1;
+	}
+	else
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Invalid args: %d, %d, %d"), x, y, z));
 	}
-	values[x + Size*y + Size*Size*z] -= 1;
 }
 
 void World::Remove(int x, int y, int z)
 {
-	if (!IsInWorld(x, y, z))
+	if (IsInWorld(x, y, z))
+	{
+		values[x + Size*y + Size*Size*z] += 1;
+	}
+	else
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Invalid args: %d, %d, %d"), x, y, z));
 	}
-	values[x + Size*y + Size*Size*z] += 1;
 }
 
 bool World::IsInWorld(int x, int y, int z)

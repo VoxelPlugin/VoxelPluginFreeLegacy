@@ -10,7 +10,7 @@ AVoxelWorld::AVoxelWorld()
 	bNotCreated = true;
 
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("CollisionCylinder"));
-	TouchCapsule->InitCapsuleSize(30.0f, 80.0f);
+	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
 	TouchCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	TouchCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
 	RootComponent = TouchCapsule;
@@ -46,7 +46,7 @@ void AVoxelWorld::CreateWorld()
 				chunkActor->SetActorRelativeLocation(relativeLocation);
 				chunkActor->SetActorRelativeRotation(FRotator::ZeroRotator);
 				chunkActor->SetActorRelativeScale3D(FVector::OneVector);
-				chunkActor->Initialize(chunk);
+				chunkActor->Initialize(chunk, material);
 
 				chunks[x + Size*y + Size*Size*z] = chunkActor;
 			}
@@ -128,6 +128,13 @@ void AVoxelWorld::Remove(FVector hitPoint)
 	{
 		world->Remove(x, y, z);
 		GetChunk(x, y, z)->Update();
+		GetChunk(x + 1, y, z)->Update();
+		GetChunk(x, y + 1, z)->Update();
+		GetChunk(x, y, z + 1)->Update();
+
+		GetChunk(x - 1, y, z)->Update();
+		GetChunk(x, y - 1, z)->Update();
+		GetChunk(x, y, z - 1)->Update();
 	}
 	else
 	{
@@ -140,5 +147,13 @@ AChunkActor* AVoxelWorld::GetChunk(int x, int y, int z)
 	int chunkX = x / 16;
 	int chunkY = y / 16;
 	int chunkZ = z / 16;
-	return chunks[chunkX + Size*chunkY + Size*Size*chunkZ];
+
+	if (chunkX + Size*chunkY + Size*Size*chunkZ < chunks.Num())
+	{
+		return chunks[chunkX + Size*chunkY + Size*Size*chunkZ];
+	}
+	else
+	{
+		return chunks[0];
+	}
 }

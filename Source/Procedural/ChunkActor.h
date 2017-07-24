@@ -15,7 +15,7 @@ class PROCEDURAL_API AChunkActor : public AActor
 
 public:
 	AChunkActor();
-	void Initialize(Chunk* chunk);
+	void Initialize(Chunk* chunk, UMaterialInterface* material);
 	void Update();
 
 protected:

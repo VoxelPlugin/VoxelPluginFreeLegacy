@@ -18,9 +18,10 @@ AChunkActor::AChunkActor()
 	mesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 }
 
-void AChunkActor::Initialize(Chunk* chunk)
+void AChunkActor::Initialize(Chunk* chunk, UMaterialInterface* material)
 {
 	this->chunk = chunk;
+	this->mesh->SetMaterial(0, material);
 
 	// Lines
 	//auto drawPoint = [this](float X, float Y, float Z, FColor color)
@@ -57,10 +58,15 @@ void AChunkActor::Update()
 	chunk->Process();
 	TArray<FVector> vertices = chunk->Vertices;
 	TArray<int> triangles = chunk->Triangles;
-	TArray<FVector> normals;
+	TArray<FVector> normals = chunk->Normals;
 	TArray<FVector2D> UV0;
 	TArray<FColor> vertexColors;
-	TArray<FProcMeshTangent> tangents;
+	TArray<FProcMeshTangent> tangents = chunk->Tangents;
+
+	if (tangents.Num() != vertices.Num() || normals.Num() != tangents.Num())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error tangents or normals"));
+	}
 
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, FString::Printf(TEXT("Triangles/Vertices: %d, %d"), triangles.Num(), vertices.Num()));
 
