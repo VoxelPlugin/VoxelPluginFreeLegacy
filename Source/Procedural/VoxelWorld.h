@@ -22,9 +22,9 @@ public:
 	void Update();
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetLevel(float level);
+		void Add(FVector hitPoint);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ModifyVoxel(FVector hitPoint);
+		void Remove(FVector hitPoint);
 
 protected:
 	virtual void BeginPlay() override;
@@ -36,8 +36,6 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		int Size;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		float Level;
 	bool bNotCreated;
 	World* world;
 	TArray<AChunkActor*> chunks;
