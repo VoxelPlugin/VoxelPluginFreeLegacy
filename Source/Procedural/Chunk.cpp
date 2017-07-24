@@ -41,8 +41,15 @@ void Chunk::Process()
 		newCacheIs1 = !newCacheIs1;
 	}
 
+	/**
+	 * Compute normals + tangents & final arrays
+	 */
 	Vertices.SetNumUninitialized(verticesCount);
+	Normals.SetNum(verticesCount);
 	Triangles.SetNumUninitialized(trianglesCount);
+
+	Tangents.SetNumUninitialized(verticesCount);
+	tangents.SetNumUninitialized(verticesCount);
 
 	int i = 0;
 	for (auto it = vertices.begin(); it != vertices.end(); ++it)
@@ -53,8 +60,38 @@ void Chunk::Process()
 	i = 0;
 	for (auto it = triangles.begin(); it != triangles.end(); ++it)
 	{
-		Triangles[i] = *it;
-		i++;
+		int a = *it;
+		++it;
+		int b = *it;
+		++it;
+		int c = *it;
+
+		Triangles[i] = a;
+		Triangles[i + 1] = b;
+		Triangles[i + 2] = c;
+		i += 3;
+
+		FVector A = Vertices[a];
+		FVector B = Vertices[b];
+		FVector C = Vertices[c];
+		FVector n = FVector::CrossProduct(C - A, B - A);
+		// surface = norm(n) / 2
+		// We want: normals += n / norm(n) * surface
+		// <=> normals += n / 2
+		// <=> normals += n because normals are normalized
+		n.Normalize();
+		Normals[a] += n;
+		Normals[b] += n;
+		Normals[c] += n;
+		tangents[a] += B + C - 2 * A;
+		tangents[b] += B + C - 2 * A;
+		tangents[c] += B + C - 2 * A;
+	}
+
+	for (int i = 0; i < tangents.Num(); i++)
+	{
+		Tangents[i] = FProcMeshTangent(tangents[i].SafeNormal(), false);
+		Normals[i].Normalize();
 	}
 }
 

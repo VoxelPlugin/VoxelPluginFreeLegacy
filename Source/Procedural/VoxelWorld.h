@@ -36,6 +36,8 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		int Size;
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		UMaterialInterface* material;
 	bool bNotCreated;
 	World* world;
 	TArray<AChunkActor*> chunks;

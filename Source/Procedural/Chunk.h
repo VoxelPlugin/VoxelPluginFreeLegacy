@@ -5,6 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #include "CoreMinimal.h"
+#include "ProceduralMeshComponent.h"
 
 class World;
 
@@ -19,6 +20,8 @@ public:
 	World* const world;
 
 	TArray<FVector> Vertices;
+	TArray<FVector> Normals;
+	TArray<FProcMeshTangent> Tangents;
 	TArray<int> Triangles;
 
 	void Process();
@@ -26,6 +29,7 @@ public:
 private:
 	std::forward_list<FVector> vertices;
 	std::forward_list<int> triangles;
+	TArray<FVector> tangents;
 
 	int cache1[16][16][4];
 	int cache2[16][16][4];
