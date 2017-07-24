@@ -28,7 +28,6 @@ void AVoxelWorld::CreateWorld()
 {
 	bNotCreated = false;
 	this->world = new World(Size);
-	this->world->Level = Level;
 	chunks.SetNumUninitialized(Size * Size * Size);
 	for (int x = 0; x < Size; x++)
 	{
@@ -40,7 +39,7 @@ void AVoxelWorld::CreateWorld()
 				AChunkActor* chunkActor = this->GetWorld()->SpawnActor<AChunkActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 				Chunk* chunk = world->Chunks[x + Size*y + Size*Size*z];
 				FString name = FString::FromInt(x) + ", " + FString::FromInt(y) + ", " + FString::FromInt(z);
-				FVector relativeLocation = (Chunk::Size - 1) * FVector(x, y, z);
+				FVector relativeLocation = 16 * FVector(x, y, z);
 
 				chunkActor->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
 				chunkActor->SetActorLabel(name);
@@ -65,13 +64,6 @@ void AVoxelWorld::DeleteWorld()
 	delete world;
 }
 
-
-void AVoxelWorld::SetLevel(float level)
-{
-	world->Level = level;
-	Update();
-}
-
 void AVoxelWorld::Update()
 {
 	for (auto& chunk : chunks)
@@ -86,7 +78,7 @@ void AVoxelWorld::BeginPlay()
 	Super::BeginPlay();
 
 	CreateWorld();
-	world->Sphere();
+	world->Plane();
 	Update();
 }
 
@@ -107,7 +99,7 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 		return ParentVal;
 }
 
-void AVoxelWorld::ModifyVoxel(FVector hitPoint)
+void AVoxelWorld::Add(FVector hitPoint)
 {
 	FVector localVector = GetTransform().InverseTransformPosition(hitPoint);
 	int x = FMath::RoundToInt(localVector.X);
@@ -116,7 +108,25 @@ void AVoxelWorld::ModifyVoxel(FVector hitPoint)
 
 	if (world->IsInWorld(x, y, z))
 	{
-		world->Modify(x, y, z);
+		world->Add(x, y, z);
+		GetChunk(x, y, z)->Update();
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::Printf(TEXT("Error: (%d, %d, %d) not in world"), x, y, z));
+	}
+}
+
+void AVoxelWorld::Remove(FVector hitPoint)
+{
+	FVector localVector = GetTransform().InverseTransformPosition(hitPoint);
+	int x = FMath::RoundToInt(localVector.X);
+	int y = FMath::RoundToInt(localVector.Y);
+	int z = FMath::RoundToInt(localVector.Z);
+
+	if (world->IsInWorld(x, y, z))
+	{
+		world->Remove(x, y, z);
 		GetChunk(x, y, z)->Update();
 	}
 	else
@@ -127,8 +137,8 @@ void AVoxelWorld::ModifyVoxel(FVector hitPoint)
 
 AChunkActor* AVoxelWorld::GetChunk(int x, int y, int z)
 {
-	int chunkX = x / (Chunk::Size - 1);
-	int chunkY = y / (Chunk::Size - 1);
-	int chunkZ = z / (Chunk::Size - 1);
+	int chunkX = x / 16;
+	int chunkY = y / 16;
+	int chunkZ = z / 16;
 	return chunks[chunkX + Size*chunkY + Size*Size*chunkZ];
 }

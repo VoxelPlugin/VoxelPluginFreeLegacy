@@ -10,17 +10,18 @@ public:
 	~World();
 
 	const int Size;
-	const int ChunkSize;
-	float Level;
+	const int SizeInChunks;
 	std::vector<Chunk*> Chunks;
 
 	void Randomize();
 	void Sphere();
+	void Plane();
 
-	float GetValue(int x, int y, int z);
-	void Modify(int x, int y, int z);
+	char GetValue(int x, int y, int z);
+	void Add(int x, int y, int z);
+	void Remove(int x, int y, int z);
 	bool IsInWorld(int x, int y, int z);
 
 private:
-	std::vector<float> values;
+	std::vector<signed char> values;
 };

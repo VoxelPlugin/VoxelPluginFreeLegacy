@@ -1,15 +1,17 @@
 #include "World.h"
 #include "Chunk.h"
+#include "EngineGlobals.h"
+#include "Engine.h"
 
-World::World(int size) : Size(size * Chunk::Size), ChunkSize(size), Level(0), Chunks(ChunkSize*ChunkSize*ChunkSize), values(Size*Size*Size)
+World::World(int size) : Size(size * 16 + 1), SizeInChunks(size), Chunks(SizeInChunks*SizeInChunks*SizeInChunks), values(Size*Size*Size)
 {
-	for (int x = 0; x < ChunkSize; x++)
+	for (int x = 0; x < SizeInChunks; x++)
 	{
-		for (int y = 0; y < ChunkSize; y++)
+		for (int y = 0; y < SizeInChunks; y++)
 		{
-			for (int z = 0; z < ChunkSize; z++)
+			for (int z = 0; z < SizeInChunks; z++)
 			{
-				Chunks[x + ChunkSize*y + ChunkSize*ChunkSize*z] = new Chunk(this, (Chunk::Size - 1)*x, (Chunk::Size - 1)*y, (Chunk::Size - 1)*z);
+				Chunks[x + SizeInChunks*y + SizeInChunks*SizeInChunks*z] = new Chunk(this, 16 * x, 16 * y, 16 * z);
 			}
 		}
 	}
@@ -39,6 +41,20 @@ void World::Randomize()
 	}
 }
 
+void World::Plane()
+{
+	for (int x = 0; x < Size; x++)
+	{
+		for (int y = 0; y < Size; y++)
+		{
+			for (int z = 0; z < Size; z++)
+			{
+				values[x + Size*y + Size*Size*z] = (z > Size / 2) ? 1 : -1;
+			}
+		}
+	}
+}
+
 void World::Sphere()
 {
 	for (int x = 0; x < Size; x++)
@@ -47,22 +63,37 @@ void World::Sphere()
 		{
 			for (int z = 0; z < Size; z++)
 			{
-				values[x + Size*y + Size*Size*z] = -FVector(x - Size / 2, y - Size / 2, z - Size / 2).Size();
+				values[x + Size*y + Size*Size*z] = (FVector(x - Size / 2, y - Size / 2, z - Size / 2).Size() - 5.0f) / (FMath::Sqrt(3) * Size / 2) * 128;
 			}
 		}
 	}
 }
 
 
-float World::GetValue(int x, int y, int z)
+char World::GetValue(int x, int y, int z)
 {
-	checkf(IsInWorld(x, y, z), TEXT("Invalid args: %d, %d, %d"), x, y, z);
+	if (!IsInWorld(x, y, z))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Invalid args: %d, %d, %d"), x, y, z));
+	}
 	return values[x + Size*y + Size*Size*z];
 }
 
-void World::Modify(int x, int y, int z)
+void World::Add(int x, int y, int z)
 {
-	checkf(IsInWorld(x, y, z), TEXT("Invalid args: %d, %d, %d"), x, y, z);
+	if (!IsInWorld(x, y, z))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Invalid args: %d, %d, %d"), x, y, z));
+	}
+	values[x + Size*y + Size*Size*z] -= 1;
+}
+
+void World::Remove(int x, int y, int z)
+{
+	if (!IsInWorld(x, y, z))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Invalid args: %d, %d, %d"), x, y, z));
+	}
 	values[x + Size*y + Size*Size*z] += 1;
 }
 
