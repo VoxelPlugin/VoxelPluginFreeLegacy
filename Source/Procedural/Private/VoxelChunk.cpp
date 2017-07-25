@@ -1,33 +1,62 @@
-#include "Chunk.h"
-#include "World.h"
-#include <cmath>
-#include <algorithm>
-#include "AssertionMacros.h"
-#include "Transvoxel.cpp"
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "VoxelChunk.h"
+#include "VoxelWorld.h"
+#include "VoxelData.h"
 #include "EngineGlobals.h"
 #include "Engine.h"
+#include "Transvoxel.h"
+#include <vector>
 
-Chunk::Chunk(World* w, int posX, int posY, int posZ) : world(w), X(posX), Y(posY), Z(posZ)
+
+// Sets default values
+AVoxelChunk::AVoxelChunk()
 {
+	// Create primary mesh
+	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
+	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	RootComponent = PrimaryMesh;
+}
+
+// Called when the game starts or when spawned
+void AVoxelChunk::BeginPlay()
+{
+	Super::BeginPlay();
 
 }
 
+void AVoxelChunk::Init(int x, int y, int z, int depth, AVoxelWorld* world)
+{
+	X = x;
+	Y = y;
+	Z = z;
+	Depth = depth;
+	World = world;
 
+	FString name = FString::FromInt(x) + ", " + FString::FromInt(y) + ", " + FString::FromInt(z);
+	FVector relativeLocation = FVector(x, y, z);
 
+	this->AttachToActor(world, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	this->SetActorLabel(name);
+	this->SetActorRelativeLocation(relativeLocation);
+	this->SetActorRelativeRotation(FRotator::ZeroRotator);
+	this->SetActorRelativeScale3D(FVector::OneVector * (1 << Depth));
+	PrimaryMesh->SetMaterial(0, World->VoxelMaterial);
+}
 
-void Chunk::Process()
+void AVoxelChunk::Update()
 {
 	/**
-	 * Initialize
-	 */
-	vertices.clear();
-	triangles.clear();
-	verticesCount = 0;
-	trianglesCount = 0;
+	* Initialize
+	*/
+	Vertices.clear();
+	Triangles.clear();
+	VerticesCount = 0;
+	TrianglesCount = 0;
 
 	/**
-	 * Polygonize
-	 */
+	* Polygonize
+	*/
 	for (int z = 0; z < 16; z++)
 	{
 		for (int y = 0; y < 16; y++)
@@ -38,27 +67,36 @@ void Chunk::Process()
 				Polygonise(x, y, z);
 			}
 		}
-		newCacheIs1 = !newCacheIs1;
+		NewCacheIs1 = !NewCacheIs1;
 	}
 
 	/**
-	 * Compute normals + tangents & final arrays
-	 */
-	Vertices.SetNumUninitialized(verticesCount);
-	Normals.SetNum(verticesCount);
-	Triangles.SetNumUninitialized(trianglesCount);
+	* Compute normals + tangents & final arrays
+	*/
+	TArray<FVector> VerticesArray;
+	VerticesArray.SetNumUninitialized(VerticesCount);
 
-	Tangents.SetNumUninitialized(verticesCount);
-	tangents.SetNumUninitialized(verticesCount);
+	TArray<FVector> NormalsArray;
+	NormalsArray.Init(FVector::ZeroVector, VerticesCount);
+
+	TArray<int> TrianglesArray;
+	TrianglesArray.SetNumUninitialized(TrianglesCount);
+
+	TArray<FVector> TangentVectorsArray;
+	TangentVectorsArray.SetNumUninitialized(VerticesCount);
+
+	TArray<FProcMeshTangent> TangentsArray;
+	TangentsArray.SetNumUninitialized(VerticesCount);
+
 
 	int i = 0;
-	for (auto it = vertices.begin(); it != vertices.end(); ++it)
+	for (auto it = Vertices.begin(); it != Vertices.end(); ++it)
 	{
-		Vertices[verticesCount - 1 - i] = *it;
+		VerticesArray[VerticesCount - 1 - i] = *it;
 		i++;
 	}
 	i = 0;
-	for (auto it = triangles.begin(); it != triangles.end(); ++it)
+	for (auto it = Triangles.begin(); it != Triangles.end(); ++it)
 	{
 		int a = *it;
 		++it;
@@ -66,36 +104,47 @@ void Chunk::Process()
 		++it;
 		int c = *it;
 
-		Triangles[i] = a;
-		Triangles[i + 1] = b;
-		Triangles[i + 2] = c;
+		TrianglesArray[i] = a;
+		TrianglesArray[i + 1] = b;
+		TrianglesArray[i + 2] = c;
 		i += 3;
 
-		FVector A = Vertices[a];
-		FVector B = Vertices[b];
-		FVector C = Vertices[c];
+		FVector A = VerticesArray[a];
+		FVector B = VerticesArray[b];
+		FVector C = VerticesArray[c];
 		FVector n = FVector::CrossProduct(C - A, B - A);
 		// surface = norm(n) / 2
 		// We want: normals += n / norm(n) * surface
 		// <=> normals += n / 2
 		// <=> normals += n because normals are normalized
 		n.Normalize();
-		Normals[a] += n;
-		Normals[b] += n;
-		Normals[c] += n;
-		tangents[a] += B + C - 2 * A;
-		tangents[b] += B + C - 2 * A;
-		tangents[c] += B + C - 2 * A;
+		NormalsArray[a] += n;
+		NormalsArray[b] += n;
+		NormalsArray[c] += n;
+		TangentVectorsArray[a] += B + C - 2 * A;
+		TangentVectorsArray[b] += B + C - 2 * A;
+		TangentVectorsArray[c] += B + C - 2 * A;
 	}
 
-	for (int i = 0; i < tangents.Num(); i++)
+	for (int i = 0; i < TangentVectorsArray.Num(); i++)
 	{
-		Tangents[i] = FProcMeshTangent(tangents[i].SafeNormal(), false);
-		Normals[i].Normalize();
+		TangentsArray[i] = FProcMeshTangent(TangentVectorsArray[i].GetSafeNormal(), false);
+		NormalsArray[i].Normalize();
 	}
+
+
+	TArray<FVector2D> UV0;
+	TArray<FColor> VertexColors;
+
+	if (TangentsArray.Num() != VerticesArray.Num() || NormalsArray.Num() != VerticesArray.Num())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error tangents or normals"));
+	}
+
+	PrimaryMesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, true);
 }
 
-void Chunk::Polygonise(int x, int y, int z)
+void AVoxelChunk::Polygonise(int x, int y, int z)
 {
 	signed char corner[8] = {
 		GetValue(x    , y    , z),
@@ -139,8 +188,8 @@ void Chunk::Polygonise(int x, int y, int z)
 
 		std::vector<int> vertexIndices(cellData.GetVertexCount());
 
-		auto newCache = newCacheIs1 ? cache1 : cache2;
-		auto oldCache = newCacheIs1 ? cache2 : cache1;
+		auto newCache = NewCacheIs1 ? Cache1 : Cache2;
+		auto oldCache = NewCacheIs1 ? Cache2 : Cache1;
 
 		for (int i = 0; i < cellData.GetVertexCount(); i++)
 		{
@@ -164,9 +213,9 @@ void Chunk::Polygonise(int x, int y, int z)
 				{
 					long u = 0x0100 - t;
 					FVector Q = (t * P0 + u * P1) / 256;
-					vertices.push_front(Q);
-					verticeIndex = verticesCount;
-					verticesCount++;
+					Vertices.push_front(Q);
+					verticeIndex = VerticesCount;
+					VerticesCount++;
 					newCache[x][y][edgeIndex] = verticeIndex;
 				}
 				else
@@ -183,9 +232,9 @@ void Chunk::Polygonise(int x, int y, int z)
 				if (v1 == 7 || ((validityMask & direction) != direction))
 				{
 					// This cell owns the vertex or is along minimal boundaries
-					vertices.push_front(P1);
-					verticeIndex = verticesCount;
-					verticesCount++;
+					Vertices.push_front(P1);
+					verticeIndex = VerticesCount;
+					VerticesCount++;
 					newCache[x][y][edgeIndex] = verticeIndex;
 				}
 				else
@@ -202,9 +251,9 @@ void Chunk::Polygonise(int x, int y, int z)
 				// Always try to reuse corner vertex from a preceding cell.
 				if ((validityMask & direction) != direction)
 				{
-					vertices.push_front(P0);
-					verticeIndex = verticesCount;
-					verticesCount++;
+					Vertices.push_front(P0);
+					verticeIndex = VerticesCount;
+					VerticesCount++;
 					newCache[x][y][edgeIndex] = verticeIndex;
 				}
 				else
@@ -222,15 +271,13 @@ void Chunk::Polygonise(int x, int y, int z)
 		// Add triangles
 		for (int i = 0; i < 3 * cellData.GetTriangleCount(); i++)
 		{
-			triangles.push_front(vertexIndices[cellData.vertexIndex[i]]);
+			Triangles.push_front(vertexIndices[cellData.vertexIndex[i]]);
 		}
-		trianglesCount += 3 * cellData.GetTriangleCount();
+		TrianglesCount += 3 * cellData.GetTriangleCount();
 	}
 }
 
-
-
-char Chunk::GetValue(int x, int y, int z)
+char AVoxelChunk::GetValue(int x, int y, int z)
 {
-	return world->GetValue(X + x, Y + y, Z + z);
+	return World->GetValue(X + x * (1 + Depth), Y + y * (1 + Depth), Z + z * (1 + Depth));
 }
