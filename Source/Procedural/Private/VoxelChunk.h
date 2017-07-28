@@ -5,10 +5,11 @@
 #include <forward_list>
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "ProceduralMeshComponent.h"
+#include "RuntimeMeshComponent.h"
 #include "VoxelChunk.generated.h"
 
 class AVoxelWorld;
+class AVoxelCollisionChunk;
 
 
 UCLASS()
@@ -20,14 +21,14 @@ public:
 	AVoxelChunk();
 
 	void Init(FIntVector position, int depth, AVoxelWorld* world);
-	void Update();
+	void Update(URuntimeMeshComponent* mesh = nullptr, bool bCreateCollision = false);
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 private:
-	UProceduralMeshComponent* PrimaryMesh;
+	URuntimeMeshComponent* PrimaryMesh;
 
 	// Lower corner
 	FIntVector Position;
@@ -44,6 +45,7 @@ private:
 	int Cache2[16][16][4];
 	bool NewCacheIs1;
 
+	bool bCollisionDirty;
 
 	void Polygonise(int x, int y, int z);
 	char GetValue(int x, int y, int z);
@@ -51,4 +53,5 @@ private:
 	FVector InterpolateY(int x, int yMin, int yMax, int z);
 	FVector InterpolateZ(int x, int y, int zMin, int zMax);
 
+	friend AVoxelCollisionChunk;
 };
