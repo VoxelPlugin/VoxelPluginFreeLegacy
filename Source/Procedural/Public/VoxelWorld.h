@@ -27,6 +27,8 @@ public:
 		UMaterialInterface* VoxelMaterial;
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		int Depth;
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		float CollisionFPS;
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")

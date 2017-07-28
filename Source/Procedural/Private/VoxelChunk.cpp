@@ -7,15 +7,15 @@
 #include "Engine.h"
 #include "Transvoxel.h"
 #include "DrawDebugHelpers.h"
+#include "VoxelCollisionChunk.h"
 #include <vector>
 
 
 // Sets default values
-AVoxelChunk::AVoxelChunk()
+AVoxelChunk::AVoxelChunk() : bCollisionDirty(true)
 {
-	// Create primary mesh
-	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
-	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	// Create primary  mesh
+	PrimaryMesh = CreateDefaultSubobject<URuntimeMeshComponent>(FName("PrimaryMesh"));
 	RootComponent = PrimaryMesh;
 }
 
@@ -24,6 +24,13 @@ void AVoxelChunk::BeginPlay()
 {
 	Super::BeginPlay();
 
+	AVoxelCollisionChunk* chunk = GetWorld()->SpawnActor<AVoxelCollisionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	chunk->VoxelChunk = this;
+	chunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	chunk->SetActorLabel("VoxelCollisionChunkActor");
+	chunk->SetActorRelativeLocation(FVector::ZeroVector);
+	chunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+	chunk->SetActorRelativeScale3D(FVector::OneVector);
 }
 
 void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
@@ -44,8 +51,13 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	PrimaryMesh->bCastShadowAsTwoSided = true;
 }
 
-void AVoxelChunk::Update()
+void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 {
+	if (mesh == nullptr)
+	{
+		mesh = PrimaryMesh;
+	}
+
 	/**
 	* Initialize
 	*/
@@ -85,7 +97,7 @@ void AVoxelChunk::Update()
 	TArray<FVector> TangentVectorsArray;
 	TangentVectorsArray.SetNumUninitialized(VerticesCount);
 
-	TArray<FProcMeshTangent> TangentsArray;
+	TArray<FRuntimeMeshTangent> TangentsArray;
 	TangentsArray.SetNumUninitialized(VerticesCount);
 
 
@@ -128,7 +140,7 @@ void AVoxelChunk::Update()
 
 	for (int i = 0; i < TangentVectorsArray.Num(); i++)
 	{
-		TangentsArray[i] = FProcMeshTangent(TangentVectorsArray[i].GetSafeNormal(), false);
+		TangentsArray[i] = FRuntimeMeshTangent(TangentVectorsArray[i].GetSafeNormal());
 		NormalsArray[i].Normalize();
 	}
 
@@ -141,7 +153,18 @@ void AVoxelChunk::Update()
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error tangents or normals"));
 	}
 
-	PrimaryMesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, true);
+	if (VerticesArray.Num() != 0)
+	{
+		if (mesh->DoesSectionExist(0))
+		{
+			mesh->UpdateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, ESectionUpdateFlags::MoveArrays);
+		}
+		else
+		{
+			mesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, bCreateCollision, EUpdateFrequency::Frequent);
+		}
+	}
+	bCollisionDirty = true;
 }
 
 void AVoxelChunk::Polygonise(int x, int y, int z)
