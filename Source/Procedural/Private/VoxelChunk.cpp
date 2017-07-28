@@ -6,6 +6,7 @@
 #include "EngineGlobals.h"
 #include "Engine.h"
 #include "Transvoxel.h"
+#include "DrawDebugHelpers.h"
 #include <vector>
 
 
@@ -25,23 +26,22 @@ void AVoxelChunk::BeginPlay()
 
 }
 
-void AVoxelChunk::Init(int x, int y, int z, int depth, AVoxelWorld* world)
+void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 {
-	X = x;
-	Y = y;
-	Z = z;
+	Position = position;
 	Depth = depth;
 	World = world;
 
-	FString name = FString::FromInt(x) + ", " + FString::FromInt(y) + ", " + FString::FromInt(z);
-	FVector relativeLocation = FVector(x, y, z);
+	FString name = FString::FromInt(position.X) + ", " + FString::FromInt(position.Y) + ", " + FString::FromInt(position.Z);
+	FVector relativeLocation = FVector(position.X, position.Y, position.Z);
 
 	this->AttachToActor(world, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
 	this->SetActorLabel(name);
 	this->SetActorRelativeLocation(relativeLocation);
 	this->SetActorRelativeRotation(FRotator::ZeroRotator);
-	this->SetActorRelativeScale3D(FVector::OneVector * (1 << Depth));
+	this->SetActorRelativeScale3D(FVector::OneVector);
 	PrimaryMesh->SetMaterial(0, World->VoxelMaterial);
+	PrimaryMesh->bCastShadowAsTwoSided = true;
 }
 
 void AVoxelChunk::Update()
@@ -146,138 +146,283 @@ void AVoxelChunk::Update()
 
 void AVoxelChunk::Polygonise(int x, int y, int z)
 {
-	signed char corner[8] = {
-		GetValue(x    , y    , z),
-		GetValue(x + 1, y    , z),
-		GetValue(x    , y + 1, z),
-		GetValue(x + 1, y + 1, z),
-		GetValue(x    , y    , z + 1),
-		GetValue(x + 1, y    , z + 1),
-		GetValue(x    , y + 1, z + 1),
-		GetValue(x + 1, y + 1, z + 1)
+	int Step = 1 << Depth;
+	signed char Corner[8] = {
+		GetValue(x       * Step, y       * Step, z       * Step),
+		GetValue((x + 1) * Step, y       * Step, z       * Step),
+		GetValue(x       * Step, (y + 1) * Step, z       * Step),
+		GetValue((x + 1) * Step, (y + 1) * Step, z       * Step),
+		GetValue(x       * Step, y       * Step, (z + 1) * Step),
+		GetValue((x + 1) * Step, y       * Step, (z + 1) * Step),
+		GetValue(x       * Step, (y + 1) * Step, (z + 1) * Step),
+		GetValue((x + 1) * Step, (y + 1) * Step, (z + 1) * Step)
 	};
 
-	FVector positions[8] = {
-		FVector(x    , y    , z),
-		FVector(x + 1, y    , z),
-		FVector(x    , y + 1, z),
-		FVector(x + 1, y + 1, z),
-		FVector(x    , y    , z + 1),
-		FVector(x + 1, y    , z + 1),
-		FVector(x    , y + 1, z + 1),
-		FVector(x + 1, y + 1, z + 1)
+	FVector Positions[8] = {
+		Step * FVector(x    , y    , z),
+		Step * FVector(x + 1, y    , z),
+		Step * FVector(x    , y + 1, z),
+		Step * FVector(x + 1, y + 1, z),
+		Step * FVector(x    , y    , z + 1),
+		Step * FVector(x + 1, y    , z + 1),
+		Step * FVector(x    , y + 1, z + 1),
+		Step * FVector(x + 1, y + 1, z + 1)
 	};
 
-	unsigned long caseCode = ((corner[0] >> 7) & 0x01)
-		| ((corner[1] >> 6) & 0x02)
-		| ((corner[2] >> 5) & 0x04)
-		| ((corner[3] >> 4) & 0x08)
-		| ((corner[4] >> 3) & 0x10)
-		| ((corner[5] >> 2) & 0x20)
-		| ((corner[6] >> 1) & 0x40)
-		| (corner[7] & 0x80);
+	unsigned long CaseCode = ((Corner[0] >> 7) & 0x01)
+		| ((Corner[1] >> 6) & 0x02)
+		| ((Corner[2] >> 5) & 0x04)
+		| ((Corner[3] >> 4) & 0x08)
+		| ((Corner[4] >> 3) & 0x10)
+		| ((Corner[5] >> 2) & 0x20)
+		| ((Corner[6] >> 1) & 0x40)
+		| (Corner[7] & 0x80);
 
 
-	if ((caseCode ^ ((corner[7] >> 7) & 0xFF)) != 0)
+	if ((CaseCode ^ ((Corner[7] >> 7) & 0xFF)) != 0)
 	{
 		// Cell has a nontrivial triangulation
-		unsigned char cellClass = regularCellClass[caseCode];
-		RegularCellData cellData = regularCellData[cellClass];
-		const unsigned short* vertexData = regularVertexData[caseCode];
-		short validityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2) + (z == 0 ? 0 : 4);
+		unsigned char CellClass = regularCellClass[CaseCode];
+		RegularCellData CellData = regularCellData[CellClass];
+		const unsigned short* VertexData = regularVertexData[CaseCode];
+		// Check if precedent cell exist
+		short ValidityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2) + (z == 0 ? 0 : 4);
 
-		std::vector<int> vertexIndices(cellData.GetVertexCount());
+		std::vector<int> VertexIndices(CellData.GetVertexCount());
 
-		auto newCache = NewCacheIs1 ? Cache1 : Cache2;
-		auto oldCache = NewCacheIs1 ? Cache2 : Cache1;
+		auto NewCache = NewCacheIs1 ? Cache1 : Cache2;
+		auto OldCache = NewCacheIs1 ? Cache2 : Cache1;
 
-		for (int i = 0; i < cellData.GetVertexCount(); i++)
+		for (int i = 0; i < CellData.GetVertexCount(); i++)
 		{
-			int verticeIndex;
-			unsigned short edgeCode = vertexData[i];
-			unsigned short v0 = (edgeCode >> 4) & 0x0F;
-			unsigned short v1 = edgeCode & 0x0F;
-			long d0 = corner[v0];
-			long d1 = corner[v1];
-			FVector P0 = positions[v0];
-			FVector P1 = positions[v1];
+			int VerticeIndex;
+			unsigned short EdgeCode = VertexData[i];
 
-			short edgeIndex = (edgeCode >> 8) & 0x0F;
-			short direction = edgeCode >> 12;
+			// A: low point / B: high point
+			unsigned short IndexVerticeA = (EdgeCode >> 4) & 0x0F;
+			unsigned short IndexVerticeB = EdgeCode & 0x0F;
 
-			long t = (d1 << 8) / (d1 - d0);
-			if ((t & 0x00FF) != 0)
+			signed char ValueAtA = Corner[IndexVerticeA];
+			signed char ValueAtB = Corner[IndexVerticeB];
+
+			FVector PositionA = Positions[IndexVerticeA];
+			FVector PositionB = Positions[IndexVerticeB];
+
+			// Index of vertex on a generic cube (0, 1, 2 or 3)
+			short EdgeIndex = (EdgeCode >> 8) & 0x0F;
+			// Direction to go to use an already created vertex
+			short Direction = EdgeCode >> 12;
+
+			if (ValueAtB == 0)
 			{
-				// Vertex lies in the interior of the edge
-				if ((validityMask & direction) != direction)
+				// Vertex lies at the higher-numbered endpoint
+				if ((IndexVerticeB == 7) || ((ValidityMask & Direction) != Direction))
 				{
-					long u = 0x0100 - t;
-					FVector Q = (t * P0 + u * P1) / 256;
-					Vertices.push_front(Q);
-					verticeIndex = VerticesCount;
+					// Vertex failed validity check (needs to be created, but not cached)
+					Vertices.push_front(PositionB);
+					VerticeIndex = VerticesCount;
 					VerticesCount++;
-					newCache[x][y][edgeIndex] = verticeIndex;
 				}
 				else
 				{
-					bool xIsDifferent = direction & 0x01;
-					bool yIsDifferent = direction & 0x02;
-					bool zIsDifferent = direction & 0x04;
-					verticeIndex = (zIsDifferent ? oldCache : newCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][edgeIndex];
+					// Vertex already created
+					bool xIsDifferent = Direction & 0x01;
+					bool yIsDifferent = Direction & 0x02;
+					bool zIsDifferent = Direction & 0x04;
+					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][EdgeIndex];
 				}
 			}
-			else if (t == 0)
+			else if (ValueAtA == 0)
 			{
-				// Vertex lies at the higher-numbered endpoint.
-				if (v1 == 7 || ((validityMask & direction) != direction))
+				// Vertex lies at the lower-numbered endpoint
+				if ((ValidityMask & Direction) != Direction)
 				{
-					// This cell owns the vertex or is along minimal boundaries
-					Vertices.push_front(P1);
-					verticeIndex = VerticesCount;
+					// Validity check failed
+					Vertices.push_front(PositionA);
+					VerticeIndex = VerticesCount;
 					VerticesCount++;
-					newCache[x][y][edgeIndex] = verticeIndex;
 				}
 				else
 				{
-					bool xIsDifferent = direction & 0x01;
-					bool yIsDifferent = direction & 0x02;
-					bool zIsDifferent = direction & 0x04;
-					verticeIndex = (zIsDifferent ? oldCache : newCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][edgeIndex];
+					// Reuse vertex
+					bool xIsDifferent = Direction & 0x01;
+					bool yIsDifferent = Direction & 0x02;
+					bool zIsDifferent = Direction & 0x04;
+					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][EdgeIndex];
 				}
 			}
 			else
 			{
-				// Vertex lies at the lower-numbered endpoint.
-				// Always try to reuse corner vertex from a preceding cell.
-				if ((validityMask & direction) != direction)
+				// Vertex lies in the interior of the edge
+				if ((ValidityMask & Direction) != Direction)
 				{
-					Vertices.push_front(P0);
-					verticeIndex = VerticesCount;
+					// Validity check failed
+					FVector Q;
+					if (Step == 1)
+					{
+						// Full resolution
+						float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+						Q = t * PositionA + (1 - t) * PositionB;
+					}
+					else
+					{
+						// Cube vertex are counted in binary order, so
+						// deltaX = index % 2
+						// deltaY = (index // 2) % 2
+						// deltaZ = (index // 4) % 2
+
+						int ADeltaX = IndexVerticeA % 2;
+						int ADeltaY = (IndexVerticeA / 2) % 2;
+						int ADeltaZ = IndexVerticeA / 4;
+
+						if (EdgeIndex == 2)
+						{
+							// Edge along x axis
+							int BDeltaX = IndexVerticeB % 2;
+							Q = InterpolateX(Step * (x + ADeltaX), Step * (x + BDeltaX), Step * (y + ADeltaY), Step * (z + ADeltaZ));
+						}
+						else if (EdgeIndex == 1)
+						{
+							// Edge along y axis
+							int BDeltaY = (IndexVerticeB / 2) % 2;
+							Q = InterpolateY(Step * (x + ADeltaX), Step * (y + ADeltaY), Step * (y + BDeltaY), Step * (z + ADeltaZ));
+						}
+						else if (EdgeIndex == 3)
+						{
+							// Edge along z axis
+							int BDeltaZ = IndexVerticeB / 4;
+							Q = InterpolateZ(Step * (x + ADeltaX), Step * (y + ADeltaY), Step * (z + ADeltaZ), Step * (z + BDeltaZ));
+						}
+						else
+						{
+							checkf(false, TEXT("Error in interpolation: case should not exist"));
+						}
+					}
+					Vertices.push_front(Q);
+					VerticeIndex = VerticesCount;
 					VerticesCount++;
-					newCache[x][y][edgeIndex] = verticeIndex;
+					if (Direction & 0x08)
+					{
+						//Cell own vertex
+						NewCache[x][y][EdgeIndex] = VerticeIndex;
+					}
 				}
 				else
 				{
-					bool xIsDifferent = direction & 0x01;
-					bool yIsDifferent = direction & 0x02;
-					bool zIsDifferent = direction & 0x04;
-					verticeIndex = (zIsDifferent ? oldCache : newCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][edgeIndex];
+					// Reuse vertex
+					bool xIsDifferent = Direction & 0x01;
+					bool yIsDifferent = Direction & 0x02;
+					bool zIsDifferent = Direction & 0x04;
+					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][EdgeIndex];
 				}
 			}
 
-			vertexIndices[i] = verticeIndex;
+			// If own vertex, save it
+			if (Direction & 0x08)
+			{
+				NewCache[x][y][EdgeIndex] = VerticeIndex;
+			}
+			VertexIndices[i] = VerticeIndex;
+
 		}
 
 		// Add triangles
-		for (int i = 0; i < 3 * cellData.GetTriangleCount(); i++)
+		for (int i = 0; i < 3 * CellData.GetTriangleCount(); i++)
 		{
-			Triangles.push_front(vertexIndices[cellData.vertexIndex[i]]);
+			Triangles.push_front(VertexIndices[CellData.vertexIndex[i]]);
 		}
-		TrianglesCount += 3 * cellData.GetTriangleCount();
+		TrianglesCount += 3 * CellData.GetTriangleCount();
 	}
 }
 
 char AVoxelChunk::GetValue(int x, int y, int z)
 {
-	return World->GetValue(X + x * (1 + Depth), Y + y * (1 + Depth), Z + z * (1 + Depth));
+	return World->GetValue(Position + FIntVector(x, y, z));
+}
+
+FVector AVoxelChunk::InterpolateX(int xMin, int xMax, int y, int z)
+{
+	// A: Min / B: Max
+	signed char ValueAtA = GetValue(xMin, y, z);
+	signed char ValueAtB = GetValue(xMax, y, z);
+	if (xMax - xMin == 1)
+	{
+		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+		return t * FVector(xMin, y, z) + (1 - t) *  FVector(xMax, y, z);
+	}
+	else
+	{
+		check((xMax + xMin) % 2 == 0);
+
+		int xMiddle = (xMax + xMin) / 2;
+		// Sign of a char: char & 0x80 (char are 8 bits)
+		if ((ValueAtA & 0x80) == (GetValue(xMiddle, y, z) & 0x80))
+		{
+			// If min and middle have same sign
+			return InterpolateX(xMiddle, xMax, y, z);
+		}
+		else
+		{
+			// If max and middle have same sign
+			return InterpolateX(xMin, xMiddle, y, z);
+		}
+	}
+}
+
+FVector AVoxelChunk::InterpolateY(int x, int yMin, int yMax, int z)
+{
+	// A: Min / B: Max
+	signed char ValueAtA = GetValue(x, yMin, z);
+	signed char ValueAtB = GetValue(x, yMax, z);
+	if (yMax - yMin == 1)
+	{
+		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+		return t * FVector(x, yMin, z) + (1 - t) *  FVector(x, yMax, z);
+	}
+	else
+	{
+		check((yMax + yMin) % 2 == 0);
+
+		int yMiddle = (yMax + yMin) / 2;
+		// Sign of a char: char & 0x80 (char are 8 bits)
+		if ((ValueAtA & 0x80) == (GetValue(x, yMiddle, z) & 0x80))
+		{
+			// If min and middle have same sign
+			return InterpolateY(x, yMiddle, yMax, z);
+		}
+		else
+		{
+			// If max and middle have same sign
+			return InterpolateY(x, yMin, yMiddle, z);
+		}
+	}
+}
+
+FVector AVoxelChunk::InterpolateZ(int x, int y, int zMin, int zMax)
+{
+	// A: Min / B: Max
+	signed char ValueAtA = GetValue(x, y, zMin);
+	signed char ValueAtB = GetValue(x, y, zMax);
+	if (zMax - zMin == 1)
+	{
+		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+		return t * FVector(x, y, zMin) + (1 - t) *  FVector(x, y, zMax);
+	}
+	else
+	{
+		check((zMax + zMin) % 2 == 0);
+
+		int zMiddle = (zMax + zMin) / 2;
+		// Sign of a char: char & 0x80 (char are 8 bits)
+		if ((ValueAtA & 0x80) == (GetValue(x, y, zMiddle) & 0x80))
+		{
+			// If min and middle have same sign
+			return InterpolateZ(x, y, zMiddle, zMax);
+		}
+		else
+		{
+			// If max and middle have same sign
+			return InterpolateZ(x, y, zMin, zMiddle);
+		}
+	}
 }

@@ -17,8 +17,8 @@ public:
 	AVoxelWorld();
 	~AVoxelWorld();
 
-	signed char GetValue(int x, int y, int z);
 	virtual bool CanEditChange(const UProperty* InProperty) const override;
+	int Size();
 
 
 	TArray<ChunkOctree*> ChunksToUpdate;
@@ -30,20 +30,24 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Add(FVector hitPoint, FVector normal, float range);
+		void Add(FVector hitPoint, FVector normal, float range = 1, int strength = 1);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Remove(FVector hitPoint, FVector normal, float range);
+		void Remove(FVector hitPoint, FVector normal, float range = 1, int strength = 1);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Update(int x, int y, int z);
+		void Update(FIntVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ScheduleUpdate(int x, int y, int z);
+		void ScheduleUpdate(FIntVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ApplyUpdate();
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		bool IsInWorld(int x, int y, int z);
+		bool IsInWorld(FIntVector position);
+
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		int GetValue(FIntVector position);
 
 protected:
 	// Called when the game starts or when spawned
@@ -53,4 +57,6 @@ private:
 	ChunkOctree* MainOctree;
 	VoxelData* Data;
 	bool bNotCreated;
+
+	void ModifyVoxel(FVector hitPoint, FVector normal, float range, int strength, bool add);
 };

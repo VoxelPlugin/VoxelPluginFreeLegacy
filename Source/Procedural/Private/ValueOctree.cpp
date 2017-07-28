@@ -4,7 +4,7 @@
 #include "EngineGlobals.h"
 #include "Engine.h"
 
-ValueOctree::ValueOctree(int x, int y, int z, int depth) : X(x), Y(y), Z(z), Depth(depth), bIsDirty(false), bIsLeaf(false)
+ValueOctree::ValueOctree(FIntVector position, int depth) : Position(position), Depth(depth), bIsDirty(false), bIsLeaf(false)
 {
 
 }
@@ -20,15 +20,15 @@ bool ValueOctree::CreateChilds()
 {
 	if (!IsLeaf())
 	{
-		int d = GetWidth() / 2;
-		Childs[0] = new ValueOctree(X, Y, Z, Depth - 1);
-		Childs[1] = new ValueOctree(X + d, Y, Z, Depth - 1);
-		Childs[2] = new ValueOctree(X, Y + d, Z, Depth - 1);
-		Childs[3] = new ValueOctree(X + d, Y + d, Z, Depth - 1);
-		Childs[4] = new ValueOctree(X, Y, Z + d, Depth - 1);
-		Childs[5] = new ValueOctree(X + d, Y, Z + d, Depth - 1);
-		Childs[6] = new ValueOctree(X, Y + d, Z + d, Depth - 1);
-		Childs[7] = new ValueOctree(X + d, Y + d, Z + d, Depth - 1);
+		int d = GetWidth() / 4;
+		Childs[0] = new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1);
+		Childs[1] = new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1);
+		Childs[2] = new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1);
+		Childs[3] = new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1);
+		Childs[4] = new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1);
+		Childs[5] = new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1);
+		Childs[6] = new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1);
+		Childs[7] = new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1);
 		return true;
 	}
 	else
@@ -45,9 +45,7 @@ inline int ValueOctree::GetWidth()
 
 void ValueOctree::CreateTree(FVector cameraPosition)
 {
-	float distanceToCamera = (FVector(X, Y, Z) - cameraPosition).Size();
-
-	if (distanceToCamera > GetWidth() || Depth == 0)
+	if (Depth == 0)
 	{
 		bIsLeaf = true;
 	}
@@ -63,16 +61,21 @@ void ValueOctree::CreateTree(FVector cameraPosition)
 	}
 }
 
-ValueOctree* ValueOctree::GetLeaf(int x, int y, int z)
+ValueOctree* ValueOctree::GetLeaf(FIntVector position)
 {
 	if (IsLeaf())
 	{
+		if (!IsInChunk(position))
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, TEXT("Leaf error"));
+		}
 		return this;
 	}
 	else
 	{
 		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-		return Childs[((x >= X + GetWidth() / 2) ? 1 : 0) + ((y >= Y + GetWidth() / 2) ? 2 : 0) + ((z >= Z + GetWidth() / 2) ? 4 : 0)];
+		int d = GetWidth() / 2;
+		return Childs[(position.X >= Position.X ? 1 : 0) + (position.Y >= Position.Y ? 2 : 0) + (position.Z >= Position.Z ? 4 : 0)]->GetLeaf(position);
 	}
 }
 
@@ -86,57 +89,91 @@ bool ValueOctree::IsDirty()
 	return bIsDirty;
 }
 
-signed char ValueOctree::GetValue(int x, int y, int z)
+signed char ValueOctree::GetValue(FIntVector globalPosition)
 {
-	if (IsInChunk(x, y, z))
+	if (IsInChunk(globalPosition))
 	{
-		if (IsDirty())
+		if (IsLeaf())
 		{
-			int w = GetWidth();
-			return Values[x - X + w * (y - Y) + w * w * (z - Z)];
+			if (IsDirty())
+			{
+				int w = GetWidth();
+				FIntVector P = GlobalToLocal(globalPosition);
+				return Values[P.X + w * P.Y + w * w * P.Z];
+			}
+			else
+			{
+				return (globalPosition.Z == 8) ? 0 : ((globalPosition.Z > 8) ? 100 : -100);
+			}
 		}
 		else
 		{
-			return (z > 8) ? 100 : -100;
+			return GetLeaf(globalPosition)->GetValue(globalPosition);
 		}
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Error: Not in chunk (%d, %d, %d)"), x, y, z));
-		return (z > 10) ? 1 : -1;
+		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Get value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
+			globalPosition.X, globalPosition.Y, globalPosition.Z,
+			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
+			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
+			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2));
+		return (globalPosition.Z > 10) ? 1 : -1;
 	}
 }
 
-void ValueOctree::SetValue(int x, int y, int z, signed char value)
+void ValueOctree::SetValue(FIntVector globalPosition, signed char value)
 {
-	if (IsInChunk(x, y, z))
+	if (IsInChunk(globalPosition))
 	{
-		int w = GetWidth();
-		if (!IsDirty())
+		if (IsLeaf())
 		{
-			Values = std::vector<signed char>(w * w * w);
-			for (int i = 0; i < w; i++)
+			int w = GetWidth();
+			if (!IsDirty())
 			{
-				for (int j = 0; j < w; j++)
+				Values = std::vector<signed char>(w * w * w);
+				for (int i = 0; i < w; i++)
 				{
-					for (int k = 0; k < w; k++)
+					for (int j = 0; j < w; j++)
 					{
-						Values[i + w * j + w * w * k] = GetValue(X + i, Y + j, Z + k);
+						for (int k = 0; k < w; k++)
+						{
+							Values[i + w * j + w * w * k] = GetValue(LocalToGlobal(FIntVector(i, j, k)));
+						}
 					}
 				}
+				bIsDirty = true;
 			}
-			bIsDirty = true;
+			FIntVector P = GlobalToLocal(globalPosition);
+			Values[P.X + w * P.Y + w * w * P.Z] = value;
 		}
-		Values[x - X + w* (y - Y) + w * w * (z - Z)] = value;
+		else
+		{
+			GetLeaf(globalPosition)->SetValue(globalPosition, value);
+		}
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Error: Not in chunk (%d, %d, %d)"), x, y, z));
+		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Get value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
+			globalPosition.X, globalPosition.Y, globalPosition.Z,
+			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
+			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
+			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2));
 	}
 }
 
-bool ValueOctree::IsInChunk(int x, int y, int z)
+bool ValueOctree::IsInChunk(FIntVector globalPosition)
 {
-	int w = GetWidth();
-	return x >= X && y >= Y && z >= Z && x < w + X  && y < w + Y  && z < w + Z;
+	FIntVector P = GlobalToLocal(globalPosition);
+	return 0 <= P.X && 0 <= P.Y && 0 <= P.Z && P.X < GetWidth() && P.Y < GetWidth() && P.Z < GetWidth();
+}
+
+FIntVector ValueOctree::GlobalToLocal(FIntVector globalPosition)
+{
+	return FIntVector(globalPosition.X - (Position.X - GetWidth() / 2), globalPosition.Y - (Position.Y - GetWidth() / 2), globalPosition.Z - (Position.Z - GetWidth() / 2));
+}
+
+FIntVector ValueOctree::LocalToGlobal(FIntVector localPosition)
+{
+	return FIntVector(localPosition.X + (Position.X - GetWidth() / 2), localPosition.Y + (Position.Y - GetWidth() / 2), localPosition.Z + (Position.Z - GetWidth() / 2));
 }

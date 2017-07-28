@@ -7,7 +7,6 @@
 #include "EngineGlobals.h"
 #include "Engine.h"
 #include <forward_list>
-#include <tuple>
 
 
 // Sets default values
@@ -37,42 +36,48 @@ void AVoxelWorld::BeginPlay()
 
 	bNotCreated = false;
 
-	FVector p = GetActorLocation();
-	int x = FMath::RoundToInt(p.X);
-	int y = FMath::RoundToInt(p.Y);
-	int z = FMath::RoundToInt(p.Z);
+	Data = new VoxelData(Depth);
 
-	Data = new VoxelData(x, y, z, Depth);
-
-	MainOctree = new ChunkOctree(x, y, z, Depth);
+	MainOctree = new ChunkOctree(FIntVector::ZeroValue, Depth);
 	MainOctree->CreateTree(this, FVector(0, 0, 0));
 	MainOctree->Update();
 }
 
-signed char AVoxelWorld::GetValue(int x, int y, int z)
+int AVoxelWorld::GetValue(FIntVector position)
 {
-	return Data->GetValue(x, y, z);
+	return Data->GetValue(position);
 }
 
-void AVoxelWorld::Add(FVector hitPoint, FVector normal, float range)
-{
-	FVector P = GetTransform().InverseTransformPosition(hitPoint);
-	FVector N = GetTransform().InverseTransformVector(normal).GetSafeNormal();
 
-	// Tangent
-	FVector T;
+void AVoxelWorld::Add(FVector hitPoint, FVector normal, float range, int strength)
+{
+	ModifyVoxel(hitPoint, normal, range, strength, true);
+}
+
+void AVoxelWorld::Remove(FVector hitPoint, FVector normal, float range, int strength)
+{
+	ModifyVoxel(hitPoint, normal, range, strength, false);
+}
+
+void AVoxelWorld::ModifyVoxel(FVector hitPoint, FVector normal, float range, int strength, bool add)
+{
+	FVector Position = GetTransform().InverseTransformPosition(hitPoint);
+	FVector Normal = GetTransform().InverseTransformVector(normal).GetSafeNormal();
+
+	// Compute tangent
+	FVector Tangent;
 	// N dot T = 0
 	// <=> N.X * T.X + N.Y * T.Y + N.Z * T.Z = 0
 	// <=> T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y)
-	T.X = 1;
-	T.Y = 1;
-	T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y);
-	T.Normalize();
+	Tangent.X = 1;
+	Tangent.Y = 1;
+	Tangent.Z = -1 / Normal.Z * (Normal.X * Tangent.X + Normal.Y * Tangent.Y);
+	Tangent.Normalize();
 
-	// Bitangent
-	FVector BT = FVector::CrossProduct(T, N).GetSafeNormal();
+	// Compute bitangent
+	FVector Bitangent = FVector::CrossProduct(Tangent, Normal).GetSafeNormal();
 
-	TArray<std::tuple<int, int, int>> processedPoints;
+	TArray<FIntVector> ProcessedPoints;
 
 	int m = FMath::CeilToInt(range);
 	for (int i = -m; i <= m; i++)
@@ -81,19 +86,21 @@ void AVoxelWorld::Add(FVector hitPoint, FVector normal, float range)
 		{
 			for (int k = 0; k < 2; k++)
 			{
-				if (FMath::Sqrt(i*i + j*j) < range)
+				if (i*i + j*j < range*range)
 				{
-					FVector Q = P + i * T + j * BT + k * N / 2;
+					FVector Q = Position + i * Tangent + j * Bitangent + k * Normal / 2 * (add ? 1 : -1);
 					int x = FMath::RoundToInt(Q.X);
 					int y = FMath::RoundToInt(Q.Y);
 					int z = FMath::RoundToInt(Q.Z);
 
-					if (IsInWorld(x, y, z) && !processedPoints.Contains(std::tuple<int, int, int>(x, y, z)))
+					FIntVector position = FIntVector(x, y, z);
+
+					if (IsInWorld(position) && !ProcessedPoints.Contains(position))
 					{
-						processedPoints.Add(std::tuple<int, int, int>(x, y, z));
-						int value = (int)Data->GetValue(x, y, z) - 1;
-						Data->SetValue(x, y, z, FMath::Clamp(value, -127, 127));
-						ScheduleUpdate(x, y, z);
+						ProcessedPoints.Add(position);
+						int value = (int)Data->GetValue(position) + (add ? 1 : -1) * strength;
+						Data->SetValue(position, value);
+						ScheduleUpdate(position);
 					}
 				}
 			}
@@ -102,85 +109,41 @@ void AVoxelWorld::Add(FVector hitPoint, FVector normal, float range)
 	ApplyUpdate();
 }
 
-void AVoxelWorld::Remove(FVector hitPoint, FVector normal, float range)
+
+
+void AVoxelWorld::Update(FIntVector position)
 {
-	FVector P = GetTransform().InverseTransformPosition(hitPoint);
-	FVector N = GetTransform().InverseTransformVector(normal).GetSafeNormal();
+	MainOctree->GetLeaf(position)->Update();
 
-	// Tangent
-	FVector T;
-	// N dot T = 0
-	// <=> N.X * T.X + N.Y * T.Y + N.Z * T.Z = 0
-	// <=> T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y)
-	T.X = 1;
-	T.Y = 1;
-	T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y);
-	T.Normalize();
-
-	// Bitangent
-	FVector BT = FVector::CrossProduct(T, N).GetSafeNormal();
-
-	TArray<std::tuple<int, int, int>> processedPoints;
-
-	int m = FMath::CeilToInt(range);
-	for (int i = -m; i <= m; i++)
+	if (position.X % 16 == 0 && position.X != 0)
 	{
-		for (int j = -m; j <= m; j++)
-		{
-			for (int k = 0; k < 2; k++)
-			{
-				if (FMath::Sqrt(i*i + j*j) < range)
-				{
-					FVector Q = P + i * T + j * BT - k * N / 2;
-					int x = FMath::RoundToInt(Q.X);
-					int y = FMath::RoundToInt(Q.Y);
-					int z = FMath::RoundToInt(Q.Z);
-
-					if (IsInWorld(x, y, z) && !processedPoints.Contains(std::tuple<int, int, int>(x, y, z)))
-					{
-						processedPoints.Add(std::tuple<int, int, int>(x, y, z));
-						int value = (int)Data->GetValue(x, y, z) + 1;
-						Data->SetValue(x, y, z, FMath::Clamp(value, -127, 127));
-						ScheduleUpdate(x, y, z);
-					}
-				}
-			}
-		}
+		MainOctree->GetLeaf(position - FIntVector(1, 0, 0))->Update();
 	}
-	ApplyUpdate();
-}
-
-void AVoxelWorld::Update(int x, int y, int z)
-{
-	MainOctree->GetLeaf(x, y, z)->Update();
-	if (x % 16 == 0 && x != 0)
+	if (position.Y % 16 == 0 && position.Y != 0)
 	{
-		MainOctree->GetLeaf(x - 1, y, z)->Update();
+		MainOctree->GetLeaf(position - FIntVector(0, 1, 0))->Update();
 	}
-	if (y % 16 == 0 && y != 0)
+	if (position.Z % 16 == 0 && position.Z != 0)
 	{
-		MainOctree->GetLeaf(x, y - 1, z)->Update();
-	}
-	if (z % 16 == 0 && z != 0)
-	{
-		MainOctree->GetLeaf(x, y, z - 1)->Update();
+		MainOctree->GetLeaf(position - FIntVector(0, 0, 1))->Update();
 	}
 }
 
-void AVoxelWorld::ScheduleUpdate(int x, int y, int z)
+void AVoxelWorld::ScheduleUpdate(FIntVector position)
 {
-	ChunksToUpdate.AddUnique(MainOctree->GetLeaf(x, y, z));
-	if (x % 16 == 0 && x != 0)
+	ChunksToUpdate.AddUnique(MainOctree->GetLeaf(position));
+
+	if (position.X % 16 == 0 && position.X != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(x - 1, y, z));
+		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(position - FIntVector(1, 0, 0)));
 	}
-	if (y % 16 == 0 && y != 0)
+	if (position.Y % 16 == 0 && position.Y != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(x, y - 1, z));
+		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(position - FIntVector(0, 1, 0)));
 	}
-	if (z % 16 == 0 && z != 0)
+	if (position.Z % 16 == 0 && position.Z != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(x, y, z - 1));
+		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(position - FIntVector(0, 0, 1)));
 	}
 }
 
@@ -193,6 +156,8 @@ void AVoxelWorld::ApplyUpdate()
 	ChunksToUpdate.Reset();
 }
 
+
+
 bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 {
 	const bool ParentVal = Super::CanEditChange(InProperty);
@@ -203,8 +168,15 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 		return ParentVal;
 }
 
-bool AVoxelWorld::IsInWorld(int x, int y, int z)
+
+
+bool AVoxelWorld::IsInWorld(FIntVector position)
 {
-	return 0 <= x && x < (16 << Depth) && 0 <= y && y < (16 << Depth) && 0 <= z && z < (16 << Depth);
+	return Data->IsInWorld(position);
+}
+
+int AVoxelWorld::Size()
+{
+	return Data->Size();
 }
 

@@ -9,25 +9,23 @@ class AVoxelWorld;
 class ChunkOctree
 {
 public:
-	ChunkOctree(int x, int y, int z, int depth);
+	ChunkOctree(FIntVector position, int depth);
 
-	inline bool operator==(ChunkOctree* other);
+	bool operator==(ChunkOctree* other);
 
-
-	const int X;
-	const int Y;
-	const int Z;
+	// Center of the octree
+	const FIntVector Position;
 	const int Depth;
 
 
 
-	inline int GetWidth();
+	int GetWidth();
 
 	void CreateTree(AVoxelWorld* world, FVector cameraPosition);
 
 	void Update();
 
-	ChunkOctree* GetLeaf(int x, int y, int z);
+	ChunkOctree* GetLeaf(FIntVector position);
 
 	bool IsLeaf();
 

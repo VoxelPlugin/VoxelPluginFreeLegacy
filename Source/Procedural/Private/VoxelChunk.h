@@ -19,7 +19,7 @@ class AVoxelChunk : public AActor
 public:
 	AVoxelChunk();
 
-	void Init(int x, int y, int z, int depth, AVoxelWorld* world);
+	void Init(FIntVector position, int depth, AVoxelWorld* world);
 	void Update();
 
 protected:
@@ -29,9 +29,8 @@ protected:
 private:
 	UProceduralMeshComponent* PrimaryMesh;
 
-	int X;
-	int Y;
-	int Z;
+	// Lower corner
+	FIntVector Position;
 	int Depth;
 	AVoxelWorld* World;
 
@@ -48,5 +47,8 @@ private:
 
 	void Polygonise(int x, int y, int z);
 	char GetValue(int x, int y, int z);
+	FVector InterpolateX(int xMin, int xMax, int y, int z);
+	FVector InterpolateY(int x, int yMin, int yMax, int z);
+	FVector InterpolateZ(int x, int y, int zMin, int zMax);
 
 };

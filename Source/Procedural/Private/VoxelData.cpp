@@ -2,10 +2,12 @@
 
 #include "VoxelData.h"
 #include "ValueOctree.h"
+#include "EngineGlobals.h"
+#include "Engine.h"
 
-VoxelData::VoxelData(int x, int y, int z, int depth)
+VoxelData::VoxelData(int depth) : Depth(depth)
 {
-	MainOctree = new ValueOctree(x, y, z, depth);
+	MainOctree = new ValueOctree(FIntVector::ZeroValue, depth);
 	MainOctree->CreateTree(FVector(0, 0, 0));
 }
 
@@ -14,12 +16,48 @@ VoxelData::~VoxelData()
 	delete MainOctree;
 }
 
-signed char VoxelData::GetValue(int x, int y, int z)
+signed char VoxelData::GetValue(FIntVector position)
 {
-	return MainOctree->GetLeaf(x, y, z)->GetValue(x, y, z);
+	if (position.X == Size() / 2 || position.Y == Size() / 2 || position.Z == Size() / 2)
+	{
+		return GetValue(position - FIntVector(position.X == (Size() / 2), position.Y == (Size() / 2), position.Z == (Size() / 2)));
+	}
+
+	if (IsInWorld(position))
+	{
+		return MainOctree->GetValue(position);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z));
+		return 0;
+	}
 }
 
-void VoxelData::SetValue(int x, int y, int z, signed char value)
+void VoxelData::SetValue(FIntVector position, int value)
 {
-	MainOctree->GetLeaf(x, y, z)->SetValue(x, y, z, value);
+	if (position.X == Size() / 2 || position.Y == Size() / 2 || position.Z == Size() / 2)
+	{
+		return;
+	}
+
+	if (IsInWorld(position))
+	{
+		MainOctree->SetValue(position, FMath::Clamp(value, -127, 127));
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z));
+	}
+}
+
+bool VoxelData::IsInWorld(FIntVector position)
+{
+	int  w = Size() / 2;
+	return -w <= position.X && position.X < w && -w <= position.Y && position.Y < w && -w <= position.Z && position.Z < w;
+}
+
+int VoxelData::Size()
+{
+	return 16 << Depth;
 }
