@@ -1,18 +1,17 @@
 #pragma once
 #include <cmath>
+#include <vector>
 #include "CoreMinimal.h"
 #include "Engine.h"
-#include <vector>
 
 class ValueOctree
 {
 public:
-	ValueOctree(int x, int y, int z, int depth);
+	ValueOctree(FIntVector position, int depth);
 	~ValueOctree();
 
-	const int X;
-	const int Y;
-	const int Z;
+	// Center of the octree
+	const FIntVector Position;
 	const int Depth;
 
 
@@ -21,17 +20,20 @@ public:
 
 	void CreateTree(FVector cameraPosition);
 
-	ValueOctree* GetLeaf(int x, int y, int z);
+	ValueOctree* GetLeaf(FIntVector globalPosition);
 
 	bool IsLeaf();
 
 	bool IsDirty();
 
-	signed char GetValue(int x, int y, int z);
+	signed char GetValue(FIntVector globalPosition);
 
-	void SetValue(int x, int y, int z, signed char value);
+	void SetValue(FIntVector globalPosition, signed char value);
 
-	bool IsInChunk(int x, int y, int z);
+	bool IsInChunk(FIntVector globalPosition);
+
+	FIntVector LocalToGlobal(FIntVector localPosition);
+	FIntVector GlobalToLocal(FIntVector globalPosition);
 
 protected:
 	/*

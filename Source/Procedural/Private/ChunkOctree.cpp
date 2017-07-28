@@ -4,14 +4,14 @@
 #include "EngineGlobals.h"
 #include "Engine.h"
 
-ChunkOctree::ChunkOctree(int x, int y, int z, int depth) : X(x), Y(y), Z(z), Depth(depth)
+ChunkOctree::ChunkOctree(FIntVector position, int depth) : Position(position), Depth(depth)
 {
 
 }
 
-inline bool ChunkOctree::operator==(ChunkOctree* other)
+bool ChunkOctree::operator==(ChunkOctree* other)
 {
-	return X == other->X && Y == other->Y && Z == other->Z;
+	return Position == other->Position && Depth == other->Depth;
 }
 
 
@@ -20,15 +20,15 @@ bool ChunkOctree::CreateChilds()
 {
 	if (!IsLeaf())
 	{
-		int d = GetWidth() / 2;
-		Childs[0] = new ChunkOctree(X, Y, Z, Depth - 1);
-		Childs[1] = new ChunkOctree(X + d, Y, Z, Depth - 1);
-		Childs[2] = new ChunkOctree(X, Y + d, Z, Depth - 1);
-		Childs[3] = new ChunkOctree(X + d, Y + d, Z, Depth - 1);
-		Childs[4] = new ChunkOctree(X, Y, Z + d, Depth - 1);
-		Childs[5] = new ChunkOctree(X + d, Y, Z + d, Depth - 1);
-		Childs[6] = new ChunkOctree(X, Y + d, Z + d, Depth - 1);
-		Childs[7] = new ChunkOctree(X + d, Y + d, Z + d, Depth - 1);
+		int d = GetWidth() / 4;
+		Childs[0] = new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1);
+		Childs[1] = new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1);
+		Childs[2] = new ChunkOctree(Position + FIntVector(-d, +d, -d), Depth - 1);
+		Childs[3] = new ChunkOctree(Position + FIntVector(+d, +d, -d), Depth - 1);
+		Childs[4] = new ChunkOctree(Position + FIntVector(-d, -d, +d), Depth - 1);
+		Childs[5] = new ChunkOctree(Position + FIntVector(+d, -d, +d), Depth - 1);
+		Childs[6] = new ChunkOctree(Position + FIntVector(-d, +d, +d), Depth - 1);
+		Childs[7] = new ChunkOctree(Position + FIntVector(+d, +d, +d), Depth - 1);
 		return true;
 	}
 	else
@@ -38,19 +38,20 @@ bool ChunkOctree::CreateChilds()
 	}
 }
 
-inline int ChunkOctree::GetWidth()
+int ChunkOctree::GetWidth()
 {
 	return 16 << Depth;
 }
 
 void ChunkOctree::CreateTree(AVoxelWorld* world, FVector cameraPosition)
 {
-	float distanceToCamera = (world->GetTransform().TransformPosition(FVector(X, Y, Z)) - cameraPosition).Size();
+	float distanceToCamera = (world->GetTransform().TransformPosition(FVector(Position.X, Position.Y, Position.Z)) - cameraPosition).Size();
 
-	if (distanceToCamera > GetWidth() * 10000 || Depth == 0)
+	if (distanceToCamera > GetWidth() * world->GetActorScale3D().Size() * 10000 || Depth == 0)
 	{
 		VoxelChunk = world->GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
-		VoxelChunk->Init(X, Y, Z, Depth, world);
+		int w = GetWidth() / 2;
+		VoxelChunk->Init(Position - FIntVector(1, 1, 1) * GetWidth() / 2, Depth, world);
 	}
 	else
 	{
@@ -79,7 +80,7 @@ void ChunkOctree::Update()
 	}
 }
 
-ChunkOctree* ChunkOctree::GetLeaf(int x, int y, int z)
+ChunkOctree* ChunkOctree::GetLeaf(FIntVector position)
 {
 	if (IsLeaf())
 	{
@@ -88,7 +89,8 @@ ChunkOctree* ChunkOctree::GetLeaf(int x, int y, int z)
 	else
 	{
 		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-		return Childs[((x >= X + GetWidth() / 2) ? 1 : 0) + ((y >= Y + GetWidth() / 2) ? 2 : 0) + ((z >= Z + GetWidth() / 2) ? 4 : 0)]->GetLeaf(x, y, z);
+		int d = GetWidth() / 2;
+		return Childs[(position.X >= Position.X ? 1 : 0) + (position.Y >= Position.Y ? 2 : 0) + (position.Z >= Position.Z ? 4 : 0)]->GetLeaf(position);
 	}
 }
 

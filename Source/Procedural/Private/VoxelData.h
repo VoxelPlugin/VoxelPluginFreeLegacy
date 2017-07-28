@@ -12,12 +12,19 @@ class ValueOctree;
 class VoxelData
 {
 public:
-	VoxelData(int x, int y, int z, int depth);
+	VoxelData(int depth);
 	~VoxelData();
 
-	signed char GetValue(int x, int y, int z);
+	const int Depth;
 
-	void SetValue(int x, int y, int z, signed char value);
+
+	signed char GetValue(FIntVector position);
+
+	void SetValue(FIntVector position, int value);
+
+	bool IsInWorld(FIntVector position);
+
+	int Size();
 
 private:
 	ValueOctree* MainOctree;
