@@ -42,7 +42,7 @@ private:
 
 	ChunkOctree* Childs[8];
 
-	AVoxelChunk* VoxelChunk = nullptr;
+	AVoxelChunk* VoxelChunk;
 
 	void Load(AVoxelWorld* world);
 	void Unload();

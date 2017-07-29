@@ -8,6 +8,7 @@
 
 class ChunkOctree;
 class VoxelData;
+class AVoxelChunk;
 
 UCLASS()
 class PROCEDURAL_API AVoxelWorld : public AActor
@@ -20,6 +21,8 @@ public:
 	virtual bool CanEditChange(const UProperty* InProperty) const override;
 	int Size();
 
+	int GetDepth(FIntVector position);
+	void ScheduleUpdate(ChunkOctree* chunk);
 
 	TArray<ChunkOctree*> ChunksToUpdate;
 public:
