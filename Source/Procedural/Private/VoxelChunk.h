@@ -21,10 +21,10 @@ public:
 	AVoxelChunk();
 
 	void Init(FIntVector position, int depth, AVoxelWorld* world);
+
 	void Update(URuntimeMeshComponent* mesh = nullptr, bool bCreateCollision = false);
 
-	UPROPERTY()
-		AVoxelCollisionChunk* CollisionChunk;
+	void Unload();
 
 protected:
 	// Called when the game starts or when spawned
@@ -34,6 +34,9 @@ private:
 	UPROPERTY()
 		URuntimeMeshComponent* PrimaryMesh;
 
+	UPROPERTY()
+		AVoxelCollisionChunk* CollisionChunk;
+
 	// Lower corner
 	FIntVector Position;
 	int Depth;
@@ -41,12 +44,13 @@ private:
 
 	std::forward_list<FVector> Vertices;
 	std::forward_list<int> Triangles;
+	std::forward_list<int> NormalsTriangles;
 
 	int VerticesCount;
 	int TrianglesCount;
 
-	int Cache1[16][16][4];
-	int Cache2[16][16][4];
+	int Cache1[18][18][4];
+	int Cache2[18][18][4];
 	bool NewCacheIs1;
 
 	bool bCollisionDirty;

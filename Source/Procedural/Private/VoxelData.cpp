@@ -18,9 +18,19 @@ VoxelData::~VoxelData()
 
 signed char VoxelData::GetValue(FIntVector position)
 {
-	if (position.X == Size() / 2 || position.Y == Size() / 2 || position.Z == Size() / 2)
+	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
 	{
-		return GetValue(position - FIntVector(position.X == (Size() / 2), position.Y == (Size() / 2), position.Z == (Size() / 2)));
+		return GetValue(FIntVector(
+			(position.X >= Size() / 2) ? Size() / 2 - 1 : position.X,
+			(position.Y >= Size() / 2) ? Size() / 2 - 1 : position.Y,
+			(position.Z >= Size() / 2) ? Size() / 2 - 1 : position.Z));
+	}
+	if (position.X < -Size() / 2 || position.Y < -Size() / 2 || position.Z < -Size() / 2)
+	{
+		return GetValue(FIntVector(
+			(position.X < -Size() / 2) ? -Size() / 2 : position.X,
+			(position.Y < -Size() / 2) ? -Size() / 2 : position.Y,
+			(position.Z < -Size() / 2) ? -Size() / 2 : position.Z));
 	}
 
 	if (IsInWorld(position))
@@ -36,7 +46,11 @@ signed char VoxelData::GetValue(FIntVector position)
 
 void VoxelData::SetValue(FIntVector position, int value)
 {
-	if (position.X == Size() / 2 || position.Y == Size() / 2 || position.Z == Size() / 2)
+	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
+	{
+		return;
+	}
+	if (position.X < -Size() / 2 || position.Y < -Size() / 2 || position.Z < -Size() / 2)
 	{
 		return;
 	}

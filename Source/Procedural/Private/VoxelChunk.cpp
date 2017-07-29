@@ -63,17 +63,18 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	*/
 	Vertices.clear();
 	Triangles.clear();
+	NormalsTriangles.clear();
 	VerticesCount = 0;
 	TrianglesCount = 0;
 
 	/**
 	* Polygonize
 	*/
-	for (int z = 0; z < 16; z++)
+	for (int z = -1; z < 17; z++)
 	{
-		for (int y = 0; y < 16; y++)
+		for (int y = -1; y < 17; y++)
 		{
-			for (int x = 0; x < 16; x++)
+			for (int x = -1; x < 17; x++)
 			{
 
 				Polygonise(x, y, z);
@@ -108,6 +109,8 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 		i++;
 	}
 	i = 0;
+
+	// Real triangles
 	for (auto it = Triangles.begin(); it != Triangles.end(); ++it)
 	{
 		int a = *it;
@@ -120,6 +123,32 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 		TrianglesArray[i + 1] = b;
 		TrianglesArray[i + 2] = c;
 		i += 3;
+
+		FVector A = VerticesArray[a];
+		FVector B = VerticesArray[b];
+		FVector C = VerticesArray[c];
+		FVector n = FVector::CrossProduct(C - A, B - A);
+		// surface = norm(n) / 2
+		// We want: normals += n / norm(n) * surface
+		// <=> normals += n / 2
+		// <=> normals += n because normals are normalized
+		n.Normalize();
+		NormalsArray[a] += n;
+		NormalsArray[b] += n;
+		NormalsArray[c] += n;
+		TangentVectorsArray[a] += B + C - 2 * A;
+		TangentVectorsArray[b] += B + C - 2 * A;
+		TangentVectorsArray[c] += B + C - 2 * A;
+	}
+
+	// Triangles used only for normals
+	for (auto it = NormalsTriangles.begin(); it != NormalsTriangles.end(); ++it)
+	{
+		int a = *it;
+		++it;
+		int b = *it;
+		++it;
+		int c = *it;
 
 		FVector A = VerticesArray[a];
 		FVector B = VerticesArray[b];
@@ -167,6 +196,22 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	bCollisionDirty = true;
 }
 
+void AVoxelChunk::Unload()
+{
+	if (this->IsValidLowLevel())
+	{
+		if (!this->IsPendingKill())
+		{
+			if (!this->CollisionChunk->IsPendingKill())
+			{
+				this->CollisionChunk->Destroy();
+			}
+			this->Destroy();
+		}
+	}
+}
+
+
 void AVoxelChunk::Polygonise(int x, int y, int z)
 {
 	int Step = 1 << Depth;
@@ -209,7 +254,7 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 		RegularCellData CellData = regularCellData[CellClass];
 		const unsigned short* VertexData = regularVertexData[CaseCode];
 		// Check if precedent cell exist
-		short ValidityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2) + (z == 0 ? 0 : 4);
+		short ValidityMask = (x == -1 ? 0 : 1) + (y == -1 ? 0 : 2) + (z == -1 ? 0 : 4);
 
 		std::vector<int> VertexIndices(CellData.GetVertexCount());
 
@@ -252,7 +297,7 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 					bool xIsDifferent = Direction & 0x01;
 					bool yIsDifferent = Direction & 0x02;
 					bool zIsDifferent = Direction & 0x04;
-					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][EdgeIndex];
+					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[1 + x - (xIsDifferent ? 1 : 0)][1 + y - (yIsDifferent ? 1 : 0)][EdgeIndex];
 				}
 			}
 			else if (ValueAtA == 0)
@@ -271,7 +316,7 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 					bool xIsDifferent = Direction & 0x01;
 					bool yIsDifferent = Direction & 0x02;
 					bool zIsDifferent = Direction & 0x04;
-					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][EdgeIndex];
+					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[1 + x - (xIsDifferent ? 1 : 0)][1 + y - (yIsDifferent ? 1 : 0)][EdgeIndex];
 				}
 			}
 			else
@@ -324,11 +369,6 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 					Vertices.push_front(Q);
 					VerticeIndex = VerticesCount;
 					VerticesCount++;
-					if (Direction & 0x08)
-					{
-						//Cell own vertex
-						NewCache[x][y][EdgeIndex] = VerticeIndex;
-					}
 				}
 				else
 				{
@@ -336,25 +376,29 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 					bool xIsDifferent = Direction & 0x01;
 					bool yIsDifferent = Direction & 0x02;
 					bool zIsDifferent = Direction & 0x04;
-					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[x - (xIsDifferent ? 1 : 0)][y - (yIsDifferent ? 1 : 0)][EdgeIndex];
+					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[1 + x - (xIsDifferent ? 1 : 0)][1 + y - (yIsDifferent ? 1 : 0)][EdgeIndex];
 				}
 			}
 
 			// If own vertex, save it
 			if (Direction & 0x08)
 			{
-				NewCache[x][y][EdgeIndex] = VerticeIndex;
+				NewCache[1 + x][1 + y][EdgeIndex] = VerticeIndex;
 			}
 			VertexIndices[i] = VerticeIndex;
 
 		}
 
 		// Add triangles
+		bool UseNormalsTriangles = (x == -1 || y == -1 || z == -1 || x == 16 || y == 16 || z == 16);
 		for (int i = 0; i < 3 * CellData.GetTriangleCount(); i++)
 		{
-			Triangles.push_front(VertexIndices[CellData.vertexIndex[i]]);
+			(UseNormalsTriangles ? NormalsTriangles : Triangles).push_front(VertexIndices[CellData.vertexIndex[i]]);
 		}
-		TrianglesCount += 3 * CellData.GetTriangleCount();
+		if (!UseNormalsTriangles)
+		{
+			TrianglesCount += 3 * CellData.GetTriangleCount();
+		}
 	}
 }
 

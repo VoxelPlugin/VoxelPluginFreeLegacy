@@ -128,17 +128,7 @@ void ChunkOctree::Unload()
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Start chunk destruction"));
 
-		if (VoxelChunk->IsValidLowLevel())
-		{
-			if (!VoxelChunk->IsPendingKill())
-			{
-				if (!VoxelChunk->CollisionChunk->IsPendingKill())
-				{
-					VoxelChunk->CollisionChunk->Destroy();
-				}
-				VoxelChunk->Destroy();
-			}
-		}
+		VoxelChunk->Unload();
 
 		VoxelChunk = nullptr;
 		bHasChunk = false;
