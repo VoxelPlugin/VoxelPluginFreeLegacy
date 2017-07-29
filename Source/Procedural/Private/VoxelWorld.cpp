@@ -119,6 +119,7 @@ void AVoxelWorld::ModifyVoxel(FVector hitPoint, FVector normal, float range, int
 
 void AVoxelWorld::Update(FIntVector position)
 {
+	// TODO: Incomplete
 	MainOctree->GetChunk(position)->Update();
 
 	int x = position.X + Size() / 2;
@@ -141,6 +142,7 @@ void AVoxelWorld::Update(FIntVector position)
 
 void AVoxelWorld::ScheduleUpdate(FIntVector position)
 {
+	// TODO: Incomplete
 	ChunksToUpdate.AddUnique(MainOctree->GetChunk(position));
 
 	int x = position.X + Size() / 2;
