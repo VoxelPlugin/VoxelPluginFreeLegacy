@@ -8,6 +8,8 @@
 #include "Transvoxel.h"
 #include "DrawDebugHelpers.h"
 #include "VoxelCollisionChunk.h"
+#include "RuntimeMeshComponent.h"
+#include "IntVectorExtension.h"
 #include <vector>
 
 
@@ -40,7 +42,7 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	World = world;
 
 	FString name = FString::FromInt(position.X) + ", " + FString::FromInt(position.Y) + ", " + FString::FromInt(position.Z);
-	FVector relativeLocation = FVector(position.X, position.Y, position.Z);
+	FVector relativeLocation = (FVector)position;
 
 	this->AttachToActor(world, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
 	this->SetActorLabel(name);
@@ -66,6 +68,14 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	NormalsTriangles.clear();
 	VerticesCount = 0;
 	TrianglesCount = 0;
+
+	int Step = 1 << Depth;
+	XMinChunkHasHigherRes = HasChunkHigherRes(-Step, 0, 0);
+	XMaxChunkHasHigherRes = HasChunkHigherRes(Step * 16, 0, 0);
+	YMinChunkHasHigherRes = HasChunkHigherRes(0, -Step, 0);
+	YMaxChunkHasHigherRes = HasChunkHigherRes(0, Step * 16, 0);
+	ZMinChunkHasHigherRes = HasChunkHigherRes(0, 0, -Step);
+	ZMaxChunkHasHigherRes = HasChunkHigherRes(0, 0, Step * 16);
 
 	/**
 	* Polygonize
@@ -154,11 +164,11 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 		FVector B = VerticesArray[b];
 		FVector C = VerticesArray[c];
 		FVector n = FVector::CrossProduct(C - A, B - A);
+
 		// surface = norm(n) / 2
 		// We want: normals += n / norm(n) * surface
 		// <=> normals += n / 2
 		// <=> normals += n because normals are normalized
-		n.Normalize();
 		NormalsArray[a] += n;
 		NormalsArray[b] += n;
 		NormalsArray[c] += n;
@@ -211,6 +221,23 @@ void AVoxelChunk::Unload()
 	}
 }
 
+int AVoxelChunk::AddVertex(FVector vertex)
+{
+	Vertices.push_front(GetTranslated(vertex));
+	VerticesCount++;
+	return VerticesCount - 1;
+}
+
+int AVoxelChunk::LoadCachedVertex(int x, int y, int z, short direction, int edgeIndex)
+{
+	auto NewCache = NewCacheIs1 ? Cache1 : Cache2;
+	auto OldCache = NewCacheIs1 ? Cache2 : Cache1;
+
+	bool xIsDifferent = direction & 0x01;
+	bool yIsDifferent = direction & 0x02;
+	bool zIsDifferent = direction & 0x04;
+	return (zIsDifferent ? OldCache : NewCache)[1 + x - (xIsDifferent ? 1 : 0)][1 + y - (yIsDifferent ? 1 : 0)][edgeIndex];
+}
 
 void AVoxelChunk::Polygonise(int x, int y, int z)
 {
@@ -226,15 +253,15 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 		GetValue((x + 1) * Step, (y + 1) * Step, (z + 1) * Step)
 	};
 
-	FVector Positions[8] = {
-		Step * FVector(x    , y    , z),
-		Step * FVector(x + 1, y    , z),
-		Step * FVector(x    , y + 1, z),
-		Step * FVector(x + 1, y + 1, z),
-		Step * FVector(x    , y    , z + 1),
-		Step * FVector(x + 1, y    , z + 1),
-		Step * FVector(x    , y + 1, z + 1),
-		Step * FVector(x + 1, y + 1, z + 1)
+	FIntVector Positions[8] = {
+		Step * FIntVector(x    , y    , z),
+		Step * FIntVector(x + 1, y    , z),
+		Step * FIntVector(x    , y + 1, z),
+		Step * FIntVector(x + 1, y + 1, z),
+		Step * FIntVector(x    , y    , z + 1),
+		Step * FIntVector(x + 1, y    , z + 1),
+		Step * FIntVector(x    , y + 1, z + 1),
+		Step * FIntVector(x + 1, y + 1, z + 1)
 	};
 
 	unsigned long CaseCode = ((Corner[0] >> 7) & 0x01)
@@ -259,11 +286,10 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 		std::vector<int> VertexIndices(CellData.GetVertexCount());
 
 		auto NewCache = NewCacheIs1 ? Cache1 : Cache2;
-		auto OldCache = NewCacheIs1 ? Cache2 : Cache1;
 
 		for (int i = 0; i < CellData.GetVertexCount(); i++)
 		{
-			int VerticeIndex;
+			int VertexIndex;
 			unsigned short EdgeCode = VertexData[i];
 
 			// A: low point / B: high point
@@ -273,8 +299,8 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 			signed char ValueAtA = Corner[IndexVerticeA];
 			signed char ValueAtB = Corner[IndexVerticeB];
 
-			FVector PositionA = Positions[IndexVerticeA];
-			FVector PositionB = Positions[IndexVerticeB];
+			FIntVector PositionA = Positions[IndexVerticeA];
+			FIntVector PositionB = Positions[IndexVerticeB];
 
 			// Index of vertex on a generic cube (0, 1, 2 or 3)
 			short EdgeIndex = (EdgeCode >> 8) & 0x0F;
@@ -287,17 +313,12 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 				if ((IndexVerticeB == 7) || ((ValidityMask & Direction) != Direction))
 				{
 					// Vertex failed validity check (needs to be created, but not cached)
-					Vertices.push_front(PositionB);
-					VerticeIndex = VerticesCount;
-					VerticesCount++;
+					VertexIndex = AddVertex((FVector)PositionB);
 				}
 				else
 				{
 					// Vertex already created
-					bool xIsDifferent = Direction & 0x01;
-					bool yIsDifferent = Direction & 0x02;
-					bool zIsDifferent = Direction & 0x04;
-					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[1 + x - (xIsDifferent ? 1 : 0)][1 + y - (yIsDifferent ? 1 : 0)][EdgeIndex];
+					VertexIndex = LoadCachedVertex(x, y, z, Direction, EdgeIndex);
 				}
 			}
 			else if (ValueAtA == 0)
@@ -306,17 +327,12 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 				if ((ValidityMask & Direction) != Direction)
 				{
 					// Validity check failed
-					Vertices.push_front(PositionA);
-					VerticeIndex = VerticesCount;
-					VerticesCount++;
+					VertexIndex = AddVertex((FVector)PositionA);
 				}
 				else
 				{
 					// Reuse vertex
-					bool xIsDifferent = Direction & 0x01;
-					bool yIsDifferent = Direction & 0x02;
-					bool zIsDifferent = Direction & 0x04;
-					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[1 + x - (xIsDifferent ? 1 : 0)][1 + y - (yIsDifferent ? 1 : 0)][EdgeIndex];
+					VertexIndex = LoadCachedVertex(x, y, z, Direction, EdgeIndex);
 				}
 			}
 			else
@@ -325,67 +341,49 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 				if ((ValidityMask & Direction) != Direction)
 				{
 					// Validity check failed
-					FVector Q;
 					if (Step == 1)
 					{
 						// Full resolution
 						float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-						Q = t * PositionA + (1 - t) * PositionB;
+						VertexIndex = AddVertex(t * (FVector)PositionA + (1 - t) *(FVector)PositionB);
 					}
 					else
 					{
-						// Cube vertex are counted in binary order, so
-						// deltaX = index % 2
-						// deltaY = (index // 2) % 2
-						// deltaZ = (index // 4) % 2
-
-						int ADeltaX = IndexVerticeA % 2;
-						int ADeltaY = (IndexVerticeA / 2) % 2;
-						int ADeltaZ = IndexVerticeA / 4;
-
+						FVector Q;
 						if (EdgeIndex == 2)
 						{
 							// Edge along x axis
-							int BDeltaX = IndexVerticeB % 2;
-							Q = InterpolateX(Step * (x + ADeltaX), Step * (x + BDeltaX), Step * (y + ADeltaY), Step * (z + ADeltaZ));
+							Q = InterpolateX(PositionA.X, PositionB.X, PositionA.Y, PositionA.Z);
 						}
 						else if (EdgeIndex == 1)
 						{
 							// Edge along y axis
-							int BDeltaY = (IndexVerticeB / 2) % 2;
-							Q = InterpolateY(Step * (x + ADeltaX), Step * (y + ADeltaY), Step * (y + BDeltaY), Step * (z + ADeltaZ));
+							Q = InterpolateY(PositionA.X, PositionA.Y, PositionB.Y, PositionA.Z);
 						}
 						else if (EdgeIndex == 3)
 						{
 							// Edge along z axis
-							int BDeltaZ = IndexVerticeB / 4;
-							Q = InterpolateZ(Step * (x + ADeltaX), Step * (y + ADeltaY), Step * (z + ADeltaZ), Step * (z + BDeltaZ));
+							Q = InterpolateZ(PositionA.X, PositionA.Y, PositionA.Z, PositionB.Z);
 						}
 						else
 						{
 							checkf(false, TEXT("Error in interpolation: case should not exist"));
 						}
+						VertexIndex = AddVertex(Q);
 					}
-					Vertices.push_front(Q);
-					VerticeIndex = VerticesCount;
-					VerticesCount++;
 				}
 				else
 				{
-					// Reuse vertex
-					bool xIsDifferent = Direction & 0x01;
-					bool yIsDifferent = Direction & 0x02;
-					bool zIsDifferent = Direction & 0x04;
-					VerticeIndex = (zIsDifferent ? OldCache : NewCache)[1 + x - (xIsDifferent ? 1 : 0)][1 + y - (yIsDifferent ? 1 : 0)][EdgeIndex];
+					VertexIndex = LoadCachedVertex(x, y, z, Direction, EdgeIndex);
 				}
 			}
 
 			// If own vertex, save it
 			if (Direction & 0x08)
 			{
-				NewCache[1 + x][1 + y][EdgeIndex] = VerticeIndex;
+				NewCache[1 + x][1 + y][EdgeIndex] = VertexIndex;
 			}
-			VertexIndices[i] = VerticeIndex;
+			VertexIndices[i] = VertexIndex;
 
 		}
 
@@ -405,6 +403,81 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 char AVoxelChunk::GetValue(int x, int y, int z)
 {
 	return World->GetValue(Position + FIntVector(x, y, z));
+}
+
+bool AVoxelChunk::HasChunkHigherRes(int x, int y, int z)
+{
+	FIntVector P = Position + FIntVector(x, y, z);
+	if (World->IsInWorld(P))
+	{
+		return Depth > World->GetDepth(P);
+	}
+	else
+	{
+		return false;
+	}
+}
+
+FVector AVoxelChunk::GetTranslated(FVector P)
+{
+	int Step = 1 << Depth;
+
+	// If an adjacent block is rendered at the same resolution, return primary position
+	if ((P.X <= 0.5f && !XMinChunkHasHigherRes) || (P.X >= 15.5f * Step && !XMaxChunkHasHigherRes) ||
+		(P.Y <= 0.5f && !YMinChunkHasHigherRes) || (P.Y >= 15.5f * Step && !YMaxChunkHasHigherRes) ||
+		(P.Z <= 0.5f && !ZMinChunkHasHigherRes) || (P.Z >= 15.5f * Step && !ZMaxChunkHasHigherRes))
+	{
+		return P;
+	}
+
+
+	float DeltaX = 0;
+	float DeltaY = 0;
+	float DeltaZ = 0;
+
+	float TwoPowerK = 1 << Depth;
+	float w = TwoPowerK / 4;
+
+	if ((P.X <= 0.5f && XMinChunkHasHigherRes) || (P.X >= 15.5f * Step && XMaxChunkHasHigherRes))
+	{
+		if (P.X < TwoPowerK)
+		{
+			DeltaX = (1 - P.X / TwoPowerK) * w;
+		}
+		else if (P.X > TwoPowerK * (16 - 1))
+		{
+			DeltaX = (16 - 1 - P.X / TwoPowerK) * w;
+		}
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("DeltaX: %f"), DeltaX));
+	}
+	if ((P.Y <= 0.5f && YMinChunkHasHigherRes) || (P.Y >= 15.5f * Step && YMaxChunkHasHigherRes))
+	{
+		if (P.Y < TwoPowerK)
+		{
+			DeltaY = (1 - P.Y / TwoPowerK) * w;
+		}
+		else if (P.Y > TwoPowerK * (16 - 1))
+		{
+			DeltaY = (16 - 1 - P.Y / TwoPowerK) * w;
+		}
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("DeltaY: %f"), DeltaY));
+	}
+	if ((P.Z <= 0.5f && ZMinChunkHasHigherRes) || (P.Z >= 15.5f * Step && ZMaxChunkHasHigherRes))
+	{
+		if (P.Z < TwoPowerK)
+		{
+			DeltaZ = (1 - P.Z / TwoPowerK) * w;
+		}
+		else if (P.Z > TwoPowerK * (16 - 1))
+		{
+			DeltaZ = (16 - 1 - P.Z / TwoPowerK) * w;
+		}
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("DeltaZ: %f"), DeltaZ));
+	}
+
+	// TODO: Project onto normal
+
+	return P + FVector(DeltaX, DeltaY, DeltaZ);
 }
 
 FVector AVoxelChunk::InterpolateX(int xMin, int xMax, int y, int z)

@@ -39,13 +39,35 @@ void AVoxelWorld::BeginPlay()
 	Data = new VoxelData(Depth);
 
 	MainOctree = new ChunkOctree(FIntVector::ZeroValue, Depth);
-	MainOctree->CreateTree(this, FVector::ZeroVector);
-	MainOctree->Update();
+	UpdateCameraPosition(FVector::ZeroVector);
+}
+
+int AVoxelWorld::GetDepth(FIntVector position)
+{
+	if (IsInWorld(position))
+	{
+		ChunkOctree* chunk = MainOctree->GetChunk(position);
+		if (chunk != nullptr)
+		{
+			return chunk->Depth;
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot GetDepth: nullptr"));
+			return -1;
+		}
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot GetDepth: Not in world"));
+		return -1;
+	}
 }
 
 void AVoxelWorld::UpdateCameraPosition(FVector position)
 {
 	MainOctree->CreateTree(this, position);
+	ApplyUpdate();
 }
 
 
@@ -151,16 +173,21 @@ void AVoxelWorld::ScheduleUpdate(FIntVector position)
 
 	if (x % 16 == 0 && x != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetChunk(position - FIntVector(1, 0, 0)));
+		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 0, 0)));
 	}
 	if (y % 16 == 0 && y != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetChunk(position - FIntVector(0, 1, 0)));
+		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(0, 1, 0)));
 	}
 	if (z % 16 == 0 && z != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetChunk(position - FIntVector(0, 0, 1)));
+		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(0, 0, 1)));
 	}
+}
+
+void AVoxelWorld::ScheduleUpdate(ChunkOctree* chunk)
+{
+	ChunksToUpdate.AddUnique(chunk);
 }
 
 void AVoxelWorld::ApplyUpdate()

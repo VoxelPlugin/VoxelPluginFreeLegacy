@@ -5,7 +5,7 @@
 #include "EngineGlobals.h"
 #include "Engine.h"
 
-ChunkOctree::ChunkOctree(FIntVector position, int depth) : Position(position), Depth(depth), bHasChilds(false), bHasChunk(false)
+ChunkOctree::ChunkOctree(FIntVector position, int depth) : Position(position), Depth(depth), bHasChilds(false), bHasChunk(false), VoxelChunk(nullptr)
 {
 
 }
@@ -18,10 +18,7 @@ ChunkOctree::~ChunkOctree()
 	}
 	if (bHasChilds)
 	{
-		for (int i = 0; i < 8; i++)
-		{
-			delete Childs[i];
-		}
+		DeleteChilds();
 	}
 }
 
@@ -40,6 +37,8 @@ int ChunkOctree::GetWidth()
 
 void ChunkOctree::CreateTree(AVoxelWorld* world, FVector cameraPosition)
 {
+	check(bHasChunk == (VoxelChunk != nullptr));
+
 	float distanceToCamera = (world->GetTransform().TransformPosition(FVector(Position.X, Position.Y, Position.Z)) - cameraPosition).Size();
 
 	if (distanceToCamera > GetWidth() * world->GetActorScale3D().Size() * 2 || Depth == 0)
@@ -72,6 +71,8 @@ void ChunkOctree::CreateTree(AVoxelWorld* world, FVector cameraPosition)
 
 void ChunkOctree::Update()
 {
+	check(bHasChunk == (VoxelChunk != nullptr));
+
 	if (bHasChunk)
 	{
 		VoxelChunk->Update();
@@ -91,15 +92,22 @@ void ChunkOctree::Update()
 
 ChunkOctree* ChunkOctree::GetChunk(FIntVector position)
 {
+	check(bHasChunk == (VoxelChunk != nullptr));
+
 	if (bHasChunk)
 	{
 		return this;
 	}
-	else
+	else if (bHasChilds)
 	{
 		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
 		int d = GetWidth() / 2;
 		return Childs[(position.X >= Position.X ? 1 : 0) + (position.Y >= Position.Y ? 2 : 0) + (position.Z >= Position.Z ? 4 : 0)]->GetChunk(position);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot GetChunk: !bHasChunk && !bHasChilds"));
+		return nullptr;
 	}
 }
 
@@ -108,12 +116,14 @@ ChunkOctree* ChunkOctree::GetChunk(FIntVector position)
 
 void ChunkOctree::Load(AVoxelWorld* world)
 {
+	check(bHasChunk == (VoxelChunk != nullptr));
+
 	if (!bHasChunk)
 	{
 		VoxelChunk = world->GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
 		int w = GetWidth() / 2;
 		VoxelChunk->Init(Position - FIntVector(1, 1, 1) * GetWidth() / 2, Depth, world);
-		VoxelChunk->Update();
+		world->ScheduleUpdate(this);
 		bHasChunk = true;
 	}
 	else
@@ -124,10 +134,10 @@ void ChunkOctree::Load(AVoxelWorld* world)
 
 void ChunkOctree::Unload()
 {
+	check(bHasChunk == (VoxelChunk != nullptr));
+
 	if (bHasChunk)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Start chunk destruction"));
-
 		VoxelChunk->Unload();
 
 		VoxelChunk = nullptr;
