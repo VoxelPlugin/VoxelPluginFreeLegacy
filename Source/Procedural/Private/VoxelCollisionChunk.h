@@ -17,7 +17,8 @@ class AVoxelCollisionChunk : public AActor
 public:
 	AVoxelCollisionChunk();
 
-	AVoxelChunk* VoxelChunk;
+	UPROPERTY()
+		AVoxelChunk* VoxelChunk;
 
 protected:
 	virtual void BeginPlay() override;
@@ -26,7 +27,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 private:
-	URuntimeMeshComponent* CollisionMesh;
+	UPROPERTY()
+		URuntimeMeshComponent* CollisionMesh;
 
 	float TimeBeforeCollisionCooking;
 };

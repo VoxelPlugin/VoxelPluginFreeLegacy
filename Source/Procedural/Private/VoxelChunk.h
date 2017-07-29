@@ -23,12 +23,16 @@ public:
 	void Init(FIntVector position, int depth, AVoxelWorld* world);
 	void Update(URuntimeMeshComponent* mesh = nullptr, bool bCreateCollision = false);
 
+	UPROPERTY()
+		AVoxelCollisionChunk* CollisionChunk;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 private:
-	URuntimeMeshComponent* PrimaryMesh;
+	UPROPERTY()
+		URuntimeMeshComponent* PrimaryMesh;
 
 	// Lower corner
 	FIntVector Position;

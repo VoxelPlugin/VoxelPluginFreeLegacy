@@ -18,7 +18,7 @@ public:
 
 	inline int GetWidth();
 
-	void CreateTree(FVector cameraPosition);
+	void CreateTree();
 
 	ValueOctree* GetLeaf(FIntVector globalPosition);
 
@@ -47,6 +47,7 @@ protected:
 	ValueOctree* Childs[8];
 
 	std::vector<signed char> Values;
+
 	bool bIsDirty;
 	bool bIsLeaf;
 

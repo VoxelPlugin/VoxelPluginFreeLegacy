@@ -10,6 +10,7 @@ class ChunkOctree
 {
 public:
 	ChunkOctree(FIntVector position, int depth);
+	~ChunkOctree();
 
 	bool operator==(ChunkOctree* other);
 
@@ -25,11 +26,9 @@ public:
 
 	void Update();
 
-	ChunkOctree* GetLeaf(FIntVector position);
+	ChunkOctree* GetChunk(FIntVector position);
 
-	bool IsLeaf();
-
-protected:
+private:
 	/*
 	bottom      top
 	-----> y
@@ -38,9 +37,16 @@ protected:
 	x
 
 	*/
+	bool bHasChilds;
+	bool bHasChunk;
+
 	ChunkOctree* Childs[8];
 
 	AVoxelChunk* VoxelChunk = nullptr;
 
-	bool CreateChilds();
+	void Load(AVoxelWorld* world);
+	void Unload();
+
+	void CreateChilds();
+	void DeleteChilds();
 };

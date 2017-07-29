@@ -39,9 +39,15 @@ void AVoxelWorld::BeginPlay()
 	Data = new VoxelData(Depth);
 
 	MainOctree = new ChunkOctree(FIntVector::ZeroValue, Depth);
-	MainOctree->CreateTree(this, FVector(0, 0, 0));
+	MainOctree->CreateTree(this, FVector::ZeroVector);
 	MainOctree->Update();
 }
+
+void AVoxelWorld::UpdateCameraPosition(FVector position)
+{
+	MainOctree->CreateTree(this, position);
+}
+
 
 int AVoxelWorld::GetValue(FIntVector position)
 {
@@ -113,37 +119,45 @@ void AVoxelWorld::ModifyVoxel(FVector hitPoint, FVector normal, float range, int
 
 void AVoxelWorld::Update(FIntVector position)
 {
-	MainOctree->GetLeaf(position)->Update();
+	MainOctree->GetChunk(position)->Update();
 
-	if (position.X % 16 == 0 && position.X != 0)
+	int x = position.X + Size() / 2;
+	int y = position.Y + Size() / 2;
+	int z = position.Z + Size() / 2;
+
+	if (x % 16 == 0 && x != 0)
 	{
-		MainOctree->GetLeaf(position - FIntVector(1, 0, 0))->Update();
+		MainOctree->GetChunk(position - FIntVector(1, 0, 0))->Update();
 	}
-	if (position.Y % 16 == 0 && position.Y != 0)
+	if (y % 16 == 0 && y != 0)
 	{
-		MainOctree->GetLeaf(position - FIntVector(0, 1, 0))->Update();
+		MainOctree->GetChunk(position - FIntVector(0, 1, 0))->Update();
 	}
-	if (position.Z % 16 == 0 && position.Z != 0)
+	if (z % 16 == 0 && z != 0)
 	{
-		MainOctree->GetLeaf(position - FIntVector(0, 0, 1))->Update();
+		MainOctree->GetChunk(position - FIntVector(0, 0, 1))->Update();
 	}
 }
 
 void AVoxelWorld::ScheduleUpdate(FIntVector position)
 {
-	ChunksToUpdate.AddUnique(MainOctree->GetLeaf(position));
+	ChunksToUpdate.AddUnique(MainOctree->GetChunk(position));
 
-	if (position.X % 16 == 0 && position.X != 0)
+	int x = position.X + Size() / 2;
+	int y = position.Y + Size() / 2;
+	int z = position.Z + Size() / 2;
+
+	if (x % 16 == 0 && x != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(position - FIntVector(1, 0, 0)));
+		ChunksToUpdate.AddUnique(MainOctree->GetChunk(position - FIntVector(1, 0, 0)));
 	}
-	if (position.Y % 16 == 0 && position.Y != 0)
+	if (y % 16 == 0 && y != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(position - FIntVector(0, 1, 0)));
+		ChunksToUpdate.AddUnique(MainOctree->GetChunk(position - FIntVector(0, 1, 0)));
 	}
-	if (position.Z % 16 == 0 && position.Z != 0)
+	if (z % 16 == 0 && z != 0)
 	{
-		ChunksToUpdate.AddUnique(MainOctree->GetLeaf(position - FIntVector(0, 0, 1)));
+		ChunksToUpdate.AddUnique(MainOctree->GetChunk(position - FIntVector(0, 0, 1)));
 	}
 }
 

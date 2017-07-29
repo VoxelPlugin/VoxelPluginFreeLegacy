@@ -24,13 +24,13 @@ void AVoxelChunk::BeginPlay()
 {
 	Super::BeginPlay();
 
-	AVoxelCollisionChunk* chunk = GetWorld()->SpawnActor<AVoxelCollisionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
-	chunk->VoxelChunk = this;
-	chunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
-	chunk->SetActorLabel("VoxelCollisionChunkActor");
-	chunk->SetActorRelativeLocation(FVector::ZeroVector);
-	chunk->SetActorRelativeRotation(FRotator::ZeroRotator);
-	chunk->SetActorRelativeScale3D(FVector::OneVector);
+	CollisionChunk = GetWorld()->SpawnActor<AVoxelCollisionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	CollisionChunk->VoxelChunk = this;
+	CollisionChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	CollisionChunk->SetActorLabel("VoxelCollisionChunkActor");
+	CollisionChunk->SetActorRelativeLocation(FVector::ZeroVector);
+	CollisionChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+	CollisionChunk->SetActorRelativeScale3D(FVector::OneVector);
 }
 
 void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
