@@ -1,13 +1,30 @@
 #include "ChunkOctree.h"
 #include "VoxelChunk.h"
+#include "VoxelCollisionChunk.h"
 #include "VoxelWorld.h"
 #include "EngineGlobals.h"
 #include "Engine.h"
 
-ChunkOctree::ChunkOctree(FIntVector position, int depth) : Position(position), Depth(depth)
+ChunkOctree::ChunkOctree(FIntVector position, int depth) : Position(position), Depth(depth), bHasChilds(false), bHasChunk(false)
 {
 
 }
+
+ChunkOctree::~ChunkOctree()
+{
+	if (bHasChunk)
+	{
+		Unload();
+	}
+	if (bHasChilds)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			delete Childs[i];
+		}
+	}
+}
+
 
 bool ChunkOctree::operator==(ChunkOctree* other)
 {
@@ -15,28 +32,6 @@ bool ChunkOctree::operator==(ChunkOctree* other)
 }
 
 
-
-bool ChunkOctree::CreateChilds()
-{
-	if (!IsLeaf())
-	{
-		int d = GetWidth() / 4;
-		Childs[0] = new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1);
-		Childs[1] = new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1);
-		Childs[2] = new ChunkOctree(Position + FIntVector(-d, +d, -d), Depth - 1);
-		Childs[3] = new ChunkOctree(Position + FIntVector(+d, +d, -d), Depth - 1);
-		Childs[4] = new ChunkOctree(Position + FIntVector(-d, -d, +d), Depth - 1);
-		Childs[5] = new ChunkOctree(Position + FIntVector(+d, -d, +d), Depth - 1);
-		Childs[6] = new ChunkOctree(Position + FIntVector(-d, +d, +d), Depth - 1);
-		Childs[7] = new ChunkOctree(Position + FIntVector(+d, +d, +d), Depth - 1);
-		return true;
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot create childs: IsLeaf"));
-		return false;
-	}
-}
 
 int ChunkOctree::GetWidth()
 {
@@ -47,42 +42,56 @@ void ChunkOctree::CreateTree(AVoxelWorld* world, FVector cameraPosition)
 {
 	float distanceToCamera = (world->GetTransform().TransformPosition(FVector(Position.X, Position.Y, Position.Z)) - cameraPosition).Size();
 
-	if (distanceToCamera > GetWidth() * world->GetActorScale3D().Size() * 10000 || Depth == 0)
+	if (distanceToCamera > GetWidth() * world->GetActorScale3D().Size() * 2 || Depth == 0)
 	{
-		VoxelChunk = world->GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
-		int w = GetWidth() / 2;
-		VoxelChunk->Init(Position - FIntVector(1, 1, 1) * GetWidth() / 2, Depth, world);
+		if (bHasChilds)
+		{
+			DeleteChilds();
+		}
+		if (!bHasChunk)
+		{
+			Load(world);
+		}
 	}
 	else
 	{
-		if (CreateChilds())
+		if (bHasChunk)
 		{
-			for (int i = 0; i < 8; i++)
-			{
-				Childs[i]->CreateTree(world, cameraPosition);
-			}
+			Unload();
+		}
+		if (!bHasChilds)
+		{
+			CreateChilds();
+		}
+		for (int i = 0; i < 8; i++)
+		{
+			Childs[i]->CreateTree(world, cameraPosition);
 		}
 	}
 }
 
 void ChunkOctree::Update()
 {
-	if (IsLeaf())
+	if (bHasChunk)
 	{
 		VoxelChunk->Update();
 	}
-	else
+	else if (bHasChilds)
 	{
 		for (int i = 0; i < 8; i++)
 		{
 			Childs[i]->Update();
 		}
 	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot update: !bHasChunk && !bHasChilds"));
+	}
 }
 
-ChunkOctree* ChunkOctree::GetLeaf(FIntVector position)
+ChunkOctree* ChunkOctree::GetChunk(FIntVector position)
 {
-	if (IsLeaf())
+	if (bHasChunk)
 	{
 		return this;
 	}
@@ -90,12 +99,89 @@ ChunkOctree* ChunkOctree::GetLeaf(FIntVector position)
 	{
 		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
 		int d = GetWidth() / 2;
-		return Childs[(position.X >= Position.X ? 1 : 0) + (position.Y >= Position.Y ? 2 : 0) + (position.Z >= Position.Z ? 4 : 0)]->GetLeaf(position);
+		return Childs[(position.X >= Position.X ? 1 : 0) + (position.Y >= Position.Y ? 2 : 0) + (position.Z >= Position.Z ? 4 : 0)]->GetChunk(position);
 	}
 }
 
 
-bool ChunkOctree::IsLeaf()
+
+
+void ChunkOctree::Load(AVoxelWorld* world)
 {
-	return VoxelChunk != nullptr;
+	if (!bHasChunk)
+	{
+		VoxelChunk = world->GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+		int w = GetWidth() / 2;
+		VoxelChunk->Init(Position - FIntVector(1, 1, 1) * GetWidth() / 2, Depth, world);
+		VoxelChunk->Update();
+		bHasChunk = true;
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot load: bHasChunk"));
+	}
+}
+
+void ChunkOctree::Unload()
+{
+	if (bHasChunk)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Start chunk destruction"));
+
+		if (VoxelChunk->IsValidLowLevel())
+		{
+			if (!VoxelChunk->IsPendingKill())
+			{
+				if (!VoxelChunk->CollisionChunk->IsPendingKill())
+				{
+					VoxelChunk->CollisionChunk->Destroy();
+				}
+				VoxelChunk->Destroy();
+			}
+		}
+
+		VoxelChunk = nullptr;
+		bHasChunk = false;
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot unload: !bHasChunk"));
+	}
+}
+
+void ChunkOctree::CreateChilds()
+{
+	if (!bHasChilds)
+	{
+		int d = GetWidth() / 4;
+		Childs[0] = new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1);
+		Childs[1] = new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1);
+		Childs[2] = new ChunkOctree(Position + FIntVector(-d, +d, -d), Depth - 1);
+		Childs[3] = new ChunkOctree(Position + FIntVector(+d, +d, -d), Depth - 1);
+		Childs[4] = new ChunkOctree(Position + FIntVector(-d, -d, +d), Depth - 1);
+		Childs[5] = new ChunkOctree(Position + FIntVector(+d, -d, +d), Depth - 1);
+		Childs[6] = new ChunkOctree(Position + FIntVector(-d, +d, +d), Depth - 1);
+		Childs[7] = new ChunkOctree(Position + FIntVector(+d, +d, +d), Depth - 1);
+		bHasChilds = true;
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot create childs: bHasChilds"));
+	}
+}
+
+void ChunkOctree::DeleteChilds()
+{
+	if (bHasChilds)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			delete Childs[i];
+		}
+		bHasChilds = false;
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot delete childs: !bHasChilds"));
+	}
 }

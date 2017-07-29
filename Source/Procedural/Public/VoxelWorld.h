@@ -43,6 +43,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ApplyUpdate();
 
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void UpdateCameraPosition(FVector position);
+
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		bool IsInWorld(FIntVector position);

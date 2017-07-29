@@ -8,7 +8,7 @@
 VoxelData::VoxelData(int depth) : Depth(depth)
 {
 	MainOctree = new ValueOctree(FIntVector::ZeroValue, depth);
-	MainOctree->CreateTree(FVector(0, 0, 0));
+	MainOctree->CreateTree();
 }
 
 VoxelData::~VoxelData()

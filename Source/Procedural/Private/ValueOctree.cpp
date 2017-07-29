@@ -16,34 +16,13 @@ ValueOctree::~ValueOctree()
 
 
 
-bool ValueOctree::CreateChilds()
-{
-	if (!IsLeaf())
-	{
-		int d = GetWidth() / 4;
-		Childs[0] = new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1);
-		Childs[1] = new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1);
-		Childs[2] = new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1);
-		Childs[3] = new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1);
-		Childs[4] = new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1);
-		Childs[5] = new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1);
-		Childs[6] = new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1);
-		Childs[7] = new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1);
-		return true;
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, TEXT("Error: Cannot create childs: IsLeaf"));
-		return false;
-	}
-}
 
 inline int ValueOctree::GetWidth()
 {
 	return 16 << Depth;
 }
 
-void ValueOctree::CreateTree(FVector cameraPosition)
+void ValueOctree::CreateTree()
 {
 	if (Depth == 0)
 	{
@@ -55,7 +34,7 @@ void ValueOctree::CreateTree(FVector cameraPosition)
 		{
 			for (int i = 0; i < 8; i++)
 			{
-				Childs[i]->CreateTree(cameraPosition);
+				Childs[i]->CreateTree();
 			}
 		}
 	}
@@ -176,4 +155,28 @@ FIntVector ValueOctree::GlobalToLocal(FIntVector globalPosition)
 FIntVector ValueOctree::LocalToGlobal(FIntVector localPosition)
 {
 	return FIntVector(localPosition.X + (Position.X - GetWidth() / 2), localPosition.Y + (Position.Y - GetWidth() / 2), localPosition.Z + (Position.Z - GetWidth() / 2));
+}
+
+
+
+bool ValueOctree::CreateChilds()
+{
+	if (!IsLeaf())
+	{
+		int d = GetWidth() / 4;
+		Childs[0] = new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1);
+		Childs[1] = new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1);
+		Childs[2] = new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1);
+		Childs[3] = new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1);
+		Childs[4] = new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1);
+		Childs[5] = new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1);
+		Childs[6] = new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1);
+		Childs[7] = new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1);
+		return true;
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, TEXT("Error: Cannot create childs: IsLeaf"));
+		return false;
+	}
 }
