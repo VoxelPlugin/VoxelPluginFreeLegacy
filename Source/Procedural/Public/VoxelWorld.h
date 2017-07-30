@@ -10,6 +10,8 @@ class ChunkOctree;
 class VoxelData;
 class AVoxelChunk;
 
+DECLARE_LOG_CATEGORY_EXTERN(VoxelWorldLog, Log, All);
+
 UCLASS()
 class PROCEDURAL_API AVoxelWorld : public AActor
 {
@@ -18,13 +20,10 @@ public:
 	AVoxelWorld();
 	~AVoxelWorld();
 
-	virtual bool CanEditChange(const UProperty* InProperty) const override;
 	int Size();
 
-	int GetDepth(FIntVector position);
-	void ScheduleUpdate(ChunkOctree* chunk);
-
-	TArray<ChunkOctree*> ChunksToUpdate;
+	int GetDepthAt(FIntVector position);
+	void ScheduleUpdate(TWeakPtr<ChunkOctree> chunk);
 public:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		UMaterialInterface* VoxelMaterial;
@@ -44,7 +43,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ScheduleUpdate(FIntVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ApplyUpdate();
+		void ApplyQueuedUpdates();
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateCameraPosition(FVector position);
@@ -60,11 +59,16 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	// Lock Depth and VoxelMaterial when in play
+	virtual bool CanEditChange(const UProperty* InProperty) const override;
 
 private:
 	ChunkOctree* MainOctree;
 	VoxelData* Data;
+
 	bool bNotCreated;
+
+	TArray<TWeakPtr<ChunkOctree>> ChunksToUpdate;
 
 	void ModifyVoxel(FVector hitPoint, FVector normal, float range, int strength, bool add);
 };

@@ -22,6 +22,7 @@ void AVoxelCollisionChunk::BeginPlay()
 
 void AVoxelCollisionChunk::Tick(float DeltaTime)
 {
+	check(VoxelChunk);
 	Super::Tick(DeltaTime);
 	TimeBeforeCollisionCooking -= DeltaTime;
 

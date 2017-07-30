@@ -4,7 +4,9 @@
 #include "EngineGlobals.h"
 #include "Engine.h"
 
-ValueOctree::ValueOctree(FIntVector position, int depth) : Position(position), Depth(depth), bIsDirty(false), bIsLeaf(false)
+DEFINE_LOG_CATEGORY(ValueOctreeLog);
+
+ValueOctree::ValueOctree(FIntVector position, int depth) : Position(position), Depth(depth), bIsDirty(false), bIsLeaf(true)
 {
 
 }
@@ -24,18 +26,12 @@ inline int ValueOctree::GetWidth()
 
 void ValueOctree::CreateTree()
 {
-	if (Depth == 0)
+	if (Depth != 0)
 	{
-		bIsLeaf = true;
-	}
-	else
-	{
-		if (CreateChilds())
+		CreateChilds();
+		for (int i = 0; i < 8; i++)
 		{
-			for (int i = 0; i < 8; i++)
-			{
-				Childs[i]->CreateTree();
-			}
+			Childs[i]->CreateTree();
 		}
 	}
 }
@@ -44,10 +40,7 @@ ValueOctree* ValueOctree::GetLeaf(FIntVector position)
 {
 	if (IsLeaf())
 	{
-		if (!IsInChunk(position))
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, TEXT("Leaf error"));
-		}
+		check(IsInChunk(position));
 		return this;
 	}
 	else
@@ -92,11 +85,11 @@ signed char ValueOctree::GetValue(FIntVector globalPosition)
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Get value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
+		UE_LOG(ValueOctreeLog, Error, TEXT("Get value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
 			globalPosition.X, globalPosition.Y, globalPosition.Z,
 			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
 			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
-			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2));
+			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2);
 		return (globalPosition.Z > 10) ? 1 : -1;
 	}
 }
@@ -133,11 +126,11 @@ void ValueOctree::SetValue(FIntVector globalPosition, signed char value)
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Get value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
+		UE_LOG(ValueOctreeLog, Error, TEXT("Set value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
 			globalPosition.X, globalPosition.Y, globalPosition.Z,
 			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
 			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
-			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2));
+			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2);
 	}
 }
 
@@ -159,24 +152,17 @@ FIntVector ValueOctree::LocalToGlobal(FIntVector localPosition)
 
 
 
-bool ValueOctree::CreateChilds()
+void ValueOctree::CreateChilds()
 {
-	if (!IsLeaf())
-	{
-		int d = GetWidth() / 4;
-		Childs[0] = new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1);
-		Childs[1] = new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1);
-		Childs[2] = new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1);
-		Childs[3] = new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1);
-		Childs[4] = new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1);
-		Childs[5] = new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1);
-		Childs[6] = new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1);
-		Childs[7] = new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1);
-		return true;
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, TEXT("Error: Cannot create childs: IsLeaf"));
-		return false;
-	}
+	check(IsLeaf());
+	int d = GetWidth() / 4;
+	Childs[0] = new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1);
+	Childs[1] = new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1);
+	Childs[2] = new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1);
+	Childs[3] = new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1);
+	Childs[4] = new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1);
+	Childs[5] = new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1);
+	Childs[6] = new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1);
+	Childs[7] = new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1);
+	bIsLeaf = false;
 }

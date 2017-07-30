@@ -12,6 +12,7 @@
 #include "IntVectorExtension.h"
 #include <vector>
 
+DEFINE_LOG_CATEGORY(VoxelChunkLog);
 
 // Sets default values
 AVoxelChunk::AVoxelChunk() : bCollisionDirty(true)
@@ -37,6 +38,8 @@ void AVoxelChunk::BeginPlay()
 
 void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 {
+	check(world);
+
 	Position = position;
 	Depth = depth;
 	World = world;
@@ -49,7 +52,7 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	this->SetActorRelativeLocation(relativeLocation);
 	this->SetActorRelativeRotation(FRotator::ZeroRotator);
 	this->SetActorRelativeScale3D(FVector::OneVector);
-	PrimaryMesh->SetMaterial(0, World->VoxelMaterial);
+	PrimaryMesh->SetMaterial(0, world->VoxelMaterial);
 	PrimaryMesh->bCastShadowAsTwoSided = true;
 }
 
@@ -187,22 +190,19 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	TArray<FVector2D> UV0;
 	TArray<FColor> VertexColors;
 
-	if (TangentsArray.Num() != VerticesArray.Num() || NormalsArray.Num() != VerticesArray.Num())
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error tangents or normals"));
-	}
+	check(TangentsArray.Num() == VerticesArray.Num() && NormalsArray.Num() == VerticesArray.Num())
 
-	if (VerticesArray.Num() != 0)
-	{
-		if (mesh->DoesSectionExist(0))
+		if (VerticesArray.Num() != 0)
 		{
-			mesh->UpdateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, ESectionUpdateFlags::MoveArrays);
+			if (mesh->DoesSectionExist(0))
+			{
+				mesh->UpdateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, ESectionUpdateFlags::MoveArrays);
+			}
+			else
+			{
+				mesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, bCreateCollision, EUpdateFrequency::Frequent);
+			}
 		}
-		else
-		{
-			mesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, bCreateCollision, EUpdateFrequency::Frequent);
-		}
-	}
 	bCollisionDirty = true;
 }
 
@@ -410,7 +410,7 @@ bool AVoxelChunk::HasChunkHigherRes(int x, int y, int z)
 	FIntVector P = Position + FIntVector(x, y, z);
 	if (World->IsInWorld(P))
 	{
-		return Depth > World->GetDepth(P);
+		return Depth > World->GetDepthAt(P);
 	}
 	else
 	{
@@ -448,7 +448,6 @@ FVector AVoxelChunk::GetTranslated(FVector P)
 		{
 			DeltaX = (16 - 1 - P.X / TwoPowerK) * w;
 		}
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("DeltaX: %f"), DeltaX));
 	}
 	if ((P.Y <= 0.5f && YMinChunkHasHigherRes) || (P.Y >= 15.5f * Step && YMaxChunkHasHigherRes))
 	{
@@ -460,7 +459,6 @@ FVector AVoxelChunk::GetTranslated(FVector P)
 		{
 			DeltaY = (16 - 1 - P.Y / TwoPowerK) * w;
 		}
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("DeltaY: %f"), DeltaY));
 	}
 	if ((P.Z <= 0.5f && ZMinChunkHasHigherRes) || (P.Z >= 15.5f * Step && ZMaxChunkHasHigherRes))
 	{
@@ -472,7 +470,6 @@ FVector AVoxelChunk::GetTranslated(FVector P)
 		{
 			DeltaZ = (16 - 1 - P.Z / TwoPowerK) * w;
 		}
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("DeltaZ: %f"), DeltaZ));
 	}
 
 	// TODO: Project onto normal

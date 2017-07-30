@@ -6,9 +6,8 @@
 
 class ValueOctree;
 
-/**
- *
- */
+DECLARE_LOG_CATEGORY_EXTERN(VoxelDataLog, Log, All);
+
 class VoxelData
 {
 public:
