@@ -11,6 +11,7 @@ class AVoxelWorld;
 class AVoxelCollisionChunk;
 class URuntimeMeshComponent;
 
+DECLARE_LOG_CATEGORY_EXTERN(VoxelChunkLog, Log, All);
 
 UCLASS()
 class AVoxelChunk : public AActor
@@ -39,8 +40,9 @@ private:
 
 	// Lower corner
 	FIntVector Position;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		int Depth;
+
+	int Depth;
+	
 	AVoxelWorld* World;
 
 	std::forward_list<FVector> Vertices;
@@ -54,21 +56,14 @@ private:
 	int Cache2[18][18][4];
 	bool NewCacheIs1;
 
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		bool bCollisionDirty;
+	bool bCollisionDirty;
 
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		bool XMinChunkHasHigherRes;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		bool XMaxChunkHasHigherRes;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		bool YMinChunkHasHigherRes;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		bool YMaxChunkHasHigherRes;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		bool ZMinChunkHasHigherRes;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		bool ZMaxChunkHasHigherRes;
+	bool XMinChunkHasHigherRes;
+	bool XMaxChunkHasHigherRes;
+	bool YMinChunkHasHigherRes;
+	bool YMaxChunkHasHigherRes;
+	bool ZMinChunkHasHigherRes;
+	bool ZMaxChunkHasHigherRes;
 
 	void Polygonise(int x, int y, int z);
 	char GetValue(int x, int y, int z);

@@ -4,6 +4,8 @@
 #include "CoreMinimal.h"
 #include "Engine.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(ValueOctreeLog, Log, All);
+
 class ValueOctree
 {
 public:
@@ -51,5 +53,5 @@ protected:
 	bool bIsDirty;
 	bool bIsLeaf;
 
-	bool CreateChilds();
+	void CreateChilds();
 };

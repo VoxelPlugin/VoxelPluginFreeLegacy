@@ -5,6 +5,8 @@
 #include "EngineGlobals.h"
 #include "Engine.h"
 
+DEFINE_LOG_CATEGORY(VoxelDataLog);
+
 VoxelData::VoxelData(int depth) : Depth(depth)
 {
 	MainOctree = new ValueOctree(FIntVector::ZeroValue, depth);
@@ -39,7 +41,7 @@ signed char VoxelData::GetValue(FIntVector position)
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z));
+		UE_LOG(VoxelDataLog, Error, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
 		return 0;
 	}
 }
@@ -61,7 +63,7 @@ void VoxelData::SetValue(FIntVector position, int value)
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Red, FString::Printf(TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z));
+		UE_LOG(VoxelDataLog, Error, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
 	}
 }
 

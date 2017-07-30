@@ -6,16 +6,19 @@
 class AVoxelChunk;
 class AVoxelWorld;
 
-class ChunkOctree
+DECLARE_LOG_CATEGORY_EXTERN(ChunkOctreeLog, Log, All);
+
+class ChunkOctree : public TSharedFromThis<ChunkOctree>
 {
 public:
 	ChunkOctree(FIntVector position, int depth);
 	~ChunkOctree();
 
-	bool operator==(ChunkOctree* other);
+	bool operator==(const ChunkOctree& other);
 
 	// Center of the octree
 	const FIntVector Position;
+
 	const int Depth;
 
 
@@ -26,7 +29,7 @@ public:
 
 	void Update();
 
-	ChunkOctree* GetChunk(FIntVector position);
+	TWeakPtr<ChunkOctree> GetChunk(FIntVector position);
 
 private:
 	/*
@@ -37,10 +40,10 @@ private:
 	x
 
 	*/
+	TSharedPtr<ChunkOctree> Childs[8];
+
 	bool bHasChilds;
 	bool bHasChunk;
-
-	ChunkOctree* Childs[8];
 
 	AVoxelChunk* VoxelChunk;
 

@@ -8,6 +8,7 @@
 #include "Engine.h"
 #include <forward_list>
 
+DEFINE_LOG_CATEGORY(VoxelWorldLog)
 
 // Sets default values
 AVoxelWorld::AVoxelWorld() : bNotCreated(true)
@@ -23,13 +24,11 @@ AVoxelWorld::AVoxelWorld() : bNotCreated(true)
 
 AVoxelWorld::~AVoxelWorld()
 {
-	delete Data;
 	delete MainOctree;
+	delete Data;
 }
 
 
-
-// Called when the game starts or when spawned
 void AVoxelWorld::BeginPlay()
 {
 	Super::BeginPlay();
@@ -37,37 +36,41 @@ void AVoxelWorld::BeginPlay()
 	bNotCreated = false;
 
 	Data = new VoxelData(Depth);
-
 	MainOctree = new ChunkOctree(FIntVector::ZeroValue, Depth);
+
 	UpdateCameraPosition(FVector::ZeroVector);
 }
 
-int AVoxelWorld::GetDepth(FIntVector position)
+int AVoxelWorld::GetDepthAt(FIntVector position)
 {
 	if (IsInWorld(position))
 	{
-		ChunkOctree* chunk = MainOctree->GetChunk(position);
-		if (chunk != nullptr)
+		TSharedPtr<ChunkOctree> Chunk = MainOctree->GetChunk(position).Pin();
+		if (Chunk.IsValid())
 		{
-			return chunk->Depth;
+			return Chunk->Depth;
 		}
 		else
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot GetDepth: nullptr"));
+			UE_LOG(VoxelWorldLog, Error, TEXT("Error: Cannot GetDepthAt (%d, %d, %d): Not valid"), position.X, position.Y, position.Z);
 			return -1;
 		}
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Error: Cannot GetDepth: Not in world"));
+		UE_LOG(VoxelWorldLog, Error, TEXT("Error: Cannot GetDepthAt (%d, %d, %d): Not in world"), position.X, position.Y, position.Z);
 		return -1;
 	}
 }
 
 void AVoxelWorld::UpdateCameraPosition(FVector position)
 {
+	// Reset to avoid references to destroyed chunks
+	ChunksToUpdate.Reset();
+	// Recreate octree
 	MainOctree->CreateTree(this, position);
-	ApplyUpdate();
+	// Apply updates added when recreating octree
+	ApplyQueuedUpdates();
 }
 
 
@@ -134,67 +137,82 @@ void AVoxelWorld::ModifyVoxel(FVector hitPoint, FVector normal, float range, int
 			}
 		}
 	}
-	ApplyUpdate();
+	ApplyQueuedUpdates();
 }
 
 
 
 void AVoxelWorld::Update(FIntVector position)
 {
-	// TODO: Incomplete
-	MainOctree->GetChunk(position)->Update();
-
-	int x = position.X + Size() / 2;
-	int y = position.Y + Size() / 2;
-	int z = position.Z + Size() / 2;
-
-	if (x % 16 == 0 && x != 0)
+	if (ChunksToUpdate.Num() != 0)
 	{
-		MainOctree->GetChunk(position - FIntVector(1, 0, 0))->Update();
+		UE_LOG(VoxelWorldLog, Warning, TEXT("Update called but there are still chunks in queue"));
 	}
-	if (y % 16 == 0 && y != 0)
-	{
-		MainOctree->GetChunk(position - FIntVector(0, 1, 0))->Update();
-	}
-	if (z % 16 == 0 && z != 0)
-	{
-		MainOctree->GetChunk(position - FIntVector(0, 0, 1))->Update();
-	}
+	ScheduleUpdate(position);
+	ApplyQueuedUpdates();
 }
 
 void AVoxelWorld::ScheduleUpdate(FIntVector position)
 {
-	// TODO: Incomplete
-	ChunksToUpdate.AddUnique(MainOctree->GetChunk(position));
-
 	int x = position.X + Size() / 2;
 	int y = position.Y + Size() / 2;
 	int z = position.Z + Size() / 2;
 
-	if (x % 16 == 0 && x != 0)
+	bool bXIsAtBorder = x % 16 == 0 && x != 0;
+	bool bYIsAtBorder = y % 16 == 0 && y != 0;
+	bool bZIsAtBorder = z % 16 == 0 && z != 0;
+
+	ScheduleUpdate(MainOctree->GetChunk(position));
+
+	if (bXIsAtBorder)
 	{
 		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 0, 0)));
 	}
-	if (y % 16 == 0 && y != 0)
+	if (bYIsAtBorder)
 	{
 		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(0, 1, 0)));
 	}
-	if (z % 16 == 0 && z != 0)
+	if (bXIsAtBorder && bYIsAtBorder)
+	{
+		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 1, 0)));
+	}
+	if (bZIsAtBorder)
 	{
 		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(0, 0, 1)));
 	}
+	if (bXIsAtBorder && bZIsAtBorder)
+	{
+		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 0, 1)));
+	}
+	if (bYIsAtBorder && bZIsAtBorder)
+	{
+		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(0, 1, 1)));
+	}
+	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
+	{
+		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 1, 1)));
+	}
 }
 
-void AVoxelWorld::ScheduleUpdate(ChunkOctree* chunk)
+void AVoxelWorld::ScheduleUpdate(TWeakPtr<ChunkOctree> chunk)
 {
 	ChunksToUpdate.AddUnique(chunk);
 }
 
-void AVoxelWorld::ApplyUpdate()
+void AVoxelWorld::ApplyQueuedUpdates()
 {
-	for (ChunkOctree*& chunk : ChunksToUpdate)
+	for (auto& Chunk : ChunksToUpdate)
 	{
-		chunk->Update();
+		TSharedPtr<ChunkOctree> LockedObserver(Chunk.Pin());
+
+		if (LockedObserver.IsValid())
+		{
+			LockedObserver->Update();
+		}
+		else
+		{
+			UE_LOG(VoxelWorldLog, Warning, TEXT("Invalid chunk in queue"));
+		}
 	}
 	ChunksToUpdate.Reset();
 }
