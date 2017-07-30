@@ -12,8 +12,6 @@
 #include "IntVectorExtension.h"
 #include <vector>
 
-DEFINE_LOG_CATEGORY(VoxelChunkLog);
-
 // Sets default values
 AVoxelChunk::AVoxelChunk() : bCollisionDirty(true)
 {
@@ -100,109 +98,149 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	* Compute normals + tangents & final arrays
 	*/
 	TArray<FVector> VerticesArray;
-	VerticesArray.SetNumUninitialized(VerticesCount);
+	TArray<int> BijectionArray;
+	TArray<int> InverseBijectionArray;
+	TArray<VertexProperties> VerticesPropertiesArray;
 
-	TArray<FVector> NormalsArray;
-	NormalsArray.Init(FVector::ZeroVector, VerticesCount);
+	VerticesArray.SetNumUninitialized(VerticesCount);
+	BijectionArray.SetNumUninitialized(VerticesCount);
+	InverseBijectionArray.SetNumUninitialized(VerticesCount);
+	VerticesPropertiesArray.SetNumUninitialized(VerticesCount);
+
+	// Fill arrays
+	int cleanedIndex = 0;
+	for (int i = VerticesCount - 1; i >= 0; i--)
+	{
+		FVector Vertex = Vertices.front();
+		auto Properties = VerticesProperties.front();
+
+		VerticesArray[i] = Vertex;
+		VerticesPropertiesArray[i] = Properties;
+		if (!Properties.IsNormalOnly)
+		{
+			InverseBijectionArray[cleanedIndex] = i;
+			BijectionArray[i] = cleanedIndex;
+			cleanedIndex++;
+		}
+		else
+		{
+			BijectionArray[i] = -1;
+		}
+
+		Vertices.pop_front();
+		VerticesProperties.pop_front();
+	}
+	const int RealVerticesCount = cleanedIndex;
 
 	TArray<int> TrianglesArray;
+	TArray<FVector> NormalsArray;
+	TArray<FVector> TangentsArray;
 	TrianglesArray.SetNumUninitialized(TrianglesCount);
+	NormalsArray.Init(FVector::ZeroVector, RealVerticesCount);
+	TangentsArray.Init(FVector::ZeroVector, RealVerticesCount);
 
-	TArray<FVector> TangentVectorsArray;
-	TangentVectorsArray.SetNumUninitialized(VerticesCount);
-
-	TArray<FRuntimeMeshTangent> TangentsArray;
-	TangentsArray.SetNumUninitialized(VerticesCount);
-
-
+	// Compute normals from real triangles & Add triangles
 	int i = 0;
-	for (auto it = Vertices.begin(); it != Vertices.end(); ++it)
-	{
-		VerticesArray[VerticesCount - 1 - i] = *it;
-		i++;
-	}
-	i = 0;
-
-	// Real triangles
 	for (auto it = Triangles.begin(); it != Triangles.end(); ++it)
 	{
 		int a = *it;
+		int ba = BijectionArray[a];
 		++it;
 		int b = *it;
+		int bb = BijectionArray[b];
 		++it;
 		int c = *it;
+		int bc = BijectionArray[c];
 
-		TrianglesArray[i] = a;
-		TrianglesArray[i + 1] = b;
-		TrianglesArray[i + 2] = c;
+		// Add triangles
+		TrianglesArray[i] = ba;
+		TrianglesArray[i + 1] = bb;
+		TrianglesArray[i + 2] = bc;
 		i += 3;
 
+		// Add normals & tangents
 		FVector A = VerticesArray[a];
 		FVector B = VerticesArray[b];
 		FVector C = VerticesArray[c];
-		FVector n = FVector::CrossProduct(C - A, B - A);
-		// surface = norm(n) / 2
-		// We want: normals += n / norm(n) * surface
-		// <=> normals += n / 2
-		// <=> normals += n because normals are normalized
-		n.Normalize();
-		NormalsArray[a] += n;
-		NormalsArray[b] += n;
-		NormalsArray[c] += n;
-		TangentVectorsArray[a] += B + C - 2 * A;
-		TangentVectorsArray[b] += B + C - 2 * A;
-		TangentVectorsArray[c] += B + C - 2 * A;
+		FVector N = FVector::CrossProduct(C - A, B - A).GetSafeNormal();
+		NormalsArray[ba] += N;
+		NormalsArray[bb] += N;
+		NormalsArray[bc] += N;
+		// TODO: better tangents
+		TangentsArray[ba] += C - A;
+		TangentsArray[bb] += C - A;
+		TangentsArray[bc] += C - A;
 	}
 
 	// Triangles used only for normals
 	for (auto it = NormalsTriangles.begin(); it != NormalsTriangles.end(); ++it)
 	{
 		int a = *it;
+		int ba = BijectionArray[a];
 		++it;
 		int b = *it;
+		int bb = BijectionArray[b];
 		++it;
 		int c = *it;
+		int bc = BijectionArray[c];
 
+		// Add normals & tangents
 		FVector A = VerticesArray[a];
 		FVector B = VerticesArray[b];
 		FVector C = VerticesArray[c];
-		FVector n = FVector::CrossProduct(C - A, B - A);
-
-		// surface = norm(n) / 2
-		// We want: normals += n / norm(n) * surface
-		// <=> normals += n / 2
-		// <=> normals += n because normals are normalized
-		NormalsArray[a] += n;
-		NormalsArray[b] += n;
-		NormalsArray[c] += n;
-		TangentVectorsArray[a] += B + C - 2 * A;
-		TangentVectorsArray[b] += B + C - 2 * A;
-		TangentVectorsArray[c] += B + C - 2 * A;
+		FVector N = FVector::CrossProduct(C - A, B - A).GetSafeNormal();
+		if (ba != -1)
+		{
+			NormalsArray[ba] += N;
+			TangentsArray[ba] += C - A;
+		}
+		if (bb != -1)
+		{
+			NormalsArray[bb] += N;
+			TangentsArray[bb] += C - A;
+		}
+		if (bc != -1)
+		{
+			NormalsArray[bc] += N;
+			TangentsArray[bc] += C - A;
+		}
 	}
 
-	for (int i = 0; i < TangentVectorsArray.Num(); i++)
+	// Normalize & convert to FRuntimeMeshTangent
+	TArray<FRuntimeMeshTangent> RealTangentsArray;
+	RealTangentsArray.SetNumUninitialized(RealVerticesCount);
+	for (int i = 0; i < RealVerticesCount; i++)
 	{
-		TangentsArray[i] = FRuntimeMeshTangent(TangentVectorsArray[i].GetSafeNormal());
+		RealTangentsArray[i] = FRuntimeMeshTangent(TangentsArray[i].GetSafeNormal());
 		NormalsArray[i].Normalize();
+	}
+
+	// Compute final vertice array
+	TArray<FVector> CleanedVerticesArray;
+	CleanedVerticesArray.SetNumUninitialized(RealVerticesCount);
+	for (int i = 0; i < RealVerticesCount; i++)
+	{
+		int j = InverseBijectionArray[i];
+		CleanedVerticesArray[i] = GetTranslated(VerticesArray[j], NormalsArray[i], VerticesPropertiesArray[j]);
 	}
 
 
 	TArray<FVector2D> UV0;
 	TArray<FColor> VertexColors;
 
-	check(TangentsArray.Num() == VerticesArray.Num() && NormalsArray.Num() == VerticesArray.Num())
+	check(RealTangentsArray.Num() == CleanedVerticesArray.Num() && NormalsArray.Num() == CleanedVerticesArray.Num());
 
-		if (VerticesArray.Num() != 0)
+	if (VerticesArray.Num() != 0)
+	{
+		if (mesh->DoesSectionExist(0))
 		{
-			if (mesh->DoesSectionExist(0))
-			{
-				mesh->UpdateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, ESectionUpdateFlags::MoveArrays);
-			}
-			else
-			{
-				mesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, TangentsArray, bCreateCollision, EUpdateFrequency::Frequent);
-			}
+			mesh->UpdateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, RealTangentsArray, ESectionUpdateFlags::MoveArrays);
 		}
+		else
+		{
+			mesh->CreateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, RealTangentsArray, bCreateCollision, EUpdateFrequency::Frequent);
+		}
+	}
 	bCollisionDirty = true;
 }
 
@@ -221,9 +259,21 @@ void AVoxelChunk::Unload()
 	}
 }
 
-int AVoxelChunk::AddVertex(FVector vertex)
+int AVoxelChunk::AddVertex(FVector vertex, FIntVector exactPosition, bool xIsExact, bool yIsExact, bool zIsExact)
 {
-	Vertices.push_front(GetTranslated(vertex));
+	int Step = 1 << Depth;
+	VerticesProperties.push_front(VertexProperties({
+		xIsExact && exactPosition.X == 0,
+		xIsExact && exactPosition.X == 16 * Step,
+		yIsExact && exactPosition.Y == 0,
+		yIsExact && exactPosition.Y == 16 * Step,
+		zIsExact && exactPosition.Z == 0,
+		zIsExact && exactPosition.Z == 16 * Step,
+		(xIsExact && (exactPosition.X == -1 * Step || exactPosition.X == 17 * Step)) ||
+		(yIsExact && (exactPosition.Y == -1 * Step || exactPosition.Y == 17 * Step)) ||
+		(zIsExact && (exactPosition.Z == -1 * Step || exactPosition.Z == 17 * Step))
+	}));
+	Vertices.push_front(vertex);
 	VerticesCount++;
 	return VerticesCount - 1;
 }
@@ -313,7 +363,7 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 				if ((IndexVerticeB == 7) || ((ValidityMask & Direction) != Direction))
 				{
 					// Vertex failed validity check (needs to be created, but not cached)
-					VertexIndex = AddVertex((FVector)PositionB);
+					VertexIndex = AddVertex((FVector)PositionB, PositionB);
 				}
 				else
 				{
@@ -327,7 +377,7 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 				if ((ValidityMask & Direction) != Direction)
 				{
 					// Validity check failed
-					VertexIndex = AddVertex((FVector)PositionA);
+					VertexIndex = AddVertex((FVector)PositionA, PositionA);
 				}
 				else
 				{
@@ -345,7 +395,7 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 					{
 						// Full resolution
 						float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-						VertexIndex = AddVertex(t * (FVector)PositionA + (1 - t) *(FVector)PositionB);
+						VertexIndex = AddVertex(t * (FVector)PositionA + (1 - t) *(FVector)PositionB, PositionA, EdgeIndex != 2, EdgeIndex != 1, EdgeIndex != 3);
 					}
 					else
 					{
@@ -369,7 +419,7 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 						{
 							checkf(false, TEXT("Error in interpolation: case should not exist"));
 						}
-						VertexIndex = AddVertex(Q);
+						VertexIndex = AddVertex(Q, PositionA, EdgeIndex != 2, EdgeIndex != 1, EdgeIndex != 3);
 					}
 				}
 				else
@@ -418,16 +468,14 @@ bool AVoxelChunk::HasChunkHigherRes(int x, int y, int z)
 	}
 }
 
-FVector AVoxelChunk::GetTranslated(FVector P)
+FVector AVoxelChunk::GetTranslated(FVector V, FVector N, VertexProperties P)
 {
-	int Step = 1 << Depth;
-
 	// If an adjacent block is rendered at the same resolution, return primary position
-	if ((P.X <= 0.5f && !XMinChunkHasHigherRes) || (P.X >= 15.5f * Step && !XMaxChunkHasHigherRes) ||
-		(P.Y <= 0.5f && !YMinChunkHasHigherRes) || (P.Y >= 15.5f * Step && !YMaxChunkHasHigherRes) ||
-		(P.Z <= 0.5f && !ZMinChunkHasHigherRes) || (P.Z >= 15.5f * Step && !ZMaxChunkHasHigherRes))
+	if ((P.IsNearXMin && !XMinChunkHasHigherRes) || (P.IsNearXMax && !XMaxChunkHasHigherRes) ||
+		(P.IsNearYMin && !YMinChunkHasHigherRes) || (P.IsNearYMax && !YMaxChunkHasHigherRes) ||
+		(P.IsNearZMin && !ZMinChunkHasHigherRes) || (P.IsNearZMax && !ZMaxChunkHasHigherRes))
 	{
-		return P;
+		return V;
 	}
 
 
@@ -438,43 +486,45 @@ FVector AVoxelChunk::GetTranslated(FVector P)
 	float TwoPowerK = 1 << Depth;
 	float w = TwoPowerK / 4;
 
-	if ((P.X <= 0.5f && XMinChunkHasHigherRes) || (P.X >= 15.5f * Step && XMaxChunkHasHigherRes))
+	if ((P.IsNearXMin && XMinChunkHasHigherRes) || (P.IsNearXMax && XMaxChunkHasHigherRes))
 	{
-		if (P.X < TwoPowerK)
+		if (V.X < TwoPowerK)
 		{
-			DeltaX = (1 - P.X / TwoPowerK) * w;
+			DeltaX = (1 - V.X / TwoPowerK) * w;
 		}
-		else if (P.X > TwoPowerK * (16 - 1))
+		else if (V.X > TwoPowerK * (16 - 1))
 		{
-			DeltaX = (16 - 1 - P.X / TwoPowerK) * w;
+			DeltaX = (16 - 1 - V.X / TwoPowerK) * w;
 		}
 	}
-	if ((P.Y <= 0.5f && YMinChunkHasHigherRes) || (P.Y >= 15.5f * Step && YMaxChunkHasHigherRes))
+	if ((P.IsNearYMin && YMinChunkHasHigherRes) || (P.IsNearYMax && YMaxChunkHasHigherRes))
 	{
-		if (P.Y < TwoPowerK)
+		if (V.Y < TwoPowerK)
 		{
-			DeltaY = (1 - P.Y / TwoPowerK) * w;
+			DeltaY = (1 - V.Y / TwoPowerK) * w;
 		}
-		else if (P.Y > TwoPowerK * (16 - 1))
+		else if (V.Y > TwoPowerK * (16 - 1))
 		{
-			DeltaY = (16 - 1 - P.Y / TwoPowerK) * w;
+			DeltaY = (16 - 1 - V.Y / TwoPowerK) * w;
 		}
 	}
-	if ((P.Z <= 0.5f && ZMinChunkHasHigherRes) || (P.Z >= 15.5f * Step && ZMaxChunkHasHigherRes))
+	if ((P.IsNearZMin && ZMinChunkHasHigherRes) || (P.IsNearZMax && ZMaxChunkHasHigherRes))
 	{
-		if (P.Z < TwoPowerK)
+		if (V.Z < TwoPowerK)
 		{
-			DeltaZ = (1 - P.Z / TwoPowerK) * w;
+			DeltaZ = (1 - V.Z / TwoPowerK) * w;
 		}
-		else if (P.Z > TwoPowerK * (16 - 1))
+		else if (V.Z > TwoPowerK * (16 - 1))
 		{
-			DeltaZ = (16 - 1 - P.Z / TwoPowerK) * w;
+			DeltaZ = (16 - 1 - V.Z / TwoPowerK) * w;
 		}
 	}
 
-	// TODO: Project onto normal
-
-	return P + FVector(DeltaX, DeltaY, DeltaZ);
+	FVector Q = FVector(
+		(1 - N.X * N.X) * DeltaX - N.X * N.Y * DeltaY - N.X * N.Z * DeltaZ,
+		-N.X * N.Y * DeltaX + (1 - N.Y * N.Y) * DeltaY - N.Y * N.Z * DeltaZ,
+		-N.X * N.Z * DeltaX - N.Y * N.Z * DeltaY + (1 - N.Z * N.Z) * DeltaZ);
+	return V + Q;
 }
 
 FVector AVoxelChunk::InterpolateX(int xMin, int xMax, int y, int z)

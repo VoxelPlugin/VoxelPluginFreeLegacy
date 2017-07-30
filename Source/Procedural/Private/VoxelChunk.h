@@ -3,6 +3,7 @@
 #pragma once
 
 #include <forward_list>
+#include <tuple>
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "VoxelChunk.generated.h"
@@ -11,7 +12,19 @@ class AVoxelWorld;
 class AVoxelCollisionChunk;
 class URuntimeMeshComponent;
 
-DECLARE_LOG_CATEGORY_EXTERN(VoxelChunkLog, Log, All);
+struct VertexProperties
+{
+	bool IsNearXMin;
+	bool IsNearXMax;
+
+	bool IsNearYMin;
+	bool IsNearYMax;
+
+	bool IsNearZMin;
+	bool IsNearZMax;
+
+	bool IsNormalOnly;
+};
 
 UCLASS()
 class AVoxelChunk : public AActor
@@ -42,12 +55,14 @@ private:
 	FIntVector Position;
 
 	int Depth;
-	
+
 	AVoxelWorld* World;
 
 	std::forward_list<FVector> Vertices;
 	std::forward_list<int> Triangles;
 	std::forward_list<int> NormalsTriangles;
+	// Is near: XMin, XMax, YMin, YMax, ZMin, ZMax + Is only for normals computation
+	std::forward_list<VertexProperties> VerticesProperties;
 
 	int VerticesCount;
 	int TrianglesCount;
@@ -68,9 +83,9 @@ private:
 	void Polygonise(int x, int y, int z);
 	char GetValue(int x, int y, int z);
 	bool HasChunkHigherRes(int x, int y, int z);
-	FVector GetTranslated(FVector P);
+	FVector GetTranslated(FVector P, FVector normal, VertexProperties properties);
 
-	int AddVertex(FVector vertex);
+	int AddVertex(FVector vertex, FIntVector exactPosition, bool xIsExact = true, bool yIsExact = true, bool zIsExact = true);
 	int LoadCachedVertex(int x, int y, int z, short direction, int edgeIndex);
 
 	FVector InterpolateX(int xMin, int xMax, int y, int z);
