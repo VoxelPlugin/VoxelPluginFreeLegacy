@@ -10,6 +10,7 @@
 
 class AVoxelWorld;
 class AVoxelCollisionChunk;
+class AVoxelTransitionChunk;
 class URuntimeMeshComponent;
 
 struct VertexProperties
@@ -79,6 +80,12 @@ private:
 	bool YMaxChunkHasHigherRes;
 	bool ZMinChunkHasHigherRes;
 	bool ZMaxChunkHasHigherRes;
+	AVoxelTransitionChunk* XMinChunk;
+	AVoxelTransitionChunk* XMaxChunk;
+	AVoxelTransitionChunk* YMinChunk;
+	AVoxelTransitionChunk* YMaxChunk;
+	AVoxelTransitionChunk* ZMinChunk;
+	AVoxelTransitionChunk* ZMaxChunk;
 
 	void Polygonise(int x, int y, int z);
 	char GetValue(int x, int y, int z);
