@@ -2,12 +2,15 @@
 
 #pragma once
 
+#include <forward_list>
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "VoxelTransitionChunk.generated.h"
 
 class AVoxelWorld;
 class URuntimeMeshComponent;
+
+enum TransitionDirectionEnum { XMin, XMax, YMin, YMax, ZMin, ZMax };
 
 UCLASS()
 class AVoxelTransitionChunk : public AActor
@@ -20,7 +23,7 @@ public:
 
 	void Update();
 
-	void Init(FIntVector position, bool isAlongX, bool isAlongY, bool isAlongZ);
+	void Init(AVoxelWorld* world, FIntVector position, int depth, TransitionDirectionEnum transitionDirection);
 
 protected:
 	// Called when the game starts or when spawned
@@ -31,8 +34,31 @@ private:
 		URuntimeMeshComponent* PrimaryMesh;
 
 	FIntVector Position;
+	AVoxelWorld* World;
+	int Depth;
 
-	bool IsAlongX;
-	bool IsAlongY;
-	bool IsAlongZ;
+	TransitionDirectionEnum TransitionDirection;
+
+	std::forward_list<FVector> Vertices;
+	std::forward_list<int> Triangles;
+	std::forward_list<bool> VertexIsForNormals;
+
+	int VerticesCount;
+	int TrianglesCount;
+
+	int Cache1[16][10];
+	int Cache2[16][10];
+	bool NewCacheIs1;
+
+	void Polygonise(int x, int y);
+	char GetValue(int x, int y);
+
+	int AddVertex(FVector vertex);
+	int LoadCachedVertex(int x, int y, short direction, int edgeIndex);
+
+	FIntVector GetRotated(int x, int y, int z);
+	FIntVector GetRotated(FIntVector position);
+
+	FVector InterpolateX(int xMin, int xMax, int y, int z);
+	FVector InterpolateY(int x, int yMin, int yMax, int z);
 };

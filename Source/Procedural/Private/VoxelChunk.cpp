@@ -9,13 +9,13 @@
 #include "DrawDebugHelpers.h"
 #include "VoxelCollisionChunk.h"
 #include "RuntimeMeshComponent.h"
-#include "IntVectorExtension.h"
+#include "VoxelTransitionChunk.h"
 #include <vector>
 
 // Sets default values
 AVoxelChunk::AVoxelChunk() : bCollisionDirty(true)
 {
-	// Create primary  mesh
+	// Create primary mesh
 	PrimaryMesh = CreateDefaultSubobject<URuntimeMeshComponent>(FName("PrimaryMesh"));
 	RootComponent = PrimaryMesh;
 }
@@ -52,6 +52,58 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	this->SetActorRelativeScale3D(FVector::OneVector);
 	PrimaryMesh->SetMaterial(0, world->VoxelMaterial);
 	PrimaryMesh->bCastShadowAsTwoSided = true;
+
+
+
+	position = FIntVector(0, 0, 0);
+
+	XMinChunk = GetWorld()->SpawnActor<AVoxelTransitionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	XMinChunk->Init(World, position, Depth, XMin);
+	XMinChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	XMinChunk->SetActorLabel("XMin");
+	XMinChunk->SetActorRelativeLocation(FVector::ZeroVector);
+	XMinChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+	XMinChunk->SetActorRelativeScale3D(FVector::OneVector);
+
+	XMaxChunk = GetWorld()->SpawnActor<AVoxelTransitionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	XMaxChunk->Init(World, position, Depth, XMax);
+	XMaxChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	XMaxChunk->SetActorLabel("XMax");
+	XMaxChunk->SetActorRelativeLocation(FVector::ZeroVector);
+	XMaxChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+	XMaxChunk->SetActorRelativeScale3D(FVector::OneVector);
+
+	YMinChunk = GetWorld()->SpawnActor<AVoxelTransitionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	YMinChunk->Init(World, position, Depth, YMin);
+	YMinChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	YMinChunk->SetActorLabel("YMin");
+	YMinChunk->SetActorRelativeLocation(FVector::ZeroVector);
+	YMinChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+	YMinChunk->SetActorRelativeScale3D(FVector::OneVector);
+
+	YMaxChunk = GetWorld()->SpawnActor<AVoxelTransitionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	YMaxChunk->Init(World, position, Depth, YMax);
+	YMaxChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	YMaxChunk->SetActorLabel("YMax");
+	YMaxChunk->SetActorRelativeLocation(FVector::ZeroVector);
+	YMaxChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+	YMaxChunk->SetActorRelativeScale3D(FVector::OneVector);
+
+	ZMinChunk = GetWorld()->SpawnActor<AVoxelTransitionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	ZMinChunk->Init(World, position, Depth, ZMin);
+	ZMinChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	ZMinChunk->SetActorLabel("ZMin");
+	ZMinChunk->SetActorRelativeLocation(FVector::ZeroVector);
+	ZMinChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+	ZMinChunk->SetActorRelativeScale3D(FVector::OneVector);
+
+	ZMaxChunk = GetWorld()->SpawnActor<AVoxelTransitionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	ZMaxChunk->Init(World, position, Depth, ZMax);
+	ZMaxChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	ZMaxChunk->SetActorLabel("ZMax");
+	ZMaxChunk->SetActorRelativeLocation(FVector::ZeroVector);
+	ZMaxChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+	ZMaxChunk->SetActorRelativeScale3D(FVector::OneVector);
 }
 
 void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
@@ -78,9 +130,34 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	ZMinChunkHasHigherRes = HasChunkHigherRes(0, 0, -Step);
 	ZMaxChunkHasHigherRes = HasChunkHigherRes(0, 0, Step * 16);
 
+	if (XMinChunkHasHigherRes)
+	{
+		XMinChunk->Update();
+	}
+	if (XMaxChunkHasHigherRes)
+	{
+		XMaxChunk->Update();
+	}
+	if (YMinChunkHasHigherRes)
+	{
+		YMinChunk->Update();
+	}
+	if (YMaxChunkHasHigherRes)
+	{
+		YMaxChunk->Update();
+	}
+	if (ZMinChunkHasHigherRes)
+	{
+		ZMinChunk->Update();
+	}
+	if (ZMaxChunkHasHigherRes)
+	{
+		ZMaxChunk->Update();
+	}
+
 	/**
-	* Polygonize
-	*/
+	 * Polygonize
+	 */
 	for (int z = -1; z < 17; z++)
 	{
 		for (int y = -1; y < 17; y++)
@@ -95,8 +172,8 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	}
 
 	/**
-	* Compute normals + tangents & final arrays
-	*/
+	 * Compute normals + tangents & final arrays
+	 */
 	TArray<FVector> VerticesArray;
 	TArray<int> BijectionArray;
 	TArray<int> InverseBijectionArray;
@@ -304,14 +381,14 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 	};
 
 	FIntVector Positions[8] = {
-		Step * FIntVector(x    , y    , z),
-		Step * FIntVector(x + 1, y    , z),
-		Step * FIntVector(x    , y + 1, z),
-		Step * FIntVector(x + 1, y + 1, z),
-		Step * FIntVector(x    , y    , z + 1),
-		Step * FIntVector(x + 1, y    , z + 1),
-		Step * FIntVector(x    , y + 1, z + 1),
-		Step * FIntVector(x + 1, y + 1, z + 1)
+		 FIntVector(x    , y    , z) * Step,
+		 FIntVector(x + 1, y    , z) * Step,
+		 FIntVector(x    , y + 1, z) * Step,
+		 FIntVector(x + 1, y + 1, z) * Step,
+		 FIntVector(x    , y    , z + 1) * Step,
+		 FIntVector(x + 1, y    , z + 1) * Step,
+		 FIntVector(x    , y + 1, z + 1) * Step,
+		 FIntVector(x + 1, y + 1, z + 1) * Step
 	};
 
 	unsigned long CaseCode = ((Corner[0] >> 7) & 0x01)
@@ -362,7 +439,7 @@ void AVoxelChunk::Polygonise(int x, int y, int z)
 				// Vertex lies at the higher-numbered endpoint
 				if ((IndexVerticeB == 7) || ((ValidityMask & Direction) != Direction))
 				{
-					// Vertex failed validity check (needs to be created, but not cached)
+					// Vertex failed validity check
 					VertexIndex = AddVertex((FVector)PositionB, PositionB);
 				}
 				else
