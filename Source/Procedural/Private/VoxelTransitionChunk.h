@@ -5,9 +5,11 @@
 #include <forward_list>
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "VertexProperties.h"
 #include "VoxelTransitionChunk.generated.h"
 
 class AVoxelWorld;
+class AVoxelChunk;
 class URuntimeMeshComponent;
 
 enum TransitionDirectionEnum { XMin, XMax, YMin, YMax, ZMin, ZMax };
@@ -23,7 +25,7 @@ public:
 
 	void Update();
 
-	void Init(AVoxelWorld* world, FIntVector position, int depth, TransitionDirectionEnum transitionDirection);
+	void Init(AVoxelWorld* world, AVoxelChunk* chunk, FIntVector position, int depth, TransitionDirectionEnum transitionDirection);
 
 protected:
 	// Called when the game starts or when spawned
@@ -33,15 +35,22 @@ private:
 	UPROPERTY()
 		URuntimeMeshComponent* PrimaryMesh;
 
-	FIntVector Position;
+	UPROPERTY()
+		AVoxelChunk* VoxelChunk;
+
+	UPROPERTY(VisibleAnywhere)
+		FIntVector Position;
+
+	UPROPERTY(VisibleAnywhere)
+		int Depth;
+
 	AVoxelWorld* World;
-	int Depth;
 
 	TransitionDirectionEnum TransitionDirection;
 
 	std::forward_list<FVector> Vertices;
 	std::forward_list<int> Triangles;
-	std::forward_list<bool> VertexIsForNormals;
+	std::forward_list<VertexProperties> VerticesProperties;
 
 	int VerticesCount;
 	int TrianglesCount;
@@ -53,7 +62,7 @@ private:
 	void Polygonise(int x, int y);
 	char GetValue(int x, int y);
 
-	int AddVertex(FVector vertex);
+	int AddVertex(FVector vertex, int z);
 	int LoadCachedVertex(int x, int y, short direction, int edgeIndex);
 
 	FIntVector GetRotated(int x, int y, int z);

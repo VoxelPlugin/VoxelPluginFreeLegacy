@@ -8,7 +8,6 @@
 #include "VoxelChunk.h"
 #include <vector>
 
-
 AVoxelTransitionChunk::AVoxelTransitionChunk()
 {
 	// Create primary mesh
@@ -52,8 +51,12 @@ void AVoxelTransitionChunk::Update()
 	for (int i = VerticesCount - 1; i >= 0; i--)
 	{
 		FVector Vertex = Vertices.front();
-		VerticesArray[i] = Vertex;
+		VertexProperties Properties = VerticesProperties.front();
+
+		VerticesArray[i] = (Properties.IsNormalOnly ? VoxelChunk->GetTranslated(Vertex, FVector::UpVector, Properties) : Vertex);
+
 		Vertices.pop_front();
+		VerticesProperties.pop_front();
 	}
 
 	TArray<int> TrianglesArray;
@@ -94,11 +97,13 @@ void AVoxelTransitionChunk::Update()
 	}
 }
 
-void AVoxelTransitionChunk::Init(AVoxelWorld* world, FIntVector position, int depth, TransitionDirectionEnum transitionDirection)
+void AVoxelTransitionChunk::Init(AVoxelWorld* world, AVoxelChunk* chunk, FIntVector position, int depth, TransitionDirectionEnum transitionDirection)
 {
 	check(world);
+	check(chunk);
 
 	World = world;
+	VoxelChunk = chunk;
 	Position = position;
 	Depth = depth;
 	TransitionDirection = transitionDirection;
@@ -113,8 +118,18 @@ void AVoxelTransitionChunk::Init(AVoxelWorld* world, FIntVector position, int de
 	PrimaryMesh->bCastShadowAsTwoSided = true;
 }
 
-int AVoxelTransitionChunk::AddVertex(FVector vertex)
+int AVoxelTransitionChunk::AddVertex(FVector vertex, int z)
 {
+	int Step = 1 << Depth;
+	VerticesProperties.push_front({
+		vertex.X <= 0.5f * Step,
+		15.5f * Step <= vertex.X,
+		vertex.Y <= 0.5f * Step,
+		15.5f * Step <= vertex.Y,
+		vertex.Z <= 0.5f * Step,
+		15.5f * Step <= vertex.Z,
+		z == 1
+	});
 	Vertices.push_front(vertex);
 	VerticesCount++;
 	return VerticesCount - 1;
@@ -127,38 +142,50 @@ int AVoxelTransitionChunk::LoadCachedVertex(int x, int y, short direction, int e
 
 	bool xIsDifferent = direction & 0x01;
 	bool yIsDifferent = direction & 0x02;
+
+	check(0 <= x - (xIsDifferent ? 1 : 0) && x - (xIsDifferent ? 1 : 0) < 16);
+	check(0 <= edgeIndex && edgeIndex < 10);
+
 	return (yIsDifferent ? OldCache : NewCache)[x - (xIsDifferent ? 1 : 0)][edgeIndex];
 }
 
 void AVoxelTransitionChunk::Polygonise(int x, int y)
 {
-	int Step = 1 << Depth;
-	signed char Corner[9] = {
-		GetValue(x       * Step, y       * Step),
-		GetValue((x + 1) * Step, y       * Step),
-		GetValue((x + 2) * Step, y       * Step),
-		GetValue(x       * Step, (y + 1) * Step),
-		GetValue((x + 1) * Step, (y + 1) * Step),
-		GetValue((x + 2) * Step, (y + 1) * Step),
-		GetValue(x       * Step, (y + 2) * Step),
-		GetValue((x + 1) * Step, (y + 2) * Step),
-		GetValue((x + 2) * Step, (y + 2) * Step)
+	check(0 <= x && x < 16 && 0 <= y && y < 16);
+
+	int Step = 1 << (Depth - 1);
+	signed char Corner[13] = {
+		GetValue(2 * x       * Step, 2 * y       * Step),
+		GetValue((2 * x + 1) * Step, 2 * y       * Step),
+		GetValue((2 * x + 2) * Step, 2 * y       * Step),
+		GetValue(2 * x       * Step, (2 * y + 1) * Step),
+		GetValue((2 * x + 1) * Step, (2 * y + 1) * Step),
+		GetValue((2 * x + 2) * Step, (2 * y + 1) * Step),
+		GetValue(2 * x       * Step, (2 * y + 2) * Step),
+		GetValue((2 * x + 1) * Step, (2 * y + 2) * Step),
+		GetValue((2 * x + 2) * Step, (2 * y + 2) * Step),
+
+		GetValue(2 * x       * Step, 2 * y       * Step),
+		GetValue((2 * x + 2) * Step, 2 * y       * Step),
+		GetValue(2 * x       * Step, (2 * y + 2) * Step),
+		GetValue((2 * x + 2) * Step, (2 * y + 2) * Step)
 	};
 
 	FIntVector Positions[13] = {
-		FIntVector(x    , y    , 0) * Step,
-		FIntVector(x + 1, y    , 0) * Step,
-		FIntVector(x + 2, y    , 0) * Step,
-		FIntVector(x    , y + 1, 0) * Step,
-		FIntVector(x + 1, y + 1, 0) * Step,
-		FIntVector(x + 2, y + 1, 0) * Step,
-		FIntVector(x    , y + 2, 0) * Step,
-		FIntVector(x + 1, y + 2, 0) * Step,
-		FIntVector(x + 2, y + 2, 0) * Step,
-		FIntVector(x    , y    , 1) * Step,
-		FIntVector(x + 1, y    , 1) * Step,
-		FIntVector(x    , y + 1, 1) * Step,
-		FIntVector(x + 1, y + 1, 1) * Step
+		FIntVector(2 * x    , 2 * y    , 0) * Step,
+		FIntVector(2 * x + 1, 2 * y    , 0) * Step,
+		FIntVector(2 * x + 2, 2 * y    , 0) * Step,
+		FIntVector(2 * x    , 2 * y + 1, 0) * Step,
+		FIntVector(2 * x + 1, 2 * y + 1, 0) * Step,
+		FIntVector(2 * x + 2, 2 * y + 1, 0) * Step,
+		FIntVector(2 * x    , 2 * y + 2, 0) * Step,
+		FIntVector(2 * x + 1, 2 * y + 2, 0) * Step,
+		FIntVector(2 * x + 2, 2 * y + 2, 0) * Step,
+
+		FIntVector(2 * x    , 2 * y    , 1) * Step,
+		FIntVector(2 * x + 2, 2 * y    , 1) * Step,
+		FIntVector(2 * x    , 2 * y + 2, 1) * Step,
+		FIntVector(2 * x + 2, 2 * y + 2, 1) * Step
 	};
 
 	unsigned long CaseCode = ((Corner[0] >> 7) & 0x01)
@@ -176,11 +203,11 @@ void AVoxelTransitionChunk::Polygonise(int x, int y)
 		return;
 	}
 
-	unsigned char CellClass = transitionCellClass[CaseCode];
-	TransitionCellData CellData = transitionCellData[CellClass & 0x7F];
+	const unsigned char CellClass = transitionCellClass[CaseCode];
+	const TransitionCellData CellData = transitionCellData[CellClass & 0x7F];
 	const unsigned short* VertexData = transitionVertexData[CaseCode];
 	// Check if precedent cell exist
-	short ValidityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
+	const short ValidityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
 
 	std::vector<int> VertexIndices(CellData.GetVertexCount());
 
@@ -189,22 +216,26 @@ void AVoxelTransitionChunk::Polygonise(int x, int y)
 	for (int i = 0; i < CellData.GetVertexCount(); i++)
 	{
 		int VertexIndex;
-		unsigned short EdgeCode = VertexData[i];
+		const unsigned short EdgeCode = VertexData[i];
 
 		// A: low point / B: high point
-		unsigned short IndexVerticeA = (EdgeCode >> 4) & 0x0F;
-		unsigned short IndexVerticeB = EdgeCode & 0x0F;
+		const unsigned short IndexVerticeA = (EdgeCode >> 4) & 0x0F;
+		const unsigned short IndexVerticeB = EdgeCode & 0x0F;
 
-		signed char ValueAtA = Corner[IndexVerticeA];
-		signed char ValueAtB = Corner[IndexVerticeB];
+		check(0 <= IndexVerticeA && IndexVerticeA < 13);
+		check(0 <= IndexVerticeB && IndexVerticeB < 13);
 
-		FIntVector PositionA = Positions[IndexVerticeA];
-		FIntVector PositionB = Positions[IndexVerticeB];
+		const signed char ValueAtA = Corner[IndexVerticeA];
+		const signed char ValueAtB = Corner[IndexVerticeB];
+
+
+		const FIntVector PositionA = Positions[IndexVerticeA];
+		const FIntVector PositionB = Positions[IndexVerticeB];
 
 		short EdgeIndex;
 		short Direction;
 
-		if (ValueAtB == 0)
+		if (ValueAtB == 0x00)
 		{
 			// Vertex lies at the higher-numbered endpoint
 			EdgeIndex = transitionCornerData[IndexVerticeB] & 0x0F;
@@ -213,7 +244,7 @@ void AVoxelTransitionChunk::Polygonise(int x, int y)
 			if (((ValidityMask & Direction) != Direction))
 			{
 				// Vertex failed validity check
-				VertexIndex = AddVertex((FVector)GetRotated(PositionB));
+				VertexIndex = AddVertex((FVector)GetRotated(PositionB), PositionB.Z);
 			}
 			else
 			{
@@ -221,7 +252,7 @@ void AVoxelTransitionChunk::Polygonise(int x, int y)
 				VertexIndex = LoadCachedVertex(x, y, Direction, EdgeIndex);
 			}
 		}
-		else if (ValueAtA == 0)
+		else if (ValueAtA == 0x00)
 		{
 			EdgeIndex = transitionCornerData[IndexVerticeA] & 0x0F;
 			Direction = transitionCornerData[IndexVerticeA] >> 4;
@@ -230,7 +261,7 @@ void AVoxelTransitionChunk::Polygonise(int x, int y)
 			if ((ValidityMask & Direction) != Direction)
 			{
 				// Validity check failed
-				VertexIndex = AddVertex((FVector)GetRotated(PositionA));
+				VertexIndex = AddVertex((FVector)GetRotated(PositionA), PositionA.Z);
 			}
 			else
 			{
@@ -250,8 +281,9 @@ void AVoxelTransitionChunk::Polygonise(int x, int y)
 				if (Step == 1)
 				{
 					// Full resolution
+					check(ValueAtB - ValueAtA != 0);
 					float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-					VertexIndex = AddVertex(t * (FVector)GetRotated(PositionA) + (1 - t) * (FVector)GetRotated(PositionB));
+					VertexIndex = AddVertex(t * (FVector)GetRotated(PositionA) + (1 - t) * (FVector)GetRotated(PositionB), PositionA.Z);
 				}
 				else
 				{
@@ -270,7 +302,7 @@ void AVoxelTransitionChunk::Polygonise(int x, int y)
 					{
 						checkf(false, TEXT("Error in interpolation: case should not exist"));
 					}
-					VertexIndex = AddVertex(Q);
+					VertexIndex = AddVertex(Q, PositionA.Z);
 				}
 			}
 			else
@@ -309,6 +341,7 @@ FVector AVoxelTransitionChunk::InterpolateX(int xMin, int xMax, int y, int z)
 	signed char ValueAtB = GetValue(xMax, y);
 	if (xMax - xMin == 1)
 	{
+		check(ValueAtB - ValueAtA != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
 		return t * (FVector)GetRotated(xMin, y, z) + (1 - t) *  (FVector)GetRotated(xMax, y, z);
 	}
@@ -338,6 +371,7 @@ FVector AVoxelTransitionChunk::InterpolateY(int x, int yMin, int yMax, int z)
 	signed char ValueAtB = GetValue(x, yMax);
 	if (yMax - yMin == 1)
 	{
+		check(ValueAtB - ValueAtA != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
 		return t * (FVector)GetRotated(x, yMin, z) + (1 - t) *  (FVector)GetRotated(x, yMax, z);
 	}
@@ -362,6 +396,7 @@ FVector AVoxelTransitionChunk::InterpolateY(int x, int yMin, int yMax, int z)
 
 FIntVector AVoxelTransitionChunk::GetRotated(int x, int y, int z)
 {
+	z = 0;
 	int width = 16 << Depth;
 	switch (TransitionDirection)
 	{

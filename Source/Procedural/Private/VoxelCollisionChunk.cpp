@@ -11,6 +11,7 @@ AVoxelCollisionChunk::AVoxelCollisionChunk() : TimeBeforeCollisionCooking(0)
 
 	CollisionMesh = CreateDefaultSubobject<URuntimeMeshComponent>(FName("CollisionMesh"));
 	CollisionMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	CollisionMesh->SetVisibility(false);
 	RootComponent = CollisionMesh;
 }
 
