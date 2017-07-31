@@ -5,8 +5,13 @@
 #include <forward_list>
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "VertexProperties.h"
+#include "TransvoxelTools.h"
 #include "VoxelTransitionChunk.generated.h"
+
+typedef std::forward_list<int> Trigs;
+typedef std::forward_list<FVector> Verts;
+typedef std::forward_list<VertexProperties> Props;
+typedef std::forward_list<VertexProperties2D> Props2D;
 
 class AVoxelWorld;
 class AVoxelChunk;
@@ -15,7 +20,7 @@ class URuntimeMeshComponent;
 enum TransitionDirectionEnum { XMin, XMax, YMin, YMax, ZMin, ZMax };
 
 UCLASS()
-class AVoxelTransitionChunk : public AActor
+class AVoxelTransitionChunk : public AActor, public ITransitionVoxel
 {
 	GENERATED_BODY()
 
@@ -48,9 +53,9 @@ private:
 
 	TransitionDirectionEnum TransitionDirection;
 
-	std::forward_list<FVector> Vertices;
-	std::forward_list<int> Triangles;
-	std::forward_list<VertexProperties> VerticesProperties;
+	Verts Vertices;
+	Trigs Triangles;
+	Props2D VerticesProperties;
 
 	int VerticesCount;
 	int TrianglesCount;
@@ -59,15 +64,11 @@ private:
 	int Cache2[16][10];
 	bool NewCacheIs1;
 
-	void Polygonise(int x, int y);
-	char GetValue(int x, int y);
-
-	int AddVertex(FVector vertex, int z);
-	int LoadCachedVertex(int x, int y, short direction, int edgeIndex);
-
-	FIntVector GetRotated(int x, int y, int z);
-	FIntVector GetRotated(FIntVector position);
-
-	FVector InterpolateX(int xMin, int xMax, int y, int z);
-	FVector InterpolateY(int x, int yMin, int yMax, int z);
+	// Inherited via ITransitionVoxel
+	virtual signed char GetValue(int x, int y) override;
+	virtual void SaveVertex(int x, int y, short edgeIndex, int index) override;
+	virtual int LoadVertex(int x, int y, short direction, short edgeIndex) override;
+	virtual int GetDepth() override;
+	virtual FIntVector GetRealPosition(int x, int y) override;
+	virtual FBoolVector GetRealIsExact(bool xIsExact, bool yIsExact) override;
 };
