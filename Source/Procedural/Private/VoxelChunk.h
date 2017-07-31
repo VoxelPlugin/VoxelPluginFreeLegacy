@@ -6,29 +6,20 @@
 #include <tuple>
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "TransvoxelTools.h"
 #include "VoxelChunk.generated.h"
+
+typedef std::forward_list<int> Trigs;
+typedef std::forward_list<FVector> Verts;
+typedef std::forward_list<VertexProperties> Props;
 
 class AVoxelWorld;
 class AVoxelCollisionChunk;
 class AVoxelTransitionChunk;
 class URuntimeMeshComponent;
 
-struct VertexProperties
-{
-	bool IsNearXMin;
-	bool IsNearXMax;
-
-	bool IsNearYMin;
-	bool IsNearYMax;
-
-	bool IsNearZMin;
-	bool IsNearZMax;
-
-	bool IsNormalOnly;
-};
-
 UCLASS()
-class AVoxelChunk : public AActor
+class AVoxelChunk : public AActor, public IRegularVoxel
 {
 	GENERATED_BODY()
 
@@ -40,6 +31,8 @@ public:
 	void Update(URuntimeMeshComponent* mesh = nullptr, bool bCreateCollision = false);
 
 	void Unload();
+
+	FVector GetTranslated(FVector P, FVector normal, VertexProperties properties);
 
 protected:
 	// Called when the game starts or when spawned
@@ -53,17 +46,17 @@ private:
 		AVoxelCollisionChunk* CollisionChunk;
 
 	// Lower corner
-	FIntVector Position;
+	UPROPERTY(VisibleAnywhere)
+		FIntVector Position;
 
-	int Depth;
+	UPROPERTY(VisibleAnywhere)
+		int Depth;
 
 	AVoxelWorld* World;
 
-	std::forward_list<FVector> Vertices;
-	std::forward_list<int> Triangles;
-	std::forward_list<int> NormalsTriangles;
-	// Is near: XMin, XMax, YMin, YMax, ZMin, ZMax + Is only for normals computation
-	std::forward_list<VertexProperties> VerticesProperties;
+	Verts Vertices;
+	Trigs Triangles;
+	Props VerticesProperties;
 
 	int VerticesCount;
 	int TrianglesCount;
@@ -87,17 +80,14 @@ private:
 	AVoxelTransitionChunk* ZMinChunk;
 	AVoxelTransitionChunk* ZMaxChunk;
 
-	void Polygonise(int x, int y, int z);
-	char GetValue(int x, int y, int z);
 	bool HasChunkHigherRes(int x, int y, int z);
-	FVector GetTranslated(FVector P, FVector normal, VertexProperties properties);
 
-	int AddVertex(FVector vertex, FIntVector exactPosition, bool xIsExact = true, bool yIsExact = true, bool zIsExact = true);
-	int LoadCachedVertex(int x, int y, int z, short direction, int edgeIndex);
-
-	FVector InterpolateX(int xMin, int xMax, int y, int z);
-	FVector InterpolateY(int x, int yMin, int yMax, int z);
-	FVector InterpolateZ(int x, int y, int zMin, int zMax);
+	// Inherited via IRegularVoxel
+	virtual signed char GetValue(int x, int y, int z) override;
+	virtual void SaveVertex(int x, int y, int z, short edgeIndex, int index) override;
+	virtual int LoadVertex(int x, int y, int z, short direction, short edgeIndex) override;
+	virtual int GetDepth() override;
+	virtual bool IsNormalOnly(FVector vertex) override;
 
 	friend AVoxelCollisionChunk;
 };
