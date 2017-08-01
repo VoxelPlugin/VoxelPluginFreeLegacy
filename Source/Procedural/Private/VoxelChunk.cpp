@@ -117,13 +117,13 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	VerticesCount = 0;
 	TrianglesCount = 0;
 
-	int Step = 1 << Depth;
-	XMinChunkHasHigherRes = HasChunkHigherRes(-Step, 0, 0);
-	XMaxChunkHasHigherRes = HasChunkHigherRes(Step * 16, 0, 0);
-	YMinChunkHasHigherRes = HasChunkHigherRes(0, -Step, 0);
-	YMaxChunkHasHigherRes = HasChunkHigherRes(0, Step * 16, 0);
-	ZMinChunkHasHigherRes = HasChunkHigherRes(0, 0, -Step);
-	ZMaxChunkHasHigherRes = HasChunkHigherRes(0, 0, Step * 16);
+	int Width = 16 << Depth;
+	XMinChunkHasHigherRes = HasChunkHigherRes(-Width, 0, 0);
+	XMaxChunkHasHigherRes = HasChunkHigherRes(Width, 0, 0);
+	YMinChunkHasHigherRes = HasChunkHigherRes(0, -Width, 0);
+	YMaxChunkHasHigherRes = HasChunkHigherRes(0, Width, 0);
+	ZMinChunkHasHigherRes = HasChunkHigherRes(0, 0, -Width);
+	ZMaxChunkHasHigherRes = HasChunkHigherRes(0, 0, Width);
 
 	if (XMinChunkHasHigherRes)
 	{
@@ -324,7 +324,10 @@ int AVoxelChunk::LoadVertex(int x, int y, int z, short direction, short edgeInde
 	bool xIsDifferent = direction & 0x01;
 	bool yIsDifferent = direction & 0x02;
 	bool zIsDifferent = direction & 0x04;
-	return (zIsDifferent ? OldCache : NewCache)[1 + x - (xIsDifferent ? 1 : 0)][1 + y - (yIsDifferent ? 1 : 0)][edgeIndex];
+	check(0 <= 1 + x - xIsDifferent && 1 + x - xIsDifferent < 18);
+	check(0 <= 1 + y - yIsDifferent && 1 + y - yIsDifferent < 18);
+	check(0 <= edgeIndex && edgeIndex < 4);
+	return (zIsDifferent ? OldCache : NewCache)[1 + x - xIsDifferent][1 + y - yIsDifferent][edgeIndex];
 }
 
 int AVoxelChunk::GetDepth()
@@ -339,7 +342,8 @@ signed char AVoxelChunk::GetValue(int x, int y, int z)
 
 bool AVoxelChunk::HasChunkHigherRes(int x, int y, int z)
 {
-	FIntVector P = Position + FIntVector(x, y, z);
+	int Width = 16 << Depth;
+	FIntVector P = Position + FIntVector(Width / 2, Width / 2, Width / 2) + FIntVector(x, y, z);
 	if (World->IsInWorld(P))
 	{
 		return Depth > World->GetDepthAt(P);
@@ -361,44 +365,44 @@ FVector AVoxelChunk::GetTranslated(FVector V, FVector N, VertexProperties P)
 	}
 
 
-	float DeltaX = 0;
-	float DeltaY = 0;
-	float DeltaZ = 0;
+	double DeltaX = 0;
+	double DeltaY = 0;
+	double DeltaZ = 0;
 
-	float TwoPowerK = 1 << Depth;
-	float w = TwoPowerK / 4;
+	double TwoPowerK = 1 << Depth;
+	double w = TwoPowerK / 4;
 
 	if ((P.IsNearXMin && XMinChunkHasHigherRes) || (P.IsNearXMax && XMaxChunkHasHigherRes))
 	{
 		if (V.X < TwoPowerK)
 		{
-			DeltaX = (1 - V.X / TwoPowerK) * w;
+			DeltaX = (1 - (double)V.X / TwoPowerK) * w;
 		}
 		else if (V.X > TwoPowerK * (16 - 1))
 		{
-			DeltaX = (16 - 1 - V.X / TwoPowerK) * w;
+			DeltaX = (16 - 1 - (double)V.X / TwoPowerK) * w;
 		}
 	}
 	if ((P.IsNearYMin && YMinChunkHasHigherRes) || (P.IsNearYMax && YMaxChunkHasHigherRes))
 	{
 		if (V.Y < TwoPowerK)
 		{
-			DeltaY = (1 - V.Y / TwoPowerK) * w;
+			DeltaY = (1 - (double)V.Y / TwoPowerK) * w;
 		}
 		else if (V.Y > TwoPowerK * (16 - 1))
 		{
-			DeltaY = (16 - 1 - V.Y / TwoPowerK) * w;
+			DeltaY = (16 - 1 - (double)V.Y / TwoPowerK) * w;
 		}
 	}
 	if ((P.IsNearZMin && ZMinChunkHasHigherRes) || (P.IsNearZMax && ZMaxChunkHasHigherRes))
 	{
 		if (V.Z < TwoPowerK)
 		{
-			DeltaZ = (1 - V.Z / TwoPowerK) * w;
+			DeltaZ = (1 - (double)V.Z / TwoPowerK) * w;
 		}
 		else if (V.Z > TwoPowerK * (16 - 1))
 		{
-			DeltaZ = (16 - 1 - V.Z / TwoPowerK) * w;
+			DeltaZ = (16 - 1 - (double)V.Z / TwoPowerK) * w;
 		}
 	}
 
@@ -406,7 +410,7 @@ FVector AVoxelChunk::GetTranslated(FVector V, FVector N, VertexProperties P)
 		(1 - N.X * N.X) * DeltaX - N.X * N.Y * DeltaY - N.X * N.Z * DeltaZ,
 		-N.X * N.Y * DeltaX + (1 - N.Y * N.Y) * DeltaY - N.Y * N.Z * DeltaZ,
 		-N.X * N.Z * DeltaX - N.Y * N.Z * DeltaY + (1 - N.Z * N.Z) * DeltaZ);
-	return V + FVector(DeltaX, DeltaY, DeltaZ);
+	return V + Q;
 }
 
 bool AVoxelChunk::IsNormalOnly(FVector vertex)

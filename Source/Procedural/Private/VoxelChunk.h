@@ -67,12 +67,18 @@ private:
 
 	bool bCollisionDirty;
 
-	bool XMinChunkHasHigherRes;
-	bool XMaxChunkHasHigherRes;
-	bool YMinChunkHasHigherRes;
-	bool YMaxChunkHasHigherRes;
-	bool ZMinChunkHasHigherRes;
-	bool ZMaxChunkHasHigherRes;
+	UPROPERTY(VisibleAnywhere)
+		bool XMinChunkHasHigherRes;
+	UPROPERTY(VisibleAnywhere)
+		bool XMaxChunkHasHigherRes;
+	UPROPERTY(VisibleAnywhere)
+		bool YMinChunkHasHigherRes;
+	UPROPERTY(VisibleAnywhere)
+		bool YMaxChunkHasHigherRes;
+	UPROPERTY(VisibleAnywhere)
+		bool ZMinChunkHasHigherRes;
+	UPROPERTY(VisibleAnywhere)
+		bool ZMaxChunkHasHigherRes;
 	AVoxelTransitionChunk* XMinChunk;
 	AVoxelTransitionChunk* XMaxChunk;
 	AVoxelTransitionChunk* YMinChunk;

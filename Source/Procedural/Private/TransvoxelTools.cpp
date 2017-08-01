@@ -43,8 +43,6 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 		unsigned char CellClass = regularCellClass[CaseCode];
 		RegularCellData CellData = regularCellData[CellClass];
 		const unsigned short* VertexData = regularVertexData[CaseCode];
-		// Check if precedent cell exist
-		short ValidityMask = (x == -1 ? 0 : 1) + (y == -1 ? 0 : 2) + (z == -1 ? 0 : 4);
 
 		TArray<int> VertexIndices;
 		VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
@@ -72,10 +70,11 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 			if (ValueAtB == 0)
 			{
 				// Vertex lies at the higher-numbered endpoint
-				if ((IndexVerticeB == 7) || ((ValidityMask & Direction) != Direction))
+				if ((IndexVerticeB == 7) || ((validityMask & Direction) != Direction))
 				{
 					// Vertex failed validity check
-					VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, (FVector)PositionB, PositionB);
+					FBoolVector IsExact(true, true, true);
+					VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, (FVector)PositionB, PositionB, IsExact);
 				}
 				else
 				{
@@ -86,10 +85,11 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 			else if (ValueAtA == 0)
 			{
 				// Vertex lies at the lower-numbered endpoint
-				if ((ValidityMask & Direction) != Direction)
+				if ((validityMask & Direction) != Direction)
 				{
 					// Validity check failed
-					VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, (FVector)PositionA, PositionA);
+					FBoolVector IsExact(true, true, true);
+					VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, (FVector)PositionA, PositionA, IsExact);
 				}
 				else
 				{
@@ -100,8 +100,14 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 			else
 			{
 				// Vertex lies in the interior of the edge
-				if ((ValidityMask & Direction) != Direction)
+				if ((validityMask & Direction) != Direction)
 				{
+					bool IsAlongX = (EdgeIndex == 2);
+					bool IsAlongY = (EdgeIndex == 1);
+					bool IsAlongZ = (EdgeIndex == 3);
+
+					FBoolVector IsExact(!IsAlongX, !IsAlongY, !IsAlongZ);
+
 					// Validity check failed
 					if (Step == 1)
 					{
@@ -109,22 +115,22 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 						check(ValueAtA - ValueAtB != 0);
 						float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
 						FVector Q = t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
-						VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, Q, PositionA, EdgeIndex != 2, EdgeIndex != 1, EdgeIndex != 3);
+						VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, Q, PositionA, IsExact);
 					}
 					else
 					{
 						FVector Q;
-						if (EdgeIndex == 2)
+						if (IsAlongX)
 						{
 							// Edge along x axis
 							Q = InterpolateX(chunk, PositionA.X, PositionB.X, PositionA.Y, PositionA.Z);
 						}
-						else if (EdgeIndex == 1)
+						else if (IsAlongY)
 						{
 							// Edge along y axis
 							Q = InterpolateY(chunk, PositionA.X, PositionA.Y, PositionB.Y, PositionA.Z);
 						}
-						else if (EdgeIndex == 3)
+						else if (IsAlongZ)
 						{
 							// Edge along z axis
 							Q = InterpolateZ(chunk, PositionA.X, PositionA.Y, PositionA.Z, PositionB.Z);
@@ -133,7 +139,7 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 						{
 							checkf(false, TEXT("Error in interpolation: case should not exist"));
 						}
-						VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, Q, PositionA, EdgeIndex != 2, EdgeIndex != 1, EdgeIndex != 3);
+						VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, Q, PositionA, IsExact);
 					}
 				}
 				else
@@ -160,15 +166,15 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 	}
 }
 
-int TransvoxelTools::AddVertex(IRegularVoxel* chunk, int step, Verts& vertices, Props& properties, int& verticesCount, FVector vertex, FIntVector exactPosition, bool xIsExact, bool yIsExact, bool zIsExact)
+int TransvoxelTools::AddVertex(IRegularVoxel* chunk, int step, Verts& vertices, Props& properties, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector isExact)
 {
 	properties.push_front(VertexProperties({
-		xIsExact && exactPosition.X == 0,
-		xIsExact && exactPosition.X == 16 * step,
-		yIsExact && exactPosition.Y == 0,
-		yIsExact && exactPosition.Y == 16 * step,
-		zIsExact && exactPosition.Z == 0,
-		zIsExact && exactPosition.Z == 16 * step,
+		isExact.X && exactPosition.X == 0,
+		isExact.X && exactPosition.X == 16 * step,
+		isExact.Y && exactPosition.Y == 0,
+		isExact.Y && exactPosition.Y == 16 * step,
+		isExact.Z && exactPosition.Z == 0,
+		isExact.Z && exactPosition.Z == 16 * step,
 		chunk->IsNormalOnly(vertex)
 	}));
 	vertices.push_front(vertex);
@@ -266,6 +272,8 @@ FVector TransvoxelTools::InterpolateZ(IRegularVoxel* chunk, int x, int y, int zM
 	}
 }
 
+
+
 void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y, short validityMask, Trigs& triangles, int& trianglesCount, Verts& vertices, Props2D& properties, int& verticesCount)
 {
 	check(chunk);
@@ -288,6 +296,11 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 		chunk->GetValue(2 * x       * Step, (2 * y + 2) * Step),
 		chunk->GetValue((2 * x + 2) * Step, (2 * y + 2) * Step)
 	};
+
+	for (int k = 0; k < 10; k++)
+	{
+		chunk->SaveVertex(x, y, k, Corner[k] - 20);
+	}
 
 	FIntVector Positions[13] = {
 		FIntVector(2 * x    , 2 * y    , 0) * Step,
@@ -316,109 +329,81 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 		| ((Corner[3] >> 0) & 0x80)
 		| ((Corner[4] << 1) & 0x100);
 
-	if (CaseCode == 0 || CaseCode == 511)
+	if (!(CaseCode == 0 || CaseCode == 511))
 	{
-		return;
-	}
+		const unsigned char CellClass = transitionCellClass[CaseCode];
+		const TransitionCellData CellData = transitionCellData[CellClass & 0x7F];
+		const unsigned short* VertexData = transitionVertexData[CaseCode];
+		const bool Flip = CellClass >> 7;
 
-	const unsigned char CellClass = transitionCellClass[CaseCode];
-	const TransitionCellData CellData = transitionCellData[CellClass & 0x7F];
-	const unsigned short* VertexData = transitionVertexData[CaseCode];
-	// Check if precedent cell exist
-	const short ValidityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
+		TArray<int> VertexIndices;
+		VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
 
-	TArray<int> VertexIndices;
-	VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
-
-	for (int i = 0; i < CellData.GetVertexCount(); i++)
-	{
-		int VertexIndex;
-		const unsigned short EdgeCode = VertexData[i];
-
-		// A: low point / B: high point
-		const unsigned short IndexVerticeA = (EdgeCode >> 4) & 0x0F;
-		const unsigned short IndexVerticeB = EdgeCode & 0x0F;
-
-		check(0 <= IndexVerticeA && IndexVerticeA < 13);
-		check(0 <= IndexVerticeB && IndexVerticeB < 13);
-
-		const signed char ValueAtA = Corner[IndexVerticeA];
-		const signed char ValueAtB = Corner[IndexVerticeB];
-
-
-		const FIntVector PositionA = Positions[IndexVerticeA];
-		const FIntVector PositionB = Positions[IndexVerticeB];
-
-		short EdgeIndex;
-		short Direction;
-
-		if (ValueAtB == 0)
+		for (int i = 0; i < CellData.GetVertexCount(); i++)
 		{
-			// Vertex lies at the higher-numbered endpoint
-			EdgeIndex = transitionCornerData[IndexVerticeB] & 0x0F;
-			Direction = transitionCornerData[IndexVerticeB] >> 4;
+			int VertexIndex;
+			const unsigned short EdgeCode = VertexData[i];
 
-			if (((ValidityMask & Direction) != Direction))
+			// A: low point / B: high point
+			const unsigned short IndexVerticeA = (EdgeCode >> 4) & 0x0F;
+			const unsigned short IndexVerticeB = EdgeCode & 0x0F;
+
+			check(0 <= IndexVerticeA && IndexVerticeA < 13);
+			check(0 <= IndexVerticeB && IndexVerticeB < 13);
+
+			const signed char ValueAtA = Corner[IndexVerticeA];
+			const signed char ValueAtB = Corner[IndexVerticeB];
+
+
+			const FIntVector PositionA = Positions[IndexVerticeA];
+			const FIntVector PositionB = Positions[IndexVerticeB];
+
+			const short EdgeIndex = (EdgeCode >> 8) & 0x0F;
+			// Direction to go to use an already created vertex
+			const short Direction = EdgeCode >> 12;
+
+			if (ValueAtB == 0)
 			{
-				// Vertex failed validity check
-				FIntVector RealPositionB = chunk->GetRealPosition(PositionB.X, PositionB.Y);
-				FBoolVector IsExact = chunk->GetRealIsExact(true, true);
-				VertexIndex = AddVertex(chunk, PositionB.Z == 1, Step, vertices, properties, verticesCount, (FVector)RealPositionB, RealPositionB, IsExact);
-			}
-			else
-			{
-				// Vertex already created
-				VertexIndex = chunk->LoadVertex(x, y, Direction, EdgeIndex);
-			}
-		}
-		else if (ValueAtA == 0)
-		{
-			EdgeIndex = transitionCornerData[IndexVerticeA] & 0x0F;
-			Direction = transitionCornerData[IndexVerticeA] >> 4;
-
-			// Vertex lies at the lower-numbered endpoint
-			if ((ValidityMask & Direction) != Direction)
-			{
-				// Validity check failed
-				FIntVector RealPositionA = chunk->GetRealPosition(PositionA.X, PositionA.Y);
-				FBoolVector IsExact = chunk->GetRealIsExact(true, true);
-				VertexIndex = AddVertex(chunk, PositionA.Z == 1, Step, vertices, properties, verticesCount, (FVector)RealPositionA, RealPositionA, IsExact);
-
-			}
-			else
-			{
-				// Reuse vertex
-				VertexIndex = chunk->LoadVertex(x, y, Direction, EdgeIndex);
-			}
-		}
-		else
-		{
-			EdgeIndex = (EdgeCode >> 8) & 0x0F;
-			Direction = EdgeCode >> 12;
-
-			// Vertex lies in the interior of the edge
-			if ((ValidityMask & Direction) != Direction)
-			{
-				// Validity check failed
-				bool IsAlongX = EdgeIndex == 3 || EdgeIndex == 4 || EdgeIndex == 8;
-				bool IsAlongY = EdgeIndex == 5 || EdgeIndex == 6 || EdgeIndex == 9;
-
-				FBoolVector IsExact = chunk->GetRealIsExact(!IsAlongX, !IsAlongY);
-
-				FIntVector RealPositionA = chunk->GetRealPosition(PositionA.X, PositionA.Y);
-				FIntVector RealPositionB = chunk->GetRealPosition(PositionB.X, PositionB.Y);
-
-				if (Step == 1)
+				// Vertex lies at the higher-numbered endpoint
+				if (((validityMask & Direction) != Direction))
 				{
-					// Full resolution
-					check(ValueAtB - ValueAtA != 0);
-					float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-
-					FVector Q = t * (FVector)RealPositionA + (1 - t) * (FVector)RealPositionB;
-					VertexIndex = AddVertex(chunk, PositionA.Z == 1, Step, vertices, properties, verticesCount, Q, RealPositionA, IsExact);
+					// Vertex failed validity check
+					FBoolVector IsExact(true, true, true);
+					VertexIndex = AddVertex(chunk, PositionB.Z == Step, Step, vertices, properties, verticesCount, (FVector)PositionB, PositionB, IsExact);
 				}
 				else
 				{
+					// Vertex already created
+					VertexIndex = chunk->LoadVertex(x, y, Direction, EdgeIndex);
+				}
+			}
+			else if (ValueAtA == 0)
+			{
+				// Vertex lies at the lower-numbered endpoint
+				if ((validityMask & Direction) != Direction)
+				{
+					// Validity check failed
+					FBoolVector IsExact(true, true, true);
+					VertexIndex = AddVertex(chunk, PositionA.Z == Step, Step, vertices, properties, verticesCount, (FVector)PositionA, PositionA, IsExact);
+
+				}
+				else
+				{
+					// Reuse vertex
+					VertexIndex = chunk->LoadVertex(x, y, Direction, EdgeIndex);
+				}
+			}
+			else
+			{
+				// Vertex lies in the interior of the edge
+				if ((validityMask & Direction) != Direction)
+				{
+					// Validity check failed
+					bool IsAlongX = EdgeIndex == 3 || EdgeIndex == 4 || EdgeIndex == 8;
+					bool IsAlongY = EdgeIndex == 5 || EdgeIndex == 6 || EdgeIndex == 9;
+
+					FBoolVector IsExact(!IsAlongX, !IsAlongY, false);
+
 					FVector Q;
 					if (IsAlongX)
 					{
@@ -434,44 +419,42 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 					{
 						checkf(false, TEXT("Error in interpolation: case should not exist"));
 					}
-					VertexIndex = AddVertex(chunk, PositionA.Z == 1, Step, vertices, properties, verticesCount, Q, RealPositionA, IsExact);
+					VertexIndex = AddVertex(chunk, PositionA.Z == Step, Step, vertices, properties, verticesCount, Q, PositionA, IsExact);
+				}
+				else
+				{
+					VertexIndex = chunk->LoadVertex(x, y, Direction, EdgeIndex);
 				}
 			}
-			else
+
+			// If own vertex, save it
+			if (Direction & 0x08)
 			{
-				VertexIndex = chunk->LoadVertex(x, y, Direction, EdgeIndex);
+				chunk->SaveVertex(x, y, EdgeIndex, VertexIndex);
 			}
+			VertexIndices[i] = VertexIndex;
 		}
 
-		// If own vertex, save it
-		if (Direction & 0x08)
+		// Add triangles
+		int AddedTrigsCount = 3 * CellData.GetTriangleCount();
+		for (int i = 0; i < AddedTrigsCount; i++)
 		{
-			chunk->SaveVertex(x, y, EdgeIndex, VertexIndex);
+			triangles.push_front(VertexIndices[CellData.vertexIndex[Flip ? (AddedTrigsCount - 1 - i) : i]]);
 		}
-		VertexIndices[i] = VertexIndex;
-
+		trianglesCount += AddedTrigsCount;
 	}
-
-	// Add triangles
-	for (int i = 0; i < 3 * CellData.GetTriangleCount(); i++)
-	{
-		triangles.push_front(VertexIndices[CellData.vertexIndex[i]]);
-	}
-	trianglesCount += 3 * CellData.GetTriangleCount();
 }
 
-int TransvoxelTools::AddVertex(ITransitionVoxel* chunk, bool isTranslated, int step, Verts& vertices, Props2D& properties, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector IsExact)
+int TransvoxelTools::AddVertex(ITransitionVoxel* chunk, bool isTranslated, int step, Verts& vertices, Props2D& properties, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector isExact)
 {
 	properties.push_front(VertexProperties2D({
-		IsExact.X && exactPosition.X == 0,
-		IsExact.X && exactPosition.X == 16 * step,
-		IsExact.Y && exactPosition.Y == 0,
-		IsExact.Y && exactPosition.Y == 16 * step,
-		IsExact.Z && exactPosition.Z == 0,
-		IsExact.Z && exactPosition.Z == 16 * step,
+		exactPosition.X,
+		exactPosition.Y,
+		isExact.X,
+		isExact.Y,
 		isTranslated
 	}));
-	vertices.push_front(vertex);
+	vertices.push_front(FVector(vertex.X, vertex.Y, 0));
 	verticesCount++;
 	return verticesCount - 1;
 }
@@ -485,9 +468,9 @@ FVector TransvoxelTools::InterpolateX(ITransitionVoxel* chunk, int xMin, int xMa
 	{
 		check(ValueAtA - ValueAtB != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-		FIntVector RealPositionA = chunk->GetRealPosition(xMin, y);
-		FIntVector RealPositionB = chunk->GetRealPosition(xMax, y);
-		return t * (FVector)RealPositionA + (1 - t) * (FVector)RealPositionB;
+		FIntVector PositionA(xMin, y, 0);
+		FIntVector PositionB(xMax, y, 0);
+		return t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
 	}
 	else
 	{
@@ -517,9 +500,9 @@ FVector TransvoxelTools::InterpolateY(ITransitionVoxel* chunk, int x, int yMin, 
 	{
 		check(ValueAtA - ValueAtB != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-		FIntVector RealPositionA = chunk->GetRealPosition(x, yMin);
-		FIntVector RealPositionB = chunk->GetRealPosition(x, yMax);
-		return t * (FVector)RealPositionA + (1 - t) * (FVector)RealPositionB;
+		FIntVector PositionA(x, yMin, 0);
+		FIntVector PositionB(x, yMax, 0);
+		return t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
 	}
 	else
 	{
