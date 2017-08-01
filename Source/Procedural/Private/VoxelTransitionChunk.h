@@ -20,7 +20,7 @@ class URuntimeMeshComponent;
 enum TransitionDirectionEnum { XMin, XMax, YMin, YMax, ZMin, ZMax };
 
 UCLASS()
-class AVoxelTransitionChunk : public AActor, public ITransitionVoxel
+class AVoxelTransitionChunk : public AActor, public ITransitionVoxel, public IRegularVoxel
 {
 	GENERATED_BODY()
 
@@ -54,21 +54,37 @@ private:
 	TransitionDirectionEnum TransitionDirection;
 
 	Verts Vertices;
-	Trigs Triangles;
+
+	Trigs TransitionTriangles;
+	Trigs RegularTriangles;
 	Props2D VerticesProperties;
+	// Pairs of equivalent vertices (from, to)
+	std::forward_list<int> Equivalences;
 
 	int VerticesCount;
-	int TrianglesCount;
 
-	int Cache1[16][10];
-	int Cache2[16][10];
-	bool NewCacheIs1;
+	int TransitionTrianglesCount;
+	int RegularTrianglesCount;
+
+	//int CacheHighRes[32][32][4];
+	int CacheTransvoxel[16][16][10];
+	int CacheLowRes[2][17][17][4];
+
+	FVector GetRealPosition(FVector vertex);
+	FIntVector GetRealPosition(int x, int y, int z);
+	FIntVector InverseGetRealPosition(int x, int y, int z);
+	FBoolVector GetRealIsExact(bool xIsExact, bool yIsExact, bool zIsExact);
+	FBoolVector InverseGetRealIsExact(bool x, bool y, bool z);
 
 	// Inherited via ITransitionVoxel
 	virtual signed char GetValue(int x, int y) override;
 	virtual void SaveVertex(int x, int y, short edgeIndex, int index) override;
 	virtual int LoadVertex(int x, int y, short direction, short edgeIndex) override;
 	virtual int GetDepth() override;
-	virtual FIntVector GetRealPosition(int x, int y) override;
-	virtual FBoolVector GetRealIsExact(bool xIsExact, bool yIsExact) override;
+
+	// Inherited via IRegularVoxel
+	virtual signed char GetValue(int x, int y, int z) override;
+	virtual void SaveVertex(int x, int y, int z, short edgeIndex, int index) override;
+	virtual int LoadVertex(int x, int y, int z, short direction, short edgeIndex) override;
+	virtual bool IsNormalOnly(FVector vertex) override;
 };

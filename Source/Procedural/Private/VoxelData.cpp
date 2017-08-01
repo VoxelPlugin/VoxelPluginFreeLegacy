@@ -41,8 +41,8 @@ signed char VoxelData::GetValue(FIntVector position)
 	}
 	else
 	{
-		UE_LOG(VoxelDataLog, Error, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
-		return 0;
+		UE_LOG(VoxelDataLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
+		return 127;
 	}
 }
 
