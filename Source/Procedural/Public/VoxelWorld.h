@@ -25,17 +25,6 @@ public:
 	int GetDepthAt(FIntVector position);
 	void ScheduleUpdate(TWeakPtr<ChunkOctree> chunk);
 
-	int GetValue(FIntVector position);
-	FColor GetColor(FIntVector position);
-
-	void SetValue(FIntVector position, int value);
-	void SetColor(FIntVector position, FColor color);
-
-	bool IsInWorld(FIntVector position);
-
-	void Update(FIntVector position);
-	void ScheduleUpdate(FIntVector position);
-
 public:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		UMaterialInterface* VoxelMaterial;
@@ -46,14 +35,27 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Add(FVector hitPoint, FVector normal, float range = 1, int strength = 1);
+		void GlobalAdd(FVector position, int strength);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Remove(FVector hitPoint, FVector normal, float range = 1, int strength = 1);
+		void Add(FIntVector position, int strength);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Update(FVector position);
+		void GlobalRemove(FVector position, int strength);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ScheduleUpdate(FVector position);
+		void Remove(FIntVector position, int strength);
+
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void GlobalUpdate(FVector position);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void Update(FIntVector position);
+
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void GlobalScheduleUpdate(FVector position);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void ScheduleUpdate(FIntVector position);
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ApplyQueuedUpdates();
 
@@ -61,19 +63,35 @@ public:
 		void UpdateCameraPosition(FVector position);
 
 
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		bool IsInWorld(FVector position);
+		bool GlobalIsInWorld(FVector position);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		bool IsInWorld(FIntVector position);
+
+
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		int GlobalGetValue(FVector position);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		int GetValue(FIntVector position);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		FColor GlobalGetColor(FVector position);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		FColor GetColor(FIntVector position);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		int GetValue(FVector position);
+		void GlobalSetValue(FVector position, int value);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FColor GetColor(FVector position);
+		void SetValue(FIntVector position, int value);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetValue(FVector position, int value);
+		void GlobalSetColor(FVector position, FColor color);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetColor(FVector position, FColor color);
+		void SetColor(FIntVector position, FColor color);
+
 
 protected:
 	// Called when the game starts or when spawned
@@ -88,6 +106,4 @@ private:
 	bool bNotCreated;
 
 	TArray<TWeakPtr<ChunkOctree>> ChunksToUpdate;
-
-	void ModifyVoxel(FVector hitPoint, FVector normal, float range, int strength, bool add);
 };
