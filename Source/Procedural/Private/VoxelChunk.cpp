@@ -13,7 +13,7 @@
 #include <vector>
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : bCollisionDirty(true)
+AVoxelChunk::AVoxelChunk() : bCollisionDirty(true), CollisionChunk(nullptr)
 {
 	// Create primary mesh
 	PrimaryMesh = CreateDefaultSubobject<URuntimeMeshComponent>(FName("PrimaryMesh"));
@@ -24,14 +24,6 @@ AVoxelChunk::AVoxelChunk() : bCollisionDirty(true)
 void AVoxelChunk::BeginPlay()
 {
 	Super::BeginPlay();
-
-	CollisionChunk = GetWorld()->SpawnActor<AVoxelCollisionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
-	CollisionChunk->VoxelChunk = this;
-	CollisionChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
-	CollisionChunk->SetActorLabel("VoxelCollisionChunkActor");
-	CollisionChunk->SetActorRelativeLocation(FVector::ZeroVector);
-	CollisionChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
-	CollisionChunk->SetActorRelativeScale3D(FVector::OneVector);
 }
 
 void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
@@ -52,6 +44,17 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	this->SetActorRelativeScale3D(FVector::OneVector);
 	PrimaryMesh->SetMaterial(0, world->VoxelMaterial);
 	PrimaryMesh->bCastShadowAsTwoSided = true;
+
+	if (Depth == 0)
+	{
+		CollisionChunk = GetWorld()->SpawnActor<AVoxelCollisionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+		CollisionChunk->VoxelChunk = this;
+		CollisionChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+		CollisionChunk->SetActorLabel("VoxelCollisionChunkActor");
+		CollisionChunk->SetActorRelativeLocation(FVector::ZeroVector);
+		CollisionChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
+		CollisionChunk->SetActorRelativeScale3D(FVector::OneVector);
+	}
 
 	XMinChunk = GetWorld()->SpawnActor<AVoxelTransitionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
 	XMinChunk->Init(World, this, Position, Depth, XMin);
@@ -301,9 +304,33 @@ void AVoxelChunk::Unload()
 	{
 		if (!this->IsPendingKill())
 		{
-			if (!this->CollisionChunk->IsPendingKill())
+			if (this->CollisionChunk != nullptr && !this->CollisionChunk->IsPendingKill())
 			{
 				this->CollisionChunk->Destroy();
+			}
+			if (!this->XMinChunk->IsPendingKill())
+			{
+				this->XMinChunk->Destroy();
+			}
+			if (!this->XMaxChunk->IsPendingKill())
+			{
+				this->XMaxChunk->Destroy();
+			}
+			if (!this->YMinChunk->IsPendingKill())
+			{
+				this->YMinChunk->Destroy();
+			}
+			if (!this->YMaxChunk->IsPendingKill())
+			{
+				this->YMaxChunk->Destroy();
+			}
+			if (!this->ZMinChunk->IsPendingKill())
+			{
+				this->ZMinChunk->Destroy();
+			}
+			if (!this->ZMaxChunk->IsPendingKill())
+			{
+				this->ZMaxChunk->Destroy();
 			}
 			this->Destroy();
 		}
