@@ -11,6 +11,7 @@
 
 typedef std::forward_list<int> Trigs;
 typedef std::forward_list<FVector> Verts;
+typedef std::forward_list<FColor> Colors;
 typedef std::forward_list<VertexProperties> Props;
 
 class AVoxelWorld;
@@ -55,6 +56,7 @@ private:
 	AVoxelWorld* World;
 
 	Verts Vertices;
+	Colors VertexColors;
 	Trigs Triangles;
 	Props VerticesProperties;
 
@@ -90,6 +92,7 @@ private:
 
 	// Inherited via IRegularVoxel
 	virtual signed char GetValue(int x, int y, int z) override;
+	virtual FColor GetColor(int x, int y, int z) override;
 	virtual void SaveVertex(int x, int y, int z, short edgeIndex, int index) override;
 	virtual int LoadVertex(int x, int y, int z, short direction, short edgeIndex) override;
 	virtual int GetDepth() override;

@@ -18,8 +18,10 @@ public:
 
 
 	signed char GetValue(FIntVector position);
+	FColor GetColor(FIntVector position);
 
 	void SetValue(FIntVector position, int value);
+	void SetColor(FIntVector position, FColor color);
 
 	bool IsInWorld(FIntVector position);
 
