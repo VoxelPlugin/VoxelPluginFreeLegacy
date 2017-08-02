@@ -40,7 +40,7 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	UPROPERTY()
+	UPROPERTY(EditAnywhere)
 		URuntimeMeshComponent* PrimaryMesh;
 
 	UPROPERTY()
