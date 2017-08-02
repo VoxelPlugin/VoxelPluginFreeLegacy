@@ -116,6 +116,7 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	* Initialize
 	*/
 	Vertices.clear();
+	VertexColors.clear();
 	Triangles.clear();
 	VerticesCount = 0;
 	TrianglesCount = 0;
@@ -163,7 +164,7 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 			for (int x = -1; x < 17; x++)
 			{
 				short validityMask = (x == -1 ? 0 : 1) + (y == -1 ? 0 : 2) + (z == -1 ? 0 : 4);
-				TransvoxelTools::RegularPolygonize(this, x, y, z, validityMask, Triangles, TrianglesCount, Vertices, VerticesProperties, VerticesCount);
+				TransvoxelTools::RegularPolygonize(this, x, y, z, validityMask, Triangles, TrianglesCount, Vertices, VerticesProperties, VertexColors, VerticesCount);
 			}
 		}
 		NewCacheIs1 = !NewCacheIs1;
@@ -278,21 +279,32 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 		CleanedVerticesArray[i] = GetTranslated(VerticesArray[j], NormalsArray[i], VerticesPropertiesArray[j]);
 	}
 
+	// Vertex colors
+	TArray<FColor> VertexColorsArray;
+	VertexColorsArray.SetNumUninitialized(RealVerticesCount);
+	for (int i = VerticesCount - 1; i >= 0; i--)
+	{
+		int  j = BijectionArray[i];
+		if (j != -1)
+		{
+			VertexColorsArray[j] = VertexColors.front();
+		}
+		VertexColors.pop_front();
+	}
 
 	TArray<FVector2D> UV0;
-	TArray<FColor> VertexColors;
 
 	check(RealTangentsArray.Num() == CleanedVerticesArray.Num() && NormalsArray.Num() == CleanedVerticesArray.Num());
 
-	if (VerticesArray.Num() != 0)
+	if (CleanedVerticesArray.Num() != 0)
 	{
 		if (mesh->DoesSectionExist(0))
 		{
-			mesh->UpdateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, RealTangentsArray, ESectionUpdateFlags::MoveArrays);
+			mesh->UpdateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, ESectionUpdateFlags::MoveArrays);
 		}
 		else
 		{
-			mesh->CreateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, RealTangentsArray, bCreateCollision, EUpdateFrequency::Frequent);
+			mesh->CreateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, bCreateCollision, EUpdateFrequency::Frequent);
 		}
 	}
 	bCollisionDirty = true;
@@ -365,6 +377,11 @@ int AVoxelChunk::GetDepth()
 signed char AVoxelChunk::GetValue(int x, int y, int z)
 {
 	return World->GetValue(Position + FIntVector(x, y, z));
+}
+
+FColor AVoxelChunk::GetColor(int x, int y, int z)
+{
+	return World->GetColor(Position + FIntVector(x, y, z));
 }
 
 bool AVoxelChunk::HasChunkHigherRes(int x, int y, int z)

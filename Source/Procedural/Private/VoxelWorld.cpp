@@ -73,10 +73,60 @@ void AVoxelWorld::UpdateCameraPosition(FVector position)
 	ApplyQueuedUpdates();
 }
 
+bool AVoxelWorld::IsInWorld(FVector position)
+{
+	FVector P = GetTransform().InverseTransformPosition(position);
+	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+	return IsInWorld(IP);
+}
+
+int AVoxelWorld::GetValue(FVector position)
+{
+	FVector P = GetTransform().InverseTransformPosition(position);
+	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+	return GetValue(IP);
+}
+
+FColor AVoxelWorld::GetColor(FVector position)
+{
+	FVector P = GetTransform().InverseTransformPosition(position);
+	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+	return GetColor(IP);
+}
+
+void AVoxelWorld::SetValue(FVector position, int value)
+{
+	FVector P = GetTransform().InverseTransformPosition(position);
+	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+	SetValue(IP, value);
+}
+
+void AVoxelWorld::SetColor(FVector position, FColor color)
+{
+	FVector P = GetTransform().InverseTransformPosition(position);
+	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+	SetColor(IP, color);
+}
+
 
 int AVoxelWorld::GetValue(FIntVector position)
 {
 	return Data->GetValue(position);
+}
+
+FColor AVoxelWorld::GetColor(FIntVector position)
+{
+	return Data->GetColor(position);
+}
+
+void AVoxelWorld::SetValue(FIntVector position, int value)
+{
+	Data->SetValue(position, value);
+}
+
+void AVoxelWorld::SetColor(FIntVector position, FColor color)
+{
+	Data->SetColor(position, color);
 }
 
 
@@ -88,6 +138,20 @@ void AVoxelWorld::Add(FVector hitPoint, FVector normal, float range, int strengt
 void AVoxelWorld::Remove(FVector hitPoint, FVector normal, float range, int strength)
 {
 	ModifyVoxel(hitPoint, normal, range, strength, false);
+}
+
+void AVoxelWorld::Update(FVector position)
+{
+	FVector P = GetTransform().InverseTransformPosition(position);
+	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+	Update(IP);
+}
+
+void AVoxelWorld::ScheduleUpdate(FVector position)
+{
+	FVector P = GetTransform().InverseTransformPosition(position);
+	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+	ScheduleUpdate(IP);
 }
 
 void AVoxelWorld::ModifyVoxel(FVector hitPoint, FVector normal, float range, int strength, bool add)
@@ -130,7 +194,7 @@ void AVoxelWorld::ModifyVoxel(FVector hitPoint, FVector normal, float range, int
 					{
 						ProcessedPoints.Add(position);
 						int value = (int)Data->GetValue(position) + (add ? 1 : -1) * strength;
-						Data->SetValue(position, value);
+						SetValue(position, value);
 						ScheduleUpdate(position);
 					}
 				}

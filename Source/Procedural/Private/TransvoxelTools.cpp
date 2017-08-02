@@ -1,7 +1,7 @@
 #include "TransvoxelTools.h"
 #include "Transvoxel.h"
 
-void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int z, short validityMask, Trigs& triangles, int& trianglesCount, Verts& vertices, Props& properties, int& verticesCount)
+void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int z, short validityMask, Trigs& triangles, int& trianglesCount, Verts& vertices, Props& properties, Colors& colors, int& verticesCount)
 {
 	check(chunk);
 	int Step = 1 << chunk->GetDepth();
@@ -74,7 +74,7 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 				{
 					// Vertex failed validity check
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, (FVector)PositionB, PositionB, IsExact);
+					VertexIndex = AddVertex(chunk, Step, vertices, properties, colors, verticesCount, (FVector)PositionB, PositionB, IsExact);
 				}
 				else
 				{
@@ -89,7 +89,7 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 				{
 					// Validity check failed
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, (FVector)PositionA, PositionA, IsExact);
+					VertexIndex = AddVertex(chunk, Step, vertices, properties, colors, verticesCount, (FVector)PositionA, PositionA, IsExact);
 				}
 				else
 				{
@@ -115,7 +115,7 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 						check(ValueAtA - ValueAtB != 0);
 						float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
 						FVector Q = t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
-						VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, Q, PositionA, IsExact);
+						VertexIndex = AddVertex(chunk, Step, vertices, properties, colors, verticesCount, Q, PositionA, IsExact);
 					}
 					else
 					{
@@ -139,7 +139,7 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 						{
 							checkf(false, TEXT("Error in interpolation: case should not exist"));
 						}
-						VertexIndex = AddVertex(chunk, Step, vertices, properties, verticesCount, Q, PositionA, IsExact);
+						VertexIndex = AddVertex(chunk, Step, vertices, properties, colors, verticesCount, Q, PositionA, IsExact);
 					}
 				}
 				else
@@ -166,7 +166,7 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 	}
 }
 
-int TransvoxelTools::AddVertex(IRegularVoxel* chunk, int step, Verts& vertices, Props& properties, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector isExact)
+int TransvoxelTools::AddVertex(IRegularVoxel* chunk, int step, Verts& vertices, Props& properties, Colors& colors, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector isExact)
 {
 	properties.push_front(VertexProperties({
 		isExact.X && exactPosition.X == 0,
@@ -177,6 +177,7 @@ int TransvoxelTools::AddVertex(IRegularVoxel* chunk, int step, Verts& vertices, 
 		isExact.Z && exactPosition.Z == 16 * step,
 		chunk->IsNormalOnly(vertex)
 	}));
+	colors.push_front(chunk->GetColor(exactPosition.X, exactPosition.Y, exactPosition.Z));
 	vertices.push_front(vertex);
 	verticesCount++;
 	return verticesCount - 1;
@@ -274,7 +275,7 @@ FVector TransvoxelTools::InterpolateZ(IRegularVoxel* chunk, int x, int y, int zM
 
 
 
-void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y, short validityMask, Trigs& triangles, int& trianglesCount, Verts& vertices, Props2D& properties, int& verticesCount)
+void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y, short validityMask, Trigs& triangles, int& trianglesCount, Verts& vertices, Props2D& properties, Colors& colors, int& verticesCount)
 {
 	check(chunk);
 	check(0 <= x && x < 16 && 0 <= y && y < 16);
@@ -369,7 +370,7 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 				{
 					// Vertex failed validity check
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(chunk, PositionB.Z == Step, Step, vertices, properties, verticesCount, (FVector)PositionB, PositionB, IsExact);
+					VertexIndex = AddVertex(chunk, PositionB.Z == Step, Step, vertices, properties, colors, verticesCount, (FVector)PositionB, PositionB, IsExact);
 				}
 				else
 				{
@@ -384,7 +385,7 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 				{
 					// Validity check failed
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(chunk, PositionA.Z == Step, Step, vertices, properties, verticesCount, (FVector)PositionA, PositionA, IsExact);
+					VertexIndex = AddVertex(chunk, PositionA.Z == Step, Step, vertices, properties, colors, verticesCount, (FVector)PositionA, PositionA, IsExact);
 
 				}
 				else
@@ -419,7 +420,7 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 					{
 						checkf(false, TEXT("Error in interpolation: case should not exist"));
 					}
-					VertexIndex = AddVertex(chunk, PositionA.Z == Step, Step, vertices, properties, verticesCount, Q, PositionA, IsExact);
+					VertexIndex = AddVertex(chunk, PositionA.Z == Step, Step, vertices, properties, colors, verticesCount, Q, PositionA, IsExact);
 				}
 				else
 				{
@@ -445,7 +446,7 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 	}
 }
 
-int TransvoxelTools::AddVertex(ITransitionVoxel* chunk, bool isTranslated, int step, Verts& vertices, Props2D& properties, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector isExact)
+int TransvoxelTools::AddVertex(ITransitionVoxel* chunk, bool isTranslated, int step, Verts& vertices, Props2D& properties, Colors& colors, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector isExact)
 {
 	properties.push_front(VertexProperties2D({
 		exactPosition.X,
@@ -454,6 +455,7 @@ int TransvoxelTools::AddVertex(ITransitionVoxel* chunk, bool isTranslated, int s
 		isExact.Y,
 		isTranslated
 	}));
+	colors.push_front(chunk->GetColor(exactPosition.X, exactPosition.Y));
 	vertices.push_front(FVector(vertex.X, vertex.Y, 0));
 	verticesCount++;
 	return verticesCount - 1;

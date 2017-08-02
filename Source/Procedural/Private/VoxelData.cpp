@@ -46,6 +46,34 @@ signed char VoxelData::GetValue(FIntVector position)
 	}
 }
 
+FColor VoxelData::GetColor(FIntVector position)
+{
+	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
+	{
+		return GetColor(FIntVector(
+			(position.X >= Size() / 2) ? Size() / 2 - 1 : position.X,
+			(position.Y >= Size() / 2) ? Size() / 2 - 1 : position.Y,
+			(position.Z >= Size() / 2) ? Size() / 2 - 1 : position.Z));
+	}
+	if (position.X < -Size() / 2 || position.Y < -Size() / 2 || position.Z < -Size() / 2)
+	{
+		return GetColor(FIntVector(
+			(position.X < -Size() / 2) ? -Size() / 2 : position.X,
+			(position.Y < -Size() / 2) ? -Size() / 2 : position.Y,
+			(position.Z < -Size() / 2) ? -Size() / 2 : position.Z));
+	}
+
+	if (IsInWorld(position))
+	{
+		return MainOctree->GetColor(position);
+	}
+	else
+	{
+		UE_LOG(VoxelDataLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
+		return FColor::Red;
+	}
+}
+
 void VoxelData::SetValue(FIntVector position, int value)
 {
 	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
@@ -60,6 +88,27 @@ void VoxelData::SetValue(FIntVector position, int value)
 	if (IsInWorld(position))
 	{
 		MainOctree->SetValue(position, FMath::Clamp(value, -127, 127));
+	}
+	else
+	{
+		UE_LOG(VoxelDataLog, Error, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
+	}
+}
+
+void VoxelData::SetColor(FIntVector position, FColor color)
+{
+	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
+	{
+		return;
+	}
+	if (position.X < -Size() / 2 || position.Y < -Size() / 2 || position.Z < -Size() / 2)
+	{
+		return;
+	}
+
+	if (IsInWorld(position))
+	{
+		MainOctree->SetColor(position, color);
 	}
 	else
 	{

@@ -25,10 +25,9 @@ void AVoxelTransitionChunk::BeginPlay()
 void AVoxelTransitionChunk::Update()
 {
 	Equivalences.clear();
-
+	VertexColors.clear();
 	Vertices.clear();
 	VerticesProperties.clear();
-
 	TransitionTriangles.clear();
 	RegularTriangles.clear();
 
@@ -45,7 +44,7 @@ void AVoxelTransitionChunk::Update()
 		for (int x = 0; x < 16; x++)
 		{
 			short validityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
-			TransvoxelTools::TransitionPolygonize(this, x, y, validityMask, TransitionTriangles, TransitionTrianglesCount, Vertices, VerticesProperties, VerticesCount);
+			TransvoxelTools::TransitionPolygonize(this, x, y, validityMask, TransitionTriangles, TransitionTrianglesCount, Vertices, VerticesProperties, VertexColors, VerticesCount);
 		}
 	}
 
@@ -59,7 +58,8 @@ void AVoxelTransitionChunk::Update()
 			{
 				short validityMask = (x == -1 ? 0 : 1) + (y == -1 ? 0 : 2) + (z == -1 ? 0 : 4);
 				Props ref;
-				TransvoxelTools::RegularPolygonize(this, x, y, z, validityMask, RegularTriangles, RegularTrianglesCount, Vertices, ref, VerticesCount);
+				Colors ref2;
+				TransvoxelTools::RegularPolygonize(this, x, y, z, validityMask, RegularTriangles, RegularTrianglesCount, Vertices, ref, ref2, VerticesCount);
 			}
 		}
 	}
@@ -172,6 +172,47 @@ void AVoxelTransitionChunk::Update()
 		}
 	}
 
+	// Remove unused & translate vertices
+	VerticesArray.SetNum(TransitionVerticesCount);
+	for (auto it = TranslationStack.begin(); it != TranslationStack.end(); it++)
+	{
+		int i = std::get<0>(*it);
+		VertexProperties VP = std::get<1>(*it);
+
+		VerticesArray[i] = VoxelChunk->GetTranslated(VerticesArray[i], NormalsArray[i].GetSafeNormal(), VP);
+	}
+
+	// Compute additional normals
+	for (auto it = TransitionTriangles.begin(); it != TransitionTriangles.end(); ++it)
+	{
+		int a = *it;
+		++it;
+		int b = *it;
+		++it;
+		int c = *it;
+
+		FVector A = VerticesArray[a];
+		FVector B = VerticesArray[b];
+		FVector C = VerticesArray[c];
+		FVector N = FVector::CrossProduct(C - A, B - A).GetSafeNormal();
+		//TODO: better tangents
+		if (a < TransitionVerticesCount)
+		{
+			NormalsArray[a] += N;
+			TangentsArray[a] += C - A;
+		}
+		if (b < TransitionVerticesCount)
+		{
+			NormalsArray[b] += N;
+			TangentsArray[b] += C - A;
+		}
+		if (c < TransitionVerticesCount)
+		{
+			NormalsArray[c] += N;
+			TangentsArray[c] += C - A;
+		}
+	}
+
 	// Normalize & convert to FRuntimeMeshTangent
 	TArray<FRuntimeMeshTangent> RealTangentsArray;
 	RealTangentsArray.SetNumUninitialized(VerticesCount);
@@ -181,28 +222,26 @@ void AVoxelTransitionChunk::Update()
 		NormalsArray[i].Normalize();
 	}
 
-	// Remove unused & translate vertices
-	VerticesArray.SetNum(TransitionVerticesCount);
-	for (auto it = TranslationStack.begin(); it != TranslationStack.end(); it++)
+	// Vertex colors
+	TArray<FColor> VertexColorsArray;
+	VertexColorsArray.SetNumUninitialized(TransitionVerticesCount);
+	for (int i = TransitionVerticesCount - 1; i >= 0; i--)
 	{
-		int i = std::get<0>(*it);
-		VertexProperties VP = std::get<1>(*it);
-
-		VerticesArray[i] = VoxelChunk->GetTranslated(VerticesArray[i], NormalsArray[i], VP);
+		VertexColorsArray[i] = VertexColors.front();
+		VertexColors.pop_front();
 	}
 
 	TArray<FVector2D> UV0;
-	TArray<FColor> VertexColors;
 
 	if (VerticesArray.Num() != 0)
 	{
 		if (PrimaryMesh->DoesSectionExist(0))
 		{
-			PrimaryMesh->UpdateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, RealTangentsArray, ESectionUpdateFlags::MoveArrays);
+			PrimaryMesh->UpdateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, ESectionUpdateFlags::MoveArrays);
 		}
 		else
 		{
-			PrimaryMesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColors, RealTangentsArray, false, EUpdateFrequency::Frequent);
+			PrimaryMesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, false, EUpdateFrequency::Frequent);
 		}
 	}
 }
@@ -231,6 +270,11 @@ void AVoxelTransitionChunk::Init(AVoxelWorld* world, AVoxelChunk* chunk, FIntVec
 signed char AVoxelTransitionChunk::GetValue(int x, int y)
 {
 	return  World->GetValue(Position + GetRealPosition(x, y, 0));
+}
+
+FColor AVoxelTransitionChunk::GetColor(int x, int y)
+{
+	return  World->GetColor(Position + GetRealPosition(x, y, 0));
 }
 
 FVector AVoxelTransitionChunk::GetRealPosition(FVector vertex)
@@ -394,6 +438,11 @@ int AVoxelTransitionChunk::GetDepth()
 signed char AVoxelTransitionChunk::GetValue(int x, int y, int z)
 {
 	return World->GetValue(Position + GetRealPosition(x, y, z));
+}
+
+FColor AVoxelTransitionChunk::GetColor(int x, int y, int z)
+{
+	return World->GetColor(Position + GetRealPosition(x, y, z));
 }
 
 void AVoxelTransitionChunk::SaveVertex(int x, int y, int z, short edgeIndex, int index)

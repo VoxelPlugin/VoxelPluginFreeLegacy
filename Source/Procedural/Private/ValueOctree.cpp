@@ -94,6 +94,39 @@ signed char ValueOctree::GetValue(FIntVector globalPosition)
 	}
 }
 
+FColor ValueOctree::GetColor(FIntVector globalPosition)
+{
+	if (IsInChunk(globalPosition))
+	{
+		if (IsLeaf())
+		{
+			if (IsDirty())
+			{
+				int w = GetWidth();
+				FIntVector P = GlobalToLocal(globalPosition);
+				return Colors[P.X + w * P.Y + w * w * P.Z];
+			}
+			else
+			{
+				return (globalPosition.Z > 8) ? FColor::Red : FColor::Green;
+			}
+		}
+		else
+		{
+			return GetLeaf(globalPosition)->GetColor(globalPosition);
+		}
+	}
+	else
+	{
+		UE_LOG(ValueOctreeLog, Error, TEXT("Get color error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
+			globalPosition.X, globalPosition.Y, globalPosition.Z,
+			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
+			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
+			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2);
+		return FColor::Red;
+	}
+}
+
 void ValueOctree::SetValue(FIntVector globalPosition, signed char value)
 {
 	if (IsInChunk(globalPosition))
@@ -104,6 +137,7 @@ void ValueOctree::SetValue(FIntVector globalPosition, signed char value)
 			if (!IsDirty())
 			{
 				Values = std::vector<signed char>(w * w * w);
+				Colors = std::vector<FColor>(w * w * w);
 				for (int i = 0; i < w; i++)
 				{
 					for (int j = 0; j < w; j++)
@@ -111,6 +145,7 @@ void ValueOctree::SetValue(FIntVector globalPosition, signed char value)
 						for (int k = 0; k < w; k++)
 						{
 							Values[i + w * j + w * w * k] = GetValue(LocalToGlobal(FIntVector(i, j, k)));
+							Colors[i + w * j + w * w * k] = GetColor(LocalToGlobal(FIntVector(i, j, k)));
 						}
 					}
 				}
@@ -127,6 +162,48 @@ void ValueOctree::SetValue(FIntVector globalPosition, signed char value)
 	else
 	{
 		UE_LOG(ValueOctreeLog, Error, TEXT("Set value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
+			globalPosition.X, globalPosition.Y, globalPosition.Z,
+			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
+			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
+			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2);
+	}
+}
+
+void ValueOctree::SetColor(FIntVector globalPosition, FColor color)
+{
+	if (IsInChunk(globalPosition))
+	{
+		if (IsLeaf())
+		{
+			int w = GetWidth();
+			if (!IsDirty())
+			{
+				Values = std::vector<signed char>(w * w * w);
+				Colors = std::vector<FColor>(w * w * w);
+				for (int i = 0; i < w; i++)
+				{
+					for (int j = 0; j < w; j++)
+					{
+						for (int k = 0; k < w; k++)
+						{
+							Values[i + w * j + w * w * k] = GetValue(LocalToGlobal(FIntVector(i, j, k)));
+							Colors[i + w * j + w * w * k] = GetColor(LocalToGlobal(FIntVector(i, j, k)));
+						}
+					}
+				}
+				bIsDirty = true;
+			}
+			FIntVector P = GlobalToLocal(globalPosition);
+			Colors[P.X + w * P.Y + w * w * P.Z] = color;
+		}
+		else
+		{
+			GetLeaf(globalPosition)->SetColor(globalPosition, color);
+		}
+	}
+	else
+	{
+		UE_LOG(ValueOctreeLog, Error, TEXT("Set color error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
 			globalPosition.X, globalPosition.Y, globalPosition.Z,
 			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
 			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,

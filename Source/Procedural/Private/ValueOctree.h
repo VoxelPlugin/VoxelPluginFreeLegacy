@@ -29,8 +29,10 @@ public:
 	bool IsDirty();
 
 	signed char GetValue(FIntVector globalPosition);
+	FColor GetColor(FIntVector globalPosition);
 
 	void SetValue(FIntVector globalPosition, signed char value);
+	void SetColor(FIntVector globalPosition, FColor color);
 
 	bool IsInChunk(FIntVector globalPosition);
 
@@ -49,6 +51,7 @@ protected:
 	ValueOctree* Childs[8];
 
 	std::vector<signed char> Values;
+	std::vector<FColor> Colors;
 
 	bool bIsDirty;
 	bool bIsLeaf;

@@ -24,6 +24,18 @@ public:
 
 	int GetDepthAt(FIntVector position);
 	void ScheduleUpdate(TWeakPtr<ChunkOctree> chunk);
+
+	int GetValue(FIntVector position);
+	FColor GetColor(FIntVector position);
+
+	void SetValue(FIntVector position, int value);
+	void SetColor(FIntVector position, FColor color);
+
+	bool IsInWorld(FIntVector position);
+
+	void Update(FIntVector position);
+	void ScheduleUpdate(FIntVector position);
+
 public:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		UMaterialInterface* VoxelMaterial;
@@ -39,9 +51,9 @@ public:
 		void Remove(FVector hitPoint, FVector normal, float range = 1, int strength = 1);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Update(FIntVector position);
+		void Update(FVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ScheduleUpdate(FIntVector position);
+		void ScheduleUpdate(FVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ApplyQueuedUpdates();
 
@@ -50,11 +62,18 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		bool IsInWorld(FIntVector position);
+		bool IsInWorld(FVector position);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		int GetValue(FIntVector position);
+		int GetValue(FVector position);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		FColor GetColor(FVector position);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void SetValue(FVector position, int value);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void SetColor(FVector position, FColor color);
 
 protected:
 	// Called when the game starts or when spawned
