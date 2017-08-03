@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "RuntimeMeshComponent.h"
 #include "VoxelCollisionChunk.generated.h"
 
 class AVoxelChunk;
+class UProceduralMeshComponent;
 
 UCLASS()
 class AVoxelCollisionChunk : public AActor
@@ -28,7 +28,7 @@ public:
 
 private:
 	UPROPERTY()
-		URuntimeMeshComponent* CollisionMesh;
+		UProceduralMeshComponent* CollisionMesh;
 
 	float TimeBeforeCollisionCooking;
 };

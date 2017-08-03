@@ -1,12 +1,13 @@
 #include "ValueOctree.h"
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
+#include "VoxelData.h"
 #include "EngineGlobals.h"
 #include "Engine.h"
 
 DEFINE_LOG_CATEGORY(ValueOctreeLog);
 
-ValueOctree::ValueOctree(FIntVector position, int depth) : Position(position), Depth(depth), bIsDirty(false), bIsLeaf(true)
+ValueOctree::ValueOctree(FIntVector position, int depth, VoxelData* data) : Position(position), Depth(depth), bIsDirty(false), bIsLeaf(true), Data(data)
 {
 
 }
@@ -75,7 +76,7 @@ signed char ValueOctree::GetValue(FIntVector globalPosition)
 			}
 			else
 			{
-				return (globalPosition.Z == 8) ? 0 : ((globalPosition.Z > 8) ? 100 : -100);
+				return Data->GetDefaultValue(globalPosition);
 			}
 		}
 		else
@@ -108,7 +109,7 @@ FColor ValueOctree::GetColor(FIntVector globalPosition)
 			}
 			else
 			{
-				return (globalPosition.Z > 8) ? FColor::Red : FColor::Green;
+				return Data->GetDefaultColor(globalPosition);
 			}
 		}
 		else

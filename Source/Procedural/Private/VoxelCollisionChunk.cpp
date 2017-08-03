@@ -3,13 +3,14 @@
 #include "VoxelCollisionChunk.h"
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
+#include "ProceduralMeshComponent.h"
 
 
 AVoxelCollisionChunk::AVoxelCollisionChunk() : TimeBeforeCollisionCooking(0)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	CollisionMesh = CreateDefaultSubobject<URuntimeMeshComponent>(FName("CollisionMesh"));
+	CollisionMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("CollisionMesh"));
 	CollisionMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	CollisionMesh->SetVisibility(false);
 	RootComponent = CollisionMesh;

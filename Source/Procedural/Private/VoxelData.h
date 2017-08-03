@@ -8,8 +8,10 @@ class ValueOctree;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelDataLog, Log, All);
 
+UCLASS()
 class VoxelData
 {
+	GENERATED_BODY()
 public:
 	VoxelData(int depth);
 	~VoxelData();
@@ -26,6 +28,9 @@ public:
 	bool IsInWorld(FIntVector position);
 
 	int Size();
+	
+	virtual signed char GetDefaultValue(FIntVector position);
+	virtual FColor GetDefaultColor(FIntVector position);
 
 private:
 	ValueOctree* MainOctree;

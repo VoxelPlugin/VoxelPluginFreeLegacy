@@ -8,7 +8,7 @@
 #include "Transvoxel.h"
 #include "DrawDebugHelpers.h"
 #include "VoxelCollisionChunk.h"
-#include "RuntimeMeshComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "VoxelTransitionChunk.h"
 #include <vector>
 
@@ -16,7 +16,7 @@
 AVoxelChunk::AVoxelChunk() : bCollisionDirty(true), CollisionChunk(nullptr)
 {
 	// Create primary mesh
-	PrimaryMesh = CreateDefaultSubobject<URuntimeMeshComponent>(FName("PrimaryMesh"));
+	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
 	RootComponent = PrimaryMesh;
 }
 
@@ -105,7 +105,7 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	ZMaxChunk->SetActorRelativeScale3D(FVector::OneVector);
 }
 
-void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
+void AVoxelChunk::Update(UProceduralMeshComponent* mesh, bool bCreateCollision)
 {
 	if (mesh == nullptr)
 	{
@@ -262,11 +262,11 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 	TrianglesArray.SetNumUninitialized(i);
 
 	// Normalize & convert to FRuntimeMeshTangent
-	TArray<FRuntimeMeshTangent> RealTangentsArray;
+	TArray<FProcMeshTangent> RealTangentsArray;
 	RealTangentsArray.SetNumUninitialized(RealVerticesCount);
 	for (int i = 0; i < RealVerticesCount; i++)
 	{
-		RealTangentsArray[i] = FRuntimeMeshTangent(TangentsArray[i].GetSafeNormal());
+		RealTangentsArray[i] = FProcMeshTangent(TangentsArray[i].GetSafeNormal(), false);
 		NormalsArray[i].Normalize();
 	}
 
@@ -298,14 +298,14 @@ void AVoxelChunk::Update(URuntimeMeshComponent* mesh, bool bCreateCollision)
 
 	if (CleanedVerticesArray.Num() != 0)
 	{
-		if (mesh->DoesSectionExist(0))
+		/*if (mesh->DoesSectionExist(0))
 		{
 			mesh->UpdateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, ESectionUpdateFlags::MoveArrays);
 		}
 		else
-		{
-			mesh->CreateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, bCreateCollision, EUpdateFrequency::Frequent);
-		}
+		{*/
+			mesh->CreateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, bCreateCollision);
+		//}
 	}
 	bCollisionDirty = true;
 }

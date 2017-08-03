@@ -16,7 +16,7 @@ typedef std::forward_list<VertexProperties2D> Props2D;
 
 class AVoxelWorld;
 class AVoxelChunk;
-class URuntimeMeshComponent;
+class UProceduralMeshComponent;
 
 enum TransitionDirectionEnum { XMin, XMax, YMin, YMax, ZMin, ZMax };
 
@@ -39,7 +39,7 @@ protected:
 
 private:
 	UPROPERTY()
-		URuntimeMeshComponent* PrimaryMesh;
+		UProceduralMeshComponent* PrimaryMesh;
 
 	UPROPERTY()
 		AVoxelChunk* VoxelChunk;
