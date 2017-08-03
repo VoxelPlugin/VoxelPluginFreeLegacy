@@ -126,3 +126,14 @@ int VoxelData::Size()
 {
 	return 16 << Depth;
 }
+
+signed char VoxelData::GetDefaultValue(FIntVector position)
+{
+	return (position.Z == 8) ? 0 : ((position.Z > 8) ? 100 : -100);
+}
+
+FColor VoxelData::GetDefaultColor(FIntVector position)
+{
+	return (position.Z == 8) ? FColor::White : ((position.Z > 8) ? FColor::Red : FColor::Green);
+}
+

@@ -4,7 +4,7 @@
 #include "VoxelWorld.h"
 #include "VoxelData.h"
 #include "Transvoxel.h"
-#include "RuntimeMeshComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "VoxelChunk.h"
 #include <vector>
@@ -12,7 +12,7 @@
 AVoxelTransitionChunk::AVoxelTransitionChunk()
 {
 	// Create primary mesh
-	PrimaryMesh = CreateDefaultSubobject<URuntimeMeshComponent>(FName("PrimaryMesh"));
+	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
 	RootComponent = PrimaryMesh;
 }
 
@@ -214,11 +214,11 @@ void AVoxelTransitionChunk::Update()
 	}
 
 	// Normalize & convert to FRuntimeMeshTangent
-	TArray<FRuntimeMeshTangent> RealTangentsArray;
+	TArray<FProcMeshTangent> RealTangentsArray;
 	RealTangentsArray.SetNumUninitialized(VerticesCount);
 	for (int i = 0; i < TransitionVerticesCount; i++)
 	{
-		RealTangentsArray[i] = FRuntimeMeshTangent(TangentsArray[i].GetSafeNormal());
+		RealTangentsArray[i] = FProcMeshTangent(TangentsArray[i].GetSafeNormal(), false);
 		NormalsArray[i].Normalize();
 	}
 
@@ -235,14 +235,14 @@ void AVoxelTransitionChunk::Update()
 
 	if (VerticesArray.Num() != 0)
 	{
-		if (PrimaryMesh->DoesSectionExist(0))
+		/*if (PrimaryMesh->DoesSectionExist(0))
 		{
 			PrimaryMesh->UpdateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, ESectionUpdateFlags::MoveArrays);
 		}
 		else
-		{
-			PrimaryMesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, false, EUpdateFrequency::Frequent);
-		}
+		{*/
+			PrimaryMesh->CreateMeshSection(0, VerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, false);
+		//}
 	}
 }
 

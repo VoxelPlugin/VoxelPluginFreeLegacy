@@ -17,7 +17,7 @@ typedef std::forward_list<VertexProperties> Props;
 class AVoxelWorld;
 class AVoxelCollisionChunk;
 class AVoxelTransitionChunk;
-class URuntimeMeshComponent;
+class UProceduralMeshComponent;
 
 UCLASS()
 class AVoxelChunk : public AActor, public IRegularVoxel
@@ -29,7 +29,7 @@ public:
 
 	void Init(FIntVector position, int depth, AVoxelWorld* world);
 
-	void Update(URuntimeMeshComponent* mesh = nullptr, bool bCreateCollision = false);
+	void Update(UProceduralMeshComponent* mesh = nullptr, bool bCreateCollision = false);
 
 	void Unload();
 
@@ -41,7 +41,7 @@ protected:
 
 private:
 	UPROPERTY(EditAnywhere)
-		URuntimeMeshComponent* PrimaryMesh;
+		UProceduralMeshComponent* PrimaryMesh;
 
 	UPROPERTY()
 		AVoxelCollisionChunk* CollisionChunk;

@@ -6,10 +6,12 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(ValueOctreeLog, Log, All);
 
+class VoxelData;
+
 class ValueOctree
 {
 public:
-	ValueOctree(FIntVector position, int depth);
+	ValueOctree(FIntVector position, int depth, VoxelData* data);
 	~ValueOctree();
 
 	// Center of the octree
@@ -49,6 +51,8 @@ protected:
 
 	*/
 	ValueOctree* Childs[8];
+
+	VoxelData* Data;
 
 	std::vector<signed char> Values;
 	std::vector<FColor> Colors;
