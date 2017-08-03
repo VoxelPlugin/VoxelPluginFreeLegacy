@@ -7,13 +7,13 @@
 #include "Engine.h"
 #include "Transvoxel.h"
 #include "DrawDebugHelpers.h"
-#include "VoxelCollisionChunk.h"
 #include "ProceduralMeshComponent.h"
 #include "VoxelTransitionChunk.h"
+#include <forward_list>
 #include <vector>
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : bCollisionDirty(true), CollisionChunk(nullptr)
+AVoxelChunk::AVoxelChunk()
 {
 	// Create primary mesh
 	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
@@ -42,19 +42,13 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	this->SetActorRelativeLocation(relativeLocation);
 	this->SetActorRelativeRotation(FRotator::ZeroRotator);
 	this->SetActorRelativeScale3D(FVector::OneVector);
+
+	// Configure primary mesh
 	PrimaryMesh->SetMaterial(0, world->VoxelMaterial);
 	PrimaryMesh->bCastShadowAsTwoSided = true;
+	PrimaryMesh->bUseAsyncCooking = true;
+	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 
-	if (Depth == 0)
-	{
-		CollisionChunk = GetWorld()->SpawnActor<AVoxelCollisionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
-		CollisionChunk->VoxelChunk = this;
-		CollisionChunk->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
-		CollisionChunk->SetActorLabel("VoxelCollisionChunkActor");
-		CollisionChunk->SetActorRelativeLocation(FVector::ZeroVector);
-		CollisionChunk->SetActorRelativeRotation(FRotator::ZeroRotator);
-		CollisionChunk->SetActorRelativeScale3D(FVector::OneVector);
-	}
 
 	XMinChunk = GetWorld()->SpawnActor<AVoxelTransitionChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
 	XMinChunk->Init(World, this, Position, Depth, XMin);
@@ -112,14 +106,13 @@ void AVoxelChunk::Update(UProceduralMeshComponent* mesh, bool bCreateCollision)
 		mesh = PrimaryMesh;
 	}
 
-	/**
-	* Initialize
-	*/
-	Vertices.clear();
-	VertexColors.clear();
-	Triangles.clear();
-	VerticesCount = 0;
-	TrianglesCount = 0;
+	std::forward_list<FVector> Vertices;
+	std::forward_list<FColor> VertexColors;
+	std::forward_list<int> Triangles;
+	std::forward_list<VertexProperties> VerticesProperties;
+
+	int VerticesCount = 0;
+	int TrianglesCount = 0;
 
 	int Width = 16 << Depth;
 	XMinChunkHasHigherRes = HasChunkHigherRes(-Width, 0, 0);
@@ -129,7 +122,7 @@ void AVoxelChunk::Update(UProceduralMeshComponent* mesh, bool bCreateCollision)
 	ZMinChunkHasHigherRes = HasChunkHigherRes(0, 0, -Width);
 	ZMaxChunkHasHigherRes = HasChunkHigherRes(0, 0, Width);
 
-	if (XMinChunkHasHigherRes)
+	/*if (XMinChunkHasHigherRes)
 	{
 		XMinChunk->Update();
 	}
@@ -152,7 +145,7 @@ void AVoxelChunk::Update(UProceduralMeshComponent* mesh, bool bCreateCollision)
 	if (ZMaxChunkHasHigherRes)
 	{
 		ZMaxChunk->Update();
-	}
+	}*/
 
 	/**
 	 * Polygonize
@@ -170,14 +163,15 @@ void AVoxelChunk::Update(UProceduralMeshComponent* mesh, bool bCreateCollision)
 		NewCacheIs1 = !NewCacheIs1;
 	}
 
-	/**
-	 * Compute normals + tangents & final arrays
-	 */
+	// Temporary arrays of all the vertices
 	TArray<FVector> VerticesArray;
-	TArray<int> BijectionArray;
-	TArray<int> InverseBijectionArray;
 	TArray<VertexProperties> VerticesPropertiesArray;
+	// Array to get the final vertex index knowing its index in VerticesArray
+	TArray<int> BijectionArray;
+	// Inverse of Bijection (final index -> index in VerticesArray)
+	TArray<int> InverseBijectionArray;
 
+	// Reserve memory
 	VerticesArray.SetNumUninitialized(VerticesCount);
 	BijectionArray.SetNumUninitialized(VerticesCount);
 	InverseBijectionArray.SetNumUninitialized(VerticesCount);
@@ -188,18 +182,21 @@ void AVoxelChunk::Update(UProceduralMeshComponent* mesh, bool bCreateCollision)
 	for (int i = VerticesCount - 1; i >= 0; i--)
 	{
 		FVector Vertex = Vertices.front();
-		auto Properties = VerticesProperties.front();
+		VertexProperties Properties = VerticesProperties.front();
 
 		VerticesArray[i] = Vertex;
 		VerticesPropertiesArray[i] = Properties;
+
 		if (!Properties.IsNormalOnly)
 		{
+			// If real vertex
 			InverseBijectionArray[cleanedIndex] = i;
 			BijectionArray[i] = cleanedIndex;
 			cleanedIndex++;
 		}
 		else
 		{
+			// If only for normals
 			BijectionArray[i] = -1;
 		}
 
@@ -208,144 +205,124 @@ void AVoxelChunk::Update(UProceduralMeshComponent* mesh, bool bCreateCollision)
 	}
 	const int RealVerticesCount = cleanedIndex;
 
-	TArray<int> TrianglesArray;
-	TArray<FVector> NormalsArray;
-	TArray<FVector> TangentsArray;
-	TrianglesArray.SetNumUninitialized(TrianglesCount);
-	NormalsArray.SetNumZeroed(RealVerticesCount);
-	TangentsArray.SetNumZeroed(RealVerticesCount);
-
-	// Compute normals from real triangles & Add triangles
-	int i = 0;
-	for (auto it = Triangles.begin(); it != Triangles.end(); ++it)
+	if (RealVerticesCount != 0)
 	{
-		int a = *it;
-		int ba = BijectionArray[a];
-		++it;
-		int b = *it;
-		int bb = BijectionArray[b];
-		++it;
-		int c = *it;
-		int bc = BijectionArray[c];
+		// Create Section
+		FProcMeshSection Section;
+		Section.Reset();
+		Section.bEnableCollision = false;
+		Section.bSectionVisible = true;
+		Section.ProcVertexBuffer.SetNumUninitialized(RealVerticesCount);
+		Section.ProcIndexBuffer.SetNumUninitialized(TrianglesCount);
 
-		FVector A = VerticesArray[a];
-		FVector B = VerticesArray[b];
-		FVector C = VerticesArray[c];
-		FVector N = FVector::CrossProduct(C - A, B - A).GetSafeNormal();
-
-		// Add triangles
-		if (ba != -1 && bb != -1 && bc != -1)
+		// Init normals & tangents
+		for (int i = 0; i < RealVerticesCount; i++)
 		{
-			TrianglesArray[i] = ba;
-			TrianglesArray[i + 1] = bb;
-			TrianglesArray[i + 2] = bc;
-			i += 3;
+			Section.ProcVertexBuffer[i].Normal = FVector::ZeroVector;
+			Section.ProcVertexBuffer[i].Tangent.TangentX = FVector::ZeroVector;
 		}
 
-		//TODO: better tangents
-		if (ba != -1)
+		// Compute normals from real triangles & Add triangles
+		int i = 0;
+		for (auto it = Triangles.begin(); it != Triangles.end(); ++it)
 		{
-			NormalsArray[ba] += N;
-			TangentsArray[ba] += C - A;
+			int a = *it;
+			int ba = BijectionArray[a];
+			++it;
+			int b = *it;
+			int bb = BijectionArray[b];
+			++it;
+			int c = *it;
+			int bc = BijectionArray[c];
+
+			FVector A = VerticesArray[a];
+			FVector B = VerticesArray[b];
+			FVector C = VerticesArray[c];
+			FVector N = FVector::CrossProduct(C - A, B - A).GetSafeNormal();
+
+			// Add triangles
+			if (ba != -1 && bb != -1 && bc != -1)
+			{
+				Section.ProcIndexBuffer[i] = ba;
+				Section.ProcIndexBuffer[i + 1] = bb;
+				Section.ProcIndexBuffer[i + 2] = bc;
+				i += 3;
+			}
+
+			//TODO: better tangents
+			if (ba != -1)
+			{
+				Section.ProcVertexBuffer[ba].Normal += N;
+				Section.ProcVertexBuffer[ba].Tangent.TangentX += C - A;
+			}
+			if (bb != -1)
+			{
+				Section.ProcVertexBuffer[bb].Normal += N;
+				Section.ProcVertexBuffer[bb].Tangent.TangentX += C - A;
+			}
+			if (bc != -1)
+			{
+				Section.ProcVertexBuffer[bc].Normal += N;
+				Section.ProcVertexBuffer[bc].Tangent.TangentX += C - A;
+			}
 		}
-		if (bb != -1)
+		// Shrink triangles
+		Section.ProcIndexBuffer.SetNumUninitialized(i);
+
+
+		// Normalize normals + tangents & translate vertices on edges
+		for (int i = 0; i < RealVerticesCount; i++)
 		{
-			NormalsArray[bb] += N;
-			TangentsArray[bb] += C - A;
+			Section.ProcVertexBuffer[i].Normal.Normalize();
+			Section.ProcVertexBuffer[i].Tangent.TangentX.Normalize();
+			int j = InverseBijectionArray[i];
+			Section.ProcVertexBuffer[i].Position = GetTranslated(VerticesArray[j], Section.ProcVertexBuffer[i].Normal, VerticesPropertiesArray[j]);
+			Section.SectionLocalBox += Section.ProcVertexBuffer[i].Position;
 		}
-		if (bc != -1)
+
+		// Set vertex colors
+		for (int i = VerticesCount - 1; i >= 0; i--)
 		{
-			NormalsArray[bc] += N;
-			TangentsArray[bc] += C - A;
+			int  j = BijectionArray[i];
+			if (j != -1)
+			{
+				Section.ProcVertexBuffer[j].Color = VertexColors.front();
+			}
+			VertexColors.pop_front();
 		}
+		mesh->SetProcMeshSection(0, Section);
 	}
-	TrianglesArray.SetNumUninitialized(i);
-
-	// Normalize & convert to FRuntimeMeshTangent
-	TArray<FProcMeshTangent> RealTangentsArray;
-	RealTangentsArray.SetNumUninitialized(RealVerticesCount);
-	for (int i = 0; i < RealVerticesCount; i++)
-	{
-		RealTangentsArray[i] = FProcMeshTangent(TangentsArray[i].GetSafeNormal(), false);
-		NormalsArray[i].Normalize();
-	}
-
-	// Compute final vertice array
-	TArray<FVector> CleanedVerticesArray;
-	CleanedVerticesArray.SetNumUninitialized(RealVerticesCount);
-	for (int i = 0; i < RealVerticesCount; i++)
-	{
-		int j = InverseBijectionArray[i];
-		CleanedVerticesArray[i] = GetTranslated(VerticesArray[j], NormalsArray[i], VerticesPropertiesArray[j]);
-	}
-
-	// Vertex colors
-	TArray<FColor> VertexColorsArray;
-	VertexColorsArray.SetNumUninitialized(RealVerticesCount);
-	for (int i = VerticesCount - 1; i >= 0; i--)
-	{
-		int  j = BijectionArray[i];
-		if (j != -1)
-		{
-			VertexColorsArray[j] = VertexColors.front();
-		}
-		VertexColors.pop_front();
-	}
-
-	TArray<FVector2D> UV0;
-
-	check(RealTangentsArray.Num() == CleanedVerticesArray.Num() && NormalsArray.Num() == CleanedVerticesArray.Num());
-
-	if (CleanedVerticesArray.Num() != 0)
-	{
-		/*if (mesh->DoesSectionExist(0))
-		{
-			mesh->UpdateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, ESectionUpdateFlags::MoveArrays);
-		}
-		else
-		{*/
-			mesh->CreateMeshSection(0, CleanedVerticesArray, TrianglesArray, NormalsArray, UV0, VertexColorsArray, RealTangentsArray, bCreateCollision);
-		//}
-	}
-	bCollisionDirty = true;
 }
 
 void AVoxelChunk::Unload()
 {
-	if (this->IsValidLowLevel())
+	if (this->IsValidLowLevel() && !this->IsPendingKill())
 	{
-		if (!this->IsPendingKill())
+		if (!this->XMinChunk->IsPendingKill())
 		{
-			if (this->CollisionChunk != nullptr && !this->CollisionChunk->IsPendingKill())
-			{
-				this->CollisionChunk->Destroy();
-			}
-			if (!this->XMinChunk->IsPendingKill())
-			{
-				this->XMinChunk->Destroy();
-			}
-			if (!this->XMaxChunk->IsPendingKill())
-			{
-				this->XMaxChunk->Destroy();
-			}
-			if (!this->YMinChunk->IsPendingKill())
-			{
-				this->YMinChunk->Destroy();
-			}
-			if (!this->YMaxChunk->IsPendingKill())
-			{
-				this->YMaxChunk->Destroy();
-			}
-			if (!this->ZMinChunk->IsPendingKill())
-			{
-				this->ZMinChunk->Destroy();
-			}
-			if (!this->ZMaxChunk->IsPendingKill())
-			{
-				this->ZMaxChunk->Destroy();
-			}
-			this->Destroy();
+			this->XMinChunk->Destroy();
 		}
+		if (!this->XMaxChunk->IsPendingKill())
+		{
+			this->XMaxChunk->Destroy();
+		}
+		if (!this->YMinChunk->IsPendingKill())
+		{
+			this->YMinChunk->Destroy();
+		}
+		if (!this->YMaxChunk->IsPendingKill())
+		{
+			this->YMaxChunk->Destroy();
+		}
+		if (!this->ZMinChunk->IsPendingKill())
+		{
+			this->ZMinChunk->Destroy();
+		}
+		if (!this->ZMaxChunk->IsPendingKill())
+		{
+			this->ZMaxChunk->Destroy();
+		}
+		this->Destroy();
 	}
 }
 

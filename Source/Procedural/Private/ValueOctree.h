@@ -1,8 +1,7 @@
 #pragma once
-#include <cmath>
-#include <vector>
 #include "CoreMinimal.h"
 #include "Engine.h"
+#include "VoxelChunkSaveStruct.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(ValueOctreeLog, Log, All);
 
@@ -41,7 +40,10 @@ public:
 	FIntVector LocalToGlobal(FIntVector localPosition);
 	FIntVector GlobalToLocal(FIntVector globalPosition);
 
-protected:
+	void AddChunksToArray(TArray<FVoxelChunkSaveStruct> saveArray);
+	void LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray);
+
+private:
 	/*
 	bottom      top
 	-----> y
@@ -50,12 +52,12 @@ protected:
 	x
 
 	*/
-	ValueOctree* Childs[8];
+	TSharedPtr<ValueOctree> Childs[8];
 
 	VoxelData* Data;
 
-	std::vector<signed char> Values;
-	std::vector<FColor> Colors;
+	TArray<signed char> Values;
+	TArray<FColor> Colors;
 
 	bool bIsDirty;
 	bool bIsLeaf;

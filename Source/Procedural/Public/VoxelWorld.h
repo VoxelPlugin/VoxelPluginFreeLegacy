@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "VoxelChunkSaveStruct.h"
 #include "VoxelWorld.generated.h"
 
 class ChunkOctree;
@@ -58,6 +59,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ApplyQueuedUpdates();
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void UpdateAll();
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateCameraPosition(FVector position);
@@ -92,6 +95,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void SetColor(FIntVector position, FColor color);
 
+	//UFUNCTION(BlueprintCallable, Category = "Voxel")
+		TArray<FVoxelChunkSaveStruct> GetSaveArray();
+	//UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray);
 
 protected:
 	// Called when the game starts or when spawned

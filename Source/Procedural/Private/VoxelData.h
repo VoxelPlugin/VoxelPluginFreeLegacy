@@ -3,18 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelChunkSaveStruct.h"
 
 class ValueOctree;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelDataLog, Log, All);
 
-UCLASS()
 class VoxelData
 {
-	GENERATED_BODY()
 public:
 	VoxelData(int depth);
-	~VoxelData();
+	virtual ~VoxelData();
 
 	const int Depth;
 
@@ -28,9 +27,12 @@ public:
 	bool IsInWorld(FIntVector position);
 
 	int Size();
+
+	TArray<FVoxelChunkSaveStruct> GetSaveArray();
+	void LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray);
 	
-	virtual signed char GetDefaultValue(FIntVector position);
-	virtual FColor GetDefaultColor(FIntVector position);
+	virtual signed char GetDefaultValue(FIntVector position) const;
+	virtual FColor GetDefaultColor(FIntVector position) const;
 
 private:
 	ValueOctree* MainOctree;
