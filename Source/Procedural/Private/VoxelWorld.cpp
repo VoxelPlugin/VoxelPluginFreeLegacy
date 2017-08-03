@@ -129,6 +129,16 @@ void AVoxelWorld::SetColor(FIntVector position, FColor color)
 	Data->SetColor(position, color);
 }
 
+TArray<FVoxelChunkSaveStruct> AVoxelWorld::GetSaveArray()
+{
+	return Data->GetSaveArray();
+}
+
+void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray)
+{
+	Data->LoadFromArray(saveArray);
+}
+
 
 void AVoxelWorld::GlobalUpdate(FVector position)
 {
@@ -257,6 +267,11 @@ void AVoxelWorld::ApplyQueuedUpdates()
 		}
 	}
 	ChunksToUpdate.Reset();
+}
+
+void AVoxelWorld::UpdateAll()
+{
+	MainOctree->Update();
 }
 
 

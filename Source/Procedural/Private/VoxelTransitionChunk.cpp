@@ -8,6 +8,7 @@
 #include "DrawDebugHelpers.h"
 #include "VoxelChunk.h"
 #include <vector>
+#include <tuple>
 
 AVoxelTransitionChunk::AVoxelTransitionChunk()
 {

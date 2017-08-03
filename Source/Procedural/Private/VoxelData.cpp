@@ -9,7 +9,7 @@ DEFINE_LOG_CATEGORY(VoxelDataLog);
 
 VoxelData::VoxelData(int depth) : Depth(depth)
 {
-	MainOctree = new ValueOctree(FIntVector::ZeroValue, depth);
+	MainOctree = new ValueOctree(FIntVector::ZeroValue, depth, this);
 	MainOctree->CreateTree();
 }
 
@@ -127,13 +127,24 @@ int VoxelData::Size()
 	return 16 << Depth;
 }
 
-signed char VoxelData::GetDefaultValue(FIntVector position)
+signed char VoxelData::GetDefaultValue(FIntVector position) const
 {
 	return (position.Z == 8) ? 0 : ((position.Z > 8) ? 100 : -100);
 }
 
-FColor VoxelData::GetDefaultColor(FIntVector position)
+FColor VoxelData::GetDefaultColor(FIntVector position) const
 {
 	return (position.Z == 8) ? FColor::White : ((position.Z > 8) ? FColor::Red : FColor::Green);
 }
 
+TArray<FVoxelChunkSaveStruct> VoxelData::GetSaveArray()
+{
+	TArray<FVoxelChunkSaveStruct> SaveArray;
+	MainOctree->AddChunksToArray(SaveArray);
+	return SaveArray;
+}
+
+void VoxelData::LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray)
+{
+	MainOctree->LoadFromArray(saveArray);
+}
