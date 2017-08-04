@@ -20,8 +20,7 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr)
 
 AVoxelChunk::~AVoxelChunk()
 {
-	Task->EnsureCompletion();
-	delete Task;
+
 }
 
 // Called when the game starts or when spawned
@@ -36,6 +35,8 @@ void AVoxelChunk::Tick(float DeltaTime)
 	{
 		bNeedSectionUpdate = false;
 		PrimaryMesh->SetProcMeshSection(0, Section);
+		delete Task;
+		Task = nullptr;
 	}
 }
 
@@ -114,6 +115,9 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 
 void AVoxelChunk::Update()
 {
+	// Make sure we've ticked
+	Tick(0);
+
 	if (Task == nullptr || Task->IsDone())
 	{
 		int Width = 16 << Depth;
@@ -166,6 +170,11 @@ void AVoxelChunk::Unload()
 			this->ZMaxChunk->Destroy();
 		}
 		this->Destroy();
+	}
+	if (Task != nullptr)
+	{
+		Task->EnsureCompletion();
+		delete Task;
 	}
 }
 

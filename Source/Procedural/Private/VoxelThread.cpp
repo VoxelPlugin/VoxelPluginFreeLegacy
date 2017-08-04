@@ -112,7 +112,7 @@ void VoxelThread::DoWork()
 		// Create Section
 		FProcMeshSection& Section = VoxelChunk->Section;
 		Section.Reset();
-		Section.bEnableCollision = false;
+		Section.bEnableCollision = VoxelChunk->Depth == 0;
 		Section.bSectionVisible = true;
 		Section.ProcVertexBuffer.SetNumUninitialized(RealVerticesCount);
 		Section.ProcIndexBuffer.SetNumUninitialized(TrianglesCount);
