@@ -5,11 +5,13 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "TransvoxelTools.h"
+#include "ProceduralMeshComponent.h"
 #include "VoxelChunk.generated.h"
 
 class AVoxelWorld;
 class AVoxelTransitionChunk;
 class UProceduralMeshComponent;
+class VoxelThread;
 
 UCLASS()
 class AVoxelChunk : public AActor, public IRegularVoxel
@@ -17,11 +19,14 @@ class AVoxelChunk : public AActor, public IRegularVoxel
 	GENERATED_BODY()
 
 public:
+	friend class VoxelThread;
+
 	AVoxelChunk();
+	~AVoxelChunk();
 
 	void Init(FIntVector position, int depth, AVoxelWorld* world);
 
-	void Update(UProceduralMeshComponent* mesh = nullptr, bool bCreateCollision = false);
+	void Update();
 
 	void Unload();
 
@@ -30,6 +35,7 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
 
 private:
 	UPROPERTY(EditAnywhere)
@@ -44,22 +50,22 @@ private:
 
 	AVoxelWorld* World;
 
+	bool bNeedSectionUpdate;
+
+	FAsyncTask<VoxelThread>* Task;
+
+	FProcMeshSection Section;
+
 	int Cache1[18][18][4];
 	int Cache2[18][18][4];
 	bool NewCacheIs1;
 
-	UPROPERTY(VisibleAnywhere)
-		bool XMinChunkHasHigherRes;
-	UPROPERTY(VisibleAnywhere)
-		bool XMaxChunkHasHigherRes;
-	UPROPERTY(VisibleAnywhere)
-		bool YMinChunkHasHigherRes;
-	UPROPERTY(VisibleAnywhere)
-		bool YMaxChunkHasHigherRes;
-	UPROPERTY(VisibleAnywhere)
-		bool ZMinChunkHasHigherRes;
-	UPROPERTY(VisibleAnywhere)
-		bool ZMaxChunkHasHigherRes;
+	bool XMinChunkHasHigherRes;
+	bool XMaxChunkHasHigherRes;
+	bool YMinChunkHasHigherRes;
+	bool YMaxChunkHasHigherRes;
+	bool ZMinChunkHasHigherRes;
+	bool ZMaxChunkHasHigherRes;
 	AVoxelTransitionChunk* XMinChunk;
 	AVoxelTransitionChunk* XMaxChunk;
 	AVoxelTransitionChunk* YMinChunk;
