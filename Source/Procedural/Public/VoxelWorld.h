@@ -26,6 +26,8 @@ public:
 	int GetDepthAt(FIntVector position);
 	void ScheduleUpdate(TWeakPtr<ChunkOctree> chunk);
 
+	FQueuedThreadPool* ThreadPool;
+
 public:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		UMaterialInterface* VoxelMaterial;
