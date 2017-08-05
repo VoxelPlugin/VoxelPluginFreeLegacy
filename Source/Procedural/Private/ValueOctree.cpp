@@ -287,13 +287,13 @@ void ValueOctree::CreateChilds()
 {
 	check(IsLeaf());
 	int d = GetWidth() / 4;
-	Childs[0] = TSharedPtr<ValueOctree>(new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1, Data));
-	Childs[1] = TSharedPtr<ValueOctree>(new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1, Data));
-	Childs[2] = TSharedPtr<ValueOctree>(new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1, Data));
-	Childs[3] = TSharedPtr<ValueOctree>(new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1, Data));
-	Childs[4] = TSharedPtr<ValueOctree>(new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1, Data));
-	Childs[5] = TSharedPtr<ValueOctree>(new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1, Data));
-	Childs[6] = TSharedPtr<ValueOctree>(new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1, Data));
-	Childs[7] = TSharedPtr<ValueOctree>(new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1, Data));
+	Childs[0] = MakeShareable(new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1, Data));
+	Childs[1] = MakeShareable(new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1, Data));
+	Childs[2] = MakeShareable(new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1, Data));
+	Childs[3] = MakeShareable(new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1, Data));
+	Childs[4] = MakeShareable(new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1, Data));
+	Childs[5] = MakeShareable(new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1, Data));
+	Childs[6] = MakeShareable(new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1, Data));
+	Childs[7] = MakeShareable(new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1, Data));
 	bIsLeaf = false;
 }

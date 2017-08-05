@@ -9,13 +9,13 @@ DEFINE_LOG_CATEGORY(VoxelDataLog);
 
 VoxelData::VoxelData(int depth) : Depth(depth)
 {
-	MainOctree = new ValueOctree(FIntVector::ZeroValue, depth, this);
+	MainOctree = MakeShareable(new ValueOctree(FIntVector::ZeroValue, depth, this));
 	MainOctree->CreateTree();
 }
 
 VoxelData::~VoxelData()
 {
-	delete MainOctree;
+
 }
 
 signed char VoxelData::GetValue(FIntVector position)

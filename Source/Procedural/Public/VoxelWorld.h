@@ -24,8 +24,9 @@ public:
 	~AVoxelWorld();
 
 	int Size();
-	
+
 	float GetDeletionDelay();
+	float GetQuality();
 
 	int GetDepthAt(FIntVector position);
 	void ScheduleUpdate(TWeakPtr<ChunkOctree> chunk);
@@ -49,7 +50,7 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void GlobalUpdate(FVector position, bool async=true);
+		void GlobalUpdate(FVector position, bool async = true);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void Update(FIntVector position, bool async = true);
 
@@ -98,9 +99,9 @@ public:
 		void SetColor(FIntVector position, FColor color);
 
 	//UFUNCTION(BlueprintCallable, Category = "Voxel")
-		TArray<FVoxelChunkSaveStruct> GetSaveArray();
+	TArray<FVoxelChunkSaveStruct> GetSaveArray();
 	//UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray);
+	void LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray);
 
 protected:
 	// Called when the game starts or when spawned
@@ -115,10 +116,12 @@ private:
 		float CollisionFPS;
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		float DeletionDelay;
+	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0.01", ClampMax = "10", UIMin = "0.01", UIMax = "10"))
+		float Quality;
 
 private:
-	ChunkOctree* MainOctree;
-	VoxelData* Data;
+	TSharedPtr<ChunkOctree> MainOctree;
+	TSharedPtr<VoxelData> Data;
 
 	bool bNotCreated;
 

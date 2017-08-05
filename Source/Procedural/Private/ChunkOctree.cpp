@@ -8,7 +8,7 @@ DEFINE_LOG_CATEGORY(ChunkOctreeLog)
 
 ChunkOctree::ChunkOctree(FIntVector position, int depth) : Position(position), Depth(depth), bHasChilds(false), bHasChunk(false), VoxelChunk(nullptr)
 {
-
+	check(Depth >= 0);
 }
 
 ChunkOctree::~ChunkOctree()
@@ -43,24 +43,44 @@ int ChunkOctree::GetWidth()
 
 void ChunkOctree::CreateTree(AVoxelWorld* world, FVector cameraPosition)
 {
+	check(world);
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == Childs[0].IsValid());
-	check(world);
+	check(!(bHasChilds && bHasChunk));
 
-	float distanceToCamera = (world->GetTransform().TransformPosition(FVector(Position.X, Position.Y, Position.Z)) - cameraPosition).Size();
-
-	if (distanceToCamera > GetWidth() * world->GetActorScale3D().Size() * 2 || Depth == 0)
+	if (Depth == 0)
 	{
-		if (bHasChilds)
-		{
-			DeleteChilds();
-		}
+		// Always create
 		if (!bHasChunk)
 		{
 			Load(world);
 		}
+		return;
 	}
-	else
+
+	const float DistanceToCamera = ((world->GetTransform().TransformPosition((FVector)Position) - cameraPosition).Size()) / world->GetActorScale3D().Size();
+	const float Quality = world->GetQuality();
+
+	const float MinDistance = GetWidth() * Quality;
+	const float MaxDistance = GetWidth() * Quality * 2;
+
+	if (MinDistance < DistanceToCamera && DistanceToCamera < MaxDistance)
+	{
+		if (bHasChilds)
+		{
+			// Update childs
+			for (int i = 0; i < 8; i++)
+			{
+				Childs[i]->CreateTree(world, cameraPosition);
+			}
+		}
+		else if (!bHasChunk)
+		{
+			// Not created, create
+			Load(world);
+		}
+	}
+	else if (DistanceToCamera < MinDistance)
 	{
 		if (bHasChunk)
 		{
@@ -70,11 +90,31 @@ void ChunkOctree::CreateTree(AVoxelWorld* world, FVector cameraPosition)
 		{
 			CreateChilds();
 		}
-		for (int i = 0; i < 8; i++)
+		if (bHasChilds)
 		{
-			Childs[i]->CreateTree(world, cameraPosition);
+			// Update childs
+			for (int i = 0; i < 8; i++)
+			{
+				Childs[i]->CreateTree(world, cameraPosition);
+			}
 		}
 	}
+	else
+	{
+		// DistanceToCamera > MaxDistance
+
+		if (bHasChilds)
+		{
+			// Too far, delete childs
+			DeleteChilds();
+		}
+		if (!bHasChunk)
+		{
+			// Not created, create
+			Load(world);
+		}
+	}
+	check(bHasChilds ^ bHasChunk);
 }
 
 void ChunkOctree::Update(bool async)
@@ -165,24 +205,25 @@ void ChunkOctree::Unload()
 void ChunkOctree::CreateChilds()
 {
 	check(bHasChilds == Childs[0].IsValid());
+	check(Depth != 0)
 
-	if (!bHasChilds)
-	{
-		int d = GetWidth() / 4;
-		Childs[0] = TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1));
-		Childs[1] = TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1));
-		Childs[2] = TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, +d, -d), Depth - 1));
-		Childs[3] = TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, +d, -d), Depth - 1));
-		Childs[4] = TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, +d), Depth - 1));
-		Childs[5] = TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, +d), Depth - 1));
-		Childs[6] = TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, +d, +d), Depth - 1));
-		Childs[7] = TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, +d, +d), Depth - 1));
-		bHasChilds = true;
-	}
-	else
-	{
-		UE_LOG(ChunkOctreeLog, Error, TEXT("Error: Cannot create childs: bHasChilds"));
-	}
+		if (!bHasChilds)
+		{
+			int d = GetWidth() / 4;
+			Childs[0] = MakeShareable(new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1));
+			Childs[1] = MakeShareable(new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1));
+			Childs[2] = MakeShareable(new ChunkOctree(Position + FIntVector(-d, +d, -d), Depth - 1));
+			Childs[3] = MakeShareable(new ChunkOctree(Position + FIntVector(+d, +d, -d), Depth - 1));
+			Childs[4] = MakeShareable(new ChunkOctree(Position + FIntVector(-d, -d, +d), Depth - 1));
+			Childs[5] = MakeShareable(new ChunkOctree(Position + FIntVector(+d, -d, +d), Depth - 1));
+			Childs[6] = MakeShareable(new ChunkOctree(Position + FIntVector(-d, +d, +d), Depth - 1));
+			Childs[7] = MakeShareable(new ChunkOctree(Position + FIntVector(+d, +d, +d), Depth - 1));
+			bHasChilds = true;
+		}
+		else
+		{
+			UE_LOG(ChunkOctreeLog, Error, TEXT("Error: Cannot create childs: bHasChilds"));
+		}
 }
 
 void ChunkOctree::DeleteChilds()
