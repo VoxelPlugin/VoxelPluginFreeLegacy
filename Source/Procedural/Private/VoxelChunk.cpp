@@ -61,6 +61,11 @@ void AVoxelChunk::Tick(float DeltaTime)
 			Delete();
 		}
 	}
+	if (bUpdate)
+	{
+		bUpdate = false;
+		Update(false);
+	}
 }
 
 void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
@@ -115,7 +120,7 @@ void AVoxelChunk::Update(bool async)
 			else
 			{
 				TransitionDirection Direction = (TransitionDirection)i;
-				ChunkHasHigherRes[i] = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() > Depth);
+				ChunkHasHigherRes[i] = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() < Depth);
 			}
 		}
 
@@ -138,7 +143,7 @@ void AVoxelChunk::BasicUpdate()
 	for (int i = 0; i < 6; i++)
 	{
 		TransitionDirection Direction = (TransitionDirection)i;
-		bool bHigherRes = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() > Depth);
+		bool bHigherRes = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() < Depth);
 		if (ChunkHasHigherRes[i] != bHigherRes)
 		{
 			if (Task == nullptr || Task->IsDone())
