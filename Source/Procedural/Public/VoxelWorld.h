@@ -37,6 +37,8 @@ public:
 		int Depth;
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		float CollisionFPS;
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		float DeletionDelay;
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -51,9 +53,9 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void GlobalUpdate(FVector position);
+		void GlobalUpdate(FVector position, bool async=true);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Update(FIntVector position);
+		void Update(FIntVector position, bool async = true);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -62,9 +64,9 @@ public:
 		void ScheduleUpdate(FIntVector position);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ApplyQueuedUpdates();
+		void ApplyQueuedUpdates(bool async = true);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateAll();
+		void UpdateAll(bool async = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateCameraPosition(FVector position);

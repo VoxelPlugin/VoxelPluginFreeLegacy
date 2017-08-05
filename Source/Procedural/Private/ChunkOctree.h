@@ -27,7 +27,7 @@ public:
 
 	void CreateTree(AVoxelWorld* world, FVector cameraPosition);
 
-	void Update();
+	void Update(bool async);
 
 	TWeakPtr<ChunkOctree> GetChunk(FIntVector position);
 

@@ -77,7 +77,7 @@ void AVoxelWorld::UpdateCameraPosition(FVector position)
 	// Recreate octree
 	MainOctree->CreateTree(this, position);
 	// Apply updates added when recreating octree
-	ApplyQueuedUpdates();
+	ApplyQueuedUpdates(true);
 }
 
 bool AVoxelWorld::GlobalIsInWorld(FVector position)
@@ -147,11 +147,11 @@ void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray)
 }
 
 
-void AVoxelWorld::GlobalUpdate(FVector position)
+void AVoxelWorld::GlobalUpdate(FVector position, bool async)
 {
 	FVector P = GetTransform().InverseTransformPosition(position);
 	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	Update(IP);
+	Update(IP, async);
 }
 
 void AVoxelWorld::GlobalScheduleUpdate(FVector position)
@@ -203,14 +203,14 @@ void AVoxelWorld::Remove(FIntVector position, int strength)
 }
 
 
-void AVoxelWorld::Update(FIntVector position)
+void AVoxelWorld::Update(FIntVector position, bool async)
 {
 	if (ChunksToUpdate.Num() != 0)
 	{
 		UE_LOG(VoxelWorldLog, Warning, TEXT("Update called but there are still chunks in queue"));
 	}
 	ScheduleUpdate(position);
-	ApplyQueuedUpdates();
+	ApplyQueuedUpdates(async);
 }
 
 void AVoxelWorld::ScheduleUpdate(FIntVector position)
@@ -260,7 +260,7 @@ void AVoxelWorld::ScheduleUpdate(TWeakPtr<ChunkOctree> chunk)
 	ChunksToUpdate.AddUnique(chunk);
 }
 
-void AVoxelWorld::ApplyQueuedUpdates()
+void AVoxelWorld::ApplyQueuedUpdates(bool async)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
 	UE_LOG(VoxelWorldLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
@@ -270,7 +270,7 @@ void AVoxelWorld::ApplyQueuedUpdates()
 
 		if (LockedObserver.IsValid())
 		{
-			LockedObserver->Update();
+			LockedObserver->Update(async);
 		}
 		else
 		{
@@ -280,10 +280,10 @@ void AVoxelWorld::ApplyQueuedUpdates()
 	ChunksToUpdate.Reset();
 }
 
-void AVoxelWorld::UpdateAll()
+void AVoxelWorld::UpdateAll(bool async)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UpdateAll);
-	MainOctree->Update();
+	MainOctree->Update(async);
 }
 
 

@@ -25,7 +25,7 @@ public:
 
 	void Init(FIntVector position, int depth, AVoxelWorld* world);
 
-	void Update();
+	void Update(bool async);
 
 	void Unload();
 
@@ -60,4 +60,9 @@ private:
 	FAsyncTask<VoxelThread>* Task;
 
 	FProcMeshSection Section;
+
+	bool bNeedDeletion;
+	float TimeUntilDeletion;
+
+	void Delete();
 };

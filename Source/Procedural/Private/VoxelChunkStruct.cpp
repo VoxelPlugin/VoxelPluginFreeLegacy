@@ -41,6 +41,13 @@ VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* chunk) : Depth(chunk->GetDepth()
 			}
 		}
 	}
+	else
+	{
+		for (int i = 0; i < 6; i++)
+		{
+			ChunkHasHigherRes[i] = false;
+		}
+	}
 }
 
 signed char VoxelChunkStruct::GetValue(int x, int y, int z)
