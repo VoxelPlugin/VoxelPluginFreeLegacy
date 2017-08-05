@@ -2,8 +2,7 @@
 
 #include<forward_list>
 #include "CoreMinimal.h"
-
-enum TransitionDirection { XMin, XMax, YMin, YMax, ZMin, ZMax };
+#include "TransitionDirection.h"
 
 struct FBoolVector
 {

@@ -47,25 +47,16 @@ void AVoxelWorld::BeginPlay()
 	UpdateCameraPosition(FVector::ZeroVector);
 }
 
-int AVoxelWorld::GetDepthAt(FIntVector position)
+AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector position)
 {
 	if (IsInWorld(position))
 	{
-		TSharedPtr<ChunkOctree> Chunk = MainOctree->GetChunk(position).Pin();
-		if (Chunk.IsValid())
-		{
-			return Chunk->Depth;
-		}
-		else
-		{
-			UE_LOG(VoxelWorldLog, Error, TEXT("Error: Cannot GetDepthAt (%d, %d, %d): Not valid"), position.X, position.Y, position.Z);
-			return -1;
-		}
+		return MainOctree->GetChunk(position).Pin()->GetVoxelChunk();
 	}
 	else
 	{
-		UE_LOG(VoxelWorldLog, Error, TEXT("Error: Cannot GetDepthAt (%d, %d, %d): Not in world"), position.X, position.Y, position.Z);
-		return -1;
+		UE_LOG(VoxelWorldLog, Error, TEXT("Error: Cannot GetChunkAt (%d, %d, %d): Not in world"), position.X, position.Y, position.Z);
+		return nullptr;
 	}
 }
 
@@ -262,7 +253,7 @@ void AVoxelWorld::ScheduleUpdate(TWeakPtr<ChunkOctree> chunk)
 void AVoxelWorld::ApplyQueuedUpdates(bool async)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
-	UE_LOG(VoxelWorldLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
+	//UE_LOG(VoxelWorldLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
 
 	for (auto& Chunk : ChunksToUpdate)
 	{
@@ -318,5 +309,10 @@ float AVoxelWorld::GetDeletionDelay()
 float AVoxelWorld::GetQuality()
 {
 	return Quality;
+}
+
+bool AVoxelWorld::GetRebuildBorders()
+{
+	return bRebuildBorders;
 }
 

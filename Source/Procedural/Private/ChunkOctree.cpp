@@ -163,6 +163,11 @@ TWeakPtr<ChunkOctree> ChunkOctree::GetChunk(FIntVector position)
 	}
 }
 
+AVoxelChunk* ChunkOctree::GetVoxelChunk()
+{
+	return VoxelChunk;
+}
+
 
 
 

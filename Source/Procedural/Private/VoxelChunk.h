@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
+#include "TransitionDirection.h"
 #include "VoxelChunk.generated.h"
 
 class AVoxelWorld;
@@ -27,6 +28,8 @@ public:
 
 	void Update(bool async);
 
+	void BasicUpdate();
+
 	void Unload();
 
 	int GetDepth();
@@ -35,7 +38,7 @@ public:
 
 	FColor GetColor(int x, int y, int z);
 
-	bool HasChunkHigherRes(int x, int y, int z);
+	bool ChunkHasHigherRes[6];
 
 protected:
 	// Called when the game starts or when spawned
@@ -57,6 +60,7 @@ private:
 
 	bool bNeedSectionUpdate;
 
+
 	FAsyncTask<VoxelThread>* Task;
 
 	FProcMeshSection Section;
@@ -65,6 +69,11 @@ private:
 		bool bNeedDeletion;
 	UPROPERTY(VisibleAnywhere)
 		float TimeUntilDeletion;
+
+	bool bAdjacentChunksNeedUpdate;
+
+
+	AVoxelChunk* GetChunk(TransitionDirection direction);
 
 	void Delete();
 };

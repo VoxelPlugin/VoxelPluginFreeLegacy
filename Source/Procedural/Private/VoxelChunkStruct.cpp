@@ -4,6 +4,7 @@
 VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* chunk) : Depth(chunk->GetDepth()), Chunk(chunk)
 {
 	check(chunk);
+
 	int Step = 1 << Depth;
 	for (int z = -1; z < 18; z++)
 	{
@@ -16,16 +17,13 @@ VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* chunk) : Depth(chunk->GetDepth()
 		}
 	}
 
+	for (int i = 0; i < 6; i++)
+	{
+		ChunkHasHigherRes[i] = chunk->ChunkHasHigherRes[i];
+	}
+
 	if (Depth != 0)
 	{
-		int Width = 16 << Depth;
-		ChunkHasHigherRes[XMin] = chunk->HasChunkHigherRes(-Width, 0, 0);
-		ChunkHasHigherRes[XMax] = chunk->HasChunkHigherRes(Width, 0, 0);
-		ChunkHasHigherRes[YMin] = chunk->HasChunkHigherRes(0, -Width, 0);
-		ChunkHasHigherRes[YMax] = chunk->HasChunkHigherRes(0, Width, 0);
-		ChunkHasHigherRes[ZMin] = chunk->HasChunkHigherRes(0, 0, -Width);
-		ChunkHasHigherRes[ZMax] = chunk->HasChunkHigherRes(0, 0, Width);
-
 		// TODO: improve performance
 		for (int i = 0; i < 6; i++)
 		{
@@ -39,13 +37,6 @@ VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* chunk) : Depth(chunk->GetDepth()
 					}
 				}
 			}
-		}
-	}
-	else
-	{
-		for (int i = 0; i < 6; i++)
-		{
-			ChunkHasHigherRes[i] = false;
 		}
 	}
 }

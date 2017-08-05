@@ -1,5 +1,4 @@
 #pragma once
-#include <cmath>
 #include "CoreMinimal.h"
 #include "Engine.h"
 
@@ -30,6 +29,8 @@ public:
 	void Update(bool async);
 
 	TWeakPtr<ChunkOctree> GetChunk(FIntVector position);
+
+	AVoxelChunk* GetVoxelChunk();
 
 private:
 	/*

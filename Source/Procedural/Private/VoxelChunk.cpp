@@ -2,16 +2,16 @@
 
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
-#include "VoxelData.h"
-#include "DrawDebugHelpers.h"
+#include "ChunkOctree.h"
 #include "ProceduralMeshComponent.h"
 #include "VoxelThread.h"
+#include "DrawDebugHelpers.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDeletion(false)
+AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDeletion(false), bAdjacentChunksNeedUpdate(false)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -40,6 +40,18 @@ void AVoxelChunk::Tick(float DeltaTime)
 		PrimaryMesh->SetProcMeshSection(0, Section);
 		delete Task;
 		Task = nullptr;
+	}
+	if (bAdjacentChunksNeedUpdate && World->GetRebuildBorders())
+	{
+		bAdjacentChunksNeedUpdate = false;
+		for (int i = 0; i < 6; i++)
+		{
+			AVoxelChunk* Chunk = GetChunk((TransitionDirection)i);
+			if (Chunk != nullptr)
+			{
+				Chunk->BasicUpdate();
+			}
+		}
 	}
 	if (bNeedDeletion)
 	{
@@ -73,6 +85,9 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	PrimaryMesh->bCastShadowAsTwoSided = true;
 	PrimaryMesh->bUseAsyncCooking = true;
 	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+
+	// Update adjacents
+	bAdjacentChunksNeedUpdate = true;
 }
 
 void AVoxelChunk::Update(bool async)
@@ -91,6 +106,19 @@ void AVoxelChunk::Update(bool async)
 			delete Task;
 		}
 
+		for (int i = 0; i < 6; i++)
+		{
+			if (Depth == 0)
+			{
+				ChunkHasHigherRes[i] = false;
+			}
+			else
+			{
+				TransitionDirection Direction = (TransitionDirection)i;
+				ChunkHasHigherRes[i] = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() > Depth);
+			}
+		}
+
 		Task = new FAsyncTask<VoxelThread>(this);
 		if (async)
 		{
@@ -104,10 +132,33 @@ void AVoxelChunk::Update(bool async)
 	}
 }
 
+void AVoxelChunk::BasicUpdate()
+{
+	int Width = 16 << Depth;
+	for (int i = 0; i < 6; i++)
+	{
+		TransitionDirection Direction = (TransitionDirection)i;
+		bool bHigherRes = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() > Depth);
+		if (ChunkHasHigherRes[i] != bHigherRes)
+		{
+			if (Task == nullptr || Task->IsDone())
+			{
+				Update(true);
+				return;
+			}
+			else
+			{
+				ChunkHasHigherRes[i] = bHigherRes;
+			}
+		}
+	}
+}
+
 void AVoxelChunk::Unload()
 {
 	bNeedDeletion = true;
 	TimeUntilDeletion = World->GetDeletionDelay();
+	bAdjacentChunksNeedUpdate = true;
 }
 
 void AVoxelChunk::Delete()
@@ -138,16 +189,18 @@ FColor AVoxelChunk::GetColor(int x, int y, int z)
 	return World->GetColor(Position + FIntVector(x, y, z));
 }
 
-bool AVoxelChunk::HasChunkHigherRes(int x, int y, int z)
+AVoxelChunk* AVoxelChunk::GetChunk(TransitionDirection direction)
 {
 	int Width = 16 << Depth;
-	FIntVector P = Position + FIntVector(Width / 2, Width / 2, Width / 2) + FIntVector(x, y, z);
+	TArray<FIntVector> L = { FIntVector(-Width, 0, 0) , FIntVector(Width, 0, 0) , FIntVector(0, -Width, 0), FIntVector(0, Width, 0) , FIntVector(0, 0, -Width) , FIntVector(0, 0, Width) };
+
+	FIntVector P = Position + FIntVector(Width / 2, Width / 2, Width / 2) + L[direction];
 	if (World->IsInWorld(P))
 	{
-		return Depth > World->GetDepthAt(P);
+		return World->GetChunkAt(P);
 	}
 	else
 	{
-		return false;
+		return nullptr;
 	}
 }
