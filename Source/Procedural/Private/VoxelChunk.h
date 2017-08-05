@@ -49,6 +49,9 @@ private:
 	UPROPERTY(EditAnywhere)
 		UProceduralMeshComponent* PrimaryMesh;
 
+	UPROPERTY(EditAnywhere)
+		bool bUpdate;
+
 	// Lower corner
 	UPROPERTY(VisibleAnywhere)
 		FIntVector Position;
