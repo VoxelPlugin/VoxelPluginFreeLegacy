@@ -65,20 +65,20 @@ void ChunkOctree::CreateTree(AVoxelWorld* world, FVector cameraPosition)
 	}
 }
 
-void ChunkOctree::Update()
+void ChunkOctree::Update(bool async)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == Childs[0].IsValid());
 
 	if (bHasChunk)
 	{
-		VoxelChunk->Update();
+		VoxelChunk->Update(async);
 	}
 	else if (bHasChilds)
 	{
 		for (int i = 0; i < 8; i++)
 		{
-			Childs[i]->Update();
+			Childs[i]->Update(async);
 		}
 	}
 	else

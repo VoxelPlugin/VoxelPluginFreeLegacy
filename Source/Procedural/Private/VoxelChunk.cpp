@@ -11,7 +11,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSect
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr)
+AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDeletion(false)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -33,13 +33,21 @@ void AVoxelChunk::BeginPlay()
 
 void AVoxelChunk::Tick(float DeltaTime)
 {
-	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 	if (bNeedSectionUpdate && Task != nullptr && Task->IsDone())
 	{
+		SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 		bNeedSectionUpdate = false;
 		PrimaryMesh->SetProcMeshSection(0, Section);
 		delete Task;
 		Task = nullptr;
+	}
+	if (bNeedDeletion)
+	{
+		TimeUntilDeletion -= DeltaTime;
+		if (TimeUntilDeletion < 0)
+		{
+			Delete();
+		}
 	}
 }
 
@@ -67,7 +75,7 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 }
 
-void AVoxelChunk::Update()
+void AVoxelChunk::Update(bool async)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
@@ -84,19 +92,31 @@ void AVoxelChunk::Update()
 		}
 
 		Task = new FAsyncTask<VoxelThread>(this);
-		//Task->StartBackgroundTask(World->ThreadPool);
-		Task->StartSynchronousTask();
+		if (async)
+		{
+			Task->StartBackgroundTask(World->ThreadPool);
+		}
+		else
+		{
+			Task->StartSynchronousTask();
+		}
 		bNeedSectionUpdate = true;
 	}
 }
 
 void AVoxelChunk::Unload()
 {
-	/*if (Task != nullptr)
+	bNeedDeletion = true;
+	TimeUntilDeletion = World->DeletionDelay;
+}
+
+void AVoxelChunk::Delete()
+{
+	if (Task != nullptr)
 	{
 		Task->EnsureCompletion();
 		delete Task;
-	}*/
+	}
 	if (this->IsValidLowLevel() && !this->IsPendingKill())
 	{
 		this->Destroy();
