@@ -35,5 +35,5 @@ public:
 	virtual FColor GetDefaultColor(FIntVector position) const;
 
 private:
-	ValueOctree* MainOctree;
+	TSharedPtr<ValueOctree> MainOctree;
 };

@@ -15,7 +15,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : bNotCreated(true)
+AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(1), DeletionDelay(0.5f)
 {
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
 	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
@@ -31,8 +31,7 @@ AVoxelWorld::AVoxelWorld() : bNotCreated(true)
 
 AVoxelWorld::~AVoxelWorld()
 {
-	delete MainOctree;
-	delete Data;
+
 }
 
 
@@ -42,8 +41,8 @@ void AVoxelWorld::BeginPlay()
 
 	bNotCreated = false;
 
-	Data = new VoxelData(Depth);
-	MainOctree = new ChunkOctree(FIntVector::ZeroValue, Depth);
+	Data = MakeShareable(new VoxelData(Depth));
+	MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
 
 	UpdateCameraPosition(FVector::ZeroVector);
 }
@@ -264,6 +263,7 @@ void AVoxelWorld::ApplyQueuedUpdates(bool async)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
 	UE_LOG(VoxelWorldLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
+
 	for (auto& Chunk : ChunksToUpdate)
 	{
 		TSharedPtr<ChunkOctree> LockedObserver(Chunk.Pin());
@@ -313,5 +313,10 @@ int AVoxelWorld::Size()
 float AVoxelWorld::GetDeletionDelay()
 {
 	return DeletionDelay;
+}
+
+float AVoxelWorld::GetQuality()
+{
+	return Quality;
 }
 
