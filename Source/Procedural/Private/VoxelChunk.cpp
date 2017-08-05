@@ -79,6 +79,7 @@ void AVoxelChunk::Update()
 
 		Task = new FAsyncTask<VoxelThread>(this);
 		Task->StartBackgroundTask(World->ThreadPool);
+		//Task->StartSynchronousTask();
 		bNeedSectionUpdate = true;
 	}
 }

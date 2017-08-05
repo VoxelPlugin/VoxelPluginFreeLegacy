@@ -577,7 +577,5 @@ FVector TransvoxelTools::GetTranslated(FVector V, FVector N, VertexProperties P,
 		-N.X * N.Y * DeltaX + (1 - N.Y * N.Y) * DeltaY - N.Y * N.Z * DeltaZ,
 		-N.X * N.Z * DeltaX - N.Y * N.Z * DeltaY + (1 - N.Z * N.Z) * DeltaZ);
 
-	// TODO: Use normals
-	// With normals: return V + Q;
-	return V + FVector(DeltaX, DeltaY, DeltaZ);
+	return V + Q;
 }

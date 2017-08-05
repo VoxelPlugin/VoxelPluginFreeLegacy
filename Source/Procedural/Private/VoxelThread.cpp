@@ -5,6 +5,8 @@
 #include "TransvoxelTools.h"
 #include "VoxelChunkStruct.h"
 #include "VoxelChunk.h"
+#include "VoxelWorld.h"
+#include "DrawDebugHelpers.h"
 
 VoxelThread::VoxelThread(AVoxelChunk* voxelChunk) : VoxelChunk(voxelChunk), VoxelStruct(new VoxelChunkStruct(VoxelChunk))
 {
@@ -13,14 +15,15 @@ VoxelThread::VoxelThread(AVoxelChunk* voxelChunk) : VoxelChunk(voxelChunk), Voxe
 
 VoxelThread::~VoxelThread()
 {
-
+	delete VoxelStruct;
 }
 
 void VoxelThread::DoWork()
 {
 	TSharedPtr<Verts> Vertices(new Verts());
 	TSharedPtr<Colors> VertexColors(new Colors());
-	TSharedPtr<Trigs> Triangles(new Trigs());
+	TSharedPtr<Trigs> RegularTriangles(new Trigs());
+	TSharedPtr<Trigs> TransitionTriangles(new Trigs());
 	TSharedPtr<Props> VerticesProperties(new Props());
 	TSharedPtr<Props2D> VerticesProperties2D(new Props2D());
 
@@ -63,7 +66,7 @@ void VoxelThread::DoWork()
 				{
 					TransitionDirection Direction = (TransitionDirection)i;
 					VoxelStruct->CurrentDirection = Direction;
-					TransvoxelTools::TransitionPolygonize(VoxelStruct, x, y, validityMask, *Triangles, TrianglesCount, *Vertices, *VerticesProperties2D, *VertexColors, VerticesCount, Direction);
+					TransvoxelTools::TransitionPolygonize(VoxelStruct, x, y, validityMask, *TransitionTriangles, TrianglesCount, *Vertices, *VerticesProperties2D, *VertexColors, VerticesCount, Direction);
 				}
 			}
 		}
@@ -79,7 +82,7 @@ void VoxelThread::DoWork()
 			for (int x = -1; x < 17; x++)
 			{
 				short validityMask = (x == -1 ? 0 : 1) + (y == -1 ? 0 : 2) + (z == -1 ? 0 : 4);
-				TransvoxelTools::RegularPolygonize(VoxelStruct, x, y, z, validityMask, *Triangles, TrianglesCount, *Vertices, *VerticesProperties, *VertexColors, VerticesCount);
+				TransvoxelTools::RegularPolygonize(VoxelStruct, x, y, z, validityMask, *RegularTriangles, TrianglesCount, *Vertices, *VerticesProperties, *VertexColors, VerticesCount);
 			}
 		}
 		VoxelStruct->NewCacheIs1 = !VoxelStruct->NewCacheIs1;
@@ -183,19 +186,22 @@ void VoxelThread::DoWork()
 	if (RealVerticesCount != 0)
 	{
 		// Update bijections arrays with equivalence list
-		/*for (auto it = VoxelStruct->EquivalenceList.begin(); it != VoxelStruct->EquivalenceList.end(); ++it)
+		for (auto it = VoxelStruct->EquivalenceList.begin(); it != VoxelStruct->EquivalenceList.end(); ++it)
 		{
 			int from = *it;
 			++it;
 			int to = *it;
-			BijectionArray[from] = BijectionArray[to];
-			InverseBijectionArray[to] = from;
-		}*/
+
+			int i = BijectionArray[to];
+			check(i != -1);
+			BijectionArray[from] = i;
+			InverseBijectionArray[i] = from;
+		}
 
 		// Create Section
 		FProcMeshSection& Section = VoxelChunk->Section;
 		Section.Reset();
-		Section.bEnableCollision = Depth == 0;
+		Section.bEnableCollision = (Depth == 0);
 		Section.bSectionVisible = true;
 		Section.ProcVertexBuffer.SetNumUninitialized(RealVerticesCount);
 		Section.ProcIndexBuffer.SetNumUninitialized(TrianglesCount);
@@ -207,9 +213,9 @@ void VoxelThread::DoWork()
 			Section.ProcVertexBuffer[i].Tangent.TangentX = FVector::ZeroVector;
 		}
 
-		// Compute normals from real triangles & Add triangles
-		int i = 0;
-		for (auto it = Triangles->begin(); it != Triangles->end(); ++it)
+		// Add regular triangles & compute normals from them
+		int RealTrianglesIndex = 0;
+		for (auto it = RegularTriangles->begin(); it != RegularTriangles->end(); ++it)
 		{
 			int a = *it;
 			int ba = BijectionArray[a];
@@ -228,10 +234,10 @@ void VoxelThread::DoWork()
 			// Add triangles
 			if (ba != -1 && bb != -1 && bc != -1)
 			{
-				Section.ProcIndexBuffer[i] = ba;
-				Section.ProcIndexBuffer[i + 1] = bb;
-				Section.ProcIndexBuffer[i + 2] = bc;
-				i += 3;
+				Section.ProcIndexBuffer[RealTrianglesIndex] = ba;
+				Section.ProcIndexBuffer[RealTrianglesIndex + 1] = bb;
+				Section.ProcIndexBuffer[RealTrianglesIndex + 2] = bc;
+				RealTrianglesIndex += 3;
 			}
 
 			//TODO: better tangents
@@ -251,8 +257,84 @@ void VoxelThread::DoWork()
 				Section.ProcVertexBuffer[bc].Tangent.TangentX += C - A;
 			}
 		}
+
+		// Copy normals & tangents from equivalence list to transition vertex
+		for (auto it = VoxelStruct->NormalsEquivalenceList.begin(); it != VoxelStruct->NormalsEquivalenceList.end(); ++it)
+		{
+			int from = *it;
+			++it;
+			int to = *it;
+
+			int fromIndex = BijectionArray[from];
+			int toIndex = BijectionArray[to];
+			check(fromIndex != -1);
+			check(toIndex != -1);
+
+			// We want from to became to: copy normals of to to from
+			Section.ProcVertexBuffer[fromIndex].Normal = Section.ProcVertexBuffer[toIndex].Normal;
+			Section.ProcVertexBuffer[fromIndex].Tangent = Section.ProcVertexBuffer[toIndex].Tangent;
+		}
+
+		// Add transitions triangles & compute normals from them
+		for (auto it = TransitionTriangles->begin(); it != TransitionTriangles->end(); ++it)
+		{
+			int a = *it;
+			int ba = BijectionArray[a];
+			++it;
+			int b = *it;
+			int bb = BijectionArray[b];
+			++it;
+			int c = *it;
+			int bc = BijectionArray[c];
+
+			// Add triangles
+			if (ba != -1 && bb != -1 && bc != -1)
+			{
+				Section.ProcIndexBuffer[RealTrianglesIndex] = ba;
+				Section.ProcIndexBuffer[RealTrianglesIndex + 1] = bb;
+				Section.ProcIndexBuffer[RealTrianglesIndex + 2] = bc;
+				RealTrianglesIndex += 3;
+			}
+
+			// Copy normals & tangents
+			FVector N = FVector::ZeroVector;
+			FProcMeshTangent T;
+
+			if (ba != -1 && Section.ProcVertexBuffer[ba].Normal != FVector::ZeroVector)
+			{
+				N = Section.ProcVertexBuffer[ba].Normal;
+				T = Section.ProcVertexBuffer[ba].Tangent;
+			}
+			else if (bb != -1 && Section.ProcVertexBuffer[bb].Normal != FVector::ZeroVector)
+			{
+				N = Section.ProcVertexBuffer[bb].Normal;
+				T = Section.ProcVertexBuffer[bb].Tangent;
+			}
+			else if (bc != -1 && Section.ProcVertexBuffer[bc].Normal != FVector::ZeroVector)
+			{
+				N = Section.ProcVertexBuffer[bc].Normal;
+				T = Section.ProcVertexBuffer[bc].Tangent;
+			}
+
+			if (ba != -1)
+			{
+				Section.ProcVertexBuffer[ba].Normal = N;
+				Section.ProcVertexBuffer[ba].Tangent = T;
+			}
+			if (bb != -1)
+			{
+				Section.ProcVertexBuffer[bb].Normal = N;
+				Section.ProcVertexBuffer[bb].Tangent = T;
+			}
+			if (bc != -1)
+			{
+				Section.ProcVertexBuffer[bc].Normal = N;
+				Section.ProcVertexBuffer[bc].Tangent = T;
+			}
+		}
+
 		// Shrink triangles
-		Section.ProcIndexBuffer.SetNumUninitialized(i);
+		Section.ProcIndexBuffer.SetNumUninitialized(RealTrianglesIndex);
 
 
 		// Normalize normals + tangents & translate vertices on edges
@@ -275,7 +357,5 @@ void VoxelThread::DoWork()
 			}
 			VertexColors->pop_front();
 		}
-		delete VoxelStruct;
-		VoxelStruct = nullptr;
 	}
 }
