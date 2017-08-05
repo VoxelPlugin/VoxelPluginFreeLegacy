@@ -6,6 +6,7 @@
 #include "ProceduralMeshComponent.h"
 
 class AVoxelChunk;
+struct VoxelChunkStruct;
 
 /**
  *
@@ -19,9 +20,10 @@ public:
 	~VoxelThread();
 
 	AVoxelChunk* VoxelChunk;
+	VoxelChunkStruct* VoxelStruct;
 
-	void DoWork(); 
-	
+	void DoWork();
+
 	FORCEINLINE TStatId GetStatId() const
 	{
 		RETURN_QUICK_DECLARE_CYCLE_STAT(VoxelThread, STATGROUP_ThreadPoolAsyncTasks);

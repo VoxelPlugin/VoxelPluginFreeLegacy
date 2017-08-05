@@ -22,7 +22,7 @@ AVoxelWorld::AVoxelWorld() : bNotCreated(true)
 	SetActorScale3D(100 * FVector::OneVector);
 
 	ThreadPool = FQueuedThreadPool::Allocate();
-	ThreadPool->Create(4);
+	ThreadPool->Create(3);
 }
 
 AVoxelWorld::~AVoxelWorld()
