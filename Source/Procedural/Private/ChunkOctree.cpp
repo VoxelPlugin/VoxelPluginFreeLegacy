@@ -13,14 +13,7 @@ ChunkOctree::ChunkOctree(FIntVector position, int depth) : Position(position), D
 
 ChunkOctree::~ChunkOctree()
 {
-	if (bHasChunk)
-	{
-		Unload();
-	}
-	if (bHasChilds)
-	{
-		DeleteChilds();
-	}
+
 }
 
 

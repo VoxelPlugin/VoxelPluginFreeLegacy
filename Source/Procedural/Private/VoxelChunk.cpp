@@ -8,6 +8,7 @@
 #include "VoxelThread.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
 AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr)
@@ -32,9 +33,9 @@ void AVoxelChunk::BeginPlay()
 
 void AVoxelChunk::Tick(float DeltaTime)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 	if (bNeedSectionUpdate && Task != nullptr && Task->IsDone())
 	{
-		SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 		bNeedSectionUpdate = false;
 		PrimaryMesh->SetProcMeshSection(0, Section);
 		delete Task;
@@ -68,6 +69,8 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 
 void AVoxelChunk::Update()
 {
+	SCOPE_CYCLE_COUNTER(STAT_Update);
+
 	// Make sure we've ticked
 	Tick(0);
 
@@ -81,7 +84,8 @@ void AVoxelChunk::Update()
 		}
 
 		Task = new FAsyncTask<VoxelThread>(this);
-		Task->StartBackgroundTask(World->ThreadPool);
+		//Task->StartBackgroundTask(World->ThreadPool);
+		Task->StartSynchronousTask();
 		bNeedSectionUpdate = true;
 	}
 }
