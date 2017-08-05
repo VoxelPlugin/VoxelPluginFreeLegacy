@@ -55,18 +55,21 @@ void VoxelThread::DoWork()
 	/**
 	 * Transitions voxels
 	 */
-	for (int y = 0; y < 16; y++)
+	if (Depth != 0)
 	{
-		for (int x = 0; x < 16; x++)
+		for (int y = 0; y < 16; y++)
 		{
-			short validityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
-			for (int i = 0; i < 6; i++)
+			for (int x = 0; x < 16; x++)
 			{
-				if (VoxelStruct->ChunkHasHigherRes[i])
+				short validityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
+				for (int i = 0; i < 6; i++)
 				{
-					TransitionDirection Direction = (TransitionDirection)i;
-					VoxelStruct->CurrentDirection = Direction;
-					TransvoxelTools::TransitionPolygonize(VoxelStruct, x, y, validityMask, *TransitionTriangles, TrianglesCount, *Vertices, *VerticesProperties2D, *VertexColors, VerticesCount, Direction);
+					if (VoxelStruct->ChunkHasHigherRes[i])
+					{
+						TransitionDirection Direction = (TransitionDirection)i;
+						VoxelStruct->CurrentDirection = Direction;
+						TransvoxelTools::TransitionPolygonize(VoxelStruct, x, y, validityMask, *TransitionTriangles, TrianglesCount, *Vertices, *VerticesProperties2D, *VertexColors, VerticesCount, Direction);
+					}
 				}
 			}
 		}
@@ -133,69 +136,75 @@ void VoxelThread::DoWork()
 
 		i++;
 	}
-	// Transition voxels
-	while (!VerticesProperties2D->empty())
+	if (Depth != 0)
 	{
-		FVector Vertex = Vertices->front();
-		VertexProperties2D Properties2D = VerticesProperties2D->front();
-
-		int index = VerticesCount - 1 - i;
-
-		FVector RealPosition = VoxelStruct->TransformPosition(Vertex, Properties2D.Direction);
-
-		VertexProperties Properties;
-		if (Properties2D.NeedTranslation)
+		// Transition voxels
+		while (!VerticesProperties2D->empty())
 		{
-			FBoolVector IsExact = VoxelStruct->TransformPosition(FBoolVector(Properties2D.IsXExact, Properties2D.IsYExact, true), Properties2D.Direction);
-			FIntVector RealExactPosition = VoxelStruct->TransformPosition(Properties2D.X, Properties2D.Y, 0, Properties2D.Direction);
-			Properties = VertexProperties({
-				IsExact.X && RealExactPosition.X == 0,
-				IsExact.X && RealExactPosition.X == Width,
-				IsExact.Y && RealExactPosition.Y == 0,
-				IsExact.Y && RealExactPosition.Y == Width,
-				IsExact.Z && RealExactPosition.Z == 0,
-				IsExact.Z && RealExactPosition.Z == Width,
-				false });
+			FVector Vertex = Vertices->front();
+			VertexProperties2D Properties2D = VerticesProperties2D->front();
+
+			int index = VerticesCount - 1 - i;
+
+			FVector RealPosition = VoxelStruct->TransformPosition(Vertex, Properties2D.Direction);
+
+			VertexProperties Properties;
+			if (Properties2D.NeedTranslation)
+			{
+				FBoolVector IsExact = VoxelStruct->TransformPosition(FBoolVector(Properties2D.IsXExact, Properties2D.IsYExact, true), Properties2D.Direction);
+				FIntVector RealExactPosition = VoxelStruct->TransformPosition(Properties2D.X, Properties2D.Y, 0, Properties2D.Direction);
+				Properties = VertexProperties({
+					IsExact.X && RealExactPosition.X == 0,
+					IsExact.X && RealExactPosition.X == Width,
+					IsExact.Y && RealExactPosition.Y == 0,
+					IsExact.Y && RealExactPosition.Y == Width,
+					IsExact.Z && RealExactPosition.Z == 0,
+					IsExact.Z && RealExactPosition.Z == Width,
+					false });
+			}
+			else
+			{
+				Properties = VertexProperties({
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false });
+			}
+
+			VerticesArray[index] = RealPosition;
+			VerticesPropertiesArray[index] = Properties;
+
+			InverseBijectionArray[cleanedIndex] = index;
+			BijectionArray[index] = cleanedIndex;
+			cleanedIndex++;
+
+			Vertices->pop_front();
+			VerticesProperties2D->pop_front();
+
+			i++;
 		}
-		else
-		{
-			Properties = VertexProperties({
-				false,
-				false,
-				false,
-				false,
-				false,
-				false,
-				false });
-		}
-
-		VerticesArray[index] = RealPosition;
-		VerticesPropertiesArray[index] = Properties;
-
-		InverseBijectionArray[cleanedIndex] = index;
-		BijectionArray[index] = cleanedIndex;
-		cleanedIndex++;
-
-		Vertices->pop_front();
-		VerticesProperties2D->pop_front();
-
-		i++;
 	}
 	const int RealVerticesCount = cleanedIndex;
 
 	if (RealVerticesCount != 0)
 	{
-		// Update bijections arrays with equivalence list
-		for (auto it = VoxelStruct->EquivalenceList.begin(); it != VoxelStruct->EquivalenceList.end(); ++it)
+		if (Depth != 0)
 		{
-			int from = *it;
-			++it;
-			int to = *it;
+			// Update bijections arrays with equivalence list
+			for (auto it = VoxelStruct->EquivalenceList.begin(); it != VoxelStruct->EquivalenceList.end(); ++it)
+			{
+				int from = *it;
+				++it;
+				int to = *it;
 
-			int i = BijectionArray[to];
-			check(i != -1);
-			BijectionArray[from] = i;
-			InverseBijectionArray[i] = from;
+				int i = BijectionArray[to];
+				check(i != -1);
+				BijectionArray[from] = i;
+				InverseBijectionArray[i] = from;
+			}
 		}
 
 		// Create Section
@@ -258,81 +267,83 @@ void VoxelThread::DoWork()
 			}
 		}
 
-		// Copy normals & tangents from equivalence list to transition vertex
-		for (auto it = VoxelStruct->NormalsEquivalenceList.begin(); it != VoxelStruct->NormalsEquivalenceList.end(); ++it)
+		if (Depth != 0)
 		{
-			int from = *it;
-			++it;
-			int to = *it;
+			// Copy normals & tangents from equivalence list to transition vertex
+			for (auto it = VoxelStruct->NormalsEquivalenceList.begin(); it != VoxelStruct->NormalsEquivalenceList.end(); ++it)
+			{
+				int from = *it;
+				++it;
+				int to = *it;
 
-			int fromIndex = BijectionArray[from];
-			int toIndex = BijectionArray[to];
-			check(fromIndex != -1);
-			check(toIndex != -1);
+				int fromIndex = BijectionArray[from];
+				int toIndex = BijectionArray[to];
+				check(fromIndex != -1);
+				check(toIndex != -1);
 
-			// We want from to became to: copy normals of to to from
-			Section.ProcVertexBuffer[fromIndex].Normal = Section.ProcVertexBuffer[toIndex].Normal;
-			Section.ProcVertexBuffer[fromIndex].Tangent = Section.ProcVertexBuffer[toIndex].Tangent;
+				// We want from to became to: copy normals of to to from
+				Section.ProcVertexBuffer[fromIndex].Normal = Section.ProcVertexBuffer[toIndex].Normal;
+				Section.ProcVertexBuffer[fromIndex].Tangent = Section.ProcVertexBuffer[toIndex].Tangent;
+			}
+
+			// Add transitions triangles & compute normals from them
+			for (auto it = TransitionTriangles->begin(); it != TransitionTriangles->end(); ++it)
+			{
+				int a = *it;
+				int ba = BijectionArray[a];
+				++it;
+				int b = *it;
+				int bb = BijectionArray[b];
+				++it;
+				int c = *it;
+				int bc = BijectionArray[c];
+
+				// Add triangles
+				if (ba != -1 && bb != -1 && bc != -1)
+				{
+					Section.ProcIndexBuffer[RealTrianglesIndex] = ba;
+					Section.ProcIndexBuffer[RealTrianglesIndex + 1] = bb;
+					Section.ProcIndexBuffer[RealTrianglesIndex + 2] = bc;
+					RealTrianglesIndex += 3;
+				}
+
+				// Copy normals & tangents
+				FVector N = FVector::ZeroVector;
+				FProcMeshTangent T;
+
+				if (ba != -1 && Section.ProcVertexBuffer[ba].Normal != FVector::ZeroVector)
+				{
+					N = Section.ProcVertexBuffer[ba].Normal;
+					T = Section.ProcVertexBuffer[ba].Tangent;
+				}
+				else if (bb != -1 && Section.ProcVertexBuffer[bb].Normal != FVector::ZeroVector)
+				{
+					N = Section.ProcVertexBuffer[bb].Normal;
+					T = Section.ProcVertexBuffer[bb].Tangent;
+				}
+				else if (bc != -1 && Section.ProcVertexBuffer[bc].Normal != FVector::ZeroVector)
+				{
+					N = Section.ProcVertexBuffer[bc].Normal;
+					T = Section.ProcVertexBuffer[bc].Tangent;
+				}
+
+				if (ba != -1)
+				{
+					Section.ProcVertexBuffer[ba].Normal = N;
+					Section.ProcVertexBuffer[ba].Tangent = T;
+				}
+				if (bb != -1)
+				{
+					Section.ProcVertexBuffer[bb].Normal = N;
+					Section.ProcVertexBuffer[bb].Tangent = T;
+				}
+				if (bc != -1)
+				{
+					Section.ProcVertexBuffer[bc].Normal = N;
+					Section.ProcVertexBuffer[bc].Tangent = T;
+				}
+			}
 		}
-
-		// Add transitions triangles & compute normals from them
-		for (auto it = TransitionTriangles->begin(); it != TransitionTriangles->end(); ++it)
-		{
-			int a = *it;
-			int ba = BijectionArray[a];
-			++it;
-			int b = *it;
-			int bb = BijectionArray[b];
-			++it;
-			int c = *it;
-			int bc = BijectionArray[c];
-
-			// Add triangles
-			if (ba != -1 && bb != -1 && bc != -1)
-			{
-				Section.ProcIndexBuffer[RealTrianglesIndex] = ba;
-				Section.ProcIndexBuffer[RealTrianglesIndex + 1] = bb;
-				Section.ProcIndexBuffer[RealTrianglesIndex + 2] = bc;
-				RealTrianglesIndex += 3;
-			}
-
-			// Copy normals & tangents
-			FVector N = FVector::ZeroVector;
-			FProcMeshTangent T;
-
-			if (ba != -1 && Section.ProcVertexBuffer[ba].Normal != FVector::ZeroVector)
-			{
-				N = Section.ProcVertexBuffer[ba].Normal;
-				T = Section.ProcVertexBuffer[ba].Tangent;
-			}
-			else if (bb != -1 && Section.ProcVertexBuffer[bb].Normal != FVector::ZeroVector)
-			{
-				N = Section.ProcVertexBuffer[bb].Normal;
-				T = Section.ProcVertexBuffer[bb].Tangent;
-			}
-			else if (bc != -1 && Section.ProcVertexBuffer[bc].Normal != FVector::ZeroVector)
-			{
-				N = Section.ProcVertexBuffer[bc].Normal;
-				T = Section.ProcVertexBuffer[bc].Tangent;
-			}
-
-			if (ba != -1)
-			{
-				Section.ProcVertexBuffer[ba].Normal = N;
-				Section.ProcVertexBuffer[ba].Tangent = T;
-			}
-			if (bb != -1)
-			{
-				Section.ProcVertexBuffer[bb].Normal = N;
-				Section.ProcVertexBuffer[bb].Tangent = T;
-			}
-			if (bc != -1)
-			{
-				Section.ProcVertexBuffer[bc].Normal = N;
-				Section.ProcVertexBuffer[bc].Tangent = T;
-			}
-		}
-
 		// Shrink triangles
 		Section.ProcIndexBuffer.SetNumUninitialized(RealTrianglesIndex);
 
