@@ -24,6 +24,18 @@ bool ChunkOctree::operator==(const ChunkOctree& other)
 
 
 
+void ChunkOctree::Delete()
+{
+	if (bHasChunk)
+	{
+		Unload();
+	}
+	if (bHasChilds)
+	{
+		DeleteChilds();
+	}
+}
+
 int ChunkOctree::GetWidth()
 {
 	return 16 << Depth;
@@ -181,6 +193,7 @@ void ChunkOctree::DeleteChilds()
 	{
 		for (int i = 0; i < 8; i++)
 		{
+			Childs[i]->Delete();
 			Childs[i].Reset();
 		}
 		bHasChilds = false;

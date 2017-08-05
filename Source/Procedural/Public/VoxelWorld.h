@@ -24,6 +24,8 @@ public:
 	~AVoxelWorld();
 
 	int Size();
+	
+	float GetDeletionDelay();
 
 	int GetDepthAt(FIntVector position);
 	void ScheduleUpdate(TWeakPtr<ChunkOctree> chunk);
@@ -33,12 +35,6 @@ public:
 public:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		UMaterialInterface* VoxelMaterial;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		int Depth;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		float CollisionFPS;
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		float DeletionDelay;
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -111,6 +107,14 @@ protected:
 	virtual void BeginPlay() override;
 	// Lock Depth and VoxelMaterial when in play
 	virtual bool CanEditChange(const UProperty* InProperty) const override;
+
+private:
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		int Depth;
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		float CollisionFPS;
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		float DeletionDelay;
 
 private:
 	ChunkOctree* MainOctree;
