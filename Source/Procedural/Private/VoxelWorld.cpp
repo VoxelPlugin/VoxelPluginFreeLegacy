@@ -310,3 +310,8 @@ int AVoxelWorld::Size()
 	return Data->Size();
 }
 
+float AVoxelWorld::GetDeletionDelay()
+{
+	return DeletionDelay;
+}
+

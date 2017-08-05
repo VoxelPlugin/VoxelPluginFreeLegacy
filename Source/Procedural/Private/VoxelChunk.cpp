@@ -107,7 +107,7 @@ void AVoxelChunk::Update(bool async)
 void AVoxelChunk::Unload()
 {
 	bNeedDeletion = true;
-	TimeUntilDeletion = World->DeletionDelay;
+	TimeUntilDeletion = World->GetDeletionDelay();
 }
 
 void AVoxelChunk::Delete()

@@ -61,8 +61,10 @@ private:
 
 	FProcMeshSection Section;
 
-	bool bNeedDeletion;
-	float TimeUntilDeletion;
+	UPROPERTY(VisibleAnywhere)
+		bool bNeedDeletion;
+	UPROPERTY(VisibleAnywhere)
+		float TimeUntilDeletion;
 
 	void Delete();
 };

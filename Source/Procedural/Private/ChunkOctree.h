@@ -21,7 +21,7 @@ public:
 
 	const int Depth;
 
-
+	void Delete();
 
 	int GetWidth();
 
