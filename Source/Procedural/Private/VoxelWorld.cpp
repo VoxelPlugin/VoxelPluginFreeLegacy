@@ -9,6 +9,10 @@
 #include <forward_list>
 
 DEFINE_LOG_CATEGORY(VoxelWorldLog)
+DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateAll"), STAT_UpdateAll, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ ApplyQueuedUpdates"), STAT_ApplyQueuedUpdates, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
 AVoxelWorld::AVoxelWorld() : bNotCreated(true)
@@ -167,6 +171,7 @@ void AVoxelWorld::GlobalAdd(FVector position, int strength)
 
 void AVoxelWorld::Add(FIntVector position, int strength)
 {
+	SCOPE_CYCLE_COUNTER(STAT_Add);
 	if (IsInWorld(position))
 	{
 		Data->SetValue(position, Data->GetValue(position) - strength);
@@ -186,6 +191,7 @@ void AVoxelWorld::GlobalRemove(FVector position, int strength)
 
 void AVoxelWorld::Remove(FIntVector position, int strength)
 {
+	SCOPE_CYCLE_COUNTER(STAT_Remove);
 	if (IsInWorld(position))
 	{
 		Data->SetValue(position, Data->GetValue(position) + strength);
@@ -256,6 +262,8 @@ void AVoxelWorld::ScheduleUpdate(TWeakPtr<ChunkOctree> chunk)
 
 void AVoxelWorld::ApplyQueuedUpdates()
 {
+	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
+	UE_LOG(VoxelWorldLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
 	for (auto& Chunk : ChunksToUpdate)
 	{
 		TSharedPtr<ChunkOctree> LockedObserver(Chunk.Pin());
@@ -274,6 +282,7 @@ void AVoxelWorld::ApplyQueuedUpdates()
 
 void AVoxelWorld::UpdateAll()
 {
+	SCOPE_CYCLE_COUNTER(STAT_UpdateAll);
 	MainOctree->Update();
 }
 

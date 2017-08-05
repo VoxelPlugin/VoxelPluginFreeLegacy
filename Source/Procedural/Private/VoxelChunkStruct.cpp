@@ -142,6 +142,7 @@ void VoxelChunkStruct::SaveVertex(int x, int y, int z, short edgeIndex, int inde
 		break;
 	default:
 		check(false);
+		return;
 	}
 
 	switch (Direction)
@@ -159,6 +160,7 @@ void VoxelChunkStruct::SaveVertex(int x, int y, int z, short edgeIndex, int inde
 		else
 		{
 			check(false);
+			return;
 		}
 		break;
 	case XMax:
@@ -175,6 +177,7 @@ void VoxelChunkStruct::SaveVertex(int x, int y, int z, short edgeIndex, int inde
 		else
 		{
 			check(false);
+			return;
 		}
 		break;
 	case YMin:
@@ -191,6 +194,7 @@ void VoxelChunkStruct::SaveVertex(int x, int y, int z, short edgeIndex, int inde
 		else
 		{
 			check(false);
+			return;
 		}
 		break;
 	case YMax:
@@ -208,6 +212,7 @@ void VoxelChunkStruct::SaveVertex(int x, int y, int z, short edgeIndex, int inde
 		else
 		{
 			check(false);
+			return;
 		}
 		break;
 	case ZMin:
@@ -224,6 +229,7 @@ void VoxelChunkStruct::SaveVertex(int x, int y, int z, short edgeIndex, int inde
 		else
 		{
 			check(false);
+			return;
 		}
 		break;
 	case ZMax:
@@ -241,10 +247,12 @@ void VoxelChunkStruct::SaveVertex(int x, int y, int z, short edgeIndex, int inde
 		else
 		{
 			check(false);
+			return;
 		}
 		break;
 	default:
 		check(false);
+		return;
 	}
 
 	if (LocalPos.X < 0 || LocalPos.X > 15 || LocalPos.Y < 0 || LocalPos.Y > 15)
