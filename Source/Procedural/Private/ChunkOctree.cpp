@@ -1,6 +1,5 @@
 #include "ChunkOctree.h"
 #include "VoxelChunk.h"
-#include "VoxelCollisionChunk.h"
 #include "VoxelWorld.h"
 #include "EngineGlobals.h"
 #include "Engine.h"

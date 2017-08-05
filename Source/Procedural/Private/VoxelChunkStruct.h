@@ -13,7 +13,9 @@ struct VoxelChunkStruct : public IRegularVoxel, public ITransitionVoxel
 
 	const int Depth;
 	// List of pair of vertex index that are at the same position. Top: From; Bottom: To
-	//std::forward_list<int> EquivalenceList;
+	std::forward_list<int> EquivalenceList;
+	// Vertices with same normal
+	std::forward_list<int> NormalsEquivalenceList;
 
 	// Inherited via IRegularVoxel
 	virtual signed char GetValue(int x, int y, int z) override;
