@@ -7,11 +7,13 @@
 #include "VoxelChunkSaveStruct.h"
 #include "VoxelWorld.generated.h"
 
+
 class ChunkOctree;
 class VoxelData;
 class AVoxelChunk;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelWorldLog, Log, All);
+DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
 
 UCLASS()
 class PROCEDURAL_API AVoxelWorld : public AActor
