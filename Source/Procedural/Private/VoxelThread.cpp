@@ -64,7 +64,7 @@ void VoxelThread::DoWork()
 				short validityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
 				for (int i = 0; i < 6; i++)
 				{
-					if (VoxelStruct->ChunkHasHigherRes[i])
+					if (VoxelChunk->ChunkHasHigherRes[i])
 					{
 						TransitionDirection Direction = (TransitionDirection)i;
 						VoxelStruct->CurrentDirection = Direction;
@@ -354,7 +354,7 @@ void VoxelThread::DoWork()
 			Section.ProcVertexBuffer[i].Normal.Normalize();
 			Section.ProcVertexBuffer[i].Tangent.TangentX.Normalize();
 			int j = InverseBijectionArray[i];
-			Section.ProcVertexBuffer[i].Position = TransvoxelTools::GetTranslated(VerticesArray[j], Section.ProcVertexBuffer[i].Normal, VerticesPropertiesArray[j], VoxelStruct->ChunkHasHigherRes, Depth);
+			Section.ProcVertexBuffer[i].Position = TransvoxelTools::GetTranslated(VerticesArray[j], Section.ProcVertexBuffer[i].Normal, VerticesPropertiesArray[j], VoxelChunk->ChunkHasHigherRes, Depth);
 			Section.SectionLocalBox += Section.ProcVertexBuffer[i].Position;
 		}
 

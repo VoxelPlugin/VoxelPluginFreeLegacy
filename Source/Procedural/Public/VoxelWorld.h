@@ -27,8 +27,9 @@ public:
 
 	float GetDeletionDelay();
 	float GetQuality();
+	bool GetRebuildBorders();
 
-	int GetDepthAt(FIntVector position);
+	AVoxelChunk* GetChunkAt(FIntVector position);
 	void ScheduleUpdate(TWeakPtr<ChunkOctree> chunk);
 
 	FQueuedThreadPool* ThreadPool;
@@ -118,6 +119,8 @@ private:
 		float DeletionDelay;
 	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0.01", ClampMax = "10", UIMin = "0.01", UIMax = "10"))
 		float Quality;
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		bool bRebuildBorders;
 
 private:
 	TSharedPtr<ChunkOctree> MainOctree;
