@@ -1,19 +1,18 @@
 #include "TransvoxelTools.h"
 #include "Transvoxel.h"
 
-void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int z, short validityMask, Trigs& triangles, int& trianglesCount, Verts& vertices, Props& properties, Colors& colors, int& verticesCount)
+void TransvoxelTools::RegularPolygonize(IRegularVoxel* Chunk, int X, int Y, int Z, short ValidityMask, Trigs& Triangles, int& TrianglesCount, Verts& Vertices, Props& Properties, Colors& Colors, int& VerticesCount, int Step)
 {
-	check(chunk);
-	int Step = 1 << chunk->GetDepth();
+	check(Chunk);
 	signed char Corner[8] = {
-		chunk->GetValue(x       * Step, y       * Step, z       * Step),
-		chunk->GetValue((x + 1) * Step, y       * Step, z       * Step),
-		chunk->GetValue(x       * Step, (y + 1) * Step, z       * Step),
-		chunk->GetValue((x + 1) * Step, (y + 1) * Step, z       * Step),
-		chunk->GetValue(x       * Step, y       * Step, (z + 1) * Step),
-		chunk->GetValue((x + 1) * Step, y       * Step, (z + 1) * Step),
-		chunk->GetValue(x       * Step, (y + 1) * Step, (z + 1) * Step),
-		chunk->GetValue((x + 1) * Step, (y + 1) * Step, (z + 1) * Step)
+		Chunk->GetValue(X       * Step, Y       * Step, Z       * Step),
+		Chunk->GetValue((X + 1) * Step, Y       * Step, Z       * Step),
+		Chunk->GetValue(X       * Step, (Y + 1) * Step, Z       * Step),
+		Chunk->GetValue((X + 1) * Step, (Y + 1) * Step, Z       * Step),
+		Chunk->GetValue(X       * Step, Y       * Step, (Z + 1) * Step),
+		Chunk->GetValue((X + 1) * Step, Y       * Step, (Z + 1) * Step),
+		Chunk->GetValue(X       * Step, (Y + 1) * Step, (Z + 1) * Step),
+		Chunk->GetValue((X + 1) * Step, (Y + 1) * Step, (Z + 1) * Step)
 	};
 
 	unsigned long CaseCode = ((Corner[0] >> 7) & 0x01)
@@ -29,19 +28,21 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 	{
 		// Cell has a nontrivial triangulation
 		FIntVector Positions[8] = {
-			FIntVector(x    , y    , z) * Step,
-			FIntVector(x + 1, y    , z) * Step,
-			FIntVector(x    , y + 1, z) * Step,
-			FIntVector(x + 1, y + 1, z) * Step,
-			FIntVector(x    , y    , z + 1) * Step,
-			FIntVector(x + 1, y    , z + 1) * Step,
-			FIntVector(x    , y + 1, z + 1) * Step,
-			FIntVector(x + 1, y + 1, z + 1) * Step
+			FIntVector(X    , Y    , Z) * Step,
+			FIntVector(X + 1, Y    , Z) * Step,
+			FIntVector(X    , Y + 1, Z) * Step,
+			FIntVector(X + 1, Y + 1, Z) * Step,
+			FIntVector(X    , Y    , Z + 1) * Step,
+			FIntVector(X + 1, Y    , Z + 1) * Step,
+			FIntVector(X    , Y + 1, Z + 1) * Step,
+			FIntVector(X + 1, Y + 1, Z + 1) * Step
 		};
 
+		check(0 <= CaseCode && CaseCode < 256);
 		unsigned char CellClass = regularCellClass[CaseCode];
-		RegularCellData CellData = regularCellData[CellClass];
 		const unsigned short* VertexData = regularVertexData[CaseCode];
+		check(0 <= CellClass && CellClass < 16);
+		RegularCellData CellData = regularCellData[CellClass];
 
 		TArray<int> VertexIndices;
 		VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
@@ -55,6 +56,9 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 			const unsigned short IndexVerticeA = (EdgeCode >> 4) & 0x0F;
 			const unsigned short IndexVerticeB = EdgeCode & 0x0F;
 
+			check(0 <= IndexVerticeA && IndexVerticeA < 8);
+			check(0 <= IndexVerticeB && IndexVerticeB < 8);
+
 			const signed char ValueAtA = Corner[IndexVerticeA];
 			const signed char ValueAtB = Corner[IndexVerticeB];
 
@@ -64,48 +68,48 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 			// Index of vertex on a generic cube (0, 1, 2 or 3)
 			const short EdgeIndex = (EdgeCode >> 8) & 0x0F;
 			// Direction to go to use an already created vertex
-			const short Direction = EdgeCode >> 12;
+			const short CacheDirection = EdgeCode >> 12;
 
 			if (ValueAtB == 0)
 			{
 				// Vertex lies at the higher-numbered endpoint
-				if ((IndexVerticeB == 7) || ((validityMask & Direction) != Direction))
+				if ((IndexVerticeB == 7) || ((ValidityMask & CacheDirection) != CacheDirection))
 				{
 					// Vertex failed validity check
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(chunk, Step, vertices, properties, colors, verticesCount, (FVector)PositionB, PositionB, IsExact);
+					VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, (FVector)PositionB, PositionB, IsExact);
 				}
 				else
 				{
 					// Vertex already created
-					VertexIndex = chunk->LoadVertex(x, y, z, Direction, EdgeIndex);
+					VertexIndex = Chunk->LoadVertex(X, Y, Z, CacheDirection, EdgeIndex);
 				}
 			}
 			else if (ValueAtA == 0)
 			{
 				// Vertex lies at the lower-numbered endpoint
-				if ((validityMask & Direction) != Direction)
+				if ((ValidityMask & CacheDirection) != CacheDirection)
 				{
 					// Validity check failed
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(chunk, Step, vertices, properties, colors, verticesCount, (FVector)PositionA, PositionA, IsExact);
+					VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, (FVector)PositionA, PositionA, IsExact);
 				}
 				else
 				{
 					// Reuse vertex
-					VertexIndex = chunk->LoadVertex(x, y, z, Direction, EdgeIndex);
+					VertexIndex = Chunk->LoadVertex(X, Y, Z, CacheDirection, EdgeIndex);
 				}
 			}
 			else
 			{
 				// Vertex lies in the interior of the edge
-				if ((validityMask & Direction) != Direction)
+				if ((ValidityMask & CacheDirection) != CacheDirection)
 				{
-					bool IsAlongX = (EdgeIndex == 2);
-					bool IsAlongY = (EdgeIndex == 1);
-					bool IsAlongZ = (EdgeIndex == 3);
+					const bool bIsAlongX = (EdgeIndex == 2);
+					const bool bIsAlongY = (EdgeIndex == 1);
+					const bool bIsAlongZ = (EdgeIndex == 3);
 
-					FBoolVector IsExact(!IsAlongX, !IsAlongY, !IsAlongZ);
+					FBoolVector IsExact(!bIsAlongX, !bIsAlongY, !bIsAlongZ);
 
 					// Validity check failed
 					if (Step == 1)
@@ -114,43 +118,43 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 						check(ValueAtA - ValueAtB != 0);
 						float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
 						FVector Q = t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
-						VertexIndex = AddVertex(chunk, Step, vertices, properties, colors, verticesCount, Q, PositionA, IsExact);
+						VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, Q, PositionA, IsExact);
 					}
 					else
 					{
 						FVector Q;
-						if (IsAlongX)
+						if (bIsAlongX)
 						{
-							// Edge along x axis
-							Q = InterpolateX(chunk, PositionA.X, PositionB.X, PositionA.Y, PositionA.Z);
+							// Edge along X axis
+							Q = InterpolateX(Chunk, PositionA.X, PositionB.X, PositionA.Y, PositionA.Z);
 						}
-						else if (IsAlongY)
+						else if (bIsAlongY)
 						{
-							// Edge along y axis
-							Q = InterpolateY(chunk, PositionA.X, PositionA.Y, PositionB.Y, PositionA.Z);
+							// Edge along Y axis
+							Q = InterpolateY(Chunk, PositionA.X, PositionA.Y, PositionB.Y, PositionA.Z);
 						}
-						else if (IsAlongZ)
+						else if (bIsAlongZ)
 						{
 							// Edge along z axis
-							Q = InterpolateZ(chunk, PositionA.X, PositionA.Y, PositionA.Z, PositionB.Z);
+							Q = InterpolateZ(Chunk, PositionA.X, PositionA.Y, PositionA.Z, PositionB.Z);
 						}
 						else
 						{
 							checkf(false, TEXT("Error in interpolation: case should not exist"));
 						}
-						VertexIndex = AddVertex(chunk, Step, vertices, properties, colors, verticesCount, Q, PositionA, IsExact);
+						VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, Q, PositionA, IsExact);
 					}
 				}
 				else
 				{
-					VertexIndex = chunk->LoadVertex(x, y, z, Direction, EdgeIndex);
+					VertexIndex = Chunk->LoadVertex(X, Y, Z, CacheDirection, EdgeIndex);
 				}
 			}
 
 			// If own vertex, save it
-			if (Direction & 0x08)
+			if (CacheDirection & 0x08)
 			{
-				chunk->SaveVertex(x, y, z, EdgeIndex, VertexIndex, properties.front());
+				Chunk->SaveVertex(X, Y, Z, EdgeIndex, VertexIndex, Properties.front());
 			}
 			VertexIndices[i] = VertexIndex;
 
@@ -159,142 +163,143 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* chunk, int x, int y, int 
 		// Add triangles
 		for (int i = 0; i < 3 * CellData.GetTriangleCount(); i++)
 		{
-			triangles.push_front(VertexIndices[CellData.vertexIndex[i]]);
+			Triangles.push_front(VertexIndices[CellData.vertexIndex[i]]);
 		}
-		trianglesCount += 3 * CellData.GetTriangleCount();
+		TrianglesCount += 3 * CellData.GetTriangleCount();
 	}
 }
 
-int TransvoxelTools::AddVertex(IRegularVoxel* chunk, int step, Verts& vertices, Props& properties, Colors& colors, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector isExact)
+int TransvoxelTools::AddVertex(IRegularVoxel* Chunk, int Step, Verts& Vertices, Props& Properties, Colors& Colors, int& VerticesCount, FVector Vertex, FIntVector ExactPosition, FBoolVector IsExact)
 {
-	properties.push_front(VertexProperties({
-		isExact.X && exactPosition.X == 0,
-		isExact.X && exactPosition.X == 16 * step,
-		isExact.Y && exactPosition.Y == 0,
-		isExact.Y && exactPosition.Y == 16 * step,
-		isExact.Z && exactPosition.Z == 0,
-		isExact.Z && exactPosition.Z == 16 * step,
-		chunk->IsNormalOnly(vertex)
+	Properties.push_front(VertexProperties({
+		IsExact.X && ExactPosition.X == 0,
+		IsExact.X && ExactPosition.X == 16 * Step,
+		IsExact.Y && ExactPosition.Y == 0,
+		IsExact.Y && ExactPosition.Y == 16 * Step,
+		IsExact.Z && ExactPosition.Z == 0,
+		IsExact.Z && ExactPosition.Z == 16 * Step,
+		Chunk->IsNormalOnly(Vertex)
 	}));
-	colors.push_front(chunk->GetColor(exactPosition.X, exactPosition.Y, exactPosition.Z));
-	vertices.push_front(vertex);
-	verticesCount++;
-	return verticesCount - 1;
+	Colors.push_front(Chunk->GetColor(ExactPosition.X, ExactPosition.Y, ExactPosition.Z));
+	Vertices.push_front(Vertex);
+	VerticesCount++;
+	return VerticesCount - 1;
 }
 
-FVector TransvoxelTools::InterpolateX(IRegularVoxel* chunk, int xMin, int xMax, int y, int z)
+FVector TransvoxelTools::InterpolateX(IRegularVoxel* Chunk, int MinX, int MaxX, int Y, int Z)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = chunk->GetValue(xMin, y, z);
-	signed char ValueAtB = chunk->GetValue(xMax, y, z);
-	if (xMax - xMin == 1)
+	signed char ValueAtA = Chunk->GetValue(MinX, Y, Z);
+	signed char ValueAtB = Chunk->GetValue(MaxX, Y, Z);
+	if (MaxX - MinX == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-		return t * FVector(xMin, y, z) + (1 - t) *  FVector(xMax, y, z);
+		return t * FVector(MinX, Y, Z) + (1 - t) *  FVector(MaxX, Y, Z);
 	}
 	else
 	{
-		check((xMax + xMin) % 2 == 0);
+		check((MaxX + MinX) % 2 == 0);
 
-		int xMiddle = (xMax + xMin) / 2;
+		int xMiddle = (MaxX + MinX) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (chunk->GetValue(xMiddle, y, z) & 0x80))
+		if ((ValueAtA & 0x80) == (Chunk->GetValue(xMiddle, Y, Z) & 0x80))
 		{
 			// If min and middle have same sign
-			return InterpolateX(chunk, xMiddle, xMax, y, z);
+			return InterpolateX(Chunk, xMiddle, MaxX, Y, Z);
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateX(chunk, xMin, xMiddle, y, z);
+			return InterpolateX(Chunk, MinX, xMiddle, Y, Z);
 		}
 	}
 }
 
-FVector TransvoxelTools::InterpolateY(IRegularVoxel* chunk, int x, int yMin, int yMax, int z)
+FVector TransvoxelTools::InterpolateY(IRegularVoxel* Chunk, int X, int MinY, int MaxY, int Z)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = chunk->GetValue(x, yMin, z);
-	signed char ValueAtB = chunk->GetValue(x, yMax, z);
-	if (yMax - yMin == 1)
+	signed char ValueAtA = Chunk->GetValue(X, MinY, Z);
+	signed char ValueAtB = Chunk->GetValue(X, MaxY, Z);
+	if (MaxY - MinY == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-		return t * FVector(x, yMin, z) + (1 - t) *  FVector(x, yMax, z);
+		return t * FVector(X, MinY, Z) + (1 - t) *  FVector(X, MaxY, Z);
 	}
 	else
 	{
-		check((yMax + yMin) % 2 == 0);
+		check((MaxY + MinY) % 2 == 0);
 
-		int yMiddle = (yMax + yMin) / 2;
+		int yMiddle = (MaxY + MinY) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (chunk->GetValue(x, yMiddle, z) & 0x80))
+		if ((ValueAtA & 0x80) == (Chunk->GetValue(X, yMiddle, Z) & 0x80))
 		{
 			// If min and middle have same sign
-			return InterpolateY(chunk, x, yMiddle, yMax, z);
+			return InterpolateY(Chunk, X, yMiddle, MaxY, Z);
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateY(chunk, x, yMin, yMiddle, z);
+			return InterpolateY(Chunk, X, MinY, yMiddle, Z);
 		}
 	}
 }
 
-FVector TransvoxelTools::InterpolateZ(IRegularVoxel* chunk, int x, int y, int zMin, int zMax)
+FVector TransvoxelTools::InterpolateZ(IRegularVoxel* Chunk, int X, int Y, int MinZ, int MaxZ)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = chunk->GetValue(x, y, zMin);
-	signed char ValueAtB = chunk->GetValue(x, y, zMax);
-	if (zMax - zMin == 1)
+	signed char ValueAtA = Chunk->GetValue(X, Y, MinZ);
+	signed char ValueAtB = Chunk->GetValue(X, Y, MaxZ);
+	if (MaxZ - MinZ == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-		return t * FVector(x, y, zMin) + (1 - t) *  FVector(x, y, zMax);
+		return t * FVector(X, Y, MinZ) + (1 - t) *  FVector(X, Y, MaxZ);
 	}
 	else
 	{
-		check((zMax + zMin) % 2 == 0);
+		check((MaxZ + MinZ) % 2 == 0);
 
-		int zMiddle = (zMax + zMin) / 2;
+		int zMiddle = (MaxZ + MinZ) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (chunk->GetValue(x, y, zMiddle) & 0x80))
+		if ((ValueAtA & 0x80) == (Chunk->GetValue(X, Y, zMiddle) & 0x80))
 		{
 			// If min and middle have same sign
-			return InterpolateZ(chunk, x, y, zMiddle, zMax);
+			return InterpolateZ(Chunk, X, Y, zMiddle, MaxZ);
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateZ(chunk, x, y, zMin, zMiddle);
+			return InterpolateZ(Chunk, X, Y, MinZ, zMiddle);
 		}
 	}
 }
 
 
 
-void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y, short validityMask, Trigs& triangles, int& trianglesCount, Verts& vertices, Props2D& properties, Colors& colors, int& verticesCount, TransitionDirection direction)
+void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* Chunk, int X, int Y, short ValidityMask, Trigs& Triangles, int& TrianglesCount, Verts& Vertices, Props2D& Properties, Colors& Colors, int& VerticesCount, const int Step)
 {
-	check(chunk);
-	check(0 <= x && x < 16 && 0 <= y && y < 16);
+	check(Chunk);
+	check(0 <= X && X < 16 && 0 <= Y && Y < 16);
 
-	int Step = 1 << (chunk->GetDepth() - 1);
+	const int HalfStep = Step / 2;
+
 	signed char Corner[13] = {
-		chunk->GetValue2D(2 * x       * Step, 2 * y       * Step),
-		chunk->GetValue2D((2 * x + 1) * Step, 2 * y       * Step),
-		chunk->GetValue2D((2 * x + 2) * Step, 2 * y       * Step),
-		chunk->GetValue2D(2 * x       * Step, (2 * y + 1) * Step),
-		chunk->GetValue2D((2 * x + 1) * Step, (2 * y + 1) * Step),
-		chunk->GetValue2D((2 * x + 2) * Step, (2 * y + 1) * Step),
-		chunk->GetValue2D(2 * x       * Step, (2 * y + 2) * Step),
-		chunk->GetValue2D((2 * x + 1) * Step, (2 * y + 2) * Step),
-		chunk->GetValue2D((2 * x + 2) * Step, (2 * y + 2) * Step),
+		Chunk->GetValue2D(2 * X       * HalfStep, 2 * Y       * HalfStep),
+		Chunk->GetValue2D((2 * X + 1) * HalfStep, 2 * Y       * HalfStep),
+		Chunk->GetValue2D((2 * X + 2) * HalfStep, 2 * Y       * HalfStep),
+		Chunk->GetValue2D(2 * X       * HalfStep, (2 * Y + 1) * HalfStep),
+		Chunk->GetValue2D((2 * X + 1) * HalfStep, (2 * Y + 1) * HalfStep),
+		Chunk->GetValue2D((2 * X + 2) * HalfStep, (2 * Y + 1) * HalfStep),
+		Chunk->GetValue2D(2 * X       * HalfStep, (2 * Y + 2) * HalfStep),
+		Chunk->GetValue2D((2 * X + 1) * HalfStep, (2 * Y + 2) * HalfStep),
+		Chunk->GetValue2D((2 * X + 2) * HalfStep, (2 * Y + 2) * HalfStep),
 
-		chunk->GetValue2D(2 * x       * Step, 2 * y       * Step),
-		chunk->GetValue2D((2 * x + 2) * Step, 2 * y       * Step),
-		chunk->GetValue2D(2 * x       * Step, (2 * y + 2) * Step),
-		chunk->GetValue2D((2 * x + 2) * Step, (2 * y + 2) * Step)
+		Chunk->GetValue2D(2 * X       * HalfStep, 2 * Y       * HalfStep),
+		Chunk->GetValue2D((2 * X + 2) * HalfStep, 2 * Y       * HalfStep),
+		Chunk->GetValue2D(2 * X       * HalfStep, (2 * Y + 2) * HalfStep),
+		Chunk->GetValue2D((2 * X + 2) * HalfStep, (2 * Y + 2) * HalfStep)
 	};
 
 	unsigned long CaseCode = ((Corner[0] >> 7) & 0x01)
@@ -310,26 +315,28 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 	if (!(CaseCode == 0 || CaseCode == 511))
 	{
 		FIntVector Positions[13] = {
-			FIntVector(2 * x    , 2 * y    , 0) * Step,
-			FIntVector(2 * x + 1, 2 * y    , 0) * Step,
-			FIntVector(2 * x + 2, 2 * y    , 0) * Step,
-			FIntVector(2 * x    , 2 * y + 1, 0) * Step,
-			FIntVector(2 * x + 1, 2 * y + 1, 0) * Step,
-			FIntVector(2 * x + 2, 2 * y + 1, 0) * Step,
-			FIntVector(2 * x    , 2 * y + 2, 0) * Step,
-			FIntVector(2 * x + 1, 2 * y + 2, 0) * Step,
-			FIntVector(2 * x + 2, 2 * y + 2, 0) * Step,
+			FIntVector(2 * X    , 2 * Y    , 0) * HalfStep,
+			FIntVector(2 * X + 1, 2 * Y    , 0) * HalfStep,
+			FIntVector(2 * X + 2, 2 * Y    , 0) * HalfStep,
+			FIntVector(2 * X    , 2 * Y + 1, 0) * HalfStep,
+			FIntVector(2 * X + 1, 2 * Y + 1, 0) * HalfStep,
+			FIntVector(2 * X + 2, 2 * Y + 1, 0) * HalfStep,
+			FIntVector(2 * X    , 2 * Y + 2, 0) * HalfStep,
+			FIntVector(2 * X + 1, 2 * Y + 2, 0) * HalfStep,
+			FIntVector(2 * X + 2, 2 * Y + 2, 0) * HalfStep,
 
-			FIntVector(2 * x    , 2 * y    , 1) * Step,
-			FIntVector(2 * x + 2, 2 * y    , 1) * Step,
-			FIntVector(2 * x    , 2 * y + 2, 1) * Step,
-			FIntVector(2 * x + 2, 2 * y + 2, 1) * Step
+			FIntVector(2 * X    , 2 * Y    , 1) * HalfStep,
+			FIntVector(2 * X + 2, 2 * Y    , 1) * HalfStep,
+			FIntVector(2 * X    , 2 * Y + 2, 1) * HalfStep,
+			FIntVector(2 * X + 2, 2 * Y + 2, 1) * HalfStep
 		};
 
+		check(0 <= CaseCode && CaseCode < 512);
 		const unsigned char CellClass = transitionCellClass[CaseCode];
-		const TransitionCellData CellData = transitionCellData[CellClass & 0x7F];
 		const unsigned short* VertexData = transitionVertexData[CaseCode];
-		const bool Flip = CellClass >> 7;
+		check(0 <= (CellClass & 0x7F) && (CellClass & 0x7F) < 56);
+		const TransitionCellData CellData = transitionCellData[CellClass & 0x7F];
+		const bool bFlip = CellClass >> 7;
 
 		TArray<int> VertexIndices;
 		VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
@@ -355,77 +362,77 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 
 			const short EdgeIndex = (EdgeCode >> 8) & 0x0F;
 			// Direction to go to use an already created vertex
-			const short Direction = EdgeCode >> 12;
+			const short CacheDirection = EdgeCode >> 12;
 
 			if (ValueAtB == 0)
 			{
 				// Vertex lies at the higher-numbered endpoint
-				if (((validityMask & Direction) != Direction))
+				if (((ValidityMask & CacheDirection) != CacheDirection))
 				{
 					// Vertex failed validity check
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(chunk, PositionB.Z == Step, Step, vertices, properties, colors, verticesCount, (FVector)PositionB, PositionB, IsExact, direction);
+					VertexIndex = AddVertex(Chunk, PositionB.Z == HalfStep, HalfStep, Vertices, Properties, Colors, VerticesCount, (FVector)PositionB, PositionB, IsExact);
 				}
 				else
 				{
 					// Vertex already created
-					VertexIndex = chunk->LoadVertex2D(x, y, Direction, EdgeIndex);
+					VertexIndex = Chunk->LoadVertex2D(X, Y, CacheDirection, EdgeIndex);
 				}
 			}
 			else if (ValueAtA == 0)
 			{
 				// Vertex lies at the lower-numbered endpoint
-				if ((validityMask & Direction) != Direction)
+				if ((ValidityMask & CacheDirection) != CacheDirection)
 				{
 					// Validity check failed
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(chunk, PositionA.Z == Step, Step, vertices, properties, colors, verticesCount, (FVector)PositionA, PositionA, IsExact, direction);
+					VertexIndex = AddVertex(Chunk, PositionA.Z == HalfStep, HalfStep, Vertices, Properties, Colors, VerticesCount, (FVector)PositionA, PositionA, IsExact);
 
 				}
 				else
 				{
 					// Reuse vertex
-					VertexIndex = chunk->LoadVertex2D(x, y, Direction, EdgeIndex);
+					VertexIndex = Chunk->LoadVertex2D(X, Y, CacheDirection, EdgeIndex);
 				}
 			}
 			else
 			{
 				// Vertex lies in the interior of the edge
-				if ((validityMask & Direction) != Direction)
+				if ((ValidityMask & CacheDirection) != CacheDirection)
 				{
 					// Validity check failed
-					bool IsAlongX = EdgeIndex == 3 || EdgeIndex == 4 || EdgeIndex == 8;
-					bool IsAlongY = EdgeIndex == 5 || EdgeIndex == 6 || EdgeIndex == 9;
+					const bool bIsAlongX = EdgeIndex == 3 || EdgeIndex == 4 || EdgeIndex == 8;
+					const bool bIsAlongY = EdgeIndex == 5 || EdgeIndex == 6 || EdgeIndex == 9;
 
-					FBoolVector IsExact(!IsAlongX, !IsAlongY, false);
+					FBoolVector IsExact(!bIsAlongX, !bIsAlongY, false);
 
 					FVector Q;
-					if (IsAlongX)
+					if (bIsAlongX)
 					{
-						// Edge along x axis
-						Q = InterpolateX2D(chunk, PositionA.X, PositionB.X, PositionA.Y);
+						// Edge along X axis
+						Q = InterpolateX2D(Chunk, PositionA.X, PositionB.X, PositionA.Y);
 					}
-					else if (IsAlongY)
+					else if (bIsAlongY)
 					{
-						// Edge along y axis
-						Q = InterpolateY2D(chunk, PositionA.X, PositionA.Y, PositionB.Y);
+						// Edge along Y axis
+						Q = InterpolateY2D(Chunk, PositionA.X, PositionA.Y, PositionB.Y);
 					}
 					else
 					{
 						checkf(false, TEXT("Error in interpolation: case should not exist"));
 					}
-					VertexIndex = AddVertex(chunk, PositionA.Z == Step, Step, vertices, properties, colors, verticesCount, Q, PositionA, IsExact, direction);
+					VertexIndex = AddVertex(Chunk, PositionA.Z == HalfStep, HalfStep, Vertices, Properties, Colors, VerticesCount, Q, PositionA, IsExact);
 				}
 				else
 				{
-					VertexIndex = chunk->LoadVertex2D(x, y, Direction, EdgeIndex);
+					VertexIndex = Chunk->LoadVertex2D(X, Y, CacheDirection, EdgeIndex);
 				}
 			}
 
 			// If own vertex, save it
-			if (Direction & 0x08)
+			if (CacheDirection & 0x08)
 			{
-				chunk->SaveVertex2D(x, y, EdgeIndex, VertexIndex);
+				Chunk->SaveVertex2D(X, Y, EdgeIndex, VertexIndex);
 			}
 			VertexIndices[i] = VertexIndex;
 		}
@@ -434,93 +441,93 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* chunk, int x, int y
 		int AddedTrigsCount = 3 * CellData.GetTriangleCount();
 		for (int i = 0; i < AddedTrigsCount; i++)
 		{
-			triangles.push_front(VertexIndices[CellData.vertexIndex[Flip ? (AddedTrigsCount - 1 - i) : i]]);
+			Triangles.push_front(VertexIndices[CellData.vertexIndex[bFlip ? (AddedTrigsCount - 1 - i) : i]]);
 		}
-		trianglesCount += AddedTrigsCount;
+		TrianglesCount += AddedTrigsCount;
 	}
 }
 
-int TransvoxelTools::AddVertex(ITransitionVoxel* chunk, bool isTranslated, int step, Verts& vertices, Props2D& properties, Colors& colors, int& verticesCount, FVector vertex, FIntVector exactPosition, FBoolVector isExact, TransitionDirection direction)
+int TransvoxelTools::AddVertex(ITransitionVoxel* Chunk, bool bIsTranslated, int Step, Verts& Vertices, Props2D& Properties, Colors& Colors, int& VerticesCount, FVector Vertex, FIntVector ExactPosition, FBoolVector IsExact)
 {
-	properties.push_front(VertexProperties2D({
-		exactPosition.X,
-		exactPosition.Y,
-		isExact.X,
-		isExact.Y,
-		isTranslated,
-		direction
+	Properties.push_front(VertexProperties2D({
+		ExactPosition.X,
+		ExactPosition.Y,
+		IsExact.X,
+		IsExact.Y,
+		bIsTranslated,
+		Chunk->GetDirection()
 	}));
-	colors.push_front(chunk->GetColor2D(exactPosition.X, exactPosition.Y));
-	vertices.push_front(FVector(vertex.X, vertex.Y, 0));
-	verticesCount++;
-	return verticesCount - 1;
+	Colors.push_front(Chunk->GetColor2D(ExactPosition.X, ExactPosition.Y));
+	Vertices.push_front(FVector(Vertex.X, Vertex.Y, 0));
+	VerticesCount++;
+	return VerticesCount - 1;
 }
 
-FVector TransvoxelTools::InterpolateX2D(ITransitionVoxel* chunk, int xMin, int xMax, int y)
+FVector TransvoxelTools::InterpolateX2D(ITransitionVoxel* Chunk, int MinX, int MaxX, int Y)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = chunk->GetValue2D(xMin, y);
-	signed char ValueAtB = chunk->GetValue2D(xMax, y);
-	if (xMax - xMin == 1)
+	signed char ValueAtA = Chunk->GetValue2D(MinX, Y);
+	signed char ValueAtB = Chunk->GetValue2D(MaxX, Y);
+	if (MaxX - MinX == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-		FIntVector PositionA(xMin, y, 0);
-		FIntVector PositionB(xMax, y, 0);
+		FIntVector PositionA(MinX, Y, 0);
+		FIntVector PositionB(MaxX, Y, 0);
 		return t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
 	}
 	else
 	{
-		check((xMax + xMin) % 2 == 0);
+		check((MaxX + MinX) % 2 == 0);
 
-		int xMiddle = (xMax + xMin) / 2;
+		int xMiddle = (MaxX + MinX) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (chunk->GetValue2D(xMiddle, y) & 0x80))
+		if ((ValueAtA & 0x80) == (Chunk->GetValue2D(xMiddle, Y) & 0x80))
 		{
 			// If min and middle have same sign
-			return InterpolateX2D(chunk, xMiddle, xMax, y);
+			return InterpolateX2D(Chunk, xMiddle, MaxX, Y);
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateX2D(chunk, xMin, xMiddle, y);
+			return InterpolateX2D(Chunk, MinX, xMiddle, Y);
 		}
 	}
 }
 
-FVector TransvoxelTools::InterpolateY2D(ITransitionVoxel* chunk, int x, int yMin, int yMax)
+FVector TransvoxelTools::InterpolateY2D(ITransitionVoxel* Chunk, int X, int MinY, int MaxY)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = chunk->GetValue2D(x, yMin);
-	signed char ValueAtB = chunk->GetValue2D(x, yMax);
-	if (yMax - yMin == 1)
+	signed char ValueAtA = Chunk->GetValue2D(X, MinY);
+	signed char ValueAtB = Chunk->GetValue2D(X, MaxY);
+	if (MaxY - MinY == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
 		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-		FIntVector PositionA(x, yMin, 0);
-		FIntVector PositionB(x, yMax, 0);
+		FIntVector PositionA(X, MinY, 0);
+		FIntVector PositionB(X, MaxY, 0);
 		return t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
 	}
 	else
 	{
-		check((yMax + yMin) % 2 == 0);
+		check((MaxY + MinY) % 2 == 0);
 
-		int yMiddle = (yMax + yMin) / 2;
+		int yMiddle = (MaxY + MinY) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (chunk->GetValue2D(x, yMiddle) & 0x80))
+		if ((ValueAtA & 0x80) == (Chunk->GetValue2D(X, yMiddle) & 0x80))
 		{
 			// If min and middle have same sign
-			return InterpolateY2D(chunk, x, yMiddle, yMax);
+			return InterpolateY2D(Chunk, X, yMiddle, MaxY);
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateY2D(chunk, x, yMin, yMiddle);
+			return InterpolateY2D(Chunk, X, MinY, yMiddle);
 		}
 	}
 }
 
-FVector TransvoxelTools::GetTranslated(FVector V, FVector N, VertexProperties P, const bool ChunkHasHigherRes[6], int depth)
+FVector TransvoxelTools::GetTranslated(FVector V, FVector N, VertexProperties P, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, int Depth)
 {
 	// If an adjacent block is rendered at the same resolution, return primary position
 	if ((P.IsNearXMin && !ChunkHasHigherRes[XMin]) || (P.IsNearXMax && !ChunkHasHigherRes[XMax]) ||
@@ -535,7 +542,7 @@ FVector TransvoxelTools::GetTranslated(FVector V, FVector N, VertexProperties P,
 	double DeltaY = 0;
 	double DeltaZ = 0;
 
-	double TwoPowerK = 1 << depth;
+	double TwoPowerK = 1 << Depth;
 	double w = TwoPowerK / 4;
 
 	if ((P.IsNearXMin && ChunkHasHigherRes[XMin]) || (P.IsNearXMax && ChunkHasHigherRes[XMax]))

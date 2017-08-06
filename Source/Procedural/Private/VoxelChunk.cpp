@@ -5,7 +5,6 @@
 #include "ChunkOctree.h"
 #include "ProceduralMeshComponent.h"
 #include "VoxelThread.h"
-#include "DrawDebugHelpers.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
@@ -18,6 +17,8 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDele
 	// Create primary mesh
 	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
 	RootComponent = PrimaryMesh;
+
+	ChunkHasHigherRes.SetNum(6);
 }
 
 AVoxelChunk::~AVoxelChunk()
@@ -68,25 +69,25 @@ void AVoxelChunk::Tick(float DeltaTime)
 	}
 }
 
-void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
+void AVoxelChunk::Init(FIntVector Position, int Depth, AVoxelWorld* World)
 {
-	check(world);
+	check(World);
 
-	Position = position;
-	Depth = depth;
-	World = world;
+	this->Position = Position;
+	this->Depth = Depth;
+	this->World = World;
 
-	FString name = FString::FromInt(position.X) + ", " + FString::FromInt(position.Y) + ", " + FString::FromInt(position.Z);
-	FVector relativeLocation = (FVector)position;
+	FString Name = FString::FromInt(Position.X) + ", " + FString::FromInt(Position.Y) + ", " + FString::FromInt(Position.Z);
+	FVector RelativeLocation = (FVector)Position;
 
-	this->AttachToActor(world, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
-	this->SetActorLabel(name);
-	this->SetActorRelativeLocation(relativeLocation);
+	this->AttachToActor(World, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	this->SetActorLabel(Name);
+	this->SetActorRelativeLocation(RelativeLocation);
 	this->SetActorRelativeRotation(FRotator::ZeroRotator);
 	this->SetActorRelativeScale3D(FVector::OneVector);
 
 	// Configure primary mesh
-	PrimaryMesh->SetMaterial(0, world->VoxelMaterial);
+	PrimaryMesh->SetMaterial(0, World->VoxelMaterial);
 	PrimaryMesh->bCastShadowAsTwoSided = true;
 	PrimaryMesh->bUseAsyncCooking = true;
 	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
@@ -95,7 +96,7 @@ void AVoxelChunk::Init(FIntVector position, int depth, AVoxelWorld* world)
 	bAdjacentChunksNeedUpdate = true;
 }
 
-void AVoxelChunk::Update(bool async)
+void AVoxelChunk::Update(bool Async)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
@@ -125,7 +126,7 @@ void AVoxelChunk::Update(bool async)
 		}
 
 		Task = new FAsyncTask<VoxelThread>(this);
-		if (async)
+		if (Async)
 		{
 			Task->StartBackgroundTask(World->ThreadPool);
 		}
@@ -139,7 +140,6 @@ void AVoxelChunk::Update(bool async)
 
 void AVoxelChunk::BasicUpdate()
 {
-	int Width = 16 << Depth;
 	for (int i = 0; i < 6; i++)
 	{
 		TransitionDirection Direction = (TransitionDirection)i;
@@ -184,6 +184,11 @@ int AVoxelChunk::GetDepth()
 	return Depth;
 }
 
+int AVoxelChunk::Width()
+{
+	return 16 << Depth;
+}
+
 signed char AVoxelChunk::GetValue(int x, int y, int z)
 {
 	return World->GetValue(Position + FIntVector(x, y, z));
@@ -194,12 +199,11 @@ FColor AVoxelChunk::GetColor(int x, int y, int z)
 	return World->GetColor(Position + FIntVector(x, y, z));
 }
 
-AVoxelChunk* AVoxelChunk::GetChunk(TransitionDirection direction)
+AVoxelChunk* AVoxelChunk::GetChunk(TransitionDirection Direction)
 {
-	int Width = 16 << Depth;
-	TArray<FIntVector> L = { FIntVector(-Width, 0, 0) , FIntVector(Width, 0, 0) , FIntVector(0, -Width, 0), FIntVector(0, Width, 0) , FIntVector(0, 0, -Width) , FIntVector(0, 0, Width) };
+	TArray<FIntVector> L = { FIntVector(-Width(), 0, 0) , FIntVector(Width(), 0, 0) , FIntVector(0, -Width(), 0), FIntVector(0, Width(), 0) , FIntVector(0, 0, -Width()) , FIntVector(0, 0, Width()) };
 
-	FIntVector P = Position + FIntVector(Width / 2, Width / 2, Width / 2) + L[direction];
+	FIntVector P = Position + FIntVector(Width() / 2, Width() / 2, Width() / 2) + L[Direction];
 	if (World->IsInWorld(P))
 	{
 		return World->GetChunkAt(P);

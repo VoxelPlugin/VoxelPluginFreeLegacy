@@ -7,32 +7,30 @@
 
 class ValueOctree;
 
-DECLARE_LOG_CATEGORY_EXTERN(VoxelDataLog, Log, All);
-
 class VoxelData
 {
 public:
-	VoxelData(int depth);
+	VoxelData(int Depth);
 	virtual ~VoxelData();
 
 	const int Depth;
 
 
-	signed char GetValue(FIntVector position);
-	FColor GetColor(FIntVector position);
+	signed char GetValue(FIntVector Position);
+	FColor GetColor(FIntVector Position);
 
-	void SetValue(FIntVector position, int value);
-	void SetColor(FIntVector position, FColor color);
+	void SetValue(FIntVector Position, int Value);
+	void SetColor(FIntVector Position, FColor Color);
 
-	bool IsInWorld(FIntVector position);
+	bool IsInWorld(FIntVector Position);
 
 	int Size();
 
 	TArray<FVoxelChunkSaveStruct> GetSaveArray();
-	void LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray);
+	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
 	
-	virtual signed char GetDefaultValue(FIntVector position) const;
-	virtual FColor GetDefaultColor(FIntVector position) const;
+	virtual signed char GetDefaultValue(FIntVector Position) const;
+	virtual FColor GetDefaultColor(FIntVector Position) const;
 
 private:
 	TSharedPtr<ValueOctree> MainOctree;

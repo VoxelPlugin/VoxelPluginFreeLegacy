@@ -14,19 +14,22 @@ public:
 		FIntVector Position;
 
 	UPROPERTY(EditAnywhere, Category = Voxel)
+		int Depth;
+
+	UPROPERTY(EditAnywhere, Category = Voxel)
 		TArray<int> Values;
 
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		TArray<FColor> Colors;
 
 	FVoxelChunkSaveStruct() {}
-	FVoxelChunkSaveStruct(FIntVector position, TArray<int> values, TArray<FColor> colors) : Position(position), Values(values), Colors(colors) {}
-	FVoxelChunkSaveStruct(FIntVector position, TArray<signed char> values, TArray<FColor> colors) : Position(position), Colors(colors)
+	FVoxelChunkSaveStruct(FIntVector Position, int Depth, TArray<int> Values, TArray<FColor> Colors) : Position(Position), Depth(Depth), Values(Values), Colors(Colors) {}
+	FVoxelChunkSaveStruct(FIntVector Position, int Depth, TArray<signed char> Values, TArray<FColor> Colors) : Position(Position), Depth(Depth), Colors(Colors)
 	{
-		Values.SetNumUninitialized(values.Num());
-		for (int i = 0; i < values.Num(); i++)
+		this->Values.SetNumUninitialized(Values.Num());
+		for (int i = 0; i < Values.Num(); i++)
 		{
-			Values[i] = values[i];
+			this->Values[i] = Values[i];
 		}
 	}
 };

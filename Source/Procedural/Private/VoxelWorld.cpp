@@ -8,7 +8,7 @@
 #include "Engine.h"
 #include <forward_list>
 
-DEFINE_LOG_CATEGORY(VoxelWorldLog)
+DEFINE_LOG_CATEGORY(VoxelLog)
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateAll"), STAT_UpdateAll, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ ApplyQueuedUpdates"), STAT_ApplyQueuedUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
@@ -47,48 +47,50 @@ void AVoxelWorld::BeginPlay()
 	UpdateCameraPosition(FVector::ZeroVector);
 }
 
-AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector position)
+AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position)
 {
-	if (IsInWorld(position))
+	if (IsInWorld(Position))
 	{
-		return MainOctree->GetChunk(position).Pin()->GetVoxelChunk();
+		TSharedPtr<ChunkOctree> Chunk = MainOctree->GetChunk(Position).Pin();
+		check(Chunk.IsValid());
+		return Chunk->GetVoxelChunk();
 	}
 	else
 	{
-		UE_LOG(VoxelWorldLog, Error, TEXT("Error: Cannot GetChunkAt (%d, %d, %d): Not in world"), position.X, position.Y, position.Z);
+		UE_LOG(VoxelLog, Error, TEXT("Error: Cannot GetChunkAt (%d, %d, %d): Not in world"), Position.X, Position.Y, Position.Z);
 		return nullptr;
 	}
 }
 
-void AVoxelWorld::UpdateCameraPosition(FVector position)
+void AVoxelWorld::UpdateCameraPosition(FVector Position)
 {
 	// Reset to avoid references to destroyed chunks
 	ChunksToUpdate.Reset();
 	// Recreate octree
-	MainOctree->CreateTree(this, position);
+	MainOctree->CreateTree(this, Position);
 	// Apply updates added when recreating octree
 	ApplyQueuedUpdates(true);
 }
 
 
-int AVoxelWorld::GetValue(FIntVector position)
+int AVoxelWorld::GetValue(FIntVector Position)
 {
-	return Data->GetValue(position);
+	return Data->GetValue(Position);
 }
 
-FColor AVoxelWorld::GetColor(FIntVector position)
+FColor AVoxelWorld::GetColor(FIntVector Position)
 {
-	return Data->GetColor(position);
+	return Data->GetColor(Position);
 }
 
-void AVoxelWorld::SetValue(FIntVector position, int value)
+void AVoxelWorld::SetValue(FIntVector Position, int Value)
 {
-	Data->SetValue(position, value);
+	Data->SetValue(Position, Value);
 }
 
-void AVoxelWorld::SetColor(FIntVector position, FColor color)
+void AVoxelWorld::SetColor(FIntVector Position, FColor Color)
 {
-	Data->SetColor(position, color);
+	Data->SetColor(Position, Color);
 }
 
 TArray<FVoxelChunkSaveStruct> AVoxelWorld::GetSaveArray()
@@ -96,106 +98,106 @@ TArray<FVoxelChunkSaveStruct> AVoxelWorld::GetSaveArray()
 	return Data->GetSaveArray();
 }
 
-void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray)
+void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray)
 {
-	Data->LoadFromArray(saveArray);
+	Data->LoadFromArray(SaveArray);
 }
 
 
-FIntVector AVoxelWorld::GlobalToLocal(FVector position)
+FIntVector AVoxelWorld::GlobalToLocal(FVector Position)
 {
-	FVector P = GetTransform().InverseTransformPosition(position);
+	FVector P = GetTransform().InverseTransformPosition(Position);
 	return FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
 }
 
-void AVoxelWorld::Add(FIntVector position, int strength)
+void AVoxelWorld::Add(FIntVector Position, int Strength)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Add);
-	if (IsInWorld(position))
+	if (IsInWorld(Position))
 	{
-		Data->SetValue(position, Data->GetValue(position) - strength);
+		Data->SetValue(Position, Data->GetValue(Position) - Strength);
 	}
 	else
 	{
-		UE_LOG(VoxelWorldLog, Error, TEXT("Not in world"));
+		UE_LOG(VoxelLog, Error, TEXT("Not in world"));
 	}
 }
 
-void AVoxelWorld::Remove(FIntVector position, int strength)
+void AVoxelWorld::Remove(FIntVector Position, int Strength)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Remove);
-	if (IsInWorld(position))
+	if (IsInWorld(Position))
 	{
-		Data->SetValue(position, Data->GetValue(position) + strength);
+		Data->SetValue(Position, Data->GetValue(Position) + Strength);
 	}
 	else
 	{
-		UE_LOG(VoxelWorldLog, Error, TEXT("Not in world"));
+		UE_LOG(VoxelLog, Error, TEXT("Not in world"));
 	}
 }
 
 
-void AVoxelWorld::Update(FIntVector position, bool async)
+void AVoxelWorld::Update(FIntVector Position, bool Async)
 {
 	if (ChunksToUpdate.Num() != 0)
 	{
-		UE_LOG(VoxelWorldLog, Warning, TEXT("Update called but there are still chunks in queue"));
+		UE_LOG(VoxelLog, Warning, TEXT("Update called but there are still chunks in queue"));
 	}
-	ScheduleUpdate(position);
-	ApplyQueuedUpdates(async);
+	ScheduleUpdate(Position);
+	ApplyQueuedUpdates(Async);
 }
 
-void AVoxelWorld::ScheduleUpdate(FIntVector position)
+void AVoxelWorld::ScheduleUpdate(FIntVector Position)
 {
-	int x = position.X + Size() / 2;
-	int y = position.Y + Size() / 2;
-	int z = position.Z + Size() / 2;
+	int X = Position.X + Size() / 2;
+	int Y = Position.Y + Size() / 2;
+	int Z = Position.Z + Size() / 2;
 
-	bool bXIsAtBorder = x % 16 == 0 && x != 0;
-	bool bYIsAtBorder = y % 16 == 0 && y != 0;
-	bool bZIsAtBorder = z % 16 == 0 && z != 0;
+	bool bXIsAtBorder = X % 16 == 0 && X != 0;
+	bool bYIsAtBorder = Y % 16 == 0 && Y != 0;
+	bool bZIsAtBorder = Z % 16 == 0 && Z != 0;
 
-	ScheduleUpdate(MainOctree->GetChunk(position));
+	ScheduleUpdate(MainOctree->GetChunk(Position));
 
 	if (bXIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 0, 0)));
+		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(1, 0, 0)));
 	}
 	if (bYIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(0, 1, 0)));
+		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(0, 1, 0)));
 	}
 	if (bXIsAtBorder && bYIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 1, 0)));
+		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(1, 1, 0)));
 	}
 	if (bZIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(0, 0, 1)));
+		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(0, 0, 1)));
 	}
 	if (bXIsAtBorder && bZIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 0, 1)));
+		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(1, 0, 1)));
 	}
 	if (bYIsAtBorder && bZIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(0, 1, 1)));
+		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(0, 1, 1)));
 	}
 	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(position - FIntVector(1, 1, 1)));
+		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(1, 1, 1)));
 	}
 }
 
-void AVoxelWorld::ScheduleUpdate(TWeakPtr<ChunkOctree> chunk)
+void AVoxelWorld::ScheduleUpdate(TWeakPtr<ChunkOctree> Chunk)
 {
-	ChunksToUpdate.AddUnique(chunk);
+	ChunksToUpdate.AddUnique(Chunk);
 }
 
-void AVoxelWorld::ApplyQueuedUpdates(bool async)
+void AVoxelWorld::ApplyQueuedUpdates(bool Async)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
-	//UE_LOG(VoxelWorldLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
+	//UE_LOG(VoxelLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
 
 	for (auto& Chunk : ChunksToUpdate)
 	{
@@ -203,20 +205,20 @@ void AVoxelWorld::ApplyQueuedUpdates(bool async)
 
 		if (LockedObserver.IsValid())
 		{
-			LockedObserver->Update(async);
+			LockedObserver->Update(Async);
 		}
 		else
 		{
-			UE_LOG(VoxelWorldLog, Warning, TEXT("Invalid chunk in queue"));
+			UE_LOG(VoxelLog, Warning, TEXT("Invalid chunk in queue"));
 		}
 	}
 	ChunksToUpdate.Reset();
 }
 
-void AVoxelWorld::UpdateAll(bool async)
+void AVoxelWorld::UpdateAll(bool Async)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UpdateAll);
-	MainOctree->Update(async);
+	MainOctree->Update(Async);
 }
 
 
@@ -233,9 +235,9 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 
 
 
-bool AVoxelWorld::IsInWorld(FIntVector position)
+bool AVoxelWorld::IsInWorld(FIntVector Position)
 {
-	return Data->IsInWorld(position);
+	return Data->IsInWorld(Position);
 }
 
 int AVoxelWorld::Size()

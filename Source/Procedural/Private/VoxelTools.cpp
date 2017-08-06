@@ -3,28 +3,28 @@
 #include "VoxelTools.h"
 #include "VoxelWorld.h"
 
-void UVoxelTools::SetValueSphere(AVoxelWorld* world, FVector position, float radius, bool add, bool bQueueUpdate, bool bApplyUpdates)
+void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates)
 {
-	FIntVector Position = world->GlobalToLocal(position);
-	int Radius = FMath::Ceil(radius);
-	for (int x = -Radius; x <= Radius; x++)
+	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	int IntRadius = FMath::Ceil(Radius);
+	for (int x = -IntRadius; x <= IntRadius; x++)
 	{
-		for (int y = -Radius; y <= Radius; y++)
+		for (int y = -IntRadius; y <= IntRadius; y++)
 		{
-			for (int z = -Radius; z <= Radius; z++)
+			for (int z = -IntRadius; z <= IntRadius; z++)
 			{
-				FIntVector CurrentPosition = Position + FIntVector(x, y, z);
+				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
 				float Distance = FVector(x, y, z).Size();
 
-				int Value = (add ? -1 : 1) * (int)(1000 * (radius - Distance) / radius);
+				int Value = (bAdd ? -1 : 1) * (int)(1000 * (Radius - Distance) / Radius);
 
 
-				if ((Value < 0 && add) || (Value >= 0 && !add) || (world->GetValue(CurrentPosition) * Value > 0))
+				if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
 				{
-					world->SetValue(CurrentPosition, Value);
+					World->SetValue(CurrentPosition, Value);
 					if (bQueueUpdate)
 					{
-						world->ScheduleUpdate(CurrentPosition);
+						World->ScheduleUpdate(CurrentPosition);
 					}
 				}
 			}
@@ -32,35 +32,35 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* world, FVector position, float rad
 	}
 	if (bApplyUpdates)
 	{
-		world->ApplyQueuedUpdates();
+		World->ApplyQueuedUpdates();
 	}
 }
 
-void UVoxelTools::SetColorSphere(AVoxelWorld* world, FVector position, float radius, FLinearColor color, bool bQueueUpdate, bool bApplyUpdates)
+void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, bool bQueueUpdate, bool bApplyUpdates)
 {
-	FIntVector Position = world->GlobalToLocal(position);
-	int Radius = FMath::Ceil(radius);
-	for (int x = -Radius; x <= Radius; x++)
+	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	int IntRadius = FMath::Ceil(Radius);
+	for (int x = -IntRadius; x <= IntRadius; x++)
 	{
-		for (int y = -Radius; y <= Radius; y++)
+		for (int y = -IntRadius; y <= IntRadius; y++)
 		{
-			for (int z = -Radius; z <= Radius; z++)
+			for (int z = -IntRadius; z <= IntRadius; z++)
 			{
-				FIntVector CurrentPosition = Position + FIntVector(x, y, z);
+				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
 				float Distance = FVector(x, y, z).Size();
-				float Alpha = (radius - Distance) / radius;
-				FColor CurrentColor = FLinearColor::LerpUsingHSV(world->GetColor(CurrentPosition), color, FMath::Clamp(Alpha, 0.f, 1.f)).ToFColor(true);
+				float Alpha = (Radius - Distance) / Radius;
+				FColor CurrentColor = FLinearColor::LerpUsingHSV(World->GetColor(CurrentPosition), Color, FMath::Clamp(Alpha, 0.f, 1.f)).ToFColor(true);
 
-				world->SetColor(CurrentPosition, CurrentColor);
+				World->SetColor(CurrentPosition, CurrentColor);
 				if (bQueueUpdate)
 				{
-					world->ScheduleUpdate(CurrentPosition);
+					World->ScheduleUpdate(CurrentPosition);
 				}
 			}
 		}
 	}
 	if (bApplyUpdates)
 	{
-		world->ApplyQueuedUpdates();
+		World->ApplyQueuedUpdates();
 	}
 }
