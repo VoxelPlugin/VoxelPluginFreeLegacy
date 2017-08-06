@@ -68,8 +68,6 @@ private:
 
 	FAsyncTask<VoxelThread>* Task;
 
-	FProcMeshSection Section;
-
 	UPROPERTY(VisibleAnywhere)
 		bool bNeedDeletion;
 	UPROPERTY(VisibleAnywhere)

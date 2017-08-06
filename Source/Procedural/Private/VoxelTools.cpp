@@ -6,7 +6,7 @@
 void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates)
 {
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
-	int IntRadius = FMath::Ceil(Radius);
+	int IntRadius = FMath::CeilToInt(Radius);
 	for (int x = -IntRadius; x <= IntRadius; x++)
 	{
 		for (int y = -IntRadius; y <= IntRadius; y++)
@@ -24,7 +24,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 					World->SetValue(CurrentPosition, Value);
 					if (bQueueUpdate)
 					{
-						World->ScheduleUpdate(CurrentPosition);
+						World->QueueUpdate(CurrentPosition);
 					}
 				}
 			}
@@ -39,7 +39,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, bool bQueueUpdate, bool bApplyUpdates)
 {
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
-	int IntRadius = FMath::Ceil(Radius);
+	int IntRadius = FMath::CeilToInt(Radius);
 	for (int x = -IntRadius; x <= IntRadius; x++)
 	{
 		for (int y = -IntRadius; y <= IntRadius; y++)
@@ -54,7 +54,7 @@ void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Rad
 				World->SetColor(CurrentPosition, CurrentColor);
 				if (bQueueUpdate)
 				{
-					World->ScheduleUpdate(CurrentPosition);
+					World->QueueUpdate(CurrentPosition);
 				}
 			}
 		}

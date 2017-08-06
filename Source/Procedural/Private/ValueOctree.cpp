@@ -5,43 +5,16 @@
 
 ValueOctree::ValueOctree(FIntVector Position, int Depth, VoxelData* Data) : Position(Position), Depth(Depth), bIsDirty(false), bIsLeaf(true), Data(Data)
 {
-
+	check(Data);
+	check(Depth >= 0);
 }
 
 
 
 
-inline int ValueOctree::GetWidth()
+inline int ValueOctree::Width()
 {
 	return 16 << Depth;
-}
-
-void ValueOctree::CreateTree()
-{
-	check(!IsLeaf() == (Childs.Num() == 8));
-	if (Depth != 0)
-	{
-		CreateChilds();
-		for (int i = 0; i < 8; i++)
-		{
-			Childs[i]->CreateTree();
-		}
-	}
-}
-
-ValueOctree* ValueOctree::GetLeaf(FIntVector GlobalPosition)
-{
-	check(!IsLeaf() == (Childs.Num() == 8));
-	check(IsInChunk(GlobalPosition));
-	if (IsLeaf())
-	{
-		return this;
-	}
-	else
-	{
-		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-		return Childs[(GlobalPosition.X >= Position.X ? 1 : 0) + (GlobalPosition.Y >= Position.Y ? 2 : 0) + (GlobalPosition.Z >= Position.Z ? 4 : 0)]->GetLeaf(GlobalPosition);
-	};
 }
 
 bool ValueOctree::IsLeaf()
@@ -57,189 +30,168 @@ bool ValueOctree::IsDirty()
 signed char ValueOctree::GetValue(FIntVector GlobalPosition)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
+	check(IsInChunk(GlobalPosition));
+	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
-	if (IsInChunk(GlobalPosition))
+	if (IsDirty())
 	{
-		if (IsLeaf())
+		if (Depth == 0)
 		{
-			if (IsDirty())
-			{
-				int w = GetWidth();
-				FIntVector P = GlobalToLocal(GlobalPosition);
-				return Values[P.X + w * P.Y + w * w * P.Z];
-			}
-			else
-			{
-				return Data->GetDefaultValue(GlobalPosition);
-			}
+			FIntVector P = GlobalToLocal(GlobalPosition);
+			return Values[P.X + Width() * P.Y + Width() * Width() * P.Z];
 		}
 		else
 		{
-			return GetLeaf(GlobalPosition)->GetValue(GlobalPosition);
+			return GetChild(GlobalPosition)->GetValue(GlobalPosition);
 		}
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Get value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
-			GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z,
-			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
-			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
-			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2);
-		return (GlobalPosition.Z > 10) ? 1 : -1;
+		return Data->GetDefaultValue(GlobalPosition);
 	}
 }
 
 FColor ValueOctree::GetColor(FIntVector GlobalPosition)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
+	check(IsInChunk(GlobalPosition));
+	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
-	if (IsInChunk(GlobalPosition))
+	if (IsDirty())
 	{
-		if (IsLeaf())
+		if (Depth == 0)
 		{
-			if (IsDirty())
-			{
-				int w = GetWidth();
-				FIntVector P = GlobalToLocal(GlobalPosition);
-				return Colors[P.X + w * P.Y + w * w * P.Z];
-			}
-			else
-			{
-				return Data->GetDefaultColor(GlobalPosition);
-			}
+			FIntVector P = GlobalToLocal(GlobalPosition);
+			return Colors[P.X + Width() * P.Y + Width() * Width() * P.Z];
 		}
 		else
 		{
-			return GetLeaf(GlobalPosition)->GetColor(GlobalPosition);
+			return GetChild(GlobalPosition)->GetColor(GlobalPosition);
 		}
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Get color error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
-			GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z,
-			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
-			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
-			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2);
-		return FColor::Red;
+		return Data->GetDefaultColor(GlobalPosition);
 	}
 }
 
 void ValueOctree::SetValue(FIntVector GlobalPosition, signed char Value)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
+	check(IsInChunk(GlobalPosition));
+	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
-	if (IsInChunk(GlobalPosition))
+	if (IsLeaf())
 	{
-		if (IsLeaf())
+		if (Depth != 0)
 		{
-			int w = GetWidth();
+			bIsDirty = true;
+			CreateChilds();
+			GetChild(GlobalPosition)->SetValue(GlobalPosition, Value);
+		}
+		else
+		{
 			if (!IsDirty())
 			{
-				Values.SetNumUninitialized(w * w * w);
-				Colors.SetNumUninitialized(w * w * w);
-				for (int i = 0; i < w; i++)
+				Values.SetNumUninitialized(Width() * Width() * Width());
+				Colors.SetNumUninitialized(Width() * Width() * Width());
+				for (int x = 0; x < Width(); x++)
 				{
-					for (int j = 0; j < w; j++)
+					for (int y = 0; y < Width(); y++)
 					{
-						for (int k = 0; k < w; k++)
+						for (int z = 0; z < Width(); z++)
 						{
-							Values[i + w * j + w * w * k] = GetValue(LocalToGlobal(FIntVector(i, j, k)));
-							Colors[i + w * j + w * w * k] = GetColor(LocalToGlobal(FIntVector(i, j, k)));
+							Values[x + Width() * y + Width() * Width() * z] = GetValue(LocalToGlobal(FIntVector(x, y, z)));
+							Colors[x + Width() * y + Width() * Width() * z] = GetColor(LocalToGlobal(FIntVector(x, y, z)));
 						}
 					}
 				}
 				bIsDirty = true;
 			}
 			FIntVector P = GlobalToLocal(GlobalPosition);
-			Values[P.X + w * P.Y + w * w * P.Z] = Value;
-		}
-		else
-		{
-			GetLeaf(GlobalPosition)->SetValue(GlobalPosition, Value);
+			Values[P.X + Width() * P.Y + Width() * Width() * P.Z] = Value;
 		}
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Set value error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
-			GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z,
-			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
-			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
-			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2);
+		check(IsDirty());
+		GetChild(GlobalPosition)->SetValue(GlobalPosition, Value);
 	}
 }
 
 void ValueOctree::SetColor(FIntVector GlobalPosition, FColor Color)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
+	check(IsInChunk(GlobalPosition));
+	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
-	if (IsInChunk(GlobalPosition))
+	if (IsLeaf())
 	{
-		if (IsLeaf())
+		if (Depth != 0)
 		{
-			int w = GetWidth();
+			bIsDirty = true;
+			CreateChilds();
+			GetChild(GlobalPosition)->SetColor(GlobalPosition, Color);
+		}
+		else
+		{
 			if (!IsDirty())
 			{
-				Values.SetNumUninitialized(w * w * w);
-				Colors.SetNumUninitialized(w * w * w);
-				for (int i = 0; i < w; i++)
+				Values.SetNumUninitialized(Width() * Width() * Width());
+				Colors.SetNumUninitialized(Width() * Width() * Width());
+				for (int x = 0; x < Width(); x++)
 				{
-					for (int j = 0; j < w; j++)
+					for (int y = 0; y < Width(); y++)
 					{
-						for (int k = 0; k < w; k++)
+						for (int z = 0; z < Width(); z++)
 						{
-							Values[i + w * j + w * w * k] = GetValue(LocalToGlobal(FIntVector(i, j, k)));
-							Colors[i + w * j + w * w * k] = GetColor(LocalToGlobal(FIntVector(i, j, k)));
+							Values[x + Width() * y + Width() * Width() * z] = GetValue(LocalToGlobal(FIntVector(x, y, z)));
+							Colors[x + Width() * y + Width() * Width() * z] = GetColor(LocalToGlobal(FIntVector(x, y, z)));
 						}
 					}
 				}
 				bIsDirty = true;
 			}
 			FIntVector P = GlobalToLocal(GlobalPosition);
-			Colors[P.X + w * P.Y + w * w * P.Z] = Color;
-		}
-		else
-		{
-			GetLeaf(GlobalPosition)->SetColor(GlobalPosition, Color);
+			Colors[P.X + Width() * P.Y + Width() * Width() * P.Z] = Color;
 		}
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Set color error: (%d, %d, %d) not in chunk (%d-%d, %d-%d, %d-%d)"),
-			GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z,
-			Position.X - GetWidth() / 2, Position.X + GetWidth() / 2,
-			Position.Y - GetWidth() / 2, Position.Y + GetWidth() / 2,
-			Position.Z - GetWidth() / 2, Position.Z + GetWidth() / 2);
+		check(IsDirty());
+		GetChild(GlobalPosition)->SetColor(GlobalPosition, Color);
 	}
 }
 
 bool ValueOctree::IsInChunk(FIntVector GlobalPosition)
 {
 	FIntVector P = GlobalToLocal(GlobalPosition);
-	return 0 <= P.X && 0 <= P.Y && 0 <= P.Z && P.X < GetWidth() && P.Y < GetWidth() && P.Z < GetWidth();
+	return 0 <= P.X && 0 <= P.Y && 0 <= P.Z && P.X < Width() && P.Y < Width() && P.Z < Width();
 }
 
 FIntVector ValueOctree::GlobalToLocal(FIntVector GlobalPosition)
 {
-	return FIntVector(GlobalPosition.X - (Position.X - GetWidth() / 2), GlobalPosition.Y - (Position.Y - GetWidth() / 2), GlobalPosition.Z - (Position.Z - GetWidth() / 2));
+	return FIntVector(GlobalPosition.X - (Position.X - Width() / 2), GlobalPosition.Y - (Position.Y - Width() / 2), GlobalPosition.Z - (Position.Z - Width() / 2));
 }
 
 void ValueOctree::AddChunksToArray(TArray<FVoxelChunkSaveStruct> SaveArray)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
+	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
-	if (IsLeaf())
+	if (IsDirty())
 	{
-		if (IsDirty())
+		if (IsLeaf())
 		{
 			FVoxelChunkSaveStruct SaveStruct(Position, Depth, Values, Colors);
 			SaveArray.Add(SaveStruct);
 		}
-	}
-	else
-	{
-		for (int i = 0; i < 8; i++)
+		else
 		{
-			Childs[i]->AddChunksToArray(SaveArray);
+			for (int i = 0; i < 8; i++)
+			{
+				Childs[i]->AddChunksToArray(SaveArray);
+			}
 		}
 	}
 }
@@ -247,6 +199,7 @@ void ValueOctree::AddChunksToArray(TArray<FVoxelChunkSaveStruct> SaveArray)
 void ValueOctree::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
+	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
 	if (IsLeaf())
 	{
@@ -274,7 +227,7 @@ void ValueOctree::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray)
 
 FIntVector ValueOctree::LocalToGlobal(FIntVector LocalPosition)
 {
-	return FIntVector(LocalPosition.X + (Position.X - GetWidth() / 2), LocalPosition.Y + (Position.Y - GetWidth() / 2), LocalPosition.Z + (Position.Z - GetWidth() / 2));
+	return FIntVector(LocalPosition.X + (Position.X - Width() / 2), LocalPosition.Y + (Position.Y - Width() / 2), LocalPosition.Z + (Position.Z - Width() / 2));
 }
 
 
@@ -283,15 +236,23 @@ void ValueOctree::CreateChilds()
 {
 	check(IsLeaf());
 	check(Childs.Num() == 0);
-	int d = GetWidth() / 4;
-	Childs.Add(TSharedRef<ValueOctree>(new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1, Data)));
-	Childs.Add(TSharedRef<ValueOctree>(new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1, Data)));
-	Childs.Add(TSharedRef<ValueOctree>(new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1, Data)));
-	Childs.Add(TSharedRef<ValueOctree>(new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1, Data)));
-	Childs.Add(TSharedRef<ValueOctree>(new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1, Data)));
-	Childs.Add(TSharedRef<ValueOctree>(new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1, Data)));
-	Childs.Add(TSharedRef<ValueOctree>(new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1, Data)));
-	Childs.Add(TSharedRef<ValueOctree>(new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1, Data)));
+	check(Depth != 0);
+	int d = Width() / 4;
+	Childs.Add(new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1, Data));
+	Childs.Add(new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1, Data));
+	Childs.Add(new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1, Data));
+	Childs.Add(new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1, Data));
+	Childs.Add(new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1, Data));
+	Childs.Add(new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1, Data));
+	Childs.Add(new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1, Data));
+	Childs.Add(new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1, Data));
 	bIsLeaf = false;
 	check(!IsLeaf() == (Childs.Num() == 8));
+}
+
+ValueOctree* ValueOctree::GetChild(FIntVector GlobalPosition)
+{
+	check(!IsLeaf());
+	// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
+	return Childs[(GlobalPosition.X >= Position.X ? 1 : 0) + (GlobalPosition.Y >= Position.Y ? 2 : 0) + (GlobalPosition.Z >= Position.Z ? 4 : 0)];
 }
