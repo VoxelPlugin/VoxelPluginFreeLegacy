@@ -49,15 +49,15 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Update(FIntVector Position, bool Async = true);
+		void Update(FIntVector Position, bool bAsync = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void QueueUpdate(FIntVector Position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ApplyQueuedUpdates(bool Async = true);
+		void ApplyQueuedUpdates(bool bAsync = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateAll(bool Async = true);
+		void UpdateAll(bool bAsync = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateCameraPosition(FVector Position);

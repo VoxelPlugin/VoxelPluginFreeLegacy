@@ -26,7 +26,7 @@ AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(1), DeletionDelay(0.5f),
 	SetActorScale3D(100 * FVector::OneVector);
 
 	ThreadPool = FQueuedThreadPool::Allocate();
-	ThreadPool->Create(3);
+	ThreadPool->Create(8);
 }
 
 
@@ -138,14 +138,14 @@ void AVoxelWorld::Remove(FIntVector Position, int Strength)
 }
 
 
-void AVoxelWorld::Update(FIntVector Position, bool Async)
+void AVoxelWorld::Update(FIntVector Position, bool bAsync)
 {
 	if (ChunksToUpdate.Num() != 0)
 	{
 		UE_LOG(VoxelLog, Warning, TEXT("Update called but there are still chunks in queue"));
 	}
 	QueueUpdate(Position);
-	ApplyQueuedUpdates(Async);
+	ApplyQueuedUpdates(bAsync);
 }
 
 void AVoxelWorld::QueueUpdate(FIntVector Position)
@@ -195,7 +195,7 @@ void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk)
 	ChunksToUpdate.AddUnique(Chunk);
 }
 
-void AVoxelWorld::ApplyQueuedUpdates(bool Async)
+void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
 	//UE_LOG(VoxelLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
@@ -206,7 +206,7 @@ void AVoxelWorld::ApplyQueuedUpdates(bool Async)
 
 		if (LockedObserver.IsValid())
 		{
-			LockedObserver->Update(Async);
+			LockedObserver->Update(bAsync);
 		}
 		else
 		{
@@ -216,10 +216,10 @@ void AVoxelWorld::ApplyQueuedUpdates(bool Async)
 	ChunksToUpdate.Reset();
 }
 
-void AVoxelWorld::UpdateAll(bool Async)
+void AVoxelWorld::UpdateAll(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UpdateAll);
-	MainOctree->Update(Async);
+	MainOctree->Update(bAsync);
 }
 
 

@@ -8,7 +8,7 @@ int USphereWorldGenerator::GetDefaultValue(FIntVector Position)
 
 	float Alpha = FMath::Clamp(Radius - Distance, -1.f, 1.f);
 
-	return -(int)(127 * Alpha);
+	return (int)(127 * Alpha) * (InverseOutsideInside ? 1 : -1);
 }
 
 FColor USphereWorldGenerator::GetDefaultColor(FIntVector Position)

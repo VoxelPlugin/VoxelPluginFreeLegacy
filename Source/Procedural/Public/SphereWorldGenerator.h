@@ -20,4 +20,6 @@ public:
 
 	UPROPERTY(EditAnywhere)
 		float Radius;
+	UPROPERTY(EditAnywhere)
+		bool InverseOutsideInside;
 };
