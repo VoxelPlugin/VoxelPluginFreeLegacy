@@ -15,7 +15,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(1), DeletionDelay(0.5f)
+AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(1), DeletionDelay(0.5f), WorldGenerator(NULL)
 {
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
 	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
@@ -29,11 +29,6 @@ AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(1), DeletionDelay(0.5f)
 	ThreadPool->Create(3);
 }
 
-AVoxelWorld::~AVoxelWorld()
-{
-
-}
-
 
 void AVoxelWorld::BeginPlay()
 {
@@ -41,7 +36,13 @@ void AVoxelWorld::BeginPlay()
 
 	bNotCreated = false;
 
-	Data = MakeShareable(new VoxelData(Depth));
+	WorldGeneratorInstance = WorldGenerator.GetDefaultObject();
+	if (WorldGeneratorInstance == nullptr)
+	{
+		NewObject<UVoxelWorldGenerator>(WorldGeneratorInstance);
+	}
+
+	Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInstance));
 	MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
 
 	UpdateCameraPosition(FVector::ZeroVector);

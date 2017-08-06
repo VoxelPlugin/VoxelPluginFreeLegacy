@@ -3,11 +3,12 @@
 #include "VoxelChunkSaveStruct.h"
 
 class VoxelData;
+class UVoxelWorldGenerator;
 
 class ValueOctree
 {
 public:
-	ValueOctree(FIntVector Position, int Depth, VoxelData* Data);
+	ValueOctree(FIntVector Position, int Depth, UVoxelWorldGenerator* WorldGenerator);
 
 	// Center of the octree
 	const FIntVector Position;
@@ -46,7 +47,7 @@ private:
 	*/
 	TArray<ValueOctree*, TFixedAllocator<8>> Childs;
 
-	VoxelData* Data;
+	UVoxelWorldGenerator* WorldGenerator;
 
 	TArray<signed char> Values;
 	TArray<FColor> Colors;

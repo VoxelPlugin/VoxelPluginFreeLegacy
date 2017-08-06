@@ -6,11 +6,12 @@
 #include "VoxelChunkSaveStruct.h"
 
 class ValueOctree;
+class UVoxelWorldGenerator;
 
 class VoxelData
 {
 public:
-	VoxelData(int Depth);
+	VoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator);
 	virtual ~VoxelData();
 
 	const int Depth;
@@ -28,9 +29,6 @@ public:
 
 	TArray<FVoxelChunkSaveStruct> GetSaveArray();
 	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
-	
-	virtual signed char GetDefaultValue(FIntVector Position) const;
-	virtual FColor GetDefaultColor(FIntVector Position) const;
 
 private:
 	TSharedPtr<ValueOctree> MainOctree;
