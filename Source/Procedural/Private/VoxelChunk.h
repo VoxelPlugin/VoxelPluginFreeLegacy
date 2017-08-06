@@ -26,7 +26,7 @@ public:
 
 	void Init(FIntVector Position, int Depth, AVoxelWorld* World);
 
-	void Update(bool Async);
+	void Update(bool bAsync);
 
 	void BasicUpdate();
 

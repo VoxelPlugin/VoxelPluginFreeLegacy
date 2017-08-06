@@ -96,7 +96,7 @@ void AVoxelChunk::Init(FIntVector Position, int Depth, AVoxelWorld* World)
 	bAdjacentChunksNeedUpdate = true;
 }
 
-void AVoxelChunk::Update(bool Async)
+void AVoxelChunk::Update(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
@@ -119,13 +119,15 @@ void AVoxelChunk::Update(bool Async)
 		}
 
 		Task = new FAsyncTask<VoxelThread>(this);
-		if (Async)
+		if (bAsync)
 		{
 			Task->StartBackgroundTask(World->ThreadPool);
 		}
 		else
 		{
 			Task->StartSynchronousTask();
+			// Avoid holes
+			Tick(0);
 		}
 		bNeedSectionUpdate = true;
 	}

@@ -3,7 +3,7 @@
 #include "VoxelTools.h"
 #include "VoxelWorld.h"
 
-void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates)
+void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
 {
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
 	int IntRadius = FMath::CeilToInt(Radius);
@@ -34,11 +34,11 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 	}
 	if (bApplyUpdates)
 	{
-		World->ApplyQueuedUpdates();
+		World->ApplyQueuedUpdates(bAsync);
 	}
 }
 
-void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, bool bQueueUpdate, bool bApplyUpdates)
+void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
 {
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
 	int IntRadius = FMath::CeilToInt(Radius);
@@ -63,6 +63,6 @@ void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Rad
 	}
 	if (bApplyUpdates)
 	{
-		World->ApplyQueuedUpdates();
+		World->ApplyQueuedUpdates(bAsync);
 	}
 }
