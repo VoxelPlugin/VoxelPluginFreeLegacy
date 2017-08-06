@@ -1,17 +1,13 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Engine.h"
 #include "VoxelChunkSaveStruct.h"
-
-DECLARE_LOG_CATEGORY_EXTERN(ValueOctreeLog, Log, All);
 
 class VoxelData;
 
 class ValueOctree
 {
 public:
-	ValueOctree(FIntVector position, int depth, VoxelData* data);
-	~ValueOctree();
+	ValueOctree(FIntVector Position, int Depth, VoxelData* Data);
 
 	// Center of the octree
 	const FIntVector Position;
@@ -23,25 +19,25 @@ public:
 
 	void CreateTree();
 
-	ValueOctree* GetLeaf(FIntVector globalPosition);
+	ValueOctree* GetLeaf(FIntVector GlobalPosition);
 
 	bool IsLeaf();
 
 	bool IsDirty();
 
-	signed char GetValue(FIntVector globalPosition);
-	FColor GetColor(FIntVector globalPosition);
+	signed char GetValue(FIntVector GlobalPosition);
+	FColor GetColor(FIntVector GlobalPosition);
 
-	void SetValue(FIntVector globalPosition, signed char value);
-	void SetColor(FIntVector globalPosition, FColor color);
+	void SetValue(FIntVector GlobalPosition, signed char Value);
+	void SetColor(FIntVector GlobalPosition, FColor Color);
 
-	bool IsInChunk(FIntVector globalPosition);
+	bool IsInChunk(FIntVector GlobalPosition);
 
-	FIntVector LocalToGlobal(FIntVector localPosition);
-	FIntVector GlobalToLocal(FIntVector globalPosition);
+	FIntVector LocalToGlobal(FIntVector LocalPosition);
+	FIntVector GlobalToLocal(FIntVector GlobalPosition);
 
-	void AddChunksToArray(TArray<FVoxelChunkSaveStruct> saveArray);
-	void LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray);
+	void AddChunksToArray(TArray<FVoxelChunkSaveStruct> SaveArray);
+	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
 
 private:
 	/*
@@ -52,7 +48,7 @@ private:
 	x
 
 	*/
-	TSharedPtr<ValueOctree> Childs[8];
+	TArray<TSharedRef<ValueOctree>, TFixedAllocator<8>> Childs;
 
 	VoxelData* Data;
 

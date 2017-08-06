@@ -6,9 +6,8 @@
 #include "VoxelChunkStruct.h"
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
-#include "DrawDebugHelpers.h"
 
-VoxelThread::VoxelThread(AVoxelChunk* voxelChunk) : VoxelChunk(voxelChunk), VoxelStruct(new VoxelChunkStruct(VoxelChunk))
+VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk) : VoxelChunk(VoxelChunk), VoxelStruct(new VoxelChunkStruct(VoxelChunk))
 {
 
 }
@@ -30,45 +29,28 @@ void VoxelThread::DoWork()
 	int VerticesCount = 0;
 	int TrianglesCount = 0;
 
-	const int Depth = VoxelChunk->GetDepth();
-	const int Width = 16 << Depth;
-
-
-	/*
-	VerticesCount++;
-	Vertices->push_front(FVector::UpVector * 100);
-	VertexColors->push_front(FColor::Red);
-	VerticesProperties->push_front(VertexProperties({ false, false, false, false, false, false, false }));
-
-	for (int i = 0; i < 18; i++)
-	{
-		for (int j = 0; j < 18; j++)
-		{
-			for (int k = 0; k < 4; k++)
-			{
-				VoxelStruct->Cache1[i][j][k] = 0;
-				VoxelStruct->Cache2[i][j][k] = 0;
-			}
-		}
-	}*/
+	const int Depth = VoxelStruct->Depth;
+	const int Width = VoxelStruct->Width;
+	const int Step = VoxelStruct->Step;
 
 	/**
 	 * Transitions voxels
 	 */
 	if (Depth != 0)
 	{
-		for (int y = 0; y < 16; y++)
+		for (int i = 0; i < 6; i++)
 		{
-			for (int x = 0; x < 16; x++)
+			if (VoxelChunk->ChunkHasHigherRes[i])
 			{
-				short validityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
-				for (int i = 0; i < 6; i++)
+				TransitionDirection Direction = (TransitionDirection)i;
+				VoxelStruct->CurrentDirection = Direction;
+
+				for (int y = 0; y < 16; y++)
 				{
-					if (VoxelChunk->ChunkHasHigherRes[i])
+					for (int x = 0; x < 16; x++)
 					{
-						TransitionDirection Direction = (TransitionDirection)i;
-						VoxelStruct->CurrentDirection = Direction;
-						TransvoxelTools::TransitionPolygonize(VoxelStruct, x, y, validityMask, *TransitionTriangles, TrianglesCount, *Vertices, *VerticesProperties2D, *VertexColors, VerticesCount, Direction);
+						short ValidityMask = (x == 0 ? 0 : 1) + (y == 0 ? 0 : 2);
+						TransvoxelTools::TransitionPolygonize(VoxelStruct, x, y, ValidityMask, *TransitionTriangles, TrianglesCount, *Vertices, *VerticesProperties2D, *VertexColors, VerticesCount, Step);
 					}
 				}
 			}
@@ -84,8 +66,8 @@ void VoxelThread::DoWork()
 		{
 			for (int x = -1; x < 17; x++)
 			{
-				short validityMask = (x == -1 ? 0 : 1) + (y == -1 ? 0 : 2) + (z == -1 ? 0 : 4);
-				TransvoxelTools::RegularPolygonize(VoxelStruct, x, y, z, validityMask, *RegularTriangles, TrianglesCount, *Vertices, *VerticesProperties, *VertexColors, VerticesCount);
+				short ValidityMask = (x == -1 ? 0 : 1) + (y == -1 ? 0 : 2) + (z == -1 ? 0 : 4);
+				TransvoxelTools::RegularPolygonize(VoxelStruct, x, y, z, ValidityMask, *RegularTriangles, TrianglesCount, *Vertices, *VerticesProperties, *VertexColors, VerticesCount, Step);
 			}
 		}
 		VoxelStruct->NewCacheIs1 = !VoxelStruct->NewCacheIs1;
@@ -106,7 +88,7 @@ void VoxelThread::DoWork()
 	VerticesPropertiesArray.SetNumUninitialized(VerticesCount);
 
 	// Fill arrays
-	int cleanedIndex = 0;
+	int CleanedIndex = 0;
 	int i = 0;
 	// Regular voxels
 	while (!VerticesProperties->empty())
@@ -121,9 +103,9 @@ void VoxelThread::DoWork()
 		if (!Properties.IsNormalOnly)
 		{
 			// If real vertex
-			InverseBijectionArray[cleanedIndex] = index;
-			BijectionArray[index] = cleanedIndex;
-			cleanedIndex++;
+			InverseBijectionArray[CleanedIndex] = index;
+			BijectionArray[index] = CleanedIndex;
+			CleanedIndex++;
 		}
 		else
 		{
@@ -177,9 +159,9 @@ void VoxelThread::DoWork()
 			VerticesArray[index] = RealPosition;
 			VerticesPropertiesArray[index] = Properties;
 
-			InverseBijectionArray[cleanedIndex] = index;
-			BijectionArray[index] = cleanedIndex;
-			cleanedIndex++;
+			InverseBijectionArray[CleanedIndex] = index;
+			BijectionArray[index] = CleanedIndex;
+			CleanedIndex++;
 
 			Vertices->pop_front();
 			VerticesProperties2D->pop_front();
@@ -187,7 +169,7 @@ void VoxelThread::DoWork()
 			i++;
 		}
 	}
-	const int RealVerticesCount = cleanedIndex;
+	const int RealVerticesCount = CleanedIndex;
 
 	if (RealVerticesCount != 0)
 	{

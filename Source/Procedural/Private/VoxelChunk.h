@@ -24,9 +24,9 @@ public:
 	AVoxelChunk();
 	~AVoxelChunk();
 
-	void Init(FIntVector position, int depth, AVoxelWorld* world);
+	void Init(FIntVector Position, int Depth, AVoxelWorld* World);
 
-	void Update(bool async);
+	void Update(bool Async);
 
 	void BasicUpdate();
 
@@ -34,11 +34,13 @@ public:
 
 	int GetDepth();
 
-	signed char GetValue(int x, int y, int z);
+	int Width();
 
-	FColor GetColor(int x, int y, int z);
+	signed char GetValue(int X, int Y, int Z);
 
-	bool ChunkHasHigherRes[6];
+	FColor GetColor(int X, int Y, int Z);
+
+	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 
 protected:
 	// Called when the game starts or when spawned
@@ -76,7 +78,7 @@ private:
 	bool bAdjacentChunksNeedUpdate;
 
 
-	AVoxelChunk* GetChunk(TransitionDirection direction);
+	AVoxelChunk* GetChunk(TransitionDirection Direction);
 
 	void Delete();
 };

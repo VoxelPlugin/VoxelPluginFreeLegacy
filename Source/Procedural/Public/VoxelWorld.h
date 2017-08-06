@@ -12,7 +12,7 @@ class ChunkOctree;
 class VoxelData;
 class AVoxelChunk;
 
-DECLARE_LOG_CATEGORY_EXTERN(VoxelWorldLog, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
 
 UCLASS()
@@ -29,8 +29,8 @@ public:
 	float GetQuality();
 	bool GetRebuildBorders();
 
-	AVoxelChunk* GetChunkAt(FIntVector position);
-	void ScheduleUpdate(TWeakPtr<ChunkOctree> chunk);
+	AVoxelChunk* GetChunkAt(FIntVector Position);
+	void ScheduleUpdate(TWeakPtr<ChunkOctree> Chunk);
 
 	FQueuedThreadPool* ThreadPool;
 
@@ -40,47 +40,47 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FIntVector GlobalToLocal(FVector position);
+		FIntVector GlobalToLocal(FVector Position);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Add(FIntVector position, int strength);
+		void Add(FIntVector Position, int Strength);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Remove(FIntVector position, int strength);
-
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Update(FIntVector position, bool async = true);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ScheduleUpdate(FIntVector position);
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ApplyQueuedUpdates(bool async = true);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateAll(bool async = true);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateCameraPosition(FVector position);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		bool IsInWorld(FIntVector position);
+		void Remove(FIntVector Position, int Strength);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		int GetValue(FIntVector position);
+		void Update(FIntVector Position, bool Async = true);
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FColor GetColor(FIntVector position);
+		void ScheduleUpdate(FIntVector Position);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void ApplyQueuedUpdates(bool Async = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void UpdateAll(bool Async = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void UpdateCameraPosition(FVector Position);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		bool IsInWorld(FIntVector Position);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetValue(FIntVector position, int value);
+		int GetValue(FIntVector Position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetColor(FIntVector position, FColor color);
+		FColor GetColor(FIntVector Position);
+
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void SetValue(FIntVector Position, int Value);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void SetColor(FIntVector Position, FColor Color);
 
 	//UFUNCTION(BlueprintCallable, Category = "Voxel")
 	TArray<FVoxelChunkSaveStruct> GetSaveArray();
 	//UFUNCTION(BlueprintCallable, Category = "Voxel")
-	void LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray);
+	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
 
 protected:
 	// Called when the game starts or when spawned

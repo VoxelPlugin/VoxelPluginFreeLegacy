@@ -1,19 +1,15 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "Engine.h"
 
 class AVoxelChunk;
 class AVoxelWorld;
 
-DECLARE_LOG_CATEGORY_EXTERN(ChunkOctreeLog, Log, All);
-
 class ChunkOctree : public TSharedFromThis<ChunkOctree>
 {
 public:
-	ChunkOctree(FIntVector position, int depth);
-	~ChunkOctree();
+	ChunkOctree(FIntVector Position, int Depth);
 
-	bool operator==(const ChunkOctree& other);
+	bool operator==(const ChunkOctree& Other);
 
 	// Center of the octree
 	const FIntVector Position;
@@ -24,11 +20,11 @@ public:
 
 	int GetWidth();
 
-	void CreateTree(AVoxelWorld* world, FVector cameraPosition);
+	void CreateTree(AVoxelWorld* World, FVector CameraPosition);
 
-	void Update(bool async);
+	void Update(bool bAsync);
 
-	TWeakPtr<ChunkOctree> GetChunk(FIntVector position);
+	TWeakPtr<ChunkOctree> GetChunk(FIntVector Position);
 
 	AVoxelChunk* GetVoxelChunk();
 
@@ -41,14 +37,14 @@ private:
 	x
 
 	*/
-	TSharedPtr<ChunkOctree> Childs[8];
+	TArray<TSharedRef<ChunkOctree>, TFixedAllocator<8>> Childs;
 
 	bool bHasChilds;
 	bool bHasChunk;
 
 	AVoxelChunk* VoxelChunk;
 
-	void Load(AVoxelWorld* world);
+	void Load(AVoxelWorld* World);
 	void Unload();
 
 	void CreateChilds();

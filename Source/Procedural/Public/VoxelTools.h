@@ -16,8 +16,8 @@ class PROCEDURAL_API UVoxelTools : public UObject
 	GENERATED_BODY()
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		static void SetValueSphere(AVoxelWorld* world, FVector position, float radius, bool add, bool bQueueUpdate = true, bool bApplyUpdates = true);
+		static void SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate = true, bool bApplyUpdates = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		static void SetColorSphere(AVoxelWorld* world, FVector position, float radius, FLinearColor color, bool bQueueUpdate = true, bool bApplyUpdates = true);
+		static void SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, bool bQueueUpdate = true, bool bApplyUpdates = true);
 };

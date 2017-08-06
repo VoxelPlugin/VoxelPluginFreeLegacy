@@ -1,15 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "VoxelData.h"
+#include "VoxelWorld.h"
 #include "ValueOctree.h"
-#include "EngineGlobals.h"
-#include "Engine.h"
 
-DEFINE_LOG_CATEGORY(VoxelDataLog);
-
-VoxelData::VoxelData(int depth) : Depth(depth)
+VoxelData::VoxelData(int Depth) : Depth(Depth)
 {
-	MainOctree = MakeShareable(new ValueOctree(FIntVector::ZeroValue, depth, this));
+	MainOctree = MakeShareable(new ValueOctree(FIntVector::ZeroValue, Depth, this));
 	MainOctree->CreateTree();
 }
 
@@ -18,108 +15,108 @@ VoxelData::~VoxelData()
 
 }
 
-signed char VoxelData::GetValue(FIntVector position)
+signed char VoxelData::GetValue(FIntVector Position)
 {
-	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
+	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
 		return GetValue(FIntVector(
-			(position.X >= Size() / 2) ? Size() / 2 - 1 : position.X,
-			(position.Y >= Size() / 2) ? Size() / 2 - 1 : position.Y,
-			(position.Z >= Size() / 2) ? Size() / 2 - 1 : position.Z));
+			(Position.X >= Size() / 2) ? Size() / 2 - 1 : Position.X,
+			(Position.Y >= Size() / 2) ? Size() / 2 - 1 : Position.Y,
+			(Position.Z >= Size() / 2) ? Size() / 2 - 1 : Position.Z));
 	}
-	if (position.X < -Size() / 2 || position.Y < -Size() / 2 || position.Z < -Size() / 2)
+	if (Position.X < -Size() / 2 || Position.Y < -Size() / 2 || Position.Z < -Size() / 2)
 	{
 		return GetValue(FIntVector(
-			(position.X < -Size() / 2) ? -Size() / 2 : position.X,
-			(position.Y < -Size() / 2) ? -Size() / 2 : position.Y,
-			(position.Z < -Size() / 2) ? -Size() / 2 : position.Z));
+			(Position.X < -Size() / 2) ? -Size() / 2 : Position.X,
+			(Position.Y < -Size() / 2) ? -Size() / 2 : Position.Y,
+			(Position.Z < -Size() / 2) ? -Size() / 2 : Position.Z));
 	}
 
-	if (IsInWorld(position))
+	if (IsInWorld(Position))
 	{
-		return MainOctree->GetValue(position);
+		return MainOctree->GetValue(Position);
 	}
 	else
 	{
-		UE_LOG(VoxelDataLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
+		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return 127;
 	}
 }
 
-FColor VoxelData::GetColor(FIntVector position)
+FColor VoxelData::GetColor(FIntVector Position)
 {
-	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
+	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
 		return GetColor(FIntVector(
-			(position.X >= Size() / 2) ? Size() / 2 - 1 : position.X,
-			(position.Y >= Size() / 2) ? Size() / 2 - 1 : position.Y,
-			(position.Z >= Size() / 2) ? Size() / 2 - 1 : position.Z));
+			(Position.X >= Size() / 2) ? Size() / 2 - 1 : Position.X,
+			(Position.Y >= Size() / 2) ? Size() / 2 - 1 : Position.Y,
+			(Position.Z >= Size() / 2) ? Size() / 2 - 1 : Position.Z));
 	}
-	if (position.X < -Size() / 2 || position.Y < -Size() / 2 || position.Z < -Size() / 2)
+	if (Position.X < -Size() / 2 || Position.Y < -Size() / 2 || Position.Z < -Size() / 2)
 	{
 		return GetColor(FIntVector(
-			(position.X < -Size() / 2) ? -Size() / 2 : position.X,
-			(position.Y < -Size() / 2) ? -Size() / 2 : position.Y,
-			(position.Z < -Size() / 2) ? -Size() / 2 : position.Z));
+			(Position.X < -Size() / 2) ? -Size() / 2 : Position.X,
+			(Position.Y < -Size() / 2) ? -Size() / 2 : Position.Y,
+			(Position.Z < -Size() / 2) ? -Size() / 2 : Position.Z));
 	}
 
-	if (IsInWorld(position))
+	if (IsInWorld(Position))
 	{
-		return MainOctree->GetColor(position);
+		return MainOctree->GetColor(Position);
 	}
 	else
 	{
-		UE_LOG(VoxelDataLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
+		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return FColor::Red;
 	}
 }
 
-void VoxelData::SetValue(FIntVector position, int value)
+void VoxelData::SetValue(FIntVector Position, int Value)
 {
-	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
+	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
 		return;
 	}
-	if (position.X < -Size() / 2 || position.Y < -Size() / 2 || position.Z < -Size() / 2)
+	if (Position.X < -Size() / 2 || Position.Y < -Size() / 2 || Position.Z < -Size() / 2)
 	{
 		return;
 	}
 
-	if (IsInWorld(position))
+	if (IsInWorld(Position))
 	{
-		MainOctree->SetValue(position, FMath::Clamp(value, -127, 127));
+		MainOctree->SetValue(Position, FMath::Clamp(Value, -127, 127));
 	}
 	else
 	{
-		UE_LOG(VoxelDataLog, Error, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
+		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 
-void VoxelData::SetColor(FIntVector position, FColor color)
+void VoxelData::SetColor(FIntVector Position, FColor Color)
 {
-	if (position.X >= Size() / 2 || position.Y >= Size() / 2 || position.Z >= Size() / 2)
+	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
 		return;
 	}
-	if (position.X < -Size() / 2 || position.Y < -Size() / 2 || position.Z < -Size() / 2)
+	if (Position.X < -Size() / 2 || Position.Y < -Size() / 2 || Position.Z < -Size() / 2)
 	{
 		return;
 	}
 
-	if (IsInWorld(position))
+	if (IsInWorld(Position))
 	{
-		MainOctree->SetColor(position, color);
+		MainOctree->SetColor(Position, Color);
 	}
 	else
 	{
-		UE_LOG(VoxelDataLog, Error, TEXT("Not in world: (%d, %d, %d)"), position.X, position.Y, position.Z);
+		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 
-bool VoxelData::IsInWorld(FIntVector position)
+bool VoxelData::IsInWorld(FIntVector Position)
 {
 	int  w = Size() / 2;
-	return -w <= position.X && position.X < w && -w <= position.Y && position.Y < w && -w <= position.Z && position.Z < w;
+	return -w <= Position.X && Position.X < w && -w <= Position.Y && Position.Y < w && -w <= Position.Z && Position.Z < w;
 }
 
 int VoxelData::Size()
@@ -127,14 +124,14 @@ int VoxelData::Size()
 	return 16 << Depth;
 }
 
-signed char VoxelData::GetDefaultValue(FIntVector position) const
+signed char VoxelData::GetDefaultValue(FIntVector Position) const
 {
-	return (position.Z == 8) ? 0 : ((position.Z > 8) ? 100 : -100);
+	return (Position.Z == 8) ? 0 : ((Position.Z > 8) ? 100 : -100);
 }
 
-FColor VoxelData::GetDefaultColor(FIntVector position) const
+FColor VoxelData::GetDefaultColor(FIntVector Position) const
 {
-	return (position.Z == 8) ? FColor::White : ((position.Z > 8) ? FColor::Red : FColor::Green);
+	return (Position.Z == 8) ? FColor::White : ((Position.Z > 8) ? FColor::Red : FColor::Green);
 }
 
 TArray<FVoxelChunkSaveStruct> VoxelData::GetSaveArray()
@@ -144,7 +141,7 @@ TArray<FVoxelChunkSaveStruct> VoxelData::GetSaveArray()
 	return SaveArray;
 }
 
-void VoxelData::LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray)
+void VoxelData::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray)
 {
-	MainOctree->LoadFromArray(saveArray);
+	MainOctree->LoadFromArray(SaveArray);
 }

@@ -16,7 +16,7 @@ class VoxelThread : public FNonAbandonableTask
 	friend class FAsyncTask<VoxelThread>;
 
 public:
-	VoxelThread(AVoxelChunk* voxelChunk);
+	VoxelThread(AVoxelChunk* VoxelChunk);
 	~VoxelThread();
 
 	AVoxelChunk* VoxelChunk;
