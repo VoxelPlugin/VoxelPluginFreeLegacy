@@ -154,39 +154,39 @@ void AVoxelWorld::QueueUpdate(FIntVector Position)
 	int Y = Position.Y + Size() / 2;
 	int Z = Position.Z + Size() / 2;
 
-	bool bXIsAtBorder = X % 16 == 0 && X != 0;
-	bool bYIsAtBorder = Y % 16 == 0 && Y != 0;
-	bool bZIsAtBorder = Z % 16 == 0 && Z != 0;
+	bool bXIsAtBorder = (X % 16 == 0) && (X != 0);
+	bool bYIsAtBorder = (Y % 16 == 0) && (Y != 0);
+	bool bZIsAtBorder = (Z % 16 == 0) && (Z != 0);
 
 	QueueUpdate(MainOctree->GetChunk(Position));
 
 	if (bXIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(1, 0, 0)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(8, 0, 0)));
 	}
 	if (bYIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 1, 0)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 8, 0)));
 	}
 	if (bXIsAtBorder && bYIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(1, 1, 0)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(8, 8, 0)));
 	}
 	if (bZIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 0, 1)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 0, 8)));
 	}
 	if (bXIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(1, 0, 1)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(8, 0, 8)));
 	}
 	if (bYIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 1, 1)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 8, 8)));
 	}
 	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(1, 1, 1)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(8, 8, 8)));
 	}
 }
 
