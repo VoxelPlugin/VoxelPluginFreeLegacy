@@ -114,6 +114,7 @@ void ChunkOctree::Update(bool bAsync)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
+	check(bHasChilds ^ bHasChunk);
 
 	if (bHasChunk)
 	{
@@ -137,6 +138,7 @@ TWeakPtr<ChunkOctree> ChunkOctree::GetChunk(FIntVector Position)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
+	check(bHasChilds ^ bHasChunk);
 
 	if (bHasChunk)
 	{
@@ -167,7 +169,8 @@ AVoxelChunk* ChunkOctree::GetVoxelChunk()
 void ChunkOctree::Load(AVoxelWorld* World)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
-	check(World);
+	check(!bHasChilds)
+		check(World);
 
 	if (!bHasChunk)
 	{
@@ -202,6 +205,7 @@ void ChunkOctree::Unload()
 void ChunkOctree::CreateChilds()
 {
 	check(bHasChilds == (Childs.Num() == 8));
+	check(!bHasChunk);
 	check(Depth != 0);
 
 	if (!bHasChilds)
