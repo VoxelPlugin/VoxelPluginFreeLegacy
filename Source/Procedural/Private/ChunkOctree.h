@@ -18,7 +18,7 @@ public:
 
 	void Delete();
 
-	int GetWidth();
+	int Width();
 
 	void CreateTree(AVoxelWorld* World, FVector CameraPosition);
 
@@ -37,7 +37,7 @@ private:
 	x
 
 	*/
-	TArray<TSharedRef<ChunkOctree>, TFixedAllocator<8>> Childs;
+	TArray<TSharedPtr<ChunkOctree>, TFixedAllocator<8>> Childs;
 
 	bool bHasChilds;
 	bool bHasChunk;

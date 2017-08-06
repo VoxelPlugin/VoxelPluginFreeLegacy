@@ -15,11 +15,7 @@ public:
 
 
 
-	inline int GetWidth();
-
-	void CreateTree();
-
-	ValueOctree* GetLeaf(FIntVector GlobalPosition);
+	int Width();
 
 	bool IsLeaf();
 
@@ -48,7 +44,7 @@ private:
 	x
 
 	*/
-	TArray<TSharedRef<ValueOctree>, TFixedAllocator<8>> Childs;
+	TArray<ValueOctree*, TFixedAllocator<8>> Childs;
 
 	VoxelData* Data;
 
@@ -59,4 +55,6 @@ private:
 	bool bIsLeaf;
 
 	void CreateChilds();
+
+	ValueOctree* GetChild(FIntVector GlobalPosition);
 };

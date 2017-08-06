@@ -190,7 +190,6 @@ void VoxelThread::DoWork()
 		}
 
 		// Create Section
-		FProcMeshSection& Section = VoxelChunk->Section;
 		Section.Reset();
 		Section.bEnableCollision = (Depth == 0);
 		Section.bSectionVisible = true;

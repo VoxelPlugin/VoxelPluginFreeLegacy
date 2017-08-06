@@ -22,6 +22,8 @@ public:
 	AVoxelChunk* VoxelChunk;
 	VoxelChunkStruct* VoxelStruct;
 
+	FProcMeshSection Section;
+
 	void DoWork();
 
 	FORCEINLINE TStatId GetStatId() const

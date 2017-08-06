@@ -30,7 +30,7 @@ public:
 	bool GetRebuildBorders();
 
 	AVoxelChunk* GetChunkAt(FIntVector Position);
-	void ScheduleUpdate(TWeakPtr<ChunkOctree> Chunk);
+	void QueueUpdate(TWeakPtr<ChunkOctree> Chunk);
 
 	FQueuedThreadPool* ThreadPool;
 
@@ -52,7 +52,7 @@ public:
 		void Update(FIntVector Position, bool Async = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ScheduleUpdate(FIntVector Position);
+		void QueueUpdate(FIntVector Position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ApplyQueuedUpdates(bool Async = true);
 

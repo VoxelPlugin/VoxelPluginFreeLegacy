@@ -143,11 +143,11 @@ void AVoxelWorld::Update(FIntVector Position, bool Async)
 	{
 		UE_LOG(VoxelLog, Warning, TEXT("Update called but there are still chunks in queue"));
 	}
-	ScheduleUpdate(Position);
+	QueueUpdate(Position);
 	ApplyQueuedUpdates(Async);
 }
 
-void AVoxelWorld::ScheduleUpdate(FIntVector Position)
+void AVoxelWorld::QueueUpdate(FIntVector Position)
 {
 	int X = Position.X + Size() / 2;
 	int Y = Position.Y + Size() / 2;
@@ -157,39 +157,39 @@ void AVoxelWorld::ScheduleUpdate(FIntVector Position)
 	bool bYIsAtBorder = Y % 16 == 0 && Y != 0;
 	bool bZIsAtBorder = Z % 16 == 0 && Z != 0;
 
-	ScheduleUpdate(MainOctree->GetChunk(Position));
+	QueueUpdate(MainOctree->GetChunk(Position));
 
 	if (bXIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(1, 0, 0)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(1, 0, 0)));
 	}
 	if (bYIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(0, 1, 0)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 1, 0)));
 	}
 	if (bXIsAtBorder && bYIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(1, 1, 0)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(1, 1, 0)));
 	}
 	if (bZIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(0, 0, 1)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 0, 1)));
 	}
 	if (bXIsAtBorder && bZIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(1, 0, 1)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(1, 0, 1)));
 	}
 	if (bYIsAtBorder && bZIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(0, 1, 1)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 1, 1)));
 	}
 	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
 	{
-		ScheduleUpdate(MainOctree->GetChunk(Position - FIntVector(1, 1, 1)));
+		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(1, 1, 1)));
 	}
 }
 
-void AVoxelWorld::ScheduleUpdate(TWeakPtr<ChunkOctree> Chunk)
+void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk)
 {
 	ChunksToUpdate.AddUnique(Chunk);
 }

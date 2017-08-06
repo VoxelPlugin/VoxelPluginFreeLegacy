@@ -38,7 +38,7 @@ void AVoxelChunk::Tick(float DeltaTime)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 		bNeedSectionUpdate = false;
-		PrimaryMesh->SetProcMeshSection(0, Section);
+		PrimaryMesh->SetProcMeshSection(0, Task->GetTask().Section);
 		delete Task;
 		Task = nullptr;
 	}
@@ -103,15 +103,8 @@ void AVoxelChunk::Update(bool Async)
 	// Make sure we've ticked
 	Tick(0);
 
-	if (Task == nullptr || Task->IsDone())
+	if (Task == nullptr)
 	{
-		if (Task != nullptr)
-		{
-			// Should not be necessary
-			Task->EnsureCompletion();
-			delete Task;
-		}
-
 		for (int i = 0; i < 6; i++)
 		{
 			if (Depth == 0)
@@ -136,6 +129,10 @@ void AVoxelChunk::Update(bool Async)
 		}
 		bNeedSectionUpdate = true;
 	}
+	else
+	{
+		UE_LOG(VoxelLog, Warning, TEXT("Update called when already updating"));
+	}
 }
 
 void AVoxelChunk::BasicUpdate()
@@ -146,7 +143,7 @@ void AVoxelChunk::BasicUpdate()
 		bool bHigherRes = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() < Depth);
 		if (ChunkHasHigherRes[i] != bHigherRes)
 		{
-			if (Task == nullptr || Task->IsDone())
+			if (Task == nullptr)
 			{
 				Update(true);
 				return;

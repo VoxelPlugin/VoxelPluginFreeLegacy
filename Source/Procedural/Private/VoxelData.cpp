@@ -7,7 +7,6 @@
 VoxelData::VoxelData(int Depth) : Depth(Depth)
 {
 	MainOctree = MakeShareable(new ValueOctree(FIntVector::ZeroValue, Depth, this));
-	MainOctree->CreateTree();
 }
 
 VoxelData::~VoxelData()
