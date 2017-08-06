@@ -40,62 +40,40 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void GlobalAdd(FVector position, int strength);
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Add(FIntVector position, int strength);
+		FIntVector GlobalToLocal(FVector position);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void GlobalRemove(FVector position, int strength);
+		void Add(FIntVector position, int strength);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void Remove(FIntVector position, int strength);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void GlobalUpdate(FVector position, bool async = true);
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void Update(FIntVector position, bool async = true);
 
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void GlobalScheduleUpdate(FVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ScheduleUpdate(FIntVector position);
-
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ApplyQueuedUpdates(bool async = true);
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateAll(bool async = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateCameraPosition(FVector position);
 
-
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		bool GlobalIsInWorld(FVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		bool IsInWorld(FIntVector position);
 
 
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		int GlobalGetValue(FVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		int GetValue(FIntVector position);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FColor GlobalGetColor(FVector position);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		FColor GetColor(FIntVector position);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void GlobalSetValue(FVector position, int value);
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void SetValue(FIntVector position, int value);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void GlobalSetColor(FVector position, FColor color);
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void SetColor(FIntVector position, FColor color);
 
