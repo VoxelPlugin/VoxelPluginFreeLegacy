@@ -70,41 +70,6 @@ void AVoxelWorld::UpdateCameraPosition(FVector position)
 	ApplyQueuedUpdates(true);
 }
 
-bool AVoxelWorld::GlobalIsInWorld(FVector position)
-{
-	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	return IsInWorld(IP);
-}
-
-int AVoxelWorld::GlobalGetValue(FVector position)
-{
-	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	return GetValue(IP);
-}
-
-FColor AVoxelWorld::GlobalGetColor(FVector position)
-{
-	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	return GetColor(IP);
-}
-
-void AVoxelWorld::GlobalSetValue(FVector position, int value)
-{
-	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	SetValue(IP, value);
-}
-
-void AVoxelWorld::GlobalSetColor(FVector position, FColor color)
-{
-	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	SetColor(IP, color);
-}
-
 
 int AVoxelWorld::GetValue(FIntVector position)
 {
@@ -137,26 +102,10 @@ void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> saveArray)
 }
 
 
-void AVoxelWorld::GlobalUpdate(FVector position, bool async)
+FIntVector AVoxelWorld::GlobalToLocal(FVector position)
 {
 	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	Update(IP, async);
-}
-
-void AVoxelWorld::GlobalScheduleUpdate(FVector position)
-{
-	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	ScheduleUpdate(IP);
-}
-
-
-void AVoxelWorld::GlobalAdd(FVector position, int strength)
-{
-	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	Add(IP, strength);
+	return FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
 }
 
 void AVoxelWorld::Add(FIntVector position, int strength)
@@ -170,13 +119,6 @@ void AVoxelWorld::Add(FIntVector position, int strength)
 	{
 		UE_LOG(VoxelWorldLog, Error, TEXT("Not in world"));
 	}
-}
-
-void AVoxelWorld::GlobalRemove(FVector position, int strength)
-{
-	FVector P = GetTransform().InverseTransformPosition(position);
-	FIntVector IP = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-	Remove(IP, strength);
 }
 
 void AVoxelWorld::Remove(FIntVector position, int strength)
