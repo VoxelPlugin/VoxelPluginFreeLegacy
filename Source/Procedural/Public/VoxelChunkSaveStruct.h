@@ -4,7 +4,7 @@
 #include "VoxelChunkSaveStruct.generated.h"
 
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct PROCEDURAL_API FVoxelChunkSaveStruct
 {
 	GENERATED_BODY()

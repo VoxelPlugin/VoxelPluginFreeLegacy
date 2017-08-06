@@ -4,9 +4,9 @@
 #include "VoxelWorld.h"
 #include "ValueOctree.h"
 
-VoxelData::VoxelData(int Depth) : Depth(Depth)
+VoxelData::VoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator) : Depth(Depth)
 {
-	MainOctree = MakeShareable(new ValueOctree(FIntVector::ZeroValue, Depth, this));
+	MainOctree = MakeShareable(new ValueOctree(FIntVector::ZeroValue, Depth, WorldGenerator));
 }
 
 VoxelData::~VoxelData()
@@ -121,16 +121,6 @@ bool VoxelData::IsInWorld(FIntVector Position)
 int VoxelData::Size()
 {
 	return 16 << Depth;
-}
-
-signed char VoxelData::GetDefaultValue(FIntVector Position) const
-{
-	return (Position.Z == 8) ? 0 : ((Position.Z > 8) ? 100 : -100);
-}
-
-FColor VoxelData::GetDefaultColor(FIntVector Position) const
-{
-	return (Position.Z == 8) ? FColor::White : ((Position.Z > 8) ? FColor::Red : FColor::Green);
 }
 
 TArray<FVoxelChunkSaveStruct> VoxelData::GetSaveArray()

@@ -2,10 +2,11 @@
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
 #include "VoxelData.h"
+#include "VoxelWorldGenerator.h"
 
-ValueOctree::ValueOctree(FIntVector Position, int Depth, VoxelData* Data) : Position(Position), Depth(Depth), bIsDirty(false), bIsLeaf(true), Data(Data)
+ValueOctree::ValueOctree(FIntVector Position, int Depth, UVoxelWorldGenerator* WorldGenerator) : Position(Position), Depth(Depth), bIsDirty(false), bIsLeaf(true), WorldGenerator(WorldGenerator)
 {
-	check(Data);
+	check(WorldGenerator);
 	check(Depth >= 0);
 }
 
@@ -47,7 +48,7 @@ signed char ValueOctree::GetValue(FIntVector GlobalPosition)
 	}
 	else
 	{
-		return Data->GetDefaultValue(GlobalPosition);
+		return FMath::Clamp(WorldGenerator->GetDefaultValue(GlobalPosition), -127, 127);
 	}
 }
 
@@ -71,7 +72,7 @@ FColor ValueOctree::GetColor(FIntVector GlobalPosition)
 	}
 	else
 	{
-		return Data->GetDefaultColor(GlobalPosition);
+		return WorldGenerator->GetDefaultColor(GlobalPosition);
 	}
 }
 
@@ -238,14 +239,14 @@ void ValueOctree::CreateChilds()
 	check(Childs.Num() == 0);
 	check(Depth != 0);
 	int d = Width() / 4;
-	Childs.Add(new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1, Data));
-	Childs.Add(new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1, Data));
-	Childs.Add(new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1, Data));
-	Childs.Add(new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1, Data));
-	Childs.Add(new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1, Data));
-	Childs.Add(new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1, Data));
-	Childs.Add(new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1, Data));
-	Childs.Add(new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1, Data));
+	Childs.Add(new ValueOctree(Position + FIntVector(-d, -d, -d), Depth - 1, WorldGenerator));
+	Childs.Add(new ValueOctree(Position + FIntVector(+d, -d, -d), Depth - 1, WorldGenerator));
+	Childs.Add(new ValueOctree(Position + FIntVector(-d, +d, -d), Depth - 1, WorldGenerator));
+	Childs.Add(new ValueOctree(Position + FIntVector(+d, +d, -d), Depth - 1, WorldGenerator));
+	Childs.Add(new ValueOctree(Position + FIntVector(-d, -d, +d), Depth - 1, WorldGenerator));
+	Childs.Add(new ValueOctree(Position + FIntVector(+d, -d, +d), Depth - 1, WorldGenerator));
+	Childs.Add(new ValueOctree(Position + FIntVector(-d, +d, +d), Depth - 1, WorldGenerator));
+	Childs.Add(new ValueOctree(Position + FIntVector(+d, +d, +d), Depth - 1, WorldGenerator));
 	bIsLeaf = false;
 	check(!IsLeaf() == (Childs.Num() == 8));
 }

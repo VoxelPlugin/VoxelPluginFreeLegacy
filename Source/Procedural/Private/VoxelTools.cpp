@@ -16,7 +16,9 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
 				float Distance = FVector(x, y, z).Size();
 
-				int Value = (bAdd ? -1 : 1) * (int)(1000 * (Radius - Distance) / Radius);
+				float Alpha = FMath::Clamp(Radius - Distance, -1.f, 1.f);
+
+				int Value = (bAdd ? -1 : 1) * (int)(127 * Alpha);
 
 
 				if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
@@ -48,8 +50,8 @@ void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Rad
 			{
 				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
 				float Distance = FVector(x, y, z).Size();
-				float Alpha = (Radius - Distance) / Radius;
-				FColor CurrentColor = FLinearColor::LerpUsingHSV(World->GetColor(CurrentPosition), Color, FMath::Clamp(Alpha, 0.f, 1.f)).ToFColor(true);
+				float Alpha = FMath::Clamp((Radius - Distance) / Radius, 0.f, 1.f);
+				FColor CurrentColor = FLinearColor::LerpUsingHSV(World->GetColor(CurrentPosition), Color, Alpha).ToFColor(true);
 
 				World->SetColor(CurrentPosition, CurrentColor);
 				if (bQueueUpdate)

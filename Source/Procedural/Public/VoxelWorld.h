@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "VoxelChunkSaveStruct.h"
+#include "VoxelWorldGenerator.h"
 #include "VoxelWorld.generated.h"
 
 
@@ -21,7 +22,6 @@ class PROCEDURAL_API AVoxelWorld : public AActor
 	GENERATED_BODY()
 public:
 	AVoxelWorld();
-	~AVoxelWorld();
 
 	int Size();
 
@@ -100,6 +100,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		bool bRebuildBorders;
 
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
+
 private:
 	TSharedPtr<ChunkOctree> MainOctree;
 	TSharedPtr<VoxelData> Data;
@@ -107,4 +110,7 @@ private:
 	bool bNotCreated;
 
 	TArray<TWeakPtr<ChunkOctree>> ChunksToUpdate;
+
+	UPROPERTY()
+		UVoxelWorldGenerator* WorldGeneratorInstance;
 };
