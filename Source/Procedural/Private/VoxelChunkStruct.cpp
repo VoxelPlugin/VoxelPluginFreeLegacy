@@ -79,6 +79,8 @@ void VoxelChunkStruct::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Inde
 		const int LocalX = 8;
 		const int LocalY = 9;
 
+
+		// May create holes in some cases
 		int Direction;
 		if (Properties.IsNearXMin && EdgeIndex != GlobalX && 0 <= Y && Y < 16 && 0 <= Z && Z < 16)
 		{
