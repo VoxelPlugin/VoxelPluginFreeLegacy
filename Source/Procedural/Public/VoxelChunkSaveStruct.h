@@ -16,15 +16,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		int Depth;
 
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		TArray<int> Values;
+	TArray<int, TFixedAllocator<16 * 16 * 16>> Values;
 
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		TArray<FColor> Colors;
+	TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors;
 
-	FVoxelChunkSaveStruct() {}
-	FVoxelChunkSaveStruct(FIntVector Position, int Depth, TArray<int> Values, TArray<FColor> Colors) : Position(Position), Depth(Depth), Values(Values), Colors(Colors) {}
-	FVoxelChunkSaveStruct(FIntVector Position, int Depth, TArray<signed char> Values, TArray<FColor> Colors) : Position(Position), Depth(Depth), Colors(Colors)
+	FVoxelChunkSaveStruct()
+	{
+	}
+
+	FVoxelChunkSaveStruct(FIntVector Position, int Depth, TArray<int, TFixedAllocator<16 * 16 * 16>> Values, TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors) : Position(Position), Depth(Depth), Values(Values), Colors(Colors)
+	{
+	}
+
+	FVoxelChunkSaveStruct(FIntVector Position, int Depth, TArray<signed char, TFixedAllocator<16 * 16 * 16>> Values, TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors) : Position(Position), Depth(Depth), Colors(Colors)
 	{
 		this->Values.SetNumUninitialized(Values.Num());
 		for (int i = 0; i < Values.Num(); i++)

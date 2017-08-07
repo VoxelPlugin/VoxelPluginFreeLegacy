@@ -79,4 +79,6 @@ private:
 	AVoxelChunk* GetChunk(TransitionDirection Direction);
 
 	void Delete();
+
+	void UpdateSection();
 };

@@ -94,23 +94,23 @@ void ValueOctree::SetValue(FIntVector GlobalPosition, signed char Value)
 		{
 			if (!IsDirty())
 			{
-				Values.SetNumUninitialized(Width() * Width() * Width());
-				Colors.SetNumUninitialized(Width() * Width() * Width());
-				for (int x = 0; x < Width(); x++)
+				Values.SetNumUninitialized(16 * 16 * 16);
+				Colors.SetNumUninitialized(16 * 16 * 16);
+				for (int x = 0; x < 16; x++)
 				{
-					for (int y = 0; y < Width(); y++)
+					for (int y = 0; y < 16; y++)
 					{
-						for (int z = 0; z < Width(); z++)
+						for (int z = 0; z < 16; z++)
 						{
-							Values[x + Width() * y + Width() * Width() * z] = GetValue(LocalToGlobal(FIntVector(x, y, z)));
-							Colors[x + Width() * y + Width() * Width() * z] = GetColor(LocalToGlobal(FIntVector(x, y, z)));
+							Values[x + 16 * y + 16 * 16 * z] = GetValue(LocalToGlobal(FIntVector(x, y, z)));
+							Colors[x + 16 * y + 16 * 16 * z] = GetColor(LocalToGlobal(FIntVector(x, y, z)));
 						}
 					}
 				}
 				bIsDirty = true;
 			}
 			FIntVector P = GlobalToLocal(GlobalPosition);
-			Values[P.X + Width() * P.Y + Width() * Width() * P.Z] = Value;
+			Values[P.X + 16 * P.Y + 16 * 16 * P.Z] = Value;
 		}
 	}
 	else

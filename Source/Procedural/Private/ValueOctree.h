@@ -49,8 +49,8 @@ private:
 
 	UVoxelWorldGenerator* WorldGenerator;
 
-	TArray<signed char> Values;
-	TArray<FColor> Colors;
+	TArray<signed char, TFixedAllocator<16 * 16 * 16>> Values;
+	TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors;
 
 	bool bIsDirty;
 	bool bIsLeaf;

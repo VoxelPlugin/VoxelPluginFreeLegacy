@@ -24,9 +24,6 @@ AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(1), DeletionDelay(0.5f),
 	RootComponent = TouchCapsule;
 
 	SetActorScale3D(100 * FVector::OneVector);
-
-	ThreadPool = FQueuedThreadPool::Allocate();
-	ThreadPool->Create(8);
 }
 
 
@@ -35,6 +32,9 @@ void AVoxelWorld::BeginPlay()
 	Super::BeginPlay();
 
 	bNotCreated = false;
+
+	ThreadPool = FQueuedThreadPool::Allocate();
+	ThreadPool->Create(8);
 
 	WorldGeneratorInstance = WorldGenerator.GetDefaultObject();
 	if (WorldGeneratorInstance == nullptr)
