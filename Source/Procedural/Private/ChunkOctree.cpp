@@ -49,11 +49,36 @@ void ChunkOctree::CreateTree(AVoxelWorld* World, FVector CameraPosition)
 		return;
 	}
 
-	const float DistanceToCamera = ((World->GetTransform().TransformPosition((FVector)Position) - CameraPosition).Size()) / World->GetActorScale3D().Size();
+	const float DistanceToCamera = ((World->GetTransform().TransformPosition((FVector)Position) - CameraPosition).Size()) / World->GetActorScale3D().Size() - World->GetHighResolutionDistanceOffset();
 	const float Quality = World->GetQuality();
 
 	const float MinDistance = Width() * Quality;
 	const float MaxDistance = Width() * Quality * 2;
+
+
+	if (DistanceToCamera < 0)
+	{
+		// Always at highest resolution
+		if (bHasChunk)
+		{
+			Unload();
+		}
+		if (!bHasChilds)
+		{
+			CreateChilds();
+		}
+		if (bHasChilds)
+		{
+			// Update childs
+			for (int i = 0; i < 8; i++)
+			{
+				check(Childs[i].IsValid());
+				Childs[i]->CreateTree(World, CameraPosition);
+			}
+		}
+		return;
+	}
+
 
 	if (MinDistance < DistanceToCamera && DistanceToCamera < MaxDistance)
 	{

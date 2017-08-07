@@ -256,6 +256,11 @@ float AVoxelWorld::GetQuality()
 	return Quality;
 }
 
+float AVoxelWorld::GetHighResolutionDistanceOffset()
+{
+	return HighResolutionDistanceOffset;
+}
+
 bool AVoxelWorld::GetRebuildBorders()
 {
 	return bRebuildBorders;

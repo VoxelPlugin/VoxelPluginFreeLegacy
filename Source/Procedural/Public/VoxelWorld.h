@@ -27,6 +27,7 @@ public:
 
 	float GetDeletionDelay();
 	float GetQuality();
+	float GetHighResolutionDistanceOffset();
 	bool GetRebuildBorders();
 
 	AVoxelChunk* GetChunkAt(FIntVector Position);
@@ -97,6 +98,8 @@ private:
 		float DeletionDelay;
 	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0.01", ClampMax = "10", UIMin = "0.01", UIMax = "10"))
 		float Quality;
+	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0"))
+		float HighResolutionDistanceOffset;
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		bool bRebuildBorders;
 
