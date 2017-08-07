@@ -6,8 +6,25 @@
 #include "VoxelWorldGenerator.h"
 #include "FlatWorldGenerator.generated.h"
 
+
+USTRUCT(Blueprintable)
+struct PROCEDURAL_API FFlatWorldStruct
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere)
+		FLinearColor Color;
+
+	UPROPERTY(EditAnywhere)
+		int Start;
+
+	UPROPERTY(EditAnywhere)
+		int Height;
+};
+
 /**
- * 
+ *
  */
 UCLASS()
 class PROCEDURAL_API UFlatWorldGenerator : public UVoxelWorldGenerator
@@ -20,4 +37,11 @@ public:
 
 	UPROPERTY(EditAnywhere)
 		int Height;
+
+	UPROPERTY(EditAnywhere)
+		FLinearColor DefaultColor;
+
+	UPROPERTY(EditAnywhere)
+		TArray<FFlatWorldStruct> Layers;
+
 };
