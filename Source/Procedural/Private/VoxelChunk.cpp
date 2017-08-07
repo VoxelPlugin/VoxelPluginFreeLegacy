@@ -36,11 +36,8 @@ void AVoxelChunk::Tick(float DeltaTime)
 {
 	if (bNeedSectionUpdate && Task != nullptr && Task->IsDone())
 	{
-		SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 		bNeedSectionUpdate = false;
-		PrimaryMesh->SetProcMeshSection(0, Task->GetTask().Section);
-		delete Task;
-		Task = nullptr;
+		UpdateSection();
 	}
 	if (bAdjacentChunksNeedUpdate && World->GetRebuildBorders())
 	{
@@ -122,19 +119,19 @@ void AVoxelChunk::Update(bool bAsync)
 		if (bAsync)
 		{
 			Task->StartBackgroundTask(World->ThreadPool);
+			bNeedSectionUpdate = true;
 		}
 		else
 		{
 			Task->StartSynchronousTask();
 			// Avoid holes
-			Tick(0);
+			UpdateSection();
 		}
-		bNeedSectionUpdate = true;
 	}
-	else
-	{
-		UE_LOG(VoxelLog, Warning, TEXT("Update called when already updating"));
-	}
+	//else
+	//{
+		//UE_LOG(VoxelLog, Warning, TEXT("Update called when already updating"));
+	//}
 }
 
 void AVoxelChunk::BasicUpdate()
@@ -176,6 +173,15 @@ void AVoxelChunk::Delete()
 	{
 		this->Destroy();
 	}
+}
+
+void AVoxelChunk::UpdateSection()
+{
+	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
+	Task->EnsureCompletion();
+	PrimaryMesh->SetProcMeshSection(0, Task->GetTask().Section);
+	delete Task;
+	Task = nullptr;
 }
 
 int AVoxelChunk::GetDepth()

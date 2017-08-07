@@ -1,6 +1,7 @@
 #include "ChunkOctree.h"
 #include "VoxelChunk.h"
 #include "VoxelWorld.h"
+#include "Engine/World.h"
 
 ChunkOctree::ChunkOctree(FIntVector Position, int Depth) : Position(Position), Depth(Depth), bHasChilds(false), bHasChunk(false), VoxelChunk(nullptr)
 {
@@ -194,8 +195,8 @@ AVoxelChunk* ChunkOctree::GetVoxelChunk()
 void ChunkOctree::Load(AVoxelWorld* World)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
-	check(!bHasChilds)
-		check(World);
+	check(!bHasChilds);
+	check(World);
 
 	if (!bHasChunk)
 	{
