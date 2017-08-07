@@ -15,7 +15,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(0.75f), DeletionDelay(0.1f), WorldGenerator(NULL), Depth(10), HighResolutionDistanceOffset(25), bRebuildBorders(true)
+AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(0.75f), DeletionDelay(0.1f), Depth(10), HighResolutionDistanceOffset(25), bRebuildBorders(true)
 {
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
 	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
