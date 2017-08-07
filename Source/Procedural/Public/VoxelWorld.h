@@ -93,8 +93,6 @@ private:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		int Depth;
 	UPROPERTY(EditAnywhere, Category = Voxel)
-		float CollisionFPS;
-	UPROPERTY(EditAnywhere, Category = Voxel)
 		float DeletionDelay;
 	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0.01", ClampMax = "10", UIMin = "0.01", UIMax = "10"))
 		float Quality;
