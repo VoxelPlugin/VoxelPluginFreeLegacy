@@ -9,5 +9,12 @@ int UFlatWorldGenerator::GetDefaultValue(FIntVector Position)
 
 FColor UFlatWorldGenerator::GetDefaultColor(FIntVector Position)
 {
-	return (Position.Z == Height) ? FColor::White : ((Position.Z > Height) ? FColor::Red : FColor::Green);
+	for (auto Layer : Layers)
+	{
+		if (Layer.Start <= Position.Z && Position.Z < Layer.Start + Layer.Height)
+		{
+			return Layer.Color.ToFColor(false);
+		}
+	}
+	return DefaultColor.ToFColor(false);
 }
