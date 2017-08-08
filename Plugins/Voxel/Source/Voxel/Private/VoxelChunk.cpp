@@ -78,7 +78,9 @@ void AVoxelChunk::Init(FIntVector Position, int Depth, AVoxelWorld* World)
 	FVector RelativeLocation = (FVector)Position;
 
 	this->AttachToActor(World, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+#if WITH_EDITOR
 	this->SetActorLabel(Name);
+#endif
 	this->SetActorRelativeLocation(RelativeLocation);
 	this->SetActorRelativeRotation(FRotator::ZeroRotator);
 	this->SetActorRelativeScale3D(FVector::OneVector);
