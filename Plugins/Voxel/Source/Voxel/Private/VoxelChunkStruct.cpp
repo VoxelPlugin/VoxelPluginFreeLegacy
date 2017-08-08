@@ -1,3 +1,4 @@
+#include "VoxelPrivatePCH.h"
 #include "VoxelChunkStruct.h"
 #include "VoxelChunk.h"
 

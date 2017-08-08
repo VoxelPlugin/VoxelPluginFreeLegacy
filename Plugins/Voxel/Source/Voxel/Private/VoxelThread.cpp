@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "VoxelPrivatePCH.h"
 #include "VoxelThread.h"
 #include <forward_list>
 #include "TransvoxelTools.h"
 #include "VoxelChunkStruct.h"
 #include "VoxelChunk.h"
-#include "VoxelWorld.h"
 
 VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk) : VoxelChunk(VoxelChunk), VoxelStruct(new VoxelChunkStruct(VoxelChunk))
 {

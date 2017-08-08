@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "VoxelWorld.h"
+#include "VoxelPrivatePCH.h"
 #include "VoxelData.h"
 #include "ChunkOctree.h"
 #include "Components/CapsuleComponent.h"

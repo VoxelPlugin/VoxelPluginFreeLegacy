@@ -11,7 +11,7 @@ class AVoxelWorld;
  *
  */
 UCLASS()
-class PROCEDURAL_API UVoxelTools : public UObject
+class VOXEL_API UVoxelTools : public UObject
 {
 	GENERATED_BODY()
 public:

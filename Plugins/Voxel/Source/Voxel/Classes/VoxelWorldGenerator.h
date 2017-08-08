@@ -10,7 +10,7 @@
  *
  */
 UCLASS(Blueprintable)
-class PROCEDURAL_API UVoxelWorldGenerator : public UObject
+class VOXEL_API UVoxelWorldGenerator : public UObject
 {
 	GENERATED_BODY()
 

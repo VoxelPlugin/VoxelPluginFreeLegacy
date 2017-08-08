@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "VoxelPrivatePCH.h"
 #include "VoxelChunk.h"
-#include "VoxelWorld.h"
 #include "ChunkOctree.h"
 #include "ProceduralMeshComponent.h"
 #include "VoxelThread.h"

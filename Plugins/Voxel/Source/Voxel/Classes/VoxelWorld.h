@@ -17,7 +17,7 @@ DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
 
 UCLASS()
-class PROCEDURAL_API AVoxelWorld : public AActor
+class VOXEL_API AVoxelWorld : public AActor
 {
 	GENERATED_BODY()
 public:

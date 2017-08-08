@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "VoxelPrivatePCH.h"
 #include "VoxelData.h"
-#include "VoxelWorld.h"
 #include "ValueOctree.h"
 
 VoxelData::VoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator) : Depth(Depth)
