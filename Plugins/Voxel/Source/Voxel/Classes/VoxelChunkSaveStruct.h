@@ -5,7 +5,7 @@
 
 
 USTRUCT(BlueprintType)
-struct PROCEDURAL_API FVoxelChunkSaveStruct
+struct VOXEL_API FVoxelChunkSaveStruct
 {
 	GENERATED_BODY()
 

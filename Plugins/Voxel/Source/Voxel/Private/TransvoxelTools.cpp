@@ -1,3 +1,4 @@
+#include "VoxelPrivatePCH.h"
 #include "TransvoxelTools.h"
 #include "Transvoxel.h"
 

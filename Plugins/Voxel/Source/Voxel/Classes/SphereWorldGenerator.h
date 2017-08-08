@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class PROCEDURAL_API USphereWorldGenerator : public UVoxelWorldGenerator
+class VOXEL_API USphereWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 	

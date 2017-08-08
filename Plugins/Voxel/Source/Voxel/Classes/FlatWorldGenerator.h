@@ -8,7 +8,7 @@
 
 
 USTRUCT(Blueprintable)
-struct PROCEDURAL_API FFlatWorldStruct
+struct VOXEL_API FFlatWorldStruct
 {
 	GENERATED_BODY()
 
@@ -27,7 +27,7 @@ public:
  *
  */
 UCLASS()
-class PROCEDURAL_API UFlatWorldGenerator : public UVoxelWorldGenerator
+class VOXEL_API UFlatWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 

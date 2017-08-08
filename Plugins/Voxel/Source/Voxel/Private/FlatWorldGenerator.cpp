@@ -1,5 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "VoxelPrivatePCH.h"
 #include "FlatWorldGenerator.h"
 
 int UFlatWorldGenerator::GetDefaultValue(FIntVector Position)

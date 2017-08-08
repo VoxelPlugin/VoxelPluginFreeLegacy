@@ -13,5 +13,15 @@
 				"CoreUObject"
 			]
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "BlankPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "Voxel",
+			"Enabled": true
+		}
 	]
 }

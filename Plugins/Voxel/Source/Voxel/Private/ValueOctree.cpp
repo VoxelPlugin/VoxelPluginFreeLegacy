@@ -1,6 +1,6 @@
+#include "VoxelPrivatePCH.h"
 #include "ValueOctree.h"
 #include "VoxelChunk.h"
-#include "VoxelWorld.h"
 #include "VoxelData.h"
 #include "VoxelWorldGenerator.h"
 

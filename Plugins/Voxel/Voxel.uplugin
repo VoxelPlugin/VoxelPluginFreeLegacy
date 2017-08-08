@@ -1,0 +1,31 @@
+{
+	"FileVersion" : 3,
+	"Version" : 1,
+	"VersionName" : "1.0",
+	"FriendlyName" : "Voxel",
+	"Description" : "Implementation of transvoxels",
+	"Category" : "Terrain",
+	"CreatedBy" : "Phyronnaz",
+	"CreatedByURL" : "https://github.com/Phyronnaz",
+	"DocsURL" : "https://github.com/Phyronnaz/MarchingCubes",
+	"MarketplaceURL" : "",
+	"SupportURL" : "",
+	"EnabledByDefault" : false,
+	"CanContainContent" : false,
+	"IsBetaVersion" : true,
+	"Installed" : false,
+	"Modules" :
+	[
+		{
+			"Name" : "Voxel",
+			"Type" : "Runtime",
+			"LoadingPhase" : "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
+		}
+	]
+}
