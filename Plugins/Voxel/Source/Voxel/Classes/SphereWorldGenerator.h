@@ -18,8 +18,11 @@ public:
 	int GetDefaultValue(FIntVector Position);
 	FColor GetDefaultColor(FIntVector Position);
 
+	// Radius of the sphere
 	UPROPERTY(EditAnywhere)
 		float Radius;
+
+	// If true, sphere is a hole in a full world
 	UPROPERTY(EditAnywhere)
 		bool InverseOutsideInside;
 };
