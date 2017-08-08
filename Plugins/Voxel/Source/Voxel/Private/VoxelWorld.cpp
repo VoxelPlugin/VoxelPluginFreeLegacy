@@ -223,7 +223,7 @@ void AVoxelWorld::UpdateAll(bool bAsync)
 }
 
 
-
+#if WITH_EDITOR
 bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 {
 	const bool ParentVal = Super::CanEditChange(InProperty);
@@ -233,6 +233,7 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 	else
 		return ParentVal;
 }
+#endif
 
 
 

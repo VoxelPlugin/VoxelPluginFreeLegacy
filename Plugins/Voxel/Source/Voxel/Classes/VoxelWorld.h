@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "VoxelChunkSaveStruct.h"
 #include "VoxelWorldGenerator.h"
+#include "QueuedThreadPool.h"
 #include "VoxelWorld.generated.h"
 
 
@@ -78,16 +79,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void SetColor(FIntVector Position, FColor Color);
 
-	//UFUNCTION(BlueprintCallable, Category = "Voxel")
-	TArray<FVoxelChunkSaveStruct> GetSaveArray();
-	//UFUNCTION(BlueprintCallable, Category = "Voxel")
-	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		TArray<FVoxelChunkSaveStruct> GetSaveArray();
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+#if WITH_EDITOR
 	// Lock Depth and VoxelMaterial when in play
 	virtual bool CanEditChange(const UProperty* InProperty) const override;
+#endif
 
 private:
 	UPROPERTY(EditAnywhere, Category = Voxel)
