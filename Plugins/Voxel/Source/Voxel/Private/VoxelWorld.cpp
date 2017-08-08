@@ -6,6 +6,7 @@
 #include "Components/CapsuleComponent.h"
 #include "EngineGlobals.h"
 #include "Engine.h"
+#include "Engine/World.h"
 #include <forward_list>
 
 DEFINE_LOG_CATEGORY(VoxelLog)
@@ -15,8 +16,10 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(0.75f), DeletionDelay(0.1f), Depth(10), HighResolutionDistanceOffset(25), bRebuildBorders(true)
+AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(0.75f), DeletionDelay(0.1f), Depth(10), HighResolutionDistanceOffset(25), bRebuildBorders(true), PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true)
 {
+	PrimaryActorTick.bCanEverTick = true;
+
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
 	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
 	TouchCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -24,6 +27,8 @@ AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(0.75f), DeletionDelay(0.
 	RootComponent = TouchCapsule;
 
 	SetActorScale3D(100 * FVector::OneVector);
+
+	WorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UVoxelWorldGenerator::StaticClass());
 }
 
 
@@ -46,6 +51,38 @@ void AVoxelWorld::BeginPlay()
 	MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
 
 	UpdateCameraPosition(FVector::ZeroVector);
+}
+
+void AVoxelWorld::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bAutoFindCamera)
+	{
+		if (PlayerCamera == nullptr)
+		{
+			TArray<AActor*> FoundActors;
+			UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCameraManager::StaticClass(), FoundActors);
+
+			if (FoundActors.Num() == 0)
+			{
+				UE_LOG(VoxelLog, Warning, TEXT("No camera found"));
+			}
+			else if (FoundActors.Num() == 1)
+			{
+				PlayerCamera = (APlayerCameraManager*)FoundActors[0];
+			}
+			else
+			{
+				UE_LOG(VoxelLog, Warning, TEXT("More than one camera found"));
+			}
+		}
+	}
+
+	if (bAutoUpdateCameraPosition && PlayerCamera != nullptr)
+	{
+		UpdateCameraPosition(PlayerCamera->GetTransform().GetLocation());
+	}
 }
 
 AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position)
