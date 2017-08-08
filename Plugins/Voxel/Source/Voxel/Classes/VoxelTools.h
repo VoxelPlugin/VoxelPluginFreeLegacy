@@ -22,6 +22,9 @@ public:
 		static void SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, float FadeDistance = 3, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false);
 
 
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
+		static void SetValueCone(AVoxelWorld* World, FVector Position, float Radius, float Height, bool bAdd, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false);
+
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
 		static void SetValueProjection(AVoxelWorld* World, FVector Position, FVector Normal, float Radius, int Stength, bool bAdd, float MaxDistance = 1000, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true);

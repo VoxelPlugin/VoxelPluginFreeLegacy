@@ -86,6 +86,53 @@ void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Rad
 	}
 }
 
+void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radius, float Height, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
+{
+	if (World == NULL)
+	{
+		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		return;
+	}
+	check(World);
+	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	int IntRadius = FMath::CeilToInt(Radius);
+	int IntHeight = FMath::CeilToInt(Height);
+
+	for (int x = -IntRadius; x <= IntRadius; x++)
+	{
+		for (int y = -IntRadius; y <= IntRadius; y++)
+		{
+			for (int z = 0; z <= IntHeight; z++)
+			{
+				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
+				float CurrentRadius = z * (Radius / Height);
+				float Distance = FVector2D(x, y).Size();
+
+				if (Distance <= CurrentRadius + 1)
+				{
+					float Alpha = FMath::Clamp(CurrentRadius - Distance, -1.f, 1.f);
+
+					int Value = (bAdd ? -1 : 1) * (int)(127 * Alpha);
+
+
+					if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
+					{
+						World->SetValue(CurrentPosition, Value);
+						if (bQueueUpdate)
+						{
+							World->QueueUpdate(CurrentPosition);
+						}
+					}
+				}
+			}
+		}
+	}
+	if (bApplyUpdates)
+	{
+		World->ApplyQueuedUpdates(bAsync);
+	}
+}
+
 void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVector Normal, float Radius, int Stength, bool bAdd, float MaxDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints)
 {
 	if (World == NULL)
