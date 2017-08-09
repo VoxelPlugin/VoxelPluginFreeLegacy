@@ -83,6 +83,7 @@ void ChunkOctree::CreateTree(AVoxelWorld* World, FVector CameraPosition)
 
 	if (MinDistance < DistanceToCamera && DistanceToCamera < MaxDistance)
 	{
+		// Depth OK
 		if (bHasChilds)
 		{
 			// Update childs
@@ -100,6 +101,7 @@ void ChunkOctree::CreateTree(AVoxelWorld* World, FVector CameraPosition)
 	}
 	else if (DistanceToCamera < MinDistance)
 	{
+		// Depth too high
 		if (bHasChunk)
 		{
 			Unload();
@@ -118,10 +120,9 @@ void ChunkOctree::CreateTree(AVoxelWorld* World, FVector CameraPosition)
 			}
 		}
 	}
-	else
+	else // DistanceToCamera > MaxDistance
 	{
-		// DistanceToCamera > MaxDistance
-
+		// Depth too low
 		if (bHasChilds)
 		{
 			// Too far, delete childs
@@ -160,7 +161,7 @@ void ChunkOctree::Update(bool bAsync)
 	}
 }
 
-TWeakPtr<ChunkOctree> ChunkOctree::GetChunk(FIntVector Position)
+TWeakPtr<ChunkOctree> ChunkOctree::GetChunk(FIntVector PointPosition)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
@@ -173,9 +174,9 @@ TWeakPtr<ChunkOctree> ChunkOctree::GetChunk(FIntVector Position)
 	else if (bHasChilds)
 	{
 		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-		TSharedPtr<ChunkOctree> Child = Childs[(Position.X >= this->Position.X ? 1 : 0) + (Position.Y >= this->Position.Y ? 2 : 0) + (Position.Z >= this->Position.Z ? 4 : 0)];
+		TSharedPtr<ChunkOctree> Child = Childs[(PointPosition.X >= Position.X ? 1 : 0) + (PointPosition.Y >= Position.Y ? 2 : 0) + (PointPosition.Z >= Position.Z ? 4 : 0)];
 		check(Child.IsValid());
-		return Child->GetChunk(Position);
+		return Child->GetChunk(PointPosition);
 	}
 	else
 	{
