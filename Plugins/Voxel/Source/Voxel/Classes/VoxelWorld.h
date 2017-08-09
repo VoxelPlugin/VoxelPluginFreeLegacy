@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright 2017 Phyronnaz
 
 #pragma once
 
@@ -18,6 +18,9 @@ class AVoxelChunk;
 DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
 
+/**
+ * Voxel World actor class
+ */
 UCLASS()
 class VOXEL_API AVoxelWorld : public AActor
 {

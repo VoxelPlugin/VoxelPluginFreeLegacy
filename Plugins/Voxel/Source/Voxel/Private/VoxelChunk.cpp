@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright 2017 Phyronnaz
 
 #include "VoxelPrivatePCH.h"
 #include "VoxelChunk.h"
@@ -19,11 +19,6 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDele
 	RootComponent = PrimaryMesh;
 
 	ChunkHasHigherRes.SetNum(6);
-}
-
-AVoxelChunk::~AVoxelChunk()
-{
-
 }
 
 // Called when the game starts or when spawned
