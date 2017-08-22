@@ -3,7 +3,7 @@
 #include "VoxelPrivatePCH.h"
 #include "FlatWorldGenerator.h"
 
-int UFlatWorldGenerator::GetDefaultValue(FIntVector Position)
+float UFlatWorldGenerator::GetDefaultValue(FIntVector Position)
 {
 	return (Position.Z == Height) ? 0 : ((Position.Z > Height) ? 100 : -100);
 }

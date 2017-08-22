@@ -14,7 +14,12 @@ VoxelData::~VoxelData()
 
 }
 
-signed char VoxelData::GetValue(FIntVector Position)
+TSharedPtr<ValueOctree> VoxelData::GetValueOctree() const
+{
+	return TSharedPtr<ValueOctree>(MainOctree);
+}
+
+float VoxelData::GetValue(FIntVector Position)
 {
 	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
@@ -38,7 +43,7 @@ signed char VoxelData::GetValue(FIntVector Position)
 	else
 	{
 		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-		return 127;
+		return 0;
 	}
 }
 
@@ -70,7 +75,7 @@ FColor VoxelData::GetColor(FIntVector Position)
 	}
 }
 
-void VoxelData::SetValue(FIntVector Position, int Value)
+void VoxelData::SetValue(FIntVector Position, float Value)
 {
 	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
@@ -83,7 +88,7 @@ void VoxelData::SetValue(FIntVector Position, int Value)
 
 	if (IsInWorld(Position))
 	{
-		MainOctree->SetValue(Position, FMath::Clamp(Value, -127, 127));
+		MainOctree->SetValue(Position, Value);
 	}
 	else
 	{
@@ -118,19 +123,19 @@ bool VoxelData::IsInWorld(FIntVector Position)
 	return -w <= Position.X && Position.X < w && -w <= Position.Y && Position.Y < w && -w <= Position.Z && Position.Z < w;
 }
 
-int VoxelData::Size()
+int VoxelData::Size() const
 {
 	return 16 << Depth;
 }
 
-TArray<FVoxelChunkSaveStruct> VoxelData::GetSaveArray()
+TArray<FVoxelChunkSaveStruct> VoxelData::GetSaveArray() const
 {
 	TArray<FVoxelChunkSaveStruct> SaveArray;
 	MainOctree->AddChunksToArray(SaveArray);
 	return SaveArray;
 }
 
-void VoxelData::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray)
+void VoxelData::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const
 {
 	MainOctree->LoadFromArray(SaveArray);
 }

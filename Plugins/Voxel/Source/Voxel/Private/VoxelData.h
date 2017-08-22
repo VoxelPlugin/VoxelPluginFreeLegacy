@@ -26,11 +26,17 @@ public:
 	const int Depth;
 
 	/**
+	 * Get value octree
+	 * @return	Value Octree
+	 */
+	TSharedPtr<ValueOctree> GetValueOctree() const;
+
+	/**
 	 * Get value at position
 	 * @param	Position	Position in voxel space
-	 * @return	Value (int between -127 and 127)
+	 * @return	Value
 	 */
-	signed char GetValue(FIntVector Position);
+	float GetValue(FIntVector Position);
 	/**
 	 * Get color at position
 	 * @param	Position	Position in voxel space
@@ -42,9 +48,9 @@ public:
 	/**
 	 * Set value at position
 	 * @param	Position	Position in voxel space
-	 * @param	Value to set (int between -127 and 127)
+	 * @param	Value to set
 	 */
-	void SetValue(FIntVector Position, int Value);
+	void SetValue(FIntVector Position, float Value);
 	/**
 	 * Set color at position
 	 * @param	Position	Position in voxel space
@@ -64,18 +70,18 @@ public:
 	 * Size of this world (== width)
 	 * @return Size
 	 */
-	int Size();
+	int Size() const;
 
 	/**
 	 * Get save array of this world
 	 * @return SaveArray
 	 */
-	TArray<FVoxelChunkSaveStruct> GetSaveArray();
+	TArray<FVoxelChunkSaveStruct> GetSaveArray() const;
 	/**
 	 * Load this world from save array
 	 * @param	SaveArray	Array to load from
 	 */
-	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
+	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const;
 
 private:
 	// Values

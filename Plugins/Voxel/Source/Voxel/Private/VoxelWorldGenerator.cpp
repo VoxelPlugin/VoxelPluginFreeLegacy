@@ -3,7 +3,7 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelWorldGenerator.h"
 
-int UVoxelWorldGenerator::GetDefaultValue(FIntVector Position)
+float UVoxelWorldGenerator::GetDefaultValue(FIntVector Position)
 {
 	return (Position.Z == 0) ? 0 : ((Position.Z > 0) ? 100 : -100);
 }

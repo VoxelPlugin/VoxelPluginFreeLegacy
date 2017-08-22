@@ -30,26 +30,26 @@ public:
 	 * Get the width at this level
 	 * @return	Width of this chunk
 	 */
-	int Width();
+	int Width() const;
 
 	/**
 	 * Does this chunk have no childs?
 	 * @return	Whether or not this chunk has no childs
 	 */
-	bool IsLeaf();
+	bool IsLeaf() const;
 
 	/**
 	 * Does this chunk have been modified?
 	 * @return	Whether or not this chunk is dirty
 	 */
-	bool IsDirty();
+	bool IsDirty() const;
 
 	/**
 	 * Get value at position
 	 * @param	GlobalPosition	Position in voxel space
-	 * @return	Value (int between -127 and 127)
+	 * @return	Value
 	 */
-	signed char GetValue(FIntVector GlobalPosition);
+	float GetValue(FIntVector GlobalPosition);
 	/**
 	 * Get color at position
 	 * @param	GlobalPosition	Position in voxel space
@@ -60,9 +60,9 @@ public:
 	/**
 	 * Set value at position
 	 * @param	GlobalPosition	Position in voxel space
-	 * @param	Value to set (int between -127 and 127)
+	 * @param	Value to set
 	 */
-	void SetValue(FIntVector GlobalPosition, signed char Value);
+	void SetValue(FIntVector GlobalPosition, float Value);
 	/**
 	 * Set color at position
 	 * @param	GlobalPosition	Position in voxel space
@@ -71,24 +71,24 @@ public:
 	void SetColor(FIntVector GlobalPosition, FColor Color);
 
 	/**
-	 * Is GlobalPosition in this chunk?
+	 * Is GlobalPosition in this octree?
 	 * @param	GlobalPosition	Position in voxel space
-	 * @return	If IsInChunk	
+	 * @return	If IsInOctree	
 	 */
-	bool IsInChunk(FIntVector GlobalPosition);
+	bool IsInOctree(FIntVector GlobalPosition) const;
 	
 	/**
 	 * Convert from chunk space to voxel space
 	 * @param	LocalPosition	Position in chunk space
 	 * @return	Position in voxel space
 	 */
-	FIntVector LocalToGlobal(FIntVector LocalPosition);
+	FIntVector LocalToGlobal(FIntVector LocalPosition) const;
 	/**
 	 * Convert from voxel space to chunk space
 	 * @param	GlobalPosition	Position in voxel space
 	 * @return	Position in chunk space
 	 */
-	FIntVector GlobalToLocal(FIntVector GlobalPosition);
+	FIntVector GlobalToLocal(FIntVector GlobalPosition) const;
 
 	/**
 	 * Add dirty chunks to SaveArray
@@ -100,6 +100,12 @@ public:
 	 * @param	SaveArray	Array to load chunks from
 	 */
 	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
+
+	/**
+	* Get direct child that owns GlobalPosition
+	* @param	GlobalPosition	Position in voxel space
+	*/
+	ValueOctree* GetChild(FIntVector GlobalPosition);
 
 private:
 	/*
@@ -117,7 +123,7 @@ private:
 	UVoxelWorldGenerator* WorldGenerator;
 
 	// Values if dirty
-	TArray<signed char, TFixedAllocator<16 * 16 * 16>> Values;
+	TArray<float, TFixedAllocator<16 * 16 * 16>> Values;
 	// Colors if dirty
 	TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors;
 
@@ -128,10 +134,4 @@ private:
 	 * Create childs of this octree
 	 */
 	void CreateChilds();
-
-	/**
-	 * Get direct child that owns GlobalPosition
-	 * @param	GlobalPosition	Position in voxel space
-	 */
-	ValueOctree* GetChild(FIntVector GlobalPosition);
 };
