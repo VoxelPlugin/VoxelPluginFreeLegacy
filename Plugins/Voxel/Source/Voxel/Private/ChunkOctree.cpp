@@ -3,15 +3,16 @@
 #include "VoxelChunk.h"
 #include "Engine/World.h"
 
-ChunkOctree::ChunkOctree(FIntVector Position, int Depth) : Position(Position), Depth(Depth), bHasChilds(false), bHasChunk(false), VoxelChunk(nullptr)
+ChunkOctree::ChunkOctree(FIntVector Position, int Depth, int Id) : Position(Position), Id(Id), Depth(Depth), bHasChilds(false), bHasChunk(false), VoxelChunk(nullptr)
 {
 	check(Depth >= 0);
 }
 
 
-bool ChunkOctree::operator==(const ChunkOctree& Other)
+bool ChunkOctree::operator==(const ChunkOctree& Other) const
 {
-	return Position == Other.Position && Depth == Other.Depth;
+	check((Id == Other.Id) == (Position == Other.Position && Depth == Other.Depth));
+	return Id == Other.Id;
 }
 
 
@@ -28,7 +29,7 @@ void ChunkOctree::Delete()
 	}
 }
 
-int ChunkOctree::Width()
+int ChunkOctree::Width() const
 {
 	return 16 << Depth;
 }
@@ -173,10 +174,7 @@ TWeakPtr<ChunkOctree> ChunkOctree::GetChunk(FIntVector PointPosition)
 	}
 	else if (bHasChilds)
 	{
-		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-		TSharedPtr<ChunkOctree> Child = Childs[(PointPosition.X >= Position.X ? 1 : 0) + (PointPosition.Y >= Position.Y ? 2 : 0) + (PointPosition.Z >= Position.Z ? 4 : 0)];
-		check(Child.IsValid());
-		return Child->GetChunk(PointPosition);
+		return GetChild(PointPosition)->GetChunk(PointPosition);
 	}
 	else
 	{
@@ -190,7 +188,27 @@ AVoxelChunk* ChunkOctree::GetVoxelChunk()
 	return VoxelChunk;
 }
 
+bool ChunkOctree::IsLeaf()
+{
+	return !bHasChilds;
+}
 
+TSharedPtr<ChunkOctree> ChunkOctree::GetChild(FIntVector PointPosition)
+{
+	check(bHasChilds);
+	check(IsInOctree(PointPosition));
+	// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
+	TSharedPtr<ChunkOctree> Child = Childs[(PointPosition.X >= Position.X ? 1 : 0) + (PointPosition.Y >= Position.Y ? 2 : 0) + (PointPosition.Z >= Position.Z ? 4 : 0)];
+	check(Child.IsValid());
+	return Child;
+}
+
+bool ChunkOctree::IsInOctree(FIntVector GlobalPosition) const
+{
+	return Position.X - Width() / 2 <= GlobalPosition.X && GlobalPosition.X < Position.X + Width() / 2 &&
+		Position.Y - Width() / 2 <= GlobalPosition.Y && GlobalPosition.Y < Position.Y + Width() / 2 &&
+		Position.Z - Width() / 2 <= GlobalPosition.Z && GlobalPosition.Z < Position.Z + Width() / 2;
+}
 
 
 void ChunkOctree::Load(AVoxelWorld* World)
@@ -238,14 +256,14 @@ void ChunkOctree::CreateChilds()
 	if (!bHasChilds)
 	{
 		int d = Width() / 4;
-		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1)));
-		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1)));
-		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, +d, -d), Depth - 1)));
-		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, +d, -d), Depth - 1)));
-		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, +d), Depth - 1)));
-		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, +d), Depth - 1)));
-		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, +d, +d), Depth - 1)));
-		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, +d, +d), Depth - 1)));
+		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1, 8 * Id + 0)));
+		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1, 8 * Id + 1)));
+		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, +d, -d), Depth - 1, 8 * Id + 2)));
+		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, +d, -d), Depth - 1, 8 * Id + 3)));
+		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, +d), Depth - 1, 8 * Id + 4)));
+		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, +d), Depth - 1, 8 * Id + 5)));
+		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, +d, +d), Depth - 1, 8 * Id + 6)));
+		Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, +d, +d), Depth - 1, 8 * Id + 7)));
 		bHasChilds = true;
 	}
 	else

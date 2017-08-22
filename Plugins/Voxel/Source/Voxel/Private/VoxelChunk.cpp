@@ -181,27 +181,27 @@ void AVoxelChunk::UpdateSection()
 	Task = nullptr;
 }
 
-int AVoxelChunk::GetDepth()
+int AVoxelChunk::GetDepth() const
 {
 	return Depth;
 }
 
-int AVoxelChunk::Width()
+int AVoxelChunk::Width() const
 {
 	return 16 << Depth;
 }
 
-signed char AVoxelChunk::GetValue(int x, int y, int z)
+float AVoxelChunk::GetValue(int x, int y, int z) const
 {
 	return World->GetValue(Position + FIntVector(x, y, z));
 }
 
-FColor AVoxelChunk::GetColor(int x, int y, int z)
+FColor AVoxelChunk::GetColor(int x, int y, int z) const
 {
 	return World->GetColor(Position + FIntVector(x, y, z));
 }
 
-AVoxelChunk* AVoxelChunk::GetChunk(TransitionDirection Direction)
+AVoxelChunk* AVoxelChunk::GetChunk(TransitionDirection Direction) const
 {
 	TArray<FIntVector> L = { FIntVector(-Width(), 0, 0) , FIntVector(Width(), 0, 0) , FIntVector(0, -Width(), 0), FIntVector(0, Width(), 0) , FIntVector(0, 0, -Width()) , FIntVector(0, 0, Width()) };
 

@@ -2,7 +2,7 @@
 #include "VoxelChunkStruct.h"
 #include "VoxelChunk.h"
 
-VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* Chunk) : Depth(Chunk->GetDepth()), Chunk(Chunk), Width(Chunk->Width()), Step(1 << Depth)
+VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* Chunk) : Depth(Chunk->GetDepth()), Chunk(Chunk), Width(Chunk->Width()), Step(1 << Depth), CurrentDirection(XMin), bNewCacheIs1(true)
 {
 	check(Chunk);
 
@@ -41,7 +41,7 @@ VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* Chunk) : Depth(Chunk->GetDepth()
 	}
 }
 
-signed char VoxelChunkStruct::GetValue(int X, int Y, int Z)
+float VoxelChunkStruct::GetValue(int X, int Y, int Z)
 {
 	if (X % Step == 0 && Y % Step == 0 && Z % Step == 0)
 	{
@@ -66,7 +66,7 @@ FColor VoxelChunkStruct::GetColor(int X, int Y, int Z)
 
 void VoxelChunkStruct::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index, VertexProperties Properties)
 {
-	auto NewCache = NewCacheIs1 ? Cache1 : Cache2;
+	auto NewCache = bNewCacheIs1 ? Cache1 : Cache2;
 	check(0 <= 1 + X && 1 + X < 18);
 	check(0 <= 1 + Y && 1 + Y < 18);
 	check(0 <= EdgeIndex && EdgeIndex < 4);
@@ -319,8 +319,8 @@ void VoxelChunkStruct::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Inde
 
 int VoxelChunkStruct::LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex)
 {
-	auto NewCache = NewCacheIs1 ? Cache1 : Cache2;
-	auto OldCache = NewCacheIs1 ? Cache2 : Cache1;
+	auto NewCache = bNewCacheIs1 ? Cache1 : Cache2;
+	auto OldCache = bNewCacheIs1 ? Cache2 : Cache1;
 
 	bool XIsDifferent = Direction & 0x01;
 	bool YIsDifferent = Direction & 0x02;
@@ -336,7 +336,7 @@ bool VoxelChunkStruct::IsNormalOnly(FVector Vertex)
 	return Vertex.X < 0 || Vertex.Y < 0 || Vertex.Z < 0 || Vertex.X > Width || Vertex.Y > Width || Vertex.Z > Width;
 }
 
-signed char VoxelChunkStruct::GetValue2D(int X, int Y)
+float VoxelChunkStruct::GetValue2D(int X, int Y)
 {
 	FIntVector Position = TransformPosition(X, Y, 0, CurrentDirection);
 	return GetValue(Position.X, Position.Y, Position.Z);
@@ -373,7 +373,7 @@ TransitionDirection VoxelChunkStruct::GetDirection()
 	return CurrentDirection;
 }
 
-FIntVector VoxelChunkStruct::TransformPosition(int X, int Y, int Z, TransitionDirection Direction)
+FIntVector VoxelChunkStruct::TransformPosition(int X, int Y, int Z, TransitionDirection Direction) const
 {
 	switch (Direction)
 	{
@@ -395,7 +395,7 @@ FIntVector VoxelChunkStruct::TransformPosition(int X, int Y, int Z, TransitionDi
 	}
 }
 
-FVector VoxelChunkStruct::TransformPosition(FVector Vertex, TransitionDirection Direction)
+FVector VoxelChunkStruct::TransformPosition(FVector Vertex, TransitionDirection Direction) const
 {
 	float X = Vertex.X;
 	float Y = Vertex.Y;
@@ -420,7 +420,7 @@ FVector VoxelChunkStruct::TransformPosition(FVector Vertex, TransitionDirection 
 	}
 }
 
-FBoolVector VoxelChunkStruct::TransformPosition(FBoolVector Vertex, TransitionDirection Direction)
+FBoolVector VoxelChunkStruct::TransformPosition(FBoolVector Vertex, TransitionDirection Direction) const
 {
 	switch (Direction)
 	{
@@ -442,7 +442,7 @@ FBoolVector VoxelChunkStruct::TransformPosition(FBoolVector Vertex, TransitionDi
 	}
 }
 
-FIntVector VoxelChunkStruct::InverseTransformPosition(int X, int Y, int Z, TransitionDirection Direction)
+FIntVector VoxelChunkStruct::InverseTransformPosition(int X, int Y, int Z, TransitionDirection Direction) const
 {
 	switch (Direction)
 	{

@@ -12,6 +12,7 @@
 
 
 class ChunkOctree;
+class ValueOctree;
 class VoxelData;
 class AVoxelChunk;
 
@@ -28,19 +29,24 @@ class VOXEL_API AVoxelWorld : public AActor
 public:
 	AVoxelWorld();
 
-	int Size();
+	int Size() const;
 
-	float GetDeletionDelay();
-	float GetQuality();
-	float GetHighResolutionDistanceOffset();
-	bool GetRebuildBorders();
+	float GetDeletionDelay() const;
+	float GetQuality() const;
+	float GetHighResolutionDistanceOffset() const;
+	bool GetRebuildBorders() const;
 
-	AVoxelChunk* GetChunkAt(FIntVector Position);
+	TSharedPtr<ChunkOctree> GetChunkOctree() const;
+
+	TSharedPtr<ValueOctree> GetValueOctree() const;
+
+	AVoxelChunk* GetChunkAt(FIntVector Position) const;
+
 	void QueueUpdate(TWeakPtr<ChunkOctree> Chunk);
 
 	FQueuedThreadPool* ThreadPool;
 
-public:
+
 	// Material to use
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		UMaterialInterface* VoxelMaterial;
@@ -52,7 +58,7 @@ public:
 	 * @return	Position in voxel space
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FIntVector GlobalToLocal(FVector Position);
+		FIntVector GlobalToLocal(FVector Position) const;
 
 	/**
 	 * Add
@@ -60,14 +66,14 @@ public:
 	 * @param	Strength	Amount to add
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Add(FIntVector Position, int Strength);
+		void Add(FIntVector Position, int Strength) const;
 	/**
 	 * Remove
 	 * @param	Position	Position in voxel space
 	 * @param	Strength	Amount to remove
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Remove(FIntVector Position, int Strength);
+		void Remove(FIntVector Position, int Strength) const;
 
 	/**
 	 * Update chunk
@@ -93,7 +99,7 @@ public:
 	 * @param	bAsync	Async?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateAll(bool bAsync = true);
+		void UpdateAll(bool bAsync = true) const;
 
 	/**
 	 * Update camera position for LODs
@@ -105,58 +111,62 @@ public:
 	/**
 	 * Is position in this world?
 	 * @param	Position	Position in voxel space
+	 * @return	IsInWorld?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		bool IsInWorld(FIntVector Position);
+		bool IsInWorld(FIntVector Position) const;
 
 
 	/**
 	 * Get value at position
 	 * @param	Position	Position in voxel space
+	 * @return	Value at position
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		int GetValue(FIntVector Position);
+		float GetValue(FIntVector Position) const;
 	/**
 	 * Get color at position
 	 * @param	Position	Position in voxel space
+	 * @return	Color at position
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FColor GetColor(FIntVector Position);
+		FColor GetColor(FIntVector Position) const;
 
 	/**
 	 * Set value at position
 	 * @param	Position	Position in voxel space
-	 * @param	Value		int between -127 and 127
+	 * @param	Value		Value to set
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetValue(FIntVector Position, int Value);
+		void SetValue(FIntVector Position, float Value) const;
 	/**
 	 * Set color at position
 	 * @param	Position	Position in voxel space
 	 * @param	Color		FColor
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetColor(FIntVector Position, FColor Color);
+		void SetColor(FIntVector Position, FColor Color) const;
 
 	/**
 	 * Get array to save world
+	 * @return	SaveArray
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		TArray<FVoxelChunkSaveStruct> GetSaveArray();
+		TArray<FVoxelChunkSaveStruct> GetSaveArray() const;
 	/**
 	 * Load world from array
 	 * @param	SaveArray	Array to load from
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
+		void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const;
 
 protected:
 	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
+	void BeginPlay() override;
+	void Tick(float DeltaTime) override;
 #if WITH_EDITOR
 	// Lock Depth and VoxelMaterial when in play
-	virtual bool CanEditChange(const UProperty* InProperty) const override;
+	bool CanEditChange(const UProperty* InProperty) const override;
 #endif
 
 private:
@@ -190,13 +200,14 @@ private:
 	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
 		bool bAutoUpdateCameraPosition;
 
-private:
+
+
 	TSharedPtr<ChunkOctree> MainOctree;
 	TSharedPtr<VoxelData> Data;
 
 	bool bNotCreated;
 
-	TArray<TWeakPtr<ChunkOctree>> ChunksToUpdate;
+	TSet<TWeakPtr<ChunkOctree>> QueuedChunks;
 
 	UPROPERTY()
 		UVoxelWorldGenerator* WorldGeneratorInstance;

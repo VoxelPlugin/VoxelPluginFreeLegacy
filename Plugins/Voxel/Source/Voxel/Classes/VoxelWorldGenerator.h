@@ -18,9 +18,9 @@ public:
 	/**
 	 * Get default value at position
 	 * @param	Position		Position in voxel space
-	 * @return	Value at position: between -127 and 127; positive if empty, negative if full
+	 * @return	Value at position: positive if empty, negative if filled
 	 */
-	virtual int GetDefaultValue(FIntVector Position);
+	virtual float GetDefaultValue(FIntVector Position);
 
 	/**
 	* Get default color at position

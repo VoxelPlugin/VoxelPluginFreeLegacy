@@ -44,7 +44,7 @@ struct VertexProperties2D
 struct IRegularVoxel
 {
 	virtual ~IRegularVoxel() {}
-	virtual signed char GetValue(int X, int Y, int Z) = 0;
+	virtual float GetValue(int X, int Y, int Z) = 0;
 	virtual FColor GetColor(int X, int Y, int Z) = 0;
 	virtual void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index, VertexProperties Properties) = 0;
 	virtual int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex) = 0;
@@ -54,7 +54,7 @@ struct IRegularVoxel
 struct ITransitionVoxel
 {
 	virtual ~ITransitionVoxel() {}
-	virtual signed char GetValue2D(int X, int Y) = 0;
+	virtual float GetValue2D(int X, int Y) = 0;
 	virtual FColor GetColor2D(int X, int Y) = 0;
 	virtual void SaveVertex2D(int X, int Y, short EdgeIndex, int Index) = 0;
 	virtual int LoadVertex2D(int X, int Y, short Direction, short EdgeIndex) = 0;

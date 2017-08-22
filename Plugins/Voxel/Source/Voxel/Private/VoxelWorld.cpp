@@ -4,9 +4,7 @@
 #include "VoxelData.h"
 #include "ChunkOctree.h"
 #include "Components/CapsuleComponent.h"
-#include "EngineGlobals.h"
 #include "Engine.h"
-#include "Engine/World.h"
 #include <forward_list>
 
 DEFINE_LOG_CATEGORY(VoxelLog)
@@ -85,7 +83,7 @@ void AVoxelWorld::Tick(float DeltaTime)
 	}
 }
 
-AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position)
+AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position) const
 {
 	if (IsInWorld(Position))
 	{
@@ -103,7 +101,7 @@ AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position)
 void AVoxelWorld::UpdateCameraPosition(FVector Position)
 {
 	// Reset to avoid references to destroyed chunks
-	ChunksToUpdate.Reset();
+	QueuedChunks.Reset();
 	// Recreate octree
 	MainOctree->CreateTree(this, Position);
 	// Apply updates added when recreating octree
@@ -111,44 +109,44 @@ void AVoxelWorld::UpdateCameraPosition(FVector Position)
 }
 
 
-int AVoxelWorld::GetValue(FIntVector Position)
+float AVoxelWorld::GetValue(FIntVector Position) const
 {
 	return Data->GetValue(Position);
 }
 
-FColor AVoxelWorld::GetColor(FIntVector Position)
+FColor AVoxelWorld::GetColor(FIntVector Position) const
 {
 	return Data->GetColor(Position);
 }
 
-void AVoxelWorld::SetValue(FIntVector Position, int Value)
+void AVoxelWorld::SetValue(FIntVector Position, float Value) const
 {
 	Data->SetValue(Position, Value);
 }
 
-void AVoxelWorld::SetColor(FIntVector Position, FColor Color)
+void AVoxelWorld::SetColor(FIntVector Position, FColor Color) const
 {
 	Data->SetColor(Position, Color);
 }
 
-TArray<FVoxelChunkSaveStruct> AVoxelWorld::GetSaveArray()
+TArray<FVoxelChunkSaveStruct> AVoxelWorld::GetSaveArray() const
 {
 	return Data->GetSaveArray();
 }
 
-void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray)
+void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const
 {
 	Data->LoadFromArray(SaveArray);
 }
 
 
-FIntVector AVoxelWorld::GlobalToLocal(FVector Position)
+FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
 {
 	FVector P = GetTransform().InverseTransformPosition(Position);
 	return FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
 }
 
-void AVoxelWorld::Add(FIntVector Position, int Strength)
+void AVoxelWorld::Add(FIntVector Position, int Strength) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_Add);
 	if (IsInWorld(Position))
@@ -161,7 +159,7 @@ void AVoxelWorld::Add(FIntVector Position, int Strength)
 	}
 }
 
-void AVoxelWorld::Remove(FIntVector Position, int Strength)
+void AVoxelWorld::Remove(FIntVector Position, int Strength) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_Remove);
 	if (IsInWorld(Position))
@@ -177,7 +175,7 @@ void AVoxelWorld::Remove(FIntVector Position, int Strength)
 
 void AVoxelWorld::Update(FIntVector Position, bool bAsync)
 {
-	if (ChunksToUpdate.Num() != 0)
+	if (QueuedChunks.Num() != 0)
 	{
 		UE_LOG(VoxelLog, Warning, TEXT("Update called but there are still chunks in queue"));
 	}
@@ -229,15 +227,15 @@ void AVoxelWorld::QueueUpdate(FIntVector Position)
 
 void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk)
 {
-	ChunksToUpdate.AddUnique(Chunk);
+	QueuedChunks.Add(Chunk);
 }
 
 void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
-	//UE_LOG(VoxelLog, Log, TEXT("Updating %d chunks"), ChunksToUpdate.Num());
+	//UE_LOG(VoxelLog, Log, TEXT("Updating %d chunks"), QueuedChunks.Num());
 
-	for (auto& Chunk : ChunksToUpdate)
+	for (auto& Chunk : QueuedChunks)
 	{
 		TSharedPtr<ChunkOctree> LockedObserver(Chunk.Pin());
 
@@ -250,10 +248,10 @@ void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
 			UE_LOG(VoxelLog, Warning, TEXT("Invalid chunk in queue"));
 		}
 	}
-	ChunksToUpdate.Reset();
+	QueuedChunks.Reset();
 }
 
-void AVoxelWorld::UpdateAll(bool bAsync)
+void AVoxelWorld::UpdateAll(bool bAsync) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_UpdateAll);
 	MainOctree->Update(bAsync);
@@ -274,33 +272,43 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 
 
 
-bool AVoxelWorld::IsInWorld(FIntVector Position)
+bool AVoxelWorld::IsInWorld(FIntVector Position) const
 {
 	return Data->IsInWorld(Position);
 }
 
-int AVoxelWorld::Size()
+int AVoxelWorld::Size() const
 {
 	return Data->Size();
 }
 
-float AVoxelWorld::GetDeletionDelay()
+float AVoxelWorld::GetDeletionDelay() const
 {
 	return DeletionDelay;
 }
 
-float AVoxelWorld::GetQuality()
+float AVoxelWorld::GetQuality() const
 {
 	return Quality;
 }
 
-float AVoxelWorld::GetHighResolutionDistanceOffset()
+float AVoxelWorld::GetHighResolutionDistanceOffset() const
 {
 	return HighResolutionDistanceOffset;
 }
 
-bool AVoxelWorld::GetRebuildBorders()
+bool AVoxelWorld::GetRebuildBorders() const
 {
 	return bRebuildBorders;
+}
+
+TSharedPtr<ChunkOctree> AVoxelWorld::GetChunkOctree() const
+{
+	return TSharedPtr<ChunkOctree>(MainOctree);
+}
+
+TSharedPtr<ValueOctree> AVoxelWorld::GetValueOctree() const
+{
+	return Data->GetValueOctree();
 }
 

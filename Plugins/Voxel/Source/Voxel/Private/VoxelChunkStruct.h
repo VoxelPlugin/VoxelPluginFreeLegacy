@@ -4,7 +4,7 @@
 
 class AVoxelChunk;
 
-struct VoxelChunkStruct : public IRegularVoxel, public ITransitionVoxel
+struct VoxelChunkStruct : IRegularVoxel, ITransitionVoxel
 {
 	VoxelChunkStruct(AVoxelChunk* Chunk);
 
@@ -21,34 +21,34 @@ struct VoxelChunkStruct : public IRegularVoxel, public ITransitionVoxel
 	std::forward_list<int> NormalsEquivalenceList;
 
 	// Inherited via IRegularVoxel
-	virtual signed char GetValue(int X, int Y, int Z) override;
-	virtual FColor GetColor(int X, int Y, int Z) override;
-	virtual void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index, VertexProperties Properties) override;
-	virtual int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex) override;
-	virtual bool IsNormalOnly(FVector Vertex) override;
+	float GetValue(int X, int Y, int Z) override;
+	FColor GetColor(int X, int Y, int Z) override;
+	void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index, VertexProperties Properties) override;
+	int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex) override;
+	bool IsNormalOnly(FVector Vertex) override;
 
 	// Inherited via ITransitionVoxel
-	virtual signed char GetValue2D(int X, int Y) override;
-	virtual FColor GetColor2D(int X, int Y) override;
-	virtual void SaveVertex2D(int X, int Y, short EdgeIndex, int Index) override;
-	virtual int LoadVertex2D(int X, int Y, short Direction, short EdgeIndex) override;
-	TransitionDirection GetDirection();
+	float GetValue2D(int X, int Y) override;
+	FColor GetColor2D(int X, int Y) override;
+	void SaveVertex2D(int X, int Y, short EdgeIndex, int Index) override;
+	int LoadVertex2D(int X, int Y, short Direction, short EdgeIndex) override;
+	TransitionDirection GetDirection() override;
 
 
-	signed char Values[19][19][19];
+	float Values[19][19][19];
 
 	TransitionDirection CurrentDirection;
 
 	// Local to global
-	FIntVector TransformPosition(int X, int Y, int Z, TransitionDirection Direction);
-	FVector TransformPosition(FVector Vertex, TransitionDirection Direction);
-	FBoolVector TransformPosition(FBoolVector Vertex, TransitionDirection Direction);
+	FIntVector TransformPosition(int X, int Y, int Z, TransitionDirection Direction) const;
+	FVector TransformPosition(FVector Vertex, TransitionDirection Direction) const;
+	FBoolVector TransformPosition(FBoolVector Vertex, TransitionDirection Direction) const;
 	// Global to local
-	FIntVector InverseTransformPosition(int X, int Y, int Z, TransitionDirection Direction);
+	FIntVector InverseTransformPosition(int X, int Y, int Z, TransitionDirection Direction) const;
 
 	int Cache1[18][18][4];
 	int Cache2[18][18][4];
-	bool NewCacheIs1;
+	bool bNewCacheIs1;
 
 	int Cache2D[6][16][16][10];
 

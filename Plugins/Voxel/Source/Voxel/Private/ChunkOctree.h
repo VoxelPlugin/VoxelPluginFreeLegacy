@@ -5,7 +5,7 @@ class AVoxelChunk;
 class AVoxelWorld;
 
 /**
- * Create the octree for rendering and spawn VoxelChunks 
+ * Create the octree for rendering and spawn VoxelChunks
  */
 class ChunkOctree : public TSharedFromThis<ChunkOctree>
 {
@@ -15,12 +15,15 @@ public:
 	 * @param	Position	Position (center) of this chunk
 	 * @param	Depth		Distance to the highest resolution
 	 */
-	ChunkOctree(FIntVector Position, int Depth);
+	ChunkOctree(FIntVector Position, int Depth, int Id = 0);
 
-	bool operator==(const ChunkOctree& Other);
+	bool operator==(const ChunkOctree& Other) const;
 
 	// Center of the octree
 	const FIntVector Position;
+
+	// Id of the Octree (position in the octree)
+	const int Id;
 
 	// Distance to the highest resolution
 	const int Depth;
@@ -34,7 +37,7 @@ public:
 	 * Get the width at this level
 	 * @return	Width of this chunk
 	 */
-	int Width();
+	int Width() const;
 
 	/**
 	 * Create/Update the octree for the new position
@@ -61,10 +64,29 @@ public:
 	 */
 	AVoxelChunk* GetVoxelChunk();
 
+	/**
+	 * Is Leaf?
+	 * @return IsLeaf?
+	 */
+	bool IsLeaf();
+
+	/**
+	* Get direct child at position. If leaf assert false
+	* @param	PointPosition	Position in voxel space. Must be contained in this octree
+	*/
+	TSharedPtr<ChunkOctree> GetChild(FIntVector PointPosition);
+
+	/**
+	* Is GlobalPosition in this octree?
+	* @param	GlobalPosition	Position in voxel space
+	* @return	If IsInOctree
+	*/
+	bool IsInOctree(FIntVector GlobalPosition) const;
+
 private:
 	/*
 	Childs of this octree in the following order:
-	
+
 	bottom      top
 	-----> y
 	| 0 | 2    4 | 6
@@ -100,3 +122,8 @@ private:
 	 */
 	void DeleteChilds();
 };
+
+inline uint32 GetTypeHash(ChunkOctree Octree)
+{
+	return Octree.Id;
+}

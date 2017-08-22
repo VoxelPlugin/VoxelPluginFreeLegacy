@@ -70,7 +70,7 @@ void VoxelThread::DoWork()
 				TransvoxelTools::RegularPolygonize(VoxelStruct, x, y, z, ValidityMask, *RegularTriangles, TrianglesCount, *Vertices, *VerticesProperties, *VertexColors, VerticesCount, Step);
 			}
 		}
-		VoxelStruct->NewCacheIs1 = !VoxelStruct->NewCacheIs1;
+		VoxelStruct->bNewCacheIs1 = !VoxelStruct->bNewCacheIs1;
 	}
 
 	// Temporary arrays of all the vertices

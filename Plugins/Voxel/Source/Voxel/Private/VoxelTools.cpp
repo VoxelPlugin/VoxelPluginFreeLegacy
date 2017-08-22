@@ -4,10 +4,12 @@
 #include "VoxelTools.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
+#include "ValueOctree.h"
+#include "ChunkOctree.h"
 
 void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
 {
-	if (World == NULL)
+	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
 		return;
@@ -15,6 +17,40 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 	check(World);
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
 	int IntRadius = FMath::CeilToInt(Radius);
+
+	TArray<FIntVector> Corners = {
+		LocalPosition + FIntVector(-IntRadius, -IntRadius, -IntRadius),
+		LocalPosition + FIntVector(+IntRadius, -IntRadius, -IntRadius),
+		LocalPosition + FIntVector(-IntRadius, +IntRadius, -IntRadius),
+		LocalPosition + FIntVector(+IntRadius, +IntRadius, -IntRadius),
+		LocalPosition + FIntVector(-IntRadius, -IntRadius, +IntRadius),
+		LocalPosition + FIntVector(+IntRadius, -IntRadius, +IntRadius),
+		LocalPosition + FIntVector(-IntRadius, +IntRadius, +IntRadius),
+		LocalPosition + FIntVector(+IntRadius, +IntRadius, +IntRadius)
+	};
+
+	// Get smallest octrees
+	ValueOctree* SmallValueOctree = World->GetValueOctree().Get();
+	ValueOctree* OldSmallValueOctree = SmallValueOctree;
+	check(SmallValueOctree);
+
+	bool ContinueShrinking = true;
+	while (ContinueShrinking)
+	{
+		ContinueShrinking = !SmallValueOctree->IsLeaf();
+		for (auto Corner : Corners)
+		{
+			ContinueShrinking = ContinueShrinking && SmallValueOctree->IsInOctree(Corner);
+		}
+
+		if (ContinueShrinking)
+		{
+			OldSmallValueOctree = SmallValueOctree;
+			SmallValueOctree = SmallValueOctree->GetChild(Corners[0]);
+		}
+	}
+	SmallValueOctree = OldSmallValueOctree;
+
 
 	for (int x = -IntRadius; x <= IntRadius; x++)
 	{
@@ -27,14 +63,11 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 
 				if (Distance <= Radius + 1)
 				{
-					float Alpha = FMath::Clamp(Radius - Distance, -1.f, 1.f);
+					float Value = (bAdd ? -1 : 1) * (Radius - Distance);
 
-					int Value = (bAdd ? -1 : 1) * (int)(127 * Alpha);
-
-
-					if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
+					if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (SmallValueOctree->GetValue(CurrentPosition) * Value > 0))
 					{
-						World->SetValue(CurrentPosition, Value);
+						SmallValueOctree->SetValue(CurrentPosition, Value);
 						if (bQueueUpdate)
 						{
 							World->QueueUpdate(CurrentPosition);
@@ -52,7 +85,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 
 void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, float FadeDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
 {
-	if (World == NULL)
+	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
 		return;
@@ -88,7 +121,7 @@ void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Rad
 
 void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radius, float Height, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
 {
-	if (World == NULL)
+	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
 		return;
@@ -135,7 +168,7 @@ void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radi
 
 void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVector Normal, float Radius, int Stength, bool bAdd, float MaxDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints)
 {
-	if (World == NULL)
+	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
 		return;
@@ -283,7 +316,7 @@ void UVoxelTools::SetColorProjection(AVoxelWorld * World, FVector Position, FVec
 
 void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Normal, float Radius, float Speed, float MaxDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints)
 {
-	if (World == NULL)
+	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
 		return;
@@ -305,7 +338,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Nor
 	FVector Bitangent = FVector::CrossProduct(Tangent, Normal).GetSafeNormal();
 
 	TArray<FIntVector> Positions;
-	int MeanValue = 0;
+	float MeanValue = 0;
 
 	float Scale = World->GetTransform().GetScale3D().Size() / 4;
 

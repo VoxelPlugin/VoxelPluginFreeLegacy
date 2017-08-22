@@ -54,22 +54,22 @@ public:
 	 * Get the depth of this chunk
 	 * @return Depth
 	 */
-	int GetDepth();
+	int GetDepth() const;
 
 	/**
 	 * Get the width of this chunk
 	 * @return Width
 	 */
-	int Width();
+	int Width() const;
 
 	/**
 	 * Get value in chunk space
 	 * @param 	X	x coordinate in chunk space (between 0 and Width)
 	 * @param 	Y	y coordinate in chunk space (between 0 and Width)
 	 * @param 	Z	z coordinate in chunk space (between 0 and Width)
-	 * @return	Value (int between -127 and 127)
+	 * @return	Value
 	 */
-	signed char GetValue(int X, int Y, int Z);
+	float GetValue(int X, int Y, int Z) const;
 
 	/**
 	 * Get color in chunk space
@@ -78,15 +78,15 @@ public:
 	 * @param 	Z	z coordinate in chunk space (between 0 and Width)
 	 * @return	Color
 	 */
-	FColor GetColor(int X, int Y, int Z);
+	FColor GetColor(int X, int Y, int Z) const;
 
 	// ChunkHasHigherRes[TransitionDirection]
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 
 protected:
 	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
+	void BeginPlay() override;
+	void Tick(float DeltaTime) override;
 
 private:
 	UPROPERTY(EditAnywhere)
@@ -128,7 +128,7 @@ private:
 	 * @param	Direction	Direction of the chunk
 	 * @return	Pointer to chunk if found, nullptr else
 	 */
-	AVoxelChunk* GetChunk(TransitionDirection Direction);
+	AVoxelChunk* GetChunk(TransitionDirection Direction) const;
 
 	/**
 	 * delete Task and Destroy this

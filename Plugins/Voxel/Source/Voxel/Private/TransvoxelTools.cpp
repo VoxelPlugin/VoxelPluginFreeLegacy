@@ -1,11 +1,12 @@
 #include "VoxelPrivatePCH.h"
 #include "TransvoxelTools.h"
 #include "Transvoxel.h"
+#include <cmath>
 
 void TransvoxelTools::RegularPolygonize(IRegularVoxel* Chunk, int X, int Y, int Z, short ValidityMask, Trigs& Triangles, int& TrianglesCount, Verts& Vertices, Props& Properties, Colors& Colors, int& VerticesCount, int Step)
 {
 	check(Chunk);
-	signed char Corner[8] = {
+	const float Corner[8] = {
 		Chunk->GetValue(X       * Step, Y       * Step, Z       * Step),
 		Chunk->GetValue((X + 1) * Step, Y       * Step, Z       * Step),
 		Chunk->GetValue(X       * Step, (Y + 1) * Step, Z       * Step),
@@ -16,16 +17,17 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* Chunk, int X, int Y, int 
 		Chunk->GetValue((X + 1) * Step, (Y + 1) * Step, (Z + 1) * Step)
 	};
 
-	unsigned long CaseCode = ((Corner[0] >> 7) & 0x01)
-		| ((Corner[1] >> 6) & 0x02)
-		| ((Corner[2] >> 5) & 0x04)
-		| ((Corner[3] >> 4) & 0x08)
-		| ((Corner[4] >> 3) & 0x10)
-		| ((Corner[5] >> 2) & 0x20)
-		| ((Corner[6] >> 1) & 0x40)
-		| (Corner[7] & 0x80);
+	unsigned long CaseCode =
+		(std::signbit(Corner[0]) << 0)
+		| (std::signbit(Corner[1]) << 1)
+		| (std::signbit(Corner[2]) << 2)
+		| (std::signbit(Corner[3]) << 3)
+		| (std::signbit(Corner[4]) << 4)
+		| (std::signbit(Corner[5]) << 5)
+		| (std::signbit(Corner[6]) << 6)
+		| (std::signbit(Corner[7]) << 7);
 
-	if ((CaseCode ^ ((Corner[7] >> 7) & 0xFF)) != 0)
+	if (CaseCode != 0 && CaseCode != 511)
 	{
 		// Cell has a nontrivial triangulation
 		FIntVector Positions[8] = {
@@ -60,8 +62,8 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* Chunk, int X, int Y, int 
 			check(0 <= IndexVerticeA && IndexVerticeA < 8);
 			check(0 <= IndexVerticeB && IndexVerticeB < 8);
 
-			const signed char ValueAtA = Corner[IndexVerticeA];
-			const signed char ValueAtB = Corner[IndexVerticeB];
+			const float ValueAtA = Corner[IndexVerticeA];
+			const float ValueAtB = Corner[IndexVerticeB];
 
 			const FIntVector PositionA = Positions[IndexVerticeA];
 			const FIntVector PositionB = Positions[IndexVerticeB];
@@ -78,7 +80,7 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* Chunk, int X, int Y, int 
 				{
 					// Vertex failed validity check
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, (FVector)PositionB, PositionB, IsExact);
+					VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, static_cast<FVector>(PositionB), PositionB, IsExact);
 				}
 				else
 				{
@@ -93,7 +95,7 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* Chunk, int X, int Y, int 
 				{
 					// Validity check failed
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, (FVector)PositionA, PositionA, IsExact);
+					VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, static_cast<FVector>(PositionA), PositionA, IsExact);
 				}
 				else
 				{
@@ -117,8 +119,8 @@ void TransvoxelTools::RegularPolygonize(IRegularVoxel* Chunk, int X, int Y, int 
 					{
 						// Full resolution
 						check(ValueAtA - ValueAtB != 0);
-						float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
-						FVector Q = t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
+						float t = ValueAtB / (ValueAtB - ValueAtA);
+						FVector Q = t * static_cast<FVector>(PositionA) + (1 - t) * static_cast<FVector>(PositionB);
 						VertexIndex = AddVertex(Chunk, Step, Vertices, Properties, Colors, VerticesCount, Q, PositionA, IsExact);
 					}
 					else
@@ -190,12 +192,12 @@ int TransvoxelTools::AddVertex(IRegularVoxel* Chunk, int Step, Verts& Vertices, 
 FVector TransvoxelTools::InterpolateX(IRegularVoxel* Chunk, int MinX, int MaxX, int Y, int Z)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = Chunk->GetValue(MinX, Y, Z);
-	signed char ValueAtB = Chunk->GetValue(MaxX, Y, Z);
+	const float ValueAtA = Chunk->GetValue(MinX, Y, Z);
+	const float ValueAtB = Chunk->GetValue(MaxX, Y, Z);
 	if (MaxX - MinX == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
-		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+		float t = ValueAtB / (ValueAtB - ValueAtA);
 		return t * FVector(MinX, Y, Z) + (1 - t) *  FVector(MaxX, Y, Z);
 	}
 	else
@@ -203,8 +205,7 @@ FVector TransvoxelTools::InterpolateX(IRegularVoxel* Chunk, int MinX, int MaxX, 
 		check((MaxX + MinX) % 2 == 0);
 
 		int xMiddle = (MaxX + MinX) / 2;
-		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (Chunk->GetValue(xMiddle, Y, Z) & 0x80))
+		if (std::signbit(ValueAtA) == std::signbit(Chunk->GetValue(xMiddle, Y, Z)))
 		{
 			// If min and middle have same sign
 			return InterpolateX(Chunk, xMiddle, MaxX, Y, Z);
@@ -220,12 +221,12 @@ FVector TransvoxelTools::InterpolateX(IRegularVoxel* Chunk, int MinX, int MaxX, 
 FVector TransvoxelTools::InterpolateY(IRegularVoxel* Chunk, int X, int MinY, int MaxY, int Z)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = Chunk->GetValue(X, MinY, Z);
-	signed char ValueAtB = Chunk->GetValue(X, MaxY, Z);
+	const float ValueAtA = Chunk->GetValue(X, MinY, Z);
+	const float ValueAtB = Chunk->GetValue(X, MaxY, Z);
 	if (MaxY - MinY == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
-		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+		float t = ValueAtB / (ValueAtB - ValueAtA);
 		return t * FVector(X, MinY, Z) + (1 - t) *  FVector(X, MaxY, Z);
 	}
 	else
@@ -234,7 +235,7 @@ FVector TransvoxelTools::InterpolateY(IRegularVoxel* Chunk, int X, int MinY, int
 
 		int yMiddle = (MaxY + MinY) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (Chunk->GetValue(X, yMiddle, Z) & 0x80))
+		if (std::signbit(ValueAtA) == std::signbit(Chunk->GetValue(X, yMiddle, Z)))
 		{
 			// If min and middle have same sign
 			return InterpolateY(Chunk, X, yMiddle, MaxY, Z);
@@ -250,12 +251,12 @@ FVector TransvoxelTools::InterpolateY(IRegularVoxel* Chunk, int X, int MinY, int
 FVector TransvoxelTools::InterpolateZ(IRegularVoxel* Chunk, int X, int Y, int MinZ, int MaxZ)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = Chunk->GetValue(X, Y, MinZ);
-	signed char ValueAtB = Chunk->GetValue(X, Y, MaxZ);
+	const float ValueAtA = Chunk->GetValue(X, Y, MinZ);
+	const float ValueAtB = Chunk->GetValue(X, Y, MaxZ);
 	if (MaxZ - MinZ == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
-		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+		float t = ValueAtB / (ValueAtB - ValueAtA);
 		return t * FVector(X, Y, MinZ) + (1 - t) *  FVector(X, Y, MaxZ);
 	}
 	else
@@ -264,7 +265,7 @@ FVector TransvoxelTools::InterpolateZ(IRegularVoxel* Chunk, int X, int Y, int Mi
 
 		int zMiddle = (MaxZ + MinZ) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (Chunk->GetValue(X, Y, zMiddle) & 0x80))
+		if (std::signbit(ValueAtA) == std::signbit(Chunk->GetValue(X, Y, zMiddle)))
 		{
 			// If min and middle have same sign
 			return InterpolateZ(Chunk, X, Y, zMiddle, MaxZ);
@@ -286,7 +287,7 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* Chunk, int X, int Y
 
 	const int HalfStep = Step / 2;
 
-	signed char Corner[13] = {
+	const float Corner[13] = {
 		Chunk->GetValue2D(2 * X       * HalfStep, 2 * Y       * HalfStep),
 		Chunk->GetValue2D((2 * X + 1) * HalfStep, 2 * Y       * HalfStep),
 		Chunk->GetValue2D((2 * X + 2) * HalfStep, 2 * Y       * HalfStep),
@@ -303,15 +304,16 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* Chunk, int X, int Y
 		Chunk->GetValue2D((2 * X + 2) * HalfStep, (2 * Y + 2) * HalfStep)
 	};
 
-	unsigned long CaseCode = ((Corner[0] >> 7) & 0x01)
-		| ((Corner[1] >> 6) & 0x02)
-		| ((Corner[2] >> 5) & 0x04)
-		| ((Corner[5] >> 4) & 0x08)
-		| ((Corner[8] >> 3) & 0x10)
-		| ((Corner[7] >> 2) & 0x20)
-		| ((Corner[6] >> 1) & 0x40)
-		| ((Corner[3] >> 0) & 0x80)
-		| ((Corner[4] << 1) & 0x100);
+	unsigned long CaseCode =
+		(std::signbit(Corner[0]) << 0)
+		| (std::signbit(Corner[1]) << 1)
+		| (std::signbit(Corner[2]) << 2)
+		| (std::signbit(Corner[5]) << 3)
+		| (std::signbit(Corner[8]) << 4)
+		| (std::signbit(Corner[7]) << 5)
+		| (std::signbit(Corner[6]) << 6)
+		| (std::signbit(Corner[3]) << 7)
+		| (std::signbit(Corner[4]) << 8);
 
 	if (!(CaseCode == 0 || CaseCode == 511))
 	{
@@ -354,8 +356,8 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* Chunk, int X, int Y
 			check(0 <= IndexVerticeA && IndexVerticeA < 13);
 			check(0 <= IndexVerticeB && IndexVerticeB < 13);
 
-			const signed char ValueAtA = Corner[IndexVerticeA];
-			const signed char ValueAtB = Corner[IndexVerticeB];
+			const float ValueAtA = Corner[IndexVerticeA];
+			const float ValueAtB = Corner[IndexVerticeB];
 
 
 			const FIntVector PositionA = Positions[IndexVerticeA];
@@ -372,7 +374,7 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* Chunk, int X, int Y
 				{
 					// Vertex failed validity check
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(Chunk, PositionB.Z == HalfStep, HalfStep, Vertices, Properties, Colors, VerticesCount, (FVector)PositionB, PositionB, IsExact);
+					VertexIndex = AddVertex(Chunk, PositionB.Z == HalfStep, HalfStep, Vertices, Properties, Colors, VerticesCount, static_cast<FVector>(PositionB), PositionB, IsExact);
 				}
 				else
 				{
@@ -387,7 +389,7 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* Chunk, int X, int Y
 				{
 					// Validity check failed
 					FBoolVector IsExact(true, true, true);
-					VertexIndex = AddVertex(Chunk, PositionA.Z == HalfStep, HalfStep, Vertices, Properties, Colors, VerticesCount, (FVector)PositionA, PositionA, IsExact);
+					VertexIndex = AddVertex(Chunk, PositionA.Z == HalfStep, HalfStep, Vertices, Properties, Colors, VerticesCount, static_cast<FVector>(PositionA), PositionA, IsExact);
 
 				}
 				else
@@ -467,15 +469,15 @@ int TransvoxelTools::AddVertex(ITransitionVoxel* Chunk, bool bIsTranslated, int 
 FVector TransvoxelTools::InterpolateX2D(ITransitionVoxel* Chunk, int MinX, int MaxX, int Y)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = Chunk->GetValue2D(MinX, Y);
-	signed char ValueAtB = Chunk->GetValue2D(MaxX, Y);
+	const float ValueAtA = Chunk->GetValue2D(MinX, Y);
+	const float ValueAtB = Chunk->GetValue2D(MaxX, Y);
 	if (MaxX - MinX == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
-		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+		float t = ValueAtB / (ValueAtB - ValueAtA);
 		FIntVector PositionA(MinX, Y, 0);
 		FIntVector PositionB(MaxX, Y, 0);
-		return t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
+		return t * static_cast<FVector>(PositionA) + (1 - t) * static_cast<FVector>(PositionB);
 	}
 	else
 	{
@@ -483,7 +485,7 @@ FVector TransvoxelTools::InterpolateX2D(ITransitionVoxel* Chunk, int MinX, int M
 
 		int xMiddle = (MaxX + MinX) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (Chunk->GetValue2D(xMiddle, Y) & 0x80))
+		if (std::signbit(ValueAtA) == std::signbit(Chunk->GetValue2D(xMiddle, Y)))
 		{
 			// If min and middle have same sign
 			return InterpolateX2D(Chunk, xMiddle, MaxX, Y);
@@ -499,15 +501,15 @@ FVector TransvoxelTools::InterpolateX2D(ITransitionVoxel* Chunk, int MinX, int M
 FVector TransvoxelTools::InterpolateY2D(ITransitionVoxel* Chunk, int X, int MinY, int MaxY)
 {
 	// A: Min / B: Max
-	signed char ValueAtA = Chunk->GetValue2D(X, MinY);
-	signed char ValueAtB = Chunk->GetValue2D(X, MaxY);
+	const float ValueAtA = Chunk->GetValue2D(X, MinY);
+	const float ValueAtB = Chunk->GetValue2D(X, MaxY);
 	if (MaxY - MinY == 1)
 	{
 		check(ValueAtA - ValueAtB != 0);
-		float t = (float)ValueAtB / (float)(ValueAtB - ValueAtA);
+		float t = ValueAtB / (ValueAtB - ValueAtA);
 		FIntVector PositionA(X, MinY, 0);
 		FIntVector PositionB(X, MaxY, 0);
-		return t * (FVector)PositionA + (1 - t) * (FVector)PositionB;
+		return t * static_cast<FVector>(PositionA) + (1 - t) * static_cast<FVector>(PositionB);
 	}
 	else
 	{
@@ -515,7 +517,7 @@ FVector TransvoxelTools::InterpolateY2D(ITransitionVoxel* Chunk, int X, int MinY
 
 		int yMiddle = (MaxY + MinY) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA & 0x80) == (Chunk->GetValue2D(X, yMiddle) & 0x80))
+		if (std::signbit(ValueAtA) == std::signbit(Chunk->GetValue2D(X, yMiddle)))
 		{
 			// If min and middle have same sign
 			return InterpolateY2D(Chunk, X, yMiddle, MaxY);
@@ -550,33 +552,33 @@ FVector TransvoxelTools::GetTranslated(FVector V, FVector N, VertexProperties P,
 	{
 		if (V.X < TwoPowerK)
 		{
-			DeltaX = (1 - (double)V.X / TwoPowerK) * w;
+			DeltaX = (1 - static_cast<double>(V.X) / TwoPowerK) * w;
 		}
 		else if (V.X > TwoPowerK * (16 - 1))
 		{
-			DeltaX = (16 - 1 - (double)V.X / TwoPowerK) * w;
+			DeltaX = (16 - 1 - static_cast<double>(V.X) / TwoPowerK) * w;
 		}
 	}
 	if ((P.IsNearYMin && ChunkHasHigherRes[YMin]) || (P.IsNearYMax && ChunkHasHigherRes[YMax]))
 	{
 		if (V.Y < TwoPowerK)
 		{
-			DeltaY = (1 - (double)V.Y / TwoPowerK) * w;
+			DeltaY = (1 - static_cast<double>(V.Y) / TwoPowerK) * w;
 		}
 		else if (V.Y > TwoPowerK * (16 - 1))
 		{
-			DeltaY = (16 - 1 - (double)V.Y / TwoPowerK) * w;
+			DeltaY = (16 - 1 - static_cast<double>(V.Y) / TwoPowerK) * w;
 		}
 	}
 	if ((P.IsNearZMin && ChunkHasHigherRes[ZMin]) || (P.IsNearZMax && ChunkHasHigherRes[ZMax]))
 	{
 		if (V.Z < TwoPowerK)
 		{
-			DeltaZ = (1 - (double)V.Z / TwoPowerK) * w;
+			DeltaZ = (1 - static_cast<double>(V.Z) / TwoPowerK) * w;
 		}
 		else if (V.Z > TwoPowerK * (16 - 1))
 		{
-			DeltaZ = (16 - 1 - (double)V.Z / TwoPowerK) * w;
+			DeltaZ = (16 - 1 - static_cast<double>(V.Z) / TwoPowerK) * w;
 		}
 	}
 

@@ -13,25 +13,25 @@ ValueOctree::ValueOctree(FIntVector Position, int Depth, UVoxelWorldGenerator* W
 
 
 
-inline int ValueOctree::Width()
+inline int ValueOctree::Width() const
 {
 	return 16 << Depth;
 }
 
-bool ValueOctree::IsLeaf()
+bool ValueOctree::IsLeaf() const
 {
 	return bIsLeaf;
 }
 
-bool ValueOctree::IsDirty()
+bool ValueOctree::IsDirty() const
 {
 	return bIsDirty;
 }
 
-signed char ValueOctree::GetValue(FIntVector GlobalPosition)
+float ValueOctree::GetValue(FIntVector GlobalPosition)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
-	check(IsInChunk(GlobalPosition));
+	check(IsInOctree(GlobalPosition));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
 	if (IsDirty())
@@ -48,14 +48,14 @@ signed char ValueOctree::GetValue(FIntVector GlobalPosition)
 	}
 	else
 	{
-		return FMath::Clamp(WorldGenerator->GetDefaultValue(GlobalPosition), -127, 127);
+		return WorldGenerator->GetDefaultValue(GlobalPosition);
 	}
 }
 
 FColor ValueOctree::GetColor(FIntVector GlobalPosition)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
-	check(IsInChunk(GlobalPosition));
+	check(IsInOctree(GlobalPosition));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
 	if (IsDirty())
@@ -76,10 +76,10 @@ FColor ValueOctree::GetColor(FIntVector GlobalPosition)
 	}
 }
 
-void ValueOctree::SetValue(FIntVector GlobalPosition, signed char Value)
+void ValueOctree::SetValue(FIntVector GlobalPosition, float Value)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
-	check(IsInChunk(GlobalPosition));
+	check(IsInOctree(GlobalPosition));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
 	if (IsLeaf())
@@ -123,7 +123,7 @@ void ValueOctree::SetValue(FIntVector GlobalPosition, signed char Value)
 void ValueOctree::SetColor(FIntVector GlobalPosition, FColor Color)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
-	check(IsInChunk(GlobalPosition));
+	check(IsInOctree(GlobalPosition));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
 	if (IsLeaf())
@@ -164,13 +164,13 @@ void ValueOctree::SetColor(FIntVector GlobalPosition, FColor Color)
 	}
 }
 
-bool ValueOctree::IsInChunk(FIntVector GlobalPosition)
+bool ValueOctree::IsInOctree(FIntVector GlobalPosition) const
 {
 	FIntVector P = GlobalToLocal(GlobalPosition);
 	return 0 <= P.X && 0 <= P.Y && 0 <= P.Z && P.X < Width() && P.Y < Width() && P.Z < Width();
 }
 
-FIntVector ValueOctree::GlobalToLocal(FIntVector GlobalPosition)
+FIntVector ValueOctree::GlobalToLocal(FIntVector GlobalPosition) const
 {
 	return FIntVector(GlobalPosition.X - (Position.X - Width() / 2), GlobalPosition.Y - (Position.Y - Width() / 2), GlobalPosition.Z - (Position.Z - Width() / 2));
 }
@@ -226,7 +226,7 @@ void ValueOctree::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray)
 	}
 }
 
-FIntVector ValueOctree::LocalToGlobal(FIntVector LocalPosition)
+FIntVector ValueOctree::LocalToGlobal(FIntVector LocalPosition) const
 {
 	return FIntVector(LocalPosition.X + (Position.X - Width() / 2), LocalPosition.Y + (Position.Y - Width() / 2), LocalPosition.Z + (Position.Z - Width() / 2));
 }
