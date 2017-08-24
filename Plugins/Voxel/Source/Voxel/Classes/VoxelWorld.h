@@ -8,6 +8,7 @@
 #include "VoxelWorldGenerator.h"
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
+#include "DiffStruct.h"
 #include "VoxelWorld.generated.h"
 
 
@@ -160,6 +161,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const;
 
+	/**
+	 * Sync world over network
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void Sync();
+
 protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;
@@ -171,7 +178,7 @@ protected:
 
 private:
 	// Width = 16 * 2^Depth
-	UPROPERTY(EditAnywhere, Category = Voxel)
+	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0", ClampMax = "10", UIMin = "0", UIMax = "10"))
 		int Depth;
 	// Time to wait before deleting old chunks to avoid holes
 	UPROPERTY(EditAnywhere, Category = Voxel)
@@ -200,6 +207,12 @@ private:
 	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
 		bool bAutoUpdateCameraPosition;
 
+	/**
+	 * Load server world
+	 * @param	Array	Array to load from
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+		void MulticastLoadArray(const TArray<FSingleDiffStruct>& Array);
 
 
 	TSharedPtr<ChunkOctree> MainOctree;

@@ -103,7 +103,7 @@ void AVoxelWorld::UpdateCameraPosition(FVector Position)
 	// Reset to avoid references to destroyed chunks
 	QueuedChunks.Reset();
 	// Recreate octree
-	MainOctree->CreateTree(this, Position);
+	MainOctree->UpdateCameraPosition(this, Position);
 	// Apply updates added when recreating octree
 	ApplyQueuedUpdates(true);
 }
@@ -131,12 +131,21 @@ void AVoxelWorld::SetColor(FIntVector Position, FColor Color) const
 
 TArray<FVoxelChunkSaveStruct> AVoxelWorld::GetSaveArray() const
 {
-	return Data->GetSaveArray();
+	//return Data->GetSaveArray();
+	return TArray<FVoxelChunkSaveStruct>();
 }
 
 void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const
 {
-	Data->LoadFromArray(SaveArray);
+	//Data->LoadFromArray(SaveArray);
+}
+
+void AVoxelWorld::Sync()
+{
+	for (auto Array : Data->GetDiffArray())
+	{
+		MulticastLoadArray(Array);
+	}
 }
 
 
@@ -185,6 +194,12 @@ void AVoxelWorld::Update(FIntVector Position, bool bAsync)
 
 void AVoxelWorld::QueueUpdate(FIntVector Position)
 {
+	if (!IsInWorld(Position))
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Not in world"));
+		return;
+	}
+
 	int X = Position.X + Size() / 2;
 	int Y = Position.Y + Size() / 2;
 	int Z = Position.Z + Size() / 2;
@@ -270,6 +285,23 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 }
 #endif
 
+
+void AVoxelWorld::MulticastLoadArray_Implementation(const TArray<FSingleDiffStruct>& Array)
+{
+	if (!(GetNetMode() < ENetMode::NM_Client))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Loading world"));
+
+		std::forward_list<FSingleDiffStruct> DiffArray;
+		for (int i = Array.Num() - 1; i >= 0; i--)
+		{
+			DiffArray.push_front(Array[i]);
+		}
+
+		Data->LoadAndQueueUpdateFromDiffArray(DiffArray, this);
+		ApplyQueuedUpdates(false);
+	}
+}
 
 
 bool AVoxelWorld::IsInWorld(FIntVector Position) const

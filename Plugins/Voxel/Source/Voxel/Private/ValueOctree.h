@@ -1,14 +1,18 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "VoxelChunkSaveStruct.h"
+#include "Octree.h"
+#include "DiffStruct.h"
+#include <list>
+#include <forward_list>
 
 class VoxelData;
 class UVoxelWorldGenerator;
+struct FVoxelChunkSaveStruct;
 
 /**
  * Octree that holds modified values & colors
  */
-class ValueOctree
+class ValueOctree : public Octree
 {
 public:
 	/**
@@ -17,32 +21,24 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	ValueOctree(FIntVector Position, int Depth, UVoxelWorldGenerator* WorldGenerator);
+	ValueOctree(bool bNetworking, UVoxelWorldGenerator* WorldGenerator, FIntVector Position, int Depth, int Id = -1) : Octree(Position, Depth, Id),
+		bNetworking(bNetworking), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false), bSyncAllValues(false), bSyncAllColors(false)
+	{
+		check(WorldGenerator);
+	};
 
-	// Center of the octree
-	const FIntVector Position;
+	const bool bNetworking;
 
-	// Distance to the highest resolution
-	const int Depth;
-
-
-	/**
-	 * Get the width at this level
-	 * @return	Width of this chunk
-	 */
-	int Width() const;
-
-	/**
-	 * Does this chunk have no childs?
-	 * @return	Whether or not this chunk has no childs
-	 */
-	bool IsLeaf() const;
+	static int SyncAllThreshold;
 
 	/**
 	 * Does this chunk have been modified?
 	 * @return	Whether or not this chunk is dirty
 	 */
-	bool IsDirty() const;
+	bool IsDirty() const
+	{
+		return bIsDirty;
+	}
 
 	/**
 	 * Get value at position
@@ -63,6 +59,7 @@ public:
 	 * @param	Value to set
 	 */
 	void SetValue(FIntVector GlobalPosition, float Value);
+
 	/**
 	 * Set color at position
 	 * @param	GlobalPosition	Position in voxel space
@@ -71,35 +68,19 @@ public:
 	void SetColor(FIntVector GlobalPosition, FColor Color);
 
 	/**
-	 * Is GlobalPosition in this octree?
-	 * @param	GlobalPosition	Position in voxel space
-	 * @return	If IsInOctree	
-	 */
-	bool IsInOctree(FIntVector GlobalPosition) const;
-	
-	/**
-	 * Convert from chunk space to voxel space
-	 * @param	LocalPosition	Position in chunk space
-	 * @return	Position in voxel space
-	 */
-	FIntVector LocalToGlobal(FIntVector LocalPosition) const;
-	/**
-	 * Convert from voxel space to chunk space
-	 * @param	GlobalPosition	Position in voxel space
-	 * @return	Position in chunk space
-	 */
-	FIntVector GlobalToLocal(FIntVector GlobalPosition) const;
-
-	/**
 	 * Add dirty chunks to SaveArray
-	 * @param	SaveArray	Array to save chunks into
+	 * @param	SaveArray		List to save chunks into
 	 */
-	void AddChunksToArray(TArray<FVoxelChunkSaveStruct> SaveArray);
+	void AddChunksToArray(std::list<FVoxelChunkSaveStruct>& SaveArray);
 	/**
 	 * Load chunks from SaveArray
 	 * @param	SaveArray	Array to load chunks from
 	 */
-	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray);
+	void LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray);
+
+	void AddChunksToDiffStruct(DiffSaveStruct& DiffStruct);
+
+	void LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffStruct>& DiffArray, AVoxelWorld* World);
 
 	/**
 	* Get direct child that owns GlobalPosition
@@ -110,7 +91,7 @@ public:
 private:
 	/*
 	Childs of this octree in the following order:
-	
+
 	bottom      top
 	-----> y
 	| 0 | 2    4 | 6
@@ -128,10 +109,21 @@ private:
 	TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors;
 
 	bool bIsDirty;
-	bool bIsLeaf;
+
+	TSet<int> DirtyValues;
+	TSet<int> DirtyColors;
+	bool bSyncAllValues;
+	bool bSyncAllColors;
+
+	bool bIsNetworkDirty;
 
 	/**
 	 * Create childs of this octree
 	 */
 	void CreateChilds();
+
+	/**
+	 * Init arrays
+	 */
+	void SetAsDirty();
 };
