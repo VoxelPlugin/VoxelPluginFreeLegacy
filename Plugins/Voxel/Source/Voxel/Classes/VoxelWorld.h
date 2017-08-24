@@ -180,6 +180,12 @@ private:
 	// Width = 16 * 2^Depth
 	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0", ClampMax = "10", UIMin = "0", UIMax = "10"))
 		int Depth;
+	// Multiplayer game?
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		bool bMultiplayer;
+	// FPS of the multiplayer sync
+	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0.01", ClampMax = "120", UIMin = "0.01", UIMax = "120"))
+		float MultiplayerFPS;
 	// Time to wait before deleting old chunks to avoid holes
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		float DeletionDelay;
@@ -211,14 +217,16 @@ private:
 	 * Load server world
 	 * @param	Array	Array to load from
 	 */
-	UFUNCTION(NetMulticast, Unreliable)
-		void MulticastLoadArray(const TArray<FSingleDiffStruct>& Array);
+	UFUNCTION(NetMulticast, Reliable)
+		void MulticastLoadArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray);
 
 
 	TSharedPtr<ChunkOctree> MainOctree;
 	TSharedPtr<VoxelData> Data;
 
 	bool bNotCreated;
+
+	float TimeSinceSync;
 
 	TSet<TWeakPtr<ChunkOctree>> QueuedChunks;
 

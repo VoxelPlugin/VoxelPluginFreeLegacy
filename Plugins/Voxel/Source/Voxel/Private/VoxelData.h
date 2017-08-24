@@ -21,8 +21,7 @@ public:
 	 * @param	Depth			Depth of this world; Width = 16 * 2^Depth
 	 * @param	WorldGenerator	Generator for this world
 	 */
-	VoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator);
-	virtual ~VoxelData();
+	VoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator, bool bMultiplayer);
 
 	// Width = 16 * 2^Depth
 	const int Depth;
@@ -85,10 +84,8 @@ public:
 	 */
 	void LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray) const;
 
-
-
-	std::forward_list<TArray<FSingleDiffStruct>> GetDiffArray() const;
-	void LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffStruct>& DiffArray, AVoxelWorld* World) const;
+	std::pair<std::forward_list<TArray<FVoxelValueDiff>>, std::forward_list<TArray<FVoxelColorDiff>>> GetDiffArrays() const;
+	void LoadAndQueueUpdateFromDiffArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray, AVoxelWorld* World) const;
 
 private:
 	// Values

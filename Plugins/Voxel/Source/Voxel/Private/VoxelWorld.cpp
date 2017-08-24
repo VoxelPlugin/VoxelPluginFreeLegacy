@@ -14,7 +14,8 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(0.75f), DeletionDelay(0.1f), Depth(10), HighResolutionDistanceOffset(25), bRebuildBorders(true), PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true)
+AVoxelWorld::AVoxelWorld() : Depth(10), MultiplayerFPS(5), DeletionDelay(0.1f), Quality(0.75f), HighResolutionDistanceOffset(25), bRebuildBorders(true),
+PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), bNotCreated(true), TimeSinceSync(0)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -27,6 +28,8 @@ AVoxelWorld::AVoxelWorld() : bNotCreated(true), Quality(0.75f), DeletionDelay(0.
 	SetActorScale3D(100 * FVector::OneVector);
 
 	WorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UVoxelWorldGenerator::StaticClass());
+
+	bReplicates = true;
 }
 
 
@@ -45,7 +48,7 @@ void AVoxelWorld::BeginPlay()
 		NewObject<UVoxelWorldGenerator>(WorldGeneratorInstance);
 	}
 
-	Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInstance));
+	Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInstance, bMultiplayer));
 	MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
 
 	UpdateCameraPosition(FVector::ZeroVector);
@@ -80,6 +83,16 @@ void AVoxelWorld::Tick(float DeltaTime)
 	if (bAutoUpdateCameraPosition && PlayerCamera != nullptr)
 	{
 		UpdateCameraPosition(PlayerCamera->GetTransform().GetLocation());
+	}
+
+	if (bMultiplayer)
+	{
+		TimeSinceSync += DeltaTime;
+		if (TimeSinceSync > 1 / MultiplayerFPS)
+		{
+			Sync();
+			TimeSinceSync = 0;
+		}
 	}
 }
 
@@ -142,9 +155,25 @@ void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const
 
 void AVoxelWorld::Sync()
 {
-	for (auto Array : Data->GetDiffArray())
+	auto DiffArrays = Data->GetDiffArrays();
+	while (!DiffArrays.first.empty() || !DiffArrays.second.empty())
 	{
-		MulticastLoadArray(Array);
+		TArray<FVoxelValueDiff> ValueDiffArray;
+		TArray<FVoxelColorDiff> ColorDiffArray;
+
+		if (!DiffArrays.first.empty())
+		{
+			ValueDiffArray = DiffArrays.first.front();
+			DiffArrays.first.pop_front();
+		}
+
+		if (!DiffArrays.second.empty())
+		{
+			ColorDiffArray = DiffArrays.second.front();
+			DiffArrays.second.pop_front();
+		}
+
+		MulticastLoadArray(ValueDiffArray, ColorDiffArray);
 	}
 }
 
@@ -278,7 +307,9 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 {
 	const bool ParentVal = Super::CanEditChange(InProperty);
 
-	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, Depth) || InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, VoxelMaterial))
+	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, Depth)
+		|| InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, VoxelMaterial)
+		|| InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, bMultiplayer))
 		return ParentVal && bNotCreated;
 	else
 		return ParentVal;
@@ -286,19 +317,14 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 #endif
 
 
-void AVoxelWorld::MulticastLoadArray_Implementation(const TArray<FSingleDiffStruct>& Array)
+void AVoxelWorld::MulticastLoadArray_Implementation(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray)
 {
 	if (!(GetNetMode() < ENetMode::NM_Client))
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Loading world"));
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d values"), ValueDiffArray.Num()));
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d colors"), ColorDiffArray.Num()));
 
-		std::forward_list<FSingleDiffStruct> DiffArray;
-		for (int i = Array.Num() - 1; i >= 0; i--)
-		{
-			DiffArray.push_front(Array[i]);
-		}
-
-		Data->LoadAndQueueUpdateFromDiffArray(DiffArray, this);
+		Data->LoadAndQueueUpdateFromDiffArray(ValueDiffArray, ColorDiffArray, this);
 		ApplyQueuedUpdates(false);
 	}
 }

@@ -5,8 +5,6 @@
 #include "VoxelWorldGenerator.h"
 #include "DrawDebugHelpers.h"
 
-int ValueOctree::SyncAllThreshold = 1024;
-
 float ValueOctree::GetValue(FIntVector GlobalPosition)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
@@ -82,13 +80,9 @@ void ValueOctree::SetValue(FIntVector GlobalPosition, float Value)
 			int Index = P.X + 16 * P.Y + 16 * 16 * P.Z;
 			Values[Index] = Value;
 
-			if (bNetworking)
+			if (bMultiplayer)
 			{
-				if (!bSyncAllValues)
-				{
-					DirtyValues.Add(Index);
-					bSyncAllValues = DirtyValues.Num() > SyncAllThreshold;
-				}
+				DirtyValues.Add(Index);
 			}
 		}
 	}
@@ -126,13 +120,9 @@ void ValueOctree::SetColor(FIntVector GlobalPosition, FColor Color)
 			int Index = P.X + 16 * P.Y + 16 * 16 * P.Z;
 			Colors[Index] = Color;
 
-			if (bNetworking)
+			if (bMultiplayer)
 			{
-				if (!bSyncAllColors)
-				{
-					DirtyColors.Add(Index);
-					bSyncAllColors = DirtyColors.Num() > SyncAllThreshold;
-				}
+				DirtyColors.Add(Index);
 			}
 		}
 	}
@@ -210,7 +200,7 @@ void ValueOctree::LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray)
 	}
 }
 
-void ValueOctree::AddChunksToDiffStruct(DiffSaveStruct& DiffStruct)
+void ValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelColorDiffArray& ColorsDiffs)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
@@ -221,27 +211,33 @@ void ValueOctree::AddChunksToDiffStruct(DiffSaveStruct& DiffStruct)
 		{
 			for (int Index : DirtyValues)
 			{
-				DiffStruct.Add(Id, Index, Values[Index]);
+				ValuesDiffs.Add(Id, Index, Values[Index]);
 			}
+			for (int Index : DirtyColors)
+			{
+				ColorsDiffs.Add(Id, Index, Colors[Index]);
+			}
+			DirtyValues.Empty(4096);
+			DirtyColors.Empty(4096);
 		}
 		else
 		{
 			for (auto Child : Childs)
 			{
-				Child->AddChunksToDiffStruct(DiffStruct);
+				Child->AddChunksToDiffArrays(ValuesDiffs, ColorsDiffs);
 			}
 		}
 		bIsNetworkDirty = false;
 	}
 }
 
-void ValueOctree::LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffStruct>& DiffArray, AVoxelWorld* World)
+void ValueOctree::LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelColorDiff>& ColorsDiffs, AVoxelWorld* World)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 	check(World);
 
-	if (DiffArray.empty())
+	if (ValuesDiffs.empty() && ColorsDiffs.empty())
 	{
 		return;
 	}
@@ -250,18 +246,18 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffS
 	{
 		if (Depth == 0)
 		{
-
-			while (!DiffArray.empty() && DiffArray.front().Id == Id)
+			// Values
+			while (!ValuesDiffs.empty() && ValuesDiffs.front().Id == Id)
 			{
 				if (!IsDirty())
 				{
 					SetAsDirty();
 				}
 
-				Values[DiffArray.front().Index] = DiffArray.front().Value;
+				Values[ValuesDiffs.front().Index] = ValuesDiffs.front().Value;
 
 
-				int Index = DiffArray.front().Index;
+				int Index = ValuesDiffs.front().Index;
 				int X = Index % 16;
 				Index = (Index - X) / 16;
 				int Y = Index % 16;
@@ -270,21 +266,45 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffS
 
 				World->QueueUpdate(LocalToGlobal(FIntVector(X, Y, Z)));
 
-				DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)LocalToGlobal(FIntVector(X, Y, Z))), 2, FColor::Red, false, 1);
+				DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)LocalToGlobal(FIntVector(X, Y, Z))), 5, FColor::Magenta, false, 1);
 
-				DiffArray.pop_front();
+				ValuesDiffs.pop_front();
+			}
+			// Colors
+			while (!ColorsDiffs.empty() && ColorsDiffs.front().Id == Id)
+			{
+				if (!IsDirty())
+				{
+					SetAsDirty();
+				}
+
+				Colors[ColorsDiffs.front().Index] = ColorsDiffs.front().Color;
+
+
+				int Index = ColorsDiffs.front().Index;
+				int X = Index % 16;
+				Index = (Index - X) / 16;
+				int Y = Index % 16;
+				Index = (Index - Y) / 16;
+				int Z = Index;
+
+				World->QueueUpdate(LocalToGlobal(FIntVector(X, Y, Z)));
+
+				DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)LocalToGlobal(FIntVector(X, Y, Z))), 5, FColor::Magenta, false, 1);
+
+				ColorsDiffs.pop_front();
 			}
 		}
 		else
 		{
 			uint32 Pow = IntPow9(Depth);
-			if (Id / Pow == DiffArray.front().Id / Pow)
+			if ((!ValuesDiffs.empty() && Id / Pow == ValuesDiffs.front().Id / Pow) || (!ColorsDiffs.empty() && Id / Pow == ColorsDiffs.front().Id / Pow))
 			{
 				bIsDirty = true;
 				CreateChilds();
 				for (auto Child : Childs)
 				{
-					Child->LoadAndQueueUpdateFromDiffArray(DiffArray, World);
+					Child->LoadAndQueueUpdateFromDiffArrays(ValuesDiffs, ColorsDiffs, World);
 				}
 			}
 		}
@@ -292,11 +312,11 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffS
 	else
 	{
 		uint32 Pow = IntPow9(Depth);
-		if (Id / Pow == DiffArray.front().Id / Pow)
+		if ((!ValuesDiffs.empty() && Id / Pow == ValuesDiffs.front().Id / Pow) || (!ColorsDiffs.empty() && Id / Pow == ColorsDiffs.front().Id / Pow))
 		{
 			for (auto Child : Childs)
 			{
-				Child->LoadAndQueueUpdateFromDiffArray(DiffArray, World);
+				Child->LoadAndQueueUpdateFromDiffArrays(ValuesDiffs, ColorsDiffs, World);
 			}
 		}
 	}
@@ -312,14 +332,14 @@ void ValueOctree::CreateChilds()
 	int d = Width() / 4;
 	uint32 Pow = IntPow9(Depth - 1);
 
-	Childs.Add(new ValueOctree(bNetworking, WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow));
-	Childs.Add(new ValueOctree(bNetworking, WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow));
-	Childs.Add(new ValueOctree(bNetworking, WorldGenerator, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow));
-	Childs.Add(new ValueOctree(bNetworking, WorldGenerator, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow));
-	Childs.Add(new ValueOctree(bNetworking, WorldGenerator, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow));
-	Childs.Add(new ValueOctree(bNetworking, WorldGenerator, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow));
-	Childs.Add(new ValueOctree(bNetworking, WorldGenerator, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow));
-	Childs.Add(new ValueOctree(bNetworking, WorldGenerator, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow));
+	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow));
+	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow));
+	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow));
+	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow));
+	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow));
+	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow));
+	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow));
+	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow));
 
 	bHasChilds = true;
 	check(!IsLeaf() == (Childs.Num() == 8));
@@ -328,6 +348,7 @@ void ValueOctree::CreateChilds()
 void ValueOctree::SetAsDirty()
 {
 	check(!IsDirty());
+	check(Depth == 0);
 	Values.SetNumUninitialized(16 * 16 * 16);
 	Colors.SetNumUninitialized(16 * 16 * 16);
 	for (int x = 0; x < 16; x++)
