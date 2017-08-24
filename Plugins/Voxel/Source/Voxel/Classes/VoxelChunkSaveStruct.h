@@ -4,29 +4,30 @@
 #include "VoxelChunkSaveStruct.generated.h"
 
 
-USTRUCT(BlueprintType)
+USTRUCT(BlueprintType, Category = Voxel)
 struct VOXEL_API FVoxelChunkSaveStruct
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = Voxel)
+	UPROPERTY(EditAnywhere)
+		uint32 Id;
+
+	UPROPERTY(EditAnywhere)
 		FIntVector Position;
 
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		int Depth;
+	UPROPERTY(EditAnywhere)
+		TArray<float> Values;
 
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		TArray<int> Values;
-
-	UPROPERTY(EditAnywhere, Category = Voxel)
+	UPROPERTY(EditAnywhere)
 		TArray<FColor> Colors;
 
-	FVoxelChunkSaveStruct() : Depth(-1)
+	FVoxelChunkSaveStruct() : Id(0)
 	{
 	}
 
-	FVoxelChunkSaveStruct(FIntVector Position, int Depth, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors) : Position(Position), Depth(Depth), Values(Values), Colors(Colors)
+	FVoxelChunkSaveStruct(uint32 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values,
+						  TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors) : Id(Id), Position(Position), Values(Values), Colors(Colors)
 	{
 	}
 };

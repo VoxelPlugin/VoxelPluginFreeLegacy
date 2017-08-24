@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelChunkSaveStruct.h"
+#include "DiffStruct.h"
+#include <list>
 
 class ValueOctree;
 class UVoxelWorldGenerator;
@@ -36,13 +38,13 @@ public:
 	 * @param	Position	Position in voxel space
 	 * @return	Value
 	 */
-	float GetValue(FIntVector Position);
+	float GetValue(FIntVector Position) const;
 	/**
 	 * Get color at position
 	 * @param	Position	Position in voxel space
 	 * @return	Color
 	 */
-	FColor GetColor(FIntVector Position);
+	FColor GetColor(FIntVector Position) const;
 
 
 	/**
@@ -50,22 +52,22 @@ public:
 	 * @param	Position	Position in voxel space
 	 * @param	Value to set
 	 */
-	void SetValue(FIntVector Position, float Value);
+	void SetValue(FIntVector Position, float Value) const;
 	/**
 	 * Set color at position
 	 * @param	Position	Position in voxel space
 	 * @param	Color to set
 	 */
-	void SetColor(FIntVector Position, FColor Color);
+	void SetColor(FIntVector Position, FColor Color) const;
 
 	/**
 	 * Is Position in this world?
 	 * @param	Position	Position in voxel space
 	 * @return	IsInWorld
 	 */
-	bool IsInWorld(FIntVector Position);
+	bool IsInWorld(FIntVector Position) const;
 
-	
+
 	/**
 	 * Size of this world (== width)
 	 * @return Size
@@ -76,12 +78,17 @@ public:
 	 * Get save array of this world
 	 * @return SaveArray
 	 */
-	TArray<FVoxelChunkSaveStruct> GetSaveArray() const;
+	std::list<FVoxelChunkSaveStruct> GetSaveArray(bool bNetworkDirtyOnly = false) const;
 	/**
 	 * Load this world from save array
 	 * @param	SaveArray	Array to load from
 	 */
-	void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const;
+	void LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray) const;
+
+
+
+	std::forward_list<TArray<FSingleDiffStruct>> GetDiffArray() const;
+	void LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffStruct>& DiffArray, AVoxelWorld* World) const;
 
 private:
 	// Values

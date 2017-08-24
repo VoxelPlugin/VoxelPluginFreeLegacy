@@ -6,7 +6,7 @@
 
 VoxelData::VoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator) : Depth(Depth)
 {
-	MainOctree = MakeShareable(new ValueOctree(FIntVector::ZeroValue, Depth, WorldGenerator));
+	MainOctree = MakeShareable(new ValueOctree(true, WorldGenerator, FIntVector::ZeroValue, Depth));
 }
 
 VoxelData::~VoxelData()
@@ -19,7 +19,7 @@ TSharedPtr<ValueOctree> VoxelData::GetValueOctree() const
 	return TSharedPtr<ValueOctree>(MainOctree);
 }
 
-float VoxelData::GetValue(FIntVector Position)
+float VoxelData::GetValue(FIntVector Position) const
 {
 	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
@@ -47,7 +47,7 @@ float VoxelData::GetValue(FIntVector Position)
 	}
 }
 
-FColor VoxelData::GetColor(FIntVector Position)
+FColor VoxelData::GetColor(FIntVector Position) const
 {
 	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
@@ -75,7 +75,7 @@ FColor VoxelData::GetColor(FIntVector Position)
 	}
 }
 
-void VoxelData::SetValue(FIntVector Position, float Value)
+void VoxelData::SetValue(FIntVector Position, float Value) const
 {
 	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
@@ -96,7 +96,7 @@ void VoxelData::SetValue(FIntVector Position, float Value)
 	}
 }
 
-void VoxelData::SetColor(FIntVector Position, FColor Color)
+void VoxelData::SetColor(FIntVector Position, FColor Color) const
 {
 	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
 	{
@@ -117,7 +117,7 @@ void VoxelData::SetColor(FIntVector Position, FColor Color)
 	}
 }
 
-bool VoxelData::IsInWorld(FIntVector Position)
+bool VoxelData::IsInWorld(FIntVector Position) const
 {
 	int  w = Size() / 2;
 	return -w <= Position.X && Position.X < w && -w <= Position.Y && Position.Y < w && -w <= Position.Z && Position.Z < w;
@@ -128,14 +128,27 @@ int VoxelData::Size() const
 	return 16 << Depth;
 }
 
-TArray<FVoxelChunkSaveStruct> VoxelData::GetSaveArray() const
+std::list<FVoxelChunkSaveStruct> VoxelData::GetSaveArray(bool) const
 {
-	TArray<FVoxelChunkSaveStruct> SaveArray;
+	std::list<FVoxelChunkSaveStruct> SaveArray;
 	MainOctree->AddChunksToArray(SaveArray);
 	return SaveArray;
 }
 
-void VoxelData::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const
+void VoxelData::LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray) const
 {
 	MainOctree->LoadFromArray(SaveArray);
+}
+
+std::forward_list<TArray<FSingleDiffStruct>> VoxelData::GetDiffArray() const
+{
+	DiffSaveStruct DiffStruct;
+	MainOctree->AddChunksToDiffStruct(DiffStruct);
+	return DiffStruct.GetPackets();
+}
+
+void VoxelData::LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffStruct>& DiffArray, AVoxelWorld* World) const
+{
+	check(World);
+	MainOctree->LoadAndQueueUpdateFromDiffArray(DiffArray, World);
 }
