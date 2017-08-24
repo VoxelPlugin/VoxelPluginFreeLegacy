@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "VoxelChunkSaveStruct.h"
+#include "VoxelSave.h"
 #include "VoxelWorldGenerator.h"
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
@@ -153,13 +153,15 @@ public:
 	 * @return	SaveArray
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		TArray<FVoxelChunkSaveStruct> GetSaveArray() const;
+		FVoxelWorldSave GetSave() const;
 	/**
-	 * Load world from array
-	 * @param	SaveArray	Array to load from
+	 * Load world from save
+	 * @param	Save	Save to load from
+	 * @param	bReset	Reset existing world? Set to false only if current world is unmodified
+	 * @param	bAsync	Update async?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const;
+		void LoadFromSave(FVoxelWorldSave Save, bool bReset = true, bool bAsync = true);
 
 	/**
 	 * Sync world over network
@@ -178,7 +180,7 @@ protected:
 
 private:
 	// Width = 16 * 2^Depth
-	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0", ClampMax = "10", UIMin = "0", UIMax = "10"))
+	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0", ClampMax = "9", UIMin = "0", UIMax = "9"))
 		int Depth;
 	// Multiplayer game?
 	UPROPERTY(EditAnywhere, Category = Voxel)

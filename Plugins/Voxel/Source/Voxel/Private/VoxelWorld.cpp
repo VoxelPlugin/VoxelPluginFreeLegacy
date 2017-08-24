@@ -142,15 +142,23 @@ void AVoxelWorld::SetColor(FIntVector Position, FColor Color) const
 	Data->SetColor(Position, Color);
 }
 
-TArray<FVoxelChunkSaveStruct> AVoxelWorld::GetSaveArray() const
+FVoxelWorldSave AVoxelWorld::GetSave() const
 {
-	//return Data->GetSaveArray();
-	return TArray<FVoxelChunkSaveStruct>();
+	return FVoxelWorldSave(Depth, Data->GetSaveArray());
 }
 
-void AVoxelWorld::LoadFromArray(TArray<FVoxelChunkSaveStruct> SaveArray) const
+void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset, bool bAsync)
 {
-	//Data->LoadFromArray(SaveArray);
+	if (Save.Depth == Depth)
+	{
+		auto ChunksList = Save.GetChunksList();
+		Data->LoadAndQueueUpdateFromSave(ChunksList, this, bReset);
+		ApplyQueuedUpdates(bAsync);
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Current Depth is %d while Save one is %d"), Depth, Save.Depth);
+	}
 }
 
 void AVoxelWorld::Sync()

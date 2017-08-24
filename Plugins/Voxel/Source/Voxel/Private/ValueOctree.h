@@ -7,7 +7,7 @@
 
 class VoxelData;
 class UVoxelWorldGenerator;
-struct FVoxelChunkSaveStruct;
+struct FVoxelChunkSave;
 
 /**
  * Octree that holds modified values & colors
@@ -27,7 +27,11 @@ public:
 		check(WorldGenerator);
 	};
 
+	// Is the game multiplayer?
 	const bool bMultiplayer;
+
+	// Generator for this world
+	UVoxelWorldGenerator* const WorldGenerator;
 
 	/**
 	 * Does this chunk have been modified?
@@ -69,12 +73,12 @@ public:
 	 * Add dirty chunks to SaveArray
 	 * @param	SaveArray		List to save chunks into
 	 */
-	void AddChunksToArray(std::list<FVoxelChunkSaveStruct>& SaveArray);
+	void AddChunksToArray(std::list<FVoxelChunkSave>& SaveArray);
 	/**
 	 * Load chunks from SaveArray
 	 * @param	SaveArray	Array to load chunks from
 	 */
-	void LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray);
+	void LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World);
 
 	void AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelColorDiffArray& ColorsDiffs);
 
@@ -97,9 +101,6 @@ private:
 	x
 	*/
 	TArray<ValueOctree*, TFixedAllocator<8>> Childs;
-
-	// Generator for this world
-	UVoxelWorldGenerator* WorldGenerator;
 
 	// Values if dirty
 	TArray<float, TFixedAllocator<16 * 16 * 16>> Values;

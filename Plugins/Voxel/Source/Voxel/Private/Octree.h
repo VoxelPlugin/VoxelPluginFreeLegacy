@@ -26,8 +26,9 @@ public:
 	 */
 	Octree(FIntVector Position, int Depth, int Id = -1) : Position(Position), Depth(Depth), Id(Id == -1 ? IntPow9(Depth) : Id), bHasChilds(false)
 	{
+		// TODO: Use bigger int
 		// Max for Id
-		check(Depth <= 10);
+		check(Depth <= 9);
 	};
 
 	bool operator==(const Octree& Other) const
