@@ -21,15 +21,13 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	ValueOctree(bool bNetworking, UVoxelWorldGenerator* WorldGenerator, FIntVector Position, int Depth, int Id = -1) : Octree(Position, Depth, Id),
-		bNetworking(bNetworking), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false), bSyncAllValues(false), bSyncAllColors(false)
+	ValueOctree(bool bMultiplayer, UVoxelWorldGenerator* WorldGenerator, FIntVector Position, int Depth, int Id = -1) : Octree(Position, Depth, Id),
+		bMultiplayer(bMultiplayer), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false)
 	{
 		check(WorldGenerator);
 	};
 
-	const bool bNetworking;
-
-	static int SyncAllThreshold;
+	const bool bMultiplayer;
 
 	/**
 	 * Does this chunk have been modified?
@@ -78,9 +76,9 @@ public:
 	 */
 	void LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray);
 
-	void AddChunksToDiffStruct(DiffSaveStruct& DiffStruct);
+	void AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelColorDiffArray& ColorsDiffs);
 
-	void LoadAndQueueUpdateFromDiffArray(std::forward_list<FSingleDiffStruct>& DiffArray, AVoxelWorld* World);
+	void LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelColorDiff>& ColorsDiffs, AVoxelWorld* World);
 
 	/**
 	* Get direct child that owns GlobalPosition
@@ -112,8 +110,6 @@ private:
 
 	TSet<int> DirtyValues;
 	TSet<int> DirtyColors;
-	bool bSyncAllValues;
-	bool bSyncAllColors;
 
 	bool bIsNetworkDirty;
 
