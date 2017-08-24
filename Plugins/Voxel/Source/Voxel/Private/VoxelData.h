@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelChunkSaveStruct.h"
+#include "VoxelSave.h"
 #include "DiffStruct.h"
 #include <list>
 
@@ -77,12 +77,14 @@ public:
 	 * Get save array of this world
 	 * @return SaveArray
 	 */
-	std::list<FVoxelChunkSaveStruct> GetSaveArray(bool bNetworkDirtyOnly = false) const;
+	std::list<FVoxelChunkSave> GetSaveArray() const;
 	/**
 	 * Load this world from save array
 	 * @param	SaveArray	Array to load from
+	 * @param	World		VoxelWorld
+	 * @param	bReset		Reset all chunks?
 	 */
-	void LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray) const;
+	void LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World, bool bReset);
 
 	std::pair<std::forward_list<TArray<FVoxelValueDiff>>, std::forward_list<TArray<FVoxelColorDiff>>> GetDiffArrays() const;
 	void LoadAndQueueUpdateFromDiffArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray, AVoxelWorld* World) const;

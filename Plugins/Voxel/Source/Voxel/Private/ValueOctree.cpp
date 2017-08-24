@@ -133,7 +133,7 @@ void ValueOctree::SetColor(FIntVector GlobalPosition, FColor Color)
 	}
 }
 
-void ValueOctree::AddChunksToArray(std::list<FVoxelChunkSaveStruct>& SaveArray)
+void ValueOctree::AddChunksToArray(std::list<FVoxelChunkSave>& SaveArray)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
@@ -142,7 +142,7 @@ void ValueOctree::AddChunksToArray(std::list<FVoxelChunkSaveStruct>& SaveArray)
 	{
 		if (IsLeaf())
 		{
-			FVoxelChunkSaveStruct* SaveStruct = new FVoxelChunkSaveStruct(Id, Position, Values, Colors);
+			FVoxelChunkSave* SaveStruct = new FVoxelChunkSave(Id, Position, Values, Colors);
 			SaveArray.push_back(*SaveStruct);
 		}
 		else
@@ -155,46 +155,61 @@ void ValueOctree::AddChunksToArray(std::list<FVoxelChunkSaveStruct>& SaveArray)
 	}
 }
 
-void ValueOctree::LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray)
+void ValueOctree::LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World)
 {
+	check(World);
 	check(!IsLeaf() == (Childs.Num() == 8));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
+
+	if (SaveArray.empty())
+	{
+		return;
+	}
 
 	if (IsLeaf())
 	{
 		if (Depth == 0)
 		{
-			bIsDirty = true;
-
 			if (SaveArray.front().Id == Id)
 			{
+				bIsDirty = true;
 				Values = SaveArray.front().Values;
 				Colors = SaveArray.front().Colors;
+				check(Values.Num() == 4096);
+				check(Colors.Num() == 4096);
 				SaveArray.pop_front();
+				World->QueueUpdate(Position);
+				World->QueueUpdate(Position - FIntVector(Width(), 0, 0));
+				World->QueueUpdate(Position - FIntVector(0, Width(), 0));
+				World->QueueUpdate(Position - FIntVector(Width(), Width(), 0));
+				World->QueueUpdate(Position - FIntVector(0, 0, Width()));
+				World->QueueUpdate(Position - FIntVector(Width(), 0, Width()));
+				World->QueueUpdate(Position - FIntVector(0, Width(), Width()));
+				World->QueueUpdate(Position - FIntVector(Width(), Width(), Width()));
 			}
 		}
 		else
 		{
-			uint32 Pow = IntPow9(Depth - 1);
+			uint32 Pow = IntPow9(Depth);
 			if (Id / Pow == SaveArray.front().Id / Pow)
 			{
 				bIsDirty = true;
 				CreateChilds();
 				for (auto Child : Childs)
 				{
-					Child->LoadFromArray(SaveArray);
+					Child->LoadAndQueueUpdateFromSave(SaveArray, World);
 				}
 			}
 		}
 	}
 	else
 	{
-		uint32 Pow = IntPow9(Depth - 1);
+		uint32 Pow = IntPow9(Depth);
 		if (Id / Pow == SaveArray.front().Id / Pow)
 		{
 			for (auto Child : Childs)
 			{
-				Child->LoadFromArray(SaveArray);
+				Child->LoadAndQueueUpdateFromSave(SaveArray, World);
 			}
 		}
 	}

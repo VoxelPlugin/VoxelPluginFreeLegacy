@@ -123,16 +123,23 @@ int VoxelData::Size() const
 	return 16 << Depth;
 }
 
-std::list<FVoxelChunkSaveStruct> VoxelData::GetSaveArray(bool) const
+std::list<FVoxelChunkSave> VoxelData::GetSaveArray() const
 {
-	std::list<FVoxelChunkSaveStruct> SaveArray;
+	std::list<FVoxelChunkSave> SaveArray;
 	MainOctree->AddChunksToArray(SaveArray);
 	return SaveArray;
 }
 
-void VoxelData::LoadFromArray(std::list<FVoxelChunkSaveStruct>& SaveArray) const
+void VoxelData::LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World, bool bReset)
 {
-	MainOctree->LoadFromArray(SaveArray);
+	check(World);
+	if (bReset)
+	{
+		MainOctree = MakeShareable(new ValueOctree(MainOctree->bMultiplayer, MainOctree->WorldGenerator, FIntVector::ZeroValue, Depth));
+		World->UpdateAll(false);
+	}
+	MainOctree->LoadAndQueueUpdateFromSave(SaveArray, World);
+	check(SaveArray.empty());
 }
 
 std::pair<std::forward_list<TArray<FVoxelValueDiff>>, std::forward_list<TArray<FVoxelColorDiff>>> VoxelData::GetDiffArrays() const
