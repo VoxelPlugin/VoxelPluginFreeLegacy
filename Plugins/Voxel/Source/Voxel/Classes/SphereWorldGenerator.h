@@ -15,8 +15,8 @@ class VOXEL_API USphereWorldGenerator : public UVoxelWorldGenerator
 	GENERATED_BODY()
 	
 public:
-	float GetDefaultValue(FIntVector Position);
-	FColor GetDefaultColor(FIntVector Position);
+	float GetDefaultValue(FIntVector Position) override;
+	FColor GetDefaultColor(FIntVector Position) override;
 
 	// Radius of the sphere
 	UPROPERTY(EditAnywhere)
