@@ -35,8 +35,8 @@ class VOXEL_API UFlatWorldGenerator : public UVoxelWorldGenerator
 	GENERATED_BODY()
 
 public:
-	float GetDefaultValue(FIntVector Position);
-	FColor GetDefaultColor(FIntVector Position);
+	float GetDefaultValue(FIntVector Position) override;
+	FColor GetDefaultColor(FIntVector Position) override;
 
 	// Height of the difference between full and empty
 	UPROPERTY(EditAnywhere)
