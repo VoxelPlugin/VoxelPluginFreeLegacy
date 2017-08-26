@@ -4,6 +4,8 @@
 
 Demo: https://www.youtube.com/watch?v=oLDlM8-SnoI
 
+Performance test: https://youtu.be/KD1MkJtnL_A
+
 ## Example project
 Download repo and launch .uproject
 
