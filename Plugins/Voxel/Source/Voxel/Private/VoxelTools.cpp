@@ -6,6 +6,7 @@
 #include "DrawDebugHelpers.h"
 #include "ValueOctree.h"
 #include "ChunkOctree.h"
+#include "MeshImporter.h"
 
 void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
 {
@@ -394,4 +395,12 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Nor
 	{
 		World->ApplyQueuedUpdates(bAsync);
 	}
+}
+
+void UVoxelTools::Import(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor)
+{
+	FVector Origin;
+	FVector BoxExtent;
+	Actor->GetActorBounds(false, Origin, BoxExtent);
+	ImportMesh(bAdd, Component, World, Origin - BoxExtent, Origin + BoxExtent);
 }

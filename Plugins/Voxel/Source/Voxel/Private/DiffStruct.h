@@ -66,11 +66,9 @@ struct VoxelValueDiffArray
 		Size++;
 	}
 
-	std::forward_list<TArray<FVoxelValueDiff>> GetPackets(const int MaxSize = 2048)
+	void AddPackets(std::forward_list<TArray<FVoxelValueDiff>>& List, const int MaxSize = 2048)
 	{
 		const int MaxLength = MaxSize / 3;
-
-		std::forward_list<TArray<FVoxelValueDiff>> ReturnList;
 
 		while (!Indexes.empty())
 		{
@@ -94,10 +92,8 @@ struct VoxelValueDiffArray
 				Size--;
 			}
 
-			ReturnList.push_front(DiffArray);
+			List.push_front(DiffArray);
 		}
-
-		return ReturnList;
 	}
 };
 
@@ -116,11 +112,9 @@ struct VoxelColorDiffArray
 		Size++;
 	}
 
-	std::forward_list<TArray<FVoxelColorDiff>> GetPackets(const int MaxSize = 2048)
+	void AddPackets(std::forward_list<TArray<FVoxelColorDiff>>& List, const int MaxSize = 2048)
 	{
 		const int MaxLength = MaxSize / 3;
-
-		std::forward_list<TArray<FVoxelColorDiff>> ReturnList;
 
 		while (!Indexes.empty())
 		{
@@ -144,9 +138,7 @@ struct VoxelColorDiffArray
 				Size--;
 			}
 
-			ReturnList.push_front(DiffArray);
+			List.push_front(DiffArray);
 		}
-
-		return ReturnList;
 	}
 };

@@ -142,12 +142,15 @@ void VoxelData::LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray
 	check(SaveArray.empty());
 }
 
-std::pair<std::forward_list<TArray<FVoxelValueDiff>>, std::forward_list<TArray<FVoxelColorDiff>>> VoxelData::GetDiffArrays() const
+void VoxelData::GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelColorDiff>>& OutColorDiffPacketsList) const
 {
 	VoxelValueDiffArray ValueDiffArray;
 	VoxelColorDiffArray ColorDiffArray;
+
 	MainOctree->AddChunksToDiffArrays(ValueDiffArray, ColorDiffArray);
-	return std::pair<std::forward_list<TArray<FVoxelValueDiff>>, std::forward_list<TArray<FVoxelColorDiff>>>(ValueDiffArray.GetPackets(), ColorDiffArray.GetPackets());
+
+	ValueDiffArray.AddPackets(OutValueDiffPacketsList);
+	ColorDiffArray.AddPackets(OutColorDiffPacketsList);
 }
 
 void VoxelData::LoadAndQueueUpdateFromDiffArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray, AVoxelWorld* World) const
