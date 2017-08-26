@@ -163,22 +163,26 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset, bool bAsync)
 
 void AVoxelWorld::Sync()
 {
-	auto DiffArrays = Data->GetDiffArrays();
-	while (!DiffArrays.first.empty() || !DiffArrays.second.empty())
+	std::forward_list<TArray<FVoxelValueDiff>> ValueDiffPacketsList;
+	std::forward_list<TArray<FVoxelColorDiff>> ColorDiffPacketsList;
+
+	Data->GetDiffArrays(ValueDiffPacketsList, ColorDiffPacketsList);
+	
+	while (!ValueDiffPacketsList.empty() || !ColorDiffPacketsList.empty())
 	{
 		TArray<FVoxelValueDiff> ValueDiffArray;
 		TArray<FVoxelColorDiff> ColorDiffArray;
 
-		if (!DiffArrays.first.empty())
+		if (!ValueDiffPacketsList.empty())
 		{
-			ValueDiffArray = DiffArrays.first.front();
-			DiffArrays.first.pop_front();
+			ValueDiffArray = ValueDiffPacketsList.front();
+			ValueDiffPacketsList.pop_front();
 		}
 
-		if (!DiffArrays.second.empty())
+		if (!ColorDiffPacketsList.empty())
 		{
-			ColorDiffArray = DiffArrays.second.front();
-			DiffArrays.second.pop_front();
+			ColorDiffArray = ColorDiffPacketsList.front();
+			ColorDiffPacketsList.pop_front();
 		}
 
 		MulticastLoadArray(ValueDiffArray, ColorDiffArray);

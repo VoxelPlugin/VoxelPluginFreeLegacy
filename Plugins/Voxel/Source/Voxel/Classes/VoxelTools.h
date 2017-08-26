@@ -63,7 +63,7 @@ public:
 	 * @param	World			Voxel world
 	 * @param	Position		Position in world space
 	 * @param	Normal			Normal in world space at hit point
-	 * @param	Radius			
+	 * @param	Radius
 	 * @param	Strength		Speed of modification
 	 * @param	bAdd			Add or remove?
 	 * @param	MaxDistance		Max distance to modify
@@ -92,4 +92,8 @@ public:
 	// Does not work
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
 		static void SmoothValue(AVoxelWorld* World, FVector Position, FVector Normal, float Radius, float Speed = 0.01f, float MaxDistance = 1000, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		static void Import(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor);
+
 };

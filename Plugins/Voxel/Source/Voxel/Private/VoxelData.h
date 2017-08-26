@@ -86,7 +86,7 @@ public:
 	 */
 	void LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World, bool bReset);
 
-	std::pair<std::forward_list<TArray<FVoxelValueDiff>>, std::forward_list<TArray<FVoxelColorDiff>>> GetDiffArrays() const;
+	void GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelColorDiff>>& OutColorDiffPacketsList) const;
 	void LoadAndQueueUpdateFromDiffArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray, AVoxelWorld* World) const;
 
 private:
