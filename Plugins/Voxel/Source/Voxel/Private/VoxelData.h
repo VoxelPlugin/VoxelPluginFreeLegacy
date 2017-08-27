@@ -8,7 +8,7 @@
 #include <list>
 
 class ValueOctree;
-class UVoxelWorldGenerator;
+class IVoxelWorldGenerator;
 
 /**
  * Class that handle voxel data. Mainly an interface to ValueOctree
@@ -21,7 +21,7 @@ public:
 	 * @param	Depth			Depth of this world; Width = 16 * 2^Depth
 	 * @param	WorldGenerator	Generator for this world
 	 */
-	VoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator, bool bMultiplayer);
+	VoxelData(int Depth, TScriptInterface<IVoxelWorldGenerator>& WorldGenerator, bool bMultiplayer);
 
 	// Width = 16 * 2^Depth
 	const int Depth;

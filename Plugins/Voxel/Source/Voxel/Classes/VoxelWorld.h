@@ -203,7 +203,7 @@ private:
 
 	// Generator for this world
 	UPROPERTY(EditAnywhere, Category = Voxel)
-		TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
+		UClass* WorldGenerator;
 
 	// Camera to set LODs
 	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
@@ -222,6 +222,8 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 		void MulticastLoadArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray);
 
+	UPROPERTY()
+		TScriptInterface<IVoxelWorldGenerator> WorldGeneratorInterface;
 
 	TSharedPtr<ChunkOctree> MainOctree;
 	TSharedPtr<VoxelData> Data;
@@ -231,7 +233,4 @@ private:
 	float TimeSinceSync;
 
 	TSet<TWeakPtr<ChunkOctree>> QueuedChunks;
-
-	UPROPERTY()
-		UVoxelWorldGenerator* WorldGeneratorInstance;
 };

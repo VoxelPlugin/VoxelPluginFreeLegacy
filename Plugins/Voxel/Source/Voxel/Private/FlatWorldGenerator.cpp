@@ -3,12 +3,12 @@
 #include "VoxelPrivatePCH.h"
 #include "FlatWorldGenerator.h"
 
-float UFlatWorldGenerator::GetDefaultValue(FIntVector Position)
+float UFlatWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
 	return (Position.Z == Height) ? 0 : ((Position.Z > Height) ? 100 : -100);
 }
 
-FColor UFlatWorldGenerator::GetDefaultColor(FIntVector Position)
+FColor UFlatWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
 {
 	for (auto Layer : Layers)
 	{

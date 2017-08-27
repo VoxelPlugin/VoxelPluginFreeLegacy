@@ -3,14 +3,14 @@
 #include "VoxelPrivatePCH.h"
 #include "SphereWorldGenerator.h"
 
-float USphereWorldGenerator::GetDefaultValue(FIntVector Position)
+float USphereWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
 	float Distance = static_cast<FVector>(Position).Size();
 
 	return Distance * (InverseOutsideInside ? 1 : -1);
 }
 
-FColor USphereWorldGenerator::GetDefaultColor(FIntVector Position)
+FColor USphereWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
 {
 	float Distance = static_cast<FVector>(Position).Size();
 	float Alpha = (Radius * 0.9f - Distance) / Radius * 0.9f;

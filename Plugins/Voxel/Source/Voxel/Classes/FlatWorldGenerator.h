@@ -30,13 +30,18 @@ public:
  *
  */
 UCLASS()
-class VOXEL_API UFlatWorldGenerator : public UVoxelWorldGenerator
+class VOXEL_API UFlatWorldGenerator : public UObject, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
-	float GetDefaultValue(FIntVector Position) override;
-	FColor GetDefaultColor(FIntVector Position) override;
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		float GetDefaultValue(FIntVector Position);
+	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		FColor GetDefaultColor(FIntVector Position);
+	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
 	// Height of the difference between full and empty
 	UPROPERTY(EditAnywhere)

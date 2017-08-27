@@ -6,6 +6,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Engine.h"
 #include <forward_list>
+#include "FlatWorldGenerator.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateAll"), STAT_UpdateAll, STATGROUP_Voxel);
@@ -27,7 +28,7 @@ PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), b
 
 	SetActorScale3D(100 * FVector::OneVector);
 
-	WorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UVoxelWorldGenerator::StaticClass());
+	WorldGenerator = UFlatWorldGenerator::StaticClass();
 
 	bReplicates = true;
 }
@@ -42,13 +43,18 @@ void AVoxelWorld::BeginPlay()
 	ThreadPool = FQueuedThreadPool::Allocate();
 	ThreadPool->Create(8);
 
-	WorldGeneratorInstance = WorldGenerator.GetDefaultObject();
-	if (WorldGeneratorInstance == nullptr)
+	UObject* WorldGeneratorObject = WorldGenerator->GetDefaultObject();
+
+	if (!WorldGeneratorObject->GetClass()->ImplementsInterface(UVoxelWorldGenerator::StaticClass()))
 	{
-		NewObject<UVoxelWorldGenerator>(WorldGeneratorInstance);
+		UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
+		NewObject<UFlatWorldGenerator>(WorldGeneratorObject);
 	}
 
-	Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInstance, bMultiplayer));
+	WorldGeneratorInterface.SetInterface(Cast<IInterface>(WorldGeneratorObject));
+	WorldGeneratorInterface.SetObject(WorldGeneratorObject);
+
+	Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInterface, bMultiplayer));
 	MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
 
 	UpdateCameraPosition(FVector::ZeroVector);
@@ -167,7 +173,7 @@ void AVoxelWorld::Sync()
 	std::forward_list<TArray<FVoxelColorDiff>> ColorDiffPacketsList;
 
 	Data->GetDiffArrays(ValueDiffPacketsList, ColorDiffPacketsList);
-	
+
 	while (!ValueDiffPacketsList.empty() || !ColorDiffPacketsList.empty())
 	{
 		TArray<FVoxelValueDiff> ValueDiffArray;

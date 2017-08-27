@@ -9,10 +9,15 @@
 /**
  *
  */
-UCLASS(Blueprintable)
-class VOXEL_API UVoxelWorldGenerator : public UObject
+UINTERFACE(BlueprintType)
+class VOXEL_API UVoxelWorldGenerator : public UInterface
 {
-	GENERATED_BODY()
+	GENERATED_UINTERFACE_BODY()
+};
+
+class VOXEL_API IVoxelWorldGenerator
+{
+	GENERATED_IINTERFACE_BODY()
 
 public:
 	/**
@@ -20,12 +25,14 @@ public:
 	 * @param	Position		Position in voxel space
 	 * @return	Value at position: positive if empty, negative if filled
 	 */
-	virtual float GetDefaultValue(FIntVector Position);
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Voxel")
+		float GetDefaultValue(FIntVector Position);
 
 	/**
 	* Get default color at position
 	* @param	Position		Position in voxel space
 	* @return	Color at position
 	*/
-	virtual FColor GetDefaultColor(FIntVector Position);
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Voxel")
+		FColor GetDefaultColor(FIntVector Position);
 };
