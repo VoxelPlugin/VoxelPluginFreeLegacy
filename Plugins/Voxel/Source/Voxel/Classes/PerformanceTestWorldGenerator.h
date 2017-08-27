@@ -11,7 +11,7 @@
 /**
 *
 */
-UCLASS()
+UCLASS(Blueprintable)
 class VOXEL_API UPerformanceTestWorldGenerator : public UObject, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()

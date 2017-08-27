@@ -1,21 +1,22 @@
-// Copyright 2017 Phyronnaz
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 #include "VoxelWorldGenerator.h"
-#include "Landscape.h"
-#include "TerrainImporterWorldGenerator.generated.h"
+#include "CirclesWorldGenerator.generated.h"
 
-/**
- * Not working
- */
 UCLASS(Blueprintable)
-class VOXEL_API ATerrainImporterWorldGenerator : public AActor, public IVoxelWorldGenerator
+class PROCEDURAL_API UCirclesWorldGenerator : public UObject, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
+	UCirclesWorldGenerator() : Scale(10, 10), TopColor(230, 255, 0, 255), MiddleColor(255, 0, 26, 255), BottomColor(13, 0, 255, 255)
+	{
+	};
+
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		float GetDefaultValue(FIntVector Position);
 	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
@@ -25,32 +26,14 @@ public:
 	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
 	UPROPERTY(EditAnywhere)
-		ALandscape* Landscape;
+		FVector2D Scale;
 
 	UPROPERTY(EditAnywhere)
-		float Bottom;
+		FColor TopColor;
 
 	UPROPERTY(EditAnywhere)
-		float Top;
+		FColor MiddleColor;
 
 	UPROPERTY(EditAnywhere)
-		FVector2D Lower;
-
-	UPROPERTY(EditAnywhere)
-		FVector2D Upper;
-
-	UPROPERTY(EditAnywhere)
-		float InValue;
-
-	UPROPERTY(EditAnywhere)
-		float OutValue;
-
-private:
-	bool bCreated = false;
-	TArray<float> Values;
-	uint32 SizeX;
-	uint32 SizeY;
-
-	void Create();
-
+		FColor BottomColor;
 };

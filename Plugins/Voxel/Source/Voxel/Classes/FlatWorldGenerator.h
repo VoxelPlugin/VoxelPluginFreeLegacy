@@ -29,7 +29,7 @@ public:
 /**
  *
  */
-UCLASS()
+UCLASS(Blueprintable)
 class VOXEL_API UFlatWorldGenerator : public UObject, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
