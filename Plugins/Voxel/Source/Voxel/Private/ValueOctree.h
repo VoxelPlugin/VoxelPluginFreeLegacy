@@ -78,9 +78,19 @@ public:
 	 * @param	SaveArray	Array to load chunks from
 	 */
 	void LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World);
-
+	
+	/**
+	 * Add values that have changed since last network sync to diff arrays
+	 * @param	ValuesDiffs		Values diff array; sorted by increasing Id
+	 * @param	ColorsDiffs		Colors diff array; sorted by increasing Id
+	 */
 	void AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelColorDiffArray& ColorsDiffs);
-
+	/**
+	 * Load values that have changed since last network sync from diff arrays
+	 * @param	ValuesDiffs		Values diff array; top is lowest Id
+	 * @param	ColorsDiffs		Colors diff array; top is lowest Id
+	 * @param	World			Voxel world
+	 */
 	void LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelColorDiff>& ColorsDiffs, AVoxelWorld* World);
 
 	/**
@@ -89,6 +99,10 @@ public:
 	*/
 	ValueOctree* GetChild(FIntVector GlobalPosition);
 
+	/**
+	 * Queue update of dirty chunks
+	 * @param	World	Voxel world
+	 */
 	void QueueUpdateOfDirtyChunks(AVoxelWorld* World);
 
 private:
