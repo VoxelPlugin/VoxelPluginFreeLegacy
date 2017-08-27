@@ -64,17 +64,10 @@ public:
 	/**
 	 * Add
 	 * @param	Position	Position in voxel space
-	 * @param	Strength	Amount to add
+	 * @param	Value		Value to add
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Add(FIntVector Position, int Strength) const;
-	/**
-	 * Remove
-	 * @param	Position	Position in voxel space
-	 * @param	Strength	Amount to remove
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Remove(FIntVector Position, int Strength) const;
+		void Add(FIntVector Position, float Value) const;
 
 	/**
 	 * Update chunk

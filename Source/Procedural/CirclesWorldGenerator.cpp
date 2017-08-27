@@ -4,7 +4,7 @@
 
 float UCirclesWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
-	return (FMath::Sin(Position.X / Scale.X) + FMath::Cos(Position.Y / Scale.Y)) + Position.Z > 0 ? 10 : -10;
+	return (FMath::Sin(Position.X / Scale.X) + FMath::Cos(Position.Y / Scale.Y)) + Position.Z > 0 ? MaxValue : MinValue;
 }
 
 FColor UCirclesWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
