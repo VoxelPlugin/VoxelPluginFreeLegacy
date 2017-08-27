@@ -36,4 +36,5 @@ Create a subclass of UObject and implement IVoxelWorldGenerator. You can look at
 [CirclesWorldGenerator.cpp](https://github.com/Phyronnaz/MarchingCubes/blob/master/Source/Procedural/CirclesWorldGenerator.cpp)
 for an example.
 
-![alt text](https://raw.githubusercontent.com/Phyronnaz/MarchingCubes/6cbf169a242dc769330a19b985601c40b6d6a2af/Screenshot.png)
+![alt text](https://raw.githubusercontent.com/Phyronnaz/MarchingCubes/master/Screenshot2.png)
+![alt text](https://raw.githubusercontent.com/Phyronnaz/MarchingCubes/master/Screenshot.png)
