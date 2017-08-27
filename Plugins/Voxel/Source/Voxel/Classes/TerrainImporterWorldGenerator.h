@@ -4,15 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "VoxelWorldGenerator.h"
-#include "RenderCore.h"
-#include "PerformanceTestWorldGenerator.generated.h"
-
+#include "Landscape.h"
+#include "TerrainImporterWorldGenerator.generated.h"
 
 /**
-*
-*/
+ *
+ */
 UCLASS()
-class VOXEL_API UPerformanceTestWorldGenerator : public UObject, public IVoxelWorldGenerator
+class VOXEL_API ATerrainImporterWorldGenerator : public AActor, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
@@ -25,11 +24,33 @@ public:
 		FColor GetDefaultColor(FIntVector Position);
 	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
-	// Radius of the spheres
 	UPROPERTY(EditAnywhere)
-		int Radius = 5;
+		ALandscape* Landscape;
 
-	// Speed of the change
 	UPROPERTY(EditAnywhere)
-		float Speed = 0.01f;
+		float Bottom;
+
+	UPROPERTY(EditAnywhere)
+		float Top;
+
+	UPROPERTY(EditAnywhere)
+		FVector2D Lower;
+
+	UPROPERTY(EditAnywhere)
+		FVector2D Upper;
+
+	UPROPERTY(EditAnywhere)
+		float InValue;
+
+	UPROPERTY(EditAnywhere)
+		float OutValue;
+
+private:
+	bool bCreated = false;
+	TArray<float> Values;
+	uint32 SizeX;
+	uint32 SizeY;
+
+	void Create();
+
 };

@@ -24,7 +24,8 @@ namespace UnrealBuildTool.Rules
                     "Core",
                     "CoreUObject",
                     "Engine",
-                    "ProceduralMeshComponent"
+                    "ProceduralMeshComponent",
+                    "Landscape"
 				}
 				);
 

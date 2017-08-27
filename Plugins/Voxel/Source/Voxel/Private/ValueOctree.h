@@ -6,7 +6,7 @@
 #include <forward_list>
 
 class VoxelData;
-class UVoxelWorldGenerator;
+class IVoxelWorldGenerator;
 struct FVoxelChunkSave;
 
 /**
@@ -21,17 +21,16 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	ValueOctree(bool bMultiplayer, UVoxelWorldGenerator* WorldGenerator, FIntVector Position, int Depth, int Id = -1) : Octree(Position, Depth, Id),
+	ValueOctree(bool bMultiplayer, TScriptInterface<IVoxelWorldGenerator>& WorldGenerator, FIntVector Position, int Depth, int Id = -1) : Octree(Position, Depth, Id),
 		bMultiplayer(bMultiplayer), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false)
 	{
-		check(WorldGenerator);
 	};
 
 	// Is the game multiplayer?
 	const bool bMultiplayer;
 
 	// Generator for this world
-	UVoxelWorldGenerator* const WorldGenerator;
+	TScriptInterface<IVoxelWorldGenerator> WorldGenerator;
 
 	/**
 	 * Does this chunk have been modified?

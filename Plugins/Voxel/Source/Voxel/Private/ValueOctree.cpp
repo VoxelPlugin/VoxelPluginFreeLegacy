@@ -25,7 +25,14 @@ float ValueOctree::GetValue(FIntVector GlobalPosition)
 	}
 	else
 	{
-		return WorldGenerator->GetDefaultValue(GlobalPosition);
+		if (WorldGenerator.GetObject()->IsValidLowLevel())
+		{
+			return IVoxelWorldGenerator::Execute_GetDefaultValue(WorldGenerator.GetObject(), GlobalPosition);
+		}
+		else
+		{
+			return 0;
+		}
 	}
 }
 
@@ -49,7 +56,14 @@ FColor ValueOctree::GetColor(FIntVector GlobalPosition)
 	}
 	else
 	{
-		return WorldGenerator->GetDefaultColor(GlobalPosition);
+		if (WorldGenerator.GetObject()->IsValidLowLevel())
+		{
+			return IVoxelWorldGenerator::Execute_GetDefaultColor(WorldGenerator.GetObject(), GlobalPosition);
+		}
+		else
+		{
+			return FColor::Black;
+		}
 	}
 }
 

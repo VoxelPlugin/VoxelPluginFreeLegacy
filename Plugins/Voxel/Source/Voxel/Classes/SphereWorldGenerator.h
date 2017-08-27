@@ -7,16 +7,21 @@
 #include "SphereWorldGenerator.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
-class VOXEL_API USphereWorldGenerator : public UVoxelWorldGenerator
+class VOXEL_API USphereWorldGenerator : public UObject, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
-	
+
 public:
-	float GetDefaultValue(FIntVector Position) override;
-	FColor GetDefaultColor(FIntVector Position) override;
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		float GetDefaultValue(FIntVector Position);
+	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		FColor GetDefaultColor(FIntVector Position);
+	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
 	// Radius of the sphere
 	UPROPERTY(EditAnywhere)

@@ -4,7 +4,7 @@
 #include "VoxelData.h"
 #include "ValueOctree.h"
 
-VoxelData::VoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator, bool bMultiplayer) : Depth(Depth)
+VoxelData::VoxelData(int Depth, TScriptInterface<IVoxelWorldGenerator>& WorldGenerator, bool bMultiplayer) : Depth(Depth)
 {
 	MainOctree = MakeShareable(new ValueOctree(bMultiplayer, WorldGenerator, FIntVector::ZeroValue, Depth));
 }
