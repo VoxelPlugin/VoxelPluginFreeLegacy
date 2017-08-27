@@ -202,25 +202,12 @@ FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
 	return FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
 }
 
-void AVoxelWorld::Add(FIntVector Position, int Strength) const
+void AVoxelWorld::Add(FIntVector Position, float Value) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_Add);
 	if (IsInWorld(Position))
 	{
-		Data->SetValue(Position, Data->GetValue(Position) - Strength);
-	}
-	else
-	{
-		UE_LOG(VoxelLog, Error, TEXT("Not in world"));
-	}
-}
-
-void AVoxelWorld::Remove(FIntVector Position, int Strength) const
-{
-	SCOPE_CYCLE_COUNTER(STAT_Remove);
-	if (IsInWorld(Position))
-	{
-		Data->SetValue(Position, Data->GetValue(Position) + Strength);
+		Data->SetValue(Position, Data->GetValue(Position) + Value);
 	}
 	else
 	{

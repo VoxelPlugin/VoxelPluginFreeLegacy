@@ -13,7 +13,7 @@ class PROCEDURAL_API UCirclesWorldGenerator : public UObject, public IVoxelWorld
 	GENERATED_BODY()
 
 public:
-	UCirclesWorldGenerator() : Scale(10, 10), TopColor(230, 255, 0, 255), MiddleColor(255, 0, 26, 255), BottomColor(13, 0, 255, 255)
+	UCirclesWorldGenerator() : Scale(10, 10), TopColor(230, 255, 0, 255), MiddleColor(255, 0, 26, 255), BottomColor(13, 0, 255, 255), MaxValue(1), MinValue(-1)
 	{
 	};
 
@@ -36,4 +36,9 @@ public:
 
 	UPROPERTY(EditAnywhere)
 		FColor BottomColor;
+
+	UPROPERTY(EditAnywhere)
+		float MaxValue;
+	UPROPERTY(EditAnywhere)
+		float MinValue;
 };
