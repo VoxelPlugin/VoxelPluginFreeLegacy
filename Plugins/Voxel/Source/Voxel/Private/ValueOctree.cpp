@@ -295,8 +295,10 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValue
 
 				World->QueueUpdate(LocalToGlobal(FIntVector(X, Y, Z)));
 
-				DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)LocalToGlobal(FIntVector(X, Y, Z))), 5, FColor::Magenta, false, 1);
-
+				if (World->bDebugMultiplayer)
+				{
+					DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)LocalToGlobal(FIntVector(X, Y, Z))), 5, FColor::Magenta, false, 1);
+				}
 				ValuesDiffs.pop_front();
 			}
 			// Colors
@@ -319,7 +321,10 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValue
 
 				World->QueueUpdate(LocalToGlobal(FIntVector(X, Y, Z)));
 
-				DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)LocalToGlobal(FIntVector(X, Y, Z))), 5, FColor::Magenta, false, 1);
+				if (World->bDebugMultiplayer)
+				{
+					DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)LocalToGlobal(FIntVector(X, Y, Z))), 5, FColor::Magenta, false, 1);
+				}
 
 				ColorsDiffs.pop_front();
 			}

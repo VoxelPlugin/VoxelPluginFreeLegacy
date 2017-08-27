@@ -326,8 +326,11 @@ void AVoxelWorld::MulticastLoadArray_Implementation(const TArray<FVoxelValueDiff
 {
 	if (!(GetNetMode() < ENetMode::NM_Client))
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d values"), ValueDiffArray.Num()));
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d colors"), ColorDiffArray.Num()));
+		if (bDebugMultiplayer)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d values"), ValueDiffArray.Num()));
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d colors"), ColorDiffArray.Num()));
+		}
 
 		Data->LoadAndQueueUpdateFromDiffArray(ValueDiffArray, ColorDiffArray, this);
 		ApplyQueuedUpdates(false);

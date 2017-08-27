@@ -52,6 +52,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		UMaterialInterface* VoxelMaterial;
 
+	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
+		bool bDebugMultiplayer;
+
 
 	/**
 	 * Convert position from world space to voxel space
