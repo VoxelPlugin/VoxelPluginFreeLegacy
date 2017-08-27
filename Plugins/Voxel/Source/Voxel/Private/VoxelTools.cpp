@@ -397,10 +397,17 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Nor
 	}
 }
 
-void UVoxelTools::Import(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor)
+void UVoxelTools::ImportMesh(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor)
 {
-	FVector Origin;
-	FVector BoxExtent;
-	Actor->GetActorBounds(false, Origin, BoxExtent);
-	ImportMesh(bAdd, Component, World, Origin - BoxExtent, Origin + BoxExtent);
+	if (Actor == nullptr)
+	{
+		UE_LOG(VoxelLog, Error, TEXT("ImportMesh: Actor is Invalid"));
+	}
+	else
+	{
+		FVector Origin;
+		FVector BoxExtent;
+		Actor->GetActorBounds(false, Origin, BoxExtent);
+		MeshImporter::ImportMesh(bAdd, Component, World, Origin - BoxExtent, Origin + BoxExtent);
+	}
 }
