@@ -35,6 +35,10 @@ class VOXEL_API UFlatWorldGenerator : public UObject, public IVoxelWorldGenerato
 	GENERATED_BODY()
 
 public:
+	UFlatWorldGenerator() : Height(0), DefaultColor(FColor::White), MaxValue(1), MinValue(-1)
+	{
+	};
+
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		float GetDefaultValue(FIntVector Position);
 	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
@@ -55,4 +59,8 @@ public:
 	UPROPERTY(EditAnywhere)
 		TArray<FFlatWorldStruct> Layers;
 
+	UPROPERTY(EditAnywhere)
+		float MaxValue;
+	UPROPERTY(EditAnywhere)
+		float MinValue;
 };
