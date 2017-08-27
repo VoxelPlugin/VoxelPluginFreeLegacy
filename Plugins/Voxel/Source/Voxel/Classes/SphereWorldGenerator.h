@@ -9,7 +9,7 @@
 /**
  *
  */
-UCLASS()
+UCLASS(Blueprintable)
 class VOXEL_API USphereWorldGenerator : public UObject, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
