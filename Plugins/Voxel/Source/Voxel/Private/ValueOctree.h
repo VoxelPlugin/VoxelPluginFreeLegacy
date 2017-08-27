@@ -89,6 +89,8 @@ public:
 	*/
 	ValueOctree* GetChild(FIntVector GlobalPosition);
 
+	void QueueUpdateOfDirtyChunks(AVoxelWorld* World);
+
 private:
 	/*
 	Childs of this octree in the following order:

@@ -135,8 +135,9 @@ void VoxelData::LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray
 	check(World);
 	if (bReset)
 	{
+		MainOctree->QueueUpdateOfDirtyChunks(World);
 		MainOctree = MakeShareable(new ValueOctree(MainOctree->bMultiplayer, MainOctree->WorldGenerator, FIntVector::ZeroValue, Depth));
-		World->UpdateAll(false);
+		World->ApplyQueuedUpdates(false);
 	}
 	MainOctree->LoadAndQueueUpdateFromSave(SaveArray, World);
 	check(SaveArray.empty());
