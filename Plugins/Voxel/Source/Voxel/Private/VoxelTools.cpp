@@ -207,7 +207,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 				{
 					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 				}
-				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic))
+				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelChunk::StaticClass()))
 				{
 					if (bDebugPoints)
 					{
@@ -280,7 +280,7 @@ void UVoxelTools::SetColorProjection(AVoxelWorld * World, FVector Position, FVec
 				DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 			}
 
-			if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic))
+			if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelChunk::StaticClass()))
 			{
 				if (bDebugPoints)
 				{
