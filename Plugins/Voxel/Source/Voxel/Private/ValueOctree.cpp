@@ -400,3 +400,31 @@ ValueOctree* ValueOctree::GetChild(FIntVector GlobalPosition)
 	// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
 	return Childs[(GlobalPosition.X >= Position.X ? 1 : 0) + (GlobalPosition.Y >= Position.Y ? 2 : 0) + (GlobalPosition.Z >= Position.Z ? 4 : 0)];
 }
+
+void ValueOctree::QueueUpdateOfDirtyChunks(AVoxelWorld* World)
+{
+	check(World);
+	check(!(IsDirty() && IsLeaf() && Depth != 0));
+
+	if (IsDirty())
+	{
+		if (IsLeaf())
+		{
+			World->QueueUpdate(Position);
+			World->QueueUpdate(Position - FIntVector(Width(), 0, 0));
+			World->QueueUpdate(Position - FIntVector(0, Width(), 0));
+			World->QueueUpdate(Position - FIntVector(Width(), Width(), 0));
+			World->QueueUpdate(Position - FIntVector(0, 0, Width()));
+			World->QueueUpdate(Position - FIntVector(Width(), 0, Width()));
+			World->QueueUpdate(Position - FIntVector(0, Width(), Width()));
+			World->QueueUpdate(Position - FIntVector(Width(), Width(), Width()));
+		}
+		else
+		{
+			for (auto Child : Childs)
+			{
+				Child->QueueUpdateOfDirtyChunks(World);
+			}
+		}
+	}
+}
