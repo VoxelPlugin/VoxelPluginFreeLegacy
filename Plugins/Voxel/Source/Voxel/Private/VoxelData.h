@@ -86,7 +86,18 @@ public:
 	 */
 	void LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World, bool bReset);
 
+	/**
+	 * Get sliced diff arrays to allow network transmission
+	 * @param	OutValueDiffPacketsList		Each packet is sorted by Id
+	 * @param	OutColorDiffPacketsList		Each packet is sorted by Id
+	 */
 	void GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelColorDiff>>& OutColorDiffPacketsList) const;
+	/**
+	 * Load values and colors from diff arrays, and queue update of chunks that have changed
+	 * @param	ValueDiffArray	First element has lowest Id
+	 * @param	ColorDiffArray	First element has lowest Id
+	 * @param	World			Voxel world
+	 */
 	void LoadAndQueueUpdateFromDiffArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray, AVoxelWorld* World) const;
 
 private:

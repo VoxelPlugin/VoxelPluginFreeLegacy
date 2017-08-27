@@ -210,20 +210,25 @@ private:
 
 	/**
 	 * Load server world
-	 * @param	Array	Array to load from
+	 * @param	ValueDiffArray	Values diff array
+	 * @param	ColorDiffArray	Colors diff array
 	 */
 	UFUNCTION(NetMulticast, Reliable)
 		void MulticastLoadArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray);
 
+	// Instanced world generator
 	UPROPERTY()
 		TScriptInterface<IVoxelWorldGenerator> WorldGeneratorInterface;
 
 	TSharedPtr<ChunkOctree> MainOctree;
 	TSharedPtr<VoxelData> Data;
 
+	// Is VoxelWorld created? used for property deactivation
 	bool bNotCreated;
 
+	// Elapsed time since last sync
 	float TimeSinceSync;
 
+	// Chunks waiting for update
 	TSet<TWeakPtr<ChunkOctree>> QueuedChunks;
 };
