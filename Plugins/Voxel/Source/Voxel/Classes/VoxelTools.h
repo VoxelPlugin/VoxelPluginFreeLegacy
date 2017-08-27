@@ -94,6 +94,6 @@ public:
 		static void SmoothValue(AVoxelWorld* World, FVector Position, FVector Normal, float Radius, float Speed = 0.01f, float MaxDistance = 1000, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		static void Import(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor);
+		static void ImportMesh(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor);
 
 };
