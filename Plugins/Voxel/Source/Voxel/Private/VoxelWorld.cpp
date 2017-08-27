@@ -48,7 +48,7 @@ void AVoxelWorld::BeginPlay()
 	if (!WorldGeneratorObject->GetClass()->ImplementsInterface(UVoxelWorldGenerator::StaticClass()))
 	{
 		UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
-		NewObject<UFlatWorldGenerator>(WorldGeneratorObject);
+		WorldGeneratorObject = UFlatWorldGenerator::StaticClass()->GetDefaultObject();
 	}
 
 	WorldGeneratorInterface.SetInterface(Cast<IInterface>(WorldGeneratorObject));
