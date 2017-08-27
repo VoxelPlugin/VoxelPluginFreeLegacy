@@ -7,14 +7,22 @@
 
 class AVoxelWorld;
 
+UENUM(BlueprintType)
+enum class EBlueprintSuccess : uint8
+{
+	Sucess,
+	Failed
+};
+
 /**
- *
+ * Blueprint tools for voxels
  */
 UCLASS()
 class VOXEL_API UVoxelTools : public UObject
 {
 	GENERATED_BODY()
 public:
+
 	/**
 	 * Set value to positive or negative in a sphere
 	 * @param	World			Voxel world
@@ -66,7 +74,7 @@ public:
 	 * Add or remove continuously
 	 * @param	World			Voxel world
 	 * @param	Position		Position in world space
-	 * @param	Direction		Direction of the projection in world space 
+	 * @param	Direction		Direction of the projection in world space
 	 * @param	Radius			Radius
 	 * @param	Stength			Speed of modification
 	 * @param	bAdd			Add or remove?
@@ -84,7 +92,7 @@ public:
 	 * Set color on surface
 	 * @param	World			Voxel world
 	 * @param	Position		Position in world space
-	 * @param	Direction		Direction of the projection in world space 
+	 * @param	Direction		Direction of the projection in world space
 	 * @param	Radius			Radius
 	 * @param	Color			Color to set
 	 * @param	FadeDistance	Size in world space of external band where color is interpolated with existing one
@@ -122,4 +130,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		static void ImportMesh(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor);
 
+	/**
+	 * Get Voxel World from mouse world position and direction given by GetMouseWorldPositionAndDirection
+	 * @param	WorldPosition		Mouse world position
+	 * @param	WorldDirection		Mouse world direction
+	 * @param	MaxDistance			Raycast distance limit
+	 * @param	PlayerController	To get world
+	 * @return	World				Voxel world
+	 * @return	Position			Position in world space of the hit
+	 * @return	Normal				Normal of the hit (given by the mesh)
+	 * @return	CameraDirection		Direction of the raycast (useful for smooth)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel", Meta = (ExpandEnumAsExecs = "Branches"))
+		static void GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches);
+
+	/**
+	 * Get mouse world position and direction
+	 * @param	PlayerController	Player owning the mouse
+	 * @return	WorldPosition		World position of the mouse
+	 * @return	WorldDirection		World direction the mouse is facing
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel", Meta = (ExpandEnumAsExecs = "Branches"))
+		static void GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches);
 };
