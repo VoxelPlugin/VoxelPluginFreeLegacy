@@ -7,6 +7,9 @@
 #include "ValueOctree.h"
 #include "ChunkOctree.h"
 #include "MeshImporter.h"
+#include "GameFramework/HUD.h"
+#include "Engine/LocalPlayer.h"
+#include "Kismet/GameplayStatics.h"
 
 void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync, float InsideValue, float OutsideValue)
 {
@@ -485,5 +488,73 @@ void UVoxelTools::ImportMesh(bool bAdd, AVoxelWorld* World, UPrimitiveComponent*
 		FVector BoxExtent;
 		Actor->GetActorBounds(false, Origin, BoxExtent);
 		MeshImporter::ImportMesh(bAdd, Component, World, Origin - BoxExtent, Origin + BoxExtent);
+	}
+}
+
+void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches)
+{
+	FHitResult HitResult;
+	if (PlayerController->GetWorld()->LineTraceSingleByChannel(HitResult, WorldPosition, WorldPosition + WorldDirection * MaxDistance, ECC_WorldDynamic))
+	{
+		if (HitResult.Actor->IsA(AVoxelChunk::StaticClass()))
+		{
+			World = Cast<AVoxelWorld>(HitResult.Actor->GetAttachParentActor());
+			if (World)
+			{
+				Position = HitResult.ImpactPoint;
+				Normal = HitResult.ImpactNormal;
+				CameraDirection = (HitResult.TraceEnd - HitResult.TraceStart).GetSafeNormal();
+				Branches = EBlueprintSuccess::Sucess;
+			}
+			else
+			{
+				Branches = EBlueprintSuccess::Failed;
+			}
+		}
+		else
+		{
+			Branches = EBlueprintSuccess::Failed;
+		}
+	}
+	else
+	{
+		Branches = EBlueprintSuccess::Failed;
+	}
+}
+
+void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches)
+{
+	ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(PlayerController->Player);
+
+	if (PlayerController->GetLocalPlayer() && PlayerController->GetLocalPlayer()->ViewportClient)
+	{
+		FVector2D MousePosition;
+		if (PlayerController->GetLocalPlayer()->ViewportClient->GetMousePosition(MousePosition))
+		{
+			// Early out if we clicked on a HUD hitbox
+			if (PlayerController->GetHUD() != NULL && PlayerController->GetHUD()->GetHitBoxAtCoordinates(MousePosition, true))
+			{
+				Branches = EBlueprintSuccess::Failed;
+			}
+			else
+			{
+				if (UGameplayStatics::DeprojectScreenToWorld(PlayerController, MousePosition, WorldPosition, WorldDirection) == true)
+				{
+					Branches = EBlueprintSuccess::Sucess;
+				}
+				else
+				{
+					Branches = EBlueprintSuccess::Failed;
+				}
+			}
+		}
+		else
+		{
+			Branches = EBlueprintSuccess::Failed;
+		}
+	}
+	else
+	{
+		Branches = EBlueprintSuccess::Failed;
 	}
 }
