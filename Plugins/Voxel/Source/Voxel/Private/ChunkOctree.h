@@ -19,6 +19,10 @@ public:
 	 * Unload VoxelChunk if created and recursively delete childs
 	 */
 	void Delete();
+	/**
+	 * No deletion delay
+	 */
+	void ImmediateDelete();
 
 	/**
 	 * Create/Update the octree for the new position

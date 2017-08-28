@@ -50,6 +50,11 @@ public:
 	 */
 	void Unload();
 
+	/**
+	* Delete Task and Destroy this
+	*/
+	void Delete();
+
 	/*
 	 * Get the depth of this chunk
 	 * @return Depth
@@ -87,6 +92,9 @@ protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;
 	void Tick(float DeltaTime) override;
+#if WITH_EDITOR
+	bool ShouldTickIfViewportsOnly() const override;
+#endif
 
 private:
 	UPROPERTY(EditAnywhere)
@@ -129,11 +137,6 @@ private:
 	 * @return	Pointer to chunk if found, nullptr else
 	 */
 	AVoxelChunk* GetChunk(TransitionDirection Direction) const;
-
-	/**
-	 * delete Task and Destroy this
-	 */
-	void Delete();
 
 	/**
 	 * Set PrimaryMesh section to Task section

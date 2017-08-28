@@ -8,7 +8,6 @@
 #include "VoxelWorldGenerator.h"
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
-#include "DiffStruct.h"
 #include "VoxelWorld.generated.h"
 
 
@@ -36,6 +35,7 @@ public:
 	float GetQuality() const;
 	float GetHighResolutionDistanceOffset() const;
 	bool GetRebuildBorders() const;
+	bool IsCreated() const;
 
 	TSharedPtr<ChunkOctree> GetChunkOctree() const;
 
@@ -44,6 +44,9 @@ public:
 	AVoxelChunk* GetChunkAt(FIntVector Position) const;
 
 	void QueueUpdate(TWeakPtr<ChunkOctree> Chunk);
+
+	void Load();
+	void Unload();
 
 	FQueuedThreadPool* ThreadPool;
 
@@ -172,6 +175,7 @@ protected:
 #if WITH_EDITOR
 	// Lock Depth and VoxelMaterial when in play
 	bool CanEditChange(const UProperty* InProperty) const override;
+	bool ShouldTickIfViewportsOnly() const override;
 #endif
 
 private:
@@ -226,8 +230,8 @@ private:
 	TSharedPtr<ChunkOctree> MainOctree;
 	TSharedPtr<VoxelData> Data;
 
-	// Is VoxelWorld created? used for property deactivation
-	bool bNotCreated;
+	// Is VoxelWorld created?
+	bool bIsCreated;
 
 	// Elapsed time since last sync
 	float TimeSinceSync;

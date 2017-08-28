@@ -7,6 +7,8 @@
 #include "Engine.h"
 #include <forward_list>
 #include "FlatWorldGenerator.h"
+#include "LevelEditorViewport.h"
+#include "Editor.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateAll"), STAT_UpdateAll, STATGROUP_Voxel);
@@ -16,7 +18,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
 AVoxelWorld::AVoxelWorld() : Depth(10), MultiplayerFPS(5), DeletionDelay(0.1f), Quality(0.75f), HighResolutionDistanceOffset(25), bRebuildBorders(true),
-PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), bNotCreated(true), TimeSinceSync(0)
+PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), bIsCreated(false), TimeSinceSync(0)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -38,32 +40,32 @@ void AVoxelWorld::BeginPlay()
 {
 	Super::BeginPlay();
 
-	bNotCreated = false;
-
 	ThreadPool = FQueuedThreadPool::Allocate();
 	ThreadPool->Create(8);
 
-	UObject* WorldGeneratorObject = WorldGenerator->GetDefaultObject();
-
-	if (!WorldGeneratorObject->GetClass()->ImplementsInterface(UVoxelWorldGenerator::StaticClass()))
-	{
-		UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
-		WorldGeneratorObject = UFlatWorldGenerator::StaticClass()->GetDefaultObject();
-	}
-
-	WorldGeneratorInterface.SetInterface(Cast<IInterface>(WorldGeneratorObject));
-	WorldGeneratorInterface.SetObject(WorldGeneratorObject);
-
-	Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInterface, bMultiplayer));
-	MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
-
-	UpdateCameraPosition(FVector::ZeroVector);
+	Load();
 }
 
 void AVoxelWorld::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+#if WITH_EDITOR
+	if (GetWorld()->WorldType == EWorldType::Editor)
+	{
+		auto Client = static_cast<FLevelEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
+		if (Client)
+		{
+			FVector CameraPosition = Client->GetViewLocation();
+			UpdateCameraPosition(CameraPosition);
+		}
+		else
+		{
+			UE_LOG(VoxelLog, Error, TEXT("Cannot find editor camera"));
+		}
+		return;
+	}
+#endif // WITH_EDITOR
 	if (bAutoFindCamera)
 	{
 		if (PlayerCamera == nullptr)
@@ -104,15 +106,20 @@ void AVoxelWorld::Tick(float DeltaTime)
 
 AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position) const
 {
-	if (IsInWorld(Position))
+	if (IsInWorld(Position) && MainOctree.IsValid())
 	{
 		TSharedPtr<ChunkOctree> Chunk = MainOctree->GetChunk(Position).Pin();
-		check(Chunk.IsValid());
-		return Chunk->GetVoxelChunk();
+		if (Chunk.IsValid())
+		{
+			return Chunk->GetVoxelChunk();
+		}
+		else
+		{
+			return nullptr;
+		}
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Error: Cannot GetChunkAt (%d, %d, %d): Not in world"), Position.X, Position.Y, Position.Z);
 		return nullptr;
 	}
 }
@@ -279,6 +286,39 @@ void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk)
 	QueuedChunks.Add(Chunk);
 }
 
+void AVoxelWorld::Load()
+{
+	if (!bIsCreated)
+	{
+		UE_LOG(VoxelLog, Warning, TEXT("Loading world"));
+		bIsCreated = true;
+
+		UObject* WorldGeneratorObject = WorldGenerator->GetDefaultObject();
+
+		if (!WorldGeneratorObject->GetClass()->ImplementsInterface(UVoxelWorldGenerator::StaticClass()))
+		{
+			UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
+			WorldGeneratorObject = UFlatWorldGenerator::StaticClass()->GetDefaultObject();
+		}
+
+		WorldGeneratorInterface.SetInterface(Cast<IInterface>(WorldGeneratorObject));
+		WorldGeneratorInterface.SetObject(WorldGeneratorObject);
+
+		Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInterface, bMultiplayer));
+		MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
+	}
+}
+
+void AVoxelWorld::Unload()
+{
+	if (bIsCreated)
+	{
+		MainOctree->ImmediateDelete();
+		MainOctree.Reset();
+		bIsCreated = false;
+	}
+}
+
 void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
@@ -315,9 +355,14 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, Depth)
 		|| InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, VoxelMaterial)
 		|| InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, bMultiplayer))
-		return ParentVal && bNotCreated;
+		return ParentVal && !bIsCreated;
 	else
 		return ParentVal;
+}
+
+bool AVoxelWorld::ShouldTickIfViewportsOnly() const
+{
+	return bIsCreated;
 }
 #endif
 
@@ -366,6 +411,11 @@ float AVoxelWorld::GetHighResolutionDistanceOffset() const
 bool AVoxelWorld::GetRebuildBorders() const
 {
 	return bRebuildBorders;
+}
+
+bool AVoxelWorld::IsCreated() const
+{
+	return bIsCreated;
 }
 
 TSharedPtr<ChunkOctree> AVoxelWorld::GetChunkOctree() const

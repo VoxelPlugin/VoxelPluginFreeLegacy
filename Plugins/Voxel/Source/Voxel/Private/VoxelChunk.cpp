@@ -10,7 +10,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSect
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDeletion(false), bAdjacentChunksNeedUpdate(false)
+AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDeletion(false), bAdjacentChunksNeedUpdate(false), World(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -29,6 +29,11 @@ void AVoxelChunk::BeginPlay()
 
 void AVoxelChunk::Tick(float DeltaTime)
 {
+	if (!World)
+	{
+		Destroy(this);
+		return;
+	}
 	if (bNeedSectionUpdate && Task != nullptr && Task->IsDone())
 	{
 		bNeedSectionUpdate = false;
@@ -60,6 +65,13 @@ void AVoxelChunk::Tick(float DeltaTime)
 		Update(false);
 	}
 }
+
+#if WITH_EDITOR
+bool AVoxelChunk::ShouldTickIfViewportsOnly() const
+{
+	return true;
+}
+#endif //WITH_EDITOR
 
 void AVoxelChunk::Init(FIntVector Position, int Depth, AVoxelWorld* World)
 {

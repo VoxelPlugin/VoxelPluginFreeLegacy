@@ -20,6 +20,11 @@
 			"Name" : "Voxel",
 			"Type" : "Runtime",
 			"LoadingPhase" : "Default"
+		},
+		{
+			"Name" : "VoxelEditor",
+			"Type" : "Editor",
+			"LoadingPhase" : "Default"
 		}
 	],
 	"Plugins": [

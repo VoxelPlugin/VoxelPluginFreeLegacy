@@ -16,6 +16,20 @@ void ChunkOctree::Delete()
 	check(!bHasChunk && !bHasChilds);
 }
 
+void ChunkOctree::ImmediateDelete()
+{
+	if (bHasChunk)
+	{
+		VoxelChunk->Delete();
+		VoxelChunk = nullptr;
+		bHasChunk = false;
+	}
+	if (bHasChilds)
+	{
+		DeleteChilds();
+	}
+}
+
 void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPosition)
 {
 	check(World);

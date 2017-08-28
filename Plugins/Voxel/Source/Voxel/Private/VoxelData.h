@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "VoxelSave.h"
-#include "DiffStruct.h"
 #include <list>
 
 class ValueOctree;
