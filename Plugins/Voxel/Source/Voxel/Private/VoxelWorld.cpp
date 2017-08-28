@@ -17,7 +17,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : Depth(10), MultiplayerFPS(5), DeletionDelay(0.1f), Quality(0.75f), HighResolutionDistanceOffset(25), bRebuildBorders(true),
+AVoxelWorld::AVoxelWorld() : Depth(9), MultiplayerFPS(5), DeletionDelay(0.1f), Quality(0.75f), HighResolutionDistanceOffset(25), bRebuildBorders(true),
 PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), bIsCreated(false), TimeSinceSync(0)
 {
 	PrimaryActorTick.bCanEverTick = true;
