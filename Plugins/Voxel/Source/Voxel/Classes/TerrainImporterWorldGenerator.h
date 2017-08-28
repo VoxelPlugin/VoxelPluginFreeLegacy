@@ -4,14 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "VoxelWorldGenerator.h"
-#include "Landscape.h"
 #include "TerrainImporterWorldGenerator.generated.h"
 
 /**
  * Not working
  */
 UCLASS(Blueprintable)
-class VOXEL_API ATerrainImporterWorldGenerator : public AActor, public IVoxelWorldGenerator
+class VOXEL_API UTerrainImporterWorldGenerator : public UObject, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
@@ -25,7 +24,7 @@ public:
 	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
 	UPROPERTY(EditAnywhere)
-		ALandscape* Landscape;
+		UTexture2D* Heightmap;
 
 	UPROPERTY(EditAnywhere)
 		float Bottom;
