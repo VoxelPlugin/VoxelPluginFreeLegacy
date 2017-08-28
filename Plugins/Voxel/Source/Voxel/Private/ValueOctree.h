@@ -1,7 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Octree.h"
-#include "DiffStruct.h"
+#include "VoxelSave.h"
 #include <list>
 #include <forward_list>
 
