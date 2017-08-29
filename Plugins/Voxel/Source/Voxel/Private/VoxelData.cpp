@@ -16,19 +16,19 @@ TSharedPtr<ValueOctree> VoxelData::GetValueOctree() const
 
 float VoxelData::GetValue(FIntVector Position) const
 {
-	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
+	if (Position.X >= Width() / 2 || Position.Y >= Width() / 2 || Position.Z >= Width() / 2)
 	{
 		return GetValue(FIntVector(
-			(Position.X >= Size() / 2) ? Size() / 2 - 1 : Position.X,
-			(Position.Y >= Size() / 2) ? Size() / 2 - 1 : Position.Y,
-			(Position.Z >= Size() / 2) ? Size() / 2 - 1 : Position.Z));
+			(Position.X >= Width() / 2) ? Width() / 2 - 1 : Position.X,
+			(Position.Y >= Width() / 2) ? Width() / 2 - 1 : Position.Y,
+			(Position.Z >= Width() / 2) ? Width() / 2 - 1 : Position.Z));
 	}
-	if (Position.X < -Size() / 2 || Position.Y < -Size() / 2 || Position.Z < -Size() / 2)
+	if (Position.X < -Width() / 2 || Position.Y < -Width() / 2 || Position.Z < -Width() / 2)
 	{
 		return GetValue(FIntVector(
-			(Position.X < -Size() / 2) ? -Size() / 2 : Position.X,
-			(Position.Y < -Size() / 2) ? -Size() / 2 : Position.Y,
-			(Position.Z < -Size() / 2) ? -Size() / 2 : Position.Z));
+			(Position.X < -Width() / 2) ? -Width() / 2 : Position.X,
+			(Position.Y < -Width() / 2) ? -Width() / 2 : Position.Y,
+			(Position.Z < -Width() / 2) ? -Width() / 2 : Position.Z));
 	}
 
 	if (IsInWorld(Position))
@@ -44,19 +44,19 @@ float VoxelData::GetValue(FIntVector Position) const
 
 FColor VoxelData::GetColor(FIntVector Position) const
 {
-	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
+	if (Position.X >= Width() / 2 || Position.Y >= Width() / 2 || Position.Z >= Width() / 2)
 	{
 		return GetColor(FIntVector(
-			(Position.X >= Size() / 2) ? Size() / 2 - 1 : Position.X,
-			(Position.Y >= Size() / 2) ? Size() / 2 - 1 : Position.Y,
-			(Position.Z >= Size() / 2) ? Size() / 2 - 1 : Position.Z));
+			(Position.X >= Width() / 2) ? Width() / 2 - 1 : Position.X,
+			(Position.Y >= Width() / 2) ? Width() / 2 - 1 : Position.Y,
+			(Position.Z >= Width() / 2) ? Width() / 2 - 1 : Position.Z));
 	}
-	if (Position.X < -Size() / 2 || Position.Y < -Size() / 2 || Position.Z < -Size() / 2)
+	if (Position.X < -Width() / 2 || Position.Y < -Width() / 2 || Position.Z < -Width() / 2)
 	{
 		return GetColor(FIntVector(
-			(Position.X < -Size() / 2) ? -Size() / 2 : Position.X,
-			(Position.Y < -Size() / 2) ? -Size() / 2 : Position.Y,
-			(Position.Z < -Size() / 2) ? -Size() / 2 : Position.Z));
+			(Position.X < -Width() / 2) ? -Width() / 2 : Position.X,
+			(Position.Y < -Width() / 2) ? -Width() / 2 : Position.Y,
+			(Position.Z < -Width() / 2) ? -Width() / 2 : Position.Z));
 	}
 
 	if (IsInWorld(Position))
@@ -72,11 +72,11 @@ FColor VoxelData::GetColor(FIntVector Position) const
 
 void VoxelData::SetValue(FIntVector Position, float Value) const
 {
-	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
+	if (Position.X >= Width() / 2 || Position.Y >= Width() / 2 || Position.Z >= Width() / 2)
 	{
 		return;
 	}
-	if (Position.X < -Size() / 2 || Position.Y < -Size() / 2 || Position.Z < -Size() / 2)
+	if (Position.X < -Width() / 2 || Position.Y < -Width() / 2 || Position.Z < -Width() / 2)
 	{
 		return;
 	}
@@ -93,11 +93,11 @@ void VoxelData::SetValue(FIntVector Position, float Value) const
 
 void VoxelData::SetColor(FIntVector Position, FColor Color) const
 {
-	if (Position.X >= Size() / 2 || Position.Y >= Size() / 2 || Position.Z >= Size() / 2)
+	if (Position.X >= Width() / 2 || Position.Y >= Width() / 2 || Position.Z >= Width() / 2)
 	{
 		return;
 	}
-	if (Position.X < -Size() / 2 || Position.Y < -Size() / 2 || Position.Z < -Size() / 2)
+	if (Position.X < -Width() / 2 || Position.Y < -Width() / 2 || Position.Z < -Width() / 2)
 	{
 		return;
 	}
@@ -114,20 +114,15 @@ void VoxelData::SetColor(FIntVector Position, FColor Color) const
 
 bool VoxelData::IsInWorld(FIntVector Position) const
 {
-	int  w = Size() / 2;
+	int  w = Width() / 2;
 	return -w <= Position.X && Position.X < w && -w <= Position.Y && Position.Y < w && -w <= Position.Z && Position.Z < w;
 }
 
-int VoxelData::Size() const
-{
-	return 16 << Depth;
-}
-
-std::list<FVoxelChunkSave> VoxelData::GetSaveArray() const
+FVoxelWorldSave VoxelData::GetSave() const
 {
 	std::list<FVoxelChunkSave> SaveArray;
 	MainOctree->AddChunksToArray(SaveArray);
-	return SaveArray;
+	return FVoxelWorldSave(Depth, SaveArray);
 }
 
 void VoxelData::LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World, bool bReset)

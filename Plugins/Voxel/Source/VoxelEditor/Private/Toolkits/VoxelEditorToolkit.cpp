@@ -46,7 +46,7 @@ FVoxelEditorToolkit::~FVoxelEditorToolkit()
 /* FVoxelEditorToolkit interface
  *****************************************************************************/
 
-void FVoxelEditorToolkit::Initialize(UVoxelAsset* InVoxel, const EToolkitMode::Type InMode, const TSharedPtr<class IToolkitHost>& InToolkitHost)
+void FVoxelEditorToolkit::Initialize(AVoxelAsset* InVoxel, const EToolkitMode::Type InMode, const TSharedPtr<class IToolkitHost>& InToolkitHost)
 {
 	Voxel = InVoxel;
 

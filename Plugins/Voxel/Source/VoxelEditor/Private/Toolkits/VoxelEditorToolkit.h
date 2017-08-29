@@ -11,7 +11,7 @@ class FSpawnTabArgs;
 class ISlateStyle;
 class IToolkitHost;
 class SDockTab;
-class UVoxelAsset;
+class AVoxelAsset;
 
 
 /**
@@ -40,7 +40,7 @@ public:
 	 * @param InMode The mode to create the toolkit in.
 	 * @param InToolkitHost The toolkit host.
 	 */
-	void Initialize(UVoxelAsset* InVoxel, const EToolkitMode::Type InMode, const TSharedPtr<IToolkitHost>& InToolkitHost);
+	void Initialize(AVoxelAsset* InVoxel, const EToolkitMode::Type InMode, const TSharedPtr<IToolkitHost>& InToolkitHost);
 
 public:
 
@@ -80,7 +80,7 @@ private:
 private:
 
 	/** The text asset being edited. */
-	UVoxelAsset* Voxel;
+	AVoxelAsset* Voxel;
 
 	/** Pointer to the style set to use for toolkits. */
 	TSharedRef<ISlateStyle> Style;

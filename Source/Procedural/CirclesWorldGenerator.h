@@ -25,6 +25,12 @@ public:
 		FColor GetDefaultColor(FIntVector Position);
 	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
+	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override
+	{
+	};
+
 	UPROPERTY(EditAnywhere)
 		FVector2D Scale;
 

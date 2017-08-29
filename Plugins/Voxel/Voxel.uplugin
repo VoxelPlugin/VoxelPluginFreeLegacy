@@ -4,7 +4,7 @@
 	"VersionName" : "1.0",
 	"FriendlyName" : "Voxel",
 	"Description" : "Implementation of transvoxels",
-	"Category" : "Terrain",
+	"Category" : "TerrainObject",
 	"CreatedBy" : "Phyronnaz",
 	"CreatedByURL" : "https://github.com/Phyronnaz",
 	"DocsURL" : "https://github.com/Phyronnaz/MarchingCubes",

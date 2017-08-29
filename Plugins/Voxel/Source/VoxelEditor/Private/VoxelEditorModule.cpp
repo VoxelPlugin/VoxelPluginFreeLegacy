@@ -13,6 +13,7 @@
 #include "VoxelEditorSettings.h"
 #include "PropertyEditorModule.h"
 #include "VoxelWorldDetails.h"
+#include "VoxelAssetDetails.h"
 
 
 #define LOCTEXT_NAMESPACE "FVoxelEditorModule"
@@ -116,6 +117,7 @@ protected:
 
 		//Custom detail views
 		PropertyModule.RegisterCustomClassLayout("VoxelWorld", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldDetails::MakeInstance));
+		PropertyModule.RegisterCustomClassLayout("VoxelAsset", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelAssetDetails::MakeInstance));
 	}
 
 	/** Unregisters asset tool actions. */
@@ -152,6 +154,7 @@ protected:
 		if (PropertyModule != nullptr)
 		{
 			PropertyModule->UnregisterCustomClassLayout("VoxelWorld");
+			PropertyModule->UnregisterCustomClassLayout("VoxelAsset");
 		}
 	}
 

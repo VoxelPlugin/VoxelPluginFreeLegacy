@@ -33,15 +33,14 @@ PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), b
 	WorldGenerator = UFlatWorldGenerator::StaticClass();
 
 	bReplicates = true;
-}
 
+	ThreadPool = FQueuedThreadPool::Allocate();
+	ThreadPool->Create(8);
+}
 
 void AVoxelWorld::BeginPlay()
 {
 	Super::BeginPlay();
-
-	ThreadPool = FQueuedThreadPool::Allocate();
-	ThreadPool->Create(8);
 
 	Load();
 }
@@ -157,7 +156,7 @@ void AVoxelWorld::SetColor(FIntVector Position, FColor Color) const
 
 FVoxelWorldSave AVoxelWorld::GetSave() const
 {
-	return FVoxelWorldSave(Depth, Data->GetSaveArray());
+	return Data->GetSave();
 }
 
 void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset, bool bAsync)
@@ -303,6 +302,7 @@ void AVoxelWorld::Load()
 
 		WorldGeneratorInterface.SetInterface(Cast<IInterface>(WorldGeneratorObject));
 		WorldGeneratorInterface.SetObject(WorldGeneratorObject);
+		IVoxelWorldGenerator::Execute_SetVoxelWorld(WorldGeneratorInterface.GetObject(), this);
 
 		Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInterface, bMultiplayer));
 		MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
@@ -390,7 +390,7 @@ bool AVoxelWorld::IsInWorld(FIntVector Position) const
 
 int AVoxelWorld::Size() const
 {
-	return Data->Size();
+	return Data->Width();
 }
 
 float AVoxelWorld::GetDeletionDelay() const

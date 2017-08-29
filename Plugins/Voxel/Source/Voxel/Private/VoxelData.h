@@ -16,14 +16,20 @@ class VoxelData
 {
 public:
 	/**
-	 * COnstructor
+	 * Constructor
 	 * @param	Depth			Depth of this world; Width = 16 * 2^Depth
 	 * @param	WorldGenerator	Generator for this world
 	 */
 	VoxelData(int Depth, TScriptInterface<IVoxelWorldGenerator>& WorldGenerator, bool bMultiplayer);
 
-	// Width = 16 * 2^Depth
+	// Depth of the octree
 	const int Depth;
+
+	// Width = 16 * 2^Depth
+	int Width() const
+	{
+		return 16 << Depth;
+	}
 
 	/**
 	 * Get value octree
@@ -65,18 +71,11 @@ public:
 	 */
 	bool IsInWorld(FIntVector Position) const;
 
-
-	/**
-	 * Size of this world (== width)
-	 * @return Size
-	 */
-	int Size() const;
-
 	/**
 	 * Get save array of this world
 	 * @return SaveArray
 	 */
-	std::list<FVoxelChunkSave> GetSaveArray() const;
+	FVoxelWorldSave GetSave() const;
 	/**
 	 * Load this world from save array
 	 * @param	SaveArray	Array to load from

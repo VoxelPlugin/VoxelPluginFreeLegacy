@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelWorldGenerator.h"
+#include "VoxelAsset.h"
 #include "TerrainImporterWorldGenerator.generated.h"
 
 
@@ -25,7 +26,7 @@ class VOXEL_API UTerrainImporterWorldGenerator : public UObject, public IVoxelWo
 	GENERATED_BODY()
 
 public:
-	UTerrainImporterWorldGenerator() : Bottom(-255), Top(255), LowerLimit(-252, -252), UpperLimit(252, 252), InValue(-1), OutValue(1)
+	UTerrainImporterWorldGenerator() : TerrainObject(nullptr), Center(0, 0), InValue(-1), OutValue(1)
 	{
 	};
 
@@ -37,20 +38,15 @@ public:
 		FColor GetDefaultColor(FIntVector Position);
 	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
-	UPROPERTY(EditAnywhere)
-		UTexture2D* Heightmap;
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
+	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override;
 
 	UPROPERTY(EditAnywhere)
-		float Bottom;
+		TSubclassOf<AVoxelAsset> Terrain;
 
 	UPROPERTY(EditAnywhere)
-		float Top;
-
-	UPROPERTY(EditAnywhere)
-		FVector2D LowerLimit;
-
-	UPROPERTY(EditAnywhere)
-		FVector2D UpperLimit;
+		FVector2D Center;
 
 	UPROPERTY(EditAnywhere)
 		float InValue;
@@ -62,11 +58,6 @@ public:
 		EBlur Blur;
 
 private:
-	bool bCreated = false;
-	TArray<float> Values;
-	int SizeX;
-	int SizeY;
-
-	void Create();
-
+	AVoxelAsset* TerrainObject;
+	AVoxelWorld* World;
 };
