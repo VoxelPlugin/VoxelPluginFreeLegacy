@@ -13,11 +13,102 @@ float UTerrainImporterWorldGenerator::GetDefaultValue_Implementation(FIntVector 
 	{
 		Create();
 	}
-	if (Lower.X <= Position.X && Position.X < Upper.X && Lower.Y <= Position.Y && Position.Y < Upper.Y)
+	if (LowerLimit.X <= Position.X && Position.X < UpperLimit.X && LowerLimit.Y <= Position.Y && Position.Y < UpperLimit.Y)
 	{
-		int X = FMath::Clamp(FMath::RoundToInt(FMath::RoundToInt(Position.X - Lower.X) * SizeX / (Upper.X - Lower.X)), 0, (int)SizeX - 1);
-		int Y = FMath::Clamp(FMath::RoundToInt(FMath::RoundToInt(Position.Y - Lower.Y) * SizeY / (Upper.Y - Lower.Y)), 0, (int)SizeY - 1);
-		return Values[X + SizeX * Y] + Position.Z > 0 ? OutValue : InValue;
+		int X = FMath::Clamp(FMath::RoundToInt(FMath::RoundToInt(Position.X - LowerLimit.X) * SizeX / (UpperLimit.X - LowerLimit.X)), 0, (int)SizeX - 1);
+		int Y = FMath::Clamp(FMath::RoundToInt(FMath::RoundToInt(Position.Y - LowerLimit.Y) * SizeY / (UpperLimit.Y - LowerLimit.Y)), 0, (int)SizeY - 1);
+
+		float Value = 0;
+
+		if (Blur == EBlur::BE_GaussianBlur)
+		{
+
+			if (0 <= Y - 1)
+			{
+				if (0 <= X - 1)
+				{
+					Value += Values[X - 1 + SizeX * (Y - 1)];
+				}
+				Value += 2 * Values[X + SizeX * (Y - 1)];
+				if (X + 1 < SizeX)
+				{
+					Value += Values[X + 1 + SizeX * (Y - 1)];
+				}
+			}
+
+			if (0 <= X - 1)
+			{
+				Value += 2 * Values[X - 1 + SizeX * Y];
+			}
+			Value += 4 * Values[X + SizeX * Y];
+			if (X + 1 < SizeX)
+			{
+				Value += 2 * Values[X + 1 + SizeX * Y];
+			}
+
+			if (Y + 1 < SizeY)
+			{
+				if (0 <= X - 1)
+				{
+					Value += Values[X - 1 + SizeX * (Y + 1)];
+				}
+				Value += 2 * Values[X + SizeX * (Y + 1)];
+				if (X + 1 < SizeX)
+				{
+					Value += Values[X + 1 + SizeX * (Y + 1)];
+				}
+			}
+
+			Value /= 16;
+		}
+		else if (Blur == EBlur::BE_NormalBLur)
+		{
+
+			if (0 <= Y - 1)
+			{
+				if (0 <= X - 1)
+				{
+					Value += Values[X - 1 + SizeX * (Y - 1)];
+				}
+				Value += Values[X + SizeX * (Y - 1)];
+				if (X + 1 < SizeX)
+				{
+					Value += Values[X + 1 + SizeX * (Y - 1)];
+				}
+			}
+
+			if (0 <= X - 1)
+			{
+				Value += Values[X - 1 + SizeX * Y];
+			}
+			Value += Values[X + SizeX * Y];
+			if (X + 1 < SizeX)
+			{
+				Value += Values[X + 1 + SizeX * Y];
+			}
+
+			if (Y + 1 < SizeY)
+			{
+				if (0 <= X - 1)
+				{
+					Value += Values[X - 1 + SizeX * (Y + 1)];
+				}
+				Value += Values[X + SizeX * (Y + 1)];
+				if (X + 1 < SizeX)
+				{
+					Value += Values[X + 1 + SizeX * (Y + 1)];
+				}
+			}
+
+			Value /= 9;
+		}
+		else
+		{
+			Value = Values[X + SizeX * Y];
+		}
+
+		float Alpha = (FMath::Clamp(Value + Position.Z, -1.f, 1.F) + 1) / 2;
+		return FMath::Lerp(InValue, OutValue, Alpha);
 	}
 	else
 	{
@@ -42,9 +133,9 @@ void UTerrainImporterWorldGenerator::Create()
 
 	Values.SetNumUninitialized(SizeX * SizeY);
 
-	for (uint32 X = 0; X < SizeX; X++)
+	for (int X = 0; X < SizeX; X++)
 	{
-		for (uint32 Y = 0; Y < SizeY; Y++)
+		for (int Y = 0; Y < SizeY; Y++)
 		{
 			FColor PixelColor = MipData[X + SizeX * Y];
 
