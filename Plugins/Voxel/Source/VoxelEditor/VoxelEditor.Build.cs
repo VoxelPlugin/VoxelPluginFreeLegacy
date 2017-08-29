@@ -8,23 +8,16 @@ public class VoxelEditor : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
+        PrivateIncludePaths.AddRange(
+            new string[] {
+                "VoxelEditor/Private",
+            });
+
         DynamicallyLoadedModuleNames.AddRange(
             new string[] {
                 "AssetTools",
                 "MainFrame",
                 "DetailCustomizations",
-//				"WorkspaceMenuStructure",
-			});
-
-        PrivateIncludePaths.AddRange(
-            new string[] {
-                "VoxelEditor/Private",
-                "VoxelEditor/Private/AssetTools",
-                "VoxelEditor/Private/Factories",
-                "VoxelEditor/Private/Shared",
-                "VoxelEditor/Private/Styles",
-                "VoxelEditor/Private/Toolkits",
-                "VoxelEditor/Private/Widgets",
             });
 
         PrivateDependencyModuleNames.AddRange(
@@ -47,7 +40,7 @@ public class VoxelEditor : ModuleRules
             new string[] {
                 "AssetTools",
                 "UnrealEd",
-//				"WorkspaceMenuStructure",
-			});
+                "DetailCustomizations",
+            });
     }
 }
