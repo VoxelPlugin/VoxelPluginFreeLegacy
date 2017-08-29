@@ -6,6 +6,8 @@
 #include "UObject/NoExportTypes.h"
 #include "VoxelWorldGenerator.generated.h"
 
+class AVoxelWorld;
+
 /**
  *
  */
@@ -29,10 +31,16 @@ public:
 		float GetDefaultValue(FIntVector Position);
 
 	/**
-	* Get default color at position
-	* @param	Position		Position in voxel space
-	* @return	Color at position
-	*/
+	 * Get default color at position
+	 * @param	Position		Position in voxel space
+	 * @return	Color at position
+	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Voxel")
 		FColor GetDefaultColor(FIntVector Position);
+
+	/**
+	 * If need reference to Voxel World
+	 */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Voxel")
+		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
 };

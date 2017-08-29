@@ -78,7 +78,7 @@ FText FVoxelActions::GetName() const
 
 UClass* FVoxelActions::GetSupportedClass() const
 {
-	return UVoxelAsset::StaticClass();
+	return AVoxelAsset::StaticClass();
 }
 
 
@@ -102,7 +102,7 @@ void FVoxelActions::OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPt
 
 	for (auto ObjIt = InObjects.CreateConstIterator(); ObjIt; ++ObjIt)
 	{
-		auto Voxel = Cast<UVoxelAsset>(*ObjIt);
+		auto Voxel = Cast<AVoxelAsset>(*ObjIt);
 
 		if (Voxel != nullptr)
 		{

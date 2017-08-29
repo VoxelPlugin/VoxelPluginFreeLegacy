@@ -6,17 +6,32 @@
 #include "TerrainImporterWorldGenerator.h"
 #include "Engine/World.h"
 #include "Engine/Texture2D.h"
+#include "DrawDebugHelpers.h"
 
 float UTerrainImporterWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
-	if (!bCreated)
+	check(World);
+
+	if (!TerrainObject)
 	{
-		Create();
+		TerrainObject = Terrain.GetDefaultObject();
 	}
-	if (LowerLimit.X <= Position.X && Position.X < UpperLimit.X && LowerLimit.Y <= Position.Y && Position.Y < UpperLimit.Y)
+	if (!TerrainObject)
 	{
-		int X = FMath::Clamp(FMath::RoundToInt(FMath::RoundToInt(Position.X - LowerLimit.X) * SizeX / (UpperLimit.X - LowerLimit.X)), 0, (int)SizeX - 1);
-		int Y = FMath::Clamp(FMath::RoundToInt(FMath::RoundToInt(Position.Y - LowerLimit.Y) * SizeY / (UpperLimit.Y - LowerLimit.Y)), 0, (int)SizeY - 1);
+		UE_LOG(VoxelLog, Error, TEXT("Invalid terrain"));
+		return 0;
+	}
+
+	Position.X -= 4;
+	Position.Y -= 4;
+
+	if (Center.X - TerrainObject->Width / 2 <= Position.X && Position.X < Center.X + TerrainObject->Width / 2 && Center.Y - TerrainObject->Width / 2 <= Position.Y && Position.Y < Center.Y + TerrainObject->Width / 2)
+	{
+		int X = Position.X - Center.X + TerrainObject->Width / 2;
+		int Y = Position.Y - Center.Y + TerrainObject->Width / 2;
+
+		return Position.Z * World->GetTransform().GetScale3D().Z - TerrainObject->Heights[X + TerrainObject->Width * Y];
+		/*
 
 		float Value = 0;
 
@@ -109,6 +124,7 @@ float UTerrainImporterWorldGenerator::GetDefaultValue_Implementation(FIntVector 
 
 		float Alpha = (FMath::Clamp(Value + Position.Z, -1.f, 1.F) + 1) / 2;
 		return FMath::Lerp(InValue, OutValue, Alpha);
+		*/
 	}
 	else
 	{
@@ -121,31 +137,7 @@ FColor UTerrainImporterWorldGenerator::GetDefaultColor_Implementation(FIntVector
 	return FColor::Green;
 }
 
-void UTerrainImporterWorldGenerator::Create()
+void UTerrainImporterWorldGenerator::SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
 {
-
-	FTexture2DMipMap* MipMap0 = &Heightmap->PlatformData->Mips[0];
-	FByteBulkData* Raw = &MipMap0->BulkData;
-	FColor* MipData = static_cast<FColor*>(Raw->Lock(LOCK_READ_ONLY));
-
-	SizeX = MipMap0->SizeX;
-	SizeY = MipMap0->SizeY;
-
-	Values.SetNumUninitialized(SizeX * SizeY);
-
-	for (int X = 0; X < SizeX; X++)
-	{
-		for (int Y = 0; Y < SizeY; Y++)
-		{
-			FColor PixelColor = MipData[X + SizeX * Y];
-
-			float Value = FMath::Lerp(Top, Bottom, (PixelColor.R + PixelColor.G + PixelColor.B) / 3.f / 256.f);
-			//UE_LOG(VoxelLog, Log, TEXT("%d, %d, %d"), PixelColor.R, PixelColor.G, PixelColor.B);
-			Values[X + SizeX * Y] = Value;
-		}
-	}
-
-	Raw->Unlock();
-
-	bCreated = true;
+	World = VoxelWorld;
 }

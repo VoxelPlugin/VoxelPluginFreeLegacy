@@ -9,7 +9,7 @@
 
 class FText;
 class ISlateStyle;
-class UVoxelAsset;
+class AVoxelAsset;
 
 
 /**
@@ -35,7 +35,7 @@ public:
 	 * @param InVoxel The UVoxel asset to edit.
 	 * @param InStyleSet The style set to use.
 	 */
-	void Construct(const FArguments& InArgs, UVoxelAsset* InVoxel, const TSharedRef<ISlateStyle>& InStyle);
+	void Construct(const FArguments& InArgs, AVoxelAsset* InVoxel, const TSharedRef<ISlateStyle>& InStyle);
 
 private:
 
@@ -54,5 +54,5 @@ private:
 	TSharedPtr<SMultiLineEditableTextBox> EditableTextBox;
 
 	/** Pointer to the text asset that is being edited. */
-	UVoxelAsset* Voxel;
+	AVoxelAsset* Voxel;
 };

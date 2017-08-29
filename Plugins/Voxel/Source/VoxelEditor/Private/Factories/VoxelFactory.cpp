@@ -14,7 +14,7 @@ UVoxelFactory::UVoxelFactory(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	Formats.Add(FString(TEXT("txt;")) + NSLOCTEXT("UVoxelFactory", "FormatTxt", "Text File").ToString());
-	SupportedClass = UVoxelAsset::StaticClass();
+	SupportedClass = AVoxelAsset::StaticClass();
 	bCreateNew = false;
 	bEditorImport = true;
 }
@@ -41,12 +41,12 @@ UVoxelFactory::UVoxelFactory(const FObjectInitializer& ObjectInitializer)
 
 UObject* UVoxelFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
-	/*UVoxelAsset* Voxel = nullptr;
+	/*AVoxelAsset* Voxel = nullptr;
 	FString TextString;
 
 	if (FFileHelper::LoadFileToString(TextString, *Filename))
 	{
-		Voxel = NewObject<UVoxelAsset>(InParent, InClass, InName, Flags);
+		Voxel = NewObject<AVoxelAsset>(InParent, InClass, InName, Flags);
 		Voxel->Text = FText::FromString(TextString);
 	}
 

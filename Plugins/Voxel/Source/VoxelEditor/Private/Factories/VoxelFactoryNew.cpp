@@ -11,7 +11,7 @@
 UVoxelFactoryNew::UVoxelFactoryNew(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	SupportedClass = UVoxelAsset::StaticClass();
+	SupportedClass = AVoxelAsset::StaticClass();
 	bCreateNew = true;
 	bEditAfterNew = true;
 }
@@ -22,7 +22,7 @@ UVoxelFactoryNew::UVoxelFactoryNew(const FObjectInitializer& ObjectInitializer)
 
 UObject* UVoxelFactoryNew::FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
-	return NewObject<UVoxelAsset>(InParent, InClass, InName, Flags);
+	return NewObject<AVoxelAsset>(InParent, InClass, InName, Flags);
 }
 
 

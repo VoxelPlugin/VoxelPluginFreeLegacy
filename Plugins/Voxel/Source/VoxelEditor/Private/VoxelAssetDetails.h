@@ -6,9 +6,11 @@
 #include "Input/Reply.h"
 #include "IDetailCustomization.h"
 
-class AVoxelWorld;
+class AVoxelAsset;
 
-class FVoxelWorldDetails : public IDetailCustomization
+DECLARE_LOG_CATEGORY_EXTERN(VoxelEditorLog, Log, All);
+
+class FVoxelAssetDetails : public IDetailCustomization
 {
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
@@ -17,8 +19,8 @@ private:
 	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
-	FReply OnWorldUpdate();
+	FReply OnCreateFromLandscape();
 private:
 	/** The selected sky light */
-	TWeakObjectPtr<AVoxelWorld> World;
+	TWeakObjectPtr<AVoxelAsset> VoxelAsset;
 };

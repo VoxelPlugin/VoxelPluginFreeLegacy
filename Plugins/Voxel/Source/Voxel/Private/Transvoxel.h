@@ -22,7 +22,7 @@
 // own if you use the data in this file or any transformation of it.
 //
 // The format of the data in this file is described in the dissertation "Voxel-
-// Based Terrain for Real-Time Virtual Simulations", available at the web page
+// Based TerrainObject for Real-Time Virtual Simulations", available at the web page
 // given above. References to sections and figures below pertain to that paper.
 //
 // The contents of this file are protected by copyright and may not be publicly

@@ -47,6 +47,12 @@ public:
 		FColor GetDefaultColor(FIntVector Position);
 	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
+	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override
+	{
+	};
+
 	// Height of the difference between full and empty
 	UPROPERTY(EditAnywhere)
 		int Height;

@@ -4,38 +4,34 @@
 
 #include "CoreMinimal.h"
 #include "VoxelWorldGenerator.h"
-#include "RenderCore.h"
-#include "PerformanceTestWorldGenerator.generated.h"
-
+#include "EmptyWorldGenerator.generated.h"
 
 /**
-*
-*/
+ *
+ */
 UCLASS(Blueprintable)
-class VOXEL_API UPerformanceTestWorldGenerator : public UObject, public IVoxelWorldGenerator
+class VOXEL_API UEmptyWorldGenerator : public UObject, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		float GetDefaultValue(FIntVector Position);
-	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
+	virtual float GetDefaultValue_Implementation(FIntVector Position) override
+	{
+		return 0;
+	}
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		FColor GetDefaultColor(FIntVector Position);
-	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
+	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override
+	{
+		return FColor::Black;
+	}
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
 	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override
 	{
 	};
-
-	// Radius of the spheres
-	UPROPERTY(EditAnywhere)
-		int Radius = 5;
-
-	// Speed of the change
-	UPROPERTY(EditAnywhere)
-		float Speed = 0.01f;
 };

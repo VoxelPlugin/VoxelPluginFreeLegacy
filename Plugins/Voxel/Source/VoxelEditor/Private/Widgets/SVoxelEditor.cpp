@@ -24,7 +24,7 @@ SVoxelEditor::~SVoxelEditor()
 }
 
 
-void SVoxelEditor::Construct(const FArguments& InArgs, UVoxelAsset* InVoxel, const TSharedRef<ISlateStyle>& InStyle)
+void SVoxelEditor::Construct(const FArguments& InArgs, AVoxelAsset* InVoxel, const TSharedRef<ISlateStyle>& InStyle)
 {
 	Voxel = InVoxel;
 
