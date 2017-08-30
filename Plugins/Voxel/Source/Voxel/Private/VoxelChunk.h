@@ -28,11 +28,11 @@ public:
 
 	/**
 	 * Init this
-	 * @param	Position	Position of this (Minimal corner)
-	 * @param	Depth		Width = 16 * 2^Depth
-	 * @param	World		VoxelWorld
+	 * @param	NewPosition		Position of this (Minimal corner)
+	 * @param	NewDepth		Width = 16 * 2^Depth
+	 * @param	NewWorld		VoxelWorld
 	 */
-	void Init(FIntVector Position, int Depth, AVoxelWorld* World);
+	void Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWorld);
 
 	/**
 	 * Update this for terrain changes

@@ -73,18 +73,18 @@ bool AVoxelChunk::ShouldTickIfViewportsOnly() const
 }
 #endif //WITH_EDITOR
 
-void AVoxelChunk::Init(FIntVector Position, int Depth, AVoxelWorld* World)
+void AVoxelChunk::Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWorld)
 {
-	check(World);
+	check(NewWorld);
 
-	this->Position = Position;
-	this->Depth = Depth;
-	this->World = World;
+	Position = NewPosition;
+	Depth = NewDepth;
+	World = NewWorld;
 
-	FString Name = FString::FromInt(Position.X) + ", " + FString::FromInt(Position.Y) + ", " + FString::FromInt(Position.Z);
-	FVector RelativeLocation = (FVector)Position;
+	FString Name = FString::FromInt(NewPosition.X) + ", " + FString::FromInt(NewPosition.Y) + ", " + FString::FromInt(NewPosition.Z);
+	FVector RelativeLocation = (FVector)NewPosition;
 
-	this->AttachToActor(World, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+	this->AttachToActor(NewWorld, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
 #if WITH_EDITOR
 	this->SetActorLabel(Name);
 #endif
@@ -93,7 +93,7 @@ void AVoxelChunk::Init(FIntVector Position, int Depth, AVoxelWorld* World)
 	this->SetActorRelativeScale3D(FVector::OneVector);
 
 	// Configure primary mesh
-	PrimaryMesh->SetMaterial(0, World->VoxelMaterial);
+	PrimaryMesh->SetMaterial(0, NewWorld->VoxelMaterial);
 	PrimaryMesh->bCastShadowAsTwoSided = true;
 	PrimaryMesh->bUseAsyncCooking = true;
 	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);

@@ -34,6 +34,7 @@ public class VoxelEditor : ModuleRules
                 "SlateCore",
                 "Voxel",
                 "UnrealEd",
+                "Landscape",
             });
 
         PrivateIncludePathModuleNames.AddRange(

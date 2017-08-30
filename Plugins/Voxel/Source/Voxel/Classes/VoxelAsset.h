@@ -37,6 +37,4 @@ public:
 		TArray<float> Heights;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		TArray<FColor> Weights;
-
-	void CreateFromLandcape();
 };
