@@ -52,8 +52,8 @@ FColor UTerrainImporterWorldGenerator::GetDefaultColor_Implementation(FIntVector
 		return FColor::Black;
 	}
 
-	Position.X -= 4;
-	Position.Y -= 4;
+	Position.X -= 2;
+	Position.Y -= 2;
 
 	if (Center.X - TerrainObject->Width / 2 <= Position.X && Position.X < Center.X + TerrainObject->Width / 2 && Center.Y - TerrainObject->Width / 2 <= Position.Y && Position.Y < Center.Y + TerrainObject->Width / 2)
 	{
