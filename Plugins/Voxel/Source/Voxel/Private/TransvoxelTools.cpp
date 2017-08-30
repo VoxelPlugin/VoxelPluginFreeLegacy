@@ -339,7 +339,7 @@ void TransvoxelTools::TransitionPolygonize(ITransitionVoxel* Chunk, int X, int Y
 		const unsigned short* VertexData = transitionVertexData[CaseCode];
 		check(0 <= (CellClass & 0x7F) && (CellClass & 0x7F) < 56);
 		const TransitionCellData CellData = transitionCellData[CellClass & 0x7F];
-		const bool bFlip = CellClass >> 7;
+		const bool bFlip = (CellClass >> 7) != 0;
 
 		TArray<int> VertexIndices;
 		VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
