@@ -89,14 +89,14 @@ void VoxelThread::DoWork()
 
 	// Fill arrays
 	int CleanedIndex = 0;
-	int i = 0;
+	int Count = 0;
 	// Regular voxels
 	while (!VerticesProperties->empty())
 	{
 		FVector Vertex = Vertices->front();
 		VertexProperties Properties = VerticesProperties->front();
 
-		int index = VerticesCount - 1 - i;
+		int index = VerticesCount - 1 - Count;
 		VerticesArray[index] = Vertex;
 		VerticesPropertiesArray[index] = Properties;
 
@@ -116,7 +116,7 @@ void VoxelThread::DoWork()
 		Vertices->pop_front();
 		VerticesProperties->pop_front();
 
-		i++;
+		Count++;
 	}
 	if (Depth != 0)
 	{
@@ -126,7 +126,7 @@ void VoxelThread::DoWork()
 			FVector Vertex = Vertices->front();
 			VertexProperties2D Properties2D = VerticesProperties2D->front();
 
-			int index = VerticesCount - 1 - i;
+			int index = VerticesCount - 1 - Count;
 
 			FVector RealPosition = VoxelStruct->TransformPosition(Vertex, Properties2D.Direction);
 
@@ -166,7 +166,7 @@ void VoxelThread::DoWork()
 			Vertices->pop_front();
 			VerticesProperties2D->pop_front();
 
-			i++;
+			Count++;
 		}
 	}
 	const int RealVerticesCount = CleanedIndex;
@@ -182,10 +182,10 @@ void VoxelThread::DoWork()
 				++it;
 				int to = *it;
 
-				int i = BijectionArray[to];
-				check(i != -1);
-				BijectionArray[from] = i;
-				InverseBijectionArray[i] = from;
+				int Index = BijectionArray[to];
+				check(Index != -1);
+				BijectionArray[from] = Index;
+				InverseBijectionArray[Index] = from;
 			}
 		}
 

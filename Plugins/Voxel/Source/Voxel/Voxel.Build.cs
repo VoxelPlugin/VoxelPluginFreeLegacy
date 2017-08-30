@@ -26,9 +26,9 @@ namespace UnrealBuildTool.Rules
                     "Engine",
                     "ProceduralMeshComponent",
                     "Landscape",
-                    "UnrealEd",
                 }
                 );
+
 
             PrivateDependencyModuleNames.AddRange(
                 new string[]

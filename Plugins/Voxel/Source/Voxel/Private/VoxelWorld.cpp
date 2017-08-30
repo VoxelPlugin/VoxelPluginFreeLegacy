@@ -7,8 +7,6 @@
 #include "Engine.h"
 #include <forward_list>
 #include "FlatWorldGenerator.h"
-#include "LevelEditorViewport.h"
-#include "Editor.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateAll"), STAT_UpdateAll, STATGROUP_Voxel);
@@ -49,22 +47,6 @@ void AVoxelWorld::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-#if WITH_EDITOR
-	if (GetWorld()->WorldType == EWorldType::Editor)
-	{
-		auto Client = static_cast<FLevelEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
-		if (Client)
-		{
-			FVector CameraPosition = Client->GetViewLocation();
-			UpdateCameraPosition(CameraPosition);
-		}
-		else
-		{
-			UE_LOG(VoxelLog, Error, TEXT("Cannot find editor camera"));
-		}
-		return;
-	}
-#endif // WITH_EDITOR
 	if (bAutoFindCamera)
 	{
 		if (PlayerCamera == nullptr)

@@ -9,8 +9,6 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
 
-DEFINE_LOG_CATEGORY(VoxelEditorLog)
-
 TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
 {
 	return MakeShareable(new FVoxelWorldDetails());
