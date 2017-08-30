@@ -11,7 +11,7 @@ Download repo and launch .uproject
 
 ## Plugin
 * Create a `Plugins` folder in your game directory
-* Download [Voxel.zip](https://github.com/Phyronnaz/MarchingCubes/files/1254752/Voxel.zip) and extract it in the `Plugins` folder
+* Download [Voxel.zip](https://github.com/Phyronnaz/MarchingCubes/files/1265244/Voxel.zip) and extract it in the `Plugins` folder
 * Make sure you have `MyProject/Plugins/Voxel/Voxel.uplugin` and not `MyProject/Plugins/Voxel/Voxel/Voxel.uplugin`
 * If C++: add `"Voxel"` as public dependency in `MyProject.Build.cs` (should be `PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Voxel" });`)
 * Enable the plugin in the editor and restart
