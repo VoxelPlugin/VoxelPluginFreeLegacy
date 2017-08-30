@@ -32,6 +32,7 @@ void FVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		}
 	}
 
+	DetailLayout.HideCategory("Hide");
 	DetailLayout.EditCategory("Voxel Asset")
 		.AddCustomRow(FText::FromString(TEXT("Create")))
 		.NameContent()

@@ -13,29 +13,29 @@ class VOXEL_API AVoxelAsset : public AActor
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		ALandscape* Landscape;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		ULandscapeLayerInfoObject* LayerInfo1;
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		ULandscapeLayerInfoObject* LayerInfo2;
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		ULandscapeLayerInfoObject* LayerInfo3;
 
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		FVoxelWorldSave Save;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		bool bIsDirty;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		int Width;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		TArray<float> Heights;
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		TArray<FColor> Weights;
 
 	void CreateFromLandcape();
