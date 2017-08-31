@@ -15,6 +15,10 @@ class VOXEL_API USphereWorldGenerator : public UObject, public IVoxelWorldGenera
 	GENERATED_BODY()
 
 public:
+	USphereWorldGenerator() : Radius(10), InverseOutsideInside(false), MaxValue(1), MinValue(-1)
+	{
+	};
+
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		float GetDefaultValue(FIntVector Position);
 	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
@@ -36,4 +40,9 @@ public:
 	// If true, sphere is a hole in a full world
 	UPROPERTY(EditAnywhere)
 		bool InverseOutsideInside;
+
+	UPROPERTY(EditAnywhere)
+		float MaxValue;
+	UPROPERTY(EditAnywhere)
+		float MinValue;
 };

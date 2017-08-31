@@ -8,6 +8,10 @@
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
+#include "LevelEditorViewport.h"
+#include "Editor.h"
+
+DEFINE_LOG_CATEGORY(VoxelWorldEditorLog)
 
 TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
 {
@@ -55,6 +59,30 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		.Text(FText::FromString(TEXT("Toggle")))
 		]
 		];
+
+	DetailLayout.EditCategory("Voxel")
+		.AddCustomRow(FText::FromString(TEXT("Update")))
+		.NameContent()
+		[
+			SNew(STextBlock)
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+		.Text(FText::FromString(TEXT("Update camera position")))
+		]
+	.ValueContent()
+		.MaxDesiredWidth(125.f)
+		.MinDesiredWidth(125.f)
+		[
+			SNew(SButton)
+			.ContentPadding(2)
+		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Center)
+		.OnClicked(this, &FVoxelWorldDetails::OnUpdateCameraPosition)
+		[
+			SNew(STextBlock)
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+		.Text(FText::FromString(TEXT("Update")))
+		]
+		];
 }
 
 FReply FVoxelWorldDetails::OnWorldUpdate()
@@ -68,6 +96,32 @@ FReply FVoxelWorldDetails::OnWorldUpdate()
 		else
 		{
 			World->Load();
+			OnUpdateCameraPosition();
+		}
+	}
+
+	return FReply::Handled();
+}
+
+FReply FVoxelWorldDetails::OnUpdateCameraPosition()
+{
+	if (World.IsValid())
+	{
+		if (World->IsCreated())
+		{
+			if (World->GetWorld()->WorldType == EWorldType::Editor)
+			{
+				auto Client = static_cast<FLevelEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
+				if (Client)
+				{
+					FVector CameraPosition = Client->GetViewLocation();
+					World->UpdateCameraPosition(CameraPosition);
+				}
+				else
+				{
+					UE_LOG(VoxelWorldEditorLog, Error, TEXT("Cannot find editor camera"));
+				}
+			}
 		}
 	}
 

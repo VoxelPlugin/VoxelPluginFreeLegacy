@@ -6,9 +6,9 @@
 #include "Input/Reply.h"
 #include "IDetailCustomization.h"
 
-class AVoxelAsset;
+DECLARE_LOG_CATEGORY_EXTERN(VoxelAssetEditorLog, Log, All);
 
-DECLARE_LOG_CATEGORY_EXTERN(VoxelEditorLog, Log, All);
+class AVoxelAsset;
 
 class FVoxelAssetDetails : public IDetailCustomization
 {

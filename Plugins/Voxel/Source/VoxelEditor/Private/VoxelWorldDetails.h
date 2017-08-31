@@ -8,6 +8,8 @@
 
 class AVoxelWorld;
 
+DECLARE_LOG_CATEGORY_EXTERN(VoxelWorldEditorLog, Log, All);
+
 class FVoxelWorldDetails : public IDetailCustomization
 {
 public:
@@ -18,6 +20,8 @@ private:
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
 	FReply OnWorldUpdate();
+
+	FReply OnUpdateCameraPosition();
 private:
 	/** The selected sky light */
 	TWeakObjectPtr<AVoxelWorld> World;

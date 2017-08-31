@@ -15,7 +15,6 @@
 
 #define LOCTEXT_NAMESPACE "FVoxelEditorModule"
 
-
 /**
  * Implements the VoxelEditor module.
  */
