@@ -1,5 +1,4 @@
-#include "VoxelAssetDetails.h"
-#include "VoxelAsset.h"
+#include "LandscapeWorldGeneratorDetails.h"
 #include "PropertyHandle.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -11,15 +10,16 @@
 #include "LandscapeDataAccess.h"
 #include "Landscape.h"
 #include "LandscapeComponent.h"
+#include "LandscapeWorldGenerator.h"
 
 DEFINE_LOG_CATEGORY(VoxelAssetEditorLog)
 
-TSharedRef<IDetailCustomization> FVoxelAssetDetails::MakeInstance()
+TSharedRef<IDetailCustomization> ULandscapeWorldGeneratorDetails::MakeInstance()
 {
-	return MakeShareable(new FVoxelAssetDetails());
+	return MakeShareable(new ULandscapeWorldGeneratorDetails());
 }
 
-void FVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
+void ULandscapeWorldGeneratorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailLayout.GetDetailsView().GetSelectedObjects();
 
@@ -28,17 +28,17 @@ void FVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		const TWeakObjectPtr<UObject>& CurrentObject = SelectedObjects[ObjectIndex];
 		if (CurrentObject.IsValid())
 		{
-			AVoxelAsset* CurrentCaptureActor = Cast<AVoxelAsset>(CurrentObject.Get());
+			ALandscapeWorldGenerator* CurrentCaptureActor = Cast<ALandscapeWorldGenerator>(CurrentObject.Get());
 			if (CurrentCaptureActor != NULL)
 			{
-				VoxelAsset = CurrentCaptureActor;
+				LandscapeWorldGenerator = CurrentCaptureActor;
 				break;
 			}
 		}
 	}
 
 	DetailLayout.HideCategory("Hide");
-	DetailLayout.EditCategory("Voxel Asset")
+	DetailLayout.EditCategory("Import")
 		.AddCustomRow(FText::FromString(TEXT("Create")))
 		.NameContent()
 		[
@@ -54,7 +54,7 @@ void FVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked(this, &FVoxelAssetDetails::OnCreateFromLandscape)
+		.OnClicked(this, &ULandscapeWorldGeneratorDetails::OnCreateFromLandscape)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
@@ -63,15 +63,15 @@ void FVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		];
 }
 
-FReply FVoxelAssetDetails::OnCreateFromLandscape()
+FReply ULandscapeWorldGeneratorDetails::OnCreateFromLandscape()
 {
-	if (VoxelAsset->Landscape)
+	if (LandscapeWorldGenerator->Landscape)
 	{
 		int MipLevel = 0;
 		int ComponentSize = 0;
 		int Count = 0;
 
-		for (auto Component : VoxelAsset->Landscape->GetLandscapeActor()->LandscapeComponents)
+		for (auto Component : LandscapeWorldGenerator->Landscape->GetLandscapeActor()->LandscapeComponents)
 		{
 			int Size = (Component->ComponentSizeQuads + 1) >> MipLevel;
 			Count++;
@@ -94,7 +94,7 @@ FReply FVoxelAssetDetails::OnCreateFromLandscape()
 		Values.SetNum(TotalSize * TotalSize);
 		Colors.SetNum(TotalSize * TotalSize);
 
-		for (auto Component : VoxelAsset->Landscape->GetLandscapeActor()->LandscapeComponents)
+		for (auto Component : LandscapeWorldGenerator->Landscape->GetLandscapeActor()->LandscapeComponents)
 		{
 			FLandscapeComponentDataInterface DataInterface(Component, MipLevel);
 			int Size = (Component->ComponentSizeQuads + 1) >> MipLevel;
@@ -102,9 +102,9 @@ FReply FVoxelAssetDetails::OnCreateFromLandscape()
 			TArray<uint8> Weightmap1;
 			TArray<uint8> Weightmap2;
 			TArray<uint8> Weightmap3;
-			DataInterface.GetWeightmapTextureData(VoxelAsset->LayerInfo1, Weightmap1);
-			DataInterface.GetWeightmapTextureData(VoxelAsset->LayerInfo2, Weightmap2);
-			DataInterface.GetWeightmapTextureData(VoxelAsset->LayerInfo3, Weightmap3);
+			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo1, Weightmap1);
+			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo2, Weightmap2);
+			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo3, Weightmap3);
 
 			int32 WeightmapSize = ((Component->SubsectionSizeQuads + 1) * Component->NumSubsections) >> MipLevel;
 
@@ -113,7 +113,7 @@ FReply FVoxelAssetDetails::OnCreateFromLandscape()
 				for (int Y = 0; Y < Size; Y++)
 				{
 					FVector Vertex = DataInterface.GetWorldVertex(X, Y);
-					FVector LocalVertex = (Vertex - VoxelAsset->Landscape->GetActorLocation()) / Component->GetComponentTransform().GetScale3D();
+					FVector LocalVertex = (Vertex - LandscapeWorldGenerator->Landscape->GetActorLocation()) / Component->GetComponentTransform().GetScale3D();
 					Values[LocalVertex.X + TotalSize * LocalVertex.Y] = Vertex.Z;
 
 					uint8 Weight1 = 0;
@@ -137,19 +137,21 @@ FReply FVoxelAssetDetails::OnCreateFromLandscape()
 		}
 
 		int Depth = FMath::CeilToInt(FMath::Log2(TotalSize)) - 4;
-		VoxelAsset->Width = 16 << Depth;
+		LandscapeWorldGenerator->Width = 16 << Depth;
 
-		VoxelAsset->Heights.SetNum(VoxelAsset->Width * VoxelAsset->Width);
-		VoxelAsset->Weights.SetNum(VoxelAsset->Width * VoxelAsset->Width);
+		LandscapeWorldGenerator->Heights.SetNum(LandscapeWorldGenerator->Width * LandscapeWorldGenerator->Width);
+		LandscapeWorldGenerator->Weights.SetNum(LandscapeWorldGenerator->Width * LandscapeWorldGenerator->Width);
 
 		for (int X = 0; X < TotalSize; X++)
 		{
 			for (int Y = 0; Y < TotalSize; Y++)
 			{
-				VoxelAsset->Heights[X + VoxelAsset->Width * Y] = Values[X + TotalSize * Y];
-				VoxelAsset->Weights[X + VoxelAsset->Width * Y] = Colors[X + TotalSize * Y];
+				LandscapeWorldGenerator->Heights[X + LandscapeWorldGenerator->Width * Y] = Values[X + TotalSize * Y];
+				LandscapeWorldGenerator->Weights[X + LandscapeWorldGenerator->Width * Y] = Colors[X + TotalSize * Y];
 			}
 		}
+
+		LandscapeWorldGenerator->LandscapePosition = LandscapeWorldGenerator->Landscape->GetActorLocation();
 	}
 	else
 	{
