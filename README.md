@@ -4,11 +4,27 @@
 
 Based on [transvoxel](http://transvoxel.org/)
 
-Demo: https://www.youtube.com/watch?v=oLDlM8-SnoI
+https://www.youtube.com/playlist?list=PLjYKpKPK8E-_lxP5EuRxizhNuNBDYnT15
 
-Performance test: https://www.youtube.com/watch?v=KD1MkJtnL_A
+## Features:
+* Real time collisions
+* Smooth LOD
+* Fast (update of a chunk cost less than 1ms)
+* Blueprint interface
+* Textures
+* Multithreaded
+* Easy generation of custom worlds
+* Free and open source
+* Multiplayer
+* Landscape import
+* Easy load/save
 
-Landscape importer: https://www.youtube.com/watch?v=t9ijfLnYsh4
+## TODO:
+* Some holes still appears
+* Better mesh import
+* Material tuto
+* 16 textures max per material -> TextureArrays?
+* Better quality settings
 
 ## Example project
 Download repo and launch .uproject
