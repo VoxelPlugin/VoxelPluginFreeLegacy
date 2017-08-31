@@ -8,9 +8,9 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelAssetEditorLog, Log, All);
 
-class AVoxelAsset;
+class ALandscapeWorldGenerator;
 
-class FVoxelAssetDetails : public IDetailCustomization
+class ULandscapeWorldGeneratorDetails : public IDetailCustomization
 {
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
@@ -22,5 +22,5 @@ private:
 	FReply OnCreateFromLandscape();
 private:
 	/** The selected sky light */
-	TWeakObjectPtr<AVoxelAsset> VoxelAsset;
+	TWeakObjectPtr<ALandscapeWorldGenerator> LandscapeWorldGenerator;
 };
