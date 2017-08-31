@@ -6,8 +6,18 @@
 float USphereWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
 	float Distance = static_cast<FVector>(Position).Size();
+	float Alpha = FMath::Clamp(Distance - Radius, -2.f, 2.f) / 2;
 
-	return Distance * (InverseOutsideInside ? 1 : -1);
+	if (Alpha < 0)
+	{
+		Alpha *= -MinValue;
+	}
+	else
+	{
+		Alpha *= MaxValue;
+	}
+
+	return Alpha * (InverseOutsideInside ? -1 : 1);
 }
 
 FColor USphereWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)

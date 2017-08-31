@@ -12,7 +12,7 @@
 #include "Landscape.h"
 #include "LandscapeComponent.h"
 
-DEFINE_LOG_CATEGORY(VoxelEditorLog)
+DEFINE_LOG_CATEGORY(VoxelAssetEditorLog)
 
 TSharedRef<IDetailCustomization> FVoxelAssetDetails::MakeInstance()
 {
@@ -153,7 +153,7 @@ FReply FVoxelAssetDetails::OnCreateFromLandscape()
 	}
 	else
 	{
-		UE_LOG(VoxelEditorLog, Error, TEXT("Invalid landscape"));
+		UE_LOG(VoxelAssetEditorLog, Error, TEXT("Invalid landscape"));
 	}
 
 	return FReply::Handled();
