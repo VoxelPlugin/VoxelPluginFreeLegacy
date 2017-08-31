@@ -2,16 +2,20 @@
 
 <b>Requires 4.17 (async collision cooking)</b>
 
+Based on [transvoxel](http://transvoxel.org/)
+
 Demo: https://www.youtube.com/watch?v=oLDlM8-SnoI
 
-Performance test: https://youtu.be/KD1MkJtnL_A
+Performance test: https://www.youtube.com/watch?v=KD1MkJtnL_A
+
+Landscape importer: https://www.youtube.com/watch?v=t9ijfLnYsh4
 
 ## Example project
 Download repo and launch .uproject
 
 ## Plugin
 * Create a `Plugins` folder in your game directory
-* Download [Voxel.zip](https://github.com/Phyronnaz/MarchingCubes/files/1265244/Voxel.zip) and extract it in the `Plugins` folder
+* Download latest Voxel.zip from [releases](https://github.com/Phyronnaz/MarchingCubes/releases) and extract it in the `Plugins` folder
 * Make sure you have `MyProject/Plugins/Voxel/Voxel.uplugin` and not `MyProject/Plugins/Voxel/Voxel/Voxel.uplugin`
 * If C++: add `"Voxel"` as public dependency in `MyProject.Build.cs` (should be `PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Voxel" });`)
 * Enable the plugin in the editor and restart
