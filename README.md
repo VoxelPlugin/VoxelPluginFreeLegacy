@@ -2,16 +2,36 @@
 
 <b>Requires 4.17 (async collision cooking)</b>
 
-Demo: https://www.youtube.com/watch?v=oLDlM8-SnoI
+Based on [transvoxel](http://transvoxel.org/)
 
-Performance test: https://youtu.be/KD1MkJtnL_A
+https://www.youtube.com/playlist?list=PLjYKpKPK8E-_lxP5EuRxizhNuNBDYnT15
+
+## Features:
+* Real time collisions
+* Smooth LOD
+* Fast (update of a chunk cost less than 1ms)
+* Blueprint interface
+* Textures
+* Multithreaded
+* Easy generation of custom worlds
+* Free and open source
+* Multiplayer
+* Landscape import
+* Easy load/save
+
+## TODO:
+* Some holes still appears
+* Better mesh import
+* Material tuto
+* 16 textures max per material -> TextureArrays?
+* Better quality settings
 
 ## Example project
 Download repo and launch .uproject
 
 ## Plugin
 * Create a `Plugins` folder in your game directory
-* Download [Voxel.zip](https://github.com/Phyronnaz/MarchingCubes/files/1265244/Voxel.zip) and extract it in the `Plugins` folder
+* Download latest Voxel.zip from [releases](https://github.com/Phyronnaz/MarchingCubes/releases) and extract it in the `Plugins` folder
 * Make sure you have `MyProject/Plugins/Voxel/Voxel.uplugin` and not `MyProject/Plugins/Voxel/Voxel/Voxel.uplugin`
 * If C++: add `"Voxel"` as public dependency in `MyProject.Build.cs` (should be `PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Voxel" });`)
 * Enable the plugin in the editor and restart
