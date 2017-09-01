@@ -102,9 +102,11 @@ FReply ULandscapeWorldGeneratorDetails::OnCreateFromLandscape()
 			TArray<uint8> Weightmap1;
 			TArray<uint8> Weightmap2;
 			TArray<uint8> Weightmap3;
+			TArray<uint8> Weightmap4;
 			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo1, Weightmap1);
 			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo2, Weightmap2);
 			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo3, Weightmap3);
+			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo4, Weightmap4);
 
 			int32 WeightmapSize = ((Component->SubsectionSizeQuads + 1) * Component->NumSubsections) >> MipLevel;
 
@@ -119,6 +121,7 @@ FReply ULandscapeWorldGeneratorDetails::OnCreateFromLandscape()
 					uint8 Weight1 = 0;
 					uint8 Weight2 = 0;
 					uint8 Weight3 = 0;
+					uint8 Weight4 = 0;
 					if (Weightmap1.Num())
 					{
 						Weight1 = Weightmap1[X + WeightmapSize * Y];
@@ -131,7 +134,11 @@ FReply ULandscapeWorldGeneratorDetails::OnCreateFromLandscape()
 					{
 						Weight3 = Weightmap3[X + WeightmapSize * Y];
 					}
-					Colors[LocalVertex.X + TotalSize * LocalVertex.Y] = FColor(Weight1, Weight2, Weight3);
+					if (Weightmap3.Num())
+					{
+						Weight4 = Weightmap4[X + WeightmapSize * Y];
+					}
+					Colors[LocalVertex.X + TotalSize * LocalVertex.Y] = FColor(Weight1, Weight2, Weight3, Weight4);
 				}
 			}
 		}
