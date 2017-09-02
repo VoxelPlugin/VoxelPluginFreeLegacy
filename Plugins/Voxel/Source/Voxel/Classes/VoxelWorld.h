@@ -8,6 +8,8 @@
 #include "VoxelWorldGenerator.h"
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Curves/CurveFloat.h"
+#include "VoxelLODProfile.h"
 #include "VoxelWorld.generated.h"
 
 
@@ -32,9 +34,9 @@ public:
 	int Size() const;
 
 	float GetDeletionDelay() const;
-	float GetQuality() const;
-	float GetHighResolutionDistanceOffset() const;
+	float GetLODToleranceZone() const;
 	bool GetRebuildBorders() const;
+	float GetLODAt(float Distance) const;
 	bool IsCreated() const;
 
 	TSharedPtr<ChunkOctree> GetChunkOctree() const;
@@ -50,6 +52,9 @@ public:
 
 	FQueuedThreadPool* ThreadPool;
 
+
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		TSubclassOf<UVoxelLODProfile> LODProfile;
 
 	// Material to use
 	UPROPERTY(EditAnywhere, Category = Voxel)
@@ -175,7 +180,6 @@ protected:
 #if WITH_EDITOR
 	// Lock Depth and VoxelMaterial when in play
 	bool CanEditChange(const UProperty* InProperty) const override;
-	bool ShouldTickIfViewportsOnly() const override;
 #endif
 
 private:
@@ -191,12 +195,9 @@ private:
 	// Time to wait before deleting old chunks to avoid holes
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		float DeletionDelay;
-	// Factor for LODs
-	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0.01", ClampMax = "10", UIMin = "0.01", UIMax = "10"))
-		float Quality;
-	// Distance where chunks must be at the highest resolution
-	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0"))
-		float HighResolutionDistanceOffset;
+	// Chunk at distance D has to verify: LODCurve(D) - LODCurve(D - Width * LODToleranceZone) < LOD < LODCurve(D) + LODCurve(D + Width * LODToleranceZone)
+	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0.01", ClampMax = "1", UIMin = "0.01", UIMax = "1"))
+		float LODToleranceZone;
 	// If disabled, holes may appear between far chunks but can improve performance when moving
 	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
 		bool bRebuildBorders;

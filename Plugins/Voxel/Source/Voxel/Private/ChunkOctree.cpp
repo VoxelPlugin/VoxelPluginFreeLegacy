@@ -47,38 +47,14 @@ void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPositio
 		return;
 	}
 
-	const float DistanceToCamera = ((World->GetTransform().TransformPosition((FVector)Position) - CameraPosition).Size()) / World->GetActorScale3D().Size() - World->GetHighResolutionDistanceOffset();
-	const float Quality = World->GetQuality();
+	const float DistanceToCamera = ((World->GetTransform().TransformPosition((FVector)Position) - CameraPosition).Size()) / World->GetTransform().GetScale3D().X;
 
-	const float MinDistance = Width() * Quality;
-	const float MaxDistance = Width() * Quality * 2;
+	const float MinDistance = DistanceToCamera - World->GetLODToleranceZone() * Width();
+	const float MaxDistance = DistanceToCamera;
+	const float MinLOD = World->GetLODAt(FMath::Log2(MinDistance / 16));
+	const float MaxLOD = World->GetLODAt(FMath::Log2(MaxDistance / 16));
 
-
-	if (DistanceToCamera < 0)
-	{
-		// Always at highest resolution
-		if (bHasChunk)
-		{
-			Unload();
-		}
-		if (!bHasChilds)
-		{
-			CreateChilds();
-		}
-		if (bHasChilds)
-		{
-			// Update childs
-			for (int i = 0; i < 8; i++)
-			{
-				check(Childs[i].IsValid());
-				Childs[i]->UpdateCameraPosition(World, CameraPosition);
-			}
-		}
-		return;
-	}
-
-
-	if (MinDistance < DistanceToCamera && DistanceToCamera < MaxDistance)
+	if (MinLOD < Depth && Depth < MaxLOD)
 	{
 		// Depth OK
 		if (bHasChilds)
@@ -96,9 +72,9 @@ void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPositio
 			Load(World);
 		}
 	}
-	else if (DistanceToCamera < MinDistance)
+	else if (MaxLOD < Depth)
 	{
-		// Depth too high
+		// Resolution too low
 		if (bHasChunk)
 		{
 			Unload();
@@ -117,9 +93,9 @@ void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPositio
 			}
 		}
 	}
-	else // DistanceToCamera > MaxDistance
+	else // Depth < MinLOD
 	{
-		// Depth too low
+		// Resolution too high
 		if (bHasChilds)
 		{
 			// Too far, delete childs

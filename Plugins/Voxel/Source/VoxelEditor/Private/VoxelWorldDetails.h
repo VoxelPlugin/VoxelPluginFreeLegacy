@@ -9,12 +9,13 @@
 class AVoxelWorld;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelWorldEditorLog, Log, All);
-
 class FVoxelWorldDetails : public IDetailCustomization
 {
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
 	static TSharedRef<IDetailCustomization> MakeInstance();
+
+	void InputRange(float a, float b);
 private:
 	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
@@ -23,6 +24,5 @@ private:
 
 	FReply OnUpdateCameraPosition();
 private:
-	/** The selected sky light */
 	TWeakObjectPtr<AVoxelWorld> World;
 };

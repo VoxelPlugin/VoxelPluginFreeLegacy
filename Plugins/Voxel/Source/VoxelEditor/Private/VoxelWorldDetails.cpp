@@ -10,6 +10,7 @@
 #include "Widgets/Input/SButton.h"
 #include "LevelEditorViewport.h"
 #include "Editor.h"
+#include "IDetailPropertyRow.h"
 
 DEFINE_LOG_CATEGORY(VoxelWorldEditorLog)
 
@@ -92,11 +93,13 @@ FReply FVoxelWorldDetails::OnWorldUpdate()
 		if (World->IsCreated())
 		{
 			World->Unload();
+			World->Modify();
 		}
 		else
 		{
 			World->Load();
 			OnUpdateCameraPosition();
+			World->Modify();
 		}
 	}
 

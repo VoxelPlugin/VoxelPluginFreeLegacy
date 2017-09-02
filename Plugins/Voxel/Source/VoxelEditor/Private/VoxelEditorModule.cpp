@@ -48,6 +48,7 @@ protected:
 		//Custom detail views
 		PropertyModule.RegisterCustomClassLayout("VoxelWorld", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldDetails::MakeInstance));
 		PropertyModule.RegisterCustomClassLayout("LandscapeWorldGenerator", FOnGetDetailCustomizationInstance::CreateStatic(&ULandscapeWorldGeneratorDetails::MakeInstance));
+		PropertyModule.NotifyCustomizationModuleChanged();
 	}
 
 	void UnregisterClassLayout()
@@ -58,6 +59,7 @@ protected:
 		{
 			PropertyModule->UnregisterCustomClassLayout("VoxelWorld");
 			PropertyModule->UnregisterCustomClassLayout("LandscapeWorldGenerator");
+			PropertyModule->NotifyCustomizationModuleChanged();
 		}
 	}
 };

@@ -137,10 +137,10 @@ void AVoxelChunk::Update(bool bAsync)
 			UpdateSection();
 		}
 	}
-	//else
-	//{
-		//UE_LOG(VoxelLog, Warning, TEXT("Update called when already updating"));
-	//}
+	if (!bAsync)
+	{
+		UE_LOG(VoxelLog, Warning, TEXT("Not Async"));
+	}
 }
 
 void AVoxelChunk::BasicUpdate()
