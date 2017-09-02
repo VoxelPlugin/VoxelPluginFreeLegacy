@@ -19,7 +19,7 @@
 		{
 			"Name" : "Voxel",
 			"Type" : "Runtime",
-			"LoadingPhase" : "Default",
+			"LoadingPhase" : "PreDefault",
 			"BlacklistPlatforms" : [ "Win32" ]
 		},
 		{
