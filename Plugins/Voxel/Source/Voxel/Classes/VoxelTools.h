@@ -14,6 +14,28 @@ enum class EBlueprintSuccess : uint8
 	Failed
 };
 
+UENUM(BlueprintType)
+enum class EMaterialChoice4 : uint8
+{
+	Material1,
+	Material2,
+	Material3,
+	Material4
+};
+
+UENUM(BlueprintType)
+enum class EMaterialChoice8 : uint8
+{
+	Material1,
+	Material2,
+	Material3,
+	Material4,
+	Material5,
+	Material6,
+	Material7,
+	Material8
+};
+
 /**
  * Blueprint tools for voxels
  */
@@ -152,4 +174,10 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", Meta = (ExpandEnumAsExecs = "Branches"))
 		static void GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches);
+
+	UFUNCTION(BlueprintPure, Category = "Voxel")
+	static FLinearColor GetColorFromMaterialChoice4(EMaterialChoice4 MaterialChoice);
+
+	UFUNCTION(BlueprintPure, Category = "Voxel")
+	static FLinearColor GetColorFromMaterialChoice8(EMaterialChoice8 MaterialChoice);
 };

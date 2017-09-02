@@ -561,3 +561,47 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 		Branches = EBlueprintSuccess::Failed;
 	}
 }
+
+FLinearColor UVoxelTools::GetColorFromMaterialChoice4(EMaterialChoice4 MaterialChoice)
+{
+	switch (MaterialChoice)
+	{
+	case EMaterialChoice4::Material1:
+		return FColor(255, 0, 0, 0);
+	case EMaterialChoice4::Material2:
+		return FColor(0, 255, 0, 0);
+	case EMaterialChoice4::Material3:
+		return FColor(0, 0, 255, 0);
+	case EMaterialChoice4::Material4:
+		return FColor(0, 0, 0, 255);
+	default:
+		check(false);
+		return FColor::Black;
+	}
+}
+
+FLinearColor UVoxelTools::GetColorFromMaterialChoice8(EMaterialChoice8 MaterialChoice)
+{
+	switch (MaterialChoice)
+	{
+	case EMaterialChoice8::Material1:
+		return FColor(240, 0, 0, 0);
+	case EMaterialChoice8::Material2:
+		return FColor(0, 240, 0, 0);
+	case EMaterialChoice8::Material3:
+		return FColor(0, 0, 240, 0);
+	case EMaterialChoice8::Material4:
+		return FColor(0, 0, 0, 240);
+	case EMaterialChoice8::Material5:
+		return FColor(15, 0, 0, 0);
+	case EMaterialChoice8::Material6:
+		return FColor(0, 15, 0, 0);
+	case EMaterialChoice8::Material7:
+		return FColor(0, 0, 15, 0);
+	case EMaterialChoice8::Material8:
+		return FColor(0, 0, 0, 15);
+	default:
+		check(false);
+		return FColor::Black;
+	}
+}
