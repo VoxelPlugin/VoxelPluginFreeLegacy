@@ -6,7 +6,7 @@
 float USphereWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
 	float Distance = static_cast<FVector>(Position).Size();
-	float Alpha = FMath::Clamp(Distance - Radius, -2.f, 2.f) / 2;
+	float Alpha = FMath::Clamp(Distance - LocalRadius, -2.f, 2.f) / 2;
 
 	if (Alpha < 0)
 	{
@@ -22,8 +22,10 @@ float USphereWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 
 FColor USphereWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
 {
-	float Distance = static_cast<FVector>(Position).Size();
-	float Alpha = (Radius * 0.9f - Distance) / Radius * 0.9f;
+	return DefaultColor;
+}
 
-	return FLinearColor::LerpUsingHSV(FColor::Red, FColor::Green, FMath::Clamp(Alpha, 0.f, 1.f)).ToFColor(true);
+void USphereWorldGenerator::SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
+{
+	LocalRadius = Radius / VoxelWorld->GetTransform().GetScale3D().X;
 }

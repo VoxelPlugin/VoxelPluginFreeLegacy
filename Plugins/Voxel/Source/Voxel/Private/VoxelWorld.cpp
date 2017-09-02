@@ -15,7 +15,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : Depth(9), MultiplayerFPS(5), DeletionDelay(0.1f), Quality(0.75f), HighResolutionDistanceOffset(25), bRebuildBorders(true),
+AVoxelWorld::AVoxelWorld() : Depth(9), MultiplayerFPS(5), DeletionDelay(0.1f), LODToleranceZone(0.5), bRebuildBorders(true),
 PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), bIsCreated(false), TimeSinceSync(0)
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -34,6 +34,8 @@ PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), b
 
 	ThreadPool = FQueuedThreadPool::Allocate();
 	ThreadPool->Create(8);
+
+	LODProfile = UVoxelLODProfile::StaticClass();
 }
 
 void AVoxelWorld::BeginPlay()
@@ -341,11 +343,6 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 	else
 		return ParentVal;
 }
-
-bool AVoxelWorld::ShouldTickIfViewportsOnly() const
-{
-	return bIsCreated;
-}
 #endif
 
 
@@ -380,19 +377,19 @@ float AVoxelWorld::GetDeletionDelay() const
 	return DeletionDelay;
 }
 
-float AVoxelWorld::GetQuality() const
+float AVoxelWorld::GetLODToleranceZone() const
 {
-	return Quality;
-}
-
-float AVoxelWorld::GetHighResolutionDistanceOffset() const
-{
-	return HighResolutionDistanceOffset;
+	return LODToleranceZone;
 }
 
 bool AVoxelWorld::GetRebuildBorders() const
 {
 	return bRebuildBorders;
+}
+
+float AVoxelWorld::GetLODAt(float Distance) const
+{
+	return LODProfile.GetDefaultObject()->GetLODAt(Distance);
 }
 
 bool AVoxelWorld::IsCreated() const

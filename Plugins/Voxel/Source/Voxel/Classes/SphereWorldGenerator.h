@@ -29,13 +29,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
-	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override
-	{
-	};
+	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override;
 
-	// Radius of the sphere
+	// Radius of the sphere in world space
 	UPROPERTY(EditAnywhere)
 		float Radius;
+
+	UPROPERTY(EditAnywhere)
+		FColor DefaultColor;
 
 	// If true, sphere is a hole in a full world
 	UPROPERTY(EditAnywhere)
@@ -45,4 +46,7 @@ public:
 		float MaxValue;
 	UPROPERTY(EditAnywhere)
 		float MinValue;
+
+private:
+	float LocalRadius;
 };
