@@ -126,12 +126,12 @@ FColor AVoxelWorld::GetColor(FIntVector Position) const
 	return Data->GetColor(Position);
 }
 
-void AVoxelWorld::SetValue(FIntVector Position, float Value) const
+void AVoxelWorld::SetValue(FIntVector Position, float Value)
 {
 	Data->SetValue(Position, Value);
 }
 
-void AVoxelWorld::SetColor(FIntVector Position, FColor Color) const
+void AVoxelWorld::SetColor(FIntVector Position, FColor Color)
 {
 	Data->SetColor(Position, Color);
 }
@@ -190,7 +190,7 @@ FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
 	return FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
 }
 
-void AVoxelWorld::Add(FIntVector Position, float Value) const
+void AVoxelWorld::Add(FIntVector Position, float Value)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Add);
 	if (IsInWorld(Position))
@@ -322,7 +322,7 @@ void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
 	QueuedChunks.Reset();
 }
 
-void AVoxelWorld::UpdateAll(bool bAsync) const
+void AVoxelWorld::UpdateAll(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UpdateAll);
 	MainOctree->Update(bAsync);

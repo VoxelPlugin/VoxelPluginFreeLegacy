@@ -73,7 +73,7 @@ public:
 	 * @param	Value		Value to add
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Add(FIntVector Position, float Value) const;
+		void Add(FIntVector Position, float Value);
 
 	/**
 	 * Update chunk
@@ -99,7 +99,7 @@ public:
 	 * @param	bAsync	Async?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateAll(bool bAsync = true) const;
+		void UpdateAll(bool bAsync = true);
 
 	/**
 	 * Update camera position for LODs
@@ -138,14 +138,14 @@ public:
 	 * @param	Value		Value to set
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetValue(FIntVector Position, float Value) const;
+		void SetValue(FIntVector Position, float Value);
 	/**
 	 * Set color at position
 	 * @param	Position	Position in voxel space
 	 * @param	Color		FColor
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetColor(FIntVector Position, FColor Color) const;
+		void SetColor(FIntVector Position, FColor Color);
 
 	/**
 	 * Get array to save world
