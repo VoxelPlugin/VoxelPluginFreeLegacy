@@ -1,32 +1,35 @@
 {
-	"FileVersion" : 3,
-	"Version" : 1,
-	"VersionName" : "1.0",
-	"FriendlyName" : "Voxel",
-	"Description" : "Implementation of transvoxels",
-	"Category" : "TerrainObject",
-	"CreatedBy" : "Phyronnaz",
-	"CreatedByURL" : "https://github.com/Phyronnaz",
-	"DocsURL" : "https://github.com/Phyronnaz/MarchingCubes",
-	"MarketplaceURL" : "",
-	"SupportURL" : "",
-	"EnabledByDefault" : false,
-	"CanContainContent" : false,
-	"IsBetaVersion" : true,
-	"Installed" : false,
-	"Modules" :
-	[
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.2.3",
+	"FriendlyName": "Voxel",
+	"Description": "Implementation of transvoxels",
+	"Category": "TerrainObject",
+	"CreatedBy": "Phyronnaz",
+	"CreatedByURL": "https://github.com/Phyronnaz",
+	"DocsURL": "https://github.com/Phyronnaz/MarchingCubes",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EnabledByDefault": false,
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
 		{
-			"Name" : "Voxel",
-			"Type" : "Runtime",
-			"LoadingPhase" : "PreDefault",
-			"BlacklistPlatforms" : [ "Win32" ]
+			"Name": "Voxel",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"BlacklistPlatforms": [
+				"Win32"
+			]
 		},
 		{
-			"Name" : "VoxelEditor",
-			"Type" : "Editor",
-			"LoadingPhase" : "Default",
-			"BlacklistPlatforms" : [ "Win32" ]
+			"Name": "VoxelEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"BlacklistPlatforms": [
+				"Win32"
+			]
 		}
 	],
 	"Plugins": [
