@@ -6,7 +6,6 @@
 #include "DrawDebugHelpers.h"
 #include "ValueOctree.h"
 #include "ChunkOctree.h"
-#include "MeshImporter.h"
 #include "GameFramework/HUD.h"
 #include "Engine/LocalPlayer.h"
 #include "Kismet/GameplayStatics.h"
@@ -479,19 +478,22 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 	}
 }
 
-void UVoxelTools::ImportMesh(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor)
+void UVoxelTools::ImportMesh(AVoxelWorld* World, TSubclassOf<AVoxelMeshAsset> MeshToImport, FVector Position, bool bAsync, bool bDebugPoints)
 {
-	if (Actor == nullptr)
+	if (World == nullptr)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("ImportMesh: Actor is Invalid"));
+		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		return;
 	}
-	else
+	check(World);
+
+	auto MeshAsset = MeshToImport.GetDefaultObject();
+	if (MeshAsset == nullptr)
 	{
-		FVector Origin;
-		FVector BoxExtent;
-		Actor->GetActorBounds(false, Origin, BoxExtent);
-		MeshImporter::ImportMesh(bAdd, Component, World, Origin - BoxExtent, Origin + BoxExtent);
+		UE_LOG(VoxelLog, Error, TEXT("MeshToImport is NULL"));
+		return;
 	}
+	MeshAsset->ImportIntoWorld(World, World->GlobalToLocal(Position), bAsync, bDebugPoints);
 }
 
 void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches)

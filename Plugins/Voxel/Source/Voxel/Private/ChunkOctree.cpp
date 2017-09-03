@@ -47,10 +47,10 @@ void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPositio
 		return;
 	}
 
-	const float DistanceToCamera = ((World->GetTransform().TransformPosition((FVector)Position) - CameraPosition).Size()) / World->GetTransform().GetScale3D().X;
+	const float DistanceToCamera = ((World->GetTransform().TransformPosition((FVector)Position) - CameraPosition).Size()) / World->GetTransform().GetScale3D().X - 1.73205080757f /* sqrt(3) */ * Width() / 2;
 
 	const float MinDistance = DistanceToCamera - World->GetLODToleranceZone() * Width();
-	const float MaxDistance = DistanceToCamera;
+	const float MaxDistance = DistanceToCamera + -World->GetLODToleranceZone() * Width();
 	const float MinLOD = World->GetLODAt(FMath::Log2(MinDistance / 16));
 	const float MaxLOD = World->GetLODAt(FMath::Log2(MaxDistance / 16));
 

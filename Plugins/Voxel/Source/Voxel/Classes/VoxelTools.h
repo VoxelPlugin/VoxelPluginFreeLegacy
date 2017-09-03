@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMeshAsset.h"
 #include "VoxelTools.generated.h"
 
 class AVoxelWorld;
@@ -10,7 +11,7 @@ class AVoxelWorld;
 UENUM(BlueprintType)
 enum class EBlueprintSuccess : uint8
 {
-	Sucess,
+	Sucess, // Correcting typo makes editor crash
 	Failed
 };
 
@@ -144,13 +145,14 @@ public:
 
 	/**
 	 * Import a mesh into voxels. WARNING: Slow (use raycasts)
-	 * @param	bAdd		Add or remove the mesh from voxels?
-	 * @param	World		Voxel world
-	 * @param	Component	Component with collision
-	 * @param	Actor		Actor holding component (used to get bounds)
+	 * @param	World			Voxel world
+	 * @param	MeshToImport	Subclass of VoxelMeshAsset
+	 * @param	Position		Position in world space
+	 * @param	bAsync			Update async?
+	 * @param	bDebugPoints	Draw debug points?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		static void ImportMesh(bool bAdd, AVoxelWorld* World, UPrimitiveComponent* Component, AActor* Actor);
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
+		static void ImportMesh(AVoxelWorld* World, TSubclassOf<AVoxelMeshAsset> MeshToImport, FVector Position, bool bAsync = false, bool bDebugPoints = false);
 
 	/**
 	 * Get Voxel World from mouse world position and direction given by GetMouseWorldPositionAndDirection
@@ -176,8 +178,8 @@ public:
 		static void GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches);
 
 	UFUNCTION(BlueprintPure, Category = "Voxel")
-	static FLinearColor GetColorFromMaterialChoice4(EMaterialChoice4 MaterialChoice);
+		static FLinearColor GetColorFromMaterialChoice4(EMaterialChoice4 MaterialChoice);
 
 	UFUNCTION(BlueprintPure, Category = "Voxel")
-	static FLinearColor GetColorFromMaterialChoice8(EMaterialChoice8 MaterialChoice);
+		static FLinearColor GetColorFromMaterialChoice8(EMaterialChoice8 MaterialChoice);
 };
