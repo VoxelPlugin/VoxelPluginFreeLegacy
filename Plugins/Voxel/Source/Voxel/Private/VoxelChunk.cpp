@@ -161,10 +161,6 @@ void AVoxelChunk::Update(bool bAsync)
 			UpdateSection();
 		}
 	}
-	if (!bAsync)
-	{
-		UE_LOG(VoxelLog, Warning, TEXT("Not Async"));
-	}
 }
 
 void AVoxelChunk::BasicUpdate()
