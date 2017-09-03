@@ -63,6 +63,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
 		bool bDebugMultiplayer;
 
+	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
+		bool bDrawChunksBorders;
+
 
 	/**
 	 * Convert position from world space to voxel space
