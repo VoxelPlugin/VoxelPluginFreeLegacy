@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
+#include "Components/LineBatchComponent.h"
 #include "VoxelChunk.generated.h"
 
 class AVoxelWorld;
@@ -99,6 +100,9 @@ protected:
 private:
 	UPROPERTY(EditAnywhere)
 		UProceduralMeshComponent* PrimaryMesh;
+
+	UPROPERTY(EditAnywhere)
+		ULineBatchComponent* DebugLineBatch;
 
 	// Toggle to manually init an update at the next tick
 	UPROPERTY(EditAnywhere)

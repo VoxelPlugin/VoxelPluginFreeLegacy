@@ -2,7 +2,6 @@
 
 #include "VoxelPrivatePCH.h"
 #include "VoxelChunk.h"
-#include "ChunkOctree.h"
 #include "ProceduralMeshComponent.h"
 #include "VoxelThread.h"
 
@@ -17,6 +16,8 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDele
 	// Create primary mesh
 	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
 	RootComponent = PrimaryMesh;
+
+	DebugLineBatch = CreateDefaultSubobject<ULineBatchComponent>(FName("LineBatch"));
 
 	ChunkHasHigherRes.SetNum(6);
 }
@@ -100,6 +101,29 @@ void AVoxelChunk::Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWor
 
 	// Update adjacents
 	bAdjacentChunksNeedUpdate = true;
+
+	// Debug
+	if (World->bDrawChunksBorders)
+	{
+		int w = Width();
+
+		TArray<FBatchedLine> Lines;
+		TArray<FIntVector> Starts = { FIntVector(0, 0, 0), FIntVector(w, 0, 0), FIntVector(w, w, 0), FIntVector(0, w, 0),
+									  FIntVector(0, 0, 0), FIntVector(w, 0, 0), FIntVector(0, w, 0), FIntVector(w, w, 0),
+									  FIntVector(0, 0, w), FIntVector(w, 0, w), FIntVector(w, w, w), FIntVector(0, w, w) };
+
+		TArray<FIntVector> Ends = { FIntVector(w, 0, 0), FIntVector(w, w, 0), FIntVector(0, w, 0), FIntVector(0, 0, 0),
+									FIntVector(0, 0, w), FIntVector(w, 0, w), FIntVector(0, w, w), FIntVector(w, w, w),
+									FIntVector(w, 0, w), FIntVector(w, w, w), FIntVector(0, w, w), FIntVector(0, 0, w) };
+
+		for (int i = 0; i < Starts.Num(); i++)
+		{
+			FVector Start = World->GetTransform().TransformPosition((FVector)(Position + Starts[i]));
+			FVector End = World->GetTransform().TransformPosition((FVector)(Position + Ends[i]));
+			Lines.Add(FBatchedLine(Start, End, FColor::Red, -1, Depth * Depth * Depth * Depth + 10, 0));
+		}
+		DebugLineBatch->DrawLines(Lines);
+	}
 }
 
 void AVoxelChunk::Update(bool bAsync)
@@ -173,6 +197,7 @@ void AVoxelChunk::Unload()
 
 void AVoxelChunk::Delete()
 {
+	DebugLineBatch->Flush();
 	if (Task != nullptr)
 	{
 		Task->EnsureCompletion();
