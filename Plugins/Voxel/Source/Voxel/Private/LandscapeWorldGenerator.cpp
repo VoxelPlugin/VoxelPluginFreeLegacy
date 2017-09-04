@@ -7,6 +7,10 @@
 #include "Engine/World.h"
 #include "Engine/Texture2D.h"
 
+ALandscapeWorldGenerator::ALandscapeWorldGenerator() : Precision(1), ValueMultiplier(1)
+{
+};
+
 float ALandscapeWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
 	check(World);
@@ -19,12 +23,12 @@ float ALandscapeWorldGenerator::GetDefaultValue_Implementation(FIntVector Positi
 		if ((Position.Z + Precision - LocalLandscapePosition.Z) * World->GetTransform().GetScale3D().Z + World->GetActorLocation().Z < Heights[X + Width * Y])
 		{
 			// If voxel over us in in, we're entirely in
-			return MinValue;
+			return -ValueMultiplier;
 		}
 		else if ((Position.Z - Precision - LocalLandscapePosition.Z) * World->GetTransform().GetScale3D().Z + World->GetActorLocation().Z > Heights[X + Width * Y])
 		{
 			// If voxel under us in out, we're entirely out
-			return MaxValue;
+			return ValueMultiplier;
 		}
 		else
 		{
@@ -32,11 +36,11 @@ float ALandscapeWorldGenerator::GetDefaultValue_Implementation(FIntVector Positi
 
 			if (Alpha < 0)
 			{
-				Alpha *= -MinValue;
+				Alpha *= ValueMultiplier;
 			}
 			else
 			{
-				Alpha *= MaxValue;
+				Alpha *= ValueMultiplier;
 			}
 
 			return Alpha;

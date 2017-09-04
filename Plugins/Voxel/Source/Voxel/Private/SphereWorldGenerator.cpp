@@ -3,19 +3,17 @@
 #include "VoxelPrivatePCH.h"
 #include "SphereWorldGenerator.h"
 
+USphereWorldGenerator::USphereWorldGenerator() : Radius(10), InverseOutsideInside(false), ValueMultiplier(1)
+{
+
+}
+
 float USphereWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
 	float Distance = static_cast<FVector>(Position).Size();
 	float Alpha = FMath::Clamp(Distance - LocalRadius, -2.f, 2.f) / 2;
 
-	if (Alpha < 0)
-	{
-		Alpha *= -MinValue;
-	}
-	else
-	{
-		Alpha *= MaxValue;
-	}
+	Alpha *= ValueMultiplier;
 
 	return Alpha * (InverseOutsideInside ? -1 : 1);
 }

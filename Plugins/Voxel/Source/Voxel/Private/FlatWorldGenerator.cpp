@@ -3,9 +3,14 @@
 #include "VoxelPrivatePCH.h"
 #include "FlatWorldGenerator.h"
 
+UFlatWorldGenerator::UFlatWorldGenerator() : Height(0), DefaultColor(FColor::White), ValueMultiplier(1)
+{
+
+}
+
 float UFlatWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
-	return (Position.Z == Height) ? 0 : ((Position.Z > Height) ? MaxValue : MinValue);
+	return (Position.Z == Height) ? 0 : ((Position.Z > Height) ? ValueMultiplier : -ValueMultiplier);
 }
 
 FColor UFlatWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
@@ -18,4 +23,9 @@ FColor UFlatWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
 		}
 	}
 	return DefaultColor.ToFColor(true);
+}
+
+void UFlatWorldGenerator::SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
+{
+
 }

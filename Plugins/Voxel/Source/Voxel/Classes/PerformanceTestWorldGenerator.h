@@ -19,17 +19,17 @@ class VOXEL_API UPerformanceTestWorldGenerator : public UObject, public IVoxelWo
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		float GetDefaultValue(FIntVector Position);
-	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		FColor GetDefaultColor(FIntVector Position);
-	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
-	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override
-	{
-	};
+
+
+	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
+	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
+	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override;
 
 	// Radius of the spheres
 	UPROPERTY(EditAnywhere)

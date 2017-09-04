@@ -48,18 +48,17 @@ public:
 
 	/**
 	 * Set value to positive or negative in a sphere
-	 * @param	World			Voxel world
-	 * @param	Position		Position in world space
-	 * @param	Radius			Radius of the sphere in voxel space
-	 * @param	bAdd			Add or remove?
-	 * @param	bQueueUpdate	Should modified chunks be queued for update?
-	 * @param	bApplyUpdates	Should queued update be applied?
-	 * @param	bAsync			Update async
-	 * @param	InsideValue		Value to set inside the sphere
-	 * @param	OutsideValue	Value to set outside the sphere
+	 * @param	World				Voxel world
+	 * @param	Position			Position in world space
+	 * @param	Radius				Radius of the sphere in voxel space
+	 * @param	bAdd				Add or remove?
+	 * @param	bQueueUpdate		Should modified chunks be queued for update?
+	 * @param	bApplyUpdates		Should queued update be applied?
+	 * @param	bAsync				Update async
+	 * @param	ValueMultiplier		-ValueMultiplier will be set inside the sphere and ValueMultiplier outside
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
-		static void SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, float InsideValue = -1, float OutsideValue = 1);
+		static void SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, float ValueMultiplier = 1);
 
 	/**
 	 * Set color in a sphere
@@ -86,11 +85,9 @@ public:
 	 * @param	bQueueUpdate	Should modified chunks be queued for update?
 	 * @param	bApplyUpdates	Should queued update be applied?
 	 * @param	bAsync			Update async
-	 * @param	InsideValue		Value to set inside the cone
-	 * @param	OutsideValue	Value to set outside the cone
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
-		static void SetValueCone(AVoxelWorld* World, FVector Position, float Radius, float Height, bool bAdd, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, float InsideValue = -1, float OutsideValue = 1);
+		static void SetValueCone(AVoxelWorld* World, FVector Position, float Radius, float Height, bool bAdd, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, float ValueMultiplier = 1);
 
 
 	/**

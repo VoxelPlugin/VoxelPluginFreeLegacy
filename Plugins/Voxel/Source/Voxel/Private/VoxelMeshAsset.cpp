@@ -7,7 +7,7 @@
 #include "DrawDebugHelpers.h"
 
 
-AVoxelMeshAsset::AVoxelMeshAsset() : MinValue(-1), MaxValue(1), MaxResolution(10000)
+AVoxelMeshAsset::AVoxelMeshAsset() : ValueMultiplier(1), MaxResolution(10000)
 {
 	DebugLineBatch = CreateDefaultSubobject<ULineBatchComponent>(FName("LineBatch"));
 };
@@ -270,7 +270,7 @@ void AVoxelMeshAsset::ImportIntoWorld(AVoxelWorld* World, FIntVector Position, b
 
 				if (IsInside[Index] || Values[Index] * World->GetValue(CurrentPosition) > 0)
 				{
-					World->SetValue(CurrentPosition, Values[Index]);
+					World->SetValue(CurrentPosition, Values[Index] * ValueMultiplier);
 					World->QueueUpdate(CurrentPosition);
 				}
 			}

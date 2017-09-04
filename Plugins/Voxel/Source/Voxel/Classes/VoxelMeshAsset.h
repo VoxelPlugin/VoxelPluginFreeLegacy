@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/LineBatchComponent.h"
 #include <forward_list>
+#include "Components/LineBatchComponent.h"
 #include "VoxelMeshAsset.generated.h"
 
 /**
@@ -37,10 +37,7 @@ public:
 
 
 	UPROPERTY(EditAnywhere)
-		float MinValue;
-
-	UPROPERTY(EditAnywhere)
-		float MaxValue;
+		float ValueMultiplier;
 
 	// Avoid crash
 	UPROPERTY(EditAnywhere, AdvancedDisplay)
@@ -53,6 +50,7 @@ public:
 		TArray<bool> IsInside;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		FIntVector Size;
+
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ImportIntoWorld(AVoxelWorld* World, FIntVector Position, bool bAsync, bool bDebugPoints);

@@ -17,20 +17,25 @@ class VOXEL_API UEmptyWorldGenerator : public UObject, public IVoxelWorldGenerat
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		float GetDefaultValue(FIntVector Position);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		FColor GetDefaultColor(FIntVector Position);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
+		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
+
+
+
 	virtual float GetDefaultValue_Implementation(FIntVector Position) override
 	{
 		return 0;
 	}
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		FColor GetDefaultColor(FIntVector Position);
 	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override
 	{
 		return FColor::Black;
 	}
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
 	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override
 	{
 	};
