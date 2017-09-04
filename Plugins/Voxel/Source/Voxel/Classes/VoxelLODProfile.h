@@ -15,14 +15,14 @@ class VOXEL_API UVoxelLODProfile : public UObject
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		FRuntimeFloatCurve LODCurve;
+
 	UVoxelLODProfile()
 	{
 		LODCurve.EditorCurveData.AddKey(0, 0);
 		LODCurve.EditorCurveData.AddKey(10, 10);
 	};
-
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		FRuntimeFloatCurve LODCurve;
 
 	float GetLODAt(float Distance) const
 	{

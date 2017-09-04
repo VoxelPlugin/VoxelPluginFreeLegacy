@@ -10,7 +10,7 @@
 #include "Engine/LocalPlayer.h"
 #include "Kismet/GameplayStatics.h"
 
-void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync, float InsideValue, float OutsideValue)
+void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync, float ValueMultiplier)
 {
 	if (World == nullptr)
 	{
@@ -73,14 +73,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 				{
 					float Value = FMath::Clamp(Radius - Distance, -2.f, 2.f) / 2;
 
-					if (bAdd)
-					{
-						Value *= InsideValue;
-					}
-					else
-					{
-						Value *= OutsideValue;
-					}
+					Value *= ValueMultiplier * (bAdd ? -1 : 1);
 
 					if (SmallValueOctree->IsInOctree(CurrentPosition)) // Prevent crash
 					{
@@ -144,7 +137,7 @@ void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Rad
 }
 
 void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radius, float Height, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync,
-							   float InsideValue, float OutsideValue)
+							   float ValueMultiplier)
 {
 	if (World == nullptr)
 	{
@@ -172,14 +165,7 @@ void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radi
 				{
 					float Value = FMath::Clamp(CurrentRadius - Distance, -2.f, 2.f) / 2;
 
-					if (bAdd)
-					{
-						Value *= InsideValue;
-					}
-					else
-					{
-						Value *= OutsideValue;
-					}
+					Value *= ValueMultiplier * (bAdd ? -1 : 1);
 
 					if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
 					{

@@ -16,33 +16,22 @@ class VOXEL_API UPerlinNoiseWorldGenerator : public UObject, public IVoxelWorldG
 	GENERATED_BODY()
 
 public:
-
-	UPerlinNoiseWorldGenerator() : Noise()
-	{
-	};
+	UPerlinNoiseWorldGenerator();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		float GetDefaultValue(FIntVector Position);
-	virtual float GetDefaultValue_Implementation(FIntVector Position) override
-	{
-		float n = Noise.Noise(Position.X / 10.f, Position.Y / 10.f, Position.Z / 10.f);
-		n = n - FMath::FloorToInt(n);
-
-		return 2 * n - 1;
-	}
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		FColor GetDefaultColor(FIntVector Position);
-	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override
-	{
-		return FColor::Green;
-	}
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
-	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override
-	{
-	};
 
+
+	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
+	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
+	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override;
+
+private:
 	PerlinNoise Noise;
 };

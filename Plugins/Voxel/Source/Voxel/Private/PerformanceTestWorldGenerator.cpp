@@ -11,3 +11,8 @@ FColor UPerformanceTestWorldGenerator::GetDefaultColor_Implementation(FIntVector
 {
 	return FColor::Green;
 }
+
+void UPerformanceTestWorldGenerator::SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
+{
+
+}

@@ -17,20 +17,20 @@ class VOXEL_API ALandscapeWorldGenerator : public AActor, public IVoxelWorldGene
 	GENERATED_BODY()
 
 public:
-	ALandscapeWorldGenerator() : Precision(1), MinValue(-1), MaxValue(1)
-	{
-	};
+	ALandscapeWorldGenerator();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		float GetDefaultValue(FIntVector Position);
-	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		FColor GetDefaultColor(FIntVector Position);
-	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
 		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
+
+
+	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
+	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
 	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override;
 
 
@@ -58,10 +58,7 @@ public:
 		int Precision;
 
 	UPROPERTY(EditAnywhere)
-		float MinValue;
-
-	UPROPERTY(EditAnywhere)
-		float MaxValue;
+		float ValueMultiplier;
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
