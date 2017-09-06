@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMeshAsset.h"
+#include "VoxelMaterial.h"
 #include "VoxelTools.generated.h"
 
 class AVoxelWorld;
@@ -13,28 +14,6 @@ enum class EBlueprintSuccess : uint8
 {
 	Sucess, // Correcting typo makes editor crash
 	Failed
-};
-
-UENUM(BlueprintType)
-enum class EMaterialChoice4 : uint8
-{
-	Material1,
-	Material2,
-	Material3,
-	Material4
-};
-
-UENUM(BlueprintType)
-enum class EMaterialChoice8 : uint8
-{
-	Material1,
-	Material2,
-	Material3,
-	Material4,
-	Material5,
-	Material6,
-	Material7,
-	Material8
 };
 
 /**
@@ -72,7 +51,7 @@ public:
 	 * @param
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
-		static void SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, float FadeDistance = 3, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false);
+		static void SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, float FadeDistance = 3, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false);
 
 
 	/**
@@ -122,7 +101,7 @@ public:
 	 * @param	bAsync			Update async
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
-		static void SetColorProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, FLinearColor Color, float FadeDistance = 3, float MaxDistance = 1000, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true);
+		static void SetMaterialProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, float FadeDistance = 3, float MaxDistance = 1000, bool bQueueUpdate = true, bool bApplyUpdates = true, bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true);
 	/**
 	 * Set color on surface
 	 * @param	World			Voxel world
@@ -173,10 +152,4 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", Meta = (ExpandEnumAsExecs = "Branches"))
 		static void GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches);
-
-	UFUNCTION(BlueprintPure, Category = "Voxel")
-		static FLinearColor GetColorFromMaterialChoice4(EMaterialChoice4 MaterialChoice);
-
-	UFUNCTION(BlueprintPure, Category = "Voxel")
-		static FLinearColor GetColorFromMaterialChoice8(EMaterialChoice8 MaterialChoice);
 };

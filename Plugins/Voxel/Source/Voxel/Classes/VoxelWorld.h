@@ -8,8 +8,8 @@
 #include "VoxelWorldGenerator.h"
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
-#include "Curves/CurveFloat.h"
 #include "VoxelLODProfile.h"
+#include "VoxelMaterial.h"
 #include "VoxelWorld.generated.h"
 
 
@@ -28,6 +28,7 @@ UCLASS()
 class VOXEL_API AVoxelWorld : public AActor
 {
 	GENERATED_BODY()
+
 public:
 	AVoxelWorld();
 
@@ -44,6 +45,8 @@ public:
 	TSharedPtr<ValueOctree> GetValueOctree() const;
 
 	AVoxelChunk* GetChunkAt(FIntVector Position) const;
+
+	FColor GetColor(FIntVector Position) const;
 
 	void QueueUpdate(TWeakPtr<ChunkOctree> Chunk);
 
@@ -133,12 +136,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		float GetValue(FIntVector Position) const;
 	/**
-	 * Get color at position
+	 * Get material at position
 	 * @param	Position	Position in voxel space
-	 * @return	Color at position
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FColor GetColor(FIntVector Position) const;
+		FVoxelMaterial GetMaterial(FIntVector Position) const;
 
 	/**
 	 * Set value at position
@@ -148,12 +150,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void SetValue(FIntVector Position, float Value);
 	/**
-	 * Set color at position
+	 * Set material at position
 	 * @param	Position	Position in voxel space
-	 * @param	Color		FColor
+	 * @param	Material	FVoxelMaterial
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetColor(FIntVector Position, FColor Color);
+		void SetMaterial(FIntVector Position, FVoxelMaterial Material);
 
 	/**
 	 * Get array to save world
