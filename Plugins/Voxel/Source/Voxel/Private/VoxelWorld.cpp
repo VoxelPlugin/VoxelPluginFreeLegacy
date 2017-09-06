@@ -107,6 +107,11 @@ AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position) const
 	}
 }
 
+FColor AVoxelWorld::GetColor(FIntVector Position) const
+{
+	return Data->GetColor(Position);
+}
+
 void AVoxelWorld::UpdateCameraPosition(FVector Position)
 {
 	// Reset to avoid references to destroyed chunks
@@ -123,9 +128,9 @@ float AVoxelWorld::GetValue(FIntVector Position) const
 	return Data->GetValue(Position);
 }
 
-FColor AVoxelWorld::GetColor(FIntVector Position) const
+FVoxelMaterial AVoxelWorld::GetMaterial(FIntVector Position) const
 {
-	return Data->GetColor(Position);
+	return FVoxelMaterial(Data->GetColor(Position));
 }
 
 void AVoxelWorld::SetValue(FIntVector Position, float Value)
@@ -133,9 +138,9 @@ void AVoxelWorld::SetValue(FIntVector Position, float Value)
 	Data->SetValue(Position, Value);
 }
 
-void AVoxelWorld::SetColor(FIntVector Position, FColor Color)
+void AVoxelWorld::SetMaterial(FIntVector Position, FVoxelMaterial Material)
 {
-	Data->SetColor(Position, Color);
+	Data->SetColor(Position, Material.ToFColor());
 }
 
 FVoxelWorldSave AVoxelWorld::GetSave() const

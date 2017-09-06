@@ -100,7 +100,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 	}
 }
 
-void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Radius, FLinearColor Color, float FadeDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
+void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, float FadeDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
 {
 	if (World == nullptr)
 	{
@@ -120,9 +120,30 @@ void UVoxelTools::SetColorSphere(AVoxelWorld* World, FVector Position, float Rad
 				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
 				float Distance = FVector(x, y, z).Size();
 				float Alpha = (FMath::Clamp(Radius - Distance, -1.f, FadeDistance) + 1) / (1 + FadeDistance);
-				FColor CurrentColor = FLinearColor::LerpUsingHSV(World->GetColor(CurrentPosition), Color, Alpha).ToFColor(true);
 
-				World->SetColor(CurrentPosition, CurrentColor);
+				uint8 OldMaterialIndex;
+				float NewAlpha;
+				FVoxelMaterial OldMaterial = World->GetMaterial(CurrentPosition);
+
+				if (OldMaterial.Index1 == MaterialIndex)
+				{
+					OldMaterialIndex = OldMaterial.Index2;
+					NewAlpha = 1 - OldMaterial.Alpha;
+				}
+				else if (OldMaterial.Index2 == MaterialIndex)
+				{
+					OldMaterialIndex = OldMaterial.Index1;
+					NewAlpha = OldMaterial.Alpha;
+				}
+				else
+				{
+					OldMaterialIndex = OldMaterial.GetMax();
+					NewAlpha = Alpha;
+				}
+
+				FVoxelMaterial CurrentMaterial = FVoxelMaterial(OldMaterialIndex, MaterialIndex, Alpha);
+
+				World->SetMaterial(CurrentPosition, CurrentMaterial);
 				if (bQueueUpdate)
 				{
 					World->QueueUpdate(CurrentPosition);
@@ -250,7 +271,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 		}
 		else
 		{
-			World->SetValue(Point, World->GetValue(Point) + Stength);
+			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) + Stength, MinValue, MaxValue));
 		}
 		if (bQueueUpdate)
 		{
@@ -263,8 +284,8 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 	}
 }
 
-void UVoxelTools::SetColorProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, FLinearColor Color, float FadeDistance, float MaxDistance,
-									 bool bQueueUpdate, bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints)
+void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, float FadeDistance, float MaxDistance,
+										bool bQueueUpdate, bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints)
 {
 	if (World == NULL)
 	{
@@ -291,7 +312,7 @@ void UVoxelTools::SetColorProjection(AVoxelWorld * World, FVector Position, FVec
 	FVector Bitangent = FVector::CrossProduct(Tangent, Direction).GetSafeNormal();
 
 	TArray<FIntVector> Positions;
-	TArray<FColor> Colors;
+	TArray<FVoxelMaterial> Materials;
 
 	float Scale = World->GetTransform().GetScale3D().Size() / 4;
 
@@ -327,12 +348,13 @@ void UVoxelTools::SetColorProjection(AVoxelWorld * World, FVector Position, FVec
 					FIntVector LocalPosition = World->GlobalToLocal(CurrentPosition);
 					float Distance = FVector2D(FVector::DotProduct(CurrentPosition - Position, Tangent), FVector::DotProduct(CurrentPosition - Position, Bitangent)).Size() / Scale;
 					float Alpha = (FMath::Clamp(Radius - Distance, -1.f, FadeDistance) + 1) / (1 + FadeDistance);
-					FColor CurrentColor = FLinearColor::LerpUsingHSV(World->GetColor(LocalPosition), Color, Alpha).ToFColor(true);
+
+					FVoxelMaterial CurrentMaterial = FVoxelMaterial(World->GetMaterial(LocalPosition).GetMax(), MaterialIndex, Alpha);
 
 					if (!Positions.Contains(LocalPosition))
 					{
 						Positions.Add(LocalPosition);
-						Colors.Add(CurrentColor);
+						Materials.Add(CurrentMaterial);
 					}
 				}
 			}
@@ -340,7 +362,7 @@ void UVoxelTools::SetColorProjection(AVoxelWorld * World, FVector Position, FVec
 	}
 	for (int i = 0; i < Positions.Num(); i++)
 	{
-		World->SetColor(Positions[i], Colors[i]);
+		World->SetMaterial(Positions[i], Materials[i]);
 
 		if (bQueueUpdate)
 		{
@@ -547,49 +569,5 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 	else
 	{
 		Branches = EBlueprintSuccess::Failed;
-	}
-}
-
-FLinearColor UVoxelTools::GetColorFromMaterialChoice4(EMaterialChoice4 MaterialChoice)
-{
-	switch (MaterialChoice)
-	{
-	case EMaterialChoice4::Material1:
-		return FColor(255, 0, 0, 0);
-	case EMaterialChoice4::Material2:
-		return FColor(0, 255, 0, 0);
-	case EMaterialChoice4::Material3:
-		return FColor(0, 0, 255, 0);
-	case EMaterialChoice4::Material4:
-		return FColor(0, 0, 0, 255);
-	default:
-		check(false);
-		return FColor::Black;
-	}
-}
-
-FLinearColor UVoxelTools::GetColorFromMaterialChoice8(EMaterialChoice8 MaterialChoice)
-{
-	switch (MaterialChoice)
-	{
-	case EMaterialChoice8::Material1:
-		return FColor(240, 0, 0, 0);
-	case EMaterialChoice8::Material2:
-		return FColor(0, 240, 0, 0);
-	case EMaterialChoice8::Material3:
-		return FColor(0, 0, 240, 0);
-	case EMaterialChoice8::Material4:
-		return FColor(0, 0, 0, 240);
-	case EMaterialChoice8::Material5:
-		return FColor(15, 0, 0, 0);
-	case EMaterialChoice8::Material6:
-		return FColor(0, 15, 0, 0);
-	case EMaterialChoice8::Material7:
-		return FColor(0, 0, 15, 0);
-	case EMaterialChoice8::Material8:
-		return FColor(0, 0, 0, 15);
-	default:
-		check(false);
-		return FColor::Black;
 	}
 }
