@@ -134,7 +134,7 @@ FReply ULandscapeWorldGeneratorDetails::OnCreateFromLandscape()
 					{
 						Weight3 = Weightmap3[X + WeightmapSize * Y];
 					}
-					if (Weightmap3.Num())
+					if (Weightmap4.Num())
 					{
 						Weight4 = Weightmap4[X + WeightmapSize * Y];
 					}
