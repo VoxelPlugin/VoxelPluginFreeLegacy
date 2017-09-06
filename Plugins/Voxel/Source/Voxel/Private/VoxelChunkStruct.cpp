@@ -2,7 +2,7 @@
 #include "VoxelChunkStruct.h"
 #include "VoxelChunk.h"
 
-VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* Chunk) : Depth(Chunk->GetDepth()), Chunk(Chunk), Width(Chunk->Width()), Step(1 << Depth), CurrentDirection(XMin), bNewCacheIs1(true)
+VoxelChunkStruct::VoxelChunkStruct(AVoxelChunk* Chunk) : Depth(Chunk->GetDepth()), Width(Chunk->Width()), Step(1 << Depth), CurrentDirection(XMin), bNewCacheIs1(true), Chunk(Chunk)
 {
 	check(Chunk);
 
@@ -322,9 +322,9 @@ int VoxelChunkStruct::LoadVertex(int X, int Y, int Z, short Direction, short Edg
 	auto NewCache = bNewCacheIs1 ? Cache1 : Cache2;
 	auto OldCache = bNewCacheIs1 ? Cache2 : Cache1;
 
-	bool XIsDifferent = Direction & 0x01;
-	bool YIsDifferent = Direction & 0x02;
-	bool ZIsDifferent = Direction & 0x04;
+		bool XIsDifferent = Direction & 0x01;
+		bool YIsDifferent = Direction & 0x02;
+		bool ZIsDifferent = Direction & 0x04;
 	check(0 <= 1 + X - XIsDifferent && 1 + X - XIsDifferent < 18);
 	check(0 <= 1 + Y - YIsDifferent && 1 + Y - YIsDifferent < 18);
 	check(0 <= EdgeIndex && EdgeIndex < 4);
