@@ -100,7 +100,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 	}
 }
 
-void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, float FadeDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
+void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, bool bUseLayer1, float FadeDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
 {
 	if (World == nullptr)
 	{
@@ -109,44 +109,60 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float 
 	}
 	check(World);
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
-	int IntRadius = FMath::CeilToInt(Radius);
 
-	for (int x = -IntRadius; x <= IntRadius; x++)
+	const float VoxelDiagonalLength = 1.73205080757f;
+	int Size = FMath::CeilToInt(Radius + FadeDistance + VoxelDiagonalLength);
+
+	for (int X = -Size; X <= Size; X++)
 	{
-		for (int y = -IntRadius; y <= IntRadius; y++)
+		for (int Y = -Size; Y <= Size; Y++)
 		{
-			for (int z = -IntRadius; z <= IntRadius; z++)
+			for (int Z = -Size; Z <= Size; Z++)
 			{
-				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
-				float Distance = FVector(x, y, z).Size();
-				float Alpha = (FMath::Clamp(Radius - Distance, -1.f, FadeDistance) + 1) / (1 + FadeDistance);
+				FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
+				float Distance = FVector(X, Y, Z).Size();
 
-				uint8 OldMaterialIndex;
-				float NewAlpha;
-				FVoxelMaterial OldMaterial = World->GetMaterial(CurrentPosition);
-
-				if (OldMaterial.Index1 == MaterialIndex)
+				FVoxelMaterial Material = World->GetMaterial(CurrentPosition);
+				if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
 				{
-					OldMaterialIndex = OldMaterial.Index2;
-					NewAlpha = 1 - OldMaterial.Alpha;
+					// Set alpha
+					float Alpha = FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
+					if (bUseLayer1)
+					{
+						Alpha = 1 - Alpha;
+					}
+					if ((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex)
+					{
+						// Same color
+						Alpha = bUseLayer1 ? FMath::Min(Alpha, Material.Alpha) : FMath::Max(Alpha, Material.Alpha);
+					}
+					Material.Alpha = Alpha;
+
+					// Set index
+					if (bUseLayer1)
+					{
+						Material.Index1 = MaterialIndex;
+					}
+					else
+					{
+						Material.Index2 = MaterialIndex;
+					}
+
+					// Apply changes
+					World->SetMaterial(CurrentPosition, Material);
+					if (bQueueUpdate)
+					{
+						World->QueueUpdate(CurrentPosition);
+					}
 				}
-				else if (OldMaterial.Index2 == MaterialIndex)
+				else if (Distance < Radius + FadeDistance + 2 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
 				{
-					OldMaterialIndex = OldMaterial.Index1;
-					NewAlpha = OldMaterial.Alpha;
-				}
-				else
-				{
-					OldMaterialIndex = OldMaterial.GetMax();
-					NewAlpha = Alpha;
-				}
-
-				FVoxelMaterial CurrentMaterial = FVoxelMaterial(OldMaterialIndex, MaterialIndex, Alpha);
-
-				World->SetMaterial(CurrentPosition, CurrentMaterial);
-				if (bQueueUpdate)
-				{
-					World->QueueUpdate(CurrentPosition);
+					Material.Alpha = bUseLayer1 ? 1 : 0;
+					World->SetMaterial(CurrentPosition, Material);
+					if (bQueueUpdate)
+					{
+						World->QueueUpdate(CurrentPosition);
+					}
 				}
 			}
 		}
@@ -206,6 +222,7 @@ void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radi
 	}
 }
 
+// TODO: Rewrite
 void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Stength, bool bAdd, float MaxDistance, bool bQueueUpdate,
 									 bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
 {
@@ -284,7 +301,8 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 	}
 }
 
-void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, float FadeDistance, float MaxDistance,
+// TODO: Rewrite
+void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, bool bUseLayer1, float FadeDistance, float MaxDistance,
 										bool bQueueUpdate, bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints)
 {
 	if (World == NULL)
@@ -315,8 +333,9 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 	TArray<FVoxelMaterial> Materials;
 
 	float Scale = World->GetTransform().GetScale3D().Size() / 4;
+	const float VoxelDiagonalLength = World->GetTransform().GetScale3D().Size();
 
-	int IntRadius = FMath::CeilToInt(Radius);
+	int IntRadius = FMath::CeilToInt(Radius + FadeDistance);
 	for (int x = -IntRadius; x <= IntRadius; x++)
 	{
 		for (int y = -IntRadius; y <= IntRadius; y++)
@@ -345,30 +364,61 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 
 				for (FVector CurrentPosition : CurrentPositions)
 				{
-					FIntVector LocalPosition = World->GlobalToLocal(CurrentPosition);
+					FIntVector CurrentLocalPosition = World->GlobalToLocal(CurrentPosition);
 					float Distance = FVector2D(FVector::DotProduct(CurrentPosition - Position, Tangent), FVector::DotProduct(CurrentPosition - Position, Bitangent)).Size() / Scale;
-					float Alpha = (FMath::Clamp(Radius - Distance, -1.f, FadeDistance) + 1) / (1 + FadeDistance);
 
-					FVoxelMaterial CurrentMaterial = FVoxelMaterial(World->GetMaterial(LocalPosition).GetMax(), MaterialIndex, Alpha);
 
-					if (!Positions.Contains(LocalPosition))
+					if (!Positions.Contains(CurrentLocalPosition))
 					{
-						Positions.Add(LocalPosition);
-						Materials.Add(CurrentMaterial);
+						Positions.Add(CurrentLocalPosition);
+						FVoxelMaterial Material = World->GetMaterial(CurrentLocalPosition);
+						if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
+						{
+							// Set alpha
+							float Alpha = FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
+							if (bUseLayer1)
+							{
+								Alpha = 1 - Alpha;
+							}
+							if ((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex)
+							{
+								// Same color
+								Alpha = bUseLayer1 ? FMath::Min(Alpha, Material.Alpha) : FMath::Max(Alpha, Material.Alpha);
+							}
+							Material.Alpha = Alpha;
+
+							// Set index
+							if (bUseLayer1)
+							{
+								Material.Index1 = MaterialIndex;
+							}
+							else
+							{
+								Material.Index2 = MaterialIndex;
+							}
+
+							// Apply changes
+							World->SetMaterial(CurrentLocalPosition, Material);
+							if (bQueueUpdate)
+							{
+								World->QueueUpdate(CurrentLocalPosition);
+							}
+						}
+						else if (Distance < Radius + FadeDistance + 3 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
+						{
+							Material.Alpha = bUseLayer1 ? 1 : 0;
+							World->SetMaterial(CurrentLocalPosition, Material);
+							if (bQueueUpdate)
+							{
+								World->QueueUpdate(CurrentLocalPosition);
+							}
+						}
 					}
 				}
 			}
 		}
 	}
-	for (int i = 0; i < Positions.Num(); i++)
-	{
-		World->SetMaterial(Positions[i], Materials[i]);
 
-		if (bQueueUpdate)
-		{
-			World->QueueUpdate(Positions[i]);
-		}
-	}
 	if (bApplyUpdates)
 	{
 		World->ApplyQueuedUpdates(bAsync);
