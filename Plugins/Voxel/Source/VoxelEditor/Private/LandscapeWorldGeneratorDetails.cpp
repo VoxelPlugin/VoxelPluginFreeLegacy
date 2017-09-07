@@ -11,6 +11,7 @@
 #include "Landscape.h"
 #include "LandscapeComponent.h"
 #include "LandscapeWorldGenerator.h"
+#include "VoxelMaterial.h"
 
 DEFINE_LOG_CATEGORY(VoxelAssetEditorLog)
 
@@ -99,14 +100,13 @@ FReply ULandscapeWorldGeneratorDetails::OnCreateFromLandscape()
 			FLandscapeComponentDataInterface DataInterface(Component, MipLevel);
 			int Size = (Component->ComponentSizeQuads + 1) >> MipLevel;
 
-			TArray<uint8> Weightmap1;
-			TArray<uint8> Weightmap2;
-			TArray<uint8> Weightmap3;
-			TArray<uint8> Weightmap4;
-			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo1, Weightmap1);
-			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo2, Weightmap2);
-			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo3, Weightmap3);
-			DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfo4, Weightmap4);
+			TArray<TArray<uint8>> Weightmaps;
+			Weightmaps.SetNum(LandscapeWorldGenerator->LayerInfos.Num());
+
+			for (int i = 0; i < Weightmaps.Num(); i++)
+			{
+				DataInterface.GetWeightmapTextureData(LandscapeWorldGenerator->LayerInfos[i], Weightmaps[i]);
+			}
 
 			int32 WeightmapSize = ((Component->SubsectionSizeQuads + 1) * Component->NumSubsections) >> MipLevel;
 
@@ -118,27 +118,32 @@ FReply ULandscapeWorldGeneratorDetails::OnCreateFromLandscape()
 					FVector LocalVertex = (Vertex - LandscapeWorldGenerator->Landscape->GetActorLocation()) / Component->GetComponentTransform().GetScale3D();
 					Values[LocalVertex.X + TotalSize * LocalVertex.Y] = Vertex.Z;
 
-					uint8 Weight1 = 0;
-					uint8 Weight2 = 0;
-					uint8 Weight3 = 0;
-					uint8 Weight4 = 0;
-					if (Weightmap1.Num())
+					uint8 MaxIndex = 0;
+					uint8 MaxValue = 0;
+					uint8 SecondMaxIndex = 0;
+					uint8 SecondMaxValue = 0;
+
+					for (int i = 0; i < Weightmaps.Num(); i++)
 					{
-						Weight1 = Weightmap1[X + WeightmapSize * Y];
+						if (Weightmaps[i].Num())
+						{
+							uint8 Weight = Weightmaps[i][X + WeightmapSize * Y];
+							if (Weight > MaxValue)
+							{
+								SecondMaxValue = MaxValue;
+								SecondMaxIndex = MaxIndex;
+								MaxValue = Weight;
+								MaxIndex = i;
+							}
+							else if (Weight > SecondMaxValue)
+							{
+								SecondMaxValue = Weight;
+								SecondMaxIndex = i;
+							}
+						}
 					}
-					if (Weightmap2.Num())
-					{
-						Weight2 = Weightmap2[X + WeightmapSize * Y];
-					}
-					if (Weightmap3.Num())
-					{
-						Weight3 = Weightmap3[X + WeightmapSize * Y];
-					}
-					if (Weightmap4.Num())
-					{
-						Weight4 = Weightmap4[X + WeightmapSize * Y];
-					}
-					Colors[LocalVertex.X + TotalSize * LocalVertex.Y] = FColor(Weight1, Weight2, Weight3, Weight4);
+
+					Colors[LocalVertex.X + TotalSize * LocalVertex.Y] = FVoxelMaterial(MaxIndex, SecondMaxIndex, ((255 - MaxValue) + SecondMaxValue) / 2 / 255.f).ToFColor();
 				}
 			}
 		}
