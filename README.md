@@ -6,6 +6,8 @@ Based on [transvoxel](http://transvoxel.org/)
 
 https://www.youtube.com/playlist?list=PLjYKpKPK8E-_lxP5EuRxizhNuNBDYnT15
 
+https://forums.unrealengine.com/showthread.php?151940-Voxel-plugin-for-UE4
+
 ## Features:
 * Real time collisions
 * Smooth LOD
@@ -18,13 +20,14 @@ https://www.youtube.com/playlist?list=PLjYKpKPK8E-_lxP5EuRxizhNuNBDYnT15
 * Multiplayer
 * Landscape import
 * Easy load/save
+* Up to 256 materials
 
 ## TODO:
 * Some holes still appears
-* Better mesh import
+* ~~Better mesh import~~
 * Material tuto
-* 16 textures max per material -> TextureArrays?
-* Better quality settings
+* ~~16 textures max per material -> TextureArrays?~~ Shared texture should do
+* ~~Better quality settings~~
 
 ## Example project
 Download repo and launch .uproject
