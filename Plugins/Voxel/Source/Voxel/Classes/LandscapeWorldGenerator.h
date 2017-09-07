@@ -38,13 +38,7 @@ public:
 		ALandscape* Landscape;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import")
-		ULandscapeLayerInfoObject* LayerInfo1;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import")
-		ULandscapeLayerInfoObject* LayerInfo2;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import")
-		ULandscapeLayerInfoObject* LayerInfo3;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import")
-		ULandscapeLayerInfoObject* LayerInfo4;
+		TArray<ULandscapeLayerInfoObject*> LayerInfos;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Import")
 		FVector LandscapePosition;
