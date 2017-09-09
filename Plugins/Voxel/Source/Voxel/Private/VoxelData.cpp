@@ -4,9 +4,14 @@
 #include "VoxelData.h"
 #include "ValueOctree.h"
 
-VoxelData::VoxelData(int Depth, TScriptInterface<IVoxelWorldGenerator>& WorldGenerator, bool bMultiplayer) : Depth(Depth)
+VoxelData::VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator, bool bMultiplayer) : Depth(Depth)
 {
 	MainOctree = MakeShareable(new ValueOctree(bMultiplayer, WorldGenerator, FIntVector::ZeroValue, Depth));
+}
+
+int VoxelData::Width() const
+{
+	return 16 << Depth;
 }
 
 TSharedPtr<ValueOctree> VoxelData::GetValueOctree() const
@@ -16,52 +21,24 @@ TSharedPtr<ValueOctree> VoxelData::GetValueOctree() const
 
 float VoxelData::GetValue(FIntVector Position) const
 {
-	if (Position.X >= Width() / 2 || Position.Y >= Width() / 2 || Position.Z >= Width() / 2)
-	{
-		return GetValue(FIntVector(
-			(Position.X >= Width() / 2) ? Width() / 2 - 1 : Position.X,
-			(Position.Y >= Width() / 2) ? Width() / 2 - 1 : Position.Y,
-			(Position.Z >= Width() / 2) ? Width() / 2 - 1 : Position.Z));
-	}
-	if (Position.X < -Width() / 2 || Position.Y < -Width() / 2 || Position.Z < -Width() / 2)
-	{
-		return GetValue(FIntVector(
-			(Position.X < -Width() / 2) ? -Width() / 2 : Position.X,
-			(Position.Y < -Width() / 2) ? -Width() / 2 : Position.Y,
-			(Position.Z < -Width() / 2) ? -Width() / 2 : Position.Z));
-	}
-
 	check(IsInWorld(Position));
+	return GetValue(Position.X, Position.Y, Position.Z);
+}
 
-	return MainOctree->GetValue(Position);
+float VoxelData::GetValue(int X, int Y, int Z) const
+{
+	return MainOctree->GetValue(FMath::Clamp(X, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Y, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Z, -Width() / 2, Width() / 2 - 1));
 }
 
 FColor VoxelData::GetColor(FIntVector Position) const
 {
-	if (Position.X >= Width() / 2 || Position.Y >= Width() / 2 || Position.Z >= Width() / 2)
-	{
-		return GetColor(FIntVector(
-			(Position.X >= Width() / 2) ? Width() / 2 - 1 : Position.X,
-			(Position.Y >= Width() / 2) ? Width() / 2 - 1 : Position.Y,
-			(Position.Z >= Width() / 2) ? Width() / 2 - 1 : Position.Z));
-	}
-	if (Position.X < -Width() / 2 || Position.Y < -Width() / 2 || Position.Z < -Width() / 2)
-	{
-		return GetColor(FIntVector(
-			(Position.X < -Width() / 2) ? -Width() / 2 : Position.X,
-			(Position.Y < -Width() / 2) ? -Width() / 2 : Position.Y,
-			(Position.Z < -Width() / 2) ? -Width() / 2 : Position.Z));
-	}
+	check(IsInWorld(Position));
+	return GetColor(Position.X, Position.Y, Position.Z);
+}
 
-	if (IsInWorld(Position))
-	{
-		return MainOctree->GetColor(Position);
-	}
-	else
-	{
-		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-		return FColor::Red;
-	}
+FColor VoxelData::GetColor(int X, int Y, int Z) const
+{
+	return MainOctree->GetColor(FMath::Clamp(X, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Y, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Z, -Width() / 2, Width() / 2 - 1));
 }
 
 void VoxelData::SetValue(FIntVector Position, float Value) const

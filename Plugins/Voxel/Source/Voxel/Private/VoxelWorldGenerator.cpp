@@ -3,7 +3,17 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelWorldGenerator.h"
 
-UVoxelWorldGenerator::UVoxelWorldGenerator(const class FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+float AVoxelWorldGenerator::GetDefaultValue(int X, int Y, int Z)
+{
+	return 0;
+}
+
+FColor AVoxelWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+{
+	return FColor::Black;
+}
+
+void AVoxelWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 
 }

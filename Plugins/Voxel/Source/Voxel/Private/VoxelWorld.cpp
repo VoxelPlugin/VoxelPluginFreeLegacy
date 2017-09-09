@@ -28,11 +28,11 @@ LODToleranceZone(0.5), bRebuildBorders(true), PlayerCamera(nullptr), bAutoFindCa
 
 	SetActorScale3D(100 * FVector::OneVector);
 
-	WorldGenerator = UFlatWorldGenerator::StaticClass();
+	WorldGenerator = TSubclassOf<AVoxelWorldGenerator>(AFlatWorldGenerator::StaticClass());
 
 	bReplicates = true;
 
-	ThreadPool = FQueuedThreadPool::Allocate();
+	ThreadPool = MakeShareable(FQueuedThreadPool::Allocate());
 	ThreadPool->Create(8);
 
 	LODProfile = UVoxelLODProfile::StaticClass();
@@ -109,7 +109,15 @@ AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position) const
 
 FColor AVoxelWorld::GetColor(FIntVector Position) const
 {
-	return Data->GetColor(Position);
+	if (IsInWorld(Position))
+	{
+		return Data->GetColor(Position);
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		return FColor::Black;
+	}
 }
 
 void AVoxelWorld::UpdateCameraPosition(FVector Position)
@@ -125,23 +133,47 @@ void AVoxelWorld::UpdateCameraPosition(FVector Position)
 
 float AVoxelWorld::GetValue(FIntVector Position) const
 {
-	return Data->GetValue(Position);
+	if (IsInWorld(Position))
+	{
+		return Data->GetValue(Position);
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		return 0;
+	}
 }
 
 FVoxelMaterial AVoxelWorld::GetMaterial(FIntVector Position) const
 {
-	return FVoxelMaterial(Data->GetColor(Position));
+	return FVoxelMaterial(GetColor(Position));
 }
+
 
 void AVoxelWorld::SetValue(FIntVector Position, float Value)
 {
-	Data->SetValue(Position, Value);
+	if (IsInWorld(Position))
+	{
+		Data->SetValue(Position, Value);
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+	}
 }
 
 void AVoxelWorld::SetMaterial(FIntVector Position, FVoxelMaterial Material)
 {
-	Data->SetColor(Position, Material.ToFColor());
+	if (IsInWorld(Position))
+	{
+		Data->SetColor(Position, Material.ToFColor());
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+	}
 }
+
 
 FVoxelWorldSave AVoxelWorld::GetSave() const
 {
@@ -274,39 +306,6 @@ void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk)
 	QueuedChunks.Add(Chunk);
 }
 
-void AVoxelWorld::Load()
-{
-	if (!bIsCreated)
-	{
-		UE_LOG(VoxelLog, Warning, TEXT("Loading world"));
-		bIsCreated = true;
-
-		UObject* WorldGeneratorObject = WorldGenerator->GetDefaultObject();
-
-		if (!WorldGeneratorObject->GetClass()->ImplementsInterface(UVoxelWorldGenerator::StaticClass()))
-		{
-			UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
-			WorldGeneratorObject = UFlatWorldGenerator::StaticClass()->GetDefaultObject();
-		}
-
-		WorldGeneratorInterface.SetInterface(Cast<IInterface>(WorldGeneratorObject));
-		WorldGeneratorInterface.SetObject(WorldGeneratorObject);
-		IVoxelWorldGenerator::Execute_SetVoxelWorld(WorldGeneratorInterface.GetObject(), this);
-
-		Data = MakeShareable(new VoxelData(Depth, WorldGeneratorInterface, bMultiplayer));
-		MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
-	}
-}
-
-void AVoxelWorld::Unload()
-{
-	if (bIsCreated)
-	{
-		MainOctree->ImmediateDelete();
-		MainOctree.Reset();
-		bIsCreated = false;
-	}
-}
 
 void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
 {
@@ -336,6 +335,40 @@ void AVoxelWorld::UpdateAll(bool bAsync)
 }
 
 
+void AVoxelWorld::Load()
+{
+	if (!bIsCreated)
+	{
+		UE_LOG(VoxelLog, Warning, TEXT("Loading world"));
+		bIsCreated = true;
+
+		InstancedWorldGenerator = GetWorld()->SpawnActor<AVoxelWorldGenerator>(WorldGenerator);
+
+		if (InstancedWorldGenerator == nullptr)
+		{
+			UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
+			InstancedWorldGenerator = Cast<AVoxelWorldGenerator>(GetWorld()->SpawnActor(AFlatWorldGenerator::StaticClass()));
+		}
+
+		InstancedWorldGenerator->SetVoxelWorld(this);
+
+		Data = MakeShareable(new VoxelData(Depth, InstancedWorldGenerator, bMultiplayer));
+		MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
+	}
+}
+
+void AVoxelWorld::Unload()
+{
+	if (bIsCreated)
+	{
+		MainOctree->ImmediateDelete();
+		MainOctree.Reset();
+		bIsCreated = false;
+	}
+}
+
+
+
 #if WITH_EDITOR
 bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 {
@@ -348,7 +381,7 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 	else
 		return ParentVal;
 }
-#endif
+#endif // WITH_EDITOR
 
 
 void AVoxelWorld::MulticastLoadArray_Implementation(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray)
@@ -395,6 +428,16 @@ bool AVoxelWorld::GetRebuildBorders() const
 float AVoxelWorld::GetLODAt(float Distance) const
 {
 	return LODProfile.GetDefaultObject()->GetLODAt(Distance);
+}
+
+TSharedPtr<FQueuedThreadPool> AVoxelWorld::GetThreadPool()
+{
+	return ThreadPool;
+}
+
+TSharedPtr<VoxelData> AVoxelWorld::GetData()
+{
+	return Data;
 }
 
 bool AVoxelWorld::IsCreated() const

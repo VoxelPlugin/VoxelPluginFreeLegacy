@@ -10,33 +10,14 @@
  *
  */
 UCLASS(Blueprintable)
-class VOXEL_API UEmptyWorldGenerator : public UObject, public IVoxelWorldGenerator
+class VOXEL_API AEmptyWorldGenerator : public AVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		float GetDefaultValue(FIntVector Position);
+	virtual float GetDefaultValue(int X, int Y, int Z) override;
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		FColor GetDefaultColor(FIntVector Position);
+	virtual FColor GetDefaultColor(int X, int Y, int Z) override;
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
-
-
-
-	virtual float GetDefaultValue_Implementation(FIntVector Position) override
-	{
-		return 0;
-	}
-
-	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override
-	{
-		return FColor::Black;
-	}
-
-	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override
-	{
-	};
+	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 };

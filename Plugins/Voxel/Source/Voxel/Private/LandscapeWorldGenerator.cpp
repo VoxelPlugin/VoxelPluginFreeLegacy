@@ -11,28 +11,28 @@ ALandscapeWorldGenerator::ALandscapeWorldGenerator() : Precision(1), ValueMultip
 {
 };
 
-float ALandscapeWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
+float ALandscapeWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
 	check(World);
 
-	if (LocalLandscapePosition.X <= Position.X && Position.X < LocalLandscapePositionAndWidth.X && LocalLandscapePosition.Y <= Position.Y && Position.Y < LocalLandscapePositionAndWidth.Y)
+	if (LocalLandscapePosition.X <= X && X < LocalLandscapePositionAndWidth.X && LocalLandscapePosition.Y <= Y && Y < LocalLandscapePositionAndWidth.Y)
 	{
-		int X = Position.X - LocalLandscapePosition.X;
-		int Y = Position.Y - LocalLandscapePosition.Y;
+		int LocalX = X - LocalLandscapePosition.X;
+		int LocalY = Y - LocalLandscapePosition.Y;
 
-		if ((Position.Z + Precision - LocalLandscapePosition.Z) * World->GetTransform().GetScale3D().Z + World->GetActorLocation().Z < Heights[X + Width * Y])
+		if ((Z + Precision - LocalLandscapePosition.Z) * World->GetTransform().GetScale3D().Z + World->GetActorLocation().Z < Heights[LocalX + Width * LocalY])
 		{
 			// If voxel over us in in, we're entirely in
 			return -ValueMultiplier;
 		}
-		else if ((Position.Z - Precision - LocalLandscapePosition.Z) * World->GetTransform().GetScale3D().Z + World->GetActorLocation().Z > Heights[X + Width * Y])
+		else if ((Z - Precision - LocalLandscapePosition.Z) * World->GetTransform().GetScale3D().Z + World->GetActorLocation().Z > Heights[LocalX + Width * LocalY])
 		{
 			// If voxel under us in out, we're entirely out
 			return ValueMultiplier;
 		}
 		else
 		{
-			float Alpha = ((Position.Z - LocalLandscapePosition.Z) * World->GetTransform().GetScale3D().Z + World->GetActorLocation().Z - Heights[X + Width * Y]) / World->GetTransform().GetScale3D().Z / Precision;
+			float Alpha = ((Z - LocalLandscapePosition.Z) * World->GetTransform().GetScale3D().Z + World->GetActorLocation().Z - Heights[LocalX + Width * LocalY]) / World->GetTransform().GetScale3D().Z / Precision;
 
 			if (Alpha < 0)
 			{
@@ -52,16 +52,16 @@ float ALandscapeWorldGenerator::GetDefaultValue_Implementation(FIntVector Positi
 	}
 }
 
-FColor ALandscapeWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
+FColor ALandscapeWorldGenerator::GetDefaultColor(int X, int Y, int Z)
 {
 	check(World);
 
-	if (LocalLandscapePosition.X <= Position.X && Position.X < LocalLandscapePositionAndWidth.X && LocalLandscapePosition.Y <= Position.Y && Position.Y < LocalLandscapePositionAndWidth.Y)
+	if (LocalLandscapePosition.X <= X && X < LocalLandscapePositionAndWidth.X && LocalLandscapePosition.Y <= Y && Y < LocalLandscapePositionAndWidth.Y)
 	{
-		int X = Position.X - LocalLandscapePosition.X;
-		int Y = Position.Y - LocalLandscapePosition.Y;
+		int LocalX = X - LocalLandscapePosition.X;
+		int LocalY = Y - LocalLandscapePosition.Y;
 
-		return Weights[X + Width * Y];
+		return Weights[LocalX + Width * LocalY];
 	}
 	else
 	{
@@ -69,7 +69,7 @@ FColor ALandscapeWorldGenerator::GetDefaultColor_Implementation(FIntVector Posit
 	}
 }
 
-void ALandscapeWorldGenerator::SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
+void ALandscapeWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 	World = VoxelWorld;
 	LocalLandscapePosition = World->GetTransform().InverseTransformPosition(LandscapePosition);

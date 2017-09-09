@@ -30,8 +30,6 @@ class VOXEL_API AVoxelWorld : public AActor
 	GENERATED_BODY()
 
 public:
-	TSharedPtr<VoxelData> Data;
-
 	AVoxelWorld();
 
 	int Size() const;
@@ -40,6 +38,8 @@ public:
 	float GetLODToleranceZone() const;
 	bool GetRebuildBorders() const;
 	float GetLODAt(float Distance) const;
+	TSharedPtr<FQueuedThreadPool> GetThreadPool();
+	TSharedPtr<VoxelData> GetData();
 	bool IsCreated() const;
 
 	TSharedPtr<ChunkOctree> GetChunkOctree() const;
@@ -54,8 +54,6 @@ public:
 
 	void Load();
 	void Unload();
-
-	FQueuedThreadPool* ThreadPool;
 
 
 	UPROPERTY(EditAnywhere, Category = Voxel)
@@ -211,7 +209,7 @@ private:
 
 	// Generator for this world
 	UPROPERTY(EditAnywhere, Category = Voxel)
-		UClass* WorldGenerator;
+		TSubclassOf<AVoxelWorldGenerator> WorldGenerator;
 
 	// Camera to set LODs
 	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
@@ -233,7 +231,7 @@ private:
 
 	// Instanced world generator
 	UPROPERTY()
-		TScriptInterface<IVoxelWorldGenerator> WorldGeneratorInterface;
+		AVoxelWorldGenerator* InstancedWorldGenerator;
 
 	TSharedPtr<ChunkOctree> MainOctree;
 
@@ -245,4 +243,8 @@ private:
 
 	// Chunks waiting for update
 	TSet<TWeakPtr<ChunkOctree>> QueuedChunks;
+
+	TSharedPtr<FQueuedThreadPool> ThreadPool;
+
+	TSharedPtr<VoxelData> Data;
 };

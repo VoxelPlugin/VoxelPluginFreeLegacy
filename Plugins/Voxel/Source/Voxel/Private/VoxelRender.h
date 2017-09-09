@@ -26,10 +26,16 @@ private:
 	// Step between cubes
 	FORCEINLINE int Step();
 
-	FColor GetMajorColor(FIntVector LowerCorner, uint32 CellWidth);
+	FColor GetMajorColor(int X, int Y, int Z, uint32 CellWidth);
 
-	 void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);
-	 int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex);
+	FORCEINLINE FColor GetColor(int X, int Y, int Z);
+	FORCEINLINE FColor GetColor(FIntVector Position);
+
+	FORCEINLINE float GetValue(int X, int Y, int Z);
+	FORCEINLINE float GetValue(FIntVector Position);
+
+	FORCEINLINE void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);
+	FORCEINLINE int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex);
 
 	void InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha);
 	void InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha);

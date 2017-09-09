@@ -20,16 +20,13 @@ public:
 	 * @param	Depth			Depth of this world; Width = 16 * 2^Depth
 	 * @param	WorldGenerator	Generator for this world
 	 */
-	VoxelData(int Depth, TScriptInterface<IVoxelWorldGenerator>& WorldGenerator, bool bMultiplayer);
+	VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator, bool bMultiplayer);
 
 	// Depth of the octree
 	const int Depth;
 
 	// Width = 16 * 2^Depth
-	int Width() const
-	{
-		return 16 << Depth;
-	}
+	FORCEINLINE int Width() const;
 
 	/**
 	 * Get value octree
@@ -43,12 +40,16 @@ public:
 	 * @return	Value
 	 */
 	float GetValue(FIntVector Position) const;
+
+	float GetValue(int X, int Y, int Z) const;
 	/**
 	 * Get color at position
 	 * @param	Position	Position in voxel space
 	 * @return	Color
 	 */
 	FColor GetColor(FIntVector Position) const;
+
+	FColor GetColor(int X, int Y, int Z) const;
 
 
 	/**

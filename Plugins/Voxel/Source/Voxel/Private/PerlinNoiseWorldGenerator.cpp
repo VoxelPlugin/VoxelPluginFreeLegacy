@@ -7,24 +7,24 @@
 #include "PerlinNoise.h"
 #include "PerlinNoiseWorldGenerator.h"
 
-UPerlinNoiseWorldGenerator::UPerlinNoiseWorldGenerator() : Noise()
+APerlinNoiseWorldGenerator::APerlinNoiseWorldGenerator() : Noise()
 {
 }
 
-float UPerlinNoiseWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
+float APerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
-	float n = Noise.Noise(Position.X / 10.f, Position.Y / 10.f, Position.Z / 10.f);
+	float n = Noise.Noise(X / 10.f, Y / 10.f, Z / 10.f);
 	n = n - FMath::FloorToInt(n);
 
 	return 2 * n - 1;
 }
 
-FColor UPerlinNoiseWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
+FColor APerlinNoiseWorldGenerator::GetDefaultColor(int X, int Y, int Z)
 {
 	return FColor::Green;
 }
 
-void UPerlinNoiseWorldGenerator::SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
+void APerlinNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 
 };
