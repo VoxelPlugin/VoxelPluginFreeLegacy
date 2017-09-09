@@ -30,26 +30,16 @@ public:
  *
  */
 UCLASS(Blueprintable)
-class VOXEL_API UFlatWorldGenerator : public UObject, public IVoxelWorldGenerator
+class VOXEL_API AFlatWorldGenerator : public AVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
-	UFlatWorldGenerator();
+	AFlatWorldGenerator();
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		float GetDefaultValue(FIntVector Position);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		FColor GetDefaultColor(FIntVector Position);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
-
-
-	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
-	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
-	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override;
+	virtual float GetDefaultValue(int X, int Y, int Z) override;
+	virtual FColor GetDefaultColor(int X, int Y, int Z) override;
+	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 	// Height of the difference between full and empty
 	UPROPERTY(EditAnywhere)
@@ -61,7 +51,7 @@ public:
 
 	// Layers
 	UPROPERTY(EditAnywhere)
-		TArray<FFlatWorldStruct> Layers;
+		TArray<FFlatWorldStruct> TerrainLayers;
 
 	// Value to set
 	UPROPERTY(EditAnywhere)

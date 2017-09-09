@@ -21,38 +21,32 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	ValueOctree(bool bMultiplayer, TScriptInterface<IVoxelWorldGenerator>& WorldGenerator, FIntVector Position, int Depth, int Id = -1) : Octree(Position, Depth, Id),
-		bMultiplayer(bMultiplayer), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false)
-	{
-	};
+	ValueOctree(bool bMultiplayer, AVoxelWorldGenerator* WorldGenerator, FIntVector Position, int Depth, int Id = -1);
 
 	// Is the game multiplayer?
 	const bool bMultiplayer;
 
 	// Generator for this world
-	TScriptInterface<IVoxelWorldGenerator> WorldGenerator;
+	AVoxelWorldGenerator* WorldGenerator;
 
 	/**
 	 * Does this chunk have been modified?
 	 * @return	Whether or not this chunk is dirty
 	 */
-	bool IsDirty() const
-	{
-		return bIsDirty;
-	}
+	FORCEINLINE bool IsDirty() const;
 
 	/**
 	 * Get value at position
 	 * @param	GlobalPosition	Position in voxel space
 	 * @return	Value
 	 */
-	float GetValue(FIntVector GlobalPosition);
+	float GetValue(int X, int Y, int Z);
 	/**
 	 * Get color at position
 	 * @param	GlobalPosition	Position in voxel space
 	 * @return	Color at position
 	 */
-	FColor GetColor(FIntVector GlobalPosition);
+	FColor GetColor(int X, int Y, int Z);
 
 	/**
 	 * Set value at position
@@ -78,7 +72,7 @@ public:
 	 * @param	SaveArray	Array to load chunks from
 	 */
 	void LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World);
-	
+
 	/**
 	 * Add values that have changed since last network sync to diff arrays
 	 * @param	ValuesDiffs		Values diff array; sorted by increasing Id
@@ -98,6 +92,7 @@ public:
 	* @param	GlobalPosition	Position in voxel space
 	*/
 	ValueOctree* GetChild(FIntVector GlobalPosition);
+	FORCEINLINE ValueOctree* GetChild(int X, int Y, int Z);
 
 	/**
 	 * Queue update of dirty chunks

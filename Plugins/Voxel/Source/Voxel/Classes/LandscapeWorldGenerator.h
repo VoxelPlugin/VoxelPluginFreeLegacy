@@ -12,26 +12,16 @@
  *
  */
 UCLASS(BlueprintType)
-class VOXEL_API ALandscapeWorldGenerator : public AActor, public IVoxelWorldGenerator
+class VOXEL_API ALandscapeWorldGenerator : public AVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
 	ALandscapeWorldGenerator();
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		float GetDefaultValue(FIntVector Position);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		FColor GetDefaultColor(FIntVector Position);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Voxel")
-		void SetVoxelWorld(AVoxelWorld* VoxelWorld);
-
-
-	virtual float GetDefaultValue_Implementation(FIntVector Position) override;
-	virtual FColor GetDefaultColor_Implementation(FIntVector Position) override;
-	virtual void SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld) override;
+	virtual float GetDefaultValue(int X, int Y, int Z) override;
+	virtual FColor GetDefaultColor(int X, int Y, int Z) override;
+	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import")

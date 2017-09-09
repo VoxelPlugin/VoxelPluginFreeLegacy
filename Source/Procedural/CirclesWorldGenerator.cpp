@@ -2,22 +2,27 @@
 
 #include "CirclesWorldGenerator.h"
 
-float UCirclesWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
+ACirclesWorldGenerator::ACirclesWorldGenerator() : Scale(10, 10), TopColor(230, 255, 0, 255), MiddleColor(255, 0, 26, 255), BottomColor(13, 0, 255, 255), MaxValue(1), MinValue(-1)
 {
-	return (FMath::Sin(Position.X / Scale.X) + FMath::Cos(Position.Y / Scale.Y)) + Position.Z > 0 ? MaxValue : MinValue;
+
 }
 
-FColor UCirclesWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
+float ACirclesWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
-	if (Position.Z >= 1)
+	return (FMath::Sin(X / Scale.X) + FMath::Cos(Y / Scale.Y)) + Z > 0 ? MaxValue : MinValue;
+}
+
+FColor ACirclesWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+{
+	if (Z >= 1)
 	{
 		return BottomColor;
 	}
-	else if (Position.Z >= 0)
+	else if (Z >= 0)
 	{
 		return TopColor;
 	}
-	else if (Position.Z >= -1)
+	else if (Z >= -1)
 	{
 		return MiddleColor;
 	}
@@ -26,3 +31,9 @@ FColor UCirclesWorldGenerator::GetDefaultColor_Implementation(FIntVector Positio
 		return BottomColor;
 	}
 }
+
+void ACirclesWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
+{
+
+}
+

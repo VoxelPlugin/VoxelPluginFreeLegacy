@@ -3,21 +3,21 @@
 #include "VoxelPrivatePCH.h"
 #include "FlatWorldGenerator.h"
 
-UFlatWorldGenerator::UFlatWorldGenerator() : Height(0), DefaultColor(FColor::White), ValueMultiplier(1)
+AFlatWorldGenerator::AFlatWorldGenerator() : Height(0), DefaultColor(FColor::White), ValueMultiplier(1)
 {
 
 }
 
-float UFlatWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
+float AFlatWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
-	return (Position.Z > Height) ? ValueMultiplier : -ValueMultiplier;
+	return (Z > Height) ? ValueMultiplier : -ValueMultiplier;
 }
 
-FColor UFlatWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
+FColor AFlatWorldGenerator::GetDefaultColor(int X, int Y, int Z)
 {
-	for (auto Layer : Layers)
+	for (auto Layer : TerrainLayers)
 	{
-		if (Layer.Start <= Position.Z && Position.Z < Layer.Start + Layer.Height)
+		if (Layer.Start <= Z && Z < Layer.Start + Layer.Height)
 		{
 			return Layer.Color.ToFColor(true);
 		}
@@ -25,7 +25,7 @@ FColor UFlatWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
 	return DefaultColor.ToFColor(true);
 }
 
-void UFlatWorldGenerator::SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
+void AFlatWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 
 }

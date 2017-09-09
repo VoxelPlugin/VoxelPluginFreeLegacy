@@ -2,7 +2,7 @@
 #include "CoreMinimal.h"
 #include "VoxelChunk.h"
 
-inline uint32 IntPow9(int Power)
+FORCEINLINE uint32 IntPow9(int Power)
 {
 	check(Power <= 10);
 	int Pow = 1;
@@ -24,28 +24,13 @@ public:
 	 * @param	Position	Position (center) of this chunk
 	 * @param	Depth		Distance to the highest resolution
 	 */
-	Octree(FIntVector Position, int Depth, int Id = -1) : Position(Position), Depth(Depth), Id(Id == -1 ? IntPow9(Depth) : Id), bHasChilds(false)
-	{
-		// TODO: Use bigger int
-		// Max for Id
-		check(Depth <= 9);
-	};
+	Octree(FIntVector Position, int Depth, int Id = -1);
 
-	bool operator==(const Octree& Other) const
-	{
-		check((Id == Other.Id) == (Position == Other.Position && Depth == Other.Depth));
-		return Id == Other.Id;
-	}
+	bool operator==(const Octree& Other) const;
 
-	bool operator<(const Octree& Other) const
-	{
-		return Id < Other.Id;
-	}
+	bool operator<(const Octree& Other) const;
 
-	bool operator>(const Octree& Other) const
-	{
-		return Id > Other.Id;
-	}
+	bool operator>(const Octree& Other) const;
 
 	// Center of the octree
 	const FIntVector Position;
@@ -60,54 +45,43 @@ public:
 	 * Get the width at this level
 	 * @return	Width of this chunk
 	 */
-	int Width() const
-	{
-		return 16 << Depth;
-	}
+	FORCEINLINE int Width() const;
 
 	/**
 	 * Is Leaf?
 	 * @return IsLeaf
 	 */
-	bool IsLeaf() const
-	{
-		return !bHasChilds;
-	}
+	FORCEINLINE bool IsLeaf() const;
 
 	/**
 	 * Is GlobalPosition in this octree?
 	 * @param	GlobalPosition	Position in voxel space
 	 * @return	If IsInOctree
 	 */
-	bool IsInOctree(FIntVector GlobalPosition) const
-	{
-		return Position.X - Width() / 2 <= GlobalPosition.X && GlobalPosition.X < Position.X + Width() / 2 &&
-			Position.Y - Width() / 2 <= GlobalPosition.Y && GlobalPosition.Y < Position.Y + Width() / 2 &&
-			Position.Z - Width() / 2 <= GlobalPosition.Z && GlobalPosition.Z < Position.Z + Width() / 2;
-	}
+	bool IsInOctree(FIntVector GlobalPosition) const;
+
+	FORCEINLINE bool IsInOctree(int X, int Y, int Z) const;
 
 	/**
 	 * Convert from chunk space to voxel space
 	 * @param	LocalPosition	Position in chunk space
 	 * @return	Position in voxel space
 	 */
-	FIntVector LocalToGlobal(FIntVector LocalPosition) const
-	{
-		return FIntVector(LocalPosition.X + (Position.X - Width() / 2), LocalPosition.Y + (Position.Y - Width() / 2), LocalPosition.Z + (Position.Z - Width() / 2));
-	}
+	FIntVector LocalToGlobal(FIntVector LocalPosition) const;
+
+	FORCEINLINE void LocalToGlobal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const;
 
 	/**
 	 * Convert from voxel space to chunk space
 	 * @param	GlobalPosition	Position in voxel space
 	 * @return	Position in chunk space
 	 */
-	FIntVector GlobalToLocal(FIntVector GlobalPosition) const
-	{
-		return FIntVector(GlobalPosition.X - (Position.X - Width() / 2), GlobalPosition.Y - (Position.Y - Width() / 2), GlobalPosition.Z - (Position.Z - Width() / 2));
-	}
+	FIntVector GlobalToLocal(FIntVector GlobalPosition) const;
+
+	FORCEINLINE void GlobalToLocal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const;
 
 protected:
-	// Does this octree has childs?
+	// Does this octree has child?
 	bool bHasChilds;
 };
 

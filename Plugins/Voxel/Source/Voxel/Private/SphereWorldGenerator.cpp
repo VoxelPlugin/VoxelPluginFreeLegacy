@@ -3,14 +3,14 @@
 #include "VoxelPrivatePCH.h"
 #include "SphereWorldGenerator.h"
 
-USphereWorldGenerator::USphereWorldGenerator() : Radius(10), InverseOutsideInside(false), ValueMultiplier(1)
+ASphereWorldGenerator::ASphereWorldGenerator() : Radius(10), InverseOutsideInside(false), ValueMultiplier(1)
 {
 
 }
 
-float USphereWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
+float ASphereWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
-	float Distance = static_cast<FVector>(Position).Size();
+	float Distance = FVector(X, Y, Z).Size();
 	float Alpha = FMath::Clamp(Distance - LocalRadius, -2.f, 2.f) / 2;
 
 	Alpha *= ValueMultiplier;
@@ -18,12 +18,12 @@ float USphereWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 	return Alpha * (InverseOutsideInside ? -1 : 1);
 }
 
-FColor USphereWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
+FColor ASphereWorldGenerator::GetDefaultColor(int X, int Y, int Z)
 {
 	return DefaultColor;
 }
 
-void USphereWorldGenerator::SetVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
+void ASphereWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 	LocalRadius = Radius / VoxelWorld->GetTransform().GetScale3D().X;
 }

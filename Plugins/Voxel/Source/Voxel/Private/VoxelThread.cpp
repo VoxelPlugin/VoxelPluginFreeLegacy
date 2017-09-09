@@ -349,6 +349,6 @@ void VoxelThread::DoWork()
 		}
 	}
 	*/
-	VoxelRender Render(VoxelChunk->Depth, VoxelChunk->World->Data.Get(), VoxelChunk->Position);
+	VoxelRender Render(VoxelChunk->Depth, VoxelChunk->World->GetData().Get(), VoxelChunk->Position);
 	Render.CreateSection(Section);
 }

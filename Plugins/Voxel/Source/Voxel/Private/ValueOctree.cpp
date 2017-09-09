@@ -5,65 +5,62 @@
 #include "VoxelWorldGenerator.h"
 #include "DrawDebugHelpers.h"
 
-float ValueOctree::GetValue(FIntVector GlobalPosition)
+ValueOctree::ValueOctree(bool bMultiplayer, AVoxelWorldGenerator* WorldGenerator, FIntVector Position, int Depth, int Id) : Octree(Position, Depth, Id), bMultiplayer(bMultiplayer), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false)
+{
+}
+
+FORCEINLINE bool ValueOctree::IsDirty() const
+{
+	return bIsDirty;
+}
+
+float ValueOctree::GetValue(int X, int Y, int Z)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
-	check(IsInOctree(GlobalPosition));
+	check(IsInOctree(X, Y, Z));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
-	if (IsDirty())
+	if (LIKELY(IsDirty()))
 	{
-		if (Depth == 0)
+		if (UNLIKELY(Depth == 0))
 		{
-			FIntVector P = GlobalToLocal(GlobalPosition);
-			return Values[P.X + Width() * P.Y + Width() * Width() * P.Z];
+			int LocalX, LocalY, LocalZ;
+			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
+			return Values[LocalX + Width() * LocalY + Width() * Width() * LocalZ];
 		}
 		else
 		{
-			return GetChild(GlobalPosition)->GetValue(GlobalPosition);
+			return GetChild(X, Y, Z)->GetValue(X, Y, Z);
 		}
 	}
 	else
 	{
-		if (WorldGenerator.GetObject()->IsValidLowLevel())
-		{
-			return IVoxelWorldGenerator::Execute_GetDefaultValue(WorldGenerator.GetObject(), GlobalPosition);
-		}
-		else
-		{
-			return 0;
-		}
+		return WorldGenerator->GetDefaultValue(X, Y, Z);
 	}
 }
 
-FColor ValueOctree::GetColor(FIntVector GlobalPosition)
+FColor ValueOctree::GetColor(int X, int Y, int Z)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
-	check(IsInOctree(GlobalPosition));
+	check(IsInOctree(X, Y, Z));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
 	if (IsDirty())
 	{
 		if (Depth == 0)
 		{
-			FIntVector P = GlobalToLocal(GlobalPosition);
-			return Colors[P.X + Width() * P.Y + Width() * Width() * P.Z];
+			int LocalX, LocalY, LocalZ;
+			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
+			return Colors[LocalX + Width() * LocalY + Width() * Width() * LocalZ];
 		}
 		else
 		{
-			return GetChild(GlobalPosition)->GetColor(GlobalPosition);
+			return GetChild(X, Y, Z)->GetColor(X, Y, Z);
 		}
 	}
 	else
 	{
-		if (WorldGenerator.GetObject()->IsValidLowLevel())
-		{
-			return IVoxelWorldGenerator::Execute_GetDefaultColor(WorldGenerator.GetObject(), GlobalPosition);
-		}
-		else
-		{
-			return FColor::Black;
-		}
+		return WorldGenerator->GetDefaultColor(X, Y, Z);
 	}
 }
 
@@ -385,14 +382,16 @@ void ValueOctree::SetAsDirty()
 	check(Depth == 0);
 	Values.SetNumUninitialized(16 * 16 * 16);
 	Colors.SetNumUninitialized(16 * 16 * 16);
-	for (int x = 0; x < 16; x++)
+	for (int X = 0; X < 16; X++)
 	{
-		for (int y = 0; y < 16; y++)
+		for (int Y = 0; Y < 16; Y++)
 		{
-			for (int z = 0; z < 16; z++)
+			for (int Z = 0; Z < 16; Z++)
 			{
-				Values[x + 16 * y + 16 * 16 * z] = GetValue(LocalToGlobal(FIntVector(x, y, z)));
-				Colors[x + 16 * y + 16 * 16 * z] = GetColor(LocalToGlobal(FIntVector(x, y, z)));
+				int GlobalX, GlobalY, GlobalZ;
+				LocalToGlobal(X, Y, Z, GlobalX, GlobalY, GlobalZ);
+				Values[X + 16 * Y + 16 * 16 * Z] = GetValue(GlobalX, GlobalY, GlobalZ);
+				Colors[X + 16 * Y + 16 * 16 * Z] = GetColor(GlobalX, GlobalY, GlobalZ);
 			}
 		}
 	}
@@ -401,9 +400,14 @@ void ValueOctree::SetAsDirty()
 
 ValueOctree* ValueOctree::GetChild(FIntVector GlobalPosition)
 {
+	return GetChild(GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z);
+}
+
+ValueOctree * ValueOctree::GetChild(int X, int Y, int Z)
+{
 	check(!IsLeaf());
 	// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-	return Childs[(GlobalPosition.X >= Position.X ? 1 : 0) + (GlobalPosition.Y >= Position.Y ? 2 : 0) + (GlobalPosition.Z >= Position.Z ? 4 : 0)];
+	return Childs[(X >= Position.X) + 2 * (Y >= Position.Y) + 4 * (Z >= Position.Z)];
 }
 
 void ValueOctree::QueueUpdateOfDirtyChunks(AVoxelWorld* World)
