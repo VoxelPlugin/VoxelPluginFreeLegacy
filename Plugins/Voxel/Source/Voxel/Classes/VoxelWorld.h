@@ -38,7 +38,7 @@ public:
 	float GetLODToleranceZone() const;
 	bool GetRebuildBorders() const;
 	float GetLODAt(float Distance) const;
-	TSharedPtr<FQueuedThreadPool> GetThreadPool();
+	FQueuedThreadPool* GetThreadPool();
 	TSharedPtr<VoxelData> GetData();
 	bool IsCreated() const;
 
@@ -244,7 +244,7 @@ private:
 	// Chunks waiting for update
 	TSet<TWeakPtr<ChunkOctree>> QueuedChunks;
 
-	TSharedPtr<FQueuedThreadPool> ThreadPool;
+	FQueuedThreadPool* ThreadPool;
 
 	TSharedPtr<VoxelData> Data;
 };
