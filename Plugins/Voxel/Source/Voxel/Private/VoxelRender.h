@@ -1,13 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ValueOctree.h"
+#include "VoxelData.h"
 #include "ProceduralMeshComponent.h"
 
 class VoxelRender
 {
 public:
-	VoxelRender(int Depth, ValueOctree* Octree, FIntVector ChunkPosition);
+	VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition);
 
 	void CreateSection(FProcMeshSection& OutSection);
 
@@ -15,15 +15,12 @@ private:
 	const int Depth;
 	const FIntVector ChunkPosition;
 
-	uint64 Signs[125];
+	uint64 Signs[216];
 
-	// Caches to get index of already created vertices
-	int Cache1[16][16][3];
-	int Cache2[16][16][3];
-	// Allows to ping-pong between 2 caches
-	bool bNewCacheIs1;
+	// Cache to get index of already created vertices
+	int Cache[17][17][17][3];
 
-	ValueOctree* Octree;
+	VoxelData* Data;
 
 	FORCEINLINE int Width();
 	// Step between cubes
@@ -31,8 +28,8 @@ private:
 
 	FColor GetMajorColor(FIntVector LowerCorner, uint32 CellWidth);
 
-	void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);
-	int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex);
+	 void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);
+	 int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex);
 
 	void InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha);
 	void InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha);

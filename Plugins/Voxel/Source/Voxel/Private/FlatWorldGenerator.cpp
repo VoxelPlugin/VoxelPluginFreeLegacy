@@ -10,7 +10,7 @@ UFlatWorldGenerator::UFlatWorldGenerator() : Height(0), DefaultColor(FColor::Whi
 
 float UFlatWorldGenerator::GetDefaultValue_Implementation(FIntVector Position)
 {
-	return (Position.Z == Height) ? 0 : ((Position.Z > Height) ? ValueMultiplier : -ValueMultiplier);
+	return (Position.Z > Height) ? ValueMultiplier : -ValueMultiplier;
 }
 
 FColor UFlatWorldGenerator::GetDefaultColor_Implementation(FIntVector Position)
