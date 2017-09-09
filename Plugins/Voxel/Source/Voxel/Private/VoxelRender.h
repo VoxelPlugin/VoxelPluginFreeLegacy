@@ -31,8 +31,8 @@ private:
 
 	FColor GetMajorColor(FIntVector LowerCorner, uint32 CellWidth);
 
-	void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index) override;
-	int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex) override;
+	void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);
+	int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex);
 
 	void InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha);
 	void InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha);

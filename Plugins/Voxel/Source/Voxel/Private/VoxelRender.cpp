@@ -18,15 +18,17 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			for (int CubeZ = 0; CubeZ < 5; CubeZ++)
 			{
 				uint64& CurrentCube = Signs[CubeX + 5 * CubeY + 5 * 5 * CubeZ];
+				CurrentCube = 0;
 				for (int LocalX = 0; LocalX < 4; LocalX++)
 				{
 					for (int LocalY = 0; LocalY < 4; LocalY++)
 					{
 						for (int LocalZ = 0; LocalZ < 4; LocalZ++)
 						{
-							int CurrentBit = LocalX + 4 * LocalY + 4 * 4 * LocalZ;
-							bool Sign = Octree->GetValue(FIntVector(3 * CubeX + LocalX, 3 * CubeY + LocalY, 3 * CubeZ + LocalZ)) > 0;
-							CurrentCube = CurrentCube & (0xFFFFFFFFFFFFFFFF - CurrentBit) | (CurrentBit * Sign);
+							const uint64 ONE = 1;
+							uint64 CurrentBit = ONE << (LocalX + 4 * LocalY + 4 * 4 * LocalZ);
+							bool Sign = Octree->GetValue(FIntVector(3 * CubeX + LocalX, 3 * CubeY + LocalY, 3 * CubeZ + LocalZ) + ChunkPosition) > 0;
+							CurrentCube = CurrentCube | (CurrentBit * Sign);
 						}
 					}
 				}
@@ -48,23 +50,24 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 		{
 			for (int CubeZ = 0; CubeZ < 5; CubeZ++)
 			{
-				uint64& CurrentCube = Signs[CubeX + 5 * CubeY + 5 * 5 * CubeZ];
+				uint64 CurrentCube = Signs[CubeX + 5 * CubeY + 5 * 5 * CubeZ];
 				for (int LocalX = 0; LocalX < 3; LocalX++)
 				{
 					for (int LocalY = 0; LocalY < 3; LocalY++)
 					{
 						for (int LocalZ = 0; LocalZ < 3; LocalZ++)
 						{
-							short ValidityMask = (CubeX + LocalX == 0) + 2 * (CubeY + LocalY == 0) + 4 * (CubeZ + LocalZ == 0);
+							short ValidityMask = (CubeX + LocalX != 0) + 2 * (CubeY + LocalY != 0) + 4 * (CubeZ + LocalZ != 0);
+							const uint64 ONE = 1;
 							unsigned long CaseCode =
-								((CurrentCube & ((LocalX + 0) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 0))) << 0)
-								| ((CurrentCube & ((LocalX + 1) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 0))) << 1)
-								| ((CurrentCube & ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 0))) << 2)
-								| ((CurrentCube & ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 0))) << 3)
-								| ((CurrentCube & ((LocalX + 0) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 1))) << 4)
-								| ((CurrentCube & ((LocalX + 1) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 1))) << 5)
-								| ((CurrentCube & ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1))) << 6)
-								| ((CurrentCube & ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1))) << 7);
+								(static_cast<bool>(CurrentCube   & (ONE << ((LocalX + 0) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 0)))) << 0)
+								| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 0)))) << 1)
+								| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 0)))) << 2)
+								| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 0)))) << 3)
+								| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 1)))) << 4)
+								| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 1)))) << 5)
+								| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1)))) << 6)
+								| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1)))) << 7);
 
 							if (CaseCode != 0 && CaseCode != 511)
 							{
@@ -75,13 +78,13 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 								int Z = 3 * CubeZ + LocalZ;
 
 								const FIntVector CornerPositions[8] = {
-									FIntVector(X    , Y    , Z) * Step(),
-									FIntVector(X + 1, Y    , Z) * Step(),
-									FIntVector(X    , Y + 1, Z) * Step(),
-									FIntVector(X + 1, Y + 1, Z) * Step(),
-									FIntVector(X    , Y    , Z + 1) * Step(),
-									FIntVector(X + 1, Y    , Z + 1) * Step(),
-									FIntVector(X    , Y + 1, Z + 1) * Step(),
+									FIntVector(X + 0, Y + 0, Z + 0) * Step(),
+									FIntVector(X + 1, Y + 0, Z + 0) * Step(),
+									FIntVector(X + 0, Y + 1, Z + 0) * Step(),
+									FIntVector(X + 1, Y + 1, Z + 0) * Step(),
+									FIntVector(X + 0, Y + 0, Z + 1) * Step(),
+									FIntVector(X + 1, Y + 0, Z + 1) * Step(),
+									FIntVector(X + 0, Y + 1, Z + 1) * Step(),
 									FIntVector(X + 1, Y + 1, Z + 1) * Step()
 								};
 
@@ -107,7 +110,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 									Octree->GetColor(CornerPositions[7] + ChunkPosition).B
 								};
 
-								const FColor& CellColor = GetMajorColor(CornerPositions[0], Step());
+								const FColor& CellColor = GetMajorColor(CornerPositions[0] + ChunkPosition, Step());
 
 								check(0 <= CaseCode && CaseCode < 256);
 								unsigned char CellClass = Transvoxel::regularCellClass[CaseCode];
@@ -146,9 +149,9 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 									const short CacheDirection = EdgeCode >> 12;
 
 									// Force vertex creation when colors are different
-									const bool ForceVertexCreation = (CellColor != GetMajorColor(FIntVector(X - static_cast<bool>(CacheDirection & 0x01) * Step(),
-																											Y - static_cast<bool>(CacheDirection & 0x02) * Step(),
-																											Z - static_cast<bool>(CacheDirection & 0x04) * Step()), Step()));
+									const bool ForceVertexCreation = ((ValidityMask & CacheDirection) == CacheDirection) && (CellColor != GetMajorColor(FIntVector(X - static_cast<bool>(CacheDirection & 0x01),
+																																								   Y - static_cast<bool>(CacheDirection & 0x02),
+																																								   Z - static_cast<bool>(CacheDirection & 0x04)) * Step() + ChunkPosition, Step()));
 
 									if ((ValidityMask & CacheDirection) != CacheDirection || ForceVertexCreation)
 									{
@@ -239,7 +242,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 	OutSection.ProcVertexBuffer.SetNumUninitialized(VerticesSize);
 	OutSection.ProcIndexBuffer.SetNumUninitialized(TrianglesSize);
 
-	for (int i = VerticesSize - 1; i >= 0; i++)
+	for (int i = VerticesSize - 1; i >= 0; i--)
 	{
 		FProcMeshVertex& Vertex = OutSection.ProcVertexBuffer[i];
 
@@ -249,11 +252,13 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 		Vertex.Color = Colors.front();
 		Vertex.UV0 = FVector2D::ZeroVector;
 
+		OutSection.SectionLocalBox += Vertex.Position;
+
 		Vertices.pop_front();
 		Colors.pop_front();
 	}
 
-	for (int i = TrianglesSize - 1; i >= 0; i++)
+	for (int i = TrianglesSize - 1; i >= 0; i--)
 	{
 		OutSection.ProcIndexBuffer[i] = Triangles.front();
 		Triangles.pop_front();
@@ -273,8 +278,6 @@ int VoxelRender::Step()
 
 FColor VoxelRender::GetMajorColor(FIntVector LowerCorner, uint32 CellWidth)
 {
-	check(Depth > 0);
-
 	FColor Colors[8];
 	if (CellWidth == 1)
 	{
@@ -290,14 +293,14 @@ FColor VoxelRender::GetMajorColor(FIntVector LowerCorner, uint32 CellWidth)
 	else
 	{
 		uint32 HalfWidth = CellWidth / 2;
-		Colors[0] = GetMajorColor(LowerCorner, Depth - 1);
-		Colors[1] = GetMajorColor(LowerCorner + FIntVector(HalfWidth, 0, 0), Depth - 1);
-		Colors[2] = GetMajorColor(LowerCorner + FIntVector(0, HalfWidth, 0), Depth - 1);
-		Colors[3] = GetMajorColor(LowerCorner + FIntVector(HalfWidth, HalfWidth, 0), Depth - 1);
-		Colors[4] = GetMajorColor(LowerCorner + FIntVector(0, 0, HalfWidth), Depth - 1);
-		Colors[5] = GetMajorColor(LowerCorner + FIntVector(HalfWidth, 0, HalfWidth), Depth - 1);
-		Colors[6] = GetMajorColor(LowerCorner + FIntVector(0, HalfWidth, HalfWidth), Depth - 1);
-		Colors[7] = GetMajorColor(LowerCorner + FIntVector(HalfWidth, HalfWidth, HalfWidth), Depth - 1);
+		Colors[0] = GetMajorColor(LowerCorner, HalfWidth);
+		Colors[1] = GetMajorColor(LowerCorner + FIntVector(HalfWidth, 0, 0), HalfWidth);
+		Colors[2] = GetMajorColor(LowerCorner + FIntVector(0, HalfWidth, 0), HalfWidth);
+		Colors[3] = GetMajorColor(LowerCorner + FIntVector(HalfWidth, HalfWidth, 0), HalfWidth);
+		Colors[4] = GetMajorColor(LowerCorner + FIntVector(0, 0, HalfWidth), HalfWidth);
+		Colors[5] = GetMajorColor(LowerCorner + FIntVector(HalfWidth, 0, HalfWidth), HalfWidth);
+		Colors[6] = GetMajorColor(LowerCorner + FIntVector(0, HalfWidth, HalfWidth), HalfWidth);
+		Colors[7] = GetMajorColor(LowerCorner + FIntVector(HalfWidth, HalfWidth, HalfWidth), HalfWidth);
 	}
 	// Reground same colors and count them
 	FColor SingleColors[8];
@@ -392,12 +395,12 @@ void VoxelRender::InterpolateX(const int MinX, const int MaxX, const int Y, cons
 		if ((ValueAtA > 0) == (Octree->GetValue(FIntVector(xMiddle, Y, Z)) > 0))
 		{
 			// If min and middle have same sign
-			return InterpolateX(xMiddle, MaxX, Y, Z);
+			return InterpolateX(xMiddle, MaxX, Y, Z, OutVector, OutAlpha);
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateX(MinX, xMiddle, Y, Z);
+			return InterpolateX(MinX, xMiddle, Y, Z, OutVector, OutAlpha);
 		}
 	}
 }
@@ -425,12 +428,12 @@ void VoxelRender::InterpolateY(const int X, const int MinY, const int MaxY, cons
 		if ((ValueAtA > 0) == (Octree->GetValue(FIntVector(X, yMiddle, Z)) > 0))
 		{
 			// If min and middle have same sign
-			return InterpolateY(X, yMiddle, MaxY, Z);
+			return InterpolateY(X, yMiddle, MaxY, Z, OutVector, OutAlpha);
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateY(X, MinY, yMiddle, Z);
+			return InterpolateY(X, MinY, yMiddle, Z, OutVector, OutAlpha);
 		}
 	}
 }
@@ -458,12 +461,12 @@ void VoxelRender::InterpolateZ(const int X, const int Y, const int MinZ, const i
 		if ((ValueAtA > 0) == (Octree->GetValue(FIntVector(X, Y, zMiddle)) > 0))
 		{
 			// If min and middle have same sign
-			return InterpolateZ(X, Y, zMiddle, MaxZ);
+			return InterpolateZ(X, Y, zMiddle, MaxZ, OutVector, OutAlpha);
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateZ(X, Y, MinZ, zMiddle);
+			return InterpolateZ(X, Y, MinZ, zMiddle, OutVector, OutAlpha);
 		}
 	}
 }

@@ -4,7 +4,7 @@
 #include "VoxelThread.h"
 #include <forward_list>
 #include "VoxelRender.h"
-#include "VoxelChunk.h
+#include "VoxelChunk.h"
 #include "VoxelData.h"
 
 VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk) : VoxelChunk(VoxelChunk)
@@ -14,7 +14,7 @@ VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk) : VoxelChunk(VoxelChunk)
 
 VoxelThread::~VoxelThread()
 {
-	delete VoxelStruct;
+
 }
 
 void VoxelThread::DoWork()
