@@ -3,11 +3,11 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelThread.h"
 #include <forward_list>
-#include "TransvoxelTools.h"
-#include "VoxelChunkStruct.h"
-#include "VoxelChunk.h"
+#include "VoxelRender.h"
+#include "VoxelChunk.h
+#include "VoxelData.h"
 
-VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk) : VoxelChunk(VoxelChunk), VoxelStruct(new VoxelChunkStruct(VoxelChunk))
+VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk) : VoxelChunk(VoxelChunk)
 {
 
 }
@@ -19,6 +19,7 @@ VoxelThread::~VoxelThread()
 
 void VoxelThread::DoWork()
 {
+	/*
 	TSharedPtr<Verts> Vertices(new Verts());
 	TSharedPtr<Colors> VertexColors(new Colors());
 	TSharedPtr<Trigs> RegularTriangles(new Trigs());
@@ -33,9 +34,7 @@ void VoxelThread::DoWork()
 	const int Width = VoxelStruct->Width;
 	const int Step = VoxelStruct->Step;
 
-	/**
-	 * Transitions voxels
-	 */
+	// Transitions voxels
 	if (Depth != 0)
 	{
 		for (int i = 0; i < 6; i++)
@@ -57,9 +56,8 @@ void VoxelThread::DoWork()
 		}
 	}
 
-	/**
-	 * Normal voxels
-	 */
+
+	// Normal voxels
 	for (int z = -1; z < 17; z++)
 	{
 		for (int y = -1; y < 17; y++)
@@ -350,4 +348,7 @@ void VoxelThread::DoWork()
 			VertexColors->pop_front();
 		}
 	}
+	*/
+	VoxelRender Render(VoxelChunk->Depth, VoxelChunk->World->Data->GetValueOctree().Get(), VoxelChunk->Position);
+	Render.CreateSection(Section);
 }
