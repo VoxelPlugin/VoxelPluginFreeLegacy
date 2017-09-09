@@ -130,6 +130,8 @@ void AVoxelChunk::Update(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
+	bAsync = false;
+
 	// Make sure we've ticked
 	Tick(0);
 
