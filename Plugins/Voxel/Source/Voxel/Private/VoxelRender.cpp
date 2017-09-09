@@ -254,7 +254,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CREATE_SECTION);
 		OutSection = FProcMeshSection();
-		OutSection.bEnableCollision = true;
+		OutSection.bEnableCollision = (Depth == 0);
 		OutSection.bSectionVisible = true;
 		OutSection.ProcVertexBuffer.SetNumUninitialized(VerticesSize);
 		OutSection.ProcIndexBuffer.SetNumUninitialized(TrianglesSize);

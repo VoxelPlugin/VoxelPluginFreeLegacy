@@ -99,7 +99,7 @@ void AVoxelChunk::Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWor
 	PrimaryMesh->bUseAsyncCooking = true;
 	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 
-	// Update adjacents
+	// Update adjacent
 	bAdjacentChunksNeedUpdate = true;
 
 	// Debug
@@ -130,8 +130,6 @@ void AVoxelChunk::Update(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
-	bAsync = false;
-
 	// Make sure we've ticked
 	Tick(0);
 
@@ -153,7 +151,7 @@ void AVoxelChunk::Update(bool bAsync)
 		Task = new FAsyncTask<VoxelThread>(this);
 		if (bAsync)
 		{
-			Task->StartBackgroundTask(World->GetThreadPool().Get());
+			Task->StartBackgroundTask();
 			bNeedSectionUpdate = true;
 		}
 		else

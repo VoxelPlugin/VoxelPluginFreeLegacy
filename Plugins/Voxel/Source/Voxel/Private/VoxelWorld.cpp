@@ -32,7 +32,7 @@ LODToleranceZone(0.5), bRebuildBorders(true), PlayerCamera(nullptr), bAutoFindCa
 
 	bReplicates = true;
 
-	ThreadPool = MakeShareable(FQueuedThreadPool::Allocate());
+	ThreadPool = FQueuedThreadPool::Allocate();
 	ThreadPool->Create(8);
 
 	LODProfile = UVoxelLODProfile::StaticClass();
@@ -430,7 +430,7 @@ float AVoxelWorld::GetLODAt(float Distance) const
 	return LODProfile.GetDefaultObject()->GetLODAt(Distance);
 }
 
-TSharedPtr<FQueuedThreadPool> AVoxelWorld::GetThreadPool()
+FQueuedThreadPool* AVoxelWorld::GetThreadPool()
 {
 	return ThreadPool;
 }
