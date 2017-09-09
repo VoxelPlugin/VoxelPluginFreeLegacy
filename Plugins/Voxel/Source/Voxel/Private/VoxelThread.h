@@ -6,7 +6,6 @@
 #include "ProceduralMeshComponent.h"
 
 class AVoxelChunk;
-struct VoxelChunkStruct;
 
 /**
  * Thread to create mesh section
@@ -20,7 +19,6 @@ public:
 	~VoxelThread();
 
 	AVoxelChunk* VoxelChunk;
-	VoxelChunkStruct* VoxelStruct;
 
 	FProcMeshSection Section;
 

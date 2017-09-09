@@ -30,6 +30,8 @@ class VOXEL_API AVoxelWorld : public AActor
 	GENERATED_BODY()
 
 public:
+	TSharedPtr<VoxelData> Data;
+
 	AVoxelWorld();
 
 	int Size() const;
@@ -234,7 +236,6 @@ private:
 		TScriptInterface<IVoxelWorldGenerator> WorldGeneratorInterface;
 
 	TSharedPtr<ChunkOctree> MainOctree;
-	TSharedPtr<VoxelData> Data;
 
 	// Is VoxelWorld created?
 	bool bIsCreated;
