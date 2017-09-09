@@ -31,15 +31,9 @@ float VoxelData::GetValue(FIntVector Position) const
 			(Position.Z < -Width() / 2) ? -Width() / 2 : Position.Z));
 	}
 
-	if (IsInWorld(Position))
-	{
-		return MainOctree->GetValue(Position);
-	}
-	else
-	{
-		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-		return 0;
-	}
+	check(IsInWorld(Position));
+
+	return MainOctree->GetValue(Position);
 }
 
 FColor VoxelData::GetColor(FIntVector Position) const

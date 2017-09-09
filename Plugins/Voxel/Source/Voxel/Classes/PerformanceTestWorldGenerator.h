@@ -38,4 +38,7 @@ public:
 	// Speed of the change
 	UPROPERTY(EditAnywhere)
 		float Speed = 0.01f;
+
+private:
+	AVoxelWorld* World;
 };

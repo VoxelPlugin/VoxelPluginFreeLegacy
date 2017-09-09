@@ -3,7 +3,7 @@
 #include "Transvoxel.h"
 
 
-VoxelRender::VoxelRender(int Depth, ValueOctree* Octree, FIntVector ChunkPosition) : Depth(Depth), Octree(Octree), ChunkPosition(ChunkPosition)
+VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition) : Depth(Depth), Data(Data), ChunkPosition(ChunkPosition - FIntVector(1, 1, 1))
 {
 
 }
@@ -11,13 +11,13 @@ VoxelRender::VoxelRender(int Depth, ValueOctree* Octree, FIntVector ChunkPositio
 void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 {
 	// Cache signs
-	for (int CubeX = 0; CubeX < 5; CubeX++)
+	for (int CubeX = 0; CubeX < 6; CubeX++)
 	{
-		for (int CubeY = 0; CubeY < 5; CubeY++)
+		for (int CubeY = 0; CubeY < 6; CubeY++)
 		{
-			for (int CubeZ = 0; CubeZ < 5; CubeZ++)
+			for (int CubeZ = 0; CubeZ < 6; CubeZ++)
 			{
-				uint64& CurrentCube = Signs[CubeX + 5 * CubeY + 5 * 5 * CubeZ];
+				uint64& CurrentCube = Signs[CubeX + 6 * CubeY + 6 * 6 * CubeZ];
 				CurrentCube = 0;
 				for (int LocalX = 0; LocalX < 4; LocalX++)
 				{
@@ -27,10 +27,24 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 						{
 							const uint64 ONE = 1;
 							uint64 CurrentBit = ONE << (LocalX + 4 * LocalY + 4 * 4 * LocalZ);
-							bool Sign = Octree->GetValue(FIntVector(3 * CubeX + LocalX, 3 * CubeY + LocalY, 3 * CubeZ + LocalZ) + ChunkPosition) > 0;
+							bool Sign = Data->GetValue(FIntVector(3 * CubeX + LocalX, 3 * CubeY + LocalY, 3 * CubeZ + LocalZ) * Step() + ChunkPosition) > 0;
 							CurrentCube = CurrentCube | (CurrentBit * Sign);
 						}
 					}
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < 16; i++)
+	{
+		for (int j = 0; j < 16; j++)
+		{
+			for (int l = 0; l < 16; l++)
+			{
+				for (int k = 0; k < 3; k++)
+				{
+					Cache[i][j][l][k] = -1;
 				}
 			}
 		}
@@ -44,18 +58,18 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 	int TrianglesSize = 0;
 
 	// Iterate over cubes
-	for (int CubeX = 0; CubeX < 5; CubeX++)
+	for (int CubeX = 0; CubeX < 6; CubeX++)
 	{
-		for (int CubeY = 0; CubeY < 5; CubeY++)
+		for (int CubeY = 0; CubeY < 6; CubeY++)
 		{
-			for (int CubeZ = 0; CubeZ < 5; CubeZ++)
+			for (int CubeZ = 0; CubeZ < 6; CubeZ++)
 			{
-				uint64 CurrentCube = Signs[CubeX + 5 * CubeY + 5 * 5 * CubeZ];
-				for (int LocalX = 0; LocalX < 3; LocalX++)
+				uint64 CurrentCube = Signs[CubeX + 6 * CubeY + 6 * 6 * CubeZ];
+				for (int LocalX = 0; LocalX < 3 - (CubeX == 5); LocalX++)
 				{
-					for (int LocalY = 0; LocalY < 3; LocalY++)
+					for (int LocalY = 0; LocalY < 3 - (CubeY == 5); LocalY++)
 					{
-						for (int LocalZ = 0; LocalZ < 3; LocalZ++)
+						for (int LocalZ = 0; LocalZ < 3 - (CubeZ == 5); LocalZ++)
 						{
 							short ValidityMask = (CubeX + LocalX != 0) + 2 * (CubeY + LocalY != 0) + 4 * (CubeZ + LocalZ != 0);
 							const uint64 ONE = 1;
@@ -89,25 +103,25 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 								};
 
 								const float CornerValues[8] = {
-									Octree->GetValue(CornerPositions[0] + ChunkPosition),
-									Octree->GetValue(CornerPositions[1] + ChunkPosition),
-									Octree->GetValue(CornerPositions[2] + ChunkPosition),
-									Octree->GetValue(CornerPositions[3] + ChunkPosition),
-									Octree->GetValue(CornerPositions[4] + ChunkPosition),
-									Octree->GetValue(CornerPositions[5] + ChunkPosition),
-									Octree->GetValue(CornerPositions[6] + ChunkPosition),
-									Octree->GetValue(CornerPositions[7] + ChunkPosition)
+									Data->GetValue(CornerPositions[0] + ChunkPosition),
+									Data->GetValue(CornerPositions[1] + ChunkPosition),
+									Data->GetValue(CornerPositions[2] + ChunkPosition),
+									Data->GetValue(CornerPositions[3] + ChunkPosition),
+									Data->GetValue(CornerPositions[4] + ChunkPosition),
+									Data->GetValue(CornerPositions[5] + ChunkPosition),
+									Data->GetValue(CornerPositions[6] + ChunkPosition),
+									Data->GetValue(CornerPositions[7] + ChunkPosition)
 								};
 
 								const float CornerAlphas[8] = {
-									Octree->GetColor(CornerPositions[0] + ChunkPosition).B,
-									Octree->GetColor(CornerPositions[1] + ChunkPosition).B,
-									Octree->GetColor(CornerPositions[2] + ChunkPosition).B,
-									Octree->GetColor(CornerPositions[3] + ChunkPosition).B,
-									Octree->GetColor(CornerPositions[4] + ChunkPosition).B,
-									Octree->GetColor(CornerPositions[5] + ChunkPosition).B,
-									Octree->GetColor(CornerPositions[6] + ChunkPosition).B,
-									Octree->GetColor(CornerPositions[7] + ChunkPosition).B
+									Data->GetColor(CornerPositions[0] + ChunkPosition).B,
+									Data->GetColor(CornerPositions[1] + ChunkPosition).B,
+									Data->GetColor(CornerPositions[2] + ChunkPosition).B,
+									Data->GetColor(CornerPositions[3] + ChunkPosition).B,
+									Data->GetColor(CornerPositions[4] + ChunkPosition).B,
+									Data->GetColor(CornerPositions[5] + ChunkPosition).B,
+									Data->GetColor(CornerPositions[6] + ChunkPosition).B,
+									Data->GetColor(CornerPositions[7] + ChunkPosition).B
 								};
 
 								const FColor& CellColor = GetMajorColor(CornerPositions[0] + ChunkPosition, Step());
@@ -281,14 +295,14 @@ FColor VoxelRender::GetMajorColor(FIntVector LowerCorner, uint32 CellWidth)
 	FColor Colors[8];
 	if (CellWidth == 1)
 	{
-		Colors[0] = Octree->GetColor(LowerCorner);
-		Colors[1] = Octree->GetColor(LowerCorner + FIntVector(1, 0, 0));
-		Colors[2] = Octree->GetColor(LowerCorner + FIntVector(0, 1, 0));
-		Colors[3] = Octree->GetColor(LowerCorner + FIntVector(1, 1, 0));
-		Colors[4] = Octree->GetColor(LowerCorner + FIntVector(0, 0, 1));
-		Colors[5] = Octree->GetColor(LowerCorner + FIntVector(1, 0, 1));
-		Colors[6] = Octree->GetColor(LowerCorner + FIntVector(0, 1, 1));
-		Colors[7] = Octree->GetColor(LowerCorner + FIntVector(1, 1, 1));
+		Colors[0] = Data->GetColor(LowerCorner);
+		Colors[1] = Data->GetColor(LowerCorner + FIntVector(1, 0, 0));
+		Colors[2] = Data->GetColor(LowerCorner + FIntVector(0, 1, 0));
+		Colors[3] = Data->GetColor(LowerCorner + FIntVector(1, 1, 0));
+		Colors[4] = Data->GetColor(LowerCorner + FIntVector(0, 0, 1));
+		Colors[5] = Data->GetColor(LowerCorner + FIntVector(1, 0, 1));
+		Colors[6] = Data->GetColor(LowerCorner + FIntVector(0, 1, 1));
+		Colors[7] = Data->GetColor(LowerCorner + FIntVector(1, 1, 1));
 	}
 	else
 	{
@@ -347,37 +361,33 @@ FColor VoxelRender::GetMajorColor(FIntVector LowerCorner, uint32 CellWidth)
 
 void VoxelRender::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index)
 {
-	auto NewCache = bNewCacheIs1 ? Cache1 : Cache2;
-
-	check(0 <= X && X < 16);
-	check(0 <= Y && Y < 16);
+	check(0 <= X && X < 17);
+	check(0 <= Y && Y < 17);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
-	NewCache[X][Y][EdgeIndex] = Index;
+	Cache[X][Y][Z][EdgeIndex] = Index;
 }
 
 int VoxelRender::LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex)
 {
-	auto NewCache = bNewCacheIs1 ? Cache1 : Cache2;
-	auto OldCache = bNewCacheIs1 ? Cache2 : Cache1;
-
 	bool XIsDifferent = Direction & 0x01;
 	bool YIsDifferent = Direction & 0x02;
 	bool ZIsDifferent = Direction & 0x04;
 
-	check(0 <= X - XIsDifferent && X - XIsDifferent < 16);
-	check(0 <= Y - YIsDifferent && Y - YIsDifferent < 16);
+	check(0 <= X - XIsDifferent && X - XIsDifferent < 17);
+	check(0 <= Y - YIsDifferent && Y - YIsDifferent < 17);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
-	return (ZIsDifferent ? OldCache : NewCache)[X - XIsDifferent][Y - YIsDifferent][EdgeIndex];
+	check(Cache[X - XIsDifferent][Y - YIsDifferent][Z - ZIsDifferent][EdgeIndex] >= 0);
+	return Cache[X - XIsDifferent][Y - YIsDifferent][Z - ZIsDifferent][EdgeIndex];
 }
 
 
 void VoxelRender::InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
-	const float ValueAtA = Octree->GetValue(FIntVector(MinX, Y, Z));
-	const float ValueAtB = Octree->GetValue(FIntVector(MaxX, Y, Z));
+	const float ValueAtA = Data->GetValue(FIntVector(MinX, Y, Z) + ChunkPosition);
+	const float ValueAtB = Data->GetValue(FIntVector(MaxX, Y, Z) + ChunkPosition);
 
 	if (MaxX - MinX == 1)
 	{
@@ -385,14 +395,14 @@ void VoxelRender::InterpolateX(const int MinX, const int MaxX, const int Y, cons
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(MinX, Y, Z) + (1 - t) *  FVector(MaxX, Y, Z);
-		OutAlpha = t * Octree->GetColor(FIntVector(MinX, Y, Z)).B + (1 - t) * Octree->GetColor(FIntVector(MaxX, Y, Z)).B;
+		OutAlpha = t * Data->GetColor(FIntVector(MinX, Y, Z) + ChunkPosition).B + (1 - t) * Data->GetColor(FIntVector(MaxX, Y, Z) + ChunkPosition).B;
 	}
 	else
 	{
 		check((MaxX + MinX) % 2 == 0);
 
 		int xMiddle = (MaxX + MinX) / 2;
-		if ((ValueAtA > 0) == (Octree->GetValue(FIntVector(xMiddle, Y, Z)) > 0))
+		if ((ValueAtA > 0) == (Data->GetValue(FIntVector(xMiddle, Y, Z) + ChunkPosition) > 0))
 		{
 			// If min and middle have same sign
 			return InterpolateX(xMiddle, MaxX, Y, Z, OutVector, OutAlpha);
@@ -408,8 +418,8 @@ void VoxelRender::InterpolateX(const int MinX, const int MaxX, const int Y, cons
 void VoxelRender::InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
-	const float ValueAtA = Octree->GetValue(FIntVector(X, MinY, Z));
-	const float ValueAtB = Octree->GetValue(FIntVector(X, MaxY, Z));
+	const float ValueAtA = Data->GetValue(FIntVector(X, MinY, Z) + ChunkPosition);
+	const float ValueAtB = Data->GetValue(FIntVector(X, MaxY, Z) + ChunkPosition);
 
 	if (MaxY - MinY == 1)
 	{
@@ -417,7 +427,7 @@ void VoxelRender::InterpolateY(const int X, const int MinY, const int MaxY, cons
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(X, MinY, Z) + (1 - t) *  FVector(X, MaxY, Z);
-		OutAlpha = t * Octree->GetColor(FIntVector(X, MinY, Z)).B + (1 - t) * Octree->GetColor(FIntVector(X, MaxY, Z)).B;
+		OutAlpha = t * Data->GetColor(FIntVector(X, MinY, Z) + ChunkPosition).B + (1 - t) * Data->GetColor(FIntVector(X, MaxY, Z) + ChunkPosition).B;
 	}
 	else
 	{
@@ -425,7 +435,7 @@ void VoxelRender::InterpolateY(const int X, const int MinY, const int MaxY, cons
 
 		int yMiddle = (MaxY + MinY) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA > 0) == (Octree->GetValue(FIntVector(X, yMiddle, Z)) > 0))
+		if ((ValueAtA > 0) == (Data->GetValue(FIntVector(X, yMiddle, Z) + ChunkPosition) > 0))
 		{
 			// If min and middle have same sign
 			return InterpolateY(X, yMiddle, MaxY, Z, OutVector, OutAlpha);
@@ -441,8 +451,8 @@ void VoxelRender::InterpolateY(const int X, const int MinY, const int MaxY, cons
 void VoxelRender::InterpolateZ(const int X, const int Y, const int MinZ, const int MaxZ, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
-	const float ValueAtA = Octree->GetValue(FIntVector(X, Y, MinZ));
-	const float ValueAtB = Octree->GetValue(FIntVector(X, Y, MaxZ));
+	const float ValueAtA = Data->GetValue(FIntVector(X, Y, MinZ) + ChunkPosition);
+	const float ValueAtB = Data->GetValue(FIntVector(X, Y, MaxZ) + ChunkPosition);
 
 	if (MaxZ - MinZ == 1)
 	{
@@ -450,7 +460,7 @@ void VoxelRender::InterpolateZ(const int X, const int Y, const int MinZ, const i
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(X, Y, MinZ) + (1 - t) *  FVector(X, Y, MaxZ);
-		OutAlpha = t * Octree->GetColor(FIntVector(X, Y, MinZ)).B + (1 - t) * Octree->GetColor(FIntVector(X, Y, MaxZ)).B;
+		OutAlpha = t * Data->GetColor(FIntVector(X, Y, MinZ) + ChunkPosition).B + (1 - t) * Data->GetColor(FIntVector(X, Y, MaxZ) + ChunkPosition).B;
 	}
 	else
 	{
@@ -458,7 +468,7 @@ void VoxelRender::InterpolateZ(const int X, const int Y, const int MinZ, const i
 
 		int zMiddle = (MaxZ + MinZ) / 2;
 		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA > 0) == (Octree->GetValue(FIntVector(X, Y, zMiddle)) > 0))
+		if ((ValueAtA > 0) == (Data->GetValue(FIntVector(X, Y, zMiddle) + ChunkPosition) > 0))
 		{
 			// If min and middle have same sign
 			return InterpolateZ(X, Y, zMiddle, MaxZ, OutVector, OutAlpha);
