@@ -33,7 +33,7 @@ LODToleranceZone(0.5), bRebuildBorders(true), PlayerCamera(nullptr), bAutoFindCa
 	bReplicates = true;
 
 	ThreadPool = FQueuedThreadPool::Allocate();
-	ThreadPool->Create(6);
+	ThreadPool->Create(6, 128 * 1024);
 
 	LODProfile = UVoxelLODProfile::StaticClass();
 }

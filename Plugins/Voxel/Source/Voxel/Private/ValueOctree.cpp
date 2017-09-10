@@ -14,12 +14,12 @@ FORCEINLINE bool ValueOctree::IsDirty() const
 	return bIsDirty;
 }
 
-float ValueOctree::GetValue(int X, int Y, int Z)
+void ValueOctree::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
 	check(IsInOctree(X, Y, Z));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
-	
+
 	if (UNLIKELY(IsDirty()))
 	{
 		if (UNLIKELY(Depth == 0))
@@ -27,43 +27,28 @@ float ValueOctree::GetValue(int X, int Y, int Z)
 			FScopeLock Lock(&CriticalSection);
 			int LocalX, LocalY, LocalZ;
 			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
-			return Values[LocalX + Width() * LocalY + Width() * Width() * LocalZ];
+			int Index = LocalX + Width() * LocalY + Width() * Width() * LocalZ;
+			OutValue = Values[Index];
+			OutColor = Colors[Index];
 		}
 		else
 		{
-			return GetChild(X, Y, Z)->GetValue(X, Y, Z);
+			return GetChild(X, Y, Z)->GetValueAndColor(X, Y, Z, OutValue, OutColor);
 		}
 	}
 	else
 	{
-		return WorldGenerator->GetDefaultValue(X, Y, Z);
+		OutValue = WorldGenerator->GetDefaultValue(X, Y, Z);
+		OutColor = WorldGenerator->GetDefaultColor(X, Y, Z);
 	}
 }
 
-FColor ValueOctree::GetColor(int X, int Y, int Z)
+float ValueOctree::GetValue(FIntVector GlobalPosition)
 {
-	check(!IsLeaf() == (Childs.Num() == 8));
-	check(IsInOctree(X, Y, Z));
-	check(!(IsDirty() && IsLeaf() && Depth != 0));
-
-	if (UNLIKELY(IsDirty()))
-	{
-		if (UNLIKELY(Depth == 0))
-		{
-			FScopeLock Lock(&CriticalSection);
-			int LocalX, LocalY, LocalZ;
-			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
-			return Colors[LocalX + Width() * LocalY + Width() * Width() * LocalZ];
-		}
-		else
-		{
-			return GetChild(X, Y, Z)->GetColor(X, Y, Z);
-		}
-	}
-	else
-	{
-		return WorldGenerator->GetDefaultColor(X, Y, Z);
-	}
+	float Value;
+	FColor Color;
+	GetValueAndColor(GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z, Value, Color);
+	return Value;
 }
 
 void ValueOctree::SetValue(FIntVector GlobalPosition, float Value)
@@ -396,8 +381,12 @@ void ValueOctree::SetAsDirty()
 			{
 				int GlobalX, GlobalY, GlobalZ;
 				LocalToGlobal(X, Y, Z, GlobalX, GlobalY, GlobalZ);
-				Values[X + 16 * Y + 16 * 16 * Z] = GetValue(GlobalX, GlobalY, GlobalZ);
-				Colors[X + 16 * Y + 16 * 16 * Z] = GetColor(GlobalX, GlobalY, GlobalZ);
+
+				float Value;
+				FColor Color;
+				GetValueAndColor(GlobalX, GlobalY, GlobalZ, Value, Color);
+				Values[X + 16 * Y + 16 * 16 * Z] = Value;
+				Colors[X + 16 * Y + 16 * 16 * Z] = Color;
 			}
 		}
 	}

@@ -22,23 +22,24 @@ TSharedPtr<ValueOctree> VoxelData::GetValueOctree() const
 float VoxelData::GetValue(FIntVector Position) const
 {
 	check(IsInWorld(Position));
-	return GetValue(Position.X, Position.Y, Position.Z);
-}
-
-float VoxelData::GetValue(int X, int Y, int Z) const
-{
-	return MainOctree->GetValue(FMath::Clamp(X, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Y, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Z, -Width() / 2, Width() / 2 - 1));
+	FColor Color;
+	float Value;
+	GetValueAndColor(Position.X, Position.Y, Position.Z, Value, Color);
+	return Value;
 }
 
 FColor VoxelData::GetColor(FIntVector Position) const
 {
 	check(IsInWorld(Position));
-	return GetColor(Position.X, Position.Y, Position.Z);
+	FColor Color;
+	float Value;
+	GetValueAndColor(Position.X, Position.Y, Position.Z, Value, Color);
+	return Color;
 }
 
-FColor VoxelData::GetColor(int X, int Y, int Z) const
+void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor) const
 {
-	return MainOctree->GetColor(FMath::Clamp(X, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Y, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Z, -Width() / 2, Width() / 2 - 1));
+	MainOctree->GetValueAndColor(FMath::Clamp(X, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Y, -Width() / 2, Width() / 2 - 1), FMath::Clamp(Z, -Width() / 2, Width() / 2 - 1), OutValue, OutColor);
 }
 
 void VoxelData::SetValue(FIntVector Position, float Value) const
