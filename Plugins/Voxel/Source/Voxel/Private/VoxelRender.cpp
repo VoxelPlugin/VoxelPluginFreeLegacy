@@ -263,36 +263,115 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CREATE_SECTION);
+		// Create section
 		OutSection = FProcMeshSection();
 		OutSection.bEnableCollision = (Depth == 0);
 		OutSection.bSectionVisible = true;
 		OutSection.ProcVertexBuffer.SetNumUninitialized(VerticesSize);
 		OutSection.ProcIndexBuffer.SetNumUninitialized(TrianglesSize);
 
+		// We create 2 vertex arrays: one with all the vertex (AllVertex), and one without vertex that are only for normal computation (FilteredVertex) which is the Section array
+		// To do so we create bijection between the 2 arrays
+		TArray<int32> AllToFiltered;
+		AllToFiltered.SetNumUninitialized(VerticesSize);
+
+		TArray<FVector> AllVertex;
+		AllVertex.SetNumUninitialized(VerticesSize);
+
+		int32 AllVertexIndex = 0;
+		int32 FilteredVertexIndex = 0;
 		for (int i = VerticesSize - 1; i >= 0; i--)
 		{
-			FProcMeshVertex& Vertex = OutSection.ProcVertexBuffer[i];
-
-			Vertex.Position = Vertices.front();
-			Vertex.Normal = FVector::ZeroVector;
-			Vertex.Tangent = FProcMeshTangent();
-			Vertex.Color = Colors.front();
-			Vertex.UV0 = FVector2D::ZeroVector;
-
-			OutSection.SectionLocalBox += Vertex.Position;
-
+			FVector Vertex = Vertices.front();
+			FColor Color = Colors.front();
 			Vertices.pop_front();
 			Colors.pop_front();
-		}
 
-		for (int i = TrianglesSize - 1; i >= 0; i--)
+			if ((Vertex.X < -KINDA_SMALL_NUMBER) || (Vertex.X > Width() + KINDA_SMALL_NUMBER) ||
+				(Vertex.Y < -KINDA_SMALL_NUMBER) || (Vertex.Y > Width() + KINDA_SMALL_NUMBER) ||
+				(Vertex.Z < -KINDA_SMALL_NUMBER) || (Vertex.Z > Width() + KINDA_SMALL_NUMBER))
+			{
+				// For normals only
+				AllToFiltered[AllVertexIndex] = -1;
+			}
+			else
+			{
+				AllToFiltered[AllVertexIndex] = FilteredVertexIndex;
+
+				FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexIndex];
+				ProcMeshVertex.Position = Vertex;
+				ProcMeshVertex.Tangent = FProcMeshTangent();
+				ProcMeshVertex.Color = Color;
+				ProcMeshVertex.UV0 = FVector2D::ZeroVector;
+				OutSection.SectionLocalBox += Vertex;
+
+				FilteredVertexIndex++;
+			}
+
+			AllVertex[AllVertexIndex] = Vertex;
+			AllVertexIndex++;
+		}
+		const int32 FilteredVertexCount = FilteredVertexIndex;
+		OutSection.ProcVertexBuffer.SetNum(FilteredVertexCount);
+
+		// Normal array to compute normals while iterating over triangles
+		TArray<FVector> Normals;
+		Normals.SetNumZeroed(FilteredVertexCount); // Init because +=
+
+		int32 FilteredTriangleIndex = 0;
+		while (!Triangles.empty())
 		{
-			OutSection.ProcIndexBuffer[i] = Triangles.front();
+			int32 A = Triangles.front();
+			int32 FA = AllToFiltered[VerticesSize - 1 - A]; // Invert triangles because AllVertex and OutSection.ProcVertexBuffer are inverted
 			Triangles.pop_front();
+
+			int32 B = Triangles.front();
+			int32 FB = AllToFiltered[VerticesSize - 1 - B];
+			Triangles.pop_front();
+
+			int32 C = Triangles.front();
+			int32 FC = AllToFiltered[VerticesSize - 1 - C];
+			Triangles.pop_front();
+
+			if (FA != -1 && FB != -1 && FC != -1)
+			{
+				// If all vertex of this triangle are not for normal only, this is a valid triangle
+				// FilteredVertexCount - X because vertices are reversed
+				OutSection.ProcIndexBuffer[FilteredTriangleIndex] = FC;
+				OutSection.ProcIndexBuffer[FilteredTriangleIndex + 1] = FB;
+				OutSection.ProcIndexBuffer[FilteredTriangleIndex + 2] = FA;
+				FilteredTriangleIndex += 3;
+			}
+
+			FVector PA = AllVertex[VerticesSize - 1 - A];
+			FVector PB = AllVertex[VerticesSize - 1 - B];
+			FVector PC = AllVertex[VerticesSize - 1 - C];
+
+			FVector Normal = FVector::CrossProduct(PB - PA, PC - PA).GetSafeNormal();
+			if (FA != -1)
+			{
+				Normals[FA] += Normal;
+			}
+			if (FB != -1)
+			{
+				Normals[FB] += Normal;
+			}
+			if (FC != -1)
+			{
+				Normals[FC] += Normal;
+			}
+		}
+		const int32 FilteredTriangleCount = FilteredTriangleIndex;;
+		OutSection.ProcIndexBuffer.SetNum(FilteredTriangleCount);
+
+
+		// Apply normals
+		for (int32 i = 0; i < FilteredVertexCount; i++)
+		{
+			OutSection.ProcVertexBuffer[i].Normal = Normals[i].GetSafeNormal();
 		}
 	}
 }
-
 int VoxelRender::Width()
 {
 	return 16 << Depth;
