@@ -41,7 +41,6 @@ public:
 	 */
 	float GetValue(FIntVector Position) const;
 
-	float GetValue(int X, int Y, int Z) const;
 	/**
 	 * Get color at position
 	 * @param	Position	Position in voxel space
@@ -49,7 +48,13 @@ public:
 	 */
 	FColor GetColor(FIntVector Position) const;
 
-	FColor GetColor(int X, int Y, int Z) const;
+	/**
+	* Get value and color at position
+	* @param	Position	Position in voxel space
+	* @return	Value
+	* @return	Color
+	*/
+	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor) const;
 
 
 	/**

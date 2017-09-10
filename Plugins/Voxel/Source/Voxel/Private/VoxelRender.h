@@ -15,7 +15,10 @@ private:
 	const int Depth;
 	const FIntVector ChunkPosition;
 
-	uint64 Signs[216];
+	uint64 CachedSigns[216];
+
+	float CachedValues[18 * 18 * 18];
+	FColor CachedColors[18 * 18 * 18];
 
 	// Cache to get index of already created vertices
 	int Cache[17][17][17][3];
@@ -27,13 +30,9 @@ private:
 	FORCEINLINE int Step();
 
 	// Too slow
-	FColor GetMajorColor(int X, int Y, int Z, uint32 CellWidth);
+	//FColor GetMajorColor(int X, int Y, int Z, uint32 CellWidth);
 
-	FORCEINLINE FColor GetColor(int X, int Y, int Z);
-	FORCEINLINE FColor GetColor(FIntVector Position);
-
-	FORCEINLINE float GetValue(int X, int Y, int Z);
-	FORCEINLINE float GetValue(FIntVector Position);
+	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor);
 
 	FORCEINLINE void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);
 	FORCEINLINE int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex);

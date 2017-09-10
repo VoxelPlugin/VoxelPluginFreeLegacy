@@ -36,17 +36,19 @@ public:
 	FORCEINLINE bool IsDirty() const;
 
 	/**
+	 * Get value and color at position
+	 * @param	GlobalPosition	Position in voxel space
+	 * @return	Value
+	 * @return	Color
+	 */
+	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor);
+
+	/**
 	 * Get value at position
 	 * @param	GlobalPosition	Position in voxel space
 	 * @return	Value
 	 */
-	float GetValue(int X, int Y, int Z);
-	/**
-	 * Get color at position
-	 * @param	GlobalPosition	Position in voxel space
-	 * @return	Color at position
-	 */
-	FColor GetColor(int X, int Y, int Z);
+	float GetValue(FIntVector GlobalPosition);
 
 	/**
 	 * Set value at position

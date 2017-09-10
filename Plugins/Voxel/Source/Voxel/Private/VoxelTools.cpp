@@ -77,7 +77,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 
 					if (SmallValueOctree->IsInOctree(CurrentPosition)) // Prevent crash
 					{
-						if ((Value <= 0 && bAdd) || (Value >= 0 && !bAdd) || (SmallValueOctree->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z) * Value >= 0))
+						if ((Value <= 0 && bAdd) || (Value >= 0 && !bAdd) || (SmallValueOctree->GetValue(CurrentPosition) * Value >= 0))
 						{
 							/*DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), 5, FColor::Red, false, 1);
 							DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::UpVector), FColor::Green, false, 1);

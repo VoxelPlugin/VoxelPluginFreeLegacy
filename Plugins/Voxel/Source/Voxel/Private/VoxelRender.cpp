@@ -6,10 +6,9 @@ DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Cache"), STAT_CACHE, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Iter"), STAT_ITER, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ CreateSection"), STAT_CREATE_SECTION, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ MajorColor"), STAT_MAJOR_COLOR, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValue"), STAT_GETVALUE, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetColor"), STAT_GETCOLOR, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
 
-VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition) : Depth(Depth), Data(Data), ChunkPosition(ChunkPosition - FIntVector(1, 1, 1))
+VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition) : Depth(Depth), Data(Data), ChunkPosition(ChunkPosition - FIntVector(Step(), Step(), Step())) // Translate chunk for normals computation =
 {
 
 }
@@ -25,7 +24,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			{
 				for (int CubeZ = 0; CubeZ < 6; CubeZ++)
 				{
-					uint64& CurrentCube = Signs[CubeX + 6 * CubeY + 6 * 6 * CubeZ];
+					uint64& CurrentCube = CachedSigns[CubeX + 6 * CubeY + 6 * 6 * CubeZ];
 					CurrentCube = 0;
 					for (int LocalX = 0; LocalX < 4; LocalX++)
 					{
@@ -33,9 +32,24 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 						{
 							for (int LocalZ = 0; LocalZ < 4; LocalZ++)
 							{
+								const int X = 3 * CubeX + LocalX;
+								const int Y = 3 * CubeY + LocalY;
+								const int Z = 3 * CubeZ + LocalZ;
+
 								const uint64 ONE = 1;
 								uint64 CurrentBit = ONE << (LocalX + 4 * LocalY + 4 * 4 * LocalZ);
-								bool Sign = GetValue((3 * CubeX + LocalX) * Step(), (3 * CubeY + LocalY) * Step(), (3 * CubeZ + LocalZ) * Step()) > 0;
+
+								float CurrentValue;
+								FColor CurrentColor;
+								Data->GetValueAndColor(X * Step() + ChunkPosition.X, Y * Step() + ChunkPosition.Y, Z * Step() + ChunkPosition.Z, CurrentValue, CurrentColor);
+
+								if (X < 18 && Y < 18 && Z < 18) // Getting value out of this chunk for the "continue" optimization after
+								{
+									CachedValues[X + 18 * Y + 18 * 18 * Z] = CurrentValue;
+									CachedColors[X + 18 * Y + 18 * 18 * Z] = CurrentColor;
+								}
+
+								bool Sign = CurrentValue > 0;
 								CurrentCube = CurrentCube | (CurrentBit * Sign);
 							}
 						}
@@ -61,8 +75,8 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			{
 				for (int CubeZ = 0; CubeZ < 6; CubeZ++)
 				{
-					uint64 CurrentCube = Signs[CubeX + 6 * CubeY + 6 * 6 * CubeZ];
-					if (CurrentCube == 0 || CurrentCube == ((uint64)~((uint64)0)))
+					uint64 CurrentCube = CachedSigns[CubeX + 6 * CubeY + 6 * 6 * CubeZ];
+					if (CurrentCube == 0 || CurrentCube == /*MAXUINT64*/ ((uint64)~((uint64)0)))
 					{
 						continue;
 					}
@@ -87,9 +101,9 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 								{
 									// Cell has a nontrivial triangulation
 
-									int X = 3 * CubeX + LocalX;
-									int Y = 3 * CubeY + LocalY;
-									int Z = 3 * CubeZ + LocalZ;
+									const int X = 3 * CubeX + LocalX;
+									const int Y = 3 * CubeY + LocalY;
+									const int Z = 3 * CubeZ + LocalZ;
 
 									short ValidityMask = (X != 0) + 2 * (Y != 0) + 4 * (Z != 0);
 
@@ -104,32 +118,33 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 										FIntVector(X + 1, Y + 1, Z + 1) * Step()
 									};
 
-									const float CornerValues[8] = {
-										GetValue(CornerPositions[0]),
-										GetValue(CornerPositions[1]),
-										GetValue(CornerPositions[2]),
-										GetValue(CornerPositions[3]),
-										GetValue(CornerPositions[4]),
-										GetValue(CornerPositions[5]),
-										GetValue(CornerPositions[6]),
-										GetValue(CornerPositions[7])
-									};
+									float CornerValues[8];
 
-									const float CornerAlphas[8] = {
-										GetColor(CornerPositions[0]).B,
-										GetColor(CornerPositions[1]).B,
-										GetColor(CornerPositions[2]).B,
-										GetColor(CornerPositions[3]).B,
-										GetColor(CornerPositions[4]).B,
-										GetColor(CornerPositions[5]).B,
-										GetColor(CornerPositions[6]).B,
-										GetColor(CornerPositions[7]).B
-									};
+									FColor CornerColors[8];
+
+									GetValueAndColor(Step() * (X + 0), Step() * (Y + 0), Step() * (Z + 0), CornerValues[0], CornerColors[0]);
+									GetValueAndColor(Step() * (X + 1), Step() * (Y + 0), Step() * (Z + 0), CornerValues[1], CornerColors[1]);
+									GetValueAndColor(Step() * (X + 0), Step() * (Y + 1), Step() * (Z + 0), CornerValues[2], CornerColors[2]);
+									GetValueAndColor(Step() * (X + 1), Step() * (Y + 1), Step() * (Z + 0), CornerValues[3], CornerColors[3]);
+									GetValueAndColor(Step() * (X + 0), Step() * (Y + 0), Step() * (Z + 1), CornerValues[4], CornerColors[4]);
+									GetValueAndColor(Step() * (X + 1), Step() * (Y + 0), Step() * (Z + 1), CornerValues[5], CornerColors[5]);
+									GetValueAndColor(Step() * (X + 0), Step() * (Y + 1), Step() * (Z + 1), CornerValues[6], CornerColors[6]);
+									GetValueAndColor(Step() * (X + 1), Step() * (Y + 1), Step() * (Z + 1), CornerValues[7], CornerColors[7]);
+
+									check(CaseCode == (
+										((CornerValues[0] > 0) << 0)
+										| ((CornerValues[1] > 0) << 1)
+										| ((CornerValues[2] > 0) << 2)
+										| ((CornerValues[3] > 0) << 3)
+										| ((CornerValues[4] > 0) << 4)
+										| ((CornerValues[5] > 0) << 5)
+										| ((CornerValues[6] > 0) << 6)
+										| ((CornerValues[7] > 0) << 7)));
 
 									// Too slow
 									//const FColor& CellColor = GetMajorColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, Step());
 
-									const FColor& CellColor = GetColor(X, Y, Z);
+									const FColor& CellColor = CornerColors[0];
 
 									check(0 <= CaseCode && CaseCode < 256);
 									unsigned char CellClass = Transvoxel::regularCellClass[CaseCode];
@@ -168,13 +183,18 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 										const short CacheDirection = EdgeCode >> 12;
 
 										// Force vertex creation when colors are different
-										// Too slow
-										/*const bool ForceVertexCreation = ((ValidityMask & CacheDirection) == CacheDirection) && (CellColor != GetMajorColor(X - static_cast<bool>(CacheDirection & 0x01)* Step() + ChunkPosition.X,
-																																							Y - static_cast<bool>(CacheDirection & 0x02)* Step() + ChunkPosition.Y,
-																																							Z - static_cast<bool>(CacheDirection & 0x04)* Step() + ChunkPosition.Z, Step()));*/
-										const bool ForceVertexCreation = ((ValidityMask & CacheDirection) == CacheDirection) && (CellColor != GetColor(X - static_cast<bool>(CacheDirection & 0x01)* Step() + ChunkPosition.X,
-																																					   Y - static_cast<bool>(CacheDirection & 0x02)* Step() + ChunkPosition.Y,
-																																					   Z - static_cast<bool>(CacheDirection & 0x04)* Step() + ChunkPosition.Z));
+										bool ForceVertexCreation = false;
+										if ((ValidityMask & CacheDirection) == CacheDirection) // Avoid accessing to invalid value
+										{
+											FColor Color;
+											float Value;
+											GetValueAndColor(X - static_cast<bool>(CacheDirection & 0x01) * Step(),
+															 Y - static_cast<bool>(CacheDirection & 0x02) * Step(),
+															 Z - static_cast<bool>(CacheDirection & 0x04) * Step(),
+															 Value, Color);
+
+											ForceVertexCreation = (CellColor != Color);
+										}
 
 										if ((ValidityMask & CacheDirection) != CacheDirection || ForceVertexCreation)
 										{
@@ -193,8 +213,8 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 												const float ValueAtA = CornerValues[IndexVerticeA];
 												const float ValueAtB = CornerValues[IndexVerticeB];
 
-												const float	AlphaAtA = CornerAlphas[IndexVerticeA];
-												const float AlphaAtB = CornerAlphas[IndexVerticeB];
+												const float	AlphaAtA = CornerColors[IndexVerticeA].B;
+												const float AlphaAtB = CornerColors[IndexVerticeB].B;
 
 												check(ValueAtA - ValueAtB != 0);
 												const float t = ValueAtB / (ValueAtB - ValueAtA);
@@ -225,7 +245,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 												}
 											}
 											VertexIndex = VerticesSize;
-
+											Q -= FVector(Step(), Step(), Step()); // Translate back (see constructor)
 											Vertices.push_front(Q);
 											Colors.push_front(FColor(CellColor.R, CellColor.G, Alpha, 0));
 											VerticesSize++;
@@ -383,101 +403,94 @@ int VoxelRender::Step()
 }
 
 
-FColor VoxelRender::GetMajorColor(int X, int Y, int Z, uint32 CellWidth)
+//FColor VoxelRender::GetMajorColor(int X, int Y, int Z, uint32 CellWidth)
+//{
+//	// Too slow
+//	check(false);
+//
+//	SCOPE_CYCLE_COUNTER(STAT_MAJOR_COLOR);
+//
+//	FColor Colors[8];
+//	if (CellWidth == 1)
+//	{
+//		Colors[0] = GetColor(X + 0, Y + 0, Z + 0);
+//		Colors[1] = GetColor(X + 1, Y + 0, Z + 0);
+//		Colors[2] = GetColor(X + 0, Y + 1, Z + 0);
+//		Colors[3] = GetColor(X + 1, Y + 1, Z + 0);
+//		Colors[4] = GetColor(X + 0, Y + 0, Z + 1);
+//		Colors[5] = GetColor(X + 1, Y + 0, Z + 1);
+//		Colors[6] = GetColor(X + 0, Y + 1, Z + 1);
+//		Colors[7] = GetColor(X + 1, Y + 1, Z + 1);
+//	}
+//	else
+//	{
+//		uint32 HalfWidth = CellWidth / 2;
+//		Colors[0] = GetMajorColor(X + 000000000, Y + 000000000, Z + 000000000, HalfWidth);
+//		Colors[1] = GetMajorColor(X + HalfWidth, Y + 000000000, Z + 000000000, HalfWidth);
+//		Colors[2] = GetMajorColor(X + 000000000, Y + HalfWidth, Z + 000000000, HalfWidth);
+//		Colors[3] = GetMajorColor(X + HalfWidth, Y + HalfWidth, Z + 000000000, HalfWidth);
+//		Colors[4] = GetMajorColor(X + 000000000, Y + 000000000, Z + HalfWidth, HalfWidth);
+//		Colors[5] = GetMajorColor(X + HalfWidth, Y + 000000000, Z + HalfWidth, HalfWidth);
+//		Colors[6] = GetMajorColor(X + 000000000, Y + HalfWidth, Z + HalfWidth, HalfWidth);
+//		Colors[7] = GetMajorColor(X + HalfWidth, Y + HalfWidth, Z + HalfWidth, HalfWidth);
+//	}
+//	// Reground same colors and count them
+//	FColor SingleColors[8];
+//	uint8 SingleColorsCount[8];
+//	uint8 NumberOfDifferentColors = 0;
+//
+//	// Add Colors to the lists
+//	for (int i = 1; i < 8; i++)
+//	{
+//		bool AlreadyInList = false;
+//		for (int j = 0; j < NumberOfDifferentColors; j++)
+//		{
+//			if (Colors[i] == SingleColors[j])
+//			{
+//				SingleColorsCount[j]++;
+//				AlreadyInList = true;
+//				break;
+//			}
+//		}
+//		if (!AlreadyInList)
+//		{
+//			SingleColors[NumberOfDifferentColors] = Colors[i];
+//			SingleColorsCount[NumberOfDifferentColors] = 1;
+//			NumberOfDifferentColors++;
+//		}
+//	}
+//	check(NumberOfDifferentColors != 0);
+//
+//	// Get max
+//	uint8 MaxCount = 0;
+//	uint8 MaxIndex = -1;
+//	for (int i = 0; i < NumberOfDifferentColors; i++)
+//	{
+//		if (SingleColorsCount[i] > MaxCount)
+//		{
+//			MaxCount = SingleColorsCount[i];
+//			MaxIndex = i;
+//		}
+//	}
+//	check(MaxIndex >= 0);
+//	return SingleColors[MaxIndex];
+////}
+
+
+void VoxelRender::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor)
 {
-	// Too slow
-	check(false);
-
-	SCOPE_CYCLE_COUNTER(STAT_MAJOR_COLOR);
-
-	FColor Colors[8];
-	if (CellWidth == 1)
+	SCOPE_CYCLE_COUNTER(STAT_GETVALUEANDCOLOR);
+	if (LIKELY((X % Step() == 0) && (Y % Step() == 0) && (Z % Step() == 0)))
 	{
-		Colors[0] = GetColor(X + 0, Y + 0, Z + 0);
-		Colors[1] = GetColor(X + 1, Y + 0, Z + 0);
-		Colors[2] = GetColor(X + 0, Y + 1, Z + 0);
-		Colors[3] = GetColor(X + 1, Y + 1, Z + 0);
-		Colors[4] = GetColor(X + 0, Y + 0, Z + 1);
-		Colors[5] = GetColor(X + 1, Y + 0, Z + 1);
-		Colors[6] = GetColor(X + 0, Y + 1, Z + 1);
-		Colors[7] = GetColor(X + 1, Y + 1, Z + 1);
+		OutValue = CachedValues[X / Step() + 18 * Y / Step() + 18 * 18 * Z / Step()];
+		OutColor = CachedColors[X / Step() + 18 * Y / Step() + 18 * 18 * Z / Step()];
 	}
 	else
 	{
-		uint32 HalfWidth = CellWidth / 2;
-		Colors[0] = GetMajorColor(X + 000000000, Y + 000000000, Z + 000000000, HalfWidth);
-		Colors[1] = GetMajorColor(X + HalfWidth, Y + 000000000, Z + 000000000, HalfWidth);
-		Colors[2] = GetMajorColor(X + 000000000, Y + HalfWidth, Z + 000000000, HalfWidth);
-		Colors[3] = GetMajorColor(X + HalfWidth, Y + HalfWidth, Z + 000000000, HalfWidth);
-		Colors[4] = GetMajorColor(X + 000000000, Y + 000000000, Z + HalfWidth, HalfWidth);
-		Colors[5] = GetMajorColor(X + HalfWidth, Y + 000000000, Z + HalfWidth, HalfWidth);
-		Colors[6] = GetMajorColor(X + 000000000, Y + HalfWidth, Z + HalfWidth, HalfWidth);
-		Colors[7] = GetMajorColor(X + HalfWidth, Y + HalfWidth, Z + HalfWidth, HalfWidth);
+		Data->GetValueAndColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutColor);
 	}
-	// Reground same colors and count them
-	FColor SingleColors[8];
-	uint8 SingleColorsCount[8];
-	uint8 NumberOfDifferentColors = 0;
-
-	// Add Colors to the lists
-	for (int i = 1; i < 8; i++)
-	{
-		bool AlreadyInList = false;
-		for (int j = 0; j < NumberOfDifferentColors; j++)
-		{
-			if (Colors[i] == SingleColors[j])
-			{
-				SingleColorsCount[j]++;
-				AlreadyInList = true;
-				break;
-			}
-		}
-		if (!AlreadyInList)
-		{
-			SingleColors[NumberOfDifferentColors] = Colors[i];
-			SingleColorsCount[NumberOfDifferentColors] = 1;
-			NumberOfDifferentColors++;
-		}
-	}
-	check(NumberOfDifferentColors != 0);
-
-	// Get max
-	uint8 MaxCount = 0;
-	uint8 MaxIndex = -1;
-	for (int i = 0; i < NumberOfDifferentColors; i++)
-	{
-		if (SingleColorsCount[i] > MaxCount)
-		{
-			MaxCount = SingleColorsCount[i];
-			MaxIndex = i;
-		}
-	}
-	check(MaxIndex >= 0);
-	return SingleColors[MaxIndex];
 }
 
-FColor VoxelRender::GetColor(int X, int Y, int Z)
-{
-	SCOPE_CYCLE_COUNTER(STAT_GETCOLOR);
-	return Data->GetColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z);
-}
-
-FColor VoxelRender::GetColor(FIntVector Position)
-{
-	SCOPE_CYCLE_COUNTER(STAT_GETVALUE);
-	return GetColor(Position.X, Position.Y, Position.Z);
-}
-
-float VoxelRender::GetValue(int X, int Y, int Z)
-{
-	return Data->GetValue(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z);
-}
-
-
-float VoxelRender::GetValue(FIntVector Position)
-{
-	return GetValue(Position.X, Position.Y, Position.Z);
-}
 
 void VoxelRender::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index)
 {
@@ -498,7 +511,6 @@ int VoxelRender::LoadVertex(int X, int Y, int Z, short Direction, short EdgeInde
 	check(0 <= Y - YIsDifferent && Y - YIsDifferent < 17);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
-	check(Cache[X - XIsDifferent][Y - YIsDifferent][Z - ZIsDifferent][EdgeIndex] >= 0);
 	return Cache[X - XIsDifferent][Y - YIsDifferent][Z - ZIsDifferent][EdgeIndex];
 }
 
@@ -506,8 +518,12 @@ int VoxelRender::LoadVertex(int X, int Y, int Z, short Direction, short EdgeInde
 void VoxelRender::InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
-	const float ValueAtA = GetValue(MinX, Y, Z);
-	const float ValueAtB = GetValue(MaxX, Y, Z);
+	float ValueAtA;
+	float ValueAtB;
+	FColor ColorAtA;
+	FColor ColorAtB;
+	GetValueAndColor(MinX, Y, Z, ValueAtA, ColorAtA);
+	GetValueAndColor(MaxX, Y, Z, ValueAtB, ColorAtB);
 
 	if (MaxX - MinX == 1)
 	{
@@ -515,14 +531,17 @@ void VoxelRender::InterpolateX(const int MinX, const int MaxX, const int Y, cons
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(MinX, Y, Z) + (1 - t) *  FVector(MaxX, Y, Z);
-		OutAlpha = t * GetColor(MinX, Y, Z).B + (1 - t) * GetColor(MaxX, Y, Z).B;
+		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
 	}
 	else
 	{
 		check((MaxX + MinX) % 2 == 0);
-
 		int xMiddle = (MaxX + MinX) / 2;
-		if ((ValueAtA > 0) == (GetValue(xMiddle, Y, Z) > 0))
+
+		float ValueAtMiddle;
+		FColor ColorAtMiddle;
+		GetValueAndColor(xMiddle, Y, Z, ValueAtMiddle, ColorAtMiddle);
+		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
 			return InterpolateX(xMiddle, MaxX, Y, Z, OutVector, OutAlpha);
@@ -538,8 +557,12 @@ void VoxelRender::InterpolateX(const int MinX, const int MaxX, const int Y, cons
 void VoxelRender::InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
-	const float ValueAtA = GetValue(X, MinY, Z);
-	const float ValueAtB = GetValue(X, MaxY, Z);
+	float ValueAtA;
+	float ValueAtB;
+	FColor ColorAtA;
+	FColor ColorAtB;
+	GetValueAndColor(X, MinY, Z, ValueAtA, ColorAtA);
+	GetValueAndColor(X, MaxY, Z, ValueAtB, ColorAtB);
 
 	if (MaxY - MinY == 1)
 	{
@@ -547,15 +570,17 @@ void VoxelRender::InterpolateY(const int X, const int MinY, const int MaxY, cons
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(X, MinY, Z) + (1 - t) *  FVector(X, MaxY, Z);
-		OutAlpha = t * GetColor(X, MinY, Z).B + (1 - t) * GetColor(X, MaxY, Z).B;
+		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
 	}
 	else
 	{
 		check((MaxY + MinY) % 2 == 0);
-
 		int yMiddle = (MaxY + MinY) / 2;
-		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA > 0) == (GetValue(X, yMiddle, Z) > 0))
+
+		float ValueAtMiddle;
+		FColor ColorAtMiddle;
+		GetValueAndColor(X, yMiddle, Z, ValueAtMiddle, ColorAtMiddle);
+		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
 			return InterpolateY(X, yMiddle, MaxY, Z, OutVector, OutAlpha);
@@ -571,8 +596,12 @@ void VoxelRender::InterpolateY(const int X, const int MinY, const int MaxY, cons
 void VoxelRender::InterpolateZ(const int X, const int Y, const int MinZ, const int MaxZ, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
-	const float ValueAtA = GetValue(X, Y, MinZ);
-	const float ValueAtB = GetValue(X, Y, MaxZ);
+	float ValueAtA;
+	float ValueAtB;
+	FColor ColorAtA;
+	FColor ColorAtB;
+	GetValueAndColor(X, Y, MinZ, ValueAtA, ColorAtA);
+	GetValueAndColor(X, Y, MaxZ, ValueAtB, ColorAtB);
 
 	if (MaxZ - MinZ == 1)
 	{
@@ -580,15 +609,17 @@ void VoxelRender::InterpolateZ(const int X, const int Y, const int MinZ, const i
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(X, Y, MinZ) + (1 - t) *  FVector(X, Y, MaxZ);
-		OutAlpha = t * GetColor(X, Y, MinZ).B + (1 - t) * GetColor(X, Y, MaxZ).B;
+		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
 	}
 	else
 	{
 		check((MaxZ + MinZ) % 2 == 0);
-
 		int zMiddle = (MaxZ + MinZ) / 2;
-		// Sign of a char: char & 0x80 (char are 8 bits)
-		if ((ValueAtA > 0) == (GetValue(X, Y, zMiddle) > 0))
+
+		float ValueAtMiddle;
+		FColor ColorAtMiddle;
+		GetValueAndColor(X, Y, zMiddle, ValueAtMiddle, ColorAtMiddle);
+		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
 			return InterpolateZ(X, Y, zMiddle, MaxZ, OutVector, OutAlpha);
