@@ -112,6 +112,8 @@ private:
 	*/
 	TArray<ValueOctree*, TFixedAllocator<8>> Childs;
 
+	FCriticalSection CriticalSection;
+
 	// Values if dirty
 	TArray<float, TFixedAllocator<16 * 16 * 16>> Values;
 	// Colors if dirty

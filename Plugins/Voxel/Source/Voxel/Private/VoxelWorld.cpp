@@ -38,6 +38,12 @@ LODToleranceZone(0.5), bRebuildBorders(true), PlayerCamera(nullptr), bAutoFindCa
 	LODProfile = UVoxelLODProfile::StaticClass();
 }
 
+AVoxelWorld::~AVoxelWorld()
+{
+	delete ThreadPool;
+	delete Data;
+}
+
 void AVoxelWorld::BeginPlay()
 {
 	Super::BeginPlay();
@@ -89,9 +95,9 @@ void AVoxelWorld::Tick(float DeltaTime)
 
 AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position) const
 {
-	if (IsInWorld(Position) && MainOctree.IsValid())
+	if (IsInWorld(Position) && MainChunkOctree.IsValid())
 	{
-		TSharedPtr<ChunkOctree> Chunk = MainOctree->GetChunk(Position).Pin();
+		TSharedPtr<ChunkOctree> Chunk = MainChunkOctree->GetChunk(Position).Pin();
 		if (Chunk.IsValid())
 		{
 			return Chunk->GetVoxelChunk();
@@ -125,7 +131,7 @@ void AVoxelWorld::UpdateCameraPosition(FVector Position)
 	// Reset to avoid references to destroyed chunks
 	QueuedChunks.Reset();
 	// Recreate octree
-	MainOctree->UpdateCameraPosition(this, Position);
+	MainChunkOctree->UpdateCameraPosition(this, Position);
 	// Apply updates added when recreating octree
 	ApplyQueuedUpdates(true);
 }
@@ -269,35 +275,35 @@ void AVoxelWorld::QueueUpdate(FIntVector Position)
 	bool bYIsAtBorder = (Y % 16 == 0) && (Y != 0);
 	bool bZIsAtBorder = (Z % 16 == 0) && (Z != 0);
 
-	QueueUpdate(MainOctree->GetChunk(Position));
+	QueueUpdate(MainChunkOctree->GetChunk(Position));
 
 	if (bXIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(8, 0, 0)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 0, 0)));
 	}
 	if (bYIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 8, 0)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 8, 0)));
 	}
 	if (bXIsAtBorder && bYIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(8, 8, 0)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 8, 0)));
 	}
 	if (bZIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 0, 8)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 0, 8)));
 	}
 	if (bXIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(8, 0, 8)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 0, 8)));
 	}
 	if (bYIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(0, 8, 8)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 8, 8)));
 	}
 	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainOctree->GetChunk(Position - FIntVector(8, 8, 8)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 8, 8)));
 	}
 }
 
@@ -331,7 +337,7 @@ void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
 void AVoxelWorld::UpdateAll(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UpdateAll);
-	MainOctree->Update(bAsync);
+	MainChunkOctree->Update(bAsync);
 }
 
 
@@ -352,8 +358,8 @@ void AVoxelWorld::Load()
 
 		InstancedWorldGenerator->SetVoxelWorld(this);
 
-		Data = MakeShareable(new VoxelData(Depth, InstancedWorldGenerator, bMultiplayer));
-		MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
+		Data = new VoxelData(Depth, InstancedWorldGenerator, bMultiplayer);
+		MainChunkOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, Depth));
 	}
 }
 
@@ -361,8 +367,9 @@ void AVoxelWorld::Unload()
 {
 	if (bIsCreated)
 	{
-		MainOctree->ImmediateDelete();
-		MainOctree.Reset();
+		MainChunkOctree->ImmediateDelete();
+		MainChunkOctree.Reset();
+		delete Data;
 		bIsCreated = false;
 	}
 }
@@ -435,7 +442,7 @@ FQueuedThreadPool* AVoxelWorld::GetThreadPool()
 	return ThreadPool;
 }
 
-TSharedPtr<VoxelData> AVoxelWorld::GetData()
+VoxelData* AVoxelWorld::GetData()
 {
 	return Data;
 }
@@ -447,7 +454,7 @@ bool AVoxelWorld::IsCreated() const
 
 TSharedPtr<ChunkOctree> AVoxelWorld::GetChunkOctree() const
 {
-	return TSharedPtr<ChunkOctree>(MainOctree);
+	return TSharedPtr<ChunkOctree>(MainChunkOctree);
 }
 
 TSharedPtr<ValueOctree> AVoxelWorld::GetValueOctree() const

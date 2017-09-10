@@ -31,6 +31,7 @@ class VOXEL_API AVoxelWorld : public AActor
 
 public:
 	AVoxelWorld();
+	~AVoxelWorld();
 
 	int Size() const;
 
@@ -39,7 +40,7 @@ public:
 	bool GetRebuildBorders() const;
 	float GetLODAt(float Distance) const;
 	FQueuedThreadPool* GetThreadPool();
-	TSharedPtr<VoxelData> GetData();
+	VoxelData* GetData();
 	bool IsCreated() const;
 
 	TSharedPtr<ChunkOctree> GetChunkOctree() const;
@@ -233,8 +234,6 @@ private:
 	UPROPERTY()
 		AVoxelWorldGenerator* InstancedWorldGenerator;
 
-	TSharedPtr<ChunkOctree> MainOctree;
-
 	// Is VoxelWorld created?
 	bool bIsCreated;
 
@@ -244,7 +243,11 @@ private:
 	// Chunks waiting for update
 	TSet<TWeakPtr<ChunkOctree>> QueuedChunks;
 
+
+
+	TSharedPtr<ChunkOctree> MainChunkOctree; // Shared ptr because each ChunkOctree need a reference to it, and Main isn't the child of anything
+
 	FQueuedThreadPool* ThreadPool;
 
-	TSharedPtr<VoxelData> Data;
+	VoxelData* Data;
 };
