@@ -3,18 +3,17 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelThread.h"
 #include <forward_list>
-#include "VoxelRender.h"
 #include "VoxelChunk.h"
 #include "VoxelData.h"
 
-VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk) : VoxelChunk(VoxelChunk)
+VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk)
 {
-
+	Render = new VoxelRender(VoxelChunk->Depth, VoxelChunk->World->GetData(), VoxelChunk->Position);
 }
 
 VoxelThread::~VoxelThread()
 {
-
+	delete Render;
 }
 
 void VoxelThread::DoWork()
@@ -349,6 +348,5 @@ void VoxelThread::DoWork()
 		}
 	}
 	*/
-	VoxelRender Render(VoxelChunk->Depth, VoxelChunk->World->GetData().Get(), VoxelChunk->Position);
-	Render.CreateSection(Section);
+	Render->CreateSection(Section);
 }

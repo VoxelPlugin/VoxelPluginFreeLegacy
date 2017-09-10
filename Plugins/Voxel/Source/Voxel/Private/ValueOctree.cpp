@@ -19,11 +19,12 @@ float ValueOctree::GetValue(int X, int Y, int Z)
 	check(!IsLeaf() == (Childs.Num() == 8));
 	check(IsInOctree(X, Y, Z));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
-
+	
 	if (LIKELY(IsDirty()))
 	{
 		if (UNLIKELY(Depth == 0))
 		{
+			FScopeLock Lock(&CriticalSection);
 			int LocalX, LocalY, LocalZ;
 			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
 			return Values[LocalX + Width() * LocalY + Width() * Width() * LocalZ];
@@ -49,6 +50,7 @@ FColor ValueOctree::GetColor(int X, int Y, int Z)
 	{
 		if (Depth == 0)
 		{
+			FScopeLock Lock(&CriticalSection);
 			int LocalX, LocalY, LocalZ;
 			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
 			return Colors[LocalX + Width() * LocalY + Width() * Width() * LocalZ];
@@ -76,12 +78,14 @@ void ValueOctree::SetValue(FIntVector GlobalPosition, float Value)
 	{
 		if (Depth != 0)
 		{
-			bIsDirty = true;
 			CreateChilds();
+			bIsDirty = true; // IsDirty only when having childs (for multithreading)
 			GetChild(GlobalPosition)->SetValue(GlobalPosition, Value);
 		}
 		else
 		{
+			FScopeLock Lock(&CriticalSection);
+
 			if (!IsDirty())
 			{
 				SetAsDirty();
@@ -116,12 +120,14 @@ void ValueOctree::SetColor(FIntVector GlobalPosition, FColor Color)
 	{
 		if (Depth != 0)
 		{
-			bIsDirty = true;
 			CreateChilds();
+			bIsDirty = true; // IsDirty only when having childs (for multithreading)
 			GetChild(GlobalPosition)->SetColor(GlobalPosition, Color);
 		}
 		else
 		{
+			FScopeLock Lock(&CriticalSection);
+
 			if (!IsDirty())
 			{
 				SetAsDirty();

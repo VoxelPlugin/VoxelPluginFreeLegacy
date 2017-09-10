@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ProceduralMeshComponent.h"
+#include "VoxelRender.h"
 
 class AVoxelChunk;
 
@@ -21,6 +22,8 @@ public:
 	AVoxelChunk* VoxelChunk;
 
 	FProcMeshSection Section;
+
+	VoxelRender* Render;
 
 	void DoWork();
 

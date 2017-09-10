@@ -151,7 +151,7 @@ void AVoxelChunk::Update(bool bAsync)
 		Task = new FAsyncTask<VoxelThread>(this);
 		if (bAsync)
 		{
-			Task->StartBackgroundTask();
+			Task->StartBackgroundTask(World->GetThreadPool());
 			bNeedSectionUpdate = true;
 		}
 		else
