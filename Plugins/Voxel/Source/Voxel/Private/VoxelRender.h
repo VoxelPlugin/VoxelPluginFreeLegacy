@@ -26,6 +26,7 @@ private:
 	// Step between cubes
 	FORCEINLINE int Step();
 
+	// Too slow
 	FColor GetMajorColor(int X, int Y, int Z, uint32 CellWidth);
 
 	FORCEINLINE FColor GetColor(int X, int Y, int Z);

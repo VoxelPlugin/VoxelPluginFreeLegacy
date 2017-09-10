@@ -20,7 +20,7 @@ float ValueOctree::GetValue(int X, int Y, int Z)
 	check(IsInOctree(X, Y, Z));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 	
-	if (LIKELY(IsDirty()))
+	if (UNLIKELY(IsDirty()))
 	{
 		if (UNLIKELY(Depth == 0))
 		{
@@ -46,9 +46,9 @@ FColor ValueOctree::GetColor(int X, int Y, int Z)
 	check(IsInOctree(X, Y, Z));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
 
-	if (IsDirty())
+	if (UNLIKELY(IsDirty()))
 	{
-		if (Depth == 0)
+		if (UNLIKELY(Depth == 0))
 		{
 			FScopeLock Lock(&CriticalSection);
 			int LocalX, LocalY, LocalZ;
