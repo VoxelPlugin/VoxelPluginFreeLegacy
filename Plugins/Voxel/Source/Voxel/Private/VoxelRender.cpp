@@ -5,6 +5,9 @@
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Cache"), STAT_CACHE, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Iter"), STAT_ITER, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ CreateSection"), STAT_CREATE_SECTION, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ MajorColor"), STAT_MAJOR_COLOR, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValue"), STAT_GETVALUE, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetColor"), STAT_GETCOLOR, STATGROUP_Voxel);
 
 VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition) : Depth(Depth), Data(Data), ChunkPosition(ChunkPosition - FIntVector(1, 1, 1))
 {
@@ -123,7 +126,10 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 										GetColor(CornerPositions[7]).B
 									};
 
-									const FColor& CellColor = GetMajorColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, Step());
+									// Too slow
+									//const FColor& CellColor = GetMajorColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, Step());
+
+									const FColor& CellColor = GetColor(X, Y, Z);
 
 									check(0 <= CaseCode && CaseCode < 256);
 									unsigned char CellClass = Transvoxel::regularCellClass[CaseCode];
@@ -162,9 +168,13 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 										const short CacheDirection = EdgeCode >> 12;
 
 										// Force vertex creation when colors are different
-										const bool ForceVertexCreation = ((ValidityMask & CacheDirection) == CacheDirection) && (CellColor != GetMajorColor(X - static_cast<bool>(CacheDirection & 0x01)* Step() + ChunkPosition.X,
+										// Too slow
+										/*const bool ForceVertexCreation = ((ValidityMask & CacheDirection) == CacheDirection) && (CellColor != GetMajorColor(X - static_cast<bool>(CacheDirection & 0x01)* Step() + ChunkPosition.X,
 																																							Y - static_cast<bool>(CacheDirection & 0x02)* Step() + ChunkPosition.Y,
-																																							Z - static_cast<bool>(CacheDirection & 0x04)* Step() + ChunkPosition.Z, Step()));
+																																							Z - static_cast<bool>(CacheDirection & 0x04)* Step() + ChunkPosition.Z, Step()));*/
+										const bool ForceVertexCreation = ((ValidityMask & CacheDirection) == CacheDirection) && (CellColor != GetColor(X - static_cast<bool>(CacheDirection & 0x01)* Step() + ChunkPosition.X,
+																																					   Y - static_cast<bool>(CacheDirection & 0x02)* Step() + ChunkPosition.Y,
+																																					   Z - static_cast<bool>(CacheDirection & 0x04)* Step() + ChunkPosition.Z));
 
 										if ((ValidityMask & CacheDirection) != CacheDirection || ForceVertexCreation)
 										{
@@ -296,6 +306,11 @@ int VoxelRender::Step()
 
 FColor VoxelRender::GetMajorColor(int X, int Y, int Z, uint32 CellWidth)
 {
+	// Too slow
+	check(false);
+
+	SCOPE_CYCLE_COUNTER(STAT_MAJOR_COLOR);
+
 	FColor Colors[8];
 	if (CellWidth == 1)
 	{
@@ -364,11 +379,13 @@ FColor VoxelRender::GetMajorColor(int X, int Y, int Z, uint32 CellWidth)
 
 FColor VoxelRender::GetColor(int X, int Y, int Z)
 {
+	SCOPE_CYCLE_COUNTER(STAT_GETCOLOR);
 	return Data->GetColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z);
 }
 
 FColor VoxelRender::GetColor(FIntVector Position)
 {
+	SCOPE_CYCLE_COUNTER(STAT_GETVALUE);
 	return GetColor(Position.X, Position.Y, Position.Z);
 }
 
