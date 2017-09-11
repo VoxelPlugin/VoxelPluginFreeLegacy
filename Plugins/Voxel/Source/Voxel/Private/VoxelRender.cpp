@@ -1,6 +1,7 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelRender.h"
 #include "Transvoxel.h"
+#include "DrawDebugHelpers.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Cache"), STAT_CACHE, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Iter"), STAT_ITER, STATGROUP_Voxel);
@@ -8,7 +9,12 @@ DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ CreateSection"), STAT_CREATE_SECTION, STA
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ MajorColor"), STAT_MAJOR_COLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
 
-VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition) : Depth(Depth), Data(Data), ChunkPosition(ChunkPosition - FIntVector(Step(), Step(), Step())) // Translate chunk for normals computation =
+VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition, UWorld* World, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes)
+	: World(World),
+	Depth(Depth),
+	Data(Data),
+	ChunkPosition(ChunkPosition - FIntVector(Step(), Step(), Step())), // Translate chunk for normals computation
+	ChunkHasHigherRes(ChunkHasHigherRes)
 {
 
 }
@@ -287,6 +293,15 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 		OutSection = FProcMeshSection();
 		OutSection.bEnableCollision = (Depth == 0);
 		OutSection.bSectionVisible = true;
+
+		if (VerticesSize == 0)
+		{
+			// Early exit
+			OutSection.Reset();
+			return;
+		}
+
+
 		OutSection.ProcVertexBuffer.SetNumUninitialized(VerticesSize);
 		OutSection.ProcIndexBuffer.SetNumUninitialized(TrianglesSize);
 
@@ -316,6 +331,128 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			}
 			else
 			{
+				if ((Vertex.X < KINDA_SMALL_NUMBER) || (Vertex.X > Width() - KINDA_SMALL_NUMBER) ||
+					(Vertex.Y < KINDA_SMALL_NUMBER) || (Vertex.Y > Width() - KINDA_SMALL_NUMBER) ||
+					(Vertex.Z < KINDA_SMALL_NUMBER) || (Vertex.Z > Width() - KINDA_SMALL_NUMBER))
+				{
+					DrawDebugPoint(World, (Vertex * 0.98 + (FVector)ChunkPosition + FVector(Step(), Step(), Step())) * 100, 10, FColor::Red, false, 1000);
+
+					std::forward_list<TransitionDirection> Directions;
+
+					std::forward_list<int> VertexEdgeIndexes;
+					if (Vertex.X < KINDA_SMALL_NUMBER)
+					{
+						Directions.push_front(XMin);
+						if (FMath::Abs(Vertex.Y - FMath::RoundToInt(Vertex.Y)) < KINDA_SMALL_NUMBER)
+						{
+							// Vertex on Z
+							VertexEdgeIndexes.push_front(1);
+						}
+						else
+						{
+							// Vertex on Y
+							VertexEdgeIndexes.push_front(0);
+						}
+					}
+					else if (Vertex.X > Width() - KINDA_SMALL_NUMBER)
+					{
+						Directions.push_front(XMax);
+						if (FMath::Abs(Vertex.Y - FMath::RoundToInt(Vertex.Y)) < KINDA_SMALL_NUMBER)
+						{
+							// Vertex on Z
+							VertexEdgeIndexes.push_front(0);
+						}
+						else
+						{
+							// Vertex on Y
+							VertexEdgeIndexes.push_front(1);
+						}
+					}
+					else if (Vertex.Y < KINDA_SMALL_NUMBER)
+					{
+						Directions.push_front(YMin);
+						if (FMath::Abs(Vertex.Z - FMath::RoundToInt(Vertex.Z)) < KINDA_SMALL_NUMBER)
+						{
+							// Vertex on X
+							VertexEdgeIndexes.push_front(1);
+						}
+						else
+						{
+							//Vertex on Z
+							VertexEdgeIndexes.push_front(0);
+						}
+					}
+					else if (Vertex.Y > Width() - KINDA_SMALL_NUMBER)
+					{
+						Directions.push_front(YMax);
+						if (FMath::Abs(Vertex.Z - FMath::RoundToInt(Vertex.Z)) < KINDA_SMALL_NUMBER)
+						{
+							// Vertex on X
+							VertexEdgeIndexes.push_front(0);
+						}
+						else
+						{
+							//Vertex on Z
+							VertexEdgeIndexes.push_front(1);
+						}
+					}
+					else if (Vertex.Z < KINDA_SMALL_NUMBER)
+					{
+						Directions.push_front(ZMin);
+						if (FMath::Abs(Vertex.X - FMath::RoundToInt(Vertex.X)) < KINDA_SMALL_NUMBER)
+						{
+							// Vertex on Y
+							VertexEdgeIndexes.push_front(1);
+						}
+						else
+						{
+							//Vertex on X
+							VertexEdgeIndexes.push_front(0);
+						}
+					}
+					else if (Vertex.Z > Width() - KINDA_SMALL_NUMBER)
+					{
+						Directions.push_front(ZMax);
+						if (FMath::Abs(Vertex.X - FMath::RoundToInt(Vertex.X)) < KINDA_SMALL_NUMBER)
+						{
+							// Vertex on Y
+							VertexEdgeIndexes.push_front(0);
+						}
+						else
+						{
+							//Vertex on X
+							VertexEdgeIndexes.push_front(1);
+						}
+					}
+					else
+					{
+						check(false);
+					}
+
+					int X = FMath::FloorToInt(Vertex.X + KINDA_SMALL_NUMBER);
+					int Y = FMath::FloorToInt(Vertex.Y + KINDA_SMALL_NUMBER);
+					int Z = FMath::FloorToInt(Vertex.Z + KINDA_SMALL_NUMBER);
+
+					auto VertexEdgeIndex = VertexEdgeIndexes.begin();
+					for (auto Direction : Directions)
+					{
+						int LocalX, LocalY, LocalZ;
+						GlobalToLocal2D(Direction, X, Y, Z, LocalX, LocalY, LocalZ);
+
+						check(LocalX % Step() == 0);
+						check(LocalY % Step() == 0);
+
+						LocalX /= Step();
+						LocalY /= Step();
+
+						check(0 <= LocalX && LocalX < 17);
+						check(0 <= LocalY && LocalY < 17);
+						Cache2D[Direction][LocalX][LocalY][*VertexEdgeIndex] = AllVertexIndex;
+
+						++VertexEdgeIndex;
+					}
+				}
+
 				AllToFiltered[AllVertexIndex] = FilteredVertexIndex;
 
 				FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexIndex];
@@ -388,10 +525,190 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 		// Apply normals
 		for (int32 i = 0; i < FilteredVertexCount; i++)
 		{
-			OutSection.ProcVertexBuffer[i].Normal = Normals[i].GetSafeNormal();
+			FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[i];
+			ProcMeshVertex.Normal = Normals[i].GetSafeNormal();
+			ProcMeshVertex.Position = GetTranslated(ProcMeshVertex.Position, ProcMeshVertex.Normal);
+		}
+
+
+		check(Vertices.empty());
+		check(Triangles.empty());
+		VerticesSize = 0;
+		TrianglesSize = 0;
+
+		for (int DirectionIndex = 0; DirectionIndex < 6; DirectionIndex++)
+		{
+			auto Direction = (TransitionDirection)DirectionIndex;
+
+			for (int X = 0; X < 16; X++)
+			{
+				for (int Y = 0; Y < 16; Y++)
+				{
+					for (int Z = 0; Z < 16; Z++)
+					{
+						const int HalfStep = Step() / 2;
+
+						float CornerValues[13];
+						FColor CornerColors[13];
+
+						Get2DValueAndColor(Direction, (2 * X + 0) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[0], CornerColors[0]);
+						Get2DValueAndColor(Direction, (2 * X + 1) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[1], CornerColors[1]);
+						Get2DValueAndColor(Direction, (2 * X + 2) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[2], CornerColors[2]);
+						Get2DValueAndColor(Direction, (2 * X + 0) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[3], CornerColors[3]);
+						Get2DValueAndColor(Direction, (2 * X + 1) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[4], CornerColors[4]);
+						Get2DValueAndColor(Direction, (2 * X + 2) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[5], CornerColors[5]);
+						Get2DValueAndColor(Direction, (2 * X + 0) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[6], CornerColors[6]);
+						Get2DValueAndColor(Direction, (2 * X + 1) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[7], CornerColors[7]);
+						Get2DValueAndColor(Direction, (2 * X + 2) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[8], CornerColors[8]);
+
+						CornerColors[9] = CornerColors[0];
+						CornerColors[10] = CornerColors[2];
+						CornerColors[11] = CornerColors[6];
+						CornerColors[12] = CornerColors[8];
+
+						unsigned long CaseCode =
+							(static_cast<bool>(CornerValues[0] > 0) << 0)
+							| (static_cast<bool>(CornerValues[1] > 0) << 1)
+							| (static_cast<bool>(CornerValues[2] > 0) << 2)
+							| (static_cast<bool>(CornerValues[5] > 0) << 3)
+							| (static_cast<bool>(CornerValues[8] > 0) << 4)
+							| (static_cast<bool>(CornerValues[7] > 0) << 5)
+							| (static_cast<bool>(CornerValues[6] > 0) << 6)
+							| (static_cast<bool>(CornerValues[3] > 0) << 7)
+							| (static_cast<bool>(CornerValues[4] > 0) << 8);
+
+						if (!(CaseCode == 0 || CaseCode == 511))
+						{
+							short ValidityMask = (X != 0) + 2 * (Y != 0);
+
+							FColor CellColor = CornerColors[0];
+
+							FIntVector Positions[13] = {
+								FIntVector(2 * X + 0, 2 * Y + 0, 0) * HalfStep,
+								FIntVector(2 * X + 1, 2 * Y + 0, 0) * HalfStep,
+								FIntVector(2 * X + 2, 2 * Y + 0, 0) * HalfStep,
+								FIntVector(2 * X + 0, 2 * Y + 1, 0) * HalfStep,
+								FIntVector(2 * X + 1, 2 * Y + 1, 0) * HalfStep,
+								FIntVector(2 * X + 2, 2 * Y + 1, 0) * HalfStep,
+								FIntVector(2 * X + 0, 2 * Y + 2, 0) * HalfStep,
+								FIntVector(2 * X + 1, 2 * Y + 2, 0) * HalfStep,
+								FIntVector(2 * X + 2, 2 * Y + 2, 0) * HalfStep,
+
+								FIntVector(2 * X + 0, 2 * Y + 0, 1) * HalfStep,
+								FIntVector(2 * X + 2, 2 * Y + 0, 1) * HalfStep,
+								FIntVector(2 * X + 0, 2 * Y + 2, 1) * HalfStep,
+								FIntVector(2 * X + 2, 2 * Y + 2, 1) * HalfStep
+							};
+
+							check(0 <= CaseCode && CaseCode < 512);
+							const unsigned char CellClass = Transvoxel::transitionCellClass[CaseCode];
+							const unsigned short* VertexData = Transvoxel::transitionVertexData[CaseCode];
+							check(0 <= (CellClass & 0x7F) && (CellClass & 0x7F) < 56);
+							const Transvoxel::TransitionCellData CellData = Transvoxel::transitionCellData[CellClass & 0x7F];
+							const bool bFlip = CellClass >> 7;
+
+							TArray<int> VertexIndices;
+							VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
+
+							for (int i = 0; i < CellData.GetVertexCount(); i++)
+							{
+								int VertexIndex;
+								const unsigned short EdgeCode = VertexData[i];
+
+								// A: low point / B: high point
+								const unsigned short IndexVerticeA = (EdgeCode >> 4) & 0x0F;
+								const unsigned short IndexVerticeB = EdgeCode & 0x0F;
+
+								check(0 <= IndexVerticeA && IndexVerticeA < 13);
+								check(0 <= IndexVerticeB && IndexVerticeB < 13);
+
+								const FIntVector PositionA = Positions[IndexVerticeA];
+								const FIntVector PositionB = Positions[IndexVerticeB];
+
+								const short EdgeIndex = (EdgeCode >> 8) & 0x0F;
+								// Direction to go to use an already created vertex
+								const short CacheDirection = EdgeCode >> 12;
+
+								if ((ValidityMask & CacheDirection) != CacheDirection && EdgeIndex != 8 && EdgeIndex != 9)
+								{
+									// Validity check failed or EdgeIndex == 8 | 9 (always use Cache2D)
+									const bool bIsAlongX = EdgeIndex == 3 || EdgeIndex == 4 || EdgeIndex == 8;
+									const bool bIsAlongY = EdgeIndex == 5 || EdgeIndex == 6 || EdgeIndex == 9;
+
+
+									FVector Q;
+									uint8 Alpha;
+									if (Step() == 1)
+									{
+										// Full resolution
+
+										const float ValueAtA = CornerValues[IndexVerticeA];
+										const float ValueAtB = CornerValues[IndexVerticeB];
+
+										const float	AlphaAtA = CornerColors[IndexVerticeA].B;
+										const float AlphaAtB = CornerColors[IndexVerticeB].B;
+
+										check(ValueAtA - ValueAtB != 0);
+										const float t = ValueAtB / (ValueAtB - ValueAtA);
+
+										int GXA, GYA, GZA, GXB, GYB, GZB;
+										Local2DToGlobal(Direction, PositionA.X, PositionA.Y, PositionA.Z, GXA, GYA, GZA);
+										Local2DToGlobal(Direction, PositionB.X, PositionB.Y, PositionB.Z, GXB, GYB, GZB);
+
+										Q = t * FVector(GXA, GYA, GZA) + (1 - t) * FVector(GXB, GYB, GZB);
+										Alpha = t * AlphaAtA + (1 - t) * AlphaAtB;
+									}
+									else
+									{
+										if (bIsAlongX)
+										{
+											// Edge along X axis
+											InterpolateX2D(Direction, PositionA.X, PositionB.X, PositionA.Y, Q, Alpha);
+										}
+										else if (bIsAlongY)
+										{
+											// Edge along Y axis
+											InterpolateY2D(Direction, PositionA.X, PositionA.Y, PositionB.Y, Q, Alpha);
+										}
+										else
+										{
+											checkf(false, TEXT("Error in interpolation: case should not exist"));
+										}
+									}
+									VertexIndex = VerticesSize;
+									Q -= FVector(Step(), Step(), Step()); // Translate back (see constructor)
+									Vertices.push_front(Q);
+									Colors.push_front(FColor(CellColor.R, CellColor.G, Alpha, 0));
+									VerticesSize++;
+
+									// If own vertex, save it
+									if (CacheDirection & 0x08)
+									{
+										SaveVertex2D(Direction, X, Y, EdgeIndex, VertexIndex);
+									}
+								}
+								else
+								{
+									VertexIndex = LoadVertex2D(Direction, X, Y, CacheDirection, EdgeIndex);
+								}
+								VertexIndices[i] = VertexIndex;
+							}
+
+							// Add triangles
+							int n = 3 * CellData.GetTriangleCount();
+							for (int i = 0; i < n; i++)
+							{
+								Triangles.push_front(VertexIndices[CellData.vertexIndex[bFlip ? (n - 1 - i) : i]]);
+							}
+							TrianglesSize += n;
+						}
+					}
+				}
+			}
 		}
 	}
 }
+
 int VoxelRender::Width()
 {
 	return 16 << Depth;
@@ -492,10 +809,18 @@ void VoxelRender::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor&
 }
 
 
+void VoxelRender::Get2DValueAndColor(TransitionDirection Direction, int X, int Y, float& OutValue, FColor& OutColor)
+{
+	int GX, GY, GZ;
+	Local2DToGlobal(Direction, X, Y, 0, GX, GY, GZ);
+	GetValueAndColor(GX, GY, GZ, OutValue, OutColor);
+}
+
 void VoxelRender::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index)
 {
 	check(0 <= X && X < 17);
 	check(0 <= Y && Y < 17);
+	check(0 <= Z && Z < 17);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
 	Cache[X][Y][Z][EdgeIndex] = Index;
@@ -509,11 +834,50 @@ int VoxelRender::LoadVertex(int X, int Y, int Z, short Direction, short EdgeInde
 
 	check(0 <= X - XIsDifferent && X - XIsDifferent < 17);
 	check(0 <= Y - YIsDifferent && Y - YIsDifferent < 17);
+	check(0 <= Z - ZIsDifferent && Z - ZIsDifferent < 17);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
 	return Cache[X - XIsDifferent][Y - YIsDifferent][Z - ZIsDifferent][EdgeIndex];
 }
 
+
+void VoxelRender::SaveVertex2D(TransitionDirection Direction, int X, int Y, short EdgeIndex, int Index)
+{
+	if (EdgeIndex == 8 || EdgeIndex == 9)
+	{
+		// Never save those
+		check(false);
+	}
+
+	check(0 <= X && X < 17);
+	check(0 <= Y && Y < 17);
+	check(0 <= EdgeIndex && EdgeIndex < 7);
+
+	Cache2D[Direction][X][Y][EdgeIndex] = Index;
+}
+
+int VoxelRender::LoadVertex2D(TransitionDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex)
+{
+	bool XIsDifferent = CacheDirection & 0x01;
+	bool YIsDifferent = CacheDirection & 0x02;
+
+	if (EdgeIndex == 8 || EdgeIndex == 9)
+	{
+		EdgeIndex -= 8;
+	}
+
+	// TODO: remove
+	if ((X - XIsDifferent < 0 || Y - YIsDifferent < 0) && (EdgeIndex == 0 || EdgeIndex == 1))
+	{
+		return 0;
+	}
+
+	check(0 <= X - XIsDifferent && X - XIsDifferent < 17);
+	check(0 <= Y - YIsDifferent && Y - YIsDifferent < 17);
+	check(0 <= EdgeIndex && EdgeIndex < 7);
+
+	return Cache2D[Direction][X - XIsDifferent][Y - YIsDifferent][EdgeIndex];
+}
 
 void VoxelRender::InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
@@ -633,3 +997,221 @@ void VoxelRender::InterpolateZ(const int X, const int Y, const int MinZ, const i
 }
 
 
+
+void VoxelRender::InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector & OutVector, uint8 & OutAlpha)
+{
+	// A: Min / B: Max
+	float ValueAtA;
+	float ValueAtB;
+	FColor ColorAtA;
+	FColor ColorAtB;
+	Get2DValueAndColor(Direction, MinX, Y, ValueAtA, ColorAtA);
+	Get2DValueAndColor(Direction, MaxX, Y, ValueAtB, ColorAtB);
+
+	if (MaxX - MinX == 1)
+	{
+		check(ValueAtA - ValueAtB != 0);
+		float t = ValueAtB / (ValueAtB - ValueAtA);
+
+		int GMinX, GMaxX, GY, GZ;
+		Local2DToGlobal(Direction, MinX, Y, 0, GMinX, GY, GZ);
+		Local2DToGlobal(Direction, MaxX, Y, 0, GMaxX, GY, GZ);
+
+		OutVector = t * FVector(GMinX, GY, GZ) + (1 - t) *  FVector(GMaxX, GY, GZ);
+		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
+	}
+	else
+	{
+		check((MaxX + MinX) % 2 == 0);
+		int xMiddle = (MaxX + MinX) / 2;
+
+		float ValueAtMiddle;
+		FColor ColorAtMiddle;
+		Get2DValueAndColor(Direction, xMiddle, Y, ValueAtMiddle, ColorAtMiddle);
+		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
+		{
+			// If min and middle have same sign
+			return InterpolateX2D(Direction, xMiddle, MaxX, Y, OutVector, OutAlpha);
+		}
+		else
+		{
+			// If max and middle have same sign
+			return InterpolateX2D(Direction, MinX, xMiddle, Y, OutVector, OutAlpha);
+		}
+	}
+}
+
+void VoxelRender::InterpolateY2D(TransitionDirection Direction, const int X, const int MinY, const int MaxY, FVector& OutVector, uint8& OutAlpha)
+{
+	// A: Min / B: Max
+	float ValueAtA;
+	float ValueAtB;
+	FColor ColorAtA;
+	FColor ColorAtB;
+	Get2DValueAndColor(Direction, X, MinY, ValueAtA, ColorAtA);
+	Get2DValueAndColor(Direction, X, MaxY, ValueAtB, ColorAtB);
+
+	if (MaxY - MinY == 1)
+	{
+		check(ValueAtA - ValueAtB != 0);
+		float t = ValueAtB / (ValueAtB - ValueAtA);
+
+		int GMinY, GMaxY, GX, GZ;
+		Local2DToGlobal(Direction, X, MinY, 0, GX, GMinY, GZ);
+		Local2DToGlobal(Direction, X, MaxY, 0, GX, GMaxY, GZ);
+
+		OutVector = t * FVector(GX, GMinY, GZ) + (1 - t) *  FVector(GX, GMaxY, GZ);
+		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
+	}
+	else
+	{
+		check((MaxY + MinY) % 2 == 0);
+		int yMiddle = (MaxY + MinY) / 2;
+
+		float ValueAtMiddle;
+		FColor ColorAtMiddle;
+		Get2DValueAndColor(Direction, X, yMiddle, ValueAtMiddle, ColorAtMiddle);
+		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
+		{
+			// If min and middle have same sign
+			return InterpolateY2D(Direction, X, yMiddle, MaxY, OutVector, OutAlpha);
+		}
+		else
+		{
+			// If max and middle have same sign
+			return InterpolateY2D(Direction, X, MinY, yMiddle, OutVector, OutAlpha);
+		}
+	}
+}
+
+void VoxelRender::GlobalToLocal2D(TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ)
+{
+	const int W = Width();
+	switch (Direction)
+	{
+	case XMin:
+		OutLX = GY;
+		OutLY = GZ;
+		OutLZ = GX;
+		break;
+	case XMax:
+		OutLX = GZ;
+		OutLY = GY;
+		OutLZ = W - GX;
+		break;
+	case YMin:
+		OutLX = GZ;
+		OutLY = GX;
+		OutLZ = GY;
+		break;
+	case YMax:
+		OutLX = GX;
+		OutLY = GZ;
+		OutLZ = W - GY;
+		break;
+	case ZMin:
+		OutLX = GX;
+		OutLY = GY;
+		OutLZ = GZ;
+		break;
+	case ZMax:
+		OutLX = GY;
+		OutLY = GX;
+		OutLZ = W - GZ;
+		break;
+	default:
+		check(false)
+			break;
+	}
+}
+
+void VoxelRender::Local2DToGlobal(TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ)
+{
+	const int W = Width();
+	switch (Direction)
+	{
+	case XMin:
+		OutGX = LZ;
+		OutGY = LX;
+		OutGZ = LY;
+		break;
+	case XMax:
+		OutGX = W - LZ;
+		OutGY = LY;
+		OutGZ = LX;
+		break;
+	case YMin:
+		OutGX = LY;
+		OutGY = LZ;
+		OutGZ = LX;
+		break;
+	case YMax:
+		OutGX = LX;
+		OutGY = W - LZ;
+		OutGZ = LY;
+		break;
+	case ZMin:
+		OutGX = LX;
+		OutGY = LY;
+		OutGZ = LZ;
+		break;
+	case ZMax:
+		OutGX = LY;
+		OutGY = LX;
+		OutGZ = W - LZ;
+		break;
+	default:
+		check(false)
+			break;
+	}
+}
+
+
+FVector VoxelRender::GetTranslated(const FVector Vertex, const FVector Normal)
+{
+	double DeltaX = 0;
+	double DeltaY = 0;
+	double DeltaZ = 0;
+
+	if ((Vertex.X < KINDA_SMALL_NUMBER && !ChunkHasHigherRes[XMin]) || (Vertex.X > Width() - KINDA_SMALL_NUMBER && !ChunkHasHigherRes[XMax]) ||
+		(Vertex.Y < KINDA_SMALL_NUMBER && !ChunkHasHigherRes[YMin]) || (Vertex.Y > Width() - KINDA_SMALL_NUMBER && !ChunkHasHigherRes[YMax]) ||
+		(Vertex.Z < KINDA_SMALL_NUMBER && !ChunkHasHigherRes[ZMin]) || (Vertex.Z > Width() - KINDA_SMALL_NUMBER && !ChunkHasHigherRes[ZMax]))
+	{
+		return Vertex;
+	}
+
+	double TwoPowerK = 1 << Depth;
+	double w = TwoPowerK / 4;
+
+	if (ChunkHasHigherRes[XMin] && Vertex.X < Step())
+	{
+		DeltaX = (1 - static_cast<double>(Vertex.X) / TwoPowerK) * w;
+	}
+	if (ChunkHasHigherRes[XMax] && Vertex.X > 15 * Step())
+	{
+		DeltaX = (16 - 1 - static_cast<double>(Vertex.X) / TwoPowerK) * w;
+	}
+	if (ChunkHasHigherRes[YMin] && Vertex.Y < Step())
+	{
+		DeltaY = (1 - static_cast<double>(Vertex.Y) / TwoPowerK) * w;
+	}
+	if (ChunkHasHigherRes[YMax] && Vertex.Y > 15 * Step())
+	{
+		DeltaY = (16 - 1 - static_cast<double>(Vertex.Y) / TwoPowerK) * w;
+	}
+	if (ChunkHasHigherRes[ZMin] && Vertex.Z < Step())
+	{
+		DeltaZ = (1 - static_cast<double>(Vertex.Z) / TwoPowerK) * w;
+	}
+	if (ChunkHasHigherRes[ZMax] && Vertex.Z > 15 * Step())
+	{
+		DeltaZ = (16 - 1 - static_cast<double>(Vertex.Z) / TwoPowerK) * w;
+	}
+
+	FVector Q = FVector(
+		(1 - Normal.X * Normal.X) * DeltaX - Normal.X * Normal.Y * DeltaY - Normal.X * Normal.Z * DeltaZ,
+		-Normal.X * Normal.Y * DeltaX + (1 - Normal.Y * Normal.Y) * DeltaY - Normal.Y * Normal.Z * DeltaZ,
+		-Normal.X * Normal.Z * DeltaX - Normal.Y * Normal.Z * DeltaY + (1 - Normal.Z * Normal.Z) * DeltaZ);
+
+	return Vertex + Q;
+}
