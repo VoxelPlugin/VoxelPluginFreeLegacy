@@ -8,7 +8,7 @@
 
 VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk)
 {
-	Render = new VoxelRender(VoxelChunk->Depth, VoxelChunk->World->GetData(), VoxelChunk->Position);
+	Render = new VoxelRender(VoxelChunk->Depth, VoxelChunk->World->GetData(), VoxelChunk->Position, VoxelChunk->GetWorld(), VoxelChunk->ChunkHasHigherRes);
 }
 
 VoxelThread::~VoxelThread()
