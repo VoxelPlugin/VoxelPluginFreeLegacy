@@ -21,7 +21,7 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	ValueOctree(bool bMultiplayer, AVoxelWorldGenerator* WorldGenerator, FIntVector Position, int Depth, int Id = -1);
+	ValueOctree(bool bMultiplayer, AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id = -1);
 
 	// Is the game multiplayer?
 	const bool bMultiplayer;

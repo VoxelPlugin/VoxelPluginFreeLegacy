@@ -195,7 +195,7 @@ void ChunkOctree::CreateChilds()
 	check(Depth != 0);
 
 	int d = Width() / 4;
-	uint32 Pow = IntPow9(Depth - 1);
+	uint64 Pow = IntPow9(Depth - 1);
 
 	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow)));
 	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow)));

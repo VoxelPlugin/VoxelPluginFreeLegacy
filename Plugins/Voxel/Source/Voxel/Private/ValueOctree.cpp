@@ -5,7 +5,7 @@
 #include "VoxelWorldGenerator.h"
 #include "DrawDebugHelpers.h"
 
-ValueOctree::ValueOctree(bool bMultiplayer, AVoxelWorldGenerator* WorldGenerator, FIntVector Position, int Depth, int Id) : Octree(Position, Depth, Id), bMultiplayer(bMultiplayer), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false)
+ValueOctree::ValueOctree(bool bMultiplayer, AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id) : Octree(Position, Depth, Id), bMultiplayer(bMultiplayer), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false)
 {
 }
 
@@ -192,7 +192,7 @@ void ValueOctree::LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArr
 		}
 		else
 		{
-			uint32 Pow = IntPow9(Depth);
+			uint64 Pow = IntPow9(Depth);
 			if (Id / Pow == SaveArray.front().Id / Pow)
 			{
 				bIsDirty = true;
@@ -206,7 +206,7 @@ void ValueOctree::LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArr
 	}
 	else
 	{
-		uint32 Pow = IntPow9(Depth);
+		uint64 Pow = IntPow9(Depth);
 		if (Id / Pow == SaveArray.front().Id / Pow)
 		{
 			for (auto Child : Childs)
@@ -319,7 +319,7 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValue
 		}
 		else
 		{
-			uint32 Pow = IntPow9(Depth);
+			uint64 Pow = IntPow9(Depth);
 			if ((!ValuesDiffs.empty() && Id / Pow == ValuesDiffs.front().Id / Pow) || (!ColorsDiffs.empty() && Id / Pow == ColorsDiffs.front().Id / Pow))
 			{
 				bIsDirty = true;
@@ -333,7 +333,7 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValue
 	}
 	else
 	{
-		uint32 Pow = IntPow9(Depth);
+		uint64 Pow = IntPow9(Depth);
 		if ((!ValuesDiffs.empty() && Id / Pow == ValuesDiffs.front().Id / Pow) || (!ColorsDiffs.empty() && Id / Pow == ColorsDiffs.front().Id / Pow))
 		{
 			for (auto Child : Childs)
@@ -352,7 +352,7 @@ void ValueOctree::CreateChilds()
 	check(Depth != 0);
 
 	int d = Width() / 4;
-	uint32 Pow = IntPow9(Depth - 1);
+	uint64 Pow = IntPow9(Depth - 1);
 
 	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow));
 	Childs.Add(new ValueOctree(bMultiplayer, WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow));

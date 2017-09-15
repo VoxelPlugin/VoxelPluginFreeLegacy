@@ -2,10 +2,10 @@
 #include "CoreMinimal.h"
 #include "VoxelChunk.h"
 
-FORCEINLINE uint32 IntPow9(int Power)
+FORCEINLINE uint64 IntPow9(int Power)
 {
-	check(Power <= 10);
-	int Pow = 1;
+	check(Power <= 20);
+	uint64 Pow = 1;
 	for (int i = 0; i < Power; i++)
 	{
 		Pow *= 9;
@@ -24,7 +24,7 @@ public:
 	 * @param	Position	Position (center) of this chunk
 	 * @param	Depth		Distance to the highest resolution
 	 */
-	Octree(FIntVector Position, int Depth, int Id = -1);
+	Octree(FIntVector Position, uint8 Depth, uint64 Id = -1);
 
 	bool operator==(const Octree& Other) const;
 
@@ -36,10 +36,10 @@ public:
 	const FIntVector Position;
 
 	// Distance to the highest resolution
-	const int Depth;
+	const uint8 Depth;
 
 	// Id of the Octree (position in the octree)
-	const uint32 Id;
+	const uint64 Id;
 
 	/**
 	 * Get the width at this level
@@ -85,7 +85,7 @@ protected:
 	bool bHasChilds;
 };
 
-inline uint32 GetTypeHash(Octree Octree)
+inline uint64 GetTypeHash(Octree Octree)
 {
 	return Octree.Id;
 }
