@@ -13,7 +13,7 @@ struct VOXEL_API FVoxelChunkSave
 
 public:
 	UPROPERTY()
-		uint32 Id;
+		uint64 Id;
 
 	UPROPERTY(VisibleAnywhere)
 		TArray<float> Values;
@@ -23,7 +23,7 @@ public:
 
 	FVoxelChunkSave();
 
-	FVoxelChunkSave(uint32 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FColor, TFixedAllocator<16 * 16 * 16>>& Colors);
+	FVoxelChunkSave(uint64 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FColor, TFixedAllocator<16 * 16 * 16>>& Colors);
 };
 
 USTRUCT(BlueprintType, Category = Voxel)
@@ -52,7 +52,7 @@ struct FVoxelValueDiff
 
 public:
 	UPROPERTY(EditAnywhere)
-		uint32 Id;
+		uint64 Id;
 
 	UPROPERTY(EditAnywhere)
 		int Index;
@@ -62,7 +62,7 @@ public:
 
 	FVoxelValueDiff();
 
-	FVoxelValueDiff(uint32 Id, int Index, float Value);
+	FVoxelValueDiff(uint64 Id, int Index, float Value);
 };
 
 USTRUCT()
@@ -72,7 +72,7 @@ struct FVoxelColorDiff
 
 public:
 	UPROPERTY(EditAnywhere)
-		uint32 Id;
+		uint64 Id;
 
 	UPROPERTY(EditAnywhere)
 		int Index;
@@ -82,29 +82,29 @@ public:
 
 	FVoxelColorDiff();
 
-	FVoxelColorDiff(uint32 Id, int Index, FColor Color);
+	FVoxelColorDiff(uint64 Id, int Index, FColor Color);
 };
 
 struct VoxelValueDiffArray
 {
-	std::forward_list<uint32> Ids;
+	std::forward_list<uint64> Ids;
 	std::forward_list<int> Indexes;
 	std::forward_list<float> Values;
 	int Size = 0;
 
-	void Add(uint32 Id, int Index, float Value);
+	void Add(uint64 Id, int Index, float Value);
 
 	void AddPackets(std::forward_list<TArray<FVoxelValueDiff>>& List, const int MaxSize = 2048);
 };
 
 struct VoxelColorDiffArray
 {
-	std::forward_list<uint32> Ids;
+	std::forward_list<uint64> Ids;
 	std::forward_list<int> Indexes;
 	std::forward_list<FColor> Colors;
 	int Size = 0;
 
-	void Add(uint32 Id, int Index, FColor Color);
+	void Add(uint64 Id, int Index, FColor Color);
 
 	void AddPackets(std::forward_list<TArray<FVoxelColorDiff>>& List, const int MaxSize = 2048);
 };

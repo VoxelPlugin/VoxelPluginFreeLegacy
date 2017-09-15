@@ -178,7 +178,7 @@ protected:
 
 private:
 	// Width = 16 * 2^Depth
-	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0", ClampMax = "9", UIMin = "0", UIMax = "9"))
+	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0", ClampMax = "20", UIMin = "0", UIMax = "20"))
 		int Depth;
 	// Multiplayer game?
 	UPROPERTY(EditAnywhere, Category = Voxel)

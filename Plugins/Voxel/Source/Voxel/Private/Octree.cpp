@@ -1,11 +1,10 @@
 #include "VoxelPrivatePCH.h"
 #include "Octree.h"
 
-Octree::Octree(FIntVector Position, int Depth, int Id /*= -1*/) : Position(Position), Depth(Depth), Id(Id == -1 ? IntPow9(Depth) : Id), bHasChilds(false)
+Octree::Octree(FIntVector Position, uint8 Depth, uint64 Id /*= -1*/) : Position(Position), Depth(Depth), Id(Id == -1 ? IntPow9(Depth) : Id), bHasChilds(false)
 {
-	// TODO: Use bigger int
 	// Max for Id
-	check(Depth <= 9);
+	check(Depth <= 20);
 };
 
 bool Octree::operator<(const Octree& Other) const

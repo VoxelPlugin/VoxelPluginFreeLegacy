@@ -13,7 +13,7 @@ FVoxelChunkSave::FVoxelChunkSave() : Id(-1)
 
 }
 
-FVoxelChunkSave::FVoxelChunkSave(uint32 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FColor, TFixedAllocator<16 * 16 * 16>>& Colors)
+FVoxelChunkSave::FVoxelChunkSave(uint64 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FColor, TFixedAllocator<16 * 16 * 16>>& Colors)
 	: Id(Id), Values(Values), Colors(Colors)
 {
 }
@@ -49,7 +49,7 @@ FVoxelValueDiff::FVoxelValueDiff() : Id(-1), Index(-1), Value(0)
 
 }
 
-FVoxelValueDiff::FVoxelValueDiff(uint32 Id, int Index, float Value) : Id(Id), Index(Index), Value(Value)
+FVoxelValueDiff::FVoxelValueDiff(uint64 Id, int Index, float Value) : Id(Id), Index(Index), Value(Value)
 {
 
 }
@@ -59,12 +59,12 @@ FVoxelColorDiff::FVoxelColorDiff() : Id(-1), Index(-1), Color(FColor::Black)
 
 }
 
-FVoxelColorDiff::FVoxelColorDiff(uint32 Id, int Index, FColor Color) : Id(Id), Index(Index), Color(Color)
+FVoxelColorDiff::FVoxelColorDiff(uint64 Id, int Index, FColor Color) : Id(Id), Index(Index), Color(Color)
 {
 
 }
 
-void VoxelValueDiffArray::Add(uint32 Id, int Index, float Value)
+void VoxelValueDiffArray::Add(uint64 Id, int Index, float Value)
 {
 	Ids.push_front(Id);
 	Indexes.push_front(Index);
@@ -102,7 +102,7 @@ void VoxelValueDiffArray::AddPackets(std::forward_list<TArray<FVoxelValueDiff>>&
 	}
 }
 
-void VoxelColorDiffArray::Add(uint32 Id, int Index, FColor Color)
+void VoxelColorDiffArray::Add(uint64 Id, int Index, FColor Color)
 {
 	Ids.push_front(Id);
 	Indexes.push_front(Index);

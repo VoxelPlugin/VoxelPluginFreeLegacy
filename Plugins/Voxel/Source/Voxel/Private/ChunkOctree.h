@@ -11,7 +11,7 @@ class AVoxelWorld;
 class ChunkOctree : public Octree, public TSharedFromThis<ChunkOctree>
 {
 public:
-	ChunkOctree(FIntVector Position, int Depth, int Id = -1) : Octree(Position, Depth, Id), bHasChunk(false), VoxelChunk(nullptr)
+	ChunkOctree(FIntVector Position, uint8 Depth, uint64 Id = -1) : Octree(Position, Depth, Id), bHasChunk(false), VoxelChunk(nullptr)
 	{
 	};
 
@@ -95,7 +95,7 @@ private:
 	void DeleteChilds();
 };
 
-inline uint32 GetTypeHash(ChunkOctree ChunkOctree)
+inline uint64 GetTypeHash(ChunkOctree ChunkOctree)
 {
 	return GetTypeHash(static_cast<Octree>(ChunkOctree));
 }
