@@ -13,9 +13,14 @@ struct VOXEL_API FFlatWorldStruct
 	GENERATED_BODY()
 
 public:
-	// Color of the layer
 	UPROPERTY(EditAnywhere)
-		FLinearColor Color;
+		uint8 Material1;
+
+	UPROPERTY(EditAnywhere)
+		uint8 Material2;
+
+	UPROPERTY(EditAnywhere)
+		float Alpha;
 
 	// Start (Z position) of the layer
 	UPROPERTY(EditAnywhere)
@@ -45,9 +50,12 @@ public:
 	UPROPERTY(EditAnywhere)
 		int Height;
 
-	// Color to set if no layer
 	UPROPERTY(EditAnywhere)
-		FLinearColor DefaultColor;
+		uint8 DefaultMaterial1;
+	UPROPERTY(EditAnywhere)
+		uint8 DefaultMaterial2;
+	UPROPERTY(EditAnywhere)
+		float DefaultAlpha;
 
 	// Layers
 	UPROPERTY(EditAnywhere)

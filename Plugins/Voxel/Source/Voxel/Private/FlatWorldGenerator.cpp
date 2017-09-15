@@ -2,15 +2,16 @@
 
 #include "VoxelPrivatePCH.h"
 #include "FlatWorldGenerator.h"
+#include "VoxelMaterial.h"
 
-AFlatWorldGenerator::AFlatWorldGenerator() : Height(0), DefaultColor(FColor::White), ValueMultiplier(1)
+AFlatWorldGenerator::AFlatWorldGenerator() : Height(0), ValueMultiplier(1)
 {
 
 }
 
 float AFlatWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
-	return (Z > Height) ? ValueMultiplier : -ValueMultiplier;
+	return (Z >= Height) ? ValueMultiplier : -ValueMultiplier;
 }
 
 FColor AFlatWorldGenerator::GetDefaultColor(int X, int Y, int Z)
@@ -19,10 +20,10 @@ FColor AFlatWorldGenerator::GetDefaultColor(int X, int Y, int Z)
 	{
 		if (Layer.Start <= Z && Z < Layer.Start + Layer.Height)
 		{
-			return Layer.Color.ToFColor(true);
+			return FVoxelMaterial(Layer.Material1, Layer.Material2, Layer.Alpha).ToFColor();
 		}
 	}
-	return DefaultColor.ToFColor(true);
+	return FVoxelMaterial(DefaultMaterial1, DefaultMaterial2, DefaultAlpha).ToFColor();
 }
 
 void AFlatWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)

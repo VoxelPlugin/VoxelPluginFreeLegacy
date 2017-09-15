@@ -10,7 +10,7 @@ class AVoxelWorld;
 /**
  *
  */
-UCLASS(Blueprintable)
+UCLASS(Blueprintable, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering"))
 class VOXEL_API AVoxelWorldGenerator : public AActor
 {
 	GENERATED_BODY()
