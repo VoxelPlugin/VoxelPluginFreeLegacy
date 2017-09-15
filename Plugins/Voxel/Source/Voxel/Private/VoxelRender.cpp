@@ -8,12 +8,13 @@ DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Iter"), STAT_ITER, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ CreateSection"), STAT_CREATE_SECTION, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ MajorColor"), STAT_MAJOR_COLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
 
 VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition, UWorld* World, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes)
 	: World(World),
 	Depth(Depth),
 	Data(Data),
-	ChunkPosition(ChunkPosition - FIntVector(Step(), Step(), Step())), // Translate chunk for normals computation
+	ChunkPosition(ChunkPosition),
 	ChunkHasHigherRes(ChunkHasHigherRes)
 {
 
@@ -38,9 +39,10 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 						{
 							for (int LocalZ = 0; LocalZ < 4; LocalZ++)
 							{
-								const int X = 3 * CubeX + LocalX;
-								const int Y = 3 * CubeY + LocalY;
-								const int Z = 3 * CubeZ + LocalZ;
+								// -1: offset because of normals computations
+								const int X = 3 * CubeX + LocalX - 1;
+								const int Y = 3 * CubeY + LocalY - 1;
+								const int Z = 3 * CubeZ + LocalZ - 1;
 
 								const uint64 ONE = 1;
 								uint64 CurrentBit = ONE << (LocalX + 4 * LocalY + 4 * 4 * LocalZ);
@@ -49,10 +51,10 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 								FColor CurrentColor;
 								Data->GetValueAndColor(X * Step() + ChunkPosition.X, Y * Step() + ChunkPosition.Y, Z * Step() + ChunkPosition.Z, CurrentValue, CurrentColor);
 
-								if (X < 18 && Y < 18 && Z < 18) // Getting value out of this chunk for the "continue" optimization after
+								if (X + 1 < 18 && Y + 1 < 18 && Z + 1 < 18) // Getting value out of this chunk for the "continue" optimization after
 								{
-									CachedValues[X + 18 * Y + 18 * 18 * Z] = CurrentValue;
-									CachedColors[X + 18 * Y + 18 * 18 * Z] = CurrentColor;
+									CachedValues[(X + 1) + 18 * (Y + 1) + 18 * 18 * (Z + 1)] = CurrentValue;
+									CachedColors[(X + 1) + 18 * (Y + 1) + 18 * 18 * (Z + 1)] = CurrentColor;
 								}
 
 								bool Sign = CurrentValue > 0;
@@ -107,11 +109,12 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 								{
 									// Cell has a nontrivial triangulation
 
-									const int X = 3 * CubeX + LocalX;
-									const int Y = 3 * CubeY + LocalY;
-									const int Z = 3 * CubeZ + LocalZ;
+									// -1: offset because of normals computations
+									const int X = 3 * CubeX + LocalX - 1;
+									const int Y = 3 * CubeY + LocalY - 1;
+									const int Z = 3 * CubeZ + LocalZ - 1;
 
-									short ValidityMask = (X != 0) + 2 * (Y != 0) + 4 * (Z != 0);
+									short ValidityMask = (X != -1) + 2 * (Y != -1) + 4 * (Z != -1);
 
 									const FIntVector CornerPositions[8] = {
 										FIntVector(X + 0, Y + 0, Z + 0) * Step(),
@@ -146,9 +149,6 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 										| ((CornerValues[5] > 0) << 5)
 										| ((CornerValues[6] > 0) << 6)
 										| ((CornerValues[7] > 0) << 7)));
-
-									// Too slow
-									//const FColor& CellColor = GetMajorColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, Step());
 
 									const FColor& CellColor = CornerColors[0];
 
@@ -251,7 +251,6 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 												}
 											}
 											VertexIndex = VerticesSize;
-											Q -= FVector(Step(), Step(), Step()); // Translate back (see constructor)
 											Vertices.push_front(Q);
 											Colors.push_front(FColor(CellColor.R, CellColor.G, Alpha, 0));
 											VerticesSize++;
@@ -331,128 +330,6 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			}
 			else
 			{
-				if ((Vertex.X < KINDA_SMALL_NUMBER) || (Vertex.X > Width() - KINDA_SMALL_NUMBER) ||
-					(Vertex.Y < KINDA_SMALL_NUMBER) || (Vertex.Y > Width() - KINDA_SMALL_NUMBER) ||
-					(Vertex.Z < KINDA_SMALL_NUMBER) || (Vertex.Z > Width() - KINDA_SMALL_NUMBER))
-				{
-					DrawDebugPoint(World, (Vertex * 0.98 + (FVector)ChunkPosition + FVector(Step(), Step(), Step())) * 100, 10, FColor::Red, false, 1000);
-
-					std::forward_list<TransitionDirection> Directions;
-
-					std::forward_list<int> VertexEdgeIndexes;
-					if (Vertex.X < KINDA_SMALL_NUMBER)
-					{
-						Directions.push_front(XMin);
-						if (FMath::Abs(Vertex.Y - FMath::RoundToInt(Vertex.Y)) < KINDA_SMALL_NUMBER)
-						{
-							// Vertex on Z
-							VertexEdgeIndexes.push_front(1);
-						}
-						else
-						{
-							// Vertex on Y
-							VertexEdgeIndexes.push_front(0);
-						}
-					}
-					else if (Vertex.X > Width() - KINDA_SMALL_NUMBER)
-					{
-						Directions.push_front(XMax);
-						if (FMath::Abs(Vertex.Y - FMath::RoundToInt(Vertex.Y)) < KINDA_SMALL_NUMBER)
-						{
-							// Vertex on Z
-							VertexEdgeIndexes.push_front(0);
-						}
-						else
-						{
-							// Vertex on Y
-							VertexEdgeIndexes.push_front(1);
-						}
-					}
-					else if (Vertex.Y < KINDA_SMALL_NUMBER)
-					{
-						Directions.push_front(YMin);
-						if (FMath::Abs(Vertex.Z - FMath::RoundToInt(Vertex.Z)) < KINDA_SMALL_NUMBER)
-						{
-							// Vertex on X
-							VertexEdgeIndexes.push_front(1);
-						}
-						else
-						{
-							//Vertex on Z
-							VertexEdgeIndexes.push_front(0);
-						}
-					}
-					else if (Vertex.Y > Width() - KINDA_SMALL_NUMBER)
-					{
-						Directions.push_front(YMax);
-						if (FMath::Abs(Vertex.Z - FMath::RoundToInt(Vertex.Z)) < KINDA_SMALL_NUMBER)
-						{
-							// Vertex on X
-							VertexEdgeIndexes.push_front(0);
-						}
-						else
-						{
-							//Vertex on Z
-							VertexEdgeIndexes.push_front(1);
-						}
-					}
-					else if (Vertex.Z < KINDA_SMALL_NUMBER)
-					{
-						Directions.push_front(ZMin);
-						if (FMath::Abs(Vertex.X - FMath::RoundToInt(Vertex.X)) < KINDA_SMALL_NUMBER)
-						{
-							// Vertex on Y
-							VertexEdgeIndexes.push_front(1);
-						}
-						else
-						{
-							//Vertex on X
-							VertexEdgeIndexes.push_front(0);
-						}
-					}
-					else if (Vertex.Z > Width() - KINDA_SMALL_NUMBER)
-					{
-						Directions.push_front(ZMax);
-						if (FMath::Abs(Vertex.X - FMath::RoundToInt(Vertex.X)) < KINDA_SMALL_NUMBER)
-						{
-							// Vertex on Y
-							VertexEdgeIndexes.push_front(0);
-						}
-						else
-						{
-							//Vertex on X
-							VertexEdgeIndexes.push_front(1);
-						}
-					}
-					else
-					{
-						check(false);
-					}
-
-					int X = FMath::FloorToInt(Vertex.X + KINDA_SMALL_NUMBER);
-					int Y = FMath::FloorToInt(Vertex.Y + KINDA_SMALL_NUMBER);
-					int Z = FMath::FloorToInt(Vertex.Z + KINDA_SMALL_NUMBER);
-
-					auto VertexEdgeIndex = VertexEdgeIndexes.begin();
-					for (auto Direction : Directions)
-					{
-						int LocalX, LocalY, LocalZ;
-						GlobalToLocal2D(Direction, X, Y, Z, LocalX, LocalY, LocalZ);
-
-						check(LocalX % Step() == 0);
-						check(LocalY % Step() == 0);
-
-						LocalX /= Step();
-						LocalY /= Step();
-
-						check(0 <= LocalX && LocalX < 17);
-						check(0 <= LocalY && LocalY < 17);
-						Cache2D[Direction][LocalX][LocalY][*VertexEdgeIndex] = AllVertexIndex;
-
-						++VertexEdgeIndex;
-					}
-				}
-
 				AllToFiltered[AllVertexIndex] = FilteredVertexIndex;
 
 				FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexIndex];
@@ -493,7 +370,6 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			if (FA != -1 && FB != -1 && FC != -1)
 			{
 				// If all vertex of this triangle are not for normal only, this is a valid triangle
-				// FilteredVertexCount - X because vertices are reversed
 				OutSection.ProcIndexBuffer[FilteredTriangleIndex] = FC;
 				OutSection.ProcIndexBuffer[FilteredTriangleIndex + 1] = FB;
 				OutSection.ProcIndexBuffer[FilteredTriangleIndex + 2] = FA;
@@ -533,23 +409,23 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 
 		check(Vertices.empty());
 		check(Triangles.empty());
-		VerticesSize = 0;
-		TrianglesSize = 0;
+		const int OldVerticesSize = VerticesSize;
+		const int OldTrianglesSize = TrianglesSize;
 
-		for (int DirectionIndex = 0; DirectionIndex < 6; DirectionIndex++)
+		for (int DirectionIndex = 0; DirectionIndex < 1; DirectionIndex++)
 		{
 			auto Direction = (TransitionDirection)DirectionIndex;
 
-			for (int X = 0; X < 16; X++)
+			if (ChunkHasHigherRes[Direction])
 			{
-				for (int Y = 0; Y < 16; Y++)
+				for (int X = 0; X < 16; X++)
 				{
-					for (int Z = 0; Z < 16; Z++)
+					for (int Y = 0; Y < 16; Y++)
 					{
 						const int HalfStep = Step() / 2;
 
-						float CornerValues[13];
-						FColor CornerColors[13];
+						float CornerValues[9];
+						FColor CornerColors[9];
 
 						Get2DValueAndColor(Direction, (2 * X + 0) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[0], CornerColors[0]);
 						Get2DValueAndColor(Direction, (2 * X + 1) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[1], CornerColors[1]);
@@ -560,11 +436,6 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 						Get2DValueAndColor(Direction, (2 * X + 0) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[6], CornerColors[6]);
 						Get2DValueAndColor(Direction, (2 * X + 1) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[7], CornerColors[7]);
 						Get2DValueAndColor(Direction, (2 * X + 2) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[8], CornerColors[8]);
-
-						CornerColors[9] = CornerColors[0];
-						CornerColors[10] = CornerColors[2];
-						CornerColors[11] = CornerColors[6];
-						CornerColors[12] = CornerColors[8];
 
 						unsigned long CaseCode =
 							(static_cast<bool>(CornerValues[0] > 0) << 0)
@@ -638,45 +509,23 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 
 									FVector Q;
 									uint8 Alpha;
-									if (Step() == 1)
+
+									if (bIsAlongX)
 									{
-										// Full resolution
-
-										const float ValueAtA = CornerValues[IndexVerticeA];
-										const float ValueAtB = CornerValues[IndexVerticeB];
-
-										const float	AlphaAtA = CornerColors[IndexVerticeA].B;
-										const float AlphaAtB = CornerColors[IndexVerticeB].B;
-
-										check(ValueAtA - ValueAtB != 0);
-										const float t = ValueAtB / (ValueAtB - ValueAtA);
-
-										int GXA, GYA, GZA, GXB, GYB, GZB;
-										Local2DToGlobal(Direction, PositionA.X, PositionA.Y, PositionA.Z, GXA, GYA, GZA);
-										Local2DToGlobal(Direction, PositionB.X, PositionB.Y, PositionB.Z, GXB, GYB, GZB);
-
-										Q = t * FVector(GXA, GYA, GZA) + (1 - t) * FVector(GXB, GYB, GZB);
-										Alpha = t * AlphaAtA + (1 - t) * AlphaAtB;
+										// Edge along X axis
+										InterpolateX2D(Direction, PositionA.X, PositionB.X, PositionA.Y, Q, Alpha);
+									}
+									else if (bIsAlongY)
+									{
+										// Edge along Y axis
+										InterpolateY2D(Direction, PositionA.X, PositionA.Y, PositionB.Y, Q, Alpha);
 									}
 									else
 									{
-										if (bIsAlongX)
-										{
-											// Edge along X axis
-											InterpolateX2D(Direction, PositionA.X, PositionB.X, PositionA.Y, Q, Alpha);
-										}
-										else if (bIsAlongY)
-										{
-											// Edge along Y axis
-											InterpolateY2D(Direction, PositionA.X, PositionA.Y, PositionB.Y, Q, Alpha);
-										}
-										else
-										{
-											checkf(false, TEXT("Error in interpolation: case should not exist"));
-										}
+										checkf(false, TEXT("Error in interpolation: case should not exist"));
 									}
+
 									VertexIndex = VerticesSize;
-									Q -= FVector(Step(), Step(), Step()); // Translate back (see constructor)
 									Vertices.push_front(Q);
 									Colors.push_front(FColor(CellColor.R, CellColor.G, Alpha, 0));
 									VerticesSize++;
@@ -691,6 +540,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 								{
 									VertexIndex = LoadVertex2D(Direction, X, Y, CacheDirection, EdgeIndex);
 								}
+
 								VertexIndices[i] = VertexIndex;
 							}
 
@@ -705,6 +555,90 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 					}
 				}
 			}
+		}
+
+
+		// Add transition vertexes
+
+		OutSection.ProcVertexBuffer.AddUninitialized(VerticesSize - OldVerticesSize);
+		OutSection.ProcIndexBuffer./*HACK*/AddZeroed(TrianglesSize - OldTrianglesSize);
+
+		TArray<FVector> TransitionVertex;
+		TransitionVertex.SetNumUninitialized(VerticesSize - OldVerticesSize);
+
+		int32 TransitionVertexIndex = 0;
+		for (int i = VerticesSize - OldVerticesSize - 1; i >= 0; i--)
+		{
+			FVector Vertex = Vertices.front();
+			FColor Color = Colors.front();
+			Vertices.pop_front();
+			Colors.pop_front();
+
+			FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexCount + TransitionVertexIndex];
+			ProcMeshVertex.Position = Vertex;
+			ProcMeshVertex.Tangent = FProcMeshTangent();
+			ProcMeshVertex.Color = Color;
+			ProcMeshVertex.UV0 = FVector2D::ZeroVector;
+			OutSection.SectionLocalBox += Vertex;
+
+			TransitionVertex[TransitionVertexIndex] = Vertex;
+			TransitionVertexIndex++;
+		}
+		const int32 TransitionVertexCount = TransitionVertexIndex;
+
+		// Normal array to compute normals while iterating over triangles
+		Normals.SetNumZeroed(TransitionVertexCount); // Init because +=
+
+		int32 TransitionTriangleIndex = 0;
+		while (!Triangles.empty())
+		{
+			int32 A = Triangles.front();
+			int32 FA = A < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - A] : (OldVerticesSize + ((VerticesSize - OldVerticesSize) - (A - OldVerticesSize))) - OldVerticesSize + FilteredVertexCount; // Invert triangles because AllVertex and OutSection.ProcVertexBuffer are inverted
+			Triangles.pop_front();
+
+			int32 B = Triangles.front();
+			int32 FB = B < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - B] : (OldVerticesSize + ((VerticesSize - OldVerticesSize) - (B - OldVerticesSize))) - OldVerticesSize + FilteredVertexCount;
+			Triangles.pop_front();
+
+			int32 C = Triangles.front();
+			int32 FC = C < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - C] : (OldVerticesSize + ((VerticesSize - OldVerticesSize) - (C - OldVerticesSize))) - OldVerticesSize + FilteredVertexCount;
+			Triangles.pop_front();
+
+			//check(FA != -1 && FB != -1 && FC != -1);
+
+			if (FA != -1 && FB != -1 && FC != -1)
+			{
+				OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex] = FC;
+				OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex + 1] = FB;
+				OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex + 2] = FA;
+				TransitionTriangleIndex += 3;
+			}
+
+			FVector PA = A < OldVerticesSize ? AllVertex[OldVerticesSize - 1 - A] : TransitionVertex[A - OldVerticesSize];
+			FVector PB = B < OldVerticesSize ? AllVertex[OldVerticesSize - 1 - B] : TransitionVertex[B - OldVerticesSize];
+			FVector PC = C < OldVerticesSize ? AllVertex[OldVerticesSize - 1 - C] : TransitionVertex[C - OldVerticesSize];
+
+			FVector Normal = FVector::CrossProduct(PB - PA, PC - PA).GetSafeNormal();
+			if (A >= OldVerticesSize)
+			{
+				Normals[A - OldVerticesSize] += Normal;
+			}
+			if (B >= OldVerticesSize)
+			{
+				Normals[B - OldVerticesSize] += Normal;
+			}
+			if (C >= OldVerticesSize)
+			{
+				Normals[C - OldVerticesSize] += Normal;
+			}
+		}
+
+
+		// Apply normals
+		for (int32 i = 0; i < TransitionVertexCount; i++)
+		{
+			FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[i + FilteredVertexCount];
+			ProcMeshVertex.Normal = Normals[i].GetSafeNormal();
 		}
 	}
 }
@@ -799,8 +733,8 @@ void VoxelRender::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor&
 	SCOPE_CYCLE_COUNTER(STAT_GETVALUEANDCOLOR);
 	if (LIKELY((X % Step() == 0) && (Y % Step() == 0) && (Z % Step() == 0)))
 	{
-		OutValue = CachedValues[X / Step() + 18 * Y / Step() + 18 * 18 * Z / Step()];
-		OutColor = CachedColors[X / Step() + 18 * Y / Step() + 18 * 18 * Z / Step()];
+		OutValue = CachedValues[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
+		OutColor = CachedColors[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
 	}
 	else
 	{
@@ -808,22 +742,28 @@ void VoxelRender::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor&
 	}
 }
 
-
 void VoxelRender::Get2DValueAndColor(TransitionDirection Direction, int X, int Y, float& OutValue, FColor& OutColor)
 {
+	SCOPE_CYCLE_COUNTER(STAT_GET2DVALUEANDCOLOR);
 	int GX, GY, GZ;
-	Local2DToGlobal(Direction, X, Y, 0, GX, GY, GZ);
+	Local2DToGlobal(Width(), Direction, X, Y, 0, GX, GY, GZ);
+
+
+	DrawDebugPoint(World->GetWorld(), (FVector(GX, GY, GZ) + (FVector)ChunkPosition) * 100, 5, FColor::Green, false, 1000);
+
 	GetValueAndColor(GX, GY, GZ, OutValue, OutColor);
 }
 
+
 void VoxelRender::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index)
 {
-	check(0 <= X && X < 17);
-	check(0 <= Y && Y < 17);
-	check(0 <= Z && Z < 17);
+	// +1: normals offset
+	check(0 <= X + 1 && X + 1 < 17);
+	check(0 <= Y + 1 && Y + 1 < 17);
+	check(0 <= Z + 1 && Z + 1 < 17);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
-	Cache[X][Y][Z][EdgeIndex] = Index;
+	Cache[X + 1][Y + 1][Z + 1][EdgeIndex] = Index;
 }
 
 int VoxelRender::LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex)
@@ -832,12 +772,15 @@ int VoxelRender::LoadVertex(int X, int Y, int Z, short Direction, short EdgeInde
 	bool YIsDifferent = Direction & 0x02;
 	bool ZIsDifferent = Direction & 0x04;
 
-	check(0 <= X - XIsDifferent && X - XIsDifferent < 17);
-	check(0 <= Y - YIsDifferent && Y - YIsDifferent < 17);
-	check(0 <= Z - ZIsDifferent && Z - ZIsDifferent < 17);
+	// +1: normals offset
+	check(0 <= X - XIsDifferent + 1 && X - XIsDifferent + 1 < 17);
+	check(0 <= Y - YIsDifferent + 1 && Y - YIsDifferent + 1 < 17);
+	check(0 <= Z - ZIsDifferent + 1 && Z - ZIsDifferent + 1 < 17);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
-	return Cache[X - XIsDifferent][Y - YIsDifferent][Z - ZIsDifferent][EdgeIndex];
+
+	check(Cache[X - XIsDifferent + 1][Y - YIsDifferent + 1][Z - ZIsDifferent + 1][EdgeIndex] >= 0);
+	return Cache[X - XIsDifferent + 1][Y - YIsDifferent + 1][Z - ZIsDifferent + 1][EdgeIndex];
 }
 
 
@@ -863,19 +806,46 @@ int VoxelRender::LoadVertex2D(TransitionDirection Direction, int X, int Y, short
 
 	if (EdgeIndex == 8 || EdgeIndex == 9)
 	{
-		EdgeIndex -= 8;
-	}
+		int Index;
+		switch (Direction)
+		{
+		case XMin:
+			Index = EdgeIndex == 8 ? 0 : 2;
+			break;
+		case XMax:
+			Index = EdgeIndex == 8 ? 2 : 0;
+			break;
+		case YMin:
+			Index = EdgeIndex == 8 ? 2 : 1;
+			break;
+		case YMax:
+			Index = EdgeIndex == 8 ? 1 : 2;
+			break;
+		case ZMin:
+			Index = EdgeIndex == 8 ? 1 : 0;
+			break;
+		case ZMax:
+			Index = EdgeIndex == 8 ? 0 : 1;
+			break;
+		default:
+			Index = 0;
+			check(false);
+			break;
+		}
+		int GX, GY, GZ;
 
-	// TODO: remove
-	if ((X - XIsDifferent < 0 || Y - YIsDifferent < 0) && (EdgeIndex == 0 || EdgeIndex == 1))
-	{
-		return 0;
+		Local2DToGlobal(14, Direction, X - XIsDifferent, Y - YIsDifferent, -1, GX, GY, GZ);
+
+		DrawDebugPoint(World->GetWorld(), ((FVector)ChunkPosition + FVector(GX, GY, GZ)) * 100, 5, FColor::Yellow, false, 1000);
+
+		return LoadVertex(GX, GY, GZ, 0, Index);
 	}
 
 	check(0 <= X - XIsDifferent && X - XIsDifferent < 17);
 	check(0 <= Y - YIsDifferent && Y - YIsDifferent < 17);
 	check(0 <= EdgeIndex && EdgeIndex < 7);
 
+	check(Cache2D[Direction][X - XIsDifferent][Y - YIsDifferent][EdgeIndex] >= 0);
 	return Cache2D[Direction][X - XIsDifferent][Y - YIsDifferent][EdgeIndex];
 }
 
@@ -1013,11 +983,11 @@ void VoxelRender::InterpolateX2D(TransitionDirection Direction, const int MinX, 
 		check(ValueAtA - ValueAtB != 0);
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
-		int GMinX, GMaxX, GY, GZ;
-		Local2DToGlobal(Direction, MinX, Y, 0, GMinX, GY, GZ);
-		Local2DToGlobal(Direction, MaxX, Y, 0, GMaxX, GY, GZ);
+		int GMinX, GMaxX, GMinY, GMaxY, GMinZ, GMaxZ;
+		Local2DToGlobal(Width(), Direction, MinX, Y, 0, GMinX, GMinY, GMinZ);
+		Local2DToGlobal(Width(), Direction, MaxX, Y, 0, GMaxX, GMaxY, GMaxZ);
 
-		OutVector = t * FVector(GMinX, GY, GZ) + (1 - t) *  FVector(GMaxX, GY, GZ);
+		OutVector = t * FVector(GMinX, GMinY, GMinZ) + (1 - t) *  FVector(GMaxX, GMaxY, GMaxZ);
 		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
 	}
 	else
@@ -1056,11 +1026,11 @@ void VoxelRender::InterpolateY2D(TransitionDirection Direction, const int X, con
 		check(ValueAtA - ValueAtB != 0);
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
-		int GMinY, GMaxY, GX, GZ;
-		Local2DToGlobal(Direction, X, MinY, 0, GX, GMinY, GZ);
-		Local2DToGlobal(Direction, X, MaxY, 0, GX, GMaxY, GZ);
+		int GMinX, GMaxX, GMinY, GMaxY, GMinZ, GMaxZ;
+		Local2DToGlobal(Width(), Direction, X, MinY, 0, GMinX, GMinY, GMinZ);
+		Local2DToGlobal(Width(), Direction, X, MaxY, 0, GMaxX, GMaxY, GMaxZ);
 
-		OutVector = t * FVector(GX, GMinY, GZ) + (1 - t) *  FVector(GX, GMaxY, GZ);
+		OutVector = t * FVector(GMinX, GMinY, GMinZ) + (1 - t) *  FVector(GMaxX, GMaxY, GMaxZ);
 		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
 	}
 	else
@@ -1084,9 +1054,9 @@ void VoxelRender::InterpolateY2D(TransitionDirection Direction, const int X, con
 	}
 }
 
-void VoxelRender::GlobalToLocal2D(TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ)
+void VoxelRender::GlobalToLocal2D(int Width, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ)
 {
-	const int W = Width();
+	const int W = Width;
 	switch (Direction)
 	{
 	case XMin:
@@ -1125,9 +1095,9 @@ void VoxelRender::GlobalToLocal2D(TransitionDirection Direction, int GX, int GY,
 	}
 }
 
-void VoxelRender::Local2DToGlobal(TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ)
+void VoxelRender::Local2DToGlobal(int Width, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ)
 {
-	const int W = Width();
+	const int W = Width;
 	switch (Direction)
 	{
 	case XMin:
