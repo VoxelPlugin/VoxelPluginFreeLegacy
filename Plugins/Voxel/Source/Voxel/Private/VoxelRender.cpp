@@ -560,14 +560,16 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 
 		// Add transition vertexes
 
-		OutSection.ProcVertexBuffer.AddUninitialized(VerticesSize - OldVerticesSize);
-		OutSection.ProcIndexBuffer./*HACK*/AddZeroed(TrianglesSize - OldTrianglesSize);
+		const int32 TransitionsVerticesSize = VerticesSize - OldVerticesSize;
+		const int32 TransitionTrianglesSize = TrianglesSize - OldTrianglesSize;
+
+		OutSection.ProcVertexBuffer.AddUninitialized(TransitionsVerticesSize);
+		OutSection.ProcIndexBuffer.AddUninitialized(TransitionTrianglesSize);
 
 		TArray<FVector> TransitionVertex;
-		TransitionVertex.SetNumUninitialized(VerticesSize - OldVerticesSize);
+		TransitionVertex.SetNumUninitialized(TransitionsVerticesSize);
 
-		int32 TransitionVertexIndex = 0;
-		for (int i = VerticesSize - OldVerticesSize - 1; i >= 0; i--)
+		for (int TransitionVertexIndex = TransitionsVerticesSize - 1; TransitionVertexIndex >= 0; TransitionVertexIndex--)
 		{
 			FVector Vertex = Vertices.front();
 			FColor Color = Colors.front();
@@ -582,60 +584,66 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			OutSection.SectionLocalBox += Vertex;
 
 			TransitionVertex[TransitionVertexIndex] = Vertex;
-			TransitionVertexIndex++;
 		}
-		const int32 TransitionVertexCount = TransitionVertexIndex;
 
 		// Normal array to compute normals while iterating over triangles
-		Normals.SetNumZeroed(TransitionVertexCount); // Init because +=
+		Normals.SetNumZeroed(TransitionsVerticesSize); // Init because +=
 
 		int32 TransitionTriangleIndex = 0;
 		while (!Triangles.empty())
 		{
 			int32 A = Triangles.front();
-			int32 FA = A < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - A] : (OldVerticesSize + ((VerticesSize - OldVerticesSize) - (A - OldVerticesSize))) - OldVerticesSize + FilteredVertexCount; // Invert triangles because AllVertex and OutSection.ProcVertexBuffer are inverted
+			// OldVerticesSize - FilteredVertexCount because we need to offset index due to vertex removal for normals
+			int32 FA = A < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - A] : A - (OldVerticesSize - FilteredVertexCount);
 			Triangles.pop_front();
 
 			int32 B = Triangles.front();
-			int32 FB = B < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - B] : (OldVerticesSize + ((VerticesSize - OldVerticesSize) - (B - OldVerticesSize))) - OldVerticesSize + FilteredVertexCount;
+			int32 FB = B < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - B] : B - (OldVerticesSize - FilteredVertexCount);
 			Triangles.pop_front();
 
 			int32 C = Triangles.front();
-			int32 FC = C < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - C] : (OldVerticesSize + ((VerticesSize - OldVerticesSize) - (C - OldVerticesSize))) - OldVerticesSize + FilteredVertexCount;
+			int32 FC = C < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - C] : C - (OldVerticesSize - FilteredVertexCount);
 			Triangles.pop_front();
 
-			//check(FA != -1 && FB != -1 && FC != -1);
+			check(FA != -1 && FB != -1 && FC != -1);
 
-			if (FA != -1 && FB != -1 && FC != -1)
+			OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex] = FC;
+			OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex + 1] = FB;
+			OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex + 2] = FA;
+			TransitionTriangleIndex += 3;
+
+			FVector Normal;
+			if (A < OldVerticesSize)
 			{
-				OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex] = FC;
-				OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex + 1] = FB;
-				OutSection.ProcIndexBuffer[FilteredTriangleCount + TransitionTriangleIndex + 2] = FA;
-				TransitionTriangleIndex += 3;
+				Normal = OutSection.ProcVertexBuffer[FA].Normal;
+			}
+			else if (B < OldVerticesSize)
+			{
+				Normal = OutSection.ProcVertexBuffer[FB].Normal;
+			}
+			else if (C < OldVerticesSize)
+			{
+				Normal = OutSection.ProcVertexBuffer[FC].Normal;
 			}
 
-			FVector PA = A < OldVerticesSize ? AllVertex[OldVerticesSize - 1 - A] : TransitionVertex[A - OldVerticesSize];
-			FVector PB = B < OldVerticesSize ? AllVertex[OldVerticesSize - 1 - B] : TransitionVertex[B - OldVerticesSize];
-			FVector PC = C < OldVerticesSize ? AllVertex[OldVerticesSize - 1 - C] : TransitionVertex[C - OldVerticesSize];
 
-			FVector Normal = FVector::CrossProduct(PB - PA, PC - PA).GetSafeNormal();
 			if (A >= OldVerticesSize)
 			{
-				Normals[A - OldVerticesSize] += Normal;
+				Normals[FA - FilteredVertexCount] = Normal;
 			}
 			if (B >= OldVerticesSize)
 			{
-				Normals[B - OldVerticesSize] += Normal;
+				Normals[FB - FilteredVertexCount] = Normal;
 			}
 			if (C >= OldVerticesSize)
 			{
-				Normals[C - OldVerticesSize] += Normal;
+				Normals[FC - FilteredVertexCount] = Normal;
 			}
 		}
 
 
 		// Apply normals
-		for (int32 i = 0; i < TransitionVertexCount; i++)
+		for (int32 i = 0; i < TransitionsVerticesSize; i++)
 		{
 			FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[i + FilteredVertexCount];
 			ProcMeshVertex.Normal = Normals[i].GetSafeNormal();
