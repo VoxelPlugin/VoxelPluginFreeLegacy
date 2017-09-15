@@ -4,6 +4,7 @@
 #include "VoxelChunk.h"
 #include "ProceduralMeshComponent.h"
 #include "VoxelThread.h"
+#include "Misc/IQueuedWork.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
@@ -22,12 +23,6 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDele
 	ChunkHasHigherRes.SetNum(6);
 }
 
-// Called when the game starts or when spawned
-void AVoxelChunk::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
 void AVoxelChunk::Tick(float DeltaTime)
 {
 	if (!World)
@@ -35,11 +30,13 @@ void AVoxelChunk::Tick(float DeltaTime)
 		Destroy(this);
 		return;
 	}
+
 	if (bNeedSectionUpdate && Task != nullptr && Task->IsDone())
 	{
 		bNeedSectionUpdate = false;
 		UpdateSection();
 	}
+
 	if (bAdjacentChunksNeedUpdate && World->GetRebuildBorders())
 	{
 		bAdjacentChunksNeedUpdate = false;
@@ -52,6 +49,7 @@ void AVoxelChunk::Tick(float DeltaTime)
 			}
 		}
 	}
+
 	if (bNeedDeletion)
 	{
 		TimeUntilDeletion -= DeltaTime;
@@ -60,6 +58,7 @@ void AVoxelChunk::Tick(float DeltaTime)
 			Delete();
 		}
 	}
+
 	if (bUpdate)
 	{
 		bUpdate = false;
@@ -133,10 +132,9 @@ void AVoxelChunk::Update(bool bAsync)
 	// Make sure we've ticked
 	Tick(0);
 
-	bAsync = false;
-
 	if (Task == nullptr)
 	{
+		// Update ChunkHasHigherRes
 		for (int i = 0; i < 6; i++)
 		{
 			if (Depth == 0)
@@ -145,21 +143,21 @@ void AVoxelChunk::Update(bool bAsync)
 			}
 			else
 			{
-				TransitionDirection Direction = (TransitionDirection)i;
+				auto Direction = (TransitionDirection)i;
 				ChunkHasHigherRes[i] = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() < Depth);
 			}
 		}
 
-		Task = new FAsyncTask<VoxelThread>(this);
+		Task = new VoxelThread(this);
 		if (bAsync)
 		{
-			Task->StartBackgroundTask(World->GetThreadPool());
+			World->GetThreadPool()->AddQueuedWork(Task);
 			bNeedSectionUpdate = true;
 		}
 		else
 		{
-			Task->StartSynchronousTask();
-			// Avoid holes
+			Task->DoThreadedWork();
+			// Update immediately to avoid holes
 			UpdateSection();
 		}
 	}
@@ -191,16 +189,28 @@ void AVoxelChunk::Unload()
 	bNeedDeletion = true;
 	TimeUntilDeletion = World->GetDeletionDelay();
 	bAdjacentChunksNeedUpdate = true;
+
+	// If task if queued, remove it
+	if (Task != nullptr)
+	{
+		World->GetThreadPool()->RetractQueuedWork(Task);
+		delete Task;
+		Task = nullptr;
+	}
 }
 
 void AVoxelChunk::Delete()
 {
 	DebugLineBatch->Flush();
+
+	// If task if queued, remove it
 	if (Task != nullptr)
 	{
-		Task->EnsureCompletion();
+		World->GetThreadPool()->RetractQueuedWork(Task);
 		delete Task;
+		Task = nullptr;
 	}
+
 	if (this->IsValidLowLevel() && !this->IsPendingKill())
 	{
 		this->Destroy();
@@ -210,8 +220,8 @@ void AVoxelChunk::Delete()
 void AVoxelChunk::UpdateSection()
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
-	Task->EnsureCompletion();
-	PrimaryMesh->SetProcMeshSection(0, Task->GetTask().Section);
+	check(Task->IsDone());
+	PrimaryMesh->SetProcMeshSection(0, Task->GetSection());
 	delete Task;
 	Task = nullptr;
 }
