@@ -21,7 +21,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 
 	// Position in voxel space
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
-	int IntRadius = FMath::CeilToInt(Radius) + 1;
+	int IntRadius = FMath::CeilToInt(Radius) + 2;
 
 	/**
 	 * Shrink octree to speed up value access
@@ -69,7 +69,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 				FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
 				float Distance = FVector(X, Y, Z).Size();
 
-				if (Distance <= Radius + 2)
+				if (Distance <= Radius + 3)
 				{
 					float Value = FMath::Clamp(Radius - Distance, -2.f, 2.f) / 2;
 
@@ -275,7 +275,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 					{
 						DrawDebugPoint(World->GetWorld(), Hit.ImpactPoint, 2, FColor::Red, false, 1);
 					}
-					ModifiedPositions.Add(World->GlobalToLocal(Hit.ImpactPoint));
+					ModifiedPositions.Add(World->GlobalToLocal(Hit.ImpactPoint - Hit.ImpactNormal / 2 * (bAdd ? 1 : -1)));
 				}
 			}
 		}
@@ -357,10 +357,9 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 				}
 				TArray<FVector> CurrentPositions;
 				CurrentPositions.Add(Hit.ImpactPoint);
-				FVector TranslationDirection = World->GetTransform().TransformPosition(World->GetTransform().InverseTransformPosition(End - Start).GetSafeNormal());
 
-				CurrentPositions.Add(Hit.ImpactPoint - TranslationDirection);
-				CurrentPositions.Add(Hit.ImpactPoint + TranslationDirection);
+				CurrentPositions.Add(Hit.ImpactPoint - Hit.ImpactNormal / 2);
+				CurrentPositions.Add(Hit.ImpactPoint + Hit.ImpactNormal / 2);
 
 				for (FVector CurrentPosition : CurrentPositions)
 				{
