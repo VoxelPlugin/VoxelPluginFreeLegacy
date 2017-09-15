@@ -2,7 +2,6 @@
 
 #include "VoxelPrivatePCH.h"
 #include "VoxelThread.h"
-#include <forward_list>
 #include "VoxelChunk.h"
 #include "VoxelData.h"
 
@@ -16,7 +15,24 @@ VoxelThread::~VoxelThread()
 	delete Render;
 }
 
-void VoxelThread::DoWork()
+void VoxelThread::DoThreadedWork()
 {
+	IsDoneCounter.Reset();
 	Render->CreateSection(Section);
+	IsDoneCounter.Increment();
+}
+
+void VoxelThread::Abandon()
+{
+	delete this;
+}
+
+bool VoxelThread::IsDone()
+{
+	return IsDoneCounter.GetValue();
+}
+
+FProcMeshSection& VoxelThread::GetSection()
+{
+	return Section;
 }

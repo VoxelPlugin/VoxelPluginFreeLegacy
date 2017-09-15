@@ -11,24 +11,23 @@ class AVoxelChunk;
 /**
  * Thread to create mesh section
  */
-class VoxelThread : public FNonAbandonableTask
+class VoxelThread : public IQueuedWork
 {
-	friend class FAsyncTask<VoxelThread>;
-
 public:
 	VoxelThread(AVoxelChunk* VoxelChunk);
-	~VoxelThread();
+	virtual ~VoxelThread() override;
 
-	AVoxelChunk* VoxelChunk;
+	virtual void DoThreadedWork() override;
 
+	// Do not call
+	virtual void Abandon() override;
+
+	bool IsDone();
+
+	FProcMeshSection& GetSection();
+
+private:
+	FThreadSafeCounter IsDoneCounter;
 	FProcMeshSection Section;
-
 	VoxelRender* Render;
-
-	void DoWork();
-
-	FORCEINLINE TStatId GetStatId() const
-	{
-		RETURN_QUICK_DECLARE_CYCLE_STAT(VoxelThread, STATGROUP_ThreadPoolAsyncTasks);
-	}
 };

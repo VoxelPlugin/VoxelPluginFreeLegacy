@@ -90,9 +90,8 @@ public:
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 
 protected:
-	// Called when the game starts or when spawned
-	void BeginPlay() override;
 	void Tick(float DeltaTime) override;
+
 #if WITH_EDITOR
 	bool ShouldTickIfViewportsOnly() const override;
 #endif
@@ -122,7 +121,7 @@ private:
 	bool bNeedSectionUpdate;
 
 	// Async process task
-	FAsyncTask<VoxelThread>* Task;
+	VoxelThread* Task;
 
 	// If destruction of this chunk has been scheduled
 	UPROPERTY(VisibleAnywhere)
@@ -143,7 +142,7 @@ private:
 	AVoxelChunk* GetChunk(TransitionDirection Direction) const;
 
 	/**
-	 * Set PrimaryMesh section to Task section
+	 * Copy Task section to PrimaryMesh section
 	 */
 	void UpdateSection();
 };
