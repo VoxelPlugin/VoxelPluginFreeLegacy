@@ -98,6 +98,9 @@ void AVoxelChunk::Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWor
 	PrimaryMesh->bUseAsyncCooking = true;
 	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 
+	// Force world update before this
+	AddTickPrerequisiteActor(World);
+
 	// Update adjacent
 	bAdjacentChunksNeedUpdate = true;
 

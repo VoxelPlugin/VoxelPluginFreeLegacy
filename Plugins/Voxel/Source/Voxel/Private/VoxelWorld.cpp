@@ -91,6 +91,8 @@ void AVoxelWorld::Tick(float DeltaTime)
 			TimeSinceSync = 0;
 		}
 	}
+
+	ApplyQueuedUpdates();
 }
 
 AVoxelChunk* AVoxelWorld::GetChunkAt(FIntVector Position) const
@@ -128,12 +130,8 @@ FColor AVoxelWorld::GetColor(FIntVector Position) const
 
 void AVoxelWorld::UpdateCameraPosition(FVector Position)
 {
-	// Reset to avoid references to destroyed chunks
-	QueuedChunks.Reset();
 	// Recreate octree
-	MainChunkOctree->UpdateCameraPosition(this, Position);
-	// Apply updates added when recreating octree
-	ApplyQueuedUpdates(true);
+	MainChunkOctree->UpdateCameraPosition(this, Position);;
 }
 
 
@@ -186,13 +184,13 @@ FVoxelWorldSave AVoxelWorld::GetSave() const
 	return Data->GetSave();
 }
 
-void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset, bool bAsync)
+void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 {
 	if (Save.Depth == Depth)
 	{
 		auto ChunksList = Save.GetChunksList();
 		Data->LoadAndQueueUpdateFromSave(ChunksList, this, bReset);
-		ApplyQueuedUpdates(bAsync);
+		ApplyQueuedUpdates();
 	}
 	else
 	{
@@ -248,18 +246,7 @@ void AVoxelWorld::Add(FIntVector Position, float Value)
 	}
 }
 
-
-void AVoxelWorld::Update(FIntVector Position, bool bAsync)
-{
-	if (QueuedChunks.Num() != 0)
-	{
-		UE_LOG(VoxelLog, Warning, TEXT("Update called but there are still chunks in queue"));
-	}
-	QueueUpdate(Position);
-	ApplyQueuedUpdates(bAsync);
-}
-
-void AVoxelWorld::QueueUpdate(FIntVector Position)
+void AVoxelWorld::QueueUpdate(FIntVector Position, bool bAsync)
 {
 	if (!IsInWorld(Position))
 	{
@@ -275,56 +262,63 @@ void AVoxelWorld::QueueUpdate(FIntVector Position)
 	bool bYIsAtBorder = (Y % 16 == 0) && (Y != 0);
 	bool bZIsAtBorder = (Z % 16 == 0) && (Z != 0);
 
-	QueueUpdate(MainChunkOctree->GetChunk(Position));
+	QueueUpdate(MainChunkOctree->GetChunk(Position), bAsync);
 
 	if (bXIsAtBorder)
 	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 0, 0)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 0, 0)), bAsync);
 	}
 	if (bYIsAtBorder)
 	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 8, 0)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 8, 0)), bAsync);
 	}
 	if (bXIsAtBorder && bYIsAtBorder)
 	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 8, 0)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 8, 0)), bAsync);
 	}
 	if (bZIsAtBorder)
 	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 0, 8)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 0, 8)), bAsync);
 	}
 	if (bXIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 0, 8)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 0, 8)), bAsync);
 	}
 	if (bYIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 8, 8)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 8, 8)), bAsync);
 	}
 	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
 	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 8, 8)));
+		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 8, 8)), bAsync);
 	}
 }
 
-void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk)
+void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk, bool bAsync)
 {
-	QueuedChunks.Add(Chunk);
+	if (Chunk.IsValid())
+	{
+		QueuedChunks.Add(Chunk);
+		if (!bAsync)
+		{
+			ChunksToUpdateSynchronously.Add(Chunk.Pin().Get()->Id);
+		}
+	}
 }
 
 
-void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
+void AVoxelWorld::ApplyQueuedUpdates()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
-	//UE_LOG(VoxelLog, Log, TEXT("Updating %d chunks"), QueuedChunks.Num());
 
 	for (auto& Chunk : QueuedChunks)
 	{
-		TSharedPtr<ChunkOctree> LockedObserver(Chunk.Pin());
+		TSharedPtr<ChunkOctree> LockedChunk(Chunk.Pin());
 
-		if (LockedObserver.IsValid())
+		if (LockedChunk.IsValid())
 		{
-			LockedObserver->Update(bAsync);
+			bool bAsync = !ChunksToUpdateSynchronously.Contains(LockedChunk->Id);
+			LockedChunk->Update(bAsync);
 		}
 		else
 		{
@@ -332,6 +326,7 @@ void AVoxelWorld::ApplyQueuedUpdates(bool bAsync)
 		}
 	}
 	QueuedChunks.Reset();
+	ChunksToUpdateSynchronously.Reset();
 }
 
 void AVoxelWorld::UpdateAll(bool bAsync)
@@ -402,7 +397,6 @@ void AVoxelWorld::MulticastLoadArray_Implementation(const TArray<FVoxelValueDiff
 		}
 
 		Data->LoadAndQueueUpdateFromDiffArray(ValueDiffArray, ColorDiffArray, this);
-		ApplyQueuedUpdates(false);
 	}
 }
 

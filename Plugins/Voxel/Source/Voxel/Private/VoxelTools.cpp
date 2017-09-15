@@ -10,7 +10,7 @@
 #include "Engine/LocalPlayer.h"
 #include "Kismet/GameplayStatics.h"
 
-void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync, float ValueMultiplier)
+void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bAsync, float ValueMultiplier)
 {
 	if (World == nullptr)
 	{
@@ -77,30 +77,23 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 
 					if (SmallValueOctree->IsInOctree(CurrentPosition)) // Prevent crash
 					{
-						if ((Value <= 0 && bAdd) || (Value >= 0 && !bAdd) || (SmallValueOctree->GetValue(CurrentPosition) * Value >= 0))
+						if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (SmallValueOctree->GetValue(CurrentPosition) * Value > 0))
 						{
-							/*DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), 5, FColor::Red, false, 1);
-							DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::UpVector), FColor::Green, false, 1);
-							DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::RightVector), FColor::Green, false, 1);
-							DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::ForwardVector), FColor::Green, false, 1);*/
+							//DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), 5, FColor::Red, false, 1);
+							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::UpVector), FColor::Green, false, 1);
+							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::RightVector), FColor::Green, false, 1);
+							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::ForwardVector), FColor::Green, false, 1);
 							SmallValueOctree->SetValue(CurrentPosition, Value);
-							if (bQueueUpdate)
-							{
-								World->QueueUpdate(CurrentPosition);
-							}
+							World->QueueUpdate(CurrentPosition, bAsync);
 						}
 					}
 				}
 			}
 		}
 	}
-	if (bApplyUpdates)
-	{
-		World->ApplyQueuedUpdates(bAsync);
-	}
 }
 
-void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, bool bUseLayer1, float FadeDistance, bool bQueueUpdate, bool bApplyUpdates, bool bAsync)
+void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, bool bUseLayer1, float FadeDistance, bool bAsync)
 {
 	if (World == nullptr)
 	{
@@ -150,31 +143,20 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float 
 
 					// Apply changes
 					World->SetMaterial(CurrentPosition, Material);
-					if (bQueueUpdate)
-					{
-						World->QueueUpdate(CurrentPosition);
-					}
+					World->QueueUpdate(CurrentPosition, bAsync);
 				}
 				else if (Distance < Radius + FadeDistance + 2 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
 				{
 					Material.Alpha = bUseLayer1 ? 1 : 0;
 					World->SetMaterial(CurrentPosition, Material);
-					if (bQueueUpdate)
-					{
-						World->QueueUpdate(CurrentPosition);
-					}
+					World->QueueUpdate(CurrentPosition, bAsync);
 				}
 			}
 		}
 	}
-	if (bApplyUpdates)
-	{
-		World->ApplyQueuedUpdates(bAsync);
-	}
 }
 
-void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radius, float Height, bool bAdd, bool bQueueUpdate, bool bApplyUpdates, bool bAsync,
-							   float ValueMultiplier)
+void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radius, float Height, bool bAdd, bool bAsync, float ValueMultiplier)
 {
 	if (World == nullptr)
 	{
@@ -207,24 +189,17 @@ void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radi
 					if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
 					{
 						World->SetValue(CurrentPosition, Value);
-						if (bQueueUpdate)
-						{
-							World->QueueUpdate(CurrentPosition);
-						}
+						World->QueueUpdate(CurrentPosition, bAsync);
 					}
 				}
 			}
 		}
 	}
-	if (bApplyUpdates)
-	{
-		World->ApplyQueuedUpdates(bAsync);
-	}
 }
 
 // TODO: Rewrite
-void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Stength, bool bAdd, float MaxDistance, bool bQueueUpdate,
-									 bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
+void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Stength, bool bAdd,
+									 float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
 {
 	if (World == nullptr)
 	{
@@ -290,20 +265,13 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 		{
 			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) + Stength, MinValue, MaxValue));
 		}
-		if (bQueueUpdate)
-		{
-			World->QueueUpdate(Point);
-		}
-	}
-	if (bApplyUpdates)
-	{
-		World->ApplyQueuedUpdates(bAsync);
+		World->QueueUpdate(Point, bAsync);
 	}
 }
 
 // TODO: Rewrite
-void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, bool bUseLayer1, float FadeDistance, float MaxDistance,
-										bool bQueueUpdate, bool bApplyUpdates, bool bAsync, bool bDebugLines, bool bDebugPoints)
+void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, bool bUseLayer1,
+										float FadeDistance, float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints)
 {
 	if (World == NULL)
 	{
@@ -398,33 +366,22 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 
 							// Apply changes
 							World->SetMaterial(CurrentLocalPosition, Material);
-							if (bQueueUpdate)
-							{
-								World->QueueUpdate(CurrentLocalPosition);
-							}
+							World->QueueUpdate(CurrentLocalPosition, bAsync);
 						}
 						else if (Distance < Radius + FadeDistance + 3 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
 						{
 							Material.Alpha = bUseLayer1 ? 1 : 0;
 							World->SetMaterial(CurrentLocalPosition, Material);
-							if (bQueueUpdate)
-							{
-								World->QueueUpdate(CurrentLocalPosition);
-							}
+							World->QueueUpdate(CurrentLocalPosition, bAsync);
 						}
 					}
 				}
 			}
 		}
 	}
-
-	if (bApplyUpdates)
-	{
-		World->ApplyQueuedUpdates(bAsync);
-	}
 }
 
-void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, float Speed, float MaxDistance, bool bQueueUpdate, bool bApplyUpdates,
+void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, float Speed, float MaxDistance,
 							  bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
 {
 	if (World == nullptr)
@@ -524,14 +481,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 		float Distance = DistancesToTool[i];
 		float Delta = Speed * (MeanDistance - Distance);
 		World->SetValue(Point, FMath::Clamp(Delta + World->GetValue(Point), MinValue, MaxValue));
-		if (bQueueUpdate)
-		{
-			World->QueueUpdate(Point);
-		}
-	}
-	if (bApplyUpdates)
-	{
-		World->ApplyQueuedUpdates(bAsync);
+		World->QueueUpdate(Point, bAsync);
 	}
 }
 

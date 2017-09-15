@@ -51,7 +51,7 @@ public:
 
 	FColor GetColor(FIntVector Position) const;
 
-	void QueueUpdate(TWeakPtr<ChunkOctree> Chunk);
+	void QueueUpdate(TWeakPtr<ChunkOctree> Chunk, bool bAsync);
 
 	void Load();
 	void Unload();
@@ -88,23 +88,12 @@ public:
 		void Add(FIntVector Position, float Value);
 
 	/**
-	 * Update chunk
+	 * Add chunk to update queue that will be processed at the end of the frame
 	 * @param	Position	Position in voxel space
-	 * @param	bAsync		Async?
+	 * @param	bAsync		Async update?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Update(FIntVector Position, bool bAsync = true);
-	/**
-	 * Add chunk to update queue
-	 * @param	Position	Position in voxel space
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void QueueUpdate(FIntVector Position);
-	/**
-	 * Update all chunks in queue
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ApplyQueuedUpdates(bool bAsync = true);
+		void QueueUpdate(FIntVector Position, bool bAsync);
 
 	/**
 	 * Update all chunks
@@ -168,10 +157,9 @@ public:
 	 * Load world from save
 	 * @param	Save	Save to load from
 	 * @param	bReset	Reset existing world? Set to false only if current world is unmodified
-	 * @param	bAsync	Update async?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void LoadFromSave(FVoxelWorldSave Save, bool bReset = true, bool bAsync = true);
+		void LoadFromSave(FVoxelWorldSave Save, bool bReset = true);
 
 	/**
 	 * Sync world over network
@@ -242,6 +230,8 @@ private:
 
 	// Chunks waiting for update
 	TSet<TWeakPtr<ChunkOctree>> QueuedChunks;
+	// Chunk that needs to be updated synchronously
+	TSet<uint64> ChunksToUpdateSynchronously;
 
 
 
@@ -250,4 +240,9 @@ private:
 	FQueuedThreadPool* ThreadPool;
 
 	VoxelData* Data;
+
+	/**
+	* Update all chunks in queue
+	*/
+	void ApplyQueuedUpdates();
 };

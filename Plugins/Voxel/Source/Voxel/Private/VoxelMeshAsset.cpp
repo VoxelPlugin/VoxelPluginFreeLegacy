@@ -271,10 +271,9 @@ void AVoxelMeshAsset::ImportIntoWorld(AVoxelWorld* World, FIntVector Position, b
 				if (IsInside[Index] || Values[Index] * World->GetValue(CurrentPosition) > 0)
 				{
 					World->SetValue(CurrentPosition, Values[Index] * ValueMultiplier);
-					World->QueueUpdate(CurrentPosition);
+					World->QueueUpdate(CurrentPosition, bAsync);
 				}
 			}
 		}
 	}
-	World->ApplyQueuedUpdates(bAsync);
 }
