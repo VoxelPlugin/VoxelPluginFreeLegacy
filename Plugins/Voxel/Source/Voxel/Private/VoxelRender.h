@@ -55,8 +55,8 @@ private:
 	void InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha);
 	void InterpolateY2D(TransitionDirection Direction, const int X, const int MinY, const int MaxY, FVector& OutVector, uint8& OutAlpha);
 
-	FORCEINLINE void GlobalToLocal2D(TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ);
-	FORCEINLINE void Local2DToGlobal(TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ);
+	FORCEINLINE void GlobalToLocal2D(int Width, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ);
+	FORCEINLINE void Local2DToGlobal(int Width, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ);
 
 	FORCEINLINE FVector GetTranslated(const FVector Vertex, const FVector Normal);
 };

@@ -133,6 +133,8 @@ void AVoxelChunk::Update(bool bAsync)
 	// Make sure we've ticked
 	Tick(0);
 
+	bAsync = false;
+
 	if (Task == nullptr)
 	{
 		for (int i = 0; i < 6; i++)
