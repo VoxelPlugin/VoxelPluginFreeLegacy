@@ -3,11 +3,13 @@
 #include "Transvoxel.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Cache"), STAT_CACHE, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Iter"), STAT_ITER, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Main Iter"), STAT_MAIN_ITER, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Transitions Iter"), STAT_TRANSITIONS_ITER, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ CreateSection"), STAT_CREATE_SECTION, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Add transitions to Section"), STAT_ADD_TRANSITIONS_TO_SECTION, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ MajorColor"), STAT_MAJOR_COLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Get2DValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
 
 VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes)
 	: Depth(Depth),
@@ -73,7 +75,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 	int TrianglesSize = 0;
 
 	{
-		SCOPE_CYCLE_COUNTER(STAT_ITER);
+		SCOPE_CYCLE_COUNTER(STAT_MAIN_ITER);
 		// Iterate over cubes
 		for (int CubeX = 0; CubeX < 6; CubeX++)
 		{
@@ -284,6 +286,9 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 		}
 	}
 
+	TArray<int32> AllToFiltered;
+	int32 FilteredVertexCount;
+	int32 FilteredTriangleCount;
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CREATE_SECTION);
 		// Create section
@@ -298,13 +303,11 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			return;
 		}
 
-
 		OutSection.ProcVertexBuffer.SetNumUninitialized(VerticesSize);
 		OutSection.ProcIndexBuffer.SetNumUninitialized(TrianglesSize);
 
 		// We create 2 vertex arrays: one with all the vertex (AllVertex), and one without vertex that are only for normal computation (FilteredVertex) which is the Section array
-		// To do so we create bijection between the 2 arrays
-		TArray<int32> AllToFiltered;
+		// To do so we create bijection between the 2 arrays (AllToFiltered)
 		AllToFiltered.SetNumUninitialized(VerticesSize);
 
 		TArray<FVector> AllVertex;
@@ -343,12 +346,12 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			AllVertex[AllVertexIndex] = Vertex;
 			AllVertexIndex++;
 		}
-		const int32 FilteredVertexCount = FilteredVertexIndex;
+		FilteredVertexCount = FilteredVertexIndex;
 		OutSection.ProcVertexBuffer.SetNum(FilteredVertexCount);
 
 		// Normal array to compute normals while iterating over triangles
 		TArray<FVector> Normals;
-		Normals.SetNumZeroed(FilteredVertexCount); // Init because +=
+		Normals.SetNumZeroed(FilteredVertexCount); // Zeroed because +=
 
 		int32 FilteredTriangleIndex = 0;
 		while (!Triangles.empty())
@@ -392,7 +395,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 				Normals[FC] += Normal;
 			}
 		}
-		const int32 FilteredTriangleCount = FilteredTriangleIndex;;
+		FilteredTriangleCount = FilteredTriangleIndex;;
 		OutSection.ProcIndexBuffer.SetNum(FilteredTriangleCount);
 
 
@@ -403,12 +406,15 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 			ProcMeshVertex.Normal = Normals[i].GetSafeNormal();
 			ProcMeshVertex.Position = GetTranslated(ProcMeshVertex.Position, ProcMeshVertex.Normal);
 		}
+	}
 
+	check(Vertices.empty());
+	check(Triangles.empty());
+	const int OldVerticesSize = VerticesSize;
+	const int OldTrianglesSize = TrianglesSize;
 
-		check(Vertices.empty());
-		check(Triangles.empty());
-		const int OldVerticesSize = VerticesSize;
-		const int OldTrianglesSize = TrianglesSize;
+	{
+		SCOPE_CYCLE_COUNTER(STAT_TRANSITIONS_ITER);
 
 		for (int DirectionIndex = 0; DirectionIndex < 6; DirectionIndex++)
 		{
@@ -555,9 +561,10 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 				}
 			}
 		}
+	}
 
-
-		// Add transition vertexes
+	{
+		SCOPE_CYCLE_COUNTER(STAT_ADD_TRANSITIONS_TO_SECTION);
 
 		const int32 TransitionsVerticesSize = VerticesSize - OldVerticesSize;
 		const int32 TransitionTrianglesSize = TrianglesSize - OldTrianglesSize;
@@ -586,7 +593,8 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 		}
 
 		// Normal array to compute normals while iterating over triangles
-		Normals.SetNumZeroed(TransitionsVerticesSize); // Init because +=
+		TArray<FVector> Normals;
+		Normals.SetNumUninitialized(TransitionsVerticesSize);
 
 		int32 TransitionTriangleIndex = 0;
 		while (!Triangles.empty())
