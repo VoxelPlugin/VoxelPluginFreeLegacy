@@ -8,13 +8,11 @@
 class VoxelRender
 {
 public:
-	VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition, UWorld* World, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes);
+	VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes);
 
 	void CreateSection(FProcMeshSection& OutSection);
 
 private:
-	const UWorld* World;
-
 	const int Depth;
 	const FIntVector ChunkPosition;
 

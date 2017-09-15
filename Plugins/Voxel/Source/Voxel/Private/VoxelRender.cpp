@@ -1,7 +1,6 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelRender.h"
 #include "Transvoxel.h"
-#include "DrawDebugHelpers.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Cache"), STAT_CACHE, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ Iter"), STAT_ITER, STATGROUP_Voxel);
@@ -10,9 +9,8 @@ DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ MajorColor"), STAT_MAJOR_COLOR, STATGROUP
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ GetValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
 
-VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition, UWorld* World, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes)
-	: World(World),
-	Depth(Depth),
+VoxelRender::VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes)
+	: Depth(Depth),
 	Data(Data),
 	ChunkPosition(ChunkPosition),
 	ChunkHasHigherRes(ChunkHasHigherRes)
@@ -412,7 +410,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 		const int OldVerticesSize = VerticesSize;
 		const int OldTrianglesSize = TrianglesSize;
 
-		for (int DirectionIndex = 0; DirectionIndex < 1; DirectionIndex++)
+		for (int DirectionIndex = 0; DirectionIndex < 6; DirectionIndex++)
 		{
 			auto Direction = (TransitionDirection)DirectionIndex;
 
@@ -522,6 +520,7 @@ void VoxelRender::CreateSection(FProcMeshSection& OutSection)
 									}
 									else
 									{
+										Alpha = 0;
 										checkf(false, TEXT("Error in interpolation: case should not exist"));
 									}
 
@@ -756,9 +755,6 @@ void VoxelRender::Get2DValueAndColor(TransitionDirection Direction, int X, int Y
 	int GX, GY, GZ;
 	Local2DToGlobal(Width(), Direction, X, Y, 0, GX, GY, GZ);
 
-
-	DrawDebugPoint(World->GetWorld(), (FVector(GX, GY, GZ) + (FVector)ChunkPosition) * 100, 5, FColor::Green, false, 1000);
-
 	GetValueAndColor(GX, GY, GZ, OutValue, OutColor);
 }
 
@@ -843,8 +839,6 @@ int VoxelRender::LoadVertex2D(TransitionDirection Direction, int X, int Y, short
 		int GX, GY, GZ;
 
 		Local2DToGlobal(14, Direction, X - XIsDifferent, Y - YIsDifferent, -1, GX, GY, GZ);
-
-		DrawDebugPoint(World->GetWorld(), ((FVector)ChunkPosition + FVector(GX, GY, GZ)) * 100, 5, FColor::Yellow, false, 1000);
 
 		return LoadVertex(GX, GY, GZ, 0, Index);
 	}
