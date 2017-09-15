@@ -180,14 +180,14 @@ void ValueOctree::LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArr
 				check(Values.Num() == 4096);
 				check(Colors.Num() == 4096);
 				SaveArray.pop_front();
-				World->QueueUpdate(Position);
-				World->QueueUpdate(Position - FIntVector(Width(), 0, 0));
-				World->QueueUpdate(Position - FIntVector(0, Width(), 0));
-				World->QueueUpdate(Position - FIntVector(Width(), Width(), 0));
-				World->QueueUpdate(Position - FIntVector(0, 0, Width()));
-				World->QueueUpdate(Position - FIntVector(Width(), 0, Width()));
-				World->QueueUpdate(Position - FIntVector(0, Width(), Width()));
-				World->QueueUpdate(Position - FIntVector(Width(), Width(), Width()));
+				World->QueueUpdate(Position, false);
+				World->QueueUpdate(Position - FIntVector(Width(), 0, 0), false);
+				World->QueueUpdate(Position - FIntVector(0, Width(), 0), false);
+				World->QueueUpdate(Position - FIntVector(Width(), Width(), 0), false);
+				World->QueueUpdate(Position - FIntVector(0, 0, Width()), false);
+				World->QueueUpdate(Position - FIntVector(Width(), 0, Width()), false);
+				World->QueueUpdate(Position - FIntVector(0, Width(), Width()), false);
+				World->QueueUpdate(Position - FIntVector(Width(), Width(), Width()), false);
 			}
 		}
 		else
@@ -281,7 +281,7 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValue
 				Index = (Index - Y) / 16;
 				int Z = Index;
 
-				World->QueueUpdate(LocalToGlobal(FIntVector(X, Y, Z)));
+				World->QueueUpdate(LocalToGlobal(FIntVector(X, Y, Z)), false);
 
 				if (World->bDebugMultiplayer)
 				{
@@ -307,7 +307,7 @@ void ValueOctree::LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValue
 				Index = (Index - Y) / 16;
 				int Z = Index;
 
-				World->QueueUpdate(LocalToGlobal(FIntVector(X, Y, Z)));
+				World->QueueUpdate(LocalToGlobal(FIntVector(X, Y, Z)), false);
 
 				if (World->bDebugMultiplayer)
 				{
@@ -414,14 +414,14 @@ void ValueOctree::QueueUpdateOfDirtyChunks(AVoxelWorld* World)
 	{
 		if (IsLeaf())
 		{
-			World->QueueUpdate(Position);
-			World->QueueUpdate(Position - FIntVector(Width(), 0, 0));
-			World->QueueUpdate(Position - FIntVector(0, Width(), 0));
-			World->QueueUpdate(Position - FIntVector(Width(), Width(), 0));
-			World->QueueUpdate(Position - FIntVector(0, 0, Width()));
-			World->QueueUpdate(Position - FIntVector(Width(), 0, Width()));
-			World->QueueUpdate(Position - FIntVector(0, Width(), Width()));
-			World->QueueUpdate(Position - FIntVector(Width(), Width(), Width()));
+			World->QueueUpdate(Position, false);
+			World->QueueUpdate(Position - FIntVector(Width(), 0, 0), false);
+			World->QueueUpdate(Position - FIntVector(0, Width(), 0), false);
+			World->QueueUpdate(Position - FIntVector(Width(), Width(), 0), false);
+			World->QueueUpdate(Position - FIntVector(0, 0, Width()), false);
+			World->QueueUpdate(Position - FIntVector(Width(), 0, Width()), false);
+			World->QueueUpdate(Position - FIntVector(0, Width(), Width()), false);
+			World->QueueUpdate(Position - FIntVector(Width(), Width(), Width()), false);
 		}
 		else
 		{

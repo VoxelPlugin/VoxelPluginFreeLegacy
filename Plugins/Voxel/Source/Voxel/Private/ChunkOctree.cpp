@@ -172,7 +172,7 @@ void ChunkOctree::Load(AVoxelWorld* World)
 
 	VoxelChunk = World->GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
 	VoxelChunk->Init(Position - FIntVector(1, 1, 1) * Width() / 2, Depth, World);
-	World->QueueUpdate(AsShared());
+	World->QueueUpdate(AsShared(), true);
 	bHasChunk = true;
 }
 
