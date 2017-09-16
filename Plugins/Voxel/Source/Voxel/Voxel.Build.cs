@@ -26,6 +26,8 @@ namespace UnrealBuildTool.Rules
                     "Engine",
                     "ProceduralMeshComponent",
                     "Landscape",
+                    "Sockets",
+                    "Networking"
                 }
                 );
 

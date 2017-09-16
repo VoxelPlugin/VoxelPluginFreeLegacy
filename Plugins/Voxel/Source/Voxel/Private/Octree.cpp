@@ -42,7 +42,7 @@ bool Octree::IsInOctree(int X, int Y, int Z) const
 FIntVector Octree::LocalToGlobal(FIntVector LocalPosition) const
 {
 	FIntVector GlobalPosition;
-	GlobalToLocal(LocalPosition.X, LocalPosition.Y, LocalPosition.Z, LocalPosition.X, LocalPosition.Y, LocalPosition.Z);
+	LocalToGlobal(LocalPosition.X, LocalPosition.Y, LocalPosition.Z, GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z);
 	return GlobalPosition;
 }
 

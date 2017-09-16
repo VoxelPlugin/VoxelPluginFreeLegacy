@@ -211,12 +211,14 @@ private:
 		bool bAutoUpdateCameraPosition;
 
 	/**
-	 * Load server world
+	 * Sync world
 	 * @param	ValueDiffArray	Values diff array
 	 * @param	ColorDiffArray	Colors diff array
 	 */
 	UFUNCTION(NetMulticast, Reliable)
-		void MulticastLoadArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray);
+		void MulticastSyncValues(const TArray<FVoxelValueDiff>& ValueDiffArray);
+	UFUNCTION(NetMulticast, Reliable)
+		void MulticastSyncColors(const TArray<FVoxelColorDiff>& ColorDiffArray);
 
 	// Instanced world generator
 	UPROPERTY()
