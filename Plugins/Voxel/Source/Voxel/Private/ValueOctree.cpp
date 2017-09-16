@@ -432,3 +432,54 @@ void ValueOctree::QueueUpdateOfDirtyChunks(AVoxelWorld* World)
 		}
 	}
 }
+
+TSharedPtr<ValueOctree> ValueOctree::GetCopy()
+{
+	TSharedPtr<ValueOctree> NewOctree = MakeShareable(new ValueOctree(bMultiplayer, WorldGenerator, Position, Depth, Id));
+
+	if (Depth == 0)
+	{
+		TArray<float, TFixedAllocator<16 * 16 * 16>> ValuesCopy;
+		TArray<FColor, TFixedAllocator<16 * 16 * 16>> ColorsCopy;
+
+		if (IsDirty())
+		{
+			ValuesCopy.SetNumUninitialized(4096);
+			ColorsCopy.SetNumUninitialized(4096);
+
+			for (int X = 0; X < 16; X++)
+			{
+				for (int Y = 0; Y < 16; Y++)
+				{
+					for (int Z = 0; Z < 16; Z++)
+					{
+						ValuesCopy[X + 16 * Y + 16 * 16 * Z] = Values[X + 16 * Y + 16 * 16 * Z];
+						ColorsCopy[X + 16 * Y + 16 * 16 * Z] = Colors[X + 16 * Y + 16 * 16 * Z];
+					}
+				}
+			}
+		}
+
+		NewOctree->Values = ValuesCopy;
+		NewOctree->Colors = ColorsCopy;
+		NewOctree->bHasChilds = false;
+		NewOctree->bIsDirty = bIsDirty;
+	}
+	else if (IsLeaf())
+	{
+		NewOctree->bHasChilds = false;
+		check(!bIsDirty);
+		NewOctree->bIsDirty = false;
+	}
+	else
+	{
+		NewOctree->bHasChilds = true;
+		check(bIsDirty);
+		NewOctree->bIsDirty = true;
+		for (auto Child : Childs)
+		{
+			NewOctree->Childs.Add(Child->GetCopy().Get());
+		}
+	}
+	return NewOctree;
+}

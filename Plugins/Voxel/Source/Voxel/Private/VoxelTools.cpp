@@ -77,7 +77,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 
 					if (SmallValueOctree->IsInOctree(CurrentPosition)) // Prevent crash
 					{
-						if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (SmallValueOctree->GetValue(CurrentPosition) * Value > 0))
+						if ((bAdd && (Value <= 0 || SmallValueOctree->GetValue(CurrentPosition) * Value >= 0)) || (!bAdd && (Value > 0 || SmallValueOctree->GetValue(CurrentPosition) * Value > 0)))
 						{
 							//DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), 5, FColor::Red, false, 1);
 							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::UpVector), FColor::Green, false, 1);
@@ -536,7 +536,7 @@ void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, f
 
 void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches)
 {
-	UE_LOG(VoxelLog, Log, TEXT("Client adress: %s"),  *PlayerController->GetPlayerNetworkAddress());
+	UE_LOG(VoxelLog, Log, TEXT("Client adress: %s"), *PlayerController->GetPlayerNetworkAddress());
 	UE_LOG(VoxelLog, Log, TEXT("Server adress: %s"), *PlayerController->GetServerNetworkAddress());
 
 	ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(PlayerController->Player);
@@ -571,5 +571,158 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 	else
 	{
 		Branches = EBlueprintSuccess::Failed;
+	}
+}
+
+void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float Radius, float Speed, bool bAsync /*= false*/, float ValueMultiplier /*= 1*/)
+{
+	if (World == nullptr)
+	{
+		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		return;
+	}
+	check(World);
+
+	// Position in voxel space
+	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	int IntRadius = FMath::CeilToInt(Radius) + 2;
+
+	/**
+	* Shrink octree to speed up value access
+	*/
+	// Corners of the box where modified values are
+	TArray<FIntVector> Corners = {
+		LocalPosition + FIntVector(-IntRadius, -IntRadius, -IntRadius),
+		LocalPosition + FIntVector(+IntRadius, -IntRadius, -IntRadius),
+		LocalPosition + FIntVector(-IntRadius, +IntRadius, -IntRadius),
+		LocalPosition + FIntVector(+IntRadius, +IntRadius, -IntRadius),
+		LocalPosition + FIntVector(-IntRadius, -IntRadius, +IntRadius),
+		LocalPosition + FIntVector(+IntRadius, -IntRadius, +IntRadius),
+		LocalPosition + FIntVector(-IntRadius, +IntRadius, +IntRadius),
+		LocalPosition + FIntVector(+IntRadius, +IntRadius, +IntRadius)
+	};
+
+	// Get smallest octree
+	ValueOctree* SmallValueOctree = World->GetValueOctree().Get();
+	ValueOctree* OldSmallValueOctree = SmallValueOctree;
+	check(SmallValueOctree);
+
+	bool ContinueShrinking = true;
+	while (ContinueShrinking)
+	{
+		ContinueShrinking = !SmallValueOctree->IsLeaf();
+		for (auto Corner : Corners)
+		{
+			ContinueShrinking = ContinueShrinking && SmallValueOctree->IsInOctree(Corner);
+		}
+
+		if (ContinueShrinking)
+		{
+			OldSmallValueOctree = SmallValueOctree;
+			SmallValueOctree = SmallValueOctree->GetChild(Corners[0]);
+		}
+	}
+	SmallValueOctree = OldSmallValueOctree;
+
+	auto SmallValueOctreeCopy = SmallValueOctree;
+
+	for (int Z = -IntRadius + 1; Z < IntRadius; Z++)
+	{
+		for (int Y = -IntRadius + 1; Y < IntRadius; Y++)
+		{
+			for (int X = -IntRadius + 1; X < IntRadius; X++)
+			{
+				const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
+				float CurrentValue = SmallValueOctreeCopy->GetValue(CurrentPosition);
+
+				if (CurrentValue < ValueMultiplier)
+				{
+					const FIntVector BelowPosition = CurrentPosition + FIntVector(0, 0, -1);
+					const float BelowValue = SmallValueOctreeCopy->GetValue(BelowPosition);
+
+					float DownDeltaValue = 0;
+
+					if (Z != 1 - IntRadius && CurrentValue < BelowValue && BelowValue > -ValueMultiplier)
+					{
+						DownDeltaValue = FMath::Clamp(BelowValue - CurrentValue, 0.f, Speed);
+
+						SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DownDeltaValue);
+						SmallValueOctree->SetValue(BelowPosition, BelowValue - DownDeltaValue);
+
+						World->QueueUpdate(CurrentPosition, bAsync);
+						World->QueueUpdate(BelowPosition, bAsync);
+
+						CurrentValue = CurrentValue + DownDeltaValue;
+					}
+
+					if (DownDeltaValue < Speed / 2)
+					{
+						const FIntVector ForwardPosition = CurrentPosition + FIntVector(1, 0, 0);
+						const float ForwardValue = SmallValueOctreeCopy->GetValue(ForwardPosition);
+
+						if (X != IntRadius - 1 && CurrentValue < ForwardValue && ForwardValue > -ValueMultiplier)
+						{
+							float DeltaValue = FMath::Clamp(ForwardValue - CurrentValue, 0.f, Speed) / 4;
+
+							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+							SmallValueOctree->SetValue(ForwardPosition, ForwardValue - DeltaValue);
+
+							World->QueueUpdate(CurrentPosition, bAsync);
+							World->QueueUpdate(ForwardPosition, bAsync);
+
+							CurrentValue = CurrentValue + DeltaValue;
+						}
+
+						const FIntVector BackPosition = CurrentPosition + FIntVector(-1, 0, 0);
+						const float BackValue = SmallValueOctreeCopy->GetValue(BackPosition);
+
+						if (X != 1 - IntRadius && CurrentValue < BackValue && BackValue > -ValueMultiplier)
+						{
+							float DeltaValue = FMath::Clamp(BackValue - CurrentValue, 0.f, Speed) / 3;
+
+							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+							SmallValueOctree->SetValue(BackPosition, BackValue - DeltaValue);
+
+							World->QueueUpdate(CurrentPosition, bAsync);
+							World->QueueUpdate(BackPosition, bAsync);
+
+							CurrentValue = CurrentValue + DeltaValue;
+						}
+
+						const FIntVector RightPosition = CurrentPosition + FIntVector(0, 1, 0);
+						const float RightValue = SmallValueOctreeCopy->GetValue(RightPosition);
+
+						if (Y != IntRadius - 1 && CurrentValue < RightValue && RightValue > -ValueMultiplier)
+						{
+							float DeltaValue = FMath::Clamp(RightValue - CurrentValue, 0.f, Speed) / 2;
+
+							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+							SmallValueOctree->SetValue(RightPosition, RightValue - DeltaValue);
+
+							World->QueueUpdate(CurrentPosition, bAsync);
+							World->QueueUpdate(RightPosition, bAsync);
+
+							CurrentValue = CurrentValue + DeltaValue;
+						}
+
+						const FIntVector LeftPosition = CurrentPosition + FIntVector(0, -1, 0);
+						const float LeftValue = SmallValueOctreeCopy->GetValue(LeftPosition);
+
+						if (Y != 1 - IntRadius && CurrentValue < LeftValue && LeftValue > -ValueMultiplier)
+						{
+							float DeltaValue = FMath::Clamp(LeftValue - CurrentValue, 0.f, Speed) / 1;
+
+							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+							SmallValueOctree->SetValue(LeftPosition, LeftValue - DeltaValue);
+
+							World->QueueUpdate(CurrentPosition, bAsync);
+							World->QueueUpdate(LeftPosition, bAsync);
+
+							CurrentValue = CurrentValue + DeltaValue;
+						}
+					}
+				}
+			}
+		}
 	}
 }
