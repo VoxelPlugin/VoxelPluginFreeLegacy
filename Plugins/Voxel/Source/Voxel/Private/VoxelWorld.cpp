@@ -123,7 +123,7 @@ FColor AVoxelWorld::GetColor(FIntVector Position) const
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(VoxelLog, Error, TEXT("Get color: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return FColor::Black;
 	}
 }
@@ -143,7 +143,7 @@ float AVoxelWorld::GetValue(FIntVector Position) const
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(VoxelLog, Error, TEXT("Get value: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return 0;
 	}
 }
@@ -162,7 +162,7 @@ void AVoxelWorld::SetValue(FIntVector Position, float Value)
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(VoxelLog, Error, TEXT("Get material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 
@@ -174,7 +174,7 @@ void AVoxelWorld::SetMaterial(FIntVector Position, FVoxelMaterial Material)
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(VoxelLog, Error, TEXT("Set material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 
@@ -207,22 +207,18 @@ void AVoxelWorld::Sync()
 
 	while (!ValueDiffPacketsList.empty() || !ColorDiffPacketsList.empty())
 	{
-		TArray<FVoxelValueDiff> ValueDiffArray;
-		TArray<FVoxelColorDiff> ColorDiffArray;
 
 		if (!ValueDiffPacketsList.empty())
 		{
-			ValueDiffArray = ValueDiffPacketsList.front();
+			MulticastSyncValues(ValueDiffPacketsList.front());
 			ValueDiffPacketsList.pop_front();
 		}
 
 		if (!ColorDiffPacketsList.empty())
 		{
-			ColorDiffArray = ColorDiffPacketsList.front();
+			MulticastSyncColors(ColorDiffPacketsList.front());
 			ColorDiffPacketsList.pop_front();
 		}
-
-		MulticastLoadArray(ValueDiffArray, ColorDiffArray);
 	}
 }
 
@@ -242,7 +238,7 @@ void AVoxelWorld::Add(FIntVector Position, float Value)
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Not in world"));
+		UE_LOG(VoxelLog, Error, TEXT("Add: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 
@@ -250,7 +246,7 @@ void AVoxelWorld::QueueUpdate(FIntVector Position, bool bAsync)
 {
 	if (!IsInWorld(Position))
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Not in world"));
+		UE_LOG(VoxelLog, Error, TEXT("QueueUpdate: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return;
 	}
 
@@ -305,7 +301,6 @@ void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk, bool bAsync)
 		}
 	}
 }
-
 
 void AVoxelWorld::ApplyQueuedUpdates()
 {
@@ -386,20 +381,31 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 #endif // WITH_EDITOR
 
 
-void AVoxelWorld::MulticastLoadArray_Implementation(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray)
+void AVoxelWorld::MulticastSyncValues_Implementation(const TArray<FVoxelValueDiff>& ValueDiffArray)
 {
 	if (!(GetNetMode() < ENetMode::NM_Client))
 	{
 		if (bDebugMultiplayer)
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d values"), ValueDiffArray.Num()));
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d colors"), ColorDiffArray.Num()));
 		}
 
-		Data->LoadAndQueueUpdateFromDiffArray(ValueDiffArray, ColorDiffArray, this);
+		Data->LoadAndQueueUpdateFromDiffArray(ValueDiffArray, TArray<FVoxelColorDiff>(), this);
 	}
 }
 
+void AVoxelWorld::MulticastSyncColors_Implementation(const TArray<FVoxelColorDiff>& ColorDiffArray)
+{
+	if (!(GetNetMode() < ENetMode::NM_Client))
+	{
+		if (bDebugMultiplayer)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Loading %d colors"), ColorDiffArray.Num()));
+		}
+
+		Data->LoadAndQueueUpdateFromDiffArray(TArray<FVoxelValueDiff>(), ColorDiffArray, this);
+	}
+}
 
 bool AVoxelWorld::IsInWorld(FIntVector Position) const
 {

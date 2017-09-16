@@ -59,7 +59,7 @@ void VoxelData::SetValue(FIntVector Position, float Value) const
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(VoxelLog, Fatal, TEXT("Set value: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 
@@ -80,7 +80,7 @@ void VoxelData::SetColor(FIntVector Position, FColor Color) const
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Fatal, TEXT("Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(VoxelLog, Fatal, TEXT("Set color: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 

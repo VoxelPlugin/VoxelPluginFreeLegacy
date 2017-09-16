@@ -536,6 +536,9 @@ void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, f
 
 void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches)
 {
+	UE_LOG(VoxelLog, Log, TEXT("Client adress: %s"),  *PlayerController->GetPlayerNetworkAddress());
+	UE_LOG(VoxelLog, Log, TEXT("Server adress: %s"), *PlayerController->GetServerNetworkAddress());
+
 	ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(PlayerController->Player);
 
 	if (PlayerController->GetLocalPlayer() && PlayerController->GetLocalPlayer()->ViewportClient)
