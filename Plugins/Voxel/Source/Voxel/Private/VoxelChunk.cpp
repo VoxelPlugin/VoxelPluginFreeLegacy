@@ -5,6 +5,7 @@
 #include "ProceduralMeshComponent.h"
 #include "VoxelThread.h"
 #include "Misc/IQueuedWork.h"
+#include "AI/Navigation/NavigationSystem.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
@@ -227,6 +228,8 @@ void AVoxelChunk::UpdateSection()
 	PrimaryMesh->SetProcMeshSection(0, Task->GetSection());
 	delete Task;
 	Task = nullptr;
+
+	UNavigationSystem::UpdateComponentInNavOctree(*PrimaryMesh);
 }
 
 int AVoxelChunk::GetDepth() const
