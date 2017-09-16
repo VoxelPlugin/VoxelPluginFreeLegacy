@@ -24,6 +24,9 @@ public:
 		TSubclassOf<UPrimitiveComponent> ComponentClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		UStaticMeshComponent* StaticMeshComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		AActor* MinPosition;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

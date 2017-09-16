@@ -149,10 +149,12 @@ public:
 	* Water effect
 	* @param	World				Voxel world
 	* @param	Position			Position in world space
-	* @param	Radius				Radius of the sphere in voxel space
+	* @param	Radius				Radius of the box in voxel space (-Radius < X < Radius ...)
+	* @param	DownSpeed			Speed of the water going down
+	* @param	LateralSpeed		Speed of the water going on sides
 	* @param	bAsync				Update async
 	* @param	ValueMultiplier		-ValueMultiplier will be set inside the sphere and ValueMultiplier outside
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
-		static void ApplyWaterEffect(AVoxelWorld* World, FVector Position, float Radius, float Speed, bool bAsync = false, float ValueMultiplier = 1);
+		static void ApplyWaterEffect(AVoxelWorld* World, FVector Position, float Radius, float DownSpeed, float LateralSpeed, bool bAsync = false, float ValueMultiplier = 1);
 };

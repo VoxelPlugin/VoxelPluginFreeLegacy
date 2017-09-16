@@ -5,6 +5,13 @@
 #include "VoxelMeshAsset.h"
 #include "Components/PrimitiveComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Components/StaticMeshComponent.h"
+
+
+#define VOXELIZER_IMPLEMENTATION
+//#define VOXELIZER_DEBUG // Only if assertions need to be checked
+#include "voxelizer.h"
+#include "KismetProceduralMeshLibrary.h"
 
 
 AVoxelMeshAsset::AVoxelMeshAsset() : ValueMultiplier(1), MaxResolution(10000)
@@ -75,6 +82,7 @@ void AVoxelMeshAsset::LineTrace(UPrimitiveComponent* Component, TArray<std::forw
 
 void AVoxelMeshAsset::Import()
 {
+	/*
 	if (!ActorToImport)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("ActorToImport is NULL"));
@@ -166,6 +174,78 @@ void AVoxelMeshAsset::Import()
 		}
 	}
 	UE_LOG(VoxelLog, Log, TEXT("Import successful"));
+	*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	DebugLineBatch->Flush();
+
+	TArray<FVector> Vertices;
+	TArray<int32> Triangles;
+	TArray<FVector> Normals;
+	TArray<FVector2D> UVs;
+	TArray<FProcMeshTangent> Tangents;
+	UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(StaticMeshComponent->GetStaticMesh(), 0, 0, Vertices, Triangles, Normals, UVs, Tangents);
+
+
+	vx_mesh_t* mesh;
+	vx_mesh_t* result;
+
+	mesh = vx_mesh_alloc(Vertices.Num(), Triangles.Num());
+
+	for (int i = 0; i < Vertices.Num(); i++)
+	{
+		mesh->vertices[i] = { Vertices[i].X, Vertices[i].Y, Vertices[i].Z };
+		mesh->normals[i] = { Normals[i].X, Normals[i].Y, Normals[i].Z };
+	}
+
+	for (int i = 0; i < Triangles.Num(); i++)
+	{
+		mesh->indices[i] = Triangles[i];
+	}
+
+	// Precision factor to reduce "holes" artifact
+	float precision = 0.01;
+
+	// Run voxelization
+	result = vx_voxelize(mesh, 10, 10, 10, precision);
+
+	for (int i = 0; i < result->nvertices; i++)
+	{
+		vx_vertex V = result->vertices[i];
+		DebugLineBatch->DrawPoint(FVector(V.x, V.y, V.z), FColor::Red, 5, 0, 1000);
+	}
+
+	vx_mesh_free(result);
+	vx_mesh_free(mesh);
+
 }
 
 void AVoxelMeshAsset::UpdateLines()
