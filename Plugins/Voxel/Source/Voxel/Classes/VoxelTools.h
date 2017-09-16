@@ -144,4 +144,15 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", Meta = (ExpandEnumAsExecs = "Branches"))
 		static void GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches);
+
+	/**
+	* Water effect
+	* @param	World				Voxel world
+	* @param	Position			Position in world space
+	* @param	Radius				Radius of the sphere in voxel space
+	* @param	bAsync				Update async
+	* @param	ValueMultiplier		-ValueMultiplier will be set inside the sphere and ValueMultiplier outside
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
+		static void ApplyWaterEffect(AVoxelWorld* World, FVector Position, float Radius, float Speed, bool bAsync = false, float ValueMultiplier = 1);
 };

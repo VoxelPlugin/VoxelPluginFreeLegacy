@@ -102,6 +102,8 @@ public:
 	 */
 	void QueueUpdateOfDirtyChunks(AVoxelWorld* World);
 
+	TSharedPtr<ValueOctree> GetCopy();
+
 private:
 	/*
 	Childs of this octree in the following order:
