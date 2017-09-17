@@ -433,9 +433,9 @@ void ValueOctree::QueueUpdateOfDirtyChunks(AVoxelWorld* World)
 	}
 }
 
-TSharedPtr<ValueOctree> ValueOctree::GetCopy()
+ValueOctree* ValueOctree::GetCopy()
 {
-	TSharedPtr<ValueOctree> NewOctree = MakeShareable(new ValueOctree(bMultiplayer, WorldGenerator, Position, Depth, Id));
+	ValueOctree*  NewOctree = new ValueOctree(bMultiplayer, WorldGenerator, Position, Depth, Id);
 
 	if (Depth == 0)
 	{
@@ -478,7 +478,7 @@ TSharedPtr<ValueOctree> ValueOctree::GetCopy()
 		NewOctree->bIsDirty = true;
 		for (auto Child : Childs)
 		{
-			NewOctree->Childs.Add(Child->GetCopy().Get());
+			NewOctree->Childs.Add(Child->GetCopy());
 		}
 	}
 	return NewOctree;

@@ -3,7 +3,7 @@
 
 float AEmptyWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
-	return 0;
+	return 1;
 }
 
 FColor AEmptyWorldGenerator::GetDefaultColor(int X, int Y, int Z)

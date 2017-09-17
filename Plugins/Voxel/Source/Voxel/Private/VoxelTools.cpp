@@ -9,6 +9,9 @@
 #include "GameFramework/HUD.h"
 #include "Engine/LocalPlayer.h"
 #include "Kismet/GameplayStatics.h"
+#include "EmptyWorldGenerator.h"
+#include "VoxelData.h"
+#include "VoxelPart.h"
 
 void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bAsync, float ValueMultiplier)
 {
@@ -536,9 +539,6 @@ void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, f
 
 void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches)
 {
-	UE_LOG(VoxelLog, Log, TEXT("Client adress: %s"), *PlayerController->GetPlayerNetworkAddress());
-	UE_LOG(VoxelLog, Log, TEXT("Server adress: %s"), *PlayerController->GetServerNetworkAddress());
-
 	ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(PlayerController->Player);
 
 	if (PlayerController->GetLocalPlayer() && PlayerController->GetLocalPlayer()->ViewportClient)
@@ -624,8 +624,6 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 	}
 	SmallValueOctree = OldSmallValueOctree;
 
-	auto SmallValueOctreeCopy = SmallValueOctree;
-
 	for (int Z = -IntRadius + 1; Z < IntRadius; Z++)
 	{
 		for (int Y = -IntRadius + 1; Y < IntRadius; Y++)
@@ -633,12 +631,12 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 			for (int X = -IntRadius + 1; X < IntRadius; X++)
 			{
 				const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
-				float CurrentValue = SmallValueOctreeCopy->GetValue(CurrentPosition);
+				float CurrentValue = SmallValueOctree->GetValue(CurrentPosition);
 
 				if (CurrentValue < ValueMultiplier)
 				{
 					const FIntVector BelowPosition = CurrentPosition + FIntVector(0, 0, -1);
-					const float BelowValue = SmallValueOctreeCopy->GetValue(BelowPosition);
+					const float BelowValue = SmallValueOctree->GetValue(BelowPosition);
 
 					float DownDeltaValue = 0;
 
@@ -658,7 +656,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 					if (DownDeltaValue < DownSpeed / 2)
 					{
 						const FIntVector ForwardPosition = CurrentPosition + FIntVector(1, 0, 0);
-						const float ForwardValue = SmallValueOctreeCopy->GetValue(ForwardPosition);
+						const float ForwardValue = SmallValueOctree->GetValue(ForwardPosition);
 
 						if (X != IntRadius - 1 && CurrentValue < ForwardValue && ForwardValue > -ValueMultiplier)
 						{
@@ -674,7 +672,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 						}
 
 						const FIntVector BackPosition = CurrentPosition + FIntVector(-1, 0, 0);
-						const float BackValue = SmallValueOctreeCopy->GetValue(BackPosition);
+						const float BackValue = SmallValueOctree->GetValue(BackPosition);
 
 						if (X != 1 - IntRadius && CurrentValue < BackValue && BackValue > -ValueMultiplier)
 						{
@@ -690,7 +688,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 						}
 
 						const FIntVector RightPosition = CurrentPosition + FIntVector(0, 1, 0);
-						const float RightValue = SmallValueOctreeCopy->GetValue(RightPosition);
+						const float RightValue = SmallValueOctree->GetValue(RightPosition);
 
 						if (Y != IntRadius - 1 && CurrentValue < RightValue && RightValue > -ValueMultiplier)
 						{
@@ -706,7 +704,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 						}
 
 						const FIntVector LeftPosition = CurrentPosition + FIntVector(0, -1, 0);
-						const float LeftValue = SmallValueOctreeCopy->GetValue(LeftPosition);
+						const float LeftValue = SmallValueOctree->GetValue(LeftPosition);
 
 						if (Y != 1 - IntRadius && CurrentValue < LeftValue && LeftValue > -ValueMultiplier)
 						{
@@ -723,6 +721,223 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 					}
 				}
 			}
+		}
+	}
+}
+
+
+void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bAsync /*= false*/, float ValueMultiplier /*= 1*/)
+{
+	if (World == nullptr)
+	{
+		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		return;
+	}
+	check(World);
+
+	// Position in voxel space
+	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	int IntRadius = FMath::CeilToInt(Radius) + 2;
+
+	/**
+	* Shrink octree to speed up value access
+	*/
+	// Corners of the box where modified values are
+	TArray<FIntVector> Corners = {
+		LocalPosition + FIntVector(-IntRadius, -IntRadius, -IntRadius),
+		LocalPosition + FIntVector(+IntRadius, -IntRadius, -IntRadius),
+		LocalPosition + FIntVector(-IntRadius, +IntRadius, -IntRadius),
+		LocalPosition + FIntVector(+IntRadius, +IntRadius, -IntRadius),
+		LocalPosition + FIntVector(-IntRadius, -IntRadius, +IntRadius),
+		LocalPosition + FIntVector(+IntRadius, -IntRadius, +IntRadius),
+		LocalPosition + FIntVector(-IntRadius, +IntRadius, +IntRadius),
+		LocalPosition + FIntVector(+IntRadius, +IntRadius, +IntRadius)
+	};
+
+	// Get smallest octree
+	ValueOctree* SmallValueOctree = World->GetValueOctree().Get();
+	ValueOctree* OldSmallValueOctree = SmallValueOctree;
+	check(SmallValueOctree);
+
+	bool ContinueShrinking = true;
+	while (ContinueShrinking)
+	{
+		ContinueShrinking = !SmallValueOctree->IsLeaf();
+		for (auto Corner : Corners)
+		{
+			ContinueShrinking = ContinueShrinking && SmallValueOctree->IsInOctree(Corner);
+		}
+
+		if (ContinueShrinking)
+		{
+			OldSmallValueOctree = SmallValueOctree;
+			SmallValueOctree = SmallValueOctree->GetChild(Corners[0]);
+		}
+	}
+	SmallValueOctree = OldSmallValueOctree;
+
+	TArray<bool> Visited;
+	Visited.SetNumZeroed(2 * IntRadius * 2 * IntRadius * 2 * IntRadius);
+
+	std::forward_list<FIntVector> Queue;
+	Queue.push_front(FIntVector::ZeroValue);
+
+
+	while (!Queue.empty())
+	{
+		const FIntVector RelativePosition = Queue.front();
+		Queue.pop_front();
+
+		const int X = RelativePosition.X;
+		const int Y = RelativePosition.Y;
+		const int Z = RelativePosition.Z;
+
+		const int Index = (X + IntRadius) + (Y + IntRadius) * 2 * IntRadius + (Z + IntRadius) * 2 * IntRadius * 2 * IntRadius;
+
+		if ((-IntRadius <= X) && (X < IntRadius)
+			&& (-IntRadius <= Y) && (Y < IntRadius)
+			&& (-IntRadius <= Z) && (Z < IntRadius)
+			&& !Visited[Index]
+			&& (SmallValueOctree->GetValue(RelativePosition + LocalPosition) < 0))
+		{
+
+			Visited[Index] = true;
+
+			Queue.push_front(FIntVector(X - 1, Y - 1, Z - 1));
+			Queue.push_front(FIntVector(X + 0, Y - 1, Z - 1));
+			Queue.push_front(FIntVector(X + 1, Y - 1, Z - 1));
+			Queue.push_front(FIntVector(X - 1, Y + 0, Z - 1));
+			Queue.push_front(FIntVector(X + 0, Y + 0, Z - 1));
+			Queue.push_front(FIntVector(X + 1, Y + 0, Z - 1));
+			Queue.push_front(FIntVector(X - 1, Y + 1, Z - 1));
+			Queue.push_front(FIntVector(X + 0, Y + 1, Z - 1));
+			Queue.push_front(FIntVector(X + 1, Y + 1, Z - 1));
+			Queue.push_front(FIntVector(X - 1, Y - 1, Z + 0));
+			Queue.push_front(FIntVector(X + 0, Y - 1, Z + 0));
+			Queue.push_front(FIntVector(X + 1, Y - 1, Z + 0));
+			Queue.push_front(FIntVector(X - 1, Y + 0, Z + 0));
+			Queue.push_front(FIntVector(X + 0, Y + 0, Z + 0));
+			Queue.push_front(FIntVector(X + 1, Y + 0, Z + 0));
+			Queue.push_front(FIntVector(X - 1, Y + 1, Z + 0));
+			Queue.push_front(FIntVector(X + 0, Y + 1, Z + 0));
+			Queue.push_front(FIntVector(X + 1, Y + 1, Z + 0));
+			Queue.push_front(FIntVector(X - 1, Y - 1, Z + 1));
+			Queue.push_front(FIntVector(X + 0, Y - 1, Z + 1));
+			Queue.push_front(FIntVector(X + 1, Y - 1, Z + 1));
+			Queue.push_front(FIntVector(X - 1, Y + 0, Z + 1));
+			Queue.push_front(FIntVector(X + 0, Y + 0, Z + 1));
+			Queue.push_front(FIntVector(X + 1, Y + 0, Z + 1));
+			Queue.push_front(FIntVector(X - 1, Y + 1, Z + 1));
+			Queue.push_front(FIntVector(X + 0, Y + 1, Z + 1));
+			Queue.push_front(FIntVector(X + 1, Y + 1, Z + 1));
+		}
+	}
+
+
+	uint8 Depth = FMath::CeilToInt(FMath::Log2(2 * IntRadius / 16.f));
+	AVoxelWorldGenerator* WorldGenerator = NewObject<AEmptyWorldGenerator>();
+
+	TSharedPtr<VoxelData> Data = MakeShareable(new VoxelData(Depth, WorldGenerator, false));
+
+	std::forward_list<FIntVector> PointPositions;
+
+	for (int Z = -IntRadius; Z < IntRadius; Z++)
+	{
+		for (int Y = -IntRadius; Y < IntRadius; Y++)
+		{
+			for (int X = -IntRadius; X < IntRadius; X++)
+			{
+				const int Index = (X + IntRadius) + (Y + IntRadius) * 2 * IntRadius + (Z + IntRadius) * 2 * IntRadius * 2 * IntRadius;
+				const FIntVector RelativePosition = FIntVector(X, Y, Z);
+				const FIntVector CurrentPosition = RelativePosition + LocalPosition;
+				if (!Visited[Index] && World->GetValue(CurrentPosition) <= 0)
+				{
+					Data->SetValue(RelativePosition, World->GetValue(CurrentPosition));
+					PointPositions.push_front(RelativePosition);
+
+					World->SetValue(CurrentPosition, ValueMultiplier);
+					World->QueueUpdate(CurrentPosition, bAsync);
+				}
+			}
+		}
+	}
+
+	while (!PointPositions.empty())
+	{
+		// Find all connected points
+
+		TSharedPtr<VoxelData> CurrentData = MakeShareable(new VoxelData(Depth, WorldGenerator, false));
+
+		FIntVector PointPosition = PointPositions.front();
+		PointPositions.pop_front();
+
+		const int X = PointPosition.X;
+		const int Y = PointPosition.Y;
+		const int Z = PointPosition.Z;
+		const int Index = (X + IntRadius) + (Y + IntRadius) * 2 * IntRadius + (Z + IntRadius) * 2 * IntRadius * 2 * IntRadius;
+
+		if (!Visited[Index])
+		{
+			std::forward_list<FIntVector> Queue;
+			Queue.push_front(PointPosition);
+
+			while (!Queue.empty())
+			{
+				const FIntVector CurrentPosition = Queue.front();
+				Queue.pop_front();
+
+				const int X = CurrentPosition.X;
+				const int Y = CurrentPosition.Y;
+				const int Z = CurrentPosition.Z;
+
+				const int Index = (X + IntRadius) + (Y + IntRadius) * 2 * IntRadius + (Z + IntRadius) * 2 * IntRadius * 2 * IntRadius;
+
+				if ((-IntRadius <= X) && (X < IntRadius)
+					&& (-IntRadius <= Y) && (Y < IntRadius)
+					&& (-IntRadius <= Z) && (Z < IntRadius)
+					&& !Visited[Index]
+					&& (Data->GetValue(CurrentPosition) < 0))
+				{
+
+					Visited[Index] = true;
+					CurrentData->SetValue(CurrentPosition, Data->GetValue(CurrentPosition));
+
+					Queue.push_front(FIntVector(X - 1, Y - 1, Z - 1));
+					Queue.push_front(FIntVector(X + 0, Y - 1, Z - 1));
+					Queue.push_front(FIntVector(X + 1, Y - 1, Z - 1));
+					Queue.push_front(FIntVector(X - 1, Y + 0, Z - 1));
+					Queue.push_front(FIntVector(X + 0, Y + 0, Z - 1));
+					Queue.push_front(FIntVector(X + 1, Y + 0, Z - 1));
+					Queue.push_front(FIntVector(X - 1, Y + 1, Z - 1));
+					Queue.push_front(FIntVector(X + 0, Y + 1, Z - 1));
+					Queue.push_front(FIntVector(X + 1, Y + 1, Z - 1));
+					Queue.push_front(FIntVector(X - 1, Y - 1, Z + 0));
+					Queue.push_front(FIntVector(X + 0, Y - 1, Z + 0));
+					Queue.push_front(FIntVector(X + 1, Y - 1, Z + 0));
+					Queue.push_front(FIntVector(X - 1, Y + 0, Z + 0));
+					Queue.push_front(FIntVector(X + 0, Y + 0, Z + 0));
+					Queue.push_front(FIntVector(X + 1, Y + 0, Z + 0));
+					Queue.push_front(FIntVector(X - 1, Y + 1, Z + 0));
+					Queue.push_front(FIntVector(X + 0, Y + 1, Z + 0));
+					Queue.push_front(FIntVector(X + 1, Y + 1, Z + 0));
+					Queue.push_front(FIntVector(X - 1, Y - 1, Z + 1));
+					Queue.push_front(FIntVector(X + 0, Y - 1, Z + 1));
+					Queue.push_front(FIntVector(X + 1, Y - 1, Z + 1));
+					Queue.push_front(FIntVector(X - 1, Y + 0, Z + 1));
+					Queue.push_front(FIntVector(X + 0, Y + 0, Z + 1));
+					Queue.push_front(FIntVector(X + 1, Y + 0, Z + 1));
+					Queue.push_front(FIntVector(X - 1, Y + 1, Z + 1));
+					Queue.push_front(FIntVector(X + 0, Y + 1, Z + 1));
+					Queue.push_front(FIntVector(X + 1, Y + 1, Z + 1));
+				}
+			}
+
+
+			AVoxelPart* Part = World->GetWorld()->SpawnActor<AVoxelPart>(Position, World->GetTransform().Rotator());
+
+			Part->SetActorScale3D(World->GetActorScale());
+
+			Part->Init(CurrentData.Get(), World);
 		}
 	}
 }

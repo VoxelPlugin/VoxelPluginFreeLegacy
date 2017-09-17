@@ -146,15 +146,26 @@ public:
 		static void GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches);
 
 	/**
-	* Water effect
-	* @param	World				Voxel world
-	* @param	Position			Position in world space
-	* @param	Radius				Radius of the box in voxel space (-Radius < X < Radius ...)
-	* @param	DownSpeed			Speed of the water going down
-	* @param	LateralSpeed		Speed of the water going on sides
-	* @param	bAsync				Update async
-	* @param	ValueMultiplier		-ValueMultiplier will be set inside the sphere and ValueMultiplier outside
-	*/
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
+	 * Water effect
+	 * @param	World				Voxel world
+	 * @param	Position			Position in world space
+	 * @param	Radius				Radius of the box in voxel space (-Radius < X < Radius ...)
+	 * @param	DownSpeed			Speed of the water going down
+	 * @param	LateralSpeed		Speed of the water going on sides
+	 * @param	bAsync				Update async
+	 * @param	ValueMultiplier		-ValueMultiplier will be set inside the sphere and ValueMultiplier outside
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
 		static void ApplyWaterEffect(AVoxelWorld* World, FVector Position, float Radius, float DownSpeed, float LateralSpeed, bool bAsync = false, float ValueMultiplier = 1);
+
+	/**
+	 * Remove all blocks not connected to Position
+	 * @param	World				Voxel world
+	 * @param	Position			Position in world space
+	 * @param	Radius				Radius of the box in voxel space (-Radius < X < Radius ...)
+	 * @param	bAsync				Update async
+	 * @param	ValueMultiplier		-ValueMultiplier will be set inside the sphere and ValueMultiplier outside
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
+		static void RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bAsync = false, float ValueMultiplier = 1);
 };
