@@ -102,7 +102,7 @@ public:
 	 */
 	void QueueUpdateOfDirtyChunks(AVoxelWorld* World);
 
-	TSharedPtr<ValueOctree> GetCopy();
+	ValueOctree*  GetCopy();
 
 private:
 	/*
