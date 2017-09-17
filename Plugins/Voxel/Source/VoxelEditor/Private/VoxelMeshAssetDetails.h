@@ -19,7 +19,7 @@ private:
 
 	FReply OnImport();
 
-	FReply OnUpdateLines();
+	//FReply OnUpdateLines();
 private:
 	TWeakObjectPtr<AVoxelMeshAsset> MeshAsset;
 };

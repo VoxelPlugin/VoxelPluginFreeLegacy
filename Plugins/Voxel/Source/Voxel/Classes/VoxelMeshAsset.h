@@ -48,8 +48,6 @@ public:
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
-		TArray<float> Values;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		TArray<bool> IsInside;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		FIntVector Size;

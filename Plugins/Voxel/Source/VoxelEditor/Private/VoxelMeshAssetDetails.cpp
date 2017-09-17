@@ -57,7 +57,7 @@ void FVoxelMeshAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout
 		.Text(FText::FromString(TEXT("Import")))
 		]
 		];
-
+/*
 	DetailLayout.EditCategory("VoxelMeshAsset")
 		.AddCustomRow(FText::FromString(TEXT("Update")))
 		.NameContent()
@@ -80,7 +80,7 @@ void FVoxelMeshAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout
 			.Font(IDetailLayoutBuilder::GetDetailFont())
 		.Text(FText::FromString(TEXT("Update")))
 		]
-		];
+		];*/
 }
 
 FReply FVoxelMeshAssetDetails::OnImport()
@@ -92,11 +92,11 @@ FReply FVoxelMeshAssetDetails::OnImport()
 	return FReply::Handled();
 }
 
-FReply FVoxelMeshAssetDetails::OnUpdateLines()
-{
-	if (MeshAsset.IsValid())
-	{
-		MeshAsset->UpdateLines();
-	}
-	return FReply::Handled();
-}
+//FReply FVoxelMeshAssetDetails::OnUpdateLines()
+//{
+//	if (MeshAsset.IsValid())
+//	{
+//		MeshAsset->UpdateLines();
+//	}
+//	return FReply::Handled();
+//}
