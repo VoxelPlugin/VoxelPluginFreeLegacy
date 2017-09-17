@@ -120,6 +120,9 @@ private:
 	// Need to use ThreadedTask Section for PrimaryMesh
 	bool bNeedSectionUpdate;
 
+	// Is chunk used or in ChunksPool?
+	bool bIsUsed;
+
 	// Async process task
 	VoxelThread* Task;
 
