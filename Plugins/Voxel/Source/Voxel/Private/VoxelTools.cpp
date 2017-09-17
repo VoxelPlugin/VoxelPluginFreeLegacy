@@ -574,17 +574,18 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 	}
 }
 
-void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float Radius, float DownSpeed, float LateralSpeed, bool bAsync, float ValueMultiplier)
+void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWorld, FVector Position, float Radius, float DownSpeed, float LateralSpeed, bool bAsync, float ValueMultiplier)
 {
-	if (World == nullptr)
+	if (SolidWorld == nullptr || WaterWorld == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
 		return;
 	}
-	check(World);
+	check(SolidWorld);
+	check(WaterWorld);
 
 	// Position in voxel space
-	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	FIntVector LocalPosition = WaterWorld->GlobalToLocal(Position);
 	int IntRadius = FMath::CeilToInt(Radius) + 2;
 
 	/**
@@ -603,7 +604,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 	};
 
 	// Get smallest octree
-	ValueOctree* SmallValueOctree = World->GetValueOctree().Get();
+	ValueOctree* SmallValueOctree = WaterWorld->GetValueOctree().Get();
 	ValueOctree* OldSmallValueOctree = SmallValueOctree;
 	check(SmallValueOctree);
 
@@ -624,6 +625,28 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 	}
 	SmallValueOctree = OldSmallValueOctree;
 
+	// Get smallest octree for SolidWorld
+	ValueOctree* SolidSmallValueOctree = SolidWorld->GetValueOctree().Get();
+	OldSmallValueOctree = SolidSmallValueOctree;
+	check(SolidSmallValueOctree);
+
+	ContinueShrinking = true;
+	while (ContinueShrinking)
+	{
+		ContinueShrinking = !SolidSmallValueOctree->IsLeaf();
+		for (auto Corner : Corners)
+		{
+			ContinueShrinking = ContinueShrinking && SolidSmallValueOctree->IsInOctree(Corner);
+		}
+
+		if (ContinueShrinking)
+		{
+			OldSmallValueOctree = SolidSmallValueOctree;
+			SolidSmallValueOctree = SolidSmallValueOctree->GetChild(Corners[0]);
+		}
+	}
+	SolidSmallValueOctree = OldSmallValueOctree;
+
 	for (int Z = -IntRadius + 1; Z < IntRadius; Z++)
 	{
 		for (int Y = -IntRadius + 1; Y < IntRadius; Y++)
@@ -631,100 +654,124 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 			for (int X = -IntRadius + 1; X < IntRadius; X++)
 			{
 				const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
-				float CurrentValue = SmallValueOctree->GetValue(CurrentPosition);
-
-				if (CurrentValue < 0.99 * ValueMultiplier)
+				const float CurrentSolidValue = SolidSmallValueOctree->GetValue(CurrentPosition);
+				if (CurrentSolidValue <= 0)
 				{
-					const FIntVector BelowPosition = CurrentPosition + FIntVector(0, 0, -1);
-					const float BelowValue = SmallValueOctree->GetValue(BelowPosition);
+					SmallValueOctree->SetValue(CurrentPosition, -CurrentSolidValue);
+					//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
+				}
+				else
+				{
+					float CurrentValue = SmallValueOctree->GetValue(CurrentPosition);
 
-					float DownDeltaValue = 0;
+					//DrawDebugString(WaterWorld->GetWorld(), WaterWorld->GetTransform().TransformPosition((FVector)CurrentPosition), FString::FromInt(1000 * CurrentValue), 0, FColor::Black, 0.1f, false);
 
-					if (Z != 1 - IntRadius && CurrentValue < BelowValue && BelowValue > -ValueMultiplier)
+					if (CurrentValue < ValueMultiplier)
 					{
-						DownDeltaValue = FMath::Clamp(BelowValue - CurrentValue, 0.f, DownSpeed) + KINDA_SMALL_NUMBER;
-
-						SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DownDeltaValue);
-						SmallValueOctree->SetValue(BelowPosition, BelowValue - DownDeltaValue);
-
-						World->QueueUpdate(CurrentPosition, bAsync);
-						World->QueueUpdate(BelowPosition, bAsync);
-
-						CurrentValue = CurrentValue + DownDeltaValue;
-					}
-
-					if (DownDeltaValue < 0.75 * DownSpeed)
-					{
-						// If falling, don't go on sides
-
-						const FIntVector ForwardPosition = CurrentPosition + FIntVector(1, 0, 0);
-						const float ForwardValue = SmallValueOctree->GetValue(ForwardPosition);
-
-						if (X != IntRadius - 1 && CurrentValue < ForwardValue && ForwardValue > -ValueMultiplier)
 						{
-							float DeltaValue = FMath::Clamp(ForwardValue - CurrentValue, 0.f, LateralSpeed) / 4 + KINDA_SMALL_NUMBER;
+							const FIntVector BelowPosition = CurrentPosition + FIntVector(0, 0, -1);
+							const float BelowValue = SmallValueOctree->GetValue(BelowPosition);
 
-							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-							SmallValueOctree->SetValue(ForwardPosition, ForwardValue - DeltaValue);
+							const FIntVector AbovePosition = CurrentPosition + FIntVector(0, 0, 1);
+							const float AboveValue = SmallValueOctree->GetValue(AbovePosition);
 
-							World->QueueUpdate(CurrentPosition, bAsync);
-							World->QueueUpdate(ForwardPosition, bAsync);
+							const float BelowSolidValue = SolidSmallValueOctree->GetValue(BelowPosition);
 
-							CurrentValue = CurrentValue + DeltaValue;
+							float DownDeltaValue = 0;
+
+							if (Z != 1 - IntRadius && BelowValue > -ValueMultiplier && (CurrentValue <= 0 || (BelowValue <= 0 && AboveValue >= 0)) && BelowSolidValue > 0)
+							{
+								DownDeltaValue = FMath::Clamp(FMath::Min(1 - CurrentValue, 1 + BelowValue), 0.f, DownSpeed) + KINDA_SMALL_NUMBER;
+
+								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DownDeltaValue);
+								SmallValueOctree->SetValue(BelowPosition, BelowValue - DownDeltaValue);
+
+								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
+								//WaterWorld->QueueUpdate(BelowPosition, bAsync);
+
+								CurrentValue = CurrentValue + DownDeltaValue;
+							}
 						}
 
-						const FIntVector BackPosition = CurrentPosition + FIntVector(-1, 0, 0);
-						const float BackValue = SmallValueOctree->GetValue(BackPosition);
-
-						if (X != 1 - IntRadius && CurrentValue < BackValue && BackValue > -ValueMultiplier)
 						{
-							float DeltaValue = FMath::Clamp(BackValue - CurrentValue, 0.f, LateralSpeed) / 3 + KINDA_SMALL_NUMBER;
+							const FIntVector ForwardPosition = CurrentPosition + FIntVector(1, 0, 0);
+							const float ForwardValue = SmallValueOctree->GetValue(ForwardPosition);
+							const float ForwardSolidValue = SolidSmallValueOctree->GetValue(ForwardPosition);
 
-							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-							SmallValueOctree->SetValue(BackPosition, BackValue - DeltaValue);
+							if (X != IntRadius - 1 && CurrentValue < ForwardValue && ForwardValue > -ValueMultiplier && ForwardSolidValue > 0)
+							{
+								float DeltaValue = FMath::Clamp(ForwardValue - CurrentValue, 0.f, LateralSpeed) / 4 + KINDA_SMALL_NUMBER;
 
-							World->QueueUpdate(CurrentPosition, bAsync);
-							World->QueueUpdate(BackPosition, bAsync);
+								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+								SmallValueOctree->SetValue(ForwardPosition, ForwardValue - DeltaValue);
 
-							CurrentValue = CurrentValue + DeltaValue;
+								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
+								//WaterWorld->QueueUpdate(ForwardPosition, bAsync);
+
+								CurrentValue = CurrentValue + DeltaValue;
+							}
 						}
-
-						const FIntVector RightPosition = CurrentPosition + FIntVector(0, 1, 0);
-						const float RightValue = SmallValueOctree->GetValue(RightPosition);
-
-						if (Y != IntRadius - 1 && CurrentValue < RightValue && RightValue > -ValueMultiplier)
 						{
-							float DeltaValue = FMath::Clamp(RightValue - CurrentValue, 0.f, LateralSpeed) / 2 + KINDA_SMALL_NUMBER;
+							const FIntVector BackPosition = CurrentPosition + FIntVector(-1, 0, 0);
+							const float BackValue = SmallValueOctree->GetValue(BackPosition);
+							const float BackSolidValue = SolidSmallValueOctree->GetValue(BackPosition);
 
-							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-							SmallValueOctree->SetValue(RightPosition, RightValue - DeltaValue);
+							if (X != 1 - IntRadius && CurrentValue < BackValue && BackValue > -ValueMultiplier && BackSolidValue > 0)
+							{
+								float DeltaValue = FMath::Clamp(BackValue - CurrentValue, 0.f, LateralSpeed) / 3 + KINDA_SMALL_NUMBER;
 
-							World->QueueUpdate(CurrentPosition, bAsync);
-							World->QueueUpdate(RightPosition, bAsync);
+								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+								SmallValueOctree->SetValue(BackPosition, BackValue - DeltaValue);
 
-							CurrentValue = CurrentValue + DeltaValue;
+								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
+								//WaterWorld->QueueUpdate(BackPosition, bAsync);
+
+								CurrentValue = CurrentValue + DeltaValue;
+							}
 						}
-
-						const FIntVector LeftPosition = CurrentPosition + FIntVector(0, -1, 0);
-						const float LeftValue = SmallValueOctree->GetValue(LeftPosition);
-
-						if (Y != 1 - IntRadius && CurrentValue < LeftValue && LeftValue > -ValueMultiplier)
 						{
-							float DeltaValue = FMath::Clamp(LeftValue - CurrentValue, 0.f, LateralSpeed) / 1 + KINDA_SMALL_NUMBER;
+							const FIntVector RightPosition = CurrentPosition + FIntVector(0, 1, 0);
+							const float RightValue = SmallValueOctree->GetValue(RightPosition);
+							const float RightSolidValue = SolidSmallValueOctree->GetValue(RightPosition);
 
-							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-							SmallValueOctree->SetValue(LeftPosition, LeftValue - DeltaValue);
+							if (Y != IntRadius - 1 && CurrentValue < RightValue && RightValue > -ValueMultiplier && RightSolidValue > 0)
+							{
+								float DeltaValue = FMath::Clamp(RightValue - CurrentValue, 0.f, LateralSpeed) / 2 + KINDA_SMALL_NUMBER;
 
-							World->QueueUpdate(CurrentPosition, bAsync);
-							World->QueueUpdate(LeftPosition, bAsync);
+								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+								SmallValueOctree->SetValue(RightPosition, RightValue - DeltaValue);
 
-							CurrentValue = CurrentValue + DeltaValue;
+								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
+								//WaterWorld->QueueUpdate(RightPosition, bAsync);
+
+								CurrentValue = CurrentValue + DeltaValue;
+							}
+						}
+						{
+							const FIntVector LeftPosition = CurrentPosition + FIntVector(0, -1, 0);
+							const float LeftValue = SmallValueOctree->GetValue(LeftPosition);
+							const float LeftSolidValue = SolidSmallValueOctree->GetValue(LeftPosition);
+
+							if (Y != 1 - IntRadius && CurrentValue < LeftValue && LeftValue > -ValueMultiplier && LeftSolidValue > 0)
+							{
+								float DeltaValue = FMath::Clamp(LeftValue - CurrentValue, 0.f, LateralSpeed) / 1 + KINDA_SMALL_NUMBER;
+
+								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+								SmallValueOctree->SetValue(LeftPosition, LeftValue - DeltaValue);
+
+								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
+								//WaterWorld->QueueUpdate(LeftPosition, bAsync);
+
+								CurrentValue = CurrentValue + DeltaValue;
+							}
 						}
 					}
 				}
 			}
 		}
 	}
+
+	WaterWorld->UpdateAll(bAsync);
 }
 void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected, bool bAsync, float ValueMultiplier)
 {
