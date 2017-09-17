@@ -726,7 +726,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 }
 
 
-void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bAsync /*= false*/, float ValueMultiplier /*= 1*/)
+void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected, bool bAsync, float ValueMultiplier)
 {
 	if (World == nullptr)
 	{
@@ -782,6 +782,20 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 	std::forward_list<FIntVector> Queue;
 	Queue.push_front(FIntVector::ZeroValue);
 
+	for (int X = -IntRadius; X < IntRadius; X++)
+	{
+		for (int Y = -IntRadius; Y < IntRadius; Y++)
+		{
+			Queue.push_front(FIntVector(-IntRadius, X, Y));
+			Queue.push_front(FIntVector(IntRadius - 1, X, Y));
+
+			Queue.push_front(FIntVector(X, -IntRadius, Y));
+			Queue.push_front(FIntVector(X, IntRadius - 1, Y));
+
+			Queue.push_front(FIntVector(X, Y, -IntRadius));
+			Queue.push_front(FIntVector(X, Y, IntRadius - 1));
+		}
+	}
 
 	while (!Queue.empty())
 	{
