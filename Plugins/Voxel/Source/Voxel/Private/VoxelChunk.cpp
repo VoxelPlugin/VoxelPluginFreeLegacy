@@ -29,6 +29,8 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDele
 
 void AVoxelChunk::Tick(float DeltaTime)
 {
+	Super::Tick(DeltaTime);
+
 	if (bIsUsed)
 	{
 		if (!World)

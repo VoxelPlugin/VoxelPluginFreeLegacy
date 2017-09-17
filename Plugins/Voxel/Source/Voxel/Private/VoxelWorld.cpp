@@ -64,15 +64,15 @@ void AVoxelWorld::Tick(float DeltaTime)
 
 			if (FoundActors.Num() == 0)
 			{
-				UE_LOG(VoxelLog, Warning, TEXT("No camera found"));
-			}
-			else if (FoundActors.Num() == 1)
-			{
-				PlayerCamera = (APlayerCameraManager*)FoundActors[0];
+				UE_LOG(VoxelLog, Error, TEXT("No camera found"));
 			}
 			else
 			{
-				UE_LOG(VoxelLog, Warning, TEXT("More than one camera found"));
+				if (FoundActors.Num() > 1)
+				{
+					UE_LOG(VoxelLog, Warning, TEXT("More than one camera found"));
+				}
+				PlayerCamera = (APlayerCameraManager*)FoundActors[0];
 			}
 		}
 	}
