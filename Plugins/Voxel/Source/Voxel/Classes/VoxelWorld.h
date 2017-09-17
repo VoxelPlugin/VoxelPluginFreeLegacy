@@ -53,6 +53,9 @@ public:
 
 	void QueueUpdate(TWeakPtr<ChunkOctree> Chunk, bool bAsync);
 
+	void AddChunkToPool(AVoxelChunk* Chunk);
+	AVoxelChunk* GetChunkFromPool();
+
 	void Load();
 	void Unload();
 
@@ -242,6 +245,9 @@ private:
 	FQueuedThreadPool* ThreadPool;
 
 	VoxelData* Data;
+
+	// List of unused chunks. Allows reusing of chunks
+	std::forward_list<AVoxelChunk*> ChunksPool;
 
 	/**
 	* Update all chunks in queue

@@ -11,12 +11,15 @@ DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSect
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDeletion(false), bAdjacentChunksNeedUpdate(false), World(nullptr)
+AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDeletion(false), bAdjacentChunksNeedUpdate(false), World(nullptr), bIsUsed(false)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
 	// Create primary mesh
 	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
+	PrimaryMesh->bCastShadowAsTwoSided = true;
+	PrimaryMesh->bUseAsyncCooking = true;
+	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	RootComponent = PrimaryMesh;
 
 	DebugLineBatch = CreateDefaultSubobject<ULineBatchComponent>(FName("LineBatch"));
@@ -26,44 +29,47 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDele
 
 void AVoxelChunk::Tick(float DeltaTime)
 {
-	if (!World)
+	if (bIsUsed)
 	{
-		Destroy(this);
-		return;
-	}
-
-	if (bNeedSectionUpdate && Task != nullptr && Task->IsDone())
-	{
-		bNeedSectionUpdate = false;
-		UpdateSection();
-	}
-
-	if (bAdjacentChunksNeedUpdate && World->GetRebuildBorders())
-	{
-		bAdjacentChunksNeedUpdate = false;
-		for (int i = 0; i < 6; i++)
+		if (!World)
 		{
-			AVoxelChunk* Chunk = GetChunk((TransitionDirection)i);
-			if (Chunk != nullptr)
+			Destroy(this);
+			return;
+		}
+
+		if (bNeedSectionUpdate && Task != nullptr && Task->IsDone())
+		{
+			bNeedSectionUpdate = false;
+			UpdateSection();
+		}
+
+		if (bAdjacentChunksNeedUpdate && World->GetRebuildBorders())
+		{
+			bAdjacentChunksNeedUpdate = false;
+			for (int i = 0; i < 6; i++)
 			{
-				Chunk->BasicUpdate();
+				AVoxelChunk* Chunk = GetChunk((TransitionDirection)i);
+				if (Chunk != nullptr)
+				{
+					Chunk->BasicUpdate();
+				}
 			}
 		}
-	}
 
-	if (bNeedDeletion)
-	{
-		TimeUntilDeletion -= DeltaTime;
-		if (TimeUntilDeletion < 0)
+		if (bNeedDeletion)
 		{
-			Delete();
+			TimeUntilDeletion -= DeltaTime;
+			if (TimeUntilDeletion < 0)
+			{
+				Delete();
+			}
 		}
-	}
 
-	if (bUpdate)
-	{
-		bUpdate = false;
-		Update(false);
+		if (bUpdate)
+		{
+			bUpdate = false;
+			Update(false);
+		}
 	}
 }
 
@@ -93,17 +99,17 @@ void AVoxelChunk::Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWor
 	this->SetActorRelativeRotation(FRotator::ZeroRotator);
 	this->SetActorRelativeScale3D(FVector::OneVector);
 
-	// Configure primary mesh
+	// Set material
 	PrimaryMesh->SetMaterial(0, NewWorld->VoxelMaterial);
-	PrimaryMesh->bCastShadowAsTwoSided = true;
-	PrimaryMesh->bUseAsyncCooking = true;
-	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 
 	// Force world update before this
 	AddTickPrerequisiteActor(World);
 
 	// Update adjacent
 	bAdjacentChunksNeedUpdate = true;
+
+	// Set as used
+	bIsUsed = true;
 
 	// Debug
 	if (World->bDrawChunksBorders)
@@ -132,6 +138,8 @@ void AVoxelChunk::Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWor
 void AVoxelChunk::Update(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
+
+	check(bIsUsed);
 
 	// Make sure we've ticked
 	Tick(0);
@@ -204,10 +212,7 @@ void AVoxelChunk::Unload()
 }
 
 void AVoxelChunk::Delete()
-{
-	DebugLineBatch->Flush();
-
-	// If task if queued, remove it
+{	// If task if queued, remove it
 	if (Task != nullptr)
 	{
 		World->GetThreadPool()->RetractQueuedWork(Task);
@@ -215,10 +220,26 @@ void AVoxelChunk::Delete()
 		Task = nullptr;
 	}
 
-	if (this->IsValidLowLevel() && !this->IsPendingKill())
-	{
-		this->Destroy();
-	}
+	// Reset mesh & position & clear lines
+	PrimaryMesh->SetProcMeshSection(0, FProcMeshSection());
+	DebugLineBatch->Flush();
+	SetActorLocation(FVector(0, 0, 0));
+#if WITH_EDITOR
+	SetActorLabel("PoolChunk");
+#endif // WITH_EDITOR
+
+
+	// Add to pool
+	check(World);
+	World->AddChunkToPool(this);
+
+
+	// Reset variables
+	bNeedSectionUpdate = false;
+	bNeedDeletion = false;
+	bAdjacentChunksNeedUpdate = false;
+	World = nullptr;
+	bIsUsed = false;
 }
 
 void AVoxelChunk::UpdateSection()

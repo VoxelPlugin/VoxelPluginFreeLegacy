@@ -302,6 +302,27 @@ void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk, bool bAsync)
 	}
 }
 
+void AVoxelWorld::AddChunkToPool(AVoxelChunk* Chunk)
+{
+	ChunksPool.push_front(Chunk);
+}
+
+AVoxelChunk* AVoxelWorld::GetChunkFromPool()
+{
+	if (ChunksPool.empty())
+	{
+		return GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+	}
+	else
+	{
+		AVoxelChunk* Chunk = ChunksPool.front();
+		ChunksPool.pop_front();
+
+		check(Chunk->IsValidLowLevel());
+		return Chunk;
+	}
+}
+
 void AVoxelWorld::ApplyQueuedUpdates()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);

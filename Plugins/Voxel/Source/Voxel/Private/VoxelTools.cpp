@@ -633,7 +633,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 				const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
 				float CurrentValue = SmallValueOctree->GetValue(CurrentPosition);
 
-				if (CurrentValue < ValueMultiplier)
+				if (CurrentValue < 0.99 * ValueMultiplier)
 				{
 					const FIntVector BelowPosition = CurrentPosition + FIntVector(0, 0, -1);
 					const float BelowValue = SmallValueOctree->GetValue(BelowPosition);
@@ -642,7 +642,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 
 					if (Z != 1 - IntRadius && CurrentValue < BelowValue && BelowValue > -ValueMultiplier)
 					{
-						DownDeltaValue = FMath::Clamp(BelowValue - CurrentValue, 0.f, DownSpeed);
+						DownDeltaValue = FMath::Clamp(BelowValue - CurrentValue, 0.f, DownSpeed) + KINDA_SMALL_NUMBER;
 
 						SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DownDeltaValue);
 						SmallValueOctree->SetValue(BelowPosition, BelowValue - DownDeltaValue);
@@ -653,14 +653,16 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 						CurrentValue = CurrentValue + DownDeltaValue;
 					}
 
-					if (DownDeltaValue < DownSpeed / 2)
+					if (DownDeltaValue < 0.75 * DownSpeed)
 					{
+						// If falling, don't go on sides
+
 						const FIntVector ForwardPosition = CurrentPosition + FIntVector(1, 0, 0);
 						const float ForwardValue = SmallValueOctree->GetValue(ForwardPosition);
 
 						if (X != IntRadius - 1 && CurrentValue < ForwardValue && ForwardValue > -ValueMultiplier)
 						{
-							float DeltaValue = FMath::Clamp(ForwardValue - CurrentValue, 0.f, LateralSpeed) / 4;
+							float DeltaValue = FMath::Clamp(ForwardValue - CurrentValue, 0.f, LateralSpeed) / 4 + KINDA_SMALL_NUMBER;
 
 							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
 							SmallValueOctree->SetValue(ForwardPosition, ForwardValue - DeltaValue);
@@ -676,7 +678,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 
 						if (X != 1 - IntRadius && CurrentValue < BackValue && BackValue > -ValueMultiplier)
 						{
-							float DeltaValue = FMath::Clamp(BackValue - CurrentValue, 0.f, LateralSpeed) / 3;
+							float DeltaValue = FMath::Clamp(BackValue - CurrentValue, 0.f, LateralSpeed) / 3 + KINDA_SMALL_NUMBER;
 
 							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
 							SmallValueOctree->SetValue(BackPosition, BackValue - DeltaValue);
@@ -692,7 +694,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 
 						if (Y != IntRadius - 1 && CurrentValue < RightValue && RightValue > -ValueMultiplier)
 						{
-							float DeltaValue = FMath::Clamp(RightValue - CurrentValue, 0.f, LateralSpeed) / 2;
+							float DeltaValue = FMath::Clamp(RightValue - CurrentValue, 0.f, LateralSpeed) / 2 + KINDA_SMALL_NUMBER;
 
 							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
 							SmallValueOctree->SetValue(RightPosition, RightValue - DeltaValue);
@@ -708,7 +710,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 
 						if (Y != 1 - IntRadius && CurrentValue < LeftValue && LeftValue > -ValueMultiplier)
 						{
-							float DeltaValue = FMath::Clamp(LeftValue - CurrentValue, 0.f, LateralSpeed) / 1;
+							float DeltaValue = FMath::Clamp(LeftValue - CurrentValue, 0.f, LateralSpeed) / 1 + KINDA_SMALL_NUMBER;
 
 							SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
 							SmallValueOctree->SetValue(LeftPosition, LeftValue - DeltaValue);
@@ -724,8 +726,6 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, FVector Position, float R
 		}
 	}
 }
-
-
 void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected, bool bAsync, float ValueMultiplier)
 {
 	if (World == nullptr)
