@@ -20,6 +20,7 @@ FColor AFlatWorldGenerator::GetDefaultColor(int X, int Y, int Z)
 	{
 		if (Layer.Start <= Z && Z < Layer.Start + Layer.Height)
 		{
+			// if we are in this layer
 			return FVoxelMaterial(Layer.Material1, Layer.Material2, Layer.Alpha).ToFColor();
 		}
 	}
