@@ -3,7 +3,7 @@
 #include "VoxelPrivatePCH.h"
 #include "SphereWorldGenerator.h"
 
-ASphereWorldGenerator::ASphereWorldGenerator() : Radius(10), InverseOutsideInside(false), ValueMultiplier(1)
+ASphereWorldGenerator::ASphereWorldGenerator() : Radius(1000), InverseOutsideInside(false), ValueMultiplier(1)
 {
 
 }
