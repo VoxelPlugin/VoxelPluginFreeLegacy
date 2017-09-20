@@ -262,7 +262,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 	{
 		if (bAdd)
 		{
-			World->SetValue(Point, World->GetValue(Point) - Stength);
+			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) - Stength, MinValue, MaxValue));
 		}
 		else
 		{
