@@ -118,7 +118,8 @@ FReply FVoxelWorldDetails::OnUpdateCameraPosition()
 				if (Client)
 				{
 					FVector CameraPosition = Client->GetViewLocation();
-					World->UpdateCameraPosition(CameraPosition);
+					//World->UpdateLOD(CameraPosition);
+					UE_LOG(VoxelWorldEditorLog, Error, TEXT("Not implemented"));
 				}
 				else
 				{

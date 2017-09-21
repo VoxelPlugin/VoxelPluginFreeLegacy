@@ -7,16 +7,16 @@
 #include "Engine.h"
 #include <forward_list>
 #include "FlatWorldGenerator.h"
+#include "VoxelInvokerComponent.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateAll"), STAT_UpdateAll, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ ApplyQueuedUpdates"), STAT_ApplyQueuedUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Remove"), STAT_Remove, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : bDebugMultiplayer(false), bDrawChunksBorders(false), Depth(9), MultiplayerFPS(5), DeletionDelay(0.1f),
-LODToleranceZone(0.5), bRebuildBorders(true), PlayerCamera(nullptr), bAutoFindCamera(true), bAutoUpdateCameraPosition(true), bIsCreated(false), TimeSinceSync(0)
+AVoxelWorld::AVoxelWorld() : bDebugMultiplayer(false), bDrawChunksBorders(false), Depth(9), MultiplayerFPS(5), DeletionDelay(0.1f), bRebuildBorders(true), bIsCreated(false), TimeSinceSync(0)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -34,8 +34,6 @@ LODToleranceZone(0.5), bRebuildBorders(true), PlayerCamera(nullptr), bAutoFindCa
 
 	ThreadPool = FQueuedThreadPool::Allocate();
 	ThreadPool->Create(24, 64 * 1024);
-
-	LODProfile = UVoxelLODProfile::StaticClass();
 }
 
 AVoxelWorld::~AVoxelWorld()
@@ -55,33 +53,10 @@ void AVoxelWorld::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bAutoFindCamera)
 	{
-		if (PlayerCamera == nullptr)
-		{
-			TArray<AActor*> FoundActors;
-			UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCameraManager::StaticClass(), FoundActors);
-
-			if (FoundActors.Num() == 0)
-			{
-				UE_LOG(VoxelLog, Error, TEXT("No camera found"));
-			}
-			else
-			{
-				if (FoundActors.Num() > 1)
-				{
-					UE_LOG(VoxelLog, Warning, TEXT("More than one camera found"));
-				}
-				PlayerCamera = (APlayerCameraManager*)FoundActors[0];
-			}
-		}
+		SCOPE_CYCLE_COUNTER(STAT_UpdateLOD);
+		MainChunkOctree->UpdateLOD(this, VoxelInvokerComponents);
 	}
-
-	if (bAutoUpdateCameraPosition && PlayerCamera != nullptr)
-	{
-		UpdateCameraPosition(PlayerCamera->GetTransform().GetLocation());
-	}
-
 	if (bMultiplayer)
 	{
 		TimeSinceSync += DeltaTime;
@@ -126,12 +101,6 @@ FColor AVoxelWorld::GetColor(FIntVector Position) const
 		UE_LOG(VoxelLog, Error, TEXT("Get color: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return FColor::Black;
 	}
-}
-
-void AVoxelWorld::UpdateCameraPosition(FVector Position)
-{
-	// Recreate octree
-	MainChunkOctree->UpdateCameraPosition(this, Position);;
 }
 
 
@@ -323,6 +292,11 @@ AVoxelChunk* AVoxelWorld::GetChunkFromPool()
 	}
 }
 
+void AVoxelWorld::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
+{
+	VoxelInvokerComponents.push_front(Invoker);
+}
+
 void AVoxelWorld::ApplyQueuedUpdates()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
@@ -443,19 +417,9 @@ float AVoxelWorld::GetDeletionDelay() const
 	return DeletionDelay;
 }
 
-float AVoxelWorld::GetLODToleranceZone() const
-{
-	return LODToleranceZone;
-}
-
 bool AVoxelWorld::GetRebuildBorders() const
 {
 	return bRebuildBorders;
-}
-
-float AVoxelWorld::GetLODAt(float Distance) const
-{
-	return LODProfile.GetDefaultObject()->GetLODAt(Distance);
 }
 
 FQueuedThreadPool* AVoxelWorld::GetThreadPool()

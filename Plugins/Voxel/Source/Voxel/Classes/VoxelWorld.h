@@ -17,6 +17,7 @@ class ChunkOctree;
 class ValueOctree;
 class VoxelData;
 class AVoxelChunk;
+class UVoxelInvokerComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
@@ -33,12 +34,8 @@ public:
 	AVoxelWorld();
 	~AVoxelWorld();
 
-	int Size() const;
-
 	float GetDeletionDelay() const;
-	float GetLODToleranceZone() const;
 	bool GetRebuildBorders() const;
-	float GetLODAt(float Distance) const;
 	FQueuedThreadPool* GetThreadPool();
 	VoxelData* GetData();
 	bool IsCreated() const;
@@ -56,12 +53,11 @@ public:
 	void AddChunkToPool(AVoxelChunk* Chunk);
 	AVoxelChunk* GetChunkFromPool();
 
+	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
+
 	void Load();
 	void Unload();
 
-
-	UPROPERTY(EditAnywhere, Category = Voxel)
-		TSubclassOf<UVoxelLODProfile> LODProfile;
 
 	// Material to use
 	UPROPERTY(EditAnywhere, Category = Voxel)
@@ -73,6 +69,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
 		bool bDrawChunksBorders;
 
+	// Size of this world
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		int Size() const;
 
 	/**
 	 * Convert position from world space to voxel space
@@ -104,13 +103,6 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateAll(bool bAsync = true);
-
-	/**
-	 * Update camera position for LODs
-	 * @param	Position	Position in world space
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateCameraPosition(FVector Position);
 
 	/**
 	 * Is position in this world?
@@ -192,9 +184,7 @@ private:
 	// Time to wait before deleting old chunks to avoid holes
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		float DeletionDelay;
-	// Chunk at distance D has to verify: LODCurve(D) - LODCurve(D - Width * LODToleranceZone) < LOD < LODCurve(D) + LODCurve(D + Width * LODToleranceZone)
-	UPROPERTY(EditAnywhere, Category = Voxel, meta = (ClampMin = "0.01", ClampMax = "1", UIMin = "0.01", UIMax = "1"))
-		float LODToleranceZone;
+
 	// If disabled, holes may appear between far chunks but can improve performance when moving
 	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
 		bool bRebuildBorders;
@@ -202,16 +192,6 @@ private:
 	// Generator for this world
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		TSubclassOf<AVoxelWorldGenerator> WorldGenerator;
-
-	// Camera to set LODs
-	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
-		APlayerCameraManager* PlayerCamera;
-
-	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
-		bool bAutoFindCamera;
-
-	UPROPERTY(EditAnywhere, Category = Voxel, AdvancedDisplay)
-		bool bAutoUpdateCameraPosition;
 
 	/**
 	 * Sync world
@@ -248,6 +228,8 @@ private:
 
 	// List of unused chunks. Allows reusing of chunks
 	std::forward_list<AVoxelChunk*> ChunksPool;
+
+	std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> VoxelInvokerComponents;
 
 	/**
 	* Update all chunks in queue

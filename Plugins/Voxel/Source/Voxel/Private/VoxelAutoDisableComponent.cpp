@@ -46,13 +46,13 @@ void UVoxelAutoDisableComponent::TickComponent(float DeltaTime, ELevelTick TickT
 
 			if (FoundActors.Num() == 0)
 			{
-				UE_LOG(VoxelLog, Warning, TEXT("No camera found"));
+				UE_LOG(VoxelLog, Warning, TEXT("No world found"));
 			}
 			else
 			{
 				if (FoundActors.Num() > 1)
 				{
-					UE_LOG(VoxelLog, Warning, TEXT("More than one camera found"));
+					UE_LOG(VoxelLog, Warning, TEXT("More than one world found"));
 				}
 				World = (AVoxelWorld*)FoundActors[0];
 			}
