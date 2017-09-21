@@ -49,20 +49,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
 		static void SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, bool bUseLayer1 = true, float FadeDistance = 3, bool bAsync = false);
 
-
-	/**
-	 * Set value to positive or negative in a cone
-	 * @param	World			Voxel world
-	 * @param	Position		Position in world space
-	 * @param	Radius			Radius of the cone in voxel space
-	 * @param	Height			Height of the cone
-	 * @param	bAdd			Add or remove?
-	 * @param	bAsync			Update async
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
-		static void SetValueCone(AVoxelWorld* World, FVector Position, float Radius, float Height, bool bAdd, bool bAsync = false, float ValueMultiplier = 1);
-
-
 	/**
 	 * Add or remove continuously
 	 * @param	World			Voxel world

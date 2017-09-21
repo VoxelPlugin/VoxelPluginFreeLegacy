@@ -13,8 +13,24 @@
 #include "VoxelData.h"
 #include "VoxelPart.h"
 
+DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetValueSphere"), STAT_SetValueSphere, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetMaterialSphere"), STAT_SetMaterialSphere, STATGROUP_Voxel);
+
+DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetValueProjection"), STAT_SetValueProjection, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetMaterialProjection"), STAT_SetMaterialProjection, STATGROUP_Voxel);
+
+DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SmoothValue"), STAT_SmoothValue, STATGROUP_Voxel);
+
+DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ImportMesh"), STAT_ImportMesh, STATGROUP_Voxel);
+
+DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ApplyWaterEffect"), STAT_ApplyWaterEffect, STATGROUP_Voxel);
+
+DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ RemoveNonConnectedBlocks"), STAT_RemoveNonConnectedBlocks, STATGROUP_Voxel);
+
 void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bAsync, float ValueMultiplier)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SetValueSphere);
+
 	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
@@ -98,6 +114,8 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 
 void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, bool bUseLayer1, float FadeDistance, bool bAsync)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SetMaterialSphere);
+
 	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
@@ -159,51 +177,12 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float 
 	}
 }
 
-void UVoxelTools::SetValueCone(AVoxelWorld * World, FVector Position, float Radius, float Height, bool bAdd, bool bAsync, float ValueMultiplier)
-{
-	if (World == nullptr)
-	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
-		return;
-	}
-	check(World);
-
-	// Position in voxel space
-	FIntVector LocalPosition = World->GlobalToLocal(Position);
-	int IntRadius = FMath::CeilToInt(Radius);
-	int IntHeight = FMath::CeilToInt(Height);
-
-	for (int x = -IntRadius; x <= IntRadius; x++)
-	{
-		for (int y = -IntRadius; y <= IntRadius; y++)
-		{
-			for (int z = 0; z <= IntHeight; z++)
-			{
-				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
-				float CurrentRadius = z * (Radius / Height);
-				float Distance = FVector2D(x, y).Size();
-
-				if (Distance <= CurrentRadius + 1)
-				{
-					float Value = FMath::Clamp(CurrentRadius - Distance, -2.f, 2.f) / 2;
-
-					Value *= ValueMultiplier * (bAdd ? -1 : 1);
-
-					if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
-					{
-						World->SetValue(CurrentPosition, Value);
-						World->QueueUpdate(CurrentPosition, bAsync);
-					}
-				}
-			}
-		}
-	}
-}
-
 // TODO: Rewrite
 void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Stength, bool bAdd,
 									 float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SetValueProjection);
+
 	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
@@ -276,6 +255,8 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, bool bUseLayer1,
 										float FadeDistance, float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SetMaterialProjection);
+
 	if (World == NULL)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
@@ -387,6 +368,8 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, float Speed, float MaxDistance,
 							  bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SmoothValue);
+
 	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
@@ -490,6 +473,8 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 
 void UVoxelTools::ImportMesh(AVoxelWorld* World, TSubclassOf<AVoxelMeshAsset> MeshToImport, FVector Position, bool bAsync, bool bDebugPoints)
 {
+	SCOPE_CYCLE_COUNTER(STAT_ImportMesh);
+
 	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
@@ -576,6 +561,8 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 
 void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWorld, FVector Position, float Radius, float DownSpeed, float LateralSpeed, bool bAsync, float ValueMultiplier)
 {
+	SCOPE_CYCLE_COUNTER(STAT_ApplyWaterEffect);
+
 	if (SolidWorld == nullptr || WaterWorld == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
@@ -773,8 +760,11 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 
 	WaterWorld->UpdateAll(bAsync);
 }
+
 void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected, bool bAsync, float ValueMultiplier)
 {
+	SCOPE_CYCLE_COUNTER(STAT_RemoveNonConnectedBlocks);
+
 	if (World == nullptr)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
