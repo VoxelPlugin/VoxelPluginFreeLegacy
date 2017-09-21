@@ -55,7 +55,7 @@ void ChunkOctree::UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr
 	float MinDistance = MAX_flt;
 	for (auto Invoker : Invokers)
 	{
-		if (Invoker != NULL)
+		if (Invoker.IsValid())
 		{
 			const float Distance = FMath::Max(0.f, FVector::Distance(ChunkWorldPosition, Invoker->GetOwner()->GetActorLocation()) - Invoker->DistanceOffset - ChunkDiagonal);
 			if (Distance < MinDistance)
