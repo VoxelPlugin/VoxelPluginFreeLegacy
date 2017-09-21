@@ -4,6 +4,7 @@
 
 class AVoxelChunk;
 class AVoxelWorld;
+class UVoxelInvokerComponent;
 
 /**
  * Create the octree for rendering and spawn VoxelChunks
@@ -27,9 +28,9 @@ public:
 	/**
 	 * Create/Update the octree for the new position
 	 * @param	World			Current VoxelWorld
-	 * @param	CameraPosition	Position of the camera in world space
+	 * @param	Invokers		List of voxel invokers
 	 */
-	void UpdateCameraPosition(AVoxelWorld* World, FVector CameraPosition);
+	void UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers);
 
 	/**
 	 * Update VoxelChunks in this octree for changes in the terrain

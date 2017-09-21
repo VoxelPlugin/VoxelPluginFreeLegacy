@@ -2,6 +2,8 @@
 #include "ChunkOctree.h"
 #include "VoxelChunk.h"
 #include "Engine/World.h"
+#include "VoxelInvokerComponent.h"
+#include "Math/NumericLimits.h"
 
 void ChunkOctree::Delete()
 {
@@ -30,7 +32,7 @@ void ChunkOctree::ImmediateDelete()
 	}
 }
 
-void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPosition)
+void ChunkOctree::UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers)
 {
 	check(World);
 	check(bHasChunk == (VoxelChunk != nullptr));
@@ -47,12 +49,31 @@ void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPositio
 		return;
 	}
 
-	const float DistanceToCamera = ((World->GetTransform().TransformPosition((FVector)Position) - CameraPosition).Size()) / World->GetTransform().GetScale3D().X - 1.73205080757f /* sqrt(3) */ * Width() / 2;
+	const FVector ChunkWorldPosition = World->GetTransform().TransformPosition((FVector)Position);
+	const float ChunkDiagonal = World->GetActorScale3D().X * Width() / 2 * 1.73205080757 /* sqrt(3) */;
 
-	const float MinDistance = DistanceToCamera - World->GetLODToleranceZone() * Width();
-	const float MaxDistance = DistanceToCamera + -World->GetLODToleranceZone() * Width();
-	const float MinLOD = World->GetLODAt(FMath::Log2(MinDistance / 16));
-	const float MaxLOD = World->GetLODAt(FMath::Log2(MaxDistance / 16));
+	float MinDistance = MAX_flt;
+	for (auto Invoker : Invokers)
+	{
+		if (Invoker != NULL)
+		{
+			const float Distance = FMath::Max(0.f, FVector::Distance(ChunkWorldPosition, Invoker->GetOwner()->GetActorLocation()) - Invoker->DistanceOffset - ChunkDiagonal);
+			if (Distance < MinDistance)
+			{
+				MinDistance = Distance;
+			}
+		}
+	}
+
+	MinDistance /= World->GetActorScale3D().X;
+
+	MinDistance = FMath::Max(1.f, MinDistance);
+
+	const float MinLOD = FMath::Log2(MinDistance / 16);
+
+	// Tolerance zone to avoid reload loop when on a border
+	const float MaxDistance = MinDistance + (16 << (int)MinLOD) / 2;
+	const float MaxLOD = FMath::Log2(MaxDistance / 16);
 
 	if (MinLOD < Depth && Depth < MaxLOD)
 	{
@@ -63,7 +84,7 @@ void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPositio
 			for (int i = 0; i < 8; i++)
 			{
 				check(Childs[i].IsValid());
-				Childs[i]->UpdateCameraPosition(World, CameraPosition);
+				Childs[i]->UpdateLOD(World, Invokers);
 			}
 		}
 		else if (!bHasChunk)
@@ -89,7 +110,7 @@ void ChunkOctree::UpdateCameraPosition(AVoxelWorld* World, FVector CameraPositio
 			for (int i = 0; i < 8; i++)
 			{
 				check(Childs[i].IsValid());
-				Childs[i]->UpdateCameraPosition(World, CameraPosition);
+				Childs[i]->UpdateLOD(World, Invokers);
 			}
 		}
 	}
