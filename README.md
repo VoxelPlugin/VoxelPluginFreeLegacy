@@ -20,6 +20,8 @@ Based on [transvoxel](http://transvoxel.org/)
 * Water
 * Dynamic slicing
 
+[Wiki](https://github.com/Phyronnaz/MarchingCubes/wiki)
+
 [Progress](https://github.com/Phyronnaz/MarchingCubes/projects/1)
 
 [Quick start](https://github.com/Phyronnaz/MarchingCubes/wiki/Quick-start)
