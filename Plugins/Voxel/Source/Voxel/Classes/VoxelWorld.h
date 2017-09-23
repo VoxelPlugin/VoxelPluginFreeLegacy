@@ -58,6 +58,14 @@ public:
 	void Load();
 	void Unload();
 
+	UPROPERTY(EditAnywhere)
+		UStaticMesh* GrassMesh;
+
+	UPROPERTY(EditAnywhere)
+		int GrassDensity;
+
+	UPROPERTY(EditAnywhere)
+		float GrassRenderDistance;
 
 	// Material to use
 	UPROPERTY(EditAnywhere, Category = Voxel)
