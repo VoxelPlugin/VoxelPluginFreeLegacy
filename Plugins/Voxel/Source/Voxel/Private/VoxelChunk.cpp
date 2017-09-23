@@ -6,6 +6,9 @@
 #include "VoxelThread.h"
 #include "Misc/IQueuedWork.h"
 #include "AI/Navigation/NavigationSystem.h"
+#include "DrawDebugHelpers.h"
+#include "Engine.h"
+#include "Camera/PlayerCameraManager.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
@@ -23,6 +26,8 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDele
 	RootComponent = PrimaryMesh;
 
 	DebugLineBatch = CreateDefaultSubobject<ULineBatchComponent>(FName("LineBatch"));
+
+	InstancedMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(FName("InstancedMesh"));
 
 	ChunkHasHigherRes.SetNum(6);
 }
@@ -109,6 +114,9 @@ void AVoxelChunk::Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWor
 
 	// Update adjacent
 	bAdjacentChunksNeedUpdate = true;
+
+	// Grass
+	InstancedMesh->SetStaticMesh(World->GrassMesh);
 
 	// Set as used
 	bIsUsed = true;
@@ -248,6 +256,74 @@ void AVoxelChunk::UpdateSection()
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 	check(Task->IsDone());
+
+	InstancedMesh->ClearInstances();
+
+	if (Depth == 0)
+	{
+		auto Section = Task->GetSection();
+
+		if (PlayerCamera == nullptr)
+		{
+			// Find camera
+
+			TArray<AActor*> FoundActors;
+			UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCameraManager::StaticClass(), FoundActors);
+
+			if (FoundActors.Num() == 0)
+			{
+				UE_LOG(VoxelLog, Warning, TEXT("No camera found"));
+			}
+			else if (FoundActors.Num() == 1)
+			{
+				PlayerCamera = (APlayerCameraManager*)FoundActors[0];
+			}
+			else
+			{
+				UE_LOG(VoxelLog, Warning, TEXT("More than one camera found"));
+			}
+		}
+
+		if (PlayerCamera)
+		{
+			for (int Index = 0; Index < Section.ProcIndexBuffer.Num(); Index += 3)
+			{
+				FVector A = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index]].Position;
+				FVector B = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 1]].Position;
+				FVector C = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 2]].Position;
+
+				if (FVector::Distance(GetTransform().TransformPosition(A), PlayerCamera->GetTransform().GetLocation()) < World->GrassRenderDistance)
+				{
+					FVector X = B - A;
+					FVector Y = C - A;
+
+					const float SizeX = X.Size();
+					const float SizeY = Y.Size();
+
+					X.Normalize();
+					Y.Normalize();
+
+					for (int i = 0; i < World->GrassDensity; i++)
+					{
+						float CoordX = FMath::RandRange(0.f, SizeY);
+						float CoordY = FMath::RandRange(0.f, SizeX);
+
+						if (SizeY - CoordX * SizeY / SizeX < CoordY)
+						{
+							CoordX = SizeX - CoordX;
+							CoordY = SizeY - CoordY;
+						}
+
+						FVector P = A + X * CoordX + Y * CoordY;
+						InstancedMesh->AddInstance(FTransform(FRotator::ZeroRotator, GetTransform().TransformPosition(P)));
+						//DrawDebugPoint(GetWorld(), GetTransform().TransformPosition(P), 2, FColor::Red, false, 1000, 0);
+					}
+				}
+			}
+		}
+	}
+
+
 	PrimaryMesh->SetProcMeshSection(0, Task->GetSection());
 	delete Task;
 	Task = nullptr;

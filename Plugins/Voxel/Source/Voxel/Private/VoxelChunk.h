@@ -7,6 +7,7 @@
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 #include "Components/LineBatchComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "VoxelChunk.generated.h"
 
 class AVoxelWorld;
@@ -102,6 +103,12 @@ private:
 
 	UPROPERTY(EditAnywhere)
 		ULineBatchComponent* DebugLineBatch;
+
+	UPROPERTY(EditAnywhere)
+		UInstancedStaticMeshComponent* InstancedMesh;
+
+	UPROPERTY(EditAnywhere)
+		APlayerCameraManager* PlayerCamera;
 
 	// Toggle to manually init an update at the next tick
 	UPROPERTY(EditAnywhere)
