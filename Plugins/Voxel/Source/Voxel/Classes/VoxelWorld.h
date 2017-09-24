@@ -10,6 +10,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "VoxelLODProfile.h"
 #include "VoxelMaterial.h"
+#include "LandscapeGrassType.h"
 #include "VoxelWorld.generated.h"
 
 
@@ -59,13 +60,7 @@ public:
 	void Unload();
 
 	UPROPERTY(EditAnywhere)
-		UStaticMesh* GrassMesh;
-
-	UPROPERTY(EditAnywhere)
-		int GrassDensity;
-
-	UPROPERTY(EditAnywhere)
-		float GrassRenderDistance;
+		ULandscapeGrassType* GrassType;
 
 	// Material to use
 	UPROPERTY(EditAnywhere, Category = Voxel)

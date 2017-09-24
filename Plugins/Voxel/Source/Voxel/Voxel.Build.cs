@@ -1,11 +1,21 @@
 // Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
 
+using System.IO;
+
+
 namespace UnrealBuildTool.Rules
 {
     public class Voxel : ModuleRules
     {
         public Voxel(ReadOnlyTargetRules Target) : base(Target)
         {
+            // Get the engine path. Ends with "Engine/"
+            string engine_path = Path.GetFullPath(BuildConfiguration.RelativeEnginePath);
+            // Now get the base of UE4's modules dir (could also be Developer, Editor, ThirdParty)
+            string srcrt_path = engine_path + "Source/Runtime/";
+
+            PublicIncludePaths.Add(srcrt_path + "Engine/Private");
+
             PublicIncludePaths.AddRange(
                 new string[] {
 					// ... add public include paths required here ...

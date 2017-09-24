@@ -8,12 +8,46 @@
 #include "TransitionDirection.h"
 #include "Components/LineBatchComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "LandscapeGrassType.h"
 #include "VoxelChunk.generated.h"
 
 class AVoxelWorld;
 class AVoxelTransitionChunk;
 class UProceduralMeshComponent;
 class VoxelThread;
+
+
+class FoliageBuilderAsyncTask : public FNonAbandonableTask
+{
+public:
+	// Output
+	FStaticMeshInstanceData InstanceBuffer;
+	TArray<FClusterNode> ClusterTree;
+	int OutOcclusionLayerNum;
+
+
+	FoliageBuilderAsyncTask(FProcMeshSection Section, ULandscapeGrassType* GrassType, FTransform ChunkTransform)
+		: Section(Section)
+		, GrassType(GrassType)
+		, ChunkTransform(ChunkTransform)
+	{
+
+	}
+
+	FORCEINLINE TStatId GetStatId() const
+	{
+		RETURN_QUICK_DECLARE_CYCLE_STAT(FoliageBuilderAsyncTask, STATGROUP_ThreadPoolAsyncTasks);
+	}
+
+	void DoWork();
+
+private:
+	FProcMeshSection Section;
+	ULandscapeGrassType* GrassType;
+	FTransform ChunkTransform;
+};
+
 
 /**
  * Voxel Chunk actor class
@@ -104,12 +138,6 @@ private:
 	UPROPERTY(EditAnywhere)
 		ULineBatchComponent* DebugLineBatch;
 
-	UPROPERTY(EditAnywhere)
-		UInstancedStaticMeshComponent* InstancedMesh;
-
-	UPROPERTY(EditAnywhere)
-		APlayerCameraManager* PlayerCamera;
-
 	// Toggle to manually init an update at the next tick
 	UPROPERTY(EditAnywhere)
 		bool bUpdate;
@@ -122,6 +150,9 @@ private:
 	UPROPERTY(VisibleAnywhere)
 		int Depth;
 
+	UPROPERTY()
+		FProcMeshSection Section;
+
 	AVoxelWorld* World;
 
 	// Need to use ThreadedTask Section for PrimaryMesh
@@ -130,8 +161,9 @@ private:
 	// Is chunk used or in ChunksPool?
 	bool bIsUsed;
 
-	// Async process task
-	VoxelThread* Task;
+	// Async process tasks
+	VoxelThread* RenderTask;
+	FAsyncTask<FoliageBuilderAsyncTask>* FoliageTask;
 
 	// If destruction of this chunk has been scheduled
 	UPROPERTY(VisibleAnywhere)
@@ -140,9 +172,13 @@ private:
 	UPROPERTY(VisibleAnywhere)
 		float TimeUntilDeletion;
 
+	bool bQueueFoliageUpdate;
+
 	// If adjacent chunks need update (when creating / destroying this)
 	// Needed because it must be done at next tick, as ChunkOctree is partially initialized when Init is called
 	bool bAdjacentChunksNeedUpdate;
+
+	TArray<UHierarchicalInstancedStaticMeshComponent*> FoliageComponents;
 
 	/**
 	 * Get the adjacent chunk in direction
@@ -155,4 +191,6 @@ private:
 	 * Copy Task section to PrimaryMesh section
 	 */
 	void UpdateSection();
+
+	void FoliageComplete();
 };
