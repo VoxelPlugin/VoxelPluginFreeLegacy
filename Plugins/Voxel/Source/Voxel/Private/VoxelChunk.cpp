@@ -9,12 +9,14 @@
 #include "DrawDebugHelpers.h"
 #include "Engine.h"
 #include "Camera/PlayerCameraManager.h"
+#include "InstancedStaticMesh.h"
+#include "Kismet/KismetMathLibrary.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDeletion(false), bAdjacentChunksNeedUpdate(false), World(nullptr), bIsUsed(false)
+AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), RenderTask(nullptr), bNeedDeletion(false), bAdjacentChunksNeedUpdate(false), World(nullptr), bIsUsed(false)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -23,11 +25,10 @@ AVoxelChunk::AVoxelChunk() : bNeedSectionUpdate(false), Task(nullptr), bNeedDele
 	PrimaryMesh->bCastShadowAsTwoSided = true;
 	PrimaryMesh->bUseAsyncCooking = true;
 	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	PrimaryMesh->Mobility = EComponentMobility::Movable;
 	RootComponent = PrimaryMesh;
 
 	DebugLineBatch = CreateDefaultSubobject<ULineBatchComponent>(FName("LineBatch"));
-
-	InstancedMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(FName("InstancedMesh"));
 
 	ChunkHasHigherRes.SetNum(6);
 }
@@ -44,10 +45,21 @@ void AVoxelChunk::Tick(float DeltaTime)
 			return;
 		}
 
-		if (bNeedSectionUpdate && Task != nullptr && Task->IsDone())
+		if (bNeedSectionUpdate && RenderTask && RenderTask->IsDone())
 		{
 			bNeedSectionUpdate = false;
 			UpdateSection();
+		}
+
+
+		if (FoliageTask && FoliageTask->IsDone())
+		{
+			FoliageComplete();
+			/*if (Depth == 0)
+			{
+				FoliageTask = new FAsyncTask<FoliageBuilderAsyncTask>(Section, World->GrassType, GetTransform());
+				FoliageTask->StartBackgroundTask();
+			}*/
 		}
 
 		if (bAdjacentChunksNeedUpdate && World->GetRebuildBorders())
@@ -56,7 +68,7 @@ void AVoxelChunk::Tick(float DeltaTime)
 			for (int i = 0; i < 6; i++)
 			{
 				AVoxelChunk* Chunk = GetChunk((TransitionDirection)i);
-				if (Chunk != nullptr)
+				if (Chunk)
 				{
 					Chunk->BasicUpdate();
 				}
@@ -115,9 +127,6 @@ void AVoxelChunk::Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWor
 	// Update adjacent
 	bAdjacentChunksNeedUpdate = true;
 
-	// Grass
-	InstancedMesh->SetStaticMesh(World->GrassMesh);
-
 	// Set as used
 	bIsUsed = true;
 
@@ -154,7 +163,7 @@ void AVoxelChunk::Update(bool bAsync)
 	// Make sure we've ticked
 	Tick(0);
 
-	if (Task == nullptr)
+	if (!RenderTask)
 	{
 		// Update ChunkHasHigherRes
 		for (int i = 0; i < 6; i++)
@@ -166,19 +175,19 @@ void AVoxelChunk::Update(bool bAsync)
 			else
 			{
 				auto Direction = (TransitionDirection)i;
-				ChunkHasHigherRes[i] = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() < Depth);
+				ChunkHasHigherRes[i] = GetChunk(Direction) && (GetChunk(Direction)->GetDepth() < Depth);
 			}
 		}
 
-		Task = new VoxelThread(this);
+		RenderTask = new VoxelThread(this);
 		if (bAsync)
 		{
-			World->GetThreadPool()->AddQueuedWork(Task);
+			World->GetThreadPool()->AddQueuedWork(RenderTask);
 			bNeedSectionUpdate = true;
 		}
 		else
 		{
-			Task->DoThreadedWork();
+			RenderTask->DoThreadedWork();
 			// Update immediately to avoid holes
 			UpdateSection();
 		}
@@ -190,10 +199,10 @@ void AVoxelChunk::BasicUpdate()
 	for (int i = 0; i < 6; i++)
 	{
 		TransitionDirection Direction = (TransitionDirection)i;
-		bool bHigherRes = (GetChunk(Direction) != nullptr) && (GetChunk(Direction)->GetDepth() < Depth);
+		bool bHigherRes = GetChunk(Direction) && (GetChunk(Direction)->GetDepth() < Depth);
 		if (ChunkHasHigherRes[i] != bHigherRes)
 		{
-			if (Task == nullptr)
+			if (!RenderTask)
 			{
 				Update(true);
 				return;
@@ -213,21 +222,21 @@ void AVoxelChunk::Unload()
 	bAdjacentChunksNeedUpdate = true;
 
 	// If task if queued, remove it
-	if (Task != nullptr)
+	if (RenderTask)
 	{
-		World->GetThreadPool()->RetractQueuedWork(Task);
-		delete Task;
-		Task = nullptr;
+		World->GetThreadPool()->RetractQueuedWork(RenderTask);
+		delete RenderTask;
+		RenderTask = nullptr;
 	}
 }
 
 void AVoxelChunk::Delete()
 {	// If task if queued, remove it
-	if (Task != nullptr)
+	if (RenderTask)
 	{
-		World->GetThreadPool()->RetractQueuedWork(Task);
-		delete Task;
-		Task = nullptr;
+		World->GetThreadPool()->RetractQueuedWork(RenderTask);
+		delete RenderTask;
+		RenderTask = nullptr;
 	}
 
 	// Reset mesh & position & clear lines
@@ -255,78 +264,19 @@ void AVoxelChunk::Delete()
 void AVoxelChunk::UpdateSection()
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
-	check(Task->IsDone());
+	check(RenderTask->IsDone());
 
-	InstancedMesh->ClearInstances();
+	Section = RenderTask->GetSection();
 
-	if (Depth == 0)
+	if (!FoliageTask && Depth == 0)
 	{
-		auto Section = Task->GetSection();
-
-		if (PlayerCamera == nullptr)
-		{
-			// Find camera
-
-			TArray<AActor*> FoundActors;
-			UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCameraManager::StaticClass(), FoundActors);
-
-			if (FoundActors.Num() == 0)
-			{
-				UE_LOG(VoxelLog, Warning, TEXT("No camera found"));
-			}
-			else if (FoundActors.Num() == 1)
-			{
-				PlayerCamera = (APlayerCameraManager*)FoundActors[0];
-			}
-			else
-			{
-				UE_LOG(VoxelLog, Warning, TEXT("More than one camera found"));
-			}
-		}
-
-		if (PlayerCamera)
-		{
-			for (int Index = 0; Index < Section.ProcIndexBuffer.Num(); Index += 3)
-			{
-				FVector A = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index]].Position;
-				FVector B = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 1]].Position;
-				FVector C = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 2]].Position;
-
-				if (FVector::Distance(GetTransform().TransformPosition(A), PlayerCamera->GetTransform().GetLocation()) < World->GrassRenderDistance)
-				{
-					FVector X = B - A;
-					FVector Y = C - A;
-
-					const float SizeX = X.Size();
-					const float SizeY = Y.Size();
-
-					X.Normalize();
-					Y.Normalize();
-
-					for (int i = 0; i < World->GrassDensity; i++)
-					{
-						float CoordX = FMath::RandRange(0.f, SizeY);
-						float CoordY = FMath::RandRange(0.f, SizeX);
-
-						if (SizeY - CoordX * SizeY / SizeX < CoordY)
-						{
-							CoordX = SizeX - CoordX;
-							CoordY = SizeY - CoordY;
-						}
-
-						FVector P = A + X * CoordX + Y * CoordY;
-						InstancedMesh->AddInstance(FTransform(FRotator::ZeroRotator, GetTransform().TransformPosition(P)));
-						//DrawDebugPoint(GetWorld(), GetTransform().TransformPosition(P), 2, FColor::Red, false, 1000, 0);
-					}
-				}
-			}
-		}
+		FoliageTask = new FAsyncTask<FoliageBuilderAsyncTask>(Section, World->GrassType, GetTransform());
+		FoliageTask->StartBackgroundTask();
 	}
 
-
-	PrimaryMesh->SetProcMeshSection(0, Task->GetSection());
-	delete Task;
-	Task = nullptr;
+	PrimaryMesh->SetProcMeshSection(0, RenderTask->GetSection());
+	delete RenderTask;
+	RenderTask = nullptr;
 
 	UNavigationSystem::UpdateComponentInNavOctree(*PrimaryMesh);
 }
@@ -364,4 +314,165 @@ AVoxelChunk* AVoxelChunk::GetChunk(TransitionDirection Direction) const
 	{
 		return nullptr;
 	}
+}
+
+
+void FoliageBuilderAsyncTask::DoWork()
+{
+	// TODO: setnum
+	TArray<FMatrix> InstanceTransforms;
+
+	for (int Index = 0; Index < Section.ProcIndexBuffer.Num(); Index += 3)
+	{
+		FVector A = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index]].Position;
+		FVector B = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 1]].Position;
+		FVector C = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 2]].Position;
+
+		FVector N = (Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index]].Normal +
+					 Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 1]].Normal +
+					 Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 2]].Normal) / 3;
+
+		FVector X = B - A;
+		FVector Y = C - A;
+
+		const float SizeX = X.Size();
+		const float SizeY = Y.Size();
+
+		X.Normalize();
+		Y.Normalize();
+
+		for (int i = 0; i < GrassType->GrassVarieties[0].GrassDensity; i++)
+		{
+			float CoordX = FMath::RandRange(0.f, SizeY);
+			float CoordY = FMath::RandRange(0.f, SizeX);
+
+			if (SizeY - CoordX * SizeY / SizeX < CoordY)
+			{
+				CoordX = SizeX - CoordX;
+				CoordY = SizeY - CoordY;
+			}
+
+			FVector P = A + X * CoordX + Y * CoordY;
+
+			InstanceTransforms.Add(FTransform(UKismetMathLibrary::MakeRotFromZ(N), ChunkTransform.GetScale3D() * P).ToMatrixWithScale());
+		}
+	}
+
+
+	if (InstanceTransforms.Num())
+	{
+		InstanceBuffer.AllocateInstances(InstanceTransforms.Num(), true);
+		for (int32 InstanceIndex = 0; InstanceIndex < InstanceTransforms.Num(); InstanceIndex++)
+		{
+			InstanceBuffer.SetInstance(InstanceIndex, InstanceTransforms[InstanceIndex], 0);
+		}
+
+		TArray<int32> SortedInstances;
+		TArray<int32> InstanceReorderTable;
+		UHierarchicalInstancedStaticMeshComponent::BuildTreeAnyThread(InstanceTransforms, GrassType->GrassVarieties[0].GrassMesh->GetBounds().GetBox(), ClusterTree, SortedInstances, InstanceReorderTable, OutOcclusionLayerNum, /*DesiredInstancesPerLeaf*/1);
+
+		//SORT
+		// in-place sort the instances
+		const uint32 InstanceStreamSize = InstanceBuffer.GetStride();
+		FInstanceStream32 SwapBuffer;
+		check(sizeof(SwapBuffer) >= InstanceStreamSize);
+
+		for (int32 FirstUnfixedIndex = 0; FirstUnfixedIndex < InstanceTransforms.Num(); FirstUnfixedIndex++)
+		{
+			int32 LoadFrom = SortedInstances[FirstUnfixedIndex];
+			if (LoadFrom != FirstUnfixedIndex)
+			{
+				check(LoadFrom > FirstUnfixedIndex);
+				FMemory::Memcpy(&SwapBuffer, InstanceBuffer.GetInstanceWriteAddress(FirstUnfixedIndex), InstanceStreamSize);
+				FMemory::Memcpy(InstanceBuffer.GetInstanceWriteAddress(FirstUnfixedIndex), InstanceBuffer.GetInstanceWriteAddress(LoadFrom), InstanceStreamSize);
+				FMemory::Memcpy(InstanceBuffer.GetInstanceWriteAddress(LoadFrom), &SwapBuffer, InstanceStreamSize);
+
+				int32 SwapGoesTo = InstanceReorderTable[FirstUnfixedIndex];
+				check(SwapGoesTo > FirstUnfixedIndex);
+				check(SortedInstances[SwapGoesTo] == FirstUnfixedIndex);
+				SortedInstances[SwapGoesTo] = LoadFrom;
+				InstanceReorderTable[LoadFrom] = SwapGoesTo;
+
+				InstanceReorderTable[FirstUnfixedIndex] = FirstUnfixedIndex;
+				SortedInstances[FirstUnfixedIndex] = FirstUnfixedIndex;
+			}
+		}
+	}
+}
+
+void AVoxelChunk::FoliageComplete()
+{
+	check(FoliageTask && FoliageTask->IsDone());
+
+
+	for (int i = 0; i < FoliageComponents.Num(); i++)
+	{
+		FoliageComponents[i]->DestroyComponent();
+	}
+	FoliageComponents.Empty();
+
+	for (int GrassVarietyIndex = 0; GrassVarietyIndex < World->GrassType->GrassVarieties.Num(); GrassVarietyIndex++)
+	{
+		if (FoliageTask->GetTask().InstanceBuffer.NumInstances())
+		{
+			auto GrassVariety = World->GrassType->GrassVarieties[GrassVarietyIndex];
+
+			int32 FolSeed = FCrc::StrCrc32((World->GrassType->GetName() + GetName() + FString::Printf(TEXT("%d %d %d"), 0, 0, GrassVarietyIndex)).GetCharArray().GetData());
+			if (FolSeed == 0)
+			{
+				FolSeed++;
+			}
+
+			//Create component
+			UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, NAME_None, RF_Transient);
+
+			HierarchicalInstancedStaticMeshComponent->OnComponentCreated();
+			HierarchicalInstancedStaticMeshComponent->RegisterComponent();
+			if (HierarchicalInstancedStaticMeshComponent->bWantsInitializeComponent) HierarchicalInstancedStaticMeshComponent->InitializeComponent();
+
+			HierarchicalInstancedStaticMeshComponent->Mobility = EComponentMobility::Movable;
+			HierarchicalInstancedStaticMeshComponent->bCastStaticShadow = false;
+
+			HierarchicalInstancedStaticMeshComponent->SetStaticMesh(GrassVariety.GrassMesh);
+			HierarchicalInstancedStaticMeshComponent->MinLOD = GrassVariety.MinLOD;
+			HierarchicalInstancedStaticMeshComponent->bSelectable = false;
+			HierarchicalInstancedStaticMeshComponent->bHasPerInstanceHitProxies = false;
+			HierarchicalInstancedStaticMeshComponent->bReceivesDecals = GrassVariety.bReceivesDecals;
+			static FName NoCollision(TEXT("NoCollision"));
+			HierarchicalInstancedStaticMeshComponent->SetCollisionProfileName(NoCollision);
+			HierarchicalInstancedStaticMeshComponent->bDisableCollision = true;
+			HierarchicalInstancedStaticMeshComponent->SetCanEverAffectNavigation(false);
+			HierarchicalInstancedStaticMeshComponent->InstancingRandomSeed = FolSeed;
+			HierarchicalInstancedStaticMeshComponent->LightingChannels = GrassVariety.LightingChannels;
+
+			HierarchicalInstancedStaticMeshComponent->InstanceStartCullDistance = GrassVariety.StartCullDistance;
+			HierarchicalInstancedStaticMeshComponent->InstanceEndCullDistance = GrassVariety.EndCullDistance;
+
+			HierarchicalInstancedStaticMeshComponent->bAffectDistanceFieldLighting = false;
+
+			HierarchicalInstancedStaticMeshComponent->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+			FTransform DesiredTransform = GetRootComponent()->GetComponentTransform();
+			DesiredTransform.RemoveScaling();
+			HierarchicalInstancedStaticMeshComponent->SetWorldTransform(DesiredTransform);
+
+			FoliageComponents.Add(HierarchicalInstancedStaticMeshComponent);
+
+			if (!HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData.IsValid())
+			{
+				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(&FoliageTask->GetTask().InstanceBuffer);
+			}
+			else
+			{
+				HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData->UpdateFromPreallocatedData(HierarchicalInstancedStaticMeshComponent, FoliageTask->GetTask().InstanceBuffer);
+			}
+
+			HierarchicalInstancedStaticMeshComponent->AcceptPrebuiltTree(FoliageTask->GetTask().ClusterTree, FoliageTask->GetTask().OutOcclusionLayerNum);
+
+			//HierarchicalInstancedStaticMeshComponent->RecreateRenderState_Concurrent();
+			HierarchicalInstancedStaticMeshComponent->MarkRenderStateDirty();
+		}
+	}
+
+	delete FoliageTask;
+	FoliageTask = nullptr;
 }
