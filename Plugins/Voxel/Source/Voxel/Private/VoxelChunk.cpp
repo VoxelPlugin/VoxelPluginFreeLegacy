@@ -221,7 +221,7 @@ void AVoxelChunk::Unload()
 	TimeUntilDeletion = World->GetDeletionDelay();
 	bAdjacentChunksNeedUpdate = true;
 
-	// If task if queued, remove it
+	// If task is queued, remove it
 	if (RenderTask)
 	{
 		World->GetThreadPool()->RetractQueuedWork(RenderTask);
@@ -238,6 +238,12 @@ void AVoxelChunk::Delete()
 		delete RenderTask;
 		RenderTask = nullptr;
 	}
+	if (FoliageTask)
+	{
+		FoliageTask->EnsureCompletion();
+		delete FoliageTask;
+		FoliageTask = nullptr;
+	}
 
 	// Reset mesh & position & clear lines
 	PrimaryMesh->SetProcMeshSection(0, FProcMeshSection());
@@ -246,6 +252,13 @@ void AVoxelChunk::Delete()
 #if WITH_EDITOR
 	SetActorLabel("PoolChunk");
 #endif // WITH_EDITOR
+
+	// Delete foliage
+	for (int i = 0; i < FoliageComponents.Num(); i++)
+	{
+		FoliageComponents[i]->DestroyComponent();
+	}
+	FoliageComponents.Empty();
 
 
 	// Add to pool
@@ -322,6 +335,8 @@ void FoliageBuilderAsyncTask::DoWork()
 	// TODO: setnum
 	TArray<FMatrix> InstanceTransforms;
 
+	auto GrassVariety = GrassType->GrassVarieties[0];
+
 	for (int Index = 0; Index < Section.ProcIndexBuffer.Num(); Index += 3)
 	{
 		FVector A = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index]].Position;
@@ -341,7 +356,7 @@ void FoliageBuilderAsyncTask::DoWork()
 		X.Normalize();
 		Y.Normalize();
 
-		for (int i = 0; i < GrassType->GrassVarieties[0].GrassDensity; i++)
+		for (int i = 0; i < GrassVariety.GrassDensity; i++)
 		{
 			float CoordX = FMath::RandRange(0.f, SizeY);
 			float CoordY = FMath::RandRange(0.f, SizeX);
@@ -354,7 +369,30 @@ void FoliageBuilderAsyncTask::DoWork()
 
 			FVector P = A + X * CoordX + Y * CoordY;
 
-			InstanceTransforms.Add(FTransform(UKismetMathLibrary::MakeRotFromZ(N), ChunkTransform.GetScale3D() * P).ToMatrixWithScale());
+			FVector Scale(1.0f);
+
+			switch (GrassVariety.Scaling)
+			{
+			case EGrassScaling::Uniform:
+				Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
+				Scale.Y = Scale.X;
+				Scale.Z = Scale.X;
+				break;
+			case EGrassScaling::Free:
+				Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
+				Scale.Y = GrassVariety.ScaleY.Interpolate(FMath::RandRange(0.f, 1.f));
+				Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
+				break;
+			case EGrassScaling::LockXY:
+				Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
+				Scale.Y = Scale.X;
+				Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
+				break;
+			default:
+				check(0);
+			}
+
+			InstanceTransforms.Add(FTransform(UKismetMathLibrary::MakeRotFromZ(N), ChunkTransform.GetScale3D() * P, Scale).ToMatrixWithScale());
 		}
 	}
 
