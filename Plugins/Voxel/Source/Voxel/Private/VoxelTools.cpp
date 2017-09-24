@@ -112,6 +112,40 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 	}
 }
 
+void UVoxelTools::SetValueBox(AVoxelWorld * World, FVector Position, float ExtentX_InVoxel, float ExtentY_InVoxel, float ExtentZ_InVoxel, bool bAdd, bool bAsync, float ValueMultiplier)
+{
+	if (World == nullptr)
+	{
+		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		return;
+	}
+	check(World);
+
+	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	int IntExtentX = FMath::CeilToInt(ExtentX_InVoxel);
+	int IntExtentY = FMath::CeilToInt(ExtentY_InVoxel);
+	int IntHeight = FMath::CeilToInt(ExtentZ_InVoxel * 2);
+
+	float Value = ValueMultiplier * (bAdd ? -1 : 1);
+
+	for (int x = -IntExtentX; x <= IntExtentX; x++)
+	{
+		for (int y = -IntExtentY; y <= IntExtentY; y++)
+		{
+			for (int z = 0; z <= IntHeight; z++)
+			{
+				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
+
+				if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
+				{
+					World->SetValue(CurrentPosition, Value);
+					World->QueueUpdate(CurrentPosition, bAsync);
+				}
+			}
+		}
+	}
+}
+
 void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, bool bUseLayer1, float FadeDistance, bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetMaterialSphere);
