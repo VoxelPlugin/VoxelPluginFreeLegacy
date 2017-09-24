@@ -41,14 +41,15 @@ public:
 	* Set value to positive or negative in a specified box. Box is placed on its bottom side, relative to the supplied world space position.
 	* @param	World				Voxel world
 	* @param	Position			Position in world space
-	* @param	ExtentX_InVoxel		Box X extent in voxel space
-	* @param	ExtentY_InVoxel		Box Y extent in voxel space
-	* @param	ExtentZ_InVoxel		Box Z extent in voxel space
+	* @param	ExtentXInVoxel		Box X extent in voxel space
+	* @param	ExtentYInVoxel		Box Y extent in voxel space
+	* @param	ExtentZInVoxel		Box Z extent in voxel space
 	* @param	bAdd				Add or remove?
 	* @param	bAsync				Update async
+	* @param	ValueMultiplier		-ValueMultiplier will be set inside and ValueMultiplier outside
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
-		static void SetValueBox(AVoxelWorld* World, FVector Position, float ExtentX_InVoxel, float ExtentY_InVoxel, float ExtentZ_InVoxel, bool bAdd, bool bAsync, float ValueMultiplier = 1);
+		static void SetValueBox(AVoxelWorld* World, FVector Position, float ExtentXInVoxel, float ExtentYInVoxel, float ExtentZInVoxel, bool bAdd, bool bAsync, float ValueMultiplier = 1);
 
 	/**
 	 * Set color in a sphere

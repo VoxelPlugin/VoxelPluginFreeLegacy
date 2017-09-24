@@ -112,7 +112,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 	}
 }
 
-void UVoxelTools::SetValueBox(AVoxelWorld * World, FVector Position, float ExtentX_InVoxel, float ExtentY_InVoxel, float ExtentZ_InVoxel, bool bAdd, bool bAsync, float ValueMultiplier)
+void UVoxelTools::SetValueBox(AVoxelWorld * World, FVector Position, float ExtentXInVoxel, float ExtentYInVoxel, float ExtentZInVoxel, bool bAdd, bool bAsync, float ValueMultiplier)
 {
 	if (World == nullptr)
 	{
@@ -122,19 +122,19 @@ void UVoxelTools::SetValueBox(AVoxelWorld * World, FVector Position, float Exten
 	check(World);
 
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
-	int IntExtentX = FMath::CeilToInt(ExtentX_InVoxel);
-	int IntExtentY = FMath::CeilToInt(ExtentY_InVoxel);
-	int IntHeight = FMath::CeilToInt(ExtentZ_InVoxel * 2);
+	int IntExtentX = FMath::CeilToInt(ExtentXInVoxel);
+	int IntExtentY = FMath::CeilToInt(ExtentYInVoxel);
+	int IntHeight = FMath::CeilToInt(ExtentZInVoxel * 2);
 
 	float Value = ValueMultiplier * (bAdd ? -1 : 1);
 
-	for (int x = -IntExtentX; x <= IntExtentX; x++)
+	for (int X = -IntExtentX; X <= IntExtentX; X++)
 	{
-		for (int y = -IntExtentY; y <= IntExtentY; y++)
+		for (int Y = -IntExtentY; Y <= IntExtentY; Y++)
 		{
-			for (int z = 0; z <= IntHeight; z++)
+			for (int Z = 0; Z <= IntHeight; Z++)
 			{
-				FIntVector CurrentPosition = LocalPosition + FIntVector(x, y, z);
+				FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
 
 				if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
 				{
