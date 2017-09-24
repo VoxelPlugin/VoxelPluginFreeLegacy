@@ -7,7 +7,7 @@
 #include "Engine.h"
 
 
-UVoxelInvokerComponent::UVoxelInvokerComponent() : bAutoFindWorld(true), World(nullptr), DistanceOffset(0)
+UVoxelInvokerComponent::UVoxelInvokerComponent() : bNeedUpdate(true), DistanceOffset(0)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
@@ -16,7 +16,7 @@ void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!World)
+	if (bNeedUpdate)
 	{
 		TArray<AActor*> FoundActors;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorld::StaticClass(), FoundActors);
@@ -27,12 +27,12 @@ void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 		}
 		else
 		{
-			if (FoundActors.Num() > 1)
+			for (auto Actor : FoundActors)
 			{
-				UE_LOG(VoxelLog, Warning, TEXT("More than one world found"));
+				((AVoxelWorld*)Actor)->AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent>(this));
 			}
-			World = (AVoxelWorld*)FoundActors[0];
-			World->AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent>(this));
 		}
+
+		bNeedUpdate = false;
 	}
 }
