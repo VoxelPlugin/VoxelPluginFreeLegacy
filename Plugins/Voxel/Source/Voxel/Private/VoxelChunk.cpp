@@ -66,10 +66,12 @@ void AVoxelChunk::Tick(float DeltaTime)
 			}
 		}
 
-		if (!FoliageTasks.Num() && bNeedFoliageUpdate)
+		TimeSinceFoliageUpdate += DeltaTime;
+		if (!FoliageTasks.Num() && bNeedFoliageUpdate && TimeSinceFoliageUpdate > 1 / World->GrassFPS)
 		{
 			UpdateFoliage();
 			bNeedFoliageUpdate = false;
+			TimeSinceFoliageUpdate = 0;
 		}
 
 		if (bAdjacentChunksNeedUpdate && World->GetRebuildBorders())
@@ -292,16 +294,9 @@ void AVoxelChunk::UpdateSection()
 	Section = RenderTask->GetSection();
 
 	// Grass only on depth 0 and 1
-	if (Depth < 2)
+	if (Depth <= World->MaxGrassDepth)
 	{
-		if (!FoliageTasks.Num())
-		{
-			UpdateFoliage();
-		}
-		else
-		{
-			bNeedFoliageUpdate = true;
-		}
+		bNeedFoliageUpdate = true;
 	}
 
 	PrimaryMesh->SetProcMeshSection(0, RenderTask->GetSection());
@@ -356,7 +351,7 @@ void AVoxelChunk::UpdateFoliage()
 		auto GrassType = World->GrassTypes[Index];
 		for (auto GrassVariety : GrassType->GrassVarieties)
 		{
-			auto FoliageTask = new FAsyncTask<FoliageBuilderAsyncTask>(Section, GrassVariety, Index, GetTransform(), World->GetActorScale3D().X);
+			auto FoliageTask = new FAsyncTask<FoliageBuilderAsyncTask>(Section, GrassVariety, Index, GetTransform(), World->GetActorScale3D().X, Position, 10);
 			FoliageTask->StartBackgroundTask();
 			FoliageTasks.Add(FoliageTask);
 		}
@@ -369,10 +364,7 @@ void FoliageBuilderAsyncTask::DoWork()
 	TArray<FMatrix> InstanceTransforms;
 
 	const float VoxelTriangleArea = (VoxelSize * VoxelSize) / 2;
-	const float MeanGrassPerTrig = GrassVariety.GrassDensity * 10 / VoxelTriangleArea;
-
-	std::default_random_engine Generator;
-	std::normal_distribution<float> Distribution(MeanGrassPerTrig, 0.1f);
+	const float MeanGrassPerTrig = GrassVariety.GrassDensity * VoxelTriangleArea / 100000 /* 10m² in cm² */;
 
 	for (int Index = 0; Index < Section.ProcIndexBuffer.Num(); Index += 3)
 	{
@@ -384,9 +376,10 @@ void FoliageBuilderAsyncTask::DoWork()
 		FVoxelMaterial MatB = FVoxelMaterial(Section.ProcVertexBuffer[IndexB].Color);
 		FVoxelMaterial MatC = FVoxelMaterial(Section.ProcVertexBuffer[IndexC].Color);
 
-		if (Material == MatA.Index1 || Material == MatA.Index2 ||
-			Material == MatB.Index1 || Material == MatB.Index2 ||
-			Material == MatC.Index1 || Material == MatC.Index2)
+		const float ToleranceZone = 0.25f;
+		if ((Material == MatA.Index1 && MatA.Alpha < 1 - ToleranceZone) || (Material == MatA.Index2 && ((MatA.Alpha > ToleranceZone) || (MatA.Index1 == MatA.Index2))) ||
+			(Material == MatB.Index1 && MatB.Alpha < 1 - ToleranceZone) || (Material == MatB.Index2 && ((MatB.Alpha > ToleranceZone) || (MatB.Index1 == MatB.Index2))) ||
+			(Material == MatC.Index1 && MatC.Alpha < 1 - ToleranceZone) || (Material == MatC.Index2 && ((MatC.Alpha > ToleranceZone) || (MatC.Index1 == MatC.Index2))))
 		{
 
 			FVector A = Section.ProcVertexBuffer[IndexA].Position;
@@ -406,45 +399,59 @@ void FoliageBuilderAsyncTask::DoWork()
 			X.Normalize();
 			Y.Normalize();
 
+			FVector ExactCenter = (A + B + C) / 3 * 1000000;
+			FIntVector IntCenter = ChunkPosition + FIntVector(FMath::RoundToInt(ExactCenter.X), FMath::RoundToInt(ExactCenter.Y), FMath::RoundToInt(ExactCenter.Z));
 
+			FRandomStream Stream(Seed * (IntCenter.X + Seed) * (IntCenter.Y + Seed * Seed) * (IntCenter.Z + Seed * Seed * Seed));
 
-			for (int i = 0; i < Distribution(Generator); i++)
+			int Count = 2 * MeanGrassPerTrig;
+			if (Stream.GetFraction() < 2 * MeanGrassPerTrig - Count)
 			{
-				float CoordX = FMath::RandRange(0.f, SizeY);
-				float CoordY = FMath::RandRange(0.f, SizeX);
+				Count++;
+			}
 
-				if (SizeY - CoordX * SizeY / SizeX < CoordY)
+			for (float i = 0.5; i < Count; i++)
+			{
+				if (Stream.GetFraction() > 0.5f)
 				{
-					CoordX = SizeX - CoordX;
-					CoordY = SizeY - CoordY;
+					float CoordX = Stream.GetFraction() * SizeY;
+					float CoordY = Stream.GetFraction() * SizeX;
+
+					if (SizeY - CoordX * SizeY / SizeX < CoordY)
+					{
+						CoordX = SizeX - CoordX;
+						CoordY = SizeY - CoordY;
+					}
+
+					FVector P = A + X * CoordX + Y * CoordY;
+
+					FVector Scale(1.0f);
+
+					switch (GrassVariety.Scaling)
+					{
+					case EGrassScaling::Uniform:
+						Scale.X = GrassVariety.ScaleX.Interpolate(Stream.GetFraction());
+						Scale.Y = Scale.X;
+						Scale.Z = Scale.X;
+						break;
+					case EGrassScaling::Free:
+						Scale.X = GrassVariety.ScaleX.Interpolate(Stream.GetFraction());
+						Scale.Y = GrassVariety.ScaleY.Interpolate(Stream.GetFraction());
+						Scale.Z = GrassVariety.ScaleZ.Interpolate(Stream.GetFraction());
+						break;
+					case EGrassScaling::LockXY:
+						Scale.X = GrassVariety.ScaleX.Interpolate(Stream.GetFraction());
+						Scale.Y = Scale.X;
+						Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
+						break;
+					default:
+						check(0);
+					}
+
+					FRotator Rotation = GrassVariety.AlignToSurface ? UKismetMathLibrary::MakeRotFromZX(N, Stream.GetFraction() * X + Stream.GetFraction() * Y) : FRotator::ZeroRotator;
+
+					InstanceTransforms.Add(FTransform(Rotation, ChunkTransform.GetScale3D() * P, Scale).ToMatrixWithScale());
 				}
-
-				FVector P = A + X * CoordX + Y * CoordY;
-
-				FVector Scale(1.0f);
-
-				switch (GrassVariety.Scaling)
-				{
-				case EGrassScaling::Uniform:
-					Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
-					Scale.Y = Scale.X;
-					Scale.Z = Scale.X;
-					break;
-				case EGrassScaling::Free:
-					Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
-					Scale.Y = GrassVariety.ScaleY.Interpolate(FMath::RandRange(0.f, 1.f));
-					Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
-					break;
-				case EGrassScaling::LockXY:
-					Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
-					Scale.Y = Scale.X;
-					Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
-					break;
-				default:
-					check(0);
-				}
-
-				InstanceTransforms.Add(FTransform(GrassVariety.AlignToSurface ? UKismetMathLibrary::MakeRotFromZ(N) : FRotator::ZeroRotator, ChunkTransform.GetScale3D() * P, Scale).ToMatrixWithScale());
 			}
 		}
 	}

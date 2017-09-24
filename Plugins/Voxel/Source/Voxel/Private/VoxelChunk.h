@@ -28,12 +28,14 @@ public:
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-	FoliageBuilderAsyncTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize)
+	FoliageBuilderAsyncTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize, FIntVector ChunkPosition, int Seed)
 		: Section(Section)
 		, GrassVariety(GrassVariety)
 		, Material(Material)
 		, ChunkTransform(ChunkTransform)
 		, VoxelSize(VoxelSize)
+		, ChunkPosition(ChunkPosition)
+		, Seed(Seed)
 	{
 
 	}
@@ -46,10 +48,12 @@ public:
 	void DoWork();
 
 private:
-	FProcMeshSection Section;
-	uint8 Material;
-	FTransform ChunkTransform;
-	float VoxelSize;
+	FProcMeshSection const Section;
+	uint8 const Material;
+	FTransform const ChunkTransform;
+	float const VoxelSize;
+	FIntVector const ChunkPosition;
+	int const Seed;
 };
 
 
@@ -179,6 +183,9 @@ private:
 		float TimeUntilDeletion;
 
 	bool bQueueFoliageUpdate;
+
+	UPROPERTY(VisibleAnywhere)
+		float TimeSinceFoliageUpdate;
 
 	// If adjacent chunks need update (when creating / destroying this)
 	// Needed because it must be done at next tick, as ChunkOctree is partially initialized when Init is called
