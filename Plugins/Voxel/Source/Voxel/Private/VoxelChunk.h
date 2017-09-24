@@ -21,16 +21,19 @@ class VoxelThread;
 class FoliageBuilderAsyncTask : public FNonAbandonableTask
 {
 public:
+	FGrassVariety GrassVariety;
+
 	// Output
 	FStaticMeshInstanceData InstanceBuffer;
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-
-	FoliageBuilderAsyncTask(FProcMeshSection Section, ULandscapeGrassType* GrassType, FTransform ChunkTransform)
+	FoliageBuilderAsyncTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize)
 		: Section(Section)
-		, GrassType(GrassType)
+		, GrassVariety(GrassVariety)
+		, Material(Material)
 		, ChunkTransform(ChunkTransform)
+		, VoxelSize(VoxelSize)
 	{
 
 	}
@@ -44,8 +47,9 @@ public:
 
 private:
 	FProcMeshSection Section;
-	ULandscapeGrassType* GrassType;
+	uint8 Material;
 	FTransform ChunkTransform;
+	float VoxelSize;
 };
 
 
@@ -158,12 +162,14 @@ private:
 	// Need to use ThreadedTask Section for PrimaryMesh
 	bool bNeedSectionUpdate;
 
+	bool bNeedFoliageUpdate;
+
 	// Is chunk used or in ChunksPool?
 	bool bIsUsed;
 
 	// Async process tasks
 	VoxelThread* RenderTask;
-	FAsyncTask<FoliageBuilderAsyncTask>* FoliageTask;
+	TArray<FAsyncTask<FoliageBuilderAsyncTask>*> FoliageTasks;
 
 	// If destruction of this chunk has been scheduled
 	UPROPERTY(VisibleAnywhere)
@@ -191,6 +197,8 @@ private:
 	 * Copy Task section to PrimaryMesh section
 	 */
 	void UpdateSection();
+
+	void UpdateFoliage();
 
 	void FoliageComplete();
 };

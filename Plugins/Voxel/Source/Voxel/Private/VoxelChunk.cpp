@@ -11,6 +11,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "InstancedStaticMesh.h"
 #include "Kismet/KismetMathLibrary.h"
+#include <random>
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
@@ -52,14 +53,23 @@ void AVoxelChunk::Tick(float DeltaTime)
 		}
 
 
-		if (FoliageTask && FoliageTask->IsDone())
+		if (FoliageTasks.Num())
 		{
-			FoliageComplete();
-			/*if (Depth == 0)
+			bool bAllDone = true;
+			for (auto FoliageTask : FoliageTasks)
 			{
-				FoliageTask = new FAsyncTask<FoliageBuilderAsyncTask>(Section, World->GrassType, GetTransform());
-				FoliageTask->StartBackgroundTask();
-			}*/
+				bAllDone = bAllDone && FoliageTask->IsDone();
+			}
+			if (bAllDone)
+			{
+				FoliageComplete();
+			}
+		}
+
+		if (!FoliageTasks.Num() && bNeedFoliageUpdate)
+		{
+			UpdateFoliage();
+			bNeedFoliageUpdate = false;
 		}
 
 		if (bAdjacentChunksNeedUpdate && World->GetRebuildBorders())
@@ -238,12 +248,12 @@ void AVoxelChunk::Delete()
 		delete RenderTask;
 		RenderTask = nullptr;
 	}
-	if (FoliageTask)
+	for (auto FoliageTask : FoliageTasks)
 	{
 		FoliageTask->EnsureCompletion();
 		delete FoliageTask;
-		FoliageTask = nullptr;
 	}
+	FoliageTasks.Empty();
 
 	// Reset mesh & position & clear lines
 	PrimaryMesh->SetProcMeshSection(0, FProcMeshSection());
@@ -281,10 +291,17 @@ void AVoxelChunk::UpdateSection()
 
 	Section = RenderTask->GetSection();
 
-	if (!FoliageTask && Depth == 0)
+	// Grass only on depth 0 and 1
+	if (Depth < 2)
 	{
-		FoliageTask = new FAsyncTask<FoliageBuilderAsyncTask>(Section, World->GrassType, GetTransform());
-		FoliageTask->StartBackgroundTask();
+		if (!FoliageTasks.Num())
+		{
+			UpdateFoliage();
+		}
+		else
+		{
+			bNeedFoliageUpdate = true;
+		}
 	}
 
 	PrimaryMesh->SetProcMeshSection(0, RenderTask->GetSection());
@@ -330,69 +347,105 @@ AVoxelChunk* AVoxelChunk::GetChunk(TransitionDirection Direction) const
 }
 
 
+void AVoxelChunk::UpdateFoliage()
+{
+	check(!FoliageTasks.Num());
+
+	for (int Index = 0; Index < World->GrassTypes.Num(); Index++)
+	{
+		auto GrassType = World->GrassTypes[Index];
+		for (auto GrassVariety : GrassType->GrassVarieties)
+		{
+			auto FoliageTask = new FAsyncTask<FoliageBuilderAsyncTask>(Section, GrassVariety, Index, GetTransform(), World->GetActorScale3D().X);
+			FoliageTask->StartBackgroundTask();
+			FoliageTasks.Add(FoliageTask);
+		}
+	}
+}
+
 void FoliageBuilderAsyncTask::DoWork()
 {
-	// TODO: setnum
+	// TODO: set num
 	TArray<FMatrix> InstanceTransforms;
 
-	auto GrassVariety = GrassType->GrassVarieties[0];
+	const float VoxelTriangleArea = (VoxelSize * VoxelSize) / 2;
+	const float MeanGrassPerTrig = GrassVariety.GrassDensity * 10 / VoxelTriangleArea;
+
+	std::default_random_engine Generator;
+	std::normal_distribution<float> Distribution(MeanGrassPerTrig, 0.1f);
 
 	for (int Index = 0; Index < Section.ProcIndexBuffer.Num(); Index += 3)
 	{
-		FVector A = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index]].Position;
-		FVector B = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 1]].Position;
-		FVector C = Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 2]].Position;
+		int IndexA = Section.ProcIndexBuffer[Index];
+		int IndexB = Section.ProcIndexBuffer[Index + 1];
+		int IndexC = Section.ProcIndexBuffer[Index + 2];
 
-		FVector N = (Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index]].Normal +
-					 Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 1]].Normal +
-					 Section.ProcVertexBuffer[Section.ProcIndexBuffer[Index + 2]].Normal) / 3;
+		FVoxelMaterial MatA = FVoxelMaterial(Section.ProcVertexBuffer[IndexA].Color);
+		FVoxelMaterial MatB = FVoxelMaterial(Section.ProcVertexBuffer[IndexB].Color);
+		FVoxelMaterial MatC = FVoxelMaterial(Section.ProcVertexBuffer[IndexC].Color);
 
-		FVector X = B - A;
-		FVector Y = C - A;
-
-		const float SizeX = X.Size();
-		const float SizeY = Y.Size();
-
-		X.Normalize();
-		Y.Normalize();
-
-		for (int i = 0; i < GrassVariety.GrassDensity; i++)
+		if (Material == MatA.Index1 || Material == MatA.Index2 ||
+			Material == MatB.Index1 || Material == MatB.Index2 ||
+			Material == MatC.Index1 || Material == MatC.Index2)
 		{
-			float CoordX = FMath::RandRange(0.f, SizeY);
-			float CoordY = FMath::RandRange(0.f, SizeX);
 
-			if (SizeY - CoordX * SizeY / SizeX < CoordY)
+			FVector A = Section.ProcVertexBuffer[IndexA].Position;
+			FVector B = Section.ProcVertexBuffer[IndexB].Position;
+			FVector C = Section.ProcVertexBuffer[IndexC].Position;
+
+			FVector N = (Section.ProcVertexBuffer[IndexA].Normal +
+						 Section.ProcVertexBuffer[IndexB].Normal +
+						 Section.ProcVertexBuffer[IndexC].Normal) / 3;
+
+			FVector X = B - A;
+			FVector Y = C - A;
+
+			const float SizeX = X.Size();
+			const float SizeY = Y.Size();
+
+			X.Normalize();
+			Y.Normalize();
+
+
+
+			for (int i = 0; i < Distribution(Generator); i++)
 			{
-				CoordX = SizeX - CoordX;
-				CoordY = SizeY - CoordY;
+				float CoordX = FMath::RandRange(0.f, SizeY);
+				float CoordY = FMath::RandRange(0.f, SizeX);
+
+				if (SizeY - CoordX * SizeY / SizeX < CoordY)
+				{
+					CoordX = SizeX - CoordX;
+					CoordY = SizeY - CoordY;
+				}
+
+				FVector P = A + X * CoordX + Y * CoordY;
+
+				FVector Scale(1.0f);
+
+				switch (GrassVariety.Scaling)
+				{
+				case EGrassScaling::Uniform:
+					Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
+					Scale.Y = Scale.X;
+					Scale.Z = Scale.X;
+					break;
+				case EGrassScaling::Free:
+					Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
+					Scale.Y = GrassVariety.ScaleY.Interpolate(FMath::RandRange(0.f, 1.f));
+					Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
+					break;
+				case EGrassScaling::LockXY:
+					Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
+					Scale.Y = Scale.X;
+					Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
+					break;
+				default:
+					check(0);
+				}
+
+				InstanceTransforms.Add(FTransform(GrassVariety.AlignToSurface ? UKismetMathLibrary::MakeRotFromZ(N) : FRotator::ZeroRotator, ChunkTransform.GetScale3D() * P, Scale).ToMatrixWithScale());
 			}
-
-			FVector P = A + X * CoordX + Y * CoordY;
-
-			FVector Scale(1.0f);
-
-			switch (GrassVariety.Scaling)
-			{
-			case EGrassScaling::Uniform:
-				Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
-				Scale.Y = Scale.X;
-				Scale.Z = Scale.X;
-				break;
-			case EGrassScaling::Free:
-				Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
-				Scale.Y = GrassVariety.ScaleY.Interpolate(FMath::RandRange(0.f, 1.f));
-				Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
-				break;
-			case EGrassScaling::LockXY:
-				Scale.X = GrassVariety.ScaleX.Interpolate(FMath::RandRange(0.f, 1.f));
-				Scale.Y = Scale.X;
-				Scale.Z = GrassVariety.ScaleZ.Interpolate(FMath::RandRange(0.f, 1.f));
-				break;
-			default:
-				check(0);
-			}
-
-			InstanceTransforms.Add(FTransform(UKismetMathLibrary::MakeRotFromZ(N), ChunkTransform.GetScale3D() * P, Scale).ToMatrixWithScale());
 		}
 	}
 
@@ -407,7 +460,7 @@ void FoliageBuilderAsyncTask::DoWork()
 
 		TArray<int32> SortedInstances;
 		TArray<int32> InstanceReorderTable;
-		UHierarchicalInstancedStaticMeshComponent::BuildTreeAnyThread(InstanceTransforms, GrassType->GrassVarieties[0].GrassMesh->GetBounds().GetBox(), ClusterTree, SortedInstances, InstanceReorderTable, OutOcclusionLayerNum, /*DesiredInstancesPerLeaf*/1);
+		UHierarchicalInstancedStaticMeshComponent::BuildTreeAnyThread(InstanceTransforms, GrassVariety.GrassMesh->GetBounds().GetBox(), ClusterTree, SortedInstances, InstanceReorderTable, OutOcclusionLayerNum, /*DesiredInstancesPerLeaf*/1);
 
 		//SORT
 		// in-place sort the instances
@@ -440,22 +493,20 @@ void FoliageBuilderAsyncTask::DoWork()
 
 void AVoxelChunk::FoliageComplete()
 {
-	check(FoliageTask && FoliageTask->IsDone());
-
-
 	for (int i = 0; i < FoliageComponents.Num(); i++)
 	{
 		FoliageComponents[i]->DestroyComponent();
 	}
 	FoliageComponents.Empty();
 
-	for (int GrassVarietyIndex = 0; GrassVarietyIndex < World->GrassType->GrassVarieties.Num(); GrassVarietyIndex++)
+	for (auto FoliageTask : FoliageTasks)
 	{
 		if (FoliageTask->GetTask().InstanceBuffer.NumInstances())
 		{
-			auto GrassVariety = World->GrassType->GrassVarieties[GrassVarietyIndex];
+			auto Task = FoliageTask->GetTask();
+			FGrassVariety GrassVariety = Task.GrassVariety;
 
-			int32 FolSeed = FCrc::StrCrc32((World->GrassType->GetName() + GetName() + FString::Printf(TEXT("%d %d %d"), 0, 0, GrassVarietyIndex)).GetCharArray().GetData());
+			int32 FolSeed = FCrc::StrCrc32((GrassVariety.GrassMesh->GetName() + GetName()).GetCharArray().GetData());
 			if (FolSeed == 0)
 			{
 				FolSeed++;
@@ -497,20 +548,20 @@ void AVoxelChunk::FoliageComplete()
 
 			if (!HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData.IsValid())
 			{
-				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(&FoliageTask->GetTask().InstanceBuffer);
+				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(&Task.InstanceBuffer);
 			}
 			else
 			{
-				HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData->UpdateFromPreallocatedData(HierarchicalInstancedStaticMeshComponent, FoliageTask->GetTask().InstanceBuffer);
+				HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData->UpdateFromPreallocatedData(HierarchicalInstancedStaticMeshComponent, Task.InstanceBuffer);
 			}
 
-			HierarchicalInstancedStaticMeshComponent->AcceptPrebuiltTree(FoliageTask->GetTask().ClusterTree, FoliageTask->GetTask().OutOcclusionLayerNum);
+			HierarchicalInstancedStaticMeshComponent->AcceptPrebuiltTree(Task.ClusterTree, Task.OutOcclusionLayerNum);
 
 			//HierarchicalInstancedStaticMeshComponent->RecreateRenderState_Concurrent();
 			HierarchicalInstancedStaticMeshComponent->MarkRenderStateDirty();
 		}
-	}
 
-	delete FoliageTask;
-	FoliageTask = nullptr;
+		delete FoliageTask;
+	}
+	FoliageTasks.Empty();
 }
