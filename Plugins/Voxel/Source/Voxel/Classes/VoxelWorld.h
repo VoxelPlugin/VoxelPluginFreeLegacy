@@ -62,6 +62,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		TArray<ULandscapeGrassType*> GrassTypes;
 
+	// Hack
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		float GrassFPS;
+
+	// Grass max depth (inclusive)
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		int MaxGrassDepth;
+
 	// Material to use
 	UPROPERTY(EditAnywhere, Category = Voxel)
 		UMaterialInterface* VoxelMaterial;

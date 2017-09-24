@@ -16,7 +16,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelWorld::AVoxelWorld() : bDebugMultiplayer(false), bDrawChunksBorders(false), Depth(9), MultiplayerFPS(5), DeletionDelay(0.1f), bRebuildBorders(true), bIsCreated(false), TimeSinceSync(0)
+AVoxelWorld::AVoxelWorld() : bDebugMultiplayer(false), bDrawChunksBorders(false), Depth(9), MultiplayerFPS(5), DeletionDelay(0.1f), bRebuildBorders(true), bIsCreated(false), TimeSinceSync(0), GrassFPS(5)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
