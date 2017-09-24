@@ -22,6 +22,10 @@
 		{
 			"Name": "Voxel",
 			"Enabled": true
+		},
+		{
+			"Name": "SteamVR",
+			"Enabled": false
 		}
 	]
 }
