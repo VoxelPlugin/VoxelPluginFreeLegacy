@@ -38,6 +38,19 @@ public:
 		static void SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bAsync = false, float ValueMultiplier = 1);
 
 	/**
+	* Set value to positive or negative in a specified box. Box is placed on its bottom side, relative to the supplied world space position.
+	* @param	World				Voxel world
+	* @param	Position			Position in world space
+	* @param	ExtentX_InVoxel		Box X extent in voxel space
+	* @param	ExtentY_InVoxel		Box Y extent in voxel space
+	* @param	ExtentZ_InVoxel		Box Z extent in voxel space
+	* @param	bAdd				Add or remove?
+	* @param	bAsync				Update async
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
+		static void SetValueBox(AVoxelWorld* World, FVector Position, float ExtentX_InVoxel, float ExtentY_InVoxel, float ExtentZ_InVoxel, bool bAdd, bool bAsync, float ValueMultiplier = 1);
+
+	/**
 	 * Set color in a sphere
 	 * @param	World			Voxel world
 	 * @param	Position		Position in world space
