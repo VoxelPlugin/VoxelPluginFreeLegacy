@@ -59,8 +59,8 @@ public:
 	void Load();
 	void Unload();
 
-	UPROPERTY(EditAnywhere)
-		ULandscapeGrassType* GrassType;
+	UPROPERTY(EditAnywhere, Category = Voxel)
+		TArray<ULandscapeGrassType*> GrassTypes;
 
 	// Material to use
 	UPROPERTY(EditAnywhere, Category = Voxel)
