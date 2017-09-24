@@ -18,10 +18,7 @@ public:
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		AVoxelWorld* World;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		bool bAutoFindWorld;
+		bool bNeedUpdate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float DistanceOffset;
