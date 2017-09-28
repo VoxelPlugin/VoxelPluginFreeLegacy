@@ -23,7 +23,7 @@ FVoxelWorldSave::FVoxelWorldSave() : Depth(-1)
 
 }
 
-FVoxelWorldSave::FVoxelWorldSave(int Depth, std::list<FVoxelChunkSave> ChunksList) : Depth(Depth)
+FVoxelWorldSave::FVoxelWorldSave(int Depth, std::list<TSharedRef<FVoxelChunkSave>> ChunksList) : Depth(Depth)
 {
 	Chunks.SetNum(ChunksList.size());
 

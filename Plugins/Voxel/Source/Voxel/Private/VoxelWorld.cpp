@@ -11,7 +11,6 @@
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateAll"), STAT_UpdateAll, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ ApplyQueuedUpdates"), STAT_ApplyQueuedUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ Add"), STAT_Add, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelWorld ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
 
@@ -211,112 +210,9 @@ void AVoxelWorld::Add(FIntVector Position, float Value)
 	}
 }
 
-void AVoxelWorld::QueueUpdate(FIntVector Position, bool bAsync)
-{
-	if (!IsInWorld(Position))
-	{
-		UE_LOG(VoxelLog, Error, TEXT("QueueUpdate: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-		return;
-	}
-
-	int X = Position.X + Size() / 2;
-	int Y = Position.Y + Size() / 2;
-	int Z = Position.Z + Size() / 2;
-
-	bool bXIsAtBorder = (X % 16 == 0) && (X != 0);
-	bool bYIsAtBorder = (Y % 16 == 0) && (Y != 0);
-	bool bZIsAtBorder = (Z % 16 == 0) && (Z != 0);
-
-	QueueUpdate(MainChunkOctree->GetChunk(Position), bAsync);
-
-	if (bXIsAtBorder)
-	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 0, 0)), bAsync);
-	}
-	if (bYIsAtBorder)
-	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 8, 0)), bAsync);
-	}
-	if (bXIsAtBorder && bYIsAtBorder)
-	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 8, 0)), bAsync);
-	}
-	if (bZIsAtBorder)
-	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 0, 8)), bAsync);
-	}
-	if (bXIsAtBorder && bZIsAtBorder)
-	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 0, 8)), bAsync);
-	}
-	if (bYIsAtBorder && bZIsAtBorder)
-	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(0, 8, 8)), bAsync);
-	}
-	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
-	{
-		QueueUpdate(MainChunkOctree->GetChunk(Position - FIntVector(8, 8, 8)), bAsync);
-	}
-}
-
-void AVoxelWorld::QueueUpdate(TWeakPtr<ChunkOctree> Chunk, bool bAsync)
-{
-	if (Chunk.IsValid())
-	{
-		QueuedChunks.Add(Chunk);
-		if (!bAsync)
-		{
-			ChunksToUpdateSynchronously.Add(Chunk.Pin().Get()->Id);
-		}
-	}
-}
-
-void AVoxelWorld::AddChunkToPool(AVoxelChunk* Chunk)
-{
-	ChunksPool.push_front(Chunk);
-}
-
-AVoxelChunk* AVoxelWorld::GetChunkFromPool()
-{
-	if (ChunksPool.empty())
-	{
-		return GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
-	}
-	else
-	{
-		AVoxelChunk* Chunk = ChunksPool.front();
-		ChunksPool.pop_front();
-
-		check(Chunk->IsValidLowLevel());
-		return Chunk;
-	}
-}
-
 void AVoxelWorld::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 {
 	VoxelInvokerComponents.push_front(Invoker);
-}
-
-void AVoxelWorld::ApplyQueuedUpdates()
-{
-	SCOPE_CYCLE_COUNTER(STAT_ApplyQueuedUpdates);
-
-	for (auto& Chunk : QueuedChunks)
-	{
-		TSharedPtr<ChunkOctree> LockedChunk(Chunk.Pin());
-
-		if (LockedChunk.IsValid())
-		{
-			bool bAsync = !ChunksToUpdateSynchronously.Contains(LockedChunk->Id);
-			LockedChunk->Update(bAsync);
-		}
-		else
-		{
-			UE_LOG(VoxelLog, Warning, TEXT("Invalid chunk in queue"));
-		}
-	}
-	QueuedChunks.Reset();
-	ChunksToUpdateSynchronously.Reset();
 }
 
 void AVoxelWorld::UpdateAll(bool bAsync)
@@ -365,6 +261,7 @@ void AVoxelWorld::Unload()
 bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 {
 	const bool ParentVal = Super::CanEditChange(InProperty);
+	return ParentVal;
 
 	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, Depth)
 		|| InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(AVoxelWorld, VoxelMaterial)

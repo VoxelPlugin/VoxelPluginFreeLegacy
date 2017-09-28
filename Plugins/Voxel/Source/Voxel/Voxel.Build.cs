@@ -24,7 +24,10 @@ namespace UnrealBuildTool.Rules
 
             PrivateIncludePaths.AddRange(
                 new string[] {
-                    "Voxel/Private"
+                    "Voxel/Private",
+                    "Voxel/Private/VoxelWorldGenerators",
+					"Voxel/Private/VoxelData",
+					"Voxel/Private/VoxelRender"
                 }
                 );
 

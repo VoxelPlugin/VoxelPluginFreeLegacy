@@ -41,7 +41,7 @@ public:
 
 	FVoxelWorldSave();
 
-	FVoxelWorldSave(int Depth, std::list<FVoxelChunkSave> ChunksList);
+	FVoxelWorldSave(int Depth, std::list<TSharedRef<FVoxelChunkSave>> ChunksList);
 
 	std::list<FVoxelChunkSave> GetChunksList();
 };

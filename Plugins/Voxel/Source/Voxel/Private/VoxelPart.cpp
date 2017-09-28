@@ -41,7 +41,7 @@ void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
 			{
 				FIntVector Position = FIntVector(X, Y, Z);
 
-				TSharedPtr<VoxelRender> Render = MakeShareable(new VoxelRender(0, Data, Position, ChunkHasHigherRes));
+				TSharedPtr<VoxelPolygonizer> Render = MakeShareable(new VoxelPolygonizer(0, Data, Position, ChunkHasHigherRes));
 
 				TSharedPtr<FProcMeshSection> Section = MakeShareable(new FProcMeshSection());
 				Render->CreateSection(*Section);

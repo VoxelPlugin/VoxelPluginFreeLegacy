@@ -3,36 +3,19 @@
 #include "VoxelChunk.h"
 #include "Engine/World.h"
 #include "VoxelInvokerComponent.h"
-#include "Math/NumericLimits.h"
+#include "Math/NumericLimits.h
+#include "VoxelRender.h"
 
-void ChunkOctree::Delete()
+ChunkOctree::ChunkOctree(VoxelRender* Render, FIntVector Position, uint8 Depth, uint64 Id)
+	: Octree(Position, Depth, Id)
+	, Render(Render)
+	, bHasChunk(false)
+	, VoxelChunk(nullptr)
 {
-	if (bHasChunk)
-	{
-		Unload();
-	}
-	if (bHasChilds)
-	{
-		DeleteChilds();
-	}
-	check(!bHasChunk && !bHasChilds);
-}
+	check(Render);
+};
 
-void ChunkOctree::ImmediateDelete()
-{
-	if (bHasChunk)
-	{
-		VoxelChunk->Delete();
-		VoxelChunk = nullptr;
-		bHasChunk = false;
-	}
-	if (bHasChilds)
-	{
-		DeleteChilds();
-	}
-}
-
-void ChunkOctree::UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers)
+void ChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers)
 {
 	check(World);
 	check(bHasChunk == (VoxelChunk != nullptr));
@@ -44,13 +27,14 @@ void ChunkOctree::UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr
 		// Always create
 		if (!bHasChunk)
 		{
-			Load(World);
+			Load();
 		}
 		return;
 	}
 
-	const FVector ChunkWorldPosition = World->GetTransform().TransformPosition((FVector)Position);
-	const float ChunkDiagonal = World->GetActorScale3D().X * Width() / 2 * 1.73205080757 /* sqrt(3) */;
+	// TODO: improve
+	const FVector ChunkWorldPosition = Render->World->GetTransform().TransformPosition((FVector)Position);
+	const float ChunkDiagonal = Render->World->GetActorScale3D().X * Size() / 2 * 1.73205080757 /* sqrt(3) */;
 
 	float MinDistance = MAX_flt;
 	for (auto Invoker : Invokers)
@@ -65,7 +49,7 @@ void ChunkOctree::UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr
 		}
 	}
 
-	MinDistance /= World->GetActorScale3D().X;
+	MinDistance /= Render->World->GetActorScale3D().X;
 
 	MinDistance = FMath::Max(1.f, MinDistance);
 
@@ -84,13 +68,13 @@ void ChunkOctree::UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr
 			for (int i = 0; i < 8; i++)
 			{
 				check(Childs[i].IsValid());
-				Childs[i]->UpdateLOD(World, Invokers);
+				Childs[i]->UpdateLOD(Invokers);
 			}
 		}
 		else if (!bHasChunk)
 		{
 			// Not created, create
-			Load(World);
+			Load();
 		}
 	}
 	else if (MaxLOD < Depth)
@@ -110,7 +94,7 @@ void ChunkOctree::UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr
 			for (int i = 0; i < 8; i++)
 			{
 				check(Childs[i].IsValid());
-				Childs[i]->UpdateLOD(World, Invokers);
+				Childs[i]->UpdateLOD(Invokers);
 			}
 		}
 	}
@@ -125,7 +109,7 @@ void ChunkOctree::UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr
 		if (!bHasChunk)
 		{
 			// Not created, create
-			Load(World);
+			Load();
 		}
 	}
 	check(bHasChilds ^ bHasChunk);
@@ -184,26 +168,26 @@ TSharedPtr<ChunkOctree> ChunkOctree::GetChild(FIntVector PointPosition)
 	return Child;
 }
 
-void ChunkOctree::Load(AVoxelWorld* World)
+void ChunkOctree::Load()
 {
-	check(VoxelChunk == nullptr);
+	check(!VoxelChunk);
 	check(!bHasChunk);
 	check(!bHasChilds);
-	check(World);
 
-	VoxelChunk = World->GetChunkFromPool();
-	VoxelChunk->Init(Position - FIntVector(1, 1, 1) * Width() / 2, Depth, World);
-	World->QueueUpdate(AsShared(), true);
+	VoxelChunk = Render->GetInactiveChunk();
+	VoxelChunk->Init(Position - FIntVector(1, 1, 1) * Size() / 2, Depth, Render->World);
+	Render->UpdateChunk(AsShared(), true);
 	bHasChunk = true;
 }
 
 void ChunkOctree::Unload()
 {
-	check(VoxelChunk != nullptr);
+	check(VoxelChunk);
 	check(bHasChunk);
 	check(!bHasChilds);
 
 	VoxelChunk->Unload();
+	Render->SetChunkAsInactive(VoxelChunk);
 
 	VoxelChunk = nullptr;
 	bHasChunk = false;

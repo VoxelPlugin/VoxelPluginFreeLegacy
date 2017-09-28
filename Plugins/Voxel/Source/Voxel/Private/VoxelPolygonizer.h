@@ -5,12 +5,12 @@
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 
-class VoxelRender
+class VoxelPolygonizer
 {
 public:
-	VoxelRender(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes);
+	VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes);
 
-	void CreateSection(FProcMeshSection& OutSection);
+	void CreateSection(FProcMeshSection& OutSection, bool bComputeTransitions);
 
 private:
 	const int Depth;
@@ -30,7 +30,7 @@ private:
 
 	VoxelData* Data;
 
-	FORCEINLINE int Width();
+	FORCEINLINE int Size();
 	// Step between cubes
 	FORCEINLINE int Step();
 
@@ -53,8 +53,8 @@ private:
 	void InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha);
 	void InterpolateY2D(TransitionDirection Direction, const int X, const int MinY, const int MaxY, FVector& OutVector, uint8& OutAlpha);
 
-	FORCEINLINE void GlobalToLocal2D(int Width, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ);
-	FORCEINLINE void Local2DToGlobal(int Width, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ);
+	FORCEINLINE void GlobalToLocal2D(int Size, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ);
+	FORCEINLINE void Local2DToGlobal(int Size, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ);
 
 	FORCEINLINE FVector GetTranslated(const FVector Vertex, const FVector Normal);
 };
