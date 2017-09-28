@@ -7,7 +7,7 @@
 
 VoxelThread::VoxelThread(AVoxelChunk* VoxelChunk)
 {
-	Render = new VoxelRender(VoxelChunk->Depth, VoxelChunk->World->GetData(), VoxelChunk->Position, VoxelChunk->ChunkHasHigherRes);
+	Render = new VoxelPolygonizer(VoxelChunk->Depth, VoxelChunk->World->GetData(), VoxelChunk->Position, VoxelChunk->ChunkHasHigherRes);
 }
 
 VoxelThread::~VoxelThread()

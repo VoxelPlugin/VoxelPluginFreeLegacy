@@ -13,6 +13,10 @@
 #include "LandscapeGrassType.h"
 #include "VoxelWorld.generated.h"
 
+using namespace UP;
+using namespace UM;
+using namespace US;
+using namespace UC;
 
 class ChunkOctree;
 class ValueOctree;
@@ -63,7 +67,7 @@ public:
 		TArray<ULandscapeGrassType*> GrassTypes;
 
 	// Hack
-	UPROPERTY(EditAnywhere, Category = Voxel)
+	UPROPERTY(EditAnywhere, Category = Voxel, meta = (EditCondition = "bDebugMultiplayer"))
 		float GrassFPS;
 
 	// Grass max depth (inclusive)

@@ -1,7 +1,7 @@
 #include "VoxelPrivatePCH.h"
 #include "Octree.h"
 
-Octree::Octree(FIntVector Position, uint8 Depth, uint64 Id /*= -1*/) : Position(Position), Depth(Depth), Id(Id == -1 ? IntPow9(Depth) : Id), bHasChilds(false)
+Octree::Octree(FIntVector Position, uint8 Depth, uint64 Id /*= -1*/) : Position(Position), Depth(Depth), Id(Id), bHasChilds(false)
 {
 	// Max for Id
 	check(Depth <= 20);
@@ -17,7 +17,7 @@ bool Octree::operator>(const Octree& Other) const
 	return Id > Other.Id;
 }
 
-int Octree::Width() const
+int Octree::Size() const
 {
 	return 16 << Depth;
 }
@@ -27,44 +27,30 @@ bool Octree::IsLeaf() const
 	return !bHasChilds;
 }
 
-bool Octree::IsInOctree(FIntVector GlobalPosition) const
-{
-	return IsInOctree(GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z);
-}
-
 bool Octree::IsInOctree(int X, int Y, int Z) const
 {
-	return Position.X - Width() / 2 <= X && X < Position.X + Width() / 2 &&
-		Position.Y - Width() / 2 <= Y && Y < Position.Y + Width() / 2 &&
-		Position.Z - Width() / 2 <= Z && Z < Position.Z + Width() / 2;
+	return Position.X - Size() / 2 <= X && X < Position.X + Size() / 2 &&
+		Position.Y - Size() / 2 <= Y && Y < Position.Y + Size() / 2 &&
+		Position.Z - Size() / 2 <= Z && Z < Position.Z + Size() / 2;
 }
 
-FIntVector Octree::LocalToGlobal(FIntVector LocalPosition) const
+void Octree::LocalToGlobal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const
 {
-	FIntVector GlobalPosition;
-	LocalToGlobal(LocalPosition.X, LocalPosition.Y, LocalPosition.Z, GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z);
-	return GlobalPosition;
-}
-
-FORCEINLINE void Octree::LocalToGlobal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const
-{
-	OutX = X + (Position.X - Width() / 2);
-	OutY = Y + (Position.Y - Width() / 2);
-	OutZ = Z + (Position.Z - Width() / 2);
-}
-
-FIntVector Octree::GlobalToLocal(FIntVector GlobalPosition) const
-{
-	FIntVector LocalPosition;
-	GlobalToLocal(GlobalPosition.X, GlobalPosition.Y, GlobalPosition.Z, LocalPosition.X, LocalPosition.Y, LocalPosition.Z);
-	return LocalPosition;
+	OutX = X + (Position.X - Size() / 2);
+	OutY = Y + (Position.Y - Size() / 2);
+	OutZ = Z + (Position.Z - Size() / 2);
 }
 
 void Octree::GlobalToLocal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const
 {
-	OutX = X - (Position.X - Width() / 2);
-	OutY = Y - (Position.Y - Width() / 2);
-	OutZ = Z - (Position.Z - Width() / 2);
+	OutX = X - (Position.X - Size() / 2);
+	OutY = Y - (Position.Y - Size() / 2);
+	OutZ = Z - (Position.Z - Size() / 2);
+}
+
+uint64 Octree::GetTopIdForDepth(int8 Depth)
+{
+	return IntPow9(Depth);
 }
 
 bool Octree::operator==(const Octree& Other) const

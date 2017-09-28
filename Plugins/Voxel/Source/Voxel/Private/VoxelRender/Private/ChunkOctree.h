@@ -3,7 +3,7 @@
 #include "Octree.h"
 
 class AVoxelChunk;
-class AVoxelWorld;
+class VoxelRender;
 class UVoxelInvokerComponent;
 
 /**
@@ -12,25 +12,18 @@ class UVoxelInvokerComponent;
 class ChunkOctree : public Octree, public TSharedFromThis<ChunkOctree>
 {
 public:
-	ChunkOctree(FIntVector Position, uint8 Depth, uint64 Id = -1) : Octree(Position, Depth, Id), bHasChunk(false), VoxelChunk(nullptr)
-	{
-	};
+	ChunkOctree(VoxelRender* Render, FIntVector Position, uint8 Depth, uint64 Id);
 
-	/**
-	 * Unload VoxelChunk if created and recursively delete childs
-	 */
-	void Delete();
-	/**
-	 * No deletion delay
-	 */
-	void ImmediateDelete();
+
+	VoxelRender* const Render;
+
 
 	/**
 	 * Create/Update the octree for the new position
 	 * @param	World			Current VoxelWorld
 	 * @param	Invokers		List of voxel invokers
 	 */
-	void UpdateLOD(AVoxelWorld* World, std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers);
+	void UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers);
 
 	/**
 	 * Update VoxelChunks in this octree for changes in the terrain
@@ -78,9 +71,8 @@ private:
 
 	/**
 	 * Create the VoxelChunk
-	 * @param	World	Current VoxelWorld
 	 */
-	void Load(AVoxelWorld* World);
+	void Load();
 	/**
 	 * Unload the VoxelChunk
 	 */
@@ -91,7 +83,7 @@ private:
 	 */
 	void CreateChilds();
 	/**
-	 * Call Delete() and reset all childs
+	 * Delete childs (with their chunks)
 	 */
 	void DeleteChilds();
 };

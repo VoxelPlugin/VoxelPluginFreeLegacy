@@ -24,7 +24,7 @@ public:
 	 * @param	Position	Position (center) of this chunk
 	 * @param	Depth		Distance to the highest resolution
 	 */
-	Octree(FIntVector Position, uint8 Depth, uint64 Id = -1);
+	Octree(FIntVector Position, uint8 Depth, uint64 Id);
 
 	bool operator==(const Octree& Other) const;
 
@@ -45,7 +45,7 @@ public:
 	 * Get the width at this level
 	 * @return	Width of this chunk
 	 */
-	FORCEINLINE int Width() const;
+	FORCEINLINE int Size() const;
 
 	/**
 	 * Is Leaf?
@@ -58,8 +58,6 @@ public:
 	 * @param	GlobalPosition	Position in voxel space
 	 * @return	If IsInOctree
 	 */
-	bool IsInOctree(FIntVector GlobalPosition) const;
-
 	FORCEINLINE bool IsInOctree(int X, int Y, int Z) const;
 
 	/**
@@ -67,8 +65,6 @@ public:
 	 * @param	LocalPosition	Position in chunk space
 	 * @return	Position in voxel space
 	 */
-	FIntVector LocalToGlobal(FIntVector LocalPosition) const;
-
 	FORCEINLINE void LocalToGlobal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const;
 
 	/**
@@ -76,9 +72,9 @@ public:
 	 * @param	GlobalPosition	Position in voxel space
 	 * @return	Position in chunk space
 	 */
-	FIntVector GlobalToLocal(FIntVector GlobalPosition) const;
-
 	FORCEINLINE void GlobalToLocal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const;
+
+	FORCEINLINE static uint64 GetTopIdForDepth(int8 Depth);
 
 protected:
 	// Does this octree has child?

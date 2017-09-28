@@ -29,5 +29,5 @@ public:
 private:
 	FThreadSafeCounter IsDoneCounter;
 	FProcMeshSection Section;
-	VoxelRender* Render;
+	VoxelPolygonizer* Render;
 };

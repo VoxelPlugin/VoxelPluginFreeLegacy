@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelSave.h"
 #include <list>
 
 class ValueOctree;
@@ -20,33 +19,30 @@ public:
 	 * @param	Depth			Depth of this world; Width = 16 * 2^Depth
 	 * @param	WorldGenerator	Generator for this world
 	 */
-	VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator, bool bMultiplayer);
+	VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator);
+	~VoxelData();
 
 	// Depth of the octree
 	const int Depth;
 
-	// Width = 16 * 2^Depth
-	FORCEINLINE int Width() const;
+	const AVoxelWorldGenerator* WorldGenerator;
 
-	/**
-	 * Get value octree
-	 * @return	Value Octree
-	 */
-	TSharedPtr<ValueOctree> GetValueOctree() const;
+	// Size = 16 * 2^Depth
+	FORCEINLINE int Size() const;
 
 	/**
 	 * Get value at position
 	 * @param	Position	Position in voxel space
 	 * @return	Value
 	 */
-	float GetValue(FIntVector Position) const;
+	float GetValue(int X, int Y, int Z) const;
 
 	/**
 	 * Get color at position
 	 * @param	Position	Position in voxel space
 	 * @return	Color
 	 */
-	FColor GetColor(FIntVector Position) const;
+	FColor GetColor(int X, int Y, int Z) const;
 
 	/**
 	* Get value and color at position
@@ -62,33 +58,36 @@ public:
 	 * @param	Position	Position in voxel space
 	 * @param	Value to set
 	 */
-	void SetValue(FIntVector Position, float Value) const;
+	void SetValue(int X, int Y, int Z, float Value);
 	/**
 	 * Set color at position
 	 * @param	Position	Position in voxel space
 	 * @param	Color to set
 	 */
-	void SetColor(FIntVector Position, FColor Color) const;
+	void SetColor(int X, int Y, int Z, FColor Color);
 
 	/**
 	 * Is Position in this world?
 	 * @param	Position	Position in voxel space
 	 * @return	IsInWorld
 	 */
-	bool IsInWorld(FIntVector Position) const;
+	FORCEINLINE bool IsInWorld(int X, int Y, int Z) const;
+
+	FORCEINLINE void ClampToWorld(int& X, int& Y, int& Z) const;
 
 	/**
 	 * Get save array of this world
 	 * @return SaveArray
 	 */
 	FVoxelWorldSave GetSave() const;
+
 	/**
 	 * Load this world from save array
 	 * @param	SaveArray	Array to load from
 	 * @param	World		VoxelWorld
 	 * @param	bReset		Reset all chunks?
 	 */
-	void LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World, bool bReset);
+	void LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset);
 
 	/**
 	 * Get sliced diff arrays to allow network transmission
@@ -96,15 +95,17 @@ public:
 	 * @param	OutColorDiffPacketsList		Each packet is sorted by Id
 	 */
 	void GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelColorDiff>>& OutColorDiffPacketsList) const;
+
 	/**
 	 * Load values and colors from diff arrays, and queue update of chunks that have changed
 	 * @param	ValueDiffArray	First element has lowest Id
 	 * @param	ColorDiffArray	First element has lowest Id
 	 * @param	World			Voxel world
 	 */
-	void LoadAndQueueUpdateFromDiffArray(const TArray<FVoxelValueDiff>& ValueDiffArray, const TArray<FVoxelColorDiff>& ColorDiffArray, AVoxelWorld* World) const;
+	void LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelColorDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions);
 
 private:
-	// Values
-	TSharedPtr<ValueOctree> MainOctree;
+	ValueOctree* MainOctree;
+
+	ValueOctree* LastOctree;
 };

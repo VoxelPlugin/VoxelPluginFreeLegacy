@@ -21,10 +21,10 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	ValueOctree(bool bMultiplayer, AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id = -1);
+	ValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id);
 
 	// Is the game multiplayer?
-	const bool bMultiplayer;
+	bool bMultiplayer;
 
 	// Generator for this world
 	AVoxelWorldGenerator* WorldGenerator;
@@ -44,36 +44,29 @@ public:
 	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor);
 
 	/**
-	 * Get value at position
-	 * @param	GlobalPosition	Position in voxel space
-	 * @return	Value
-	 */
-	float GetValue(FIntVector GlobalPosition);
-
-	/**
 	 * Set value at position
 	 * @param	GlobalPosition	Position in voxel space
 	 * @param	Value to set
 	 */
-	void SetValue(FIntVector GlobalPosition, float Value);
+	void SetValue(int X, int Y, int Z, float Value);
 
 	/**
 	 * Set color at position
 	 * @param	GlobalPosition	Position in voxel space
 	 * @param	Color to set
 	 */
-	void SetColor(FIntVector GlobalPosition, FColor Color);
+	void SetColor(int X, int Y, int Z, FColor Color);
 
 	/**
-	 * Add dirty chunks to SaveArray
-	 * @param	SaveArray		List to save chunks into
+	 * Add dirty chunks to SaveList
+	 * @param	SaveList		List to save chunks into
 	 */
-	void AddChunksToArray(std::list<FVoxelChunkSave>& SaveArray);
+	void AddDirtyChunksToSaveList(std::list<TSharedRef<FVoxelChunkSave>>& SaveList);
 	/**
 	 * Load chunks from SaveArray
 	 * @param	SaveArray	Array to load chunks from
 	 */
-	void LoadAndQueueUpdateFromSave(std::list<FVoxelChunkSave>& SaveArray, AVoxelWorld* World);
+	void LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave>& Save, std::forward_list<FIntVector>& OutModifiedPositions);
 
 	/**
 	 * Add values that have changed since last network sync to diff arrays
@@ -87,22 +80,21 @@ public:
 	 * @param	ColorsDiffs		Colors diff array; top is lowest Id
 	 * @param	World			Voxel world
 	 */
-	void LoadAndQueueUpdateFromDiffArrays(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelColorDiff>& ColorsDiffs, AVoxelWorld* World);
+	void LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelColorDiff>& ColorsDiffs, std::forward_list<FIntVector>& OutModifiedPositions);
 
 	/**
 	* Get direct child that owns GlobalPosition
 	* @param	GlobalPosition	Position in voxel space
 	*/
-	ValueOctree* GetChild(FIntVector GlobalPosition);
 	FORCEINLINE ValueOctree* GetChild(int X, int Y, int Z);
+
+	ValueOctree* GetLeaf(int X, int Y, int Z);
 
 	/**
 	 * Queue update of dirty chunks
 	 * @param	World	Voxel world
 	 */
-	void QueueUpdateOfDirtyChunks(AVoxelWorld* World);
-
-	ValueOctree*  GetCopy();
+	void GetDirtyChunksPositions(std::forward_list<FIntVector>& OutPositions);
 
 private:
 	/*
@@ -116,7 +108,8 @@ private:
 	*/
 	TArray<ValueOctree*, TFixedAllocator<8>> Childs;
 
-	FCriticalSection CriticalSection;
+	FEvent* GetLock;
+	FCriticalSection SetLock;
 
 	// Values if dirty
 	TArray<float, TFixedAllocator<16 * 16 * 16>> Values;
@@ -124,6 +117,8 @@ private:
 	TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors;
 
 	bool bIsDirty;
+
+	// For multiplayer
 
 	TSet<int> DirtyValues;
 	TSet<int> DirtyColors;
@@ -139,4 +134,8 @@ private:
 	 * Init arrays
 	 */
 	void SetAsDirty();
+
+	FORCEINLINE int IndexFromCoordinates(int X, int Y, int Z);
+
+	FORCEINLINE void CoordinatesFromIndex(int Index, int& OutX, int& OutY, int& OutZ);
 };
