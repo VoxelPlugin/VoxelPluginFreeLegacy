@@ -25,7 +25,7 @@ public:
 	// Depth of the octree
 	const int Depth;
 
-	const AVoxelWorldGenerator* WorldGenerator;
+	AVoxelWorldGenerator* const WorldGenerator;
 
 	// Size = 16 * 2^Depth
 	FORCEINLINE int Size() const;
@@ -35,14 +35,14 @@ public:
 	 * @param	Position	Position in voxel space
 	 * @return	Value
 	 */
-	float GetValue(int X, int Y, int Z) const;
+	float GetValue(int X, int Y, int Z);
 
 	/**
 	 * Get color at position
 	 * @param	Position	Position in voxel space
 	 * @return	Color
 	 */
-	FColor GetColor(int X, int Y, int Z) const;
+	FColor GetColor(int X, int Y, int Z);
 
 	/**
 	* Get value and color at position
@@ -50,7 +50,7 @@ public:
 	* @return	Value
 	* @return	Color
 	*/
-	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor) const;
+	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor);
 
 
 	/**

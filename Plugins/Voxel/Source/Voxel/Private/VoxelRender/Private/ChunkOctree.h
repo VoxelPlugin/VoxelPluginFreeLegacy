@@ -17,6 +17,10 @@ public:
 
 	VoxelRender* const Render;
 
+	/**
+	 * Unload VoxelChunk if created and recursively delete childs
+	 */
+	void Delete();
 
 	/**
 	 * Create/Update the octree for the new position
@@ -26,17 +30,11 @@ public:
 	void UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers);
 
 	/**
-	 * Update VoxelChunks in this octree for changes in the terrain
-	 * @param	bAsync	Update should be done async
-	 */
-	void Update(bool bAsync);
-
-	/**
 	 * Get a weak pointer to the leaf chunk at PointPosition. Weak pointers allow to check that the object they are pointing to is valid
 	 * @param	PointPosition	Position in voxel space. Must be contained in this octree
 	 * @return	Weak pointer to leaf chunk at PointPosition
 	 */
-	TWeakPtr<ChunkOctree> GetChunk(FIntVector PointPosition);
+	TWeakPtr<ChunkOctree> GetLeaf(FIntVector PointPosition);
 
 	/**
 	 * Get the VoxelChunk of this
@@ -50,6 +48,8 @@ public:
 	* @return	Direct child in which PointPosition is contained
 	*/
 	TSharedPtr<ChunkOctree> GetChild(FIntVector PointPosition);
+
+	TWeakPtr<ChunkOctree> GetAdjacentChunk(TransitionDirection Direction);
 
 private:
 	/*

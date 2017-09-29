@@ -4,7 +4,7 @@
 #include "VoxelPart.h"
 #include "ProceduralMeshComponent.h"
 #include "VoxelData.h"
-#include "VoxelRender.h"
+#include "VoxelPolygonizer.h"
 
 
 AVoxelPart::AVoxelPart()
@@ -26,7 +26,7 @@ void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
 {
 	check(Data);
 
-	const int W = Data->Width() / 2;
+	const int W = Data->Size() / 2;
 
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 	ChunkHasHigherRes.SetNumZeroed(6);
@@ -44,7 +44,7 @@ void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
 				TSharedPtr<VoxelPolygonizer> Render = MakeShareable(new VoxelPolygonizer(0, Data, Position, ChunkHasHigherRes));
 
 				TSharedPtr<FProcMeshSection> Section = MakeShareable(new FProcMeshSection());
-				Render->CreateSection(*Section);
+				Render->CreateSection(*Section, false);
 
 				TArray<FVector> Vertice;
 				Vertice.SetNumUninitialized(Section->ProcVertexBuffer.Num());

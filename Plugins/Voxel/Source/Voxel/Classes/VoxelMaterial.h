@@ -37,7 +37,7 @@ public:
 		return FColor(Index1, Index2, 255 * Alpha, 0);
 	}
 
-	uint8 GetMax()
+	uint8 GetMax() const
 	{
 		return Alpha < 0.5 ? Index1 : Index2;
 	}

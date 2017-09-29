@@ -7,7 +7,7 @@
 
 VoxelData::VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator) : Depth(Depth), WorldGenerator(WorldGenerator), LastOctree(nullptr)
 {
-	MainOctree = new ValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, Octree::GetTopIdForDepth(Depth));
+	MainOctree = new ValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, Octree::GetTopIdFromDepth(Depth));
 }
 
 VoxelData::~VoxelData()
@@ -20,7 +20,7 @@ int VoxelData::Size() const
 	return 16 << Depth;
 }
 
-float VoxelData::GetValue(int X, int Y, int Z) const
+float VoxelData::GetValue(int X, int Y, int Z)
 {
 	check(IsInWorld(X, Y, Z));
 
@@ -30,7 +30,7 @@ float VoxelData::GetValue(int X, int Y, int Z) const
 	return Value;
 }
 
-FColor VoxelData::GetColor(int X, int Y, int Z) const
+FColor VoxelData::GetColor(int X, int Y, int Z)
 {
 	check(IsInWorld(X, Y, Z));
 
@@ -40,7 +40,7 @@ FColor VoxelData::GetColor(int X, int Y, int Z) const
 	return Color;
 }
 
-void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor) const
+void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor)
 {
 	ClampToWorld(X, Y, Z);
 
@@ -92,7 +92,7 @@ void VoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave Save, std::f
 	{
 		MainOctree->GetDirtyChunksPositions(OutModifiedPositions);
 		delete MainOctree;
-		MainOctree = new ValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, Octree::GetTopIdForDepth(Depth));
+		MainOctree = new ValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, Octree::GetTopIdFromDepth(Depth));
 	}
 
 	auto SaveList = Save.GetChunksList();

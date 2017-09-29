@@ -339,11 +339,6 @@ FORCEINLINE void ValueOctree::CoordinatesFromIndex(int Index, int& OutX, int& Ou
 	OutZ = Index;
 }
 
-ValueOctree* ValueOctree::GetChild(int X, int Y, int Z)
-{
-	return GetChild(X, Y, Z);
-}
-
 ValueOctree * ValueOctree::GetChild(int X, int Y, int Z)
 {
 	check(!IsLeaf());

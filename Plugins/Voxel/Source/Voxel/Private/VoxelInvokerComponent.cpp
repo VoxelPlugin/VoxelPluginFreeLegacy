@@ -3,7 +3,6 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelInvokerComponent.h"
 #include "Components/PrimitiveComponent.h"
-#include "VoxelChunk.h"
 #include "Engine.h"
 
 

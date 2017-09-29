@@ -6,56 +6,15 @@
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
-#include "Components/LineBatchComponent.h"
-#include "Components/InstancedStaticMeshComponent.h"
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "LandscapeGrassType.h"
 #include "VoxelChunk.generated.h"
 
-class AVoxelWorld;
-class AVoxelTransitionChunk;
 class UProceduralMeshComponent;
-class VoxelThread;
-
-
-class FoliageBuilderAsyncTask : public FNonAbandonableTask
-{
-public:
-	FGrassVariety GrassVariety;
-
-	// Output
-	FStaticMeshInstanceData InstanceBuffer;
-	TArray<FClusterNode> ClusterTree;
-	int OutOcclusionLayerNum;
-
-	FoliageBuilderAsyncTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize, FIntVector ChunkPosition, int Seed)
-		: Section(Section)
-		, GrassVariety(GrassVariety)
-		, Material(Material)
-		, ChunkTransform(ChunkTransform)
-		, VoxelSize(VoxelSize)
-		, ChunkPosition(ChunkPosition)
-		, Seed(Seed)
-	{
-
-	}
-
-	FORCEINLINE TStatId GetStatId() const
-	{
-		RETURN_QUICK_DECLARE_CYCLE_STAT(FoliageBuilderAsyncTask, STATGROUP_ThreadPoolAsyncTasks);
-	}
-
-	void DoWork();
-
-private:
-	FProcMeshSection const Section;
-	uint8 const Material;
-	FTransform const ChunkTransform;
-	float const VoxelSize;
-	FIntVector const ChunkPosition;
-	int const Seed;
-};
-
+class MeshBuilderAsyncTask;
+class FoliageBuilderAsyncTask;
+class VoxelRender;
+class ChunkOctree;
+class UHierarchicalInstancedStaticMeshComponent;
 
 /**
  * Voxel Chunk actor class
@@ -66,8 +25,6 @@ class AVoxelChunk : public AActor
 	GENERATED_BODY()
 
 public:
-	friend class VoxelThread;
-
 	AVoxelChunk();
 
 	/**
@@ -76,7 +33,7 @@ public:
 	 * @param	NewDepth		Width = 16 * 2^Depth
 	 * @param	NewWorld		VoxelWorld
 	 */
-	void Init(FIntVector NewPosition, int NewDepth, AVoxelWorld* NewWorld);
+	void Init(TWeakPtr<ChunkOctree> NewOctree);
 
 	/**
 	 * Update this for terrain changes
@@ -84,10 +41,12 @@ public:
 	 */
 	void Update(bool bAsync);
 
+	void UpdateFoliage();
+
 	/**
 	 * Check if an adjacent chunk has changed its resolution, and update async if needed
 	 */
-	void BasicUpdate();
+	void CheckTransitions();
 
 	/**
 	 * Schedule destruction of this chunk
@@ -95,117 +54,46 @@ public:
 	void Unload();
 
 	/**
-	* Delete Task and Destroy this
-	*/
+	 * Delete this
+	 */
 	void Delete();
 
-	/*
-	 * Get the depth of this chunk
-	 * @return Depth
-	 */
-	int GetDepth() const;
+	void SetMaterial(UMaterialInterface* Material);
+
+	bool HasChunkHigherRes(TransitionDirection Direction);
 
 	/**
-	 * Get the width of this chunk
-	 * @return Width
-	 */
-	int Width() const;
+	* Copy Task section to PrimaryMesh section
+	*/
+	void OnMeshComplete();
 
-	/**
-	 * Get value in chunk space
-	 * @param 	X	x coordinate in chunk space (between 0 and Width)
-	 * @param 	Y	y coordinate in chunk space (between 0 and Width)
-	 * @param 	Z	z coordinate in chunk space (between 0 and Width)
-	 * @return	Value
-	 */
-	float GetValue(int X, int Y, int Z) const;
-
-	/**
-	 * Get color in chunk space
-	 * @param 	X	x coordinate in chunk space (between 0 and Width)
-	 * @param 	Y	y coordinate in chunk space (between 0 and Width)
-	 * @param 	Z	z coordinate in chunk space (between 0 and Width)
-	 * @return	Color
-	 */
-	FColor GetColor(int X, int Y, int Z) const;
-
-	// ChunkHasHigherRes[TransitionDirection]
-	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
-
-protected:
-	void Tick(float DeltaTime) override;
-
-#if WITH_EDITOR
-	bool ShouldTickIfViewportsOnly() const override;
-#endif
+	void OnFoliageComplete();
 
 private:
 	UPROPERTY(EditAnywhere)
 		UProceduralMeshComponent* PrimaryMesh;
 
 	UPROPERTY(EditAnywhere)
-		ULineBatchComponent* DebugLineBatch;
-
-	// Toggle to manually init an update at the next tick
-	UPROPERTY(EditAnywhere)
-		bool bUpdate;
-
-	// Minimal corner
-	UPROPERTY(VisibleAnywhere)
-		FIntVector Position;
-
-	// Width = 16 * 2^Depth
-	UPROPERTY(VisibleAnywhere)
-		int Depth;
+		TArray<UHierarchicalInstancedStaticMeshComponent*> FoliageComponents;
 
 	UPROPERTY()
 		FProcMeshSection Section;
 
-	AVoxelWorld* World;
+	FTimerHandle DeleteTimer;
 
-	// Need to use ThreadedTask Section for PrimaryMesh
-	bool bNeedSectionUpdate;
-
-	bool bNeedFoliageUpdate;
-
-	// Is chunk used or in ChunksPool?
-	bool bIsUsed;
+	// ChunkHasHigherRes[TransitionDirection] if Depth != 0
+	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 
 	// Async process tasks
-	VoxelThread* RenderTask;
-	TArray<FAsyncTask<FoliageBuilderAsyncTask>*> FoliageTasks;
+	MeshBuilderAsyncTask* MeshTask;
+	TArray<FoliageBuilderAsyncTask*> FoliageTasks;
 
-	// If destruction of this chunk has been scheduled
-	UPROPERTY(VisibleAnywhere)
-		bool bNeedDeletion;
-	// Time until destruction 
-	UPROPERTY(VisibleAnywhere)
-		float TimeUntilDeletion;
+	TSharedPtr<ChunkOctree> CurrentOctree;
+	VoxelRender* Render;
 
-	bool bQueueFoliageUpdate;
+	uint32 CompletedFoliageTaskCount;
 
-	UPROPERTY(VisibleAnywhere)
-		float TimeSinceFoliageUpdate;
+	void OnAllFoliageComplete();
 
-	// If adjacent chunks need update (when creating / destroying this)
-	// Needed because it must be done at next tick, as ChunkOctree is partially initialized when Init is called
-	bool bAdjacentChunksNeedUpdate;
-
-	TArray<UHierarchicalInstancedStaticMeshComponent*> FoliageComponents;
-
-	/**
-	 * Get the adjacent chunk in direction
-	 * @param	Direction	Direction of the chunk
-	 * @return	Pointer to chunk if found, nullptr else
-	 */
-	AVoxelChunk* GetChunk(TransitionDirection Direction) const;
-
-	/**
-	 * Copy Task section to PrimaryMesh section
-	 */
-	void UpdateSection();
-
-	void UpdateFoliage();
-
-	void FoliageComplete();
+	void DeleteTasks();
 };

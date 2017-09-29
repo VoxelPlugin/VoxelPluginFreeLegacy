@@ -3,7 +3,6 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelAutoDisableComponent.h"
 #include "Components/PrimitiveComponent.h"
-#include "VoxelChunk.h"
 #include "Engine.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelAutoDisableComponent ~ Tick"), STAT_VOXELAUTODISABLE_TICK, STATGROUP_Voxel);
@@ -63,13 +62,13 @@ void UVoxelAutoDisableComponent::TickComponent(float DeltaTime, ELevelTick TickT
 			FIntVector LocalPosition = World->GlobalToLocal(GetOwner()->GetActorLocation());
 			if (World->IsInWorld(LocalPosition))
 			{
-				AVoxelChunk* Chunk = World->GetChunkAt(LocalPosition);
+				int Depth = World->GetDepthAt(LocalPosition);
 				if (bSimulatePhysics)
 				{
-					Component->SetSimulatePhysics(Chunk->GetDepth() == 0);
+					Component->SetSimulatePhysics(Depth == 0);
 				}
 
-				Component->SetVisibility(Chunk->GetDepth() <= CullDepth, true);
+				Component->SetVisibility(Depth <= CullDepth, true);
 			}
 		}
 	}

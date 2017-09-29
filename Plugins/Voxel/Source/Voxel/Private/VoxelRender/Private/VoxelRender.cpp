@@ -6,6 +6,7 @@
 #include "ChunkOctree.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
 
 VoxelRender::VoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 FoliageThreadCount)
 	: World(World)
@@ -15,7 +16,24 @@ VoxelRender::VoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 Foli
 	MeshThreadPool->Create(MeshThreadCount, 64 * 1024);
 	FoliageThreadPool->Create(FoliageThreadCount, 32 * 1024);
 
-	MainOctree = MakeShareable(new ChunkOctree(FIntVector::ZeroValue, World->GetDepth(), Octree::GetTopIdForDepth(World->GetDepth())));
+	MainOctree = MakeShareable(new ChunkOctree(this, FIntVector::ZeroValue, World->Depth, Octree::GetTopIdFromDepth(World->Depth)));
+}
+
+void VoxelRender::Tick(float DeltaTime)
+{
+	TimeSinceMeshUpdate += DeltaTime;
+	TimeSinceFoliageUpdate += DeltaTime;
+
+	UpdateLOD();
+
+	ApplyUpdates();
+
+	ApplyFoliageUpdates();
+}
+
+void VoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
+{
+	VoxelInvokerComponents.push_front(Invoker);
 }
 
 AVoxelChunk* VoxelRender::GetInactiveChunk()
@@ -24,6 +42,8 @@ AVoxelChunk* VoxelRender::GetInactiveChunk()
 	if (InactiveChunks.empty())
 	{
 		Chunk = World->GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
+		Chunk->AttachToActor(World, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
+		Chunk->SetMaterial(World->VoxelMaterial);
 	}
 	else
 	{
@@ -46,7 +66,7 @@ void VoxelRender::UpdateChunk(TWeakPtr<ChunkOctree> Chunk, bool bAsync)
 {
 	if (Chunk.IsValid())
 	{
-		QueuedChunks.Add(Chunk);
+		ChunksToUpdate.Add(Chunk);
 		if (!bAsync)
 		{
 			IdsOfChunksToUpdateSynchronously.Add(Chunk.Pin().Get()->Id);
@@ -66,35 +86,35 @@ void VoxelRender::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
 	bool bYIsAtBorder = (Y % 16 == 0) && (Y != 0);
 	bool bZIsAtBorder = (Z % 16 == 0) && (Z != 0);
 
-	UpdateChunk(MainOctree->GetChunk(Position), bAsync);
+	UpdateChunk(MainOctree->GetLeaf(Position), bAsync);
 
 	if (bXIsAtBorder)
 	{
-		UpdateChunk(MainOctree->GetChunk(Position - FIntVector(8, 0, 0)), bAsync);
+		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(8, 0, 0)), bAsync);
 	}
 	if (bYIsAtBorder)
 	{
-		UpdateChunk(MainOctree->GetChunk(Position - FIntVector(0, 8, 0)), bAsync);
+		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(0, 8, 0)), bAsync);
 	}
 	if (bXIsAtBorder && bYIsAtBorder)
 	{
-		UpdateChunk(MainOctree->GetChunk(Position - FIntVector(8, 8, 0)), bAsync);
+		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(8, 8, 0)), bAsync);
 	}
 	if (bZIsAtBorder)
 	{
-		UpdateChunk(MainOctree->GetChunk(Position - FIntVector(0, 0, 8)), bAsync);
+		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(0, 0, 8)), bAsync);
 	}
 	if (bXIsAtBorder && bZIsAtBorder)
 	{
-		UpdateChunk(MainOctree->GetChunk(Position - FIntVector(8, 0, 8)), bAsync);
+		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(8, 0, 8)), bAsync);
 	}
 	if (bYIsAtBorder && bZIsAtBorder)
 	{
-		UpdateChunk(MainOctree->GetChunk(Position - FIntVector(0, 8, 8)), bAsync);
+		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(0, 8, 8)), bAsync);
 	}
 	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
 	{
-		UpdateChunk(MainOctree->GetChunk(Position - FIntVector(8, 8, 8)), bAsync);
+		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(8, 8, 8)), bAsync);
 	}
 }
 
@@ -102,20 +122,76 @@ void VoxelRender::ApplyUpdates()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyUpdates);
 
-	for (auto& Chunk : QueuedChunks)
+	for (auto& Chunk : ChunksToUpdate)
 	{
 		TSharedPtr<ChunkOctree> LockedChunk(Chunk.Pin());
 
-		if (LockedChunk.IsValid())
+		if (LockedChunk.IsValid() && LockedChunk->GetVoxelChunk())
 		{
 			bool bAsync = !IdsOfChunksToUpdateSynchronously.Contains(LockedChunk->Id);
-			LockedChunk->Update(bAsync);
+			LockedChunk->GetVoxelChunk()->Update(bAsync);
 		}
 		else
 		{
 			UE_LOG(VoxelLog, Warning, TEXT("Invalid chunk in queue"));
 		}
 	}
-	QueuedChunks.Reset();
+	ChunksToUpdate.Reset();
 	IdsOfChunksToUpdateSynchronously.Reset();
+
+	// See Init and Unload functions of AVoxelChunk
+	ApplyTransitionChecks();
+}
+
+void VoxelRender::UpdateAll(bool bAsync)
+{
+	for (auto Chunk : ActiveChunks)
+	{
+		Chunk->Update(bAsync);
+	}
+}
+
+void VoxelRender::UpdateLOD()
+{
+	SCOPE_CYCLE_COUNTER(STAT_UpdateLOD);
+	MainOctree->UpdateLOD(VoxelInvokerComponents);
+}
+
+void VoxelRender::AddFoliageUpdate(AVoxelChunk* Chunk)
+{
+	FoliageUpdateNeeded.Add(Chunk);
+}
+
+void VoxelRender::AddTransitionCheck(AVoxelChunk* Chunk)
+{
+	ChunksToCheckForTransitionChange.Add(Chunk);
+}
+
+void VoxelRender::ApplyFoliageUpdates()
+{
+	for (auto Chunk : FoliageUpdateNeeded)
+	{
+		Chunk->UpdateFoliage();
+	}
+	FoliageUpdateNeeded.Empty();
+}
+
+void VoxelRender::ApplyTransitionChecks()
+{
+	for (auto Chunk : ChunksToCheckForTransitionChange)
+	{
+		Chunk->CheckTransitions();
+	}
+	ChunksToCheckForTransitionChange.Empty();
+}
+
+TWeakPtr<ChunkOctree> VoxelRender::GetChunkOctreeAt(FIntVector Position) const
+{
+	check(World->IsInWorld(Position));
+	return MainOctree->GetLeaf(Position);
+}
+
+int VoxelRender::GetDepthAt(FIntVector Position) const
+{
+	return GetChunkOctreeAt(Position).Pin()->Depth;
 }
