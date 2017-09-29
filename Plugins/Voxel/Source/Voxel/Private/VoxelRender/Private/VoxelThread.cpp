@@ -33,7 +33,7 @@ void MeshBuilderAsyncTask::Abandon()
 	delete this;
 }
 
-FProcMeshSection& MeshBuilderAsyncTask::GetSection()
+FProcMeshSection MeshBuilderAsyncTask::GetSectionCopy()
 {
 	return Section;
 }
@@ -41,7 +41,7 @@ FProcMeshSection& MeshBuilderAsyncTask::GetSection()
 
 
 
-FoliageBuilderAsyncTask::FoliageBuilderAsyncTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk)
+FoliageBuilderAsyncTask::FoliageBuilderAsyncTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
 	, Material(Material)

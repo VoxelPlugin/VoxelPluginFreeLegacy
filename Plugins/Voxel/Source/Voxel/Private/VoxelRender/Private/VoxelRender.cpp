@@ -122,6 +122,8 @@ void VoxelRender::ApplyUpdates()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyUpdates);
 
+	std::forward_list<TWeakPtr<ChunkOctree>> Failed;
+
 	for (auto& Chunk : ChunksToUpdate)
 	{
 		TSharedPtr<ChunkOctree> LockedChunk(Chunk.Pin());
@@ -129,7 +131,12 @@ void VoxelRender::ApplyUpdates()
 		if (LockedChunk.IsValid() && LockedChunk->GetVoxelChunk())
 		{
 			bool bAsync = !IdsOfChunksToUpdateSynchronously.Contains(LockedChunk->Id);
-			LockedChunk->GetVoxelChunk()->Update(bAsync);
+			bool bSuccess = LockedChunk->GetVoxelChunk()->Update(bAsync);
+			if (!bSuccess)
+			{
+				// if not async always succeed
+				Failed.push_front(Chunk);
+			}
 		}
 		else
 		{
@@ -141,6 +148,12 @@ void VoxelRender::ApplyUpdates()
 
 	// See Init and Unload functions of AVoxelChunk
 	ApplyTransitionChecks();
+
+	// Add back chunks that were already updating
+	for (auto Chunk : Failed)
+	{
+		ChunksToUpdate.Add(Chunk);
+	}
 }
 
 void VoxelRender::UpdateAll(bool bAsync)
@@ -169,11 +182,21 @@ void VoxelRender::AddTransitionCheck(AVoxelChunk* Chunk)
 
 void VoxelRender::ApplyFoliageUpdates()
 {
+	std::forward_list<AVoxelChunk*> Failed;
 	for (auto Chunk : FoliageUpdateNeeded)
 	{
-		Chunk->UpdateFoliage();
+		bool bSuccess = Chunk->UpdateFoliage();
+		if (!bSuccess)
+		{
+			Failed.push_front(Chunk);
+		}
 	}
 	FoliageUpdateNeeded.Empty();
+
+	for (auto Chunk : Failed)
+	{
+		FoliageUpdateNeeded.Add(Chunk);
+	}
 }
 
 void VoxelRender::ApplyTransitionChecks()

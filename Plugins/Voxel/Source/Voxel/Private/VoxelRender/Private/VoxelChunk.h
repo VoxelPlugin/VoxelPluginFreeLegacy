@@ -39,9 +39,9 @@ public:
 	 * Update this for terrain changes
 	 * @param	bAsync
 	 */
-	void Update(bool bAsync);
+	bool Update(bool bAsync);
 
-	void UpdateFoliage();
+	bool UpdateFoliage();
 
 	/**
 	 * Check if an adjacent chunk has changed its resolution, and update async if needed
@@ -66,6 +66,8 @@ public:
 	* Copy Task section to PrimaryMesh section
 	*/
 	void OnMeshComplete();
+
+	void ApplyNewSection();
 
 	void OnFoliageComplete();
 

@@ -2,9 +2,15 @@
 #include "ValueOctree.h"
 #include "VoxelData.h"
 #include "VoxelWorldGenerator.h"
+#include "GenericPlatformProcess.h"
 
-ValueOctree::ValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id) : Octree(Position, Depth, Id), WorldGenerator(WorldGenerator), bIsDirty(false), bIsNetworkDirty(false)
+ValueOctree::ValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id)
+	: Octree(Position, Depth, Id)
+	, WorldGenerator(WorldGenerator)
+	, bIsDirty(false)
+	, bIsNetworkDirty(false)
 {
+	GetLock = FGenericPlatformProcess::GetSynchEventFromPool(true);
 }
 
 bool ValueOctree::IsDirty() const

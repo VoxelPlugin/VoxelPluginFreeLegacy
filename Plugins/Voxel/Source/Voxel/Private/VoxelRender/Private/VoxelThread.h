@@ -25,7 +25,7 @@ public:
 	// Do not call
 	virtual void Abandon() override;
 
-	FProcMeshSection& GetSection();
+	FProcMeshSection GetSectionCopy();
 
 private:
 	AVoxelChunk* Chunk;
@@ -48,7 +48,7 @@ public:
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-	FoliageBuilderAsyncTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk);
+	FoliageBuilderAsyncTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk);
 
 	virtual void DoThreadedWork() override;
 
