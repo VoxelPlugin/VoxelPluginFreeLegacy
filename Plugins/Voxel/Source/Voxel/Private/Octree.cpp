@@ -34,9 +34,9 @@ bool Octree::IsLeaf() const
 
 bool Octree::IsInOctree(int X, int Y, int Z) const
 {
-	return Position.X - Size() / 2 <= X && X < Position.X + Size() / 2 &&
-		Position.Y - Size() / 2 <= Y && Y < Position.Y + Size() / 2 &&
-		Position.Z - Size() / 2 <= Z && Z < Position.Z + Size() / 2;
+	return Position.X - Size() / 2 <= X && X < Position.X + Size() / 2
+		&& Position.Y - Size() / 2 <= Y && Y < Position.Y + Size() / 2
+		&& Position.Z - Size() / 2 <= Z && Z < Position.Z + Size() / 2;
 }
 
 void Octree::LocalToGlobal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const

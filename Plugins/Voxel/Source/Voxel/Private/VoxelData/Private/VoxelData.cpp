@@ -5,7 +5,9 @@
 #include "ValueOctree.h"
 #include "VoxelSave.h"
 
-VoxelData::VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator) : Depth(Depth), WorldGenerator(WorldGenerator), LastOctree(nullptr)
+VoxelData::VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator)
+	: Depth(Depth)
+	, WorldGenerator(WorldGenerator)
 {
 	MainOctree = new ValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, Octree::GetTopIdFromDepth(Depth));
 }
@@ -20,7 +22,7 @@ int VoxelData::Size() const
 	return 16 << Depth;
 }
 
-float VoxelData::GetValue(int X, int Y, int Z)
+float VoxelData::GetValue(int X, int Y, int Z) const
 {
 	check(IsInWorld(X, Y, Z));
 
@@ -30,7 +32,7 @@ float VoxelData::GetValue(int X, int Y, int Z)
 	return Value;
 }
 
-FColor VoxelData::GetColor(int X, int Y, int Z)
+FColor VoxelData::GetColor(int X, int Y, int Z) const
 {
 	check(IsInWorld(X, Y, Z));
 
@@ -40,11 +42,18 @@ FColor VoxelData::GetColor(int X, int Y, int Z)
 	return Color;
 }
 
-void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor)
+void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor) const
 {
 	ClampToWorld(X, Y, Z);
 
-	if (UNLIKELY(!LastOctree || !LastOctree->IsInOctree(X, Y, Z)))
+	MainOctree->GetLeaf(X, Y, Z)->GetValueAndColor(X, Y, Z, OutValue, OutColor);
+}
+
+void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor, ValueOctree*& LastOctree) const
+{
+	ClampToWorld(X, Y, Z);
+
+	if (UNLIKELY(!LastOctree || !LastOctree->IsLeaf() || !LastOctree->IsInOctree(X, Y, Z)))
 	{
 		LastOctree = MainOctree->GetLeaf(X, Y, Z);
 	}
@@ -54,13 +63,13 @@ void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& O
 void VoxelData::SetValue(int X, int Y, int Z, float Value)
 {
 	check(IsInWorld(X, Y, Z));
-	MainOctree->SetValue(X, Y, Z, Value);
+	MainOctree->GetLeaf(X, Y, Z)->SetValue(X, Y, Z, Value);
 }
 
 void VoxelData::SetColor(int X, int Y, int Z, FColor Color)
 {
 	check(IsInWorld(X, Y, Z));
-	MainOctree->SetColor(X, Y, Z, Color);
+	MainOctree->GetLeaf(X, Y, Z)->SetColor(X, Y, Z, Color);
 }
 
 bool VoxelData::IsInWorld(int X, int Y, int Z) const

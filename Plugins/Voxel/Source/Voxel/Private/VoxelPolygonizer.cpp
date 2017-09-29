@@ -758,6 +758,7 @@ void VoxelPolygonizer::GetValueAndColor(int X, int Y, int Z, float& OutValue, FC
 	}
 	else
 	{
+		// TODO: last octree
 		Data->GetValueAndColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutColor);
 	}
 }

@@ -55,7 +55,7 @@ void AVoxelChunk::Init(TWeakPtr<ChunkOctree> NewOctree)
 	Render->AddTransitionCheck(this);
 }
 
-void AVoxelChunk::Update(bool bAsync)
+bool AVoxelChunk::Update(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
@@ -90,6 +90,11 @@ void AVoxelChunk::Update(bool bAsync)
 				this
 			);
 			Render->MeshThreadPool->AddQueuedWork(MeshTask);
+			return true;
+		}
+		else
+		{
+			return false;
 		}
 	}
 	else
@@ -112,7 +117,9 @@ void AVoxelChunk::Update(bool bAsync)
 			delete Polygonizer;
 		}
 
-		OnMeshComplete();
+		ApplyNewSection();
+
+		return true;
 	}
 }
 
@@ -180,15 +187,19 @@ void AVoxelChunk::OnMeshComplete()
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 
-	Section = MeshTask->GetSection();
+	Section = MeshTask->GetSectionCopy();
 	delete MeshTask;
 	MeshTask = nullptr;
 
+	ApplyNewSection();
+}
+
+void AVoxelChunk::ApplyNewSection()
+{
 	// TODO
 	//if (CurrentOctree->Depth <= Render->World->MaxGrassDepth)
 
 	Render->AddFoliageUpdate(this);
-
 
 	PrimaryMesh->SetProcMeshSection(0, Section);
 
@@ -205,29 +216,35 @@ bool AVoxelChunk::HasChunkHigherRes(TransitionDirection Direction)
 	return CurrentOctree->Depth != 0 && ChunkHasHigherRes[Direction];
 }
 
-void AVoxelChunk::UpdateFoliage()
+bool AVoxelChunk::UpdateFoliage()
 {
-	check(!FoliageTasks.Num());
-
-	for (int Index = 0; Index < Render->World->GrassTypes.Num(); Index++)
+	if (FoliageTasks.Num() == 0)
 	{
-		auto GrassType = Render->World->GrassTypes[Index];
-		for (auto GrassVariety : GrassType->GrassVarieties)
+		for (int Index = 0; Index < Render->World->GrassTypes.Num(); Index++)
 		{
-			auto FoliageTask = new FoliageBuilderAsyncTask(
-				Section,
-				GrassVariety,
-				Index,
-				GetTransform(),
-				Render->World->GetVoxelSize(),
-				CurrentOctree->GetMinimalCornerPosition(),
-				10,
-				this
-			);
+			auto GrassType = Render->World->GrassTypes[Index];
+			for (auto GrassVariety : GrassType->GrassVarieties)
+			{
+				auto FoliageTask = new FoliageBuilderAsyncTask(
+					Section,
+					GrassVariety,
+					Index,
+					GetTransform(),
+					Render->World->GetVoxelSize(),
+					CurrentOctree->GetMinimalCornerPosition(),
+					10,
+					this
+				);
 
-			Render->FoliageThreadPool->AddQueuedWork(FoliageTask);
-			FoliageTasks.Add(FoliageTask);
+				Render->FoliageThreadPool->AddQueuedWork(FoliageTask);
+				FoliageTasks.Add(FoliageTask);
+			}
 		}
+		return true;
+	}
+	else
+	{
+		return false;
 	}
 }
 

@@ -35,14 +35,14 @@ public:
 	 * @param	Position	Position in voxel space
 	 * @return	Value
 	 */
-	float GetValue(int X, int Y, int Z);
+	float GetValue(int X, int Y, int Z) const;
 
 	/**
 	 * Get color at position
 	 * @param	Position	Position in voxel space
 	 * @return	Color
 	 */
-	FColor GetColor(int X, int Y, int Z);
+	FColor GetColor(int X, int Y, int Z) const;
 
 	/**
 	* Get value and color at position
@@ -50,7 +50,8 @@ public:
 	* @return	Value
 	* @return	Color
 	*/
-	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor);
+	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor) const;
+	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor, ValueOctree*& LastOctree) const;
 
 
 	/**
@@ -106,6 +107,4 @@ public:
 
 private:
 	ValueOctree* MainOctree;
-
-	ValueOctree* LastOctree;
 };
