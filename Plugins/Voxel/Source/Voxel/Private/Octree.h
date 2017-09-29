@@ -1,6 +1,5 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "VoxelChunk.h"
 
 FORCEINLINE uint64 IntPow9(int Power)
 {
@@ -47,6 +46,8 @@ public:
 	 */
 	FORCEINLINE int Size() const;
 
+	FORCEINLINE FIntVector GetMinimalCornerPosition() const;
+
 	/**
 	 * Is Leaf?
 	 * @return IsLeaf
@@ -74,7 +75,7 @@ public:
 	 */
 	FORCEINLINE void GlobalToLocal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ) const;
 
-	FORCEINLINE static uint64 GetTopIdForDepth(int8 Depth);
+	FORCEINLINE static uint64 GetTopIdFromDepth(int8 Depth);
 
 protected:
 	// Does this octree has child?

@@ -22,6 +22,11 @@ int Octree::Size() const
 	return 16 << Depth;
 }
 
+FORCEINLINE FIntVector Octree::GetMinimalCornerPosition() const
+{
+	return Position - FIntVector(Size() / 2, Size() / 2, Size() / 2);
+}
+
 bool Octree::IsLeaf() const
 {
 	return !bHasChilds;
@@ -48,7 +53,7 @@ void Octree::GlobalToLocal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ)
 	OutZ = Z - (Position.Z - Size() / 2);
 }
 
-uint64 Octree::GetTopIdForDepth(int8 Depth)
+uint64 Octree::GetTopIdFromDepth(int8 Depth)
 {
 	return IntPow9(Depth);
 }

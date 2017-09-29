@@ -29,7 +29,7 @@ FVoxelWorldSave::FVoxelWorldSave(int Depth, std::list<TSharedRef<FVoxelChunkSave
 
 	for (int i = 0; i < Chunks.Num(); i++)
 	{
-		Chunks[i] = ChunksList.back();
+		Chunks[i] = *ChunksList.back();
 		ChunksList.pop_back();
 	}
 }

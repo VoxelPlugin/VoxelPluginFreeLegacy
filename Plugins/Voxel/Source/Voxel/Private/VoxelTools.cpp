@@ -4,8 +4,6 @@
 #include "VoxelTools.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
-#include "ValueOctree.h"
-#include "ChunkOctree.h"
 #include "GameFramework/HUD.h"
 #include "Engine/LocalPlayer.h"
 #include "Kismet/GameplayStatics.h"
@@ -42,43 +40,6 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
 	int IntRadius = FMath::CeilToInt(Radius) + 2;
 
-	/**
-	 * Shrink octree to speed up value access
-	 */
-	 // Corners of the box where modified values are
-	TArray<FIntVector> Corners = {
-		LocalPosition + FIntVector(-IntRadius, -IntRadius, -IntRadius),
-		LocalPosition + FIntVector(+IntRadius, -IntRadius, -IntRadius),
-		LocalPosition + FIntVector(-IntRadius, +IntRadius, -IntRadius),
-		LocalPosition + FIntVector(+IntRadius, +IntRadius, -IntRadius),
-		LocalPosition + FIntVector(-IntRadius, -IntRadius, +IntRadius),
-		LocalPosition + FIntVector(+IntRadius, -IntRadius, +IntRadius),
-		LocalPosition + FIntVector(-IntRadius, +IntRadius, +IntRadius),
-		LocalPosition + FIntVector(+IntRadius, +IntRadius, +IntRadius)
-	};
-
-	// Get smallest octree
-	ValueOctree* SmallValueOctree = World->GetValueOctree().Get();
-	ValueOctree* OldSmallValueOctree = SmallValueOctree;
-	check(SmallValueOctree);
-
-	bool ContinueShrinking = true;
-	while (ContinueShrinking)
-	{
-		ContinueShrinking = !SmallValueOctree->IsLeaf();
-		for (auto Corner : Corners)
-		{
-			ContinueShrinking = ContinueShrinking && SmallValueOctree->IsInOctree(Corner);
-		}
-
-		if (ContinueShrinking)
-		{
-			OldSmallValueOctree = SmallValueOctree;
-			SmallValueOctree = SmallValueOctree->GetChild(Corners[0]);
-		}
-	}
-	SmallValueOctree = OldSmallValueOctree;
-
 	for (int X = -IntRadius; X <= IntRadius; X++)
 	{
 		for (int Y = -IntRadius; Y <= IntRadius; Y++)
@@ -94,16 +55,16 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Rad
 
 					Value *= ValueMultiplier * (bAdd ? -1 : 1);
 
-					if (SmallValueOctree->IsInOctree(CurrentPosition)) // Prevent crash
+					if (World->IsInWorld(CurrentPosition)) // Prevent crash
 					{
-						if ((bAdd && (Value <= 0 || SmallValueOctree->GetValue(CurrentPosition) * Value >= 0)) || (!bAdd && (Value > 0 || SmallValueOctree->GetValue(CurrentPosition) * Value > 0)))
+						if ((bAdd && (Value <= 0 || World->GetValue(CurrentPosition) * Value >= 0)) || (!bAdd && (Value > 0 || World->GetValue(CurrentPosition) * Value > 0)))
 						{
 							//DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), 5, FColor::Red, false, 1);
 							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::UpVector), FColor::Green, false, 1);
 							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::RightVector), FColor::Green, false, 1);
 							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::ForwardVector), FColor::Green, false, 1);
-							SmallValueOctree->SetValue(CurrentPosition, Value);
-							World->QueueUpdate(CurrentPosition, bAsync);
+							World->SetValue(CurrentPosition, Value);
+							World->UpdateChunksAtPosition(CurrentPosition, bAsync);
 						}
 					}
 				}
@@ -139,7 +100,7 @@ void UVoxelTools::SetValueBox(AVoxelWorld * World, FVector Position, float Exten
 				if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
 				{
 					World->SetValue(CurrentPosition, Value);
-					World->QueueUpdate(CurrentPosition, bAsync);
+					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
 				}
 			}
 		}
@@ -198,13 +159,13 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float 
 
 					// Apply changes
 					World->SetMaterial(CurrentPosition, Material);
-					World->QueueUpdate(CurrentPosition, bAsync);
+					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
 				}
 				else if (Distance < Radius + FadeDistance + 2 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
 				{
 					Material.Alpha = bUseLayer1 ? 1 : 0;
 					World->SetMaterial(CurrentPosition, Material);
-					World->QueueUpdate(CurrentPosition, bAsync);
+					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
 				}
 			}
 		}
@@ -213,7 +174,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float 
 
 // TODO: Rewrite
 void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Stength, bool bAdd,
-									 float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
+	float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetValueProjection);
 
@@ -260,7 +221,9 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 				{
 					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 				}
-				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelChunk::StaticClass()))
+				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic)
+					&& Hit.Actor->GetAttachParentActor()
+					&& Hit.Actor->GetAttachParentActor()->IsA(AVoxelWorld::StaticClass()))
 				{
 					if (bDebugPoints)
 					{
@@ -281,13 +244,13 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 		{
 			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) + Stength, MinValue, MaxValue));
 		}
-		World->QueueUpdate(Point, bAsync);
+		World->UpdateChunksAtPosition(Point, bAsync);
 	}
 }
 
 // TODO: Rewrite
 void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, bool bUseLayer1,
-										float FadeDistance, float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints)
+	float FadeDistance, float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetMaterialProjection);
 
@@ -335,7 +298,9 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 				DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 			}
 
-			if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelChunk::StaticClass()))
+			if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic)
+				&& Hit.Actor->GetAttachParentActor()
+				&& Hit.Actor->GetAttachParentActor()->IsA(AVoxelWorld::StaticClass()))
 			{
 				if (bDebugPoints)
 				{
@@ -384,13 +349,13 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 
 							// Apply changes
 							World->SetMaterial(CurrentLocalPosition, Material);
-							World->QueueUpdate(CurrentLocalPosition, bAsync);
+							World->UpdateChunksAtPosition(CurrentLocalPosition, bAsync);
 						}
 						else if (Distance < Radius + FadeDistance + 3 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
 						{
 							Material.Alpha = bUseLayer1 ? 1 : 0;
 							World->SetMaterial(CurrentLocalPosition, Material);
-							World->QueueUpdate(CurrentLocalPosition, bAsync);
+							World->UpdateChunksAtPosition(CurrentLocalPosition, bAsync);
 						}
 					}
 				}
@@ -400,7 +365,7 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 }
 
 void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, float Speed, float MaxDistance,
-							  bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
+	bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SmoothValue);
 
@@ -449,7 +414,9 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 				{
 					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 				}
-				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelChunk::StaticClass()))
+				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic)
+					&& Hit.Actor->GetAttachParentActor()
+					&& Hit.Actor->GetAttachParentActor()->IsA(AVoxelWorld::StaticClass()))
 				{
 					if (bDebugPoints)
 					{
@@ -501,7 +468,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 		float Distance = DistancesToTool[i];
 		float Delta = Speed * (MeanDistance - Distance);
 		World->SetValue(Point, FMath::Clamp(Delta + World->GetValue(Point), MinValue, MaxValue));
-		World->QueueUpdate(Point, bAsync);
+		World->UpdateChunksAtPosition(Point, bAsync);
 	}
 }
 
@@ -530,20 +497,15 @@ void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, f
 	FHitResult HitResult;
 	if (PlayerController->GetWorld()->LineTraceSingleByChannel(HitResult, WorldPosition, WorldPosition + WorldDirection * MaxDistance, ECC_WorldDynamic))
 	{
-		if (HitResult.Actor->IsA(AVoxelChunk::StaticClass()))
+		if (HitResult.Actor->GetAttachParentActor() && HitResult.Actor->GetAttachParentActor()->IsA(AVoxelWorld::StaticClass()))
 		{
 			World = Cast<AVoxelWorld>(HitResult.Actor->GetAttachParentActor());
-			if (World)
-			{
-				Position = HitResult.ImpactPoint;
-				Normal = HitResult.ImpactNormal;
-				CameraDirection = (HitResult.TraceEnd - HitResult.TraceStart).GetSafeNormal();
-				Branches = EBlueprintSuccess::Sucess;
-			}
-			else
-			{
-				Branches = EBlueprintSuccess::Failed;
-			}
+			check(World);
+
+			Position = HitResult.ImpactPoint;
+			Normal = HitResult.ImpactNormal;
+			CameraDirection = (HitResult.TraceEnd - HitResult.TraceStart).GetSafeNormal();
+			Branches = EBlueprintSuccess::Sucess;
 		}
 		else
 		{
@@ -609,64 +571,6 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 	FIntVector LocalPosition = WaterWorld->GlobalToLocal(Position);
 	int IntRadius = FMath::CeilToInt(Radius) + 2;
 
-	/**
-	* Shrink octree to speed up value access
-	*/
-	// Corners of the box where modified values are
-	TArray<FIntVector> Corners = {
-		LocalPosition + FIntVector(-IntRadius, -IntRadius, -IntRadius),
-		LocalPosition + FIntVector(+IntRadius, -IntRadius, -IntRadius),
-		LocalPosition + FIntVector(-IntRadius, +IntRadius, -IntRadius),
-		LocalPosition + FIntVector(+IntRadius, +IntRadius, -IntRadius),
-		LocalPosition + FIntVector(-IntRadius, -IntRadius, +IntRadius),
-		LocalPosition + FIntVector(+IntRadius, -IntRadius, +IntRadius),
-		LocalPosition + FIntVector(-IntRadius, +IntRadius, +IntRadius),
-		LocalPosition + FIntVector(+IntRadius, +IntRadius, +IntRadius)
-	};
-
-	// Get smallest octree
-	ValueOctree* SmallValueOctree = WaterWorld->GetValueOctree().Get();
-	ValueOctree* OldSmallValueOctree = SmallValueOctree;
-	check(SmallValueOctree);
-
-	bool ContinueShrinking = true;
-	while (ContinueShrinking)
-	{
-		ContinueShrinking = !SmallValueOctree->IsLeaf();
-		for (auto Corner : Corners)
-		{
-			ContinueShrinking = ContinueShrinking && SmallValueOctree->IsInOctree(Corner);
-		}
-
-		if (ContinueShrinking)
-		{
-			OldSmallValueOctree = SmallValueOctree;
-			SmallValueOctree = SmallValueOctree->GetChild(Corners[0]);
-		}
-	}
-	SmallValueOctree = OldSmallValueOctree;
-
-	// Get smallest octree for SolidWorld
-	ValueOctree* SolidSmallValueOctree = SolidWorld->GetValueOctree().Get();
-	OldSmallValueOctree = SolidSmallValueOctree;
-	check(SolidSmallValueOctree);
-
-	ContinueShrinking = true;
-	while (ContinueShrinking)
-	{
-		ContinueShrinking = !SolidSmallValueOctree->IsLeaf();
-		for (auto Corner : Corners)
-		{
-			ContinueShrinking = ContinueShrinking && SolidSmallValueOctree->IsInOctree(Corner);
-		}
-
-		if (ContinueShrinking)
-		{
-			OldSmallValueOctree = SolidSmallValueOctree;
-			SolidSmallValueOctree = SolidSmallValueOctree->GetChild(Corners[0]);
-		}
-	}
-	SolidSmallValueOctree = OldSmallValueOctree;
 
 	for (int Z = -IntRadius + 1; Z < IntRadius; Z++)
 	{
@@ -675,15 +579,15 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 			for (int X = -IntRadius + 1; X < IntRadius; X++)
 			{
 				const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
-				const float CurrentSolidValue = SolidSmallValueOctree->GetValue(CurrentPosition);
+				const float CurrentSolidValue = SolidWorld->GetValue(CurrentPosition);
 				if (CurrentSolidValue <= 0)
 				{
-					SmallValueOctree->SetValue(CurrentPosition, -CurrentSolidValue);
+					WaterWorld->SetValue(CurrentPosition, -CurrentSolidValue);
 					//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
 				}
 				else
 				{
-					float CurrentValue = SmallValueOctree->GetValue(CurrentPosition);
+					float CurrentValue = WaterWorld->GetValue(CurrentPosition);
 
 					//DrawDebugString(WaterWorld->GetWorld(), WaterWorld->GetTransform().TransformPosition((FVector)CurrentPosition), FString::FromInt(1000 * CurrentValue), 0, FColor::Black, 0.1f, false);
 
@@ -691,12 +595,12 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 					{
 						{
 							const FIntVector BelowPosition = CurrentPosition + FIntVector(0, 0, -1);
-							const float BelowValue = SmallValueOctree->GetValue(BelowPosition);
+							const float BelowValue = WaterWorld->GetValue(BelowPosition);
 
 							const FIntVector AbovePosition = CurrentPosition + FIntVector(0, 0, 1);
-							const float AboveValue = SmallValueOctree->GetValue(AbovePosition);
+							const float AboveValue = WaterWorld->GetValue(AbovePosition);
 
-							const float BelowSolidValue = SolidSmallValueOctree->GetValue(BelowPosition);
+							const float BelowSolidValue = SolidWorld->GetValue(BelowPosition);
 
 							float DownDeltaValue = 0;
 
@@ -704,8 +608,8 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 							{
 								DownDeltaValue = FMath::Clamp(FMath::Min(1 - CurrentValue, 1 + BelowValue), 0.f, DownSpeed) + KINDA_SMALL_NUMBER;
 
-								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DownDeltaValue);
-								SmallValueOctree->SetValue(BelowPosition, BelowValue - DownDeltaValue);
+								WaterWorld->SetValue(CurrentPosition, CurrentValue + DownDeltaValue);
+								WaterWorld->SetValue(BelowPosition, BelowValue - DownDeltaValue);
 
 								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
 								//WaterWorld->QueueUpdate(BelowPosition, bAsync);
@@ -716,15 +620,15 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 
 						{
 							const FIntVector ForwardPosition = CurrentPosition + FIntVector(1, 0, 0);
-							const float ForwardValue = SmallValueOctree->GetValue(ForwardPosition);
-							const float ForwardSolidValue = SolidSmallValueOctree->GetValue(ForwardPosition);
+							const float ForwardValue = WaterWorld->GetValue(ForwardPosition);
+							const float ForwardSolidValue = SolidWorld->GetValue(ForwardPosition);
 
 							if (X != IntRadius - 1 && CurrentValue < ForwardValue && ForwardValue > -ValueMultiplier && ForwardSolidValue > 0)
 							{
 								float DeltaValue = FMath::Clamp(ForwardValue - CurrentValue, 0.f, LateralSpeed) / 4 + KINDA_SMALL_NUMBER;
 
-								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-								SmallValueOctree->SetValue(ForwardPosition, ForwardValue - DeltaValue);
+								WaterWorld->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+								WaterWorld->SetValue(ForwardPosition, ForwardValue - DeltaValue);
 
 								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
 								//WaterWorld->QueueUpdate(ForwardPosition, bAsync);
@@ -734,15 +638,15 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 						}
 						{
 							const FIntVector BackPosition = CurrentPosition + FIntVector(-1, 0, 0);
-							const float BackValue = SmallValueOctree->GetValue(BackPosition);
-							const float BackSolidValue = SolidSmallValueOctree->GetValue(BackPosition);
+							const float BackValue = WaterWorld->GetValue(BackPosition);
+							const float BackSolidValue = SolidWorld->GetValue(BackPosition);
 
 							if (X != 1 - IntRadius && CurrentValue < BackValue && BackValue > -ValueMultiplier && BackSolidValue > 0)
 							{
 								float DeltaValue = FMath::Clamp(BackValue - CurrentValue, 0.f, LateralSpeed) / 3 + KINDA_SMALL_NUMBER;
 
-								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-								SmallValueOctree->SetValue(BackPosition, BackValue - DeltaValue);
+								WaterWorld->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+								WaterWorld->SetValue(BackPosition, BackValue - DeltaValue);
 
 								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
 								//WaterWorld->QueueUpdate(BackPosition, bAsync);
@@ -752,15 +656,15 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 						}
 						{
 							const FIntVector RightPosition = CurrentPosition + FIntVector(0, 1, 0);
-							const float RightValue = SmallValueOctree->GetValue(RightPosition);
-							const float RightSolidValue = SolidSmallValueOctree->GetValue(RightPosition);
+							const float RightValue = WaterWorld->GetValue(RightPosition);
+							const float RightSolidValue = SolidWorld->GetValue(RightPosition);
 
 							if (Y != IntRadius - 1 && CurrentValue < RightValue && RightValue > -ValueMultiplier && RightSolidValue > 0)
 							{
 								float DeltaValue = FMath::Clamp(RightValue - CurrentValue, 0.f, LateralSpeed) / 2 + KINDA_SMALL_NUMBER;
 
-								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-								SmallValueOctree->SetValue(RightPosition, RightValue - DeltaValue);
+								WaterWorld->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+								WaterWorld->SetValue(RightPosition, RightValue - DeltaValue);
 
 								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
 								//WaterWorld->QueueUpdate(RightPosition, bAsync);
@@ -770,15 +674,15 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWo
 						}
 						{
 							const FIntVector LeftPosition = CurrentPosition + FIntVector(0, -1, 0);
-							const float LeftValue = SmallValueOctree->GetValue(LeftPosition);
-							const float LeftSolidValue = SolidSmallValueOctree->GetValue(LeftPosition);
+							const float LeftValue = WaterWorld->GetValue(LeftPosition);
+							const float LeftSolidValue = SolidWorld->GetValue(LeftPosition);
 
 							if (Y != 1 - IntRadius && CurrentValue < LeftValue && LeftValue > -ValueMultiplier && LeftSolidValue > 0)
 							{
 								float DeltaValue = FMath::Clamp(LeftValue - CurrentValue, 0.f, LateralSpeed) / 1 + KINDA_SMALL_NUMBER;
 
-								SmallValueOctree->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-								SmallValueOctree->SetValue(LeftPosition, LeftValue - DeltaValue);
+								WaterWorld->SetValue(CurrentPosition, CurrentValue + DeltaValue);
+								WaterWorld->SetValue(LeftPosition, LeftValue - DeltaValue);
 
 								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
 								//WaterWorld->QueueUpdate(LeftPosition, bAsync);
@@ -809,43 +713,6 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 	// Position in voxel space
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
 	int IntRadius = FMath::CeilToInt(Radius) + 2;
-
-	/**
-	* Shrink octree to speed up value access
-	*/
-	// Corners of the box where modified values are
-	TArray<FIntVector> Corners = {
-		LocalPosition + FIntVector(-IntRadius, -IntRadius, -IntRadius),
-		LocalPosition + FIntVector(+IntRadius, -IntRadius, -IntRadius),
-		LocalPosition + FIntVector(-IntRadius, +IntRadius, -IntRadius),
-		LocalPosition + FIntVector(+IntRadius, +IntRadius, -IntRadius),
-		LocalPosition + FIntVector(-IntRadius, -IntRadius, +IntRadius),
-		LocalPosition + FIntVector(+IntRadius, -IntRadius, +IntRadius),
-		LocalPosition + FIntVector(-IntRadius, +IntRadius, +IntRadius),
-		LocalPosition + FIntVector(+IntRadius, +IntRadius, +IntRadius)
-	};
-
-	// Get smallest octree
-	ValueOctree* SmallValueOctree = World->GetValueOctree().Get();
-	ValueOctree* OldSmallValueOctree = SmallValueOctree;
-	check(SmallValueOctree);
-
-	bool ContinueShrinking = true;
-	while (ContinueShrinking)
-	{
-		ContinueShrinking = !SmallValueOctree->IsLeaf();
-		for (auto Corner : Corners)
-		{
-			ContinueShrinking = ContinueShrinking && SmallValueOctree->IsInOctree(Corner);
-		}
-
-		if (ContinueShrinking)
-		{
-			OldSmallValueOctree = SmallValueOctree;
-			SmallValueOctree = SmallValueOctree->GetChild(Corners[0]);
-		}
-	}
-	SmallValueOctree = OldSmallValueOctree;
 
 	TArray<bool> Visited;
 	Visited.SetNumZeroed(2 * IntRadius * 2 * IntRadius * 2 * IntRadius);
@@ -883,7 +750,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 			&& (-IntRadius <= Y) && (Y < IntRadius)
 			&& (-IntRadius <= Z) && (Z < IntRadius)
 			&& !Visited[Index]
-			&& (SmallValueOctree->GetValue(RelativePosition + LocalPosition) < 0))
+			&& (World->GetValue(RelativePosition + LocalPosition) < 0))
 		{
 
 			Visited[Index] = true;
@@ -922,7 +789,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 	uint8 Depth = FMath::CeilToInt(FMath::Log2(2 * IntRadius / 16.f));
 	AVoxelWorldGenerator* WorldGenerator = NewObject<AEmptyWorldGenerator>();
 
-	TSharedPtr<VoxelData> Data = MakeShareable(new VoxelData(Depth, WorldGenerator, false));
+	TSharedPtr<VoxelData> Data = MakeShareable(new VoxelData(Depth, WorldGenerator));
 
 	std::forward_list<FIntVector> PointPositions;
 
@@ -937,11 +804,11 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 				const FIntVector CurrentPosition = RelativePosition + LocalPosition;
 				if (!Visited[Index] && World->GetValue(CurrentPosition) <= 0)
 				{
-					Data->SetValue(RelativePosition, World->GetValue(CurrentPosition));
+					Data->SetValue(RelativePosition.X, RelativePosition.Y, RelativePosition.Z, World->GetValue(CurrentPosition));
 					PointPositions.push_front(RelativePosition);
 
 					World->SetValue(CurrentPosition, ValueMultiplier);
-					World->QueueUpdate(CurrentPosition, bAsync);
+					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
 				}
 			}
 		}
@@ -951,7 +818,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 	{
 		// Find all connected points
 
-		TSharedPtr<VoxelData> CurrentData = MakeShareable(new VoxelData(Depth, WorldGenerator, false));
+		TSharedPtr<VoxelData> CurrentData = MakeShareable(new VoxelData(Depth, WorldGenerator));
 
 		FIntVector PointPosition = PointPositions.front();
 		PointPositions.pop_front();
@@ -981,11 +848,11 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 					&& (-IntRadius <= Y) && (Y < IntRadius)
 					&& (-IntRadius <= Z) && (Z < IntRadius)
 					&& !Visited[Index]
-					&& (Data->GetValue(CurrentPosition) < 0))
+					&& (Data->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z) < 0))
 				{
 
 					Visited[Index] = true;
-					CurrentData->SetValue(CurrentPosition, Data->GetValue(CurrentPosition));
+					CurrentData->SetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Data->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z));
 
 					Queue.push_front(FIntVector(X - 1, Y - 1, Z - 1));
 					Queue.push_front(FIntVector(X + 0, Y - 1, Z - 1));

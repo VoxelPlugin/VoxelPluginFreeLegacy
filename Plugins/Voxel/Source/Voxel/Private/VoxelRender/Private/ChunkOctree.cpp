@@ -3,7 +3,7 @@
 #include "VoxelChunk.h"
 #include "Engine/World.h"
 #include "VoxelInvokerComponent.h"
-#include "Math/NumericLimits.h
+#include "Math/NumericLimits.h"
 #include "VoxelRender.h"
 
 ChunkOctree::ChunkOctree(VoxelRender* Render, FIntVector Position, uint8 Depth, uint64 Id)
@@ -15,9 +15,20 @@ ChunkOctree::ChunkOctree(VoxelRender* Render, FIntVector Position, uint8 Depth, 
 	check(Render);
 };
 
+void ChunkOctree::Delete()
+{
+	if (bHasChunk)
+	{
+		Unload();
+	}
+	if (bHasChilds)
+	{
+		DeleteChilds();
+	}
+}
+
 void ChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers)
 {
-	check(World);
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
 	check(!(bHasChilds && bHasChunk));
@@ -115,27 +126,7 @@ void ChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompon
 	check(bHasChilds ^ bHasChunk);
 }
 
-void ChunkOctree::Update(bool bAsync)
-{
-	check(bHasChunk == (VoxelChunk != nullptr));
-	check(bHasChilds == (Childs.Num() == 8));
-	check(bHasChilds ^ bHasChunk);
-
-	if (bHasChunk)
-	{
-		VoxelChunk->Update(bAsync);
-	}
-	else // bHasChilds
-	{
-		for (auto Child : Childs)
-		{
-			check(Child.IsValid());
-			Child->Update(bAsync);
-		}
-	}
-}
-
-TWeakPtr<ChunkOctree> ChunkOctree::GetChunk(FIntVector PointPosition)
+TWeakPtr<ChunkOctree> ChunkOctree::GetLeaf(FIntVector PointPosition)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
@@ -147,7 +138,7 @@ TWeakPtr<ChunkOctree> ChunkOctree::GetChunk(FIntVector PointPosition)
 	}
 	else // bHasChilds
 	{
-		return GetChild(PointPosition)->GetChunk(PointPosition);
+		return GetChild(PointPosition)->GetLeaf(PointPosition);
 	}
 }
 
@@ -159,7 +150,7 @@ AVoxelChunk* ChunkOctree::GetVoxelChunk() const
 TSharedPtr<ChunkOctree> ChunkOctree::GetChild(FIntVector PointPosition)
 {
 	check(bHasChilds);
-	check(IsInOctree(PointPosition));
+	check(IsInOctree(PointPosition.X, PointPosition.Y, PointPosition.Z));
 
 	// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
 	TSharedPtr<ChunkOctree> Child = Childs[(PointPosition.X >= Position.X ? 1 : 0) + (PointPosition.Y >= Position.Y ? 2 : 0) + (PointPosition.Z >= Position.Z ? 4 : 0)];
@@ -175,7 +166,7 @@ void ChunkOctree::Load()
 	check(!bHasChilds);
 
 	VoxelChunk = Render->GetInactiveChunk();
-	VoxelChunk->Init(Position - FIntVector(1, 1, 1) * Size() / 2, Depth, Render->World);
+	VoxelChunk->Init(AsShared());
 	Render->UpdateChunk(AsShared(), true);
 	bHasChunk = true;
 }
@@ -187,7 +178,6 @@ void ChunkOctree::Unload()
 	check(!bHasChilds);
 
 	VoxelChunk->Unload();
-	Render->SetChunkAsInactive(VoxelChunk);
 
 	VoxelChunk = nullptr;
 	bHasChunk = false;
@@ -199,17 +189,17 @@ void ChunkOctree::CreateChilds()
 	check(!bHasChunk);
 	check(Depth != 0);
 
-	int d = Width() / 4;
+	int d = Size() / 4;
 	uint64 Pow = IntPow9(Depth - 1);
 
-	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow)));
-	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow)));
-	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow)));
-	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow)));
-	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow)));
-	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow)));
-	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow)));
-	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow)));
+	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Render, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow)));
+	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Render, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow)));
+	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Render, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow)));
+	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Render, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow)));
+	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Render, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow)));
+	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Render, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow)));
+	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Render, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow)));
+	Childs.Add(TSharedPtr<ChunkOctree>(new ChunkOctree(Render, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow)));
 
 	bHasChilds = true;
 }
@@ -227,4 +217,28 @@ void ChunkOctree::DeleteChilds()
 	}
 	Childs.Reset();
 	bHasChilds = false;
+}
+
+TWeakPtr<ChunkOctree> ChunkOctree::GetAdjacentChunk(TransitionDirection Direction)
+{
+	const int S = Size();
+	TArray<FIntVector> L = {
+		FIntVector(-S, 0, 0),
+		FIntVector(+S, 0, 0),
+		FIntVector(0, -S, 0),
+		FIntVector(0, +S, 0),
+		FIntVector(0, 0, -S),
+		FIntVector(0, 0, +S)
+	};
+
+	FIntVector P = Position + L[Direction];
+
+	if (Render->World->IsInWorld(P))
+	{
+		return Render->GetChunkOctreeAt(P);
+	}
+	else
+	{
+		return TWeakPtr<ChunkOctree>(nullptr);
+	}
 }
