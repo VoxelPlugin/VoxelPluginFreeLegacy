@@ -7,6 +7,7 @@
 #include "VoxelPolygonizer.h"
 #include "InstancedStaticMesh.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "GenericPlatformProcess.h"
 
 
 MeshBuilderAsyncTask::MeshBuilderAsyncTask(uint8 Depth, VoxelData* Data, FIntVector Position, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, AVoxelChunk* Chunk)
@@ -14,6 +15,7 @@ MeshBuilderAsyncTask::MeshBuilderAsyncTask(uint8 Depth, VoxelData* Data, FIntVec
 	, Chunk(Chunk)
 {
 	Worker = new VoxelPolygonizer(Depth, Data, Position, ChunkHasHigherRes);
+	IsDone = FGenericPlatformProcess::GetSynchEventFromPool(true);
 }
 
 MeshBuilderAsyncTask::~MeshBuilderAsyncTask()
@@ -24,6 +26,8 @@ MeshBuilderAsyncTask::~MeshBuilderAsyncTask()
 void MeshBuilderAsyncTask::DoThreadedWork()
 {
 	Worker->CreateSection(Section, bComputeTransitions);
+
+	IsDone->Trigger();
 
 	FFunctionGraphTask::CreateAndDispatchWhenReady([this]() { Chunk->OnMeshComplete(); }, TStatId(), NULL, ENamedThreads::GameThread);
 }
@@ -51,7 +55,7 @@ FoliageBuilderAsyncTask::FoliageBuilderAsyncTask(FProcMeshSection& Section, FGra
 	, Seed(Seed)
 	, Chunk(Chunk)
 {
-
+	IsDone = FGenericPlatformProcess::GetSynchEventFromPool(true);
 }
 
 void FoliageBuilderAsyncTask::DoThreadedWork()
@@ -192,6 +196,8 @@ void FoliageBuilderAsyncTask::DoThreadedWork()
 			}
 		}
 	}
+
+	IsDone->Trigger();
 
 	FFunctionGraphTask::CreateAndDispatchWhenReady([this]() { Chunk->OnFoliageComplete(); }, TStatId(), NULL, ENamedThreads::GameThread);
 }

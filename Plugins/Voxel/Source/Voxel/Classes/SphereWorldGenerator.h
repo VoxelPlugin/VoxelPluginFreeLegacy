@@ -18,7 +18,7 @@ public:
 	ASphereWorldGenerator();
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
-	virtual FColor GetDefaultColor(int X, int Y, int Z) override;
+	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 	// Radius of the sphere in world space
@@ -26,7 +26,7 @@ public:
 		float Radius;
 
 	UPROPERTY(EditAnywhere)
-		FColor DefaultColor;
+		FVoxelMaterial DefaultMaterial;
 
 	// If true, sphere is a hole in a full world
 	UPROPERTY(EditAnywhere)

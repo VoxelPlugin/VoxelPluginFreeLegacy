@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMaterial.h"
 #include <list>
 
 class ValueOctree;
@@ -42,7 +43,7 @@ public:
 	 * @param	Position	Position in voxel space
 	 * @return	Color
 	 */
-	FColor GetColor(int X, int Y, int Z) const;
+	FVoxelMaterial GetMaterial(int X, int Y, int Z) const;
 
 	/**
 	* Get value and color at position
@@ -50,8 +51,8 @@ public:
 	* @return	Value
 	* @return	Color
 	*/
-	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor) const;
-	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor, ValueOctree*& LastOctree) const;
+	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const;
+	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, ValueOctree*& LastOctree) const;
 
 
 	/**
@@ -65,7 +66,7 @@ public:
 	 * @param	Position	Position in voxel space
 	 * @param	Color to set
 	 */
-	void SetColor(int X, int Y, int Z, FColor Color);
+	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
 
 	/**
 	 * Is Position in this world?
@@ -95,7 +96,7 @@ public:
 	 * @param	OutValueDiffPacketsList		Each packet is sorted by Id
 	 * @param	OutColorDiffPacketsList		Each packet is sorted by Id
 	 */
-	void GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelColorDiff>>& OutColorDiffPacketsList) const;
+	void GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelMaterialDiff>>& OutColorDiffPacketsList) const;
 
 	/**
 	 * Load values and colors from diff arrays, and queue update of chunks that have changed
@@ -103,7 +104,7 @@ public:
 	 * @param	ColorDiffArray	First element has lowest Id
 	 * @param	World			Voxel world
 	 */
-	void LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelColorDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions);
+	void LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelMaterialDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions);
 
 private:
 	ValueOctree* MainOctree;

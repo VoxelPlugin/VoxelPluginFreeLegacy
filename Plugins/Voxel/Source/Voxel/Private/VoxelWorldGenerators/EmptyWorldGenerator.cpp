@@ -6,9 +6,9 @@ float AEmptyWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return 1;
 }
 
-FColor AEmptyWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+FVoxelMaterial AEmptyWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
-	return FColor::Black;
+	return FVoxelMaterial();
 }
 
 void AEmptyWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)

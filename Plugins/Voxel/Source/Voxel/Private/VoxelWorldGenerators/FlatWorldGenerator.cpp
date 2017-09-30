@@ -14,17 +14,17 @@ float AFlatWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return (Z >= Height) ? ValueMultiplier : -ValueMultiplier;
 }
 
-FColor AFlatWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+FVoxelMaterial AFlatWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
 	for (auto Layer : TerrainLayers)
 	{
 		if (Layer.Start <= Z && Z < Layer.Start + Layer.Height)
 		{
 			// if we are in this layer
-			return FVoxelMaterial(Layer.Material1, Layer.Material2, Layer.Alpha).ToFColor();
+			return FVoxelMaterial(Layer.Material1, Layer.Material2, Layer.Alpha);
 		}
 	}
-	return FVoxelMaterial(DefaultMaterial1, DefaultMaterial2, DefaultAlpha).ToFColor();
+	return FVoxelMaterial(DefaultMaterial1, DefaultMaterial2, DefaultAlpha);
 }
 
 void AFlatWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)

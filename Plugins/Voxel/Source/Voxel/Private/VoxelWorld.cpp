@@ -71,10 +71,8 @@ float AVoxelWorld::GetValue(FIntVector Position) const
 
 FVoxelMaterial AVoxelWorld::GetMaterial(FIntVector Position) const
 {
-	return FVoxelMaterial();
-	//return FVoxelMaterial(GetColor(Position));
+	return Data->GetMaterial(Position.X, Position.Y, Position.Z);
 }
-
 
 void AVoxelWorld::SetValue(FIntVector Position, float Value)
 {
@@ -92,7 +90,7 @@ void AVoxelWorld::SetMaterial(FIntVector Position, FVoxelMaterial Material)
 {
 	if (IsInWorld(Position))
 	{
-		Data->SetColor(Position.X, Position.Y, Position.Z, Material.ToFColor());
+		Data->SetMaterial(Position.X, Position.Y, Position.Z, Material);
 	}
 	else
 	{

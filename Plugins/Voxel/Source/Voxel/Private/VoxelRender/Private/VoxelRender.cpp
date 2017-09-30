@@ -24,6 +24,8 @@ void VoxelRender::Tick(float DeltaTime)
 	TimeSinceMeshUpdate += DeltaTime;
 	TimeSinceFoliageUpdate += DeltaTime;
 
+	// TODO : FPS
+
 	UpdateLOD();
 
 	ApplyUpdates();

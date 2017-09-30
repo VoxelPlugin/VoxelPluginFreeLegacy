@@ -26,30 +26,30 @@ float VoxelData::GetValue(int X, int Y, int Z) const
 {
 	check(IsInWorld(X, Y, Z));
 
-	FColor Color;
+	FVoxelMaterial Material;
 	float Value;
-	GetValueAndColor(X, Y, Z, Value, Color);
+	GetValueAndMaterial(X, Y, Z, Value, Material);
 	return Value;
 }
 
-FColor VoxelData::GetColor(int X, int Y, int Z) const
+FVoxelMaterial VoxelData::GetMaterial(int X, int Y, int Z) const
 {
 	check(IsInWorld(X, Y, Z));
 
-	FColor Color;
+	FVoxelMaterial Material;
 	float Value;
-	GetValueAndColor(X, Y, Z, Value, Color);
-	return Color;
+	GetValueAndMaterial(X, Y, Z, Value, Material);
+	return Material;
 }
 
-void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor) const
+void VoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const
 {
 	ClampToWorld(X, Y, Z);
 
-	MainOctree->GetLeaf(X, Y, Z)->GetValueAndColor(X, Y, Z, OutValue, OutColor);
+	MainOctree->GetLeaf(X, Y, Z)->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial);
 }
 
-void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor, ValueOctree*& LastOctree) const
+void VoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, ValueOctree*& LastOctree) const
 {
 	ClampToWorld(X, Y, Z);
 
@@ -57,7 +57,7 @@ void VoxelData::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& O
 	{
 		LastOctree = MainOctree->GetLeaf(X, Y, Z);
 	}
-	LastOctree->GetValueAndColor(X, Y, Z, OutValue, OutColor);
+	LastOctree->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial);
 }
 
 void VoxelData::SetValue(int X, int Y, int Z, float Value)
@@ -66,10 +66,10 @@ void VoxelData::SetValue(int X, int Y, int Z, float Value)
 	MainOctree->GetLeaf(X, Y, Z)->SetValue(X, Y, Z, Value);
 }
 
-void VoxelData::SetColor(int X, int Y, int Z, FColor Color)
+void VoxelData::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 {
 	check(IsInWorld(X, Y, Z));
-	MainOctree->GetLeaf(X, Y, Z)->SetColor(X, Y, Z, Color);
+	MainOctree->GetLeaf(X, Y, Z)->SetMaterial(X, Y, Z, Material);
 }
 
 bool VoxelData::IsInWorld(int X, int Y, int Z) const
@@ -109,10 +109,10 @@ void VoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave Save, std::f
 	check(SaveList.empty());
 }
 
-void VoxelData::GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelColorDiff>>& OutColorDiffPacketsList) const
+void VoxelData::GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelMaterialDiff>>& OutColorDiffPacketsList) const
 {
 	VoxelValueDiffArray ValueDiffArray;
-	VoxelColorDiffArray ColorDiffArray;
+	VoxelMaterialDiffArray ColorDiffArray;
 
 	MainOctree->AddChunksToDiffArrays(ValueDiffArray, ColorDiffArray);
 
@@ -120,10 +120,10 @@ void VoxelData::GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutVal
 	ColorDiffArray.AddPackets(OutColorDiffPacketsList);
 }
 
-void VoxelData::LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelColorDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions)
+void VoxelData::LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelMaterialDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions)
 {
 	std::forward_list<FVoxelValueDiff> ValueDiffList;
-	std::forward_list<FVoxelColorDiff> ColorDiffList;
+	std::forward_list<FVoxelMaterialDiff> ColorDiffList;
 
 	for (int i = ValueDiffArray.Num() - 1; i >= 0; i--)
 	{

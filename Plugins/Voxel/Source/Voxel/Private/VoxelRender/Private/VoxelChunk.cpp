@@ -338,12 +338,14 @@ void AVoxelChunk::DeleteTasks()
 	if (MeshTask)
 	{
 		Render->MeshThreadPool->RetractQueuedWork(MeshTask);
+		MeshTask->IsDone->Wait();;
 		delete MeshTask;
 		MeshTask = nullptr;
 	}
 	for (auto FoliageTask : FoliageTasks)
 	{
 		Render->FoliageThreadPool->RetractQueuedWork(FoliageTask);
+		FoliageTask->IsDone->Wait();;
 		delete FoliageTask;
 	}
 	FoliageTasks.Empty();

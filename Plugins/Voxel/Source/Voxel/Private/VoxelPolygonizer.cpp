@@ -48,13 +48,13 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 								uint64 CurrentBit = ONE << (LocalX + 4 * LocalY + 4 * 4 * LocalZ);
 
 								float CurrentValue;
-								FColor CurrentColor;
-								Data->GetValueAndColor(X * Step() + ChunkPosition.X, Y * Step() + ChunkPosition.Y, Z * Step() + ChunkPosition.Z, CurrentValue, CurrentColor);
+								FVoxelMaterial CurrentMaterial;
+								Data->GetValueAndMaterial(X * Step() + ChunkPosition.X, Y * Step() + ChunkPosition.Y, Z * Step() + ChunkPosition.Z, CurrentValue, CurrentMaterial);
 
 								if (X + 1 < 18 && Y + 1 < 18 && Z + 1 < 18) // Getting value out of this chunk for the "continue" optimization after
 								{
 									CachedValues[(X + 1) + 18 * (Y + 1) + 18 * 18 * (Z + 1)] = CurrentValue;
-									CachedColors[(X + 1) + 18 * (Y + 1) + 18 * 18 * (Z + 1)] = CurrentColor;
+									CachedMaterials[(X + 1) + 18 * (Y + 1) + 18 * 18 * (Z + 1)] = CurrentMaterial;
 								}
 
 								bool Sign = CurrentValue > 0;
@@ -129,16 +129,16 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 
 									float CornerValues[8];
 
-									FColor CornerColors[8];
+									FVoxelMaterial CornerMaterials[8];
 
-									GetValueAndColor(Step() * (X + 0), Step() * (Y + 0), Step() * (Z + 0), CornerValues[0], CornerColors[0]);
-									GetValueAndColor(Step() * (X + 1), Step() * (Y + 0), Step() * (Z + 0), CornerValues[1], CornerColors[1]);
-									GetValueAndColor(Step() * (X + 0), Step() * (Y + 1), Step() * (Z + 0), CornerValues[2], CornerColors[2]);
-									GetValueAndColor(Step() * (X + 1), Step() * (Y + 1), Step() * (Z + 0), CornerValues[3], CornerColors[3]);
-									GetValueAndColor(Step() * (X + 0), Step() * (Y + 0), Step() * (Z + 1), CornerValues[4], CornerColors[4]);
-									GetValueAndColor(Step() * (X + 1), Step() * (Y + 0), Step() * (Z + 1), CornerValues[5], CornerColors[5]);
-									GetValueAndColor(Step() * (X + 0), Step() * (Y + 1), Step() * (Z + 1), CornerValues[6], CornerColors[6]);
-									GetValueAndColor(Step() * (X + 1), Step() * (Y + 1), Step() * (Z + 1), CornerValues[7], CornerColors[7]);
+									GetValueAndMaterial(Step() * (X + 0), Step() * (Y + 0), Step() * (Z + 0), CornerValues[0], CornerMaterials[0]);
+									GetValueAndMaterial(Step() * (X + 1), Step() * (Y + 0), Step() * (Z + 0), CornerValues[1], CornerMaterials[1]);
+									GetValueAndMaterial(Step() * (X + 0), Step() * (Y + 1), Step() * (Z + 0), CornerValues[2], CornerMaterials[2]);
+									GetValueAndMaterial(Step() * (X + 1), Step() * (Y + 1), Step() * (Z + 0), CornerValues[3], CornerMaterials[3]);
+									GetValueAndMaterial(Step() * (X + 0), Step() * (Y + 0), Step() * (Z + 1), CornerValues[4], CornerMaterials[4]);
+									GetValueAndMaterial(Step() * (X + 1), Step() * (Y + 0), Step() * (Z + 1), CornerValues[5], CornerMaterials[5]);
+									GetValueAndMaterial(Step() * (X + 0), Step() * (Y + 1), Step() * (Z + 1), CornerValues[6], CornerMaterials[6]);
+									GetValueAndMaterial(Step() * (X + 1), Step() * (Y + 1), Step() * (Z + 1), CornerValues[7], CornerMaterials[7]);
 
 									check(CaseCode == (
 										((CornerValues[0] > 0) << 0)
@@ -150,7 +150,7 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 										| ((CornerValues[6] > 0) << 6)
 										| ((CornerValues[7] > 0) << 7)));
 
-									const FColor& CellColor = CornerColors[0];
+									const FVoxelMaterial CellMaterial = CornerMaterials[0];
 
 									check(0 <= CaseCode && CaseCode < 256);
 									unsigned char CellClass = Transvoxel::regularCellClass[CaseCode];
@@ -192,14 +192,17 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 										bool ForceVertexCreation = false;
 										if ((ValidityMask & CacheDirection) == CacheDirection) // Avoid accessing to invalid value
 										{
-											FColor Color;
+											FVoxelMaterial Material;
 											float Value;
-											GetValueAndColor(X - static_cast<bool>(CacheDirection & 0x01) * Step(),
+											GetValueAndMaterial(
+												X - static_cast<bool>(CacheDirection & 0x01) * Step(),
 												Y - static_cast<bool>(CacheDirection & 0x02) * Step(),
 												Z - static_cast<bool>(CacheDirection & 0x04) * Step(),
-												Value, Color);
+												Value,
+												Material
+											);
 
-											ForceVertexCreation = (CellColor != Color);
+											ForceVertexCreation = !CellMaterial.HasSameIndexesAs(Material) || CellMaterial.Alpha != Material.Alpha;
 										}
 
 										if ((ValidityMask & CacheDirection) != CacheDirection || ForceVertexCreation)
@@ -219,8 +222,8 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 												const float ValueAtA = CornerValues[IndexVerticeA];
 												const float ValueAtB = CornerValues[IndexVerticeB];
 
-												const float	AlphaAtA = CornerColors[IndexVerticeA].B;
-												const float AlphaAtB = CornerColors[IndexVerticeB].B;
+												const float	AlphaAtA = CornerMaterials[IndexVerticeA].Alpha;
+												const float AlphaAtB = CornerMaterials[IndexVerticeB].Alpha;
 
 												check(ValueAtA - ValueAtB != 0);
 												const float t = ValueAtB / (ValueAtB - ValueAtA);
@@ -252,7 +255,7 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 											}
 											VertexIndex = VerticesSize;
 											Vertices.push_front(Q);
-											Colors.push_front(FColor(CellColor.R, CellColor.G, Alpha, 0));
+											Colors.push_front(FVoxelMaterial(CellMaterial.Index1, CellMaterial.Index2, Alpha).ToFColor());
 											VerticesSize++;
 										}
 										else
@@ -433,17 +436,17 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 							const int HalfStep = Step() / 2;
 
 							float CornerValues[9];
-							FColor CornerColors[9];
+							FVoxelMaterial CornerMaterials[9];
 
-							Get2DValueAndColor(Direction, (2 * X + 0) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[0], CornerColors[0]);
-							Get2DValueAndColor(Direction, (2 * X + 1) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[1], CornerColors[1]);
-							Get2DValueAndColor(Direction, (2 * X + 2) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[2], CornerColors[2]);
-							Get2DValueAndColor(Direction, (2 * X + 0) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[3], CornerColors[3]);
-							Get2DValueAndColor(Direction, (2 * X + 1) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[4], CornerColors[4]);
-							Get2DValueAndColor(Direction, (2 * X + 2) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[5], CornerColors[5]);
-							Get2DValueAndColor(Direction, (2 * X + 0) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[6], CornerColors[6]);
-							Get2DValueAndColor(Direction, (2 * X + 1) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[7], CornerColors[7]);
-							Get2DValueAndColor(Direction, (2 * X + 2) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[8], CornerColors[8]);
+							Get2DValueAndMaterial(Direction, (2 * X + 0) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[0], CornerMaterials[0]);
+							Get2DValueAndMaterial(Direction, (2 * X + 1) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[1], CornerMaterials[1]);
+							Get2DValueAndMaterial(Direction, (2 * X + 2) * HalfStep, (2 * Y + 0) * HalfStep, CornerValues[2], CornerMaterials[2]);
+							Get2DValueAndMaterial(Direction, (2 * X + 0) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[3], CornerMaterials[3]);
+							Get2DValueAndMaterial(Direction, (2 * X + 1) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[4], CornerMaterials[4]);
+							Get2DValueAndMaterial(Direction, (2 * X + 2) * HalfStep, (2 * Y + 1) * HalfStep, CornerValues[5], CornerMaterials[5]);
+							Get2DValueAndMaterial(Direction, (2 * X + 0) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[6], CornerMaterials[6]);
+							Get2DValueAndMaterial(Direction, (2 * X + 1) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[7], CornerMaterials[7]);
+							Get2DValueAndMaterial(Direction, (2 * X + 2) * HalfStep, (2 * Y + 2) * HalfStep, CornerValues[8], CornerMaterials[8]);
 
 							unsigned long CaseCode =
 								(static_cast<bool>(CornerValues[0] > 0) << 0)
@@ -460,7 +463,7 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 							{
 								short ValidityMask = (X != 0) + 2 * (Y != 0);
 
-								FColor CellColor = CornerColors[0];
+								const FVoxelMaterial CellMaterial = CornerMaterials[0];
 
 								FIntVector Positions[13] = {
 									FIntVector(2 * X + 0, 2 * Y + 0, 0) * HalfStep,
@@ -536,7 +539,7 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bCompute
 
 										VertexIndex = VerticesSize;
 										Vertices.push_front(Q);
-										Colors.push_front(FColor(CellColor.R, CellColor.G, Alpha, 0));
+										Colors.push_front(FVoxelMaterial(CellMaterial.Index1, CellMaterial.Index2, Alpha).ToFColor());
 										VerticesSize++;
 
 										// If own vertex, save it
@@ -748,28 +751,28 @@ int VoxelPolygonizer::Step()
 ////}
 
 
-void VoxelPolygonizer::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor)
+void VoxelPolygonizer::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	SCOPE_CYCLE_COUNTER(STAT_GETVALUEANDCOLOR);
 	if (LIKELY((X % Step() == 0) && (Y % Step() == 0) && (Z % Step() == 0)))
 	{
 		OutValue = CachedValues[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
-		OutColor = CachedColors[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
+		OutMaterial = CachedMaterials[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
 	}
 	else
 	{
 		// TODO: last octree
-		Data->GetValueAndColor(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutColor);
+		Data->GetValueAndMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutMaterial);
 	}
 }
 
-void VoxelPolygonizer::Get2DValueAndColor(TransitionDirection Direction, int X, int Y, float& OutValue, FColor& OutColor)
+void VoxelPolygonizer::Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	SCOPE_CYCLE_COUNTER(STAT_GET2DVALUEANDCOLOR);
 	int GX, GY, GZ;
 	Local2DToGlobal(Size(), Direction, X, Y, 0, GX, GY, GZ);
 
-	GetValueAndColor(GX, GY, GZ, OutValue, OutColor);
+	GetValueAndMaterial(GX, GY, GZ, OutValue, OutMaterial);
 }
 
 
@@ -870,10 +873,10 @@ void VoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y,
 	// A: Min / B: Max
 	float ValueAtA;
 	float ValueAtB;
-	FColor ColorAtA;
-	FColor ColorAtB;
-	GetValueAndColor(MinX, Y, Z, ValueAtA, ColorAtA);
-	GetValueAndColor(MaxX, Y, Z, ValueAtB, ColorAtB);
+	FVoxelMaterial MaterialAtA;
+	FVoxelMaterial MaterialAtB;
+	GetValueAndMaterial(MinX, Y, Z, ValueAtA, MaterialAtA);
+	GetValueAndMaterial(MaxX, Y, Z, ValueAtB, MaterialAtB);
 
 	if (MaxX - MinX == 1)
 	{
@@ -881,7 +884,7 @@ void VoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y,
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(MinX, Y, Z) + (1 - t) *  FVector(MaxX, Y, Z);
-		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
+		OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 	}
 	else
 	{
@@ -889,8 +892,8 @@ void VoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y,
 		int xMiddle = (MaxX + MinX) / 2;
 
 		float ValueAtMiddle;
-		FColor ColorAtMiddle;
-		GetValueAndColor(xMiddle, Y, Z, ValueAtMiddle, ColorAtMiddle);
+		FVoxelMaterial MaterialAtMiddle;
+		GetValueAndMaterial(xMiddle, Y, Z, ValueAtMiddle, MaterialAtMiddle);
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
@@ -909,10 +912,10 @@ void VoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY,
 	// A: Min / B: Max
 	float ValueAtA;
 	float ValueAtB;
-	FColor ColorAtA;
-	FColor ColorAtB;
-	GetValueAndColor(X, MinY, Z, ValueAtA, ColorAtA);
-	GetValueAndColor(X, MaxY, Z, ValueAtB, ColorAtB);
+	FVoxelMaterial MaterialAtA;
+	FVoxelMaterial MaterialAtB;
+	GetValueAndMaterial(X, MinY, Z, ValueAtA, MaterialAtA);
+	GetValueAndMaterial(X, MaxY, Z, ValueAtB, MaterialAtB);
 
 	if (MaxY - MinY == 1)
 	{
@@ -920,7 +923,7 @@ void VoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY,
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(X, MinY, Z) + (1 - t) *  FVector(X, MaxY, Z);
-		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
+		OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 	}
 	else
 	{
@@ -928,8 +931,8 @@ void VoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY,
 		int yMiddle = (MaxY + MinY) / 2;
 
 		float ValueAtMiddle;
-		FColor ColorAtMiddle;
-		GetValueAndColor(X, yMiddle, Z, ValueAtMiddle, ColorAtMiddle);
+		FVoxelMaterial MaterialAtMiddle;
+		GetValueAndMaterial(X, yMiddle, Z, ValueAtMiddle, MaterialAtMiddle);
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
@@ -948,10 +951,10 @@ void VoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, co
 	// A: Min / B: Max
 	float ValueAtA;
 	float ValueAtB;
-	FColor ColorAtA;
-	FColor ColorAtB;
-	GetValueAndColor(X, Y, MinZ, ValueAtA, ColorAtA);
-	GetValueAndColor(X, Y, MaxZ, ValueAtB, ColorAtB);
+	FVoxelMaterial MaterialAtA;
+	FVoxelMaterial MaterialAtB;
+	GetValueAndMaterial(X, Y, MinZ, ValueAtA, MaterialAtA);
+	GetValueAndMaterial(X, Y, MaxZ, ValueAtB, MaterialAtB);
 
 	if (MaxZ - MinZ == 1)
 	{
@@ -959,7 +962,7 @@ void VoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, co
 		float t = ValueAtB / (ValueAtB - ValueAtA);
 
 		OutVector = t * FVector(X, Y, MinZ) + (1 - t) *  FVector(X, Y, MaxZ);
-		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
+		OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 	}
 	else
 	{
@@ -967,8 +970,8 @@ void VoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, co
 		int zMiddle = (MaxZ + MinZ) / 2;
 
 		float ValueAtMiddle;
-		FColor ColorAtMiddle;
-		GetValueAndColor(X, Y, zMiddle, ValueAtMiddle, ColorAtMiddle);
+		FVoxelMaterial MaterialAtMiddle;
+		GetValueAndMaterial(X, Y, zMiddle, ValueAtMiddle, MaterialAtMiddle);
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
@@ -984,15 +987,15 @@ void VoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, co
 
 
 
-void VoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector & OutVector, uint8 & OutAlpha)
+void VoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
 	float ValueAtA;
 	float ValueAtB;
-	FColor ColorAtA;
-	FColor ColorAtB;
-	Get2DValueAndColor(Direction, MinX, Y, ValueAtA, ColorAtA);
-	Get2DValueAndColor(Direction, MaxX, Y, ValueAtB, ColorAtB);
+	FVoxelMaterial MaterialAtA;
+	FVoxelMaterial MaterialAtB;
+	Get2DValueAndMaterial(Direction, MinX, Y, ValueAtA, MaterialAtA);
+	Get2DValueAndMaterial(Direction, MaxX, Y, ValueAtB, MaterialAtB);
 
 	if (MaxX - MinX == 1)
 	{
@@ -1004,7 +1007,7 @@ void VoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int M
 		Local2DToGlobal(Size(), Direction, MaxX, Y, 0, GMaxX, GMaxY, GMaxZ);
 
 		OutVector = t * FVector(GMinX, GMinY, GMinZ) + (1 - t) *  FVector(GMaxX, GMaxY, GMaxZ);
-		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
+		OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 	}
 	else
 	{
@@ -1012,8 +1015,8 @@ void VoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int M
 		int xMiddle = (MaxX + MinX) / 2;
 
 		float ValueAtMiddle;
-		FColor ColorAtMiddle;
-		Get2DValueAndColor(Direction, xMiddle, Y, ValueAtMiddle, ColorAtMiddle);
+		FVoxelMaterial MaterialAtMiddle;
+		Get2DValueAndMaterial(Direction, xMiddle, Y, ValueAtMiddle, MaterialAtMiddle);
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
@@ -1032,10 +1035,10 @@ void VoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int X
 	// A: Min / B: Max
 	float ValueAtA;
 	float ValueAtB;
-	FColor ColorAtA;
-	FColor ColorAtB;
-	Get2DValueAndColor(Direction, X, MinY, ValueAtA, ColorAtA);
-	Get2DValueAndColor(Direction, X, MaxY, ValueAtB, ColorAtB);
+	FVoxelMaterial MaterialAtA;
+	FVoxelMaterial MaterialAtB;
+	Get2DValueAndMaterial(Direction, X, MinY, ValueAtA, MaterialAtA);
+	Get2DValueAndMaterial(Direction, X, MaxY, ValueAtB, MaterialAtB);
 
 	if (MaxY - MinY == 1)
 	{
@@ -1047,7 +1050,7 @@ void VoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int X
 		Local2DToGlobal(Size(), Direction, X, MaxY, 0, GMaxX, GMaxY, GMaxZ);
 
 		OutVector = t * FVector(GMinX, GMinY, GMinZ) + (1 - t) *  FVector(GMaxX, GMaxY, GMaxZ);
-		OutAlpha = t * ColorAtA.B + (1 - t) * ColorAtB.B;
+		OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 	}
 	else
 	{
@@ -1055,8 +1058,8 @@ void VoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int X
 		int yMiddle = (MaxY + MinY) / 2;
 
 		float ValueAtMiddle;
-		FColor ColorAtMiddle;
-		Get2DValueAndColor(Direction, X, yMiddle, ValueAtMiddle, ColorAtMiddle);
+		FVoxelMaterial MaterialAtMiddle;
+		Get2DValueAndMaterial(Direction, X, yMiddle, ValueAtMiddle, MaterialAtMiddle);
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign

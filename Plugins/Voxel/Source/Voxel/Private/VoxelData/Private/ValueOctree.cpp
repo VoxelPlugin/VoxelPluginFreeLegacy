@@ -18,7 +18,7 @@ bool ValueOctree::IsDirty() const
 	return bIsDirty;
 }
 
-void ValueOctree::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor)
+void ValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	check(IsLeaf());
 	check(IsInOctree(X, Y, Z));
@@ -34,12 +34,12 @@ void ValueOctree::GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor&
 
 		int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
 		OutValue = Values[Index];
-		OutColor = Colors[Index];
+		OutMaterial = Materials[Index];
 	}
 	else
 	{
 		OutValue = WorldGenerator->GetDefaultValue(X, Y, Z);
-		OutColor = WorldGenerator->GetDefaultColor(X, Y, Z);
+		OutMaterial = WorldGenerator->GetDefaultMaterial(X, Y, Z);
 	}
 }
 
@@ -81,7 +81,7 @@ void ValueOctree::SetValue(int X, int Y, int Z, float Value)
 	}
 }
 
-void ValueOctree::SetColor(int X, int Y, int Z, FColor Color)
+void ValueOctree::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 {
 	check(IsLeaf());
 	check(IsInOctree(X, Y, Z));
@@ -92,7 +92,7 @@ void ValueOctree::SetColor(int X, int Y, int Z, FColor Color)
 	{
 		CreateChilds();
 		bIsDirty = true; // IsDirty only when having childs (for multithreading)
-		GetChild(X, Y, Z)->SetColor(X, Y, Z, Color);
+		GetChild(X, Y, Z)->SetMaterial(X, Y, Z, Material);
 	}
 	else
 	{
@@ -108,7 +108,7 @@ void ValueOctree::SetColor(int X, int Y, int Z, FColor Color)
 		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
 
 		int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-		Colors[Index] = Color;
+		Materials[Index] = Material;
 
 		if (bMultiplayer)
 		{
@@ -128,7 +128,7 @@ void ValueOctree::AddDirtyChunksToSaveList(std::list<TSharedRef<FVoxelChunkSave>
 	{
 		if (IsLeaf())
 		{
-			auto SaveStruct = TSharedRef<FVoxelChunkSave>(new FVoxelChunkSave(Id, Position, Values, Colors));
+			auto SaveStruct = TSharedRef<FVoxelChunkSave>(new FVoxelChunkSave(Id, Position, Values, Materials));
 			SaveList.push_back(SaveStruct);
 		}
 		else
@@ -154,11 +154,11 @@ void ValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave>
 		{
 			bIsDirty = true;
 			Values = Save.front().Values;
-			Colors = Save.front().Colors;
+			Materials = Save.front().Materials;
 			Save.pop_front();
 
 			check(Values.Num() == 4096);
-			check(Colors.Num() == 4096);
+			check(Materials.Num() == 4096);
 
 			// Update neighbors
 			const int S = Size();
@@ -190,7 +190,7 @@ void ValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave>
 	}
 }
 
-void ValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelColorDiffArray& ColorsDiffs)
+void ValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelMaterialDiffArray& ColorsDiffs)
 {
 	if (bIsNetworkDirty)
 	{
@@ -204,7 +204,7 @@ void ValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelC
 			}
 			for (int Index : DirtyColors)
 			{
-				ColorsDiffs.Add(Id, Index, Colors[Index]);
+				ColorsDiffs.Add(Id, Index, Materials[Index]);
 			}
 			DirtyValues.Empty(4096);
 			DirtyColors.Empty(4096);
@@ -219,9 +219,9 @@ void ValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelC
 	}
 }
 
-void ValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelColorDiff>& ColorsDiffs, std::forward_list<FIntVector>& OutModifiedPositions)
+void ValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelMaterialDiff>& MaterialsDiffs, std::forward_list<FIntVector>& OutModifiedPositions)
 {
-	if (ValuesDiffs.empty() && ColorsDiffs.empty())
+	if (ValuesDiffs.empty() && MaterialsDiffs.empty())
 	{
 		return;
 	}
@@ -245,26 +245,26 @@ void ValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVox
 			ValuesDiffs.pop_front();
 		}
 		// Colors
-		while (!ColorsDiffs.empty() && ColorsDiffs.front().Id == Id)
+		while (!MaterialsDiffs.empty() && MaterialsDiffs.front().Id == Id)
 		{
 			if (!IsDirty())
 			{
 				SetAsDirty();
 			}
 
-			Colors[ColorsDiffs.front().Index] = ColorsDiffs.front().Color;
+			Materials[MaterialsDiffs.front().Index] = MaterialsDiffs.front().Material;
 
 			int X, Y, Z;
-			CoordinatesFromIndex(ColorsDiffs.front().Index, X, Y, Z);
+			CoordinatesFromIndex(MaterialsDiffs.front().Index, X, Y, Z);
 			OutModifiedPositions.push_front(FIntVector(X, Y, Z) + Position);
 
-			ColorsDiffs.pop_front();
+			MaterialsDiffs.pop_front();
 		}
 	}
 	else
 	{
 		uint64 Pow = IntPow9(Depth);
-		if ((!ValuesDiffs.empty() && Id / Pow == ValuesDiffs.front().Id / Pow) || (!ColorsDiffs.empty() && Id / Pow == ColorsDiffs.front().Id / Pow))
+		if ((!ValuesDiffs.empty() && Id / Pow == ValuesDiffs.front().Id / Pow) || (!MaterialsDiffs.empty() && Id / Pow == MaterialsDiffs.front().Id / Pow))
 		{
 			if (IsLeaf())
 			{
@@ -273,7 +273,7 @@ void ValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVox
 			}
 			for (auto Child : Childs)
 			{
-				Child->LoadFromDiffListAndGetModifiedPositions(ValuesDiffs, ColorsDiffs, OutModifiedPositions);
+				Child->LoadFromDiffListAndGetModifiedPositions(ValuesDiffs, MaterialsDiffs, OutModifiedPositions);
 			}
 		}
 	}
@@ -308,7 +308,7 @@ void ValueOctree::SetAsDirty()
 	check(Depth == 0);
 
 	Values.SetNumUninitialized(16 * 16 * 16);
-	Colors.SetNumUninitialized(16 * 16 * 16);
+	Materials.SetNumUninitialized(16 * 16 * 16);
 	for (int X = 0; X < 16; X++)
 	{
 		for (int Y = 0; Y < 16; Y++)
@@ -319,10 +319,10 @@ void ValueOctree::SetAsDirty()
 				LocalToGlobal(X, Y, Z, GlobalX, GlobalY, GlobalZ);
 
 				float Value;
-				FColor Color;
-				GetValueAndColor(GlobalX, GlobalY, GlobalZ, Value, Color);
+				FVoxelMaterial Material;
+				GetValueAndMaterial(GlobalX, GlobalY, GlobalZ, Value, Material);
 				Values[X + 16 * Y + 16 * 16 * Z] = Value;
-				Colors[X + 16 * Y + 16 * 16 * Z] = Color;
+				Materials[X + 16 * Y + 16 * 16 * Z] = Material;
 			}
 		}
 	}

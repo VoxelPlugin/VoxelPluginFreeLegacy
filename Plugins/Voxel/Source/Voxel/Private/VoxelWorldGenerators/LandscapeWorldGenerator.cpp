@@ -52,7 +52,7 @@ float ALandscapeWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	}
 }
 
-FColor ALandscapeWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+FVoxelMaterial ALandscapeWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
 	check(World);
 
@@ -61,11 +61,12 @@ FColor ALandscapeWorldGenerator::GetDefaultColor(int X, int Y, int Z)
 		int LocalX = X - LocalLandscapePosition.X;
 		int LocalY = Y - LocalLandscapePosition.Y;
 
-		return Weights[LocalX + Width * LocalY];
+		// TODO: FColor->FVoxelMaterial
+		return FVoxelMaterial(Weights[LocalX + Width * LocalY]);
 	}
 	else
 	{
-		return FColor::Green;
+		return FVoxelMaterial();
 	}
 }
 

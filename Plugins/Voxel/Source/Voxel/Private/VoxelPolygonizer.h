@@ -4,6 +4,7 @@
 #include "VoxelData.h"
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
+#include "VoxelMaterial.h"
 
 class VoxelPolygonizer
 {
@@ -21,7 +22,7 @@ private:
 	uint64 CachedSigns[216];
 
 	float CachedValues[18 * 18 * 18];
-	FColor CachedColors[18 * 18 * 18];
+	FVoxelMaterial CachedMaterials[18 * 18 * 18];
 
 	// Cache to get index of already created vertices
 	int Cache[17][17][17][3];
@@ -37,8 +38,8 @@ private:
 	// Too slow
 	//FColor GetMajorColor(int X, int Y, int Z, uint32 CellWidth);
 
-	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor);
-	void Get2DValueAndColor(TransitionDirection Direction, int X, int Y, float& OutValue, FColor& OutColor);
+	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
+	void Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial);
 
 	FORCEINLINE void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);
 	FORCEINLINE int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex);
