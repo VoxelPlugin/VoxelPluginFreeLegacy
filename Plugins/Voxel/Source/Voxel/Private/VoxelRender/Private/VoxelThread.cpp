@@ -10,55 +10,20 @@
 #include "GenericPlatformProcess.h"
 
 
-MeshBuilderAsyncTask::MeshBuilderAsyncTask(uint8 Depth, VoxelData* Data, FIntVector Position, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, AVoxelChunk* Chunk)
-	: bComputeTransitions(bComputeTransitions)
-	, Chunk(Chunk)
-{
-	Worker = new VoxelPolygonizer(Depth, Data, Position, ChunkHasHigherRes);
-	IsDone = FGenericPlatformProcess::GetSynchEventFromPool(true);
-}
-
-MeshBuilderAsyncTask::~MeshBuilderAsyncTask()
-{
-	delete Worker;
-}
-
-void MeshBuilderAsyncTask::DoThreadedWork()
-{
-	Worker->CreateSection(Section, bComputeTransitions);
-
-	IsDone->Trigger();
-
-	FFunctionGraphTask::CreateAndDispatchWhenReady([this]() { Chunk->OnMeshComplete(); }, TStatId(), NULL, ENamedThreads::GameThread);
-}
-
-void MeshBuilderAsyncTask::Abandon()
-{
-	delete this;
-}
-
-FProcMeshSection MeshBuilderAsyncTask::GetSectionCopy()
-{
-	return Section;
-}
-
-
-
-
-FoliageBuilderAsyncTask::FoliageBuilderAsyncTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk)
+FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
 	, Material(Material)
-	, ChunkTransform(ChunkTransform)
+	, ChunkTransform(Chunk->GetTransform())
 	, VoxelSize(VoxelSize)
 	, ChunkPosition(ChunkPosition)
 	, Seed(Seed)
 	, Chunk(Chunk)
 {
-	IsDone = FGenericPlatformProcess::GetSynchEventFromPool(true);
+
 }
 
-void FoliageBuilderAsyncTask::DoThreadedWork()
+void FAsyncFoliageTask::DoWork()
 {
 	// TODO: set num
 	TArray<FMatrix> InstanceTransforms;
@@ -197,12 +162,22 @@ void FoliageBuilderAsyncTask::DoThreadedWork()
 		}
 	}
 
-	IsDone->Trigger();
-
-	FFunctionGraphTask::CreateAndDispatchWhenReady([this]() { Chunk->OnFoliageComplete(); }, TStatId(), NULL, ENamedThreads::GameThread);
+	Chunk->OnFoliageComplete();
 }
 
-void FoliageBuilderAsyncTask::Abandon()
+
+
+
+FAsyncPolygonizerTask::FAsyncPolygonizerTask(VoxelPolygonizer* InBuilder, AVoxelChunk* Chunk)
+	: Builder(InBuilder)
+	, Chunk(Chunk)
 {
-	delete this;
+}
+
+void FAsyncPolygonizerTask::DoWork()
+{
+	FProcMeshSection Section = FProcMeshSection();
+	Builder->CreateSection(Section);
+
+	Chunk->OnMeshComplete(Section);
 }

@@ -11,16 +11,17 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ MajorColor"), STAT_MAJOR_COLOR, STAT
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Get2DValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
 
-VoxelPolygonizer::VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes)
+VoxelPolygonizer::VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions)
 	: Depth(Depth)
 	, Data(Data)
 	, ChunkPosition(ChunkPosition)
 	, ChunkHasHigherRes(ChunkHasHigherRes)
+	, bComputeTransitions(bComputeTransitions)
 {
 
 }
 
-void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection, bool bComputeTransitions)
+void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 {
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CACHE);

@@ -9,15 +9,16 @@
 class VoxelPolygonizer
 {
 public:
-	VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes);
+	VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions);
 
-	void CreateSection(FProcMeshSection& OutSection, bool bComputeTransitions);
+	void CreateSection(FProcMeshSection& OutSection);
 
 private:
 	const int Depth;
 	const FIntVector ChunkPosition;
-
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
+	const bool bComputeTransitions;
+
 
 	uint64 CachedSigns[216];
 

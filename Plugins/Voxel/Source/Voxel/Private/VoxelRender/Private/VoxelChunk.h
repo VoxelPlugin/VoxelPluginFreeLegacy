@@ -7,14 +7,12 @@
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 #include "LandscapeGrassType.h"
+#include "VoxelThread.h"
 #include "VoxelChunk.generated.h"
 
-class UProceduralMeshComponent;
-class MeshBuilderAsyncTask;
-class FoliageBuilderAsyncTask;
 class VoxelRender;
 class ChunkOctree;
-class UHierarchicalInstancedStaticMeshComponent;
+class VoxelPolygonizer;
 
 /**
  * Voxel Chunk actor class
@@ -65,11 +63,13 @@ public:
 	/**
 	* Copy Task section to PrimaryMesh section
 	*/
-	void OnMeshComplete();
+	void OnMeshComplete(FProcMeshSection& InSection);
 
-	void ApplyNewSection();
+	void ApplyNewMesh();
 
 	void OnFoliageComplete();
+
+	void ApplyNewFoliage();
 
 private:
 	UPROPERTY(EditAnywhere)
@@ -87,8 +87,10 @@ private:
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 
 	// Async process tasks
-	MeshBuilderAsyncTask* MeshTask;
-	TArray<FoliageBuilderAsyncTask*> FoliageTasks;
+	FAsyncTask<FAsyncPolygonizerTask>* MeshBuilder;
+	TArray<FAsyncTask<FAsyncFoliageTask>*> FoliageTasks;
+
+	VoxelPolygonizer* Builder;
 
 	TSharedPtr<ChunkOctree> CurrentOctree;
 	VoxelRender* Render;
@@ -98,4 +100,6 @@ private:
 	void OnAllFoliageComplete();
 
 	void DeleteTasks();
+
+	void CreateBuilder();
 };

@@ -30,6 +30,9 @@ void VoxelRender::Tick(float DeltaTime)
 
 	ApplyUpdates();
 
+	ApplyNewMeshes();
+	ApplyNewFoliages();
+
 	ApplyFoliageUpdates();
 }
 
@@ -62,6 +65,17 @@ void VoxelRender::SetChunkAsInactive(AVoxelChunk* Chunk)
 {
 	ActiveChunks.Remove(Chunk);
 	InactiveChunks.push_front(Chunk);
+
+	// Remove from queues
+	ChunksToCheckForTransitionChange.Remove(Chunk);
+	{
+		FScopeLock Lock(&ChunksToApplyNewMeshLock);
+		ChunksToApplyNewMesh.Remove(Chunk);
+	}
+	{
+		FScopeLock Lock(&ChunksToApplyNewFoliageLock);
+		ChunksToApplyNewFoliage.Remove(Chunk);
+	}
 }
 
 void VoxelRender::UpdateChunk(TWeakPtr<ChunkOctree> Chunk, bool bAsync)
@@ -182,6 +196,18 @@ void VoxelRender::AddTransitionCheck(AVoxelChunk* Chunk)
 	ChunksToCheckForTransitionChange.Add(Chunk);
 }
 
+void VoxelRender::AddApplyNewMesh(AVoxelChunk* Chunk)
+{
+	FScopeLock Lock(&ChunksToApplyNewMeshLock);
+	ChunksToApplyNewMesh.Add(Chunk);
+}
+
+void VoxelRender::AddApplyNewFoliage(AVoxelChunk* Chunk)
+{
+	FScopeLock Lock(&ChunksToApplyNewFoliageLock);
+	ChunksToApplyNewFoliage.Add(Chunk);
+}
+
 void VoxelRender::ApplyFoliageUpdates()
 {
 	std::forward_list<AVoxelChunk*> Failed;
@@ -208,6 +234,26 @@ void VoxelRender::ApplyTransitionChecks()
 		Chunk->CheckTransitions();
 	}
 	ChunksToCheckForTransitionChange.Empty();
+}
+
+void VoxelRender::ApplyNewMeshes()
+{
+	FScopeLock Lock(&ChunksToApplyNewMeshLock);
+	for (auto Chunk : ChunksToApplyNewMesh)
+	{
+		Chunk->ApplyNewMesh();
+	}
+	ChunksToApplyNewMesh.Empty();
+}
+
+void VoxelRender::ApplyNewFoliages()
+{
+	FScopeLock Lock(&ChunksToApplyNewFoliageLock);
+	for (auto Chunk : ChunksToApplyNewFoliage)
+	{
+		Chunk->ApplyNewFoliage();
+	}
+	ChunksToApplyNewFoliage.Empty();
 }
 
 TWeakPtr<ChunkOctree> VoxelRender::GetChunkOctreeAt(FIntVector Position) const

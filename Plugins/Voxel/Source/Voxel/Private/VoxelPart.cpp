@@ -26,7 +26,9 @@ void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
 {
 	check(Data);
 
-	const int W = Data->Size() / 2;
+	// TODO : Repair
+
+	/*const int W = Data->Size() / 2;
 
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 	ChunkHasHigherRes.SetNumZeroed(6);
@@ -65,5 +67,5 @@ void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
 				SectionIndex++;
 			}
 		}
-	}
+	}*/
 }

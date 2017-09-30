@@ -3,7 +3,6 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelChunk.h"
 #include "ProceduralMeshComponent.h"
-#include "VoxelThread.h"
 #include "Misc/IQueuedWork.h"
 #include "AI/Navigation/NavigationSystem.h"
 #include "VoxelRender.h"
@@ -19,7 +18,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSect
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : MeshTask(nullptr), Render(nullptr)
+AVoxelChunk::AVoxelChunk() : Render(nullptr), MeshBuilder(nullptr), Builder(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -79,17 +78,12 @@ bool AVoxelChunk::Update(bool bAsync)
 
 	if (bAsync)
 	{
-		if (!MeshTask)
+		if (!MeshBuilder)
 		{
-			MeshTask = new MeshBuilderAsyncTask(
-				CurrentOctree->Depth,
-				Render->World->Data,
-				CurrentOctree->GetMinimalCornerPosition(),
-				ChunkHasHigherRes,
-				CurrentOctree->Depth != 0,
-				this
-			);
-			Render->MeshThreadPool->AddQueuedWork(MeshTask);
+			CreateBuilder();
+			MeshBuilder = new FAsyncTask<FAsyncPolygonizerTask>(Builder, this);
+			MeshBuilder->StartBackgroundTask(Render->MeshThreadPool);
+
 			return true;
 		}
 		else
@@ -99,25 +93,24 @@ bool AVoxelChunk::Update(bool bAsync)
 	}
 	else
 	{
-		if (MeshTask)
+		if (MeshBuilder)
 		{
-			Render->MeshThreadPool->RetractQueuedWork(MeshTask);
-			delete MeshTask;
-			MeshTask = nullptr;
+			MeshBuilder->EnsureCompletion();
+			delete MeshBuilder;
+			MeshBuilder = nullptr;
+		}
+		if (Builder)
+		{
+			delete Builder;
+			Builder = nullptr;
 		}
 
-		{
-			VoxelPolygonizer* Polygonizer = new VoxelPolygonizer(
-				CurrentOctree->Depth,
-				Render->World->Data,
-				CurrentOctree->GetMinimalCornerPosition(),
-				ChunkHasHigherRes
-			);
-			Polygonizer->CreateSection(Section, CurrentOctree->Depth != 0);
-			delete Polygonizer;
-		}
+		CreateBuilder();
+		Builder->CreateSection(Section);
+		delete Builder;
+		Builder = nullptr;
 
-		ApplyNewSection();
+		ApplyNewMesh();
 
 		return true;
 	}
@@ -125,20 +118,23 @@ bool AVoxelChunk::Update(bool bAsync)
 
 void AVoxelChunk::CheckTransitions()
 {
-	for (int i = 0; i < 6; i++)
+	if (Render->World->bComputeTransitions)
 	{
-		TransitionDirection Direction = (TransitionDirection)i;
-		TWeakPtr<ChunkOctree> Chunk = CurrentOctree->GetAdjacentChunk(Direction);
-		if (Chunk.IsValid())
+		for (int i = 0; i < 6; i++)
 		{
-			TSharedPtr<ChunkOctree> ChunkPtr = Chunk.Pin();
-
-			bool bThisHasHigherRes = ChunkPtr->Depth > CurrentOctree->Depth;
-
-			check(ChunkPtr->GetVoxelChunk());
-			if (bThisHasHigherRes != ChunkPtr->GetVoxelChunk()->HasChunkHigherRes(InvertTransitionDirection(Direction)))
+			TransitionDirection Direction = (TransitionDirection)i;
+			TWeakPtr<ChunkOctree> Chunk = CurrentOctree->GetAdjacentChunk(Direction);
+			if (Chunk.IsValid())
 			{
-				Render->UpdateChunk(Chunk, true);
+				TSharedPtr<ChunkOctree> ChunkPtr = Chunk.Pin();
+
+				bool bThisHasHigherRes = ChunkPtr->Depth > CurrentOctree->Depth;
+
+				check(ChunkPtr->GetVoxelChunk());
+				if (bThisHasHigherRes != ChunkPtr->GetVoxelChunk()->HasChunkHigherRes(InvertTransitionDirection(Direction)))
+				{
+					Render->UpdateChunk(Chunk, true);
+				}
 			}
 		}
 	}
@@ -183,21 +179,31 @@ void AVoxelChunk::Delete()
 	CurrentOctree.Reset();
 }
 
-void AVoxelChunk::OnMeshComplete()
+void AVoxelChunk::OnMeshComplete(FProcMeshSection& InSection)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 
-	Section = MeshTask->GetSectionCopy();
-	delete MeshTask;
-	MeshTask = nullptr;
+	Section = InSection;
 
-	ApplyNewSection();
+	Render->AddApplyNewMesh(this);
 }
 
-void AVoxelChunk::ApplyNewSection()
+void AVoxelChunk::ApplyNewMesh()
 {
 	// TODO
 	//if (CurrentOctree->Depth <= Render->World->MaxGrassDepth)
+
+	if (MeshBuilder)
+	{
+		MeshBuilder->EnsureCompletion();
+		delete MeshBuilder;
+		MeshBuilder = nullptr;
+	}
+	if (Builder)
+	{
+		delete Builder;
+		Builder = nullptr;
+	}
 
 	Render->AddFoliageUpdate(this);
 
@@ -225,18 +231,9 @@ bool AVoxelChunk::UpdateFoliage()
 			auto GrassType = Render->World->GrassTypes[Index];
 			for (auto GrassVariety : GrassType->GrassVarieties)
 			{
-				auto FoliageTask = new FoliageBuilderAsyncTask(
-					Section,
-					GrassVariety,
-					Index,
-					GetTransform(),
-					Render->World->GetVoxelSize(),
-					CurrentOctree->GetMinimalCornerPosition(),
-					10,
-					this
-				);
+				FAsyncTask<FAsyncFoliageTask>* FoliageTask = new FAsyncTask<FAsyncFoliageTask>(Section, GrassVariety, Index, Render->World->GetVoxelSize(), CurrentOctree->GetMinimalCornerPosition(), 10, this);
 
-				Render->FoliageThreadPool->AddQueuedWork(FoliageTask);
+				FoliageTask->StartBackgroundTask(Render->FoliageThreadPool);
 				FoliageTasks.Add(FoliageTask);
 			}
 		}
@@ -260,6 +257,12 @@ void AVoxelChunk::OnFoliageComplete()
 
 void AVoxelChunk::OnAllFoliageComplete()
 {
+	Render->AddApplyNewFoliage(this);
+	CompletedFoliageTaskCount = 0;
+}
+
+void AVoxelChunk::ApplyNewFoliage()
+{
 	for (int i = 0; i < FoliageComponents.Num(); i++)
 	{
 		FoliageComponents[i]->DestroyComponent();
@@ -268,9 +271,11 @@ void AVoxelChunk::OnAllFoliageComplete()
 
 	for (auto FoliageTask : FoliageTasks)
 	{
-		if (FoliageTask->InstanceBuffer.NumInstances())
+		FoliageTask->EnsureCompletion();
+		FAsyncFoliageTask Task = FoliageTask->GetTask();
+		if (Task.InstanceBuffer.NumInstances())
 		{
-			FGrassVariety GrassVariety = FoliageTask->GrassVariety;
+			FGrassVariety GrassVariety = Task.GrassVariety;
 
 			int32 FolSeed = FCrc::StrCrc32((GrassVariety.GrassMesh->GetName() + GetName()).GetCharArray().GetData());
 			if (FolSeed == 0)
@@ -314,14 +319,14 @@ void AVoxelChunk::OnAllFoliageComplete()
 
 			if (!HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData.IsValid())
 			{
-				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(&FoliageTask->InstanceBuffer);
+				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(&Task.InstanceBuffer);
 			}
 			else
 			{
-				HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData->UpdateFromPreallocatedData(HierarchicalInstancedStaticMeshComponent, FoliageTask->InstanceBuffer);
+				HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData->UpdateFromPreallocatedData(HierarchicalInstancedStaticMeshComponent, Task.InstanceBuffer);
 			}
 
-			HierarchicalInstancedStaticMeshComponent->AcceptPrebuiltTree(FoliageTask->ClusterTree, FoliageTask->OutOcclusionLayerNum);
+			HierarchicalInstancedStaticMeshComponent->AcceptPrebuiltTree(Task.ClusterTree, Task.OutOcclusionLayerNum);
 
 			//HierarchicalInstancedStaticMeshComponent->RecreateRenderState_Concurrent();
 			HierarchicalInstancedStaticMeshComponent->MarkRenderStateDirty();
@@ -330,23 +335,38 @@ void AVoxelChunk::OnAllFoliageComplete()
 		delete FoliageTask;
 	}
 	FoliageTasks.Empty();
-	CompletedFoliageTaskCount = 0;
 }
+
 
 void AVoxelChunk::DeleteTasks()
 {
-	if (MeshTask)
+	if (MeshBuilder)
 	{
-		Render->MeshThreadPool->RetractQueuedWork(MeshTask);
-		MeshTask->IsDone->Wait();;
-		delete MeshTask;
-		MeshTask = nullptr;
+		MeshBuilder->EnsureCompletion();
+		delete MeshBuilder;
+		MeshBuilder = nullptr;
+	}
+	if (Builder)
+	{
+		delete Builder;
+		Builder = nullptr;
 	}
 	for (auto FoliageTask : FoliageTasks)
 	{
-		Render->FoliageThreadPool->RetractQueuedWork(FoliageTask);
-		FoliageTask->IsDone->Wait();;
+		FoliageTask->EnsureCompletion();
 		delete FoliageTask;
 	}
 	FoliageTasks.Empty();
+}
+
+void AVoxelChunk::CreateBuilder()
+{
+	check(!Builder);
+	Builder = new VoxelPolygonizer(
+		CurrentOctree->Depth,
+		Render->World->Data,
+		CurrentOctree->GetMinimalCornerPosition(),
+		ChunkHasHigherRes,
+		CurrentOctree->Depth != 0 && Render->World->bComputeTransitions
+	);
 }
