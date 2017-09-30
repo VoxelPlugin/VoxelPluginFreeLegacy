@@ -43,6 +43,9 @@ public:
 
 	void AddTransitionCheck(AVoxelChunk* Chunk);
 
+	void AddApplyNewMesh(AVoxelChunk* Chunk);
+	void AddApplyNewFoliage(AVoxelChunk* Chunk);
+
 	TWeakPtr<ChunkOctree> GetChunkOctreeAt(FIntVector Position) const;
 
 	int GetDepthAt(FIntVector Position) const;
@@ -53,9 +56,6 @@ private:
 	// Ids of the chunks that need to be updated synchronously
 	TSet<uint64> IdsOfChunksToUpdateSynchronously;
 
-	// TODO: hash
-	TSet<AVoxelChunk*> ChunksToCheckForTransitionChange;
-
 	// Shared ptr because each ChunkOctree need a reference to itself, and the Main one isn't the child of anyone
 	TSharedPtr<ChunkOctree> MainOctree;
 
@@ -63,6 +63,14 @@ private:
 	TSet<AVoxelChunk*> ActiveChunks;
 
 	TSet<AVoxelChunk*> FoliageUpdateNeeded;
+
+	TSet<AVoxelChunk*> ChunksToCheckForTransitionChange;
+
+	TSet<AVoxelChunk*> ChunksToApplyNewMesh;
+	FCriticalSection ChunksToApplyNewMeshLock;
+
+	TSet<AVoxelChunk*> ChunksToApplyNewFoliage;
+	FCriticalSection ChunksToApplyNewFoliageLock;
 
 	// Invokers
 	std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> VoxelInvokerComponents;
@@ -73,4 +81,6 @@ private:
 
 	void ApplyFoliageUpdates();
 	void ApplyTransitionChecks();
+	void ApplyNewMeshes();
+	void ApplyNewFoliages();
 };

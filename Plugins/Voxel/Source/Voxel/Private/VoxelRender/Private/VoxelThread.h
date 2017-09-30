@@ -12,38 +12,11 @@ class AVoxelChunk;
 class VoxelData;
 
 /**
- * Thread to create mesh section
- */
-class MeshBuilderAsyncTask : public IQueuedWork
-{
-public:
-	FEvent* IsDone;
-
-	MeshBuilderAsyncTask(uint8 Depth, VoxelData* Data, FIntVector Position, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, AVoxelChunk* Chunk);
-	virtual ~MeshBuilderAsyncTask() override;
-
-	virtual void DoThreadedWork() override;
-
-	// Do not call
-	virtual void Abandon() override;
-
-	FProcMeshSection GetSectionCopy();
-
-private:
-	AVoxelChunk* Chunk;
-	bool bComputeTransitions;
-	FProcMeshSection Section;
-	VoxelPolygonizer* Worker;
-};
-
-
-/**
  * Thread to create foliage
  */
-class FoliageBuilderAsyncTask : public IQueuedWork
+class FAsyncFoliageTask : public FNonAbandonableTask
 {
 public:
-	FEvent* IsDone;
 	FGrassVariety GrassVariety;
 
 	// Output
@@ -51,12 +24,15 @@ public:
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-	FoliageBuilderAsyncTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, FTransform ChunkTransform, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk);
+	FAsyncFoliageTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk);
 
-	virtual void DoThreadedWork() override;
+	void DoWork();
 
-	// Do not call
-	virtual void Abandon() override;
+	FORCEINLINE TStatId GetStatId() const
+	{
+		RETURN_QUICK_DECLARE_CYCLE_STAT(FAsyncFoliageTask, STATGROUP_ThreadPoolAsyncTasks);
+	};
+
 
 private:
 	AVoxelChunk* Chunk;
@@ -67,4 +43,23 @@ private:
 	float const VoxelSize;
 	FIntVector const ChunkPosition;
 	int const Seed;
+};
+
+
+/**
+ * Thread to create mesh
+ */
+class FAsyncPolygonizerTask : public FNonAbandonableTask
+{
+public:
+	VoxelPolygonizer* Builder;
+	AVoxelChunk* Chunk;
+
+	FAsyncPolygonizerTask(VoxelPolygonizer* InBuilder, AVoxelChunk* Chunk);
+	void DoWork();
+
+	FORCEINLINE TStatId GetStatId() const
+	{
+		RETURN_QUICK_DECLARE_CYCLE_STAT(FAsyncPolygonizerTask, STATGROUP_ThreadPoolAsyncTasks);
+	};
 };
