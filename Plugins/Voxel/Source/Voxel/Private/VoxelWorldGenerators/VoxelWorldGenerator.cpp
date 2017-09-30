@@ -8,9 +8,9 @@ float AVoxelWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return 0;
 }
 
-FColor AVoxelWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+FVoxelMaterial AVoxelWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
-	return FColor::Black;
+	return FVoxelMaterial();
 }
 
 void AVoxelWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)

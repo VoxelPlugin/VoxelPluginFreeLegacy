@@ -19,9 +19,9 @@ float APerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return 2 * n - 1;
 }
 
-FColor APerlinNoiseWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+FVoxelMaterial APerlinNoiseWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
-	return FColor::Green;
+	return FVoxelMaterial();
 }
 
 void APerlinNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)

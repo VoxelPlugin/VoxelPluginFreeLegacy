@@ -16,13 +16,12 @@ class VOXEL_API UVoxelInvokerComponent : public UActorComponent
 public:
 	UVoxelInvokerComponent();
 
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		bool bNeedUpdate;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float DistanceOffset;
 
 protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+private:
+	bool bNeedUpdate;
 };

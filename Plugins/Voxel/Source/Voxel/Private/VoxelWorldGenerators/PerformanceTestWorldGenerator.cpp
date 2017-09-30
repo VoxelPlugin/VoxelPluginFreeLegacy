@@ -8,9 +8,9 @@ float APerformanceTestWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return FVector(FMath::Abs(X) % (2 * Radius) - Radius, FMath::Abs(Y) % (2 * Radius) - Radius, FMath::Abs(Z) % (2 * Radius) - Radius).Size() - CurrentRadius;
 }
 
-FColor APerformanceTestWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+FVoxelMaterial APerformanceTestWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
-	return FColor::Green;
+	return FVoxelMaterial();
 }
 
 void APerformanceTestWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)

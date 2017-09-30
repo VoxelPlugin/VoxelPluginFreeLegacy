@@ -16,20 +16,20 @@ public:
 	ACirclesWorldGenerator();
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
-	virtual FColor GetDefaultColor(int X, int Y, int Z) override;
+	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 	UPROPERTY(EditAnywhere)
 		FVector2D Scale;
 
 	UPROPERTY(EditAnywhere)
-		FColor TopColor;
+		FVoxelMaterial TopMaterial;
 
 	UPROPERTY(EditAnywhere)
-		FColor MiddleColor;
+		FVoxelMaterial MiddleMaterial;
 
 	UPROPERTY(EditAnywhere)
-		FColor BottomColor;
+		FVoxelMaterial BottomMaterial;
 
 	UPROPERTY(EditAnywhere)
 		float MaxValue;

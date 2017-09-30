@@ -41,7 +41,7 @@ public:
 	 * @return	Value
 	 * @return	Color
 	 */
-	void GetValueAndColor(int X, int Y, int Z, float& OutValue, FColor& OutColor);
+	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
 
 	/**
 	 * Set value at position
@@ -55,7 +55,7 @@ public:
 	 * @param	GlobalPosition	Position in voxel space
 	 * @param	Color to set
 	 */
-	void SetColor(int X, int Y, int Z, FColor Color);
+	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
 
 	/**
 	 * Add dirty chunks to SaveList
@@ -73,14 +73,14 @@ public:
 	 * @param	ValuesDiffs		Values diff array; sorted by increasing Id
 	 * @param	ColorsDiffs		Colors diff array; sorted by increasing Id
 	 */
-	void AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelColorDiffArray& ColorsDiffs);
+	void AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelMaterialDiffArray& ColorsDiffs);
 	/**
 	 * Load values that have changed since last network sync from diff arrays
 	 * @param	ValuesDiffs		Values diff array; top is lowest Id
 	 * @param	ColorsDiffs		Colors diff array; top is lowest Id
 	 * @param	World			Voxel world
 	 */
-	void LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelColorDiff>& ColorsDiffs, std::forward_list<FIntVector>& OutModifiedPositions);
+	void LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelMaterialDiff>& ColorsDiffs, std::forward_list<FIntVector>& OutModifiedPositions);
 
 	/**
 	* Get direct child that owns GlobalPosition
@@ -113,8 +113,8 @@ private:
 
 	// Values if dirty
 	TArray<float, TFixedAllocator<16 * 16 * 16>> Values;
-	// Colors if dirty
-	TArray<FColor, TFixedAllocator<16 * 16 * 16>> Colors;
+	// Materials if dirty
+	TArray<FVoxelMaterial, TFixedAllocator<16 * 16 * 16>> Materials;
 
 	bool bIsDirty;
 

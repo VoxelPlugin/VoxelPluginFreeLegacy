@@ -2,7 +2,7 @@
 
 #include "CirclesWorldGenerator.h"
 
-ACirclesWorldGenerator::ACirclesWorldGenerator() : Scale(10, 10), TopColor(230, 255, 0, 255), MiddleColor(255, 0, 26, 255), BottomColor(13, 0, 255, 255), MaxValue(1), MinValue(-1)
+ACirclesWorldGenerator::ACirclesWorldGenerator() : Scale(10, 10), MaxValue(1), MinValue(-1)
 {
 
 }
@@ -12,23 +12,23 @@ float ACirclesWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return (FMath::Sin(X / Scale.X) + FMath::Cos(Y / Scale.Y)) + Z > 0 ? MaxValue : MinValue;
 }
 
-FColor ACirclesWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+FVoxelMaterial ACirclesWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
 	if (Z >= 1)
 	{
-		return BottomColor;
+		return BottomMaterial;
 	}
 	else if (Z >= 0)
 	{
-		return TopColor;
+		return TopMaterial;
 	}
 	else if (Z >= -1)
 	{
-		return MiddleColor;
+		return MiddleMaterial;
 	}
 	else
 	{
-		return BottomColor;
+		return BottomMaterial;
 	}
 }
 

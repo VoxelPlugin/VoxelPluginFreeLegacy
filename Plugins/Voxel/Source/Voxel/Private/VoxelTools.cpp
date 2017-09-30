@@ -135,15 +135,15 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float 
 				if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
 				{
 					// Set alpha
-					float Alpha = FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
+					int8 Alpha = 255 * FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
 					if (bUseLayer1)
 					{
-						Alpha = 1 - Alpha;
+						Alpha = 256 - Alpha;
 					}
 					if ((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex)
 					{
 						// Same color
-						Alpha = bUseLayer1 ? FMath::Min(Alpha, Material.Alpha) : FMath::Max(Alpha, Material.Alpha);
+						Alpha = bUseLayer1 ? FMath::Min<int>(Alpha, Material.Alpha) : FMath::Max<int>(Alpha, Material.Alpha);
 					}
 					Material.Alpha = Alpha;
 
@@ -163,7 +163,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float 
 				}
 				else if (Distance < Radius + FadeDistance + 2 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
 				{
-					Material.Alpha = bUseLayer1 ? 1 : 0;
+					Material.Alpha = bUseLayer1 ? 255 : 0;
 					World->SetMaterial(CurrentPosition, Material);
 					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
 				}
@@ -325,15 +325,15 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 						if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
 						{
 							// Set alpha
-							float Alpha = FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
+							int8 Alpha = 255 * FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
 							if (bUseLayer1)
 							{
-								Alpha = 1 - Alpha;
+								Alpha = 256 - Alpha;
 							}
 							if ((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex)
 							{
 								// Same color
-								Alpha = bUseLayer1 ? FMath::Min(Alpha, Material.Alpha) : FMath::Max(Alpha, Material.Alpha);
+								Alpha = bUseLayer1 ? FMath::Min<int>(Alpha, Material.Alpha) : FMath::Max<int>(Alpha, Material.Alpha);
 							}
 							Material.Alpha = Alpha;
 
@@ -353,7 +353,7 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 						}
 						else if (Distance < Radius + FadeDistance + 3 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
 						{
-							Material.Alpha = bUseLayer1 ? 1 : 0;
+							Material.Alpha = bUseLayer1 ? 255 : 0;
 							World->SetMaterial(CurrentLocalPosition, Material);
 							World->UpdateChunksAtPosition(CurrentLocalPosition, bAsync);
 						}

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include <list>
 #include <forward_list>
+#include "VoxelMaterial.h"
 #include "VoxelSave.generated.h"
 
 
@@ -19,11 +20,11 @@ public:
 		TArray<float> Values;
 
 	UPROPERTY(VisibleAnywhere)
-		TArray<FColor> Colors;
+		TArray<FVoxelMaterial> Materials;
 
 	FVoxelChunkSave();
 
-	FVoxelChunkSave(uint64 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FColor, TFixedAllocator<16 * 16 * 16>>& Colors);
+	FVoxelChunkSave(uint64 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FVoxelMaterial, TFixedAllocator<16 * 16 * 16>>& Materials);
 };
 
 USTRUCT(BlueprintType, Category = Voxel)
@@ -66,7 +67,7 @@ public:
 };
 
 USTRUCT()
-struct FVoxelColorDiff
+struct FVoxelMaterialDiff
 {
 	GENERATED_BODY()
 
@@ -78,11 +79,11 @@ public:
 		int Index;
 
 	UPROPERTY(EditAnywhere)
-		FColor Color;
+		FVoxelMaterial Material;
 
-	FVoxelColorDiff();
+	FVoxelMaterialDiff();
 
-	FVoxelColorDiff(uint64 Id, int Index, FColor Color);
+	FVoxelMaterialDiff(uint64 Id, int Index, FVoxelMaterial Material);
 };
 
 struct VoxelValueDiffArray
@@ -97,14 +98,14 @@ struct VoxelValueDiffArray
 	void AddPackets(std::forward_list<TArray<FVoxelValueDiff>>& List, const int MaxSize = 2048);
 };
 
-struct VoxelColorDiffArray
+struct VoxelMaterialDiffArray
 {
 	std::forward_list<uint64> Ids;
 	std::forward_list<int> Indexes;
-	std::forward_list<FColor> Colors;
+	std::forward_list<FVoxelMaterial> Materials;
 	int Size = 0;
 
-	void Add(uint64 Id, int Index, FColor Color);
+	void Add(uint64 Id, int Index, FVoxelMaterial Material);
 
-	void AddPackets(std::forward_list<TArray<FVoxelColorDiff>>& List, const int MaxSize = 2048);
+	void AddPackets(std::forward_list<TArray<FVoxelMaterialDiff>>& List, const int MaxSize = 2048);
 };

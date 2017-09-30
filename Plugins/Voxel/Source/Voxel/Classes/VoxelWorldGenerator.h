@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMaterial.h"
 #include "VoxelWorldGenerator.generated.h"
 
 class AVoxelWorld;
@@ -28,7 +29,7 @@ public:
 	 * @param	Position		Position in voxel space
 	 * @return	Color at position
 	 */
-	virtual FColor GetDefaultColor(int X, int Y, int Z);
+	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z);
 
 	/**
 	 * If need reference to Voxel World

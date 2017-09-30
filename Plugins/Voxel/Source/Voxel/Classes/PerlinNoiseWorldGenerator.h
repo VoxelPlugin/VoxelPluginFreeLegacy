@@ -19,7 +19,7 @@ public:
 	APerlinNoiseWorldGenerator();
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
-	virtual FColor GetDefaultColor(int X, int Y, int Z) override;
+	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 private:

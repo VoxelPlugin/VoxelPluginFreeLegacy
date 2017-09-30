@@ -17,6 +17,8 @@ class VoxelData;
 class MeshBuilderAsyncTask : public IQueuedWork
 {
 public:
+	FEvent* IsDone;
+
 	MeshBuilderAsyncTask(uint8 Depth, VoxelData* Data, FIntVector Position, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, AVoxelChunk* Chunk);
 	virtual ~MeshBuilderAsyncTask() override;
 
@@ -41,6 +43,7 @@ private:
 class FoliageBuilderAsyncTask : public IQueuedWork
 {
 public:
+	FEvent* IsDone;
 	FGrassVariety GrassVariety;
 
 	// Output

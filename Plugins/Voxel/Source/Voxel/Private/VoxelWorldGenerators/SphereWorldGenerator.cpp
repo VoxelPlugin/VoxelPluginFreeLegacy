@@ -22,9 +22,9 @@ float ASphereWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return Alpha * (InverseOutsideInside ? -1 : 1);
 }
 
-FColor ASphereWorldGenerator::GetDefaultColor(int X, int Y, int Z)
+FVoxelMaterial ASphereWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
-	return DefaultColor;
+	return DefaultMaterial;
 }
 
 void ASphereWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
