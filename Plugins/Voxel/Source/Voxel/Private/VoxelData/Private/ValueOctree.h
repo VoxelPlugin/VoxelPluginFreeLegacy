@@ -108,7 +108,6 @@ private:
 	*/
 	TArray<ValueOctree*, TFixedAllocator<8>> Childs;
 
-	FEvent* GetLock;
 	FCriticalSection SetLock;
 
 	// Values if dirty

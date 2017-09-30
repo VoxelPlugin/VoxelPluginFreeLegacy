@@ -12,6 +12,8 @@ VoxelRender::VoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 Foli
 	: World(World)
 	, MeshThreadPool(FQueuedThreadPool::Allocate())
 	, FoliageThreadPool(FQueuedThreadPool::Allocate())
+	, TimeSinceMeshUpdate(0)
+	, TimeSinceFoliageUpdate(0)
 {
 	MeshThreadPool->Create(MeshThreadCount, 64 * 1024);
 	FoliageThreadPool->Create(FoliageThreadCount, 32 * 1024);
@@ -24,16 +26,22 @@ void VoxelRender::Tick(float DeltaTime)
 	TimeSinceMeshUpdate += DeltaTime;
 	TimeSinceFoliageUpdate += DeltaTime;
 
-	// TODO : FPS
-
 	UpdateLOD();
 
-	ApplyUpdates();
+	if (TimeSinceMeshUpdate > 1 / World->MeshFPS)
+	{
+		ApplyUpdates();
+		TimeSinceMeshUpdate = 0;
+	}
+
+	if (TimeSinceFoliageUpdate > 1 / World->FoliageFPS)
+	{
+		ApplyFoliageUpdates();
+		TimeSinceFoliageUpdate = 0;
+	}
 
 	ApplyNewMeshes();
 	ApplyNewFoliages();
-
-	ApplyFoliageUpdates();
 }
 
 void VoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
