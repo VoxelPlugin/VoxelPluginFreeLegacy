@@ -203,7 +203,7 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 												Material
 											);
 
-											ForceVertexCreation = !CellMaterial.HasSameIndexesAs(Material) || CellMaterial.Alpha != Material.Alpha;
+											ForceVertexCreation = !CellMaterial.HasSameIndexesAs(Material);
 										}
 
 										if ((ValidityMask & CacheDirection) != CacheDirection || ForceVertexCreation)
