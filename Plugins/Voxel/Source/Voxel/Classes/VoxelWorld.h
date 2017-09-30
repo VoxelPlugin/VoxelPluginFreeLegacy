@@ -65,7 +65,7 @@ public:
 		TArray<ULandscapeGrassType*> GrassTypes;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-		float GrassFPS;
+		float FoliageFPS;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 		float MeshFPS;

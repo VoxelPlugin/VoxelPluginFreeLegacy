@@ -10,7 +10,7 @@ ValueOctree::ValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Positi
 	, bIsDirty(false)
 	, bIsNetworkDirty(false)
 {
-	GetLock = FGenericPlatformProcess::GetSynchEventFromPool(true);
+
 }
 
 bool ValueOctree::IsDirty() const
@@ -20,64 +20,58 @@ bool ValueOctree::IsDirty() const
 
 void ValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
-	check(IsLeaf());
-	check(IsInOctree(X, Y, Z));
+		check(IsInOctree(X, Y, Z));
+		check(IsLeaf());
 
-	if (UNLIKELY(IsDirty()))
-	{
-		check(Depth == 0);
+		if (UNLIKELY(IsDirty()))
+		{
+			check(Depth == 0);
 
-		GetLock->Wait();
+			int LocalX, LocalY, LocalZ;
+			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
 
-		int LocalX, LocalY, LocalZ;
-		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
-
-		int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-		OutValue = Values[Index];
-		OutMaterial = Materials[Index];
-	}
-	else
-	{
-		OutValue = WorldGenerator->GetDefaultValue(X, Y, Z);
-		OutMaterial = WorldGenerator->GetDefaultMaterial(X, Y, Z);
-	}
+			int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
+			OutValue = Values[Index];
+			OutMaterial = Materials[Index];
+		}
+		else
+		{
+			OutValue = WorldGenerator->GetDefaultValue(X, Y, Z);
+			OutMaterial = WorldGenerator->GetDefaultMaterial(X, Y, Z);
+		}
 }
 
 void ValueOctree::SetValue(int X, int Y, int Z, float Value)
 {
-	check(IsLeaf());
-	check(IsInOctree(X, Y, Z));
-
-	bIsNetworkDirty = true;
-
-	if (Depth != 0)
+	FScopeLock Lock(&SetLock);
 	{
-		CreateChilds();
-		bIsDirty = true; // IsDirty only when having childs (for multithreading)
-		GetChild(X, Y, Z)->SetValue(X, Y, Z, Value);
-	}
-	else
-	{
-		FScopeLock Lock(&SetLock);
-		GetLock->Reset();
+		bIsNetworkDirty = true;
 
-		if (!IsDirty())
+		if (Depth != 0)
 		{
-			SetAsDirty();
+			CreateChilds();
+			bIsDirty = true; // IsDirty only when having childs (for multithreading)
+			GetChild(X, Y, Z)->SetValue(X, Y, Z, Value);
 		}
-
-		int LocalX, LocalY, LocalZ;
-		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
-
-		int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-		Values[Index] = Value;
-
-		if (bMultiplayer)
+		else
 		{
-			DirtyValues.Add(Index);
-		}
 
-		GetLock->Trigger();
+			if (!IsDirty())
+			{
+				SetAsDirty();
+			}
+
+			int LocalX, LocalY, LocalZ;
+			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
+
+			int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
+			Values[Index] = Value;
+
+			if (bMultiplayer)
+			{
+				DirtyValues.Add(Index);
+			}
+		}
 	}
 }
 
@@ -86,36 +80,34 @@ void ValueOctree::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 	check(IsLeaf());
 	check(IsInOctree(X, Y, Z));
 
-	bIsNetworkDirty = true;
-
-	if (Depth != 0)
+	FScopeLock Lock(&SetLock);
 	{
-		CreateChilds();
-		bIsDirty = true; // IsDirty only when having childs (for multithreading)
-		GetChild(X, Y, Z)->SetMaterial(X, Y, Z, Material);
-	}
-	else
-	{
-		FScopeLock Lock(&SetLock);
-		GetLock->Reset();
+		bIsNetworkDirty = true;
 
-		if (!IsDirty())
+		if (Depth != 0)
 		{
-			SetAsDirty();
+			CreateChilds();
+			bIsDirty = true; // IsDirty only when having childs (for multithreading)
+			GetChild(X, Y, Z)->SetMaterial(X, Y, Z, Material);
 		}
-
-		int LocalX, LocalY, LocalZ;
-		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
-
-		int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-		Materials[Index] = Material;
-
-		if (bMultiplayer)
+		else
 		{
-			DirtyValues.Add(Index);
-		}
+			if (!IsDirty())
+			{
+				SetAsDirty();
+			}
 
-		GetLock->Trigger();
+			int LocalX, LocalY, LocalZ;
+			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
+
+			int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
+			Materials[Index] = Material;
+
+			if (bMultiplayer)
+			{
+				DirtyValues.Add(Index);
+			}
+		}
 	}
 }
 

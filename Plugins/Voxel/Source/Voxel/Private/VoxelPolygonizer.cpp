@@ -1,6 +1,9 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelPolygonizer.h"
 #include "Transvoxel.h"
+#include "VoxelData.h"
+#include "VoxelData/Private/ValueOctree.h"
+#include "VoxelMaterial.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Cache"), STAT_CACHE, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Main Iter"), STAT_MAIN_ITER, STATGROUP_Voxel);
@@ -17,6 +20,7 @@ VoxelPolygonizer::VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkP
 	, ChunkPosition(ChunkPosition)
 	, ChunkHasHigherRes(ChunkHasHigherRes)
 	, bComputeTransitions(bComputeTransitions)
+	, LastOctree(nullptr)
 {
 
 }
@@ -50,7 +54,7 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 
 								float CurrentValue;
 								FVoxelMaterial CurrentMaterial;
-								Data->GetValueAndMaterial(X * Step() + ChunkPosition.X, Y * Step() + ChunkPosition.Y, Z * Step() + ChunkPosition.Z, CurrentValue, CurrentMaterial);
+								Data->GetValueAndMaterial(X * Step() + ChunkPosition.X, Y * Step() + ChunkPosition.Y, Z * Step() + ChunkPosition.Z, CurrentValue, CurrentMaterial, LastOctree);
 
 								if (X + 1 < 18 && Y + 1 < 18 && Z + 1 < 18) // Getting value out of this chunk for the "continue" optimization after
 								{
@@ -762,8 +766,7 @@ void VoxelPolygonizer::GetValueAndMaterial(int X, int Y, int Z, float& OutValue,
 	}
 	else
 	{
-		// TODO: last octree
-		Data->GetValueAndMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutMaterial);
+		Data->GetValueAndMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutMaterial, LastOctree);
 	}
 }
 

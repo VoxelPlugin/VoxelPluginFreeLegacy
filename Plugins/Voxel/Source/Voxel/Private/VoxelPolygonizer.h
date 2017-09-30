@@ -1,10 +1,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelData.h"
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
-#include "VoxelMaterial.h"
+
+class ValueOctree;
+class VoxelData;
+struct FVoxelMaterial;
 
 class VoxelPolygonizer
 {
@@ -14,11 +16,14 @@ public:
 	void CreateSection(FProcMeshSection& OutSection);
 
 private:
-	const int Depth;
-	const FIntVector ChunkPosition;
+	int const Depth;
+	VoxelData* const Data;
+	FIntVector const ChunkPosition;
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
-	const bool bComputeTransitions;
+	bool const bComputeTransitions;
 
+
+	ValueOctree* LastOctree;
 
 	uint64 CachedSigns[216];
 
@@ -29,8 +34,6 @@ private:
 	int Cache[17][17][17][3];
 
 	int Cache2D[6][17][17][7]; // Edgeindex: 0 -> 8; 1 -> 9; 2 -> Not used; 3-6 -> 3-6
-
-	VoxelData* Data;
 
 	FORCEINLINE int Size();
 	// Step between cubes
