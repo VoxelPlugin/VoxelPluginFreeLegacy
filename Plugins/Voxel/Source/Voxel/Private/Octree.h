@@ -15,7 +15,7 @@ FORCEINLINE uint64 IntPow9(int Power)
 /**
  * Base Octree class
  */
-class Octree
+class FOctree
 {
 public:
 	/**
@@ -23,13 +23,13 @@ public:
 	 * @param	Position	Position (center) of this chunk
 	 * @param	Depth		Distance to the highest resolution
 	 */
-	Octree(FIntVector Position, uint8 Depth, uint64 Id);
+	FOctree(FIntVector Position, uint8 Depth, uint64 Id);
 
-	bool operator==(const Octree& Other) const;
+	bool operator==(const FOctree& Other) const;
 
-	bool operator<(const Octree& Other) const;
+	bool operator<(const FOctree& Other) const;
 
-	bool operator>(const Octree& Other) const;
+	bool operator>(const FOctree& Other) const;
 
 	// Center of the octree
 	const FIntVector Position;
@@ -82,7 +82,7 @@ protected:
 	bool bHasChilds;
 };
 
-inline uint64 GetTypeHash(Octree Octree)
+inline uint64 GetTypeHash(FOctree Octree)
 {
 	return Octree.Id;
 }

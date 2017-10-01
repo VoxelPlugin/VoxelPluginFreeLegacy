@@ -8,7 +8,7 @@
 
 class UProceduralMeshComponent;
 class UVoxelAutoDisableComponent;
-class VoxelData;
+class FVoxelData;
 class AVoxelWorld;
 
 
@@ -20,7 +20,7 @@ class AVoxelPart : public AActor
 public:
 	AVoxelPart();
 
-	void Init(VoxelData* Data, AVoxelWorld* World);
+	void Init(FVoxelData* Data, AVoxelWorld* World);
 
 private:
 	UPROPERTY(EditAnywhere)

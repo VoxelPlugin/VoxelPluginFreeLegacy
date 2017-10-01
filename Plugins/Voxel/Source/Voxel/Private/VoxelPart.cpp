@@ -29,7 +29,7 @@ AVoxelPart::AVoxelPart()
 	AutoDisableComponent->bAutoFindComponent = false;
 }
 
-void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
+void AVoxelPart::Init(FVoxelData* Data, AVoxelWorld* World)
 {
 	check(Data);
 
@@ -48,7 +48,7 @@ void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
 			{
 				FIntVector Position = FIntVector(X, Y, Z);
 
-				TSharedPtr<VoxelPolygonizer> Render = MakeShareable(new VoxelPolygonizer(0, Data, Position, ChunkHasHigherRes, false));
+				TSharedPtr<FVoxelPolygonizer> Render = MakeShareable(new FVoxelPolygonizer(0, Data, Position, ChunkHasHigherRes, false));
 
 				TSharedPtr<FProcMeshSection> Section = MakeShareable(new FProcMeshSection());
 				Render->CreateSection(*Section);

@@ -176,7 +176,7 @@ void FAsyncFoliageTask::DoWork()
 
 
 
-FAsyncPolygonizerTask::FAsyncPolygonizerTask(VoxelPolygonizer* InBuilder, AVoxelChunk* Chunk)
+FAsyncPolygonizerTask::FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, AVoxelChunk* Chunk)
 	: Builder(InBuilder)
 	, Chunk(Chunk)
 {

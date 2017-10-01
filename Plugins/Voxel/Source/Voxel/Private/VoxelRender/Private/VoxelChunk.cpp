@@ -33,7 +33,7 @@ AVoxelChunk::AVoxelChunk() : Render(nullptr), MeshBuilder(nullptr), Builder(null
 	ChunkHasHigherRes.SetNumZeroed(6);
 }
 
-void AVoxelChunk::Init(TWeakPtr<ChunkOctree> NewOctree)
+void AVoxelChunk::Init(TWeakPtr<FChunkOctree> NewOctree)
 {
 	check(NewOctree.IsValid());
 	CurrentOctree = NewOctree.Pin();
@@ -64,7 +64,7 @@ bool AVoxelChunk::Update(bool bAsync)
 		for (int i = 0; i < 6; i++)
 		{
 			TransitionDirection Direction = (TransitionDirection)i;
-			TWeakPtr<ChunkOctree> Chunk = CurrentOctree->GetAdjacentChunk(Direction);
+			TWeakPtr<FChunkOctree> Chunk = CurrentOctree->GetAdjacentChunk(Direction);
 			if (Chunk.IsValid())
 			{
 				ChunkHasHigherRes[i] = Chunk.Pin()->Depth < CurrentOctree->Depth;
@@ -123,10 +123,10 @@ void AVoxelChunk::CheckTransitions()
 		for (int i = 0; i < 6; i++)
 		{
 			TransitionDirection Direction = (TransitionDirection)i;
-			TWeakPtr<ChunkOctree> Chunk = CurrentOctree->GetAdjacentChunk(Direction);
+			TWeakPtr<FChunkOctree> Chunk = CurrentOctree->GetAdjacentChunk(Direction);
 			if (Chunk.IsValid())
 			{
-				TSharedPtr<ChunkOctree> ChunkPtr = Chunk.Pin();
+				TSharedPtr<FChunkOctree> ChunkPtr = Chunk.Pin();
 
 				bool bThisHasHigherRes = ChunkPtr->Depth > CurrentOctree->Depth;
 
@@ -362,7 +362,7 @@ void AVoxelChunk::DeleteTasks()
 void AVoxelChunk::CreateBuilder()
 {
 	check(!Builder);
-	Builder = new VoxelPolygonizer(
+	Builder = new FVoxelPolygonizer(
 		CurrentOctree->Depth,
 		Render->World->Data,
 		CurrentOctree->GetMinimalCornerPosition(),

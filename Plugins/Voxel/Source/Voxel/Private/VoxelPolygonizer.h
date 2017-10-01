@@ -4,26 +4,26 @@
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 
-class ValueOctree;
-class VoxelData;
+class FValueOctree;
+class FVoxelData;
 struct FVoxelMaterial;
 
-class VoxelPolygonizer
+class FVoxelPolygonizer
 {
 public:
-	VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions);
+	FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions);
 
 	void CreateSection(FProcMeshSection& OutSection);
 
 private:
 	int const Depth;
-	VoxelData* const Data;
+	FVoxelData* const Data;
 	FIntVector const ChunkPosition;
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 	bool const bComputeTransitions;
 
 
-	ValueOctree* LastOctree;
+	FValueOctree* LastOctree;
 
 	// Cache of the sign of the values. Can lead to crash if value changed between cache and 2nd access
 	uint64 CachedSigns[216];

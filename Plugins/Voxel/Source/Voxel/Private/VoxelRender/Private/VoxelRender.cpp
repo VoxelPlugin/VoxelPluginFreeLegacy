@@ -8,7 +8,7 @@
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
 
-VoxelRender::VoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 FoliageThreadCount)
+FVoxelRender::FVoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 FoliageThreadCount)
 	: World(World)
 	, MeshThreadPool(FQueuedThreadPool::Allocate())
 	, FoliageThreadPool(FQueuedThreadPool::Allocate())
@@ -18,10 +18,10 @@ VoxelRender::VoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 Foli
 	MeshThreadPool->Create(MeshThreadCount, 64 * 1024);
 	FoliageThreadPool->Create(FoliageThreadCount, 32 * 1024);
 
-	MainOctree = MakeShareable(new ChunkOctree(this, FIntVector::ZeroValue, World->Depth, Octree::GetTopIdFromDepth(World->Depth)));
+	MainOctree = MakeShareable(new FChunkOctree(this, FIntVector::ZeroValue, World->Depth, FOctree::GetTopIdFromDepth(World->Depth)));
 }
 
-void VoxelRender::Tick(float DeltaTime)
+void FVoxelRender::Tick(float DeltaTime)
 {
 	TimeSinceMeshUpdate += DeltaTime;
 	TimeSinceFoliageUpdate += DeltaTime;
@@ -44,12 +44,12 @@ void VoxelRender::Tick(float DeltaTime)
 	ApplyNewFoliages();
 }
 
-void VoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
+void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 {
 	VoxelInvokerComponents.push_front(Invoker);
 }
 
-AVoxelChunk* VoxelRender::GetInactiveChunk()
+AVoxelChunk* FVoxelRender::GetInactiveChunk()
 {
 	AVoxelChunk* Chunk;
 	if (InactiveChunks.empty())
@@ -69,7 +69,7 @@ AVoxelChunk* VoxelRender::GetInactiveChunk()
 	return Chunk;
 }
 
-void VoxelRender::SetChunkAsInactive(AVoxelChunk* Chunk)
+void FVoxelRender::SetChunkAsInactive(AVoxelChunk* Chunk)
 {
 	ActiveChunks.Remove(Chunk);
 	InactiveChunks.push_front(Chunk);
@@ -87,7 +87,7 @@ void VoxelRender::SetChunkAsInactive(AVoxelChunk* Chunk)
 	}
 }
 
-void VoxelRender::UpdateChunk(TWeakPtr<ChunkOctree> Chunk, bool bAsync)
+void FVoxelRender::UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync)
 {
 	if (Chunk.IsValid())
 	{
@@ -99,7 +99,7 @@ void VoxelRender::UpdateChunk(TWeakPtr<ChunkOctree> Chunk, bool bAsync)
 	}
 }
 
-void VoxelRender::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
+void FVoxelRender::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
 {
 	check(World->IsInWorld(Position));
 
@@ -143,15 +143,15 @@ void VoxelRender::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
 	}
 }
 
-void VoxelRender::ApplyUpdates()
+void FVoxelRender::ApplyUpdates()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyUpdates);
 
-	std::forward_list<TWeakPtr<ChunkOctree>> Failed;
+	std::forward_list<TWeakPtr<FChunkOctree>> Failed;
 
 	for (auto& Chunk : ChunksToUpdate)
 	{
-		TSharedPtr<ChunkOctree> LockedChunk(Chunk.Pin());
+		TSharedPtr<FChunkOctree> LockedChunk(Chunk.Pin());
 
 		if (LockedChunk.IsValid() && LockedChunk->GetVoxelChunk())
 		{
@@ -181,7 +181,7 @@ void VoxelRender::ApplyUpdates()
 	}
 }
 
-void VoxelRender::UpdateAll(bool bAsync)
+void FVoxelRender::UpdateAll(bool bAsync)
 {
 	for (auto Chunk : ActiveChunks)
 	{
@@ -189,7 +189,7 @@ void VoxelRender::UpdateAll(bool bAsync)
 	}
 }
 
-void VoxelRender::UpdateLOD()
+void FVoxelRender::UpdateLOD()
 {
 	SCOPE_CYCLE_COUNTER(STAT_UpdateLOD);
 
@@ -207,29 +207,29 @@ void VoxelRender::UpdateLOD()
 	MainOctree->UpdateLOD(VoxelInvokerComponents);
 }
 
-void VoxelRender::AddFoliageUpdate(AVoxelChunk* Chunk)
+void FVoxelRender::AddFoliageUpdate(AVoxelChunk* Chunk)
 {
 	FoliageUpdateNeeded.Add(Chunk);
 }
 
-void VoxelRender::AddTransitionCheck(AVoxelChunk* Chunk)
+void FVoxelRender::AddTransitionCheck(AVoxelChunk* Chunk)
 {
 	ChunksToCheckForTransitionChange.Add(Chunk);
 }
 
-void VoxelRender::AddApplyNewMesh(AVoxelChunk* Chunk)
+void FVoxelRender::AddApplyNewMesh(AVoxelChunk* Chunk)
 {
 	FScopeLock Lock(&ChunksToApplyNewMeshLock);
 	ChunksToApplyNewMesh.Add(Chunk);
 }
 
-void VoxelRender::AddApplyNewFoliage(AVoxelChunk* Chunk)
+void FVoxelRender::AddApplyNewFoliage(AVoxelChunk* Chunk)
 {
 	FScopeLock Lock(&ChunksToApplyNewFoliageLock);
 	ChunksToApplyNewFoliage.Add(Chunk);
 }
 
-void VoxelRender::ApplyFoliageUpdates()
+void FVoxelRender::ApplyFoliageUpdates()
 {
 	std::forward_list<AVoxelChunk*> Failed;
 	for (auto Chunk : FoliageUpdateNeeded)
@@ -248,7 +248,7 @@ void VoxelRender::ApplyFoliageUpdates()
 	}
 }
 
-void VoxelRender::ApplyTransitionChecks()
+void FVoxelRender::ApplyTransitionChecks()
 {
 	for (auto Chunk : ChunksToCheckForTransitionChange)
 	{
@@ -257,7 +257,7 @@ void VoxelRender::ApplyTransitionChecks()
 	ChunksToCheckForTransitionChange.Empty();
 }
 
-void VoxelRender::ApplyNewMeshes()
+void FVoxelRender::ApplyNewMeshes()
 {
 	FScopeLock Lock(&ChunksToApplyNewMeshLock);
 	for (auto Chunk : ChunksToApplyNewMesh)
@@ -267,7 +267,7 @@ void VoxelRender::ApplyNewMeshes()
 	ChunksToApplyNewMesh.Empty();
 }
 
-void VoxelRender::ApplyNewFoliages()
+void FVoxelRender::ApplyNewFoliages()
 {
 	FScopeLock Lock(&ChunksToApplyNewFoliageLock);
 	for (auto Chunk : ChunksToApplyNewFoliage)
@@ -277,13 +277,13 @@ void VoxelRender::ApplyNewFoliages()
 	ChunksToApplyNewFoliage.Empty();
 }
 
-TWeakPtr<ChunkOctree> VoxelRender::GetChunkOctreeAt(FIntVector Position) const
+TWeakPtr<FChunkOctree> FVoxelRender::GetChunkOctreeAt(FIntVector Position) const
 {
 	check(World->IsInWorld(Position));
 	return MainOctree->GetLeaf(Position);
 }
 
-int VoxelRender::GetDepthAt(FIntVector Position) const
+int FVoxelRender::GetDepthAt(FIntVector Position) const
 {
 	return GetChunkOctreeAt(Position).Pin()->Depth;
 }

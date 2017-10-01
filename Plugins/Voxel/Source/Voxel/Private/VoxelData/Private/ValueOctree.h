@@ -5,14 +5,14 @@
 #include <list>
 #include <forward_list>
 
-class VoxelData;
+class FVoxelData;
 class IVoxelWorldGenerator;
 struct FVoxelChunkSave;
 
 /**
  * Octree that holds modified values & colors
  */
-class ValueOctree : public Octree
+class FValueOctree : public FOctree
 {
 public:
 	/**
@@ -21,7 +21,7 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	ValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id);
+	FValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id);
 
 	// Is the game multiplayer?
 	bool bMultiplayer;
@@ -86,9 +86,9 @@ public:
 	* Get direct child that owns GlobalPosition
 	* @param	GlobalPosition	Position in voxel space
 	*/
-	FORCEINLINE ValueOctree* GetChild(int X, int Y, int Z);
+	FORCEINLINE FValueOctree* GetChild(int X, int Y, int Z);
 
-	ValueOctree* GetLeaf(int X, int Y, int Z);
+	FValueOctree* GetLeaf(int X, int Y, int Z);
 
 	/**
 	 * Queue update of dirty chunks
@@ -106,7 +106,7 @@ private:
 	v 1 | 3    5 | 7
 	x
 	*/
-	TArray<ValueOctree*, TFixedAllocator<8>> Childs;
+	TArray<FValueOctree*, TFixedAllocator<8>> Childs;
 
 	FCriticalSection SetLock;
 

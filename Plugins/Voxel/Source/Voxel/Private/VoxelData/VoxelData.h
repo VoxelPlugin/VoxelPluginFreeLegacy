@@ -6,13 +6,13 @@
 #include "VoxelMaterial.h"
 #include <list>
 
-class ValueOctree;
+class FValueOctree;
 class IVoxelWorldGenerator;
 
 /**
  * Class that handle voxel data. Mainly an interface to ValueOctree
  */
-class VoxelData
+class FVoxelData
 {
 public:
 	/**
@@ -20,8 +20,8 @@ public:
 	 * @param	Depth			Depth of this world; Width = 16 * 2^Depth
 	 * @param	WorldGenerator	Generator for this world
 	 */
-	VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator);
-	~VoxelData();
+	FVoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator);
+	~FVoxelData();
 
 	// Depth of the octree
 	const int Depth;
@@ -52,7 +52,7 @@ public:
 	* @return	Color
 	*/
 	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const;
-	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, ValueOctree*& LastOctree) const;
+	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, FValueOctree*& LastOctree) const;
 
 
 	/**
@@ -107,5 +107,5 @@ public:
 	void LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelMaterialDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions);
 
 private:
-	ValueOctree* MainOctree;
+	FValueOctree* MainOctree;
 };

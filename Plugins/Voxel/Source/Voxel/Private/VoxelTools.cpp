@@ -789,7 +789,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 	uint8 Depth = FMath::CeilToInt(FMath::Log2(2 * IntRadius / 16.f));
 	AVoxelWorldGenerator* WorldGenerator = NewObject<AEmptyWorldGenerator>();
 
-	TSharedPtr<VoxelData> Data = MakeShareable(new VoxelData(Depth, WorldGenerator));
+	TSharedPtr<FVoxelData> Data = MakeShareable(new FVoxelData(Depth, WorldGenerator));
 
 	std::forward_list<FIntVector> PointPositions;
 
@@ -842,7 +842,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 	{
 		// Find all connected points
 
-		TSharedPtr<VoxelData> CurrentData = MakeShareable(new VoxelData(Depth, WorldGenerator));
+		TSharedPtr<FVoxelData> CurrentData = MakeShareable(new FVoxelData(Depth, WorldGenerator));
 
 		FIntVector PointPosition = PointPositions.front();
 		PointPositions.pop_front();

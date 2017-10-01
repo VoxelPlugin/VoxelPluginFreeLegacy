@@ -4,8 +4,8 @@
 #include "VoxelWorldGenerator.h"
 #include "GenericPlatformProcess.h"
 
-ValueOctree::ValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id)
-	: Octree(Position, Depth, Id)
+FValueOctree::FValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id)
+	: FOctree(Position, Depth, Id)
 	, WorldGenerator(WorldGenerator)
 	, bIsDirty(false)
 	, bIsNetworkDirty(false)
@@ -13,22 +13,20 @@ ValueOctree::ValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Positi
 
 }
 
-bool ValueOctree::IsDirty() const
+bool FValueOctree::IsDirty() const
 {
 	return bIsDirty;
 }
 
-void ValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
+void FValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	// Read is not thread safe, but it's too slow to make it so. Should work fine most of the time
 
 	check(IsInOctree(X, Y, Z));
-	check(IsLeaf());
+	check(IsLeaf()); // If crash here just comment this line
 
-	if (UNLIKELY(IsDirty()))
+	if (UNLIKELY(IsDirty() && Depth == 0)) // Check Depth == 0 because of multithreading errors
 	{
-		check(Depth == 0);
-
 		int LocalX, LocalY, LocalZ;
 		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
 
@@ -43,7 +41,7 @@ void ValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVox
 	}
 }
 
-void ValueOctree::SetValue(int X, int Y, int Z, float Value)
+void FValueOctree::SetValue(int X, int Y, int Z, float Value)
 {
 	FScopeLock Lock(&SetLock);
 	{
@@ -77,7 +75,7 @@ void ValueOctree::SetValue(int X, int Y, int Z, float Value)
 	}
 }
 
-void ValueOctree::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
+void FValueOctree::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 {
 	check(IsLeaf());
 	check(IsInOctree(X, Y, Z));
@@ -113,7 +111,7 @@ void ValueOctree::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 	}
 }
 
-void ValueOctree::AddDirtyChunksToSaveList(std::list<TSharedRef<FVoxelChunkSave>>& SaveList)
+void FValueOctree::AddDirtyChunksToSaveList(std::list<TSharedRef<FVoxelChunkSave>>& SaveList)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));
@@ -135,7 +133,7 @@ void ValueOctree::AddDirtyChunksToSaveList(std::list<TSharedRef<FVoxelChunkSave>
 	}
 }
 
-void ValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave>& Save, std::forward_list<FIntVector>& OutModifiedPositions)
+void FValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave>& Save, std::forward_list<FIntVector>& OutModifiedPositions)
 {
 	if (Save.empty())
 	{
@@ -184,7 +182,7 @@ void ValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave>
 	}
 }
 
-void ValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelMaterialDiffArray& ColorsDiffs)
+void FValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelMaterialDiffArray& ColorsDiffs)
 {
 	if (bIsNetworkDirty)
 	{
@@ -213,7 +211,7 @@ void ValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelM
 	}
 }
 
-void ValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelMaterialDiff>& MaterialsDiffs, std::forward_list<FIntVector>& OutModifiedPositions)
+void FValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelMaterialDiff>& MaterialsDiffs, std::forward_list<FIntVector>& OutModifiedPositions)
 {
 	if (ValuesDiffs.empty() && MaterialsDiffs.empty())
 	{
@@ -274,7 +272,7 @@ void ValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVox
 }
 
 
-void ValueOctree::CreateChilds()
+void FValueOctree::CreateChilds()
 {
 	check(IsLeaf());
 	check(Childs.Num() == 0);
@@ -283,20 +281,20 @@ void ValueOctree::CreateChilds()
 	int d = Size() / 4;
 	uint64 Pow = IntPow9(Depth - 1);
 
-	Childs.Add(new ValueOctree(WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow));
-	Childs.Add(new ValueOctree(WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow));
-	Childs.Add(new ValueOctree(WorldGenerator, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow));
-	Childs.Add(new ValueOctree(WorldGenerator, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow));
-	Childs.Add(new ValueOctree(WorldGenerator, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow));
-	Childs.Add(new ValueOctree(WorldGenerator, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow));
-	Childs.Add(new ValueOctree(WorldGenerator, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow));
-	Childs.Add(new ValueOctree(WorldGenerator, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow));
 
 	bHasChilds = true;
 	check(!IsLeaf() == (Childs.Num() == 8));
 }
 
-void ValueOctree::SetAsDirty()
+void FValueOctree::SetAsDirty()
 {
 	check(!IsDirty());
 	check(Depth == 0);
@@ -323,12 +321,12 @@ void ValueOctree::SetAsDirty()
 	bIsDirty = true;
 }
 
-FORCEINLINE int ValueOctree::IndexFromCoordinates(int X, int Y, int Z)
+FORCEINLINE int FValueOctree::IndexFromCoordinates(int X, int Y, int Z)
 {
 	return X + 16 * Y + 16 * 16 * Z;
 }
 
-FORCEINLINE void ValueOctree::CoordinatesFromIndex(int Index, int& OutX, int& OutY, int& OutZ)
+FORCEINLINE void FValueOctree::CoordinatesFromIndex(int Index, int& OutX, int& OutY, int& OutZ)
 {
 	OutX = Index % 16;
 
@@ -339,14 +337,14 @@ FORCEINLINE void ValueOctree::CoordinatesFromIndex(int Index, int& OutX, int& Ou
 	OutZ = Index;
 }
 
-ValueOctree * ValueOctree::GetChild(int X, int Y, int Z)
+FValueOctree * FValueOctree::GetChild(int X, int Y, int Z)
 {
 	check(!IsLeaf());
 	// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
 	return Childs[(X >= Position.X) + 2 * (Y >= Position.Y) + 4 * (Z >= Position.Z)];
 }
 
-ValueOctree* ValueOctree::GetLeaf(int X, int Y, int Z)
+FValueOctree* FValueOctree::GetLeaf(int X, int Y, int Z)
 {
 	check(IsInOctree(X, Y, Z));
 
@@ -360,7 +358,7 @@ ValueOctree* ValueOctree::GetLeaf(int X, int Y, int Z)
 	}
 }
 
-void ValueOctree::GetDirtyChunksPositions(std::forward_list<FIntVector>& OutPositions)
+void FValueOctree::GetDirtyChunksPositions(std::forward_list<FIntVector>& OutPositions)
 {
 	if (IsDirty())
 	{

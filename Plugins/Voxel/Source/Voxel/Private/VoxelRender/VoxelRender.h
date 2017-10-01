@@ -6,13 +6,13 @@
 #include <list>
 
 class AVoxelWorld;
-class ChunkOctree;
+class FChunkOctree;
 class AVoxelChunk;
 
 /**
  *
  */
-class VoxelRender
+class FVoxelRender
 {
 public:
 	AVoxelWorld* const World;
@@ -21,7 +21,7 @@ public:
 	FQueuedThreadPool* const FoliageThreadPool;
 
 
-	VoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 FoliageThreadCount);
+	FVoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 FoliageThreadCount);
 
 
 	void Tick(float DeltaTime);
@@ -31,7 +31,7 @@ public:
 	AVoxelChunk* GetInactiveChunk();
 	void SetChunkAsInactive(AVoxelChunk* Chunk);
 
-	void UpdateChunk(TWeakPtr<ChunkOctree> Chunk, bool bAsync);
+	void UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync);
 	void UpdateChunksAtPosition(FIntVector Position, bool bAsync);
 	void ApplyUpdates();
 
@@ -46,18 +46,18 @@ public:
 	void AddApplyNewMesh(AVoxelChunk* Chunk);
 	void AddApplyNewFoliage(AVoxelChunk* Chunk);
 
-	TWeakPtr<ChunkOctree> GetChunkOctreeAt(FIntVector Position) const;
+	TWeakPtr<FChunkOctree> GetChunkOctreeAt(FIntVector Position) const;
 
 	int GetDepthAt(FIntVector Position) const;
 private:
 
 	// Chunks waiting for update
-	TSet<TWeakPtr<ChunkOctree>> ChunksToUpdate;
+	TSet<TWeakPtr<FChunkOctree>> ChunksToUpdate;
 	// Ids of the chunks that need to be updated synchronously
 	TSet<uint64> IdsOfChunksToUpdateSynchronously;
 
 	// Shared ptr because each ChunkOctree need a reference to itself, and the Main one isn't the child of anyone
-	TSharedPtr<ChunkOctree> MainOctree;
+	TSharedPtr<FChunkOctree> MainOctree;
 
 	std::forward_list<AVoxelChunk*> InactiveChunks;
 	TSet<AVoxelChunk*> ActiveChunks;

@@ -3,19 +3,19 @@
 #include "Octree.h"
 
 class AVoxelChunk;
-class VoxelRender;
+class FVoxelRender;
 class UVoxelInvokerComponent;
 
 /**
  * Create the octree for rendering and spawn VoxelChunks
  */
-class ChunkOctree : public Octree, public TSharedFromThis<ChunkOctree>
+class FChunkOctree : public FOctree, public TSharedFromThis<FChunkOctree>
 {
 public:
-	ChunkOctree(VoxelRender* Render, FIntVector Position, uint8 Depth, uint64 Id);
+	FChunkOctree(FVoxelRender* Render, FIntVector Position, uint8 Depth, uint64 Id);
 
 
-	VoxelRender* const Render;
+	FVoxelRender* const Render;
 
 	/**
 	 * Unload VoxelChunk if created and recursively delete childs
@@ -34,7 +34,7 @@ public:
 	 * @param	PointPosition	Position in voxel space. Must be contained in this octree
 	 * @return	Weak pointer to leaf chunk at PointPosition
 	 */
-	TWeakPtr<ChunkOctree> GetLeaf(FIntVector PointPosition);
+	TWeakPtr<FChunkOctree> GetLeaf(FIntVector PointPosition);
 
 	/**
 	 * Get the VoxelChunk of this
@@ -47,9 +47,9 @@ public:
 	* @param	PointPosition	Position in voxel space. Must be contained in this octree
 	* @return	Direct child in which PointPosition is contained
 	*/
-	TSharedPtr<ChunkOctree> GetChild(FIntVector PointPosition);
+	TSharedPtr<FChunkOctree> GetChild(FIntVector PointPosition);
 
-	TWeakPtr<ChunkOctree> GetAdjacentChunk(TransitionDirection Direction);
+	TWeakPtr<FChunkOctree> GetAdjacentChunk(TransitionDirection Direction);
 
 private:
 	/*
@@ -61,7 +61,7 @@ private:
 	v 1 | 3    5 | 7
 	x
 	*/
-	TArray<TSharedPtr<ChunkOctree>, TFixedAllocator<8>> Childs;
+	TArray<TSharedPtr<FChunkOctree>, TFixedAllocator<8>> Childs;
 
 	// Is VoxelChunk created?
 	bool bHasChunk;
@@ -88,7 +88,7 @@ private:
 	void DeleteChilds();
 };
 
-inline uint64 GetTypeHash(ChunkOctree ChunkOctree)
+inline uint64 GetTypeHash(FChunkOctree ChunkOctree)
 {
-	return GetTypeHash(static_cast<Octree>(ChunkOctree));
+	return GetTypeHash(static_cast<FOctree>(ChunkOctree));
 }
