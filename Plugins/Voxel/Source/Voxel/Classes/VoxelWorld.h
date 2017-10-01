@@ -27,7 +27,7 @@ DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
 /**
  * Voxel World actor class
  */
-UCLASS()
+UCLASS(HideCategories = ("Hide"))
 class VOXEL_API AVoxelWorld : public AActor
 {
 	GENERATED_BODY()
@@ -36,13 +36,11 @@ public:
 	AVoxelWorld();
 	~AVoxelWorld();
 
-	void CreateWorld();
-	void DestroyWorld();
-
 	FVoxelData* Data;
 	FVoxelRender* Render;
 
 	void CreateInEditor(TWeakObjectPtr<UVoxelInvokerComponent> CameraInvoker);
+	void DestroyInEditor();
 
 	int Depth;
 	float VoxelSize;
@@ -161,7 +159,7 @@ public:
 
 
 
-	void AddVoxelModifiers();
+	void UpdateVoxelModifiers();
 
 protected:
 	// Called when the game starts or when spawned
@@ -194,8 +192,12 @@ private:
 	UPROPERTY()
 		AVoxelWorldGenerator* InstancedWorldGenerator;
 
+
+	UPROPERTY(VisibleAnywhere, Category = "Hide")
+		FVoxelWorldSave WorldSave;
+
 	bool bIsCreated;
 
-	void DeleteDataAndRender();
-	void CreateDataAndRender();
+	void CreateWorld(bool bLoadFromSave = true);
+	void DestroyWorld();
 };

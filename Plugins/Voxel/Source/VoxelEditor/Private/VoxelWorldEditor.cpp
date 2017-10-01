@@ -42,7 +42,7 @@ void AVoxelWorldEditor::Tick(float DeltaTime)
 		}
 		else
 		{
-			UE_LOG(VoxelWorldEditorLog, Error, TEXT("Cannot find editor camera"));
+			UE_LOG(VoxelEditorLog, Error, TEXT("Cannot find editor camera"));
 		}
 	}
 }

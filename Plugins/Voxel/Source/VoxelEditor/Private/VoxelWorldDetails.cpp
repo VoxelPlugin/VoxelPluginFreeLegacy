@@ -13,7 +13,7 @@
 #include "IDetailPropertyRow.h"
 #include "VoxelWorldEditor.h"
 
-DEFINE_LOG_CATEGORY(VoxelWorldEditorLog)
+DEFINE_LOG_CATEGORY(VoxelEditorLog)
 
 FVoxelWorldDetails::FVoxelWorldDetails()
 	: EditorWorld(nullptr)
@@ -60,7 +60,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked(this, &FVoxelWorldDetails::OnWorldUpdate)
+		.OnClicked(this, &FVoxelWorldDetails::OnWorldToggle)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
@@ -74,7 +74,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Update camera position")))
+		.Text(FText::FromString(TEXT("Update voxel modifiers")))
 		]
 	.ValueContent()
 		.MaxDesiredWidth(125.f)
@@ -84,7 +84,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked(this, &FVoxelWorldDetails::OnUpdateCameraPosition)
+		.OnClicked(this, &FVoxelWorldDetails::OnUpdateVoxelModifiers)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
@@ -93,42 +93,62 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		];
 }
 
-FReply FVoxelWorldDetails::OnWorldUpdate()
-{
-	if (World.IsValid())
-	{
-		if (!EditorWorld.IsValid())
-		{
-			EditorWorld = World->GetWorld()->SpawnActor<AVoxelWorldEditor>();
-			EditorWorld->World = World;
-		}
-
-		World->CreateInEditor(EditorWorld->GetInvoker());
-	}
-
-	return FReply::Handled();
-}
-
-FReply FVoxelWorldDetails::OnUpdateCameraPosition()
+FReply FVoxelWorldDetails::OnWorldToggle()
 {
 	if (World.IsValid())
 	{
 		if (World->IsCreated())
 		{
-			if (World->GetWorld()->WorldType == EWorldType::Editor)
+			World->DestroyInEditor();
+		}
+		else
+		{
+			if (!EditorWorld.IsValid())
 			{
-				auto Client = static_cast<FLevelEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
-				if (Client)
-				{
-					FVector CameraPosition = Client->GetViewLocation();
-					//World->UpdateLOD(CameraPosition);
-					UE_LOG(VoxelWorldEditorLog, Error, TEXT("Not implemented"));
-				}
-				else
-				{
-					UE_LOG(VoxelWorldEditorLog, Error, TEXT("Cannot find editor camera"));
-				}
+				EditorWorld = World->GetWorld()->SpawnActor<AVoxelWorldEditor>();
+				EditorWorld->World = World;
 			}
+
+			World->CreateInEditor(EditorWorld->GetInvoker());
+		}
+	}
+
+	return FReply::Handled();
+}
+
+FReply FVoxelWorldDetails::OnUpdateVoxelModifiers()
+{
+	if (World.IsValid() && World->GetWorld()->WorldType == EWorldType::Editor)
+	{
+		bool bRecreate = false;
+		if (World->IsCreated())
+		{
+			bRecreate = true;
+			World->DestroyInEditor();
+		}
+
+		World->UpdateVoxelModifiers();
+
+		if (bRecreate)
+		{
+			if (!EditorWorld.IsValid())
+			{
+				EditorWorld = World->GetWorld()->SpawnActor<AVoxelWorldEditor>();
+				EditorWorld->World = World;
+			}
+
+			World->CreateInEditor(EditorWorld->GetInvoker());
+		}
+	}
+	else
+	{
+		if (!World.IsValid())
+		{
+			UE_LOG(VoxelEditorLog, Error, TEXT("Invalid World"));
+		}
+		else
+		{
+			UE_LOG(VoxelEditorLog, Error, TEXT("Not in editor"));
 		}
 	}
 

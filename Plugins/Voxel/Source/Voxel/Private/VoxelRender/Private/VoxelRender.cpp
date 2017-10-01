@@ -291,3 +291,20 @@ int FVoxelRender::GetDepthAt(FIntVector Position) const
 {
 	return GetChunkOctreeAt(Position).Pin()->Depth;
 }
+
+void FVoxelRender::Delete()
+{
+	MeshThreadPool->Destroy();
+	FoliageThreadPool->Destroy();
+
+	for (auto Chunk : ActiveChunks)
+	{
+		Chunk->Delete();
+		InactiveChunks.push_front(Chunk);
+	}
+
+	for (auto Chunk : InactiveChunks)
+	{
+		Chunk->DestroyComponent();
+	}
+}

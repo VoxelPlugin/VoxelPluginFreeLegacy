@@ -52,6 +52,9 @@ public:
 	TWeakPtr<FChunkOctree> GetChunkOctreeAt(FIntVector Position) const;
 
 	int GetDepthAt(FIntVector Position) const;
+
+	void Delete();
+
 private:
 
 	// Chunks waiting for update
