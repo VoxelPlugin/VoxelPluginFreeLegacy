@@ -2,14 +2,36 @@
 
 #include "FunnyWorldGenerator.h"
 
-AFunnyWorldGenerator::AFunnyWorldGenerator() : Scale(10, 10), MaxValue(1), MinValue(-1)
+AFunnyWorldGenerator::AFunnyWorldGenerator()
+	: ValueMultiplier(1)
+	, SphereLayerHeight(100)
+	, Radius(10)
+	, RadiusDivisor(1.5)
 {
 
 }
 
 float AFunnyWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
-	return (FMath::Sin(X / Scale.X) + FMath::Cos(Y / Scale.Y)) + Z > 0 ? MaxValue : MinValue;
+	if (Z < 0)
+	{
+		return -ValueMultiplier;
+	}
+	else if (SphereLayerHeight <= Z && Z <= SphereLayerHeight + 2 * Radius)
+	{
+		int NX = FMath::Abs(X) % (2 * Radius);
+		int NY = FMath::Abs(Y) % (2 * Radius);
+		int NZ = Z - SphereLayerHeight;
+		NX -= Radius;
+		NY -= Radius;
+		NZ -= Radius;
+
+		return FVector(NX, NY, NZ).Size() - Radius / RadiusDivisor;
+	}
+	else
+	{
+		return ValueMultiplier;
+	}
 }
 
 FVoxelMaterial AFunnyWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
