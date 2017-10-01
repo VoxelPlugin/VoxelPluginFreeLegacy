@@ -39,12 +39,15 @@ public:
 
 	void UpdateLOD();
 
+
 	void AddFoliageUpdate(UVoxelChunk* Chunk);
-
-	void AddTransitionCheck(UVoxelChunk* Chunk);
-
 	void AddApplyNewMesh(UVoxelChunk* Chunk);
 	void AddApplyNewFoliage(UVoxelChunk* Chunk);
+
+	void RemoveFromQueues(UVoxelChunk* Chunk);
+
+	// Not the same as the queues above, as it is emptied at the same frame: see ApplyUpdates
+	void AddTransitionCheck(UVoxelChunk* Chunk);
 
 	TWeakPtr<FChunkOctree> GetChunkOctreeAt(FIntVector Position) const;
 
@@ -80,7 +83,9 @@ private:
 	float TimeSinceFoliageUpdate;
 
 	void ApplyFoliageUpdates();
-	void ApplyTransitionChecks();
 	void ApplyNewMeshes();
 	void ApplyNewFoliages();
+
+
+	void ApplyTransitionChecks();
 };

@@ -75,17 +75,7 @@ void FVoxelRender::SetChunkAsInactive(UVoxelChunk* Chunk)
 	ActiveChunks.Remove(Chunk);
 	InactiveChunks.push_front(Chunk);
 
-	// Remove from queues
-	FoliageUpdateNeeded.Remove(Chunk);
-	ChunksToCheckForTransitionChange.Remove(Chunk);
-	{
-		FScopeLock Lock(&ChunksToApplyNewMeshLock);
-		ChunksToApplyNewMesh.Remove(Chunk);
-	}
-	{
-		FScopeLock Lock(&ChunksToApplyNewFoliageLock);
-		ChunksToApplyNewFoliage.Remove(Chunk);
-	}
+	RemoveFromQueues(Chunk);
 }
 
 void FVoxelRender::UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync)
@@ -228,6 +218,19 @@ void FVoxelRender::AddApplyNewFoliage(UVoxelChunk* Chunk)
 {
 	FScopeLock Lock(&ChunksToApplyNewFoliageLock);
 	ChunksToApplyNewFoliage.Add(Chunk);
+}
+
+void FVoxelRender::RemoveFromQueues(UVoxelChunk* Chunk)
+{
+	FoliageUpdateNeeded.Remove(Chunk);
+	{
+		FScopeLock Lock(&ChunksToApplyNewMeshLock);
+		ChunksToApplyNewMesh.Remove(Chunk);
+	}
+	{
+		FScopeLock Lock(&ChunksToApplyNewFoliageLock);
+		ChunksToApplyNewFoliage.Remove(Chunk);
+	}
 }
 
 void FVoxelRender::ApplyFoliageUpdates()

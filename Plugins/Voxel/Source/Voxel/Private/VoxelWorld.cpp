@@ -25,6 +25,8 @@ AVoxelWorld::AVoxelWorld()
 	, FoliageThreadCount(4)
 	, Render(nullptr)
 	, Data(nullptr)
+	, InstancedWorldGenerator(nullptr)
+	, bComputeCollisions(false)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -49,15 +51,31 @@ void AVoxelWorld::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Load();
+	if (IsCreated())
+	{
+		DestroyWorld();
+	}
+	CreateWorld();
+
+	bComputeCollisions = true;
 }
 
 void AVoxelWorld::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	Render->Tick(DeltaTime);
+	if (IsCreated())
+	{
+		Render->Tick(DeltaTime);
+	}
 }
+
+#if WITH_EDITOR
+bool AVoxelWorld::ShouldTickIfViewportsOnly() const
+{
+	return true;
+}
+#endif
 
 void AVoxelWorld::DeleteDataAndRender()
 {
@@ -74,12 +92,22 @@ void AVoxelWorld::CreateDataAndRender()
 	check(!Data);
 	check(!Render);
 
-	// Create generator
-	InstancedWorldGenerator = GetWorld()->SpawnActor<AVoxelWorldGenerator>(WorldGenerator);
-	if (InstancedWorldGenerator == nullptr)
+	if (!InstancedWorldGenerator || InstancedWorldGenerator->GetClass() != WorldGenerator->GetClass())
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
-		InstancedWorldGenerator = Cast<AVoxelWorldGenerator>(GetWorld()->SpawnActor(AFlatWorldGenerator::StaticClass()));
+		// Create generator
+
+		if (InstancedWorldGenerator)
+		{
+			// Delete if created
+			InstancedWorldGenerator->Destroy();
+		}
+
+		InstancedWorldGenerator = GetWorld()->SpawnActor<AVoxelWorldGenerator>(WorldGenerator);
+		if (InstancedWorldGenerator == nullptr)
+		{
+			UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
+			InstancedWorldGenerator = Cast<AVoxelWorldGenerator>(GetWorld()->SpawnActor(AFlatWorldGenerator::StaticClass()));
+		}
 	}
 
 	InstancedWorldGenerator->SetVoxelWorld(this);
@@ -161,7 +189,7 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 
 void AVoxelWorld::AddVoxelModifiers()
 {
-	if (Data)
+	/*if (Data)
 	{
 		delete Data;
 		Data = nullptr;
@@ -179,15 +207,7 @@ void AVoxelWorld::AddVoxelModifiers()
 		{
 			Modifier->ApplyToWorld(this);
 		}
-	}
-
-	if (IsCreated())
-	{
-		Unload();
-	}
-	Load();
-
-	UpdateAll(true);
+	}*/
 }
 
 FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
@@ -216,7 +236,7 @@ void AVoxelWorld::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 	Render->AddInvoker(Invoker);
 }
 
-void AVoxelWorld::Load()
+void AVoxelWorld::CreateWorld()
 {
 	check(!IsCreated());
 
@@ -232,7 +252,7 @@ void AVoxelWorld::Load()
 	bIsCreated = true;
 }
 
-void AVoxelWorld::Unload()
+void AVoxelWorld::DestroyWorld()
 {
 	check(IsCreated());
 
@@ -241,6 +261,21 @@ void AVoxelWorld::Unload()
 	DeleteDataAndRender();
 
 	bIsCreated = false;
+}
+
+void AVoxelWorld::CreateInEditor(TWeakObjectPtr<UVoxelInvokerComponent> CameraInvoker)
+{
+	if (IsCreated())
+	{
+		DestroyWorld();
+	}
+	CreateWorld();
+
+	bComputeCollisions = false;
+
+	AddInvoker(CameraInvoker);
+
+	UpdateAll(true);
 }
 
 bool AVoxelWorld::IsCreated() const

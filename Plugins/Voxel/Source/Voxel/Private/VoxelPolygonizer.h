@@ -11,7 +11,7 @@ struct FVoxelMaterial;
 class FVoxelPolygonizer
 {
 public:
-	FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions);
+	FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions);
 
 	void CreateSection(FProcMeshSection& OutSection);
 
@@ -21,6 +21,7 @@ private:
 	FIntVector const ChunkPosition;
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 	bool const bComputeTransitions;
+	bool const bComputeCollisions;
 
 
 	FValueOctree* LastOctree;

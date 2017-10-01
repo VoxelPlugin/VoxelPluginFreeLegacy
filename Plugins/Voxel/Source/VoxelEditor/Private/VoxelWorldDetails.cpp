@@ -11,8 +11,15 @@
 #include "LevelEditorViewport.h"
 #include "Editor.h"
 #include "IDetailPropertyRow.h"
+#include "VoxelWorldEditor.h"
 
 DEFINE_LOG_CATEGORY(VoxelWorldEditorLog)
+
+FVoxelWorldDetails::FVoxelWorldDetails()
+	: EditorWorld(nullptr)
+{
+
+}
 
 TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
 {
@@ -29,7 +36,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		if (CurrentObject.IsValid())
 		{
 			AVoxelWorld* CurrentCaptureActor = Cast<AVoxelWorld>(CurrentObject.Get());
-			if (CurrentCaptureActor != NULL)
+			if (CurrentCaptureActor)
 			{
 				World = CurrentCaptureActor;
 				break;
@@ -90,17 +97,13 @@ FReply FVoxelWorldDetails::OnWorldUpdate()
 {
 	if (World.IsValid())
 	{
-		/*if (World->IsCreated())
+		if (!EditorWorld.IsValid())
 		{
-			World->Unload();
-			World->Modify();
+			EditorWorld = World->GetWorld()->SpawnActor<AVoxelWorldEditor>();
+			EditorWorld->World = World;
 		}
-		else
-		{*/
-			World->AddVoxelModifiers();
-			/*OnUpdateCameraPosition();
-			World->Modify();
-		}*/
+
+		World->CreateInEditor(EditorWorld->GetInvoker());
 	}
 
 	return FReply::Handled();

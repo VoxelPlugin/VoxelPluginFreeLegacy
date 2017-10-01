@@ -140,7 +140,10 @@ void UVoxelChunk::Unload()
 	// Needed because octree is only partially updated when Unload is called
 	Render->AddTransitionCheck(this);
 
-	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &UVoxelChunk::Delete, Render->World->DeletionDelay, false);
+	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &UVoxelChunk::Delete, Render->World->DeletionDelay + KINDA_SMALL_NUMBER, false);
+
+	// Cancel any update
+	Render->RemoveFromQueues(this);
 }
 
 void UVoxelChunk::Delete()
@@ -358,6 +361,7 @@ void UVoxelChunk::CreateBuilder()
 		Render->World->Data,
 		CurrentOctree->GetMinimalCornerPosition(),
 		ChunkHasHigherRes,
-		CurrentOctree->Depth != 0 && Render->World->bComputeTransitions
+		CurrentOctree->Depth != 0 && Render->World->bComputeTransitions,
+		CurrentOctree->Depth == 0 && Render->World->bComputeCollisions
 	);
 }
