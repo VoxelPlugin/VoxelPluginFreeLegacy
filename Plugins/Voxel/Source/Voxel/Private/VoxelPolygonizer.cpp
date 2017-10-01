@@ -14,7 +14,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ MajorColor"), STAT_MAJOR_COLOR, STAT
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Get2DValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
 
-VoxelPolygonizer::VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions)
+FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions)
 	: Depth(Depth)
 	, Data(Data)
 	, ChunkPosition(ChunkPosition)
@@ -25,7 +25,7 @@ VoxelPolygonizer::VoxelPolygonizer(int Depth, VoxelData* Data, FIntVector ChunkP
 
 }
 
-void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
+void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 {
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CACHE);
@@ -671,12 +671,12 @@ void VoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 	}
 }
 
-int VoxelPolygonizer::Size()
+int FVoxelPolygonizer::Size()
 {
 	return 16 << Depth;
 }
 
-int VoxelPolygonizer::Step()
+int FVoxelPolygonizer::Step()
 {
 	return 1 << Depth;
 }
@@ -756,7 +756,7 @@ int VoxelPolygonizer::Step()
 ////}
 
 
-void VoxelPolygonizer::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
+void FVoxelPolygonizer::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	SCOPE_CYCLE_COUNTER(STAT_GETVALUEANDCOLOR);
 	if (LIKELY((X % Step() == 0) && (Y % Step() == 0) && (Z % Step() == 0)))
@@ -770,7 +770,7 @@ void VoxelPolygonizer::GetValueAndMaterial(int X, int Y, int Z, float& OutValue,
 	}
 }
 
-void VoxelPolygonizer::Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial)
+void FVoxelPolygonizer::Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	SCOPE_CYCLE_COUNTER(STAT_GET2DVALUEANDCOLOR);
 	int GX, GY, GZ;
@@ -780,7 +780,7 @@ void VoxelPolygonizer::Get2DValueAndMaterial(TransitionDirection Direction, int 
 }
 
 
-void VoxelPolygonizer::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index)
+void FVoxelPolygonizer::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index)
 {
 	// +1: normals offset
 	check(0 <= X + 1 && X + 1 < 17);
@@ -791,7 +791,7 @@ void VoxelPolygonizer::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Inde
 	Cache[X + 1][Y + 1][Z + 1][EdgeIndex] = Index;
 }
 
-int VoxelPolygonizer::LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex)
+int FVoxelPolygonizer::LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex)
 {
 	bool XIsDifferent = Direction & 0x01;
 	bool YIsDifferent = Direction & 0x02;
@@ -809,7 +809,7 @@ int VoxelPolygonizer::LoadVertex(int X, int Y, int Z, short Direction, short Edg
 }
 
 
-void VoxelPolygonizer::SaveVertex2D(TransitionDirection Direction, int X, int Y, short EdgeIndex, int Index)
+void FVoxelPolygonizer::SaveVertex2D(TransitionDirection Direction, int X, int Y, short EdgeIndex, int Index)
 {
 	if (EdgeIndex == 8 || EdgeIndex == 9)
 	{
@@ -824,7 +824,7 @@ void VoxelPolygonizer::SaveVertex2D(TransitionDirection Direction, int X, int Y,
 	Cache2D[Direction][X][Y][EdgeIndex] = Index;
 }
 
-int VoxelPolygonizer::LoadVertex2D(TransitionDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex)
+int FVoxelPolygonizer::LoadVertex2D(TransitionDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex)
 {
 	bool XIsDifferent = CacheDirection & 0x01;
 	bool YIsDifferent = CacheDirection & 0x02;
@@ -872,7 +872,7 @@ int VoxelPolygonizer::LoadVertex2D(TransitionDirection Direction, int X, int Y, 
 	return Cache2D[Direction][X - XIsDifferent][Y - YIsDifferent][EdgeIndex];
 }
 
-void VoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
 	float ValueAtA;
@@ -911,7 +911,7 @@ void VoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y,
 	}
 }
 
-void VoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
 	float ValueAtA;
@@ -950,7 +950,7 @@ void VoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY,
 	}
 }
 
-void VoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, const int MaxZ, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, const int MaxZ, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
 	float ValueAtA;
@@ -991,7 +991,7 @@ void VoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, co
 
 
 
-void VoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
 	float ValueAtA;
@@ -1034,7 +1034,7 @@ void VoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int M
 	}
 }
 
-void VoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int X, const int MinY, const int MaxY, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int X, const int MinY, const int MaxY, FVector& OutVector, uint8& OutAlpha)
 {
 	// A: Min / B: Max
 	float ValueAtA;
@@ -1077,7 +1077,7 @@ void VoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int X
 	}
 }
 
-void VoxelPolygonizer::GlobalToLocal2D(int Size, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ)
+void FVoxelPolygonizer::GlobalToLocal2D(int Size, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ)
 {
 	const int S = Size;
 	switch (Direction)
@@ -1118,7 +1118,7 @@ void VoxelPolygonizer::GlobalToLocal2D(int Size, TransitionDirection Direction, 
 	}
 }
 
-void VoxelPolygonizer::Local2DToGlobal(int Size, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ)
+void FVoxelPolygonizer::Local2DToGlobal(int Size, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ)
 {
 	const int S = Size;
 	switch (Direction)
@@ -1160,7 +1160,7 @@ void VoxelPolygonizer::Local2DToGlobal(int Size, TransitionDirection Direction, 
 }
 
 
-FVector VoxelPolygonizer::GetTranslated(const FVector Vertex, const FVector Normal)
+FVector FVoxelPolygonizer::GetTranslated(const FVector Vertex, const FVector Normal)
 {
 	double DeltaX = 0;
 	double DeltaY = 0;

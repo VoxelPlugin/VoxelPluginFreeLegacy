@@ -18,8 +18,8 @@ using namespace UM;
 using namespace US;
 using namespace UC;
 
-class VoxelRender;
-class VoxelData;
+class FVoxelRender;
+class FVoxelData;
 class UVoxelInvokerComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
@@ -40,8 +40,8 @@ public:
 	void Load();
 	void Unload();
 
-	VoxelData* Data;
-	VoxelRender* Render;
+	FVoxelData* Data;
+	FVoxelRender* Render;
 
 
 	// Width = 16 * 2^Depth

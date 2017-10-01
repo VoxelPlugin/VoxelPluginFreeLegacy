@@ -5,24 +5,24 @@
 #include "ValueOctree.h"
 #include "VoxelSave.h"
 
-VoxelData::VoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator)
+FVoxelData::FVoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator)
 	: Depth(Depth)
 	, WorldGenerator(WorldGenerator)
 {
-	MainOctree = new ValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, Octree::GetTopIdFromDepth(Depth));
+	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth));
 }
 
-VoxelData::~VoxelData()
+FVoxelData::~FVoxelData()
 {
 	delete MainOctree;
 }
 
-int VoxelData::Size() const
+int FVoxelData::Size() const
 {
 	return 16 << Depth;
 }
 
-float VoxelData::GetValue(int X, int Y, int Z) const
+float FVoxelData::GetValue(int X, int Y, int Z) const
 {
 	check(IsInWorld(X, Y, Z));
 
@@ -32,7 +32,7 @@ float VoxelData::GetValue(int X, int Y, int Z) const
 	return Value;
 }
 
-FVoxelMaterial VoxelData::GetMaterial(int X, int Y, int Z) const
+FVoxelMaterial FVoxelData::GetMaterial(int X, int Y, int Z) const
 {
 	check(IsInWorld(X, Y, Z));
 
@@ -42,14 +42,14 @@ FVoxelMaterial VoxelData::GetMaterial(int X, int Y, int Z) const
 	return Material;
 }
 
-void VoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const
+void FVoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const
 {
 	ClampToWorld(X, Y, Z);
 
 	MainOctree->GetLeaf(X, Y, Z)->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial);
 }
 
-void VoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, ValueOctree*& LastOctree) const
+void FVoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, FValueOctree*& LastOctree) const
 {
 	ClampToWorld(X, Y, Z);
 
@@ -60,19 +60,19 @@ void VoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxel
 	LastOctree->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial);
 }
 
-void VoxelData::SetValue(int X, int Y, int Z, float Value)
+void FVoxelData::SetValue(int X, int Y, int Z, float Value)
 {
 	check(IsInWorld(X, Y, Z));
 	MainOctree->GetLeaf(X, Y, Z)->SetValue(X, Y, Z, Value);
 }
 
-void VoxelData::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
+void FVoxelData::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 {
 	check(IsInWorld(X, Y, Z));
 	MainOctree->GetLeaf(X, Y, Z)->SetMaterial(X, Y, Z, Material);
 }
 
-bool VoxelData::IsInWorld(int X, int Y, int Z) const
+bool FVoxelData::IsInWorld(int X, int Y, int Z) const
 {
 	int S = Size() / 2;
 	return -S <= X && X < S
@@ -80,7 +80,7 @@ bool VoxelData::IsInWorld(int X, int Y, int Z) const
 		&& -S <= Z && Z < S;
 }
 
-FORCEINLINE void VoxelData::ClampToWorld(int& X, int& Y, int& Z) const
+FORCEINLINE void FVoxelData::ClampToWorld(int& X, int& Y, int& Z) const
 {
 	int S = Size() / 2;
 	X = FMath::Clamp(X, -S, S - 1);
@@ -88,20 +88,20 @@ FORCEINLINE void VoxelData::ClampToWorld(int& X, int& Y, int& Z) const
 	Z = FMath::Clamp(Z, -S, S - 1);
 }
 
-FVoxelWorldSave VoxelData::GetSave() const
+FVoxelWorldSave FVoxelData::GetSave() const
 {
 	std::list<TSharedRef<FVoxelChunkSave>> SaveList;
 	MainOctree->AddDirtyChunksToSaveList(SaveList);
 	return FVoxelWorldSave(Depth, SaveList);
 }
 
-void VoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset)
+void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset)
 {
 	if (bReset)
 	{
 		MainOctree->GetDirtyChunksPositions(OutModifiedPositions);
 		delete MainOctree;
-		MainOctree = new ValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, Octree::GetTopIdFromDepth(Depth));
+		MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth));
 	}
 
 	auto SaveList = Save.GetChunksList();
@@ -109,7 +109,7 @@ void VoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave Save, std::f
 	check(SaveList.empty());
 }
 
-void VoxelData::GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelMaterialDiff>>& OutColorDiffPacketsList) const
+void FVoxelData::GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelMaterialDiff>>& OutColorDiffPacketsList) const
 {
 	VoxelValueDiffArray ValueDiffArray;
 	VoxelMaterialDiffArray ColorDiffArray;
@@ -120,7 +120,7 @@ void VoxelData::GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutVal
 	ColorDiffArray.AddPackets(OutColorDiffPacketsList);
 }
 
-void VoxelData::LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelMaterialDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions)
+void FVoxelData::LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelMaterialDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions)
 {
 	std::forward_list<FVoxelValueDiff> ValueDiffList;
 	std::forward_list<FVoxelMaterialDiff> ColorDiffList;

@@ -10,9 +10,9 @@
 #include "VoxelThread.h"
 #include "VoxelChunk.generated.h"
 
-class VoxelRender;
-class ChunkOctree;
-class VoxelPolygonizer;
+class FVoxelRender;
+class FChunkOctree;
+class FVoxelPolygonizer;
 
 /**
  * Voxel Chunk actor class
@@ -31,7 +31,7 @@ public:
 	 * @param	NewDepth		Width = 16 * 2^Depth
 	 * @param	NewWorld		VoxelWorld
 	 */
-	void Init(TWeakPtr<ChunkOctree> NewOctree);
+	void Init(TWeakPtr<FChunkOctree> NewOctree);
 
 	/**
 	 * Update this for terrain changes
@@ -90,10 +90,10 @@ private:
 	FAsyncTask<FAsyncPolygonizerTask>* MeshBuilder;
 	TArray<FAsyncTask<FAsyncFoliageTask>*> FoliageTasks;
 
-	VoxelPolygonizer* Builder;
+	FVoxelPolygonizer* Builder;
 
-	TSharedPtr<ChunkOctree> CurrentOctree;
-	VoxelRender* Render;
+	TSharedPtr<FChunkOctree> CurrentOctree;
+	FVoxelRender* Render;
 
 	uint32 CompletedFoliageTaskCount;
 

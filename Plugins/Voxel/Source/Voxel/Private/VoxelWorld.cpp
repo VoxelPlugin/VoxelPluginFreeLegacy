@@ -167,8 +167,8 @@ void AVoxelWorld::Load()
 
 		InstancedWorldGenerator->SetVoxelWorld(this);
 
-		Data = new VoxelData(Depth, InstancedWorldGenerator);
-		Render = new VoxelRender(this, MeshThreadCount, FoliageThreadCount);
+		Data = new FVoxelData(Depth, InstancedWorldGenerator);
+		Render = new FVoxelRender(this, MeshThreadCount, FoliageThreadCount);
 
 		SetActorScale3D(FVector::OneVector * VoxelSize);
 	}

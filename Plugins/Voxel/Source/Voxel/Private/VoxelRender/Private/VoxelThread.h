@@ -7,9 +7,9 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 
-class VoxelPolygonizer;
+class FVoxelPolygonizer;
 class AVoxelChunk;
-class VoxelData;
+class FVoxelData;
 
 /**
  * Thread to create foliage
@@ -52,10 +52,10 @@ private:
 class FAsyncPolygonizerTask : public FNonAbandonableTask
 {
 public:
-	VoxelPolygonizer* Builder;
+	FVoxelPolygonizer* Builder;
 	AVoxelChunk* Chunk;
 
-	FAsyncPolygonizerTask(VoxelPolygonizer* InBuilder, AVoxelChunk* Chunk);
+	FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, AVoxelChunk* Chunk);
 	void DoWork();
 
 	FORCEINLINE TStatId GetStatId() const
