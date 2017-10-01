@@ -25,7 +25,7 @@ void FValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVo
 	check(IsInOctree(X, Y, Z));
 	check(IsLeaf()); // If crash here just comment this line
 
-	if (UNLIKELY(IsDirty() && Depth == 0)) // Check Depth == 0 because of multithreading errors
+	if (IsDirty() && Depth == 0) // Check Depth == 0 because of multithreading errors
 	{
 		int LocalX, LocalY, LocalZ;
 		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);

@@ -157,6 +157,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void LoadFromSave(FVoxelWorldSave Save, bool bReset = true);
 
+
+
+
+	void AddVoxelModifiers();
+
 protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;

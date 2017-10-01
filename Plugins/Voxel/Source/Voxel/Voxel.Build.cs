@@ -26,8 +26,8 @@ namespace UnrealBuildTool.Rules
                 new string[] {
                     "Voxel/Private",
                     "Voxel/Private/VoxelWorldGenerators",
-					"Voxel/Private/VoxelData",
-					"Voxel/Private/VoxelRender"
+                    "Voxel/Private/VoxelData",
+                    "Voxel/Private/VoxelRender"
                 }
                 );
 
@@ -40,7 +40,7 @@ namespace UnrealBuildTool.Rules
                     "ProceduralMeshComponent",
                     "Landscape",
                     "Sockets",
-                    "Networking"
+                    "Networking",
                 }
                 );
 

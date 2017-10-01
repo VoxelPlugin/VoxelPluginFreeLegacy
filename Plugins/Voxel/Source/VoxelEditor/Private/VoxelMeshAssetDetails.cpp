@@ -33,7 +33,7 @@ void FVoxelMeshAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout
 		}
 	}
 
-	DetailLayout.HideCategory("Hide");
+	//DetailLayout.HideCategory("Hide");
 	DetailLayout.EditCategory("VoxelMeshAsset")
 		.AddCustomRow(FText::FromString(TEXT("Import")))
 		.NameContent()
