@@ -20,9 +20,6 @@ public:
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 	UPROPERTY(EditAnywhere)
-		FVector2D Scale;
-
-	UPROPERTY(EditAnywhere)
 		FVoxelMaterial TopMaterial;
 
 	UPROPERTY(EditAnywhere)
@@ -32,7 +29,14 @@ public:
 		FVoxelMaterial BottomMaterial;
 
 	UPROPERTY(EditAnywhere)
-		float MaxValue;
+		float ValueMultiplier;
+
 	UPROPERTY(EditAnywhere)
-		float MinValue;
+		int SphereLayerHeight;
+
+	UPROPERTY(EditAnywhere)
+		int Radius;
+
+	UPROPERTY(EditAnywhere)
+		float RadiusDivisor;
 };
