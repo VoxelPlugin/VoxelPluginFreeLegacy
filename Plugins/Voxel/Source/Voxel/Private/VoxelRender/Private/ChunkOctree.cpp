@@ -43,9 +43,8 @@ void ChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompon
 		return;
 	}
 
-	// TODO: improve
-	const FVector ChunkWorldPosition = Render->World->GetTransform().TransformPosition((FVector)Position);
-	const float ChunkDiagonal = Render->World->GetActorScale3D().X * Size() / 2 * 1.73205080757 /* sqrt(3) */;
+	const FVector ChunkWorldPosition = Render->World->LocalToGlobal(Position);
+	const float ChunkDiagonal = Render->World->GetVoxelSize() * Size() / 2 * 1.73205080757 /* sqrt(3) */;
 
 	float MinDistance = MAX_flt;
 	for (auto Invoker : Invokers)
@@ -60,7 +59,7 @@ void ChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompon
 		}
 	}
 
-	MinDistance /= Render->World->GetActorScale3D().X;
+	MinDistance /= Render->World->GetVoxelSize();
 
 	MinDistance = FMath::Max(1.f, MinDistance);
 

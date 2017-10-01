@@ -75,6 +75,7 @@ void VoxelRender::SetChunkAsInactive(AVoxelChunk* Chunk)
 	InactiveChunks.push_front(Chunk);
 
 	// Remove from queues
+	FoliageUpdateNeeded.Remove(Chunk);
 	ChunksToCheckForTransitionChange.Remove(Chunk);
 	{
 		FScopeLock Lock(&ChunksToApplyNewMeshLock);
@@ -191,6 +192,18 @@ void VoxelRender::UpdateAll(bool bAsync)
 void VoxelRender::UpdateLOD()
 {
 	SCOPE_CYCLE_COUNTER(STAT_UpdateLOD);
+
+	// Clean
+	std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Temp;
+	for (auto Invoker : VoxelInvokerComponents)
+	{
+		if (Invoker.IsValid())
+		{
+			Temp.push_front(Invoker);
+		}
+	}
+	VoxelInvokerComponents = Temp;
+
 	MainOctree->UpdateLOD(VoxelInvokerComponents);
 }
 

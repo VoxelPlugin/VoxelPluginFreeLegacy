@@ -20,25 +20,27 @@ bool ValueOctree::IsDirty() const
 
 void ValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
-		check(IsInOctree(X, Y, Z));
-		check(IsLeaf());
+	// Read is not thread safe, but it's too slow to make it so. Should work fine most of the time
 
-		if (UNLIKELY(IsDirty()))
-		{
-			check(Depth == 0);
+	check(IsInOctree(X, Y, Z));
+	check(IsLeaf());
 
-			int LocalX, LocalY, LocalZ;
-			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
+	if (UNLIKELY(IsDirty()))
+	{
+		check(Depth == 0);
 
-			int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-			OutValue = Values[Index];
-			OutMaterial = Materials[Index];
-		}
-		else
-		{
-			OutValue = WorldGenerator->GetDefaultValue(X, Y, Z);
-			OutMaterial = WorldGenerator->GetDefaultMaterial(X, Y, Z);
-		}
+		int LocalX, LocalY, LocalZ;
+		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
+
+		int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
+		OutValue = Values[Index];
+		OutMaterial = Materials[Index];
+	}
+	else
+	{
+		OutValue = WorldGenerator->GetDefaultValue(X, Y, Z);
+		OutMaterial = WorldGenerator->GetDefaultMaterial(X, Y, Z);
+	}
 }
 
 void ValueOctree::SetValue(int X, int Y, int Z, float Value)

@@ -25,8 +25,8 @@ FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection& Section, FGrassVariety Gr
 
 void FAsyncFoliageTask::DoWork()
 {
-	// TODO: set num
-	TArray<FMatrix> InstanceTransforms;
+	std::forward_list<FMatrix> InstanceTransformsList;
+	uint32 InstanceTransformsCount = 0;
 
 	const float VoxelTriangleArea = (VoxelSize * VoxelSize) / 2;
 	const float MeanGrassPerTrig = GrassVariety.GrassDensity * VoxelTriangleArea / 100000 /* 10m² in cm² */;
@@ -115,19 +115,27 @@ void FAsyncFoliageTask::DoWork()
 
 					FRotator Rotation = GrassVariety.AlignToSurface ? UKismetMathLibrary::MakeRotFromZX(N, Stream.GetFraction() * X + Stream.GetFraction() * Y) : FRotator::ZeroRotator;
 
-					InstanceTransforms.Add(FTransform(Rotation, ChunkTransform.GetScale3D() * P, Scale).ToMatrixWithScale());
+					InstanceTransformsList.push_front(FTransform(Rotation, ChunkTransform.GetScale3D() * P, Scale).ToMatrixWithScale());
+					InstanceTransformsCount++;
 				}
 			}
 		}
 	}
 
 
-	if (InstanceTransforms.Num())
+	if (InstanceTransformsCount)
 	{
-		InstanceBuffer.AllocateInstances(InstanceTransforms.Num(), true);
-		for (int32 InstanceIndex = 0; InstanceIndex < InstanceTransforms.Num(); InstanceIndex++)
+		TArray<FMatrix> InstanceTransforms;
+		InstanceTransforms.SetNumUninitialized(InstanceTransformsCount);
+
+		InstanceBuffer.AllocateInstances(InstanceTransformsCount, true);
+		int32 InstanceIndex = 0;
+		for (auto InstanceTransform : InstanceTransformsList)
 		{
-			InstanceBuffer.SetInstance(InstanceIndex, InstanceTransforms[InstanceIndex], 0);
+			InstanceBuffer.SetInstance(InstanceIndex, InstanceTransform, 0);
+
+			InstanceTransforms[InstanceIndex] = InstanceTransform;
+			InstanceIndex++;
 		}
 
 		TArray<int32> SortedInstances;

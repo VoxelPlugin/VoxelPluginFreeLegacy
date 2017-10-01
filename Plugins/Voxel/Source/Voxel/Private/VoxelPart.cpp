@@ -5,6 +5,7 @@
 #include "ProceduralMeshComponent.h"
 #include "VoxelData.h"
 #include "VoxelPolygonizer.h"
+#include "VoxelAutoDisableComponent.h"
 
 
 AVoxelPart::AVoxelPart()
@@ -20,33 +21,37 @@ AVoxelPart::AVoxelPart()
 	PrimaryMesh->bUseComplexAsSimpleCollision = false;
 
 	SetActorEnableCollision(true);
+
+
+
+	// Create auto disable
+	AutoDisableComponent = CreateDefaultSubobject<UVoxelAutoDisableComponent>(FName("AutoDisable"));
+	AutoDisableComponent->bAutoFindComponent = false;
 }
 
 void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
 {
 	check(Data);
 
-	// TODO : Repair
-
-	/*const int W = Data->Size() / 2;
+	const int S = Data->Size() / 2;
 
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 	ChunkHasHigherRes.SetNumZeroed(6);
 
 	int SectionIndex = 0;
 
-	for (int X = -W; X < W; X += 16)
+	for (int X = -S; X < S; X += 16)
 	{
-		for (int Y = -W; Y < W; Y += 16)
+		for (int Y = -S; Y < S; Y += 16)
 		{
-			for (int Z = -W; Z < W; Z += 16)
+			for (int Z = -S; Z < S; Z += 16)
 			{
 				FIntVector Position = FIntVector(X, Y, Z);
 
-				TSharedPtr<VoxelPolygonizer> Render = MakeShareable(new VoxelPolygonizer(0, Data, Position, ChunkHasHigherRes));
+				TSharedPtr<VoxelPolygonizer> Render = MakeShareable(new VoxelPolygonizer(0, Data, Position, ChunkHasHigherRes, false));
 
 				TSharedPtr<FProcMeshSection> Section = MakeShareable(new FProcMeshSection());
-				Render->CreateSection(*Section, false);
+				Render->CreateSection(*Section);
 
 				TArray<FVector> Vertice;
 				Vertice.SetNumUninitialized(Section->ProcVertexBuffer.Num());
@@ -67,5 +72,10 @@ void AVoxelPart::Init(VoxelData* Data, AVoxelWorld* World)
 				SectionIndex++;
 			}
 		}
-	}*/
+	}
+	AutoDisableComponent->bSimulatePhysics = true;
+	AutoDisableComponent->Component = PrimaryMesh;
+	AutoDisableComponent->World = World;
+	AutoDisableComponent->bAutoFindWorld = false;
+	AutoDisableComponent->CullDepth = 20;
 }

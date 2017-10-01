@@ -805,6 +805,30 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 				if (!Visited[Index] && World->GetValue(CurrentPosition) <= 0)
 				{
 					Data->SetValue(RelativePosition.X, RelativePosition.Y, RelativePosition.Z, World->GetValue(CurrentPosition));
+					Data->SetMaterial(RelativePosition.X, RelativePosition.Y, RelativePosition.Z, World->GetMaterial(CurrentPosition));
+
+					// Set external colors
+					TArray<FIntVector> L = {
+						FIntVector(1, 0, 0),
+						FIntVector(0, 1, 0),
+						FIntVector(1, 1, 0),
+						FIntVector(0, 0, 1),
+						FIntVector(1, 0, 1),
+						FIntVector(0, 1, 1),
+						FIntVector(1, 1, 1),
+						FIntVector(-1, 0, 0),
+						FIntVector(0, -1, 0),
+						FIntVector(-1, -1, 0),
+						FIntVector(0, 0, -1),
+						FIntVector(-1, 0, -1),
+						FIntVector(0, -1, -1),
+						FIntVector(-1, -1, -1)
+					};
+					for (auto P : L)
+					{
+						Data->SetMaterial(RelativePosition.X + P.X, RelativePosition.Y + P.Y, RelativePosition.Z + P.Z, World->GetMaterial(CurrentPosition + P));
+					}
+
 					PointPositions.push_front(RelativePosition);
 
 					World->SetValue(CurrentPosition, ValueMultiplier);
@@ -852,7 +876,34 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 				{
 
 					Visited[Index] = true;
-					CurrentData->SetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Data->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z));
+					float Value;
+					FVoxelMaterial Material;
+					Data->GetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value, Material);
+					CurrentData->SetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value);
+					CurrentData->SetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Material);
+
+					// Set external colors
+					TArray<FIntVector> L = {
+						FIntVector(1, 0, 0),
+						FIntVector(0, 1, 0),
+						FIntVector(1, 1, 0),
+						FIntVector(0, 0, 1),
+						FIntVector(1, 0, 1),
+						FIntVector(0, 1, 1),
+						FIntVector(1, 1, 1),
+						FIntVector(-1, 0, 0),
+						FIntVector(0, -1, 0),
+						FIntVector(-1, -1, 0),
+						FIntVector(0, 0, -1),
+						FIntVector(-1, 0, -1),
+						FIntVector(0, -1, -1),
+						FIntVector(-1, -1, -1)
+					};
+					for (auto P : L)
+					{
+						auto Q = CurrentPosition + P;
+						CurrentData->SetMaterial(Q.X, Q.Y, Q.Z, Data->GetMaterial(Q.X, Q.Y, Q.Z));
+					}
 
 					Queue.push_front(FIntVector(X - 1, Y - 1, Z - 1));
 					Queue.push_front(FIntVector(X + 0, Y - 1, Z - 1));

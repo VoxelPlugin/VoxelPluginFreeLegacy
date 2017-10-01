@@ -5,9 +5,9 @@
 #include "Components/PrimitiveComponent.h"
 #include "Engine.h"
 
-DECLARE_CYCLE_STAT(TEXT("VoxelAutoDisableComponent ~ Tick"), STAT_VOXELAUTODISABLE_TICK, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelAutoDisableComponent ~ Tick"), STAT_VoxelAutoDisable_Tick, STATGROUP_Voxel);
 
-UVoxelAutoDisableComponent::UVoxelAutoDisableComponent() : Component(nullptr), bSimulatePhysics(false), bAutoFindWorld(true), World(nullptr), CullDepth(4)
+UVoxelAutoDisableComponent::UVoxelAutoDisableComponent() : Component(nullptr), bSimulatePhysics(false), bAutoFindWorld(true), World(nullptr), CullDepth(4), bAutoFindComponent(true)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
@@ -17,28 +17,31 @@ void UVoxelAutoDisableComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Component = Cast<UPrimitiveComponent>(GetOwner()->GetComponentByClass(TSubclassOf<UActorComponent>(ComponentClass)));
+	if (!Component && bAutoFindComponent)
+	{
+		Component = Cast<UPrimitiveComponent>(GetOwner()->GetComponentByClass(TSubclassOf<UActorComponent>(ComponentClass)));
 
-	if (!Component)
-	{
-		UE_LOG(VoxelLog, Error, TEXT("VoxelAutoDisableComponent: Invalid component class"));
-	}
-	else
-	{
-		bSimulatePhysics = Component->IsSimulatingPhysics();
+		if (!Component)
+		{
+			UE_LOG(VoxelLog, Error, TEXT("VoxelAutoDisableComponent: Invalid component class"));
+		}
+		else
+		{
+			bSimulatePhysics = Component->IsSimulatingPhysics();
+		}
 	}
 }
 
 
 void UVoxelAutoDisableComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	SCOPE_CYCLE_COUNTER(STAT_VOXELAUTODISABLE_TICK)
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-		Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	SCOPE_CYCLE_COUNTER(STAT_VoxelAutoDisable_Tick);
 
 	if (Component)
 	{
-		if (!World)
+		if (!World && bAutoFindWorld)
 		{
 			TArray<AActor*> FoundActors;
 			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorld::StaticClass(), FoundActors);
@@ -57,7 +60,7 @@ void UVoxelAutoDisableComponent::TickComponent(float DeltaTime, ELevelTick TickT
 			}
 		}
 
-		if (World && World->IsCreated())
+		if (World)
 		{
 			FIntVector LocalPosition = World->GlobalToLocal(GetOwner()->GetActorLocation());
 			if (World->IsInWorld(LocalPosition))
