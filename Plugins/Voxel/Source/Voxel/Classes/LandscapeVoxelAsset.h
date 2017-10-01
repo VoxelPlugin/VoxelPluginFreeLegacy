@@ -6,35 +6,24 @@
 #include "VoxelWorldGenerator.h"
 #include "Landscape.h"
 #include "LandscapeLayerInfoObject.h"
-#include "LandscapeWorldGenerator.generated.h"
+#include "LandscapeVoxelAsset.generated.h"
 
 /**
  *
  */
-UCLASS(BlueprintType)
-class VOXEL_API ALandscapeWorldGenerator : public AVoxelWorldGenerator
+UCLASS(BlueprintType, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "Hide"))
+class VOXEL_API ALandscapeVoxelAsset : public AActor
 {
 	GENERATED_BODY()
 
 public:
-	ALandscapeWorldGenerator();
-
-	virtual float GetDefaultValue(int X, int Y, int Z) override;
-	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
-	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
-
+	ALandscapeVoxelAsset();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import")
 		ALandscape* Landscape;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import")
 		TArray<ULandscapeLayerInfoObject*> LayerInfos;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Import")
-		FVector LandscapePosition;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Import")
-		int Width;
 
 
 	// Higher precision can improve render quality, but voxel values are lower (mining speed not constant)
@@ -49,9 +38,15 @@ public:
 		TArray<float> Heights;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
 		TArray<FColor> Weights;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
+		int Size;
+
+
+	void Init(float InVoxelSize);
+
+	float GetDefaultValue(int X, int Y, int Z);
+	FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z);
 
 private:
-	AVoxelWorld* World;
-	FVector LocalLandscapePosition;
-	FVector LocalLandscapePositionAndWidth;
+	float VoxelSize;
 };

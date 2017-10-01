@@ -8,6 +8,7 @@
 #include <forward_list>
 #include "FlatWorldGenerator.h"
 #include "VoxelInvokerComponent.h"
+#include "VoxelModifier.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 
@@ -123,6 +124,23 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 }
 
 
+
+void AVoxelWorld::AddVoxelModifiers()
+{
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), FoundActors);
+
+	for (AActor* Actor : FoundActors)
+	{
+		AVoxelModifier* Modifier = Cast<AVoxelModifier>(Actor);
+
+		if (Modifier)
+		{
+			Modifier->ApplyToWorld(this);
+		}
+	}
+	UpdateAll(true);
+}
 
 FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
 {

@@ -90,17 +90,17 @@ FReply FVoxelWorldDetails::OnWorldUpdate()
 {
 	if (World.IsValid())
 	{
-		if (World->IsCreated())
+		/*if (World->IsCreated())
 		{
 			World->Unload();
 			World->Modify();
 		}
 		else
-		{
-			World->Load();
-			OnUpdateCameraPosition();
+		{*/
+			World->AddVoxelModifiers();
+			/*OnUpdateCameraPosition();
 			World->Modify();
-		}
+		}*/
 	}
 
 	return FReply::Handled();

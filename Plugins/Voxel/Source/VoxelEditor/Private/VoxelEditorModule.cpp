@@ -11,7 +11,7 @@
 #include "PropertyEditorModule.h"
 #include "VoxelWorldDetails.h"
 #include "VoxelMeshAssetDetails.h"
-#include "LandscapeWorldGeneratorDetails.h"
+#include "LandscapeVoxelAssetDetails.h"
 
 
 #define LOCTEXT_NAMESPACE "FVoxelEditorModule"
@@ -48,7 +48,7 @@ protected:
 
 		//Custom detail views
 		PropertyModule.RegisterCustomClassLayout("VoxelWorld", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldDetails::MakeInstance));
-		PropertyModule.RegisterCustomClassLayout("LandscapeWorldGenerator", FOnGetDetailCustomizationInstance::CreateStatic(&ULandscapeWorldGeneratorDetails::MakeInstance));
+		PropertyModule.RegisterCustomClassLayout("LandscapeVoxelAsset", FOnGetDetailCustomizationInstance::CreateStatic(&ULandscapeVoxelAssetDetails::MakeInstance));
 		PropertyModule.RegisterCustomClassLayout("VoxelMeshAsset", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelMeshAssetDetails::MakeInstance));
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}
@@ -60,7 +60,7 @@ protected:
 		if (PropertyModule != nullptr)
 		{
 			PropertyModule->UnregisterCustomClassLayout("VoxelWorld");
-			PropertyModule->UnregisterCustomClassLayout("LandscapeWorldGenerator");
+			PropertyModule->UnregisterCustomClassLayout("LandscapeVoxelAsset");
 			PropertyModule->UnregisterCustomClassLayout("VoxelMeshAsset");
 			PropertyModule->NotifyCustomizationModuleChanged();
 		}
