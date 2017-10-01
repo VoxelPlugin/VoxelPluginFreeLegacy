@@ -222,9 +222,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 				{
 					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 				}
-				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic)
-					&& Hit.Actor->GetAttachParentActor()
-					&& Hit.Actor->GetAttachParentActor()->IsA(AVoxelWorld::StaticClass()))
+				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelWorld::StaticClass()))
 				{
 					if (bDebugPoints)
 					{
@@ -299,9 +297,7 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 				DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 			}
 
-			if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic)
-				&& Hit.Actor->GetAttachParentActor()
-				&& Hit.Actor->GetAttachParentActor()->IsA(AVoxelWorld::StaticClass()))
+			if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelWorld::StaticClass()))
 			{
 				if (bDebugPoints)
 				{
@@ -415,9 +411,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 				{
 					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 				}
-				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic)
-					&& Hit.Actor->GetAttachParentActor()
-					&& Hit.Actor->GetAttachParentActor()->IsA(AVoxelWorld::StaticClass()))
+				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelWorld::StaticClass()))
 				{
 					if (bDebugPoints)
 					{
@@ -498,9 +492,9 @@ void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, f
 	FHitResult HitResult;
 	if (PlayerController->GetWorld()->LineTraceSingleByChannel(HitResult, WorldPosition, WorldPosition + WorldDirection * MaxDistance, ECC_WorldDynamic))
 	{
-		if (HitResult.Actor->GetAttachParentActor() && HitResult.Actor->GetAttachParentActor()->IsA(AVoxelWorld::StaticClass()))
+		if (HitResult.Actor->IsA(AVoxelWorld::StaticClass()))
 		{
-			World = Cast<AVoxelWorld>(HitResult.Actor->GetAttachParentActor());
+			World = Cast<AVoxelWorld>(HitResult.Actor.Get());
 			check(World);
 
 			Position = HitResult.ImpactPoint;

@@ -18,22 +18,21 @@ DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSect
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
-AVoxelChunk::AVoxelChunk() : Render(nullptr), MeshBuilder(nullptr), Builder(nullptr)
+UVoxelChunk::UVoxelChunk()
+	: Render(nullptr)
+	, MeshBuilder(nullptr)
+	, Builder(nullptr)
+	, CompletedFoliageTaskCount(0)
 {
-	PrimaryActorTick.bCanEverTick = true;
-
-	// Create primary mesh
-	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
-	PrimaryMesh->bCastShadowAsTwoSided = true;
-	PrimaryMesh->bUseAsyncCooking = true;
-	PrimaryMesh->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
-	PrimaryMesh->Mobility = EComponentMobility::Movable;
-	RootComponent = PrimaryMesh;
+	bCastShadowAsTwoSided = true;
+	bUseAsyncCooking = true;
+	SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	Mobility = EComponentMobility::Movable;
 
 	ChunkHasHigherRes.SetNumZeroed(6);
 }
 
-void AVoxelChunk::Init(TWeakPtr<FChunkOctree> NewOctree)
+void UVoxelChunk::Init(TWeakPtr<FChunkOctree> NewOctree)
 {
 	check(NewOctree.IsValid());
 	CurrentOctree = NewOctree.Pin();
@@ -41,20 +40,14 @@ void AVoxelChunk::Init(TWeakPtr<FChunkOctree> NewOctree)
 
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
 
-#if WITH_EDITOR
-	FString Name = FString::FromInt(NewPosition.X) + ", " + FString::FromInt(NewPosition.Y) + ", " + FString::FromInt(NewPosition.Z);
-	this->SetActorLabel(Name);
-#endif
-
-	this->SetActorRelativeLocation((FVector)NewPosition);
-	this->SetActorRelativeRotation(FRotator::ZeroRotator);
-	this->SetActorRelativeScale3D(FVector::OneVector);
+	this->SetRelativeLocationAndRotation(Render->World->LocalToGlobal(NewPosition), FRotator::ZeroRotator);
+	this->SetRelativeScale3D(FVector::OneVector * Render->World->GetVoxelSize());
 
 	// Needed because octree is only partially builded when Init is called
 	Render->AddTransitionCheck(this);
 }
 
-bool AVoxelChunk::Update(bool bAsync)
+bool UVoxelChunk::Update(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
@@ -116,7 +109,7 @@ bool AVoxelChunk::Update(bool bAsync)
 	}
 }
 
-void AVoxelChunk::CheckTransitions()
+void UVoxelChunk::CheckTransitions()
 {
 	if (Render->World->bComputeTransitions)
 	{
@@ -140,27 +133,23 @@ void AVoxelChunk::CheckTransitions()
 	}
 }
 
-void AVoxelChunk::Unload()
+void UVoxelChunk::Unload()
 {
 	DeleteTasks();
 
 	// Needed because octree is only partially updated when Unload is called
 	Render->AddTransitionCheck(this);
 
-	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &AVoxelChunk::Delete, Render->World->DeletionDelay, false);
+	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &UVoxelChunk::Delete, Render->World->DeletionDelay, false);
 }
 
-void AVoxelChunk::Delete()
+void UVoxelChunk::Delete()
 {
 	// In case delete is called directly
 	DeleteTasks();
 
 	// Reset mesh & position & clear lines
-	PrimaryMesh->SetProcMeshSection(0, FProcMeshSection());
-
-#if WITH_EDITOR
-	SetActorLabel("InactiveChunk");
-#endif // WITH_EDITOR
+	SetProcMeshSection(0, FProcMeshSection());
 
 	// Delete foliage
 	for (auto FoliageComponent : FoliageComponents)
@@ -179,7 +168,7 @@ void AVoxelChunk::Delete()
 	CurrentOctree.Reset();
 }
 
-void AVoxelChunk::OnMeshComplete(FProcMeshSection& InSection)
+void UVoxelChunk::OnMeshComplete(FProcMeshSection& InSection)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 
@@ -188,7 +177,7 @@ void AVoxelChunk::OnMeshComplete(FProcMeshSection& InSection)
 	Render->AddApplyNewMesh(this);
 }
 
-void AVoxelChunk::ApplyNewMesh()
+void UVoxelChunk::ApplyNewMesh()
 {
 	// TODO
 	//if (CurrentOctree->Depth <= Render->World->MaxGrassDepth)
@@ -207,25 +196,26 @@ void AVoxelChunk::ApplyNewMesh()
 
 	Render->AddFoliageUpdate(this);
 
-	PrimaryMesh->SetProcMeshSection(0, Section);
+	SetProcMeshSection(0, Section);
 
-	UNavigationSystem::UpdateComponentInNavOctree(*PrimaryMesh);
+	UNavigationSystem::UpdateComponentInNavOctree(*this);
 }
 
-void AVoxelChunk::SetMaterial(UMaterialInterface* Material)
+void UVoxelChunk::SetVoxelMaterial(UMaterialInterface* Material)
 {
-	PrimaryMesh->SetMaterial(0, Material);
+	SetMaterial(0, Material);
 }
 
-bool AVoxelChunk::HasChunkHigherRes(TransitionDirection Direction)
+bool UVoxelChunk::HasChunkHigherRes(TransitionDirection Direction)
 {
 	return CurrentOctree->Depth != 0 && ChunkHasHigherRes[Direction];
 }
 
-bool AVoxelChunk::UpdateFoliage()
+bool UVoxelChunk::UpdateFoliage()
 {
 	if (FoliageTasks.Num() == 0)
 	{
+		CompletedFoliageTaskCount = 0;
 		for (int Index = 0; Index < Render->World->GrassTypes.Num(); Index++)
 		{
 			auto GrassType = Render->World->GrassTypes[Index];
@@ -246,7 +236,7 @@ bool AVoxelChunk::UpdateFoliage()
 }
 
 
-void AVoxelChunk::OnFoliageComplete()
+void UVoxelChunk::OnFoliageComplete()
 {
 	CompletedFoliageTaskCount++;
 	if (CompletedFoliageTaskCount == FoliageTasks.Num())
@@ -255,13 +245,13 @@ void AVoxelChunk::OnFoliageComplete()
 	}
 }
 
-void AVoxelChunk::OnAllFoliageComplete()
+void UVoxelChunk::OnAllFoliageComplete()
 {
 	Render->AddApplyNewFoliage(this);
 	CompletedFoliageTaskCount = 0;
 }
 
-void AVoxelChunk::ApplyNewFoliage()
+void UVoxelChunk::ApplyNewFoliage()
 {
 	for (int i = 0; i < FoliageComponents.Num(); i++)
 	{
@@ -284,7 +274,7 @@ void AVoxelChunk::ApplyNewFoliage()
 			}
 
 			//Create component
-			UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, NAME_None, RF_Transient);
+			UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(Render->World, NAME_None, RF_Transient);
 
 			HierarchicalInstancedStaticMeshComponent->OnComponentCreated();
 			HierarchicalInstancedStaticMeshComponent->RegisterComponent();
@@ -310,8 +300,8 @@ void AVoxelChunk::ApplyNewFoliage()
 
 			HierarchicalInstancedStaticMeshComponent->bAffectDistanceFieldLighting = false;
 
-			HierarchicalInstancedStaticMeshComponent->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-			FTransform DesiredTransform = GetRootComponent()->GetComponentTransform();
+			HierarchicalInstancedStaticMeshComponent->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
+			FTransform DesiredTransform = this->GetComponentTransform();
 			DesiredTransform.RemoveScaling();
 			HierarchicalInstancedStaticMeshComponent->SetWorldTransform(DesiredTransform);
 
@@ -338,7 +328,7 @@ void AVoxelChunk::ApplyNewFoliage()
 }
 
 
-void AVoxelChunk::DeleteTasks()
+void UVoxelChunk::DeleteTasks()
 {
 	if (MeshBuilder)
 	{
@@ -357,9 +347,10 @@ void AVoxelChunk::DeleteTasks()
 		delete FoliageTask;
 	}
 	FoliageTasks.Empty();
+	CompletedFoliageTaskCount = 0;
 }
 
-void AVoxelChunk::CreateBuilder()
+void UVoxelChunk::CreateBuilder()
 {
 	check(!Builder);
 	Builder = new FVoxelPolygonizer(
