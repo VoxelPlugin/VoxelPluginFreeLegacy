@@ -8,7 +8,7 @@
 
 class UVoxelInvokerComponent;
 
-UCLASS()
+UCLASS(notplaceable, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "Hide"))
 class VOXELEDITOR_API AVoxelWorldEditor : public AActor
 {
 	GENERATED_BODY()
@@ -26,7 +26,7 @@ public:
 	TWeakObjectPtr<AVoxelWorld> World;
 
 private:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY()
 		UVoxelInvokerComponent* Invoker;
 
 };

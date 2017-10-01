@@ -9,7 +9,7 @@
 class AVoxelWorld;
 class AVoxelWorldEditor;
 
-DECLARE_LOG_CATEGORY_EXTERN(VoxelWorldEditorLog, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(VoxelEditorLog, Log, All);
 class FVoxelWorldDetails : public IDetailCustomization
 {
 public:
@@ -22,9 +22,9 @@ private:
 	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
-	FReply OnWorldUpdate();
+	FReply OnWorldToggle();
 
-	FReply OnUpdateCameraPosition();
+	FReply OnUpdateVoxelModifiers();
 
 private:
 	TWeakObjectPtr<AVoxelWorld> World;

@@ -10,7 +10,7 @@
 #include "GenericPlatformProcess.h"
 
 
-FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, UVoxelChunk* Chunk)
+FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, UVoxelChunk* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
 	, Material(Material)

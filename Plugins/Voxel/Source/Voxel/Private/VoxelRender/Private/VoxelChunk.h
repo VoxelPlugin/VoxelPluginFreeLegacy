@@ -51,9 +51,6 @@ public:
 	 */
 	void Unload();
 
-	/**
-	 * Delete this
-	 */
 	void Delete();
 
 	void SetVoxelMaterial(UMaterialInterface* Material);
