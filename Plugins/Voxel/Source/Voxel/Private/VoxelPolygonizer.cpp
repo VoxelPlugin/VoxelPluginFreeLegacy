@@ -14,12 +14,13 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ MajorColor"), STAT_MAJOR_COLOR, STAT
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Get2DValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
 
-FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions)
+FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions)
 	: Depth(Depth)
 	, Data(Data)
 	, ChunkPosition(ChunkPosition)
 	, ChunkHasHigherRes(ChunkHasHigherRes)
 	, bComputeTransitions(bComputeTransitions)
+	, bComputeCollisions(bComputeCollisions)
 	, LastOctree(nullptr)
 {
 
@@ -309,7 +310,7 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 		SCOPE_CYCLE_COUNTER(STAT_CREATE_SECTION);
 		// Create section
 		OutSection.Reset();
-		OutSection.bEnableCollision = (Depth == 0);
+		OutSection.bEnableCollision = bComputeCollisions;
 		OutSection.bSectionVisible = true;
 
 		OutSection.ProcVertexBuffer.SetNumUninitialized(VerticesSize);

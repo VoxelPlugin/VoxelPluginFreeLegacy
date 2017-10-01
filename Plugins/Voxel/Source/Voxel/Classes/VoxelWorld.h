@@ -36,18 +36,21 @@ public:
 	AVoxelWorld();
 	~AVoxelWorld();
 
-	void Load();
-	void Unload();
+	void CreateWorld();
+	void DestroyWorld();
 
 	FVoxelData* Data;
 	FVoxelRender* Render;
 
+	void CreateInEditor(TWeakObjectPtr<UVoxelInvokerComponent> CameraInvoker);
 
 	int Depth;
 	float VoxelSize;
 
+	bool bComputeCollisions;
+
 	// Time to wait before deleting old chunks to avoid holes
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", UIMin = "0"))
 		float DeletionDelay;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
@@ -164,6 +167,9 @@ protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;
 	void Tick(float DeltaTime) override;
+#if WITH_EDITOR
+	bool ShouldTickIfViewportsOnly() const override;
+#endif
 
 private:
 	// Width = 16 * 2^Depth
@@ -188,8 +194,7 @@ private:
 	UPROPERTY()
 		AVoxelWorldGenerator* InstancedWorldGenerator;
 
-	UPROPERTY()
-		bool bIsCreated;
+	bool bIsCreated;
 
 	void DeleteDataAndRender();
 	void CreateDataAndRender();

@@ -7,11 +7,14 @@
 #include "IDetailCustomization.h"
 
 class AVoxelWorld;
+class AVoxelWorldEditor;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelWorldEditorLog, Log, All);
 class FVoxelWorldDetails : public IDetailCustomization
 {
 public:
+	FVoxelWorldDetails();
+
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
 	static TSharedRef<IDetailCustomization> MakeInstance();
 
@@ -22,6 +25,8 @@ private:
 	FReply OnWorldUpdate();
 
 	FReply OnUpdateCameraPosition();
+
 private:
 	TWeakObjectPtr<AVoxelWorld> World;
+	TWeakObjectPtr<AVoxelWorldEditor> EditorWorld;
 };
