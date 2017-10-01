@@ -29,12 +29,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0", ClampMax = "20", UIMin = "0", UIMax = "20"))
 		int CullDepth;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		bool bSimulatePhysics;
+
+	bool bAutoFindComponent;
+
+	UPrimitiveComponent* Component;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-private:
-	UPrimitiveComponent* Component;
-	bool bSimulatePhysics;
-
 };
