@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "CirclesWorldGenerator.generated.h"
 
 UCLASS(Blueprintable)

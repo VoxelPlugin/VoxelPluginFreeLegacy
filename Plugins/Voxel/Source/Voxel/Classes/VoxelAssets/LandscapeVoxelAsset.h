@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "Landscape.h"
 #include "LandscapeLayerInfoObject.h"
 #include "LandscapeVoxelAsset.generated.h"

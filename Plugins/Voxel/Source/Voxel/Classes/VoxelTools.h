@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelMeshAsset.h"
+#include "VoxelAssets/VoxelMeshAsset.h"
 #include "VoxelMaterial.h"
 #include "VoxelTools.generated.h"
 

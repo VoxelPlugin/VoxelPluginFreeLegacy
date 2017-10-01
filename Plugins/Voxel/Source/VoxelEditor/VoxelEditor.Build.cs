@@ -8,6 +8,11 @@ public class VoxelEditor : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
+        PublicIncludePaths.AddRange(
+            new string[]
+            {
+            });
+
         PrivateIncludePaths.AddRange(
             new string[] {
                 "VoxelEditor/Private",

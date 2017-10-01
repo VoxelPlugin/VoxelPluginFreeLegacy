@@ -5,10 +5,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "VoxelSave.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
-#include "VoxelLODProfile.h"
 #include "VoxelMaterial.h"
 #include "LandscapeGrassType.h"
 #include "VoxelWorld.generated.h"
@@ -44,9 +43,8 @@ public:
 	FVoxelRender* Render;
 
 
-	// Width = 16 * 2^Depth
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", ClampMax = "20", UIMin = "0", UIMax = "20"))
-		int Depth;
+	int Depth;
+	float VoxelSize;
 
 	// Time to wait before deleting old chunks to avoid holes
 	UPROPERTY(EditAnywhere, Category = "Voxel")
@@ -168,10 +166,13 @@ protected:
 	void Tick(float DeltaTime) override;
 
 private:
+	// Width = 16 * 2^Depth
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", ClampMax = "20", UIMin = "0", UIMax = "20", DisplayName = "Depth"))
+		int NewDepth;
 
 	// Size of a voxel in cm
-	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
-		float VoxelSize;
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay, meta = (DisplayName = "Voxel Size"))
+		float NewVoxelSize;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		int MeshThreadCount;
@@ -189,4 +190,7 @@ private:
 
 	UPROPERTY()
 		bool bIsCreated;
+
+	void DeleteDataAndRender();
+	void CreateDataAndRender();
 };

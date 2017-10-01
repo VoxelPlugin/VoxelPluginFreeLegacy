@@ -3,7 +3,7 @@
 #pragma once
 #include "VoxelPrivatePCH.h"
 #include "LandscapeComponent.h"
-#include "LandscapeVoxelAsset.h"
+#include "VoxelAssets/LandscapeVoxelAsset.h"
 #include "Engine/World.h"
 #include "Engine/Texture2D.h"
 

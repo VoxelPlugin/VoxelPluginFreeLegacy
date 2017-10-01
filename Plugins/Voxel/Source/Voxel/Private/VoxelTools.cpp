@@ -25,6 +25,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ApplyWaterEffect"), STAT_ApplyWaterEffect, 
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ RemoveNonConnectedBlocks"), STAT_RemoveNonConnectedBlocks, STATGROUP_Voxel);
 
+// TODO: Max delta value when outside
 void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bAsync, float ValueMultiplier)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetValueSphere);
