@@ -141,7 +141,7 @@ TWeakPtr<FChunkOctree> FChunkOctree::GetLeaf(FIntVector PointPosition)
 	}
 }
 
-AVoxelChunk* FChunkOctree::GetVoxelChunk() const
+UVoxelChunk* FChunkOctree::GetVoxelChunk() const
 {
 	return VoxelChunk;
 }

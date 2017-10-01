@@ -49,14 +49,15 @@ void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 	VoxelInvokerComponents.push_front(Invoker);
 }
 
-AVoxelChunk* FVoxelRender::GetInactiveChunk()
+UVoxelChunk* FVoxelRender::GetInactiveChunk()
 {
-	AVoxelChunk* Chunk;
+	UVoxelChunk* Chunk;
 	if (InactiveChunks.empty())
 	{
-		Chunk = World->GetWorld()->SpawnActor<AVoxelChunk>(FVector::ZeroVector, FRotator::ZeroRotator);
-		Chunk->AttachToActor(World, FAttachmentTransformRules(EAttachmentRule::KeepRelative, true));
-		Chunk->SetMaterial(World->VoxelMaterial);
+		Chunk = NewObject<UVoxelChunk>(World);;
+		Chunk->OnComponentCreated();
+		Chunk->RegisterComponent();
+		Chunk->SetVoxelMaterial(World->VoxelMaterial);
 	}
 	else
 	{
@@ -69,7 +70,7 @@ AVoxelChunk* FVoxelRender::GetInactiveChunk()
 	return Chunk;
 }
 
-void FVoxelRender::SetChunkAsInactive(AVoxelChunk* Chunk)
+void FVoxelRender::SetChunkAsInactive(UVoxelChunk* Chunk)
 {
 	ActiveChunks.Remove(Chunk);
 	InactiveChunks.push_front(Chunk);
@@ -207,23 +208,23 @@ void FVoxelRender::UpdateLOD()
 	MainOctree->UpdateLOD(VoxelInvokerComponents);
 }
 
-void FVoxelRender::AddFoliageUpdate(AVoxelChunk* Chunk)
+void FVoxelRender::AddFoliageUpdate(UVoxelChunk* Chunk)
 {
 	FoliageUpdateNeeded.Add(Chunk);
 }
 
-void FVoxelRender::AddTransitionCheck(AVoxelChunk* Chunk)
+void FVoxelRender::AddTransitionCheck(UVoxelChunk* Chunk)
 {
 	ChunksToCheckForTransitionChange.Add(Chunk);
 }
 
-void FVoxelRender::AddApplyNewMesh(AVoxelChunk* Chunk)
+void FVoxelRender::AddApplyNewMesh(UVoxelChunk* Chunk)
 {
 	FScopeLock Lock(&ChunksToApplyNewMeshLock);
 	ChunksToApplyNewMesh.Add(Chunk);
 }
 
-void FVoxelRender::AddApplyNewFoliage(AVoxelChunk* Chunk)
+void FVoxelRender::AddApplyNewFoliage(UVoxelChunk* Chunk)
 {
 	FScopeLock Lock(&ChunksToApplyNewFoliageLock);
 	ChunksToApplyNewFoliage.Add(Chunk);
@@ -231,7 +232,7 @@ void FVoxelRender::AddApplyNewFoliage(AVoxelChunk* Chunk)
 
 void FVoxelRender::ApplyFoliageUpdates()
 {
-	std::forward_list<AVoxelChunk*> Failed;
+	std::forward_list<UVoxelChunk*> Failed;
 	for (auto Chunk : FoliageUpdateNeeded)
 	{
 		bool bSuccess = Chunk->UpdateFoliage();

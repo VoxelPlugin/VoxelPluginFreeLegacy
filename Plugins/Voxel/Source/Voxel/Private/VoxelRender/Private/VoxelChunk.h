@@ -18,12 +18,12 @@ class FVoxelPolygonizer;
  * Voxel Chunk actor class
  */
 UCLASS()
-class AVoxelChunk : public AActor
+class UVoxelChunk : public UProceduralMeshComponent
 {
 	GENERATED_BODY()
 
 public:
-	AVoxelChunk();
+	UVoxelChunk();
 
 	/**
 	 * Init this
@@ -56,7 +56,7 @@ public:
 	 */
 	void Delete();
 
-	void SetMaterial(UMaterialInterface* Material);
+	void SetVoxelMaterial(UMaterialInterface* Material);
 
 	bool HasChunkHigherRes(TransitionDirection Direction);
 
@@ -72,14 +72,9 @@ public:
 	void ApplyNewFoliage();
 
 private:
-	UPROPERTY(EditAnywhere)
-		UProceduralMeshComponent* PrimaryMesh;
+	TArray<UHierarchicalInstancedStaticMeshComponent*> FoliageComponents;
 
-	UPROPERTY(EditAnywhere)
-		TArray<UHierarchicalInstancedStaticMeshComponent*> FoliageComponents;
-
-	UPROPERTY()
-		FProcMeshSection Section;
+	FProcMeshSection Section;
 
 	FTimerHandle DeleteTimer;
 

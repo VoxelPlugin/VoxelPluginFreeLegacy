@@ -10,11 +10,10 @@
 #include "GenericPlatformProcess.h"
 
 
-FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, AVoxelChunk* Chunk)
+FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection& Section, FGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, UVoxelChunk* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
 	, Material(Material)
-	, ChunkTransform(Chunk->GetTransform())
 	, VoxelSize(VoxelSize)
 	, ChunkPosition(ChunkPosition)
 	, Seed(Seed)
@@ -115,7 +114,7 @@ void FAsyncFoliageTask::DoWork()
 
 					FRotator Rotation = GrassVariety.AlignToSurface ? UKismetMathLibrary::MakeRotFromZX(N, Stream.GetFraction() * X + Stream.GetFraction() * Y) : FRotator::ZeroRotator;
 
-					InstanceTransformsList.push_front(FTransform(Rotation, ChunkTransform.GetScale3D() * P, Scale).ToMatrixWithScale());
+					InstanceTransformsList.push_front(FTransform(Rotation, VoxelSize * P, Scale).ToMatrixWithScale());
 					InstanceTransformsCount++;
 				}
 			}
@@ -176,7 +175,7 @@ void FAsyncFoliageTask::DoWork()
 
 
 
-FAsyncPolygonizerTask::FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, AVoxelChunk* Chunk)
+FAsyncPolygonizerTask::FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxelChunk* Chunk)
 	: Builder(InBuilder)
 	, Chunk(Chunk)
 {

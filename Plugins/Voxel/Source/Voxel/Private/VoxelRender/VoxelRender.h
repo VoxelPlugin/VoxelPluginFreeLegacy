@@ -7,7 +7,7 @@
 
 class AVoxelWorld;
 class FChunkOctree;
-class AVoxelChunk;
+class UVoxelChunk;
 
 /**
  *
@@ -28,8 +28,8 @@ public:
 
 	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
 
-	AVoxelChunk* GetInactiveChunk();
-	void SetChunkAsInactive(AVoxelChunk* Chunk);
+	UVoxelChunk* GetInactiveChunk();
+	void SetChunkAsInactive(UVoxelChunk* Chunk);
 
 	void UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync);
 	void UpdateChunksAtPosition(FIntVector Position, bool bAsync);
@@ -39,12 +39,12 @@ public:
 
 	void UpdateLOD();
 
-	void AddFoliageUpdate(AVoxelChunk* Chunk);
+	void AddFoliageUpdate(UVoxelChunk* Chunk);
 
-	void AddTransitionCheck(AVoxelChunk* Chunk);
+	void AddTransitionCheck(UVoxelChunk* Chunk);
 
-	void AddApplyNewMesh(AVoxelChunk* Chunk);
-	void AddApplyNewFoliage(AVoxelChunk* Chunk);
+	void AddApplyNewMesh(UVoxelChunk* Chunk);
+	void AddApplyNewFoliage(UVoxelChunk* Chunk);
 
 	TWeakPtr<FChunkOctree> GetChunkOctreeAt(FIntVector Position) const;
 
@@ -59,17 +59,17 @@ private:
 	// Shared ptr because each ChunkOctree need a reference to itself, and the Main one isn't the child of anyone
 	TSharedPtr<FChunkOctree> MainOctree;
 
-	std::forward_list<AVoxelChunk*> InactiveChunks;
-	TSet<AVoxelChunk*> ActiveChunks;
+	std::forward_list<UVoxelChunk*> InactiveChunks;
+	TSet<UVoxelChunk*> ActiveChunks;
 
-	TSet<AVoxelChunk*> FoliageUpdateNeeded;
+	TSet<UVoxelChunk*> FoliageUpdateNeeded;
 
-	TSet<AVoxelChunk*> ChunksToCheckForTransitionChange;
+	TSet<UVoxelChunk*> ChunksToCheckForTransitionChange;
 
-	TSet<AVoxelChunk*> ChunksToApplyNewMesh;
+	TSet<UVoxelChunk*> ChunksToApplyNewMesh;
 	FCriticalSection ChunksToApplyNewMeshLock;
 
-	TSet<AVoxelChunk*> ChunksToApplyNewFoliage;
+	TSet<UVoxelChunk*> ChunksToApplyNewFoliage;
 	FCriticalSection ChunksToApplyNewFoliageLock;
 
 	// Invokers
