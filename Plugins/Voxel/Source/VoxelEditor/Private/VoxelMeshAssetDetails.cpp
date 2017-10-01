@@ -1,5 +1,5 @@
 #include "VoxelMeshAssetDetails.h"
-#include "VoxelMeshAsset.h"
+#include "VoxelAssets/VoxelMeshAsset.h"
 #include "PropertyHandle.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"

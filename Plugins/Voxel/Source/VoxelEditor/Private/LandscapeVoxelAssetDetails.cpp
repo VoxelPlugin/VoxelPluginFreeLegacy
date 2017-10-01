@@ -10,7 +10,7 @@
 #include "LandscapeDataAccess.h"
 #include "Landscape.h"
 #include "LandscapeComponent.h"
-#include "LandscapeVoxelAsset.h"
+#include "VoxelAssets/LandscapeVoxelAsset.h"
 #include "VoxelMaterial.h"
 
 DEFINE_LOG_CATEGORY(VoxelAssetEditorLog)

@@ -10,7 +10,7 @@
 /**
  *
  */
-UCLASS(BlueprintType)
+UCLASS(BlueprintType, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "Hide"))
 class VOXEL_API AVoxelMeshAsset : public AActor
 {
 	GENERATED_BODY()

@@ -23,6 +23,8 @@ AVoxelWorld::AVoxelWorld()
 	, VoxelSize(100)
 	, MeshThreadCount(4)
 	, FoliageThreadCount(4)
+	, Render(nullptr)
+	, Data(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -55,6 +57,38 @@ void AVoxelWorld::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	Render->Tick(DeltaTime);
+}
+
+void AVoxelWorld::DeleteDataAndRender()
+{
+	check(Data);
+	check(Render);
+	delete Data;
+	delete Render;
+	Data = nullptr;
+	Render = nullptr;
+}
+
+void AVoxelWorld::CreateDataAndRender()
+{
+	check(!Data);
+	check(!Render);
+
+	// Create generator
+	InstancedWorldGenerator = GetWorld()->SpawnActor<AVoxelWorldGenerator>(WorldGenerator);
+	if (InstancedWorldGenerator == nullptr)
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
+		InstancedWorldGenerator = Cast<AVoxelWorldGenerator>(GetWorld()->SpawnActor(AFlatWorldGenerator::StaticClass()));
+	}
+
+	InstancedWorldGenerator->SetVoxelWorld(this);
+
+	// Create Data
+	Data = new FVoxelData(Depth, InstancedWorldGenerator);
+
+	// Create Render
+	Render = new FVoxelRender(this, MeshThreadCount, FoliageThreadCount);
 }
 
 float AVoxelWorld::GetValue(FIntVector Position) const
@@ -127,6 +161,13 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 
 void AVoxelWorld::AddVoxelModifiers()
 {
+	if (Data)
+	{
+		delete Data;
+		Data = nullptr;
+	}
+	CreateDataAndRender();
+
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), FoundActors);
 
@@ -139,6 +180,13 @@ void AVoxelWorld::AddVoxelModifiers()
 			Modifier->ApplyToWorld(this);
 		}
 	}
+
+	if (IsCreated())
+	{
+		Unload();
+	}
+	Load();
+
 	UpdateAll(true);
 }
 
@@ -170,36 +218,29 @@ void AVoxelWorld::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 
 void AVoxelWorld::Load()
 {
-	if (!bIsCreated)
-	{
-		UE_LOG(VoxelLog, Warning, TEXT("Loading world"));
-		bIsCreated = true;
+	check(!IsCreated());
 
-		InstancedWorldGenerator = GetWorld()->SpawnActor<AVoxelWorldGenerator>(WorldGenerator);
+	UE_LOG(VoxelLog, Warning, TEXT("Loading world"));
 
-		if (InstancedWorldGenerator == nullptr)
-		{
-			UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
-			InstancedWorldGenerator = Cast<AVoxelWorldGenerator>(GetWorld()->SpawnActor(AFlatWorldGenerator::StaticClass()));
-		}
+	Depth = NewDepth;
+	VoxelSize = NewVoxelSize;
 
-		InstancedWorldGenerator->SetVoxelWorld(this);
+	SetActorScale3D(FVector::OneVector * VoxelSize);
 
-		Data = new FVoxelData(Depth, InstancedWorldGenerator);
-		Render = new FVoxelRender(this, MeshThreadCount, FoliageThreadCount);
+	CreateDataAndRender();
 
-		SetActorScale3D(FVector::OneVector * VoxelSize);
-	}
+	bIsCreated = true;
 }
 
 void AVoxelWorld::Unload()
 {
-	if (bIsCreated)
-	{
-		delete Render;
-		delete Data;
-		bIsCreated = false;
-	}
+	check(IsCreated());
+
+	UE_LOG(VoxelLog, Warning, TEXT("Unloading world"));
+
+	DeleteDataAndRender();
+
+	bIsCreated = false;
 }
 
 bool AVoxelWorld::IsCreated() const
