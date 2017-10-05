@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGrassType.h"
 #include "ProceduralMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
@@ -17,14 +18,14 @@ class FVoxelData;
 class FAsyncFoliageTask : public FNonAbandonableTask
 {
 public:
-	FGrassVariety GrassVariety;
+	FVoxelGrassVariety GrassVariety;
 
 	// Output
 	FStaticMeshInstanceData InstanceBuffer;
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-	FAsyncFoliageTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, UVoxelChunk* Chunk);
+	FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, UVoxelChunk* Chunk);
 
 	void DoWork();
 

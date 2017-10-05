@@ -225,10 +225,13 @@ bool UVoxelChunk::UpdateFoliage()
 			auto GrassType = Render->World->GrassTypes[Index];
 			for (auto GrassVariety : GrassType->GrassVarieties)
 			{
-				FAsyncTask<FAsyncFoliageTask>* FoliageTask = new FAsyncTask<FAsyncFoliageTask>(Section, GrassVariety, Index, Render->World->GetVoxelSize(), CurrentOctree->GetMinimalCornerPosition(), 10, this);
+				if (GrassVariety.CullDepth >= CurrentOctree->Depth)
+				{
+					FAsyncTask<FAsyncFoliageTask>* FoliageTask = new FAsyncTask<FAsyncFoliageTask>(Section, GrassVariety, Index, Render->World->GetVoxelSize(), CurrentOctree->GetMinimalCornerPosition(), 10, this);
 
-				FoliageTask->StartBackgroundTask(Render->FoliageThreadPool);
-				FoliageTasks.Add(FoliageTask);
+					FoliageTask->StartBackgroundTask(Render->FoliageThreadPool);
+					FoliageTasks.Add(FoliageTask);
+				}
 			}
 		}
 		return true;
@@ -269,7 +272,7 @@ void UVoxelChunk::ApplyNewFoliage()
 		FAsyncFoliageTask Task = FoliageTask->GetTask();
 		if (Task.InstanceBuffer.NumInstances())
 		{
-			FGrassVariety GrassVariety = Task.GrassVariety;
+			FVoxelGrassVariety GrassVariety = Task.GrassVariety;
 
 			int32 FolSeed = FCrc::StrCrc32((GrassVariety.GrassMesh->GetName() + GetName()).GetCharArray().GetData());
 			if (FolSeed == 0)

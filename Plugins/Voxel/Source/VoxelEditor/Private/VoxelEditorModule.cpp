@@ -1,4 +1,4 @@
-// Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
+// Copyright 2017 Phyronnaz
 
 #include "Containers/Array.h"
 #include "ISettingsModule.h"
@@ -12,7 +12,10 @@
 #include "VoxelWorldDetails.h"
 #include "VoxelMeshAssetDetails.h"
 #include "LandscapeVoxelAssetDetails.h"
+#include "IAssetTools.h"
+#include "AssetToolsModule.h"
 
+#include "AssetTools/AssetTypeActions_VoxelGrassType.h"
 
 #define LOCTEXT_NAMESPACE "FVoxelEditorModule"
 
@@ -28,17 +31,20 @@ public:
 	virtual void StartupModule() override
 	{
 		RegisterClassLayout();
+		RegisterAssetTools();
 	}
 
 	virtual void ShutdownModule() override
 	{
 		UnregisterClassLayout();
+		UnregisterAssetTools();
 	}
 
 	virtual bool SupportsDynamicReloading() override
 	{
 		return true;
 	}
+
 
 protected:
 
@@ -65,6 +71,46 @@ protected:
 			PropertyModule->NotifyCustomizationModuleChanged();
 		}
 	}
+
+	/** Registers asset tool actions. */
+	void RegisterAssetTools()
+	{
+		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
+
+		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelGrassType));
+	}
+
+	/**
+	* Registers a single asset type action.
+	*
+	* @param AssetTools The asset tools object to register with.
+	* @param Action The asset type action to register.
+	*/
+	void RegisterAssetTypeAction(IAssetTools& AssetTools, TSharedRef<IAssetTypeActions> Action)
+	{
+		AssetTools.RegisterAssetTypeActions(Action);
+		RegisteredAssetTypeActions.Add(Action);
+	}
+
+	/** Unregisters asset tool actions. */
+	void UnregisterAssetTools()
+	{
+		FAssetToolsModule* AssetToolsModule = FModuleManager::GetModulePtr<FAssetToolsModule>("AssetTools");
+
+		if (AssetToolsModule != nullptr)
+		{
+			IAssetTools& AssetTools = AssetToolsModule->Get();
+
+			for (auto Action : RegisteredAssetTypeActions)
+			{
+				AssetTools.UnregisterAssetTypeActions(Action);
+			}
+		}
+	}
+
+private:
+	/** The collection of registered asset type actions. */
+	TArray<TSharedRef<IAssetTypeActions>> RegisteredAssetTypeActions;
 };
 
 
