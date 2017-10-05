@@ -11,7 +11,7 @@
 #include "VoxelModifier.h"
 #include "VoxelWorldEditor.h"
 
-#include "VoxelRender/Private/VoxelChunk.h"
+#include "VoxelRender/Private/VoxelChunkComponent.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 
@@ -230,7 +230,7 @@ void AVoxelWorld::CreateWorld(bool bLoadFromSave)
 	SetActorScale3D(FVector::OneVector * VoxelSize);
 
 	// Delete existing components
-	for (auto Component : GetComponentsByClass(UVoxelChunk::StaticClass()))
+	for (auto Component : GetComponentsByClass(UVoxelChunkComponent::StaticClass()))
 	{
 		Component->DestroyComponent();
 	}

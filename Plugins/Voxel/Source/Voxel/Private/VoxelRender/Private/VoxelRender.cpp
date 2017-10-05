@@ -2,7 +2,7 @@
 
 #include "VoxelPrivatePCH.h"
 #include "VoxelRender.h"
-#include "VoxelChunk.h"
+#include "VoxelChunkComponent.h"
 #include "ChunkOctree.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
@@ -55,12 +55,12 @@ void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 	VoxelInvokerComponents.push_front(Invoker);
 }
 
-UVoxelChunk* FVoxelRender::GetInactiveChunk()
+UVoxelChunkComponent* FVoxelRender::GetInactiveChunk()
 {
-	UVoxelChunk* Chunk;
+	UVoxelChunkComponent* Chunk;
 	if (InactiveChunks.empty())
 	{
-		Chunk = NewObject<UVoxelChunk>(World);;
+		Chunk = NewObject<UVoxelChunkComponent>(World);;
 		Chunk->OnComponentCreated();
 		Chunk->RegisterComponent();
 		Chunk->SetVoxelMaterial(World->VoxelMaterial);
@@ -76,7 +76,7 @@ UVoxelChunk* FVoxelRender::GetInactiveChunk()
 	return Chunk;
 }
 
-void FVoxelRender::SetChunkAsInactive(UVoxelChunk* Chunk)
+void FVoxelRender::SetChunkAsInactive(UVoxelChunkComponent* Chunk)
 {
 	ActiveChunks.Remove(Chunk);
 	InactiveChunks.push_front(Chunk);
@@ -204,29 +204,29 @@ void FVoxelRender::UpdateLOD()
 	MainOctree->UpdateLOD(VoxelInvokerComponents);
 }
 
-void FVoxelRender::AddFoliageUpdate(UVoxelChunk* Chunk)
+void FVoxelRender::AddFoliageUpdate(UVoxelChunkComponent* Chunk)
 {
 	FoliageUpdateNeeded.Add(Chunk);
 }
 
-void FVoxelRender::AddTransitionCheck(UVoxelChunk* Chunk)
+void FVoxelRender::AddTransitionCheck(UVoxelChunkComponent* Chunk)
 {
 	ChunksToCheckForTransitionChange.Add(Chunk);
 }
 
-void FVoxelRender::AddApplyNewMesh(UVoxelChunk* Chunk)
+void FVoxelRender::AddApplyNewMesh(UVoxelChunkComponent* Chunk)
 {
 	FScopeLock Lock(&ChunksToApplyNewMeshLock);
 	ChunksToApplyNewMesh.Add(Chunk);
 }
 
-void FVoxelRender::AddApplyNewFoliage(UVoxelChunk* Chunk)
+void FVoxelRender::AddApplyNewFoliage(UVoxelChunkComponent* Chunk)
 {
 	FScopeLock Lock(&ChunksToApplyNewFoliageLock);
 	ChunksToApplyNewFoliage.Add(Chunk);
 }
 
-void FVoxelRender::RemoveFromQueues(UVoxelChunk* Chunk)
+void FVoxelRender::RemoveFromQueues(UVoxelChunkComponent* Chunk)
 {
 	FoliageUpdateNeeded.Remove(Chunk);
 	{
@@ -241,7 +241,7 @@ void FVoxelRender::RemoveFromQueues(UVoxelChunk* Chunk)
 
 void FVoxelRender::ApplyFoliageUpdates()
 {
-	std::forward_list<UVoxelChunk*> Failed;
+	std::forward_list<UVoxelChunkComponent*> Failed;
 	for (auto Chunk : FoliageUpdateNeeded)
 	{
 		bool bSuccess = Chunk->UpdateFoliage();

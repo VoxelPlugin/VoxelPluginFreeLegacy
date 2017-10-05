@@ -8,7 +8,7 @@
 #include "TransitionDirection.h"
 #include "LandscapeGrassType.h"
 #include "VoxelThread.h"
-#include "VoxelChunk.generated.h"
+#include "VoxelChunkComponent.generated.h"
 
 class FVoxelRender;
 class FChunkOctree;
@@ -18,12 +18,12 @@ class FVoxelPolygonizer;
  * Voxel Chunk actor class
  */
 UCLASS()
-class UVoxelChunk : public UProceduralMeshComponent
+class UVoxelChunkComponent : public UProceduralMeshComponent
 {
 	GENERATED_BODY()
 
 public:
-	UVoxelChunk();
+	UVoxelChunkComponent();
 
 	/**
 	 * Init this
@@ -67,6 +67,9 @@ public:
 	void OnFoliageComplete();
 
 	void ApplyNewFoliage();
+
+protected:
+	void Serialize(FArchive& Ar) override;
 
 private:
 	TArray<UHierarchicalInstancedStaticMeshComponent*> FoliageComponents;
