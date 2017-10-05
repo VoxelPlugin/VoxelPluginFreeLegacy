@@ -9,6 +9,7 @@
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
 #include "VoxelMaterial.h"
+#include "VoxelGrassType.h"
 #include "LandscapeGrassType.h"
 #include "VoxelWorld.generated.h"
 
@@ -61,7 +62,7 @@ public:
 		int GetDepthAt(FIntVector Position) const;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-		TArray<ULandscapeGrassType*> GrassTypes;
+		TArray<UVoxelGrassType*> GrassTypes;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 		float FoliageFPS;

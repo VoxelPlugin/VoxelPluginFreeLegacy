@@ -10,7 +10,7 @@
 #include "GenericPlatformProcess.h"
 
 
-FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, UVoxelChunk* Chunk)
+FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, UVoxelChunk* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
 	, Material(Material)
@@ -112,7 +112,22 @@ void FAsyncFoliageTask::DoWork()
 						check(0);
 					}
 
-					FRotator Rotation = GrassVariety.AlignToSurface ? UKismetMathLibrary::MakeRotFromZX(N, Stream.GetFraction() * X + Stream.GetFraction() * Y) : FRotator::ZeroRotator;
+					FRotator Rotation;
+					if (GrassVariety.AlignToSurface)
+					{
+						if (GrassVariety.RandomRotation)
+						{
+							Rotation = UKismetMathLibrary::MakeRotFromZX(N, Stream.GetFraction() * X + Stream.GetFraction() * Y);
+						}
+						else
+						{
+							Rotation = UKismetMathLibrary::MakeRotFromZX(N, X + Y);
+						}
+					}
+					else
+					{
+						Rotation = FRotator::ZeroRotator;
+					}
 
 					InstanceTransformsList.push_front(FTransform(Rotation, VoxelSize * P, Scale).ToMatrixWithScale());
 					InstanceTransformsCount++;
