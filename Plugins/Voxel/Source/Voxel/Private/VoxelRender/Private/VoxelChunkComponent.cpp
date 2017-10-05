@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelPrivatePCH.h"
-#include "VoxelChunk.h"
+#include "VoxelChunkComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "Misc/IQueuedWork.h"
 #include "AI/Navigation/NavigationSystem.h"
@@ -19,7 +19,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSect
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 
 // Sets default values
-UVoxelChunk::UVoxelChunk()
+UVoxelChunkComponent::UVoxelChunkComponent()
 	: Render(nullptr)
 	, MeshBuilder(nullptr)
 	, Builder(nullptr)
@@ -33,7 +33,7 @@ UVoxelChunk::UVoxelChunk()
 	ChunkHasHigherRes.SetNumZeroed(6);
 }
 
-void UVoxelChunk::Init(TWeakPtr<FChunkOctree> NewOctree)
+void UVoxelChunkComponent::Init(TWeakPtr<FChunkOctree> NewOctree)
 {
 	check(NewOctree.IsValid());
 	CurrentOctree = NewOctree.Pin();
@@ -48,7 +48,7 @@ void UVoxelChunk::Init(TWeakPtr<FChunkOctree> NewOctree)
 	Render->AddTransitionCheck(this);
 }
 
-bool UVoxelChunk::Update(bool bAsync)
+bool UVoxelChunkComponent::Update(bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
@@ -110,7 +110,7 @@ bool UVoxelChunk::Update(bool bAsync)
 	}
 }
 
-void UVoxelChunk::CheckTransitions()
+void UVoxelChunkComponent::CheckTransitions()
 {
 	if (Render->World->bComputeTransitions)
 	{
@@ -134,20 +134,20 @@ void UVoxelChunk::CheckTransitions()
 	}
 }
 
-void UVoxelChunk::Unload()
+void UVoxelChunkComponent::Unload()
 {
 	DeleteTasks();
 
 	// Needed because octree is only partially updated when Unload is called
 	Render->AddTransitionCheck(this);
 
-	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &UVoxelChunk::Delete, Render->World->DeletionDelay + KINDA_SMALL_NUMBER, false);
+	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &UVoxelChunkComponent::Delete, Render->World->DeletionDelay + KINDA_SMALL_NUMBER, false);
 
 	// Cancel any update
 	Render->RemoveFromQueues(this);
 }
 
-void UVoxelChunk::Delete()
+void UVoxelChunkComponent::Delete()
 {
 	// In case delete is called directly
 	DeleteTasks();
@@ -172,7 +172,7 @@ void UVoxelChunk::Delete()
 	CurrentOctree.Reset();
 }
 
-void UVoxelChunk::OnMeshComplete(FProcMeshSection& InSection)
+void UVoxelChunkComponent::OnMeshComplete(FProcMeshSection& InSection)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 
@@ -181,7 +181,7 @@ void UVoxelChunk::OnMeshComplete(FProcMeshSection& InSection)
 	Render->AddApplyNewMesh(this);
 }
 
-void UVoxelChunk::ApplyNewMesh()
+void UVoxelChunkComponent::ApplyNewMesh()
 {
 	// TODO
 	//if (CurrentOctree->Depth <= Render->World->MaxGrassDepth)
@@ -205,17 +205,17 @@ void UVoxelChunk::ApplyNewMesh()
 	UNavigationSystem::UpdateComponentInNavOctree(*this);
 }
 
-void UVoxelChunk::SetVoxelMaterial(UMaterialInterface* Material)
+void UVoxelChunkComponent::SetVoxelMaterial(UMaterialInterface* Material)
 {
 	SetMaterial(0, Material);
 }
 
-bool UVoxelChunk::HasChunkHigherRes(TransitionDirection Direction)
+bool UVoxelChunkComponent::HasChunkHigherRes(TransitionDirection Direction)
 {
 	return CurrentOctree->Depth != 0 && ChunkHasHigherRes[Direction];
 }
 
-bool UVoxelChunk::UpdateFoliage()
+bool UVoxelChunkComponent::UpdateFoliage()
 {
 	if (FoliageTasks.Num() == 0)
 	{
@@ -249,7 +249,7 @@ bool UVoxelChunk::UpdateFoliage()
 }
 
 
-void UVoxelChunk::OnFoliageComplete()
+void UVoxelChunkComponent::OnFoliageComplete()
 {
 	CompletedFoliageTaskCount++;
 	if (CompletedFoliageTaskCount == FoliageTasks.Num())
@@ -258,13 +258,13 @@ void UVoxelChunk::OnFoliageComplete()
 	}
 }
 
-void UVoxelChunk::OnAllFoliageComplete()
+void UVoxelChunkComponent::OnAllFoliageComplete()
 {
 	Render->AddApplyNewFoliage(this);
 	CompletedFoliageTaskCount = 0;
 }
 
-void UVoxelChunk::ApplyNewFoliage()
+void UVoxelChunkComponent::ApplyNewFoliage()
 {
 	for (int i = 0; i < FoliageComponents.Num(); i++)
 	{
@@ -341,7 +341,12 @@ void UVoxelChunk::ApplyNewFoliage()
 }
 
 
-void UVoxelChunk::DeleteTasks()
+void UVoxelChunkComponent::Serialize(FArchive& Ar)
+{
+
+}
+
+void UVoxelChunkComponent::DeleteTasks()
 {
 	if (MeshBuilder)
 	{
@@ -363,7 +368,7 @@ void UVoxelChunk::DeleteTasks()
 	CompletedFoliageTaskCount = 0;
 }
 
-void UVoxelChunk::CreateBuilder()
+void UVoxelChunkComponent::CreateBuilder()
 {
 	check(!Builder);
 	Builder = new FVoxelPolygonizer(

@@ -3,7 +3,7 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelThread.h"
 #include "VoxelData.h"
-#include "VoxelChunk.h"
+#include "VoxelChunkComponent.h"
 #include "VoxelPolygonizer.h"
 #include "InstancedStaticMesh.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -11,7 +11,7 @@
 #include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 
 
-FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunk* Chunk)
+FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
 	, Material(Material)
@@ -206,7 +206,7 @@ void FAsyncFoliageTask::DoWork()
 
 
 
-FAsyncPolygonizerTask::FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxelChunk* Chunk)
+FAsyncPolygonizerTask::FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxelChunkComponent* Chunk)
 	: Builder(InBuilder)
 	, Chunk(Chunk)
 {

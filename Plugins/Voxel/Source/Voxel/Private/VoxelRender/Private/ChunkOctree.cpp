@@ -1,6 +1,6 @@
 #include "VoxelPrivatePCH.h"
 #include "ChunkOctree.h"
-#include "VoxelChunk.h"
+#include "VoxelChunkComponent.h"
 #include "Engine/World.h"
 #include "VoxelInvokerComponent.h"
 #include "Math/NumericLimits.h"
@@ -141,7 +141,7 @@ TWeakPtr<FChunkOctree> FChunkOctree::GetLeaf(FIntVector PointPosition)
 	}
 }
 
-UVoxelChunk* FChunkOctree::GetVoxelChunk() const
+UVoxelChunkComponent* FChunkOctree::GetVoxelChunk() const
 {
 	return VoxelChunk;
 }

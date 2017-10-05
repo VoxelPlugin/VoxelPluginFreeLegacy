@@ -9,7 +9,7 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 
 class FVoxelPolygonizer;
-class UVoxelChunk;
+class UVoxelChunkComponent;
 class FVoxelData;
 class AVoxelWorldGenerator;
 
@@ -26,7 +26,7 @@ public:
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-	FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunk* Chunk);
+	FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk);
 
 	void DoWork();
 
@@ -37,7 +37,7 @@ public:
 
 
 private:
-	UVoxelChunk* Chunk;
+	UVoxelChunkComponent* Chunk;
 
 	FProcMeshSection const Section;
 	uint8 const Material;
@@ -56,9 +56,9 @@ class FAsyncPolygonizerTask : public FNonAbandonableTask
 {
 public:
 	FVoxelPolygonizer* Builder;
-	UVoxelChunk* Chunk;
+	UVoxelChunkComponent* Chunk;
 
-	FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxelChunk* Chunk);
+	FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxelChunkComponent* Chunk);
 	void DoWork();
 
 	FORCEINLINE TStatId GetStatId() const

@@ -2,7 +2,7 @@
 #include "CoreMinimal.h"
 #include "Octree.h"
 
-class UVoxelChunk;
+class UVoxelChunkComponent;
 class FVoxelRender;
 class UVoxelInvokerComponent;
 
@@ -40,7 +40,7 @@ public:
 	 * Get the VoxelChunk of this
 	 * @return	VoxelChunk; can be nullptr
 	 */
-	UVoxelChunk* GetVoxelChunk() const;
+	UVoxelChunkComponent* GetVoxelChunk() const;
 
 	/**
 	* Get direct child at position. Must not be leaf
@@ -67,7 +67,7 @@ private:
 	bool bHasChunk;
 
 	// Pointer to the chunk
-	UVoxelChunk* VoxelChunk;
+	UVoxelChunkComponent* VoxelChunk;
 
 	/**
 	 * Create the VoxelChunk
