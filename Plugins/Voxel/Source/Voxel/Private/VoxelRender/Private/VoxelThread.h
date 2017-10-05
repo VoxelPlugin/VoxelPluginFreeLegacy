@@ -11,6 +11,7 @@
 class FVoxelPolygonizer;
 class UVoxelChunk;
 class FVoxelData;
+class AVoxelWorldGenerator;
 
 /**
  * Thread to create foliage
@@ -25,7 +26,7 @@ public:
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-	FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, float VoxelSize, FIntVector ChunkPosition, int Seed, UVoxelChunk* Chunk);
+	FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunk* Chunk);
 
 	void DoWork();
 
@@ -43,6 +44,8 @@ private:
 	float const VoxelSize;
 	FIntVector const ChunkPosition;
 	int const Seed;
+	AVoxelWorldGenerator* const Generator;
+	AVoxelWorld* const World;
 };
 
 

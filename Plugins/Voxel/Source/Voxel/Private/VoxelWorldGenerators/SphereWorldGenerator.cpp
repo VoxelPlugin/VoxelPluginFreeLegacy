@@ -31,3 +31,8 @@ void ASphereWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 	LocalRadius = Radius / VoxelWorld->GetTransform().GetScale3D().X;
 }
+
+FVector ASphereWorldGenerator::GetUpVector(int X, int Y, int Z)
+{
+	return FVector(X, Y, Z).GetSafeNormal();
+}

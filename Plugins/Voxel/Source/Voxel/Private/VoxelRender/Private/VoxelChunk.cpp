@@ -227,7 +227,13 @@ bool UVoxelChunk::UpdateFoliage()
 			{
 				if (GrassVariety.CullDepth >= CurrentOctree->Depth)
 				{
-					FAsyncTask<FAsyncFoliageTask>* FoliageTask = new FAsyncTask<FAsyncFoliageTask>(Section, GrassVariety, Index, Render->World->GetVoxelSize(), CurrentOctree->GetMinimalCornerPosition(), 10, this);
+					FAsyncTask<FAsyncFoliageTask>* FoliageTask = new FAsyncTask<FAsyncFoliageTask>(
+						Section
+						, GrassVariety
+						, Index
+						, Render->World
+						, CurrentOctree->GetMinimalCornerPosition()
+						, this);
 
 					FoliageTask->StartBackgroundTask(Render->FoliageThreadPool);
 					FoliageTasks.Add(FoliageTask);

@@ -165,6 +165,16 @@ void AVoxelWorld::UpdateVoxelModifiers()
 	DestroyWorld();
 }
 
+AVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
+{
+	return InstancedWorldGenerator;
+}
+
+int32 AVoxelWorld::GetSeed()
+{
+	return Seed;
+}
+
 FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
 {
 	FVector P = GetTransform().InverseTransformPosition(Position);
