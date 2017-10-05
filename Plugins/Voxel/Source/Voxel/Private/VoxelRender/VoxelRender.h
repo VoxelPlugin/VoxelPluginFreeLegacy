@@ -22,6 +22,7 @@ public:
 
 
 	FVoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 FoliageThreadCount);
+	~FVoxelRender();
 
 
 	void Tick(float DeltaTime);

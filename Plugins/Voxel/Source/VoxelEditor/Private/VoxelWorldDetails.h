@@ -28,8 +28,8 @@ private:
 	FReply OnUpdateVoxelModifiers();
 
 private:
-	void CreateEditorWorld();
+	//void CreateEditorWorld();
 
 	TWeakObjectPtr<AVoxelWorld> World;
-	TWeakObjectPtr<AVoxelWorldEditor> EditorWorld;
+	//TWeakObjectPtr<AVoxelWorldEditor> EditorWorld;
 };

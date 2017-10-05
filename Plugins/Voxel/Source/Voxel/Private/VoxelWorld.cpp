@@ -9,6 +9,9 @@
 #include "FlatWorldGenerator.h"
 #include "VoxelInvokerComponent.h"
 #include "VoxelModifier.h"
+#include "VoxelWorldEditor.h"
+
+#include "VoxelRender/Private/VoxelChunk.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 
@@ -51,7 +54,10 @@ void AVoxelWorld::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CreateWorld();
+	if (!IsCreated())
+	{
+		CreateWorld();
+	}
 
 	bComputeCollisions = true;
 }
@@ -71,6 +77,17 @@ bool AVoxelWorld::ShouldTickIfViewportsOnly() const
 {
 	return true;
 }
+
+void AVoxelWorld::PostLoad()
+{
+	Super::PostLoad();
+
+	if (GetWorld())
+	{
+		CreateInEditor();
+	}
+}
+
 #endif
 
 float AVoxelWorld::GetValue(FIntVector Position) const
@@ -213,10 +230,14 @@ void AVoxelWorld::CreateWorld(bool bLoadFromSave)
 	SetActorScale3D(FVector::OneVector * VoxelSize);
 
 	// Delete existing components
-	/*for (auto Component : GetComponentsByClass(UActorComponent::StaticClass()))
+	for (auto Component : GetComponentsByClass(UVoxelChunk::StaticClass()))
 	{
 		Component->DestroyComponent();
-	}*/
+	}
+	for (auto Component : GetComponentsByClass(UHierarchicalInstancedStaticMeshComponent::StaticClass()))
+	{
+		Component->DestroyComponent();
+	}
 
 	check(!Data);
 	check(!Render);
@@ -273,8 +294,31 @@ void AVoxelWorld::DestroyWorld()
 	bIsCreated = false;
 }
 
-void AVoxelWorld::CreateInEditor(TWeakObjectPtr<UVoxelInvokerComponent> CameraInvoker)
+void AVoxelWorld::CreateInEditor()
 {
+	// Create/Find VoxelWorldEditor
+	AVoxelWorldEditor* VoxelWorldEditor = nullptr;
+
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorldEditor::StaticClass(), FoundActors);
+
+	for (auto Actor : FoundActors)
+	{
+		auto VoxelWorldEditorActor = Cast<AVoxelWorldEditor>(Actor);
+		if (VoxelWorldEditorActor)
+		{
+			VoxelWorldEditor = VoxelWorldEditorActor;
+		}
+	}
+	if (!VoxelWorldEditor)
+	{
+		// else spawn
+		VoxelWorldEditor = GetWorld()->SpawnActor<AVoxelWorldEditor>();
+	}
+
+	VoxelWorldEditor->Init(this);
+
+
 	if (IsCreated())
 	{
 		DestroyWorld();
@@ -283,7 +327,7 @@ void AVoxelWorld::CreateInEditor(TWeakObjectPtr<UVoxelInvokerComponent> CameraIn
 
 	bComputeCollisions = false;
 
-	AddInvoker(CameraInvoker);
+	AddInvoker(VoxelWorldEditor->GetInvoker());
 
 	UpdateAll(true);
 }

@@ -9,7 +9,7 @@
 class UVoxelInvokerComponent;
 
 UCLASS(notplaceable, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "Hide"))
-class VOXELEDITOR_API AVoxelWorldEditor : public AActor
+class VOXEL_API AVoxelWorldEditor : public AActor
 {
 	GENERATED_BODY()
 
