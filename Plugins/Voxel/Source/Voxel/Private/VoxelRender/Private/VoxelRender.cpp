@@ -21,6 +21,12 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 Fo
 	MainOctree = MakeShareable(new FChunkOctree(this, FIntVector::ZeroValue, World->Depth, FOctree::GetTopIdFromDepth(World->Depth)));
 }
 
+FVoxelRender::~FVoxelRender()
+{
+	MeshThreadPool->Destroy();
+	FoliageThreadPool->Destroy();
+}
+
 void FVoxelRender::Tick(float DeltaTime)
 {
 	TimeSinceMeshUpdate += DeltaTime;

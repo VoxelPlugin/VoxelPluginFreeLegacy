@@ -47,6 +47,7 @@ namespace UnrealBuildTool.Rules
                     "Landscape",
                     "Sockets",
                     "Networking",
+                    "UnrealEd",
                 }
                 );
 

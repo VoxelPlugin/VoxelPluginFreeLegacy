@@ -40,7 +40,7 @@ public:
 	FVoxelData* Data;
 	FVoxelRender* Render;
 
-	void CreateInEditor(TWeakObjectPtr<UVoxelInvokerComponent> CameraInvoker);
+	void CreateInEditor();
 	void DestroyInEditor();
 
 	int Depth;
@@ -172,6 +172,7 @@ protected:
 	void Tick(float DeltaTime) override;
 #if WITH_EDITOR
 	bool ShouldTickIfViewportsOnly() const override;
+	void PostLoad() override;
 #endif
 
 private:

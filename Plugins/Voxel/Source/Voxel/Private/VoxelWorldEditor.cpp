@@ -1,8 +1,11 @@
 // Copyright 2017 Phyronnaz
+
+#include "VoxelPrivatePCH.h"
 #include "VoxelWorldEditor.h"
-#include "VoxelWorldDetails.h"
 #include "VoxelInvokerComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "LevelEditorViewport.h"
+#include "Editor.h"
 
 AVoxelWorldEditor::AVoxelWorldEditor()
 {
@@ -42,7 +45,7 @@ void AVoxelWorldEditor::Tick(float DeltaTime)
 		}
 		else
 		{
-			UE_LOG(VoxelEditorLog, Error, TEXT("Cannot find editor camera"));
+			UE_LOG(VoxelLog, Error, TEXT("Cannot find editor camera"));
 		}
 	}
 }
