@@ -12,11 +12,17 @@
 #include "Editor.h"
 #include "IDetailPropertyRow.h"
 #include "VoxelWorldEditor.h"
+#include "Engine.h"
 
 DEFINE_LOG_CATEGORY(VoxelEditorLog)
 
 FVoxelWorldDetails::FVoxelWorldDetails()
 	: EditorWorld(nullptr)
+{
+
+}
+
+FVoxelWorldDetails::~FVoxelWorldDetails()
 {
 
 }
@@ -103,11 +109,7 @@ FReply FVoxelWorldDetails::OnWorldToggle()
 		}
 		else
 		{
-			if (!EditorWorld.IsValid())
-			{
-				EditorWorld = World->GetWorld()->SpawnActor<AVoxelWorldEditor>();
-				EditorWorld->World = World;
-			}
+			CreateEditorWorld();
 
 			World->CreateInEditor(EditorWorld->GetInvoker());
 		}
@@ -131,11 +133,7 @@ FReply FVoxelWorldDetails::OnUpdateVoxelModifiers()
 
 		if (bRecreate)
 		{
-			if (!EditorWorld.IsValid())
-			{
-				EditorWorld = World->GetWorld()->SpawnActor<AVoxelWorldEditor>();
-				EditorWorld->World = World;
-			}
+			CreateEditorWorld();
 
 			World->CreateInEditor(EditorWorld->GetInvoker());
 		}
@@ -153,4 +151,27 @@ FReply FVoxelWorldDetails::OnUpdateVoxelModifiers()
 	}
 
 	return FReply::Handled();
+}
+
+void FVoxelWorldDetails::CreateEditorWorld()
+{
+	if (!EditorWorld.IsValid() && World.IsValid())
+	{
+		TArray<AActor*> FoundActors;
+		UGameplayStatics::GetAllActorsOfClass(World->GetWorld(), AVoxelWorldEditor::StaticClass(), FoundActors);
+
+		for (auto Actor : FoundActors)
+		{
+			auto EditorWorldActor = Cast<AVoxelWorldEditor>(Actor);
+			if (EditorWorldActor)
+			{
+				EditorWorld = EditorWorldActor;
+				return;
+			}
+		}
+
+		// else spawn
+		EditorWorld = World->GetWorld()->SpawnActor<AVoxelWorldEditor>();
+		EditorWorld->Init(World);
+	}
 }

@@ -52,4 +52,10 @@ bool AVoxelWorldEditor::ShouldTickIfViewportsOnly() const
 {
 	return true;
 }
+
+void AVoxelWorldEditor::Init(TWeakObjectPtr<AVoxelWorld> NewWorld)
+{
+	World = NewWorld;
+}
+
 #endif

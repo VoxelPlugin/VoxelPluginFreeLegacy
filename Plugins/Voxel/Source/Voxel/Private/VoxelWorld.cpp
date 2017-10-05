@@ -212,6 +212,12 @@ void AVoxelWorld::CreateWorld(bool bLoadFromSave)
 
 	SetActorScale3D(FVector::OneVector * VoxelSize);
 
+	// Delete existing components
+	/*for (auto Component : GetComponentsByClass(UActorComponent::StaticClass()))
+	{
+		Component->DestroyComponent();
+	}*/
+
 	check(!Data);
 	check(!Render);
 

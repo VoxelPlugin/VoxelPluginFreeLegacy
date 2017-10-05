@@ -23,10 +23,12 @@ public:
 	bool ShouldTickIfViewportsOnly() const override;
 #endif
 
-	TWeakObjectPtr<AVoxelWorld> World;
+	void Init(TWeakObjectPtr<AVoxelWorld> NewWorld);
 
 private:
 	UPROPERTY()
 		UVoxelInvokerComponent* Invoker;
+
+	TWeakObjectPtr<AVoxelWorld> World;
 
 };
