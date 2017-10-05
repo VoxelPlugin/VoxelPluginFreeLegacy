@@ -32,7 +32,12 @@ public:
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z);
 
 	/**
-	 * If need reference to Voxel World
+	 * If you need a reference to Voxel World
 	 */
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld);
+
+	/**
+	 * World up vector at position
+	 */
+	virtual FVector GetUpVector(int X, int Y, int Z);
 };

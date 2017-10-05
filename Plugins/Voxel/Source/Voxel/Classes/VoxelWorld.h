@@ -162,6 +162,10 @@ public:
 
 	void UpdateVoxelModifiers();
 
+	AVoxelWorldGenerator* GetWorldGenerator();
+
+	int32 GetSeed();
+
 protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;
@@ -178,6 +182,9 @@ private:
 	// Size of a voxel in cm
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay, meta = (DisplayName = "Voxel Size"))
 		float NewVoxelSize;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+		int32 Seed;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		int MeshThreadCount;

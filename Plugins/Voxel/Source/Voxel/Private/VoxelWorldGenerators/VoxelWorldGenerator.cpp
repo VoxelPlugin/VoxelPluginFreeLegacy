@@ -17,3 +17,8 @@ void AVoxelWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 
 }
+
+FVector AVoxelWorldGenerator::GetUpVector(int X, int Y, int Z)
+{
+	return FVector::UpVector;
+}

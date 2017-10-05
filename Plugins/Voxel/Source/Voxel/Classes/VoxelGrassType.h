@@ -15,15 +15,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = Grass)
 		UStaticMesh* GrassMesh;
 
-	/* Instances per 10 square meters. */
+	/** Instances per 10 square meters. */
 	UPROPERTY(EditAnywhere, Category = Grass)
 		float GrassDensity;
 
-	/* Inclusive max depth of chunks that render this */
+	/** Inclusive max depth of chunks that render this */
 	UPROPERTY(EditAnywhere, Category = Grass)
 		int32 CullDepth;
 
-	/* The distance where instances will begin to fade out if using a PerInstanceFadeAmount material node. 0 disables. */
+	/** The distance where instances will begin to fade out if using a PerInstanceFadeAmount material node. 0 disables. */
 	UPROPERTY(EditAnywhere, Category = Grass)
 		int32 StartCullDistance;
 
@@ -65,6 +65,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = Grass)
 		bool AlignToSurface;
 
+	/** Max angle between grass up vector and world generator up vector in radian */
+	UPROPERTY(EditAnywhere, Category = Grass, meta = (UIMin = "0", UIMax = "3.14159265359"))
+		float MaxAngleWithWorldUp;
+
 	/**
 	* Lighting channels that the grass will be assigned. Lights with matching channels will affect the grass.
 	* These channels only apply to opaque materials, direct lighting, and dynamic lighting and shadowing.
@@ -89,6 +93,7 @@ public:
 		, ScaleZ(1.0f, 1.0f)
 		, RandomRotation(true)
 		, AlignToSurface(true)
+		, MaxAngleWithWorldUp(3.14159265359)
 		, bReceivesDecals(true)
 	{
 	}
