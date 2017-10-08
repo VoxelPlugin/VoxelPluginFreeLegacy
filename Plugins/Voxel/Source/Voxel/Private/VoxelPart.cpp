@@ -29,7 +29,7 @@ AVoxelPart::AVoxelPart()
 	AutoDisableComponent->bAutoFindComponent = false;
 }
 
-void AVoxelPart::Init(FVoxelData* Data, AVoxelWorld* World)
+void AVoxelPart::Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorld* World)
 {
 	check(Data);
 
@@ -67,7 +67,7 @@ void AVoxelPart::Init(FVoxelData* Data, AVoxelWorld* World)
 				}
 
 				PrimaryMesh->SetProcMeshSection(SectionIndex, *Section);
-				PrimaryMesh->SetMaterial(SectionIndex, World->VoxelMaterial);
+				PrimaryMesh->SetMaterial(SectionIndex, Material);
 				PrimaryMesh->AddCollisionConvexMesh(Vertice);
 				SectionIndex++;
 			}

@@ -18,5 +18,4 @@ class VOXEL_API AVoxelModifier : public AActor
 
 public:
 	virtual void ApplyToWorld(AVoxelWorld* World) {};
-	virtual void Render(FVector WorldPosition, float VoxelSize) {};
 };

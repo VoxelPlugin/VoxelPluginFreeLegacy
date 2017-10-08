@@ -9,6 +9,7 @@
 
 class AVoxelWorld;
 class FVoxelData;
+class AVoxelPart;
 
 /**
 *
@@ -24,6 +25,22 @@ public:
 	UPROPERTY(EditAnywhere)
 		TSubclassOf<ALandscapeVoxelAsset> Landscape;
 
+	UPROPERTY(EditAnywhere)
+		AVoxelWorld* PreviewWorld;
+
+	UPROPERTY(EditAnywhere)
+		bool bEnablePreview;
+
 	virtual void ApplyToWorld(AVoxelWorld* World) override;
-	virtual void Render(FVector WorldPosition, float VoxelSize) override;
+
+protected:
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
+private:
+	UPROPERTY()
+		AVoxelPart* Part;
+
+	void UpdateRender();
 };
