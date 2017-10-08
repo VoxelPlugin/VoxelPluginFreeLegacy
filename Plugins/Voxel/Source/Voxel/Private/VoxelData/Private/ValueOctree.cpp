@@ -13,6 +13,17 @@ FValueOctree::FValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Posi
 
 }
 
+FValueOctree::~FValueOctree()
+{
+	if (bHasChilds)
+	{
+		for (auto Child : Childs)
+		{
+			delete Child;
+		}
+	}
+}
+
 bool FValueOctree::IsDirty() const
 {
 	return bIsDirty;

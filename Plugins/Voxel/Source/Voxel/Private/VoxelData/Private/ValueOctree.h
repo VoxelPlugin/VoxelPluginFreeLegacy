@@ -22,6 +22,7 @@ public:
 	 * @param	WorldGenerator	Generator of the current world
 	 */
 	FValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id);
+	~FValueOctree();
 
 	// Is the game multiplayer?
 	bool bMultiplayer;

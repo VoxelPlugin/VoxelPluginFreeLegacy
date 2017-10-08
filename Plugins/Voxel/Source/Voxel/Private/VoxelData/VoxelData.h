@@ -81,7 +81,7 @@ public:
 	 * Get save array of this world
 	 * @return SaveArray
 	 */
-	FVoxelWorldSave GetSave() const;
+	void GetSave(FVoxelWorldSave& OutSave) const;
 
 	/**
 	 * Load this world from save array
@@ -89,7 +89,7 @@ public:
 	 * @param	World		VoxelWorld
 	 * @param	bReset		Reset all chunks?
 	 */
-	void LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset);
+	void LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset);
 
 	/**
 	 * Get sliced diff arrays to allow network transmission

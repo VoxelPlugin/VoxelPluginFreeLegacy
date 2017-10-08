@@ -58,3 +58,12 @@ public:
 			|| (Index1 == Other.Index2 && Index2 == Other.Index1);
 	}
 };
+
+FORCEINLINE FArchive& operator<<(FArchive &Ar, FVoxelMaterial& Material)
+{
+	Ar << Material.Index1;
+	Ar << Material.Index2;
+	Ar << Material.Alpha;
+
+	return Ar;
+}

@@ -54,7 +54,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Toggle world rendering")))
+		.Text(FText::FromString(TEXT("Reload world")))
 		]
 	.ValueContent()
 		.MaxDesiredWidth(125.f)
@@ -64,11 +64,11 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked(this, &FVoxelWorldDetails::OnWorldToggle)
+		.OnClicked(this, &FVoxelWorldDetails::OnWorldReload)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Toggle")))
+		.Text(FText::FromString(TEXT("Reload")))
 		]
 		];
 
@@ -97,56 +97,37 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		];
 }
 
-FReply FVoxelWorldDetails::OnWorldToggle()
+FReply FVoxelWorldDetails::OnWorldReload()
 {
-	/*if (World.IsValid())
+	if (World.IsValid())
 	{
 		if (World->IsCreated())
 		{
 			World->DestroyInEditor();
+			World->CreateInEditor();
 		}
-		else
-		{
-			CreateEditorWorld();
-
-			World->CreateInEditor(EditorWorld->GetInvoker());
-		}
-	}*/
+	}
 
 	return FReply::Handled();
 }
 
 FReply FVoxelWorldDetails::OnUpdateVoxelModifiers()
 {
-	/*if (World.IsValid() && World->GetWorld()->WorldType == EWorldType::Editor)
+	if (World.IsValid() && World->GetWorld()->WorldType == EWorldType::Editor)
 	{
-		bool bRecreate = false;
 		if (World->IsCreated())
 		{
-			bRecreate = true;
 			World->DestroyInEditor();
 		}
 
 		World->UpdateVoxelModifiers();
 
-		if (bRecreate)
-		{
-			CreateEditorWorld();
-
-			World->CreateInEditor(EditorWorld->GetInvoker());
-		}
+		World->CreateInEditor();
 	}
 	else
 	{
-		if (!World.IsValid())
-		{
-			UE_LOG(VoxelEditorLog, Error, TEXT("Invalid World"));
-		}
-		else
-		{
-			UE_LOG(VoxelEditorLog, Error, TEXT("Not in editor"));
-		}
-	}*/
+		UE_LOG(VoxelEditorLog, Error, TEXT("Not in editor"));
+	}
 
 	return FReply::Handled();
 }

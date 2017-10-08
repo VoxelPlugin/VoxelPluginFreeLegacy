@@ -133,9 +133,9 @@ void AVoxelWorld::SetMaterial(FIntVector Position, FVoxelMaterial Material)
 }
 
 
-FVoxelWorldSave AVoxelWorld::GetSave() const
+void AVoxelWorld::GetSave(FVoxelWorldSave& OutSave) const
 {
-	return Data->GetSave();
+	Data->GetSave(OutSave);
 }
 
 void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
@@ -152,7 +152,7 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Current Depth is %d while Save one is %d"), Depth, Save.Depth);
+		UE_LOG(VoxelLog, Error, TEXT("LoadFromSave: Current Depth is %d while Save one is %d"), Depth, Save.Depth);
 	}
 }
 
@@ -160,8 +160,10 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 
 void AVoxelWorld::UpdateVoxelModifiers()
 {
-	check(!IsCreated());
-
+	if (IsCreated())
+	{
+		DestroyInEditor();
+	}
 	CreateWorld(false);
 
 	TArray<AActor*> FoundActors;
@@ -177,9 +179,11 @@ void AVoxelWorld::UpdateVoxelModifiers()
 		}
 	}
 
-	WorldSave = GetSave();
+	GetSave(WorldSave);
 
 	DestroyWorld();
+
+	CreateInEditor();
 }
 
 AVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
