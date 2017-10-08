@@ -935,7 +935,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 
 			Part->SetActorScale3D(World->GetActorScale());
 
-			Part->Init(CurrentData.Get(), World);
+			Part->Init(CurrentData.Get(), World->VoxelMaterial, World);
 		}
 	}
 }

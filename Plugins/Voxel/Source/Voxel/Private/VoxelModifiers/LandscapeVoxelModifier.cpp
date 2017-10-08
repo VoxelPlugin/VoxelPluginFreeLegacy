@@ -2,8 +2,12 @@
 #include "VoxelModifiers/LandscapeVoxelModifier.h"
 #include "VoxelWorld.h"
 #include "Components/CapsuleComponent.h"
+#include "EmptyWorldGenerator.h"
+#include "VoxelPart.h"
+#include "Engine/World.h"
 
 ALandscapeVoxelModifier::ALandscapeVoxelModifier()
+	: Part(nullptr)
 {
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
 	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
@@ -14,31 +18,89 @@ ALandscapeVoxelModifier::ALandscapeVoxelModifier()
 
 void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 {
-	check(Landscape);
-
-	ALandscapeVoxelAsset* InstancedLandscape = Landscape.GetDefaultObject();
-
-	check(InstancedLandscape);
-
-	InstancedLandscape->Init(World->GetVoxelSize());
-
-	FIntVector Position = World->GlobalToLocal(GetActorLocation());
-
-	for (int X = 0; X < InstancedLandscape->Size; X++)
+	if (Landscape)
 	{
-		for (int Y = 0; Y < InstancedLandscape->Size; Y++)
+		ALandscapeVoxelAsset* InstancedLandscape = Landscape.GetDefaultObject();
+
+		check(InstancedLandscape);
+
+		InstancedLandscape->Init(World->GetVoxelSize());
+
+		FIntVector Position = World->GlobalToLocal(GetActorLocation());
+
+		for (int X = 0; X < InstancedLandscape->Size; X++)
 		{
-			for (int Z = 0; Z < InstancedLandscape->Size; Z++)
+			for (int Y = 0; Y < InstancedLandscape->Size; Y++)
 			{
-				FIntVector CurrentPosition = Position + FIntVector(X, Y, Z);
-				World->SetValue(CurrentPosition, InstancedLandscape->GetDefaultValue(X, Y, Z));
-				World->SetMaterial(CurrentPosition, InstancedLandscape->GetDefaultMaterial(X, Y, Z));
+				for (int Z = 0; Z < InstancedLandscape->Size; Z++)
+				{
+					FIntVector CurrentPosition = Position + FIntVector(X, Y, Z);
+					World->SetValue(CurrentPosition, InstancedLandscape->GetDefaultValue(X, Y, Z));
+					World->SetMaterial(CurrentPosition, InstancedLandscape->GetDefaultMaterial(X, Y, Z));
+				}
 			}
 		}
 	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("LandscapeVoxelModifier: no landscape selected"));
+	}
 }
 
-void ALandscapeVoxelModifier::Render(FVector WorldPosition, float VoxelSize)
+void ALandscapeVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
+	Super::PostEditChangeProperty(PropertyChangedEvent);
 
+	if (GetWorld() && bEnablePreview)
+	{
+		UpdateRender();
+	}
+}
+
+void ALandscapeVoxelModifier::UpdateRender()
+{
+	if (Landscape && PreviewWorld)
+	{
+		ALandscapeVoxelAsset* InstancedLandscape = Landscape.GetDefaultObject();
+
+		check(InstancedLandscape);
+
+		InstancedLandscape->Init(PreviewWorld->GetVoxelSize());
+
+		const uint8 Depth = FMath::CeilToInt(FMath::Log2(InstancedLandscape->Size / 16.f));
+		AVoxelWorldGenerator* Generator = GetWorld()->SpawnActor<AEmptyWorldGenerator>(FVector::ZeroVector, FRotator::ZeroRotator);
+
+		FVoxelData Data(Depth, Generator);
+
+		const int S = Data.Size() / 2;
+		for (int X = 0; X < InstancedLandscape->Size; X++)
+		{
+			for (int Y = 0; Y < InstancedLandscape->Size; Y++)
+			{
+				for (int Z = 0; Z < InstancedLandscape->Size; Z++)
+				{
+					Data.SetValue(X - S, Y - S, Z - S, InstancedLandscape->GetDefaultValue(X, Y, Z));
+					Data.SetMaterial(X - S, Y - S, Z - S, InstancedLandscape->GetDefaultMaterial(X, Y, Z));
+				}
+			}
+		}
+
+		if (Part)
+		{
+			Part->Destroy();
+		}
+
+		Part = GetWorld()->SpawnActor<AVoxelPart>(FVector::ZeroVector, FRotator::ZeroRotator);
+		Part->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+		Part->SetActorRelativeLocation(FVector::OneVector * S * PreviewWorld->GetVoxelSize());
+		Part->SetActorRotation(FRotator::ZeroRotator);
+		Part->SetActorScale3D(PreviewWorld->GetActorScale());
+
+		Part->Init(&Data, PreviewWorld->VoxelMaterial);
+		Generator->Destroy();
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("LandscapeVoxelModifier: no landscape or no world selected"));
+	}
 }
