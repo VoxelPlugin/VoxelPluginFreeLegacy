@@ -148,7 +148,7 @@ public:
 	 * @return	SaveArray
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FVoxelWorldSave GetSave() const;
+		void GetSave(FVoxelWorldSave& OutSave) const;
 	/**
 	 * Load world from save
 	 * @param	Save	Save to load from

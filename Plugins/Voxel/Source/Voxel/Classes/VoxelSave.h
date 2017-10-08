@@ -7,25 +7,27 @@
 #include "VoxelSave.generated.h"
 
 
-USTRUCT(BlueprintType, Category = Voxel)
-struct VOXEL_API FVoxelChunkSave
+struct FVoxelChunkSave
 {
-	GENERATED_BODY()
+	uint64 Id;
 
-public:
-	UPROPERTY()
-		uint64 Id;
+	TArray<float, TFixedAllocator<16 * 16 * 16>> Values;
 
-	UPROPERTY(VisibleAnywhere)
-		TArray<float> Values;
-
-	UPROPERTY(VisibleAnywhere)
-		TArray<FVoxelMaterial> Materials;
+	TArray<FVoxelMaterial, TFixedAllocator<16 * 16 * 16>> Materials;
 
 	FVoxelChunkSave();
 
 	FVoxelChunkSave(uint64 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FVoxelMaterial, TFixedAllocator<16 * 16 * 16>>& Materials);
 };
+
+FORCEINLINE FArchive& operator<<(FArchive &Ar, FVoxelChunkSave& Save)
+{
+	Ar << Save.Id;
+	Ar << Save.Values;
+	Ar << Save.Materials;
+
+	return Ar;
+}
 
 USTRUCT(BlueprintType, Category = Voxel)
 struct VOXEL_API FVoxelWorldSave
@@ -36,16 +38,18 @@ public:
 	UPROPERTY(VisibleAnywhere)
 		int Depth;
 
-	UPROPERTY(VisibleAnywhere)
-		TArray<FVoxelChunkSave> Chunks;
+	UPROPERTY()
+		TArray<uint8> Data;
 
 
 	FVoxelWorldSave();
 
-	FVoxelWorldSave(int Depth, std::list<TSharedRef<FVoxelChunkSave>> ChunksList);
+	void Init(int NewDepth, std::list<TSharedRef<FVoxelChunkSave>> ChunksList);
 
 	std::list<FVoxelChunkSave> GetChunksList();
 };
+
+
 USTRUCT()
 struct FVoxelValueDiff
 {

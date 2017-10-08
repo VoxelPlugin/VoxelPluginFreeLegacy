@@ -88,14 +88,14 @@ FORCEINLINE void FVoxelData::ClampToWorld(int& X, int& Y, int& Z) const
 	Z = FMath::Clamp(Z, -S, S - 1);
 }
 
-FVoxelWorldSave FVoxelData::GetSave() const
+void FVoxelData::GetSave(FVoxelWorldSave& OutSave) const
 {
 	std::list<TSharedRef<FVoxelChunkSave>> SaveList;
 	MainOctree->AddDirtyChunksToSaveList(SaveList);
-	return FVoxelWorldSave(Depth, SaveList);
+	OutSave.Init(Depth, SaveList);
 }
 
-void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset)
+void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset)
 {
 	if (bReset)
 	{
