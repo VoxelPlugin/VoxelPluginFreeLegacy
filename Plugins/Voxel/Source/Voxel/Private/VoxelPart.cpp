@@ -29,7 +29,7 @@ AVoxelPart::AVoxelPart()
 	AutoDisableComponent->bAutoFindComponent = false;
 }
 
-void AVoxelPart::Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorld* World)
+void AVoxelPart::Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorld* WorldForAutoDisable)
 {
 	check(Data);
 
@@ -75,7 +75,7 @@ void AVoxelPart::Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorl
 	}
 	AutoDisableComponent->bSimulatePhysics = true;
 	AutoDisableComponent->Component = PrimaryMesh;
-	AutoDisableComponent->World = World;
+	AutoDisableComponent->World = WorldForAutoDisable;
 	AutoDisableComponent->bAutoFindWorld = false;
 	AutoDisableComponent->CullDepth = 20;
 }

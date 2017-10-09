@@ -28,15 +28,17 @@ void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 
 		FIntVector Position = World->GlobalToLocal(GetActorLocation());
 
+		FVoxelData* Data = World->Data;
+
+		FValueOctree* LastOctree = nullptr;
+
 		for (int X = 0; X < InstancedLandscape->Size; X++)
 		{
 			for (int Y = 0; Y < InstancedLandscape->Size; Y++)
 			{
 				for (int Z = 0; Z < InstancedLandscape->Size; Z++)
 				{
-					FIntVector CurrentPosition = Position + FIntVector(X, Y, Z);
-					World->SetValue(CurrentPosition, InstancedLandscape->GetDefaultValue(X, Y, Z));
-					World->SetMaterial(CurrentPosition, InstancedLandscape->GetDefaultMaterial(X, Y, Z));
+					Data->SetValueAndMaterialNotThreadSafe(X + Position.X, Y + Position.Y, Z + Position.Z, InstancedLandscape->GetDefaultValue(X, Y, Z), InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
 				}
 			}
 		}
@@ -59,6 +61,8 @@ void ALandscapeVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& Prop
 
 void ALandscapeVoxelModifier::UpdateRender()
 {
+	return;
+
 	if (Landscape && PreviewWorld)
 	{
 		ALandscapeVoxelAsset* InstancedLandscape = Landscape.GetDefaultObject();
