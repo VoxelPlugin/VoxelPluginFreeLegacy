@@ -72,6 +72,15 @@ void FVoxelData::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 	MainOctree->GetLeaf(X, Y, Z)->SetMaterial(X, Y, Z, Material);
 }
 
+void FVoxelData::SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float Value, FVoxelMaterial Material, FValueOctree*& LastOctree)
+{
+	if (UNLIKELY(!LastOctree || !LastOctree->IsLeaf() || !LastOctree->IsInOctree(X, Y, Z)))
+	{
+		LastOctree = MainOctree->GetLeaf(X, Y, Z);
+	}
+	LastOctree->SetValueAndMaterialNotThreadSafe(X, Y, Z, Value, Material);
+}
+
 bool FVoxelData::IsInWorld(int X, int Y, int Z) const
 {
 	int S = Size() / 2;

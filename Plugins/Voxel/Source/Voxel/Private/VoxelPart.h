@@ -20,7 +20,7 @@ class AVoxelPart : public AActor
 public:
 	AVoxelPart();
 
-	void Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorld* World = nullptr);
+	void Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorld* WorldForAutoDisable = nullptr);
 
 private:
 	UPROPERTY(EditAnywhere)

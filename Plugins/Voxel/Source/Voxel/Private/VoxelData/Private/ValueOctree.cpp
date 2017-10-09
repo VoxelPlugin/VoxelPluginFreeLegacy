@@ -122,6 +122,40 @@ void FValueOctree::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 	}
 }
 
+void FValueOctree::SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float Value, FVoxelMaterial Material)
+{
+	check(IsLeaf());
+	check(IsInOctree(X, Y, Z));
+
+	bIsNetworkDirty = true;
+
+	if (Depth != 0)
+	{
+		CreateChilds();
+		bIsDirty = true; // IsDirty only when having childs (for multithreading)
+		GetChild(X, Y, Z)->SetValueAndMaterialNotThreadSafe(X, Y, Z, Value, Material);
+	}
+	else
+	{
+		if (!IsDirty())
+		{
+			SetAsDirty();
+		}
+
+		int LocalX, LocalY, LocalZ;
+		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
+
+		int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
+		Values[Index] = Value;
+		Materials[Index] = Material;
+
+		if (bMultiplayer)
+		{
+			DirtyValues.Add(Index);
+		}
+	}
+}
+
 void FValueOctree::AddDirtyChunksToSaveList(std::list<TSharedRef<FVoxelChunkSave>>& SaveList)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));

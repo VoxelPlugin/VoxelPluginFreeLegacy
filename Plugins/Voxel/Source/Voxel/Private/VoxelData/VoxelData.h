@@ -68,6 +68,8 @@ public:
 	 */
 	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
 
+	void SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float Value, FVoxelMaterial Material, FValueOctree*& LastOctree);
+	
 	/**
 	 * Is Position in this world?
 	 * @param	Position	Position in voxel space

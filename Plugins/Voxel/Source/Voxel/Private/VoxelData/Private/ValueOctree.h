@@ -58,6 +58,8 @@ public:
 	 */
 	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
 
+	void SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float Value, FVoxelMaterial Material);
+
 	/**
 	 * Add dirty chunks to SaveList
 	 * @param	SaveList		List to save chunks into
