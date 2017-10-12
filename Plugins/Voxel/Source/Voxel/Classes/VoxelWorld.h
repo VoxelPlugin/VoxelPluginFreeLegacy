@@ -53,7 +53,6 @@ public:
 	FORCEINLINE FVoxelData* GetData();
 	FORCEINLINE AVoxelWorldGenerator* GetWorldGenerator();
 	FORCEINLINE int32 GetSeed();
-	FORCEINLINE float GetMeshFPS();
 	FORCEINLINE float GetFoliageFPS();
 	FORCEINLINE UMaterialInterface* GetVoxelMaterial();
 	FORCEINLINE bool GetComputeTransitions();
@@ -168,9 +167,6 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 		float FoliageFPS;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-		float MeshFPS;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 		UMaterialInterface* VoxelMaterial;

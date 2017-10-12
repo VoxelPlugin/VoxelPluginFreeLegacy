@@ -20,7 +20,6 @@ AVoxelWorld::AVoxelWorld()
 	, bComputeTransitions(true)
 	, bIsCreated(false)
 	, FoliageFPS(15)
-	, MeshFPS(120)
 	, NewVoxelSize(100)
 	, MeshThreadCount(4)
 	, FoliageThreadCount(4)
@@ -203,11 +202,6 @@ AVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
 int32 AVoxelWorld::GetSeed()
 {
 	return Seed;
-}
-
-float AVoxelWorld::GetMeshFPS()
-{
-	return MeshFPS;
 }
 
 float AVoxelWorld::GetFoliageFPS()

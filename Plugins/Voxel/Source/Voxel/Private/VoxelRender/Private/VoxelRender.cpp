@@ -14,7 +14,6 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 	, Data(Data)
 	, MeshThreadPool(FQueuedThreadPool::Allocate())
 	, FoliageThreadPool(FQueuedThreadPool::Allocate())
-	, TimeSinceMeshUpdate(0)
 	, TimeSinceFoliageUpdate(0)
 {
 	// Add existing chunks
@@ -48,16 +47,10 @@ FVoxelRender::~FVoxelRender()
 
 void FVoxelRender::Tick(float DeltaTime)
 {
-	TimeSinceMeshUpdate += DeltaTime;
 	TimeSinceFoliageUpdate += DeltaTime;
 
 	UpdateLOD();
-
-	if (TimeSinceMeshUpdate > 1 / World->GetMeshFPS())
-	{
-		ApplyUpdates();
-		TimeSinceMeshUpdate = 0;
-	}
+	ApplyUpdates();
 
 	if (TimeSinceFoliageUpdate > 1 / World->GetFoliageFPS())
 	{
@@ -173,15 +166,11 @@ void FVoxelRender::ApplyUpdates()
 		{
 			bool bAsync = !IdsOfChunksToUpdateSynchronously.Contains(LockedChunk->Id);
 			bool bSuccess = LockedChunk->GetVoxelChunk()->Update(bAsync);
-			if (!bSuccess)
+
+			/*if (!bSuccess)
 			{
-				// if not async always succeed
-				Failed.push_front(Chunk);
-			}
-		}
-		else
-		{
-			UE_LOG(VoxelLog, Warning, TEXT("Invalid chunk in queue"));
+				UE_LOG(VoxelLog, Warning, TEXT("Chunk already updating"));
+			}*/
 		}
 	}
 	ChunksToUpdate.Reset();
@@ -189,12 +178,6 @@ void FVoxelRender::ApplyUpdates()
 
 	// See Init and Unload functions of AVoxelChunk
 	ApplyTransitionChecks();
-
-	// Add back chunks that were already updating
-	for (auto Chunk : Failed)
-	{
-		ChunksToUpdate.Add(Chunk);
-	}
 }
 
 void FVoxelRender::UpdateAll(bool bAsync)

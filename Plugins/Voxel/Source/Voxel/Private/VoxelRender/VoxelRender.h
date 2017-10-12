@@ -89,7 +89,6 @@ private:
 	std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> VoxelInvokerComponents;
 
 
-	float TimeSinceMeshUpdate;
 	float TimeSinceFoliageUpdate;
 
 	void ApplyFoliageUpdates();
