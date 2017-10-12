@@ -27,6 +27,7 @@ AVoxelWorld::AVoxelWorld()
 	, Render(nullptr)
 	, Data(nullptr)
 	, InstancedWorldGenerator(nullptr)
+	, VoxelWorldEditor(nullptr)
 	, bComputeCollisions(false)
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -160,7 +161,7 @@ void AVoxelWorld::UpdateVoxelModifiers()
 {
 	if (IsCreated())
 	{
-		DestroyInEditor();
+		DestroyWorld();
 	}
 	CreateWorld(false);
 
@@ -184,6 +185,16 @@ void AVoxelWorld::UpdateVoxelModifiers()
 	CreateInEditor();
 }
 
+AVoxelWorldEditor* AVoxelWorld::GetVoxelWorldEditor()
+{
+	return VoxelWorldEditor;
+}
+
+FVoxelData* AVoxelWorld::GetData()
+{
+	return Data;
+}
+
 AVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
 {
 	return InstancedWorldGenerator;
@@ -192,6 +203,36 @@ AVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
 int32 AVoxelWorld::GetSeed()
 {
 	return Seed;
+}
+
+float AVoxelWorld::GetMeshFPS()
+{
+	return MeshFPS;
+}
+
+float AVoxelWorld::GetFoliageFPS()
+{
+	return FoliageFPS;
+}
+
+UMaterialInterface* AVoxelWorld::GetVoxelMaterial()
+{
+	return VoxelMaterial;
+}
+
+bool AVoxelWorld::GetComputeTransitions()
+{
+	return bComputeTransitions;
+}
+
+bool AVoxelWorld::GetComputeCollisions()
+{
+	return bComputeCollisions;
+}
+
+float AVoxelWorld::GetDeletionDelay()
+{
+	return DeletionDelay;
 }
 
 FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
@@ -258,7 +299,7 @@ void AVoxelWorld::CreateWorld(bool bLoadFromSave)
 	Data = new FVoxelData(Depth, InstancedWorldGenerator);
 
 	// Create Render
-	Render = new FVoxelRender(this, MeshThreadCount, FoliageThreadCount);
+	Render = new FVoxelRender(this, this, Data, MeshThreadCount, FoliageThreadCount);
 
 	// Load from save
 	if (bLoadFromSave && WorldSave.Depth == Depth)
@@ -289,7 +330,7 @@ void AVoxelWorld::DestroyWorld()
 void AVoxelWorld::CreateInEditor()
 {
 	// Create/Find VoxelWorldEditor
-	AVoxelWorldEditor* VoxelWorldEditor = nullptr;
+	VoxelWorldEditor = nullptr;
 
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorldEditor::StaticClass(), FoundActors);
@@ -300,6 +341,7 @@ void AVoxelWorld::CreateInEditor()
 		if (VoxelWorldEditorActor)
 		{
 			VoxelWorldEditor = VoxelWorldEditorActor;
+			break;
 		}
 	}
 	if (!VoxelWorldEditor)

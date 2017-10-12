@@ -43,7 +43,7 @@ void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompo
 		return;
 	}
 
-	const FVector ChunkWorldPosition = Render->World->LocalToGlobal(Position);
+	const FVector ChunkWorldPosition = Render->GetGlobalPosition(Position);
 	const float ChunkDiagonal = Render->World->GetVoxelSize() * Size() / 2 * 1.73205080757 /* sqrt(3) */;
 
 	float MinDistance = MAX_flt;
@@ -232,7 +232,7 @@ TWeakPtr<FChunkOctree> FChunkOctree::GetAdjacentChunk(TransitionDirection Direct
 
 	FIntVector P = Position + L[Direction];
 
-	if (Render->World->IsInWorld(P))
+	if (Render->Data->IsInWorld(P.X, P.Y, P.Z))
 	{
 		return Render->GetChunkOctreeAt(P);
 	}

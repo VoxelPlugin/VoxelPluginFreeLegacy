@@ -8,26 +8,28 @@
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
 
-FVoxelRender::FVoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 FoliageThreadCount)
+FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 FoliageThreadCount)
 	: World(World)
+	, ChunksParent(ChunksParent)
+	, Data(Data)
 	, MeshThreadPool(FQueuedThreadPool::Allocate())
 	, FoliageThreadPool(FQueuedThreadPool::Allocate())
 	, TimeSinceMeshUpdate(0)
 	, TimeSinceFoliageUpdate(0)
 {
 	// Add existing chunks
-	for (auto Component : World->GetComponentsByClass(UVoxelChunkComponent::StaticClass()))
+	for (auto Component : ChunksParent->GetComponentsByClass(UVoxelChunkComponent::StaticClass()))
 	{
 		UVoxelChunkComponent* ChunkComponent = Cast<UVoxelChunkComponent>(Component);
 		if (ChunkComponent)
 		{
 			ChunkComponent->Delete();
-			ChunkComponent->SetVoxelMaterial(World->VoxelMaterial);
+			ChunkComponent->SetVoxelMaterial(World->GetVoxelMaterial());
 			InactiveChunks.push_front(ChunkComponent);
 		}
 	}
 	// Delete existing grass components
-	for (auto Component : World->GetComponentsByClass(UHierarchicalInstancedStaticMeshComponent::StaticClass()))
+	for (auto Component : ChunksParent->GetComponentsByClass(UHierarchicalInstancedStaticMeshComponent::StaticClass()))
 	{
 		Component->DestroyComponent();
 	}
@@ -35,7 +37,7 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 Fo
 	MeshThreadPool->Create(MeshThreadCount, 64 * 1024);
 	FoliageThreadPool->Create(FoliageThreadCount, 32 * 1024);
 
-	MainOctree = MakeShareable(new FChunkOctree(this, FIntVector::ZeroValue, World->Depth, FOctree::GetTopIdFromDepth(World->Depth)));
+	MainOctree = MakeShareable(new FChunkOctree(this, FIntVector::ZeroValue, Data->Depth, FOctree::GetTopIdFromDepth(Data->Depth)));
 }
 
 FVoxelRender::~FVoxelRender()
@@ -51,13 +53,13 @@ void FVoxelRender::Tick(float DeltaTime)
 
 	UpdateLOD();
 
-	if (TimeSinceMeshUpdate > 1 / World->MeshFPS)
+	if (TimeSinceMeshUpdate > 1 / World->GetMeshFPS())
 	{
 		ApplyUpdates();
 		TimeSinceMeshUpdate = 0;
 	}
 
-	if (TimeSinceFoliageUpdate > 1 / World->FoliageFPS)
+	if (TimeSinceFoliageUpdate > 1 / World->GetFoliageFPS())
 	{
 		ApplyFoliageUpdates();
 		TimeSinceFoliageUpdate = 0;
@@ -77,10 +79,10 @@ UVoxelChunkComponent* FVoxelRender::GetInactiveChunk()
 	UVoxelChunkComponent* Chunk;
 	if (InactiveChunks.empty())
 	{
-		Chunk = NewObject<UVoxelChunkComponent>(World);;
+		Chunk = NewObject<UVoxelChunkComponent>(ChunksParent);;
 		Chunk->OnComponentCreated();
 		Chunk->RegisterComponent();
-		Chunk->SetVoxelMaterial(World->VoxelMaterial);
+		Chunk->SetVoxelMaterial(World->GetVoxelMaterial());
 	}
 	else
 	{
@@ -115,11 +117,11 @@ void FVoxelRender::UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync)
 
 void FVoxelRender::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
 {
-	check(World->IsInWorld(Position));
+	check(Data->IsInWorld(Position.X, Position.Y, Position.Z));
 
-	int X = Position.X + World->Size() / 2;
-	int Y = Position.Y + World->Size() / 2;
-	int Z = Position.Z + World->Size() / 2;
+	int X = Position.X + Data->Size() / 2;
+	int Y = Position.Y + Data->Size() / 2;
+	int Z = Position.Z + Data->Size() / 2;
 
 	bool bXIsAtBorder = (X % 16 == 0) && (X != 0);
 	bool bYIsAtBorder = (Y % 16 == 0) && (Y != 0);
@@ -306,7 +308,7 @@ void FVoxelRender::ApplyNewFoliages()
 
 TWeakPtr<FChunkOctree> FVoxelRender::GetChunkOctreeAt(FIntVector Position) const
 {
-	check(World->IsInWorld(Position));
+	check(Data->IsInWorld(Position.X, Position.Y, Position.Z));
 	return MainOctree->GetLeaf(Position);
 }
 
@@ -330,4 +332,9 @@ void FVoxelRender::Delete()
 	{
 		Chunk->DestroyComponent();
 	}
+}
+
+FVector FVoxelRender::GetGlobalPosition(FIntVector LocalPosition)
+{
+	return World->LocalToGlobal(LocalPosition) + ChunksParent->GetActorLocation() - World->GetActorLocation();
 }

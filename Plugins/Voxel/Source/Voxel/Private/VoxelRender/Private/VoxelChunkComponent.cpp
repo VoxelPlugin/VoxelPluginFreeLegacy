@@ -41,8 +41,9 @@ void UVoxelChunkComponent::Init(TWeakPtr<FChunkOctree> NewOctree)
 
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
 
-	this->SetRelativeLocationAndRotation(Render->World->LocalToGlobal(NewPosition), FRotator::ZeroRotator);
-	this->SetRelativeScale3D(FVector::OneVector * Render->World->GetVoxelSize());
+	SetWorldLocationAndRotation(Render->GetGlobalPosition(NewPosition), FRotator::ZeroRotator);
+	SetAbsolute(false, false, false);
+	SetRelativeScale3D(FVector::OneVector * Render->World->GetVoxelSize());
 
 	// Needed because octree is only partially builded when Init is called
 	Render->AddTransitionCheck(this);
@@ -114,7 +115,7 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 
 void UVoxelChunkComponent::CheckTransitions()
 {
-	if (Render->World->bComputeTransitions)
+	if (Render->World->GetComputeTransitions())
 	{
 		for (int i = 0; i < 6; i++)
 		{
@@ -143,7 +144,7 @@ void UVoxelChunkComponent::Unload()
 	// Needed because octree is only partially updated when Unload is called
 	Render->AddTransitionCheck(this);
 
-	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &UVoxelChunkComponent::Delete, Render->World->DeletionDelay + KINDA_SMALL_NUMBER, false);
+	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &UVoxelChunkComponent::Delete, Render->World->GetDeletionDelay() + KINDA_SMALL_NUMBER, false);
 
 	// Cancel any pending update
 	Render->RemoveFromQueues(this);
@@ -289,7 +290,7 @@ void UVoxelChunkComponent::ApplyNewFoliage()
 			}
 
 			//Create component
-			UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(Render->World, NAME_None, RF_Transient);
+			UHierarchicalInstancedStaticMeshComponent* HierarchicalInstancedStaticMeshComponent = NewObject<UHierarchicalInstancedStaticMeshComponent>(Render->ChunksParent, NAME_None, RF_Transient);
 
 			HierarchicalInstancedStaticMeshComponent->OnComponentCreated();
 			HierarchicalInstancedStaticMeshComponent->RegisterComponent();
@@ -375,10 +376,10 @@ void UVoxelChunkComponent::CreateBuilder()
 	check(!Builder);
 	Builder = new FVoxelPolygonizer(
 		CurrentOctree->Depth,
-		Render->World->Data,
+		Render->Data,
 		CurrentOctree->GetMinimalCornerPosition(),
 		ChunkHasHigherRes,
-		CurrentOctree->Depth != 0 && Render->World->bComputeTransitions,
-		CurrentOctree->Depth == 0 && Render->World->bComputeCollisions
+		CurrentOctree->Depth != 0 && Render->World->GetComputeTransitions(),
+		CurrentOctree->Depth == 0 && Render->World->GetComputeCollisions()
 	);
 }

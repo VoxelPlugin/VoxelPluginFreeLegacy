@@ -11,7 +11,7 @@ ALandscapeVoxelAsset::ALandscapeVoxelAsset() : Precision(1), ValueMultiplier(1)
 {
 };
 
-float ALandscapeVoxelAsset::GetDefaultValue(int X, int Y, int Z)
+float ALandscapeVoxelAsset::GetDefaultValue(const int X, const int Y, const int Z)
 {
 	check(0 <= X && X < Size && 0 <= Y && Y < Size);
 
@@ -42,7 +42,7 @@ float ALandscapeVoxelAsset::GetDefaultValue(int X, int Y, int Z)
 	}
 }
 
-FVoxelMaterial ALandscapeVoxelAsset::GetDefaultMaterial(int X, int Y, int Z)
+FVoxelMaterial ALandscapeVoxelAsset::GetDefaultMaterial(const int X, const int Y, const int Z)
 {
 	check(0 <= X && X < Size && 0 <= Y && Y < Size);
 
@@ -54,4 +54,14 @@ FVoxelMaterial ALandscapeVoxelAsset::GetDefaultMaterial(int X, int Y, int Z)
 void ALandscapeVoxelAsset::Init(float InVoxelSize)
 {
 	VoxelSize = InVoxelSize;
+}
+
+int ALandscapeVoxelAsset::GetMinBound(int X, int Y)
+{
+	return FMath::FloorToInt(Heights[X + Size * Y] / (float)VoxelSize - Precision);
+}
+
+int ALandscapeVoxelAsset::GetMaxBound(int X, int Y)
+{
+	return FMath::CeilToInt(Heights[X + Size * Y] / (float)VoxelSize + Precision);
 }
