@@ -29,12 +29,12 @@ UVoxelChunkComponent::UVoxelChunkComponent()
 	bUseAsyncCooking = true;
 	SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	Mobility = EComponentMobility::Movable;
-
-	ChunkHasHigherRes.SetNumZeroed(6);
 }
 
 void UVoxelChunkComponent::Init(TWeakPtr<FChunkOctree> NewOctree)
 {
+	Delete();
+
 	check(NewOctree.IsValid());
 	CurrentOctree = NewOctree.Pin();
 	Render = CurrentOctree->Render;
@@ -46,6 +46,8 @@ void UVoxelChunkComponent::Init(TWeakPtr<FChunkOctree> NewOctree)
 
 	// Needed because octree is only partially builded when Init is called
 	Render->AddTransitionCheck(this);
+
+	ChunkHasHigherRes.SetNumZeroed(6);
 }
 
 bool UVoxelChunkComponent::Update(bool bAsync)
@@ -143,7 +145,7 @@ void UVoxelChunkComponent::Unload()
 
 	GetWorld()->GetTimerManager().SetTimer(DeleteTimer, this, &UVoxelChunkComponent::Delete, Render->World->DeletionDelay + KINDA_SMALL_NUMBER, false);
 
-	// Cancel any update
+	// Cancel any pending update
 	Render->RemoveFromQueues(this);
 }
 
@@ -152,7 +154,7 @@ void UVoxelChunkComponent::Delete()
 	// In case delete is called directly
 	DeleteTasks();
 
-	// Reset mesh & position & clear lines
+	// Reset mesh
 	SetProcMeshSection(0, FProcMeshSection());
 
 	// Delete foliage
@@ -162,13 +164,13 @@ void UVoxelChunkComponent::Delete()
 	}
 	FoliageComponents.Empty();
 
+	if (Render)
+	{
+		// Add to pool
+		Render->SetChunkAsInactive(this);
+		Render = nullptr;
+	}
 
-	// Add to pool
-	Render->SetChunkAsInactive(this);
-
-
-	// Reset variables
-	Render = nullptr;
 	CurrentOctree.Reset();
 }
 

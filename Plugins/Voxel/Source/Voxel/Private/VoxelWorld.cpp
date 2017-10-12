@@ -11,8 +11,6 @@
 #include "VoxelModifier.h"
 #include "VoxelWorldEditor.h"
 
-#include "VoxelRender/Private/VoxelChunkComponent.h"
-
 DEFINE_LOG_CATEGORY(VoxelLog)
 
 // Sets default values
@@ -232,16 +230,6 @@ void AVoxelWorld::CreateWorld(bool bLoadFromSave)
 	VoxelSize = NewVoxelSize;
 
 	SetActorScale3D(FVector::OneVector * VoxelSize);
-
-	// Delete existing components
-	for (auto Component : GetComponentsByClass(UVoxelChunkComponent::StaticClass()))
-	{
-		Component->DestroyComponent();
-	}
-	for (auto Component : GetComponentsByClass(UHierarchicalInstancedStaticMeshComponent::StaticClass()))
-	{
-		Component->DestroyComponent();
-	}
 
 	check(!Data);
 	check(!Render);

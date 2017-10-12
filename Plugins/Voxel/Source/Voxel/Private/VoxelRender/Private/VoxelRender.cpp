@@ -15,6 +15,23 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 Fo
 	, TimeSinceMeshUpdate(0)
 	, TimeSinceFoliageUpdate(0)
 {
+	// Add existing chunks
+	for (auto Component : World->GetComponentsByClass(UVoxelChunkComponent::StaticClass()))
+	{
+		UVoxelChunkComponent* ChunkComponent = Cast<UVoxelChunkComponent>(Component);
+		if (ChunkComponent)
+		{
+			ChunkComponent->Delete();
+			ChunkComponent->SetVoxelMaterial(World->VoxelMaterial);
+			InactiveChunks.push_front(ChunkComponent);
+		}
+	}
+	// Delete existing grass components
+	for (auto Component : World->GetComponentsByClass(UHierarchicalInstancedStaticMeshComponent::StaticClass()))
+	{
+		Component->DestroyComponent();
+	}
+
 	MeshThreadPool->Create(MeshThreadCount, 64 * 1024);
 	FoliageThreadPool->Create(FoliageThreadCount, 32 * 1024);
 
