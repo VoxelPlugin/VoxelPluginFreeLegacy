@@ -6,6 +6,7 @@
 #include <list>
 
 class AVoxelWorld;
+class FVoxelData;;
 class FChunkOctree;
 class UVoxelChunkComponent;
 
@@ -16,12 +17,14 @@ class FVoxelRender
 {
 public:
 	AVoxelWorld* const World;
+	AActor* const ChunksParent;
+	FVoxelData* const Data;
 
 	FQueuedThreadPool* const MeshThreadPool;
 	FQueuedThreadPool* const FoliageThreadPool;
 
 
-	FVoxelRender(AVoxelWorld* World, uint32 MeshThreadCount, uint32 FoliageThreadCount);
+	FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 FoliageThreadCount);
 	~FVoxelRender();
 
 
@@ -55,6 +58,9 @@ public:
 	int GetDepthAt(FIntVector Position) const;
 
 	void Delete();
+
+	// Needed when ChunksParent != World
+	FVector GetGlobalPosition(FIntVector LocalPosition);
 
 private:
 

@@ -44,8 +44,11 @@ public:
 
 	void Init(float InVoxelSize);
 
-	float GetDefaultValue(int X, int Y, int Z);
-	FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z);
+	int GetMinBound(int X, int Y);
+	int GetMaxBound(int X, int Y);
+
+	FORCEINLINE float GetDefaultValue(const int X, const int Y, const int Z);
+	FORCEINLINE FVoxelMaterial GetDefaultMaterial(const int X, const int Y, const int Z);
 
 private:
 	float VoxelSize;

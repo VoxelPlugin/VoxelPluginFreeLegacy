@@ -21,6 +21,7 @@ using namespace UC;
 class FVoxelRender;
 class FVoxelData;
 class UVoxelInvokerComponent;
+class AVoxelWorldEditor;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
@@ -34,45 +35,37 @@ class VOXEL_API AVoxelWorld : public AActor
 	GENERATED_BODY()
 
 public:
-	AVoxelWorld();
-	~AVoxelWorld();
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+		TArray<UVoxelGrassType*> GrassTypes;
 
-	FVoxelData* Data;
-	FVoxelRender* Render;
+
+	AVoxelWorld();
+	virtual ~AVoxelWorld() override;
 
 	void CreateInEditor();
 	void DestroyInEditor();
 
-	int Depth;
-	float VoxelSize;
+	void UpdateVoxelModifiers();
 
-	bool bComputeCollisions;
+	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
 
-	// Time to wait before deleting old chunks to avoid holes
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", UIMin = "0"))
-		float DeletionDelay;
+	FORCEINLINE AVoxelWorldEditor* GetVoxelWorldEditor();
+	FORCEINLINE FVoxelData* GetData();
+	FORCEINLINE AVoxelWorldGenerator* GetWorldGenerator();
+	FORCEINLINE int32 GetSeed();
+	FORCEINLINE float GetMeshFPS();
+	FORCEINLINE float GetFoliageFPS();
+	FORCEINLINE UMaterialInterface* GetVoxelMaterial();
+	FORCEINLINE bool GetComputeTransitions();
+	FORCEINLINE bool GetComputeCollisions();
+	FORCEINLINE float GetDeletionDelay();
 
-	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
-		bool bComputeTransitions;
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		bool IsCreated() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		int GetDepthAt(FIntVector Position) const;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-		TArray<UVoxelGrassType*> GrassTypes;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-		float FoliageFPS;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-		float MeshFPS;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-		UMaterialInterface* VoxelMaterial;
-
 
 	// Size of a voxel in cm
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -103,8 +96,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateAll(bool bAsync);
-
-	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
 
 	/**
 	 * Is position in this world?
@@ -158,14 +149,6 @@ public:
 		void LoadFromSave(FVoxelWorldSave Save, bool bReset = true);
 
 
-
-
-	void UpdateVoxelModifiers();
-
-	AVoxelWorldGenerator* GetWorldGenerator();
-
-	int32 GetSeed();
-
 protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;
@@ -176,6 +159,22 @@ protected:
 #endif
 
 private:
+	// Time to wait before deleting old chunks to avoid holes
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", UIMin = "0"))
+		float DeletionDelay;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+		bool bComputeTransitions;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+		float FoliageFPS;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+		float MeshFPS;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+		UMaterialInterface* VoxelMaterial;
+
 	// Width = 16 * 2^Depth
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", ClampMax = "20", UIMin = "0", UIMax = "20", DisplayName = "Depth"))
 		int NewDepth;
@@ -201,11 +200,21 @@ private:
 	UPROPERTY()
 		AVoxelWorldGenerator* InstancedWorldGenerator;
 
+	UPROPERTY()
+		AVoxelWorldEditor* VoxelWorldEditor;
 
-	UPROPERTY(VisibleAnywhere, Category = "Hide")
+	UPROPERTY()
 		FVoxelWorldSave WorldSave;
 
+	FVoxelData* Data;
+	FVoxelRender* Render;
+
 	bool bIsCreated;
+
+	int Depth;
+	float VoxelSize;
+
+	bool bComputeCollisions;
 
 	void CreateWorld(bool bLoadFromSave = true);
 	void DestroyWorld();

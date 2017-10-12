@@ -3,17 +3,25 @@
 #include "VoxelWorld.h"
 #include "Components/CapsuleComponent.h"
 #include "EmptyWorldGenerator.h"
-#include "VoxelPart.h"
 #include "Engine/World.h"
+#include "VoxelRender.h"
+#include "VoxelData.h"
+#include "VoxelWorldEditor.h"
 
 ALandscapeVoxelModifier::ALandscapeVoxelModifier()
-	: Part(nullptr)
+	: Data(nullptr)
+	, Render(nullptr)
+	, Generator(nullptr)
 {
+#if WITH_EDITOR
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
 	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
 	TouchCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	TouchCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
 	RootComponent = TouchCapsule;
+
+	PrimaryActorTick.bCanEverTick = true;
+#endif
 }
 
 void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
@@ -28,7 +36,7 @@ void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 
 		FIntVector Position = World->GlobalToLocal(GetActorLocation());
 
-		FVoxelData* Data = World->Data;
+		FVoxelData* Data = World->GetData();
 
 		FValueOctree* LastOctree = nullptr;
 
@@ -36,7 +44,9 @@ void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 		{
 			for (int Y = 0; Y < InstancedLandscape->Size; Y++)
 			{
-				for (int Z = 0; Z < InstancedLandscape->Size; Z++)
+				const int Min = 0 * InstancedLandscape->GetMinBound(X, Y);
+				const int Max = InstancedLandscape->GetMaxBound(X, Y);
+				for (int Z = Min; Z <= Max; Z++)
 				{
 					Data->SetValueAndMaterialNotThreadSafe(X + Position.X, Y + Position.Y, Z + Position.Z, InstancedLandscape->GetDefaultValue(X, Y, Z), InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
 				}
@@ -49,20 +59,54 @@ void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 	}
 }
 
+#if WITH_EDITOR
+void ALandscapeVoxelModifier::Tick(float DeltaTime)
+{
+	if (Render)
+	{
+		Render->Tick(DeltaTime);
+	}
+}
+
+bool ALandscapeVoxelModifier::ShouldTickIfViewportsOnly() const
+{
+	return true;
+}
+#endif
+
 void ALandscapeVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	if (GetWorld() && bEnablePreview)
+	if (bEnablePreview)
 	{
 		UpdateRender();
+	}
+	else
+	{
+		for (auto Component : GetComponentsByClass(UActorComponent::StaticClass()))
+		{
+			if (!Cast<UCapsuleComponent>(Component))
+			{
+				Component->DestroyComponent();
+			}
+		}
+
+		if (Render)
+		{
+			delete Render;
+			Render = nullptr;
+		}
+		if (Data)
+		{
+			delete Data;
+			Data = nullptr;
+		}
 	}
 }
 
 void ALandscapeVoxelModifier::UpdateRender()
 {
-	return;
-
 	if (Landscape && PreviewWorld)
 	{
 		ALandscapeVoxelAsset* InstancedLandscape = Landscape.GetDefaultObject();
@@ -71,37 +115,43 @@ void ALandscapeVoxelModifier::UpdateRender()
 
 		InstancedLandscape->Init(PreviewWorld->GetVoxelSize());
 
-		const uint8 Depth = FMath::CeilToInt(FMath::Log2(InstancedLandscape->Size / 16.f));
-		AVoxelWorldGenerator* Generator = GetWorld()->SpawnActor<AEmptyWorldGenerator>(FVector::ZeroVector, FRotator::ZeroRotator);
+		const uint8 Depth = FMath::CeilToInt(FMath::Log2(InstancedLandscape->Size / 16.f)) + 1;
+		if (!Generator)
+		{
+			Generator = GetWorld()->SpawnActor<AEmptyWorldGenerator>(FVector::ZeroVector, FRotator::ZeroRotator);
+		}
 
-		FVoxelData Data(Depth, Generator);
+		if (Data)
+		{
+			delete Data;
+		}
+		Data = new FVoxelData(Depth, Generator);
 
-		const int S = Data.Size() / 2;
+		FValueOctree* LastOctree = nullptr;
+
 		for (int X = 0; X < InstancedLandscape->Size; X++)
 		{
 			for (int Y = 0; Y < InstancedLandscape->Size; Y++)
 			{
-				for (int Z = 0; Z < InstancedLandscape->Size; Z++)
+				const int Min = 0 * InstancedLandscape->GetMinBound(X, Y);
+				const int Max = InstancedLandscape->GetMaxBound(X, Y);
+				for (int Z = Min; Z <= Max; Z++)
 				{
-					Data.SetValue(X - S, Y - S, Z - S, InstancedLandscape->GetDefaultValue(X, Y, Z));
-					Data.SetMaterial(X - S, Y - S, Z - S, InstancedLandscape->GetDefaultMaterial(X, Y, Z));
+					Data->SetValueAndMaterialNotThreadSafe(X, Y, Z, InstancedLandscape->GetDefaultValue(X, Y, Z), InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
 				}
 			}
 		}
 
-		if (Part)
+		if (Render)
 		{
-			Part->Destroy();
+			delete Render;
 		}
+		Render = new FVoxelRender(PreviewWorld, this, Data, 4, 4);
 
-		Part = GetWorld()->SpawnActor<AVoxelPart>(FVector::ZeroVector, FRotator::ZeroRotator);
-		Part->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
-		Part->SetActorRelativeLocation(FVector::OneVector * S * PreviewWorld->GetVoxelSize());
-		Part->SetActorRotation(FRotator::ZeroRotator);
-		Part->SetActorScale3D(PreviewWorld->GetActorScale());
-
-		Part->Init(&Data, PreviewWorld->VoxelMaterial);
-		Generator->Destroy();
+		if (PreviewWorld->GetVoxelWorldEditor())
+		{
+			Render->AddInvoker(PreviewWorld->GetVoxelWorldEditor()->GetInvoker());
+		}
 	}
 	else
 	{

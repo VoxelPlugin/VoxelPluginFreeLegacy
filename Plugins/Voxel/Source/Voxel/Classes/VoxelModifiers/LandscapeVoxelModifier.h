@@ -9,7 +9,7 @@
 
 class AVoxelWorld;
 class FVoxelData;
-class AVoxelPart;
+class FVoxelRender;
 
 /**
 *
@@ -35,12 +35,15 @@ public:
 
 protected:
 #if WITH_EDITOR
+	virtual void Tick(float DeltaTime) override;
+	bool ShouldTickIfViewportsOnly() const override;
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
 private:
-	UPROPERTY()
-		AVoxelPart* Part;
+	FVoxelData* Data;
+	FVoxelRender* Render;
+	AVoxelWorldGenerator* Generator;
 
 	void UpdateRender();
 };
