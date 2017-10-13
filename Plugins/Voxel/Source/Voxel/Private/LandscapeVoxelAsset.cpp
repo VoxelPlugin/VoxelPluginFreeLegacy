@@ -29,16 +29,7 @@ float ALandscapeVoxelAsset::GetDefaultValue(const int X, const int Y, const int 
 	{
 		float Alpha = (Z * VoxelSize - Heights[X + Size * Y]) / VoxelSize / Precision;
 
-		if (Alpha < 0)
-		{
-			Alpha *= ValueMultiplier;
-		}
-		else
-		{
-			Alpha *= ValueMultiplier;
-		}
-
-		return Alpha;
+		return Alpha * ValueMultiplier;
 	}
 }
 

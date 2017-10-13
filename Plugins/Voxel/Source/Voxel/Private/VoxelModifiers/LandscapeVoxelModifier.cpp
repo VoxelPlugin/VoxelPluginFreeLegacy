@@ -38,19 +38,37 @@ void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 
 		FVoxelData* Data = World->GetData();
 
-		FValueOctree* LastOctree = nullptr;
-
-		for (int X = 0; X < InstancedLandscape->Size; X++)
 		{
-			for (int Y = 0; Y < InstancedLandscape->Size; Y++)
+			Data->BeginSet();
+
+			FValueOctree* LastOctree = nullptr;
+
+			for (int X = 0; X < InstancedLandscape->Size; X++)
 			{
-				const int Min = 0 * InstancedLandscape->GetMinBound(X, Y);
-				const int Max = InstancedLandscape->GetMaxBound(X, Y);
-				for (int Z = Min; Z <= Max; Z++)
+				for (int Y = 0; Y < InstancedLandscape->Size; Y++)
 				{
-					Data->SetValueAndMaterialNotThreadSafe(X + Position.X, Y + Position.Y, Z + Position.Z, InstancedLandscape->GetDefaultValue(X, Y, Z), InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
+					const int Min = 0 * InstancedLandscape->GetMinBound(X, Y);
+					const int Max = InstancedLandscape->GetMaxBound(X, Y);
+					for (int Z = Min; Z <= Max; Z++)
+					{
+						float NewValue = InstancedLandscape->GetDefaultValue(X, Y, Z);
+
+						float OldValue = 0;
+						FVoxelMaterial OldMaterial;
+						if (NewValue >= 0)
+						{
+							Data->GetValueAndMaterial(X + Position.X, Y + Position.Y, Z + Position.Z, OldValue, OldMaterial, LastOctree);
+						}
+
+						if (NewValue < 0 || NewValue * OldValue >= 0)
+						{
+							Data->SetValueAndMaterial(X + Position.X, Y + Position.Y, Z + Position.Z, NewValue, InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
+						}
+					}
 				}
 			}
+
+			Data->EndSet();
 		}
 	}
 	else
@@ -60,9 +78,21 @@ void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 }
 
 #if WITH_EDITOR
+
+void ALandscapeVoxelModifier::BeginPlay()
+{
+	for (auto Component : GetComponentsByClass(UActorComponent::StaticClass()))
+	{
+		if (!Cast<UCapsuleComponent>(Component))
+		{
+			Component->DestroyComponent();
+		}
+	}
+}
+
 void ALandscapeVoxelModifier::Tick(float DeltaTime)
 {
-	if (Render)
+	if (GetWorld()->WorldType == EWorldType::Editor && Render)
 	{
 		Render->Tick(DeltaTime);
 	}
@@ -127,19 +157,25 @@ void ALandscapeVoxelModifier::UpdateRender()
 		}
 		Data = new FVoxelData(Depth, Generator);
 
-		FValueOctree* LastOctree = nullptr;
-
-		for (int X = 0; X < InstancedLandscape->Size; X++)
 		{
-			for (int Y = 0; Y < InstancedLandscape->Size; Y++)
+			Data->BeginSet();
+
+			FValueOctree* LastOctree = nullptr;
+
+			for (int X = 0; X < InstancedLandscape->Size; X++)
 			{
-				const int Min = 0 * InstancedLandscape->GetMinBound(X, Y);
-				const int Max = InstancedLandscape->GetMaxBound(X, Y);
-				for (int Z = Min; Z <= Max; Z++)
+				for (int Y = 0; Y < InstancedLandscape->Size; Y++)
 				{
-					Data->SetValueAndMaterialNotThreadSafe(X, Y, Z, InstancedLandscape->GetDefaultValue(X, Y, Z), InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
+					const int Min = 0 * InstancedLandscape->GetMinBound(X, Y);
+					const int Max = InstancedLandscape->GetMaxBound(X, Y);
+					for (int Z = Min; Z <= Max; Z++)
+					{
+						Data->SetValueAndMaterial(X, Y, Z, InstancedLandscape->GetDefaultValue(X, Y, Z), InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
+					}
 				}
 			}
+
+			Data->EndSet();
 		}
 
 		if (Render)

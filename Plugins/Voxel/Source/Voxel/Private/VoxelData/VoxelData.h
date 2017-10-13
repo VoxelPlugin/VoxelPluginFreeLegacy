@@ -31,19 +31,11 @@ public:
 	// Size = 16 * 2^Depth
 	FORCEINLINE int Size() const;
 
-	/**
-	 * Get value at position
-	 * @param	Position	Position in voxel space
-	 * @return	Value
-	 */
-	float GetValue(int X, int Y, int Z) const;
+	void BeginSet();
+	void EndSet();
 
-	/**
-	 * Get color at position
-	 * @param	Position	Position in voxel space
-	 * @return	Color
-	 */
-	FVoxelMaterial GetMaterial(int X, int Y, int Z) const;
+	void BeginGet();
+	void EndGet();
 
 	/**
 	* Get value and color at position
@@ -68,8 +60,8 @@ public:
 	 */
 	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
 
-	void SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float Value, FVoxelMaterial Material, FValueOctree*& LastOctree);
-	
+	void SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelMaterial Material, FValueOctree*& LastOctree);
+
 	/**
 	 * Is Position in this world?
 	 * @param	Position	Position in voxel space
@@ -110,4 +102,8 @@ public:
 
 private:
 	FValueOctree* MainOctree;
+
+	FThreadSafeCounter GetCount;
+	FEvent* CanGetEvent;
+	FEvent* CanSetEvent;
 };

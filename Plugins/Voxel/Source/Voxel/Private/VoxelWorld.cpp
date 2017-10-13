@@ -20,6 +20,7 @@ AVoxelWorld::AVoxelWorld()
 	, bComputeTransitions(true)
 	, bIsCreated(false)
 	, FoliageFPS(15)
+	, LODUpdateFPS(10)
 	, NewVoxelSize(100)
 	, MeshThreadCount(4)
 	, FoliageThreadCount(4)
@@ -92,7 +93,14 @@ float AVoxelWorld::GetValue(FIntVector Position) const
 {
 	if (IsInWorld(Position))
 	{
-		return Data->GetValue(Position.X, Position.Y, Position.Z);
+		FVoxelMaterial Material;
+		float Value;
+
+		Data->BeginGet();
+		Data->GetValueAndMaterial(Position.X, Position.Y, Position.Z, Value, Material);
+		Data->EndGet();
+
+		return Value;
 	}
 	else
 	{
@@ -103,14 +111,31 @@ float AVoxelWorld::GetValue(FIntVector Position) const
 
 FVoxelMaterial AVoxelWorld::GetMaterial(FIntVector Position) const
 {
-	return Data->GetMaterial(Position.X, Position.Y, Position.Z);
+	if (IsInWorld(Position))
+	{
+		FVoxelMaterial Material;
+		float Value;
+
+		Data->BeginGet();
+		Data->GetValueAndMaterial(Position.X, Position.Y, Position.Z, Value, Material);
+		Data->EndGet();
+
+		return Material;
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Get material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		return FVoxelMaterial();
+	}
 }
 
 void AVoxelWorld::SetValue(FIntVector Position, float Value)
 {
 	if (IsInWorld(Position))
 	{
+		Data->BeginSet();
 		Data->SetValue(Position.X, Position.Y, Position.Z, Value);
+		Data->EndSet();
 	}
 	else
 	{
@@ -122,7 +147,9 @@ void AVoxelWorld::SetMaterial(FIntVector Position, FVoxelMaterial Material)
 {
 	if (IsInWorld(Position))
 	{
+		Data->BeginSet();
 		Data->SetMaterial(Position.X, Position.Y, Position.Z, Material);
+		Data->EndSet();
 	}
 	else
 	{
@@ -207,6 +234,11 @@ int32 AVoxelWorld::GetSeed()
 float AVoxelWorld::GetFoliageFPS()
 {
 	return FoliageFPS;
+}
+
+float AVoxelWorld::GetLODUpdateFPS()
+{
+	return LODUpdateFPS;
 }
 
 UMaterialInterface* AVoxelWorld::GetVoxelMaterial()

@@ -31,12 +31,10 @@ bool FValueOctree::IsDirty() const
 
 void FValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
-	// Read is not thread safe, but it's too slow to make it so. Should work fine most of the time
-
 	check(IsInOctree(X, Y, Z));
 	check(IsLeaf()); // If crash here just comment this line
 
-	if (IsDirty() && Depth == 0) // Check Depth == 0 because of multithreading errors
+	if (IsDirty())
 	{
 		int LocalX, LocalY, LocalZ;
 		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
@@ -52,77 +50,7 @@ void FValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVo
 	}
 }
 
-void FValueOctree::SetValue(int X, int Y, int Z, float Value)
-{
-	FScopeLock Lock(&SetLock);
-	{
-		bIsNetworkDirty = true;
-
-		if (Depth != 0)
-		{
-			CreateChilds();
-			bIsDirty = true; // IsDirty only when having childs (for multithreading)
-			GetChild(X, Y, Z)->SetValue(X, Y, Z, Value);
-		}
-		else
-		{
-
-			if (!IsDirty())
-			{
-				SetAsDirty();
-			}
-
-			int LocalX, LocalY, LocalZ;
-			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
-
-			int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-			Values[Index] = Value;
-
-			if (bMultiplayer)
-			{
-				DirtyValues.Add(Index);
-			}
-		}
-	}
-}
-
-void FValueOctree::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
-{
-	check(IsLeaf());
-	check(IsInOctree(X, Y, Z));
-
-	FScopeLock Lock(&SetLock);
-	{
-		bIsNetworkDirty = true;
-
-		if (Depth != 0)
-		{
-			CreateChilds();
-			bIsDirty = true; // IsDirty only when having childs (for multithreading)
-			GetChild(X, Y, Z)->SetMaterial(X, Y, Z, Material);
-		}
-		else
-		{
-			if (!IsDirty())
-			{
-				SetAsDirty();
-			}
-
-			int LocalX, LocalY, LocalZ;
-			GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
-
-			int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-			Materials[Index] = Material;
-
-			if (bMultiplayer)
-			{
-				DirtyValues.Add(Index);
-			}
-		}
-	}
-}
-
-void FValueOctree::SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float Value, FVoxelMaterial Material)
+void FValueOctree::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelMaterial Material, bool bSetValue, bool bSetMaterial)
 {
 	check(IsLeaf());
 	check(IsInOctree(X, Y, Z));
@@ -132,8 +60,8 @@ void FValueOctree::SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float V
 	if (Depth != 0)
 	{
 		CreateChilds();
-		bIsDirty = true; // IsDirty only when having childs (for multithreading)
-		GetChild(X, Y, Z)->SetValueAndMaterialNotThreadSafe(X, Y, Z, Value, Material);
+		bIsDirty = true;
+		GetChild(X, Y, Z)->SetValueAndMaterial(X, Y, Z, Value, Material, bSetValue, bSetMaterial);
 	}
 	else
 	{
@@ -146,8 +74,14 @@ void FValueOctree::SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float V
 		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
 
 		int Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-		Values[Index] = Value;
-		Materials[Index] = Material;
+		if (bSetValue)
+		{
+			Values[Index] = Value;
+		}
+		if (bSetMaterial)
+		{
+			Materials[Index] = Material;
+		}
 
 		if (bMultiplayer)
 		{
