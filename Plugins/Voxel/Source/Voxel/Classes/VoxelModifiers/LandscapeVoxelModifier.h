@@ -43,7 +43,9 @@ protected:
 private:
 	FVoxelData* Data;
 	FVoxelRender* Render;
-	AVoxelWorldGenerator* Generator;
+
+	UPROPERTY()
+		AVoxelWorldGenerator* Generator;
 
 	void UpdateRender();
 };
