@@ -8,6 +8,8 @@
 #include "LandscapeLayerInfoObject.h"
 #include "LandscapeVoxelAsset.generated.h"
 
+// TODO: world generator
+
 /**
  *
  */

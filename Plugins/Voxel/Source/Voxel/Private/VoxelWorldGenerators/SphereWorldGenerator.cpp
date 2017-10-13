@@ -29,7 +29,7 @@ FVoxelMaterial ASphereWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 
 void ASphereWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
-	LocalRadius = Radius / VoxelWorld->GetTransform().GetScale3D().X;
+	LocalRadius = Radius / VoxelWorld->GetVoxelSize();
 }
 
 FVector ASphereWorldGenerator::GetUpVector(int X, int Y, int Z)
