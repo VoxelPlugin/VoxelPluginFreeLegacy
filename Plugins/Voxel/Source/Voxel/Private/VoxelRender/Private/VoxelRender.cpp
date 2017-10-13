@@ -15,6 +15,7 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 	, MeshThreadPool(FQueuedThreadPool::Allocate())
 	, FoliageThreadPool(FQueuedThreadPool::Allocate())
 	, TimeSinceFoliageUpdate(0)
+	, TimeSinceLODUpdate(0)
 {
 	// Add existing chunks
 	for (auto Component : ChunksParent->GetComponentsByClass(UVoxelChunkComponent::StaticClass()))
@@ -48,8 +49,14 @@ FVoxelRender::~FVoxelRender()
 void FVoxelRender::Tick(float DeltaTime)
 {
 	TimeSinceFoliageUpdate += DeltaTime;
+	TimeSinceLODUpdate += DeltaTime;
 
-	UpdateLOD();
+	if (TimeSinceLODUpdate > 1 / World->GetLODUpdateFPS())
+	{
+		UpdateLOD();
+		TimeSinceLODUpdate = 0;
+	}
+
 	ApplyUpdates();
 
 	if (TimeSinceFoliageUpdate > 1 / World->GetFoliageFPS())

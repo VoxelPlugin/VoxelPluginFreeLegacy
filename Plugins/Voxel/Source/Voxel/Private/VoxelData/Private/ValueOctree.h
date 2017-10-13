@@ -44,21 +44,7 @@ public:
 	 */
 	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
 
-	/**
-	 * Set value at position
-	 * @param	GlobalPosition	Position in voxel space
-	 * @param	Value to set
-	 */
-	void SetValue(int X, int Y, int Z, float Value);
-
-	/**
-	 * Set color at position
-	 * @param	GlobalPosition	Position in voxel space
-	 * @param	Color to set
-	 */
-	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
-
-	void SetValueAndMaterialNotThreadSafe(int X, int Y, int Z, float Value, FVoxelMaterial Material);
+	void SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelMaterial Material, bool bSetValue, bool bSetMaterial);
 
 	/**
 	 * Add dirty chunks to SaveList
@@ -110,8 +96,6 @@ private:
 	x
 	*/
 	TArray<FValueOctree*, TFixedAllocator<8>> Childs;
-
-	FCriticalSection SetLock;
 
 	// Values if dirty
 	TArray<float, TFixedAllocator<16 * 16 * 16>> Values;

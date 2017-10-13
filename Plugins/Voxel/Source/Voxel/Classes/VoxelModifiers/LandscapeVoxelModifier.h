@@ -35,6 +35,7 @@ public:
 
 protected:
 #if WITH_EDITOR
+	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 	bool ShouldTickIfViewportsOnly() const override;
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;

@@ -28,6 +28,7 @@ FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector Chu
 
 void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 {
+	Data->BeginGet();
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CACHE);
 		// Cache signs
@@ -294,6 +295,7 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 			}
 		}
 	}
+	Data->EndGet();
 
 
 	if (VerticesSize == 0)
@@ -426,6 +428,7 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 		const int OldVerticesSize = VerticesSize;
 		const int OldTrianglesSize = TrianglesSize;
 
+		Data->BeginGet();
 		{
 			SCOPE_CYCLE_COUNTER(STAT_TRANSITIONS_ITER);
 
@@ -575,6 +578,7 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 				}
 			}
 		}
+		Data->EndGet();
 
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ADD_TRANSITIONS_TO_SECTION);

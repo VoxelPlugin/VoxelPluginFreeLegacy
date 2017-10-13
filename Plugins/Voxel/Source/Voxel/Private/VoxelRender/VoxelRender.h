@@ -90,6 +90,7 @@ private:
 
 
 	float TimeSinceFoliageUpdate;
+	float TimeSinceLODUpdate;
 
 	void ApplyFoliageUpdates();
 	void ApplyNewMeshes();
