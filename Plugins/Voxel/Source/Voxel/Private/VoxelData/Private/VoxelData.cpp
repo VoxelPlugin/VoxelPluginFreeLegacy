@@ -84,10 +84,28 @@ void FVoxelData::SetValue(int X, int Y, int Z, float Value)
 	MainOctree->GetLeaf(X, Y, Z)->SetValueAndMaterial(X, Y, Z, Value, FVoxelMaterial(), true, false);
 }
 
+void FVoxelData::SetValue(int X, int Y, int Z, float Value, FValueOctree*& LastOctree)
+{
+	if (UNLIKELY(!LastOctree || !LastOctree->IsLeaf() || !LastOctree->IsInOctree(X, Y, Z)))
+	{
+		LastOctree = MainOctree->GetLeaf(X, Y, Z);
+	}
+	LastOctree->SetValueAndMaterial(X, Y, Z, Value, FVoxelMaterial(), true, false);
+}
+
 void FVoxelData::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material)
 {
 	check(IsInWorld(X, Y, Z));
 	MainOctree->GetLeaf(X, Y, Z)->SetValueAndMaterial(X, Y, Z, 0, Material, false, true);
+}
+
+void FVoxelData::SetMaterial(int X, int Y, int Z, FVoxelMaterial Material, FValueOctree*& LastOctree)
+{
+	if (UNLIKELY(!LastOctree || !LastOctree->IsLeaf() || !LastOctree->IsInOctree(X, Y, Z)))
+	{
+		LastOctree = MainOctree->GetLeaf(X, Y, Z);
+	}
+	LastOctree->SetValueAndMaterial(X, Y, Z, 0, Material, false, true);
 }
 
 void FVoxelData::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelMaterial Material, FValueOctree*& LastOctree)
