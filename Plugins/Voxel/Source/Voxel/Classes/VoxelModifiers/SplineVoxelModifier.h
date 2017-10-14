@@ -1,0 +1,64 @@
+// Copyright 2017 Phyronnaz
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "VoxelModifier.h"
+#include "SplineVoxelModifier.generated.h"
+
+class AVoxelWorld;
+class FVoxelData;
+class FVoxelRender;
+class USplineComponent;
+
+/**
+*
+*/
+UCLASS(Blueprintable, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "Hide"))
+class VOXEL_API ASplineVoxelModifier : public AVoxelModifier
+{
+	GENERATED_BODY()
+
+public:
+	ASplineVoxelModifier();
+
+	UPROPERTY(EditAnywhere)
+		TArray<USplineComponent*> Splines;
+
+	UPROPERTY(EditAnywhere)
+		float Size;
+
+	UPROPERTY(EditAnywhere)
+		bool bSubstrative;
+
+	UPROPERTY(EditAnywhere)
+		bool bSetMaterial;
+
+	UPROPERTY(EditAnywhere, meta = (EditCondition = "bSetMaterial"))
+		FVoxelMaterial Material;
+
+	UPROPERTY(EditAnywhere, Category = "Preview")
+		AVoxelWorld* PreviewWorld;
+
+	UPROPERTY(EditAnywhere, Category = "Preview")
+		bool bEnablePreview;
+
+	virtual void ApplyToWorld(AVoxelWorld* World) override;
+
+protected:
+	virtual void BeginPlay() override;
+#if WITH_EDITOR
+	void Tick(float DeltaTime) override;
+	bool ShouldTickIfViewportsOnly() const override;
+	void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
+private:
+	FVoxelData* Data;
+	FVoxelRender* Render;
+
+	UPROPERTY()
+		AVoxelWorldGenerator* Generator;
+
+	void UpdateRender();
+};

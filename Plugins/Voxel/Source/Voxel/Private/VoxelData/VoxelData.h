@@ -53,12 +53,14 @@ public:
 	 * @param	Value to set
 	 */
 	void SetValue(int X, int Y, int Z, float Value);
+	void SetValue(int X, int Y, int Z, float Value, FValueOctree*& LastOctree);
 	/**
 	 * Set color at position
 	 * @param	Position	Position in voxel space
 	 * @param	Color to set
 	 */
 	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
+	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material, FValueOctree*& LastOctree);
 
 	void SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelMaterial Material, FValueOctree*& LastOctree);
 
