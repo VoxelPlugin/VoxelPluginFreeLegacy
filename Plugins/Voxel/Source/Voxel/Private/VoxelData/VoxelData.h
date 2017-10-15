@@ -37,6 +37,8 @@ public:
 	void BeginGet();
 	void EndGet();
 
+	void Reset();
+
 	/**
 	* Get value and color at position
 	* @param	Position	Position in voxel space

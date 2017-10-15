@@ -42,6 +42,16 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 
 FVoxelRender::~FVoxelRender()
 {
+	if (!World->IsPendingKill())
+	{
+		for (auto Chunk : ActiveChunks)
+		{
+			if (!Chunk->IsPendingKill())
+			{
+				Chunk->DeleteFromRender();
+			}
+		}
+	}
 	MeshThreadPool->Destroy();
 	FoliageThreadPool->Destroy();
 }

@@ -13,10 +13,12 @@
 #include "DrawDebugHelpers.h"
 
 ASplineVoxelModifier::ASplineVoxelModifier()
-	: Size(100)
+	: Size(250)
+	, LivePreviewFPS(10)
 	, Data(nullptr)
 	, Render(nullptr)
 	, Generator(nullptr)
+	, TimeSinceUpdate(0)
 {
 #if WITH_EDITOR
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
@@ -31,18 +33,19 @@ ASplineVoxelModifier::ASplineVoxelModifier()
 
 void ASplineVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 {
-	// Destroy render for bounds
-	for (auto Component : GetComponentsByClass(UActorComponent::StaticClass()))
+	FBox Bounds(EForceInit::ForceInitToZero);
+	FVector MaxScale = FVector::ZeroVector;
+	for (auto Spline : Splines)
 	{
-		if (!Cast<UCapsuleComponent>(Component) && !Cast<USplineComponent>(Component))
-		{
-			Component->DestroyComponent();
-		}
+		Bounds += Spline->Bounds.GetBox();
+		FVector Min, Max;
+		Spline->GetSplinePointsScale().CalcBounds(Min, Max);
+		MaxScale = FVector(FMath::Max(MaxScale.X, Max.X), FMath::Max(MaxScale.Y, Max.Y), FMath::Max(MaxScale.Z, Max.Z));
 	}
 
-	FVector Origin, BoxExtent;
-	GetActorBounds(false, Origin, BoxExtent);
-	BoxExtent += FVector::OneVector * (Size + World->GetVoxelSize());
+	FVector Origin = Bounds.GetCenter();
+	FVector BoxExtent = Bounds.GetExtent();
+	BoxExtent += FVector::OneVector * (Size + PreviewWorld->GetVoxelSize() + MaxScale.Size());
 
 	DrawDebugBox(GetWorld(), Origin, BoxExtent, FColor::Blue, false, 10, 0, 10);
 
@@ -67,15 +70,17 @@ void ASplineVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 					for (auto Spline : Splines)
 					{
 						FVector Position = FVector(X, Y, Z) * World->GetVoxelSize();
-						float Distance = (Spline->FindLocationClosestToWorldLocation(Position, ESplineCoordinateSpace::World) - Position).Size();
+						const float Key = Spline->FindInputKeyClosestToWorldLocation(Position);
+						const float Distance = (Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World) - Position).Size();
+						const float ScaleSize = Spline->GetScaleAtSplineInputKey(Key).Size();
 
 						if (bSubstrative)
 						{
-							NewValue = FMath::Max(NewValue, FMath::Clamp((Size - Distance) / World->GetVoxelSize(), -2.f, 2.f) / 2.f);
+							NewValue = FMath::Max(NewValue, FMath::Clamp((Size + ScaleSize - Distance) / World->GetVoxelSize(), -2.f, 2.f) / 2.f);
 						}
 						else
 						{
-							NewValue = FMath::Min(NewValue, FMath::Clamp((Distance - Size) / World->GetVoxelSize(), -2.f, 2.f) / 2.f);
+							NewValue = FMath::Min(NewValue, FMath::Clamp((Distance - Size - ScaleSize) / World->GetVoxelSize(), -2.f, 2.f) / 2.f);
 						}
 					}
 
@@ -104,6 +109,114 @@ void ASplineVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 	}
 }
 
+void ASplineVoxelModifier::UpdateRender()
+{
+	if (PreviewWorld)
+	{
+		FBox Bounds(EForceInit::ForceInitToZero);
+		FVector MaxScale = FVector::ZeroVector;
+		for (auto Spline : Splines)
+		{
+			Bounds += Spline->Bounds.GetBox();
+			FVector Min, Max;
+			Spline->GetSplinePointsScale().CalcBounds(Min, Max);
+			MaxScale = FVector(FMath::Max(MaxScale.X, Max.X), FMath::Max(MaxScale.Y, Max.Y), FMath::Max(MaxScale.Z, Max.Z));
+		}
+
+		FVector Origin = Bounds.GetCenter();
+		FVector BoxExtent = Bounds.GetExtent();
+		BoxExtent += FVector::OneVector * (Size + PreviewWorld->GetVoxelSize() + MaxScale.Size());
+
+		DrawDebugBox(GetWorld(), Origin, BoxExtent, FColor::Blue, false, bLivePreview ? 2 / LivePreviewFPS : 10, 0, 10);
+
+		const float Max = FMath::Max(
+			(Origin + BoxExtent - GetActorLocation()).GetAbs().GetMax(),
+			(Origin - BoxExtent - GetActorLocation()).GetAbs().GetMax()
+		);
+
+		const uint8 Depth = FMath::Max(0, FMath::CeilToInt(FMath::Log2(Max / PreviewWorld->GetVoxelSize() / 16.f))) + 2;
+
+		if (!Data || Data->Depth != Depth)
+		{
+			delete Render;
+			Render = nullptr;
+
+			if (!Generator)
+			{
+				Generator = GetWorld()->SpawnActor<AEmptyWorldGenerator>(FVector::ZeroVector, FRotator::ZeroRotator);
+			}
+
+			if (Depth > 5 && !bNoSizeLimit)
+			{
+				UE_LOG(VoxelLog, Error, TEXT("Spline is too big: Depth = %d"), Depth);
+				return;
+			}
+
+			Data = new FVoxelData(Depth, Generator);
+		}
+
+		{
+			Data->BeginSet();
+
+			Data->Reset();
+
+			FValueOctree* LastOctree = nullptr;
+
+			FVector Start = (Origin - BoxExtent - GetActorLocation()) / PreviewWorld->GetVoxelSize();
+			FVector End = (Origin + BoxExtent - GetActorLocation()) / PreviewWorld->GetVoxelSize();
+
+			for (int X = Start.X; X <= End.X; X++)
+			{
+				for (int Y = Start.Y; Y <= End.Y; Y++)
+				{
+					for (int Z = Start.Z; Z <= End.Z; Z++)
+					{
+						float NewValue = 1;
+
+						for (auto Spline : Splines)
+						{
+							FVector Position = GetActorLocation() + FVector(X, Y, Z) * PreviewWorld->GetVoxelSize();
+							const float Key = Spline->FindInputKeyClosestToWorldLocation(Position);
+							const float Distance = (Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World) - Position).Size();
+							const float ScaleSize = Spline->GetScaleAtSplineInputKey(Key).Size();
+
+							NewValue = FMath::Min(NewValue, FMath::Clamp((Distance - Size - ScaleSize) / PreviewWorld->GetVoxelSize(), -2.f, 2.f) / 2.f);
+						}
+
+						if (NewValue < 1 - KINDA_SMALL_NUMBER)
+						{
+							if (bSetMaterial)
+							{
+								Data->SetValueAndMaterial(X, Y, Z, NewValue, Material, LastOctree);
+							}
+							else
+							{
+								Data->SetValue(X, Y, Z, NewValue, LastOctree);
+							}
+						}
+					}
+				}
+			}
+
+			Data->EndSet();
+		}
+
+		if (!Render)
+		{
+			Render = new FVoxelRender(PreviewWorld, this, Data, 4, 4);
+
+			if (PreviewWorld->GetVoxelWorldEditor())
+			{
+				Render->AddInvoker(PreviewWorld->GetVoxelWorldEditor()->GetInvoker());
+			}
+		}
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("LandscapeVoxelModifier: no landscape or no world selected"));
+	}
+}
+
 void ASplineVoxelModifier::BeginPlay()
 {
 	for (auto Component : GetComponentsByClass(UActorComponent::StaticClass()))
@@ -119,9 +232,25 @@ void ASplineVoxelModifier::BeginPlay()
 
 void ASplineVoxelModifier::Tick(float DeltaTime)
 {
-	if (GetWorld()->WorldType == EWorldType::Editor && Render)
+	if (GetWorld()->WorldType == EWorldType::Editor)
 	{
-		Render->Tick(DeltaTime);
+		if (IsSelectedInEditor())
+		{
+			TimeSinceUpdate += DeltaTime;
+			if (bLivePreview && TimeSinceUpdate > 1 / LivePreviewFPS)
+			{
+				UpdateRender();
+				if (Render)
+				{
+					Render->UpdateAll(true);
+				}
+				TimeSinceUpdate = 0;
+			}
+		}
+		if (Render)
+		{
+			Render->Tick(DeltaTime);
+		}
 	}
 }
 
@@ -164,107 +293,19 @@ void ASplineVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& Propert
 	}
 
 
+	if (Render)
+	{
+		delete Render;
+		Render = nullptr;
+	}
+	if (Data)
+	{
+		delete Data;
+		Data = nullptr;
+	}
+
 	if (bEnablePreview)
 	{
 		UpdateRender();
-	}
-	else
-	{
-		if (Render)
-		{
-			delete Render;
-			Render = nullptr;
-		}
-		if (Data)
-		{
-			delete Data;
-			Data = nullptr;
-		}
-	}
-}
-
-void ASplineVoxelModifier::UpdateRender()
-{
-	if (PreviewWorld)
-	{
-		FVector Origin, BoxExtent;
-		GetActorBounds(false, Origin, BoxExtent);
-		BoxExtent += FVector::OneVector * (Size + PreviewWorld->GetVoxelSize());
-
-		DrawDebugBox(GetWorld(), Origin, BoxExtent, FColor::Blue, false, 10, 0, 10);
-
-		const float Max = FMath::Max(
-			(Origin + BoxExtent - GetActorLocation()).GetAbs().GetMax(),
-			(Origin - BoxExtent - GetActorLocation()).GetAbs().GetMax()
-		);
-
-		const uint8 Depth = FMath::CeilToInt(FMath::Log2(Max / 16.f)) + 1;
-
-		if (!Generator)
-		{
-			Generator = GetWorld()->SpawnActor<AEmptyWorldGenerator>(FVector::ZeroVector, FRotator::ZeroRotator);
-		}
-
-		if (Data)
-		{
-			delete Data;
-		}
-		Data = new FVoxelData(Depth, Generator);
-
-		{
-			Data->BeginSet();
-
-			FValueOctree* LastOctree = nullptr;
-
-			FVector Start = (Origin - BoxExtent - GetActorLocation()) / PreviewWorld->GetVoxelSize();
-			FVector End = (Origin + BoxExtent - GetActorLocation()) / PreviewWorld->GetVoxelSize();
-
-			for (int X = Start.X; X <= End.X; X++)
-			{
-				for (int Y = Start.Y; Y <= End.Y; Y++)
-				{
-					for (int Z = Start.Z; Z <= End.Z; Z++)
-					{
-						float NewValue = 1;
-
-						for (auto Spline : Splines)
-						{
-							FVector Position = GetActorLocation() + FVector(X, Y, Z) * PreviewWorld->GetVoxelSize();
-							float Distance = (Spline->FindLocationClosestToWorldLocation(Position, ESplineCoordinateSpace::World) - Position).Size();
-							NewValue = FMath::Min(NewValue, FMath::Clamp((Distance - Size) / PreviewWorld->GetVoxelSize(), -2.f, 2.f) / 2.f);
-						}
-
-						if (NewValue < 1 - KINDA_SMALL_NUMBER)
-						{
-							if (bSetMaterial)
-							{
-								Data->SetValueAndMaterial(X, Y, Z, NewValue, Material, LastOctree);
-							}
-							else
-							{
-								Data->SetValue(X, Y, Z, NewValue, LastOctree);
-							}
-						}
-					}
-				}
-			}
-
-			Data->EndSet();
-		}
-
-		if (Render)
-		{
-			delete Render;
-		}
-		Render = new FVoxelRender(PreviewWorld, this, Data, 4, 4);
-
-		if (PreviewWorld->GetVoxelWorldEditor())
-		{
-			Render->AddInvoker(PreviewWorld->GetVoxelWorldEditor()->GetInvoker());
-		}
-	}
-	else
-	{
-		UE_LOG(VoxelLog, Error, TEXT("LandscapeVoxelModifier: no landscape or no world selected"));
 	}
 }

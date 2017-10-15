@@ -174,6 +174,12 @@ void UVoxelChunkComponent::Delete()
 	CurrentOctree.Reset();
 }
 
+void UVoxelChunkComponent::DeleteFromRender()
+{
+	Render = nullptr;
+	Delete();
+}
+
 void UVoxelChunkComponent::OnMeshComplete(FProcMeshSection& InSection)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);

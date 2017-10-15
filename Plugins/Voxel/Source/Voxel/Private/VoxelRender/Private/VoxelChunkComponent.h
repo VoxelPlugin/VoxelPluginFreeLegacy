@@ -53,6 +53,8 @@ public:
 
 	void Delete();
 
+	void DeleteFromRender();
+
 	void SetVoxelMaterial(UMaterialInterface* Material);
 
 	bool HasChunkHigherRes(TransitionDirection Direction);
