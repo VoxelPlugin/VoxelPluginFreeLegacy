@@ -60,6 +60,12 @@ void FVoxelData::EndGet()
 	}
 }
 
+void FVoxelData::Reset()
+{
+	delete MainOctree;
+	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth));
+}
+
 void FVoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const
 {
 	ClampToWorld(X, Y, Z);
@@ -145,8 +151,7 @@ void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std:
 	if (bReset)
 	{
 		MainOctree->GetDirtyChunksPositions(OutModifiedPositions);
-		delete MainOctree;
-		MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth));
+		Reset();
 	}
 
 	auto SaveList = Save.GetChunksList();

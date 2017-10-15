@@ -43,6 +43,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Preview")
 		bool bEnablePreview;
 
+	UPROPERTY(EditAnywhere, Category = "Preview|May crash the editor - please save before using this")
+		bool bLivePreview;
+
+	UPROPERTY(EditAnywhere, Category = "Preview|May crash the editor - please save before using this")
+		float LivePreviewFPS;
+
+	UPROPERTY(EditAnywhere, Category = "Preview|May crash the editor - please save before using this")
+		bool bNoSizeLimit;
+
 	virtual void ApplyToWorld(AVoxelWorld* World) override;
 
 protected:
@@ -59,6 +68,8 @@ private:
 
 	UPROPERTY()
 		AVoxelWorldGenerator* Generator;
+
+	float TimeSinceUpdate;
 
 	void UpdateRender();
 };
