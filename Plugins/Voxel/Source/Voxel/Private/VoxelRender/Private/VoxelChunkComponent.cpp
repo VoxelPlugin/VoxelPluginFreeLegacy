@@ -42,7 +42,7 @@ void UVoxelChunkComponent::Init(TWeakPtr<FChunkOctree> NewOctree)
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
 
 	SetWorldLocationAndRotation(Render->GetGlobalPosition(NewPosition), FRotator::ZeroRotator);
-	SetRelativeScale3D(FVector::OneVector * Render->World->GetVoxelSize());
+	SetWorldScale3D(FVector::OneVector * Render->World->GetVoxelSize());
 
 	// Needed because octree is only partially builded when Init is called
 	Render->AddTransitionCheck(this);
