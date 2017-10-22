@@ -1,5 +1,6 @@
 #include "VoxelWorldDetails.h"
 #include "VoxelWorld.h"
+#include "VoxelWorldEditor.h"
 #include "PropertyHandle.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -54,7 +55,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Reload world")))
+		.Text(FText::FromString(TEXT("Toggle world preview")))
 		]
 	.ValueContent()
 		.MaxDesiredWidth(125.f)
@@ -64,11 +65,11 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked(this, &FVoxelWorldDetails::OnWorldReload)
+		.OnClicked(this, &FVoxelWorldDetails::OnWorldPreviewToggle)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Reload")))
+		.Text(FText::FromString(TEXT("Toggle")))
 		]
 		];
 
@@ -97,13 +98,18 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		];
 }
 
-FReply FVoxelWorldDetails::OnWorldReload()
+FReply FVoxelWorldDetails::OnWorldPreviewToggle()
 {
 	if (World.IsValid())
 	{
+		World->VoxelWorldEditorClass = AVoxelWorldEditor::StaticClass();
+
 		if (World->IsCreated())
 		{
 			World->DestroyInEditor();
+		}
+		else
+		{
 			World->CreateInEditor();
 		}
 	}

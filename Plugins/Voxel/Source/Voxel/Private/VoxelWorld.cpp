@@ -9,13 +9,13 @@
 #include "FlatWorldGenerator.h"
 #include "VoxelInvokerComponent.h"
 #include "VoxelModifier.h"
-#include "VoxelWorldEditor.h"
+#include "VoxelWorldEditorInterface.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 
-// Sets default values
 AVoxelWorld::AVoxelWorld()
-	: NewDepth(9)
+	: VoxelWorldEditorClass(nullptr)
+	, NewDepth(9)
 	, DeletionDelay(0.1f)
 	, bComputeTransitions(true)
 	, bIsCreated(false)
@@ -218,7 +218,7 @@ void AVoxelWorld::UpdateVoxelModifiers()
 	CreateInEditor();
 }
 
-AVoxelWorldEditor* AVoxelWorld::GetVoxelWorldEditor() const
+AVoxelWorldEditorInterface* AVoxelWorld::GetVoxelWorldEditor() const
 {
 	return VoxelWorldEditor;
 }
@@ -356,41 +356,44 @@ void AVoxelWorld::DestroyWorld()
 
 void AVoxelWorld::CreateInEditor()
 {
-	// Create/Find VoxelWorldEditor
-	VoxelWorldEditor = nullptr;
-
-	TArray<AActor*> FoundActors;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorldEditor::StaticClass(), FoundActors);
-
-	for (auto Actor : FoundActors)
+	if (VoxelWorldEditorClass)
 	{
-		auto VoxelWorldEditorActor = Cast<AVoxelWorldEditor>(Actor);
-		if (VoxelWorldEditorActor)
+		// Create/Find VoxelWorldEditor
+		VoxelWorldEditor = nullptr;
+
+		TArray<AActor*> FoundActors;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), VoxelWorldEditorClass, FoundActors);
+
+		for (auto Actor : FoundActors)
 		{
-			VoxelWorldEditor = VoxelWorldEditorActor;
-			break;
+			auto VoxelWorldEditorActor = Cast<AVoxelWorldEditorInterface>(Actor);
+			if (VoxelWorldEditorActor)
+			{
+				VoxelWorldEditor = VoxelWorldEditorActor;
+				break;
+			}
 		}
+		if (!VoxelWorldEditor)
+		{
+			// else spawn
+			VoxelWorldEditor = Cast<AVoxelWorldEditorInterface>(GetWorld()->SpawnActor(VoxelWorldEditorClass));
+		}
+
+		VoxelWorldEditor->Init(this);
+
+
+		if (IsCreated())
+		{
+			DestroyWorld();
+		}
+		CreateWorld();
+
+		bComputeCollisions = false;
+
+		AddInvoker(VoxelWorldEditor->GetInvoker());
+
+		UpdateAll(true);
 	}
-	if (!VoxelWorldEditor)
-	{
-		// else spawn
-		VoxelWorldEditor = GetWorld()->SpawnActor<AVoxelWorldEditor>();
-	}
-
-	VoxelWorldEditor->Init(this);
-
-
-	if (IsCreated())
-	{
-		DestroyWorld();
-	}
-	CreateWorld();
-
-	bComputeCollisions = false;
-
-	AddInvoker(VoxelWorldEditor->GetInvoker());
-
-	UpdateAll(true);
 }
 
 void AVoxelWorld::DestroyInEditor()

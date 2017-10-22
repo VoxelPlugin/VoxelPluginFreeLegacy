@@ -6,7 +6,7 @@
 #include "Engine/World.h"
 #include "VoxelRender.h"
 #include "VoxelData.h"
-#include "VoxelWorldEditor.h"
+#include "VoxelWorldEditorInterface.h"
 
 ALandscapeVoxelModifier::ALandscapeVoxelModifier()
 	: Data(nullptr)
@@ -50,10 +50,10 @@ void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 
 		FIntVector Position = World->GlobalToLocal(GetActorLocation());
 
-		FVoxelData* Data = World->GetData();
+		FVoxelData* WorldData = World->GetData();
 
 		{
-			Data->BeginSet();
+			WorldData->BeginSet();
 
 			FValueOctree* LastOctree = nullptr;
 
@@ -71,18 +71,18 @@ void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 						FVoxelMaterial OldMaterial;
 						if (NewValue >= 0)
 						{
-							Data->GetValueAndMaterial(X + Position.X, Y + Position.Y, Z + Position.Z, OldValue, OldMaterial, LastOctree);
+							WorldData->GetValueAndMaterial(X + Position.X, Y + Position.Y, Z + Position.Z, OldValue, OldMaterial, LastOctree);
 						}
 
 						if (NewValue < 0 || NewValue * OldValue >= 0)
 						{
-							Data->SetValueAndMaterial(X + Position.X, Y + Position.Y, Z + Position.Z, NewValue, InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
+							WorldData->SetValueAndMaterial(X + Position.X, Y + Position.Y, Z + Position.Z, NewValue, InstancedLandscape->GetDefaultMaterial(X, Y, Z), LastOctree);
 						}
 					}
 				}
 			}
 
-			Data->EndSet();
+			WorldData->EndSet();
 		}
 	}
 	else
@@ -116,7 +116,6 @@ bool ALandscapeVoxelModifier::ShouldTickIfViewportsOnly() const
 {
 	return true;
 }
-#endif
 
 void ALandscapeVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -149,6 +148,7 @@ void ALandscapeVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& Prop
 		}
 	}
 }
+#endif
 
 void ALandscapeVoxelModifier::UpdateRender()
 {

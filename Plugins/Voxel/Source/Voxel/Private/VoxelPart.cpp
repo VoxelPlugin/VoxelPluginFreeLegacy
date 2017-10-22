@@ -7,6 +7,7 @@
 #include "VoxelPolygonizer.h"
 #include "VoxelAutoDisableComponent.h"
 
+// TODO: grass support
 
 AVoxelPart::AVoxelPart()
 {

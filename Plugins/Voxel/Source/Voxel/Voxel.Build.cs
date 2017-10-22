@@ -46,8 +46,7 @@ namespace UnrealBuildTool.Rules
                     "ProceduralMeshComponent",
                     "Landscape",
                     "Sockets",
-                    "Networking",
-                    "UnrealEd",
+                    "Networking"
                 }
                 );
 
@@ -55,8 +54,8 @@ namespace UnrealBuildTool.Rules
             PrivateDependencyModuleNames.AddRange(
                 new string[]
                 {
-					// ... add private dependencies that you statically link with here ...
-				}
+
+                }
                 );
 
             DynamicallyLoadedModuleNames.AddRange(
