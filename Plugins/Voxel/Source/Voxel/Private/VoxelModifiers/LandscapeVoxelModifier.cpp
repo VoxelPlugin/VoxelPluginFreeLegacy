@@ -11,7 +11,6 @@
 ALandscapeVoxelModifier::ALandscapeVoxelModifier()
 	: Data(nullptr)
 	, Render(nullptr)
-	, Generator(nullptr)
 {
 #if WITH_EDITOR
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
@@ -21,7 +20,22 @@ ALandscapeVoxelModifier::ALandscapeVoxelModifier()
 	RootComponent = TouchCapsule;
 
 	PrimaryActorTick.bCanEverTick = true;
+
+	Generator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), UEmptyWorldGenerator::StaticClass());
 #endif
+}
+
+ALandscapeVoxelModifier::~ALandscapeVoxelModifier()
+{
+	if (Render)
+	{
+		Render->Destroy();
+		delete Render;
+	}
+	if (Data)
+	{
+		delete Data;
+	}
 }
 
 void ALandscapeVoxelModifier::ApplyToWorld(AVoxelWorld* World)
@@ -124,6 +138,7 @@ void ALandscapeVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& Prop
 
 		if (Render)
 		{
+			Render->Destroy();
 			delete Render;
 			Render = nullptr;
 		}
@@ -146,10 +161,6 @@ void ALandscapeVoxelModifier::UpdateRender()
 		InstancedLandscape->Init(PreviewWorld->GetVoxelSize());
 
 		const uint8 Depth = FMath::CeilToInt(FMath::Log2(InstancedLandscape->Size / 16.f)) + 1;
-		if (!Generator)
-		{
-			Generator = GetWorld()->SpawnActor<AEmptyWorldGenerator>(FVector::ZeroVector, FRotator::ZeroRotator);
-		}
 
 		if (Data)
 		{
@@ -180,6 +191,7 @@ void ALandscapeVoxelModifier::UpdateRender()
 
 		if (Render)
 		{
+			Render->Destroy();
 			delete Render;
 		}
 		Render = new FVoxelRender(PreviewWorld, this, Data, 4, 4);

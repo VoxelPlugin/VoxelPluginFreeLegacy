@@ -782,7 +782,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 
 
 	uint8 Depth = FMath::CeilToInt(FMath::Log2(2 * IntRadius / 16.f));
-	AVoxelWorldGenerator* WorldGenerator = NewObject<AEmptyWorldGenerator>();
+	UVoxelWorldGenerator* WorldGenerator = NewObject<UEmptyWorldGenerator>();
 
 	TSharedPtr<FVoxelData> Data = MakeShareable(new FVoxelData(Depth, WorldGenerator));
 

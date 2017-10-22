@@ -21,14 +21,14 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	FValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id);
+	FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id);
 	~FValueOctree();
 
 	// Is the game multiplayer?
 	bool bMultiplayer;
 
 	// Generator for this world
-	AVoxelWorldGenerator* WorldGenerator;
+	UVoxelWorldGenerator* WorldGenerator;
 
 	/**
 	 * Does this chunk have been modified?

@@ -51,7 +51,7 @@ public:
 
 	FORCEINLINE AVoxelWorldEditor* GetVoxelWorldEditor();
 	FORCEINLINE FVoxelData* GetData();
-	FORCEINLINE AVoxelWorldGenerator* GetWorldGenerator();
+	FORCEINLINE UVoxelWorldGenerator* GetWorldGenerator();
 	FORCEINLINE int32 GetSeed();
 	FORCEINLINE float GetFoliageFPS();
 	FORCEINLINE float GetLODUpdateFPS();
@@ -194,11 +194,11 @@ private:
 
 	// Generator for this world
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-		TSubclassOf<AVoxelWorldGenerator> WorldGenerator;
+		TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
 
 	// Instanced world generator
 	UPROPERTY()
-		AVoxelWorldGenerator* InstancedWorldGenerator;
+		UVoxelWorldGenerator* InstancedWorldGenerator;
 
 	UPROPERTY()
 		AVoxelWorldEditor* VoxelWorldEditor;

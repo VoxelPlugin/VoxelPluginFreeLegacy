@@ -7,11 +7,11 @@
 #include "PerlinNoise.h"
 #include "PerlinNoiseWorldGenerator.h"
 
-APerlinNoiseWorldGenerator::APerlinNoiseWorldGenerator() : Noise()
+UPerlinNoiseWorldGenerator::UPerlinNoiseWorldGenerator() : Noise()
 {
 }
 
-float APerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
+float UPerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
 	float n = Noise.Noise(X / 10.f, Y / 10.f, Z / 10.f);
 	n = n - FMath::FloorToInt(n);
@@ -19,12 +19,12 @@ float APerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return 2 * n - 1;
 }
 
-FVoxelMaterial APerlinNoiseWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
+FVoxelMaterial UPerlinNoiseWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
 	return FVoxelMaterial();
 }
 
-void APerlinNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
+void UPerlinNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 
 };

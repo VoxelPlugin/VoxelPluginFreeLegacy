@@ -8,13 +8,11 @@
 
 class AVoxelWorld;
 
-// TODO: Auto delete
-
 /**
  *
  */
-UCLASS(Blueprintable, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering"))
-class VOXEL_API AVoxelWorldGenerator : public AActor
+UCLASS(Blueprintable, abstract, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering"))
+class VOXEL_API UVoxelWorldGenerator : public UObject
 {
 	GENERATED_BODY()
 

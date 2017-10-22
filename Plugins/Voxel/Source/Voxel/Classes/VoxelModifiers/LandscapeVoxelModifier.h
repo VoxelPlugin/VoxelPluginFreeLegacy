@@ -21,6 +21,7 @@ class VOXEL_API ALandscapeVoxelModifier : public AVoxelModifier
 
 public:
 	ALandscapeVoxelModifier();
+	~ALandscapeVoxelModifier();
 
 	UPROPERTY(EditAnywhere)
 		TSubclassOf<ALandscapeVoxelAsset> Landscape;
@@ -46,7 +47,7 @@ private:
 	FVoxelRender* Render;
 
 	UPROPERTY()
-		AVoxelWorldGenerator* Generator;
+		UVoxelWorldGenerator* Generator;
 
 	void UpdateRender();
 };

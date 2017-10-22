@@ -38,15 +38,22 @@ AVoxelWorld::AVoxelWorld()
 	TouchCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
 	RootComponent = TouchCapsule;
 
-	WorldGenerator = TSubclassOf<AVoxelWorldGenerator>(AFlatWorldGenerator::StaticClass());
+	WorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UFlatWorldGenerator::StaticClass());
 
 	bReplicates = true;
 }
 
 AVoxelWorld::~AVoxelWorld()
 {
-	delete Data;
-	delete Render;
+	if (Data)
+	{
+		delete Data;
+	}
+	if (Render)
+	{
+		Render->Destroy();
+		delete Render;
+	}
 }
 
 void AVoxelWorld::BeginPlay()
@@ -221,7 +228,7 @@ FVoxelData* AVoxelWorld::GetData()
 	return Data;
 }
 
-AVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
+UVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
 {
 	return InstancedWorldGenerator;
 }
@@ -304,18 +311,11 @@ void AVoxelWorld::CreateWorld(bool bLoadFromSave)
 	if (!InstancedWorldGenerator || InstancedWorldGenerator->GetClass() != WorldGenerator->GetClass())
 	{
 		// Create generator
-
-		if (InstancedWorldGenerator)
-		{
-			// Delete if created
-			InstancedWorldGenerator->Destroy();
-		}
-
-		InstancedWorldGenerator = GetWorld()->SpawnActor<AVoxelWorldGenerator>(WorldGenerator);
+		InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), WorldGenerator);
 		if (InstancedWorldGenerator == nullptr)
 		{
 			UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
-			InstancedWorldGenerator = Cast<AVoxelWorldGenerator>(GetWorld()->SpawnActor(AFlatWorldGenerator::StaticClass()));
+			InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), UFlatWorldGenerator::StaticClass());
 		}
 	}
 
@@ -346,6 +346,7 @@ void AVoxelWorld::DestroyWorld()
 	check(Data);
 	check(Render);
 	delete Data;
+	Render->Destroy();
 	delete Render;
 	Data = nullptr;
 	Render = nullptr;
@@ -396,7 +397,7 @@ void AVoxelWorld::DestroyInEditor()
 {
 	if (IsCreated())
 	{
-		Render->Delete();
+		Render->Destroy();
 		DestroyWorld();
 	}
 }

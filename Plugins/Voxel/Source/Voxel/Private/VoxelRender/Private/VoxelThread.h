@@ -11,7 +11,7 @@
 class FVoxelPolygonizer;
 class UVoxelChunkComponent;
 class FVoxelData;
-class AVoxelWorldGenerator;
+class UVoxelWorldGenerator;
 
 /**
  * Thread to create foliage
@@ -44,7 +44,7 @@ private:
 	float const VoxelSize;
 	FIntVector const ChunkPosition;
 	int const Seed;
-	AVoxelWorldGenerator* const Generator;
+	UVoxelWorldGenerator* const Generator;
 	AVoxelWorld* const World;
 };
 

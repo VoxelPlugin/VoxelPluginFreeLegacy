@@ -11,12 +11,12 @@
  *
  */
 UCLASS(Blueprintable)
-class VOXEL_API APerlinNoiseWorldGenerator : public AVoxelWorldGenerator
+class VOXEL_API UPerlinNoiseWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
-	APerlinNoiseWorldGenerator();
+	UPerlinNoiseWorldGenerator();
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;

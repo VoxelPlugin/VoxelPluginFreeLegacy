@@ -4,17 +4,17 @@
 #include "FlatWorldGenerator.h"
 #include "VoxelMaterial.h"
 
-AFlatWorldGenerator::AFlatWorldGenerator() : Height(0), ValueMultiplier(1)
+UFlatWorldGenerator::UFlatWorldGenerator() : Height(0), ValueMultiplier(1)
 {
 
 }
 
-float AFlatWorldGenerator::GetDefaultValue(int X, int Y, int Z)
+float UFlatWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
 	return (Z >= Height) ? ValueMultiplier : -ValueMultiplier;
 }
 
-FVoxelMaterial AFlatWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
+FVoxelMaterial UFlatWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
 	for (auto Layer : TerrainLayers)
 	{
@@ -27,7 +27,7 @@ FVoxelMaterial AFlatWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 	return FVoxelMaterial(DefaultMaterial1, DefaultMaterial2, DefaultAlpha);
 }
 
-void AFlatWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
+void UFlatWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 
 }

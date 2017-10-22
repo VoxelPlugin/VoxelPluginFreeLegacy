@@ -20,13 +20,13 @@ public:
 	 * @param	Depth			Depth of this world; Width = 16 * 2^Depth
 	 * @param	WorldGenerator	Generator for this world
 	 */
-	FVoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator);
+	FVoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator);
 	~FVoxelData();
 
 	// Depth of the octree
 	const int Depth;
 
-	AVoxelWorldGenerator* const WorldGenerator;
+	UVoxelWorldGenerator* const WorldGenerator;
 
 	// Size = 16 * 2^Depth
 	FORCEINLINE int Size() const;

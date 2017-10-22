@@ -4,7 +4,7 @@
 #include "VoxelWorldGenerator.h"
 #include "GenericPlatformProcess.h"
 
-FValueOctree::FValueOctree(AVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id)
+FValueOctree::FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id)
 	: FOctree(Position, Depth, Id)
 	, WorldGenerator(WorldGenerator)
 	, bIsDirty(false)

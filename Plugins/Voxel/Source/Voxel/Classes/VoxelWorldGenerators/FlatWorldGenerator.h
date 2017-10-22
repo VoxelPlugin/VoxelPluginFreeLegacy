@@ -35,12 +35,12 @@ public:
  *
  */
 UCLASS(Blueprintable)
-class VOXEL_API AFlatWorldGenerator : public AVoxelWorldGenerator
+class VOXEL_API UFlatWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
-	AFlatWorldGenerator();
+	UFlatWorldGenerator();
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;

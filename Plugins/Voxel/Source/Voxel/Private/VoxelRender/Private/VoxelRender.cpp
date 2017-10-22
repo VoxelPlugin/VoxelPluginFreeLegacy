@@ -42,28 +42,30 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 
 FVoxelRender::~FVoxelRender()
 {
-	if (!World->IsPendingKill())
-	{
-		for (auto Chunk : ActiveChunks)
-		{
-			if (!Chunk->IsPendingKill())
-			{
-				Chunk->DeleteFromRender();
-			}
-		}
-	}
-	MeshThreadPool->Destroy();
-	FoliageThreadPool->Destroy();
+	check(ActiveChunks.Num() == 0);
+	check(InactiveChunks.empty());
 }
 
 void FVoxelRender::Tick(float DeltaTime)
 {
+	check(ChunksToCheckForTransitionChange.Num() == 0);
+
 	TimeSinceFoliageUpdate += DeltaTime;
 	TimeSinceLODUpdate += DeltaTime;
 
 	if (TimeSinceLODUpdate > 1 / World->GetLODUpdateFPS())
 	{
+		check(ChunksToCheckForTransitionChange.Num() == 0);
+
 		UpdateLOD();
+
+		// See Init and Unload functions of AVoxelChunk
+		for (auto Chunk : ChunksToCheckForTransitionChange)
+		{
+			Chunk->CheckTransitions();
+		}
+		ChunksToCheckForTransitionChange.Empty();
+
 		TimeSinceLODUpdate = 0;
 	}
 
@@ -71,12 +73,48 @@ void FVoxelRender::Tick(float DeltaTime)
 
 	if (TimeSinceFoliageUpdate > 1 / World->GetFoliageFPS())
 	{
-		ApplyFoliageUpdates();
+		for (auto Chunk : FoliageUpdateNeeded)
+		{
+			Chunk->UpdateFoliage();
+		}
+		FoliageUpdateNeeded.Empty();
 		TimeSinceFoliageUpdate = 0;
 	}
 
-	ApplyNewMeshes();
-	ApplyNewFoliages();
+	// Apply new meshes and new foliages
+	{
+		FScopeLock Lock(&ChunksToApplyNewMeshLock);
+		for (auto Chunk : ChunksToApplyNewMesh)
+		{
+			Chunk->ApplyNewMesh();
+		}
+		ChunksToApplyNewMesh.Empty();
+	}
+	{
+		FScopeLock Lock(&ChunksToApplyNewFoliageLock);
+		for (auto Chunk : ChunksToApplyNewFoliage)
+		{
+			Chunk->ApplyNewFoliage();
+		}
+		ChunksToApplyNewFoliage.Empty();
+	}
+
+	// Chunks to delete
+	for (FChunkToDelete& ChunkToDelete : ChunksToDelete)
+	{
+		ChunkToDelete.TimeLeft -= DeltaTime;
+		if (ChunkToDelete.TimeLeft < 0)
+		{
+			auto Chunk = ChunkToDelete.Chunk;
+			check(!FoliageUpdateNeeded.Contains(Chunk));
+			check(!ChunksToApplyNewMesh.Contains(Chunk));
+			check(!ChunksToApplyNewFoliage.Contains(Chunk));
+			Chunk->Delete();
+			ActiveChunks.Remove(Chunk);
+			InactiveChunks.push_front(Chunk);
+		}
+	}
+	ChunksToDelete.remove_if([](FChunkToDelete ChunkToDelete) { return ChunkToDelete.TimeLeft < 0; });
 }
 
 void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
@@ -103,14 +141,6 @@ UVoxelChunkComponent* FVoxelRender::GetInactiveChunk()
 
 	check(Chunk->IsValidLowLevel());
 	return Chunk;
-}
-
-void FVoxelRender::SetChunkAsInactive(UVoxelChunkComponent* Chunk)
-{
-	ActiveChunks.Remove(Chunk);
-	InactiveChunks.push_front(Chunk);
-
-	RemoveFromQueues(Chunk);
 }
 
 void FVoxelRender::UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync)
@@ -192,9 +222,6 @@ void FVoxelRender::ApplyUpdates()
 	}
 	ChunksToUpdate.Reset();
 	IdsOfChunksToUpdateSynchronously.Reset();
-
-	// See Init and Unload functions of AVoxelChunk
-	ApplyTransitionChecks();
 }
 
 void FVoxelRender::UpdateAll(bool bAsync)
@@ -225,12 +252,35 @@ void FVoxelRender::UpdateLOD()
 
 void FVoxelRender::AddFoliageUpdate(UVoxelChunkComponent* Chunk)
 {
+#if DO_CHECK
+	for (auto ChunkToDelete : ChunksToDelete)
+	{
+		check(ChunkToDelete.Chunk != Chunk);
+	}
+#endif
+
 	FoliageUpdateNeeded.Add(Chunk);
 }
 
 void FVoxelRender::AddTransitionCheck(UVoxelChunkComponent* Chunk)
 {
 	ChunksToCheckForTransitionChange.Add(Chunk);
+}
+
+void FVoxelRender::ScheduleDeletion(UVoxelChunkComponent* Chunk)
+{
+	// Cancel any pending update
+	RemoveFromQueues(Chunk);
+
+	// Schedule deletion
+	ChunksToDelete.push_front(FChunkToDelete(Chunk, World->GetDeletionDelay()));
+}
+
+void FVoxelRender::ChunkHasBeenDestroyed(UVoxelChunkComponent* Chunk)
+{
+	RemoveFromQueues(Chunk);
+
+	ChunksToDelete.remove_if([Chunk](FChunkToDelete ChunkToDelete) { return ChunkToDelete.Chunk == Chunk; });
 }
 
 void FVoxelRender::AddApplyNewMesh(UVoxelChunkComponent* Chunk)
@@ -248,6 +298,7 @@ void FVoxelRender::AddApplyNewFoliage(UVoxelChunkComponent* Chunk)
 void FVoxelRender::RemoveFromQueues(UVoxelChunkComponent* Chunk)
 {
 	FoliageUpdateNeeded.Remove(Chunk);
+
 	{
 		FScopeLock Lock(&ChunksToApplyNewMeshLock);
 		ChunksToApplyNewMesh.Remove(Chunk);
@@ -256,54 +307,6 @@ void FVoxelRender::RemoveFromQueues(UVoxelChunkComponent* Chunk)
 		FScopeLock Lock(&ChunksToApplyNewFoliageLock);
 		ChunksToApplyNewFoliage.Remove(Chunk);
 	}
-}
-
-void FVoxelRender::ApplyFoliageUpdates()
-{
-	std::forward_list<UVoxelChunkComponent*> Failed;
-	for (auto Chunk : FoliageUpdateNeeded)
-	{
-		bool bSuccess = Chunk->UpdateFoliage();
-		if (!bSuccess)
-		{
-			Failed.push_front(Chunk);
-		}
-	}
-	FoliageUpdateNeeded.Empty();
-
-	for (auto Chunk : Failed)
-	{
-		FoliageUpdateNeeded.Add(Chunk);
-	}
-}
-
-void FVoxelRender::ApplyTransitionChecks()
-{
-	for (auto Chunk : ChunksToCheckForTransitionChange)
-	{
-		Chunk->CheckTransitions();
-	}
-	ChunksToCheckForTransitionChange.Empty();
-}
-
-void FVoxelRender::ApplyNewMeshes()
-{
-	FScopeLock Lock(&ChunksToApplyNewMeshLock);
-	for (auto Chunk : ChunksToApplyNewMesh)
-	{
-		Chunk->ApplyNewMesh();
-	}
-	ChunksToApplyNewMesh.Empty();
-}
-
-void FVoxelRender::ApplyNewFoliages()
-{
-	FScopeLock Lock(&ChunksToApplyNewFoliageLock);
-	for (auto Chunk : ChunksToApplyNewFoliage)
-	{
-		Chunk->ApplyNewFoliage();
-	}
-	ChunksToApplyNewFoliage.Empty();
 }
 
 TWeakPtr<FChunkOctree> FVoxelRender::GetChunkOctreeAt(FIntVector Position) const
@@ -317,7 +320,7 @@ int FVoxelRender::GetDepthAt(FIntVector Position) const
 	return GetChunkOctreeAt(Position).Pin()->Depth;
 }
 
-void FVoxelRender::Delete()
+void FVoxelRender::Destroy()
 {
 	MeshThreadPool->Destroy();
 	FoliageThreadPool->Destroy();
@@ -332,6 +335,9 @@ void FVoxelRender::Delete()
 	{
 		Chunk->DestroyComponent();
 	}
+
+	ActiveChunks.Empty();
+	InactiveChunks.resize(0);
 }
 
 FVector FVoxelRender::GetGlobalPosition(FIntVector LocalPosition)

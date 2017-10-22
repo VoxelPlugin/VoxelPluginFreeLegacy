@@ -131,13 +131,10 @@ void VoxelValueDiffArray::AddPackets(std::forward_list<TArray<FVoxelValueDiff>>&
 
 		for (int i = 0; i < Count; i++)
 		{
-			if (Ids.empty() || Indexes.empty() || Values.empty())
-			{
-				break;
-			}
-
-			// TODO: Leak?
-			DiffArray[Count - 1 - i] = *new FVoxelValueDiff(Ids.front(), Indexes.front(), Values.front());
+			// TODO: fix
+			check(!(Ids.empty() || Indexes.empty() || Values.empty()));
+			
+			DiffArray[Count - 1 - i] = FVoxelValueDiff(Ids.front(), Indexes.front(), Values.front());
 
 			Ids.pop_front();
 			Indexes.pop_front();
@@ -170,13 +167,10 @@ void VoxelMaterialDiffArray::AddPackets(std::forward_list<TArray<FVoxelMaterialD
 
 		for (int i = 0; i < Count; i++)
 		{
-			if (Ids.empty() || Indexes.empty() || Materials.empty())
-			{
-				break;
-			}
+			// TODO: fix
+			check(!(Ids.empty() || Indexes.empty() || Materials.empty()));
 
-			// TODO: Leak?
-			DiffArray[Count - 1 - i] = *new FVoxelMaterialDiff(Ids.front(), Indexes.front(), Materials.front());
+			DiffArray[Count - 1 - i] = FVoxelMaterialDiff(Ids.front(), Indexes.front(), Materials.front());
 
 			Ids.pop_front();
 			Indexes.pop_front();

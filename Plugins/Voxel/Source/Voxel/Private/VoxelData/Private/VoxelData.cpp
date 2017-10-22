@@ -6,7 +6,7 @@
 #include "VoxelSave.h"
 #include "GenericPlatformProcess.h"
 
-FVoxelData::FVoxelData(int Depth, AVoxelWorldGenerator* WorldGenerator)
+FVoxelData::FVoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator)
 	: Depth(Depth)
 	, WorldGenerator(WorldGenerator)
 {

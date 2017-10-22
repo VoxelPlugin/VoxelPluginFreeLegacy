@@ -10,12 +10,12 @@
  *
  */
 UCLASS(Blueprintable)
-class VOXEL_API ASphereWorldGenerator : public AVoxelWorldGenerator
+class VOXEL_API USphereWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
-	ASphereWorldGenerator();
+	USphereWorldGenerator();
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
