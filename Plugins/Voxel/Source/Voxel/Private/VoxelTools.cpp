@@ -205,7 +205,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVect
 
 	TSet<FIntVector> ModifiedPositions;
 	// Scale to make sure we don't miss any point when rounding
-	float Scale = World->GetTransform().GetScale3D().Size() / 4;
+	float Scale = World->GetVoxelSize() / 4;
 
 	int IntRadius = FMath::CeilToInt(Radius);
 	for (int x = -IntRadius; x <= IntRadius; x++)
@@ -280,8 +280,8 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 	TArray<FIntVector> Positions;
 	TArray<FVoxelMaterial> Materials;
 
-	float Scale = World->GetTransform().GetScale3D().Size() / 4;
-	const float VoxelDiagonalLength = World->GetTransform().GetScale3D().Size();
+	float Scale = World->GetVoxelSize() / 4;
+	const float VoxelDiagonalLength = World->GetVoxelSize();
 
 	int IntRadius = FMath::CeilToInt(Radius + FadeDistance);
 	for (int x = -IntRadius; x <= IntRadius; x++)
@@ -394,7 +394,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 	TArray<float> DistancesToTool;
 
 	// Scale to make sure we don't miss any point when rounding
-	float Scale = World->GetTransform().GetScale3D().Size() / 4;
+	float Scale = World->GetVoxelSize() / 4;
 
 	int IntRadius = FMath::CeilToInt(Radius);
 	for (int x = -IntRadius; x <= IntRadius; x++)
@@ -941,7 +941,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 
 			AVoxelPart* Part = World->GetWorld()->SpawnActor<AVoxelPart>(Position, World->GetTransform().Rotator());
 
-			Part->SetActorScale3D(World->GetActorScale());
+			Part->SetActorScale3D(World->GetVoxelSize() * FVector::OneVector);
 
 			Part->Init(CurrentData.Get(), World->GetVoxelMaterial(), World);
 		}
