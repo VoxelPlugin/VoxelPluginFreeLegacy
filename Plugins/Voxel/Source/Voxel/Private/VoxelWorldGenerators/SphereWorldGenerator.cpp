@@ -3,12 +3,12 @@
 #include "VoxelPrivatePCH.h"
 #include "SphereWorldGenerator.h"
 
-ASphereWorldGenerator::ASphereWorldGenerator() : Radius(1000), InverseOutsideInside(false), ValueMultiplier(1)
+USphereWorldGenerator::USphereWorldGenerator() : Radius(1000), InverseOutsideInside(false), ValueMultiplier(1)
 {
 
 }
 
-float ASphereWorldGenerator::GetDefaultValue(int X, int Y, int Z)
+float USphereWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
 	// Distance to the center
 	float Distance = FVector(X, Y, Z).Size();
@@ -22,17 +22,17 @@ float ASphereWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	return Alpha * (InverseOutsideInside ? -1 : 1);
 }
 
-FVoxelMaterial ASphereWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
+FVoxelMaterial USphereWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
 	return DefaultMaterial;
 }
 
-void ASphereWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
+void USphereWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 	LocalRadius = Radius / VoxelWorld->GetVoxelSize();
 }
 
-FVector ASphereWorldGenerator::GetUpVector(int X, int Y, int Z)
+FVector USphereWorldGenerator::GetUpVector(int X, int Y, int Z)
 {
 	return FVector(X, Y, Z).GetSafeNormal();
 }

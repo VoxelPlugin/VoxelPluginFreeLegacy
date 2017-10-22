@@ -10,7 +10,7 @@
  *
  */
 UCLASS(Blueprintable)
-class VOXEL_API AEmptyWorldGenerator : public AVoxelWorldGenerator
+class VOXEL_API UEmptyWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 

@@ -2,17 +2,17 @@
 
 #include "CirclesWorldGenerator.h"
 
-ACirclesWorldGenerator::ACirclesWorldGenerator() : Scale(10, 10), MaxValue(1), MinValue(-1)
+UCirclesWorldGenerator::UCirclesWorldGenerator() : Scale(10, 10), MaxValue(1), MinValue(-1)
 {
 
 }
 
-float ACirclesWorldGenerator::GetDefaultValue(int X, int Y, int Z)
+float UCirclesWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
 	return (FMath::Sin(X / Scale.X) + FMath::Cos(Y / Scale.Y)) + Z > 0 ? MaxValue : MinValue;
 }
 
-FVoxelMaterial ACirclesWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
+FVoxelMaterial UCirclesWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
 	if (Z >= 1)
 	{
@@ -32,7 +32,7 @@ FVoxelMaterial ACirclesWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 	}
 }
 
-void ACirclesWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
+void UCirclesWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 
 }

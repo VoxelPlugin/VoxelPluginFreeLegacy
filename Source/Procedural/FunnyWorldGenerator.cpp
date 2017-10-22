@@ -2,7 +2,7 @@
 
 #include "FunnyWorldGenerator.h"
 
-AFunnyWorldGenerator::AFunnyWorldGenerator()
+UFunnyWorldGenerator::UFunnyWorldGenerator()
 	: ValueMultiplier(1)
 	, SphereLayerHeight(100)
 	, Radius(10)
@@ -11,7 +11,7 @@ AFunnyWorldGenerator::AFunnyWorldGenerator()
 
 }
 
-float AFunnyWorldGenerator::GetDefaultValue(int X, int Y, int Z)
+float UFunnyWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
 	if (Z < 0)
 	{
@@ -34,7 +34,7 @@ float AFunnyWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	}
 }
 
-FVoxelMaterial AFunnyWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
+FVoxelMaterial UFunnyWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
 	if (Z >= 1)
 	{
@@ -54,7 +54,7 @@ FVoxelMaterial AFunnyWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 	}
 }
 
-void AFunnyWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
+void UFunnyWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
 
 }

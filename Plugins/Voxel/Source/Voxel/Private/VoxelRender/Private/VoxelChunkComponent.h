@@ -24,6 +24,7 @@ class UVoxelChunkComponent : public UProceduralMeshComponent
 
 public:
 	UVoxelChunkComponent();
+	~UVoxelChunkComponent();
 
 	/**
 	 * Init this
@@ -52,8 +53,6 @@ public:
 	void Unload();
 
 	void Delete();
-
-	void DeleteFromRender();
 
 	void SetVoxelMaterial(UMaterialInterface* Material);
 

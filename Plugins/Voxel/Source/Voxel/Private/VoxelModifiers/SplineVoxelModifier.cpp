@@ -17,7 +17,6 @@ ASplineVoxelModifier::ASplineVoxelModifier()
 	, LivePreviewFPS(10)
 	, Data(nullptr)
 	, Render(nullptr)
-	, Generator(nullptr)
 	, TimeSinceUpdate(0)
 {
 #if WITH_EDITOR
@@ -28,7 +27,24 @@ ASplineVoxelModifier::ASplineVoxelModifier()
 	RootComponent = TouchCapsule;
 
 	PrimaryActorTick.bCanEverTick = true;
+
+	Generator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), UEmptyWorldGenerator::StaticClass());
 #endif
+}
+
+ASplineVoxelModifier::~ASplineVoxelModifier()
+{
+	if (Render)
+	{
+		Render->Destroy();
+		delete Render;
+		Render = nullptr;
+	}
+	if (Data)
+	{
+		delete Data;
+		Data = nullptr;
+	}
 }
 
 void ASplineVoxelModifier::ApplyToWorld(AVoxelWorld* World)
@@ -138,13 +154,9 @@ void ASplineVoxelModifier::UpdateRender()
 
 		if (!Data || Data->Depth != Depth)
 		{
+			Render->Destroy();
 			delete Render;
 			Render = nullptr;
-
-			if (!Generator)
-			{
-				Generator = GetWorld()->SpawnActor<AEmptyWorldGenerator>(FVector::ZeroVector, FRotator::ZeroRotator);
-			}
 
 			if (Depth > 5 && !bNoSizeLimit)
 			{
@@ -295,6 +307,7 @@ void ASplineVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& Propert
 
 	if (Render)
 	{
+		Render->Destroy();
 		delete Render;
 		Render = nullptr;
 	}

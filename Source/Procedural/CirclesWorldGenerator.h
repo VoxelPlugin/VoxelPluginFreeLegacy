@@ -8,12 +8,12 @@
 #include "CirclesWorldGenerator.generated.h"
 
 UCLASS(Blueprintable)
-class PROCEDURAL_API ACirclesWorldGenerator : public AVoxelWorldGenerator
+class PROCEDURAL_API UCirclesWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
-	ACirclesWorldGenerator();
+	UCirclesWorldGenerator();
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;

@@ -11,7 +11,7 @@ class FVoxelData;
 /**
 *
 */
-UCLASS(Blueprintable)
+UCLASS(Blueprintable, abstract)
 class VOXEL_API AVoxelModifier : public AActor
 {
 	GENERATED_BODY()

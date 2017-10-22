@@ -8,12 +8,12 @@
 #include "FunnyWorldGenerator.generated.h"
 
 UCLASS(Blueprintable)
-class PROCEDURAL_API AFunnyWorldGenerator : public AVoxelWorldGenerator
+class PROCEDURAL_API UFunnyWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
-	AFunnyWorldGenerator();
+	UFunnyWorldGenerator();
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;

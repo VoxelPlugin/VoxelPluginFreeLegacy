@@ -12,7 +12,7 @@
 *
 */
 UCLASS(Blueprintable)
-class VOXEL_API APerformanceTestWorldGenerator : public AVoxelWorldGenerator
+class VOXEL_API UPerformanceTestWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 

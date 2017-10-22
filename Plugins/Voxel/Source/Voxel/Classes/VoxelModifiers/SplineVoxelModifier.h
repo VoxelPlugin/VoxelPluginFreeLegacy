@@ -21,6 +21,7 @@ class VOXEL_API ASplineVoxelModifier : public AVoxelModifier
 
 public:
 	ASplineVoxelModifier();
+	~ASplineVoxelModifier();
 
 	UPROPERTY(EditAnywhere)
 		TArray<USplineComponent*> Splines;
@@ -67,7 +68,7 @@ private:
 	FVoxelRender* Render;
 
 	UPROPERTY()
-		AVoxelWorldGenerator* Generator;
+		UVoxelWorldGenerator* Generator;
 
 	float TimeSinceUpdate;
 
