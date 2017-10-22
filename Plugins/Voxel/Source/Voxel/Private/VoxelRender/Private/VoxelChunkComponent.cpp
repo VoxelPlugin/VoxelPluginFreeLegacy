@@ -52,7 +52,7 @@ void UVoxelChunkComponent::Init(TWeakPtr<FChunkOctree> NewOctree)
 
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
 
-	SetWorldLocationAndRotation(Render->GetGlobalPosition(NewPosition), FRotator::ZeroRotator);
+	SetWorldLocation(Render->GetGlobalPosition(NewPosition));
 	SetWorldScale3D(FVector::OneVector * Render->World->GetVoxelSize());
 
 	// Needed because octree is only partially builded when Init is called
@@ -163,6 +163,8 @@ void UVoxelChunkComponent::Unload()
 
 void UVoxelChunkComponent::Delete()
 {
+	check(Render);
+
 	Render = nullptr;
 
 	DeleteTasks();
@@ -359,6 +361,11 @@ void UVoxelChunkComponent::ApplyNewFoliage()
 	FoliageTasks.Empty();
 }
 
+
+void UVoxelChunkComponent::ResetRender()
+{
+	Render = nullptr;
+}
 
 void UVoxelChunkComponent::Serialize(FArchive& Ar)
 {

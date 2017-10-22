@@ -23,7 +23,7 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 		UVoxelChunkComponent* ChunkComponent = Cast<UVoxelChunkComponent>(Component);
 		if (ChunkComponent)
 		{
-			ChunkComponent->Delete();
+			ChunkComponent->SetProcMeshSection(0, FProcMeshSection());
 			ChunkComponent->SetVoxelMaterial(World->GetVoxelMaterial());
 			InactiveChunks.push_front(ChunkComponent);
 		}
@@ -127,8 +127,8 @@ UVoxelChunkComponent* FVoxelRender::GetInactiveChunk()
 	UVoxelChunkComponent* Chunk;
 	if (InactiveChunks.empty())
 	{
-		Chunk = NewObject<UVoxelChunkComponent>(ChunksParent);;
-		Chunk->OnComponentCreated();
+		Chunk = NewObject<UVoxelChunkComponent>(ChunksParent, NAME_None);
+		Chunk->SetupAttachment(ChunksParent->GetRootComponent(), NAME_None);
 		Chunk->RegisterComponent();
 		Chunk->SetVoxelMaterial(World->GetVoxelMaterial());
 	}
@@ -281,6 +281,9 @@ void FVoxelRender::ChunkHasBeenDestroyed(UVoxelChunkComponent* Chunk)
 	RemoveFromQueues(Chunk);
 
 	ChunksToDelete.remove_if([Chunk](FChunkToDelete ChunkToDelete) { return ChunkToDelete.Chunk == Chunk; });
+
+	InactiveChunks.remove(Chunk);
+	ActiveChunks.Remove(Chunk);
 }
 
 void FVoxelRender::AddApplyNewMesh(UVoxelChunkComponent* Chunk)
@@ -327,13 +330,14 @@ void FVoxelRender::Destroy()
 
 	for (auto Chunk : ActiveChunks)
 	{
-		Chunk->Delete();
-		InactiveChunks.push_front(Chunk);
-	}
-
-	for (auto Chunk : InactiveChunks)
-	{
-		Chunk->DestroyComponent();
+		if (!Chunk->IsPendingKill())
+		{
+			Chunk->Delete();
+		}
+		else
+		{
+			Chunk->ResetRender();
+		}
 	}
 
 	ActiveChunks.Empty();

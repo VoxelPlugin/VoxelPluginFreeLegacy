@@ -218,65 +218,65 @@ void AVoxelWorld::UpdateVoxelModifiers()
 	CreateInEditor();
 }
 
-AVoxelWorldEditor* AVoxelWorld::GetVoxelWorldEditor()
+AVoxelWorldEditor* AVoxelWorld::GetVoxelWorldEditor() const
 {
 	return VoxelWorldEditor;
 }
 
-FVoxelData* AVoxelWorld::GetData()
+FVoxelData* AVoxelWorld::GetData() const
 {
 	return Data;
 }
 
-UVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator()
+UVoxelWorldGenerator* AVoxelWorld::GetWorldGenerator() const
 {
 	return InstancedWorldGenerator;
 }
 
-int32 AVoxelWorld::GetSeed()
+int32 AVoxelWorld::GetSeed() const
 {
 	return Seed;
 }
 
-float AVoxelWorld::GetFoliageFPS()
+float AVoxelWorld::GetFoliageFPS() const
 {
 	return FoliageFPS;
 }
 
-float AVoxelWorld::GetLODUpdateFPS()
+float AVoxelWorld::GetLODUpdateFPS() const
 {
 	return LODUpdateFPS;
 }
 
-UMaterialInterface* AVoxelWorld::GetVoxelMaterial()
+UMaterialInterface* AVoxelWorld::GetVoxelMaterial() const
 {
 	return VoxelMaterial;
 }
 
-bool AVoxelWorld::GetComputeTransitions()
+bool AVoxelWorld::GetComputeTransitions() const
 {
 	return bComputeTransitions;
 }
 
-bool AVoxelWorld::GetComputeCollisions()
+bool AVoxelWorld::GetComputeCollisions() const
 {
 	return bComputeCollisions;
 }
 
-float AVoxelWorld::GetDeletionDelay()
+float AVoxelWorld::GetDeletionDelay() const
 {
 	return DeletionDelay;
 }
 
 FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
 {
-	FVector P = GetTransform().InverseTransformPosition(Position);
+	FVector P = GetTransform().InverseTransformPosition(Position) / GetVoxelSize();
 	return FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
 }
 
 FVector AVoxelWorld::LocalToGlobal(FIntVector Position) const
 {
-	return GetTransform().TransformPosition((FVector)Position);
+	return GetTransform().TransformPosition(GetVoxelSize() * (FVector)Position);
 }
 
 void AVoxelWorld::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
@@ -303,7 +303,7 @@ void AVoxelWorld::CreateWorld(bool bLoadFromSave)
 	Depth = NewDepth;
 	VoxelSize = NewVoxelSize;
 
-	SetActorScale3D(FVector::OneVector * VoxelSize);
+	SetActorScale3D(FVector::OneVector);
 
 	check(!Data);
 	check(!Render);
@@ -397,7 +397,6 @@ void AVoxelWorld::DestroyInEditor()
 {
 	if (IsCreated())
 	{
-		Render->Destroy();
 		DestroyWorld();
 	}
 }
@@ -425,7 +424,7 @@ bool AVoxelWorld::IsInWorld(FIntVector Position) const
 	return Data->IsInWorld(Position.X, Position.Y, Position.Z);
 }
 
-float AVoxelWorld::GetVoxelSize()
+float AVoxelWorld::GetVoxelSize() const
 {
 	return VoxelSize;
 }

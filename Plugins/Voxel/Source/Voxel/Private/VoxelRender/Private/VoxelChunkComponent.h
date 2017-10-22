@@ -69,6 +69,8 @@ public:
 
 	void ApplyNewFoliage();
 
+	void ResetRender();
+
 protected:
 	void Serialize(FArchive& Ar) override;
 

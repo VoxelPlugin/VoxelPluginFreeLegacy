@@ -49,16 +49,16 @@ public:
 
 	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
 
-	FORCEINLINE AVoxelWorldEditor* GetVoxelWorldEditor();
-	FORCEINLINE FVoxelData* GetData();
-	FORCEINLINE UVoxelWorldGenerator* GetWorldGenerator();
-	FORCEINLINE int32 GetSeed();
-	FORCEINLINE float GetFoliageFPS();
-	FORCEINLINE float GetLODUpdateFPS();
-	FORCEINLINE UMaterialInterface* GetVoxelMaterial();
-	FORCEINLINE bool GetComputeTransitions();
-	FORCEINLINE bool GetComputeCollisions();
-	FORCEINLINE float GetDeletionDelay();
+	FORCEINLINE AVoxelWorldEditor* GetVoxelWorldEditor() const;
+	FORCEINLINE FVoxelData* GetData() const;
+	FORCEINLINE UVoxelWorldGenerator* GetWorldGenerator() const;
+	FORCEINLINE int32 GetSeed() const;
+	FORCEINLINE float GetFoliageFPS() const;
+	FORCEINLINE float GetLODUpdateFPS() const;
+	FORCEINLINE UMaterialInterface* GetVoxelMaterial() const;
+	FORCEINLINE bool GetComputeTransitions() const;
+	FORCEINLINE bool GetComputeCollisions() const;
+	FORCEINLINE float GetDeletionDelay() const;
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -69,7 +69,7 @@ public:
 
 	// Size of a voxel in cm
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		float GetVoxelSize();
+		float GetVoxelSize() const;
 
 	// Size of this world
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -159,6 +159,7 @@ protected:
 #endif
 
 private:
+	// TODO: sort (advanced)
 	// Time to wait before deleting old chunks to avoid holes
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", UIMin = "0"))
 		float DeletionDelay;
