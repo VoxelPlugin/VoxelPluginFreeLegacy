@@ -849,7 +849,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 
 		if (!Visited[Index])
 		{
-			std::forward_list<FIntVector> Queue;
+			Queue.resize(0);
 			Queue.push_front(PointPosition);
 
 			while (!Queue.empty())
@@ -857,27 +857,27 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 				const FIntVector CurrentPosition = Queue.front();
 				Queue.pop_front();
 
-				const int X = CurrentPosition.X;
-				const int Y = CurrentPosition.Y;
-				const int Z = CurrentPosition.Z;
+				const int LX = CurrentPosition.X;
+				const int LY = CurrentPosition.Y;
+				const int LZ = CurrentPosition.Z;
 
-				const int Index = (X + IntRadius) + (Y + IntRadius) * 2 * IntRadius + (Z + IntRadius) * 2 * IntRadius * 2 * IntRadius;
+				const int LIndex = (LX + IntRadius) + (LY + IntRadius) * 2 * IntRadius + (LZ + IntRadius) * 2 * IntRadius * 2 * IntRadius;
 
-				if ((-IntRadius <= X) && (X < IntRadius)
-					&& (-IntRadius <= Y) && (Y < IntRadius)
-					&& (-IntRadius <= Z) && (Z < IntRadius)
-					&& !Visited[Index])
+				if ((-IntRadius <= LX) && (LX < IntRadius)
+					&& (-IntRadius <= LY) && (LY < IntRadius)
+					&& (-IntRadius <= LZ) && (LZ < IntRadius)
+					&& !Visited[LIndex])
 				{
 
 					float Value;
 					FVoxelMaterial Material;
-					Data->GetValueAndMaterial(X, Y, Z, Value, Material);
+					Data->GetValueAndMaterial(LX, LY, LZ, Value, Material);
 
 					if (Value < 0)
 					{
-						Visited[Index] = true;
-						CurrentData->SetValue(X, Y, Z, Value);
-						CurrentData->SetMaterial(X, Y, Z, Material);
+						Visited[LIndex] = true;
+						CurrentData->SetValue(LX, LY, LZ, Value);
+						CurrentData->SetMaterial(LX, LY, LZ, Material);
 
 						// Set external colors
 						TArray<FIntVector> L = {
@@ -900,40 +900,40 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 						{
 							auto Q = CurrentPosition + P;
 
-							float Value;
-							FVoxelMaterial Material;
-							Data->GetValueAndMaterial(X, Y, Z, Value, Material);
+							FVoxelMaterial LMaterial;
+							float LValue;
+							Data->GetValueAndMaterial(LX, LY, LZ, LValue, LMaterial);
 
-							CurrentData->SetMaterial(Q.X, Q.Y, Q.Z, Material);
+							CurrentData->SetMaterial(Q.X, Q.Y, Q.Z, LMaterial);
 						}
 
-						Queue.push_front(FIntVector(X - 1, Y - 1, Z - 1));
-						Queue.push_front(FIntVector(X + 0, Y - 1, Z - 1));
-						Queue.push_front(FIntVector(X + 1, Y - 1, Z - 1));
-						Queue.push_front(FIntVector(X - 1, Y + 0, Z - 1));
-						Queue.push_front(FIntVector(X + 0, Y + 0, Z - 1));
-						Queue.push_front(FIntVector(X + 1, Y + 0, Z - 1));
-						Queue.push_front(FIntVector(X - 1, Y + 1, Z - 1));
-						Queue.push_front(FIntVector(X + 0, Y + 1, Z - 1));
-						Queue.push_front(FIntVector(X + 1, Y + 1, Z - 1));
-						Queue.push_front(FIntVector(X - 1, Y - 1, Z + 0));
-						Queue.push_front(FIntVector(X + 0, Y - 1, Z + 0));
-						Queue.push_front(FIntVector(X + 1, Y - 1, Z + 0));
-						Queue.push_front(FIntVector(X - 1, Y + 0, Z + 0));
-						Queue.push_front(FIntVector(X + 0, Y + 0, Z + 0));
-						Queue.push_front(FIntVector(X + 1, Y + 0, Z + 0));
-						Queue.push_front(FIntVector(X - 1, Y + 1, Z + 0));
-						Queue.push_front(FIntVector(X + 0, Y + 1, Z + 0));
-						Queue.push_front(FIntVector(X + 1, Y + 1, Z + 0));
-						Queue.push_front(FIntVector(X - 1, Y - 1, Z + 1));
-						Queue.push_front(FIntVector(X + 0, Y - 1, Z + 1));
-						Queue.push_front(FIntVector(X + 1, Y - 1, Z + 1));
-						Queue.push_front(FIntVector(X - 1, Y + 0, Z + 1));
-						Queue.push_front(FIntVector(X + 0, Y + 0, Z + 1));
-						Queue.push_front(FIntVector(X + 1, Y + 0, Z + 1));
-						Queue.push_front(FIntVector(X - 1, Y + 1, Z + 1));
-						Queue.push_front(FIntVector(X + 0, Y + 1, Z + 1));
-						Queue.push_front(FIntVector(X + 1, Y + 1, Z + 1));
+						Queue.push_front(FIntVector(LX - 1, LY - 1, LZ - 1));
+						Queue.push_front(FIntVector(LX + 0, LY - 1, LZ - 1));
+						Queue.push_front(FIntVector(LX + 1, LY - 1, LZ - 1));
+						Queue.push_front(FIntVector(LX - 1, LY + 0, LZ - 1));
+						Queue.push_front(FIntVector(LX + 0, LY + 0, LZ - 1));
+						Queue.push_front(FIntVector(LX + 1, LY + 0, LZ - 1));
+						Queue.push_front(FIntVector(LX - 1, LY + 1, LZ - 1));
+						Queue.push_front(FIntVector(LX + 0, LY + 1, LZ - 1));
+						Queue.push_front(FIntVector(LX + 1, LY + 1, LZ - 1));
+						Queue.push_front(FIntVector(LX - 1, LY - 1, LZ + 0));
+						Queue.push_front(FIntVector(LX + 0, LY - 1, LZ + 0));
+						Queue.push_front(FIntVector(LX + 1, LY - 1, LZ + 0));
+						Queue.push_front(FIntVector(LX - 1, LY + 0, LZ + 0));
+						Queue.push_front(FIntVector(LX + 0, LY + 0, LZ + 0));
+						Queue.push_front(FIntVector(LX + 1, LY + 0, LZ + 0));
+						Queue.push_front(FIntVector(LX - 1, LY + 1, LZ + 0));
+						Queue.push_front(FIntVector(LX + 0, LY + 1, LZ + 0));
+						Queue.push_front(FIntVector(LX + 1, LY + 1, LZ + 0));
+						Queue.push_front(FIntVector(LX - 1, LY - 1, LZ + 1));
+						Queue.push_front(FIntVector(LX + 0, LY - 1, LZ + 1));
+						Queue.push_front(FIntVector(LX + 1, LY - 1, LZ + 1));
+						Queue.push_front(FIntVector(LX - 1, LY + 0, LZ + 1));
+						Queue.push_front(FIntVector(LX + 0, LY + 0, LZ + 1));
+						Queue.push_front(FIntVector(LX + 1, LY + 0, LZ + 1));
+						Queue.push_front(FIntVector(LX - 1, LY + 1, LZ + 1));
+						Queue.push_front(FIntVector(LX + 0, LY + 1, LZ + 1));
+						Queue.push_front(FIntVector(LX + 1, LY + 1, LZ + 1));
 					}
 				}
 			}

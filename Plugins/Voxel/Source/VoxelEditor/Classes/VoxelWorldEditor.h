@@ -3,27 +3,28 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelWorld.h"
+#include "VoxelWorldEditorInterface.h"
 #include "VoxelWorldEditor.generated.h"
 
+class AVoxelWorld;
 class UVoxelInvokerComponent;
 
 UCLASS(notplaceable, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "Hide"))
-class VOXEL_API AVoxelWorldEditor : public AActor
+class VOXELEDITOR_API AVoxelWorldEditor : public AVoxelWorldEditorInterface
 {
 	GENERATED_BODY()
 
 public:
 	AVoxelWorldEditor();
 
-	TWeakObjectPtr<UVoxelInvokerComponent> GetInvoker();
+	TWeakObjectPtr<UVoxelInvokerComponent> GetInvoker() override;
+	void Init(TWeakObjectPtr<AVoxelWorld> NewWorld) override;
+
 
 	void Tick(float DeltaTime) override;
 #if WITH_EDITOR
 	bool ShouldTickIfViewportsOnly() const override;
 #endif
-
-	void Init(TWeakObjectPtr<AVoxelWorld> NewWorld);
 
 private:
 	UPROPERTY()

@@ -6,7 +6,7 @@
 #include "Engine/World.h"
 #include "VoxelRender.h"
 #include "VoxelData.h"
-#include "VoxelWorldEditor.h"
+#include "VoxelWorldEditorInterface.h"
 #include "Components/SplineComponent.h"
 #include "GameFramework/Volume.h"
 #include "Engine/TriggerVolume.h"
@@ -65,10 +65,10 @@ void ASplineVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 
 	DrawDebugBox(GetWorld(), Origin, BoxExtent, FColor::Blue, false, 10, 0, 10);
 
-	FVoxelData* Data = World->GetData();
+	FVoxelData* WorldData = World->GetData();
 
 	{
-		Data->BeginSet();
+		WorldData->BeginSet();
 
 		FValueOctree* LastOctree = nullptr;
 
@@ -104,16 +104,16 @@ void ASplineVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 					{
 						float OldValue;
 						FVoxelMaterial Tmp;
-						Data->GetValueAndMaterial(X, Y, Z, OldValue, Tmp, LastOctree);
+						WorldData->GetValueAndMaterial(X, Y, Z, OldValue, Tmp, LastOctree);
 						if ((bSubstrative && OldValue <= 0) || (!bSubstrative && OldValue >= 0))
 						{
 							if (bSetMaterial)
 							{
-								Data->SetValueAndMaterial(X, Y, Z, NewValue, Material, LastOctree);
+								WorldData->SetValueAndMaterial(X, Y, Z, NewValue, Material, LastOctree);
 							}
 							else
 							{
-								Data->SetValue(X, Y, Z, NewValue, LastOctree);
+								WorldData->SetValue(X, Y, Z, NewValue, LastOctree);
 							}
 						}
 					}
@@ -121,7 +121,7 @@ void ASplineVoxelModifier::ApplyToWorld(AVoxelWorld* World)
 			}
 		}
 
-		Data->EndSet();
+		WorldData->EndSet();
 	}
 }
 
@@ -270,7 +270,6 @@ bool ASplineVoxelModifier::ShouldTickIfViewportsOnly() const
 {
 	return true;
 }
-#endif
 
 void ASplineVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -322,3 +321,4 @@ void ASplineVoxelModifier::PostEditChangeProperty(FPropertyChangedEvent& Propert
 		UpdateRender();
 	}
 }
+#endif

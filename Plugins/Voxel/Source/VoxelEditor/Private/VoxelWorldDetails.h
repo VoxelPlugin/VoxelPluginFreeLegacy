@@ -23,7 +23,7 @@ private:
 	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
-	FReply OnWorldReload();
+	FReply OnWorldPreviewToggle();
 
 	FReply OnUpdateVoxelModifiers();
 

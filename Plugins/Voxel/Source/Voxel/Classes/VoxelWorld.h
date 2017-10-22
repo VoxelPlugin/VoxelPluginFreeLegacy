@@ -21,7 +21,7 @@ using namespace UC;
 class FVoxelRender;
 class FVoxelData;
 class UVoxelInvokerComponent;
-class AVoxelWorldEditor;
+class AVoxelWorldEditorInterface;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
@@ -38,6 +38,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 		TArray<UVoxelGrassType*> GrassTypes;
 
+	// Dirty hack to get a ref to AVoxelWorldEditor::StaticClass()
+	UClass* VoxelWorldEditorClass;
 
 	AVoxelWorld();
 	virtual ~AVoxelWorld() override;
@@ -49,7 +51,7 @@ public:
 
 	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
 
-	FORCEINLINE AVoxelWorldEditor* GetVoxelWorldEditor() const;
+	FORCEINLINE AVoxelWorldEditorInterface	* GetVoxelWorldEditor() const;
 	FORCEINLINE FVoxelData* GetData() const;
 	FORCEINLINE UVoxelWorldGenerator* GetWorldGenerator() const;
 	FORCEINLINE int32 GetSeed() const;
@@ -202,7 +204,7 @@ private:
 		UVoxelWorldGenerator* InstancedWorldGenerator;
 
 	UPROPERTY()
-		AVoxelWorldEditor* VoxelWorldEditor;
+		AVoxelWorldEditorInterface* VoxelWorldEditor;
 
 	UPROPERTY()
 		FVoxelWorldSave WorldSave;
