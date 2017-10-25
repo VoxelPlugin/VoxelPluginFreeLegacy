@@ -11,6 +11,7 @@
 #include "GameFramework/Volume.h"
 #include "Engine/TriggerVolume.h"
 #include "DrawDebugHelpers.h"
+#include "VoxelDataAsset.h"
 
 ASplineVoxelModifier::ASplineVoxelModifier()
 	: Size(250)
@@ -244,6 +245,13 @@ void ASplineVoxelModifier::BeginPlay()
 
 void ASplineVoxelModifier::Tick(float DeltaTime)
 {
+	UE_LOG(VoxelLog, Warning, TEXT("VoxelDataAsset"));
+
+	if (VoxelDataAsset)
+	{
+		VoxelDataAsset->Name = TEXT("VoxelDataAsset");
+	}
+
 	if (GetWorld()->WorldType == EWorldType::Editor)
 	{
 		if (IsSelectedInEditor())

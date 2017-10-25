@@ -5,100 +5,20 @@
 #include "Engine.h"
 #include "VoxelNetworking.generated.h"
 
-class VoxelNetworking
-{
-
-};
-
-
-
-
-
-
-
-
-
-
-USTRUCT(BlueprintType)
-struct FAnyCustomData
-{
-	GENERATED_USTRUCT_BODY()
-
-		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Joy Color")
-		FString Name = "Victory!";
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Joy Color")
-		int32 Count = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Joy Color")
-		float Scale = 1.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Joy Color")
-		FLinearColor Color = FLinearColor::Red;
-
-	FAnyCustomData()
-	{
-	}
-};
-
-FORCEINLINE FArchive& operator<<(FArchive &Ar, FAnyCustomData& TheStruct)
-{
-	Ar << TheStruct.Name;
-	Ar << TheStruct.Count;
-	Ar << TheStruct.Scale;
-	Ar << TheStruct.Color;
-
-	return Ar;
-}
-
-
-
-
-
-
-
-
-
-
-
-
 UCLASS()
 class AVoxelTcpSender : public AActor
 {
 	GENERATED_UCLASS_BODY()
 
 public:
-	TSharedPtr<FInternetAddr>	RemoteAddr;
-	FSocket* SenderSocket;
+	TSharedPtr<FInternetAddr> RemoteAddr;
+	FSocket* Socket;
 
 	UFUNCTION(BlueprintCallable)
-		bool StartUDPSender(const FString& YourChosenSocketName, const FString& TheIP, const int32 ThePort);
+		bool StartTCPSender(const FString& Ip, const int32 Port);
 
 	UFUNCTION(BlueprintCallable)
-		bool RamaUDPSender_SendString(FString ToSend);
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rama UDP Sender")
-		bool ShowOnScreenDebugMessages;
-
-
-	//ScreenMsg
-	FORCEINLINE void ScreenMsg(const FString& Msg)
-	{
-		if (!ShowOnScreenDebugMessages) return;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, *Msg);
-	}
-	FORCEINLINE void ScreenMsg(const FString& Msg, const float Value)
-	{
-		if (!ShowOnScreenDebugMessages) return;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("%s %f"), *Msg, Value));
-	}
-	FORCEINLINE void ScreenMsg(const FString& Msg, const FString& Msg2)
-	{
-		if (!ShowOnScreenDebugMessages) return;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("%s %s"), *Msg, *Msg2));
-	}
-
+		bool SendString(FString ToSend);
 
 public:
 
@@ -106,20 +26,19 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 };
 
+class AcceptClass
+{
+	FSocket*& SocketRef;
 
+public:
+	AcceptClass(FSocket*& SocketRef) : SocketRef(SocketRef) {}
 
-
-
-
-
-
-
-
-
-
-
-
-
+	bool Accept(FSocket* Socket, const FIPv4Endpoint& Endpoint)
+	{
+		SocketRef = Socket;
+		return true;
+	}
+};
 
 UCLASS()
 class AVoxelTcpListener : public AActor
@@ -128,29 +47,14 @@ class AVoxelTcpListener : public AActor
 
 public:
 	FTcpListener* TcpListener;
-
-	void Recv(const FArrayReaderPtr& ArrayReaderPtr, const FIPv4Endpoint& EndPt);
-
-	UFUNCTION(BlueprintCallable)
-		void TCPSocketListener();
+	FSocket* Socket;
+	AcceptClass* AcceptClassInstance;
 
 	UFUNCTION(BlueprintCallable)
-		bool StartUDPReceiver(const FString& YourChosenSocketName, const FString& TheIP, const int32 ThePort);
+		void StartTCPListener(const FString& Ip, const int32 Port);
 
-	//ScreenMsg
-	FORCEINLINE void ScreenMsg(const FString& Msg)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, *Msg);
-	}
-	FORCEINLINE void ScreenMsg(const FString& Msg, const float Value)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("%s %f"), *Msg, Value));
-	}
-	FORCEINLINE void ScreenMsg(const FString& Msg, const FString& Msg2)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("%s %s"), *Msg, *Msg2));
-	}
-
+	UFUNCTION(BlueprintCallable)
+		bool ReceiveMessages();
 
 public:
 

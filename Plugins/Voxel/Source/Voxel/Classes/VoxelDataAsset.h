@@ -19,6 +19,9 @@ public:
 
 	}
 
+	UPROPERTY(EditAnywhere)
+		FString Name;
+
 	UPROPERTY(VisibleAnywhere)
 		uint32 SizeX;
 	UPROPERTY(VisibleAnywhere)
