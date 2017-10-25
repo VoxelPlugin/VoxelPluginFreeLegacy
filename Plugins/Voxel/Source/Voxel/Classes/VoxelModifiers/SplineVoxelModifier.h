@@ -10,6 +10,7 @@ class AVoxelWorld;
 class FVoxelData;
 class FVoxelRender;
 class USplineComponent;
+class UVoxelDataAsset;
 
 /**
 *
@@ -22,6 +23,10 @@ class VOXEL_API ASplineVoxelModifier : public AVoxelModifier
 public:
 	ASplineVoxelModifier();
 	~ASplineVoxelModifier();
+
+
+	UPROPERTY(EditAnywhere)
+		UVoxelDataAsset* VoxelDataAsset;
 
 	UPROPERTY(EditAnywhere)
 		TArray<USplineComponent*> Splines;

@@ -3,94 +3,77 @@
 
 AVoxelTcpSender::AVoxelTcpSender(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	SenderSocket = NULL;
-	ShowOnScreenDebugMessages = true;
+	Socket = nullptr;
 }
 
 void AVoxelTcpSender::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 
-	if (SenderSocket)
+	if (Socket)
 	{
-		SenderSocket->Close();
-		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(SenderSocket);
+		Socket->Close();
+		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(Socket);
 	}
 }
 
-bool AVoxelTcpSender::StartUDPSender(const FString& YourChosenSocketName, const FString& TheIP, const int32 ThePort)
+bool AVoxelTcpSender::StartTCPSender(const FString& Ip, const int32 Port)
 {
 	//Create Remote Address.
 	RemoteAddr = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
 
 	bool bIsValid;
-	RemoteAddr->SetIp(*TheIP, bIsValid);
-	RemoteAddr->SetPort(ThePort);
+	RemoteAddr->SetIp(*Ip, bIsValid);
+	RemoteAddr->SetPort(Port);
 
 	if (!bIsValid)
 	{
-		ScreenMsg("Rama UDP Sender>> IP address was not valid!", TheIP);
+		UE_LOG(LogTemp, Error, TEXT("IP address was not valid"));
 		return false;
 	}
 
-	SenderSocket = FTcpSocketBuilder(YourChosenSocketName).AsReusable().BoundToEndpoint(FIPv4Endpoint(RemoteAddr));
+	FIPv4Endpoint Endpoint(RemoteAddr);
 
-	//Set Send Buffer Size
-	int32 SendSize = 2 * 1024 * 1024;
-	SenderSocket->SetSendBufferSize(SendSize, SendSize);
-	SenderSocket->SetReceiveBufferSize(SendSize, SendSize);
-
-	UE_LOG(LogTemp, Log, TEXT("\n\n\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"));
-	UE_LOG(LogTemp, Log, TEXT("Rama ****UDP**** Sender Initialized Successfully!!!"));
-	UE_LOG(LogTemp, Log, TEXT("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n\n"));
-
-	return true;
+	if (!Socket)
+	{
+		Socket = FTcpSocketBuilder(TEXT("RemoteConnection"));
+		if (Socket)
+		{
+			if (!Socket->Connect(*Endpoint.ToInternetAddr()))
+			{
+				ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(Socket);
+				Socket = nullptr;
+				return false;
+			}
+		}
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
-bool AVoxelTcpSender::RamaUDPSender_SendString(FString ToSend)
+bool AVoxelTcpSender::SendString(FString ToSend)
 {
-	if (!SenderSocket)
+	if (!Socket)
 	{
-		ScreenMsg("No sender socket");
+		UE_LOG(LogTemp, Error, TEXT("No sender socket"));
 		return false;
 	}
-	//~~~~~~~~~~~~~~~~
 
 	int32 BytesSent = 0;
-
-	FAnyCustomData NewData;
-	NewData.Scale = FMath::FRandRange(0, 1000);
-	NewData.Count = FMath::RandRange(0, 100);
-	NewData.Color = FLinearColor(FMath::FRandRange(0, 1), FMath::FRandRange(0, 1), FMath::FRandRange(0, 1), 1);
-
 	FArrayWriter Writer;
 
-	Writer << NewData; //Serializing our custom data, thank you UE4!
+	Writer << ToSend;
 
-	SenderSocket->SendTo(Writer.GetData(), Writer.Num(), BytesSent, *RemoteAddr);
+	bool bSuccess = Socket->Send(Writer.GetData(), Writer.Num(), BytesSent);
 
-	if (BytesSent <= 0)
-	{
-		const FString Str = "Socket is valid but the receiver received 0 bytes, make sure it is listening properly!";
-		UE_LOG(LogTemp, Error, TEXT("%s"), *Str);
-		ScreenMsg(Str);
-		return false;
-	}
+	UE_LOG(LogTemp, Error, TEXT("Bytes sent: %d. Success: %d"), BytesSent, bSuccess);
 
-	ScreenMsg("UDP~ Send Success! Bytes Sent = ", BytesSent);
 
 	return true;
 }
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -99,71 +82,53 @@ bool AVoxelTcpSender::RamaUDPSender_SendString(FString ToSend)
 
 AVoxelTcpListener::AVoxelTcpListener(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	
+	AcceptClassInstance = new AcceptClass(Socket);
+	Socket = nullptr;
 }
 
 void AVoxelTcpListener::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-	//~~~~~~~~~~~~~~~~
 
 	delete TcpListener;
 	TcpListener = nullptr;
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-//Rama's Start TCP Receiver
-bool AVoxelTcpListener::StartUDPReceiver(const FString& YourChosenSocketName, const FString& TheIP, const int32 ThePort)
+void AVoxelTcpListener::StartTCPListener(const FString& Ip, const int32 Port)
 {
-
-	ScreenMsg("RECEIVER INIT");
-
-	//~~~
-
 	FIPv4Address Addr;
-	FIPv4Address::Parse(TheIP, Addr);
+	FIPv4Address::Parse(Ip, Addr);
 
-	//Create Socket
-	FIPv4Endpoint Endpoint(Addr, ThePort);
-
-	//BUFFER SIZE
-	int32 BufferSize = 2 * 1024 * 1024;
+	FIPv4Endpoint Endpoint(Addr, Port);
 
 	TcpListener = new FTcpListener(Endpoint);
 
-	return true;
+	TcpListener->OnConnectionAccepted().BindRaw(AcceptClassInstance, &AcceptClass::Accept);
 }
 
-void AVoxelTcpListener::Recv(const FArrayReaderPtr& ArrayReaderPtr, const FIPv4Endpoint& EndPt)
+bool AVoxelTcpListener::ReceiveMessages()
 {
-	ScreenMsg("Received bytes", ArrayReaderPtr->Num());
-
-	FAnyCustomData Data;
-	*ArrayReaderPtr << Data;
-}
-
-void AVoxelTcpListener::TCPSocketListener()
-{
-	FSocket* ListenSocket = TcpListener->GetSocket();
-	if (!ListenSocket)
+	if (Socket)
 	{
-		return;
+		uint32 PendingDataSize = 0;
+		while (Socket->HasPendingData(PendingDataSize))
+		{
+			FArrayReader ReceivedData = FArrayReader(true);
+			ReceivedData.Init(0, FMath::Min(PendingDataSize, 65507u));
+
+			int32 BytesRead = 0;
+			Socket->Recv(ReceivedData.GetData(), ReceivedData.Num(), BytesRead);
+
+			FString Message;
+			ReceivedData << Message;
+
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Message);
+		}
+
+		return true;
 	}
-
-	//Binary Array!
-	TArray<uint8> ReceivedData;
-
-	uint32 Size;
-	while (ListenSocket->HasPendingData(Size))
+	else
 	{
-		ReceivedData.Init(0, FMath::Min(Size, 65507u));
-
-		int32 Read = 0;
-		ListenSocket->Recv(ReceivedData.GetData(), ReceivedData.Num(), Read);
-
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Data Read! %d"), ReceivedData.Num()));
+		return false;
 	}
 }
