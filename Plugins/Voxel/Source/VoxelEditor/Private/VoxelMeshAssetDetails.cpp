@@ -17,7 +17,7 @@ TSharedRef<IDetailCustomization> FVoxelMeshAssetDetails::MakeInstance()
 
 void FVoxelMeshAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
-	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailLayout.GetDetailsView().GetSelectedObjects();
+	const TArray<TWeakObjectPtr<AActor>>& SelectedObjects = DetailLayout.GetDetailsView()->GetSelectedActors();
 
 	for (int32 ObjectIndex = 0; ObjectIndex < SelectedObjects.Num(); ++ObjectIndex)
 	{
