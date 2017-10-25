@@ -103,14 +103,14 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 							{
 								const uint64 ONE = 1;
 								unsigned long CaseCode =
-									(static_cast<bool>(CurrentCube   & (ONE << ((LocalX + 0) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 0)))) << 0)
-									| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 0)))) << 1)
-									| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 0)))) << 2)
-									| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 0)))) << 3)
-									| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 1)))) << 4)
-									| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 1)))) << 5)
-									| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1)))) << 6)
-									| (static_cast<bool>(CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1)))) << 7);
+									  (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 0)))) != 0) << 0)
+									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 0)))) != 0) << 1)
+									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 0)))) != 0) << 2)
+									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 0)))) != 0) << 3)
+									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 1)))) != 0) << 4)
+									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 0) + 4 * 4 * (LocalZ + 1)))) != 0) << 5)
+									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1)))) != 0) << 6)
+									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1)))) != 0) << 7);
 
 								if (CaseCode != 0 && CaseCode != 511)
 								{
@@ -202,9 +202,9 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 											FVoxelMaterial Material;
 											float Value;
 											GetValueAndMaterial(
-												X - static_cast<bool>(CacheDirection & 0x01) * Step(),
-												Y - static_cast<bool>(CacheDirection & 0x02) * Step(),
-												Z - static_cast<bool>(CacheDirection & 0x04) * Step(),
+												X - static_cast<bool>((CacheDirection & 0x01) * Step() != 0),
+												Y - static_cast<bool>((CacheDirection & 0x02) * Step() != 0),
+												Z - static_cast<bool>((CacheDirection & 0x04) * Step() != 0),
 												Value,
 												Material
 											);
@@ -496,7 +496,7 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 								const unsigned short* VertexData = Transvoxel::transitionVertexData[CaseCode];
 								check(0 <= (CellClass & 0x7F) && (CellClass & 0x7F) < 56);
 								const Transvoxel::TransitionCellData CellData = Transvoxel::transitionCellData[CellClass & 0x7F];
-								const bool bFlip = CellClass >> 7;
+								const bool bFlip = ((CellClass >> 7) != 0);
 
 								TArray<int> VertexIndices;
 								VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
@@ -798,9 +798,9 @@ void FVoxelPolygonizer::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Ind
 
 int FVoxelPolygonizer::LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex)
 {
-	bool XIsDifferent = Direction & 0x01;
-	bool YIsDifferent = Direction & 0x02;
-	bool ZIsDifferent = Direction & 0x04;
+	bool XIsDifferent = static_cast<bool>((Direction & 0x01) != 0);
+	bool YIsDifferent = static_cast<bool>((Direction & 0x02) != 0);
+	bool ZIsDifferent = static_cast<bool>((Direction & 0x04) != 0);
 
 	// +1: normals offset
 	check(0 <= X - XIsDifferent + 1 && X - XIsDifferent + 1 < 17);
@@ -831,8 +831,8 @@ void FVoxelPolygonizer::SaveVertex2D(TransitionDirection Direction, int X, int Y
 
 int FVoxelPolygonizer::LoadVertex2D(TransitionDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex)
 {
-	bool XIsDifferent = CacheDirection & 0x01;
-	bool YIsDifferent = CacheDirection & 0x02;
+	bool XIsDifferent = static_cast<bool>((CacheDirection & 0x01) != 0);
+	bool YIsDifferent = static_cast<bool>((CacheDirection & 0x02) != 0);
 
 	if (EdgeIndex == 8 || EdgeIndex == 9)
 	{
