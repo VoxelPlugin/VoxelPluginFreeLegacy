@@ -22,18 +22,19 @@ public:
 	UPROPERTY(EditAnywhere)
 		FString Name;
 
-	UPROPERTY(VisibleAnywhere)
-		uint32 SizeX;
-	UPROPERTY(VisibleAnywhere)
-		uint32 SizeY;
-	UPROPERTY(VisibleAnywhere)
-		uint32 SizeZ;
+private:
+	UPROPERTY()
+		TArray<uint8> Data;
+};
 
-	UPROPERTY()
-		TArray<float> Values;
-	UPROPERTY()
-		TArray<FVoxelMaterial> Materials;
+struct FVoxelDataAsset
+{
+	uint32 SizeX;
+	uint32 SizeY;
+	uint32 SizeZ;
 
-	UPROPERTY()
-		TArray<bool> DirtyVoxels;
+	TArray<float> Values;
+	TArray<FVoxelMaterial> Materials;
+
+	TArray<bool> DirtyVoxels;
 };

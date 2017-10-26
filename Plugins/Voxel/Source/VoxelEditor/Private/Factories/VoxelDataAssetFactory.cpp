@@ -14,9 +14,9 @@ UVoxelDataAssetFactory::UVoxelDataAssetFactory(const FObjectInitializer& ObjectI
 
 UObject* UVoxelDataAssetFactory::FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
-	auto NewGrassType = NewObject<UVoxelDataAsset>(InParent, Class, Name, Flags | RF_Transactional);
+	auto NewDataAsset = NewObject<UVoxelDataAsset>(InParent, Class, Name, Flags | RF_Transactional);
 
-	return NewGrassType;
+	return NewDataAsset;
 }
 
 uint32 UVoxelDataAssetFactory::GetMenuCategories() const

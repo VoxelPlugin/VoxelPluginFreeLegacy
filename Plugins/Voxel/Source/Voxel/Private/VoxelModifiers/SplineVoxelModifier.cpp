@@ -1,5 +1,5 @@
 #include "VoxelPrivatePCH.h"
-#include "VoxelModifiers/SplineVoxelModifier.h"
+#include "SplineVoxelModifier.h"
 #include "VoxelWorld.h"
 #include "Components/CapsuleComponent.h"
 #include "EmptyWorldGenerator.h"

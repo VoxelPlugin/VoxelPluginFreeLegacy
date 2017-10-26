@@ -1,4 +1,4 @@
-#include "LandscapeVoxelAssetDetails.h"
+#include "LandscapeVoxelModifierDetails.h"
 #include "PropertyHandle.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -10,17 +10,17 @@
 #include "LandscapeDataAccess.h"
 #include "Landscape.h"
 #include "LandscapeComponent.h"
-#include "VoxelAssets/LandscapeVoxelAsset.h"
+#include "LandscapeVoxelModifier.h"
 #include "VoxelMaterial.h"
+#include "MessageDialog.h"
 
-DEFINE_LOG_CATEGORY(VoxelAssetEditorLog)
 
-TSharedRef<IDetailCustomization> ULandscapeVoxelAssetDetails::MakeInstance()
+TSharedRef<IDetailCustomization> ULandscapeVoxelModifierDetails::MakeInstance()
 {
-	return MakeShareable(new ULandscapeVoxelAssetDetails());
+	return MakeShareable(new ULandscapeVoxelModifierDetails());
 }
 
-void ULandscapeVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
+void ULandscapeVoxelModifierDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailLayout.GetDetailsView().GetSelectedObjects();
 
@@ -29,16 +29,15 @@ void ULandscapeVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailL
 		const TWeakObjectPtr<UObject>& CurrentObject = SelectedObjects[ObjectIndex];
 		if (CurrentObject.IsValid())
 		{
-			ALandscapeVoxelAsset* CurrentCaptureActor = Cast<ALandscapeVoxelAsset>(CurrentObject.Get());
+			ALandscapeVoxelModifier* CurrentCaptureActor = Cast<ALandscapeVoxelModifier>(CurrentObject.Get());
 			if (CurrentCaptureActor != NULL)
 			{
-				LandscapeVoxelAsset = CurrentCaptureActor;
+				LandscapeModifier = CurrentCaptureActor;
 				break;
 			}
 		}
 	}
 
-	//DetailLayout.HideCategory("Hide");
 	DetailLayout.EditCategory("Import")
 		.AddCustomRow(FText::FromString(TEXT("Create")))
 		.NameContent()
@@ -55,7 +54,7 @@ void ULandscapeVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailL
 			.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked(this, &ULandscapeVoxelAssetDetails::OnCreateFromLandscape)
+		.OnClicked(this, &ULandscapeVoxelModifierDetails::OnCreateFromLandscape)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
@@ -64,15 +63,15 @@ void ULandscapeVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailL
 		];
 }
 
-FReply ULandscapeVoxelAssetDetails::OnCreateFromLandscape()
+FReply ULandscapeVoxelModifierDetails::OnCreateFromLandscape()
 {
-	if (LandscapeVoxelAsset->Landscape)
+	if (LandscapeModifier->Landscape && LandscapeModifier->ExportedLandscape)
 	{
 		int MipLevel = 0;
 		int ComponentSize = 0;
 		int Count = 0;
 
-		for (auto Component : LandscapeVoxelAsset->Landscape->GetLandscapeActor()->LandscapeComponents)
+		for (auto Component : LandscapeModifier->Landscape->GetLandscapeActor()->LandscapeComponents)
 		{
 			int Size = (Component->ComponentSizeQuads + 1) >> MipLevel;
 			Count++;
@@ -90,22 +89,22 @@ FReply ULandscapeVoxelAssetDetails::OnCreateFromLandscape()
 		check(FMath::RoundToInt(FMath::Sqrt(Count)) * FMath::RoundToInt(FMath::Sqrt(Count)) == Count);
 		int TotalSize = FMath::RoundToInt(FMath::Sqrt(Count)) * ComponentSize;
 
-		TArray<float> Values;
-		TArray<FColor> Colors;
-		Values.SetNum(TotalSize * TotalSize);
-		Colors.SetNum(TotalSize * TotalSize);
+		TArray<float> Heights;
+		TArray<FVoxelMaterial> Materials;
+		Heights.SetNum(TotalSize * TotalSize);
+		Materials.SetNum(TotalSize * TotalSize);
 
-		for (auto Component : LandscapeVoxelAsset->Landscape->GetLandscapeActor()->LandscapeComponents)
+		for (auto Component : LandscapeModifier->Landscape->GetLandscapeActor()->LandscapeComponents)
 		{
 			FLandscapeComponentDataInterface DataInterface(Component, MipLevel);
 			int Size = (Component->ComponentSizeQuads + 1) >> MipLevel;
 
 			TArray<TArray<uint8>> Weightmaps;
-			Weightmaps.SetNum(LandscapeVoxelAsset->LayerInfos.Num());
+			Weightmaps.SetNum(LandscapeModifier->LayerInfos.Num());
 
 			for (int i = 0; i < Weightmaps.Num(); i++)
 			{
-				DataInterface.GetWeightmapTextureData(LandscapeVoxelAsset->LayerInfos[i], Weightmaps[i]);
+				DataInterface.GetWeightmapTextureData(LandscapeModifier->LayerInfos[i], Weightmaps[i]);
 			}
 
 			int32 WeightmapSize = ((Component->SubsectionSizeQuads + 1) * Component->NumSubsections) >> MipLevel;
@@ -115,8 +114,8 @@ FReply ULandscapeVoxelAssetDetails::OnCreateFromLandscape()
 				for (int Y = 0; Y < Size; Y++)
 				{
 					FVector Vertex = DataInterface.GetWorldVertex(X, Y);
-					FVector LocalVertex = (Vertex - LandscapeVoxelAsset->Landscape->GetActorLocation()) / Component->GetComponentTransform().GetScale3D();
-					Values[LocalVertex.X + TotalSize * LocalVertex.Y] = Vertex.Z;
+					FVector LocalVertex = (Vertex - LandscapeModifier->Landscape->GetActorLocation()) / Component->GetComponentTransform().GetScale3D();
+					Heights[LocalVertex.X + TotalSize * LocalVertex.Y] = Vertex.Z;
 
 					uint8 MaxIndex = 0;
 					uint8 MaxValue = 0;
@@ -143,29 +142,27 @@ FReply ULandscapeVoxelAssetDetails::OnCreateFromLandscape()
 						}
 					}
 
-					Colors[LocalVertex.X + TotalSize * LocalVertex.Y] = FVoxelMaterial(MaxIndex, SecondMaxIndex, ((255 - MaxValue) + SecondMaxValue) / 2 / 255.f).ToFColor();
+					Materials[LocalVertex.X + TotalSize * LocalVertex.Y] = FVoxelMaterial(MaxIndex, SecondMaxIndex, FMath::Clamp<uint8>(((255 - MaxValue) + SecondMaxValue) / 2, 0, 255));
 				}
 			}
 		}
 
-		int Depth = FMath::CeilToInt(FMath::Log2(TotalSize)) - 4;
-		LandscapeVoxelAsset->Size = 16 << Depth;
-
-		LandscapeVoxelAsset->Heights.SetNum(LandscapeVoxelAsset->Size * LandscapeVoxelAsset->Size);
-		LandscapeVoxelAsset->Weights.SetNum(LandscapeVoxelAsset->Size * LandscapeVoxelAsset->Size);
-
-		for (int X = 0; X < TotalSize; X++)
-		{
-			for (int Y = 0; Y < TotalSize; Y++)
-			{
-				LandscapeVoxelAsset->Heights[X + LandscapeVoxelAsset->Size * Y] = Values[X + TotalSize * Y];
-				LandscapeVoxelAsset->Weights[X + LandscapeVoxelAsset->Size * Y] = Colors[X + TotalSize * Y];
-			}
-		}
+		LandscapeModifier->InitExportedLandscape(Heights, Materials, TotalSize);
 	}
 	else
 	{
-		UE_LOG(VoxelAssetEditorLog, Error, TEXT("Invalid landscape"));
+		if (!LandscapeModifier->Landscape)
+		{
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Invalid Landscape")));
+		}
+		else if (!LandscapeModifier->ExportedLandscape)
+		{
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Invalid Exported Landscape")));
+		}
+		else
+		{
+			check(false);
+		}
 	}
 
 	return FReply::Handled();

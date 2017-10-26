@@ -6,11 +6,11 @@
 #include "Input/Reply.h"
 #include "IDetailCustomization.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(VoxelAssetEditorLog, Log, All);
+// See sky light details in the engine code
 
-class ALandscapeVoxelAsset;
+class ALandscapeVoxelModifier;
 
-class ULandscapeVoxelAssetDetails : public IDetailCustomization
+class ULandscapeVoxelModifierDetails : public IDetailCustomization
 {
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
@@ -21,6 +21,6 @@ private:
 
 	FReply OnCreateFromLandscape();
 private:
-	/** The selected sky light */
-	TWeakObjectPtr<ALandscapeVoxelAsset> LandscapeVoxelAsset;
+	/** The selected landscape modifier */
+	TWeakObjectPtr<ALandscapeVoxelModifier> LandscapeModifier;
 };

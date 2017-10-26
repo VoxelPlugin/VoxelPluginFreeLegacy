@@ -1,5 +1,5 @@
 #include "VoxelMeshAssetDetails.h"
-#include "VoxelAssets/VoxelMeshAsset.h"
+#include "VoxelMeshAsset.h"
 #include "PropertyHandle.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -57,30 +57,30 @@ void FVoxelMeshAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout
 		.Text(FText::FromString(TEXT("Import")))
 		]
 		];
-/*
-	DetailLayout.EditCategory("VoxelMeshAsset")
-		.AddCustomRow(FText::FromString(TEXT("Update")))
-		.NameContent()
-		[
-			SNew(STextBlock)
-			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Update lines")))
-		]
-	.ValueContent()
-		.MaxDesiredWidth(125.f)
-		.MinDesiredWidth(125.f)
-		[
-			SNew(SButton)
-			.ContentPadding(2)
-		.VAlign(VAlign_Center)
-		.HAlign(HAlign_Center)
-		.OnClicked(this, &FVoxelMeshAssetDetails::OnUpdateLines)
-		[
-			SNew(STextBlock)
-			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Update")))
-		]
-		];*/
+	/*
+		DetailLayout.EditCategory("VoxelMeshAsset")
+			.AddCustomRow(FText::FromString(TEXT("Update")))
+			.NameContent()
+			[
+				SNew(STextBlock)
+				.Font(IDetailLayoutBuilder::GetDetailFont())
+			.Text(FText::FromString(TEXT("Update lines")))
+			]
+		.ValueContent()
+			.MaxDesiredWidth(125.f)
+			.MinDesiredWidth(125.f)
+			[
+				SNew(SButton)
+				.ContentPadding(2)
+			.VAlign(VAlign_Center)
+			.HAlign(HAlign_Center)
+			.OnClicked(this, &FVoxelMeshAssetDetails::OnUpdateLines)
+			[
+				SNew(STextBlock)
+				.Font(IDetailLayoutBuilder::GetDetailFont())
+			.Text(FText::FromString(TEXT("Update")))
+			]
+			];*/
 }
 
 FReply FVoxelMeshAssetDetails::OnImport()
