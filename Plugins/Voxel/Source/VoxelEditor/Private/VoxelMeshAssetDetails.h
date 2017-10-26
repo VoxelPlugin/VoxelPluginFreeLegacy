@@ -8,6 +8,8 @@
 
 class AVoxelMeshAsset;
 
+// See sky light details in the engine code
+
 class FVoxelMeshAssetDetails : public IDetailCustomization
 {
 public:

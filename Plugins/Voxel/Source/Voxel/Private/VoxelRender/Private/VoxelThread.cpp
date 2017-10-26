@@ -8,7 +8,7 @@
 #include "InstancedStaticMesh.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GenericPlatformProcess.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelWorldGenerator.h"
 
 
 FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk)

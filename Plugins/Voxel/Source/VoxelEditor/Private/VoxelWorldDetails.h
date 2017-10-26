@@ -9,6 +9,8 @@
 class AVoxelWorld;
 class AVoxelWorldEditor;
 
+// See sky light details in the engine code
+
 DECLARE_LOG_CATEGORY_EXTERN(VoxelEditorLog, Log, All);
 class FVoxelWorldDetails : public IDetailCustomization
 {

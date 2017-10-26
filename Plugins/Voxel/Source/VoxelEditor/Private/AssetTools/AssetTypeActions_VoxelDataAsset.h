@@ -11,7 +11,7 @@ class FAssetTypeActions_VoxelDataAsset : public FAssetTypeActions_Base
 public:
 	// IAssetTypeActions Implementation
 	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelDataAsset", "Voxel Data Asset"); }
-	virtual FColor GetTypeColor() const override { return FColor::Red; }
+	virtual FColor GetTypeColor() const override { return FColor(128, 0, 64); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelDataAsset::StaticClass(); }
 	virtual uint32 GetCategories() override { return EAssetTypeCategories::Misc; }
 };

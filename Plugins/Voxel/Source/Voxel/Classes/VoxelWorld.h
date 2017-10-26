@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "VoxelSave.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelWorldGenerator.h"
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
 #include "VoxelMaterial.h"

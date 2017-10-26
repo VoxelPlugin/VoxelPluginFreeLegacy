@@ -2,7 +2,6 @@
 
 #include "VoxelPrivatePCH.h"
 #include "VoxelSave.h"
-#include "PhysicsPublic.h"
 #include "BufferArchive.h"
 #include "ArchiveSaveCompressedProxy.h"
 #include "ArchiveLoadCompressedProxy.h"

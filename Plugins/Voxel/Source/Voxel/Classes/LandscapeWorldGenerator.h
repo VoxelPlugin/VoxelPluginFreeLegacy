@@ -4,9 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelWorldGenerator.h"
+#include "VoxelLandscapeAsset.h"
 #include "LandscapeWorldGenerator.generated.h"
-
-class ALandscapeVoxelAsset;
 
 /**
  *
@@ -18,11 +17,28 @@ class VOXEL_API ULandscapeWorldGenerator : public UVoxelWorldGenerator
 
 public:
 	UPROPERTY(EditAnywhere)
-		ALandscapeVoxelAsset* Landscape;
+		UVoxelLandscapeAsset* Landscape;
+
+	UPROPERTY(EditAnywhere)
+		TSubclassOf<UVoxelWorldGenerator> DefaultWorldGenerator;
+
+
+
+	ULandscapeWorldGenerator();
+
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
 
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
 
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
+
+private:
+	UVoxelWorldGenerator* InstancedWorldGenerator;
+	FDecompressedVoxelLandscapeAsset Asset;
+	int VoxelSize;
+
+	FCriticalSection CreateGeneratorLock;
+
+	void CreateGeneratorAndDecompressedAsset();
 };
