@@ -22,7 +22,7 @@ TSharedRef<IDetailCustomization> ULandscapeVoxelAssetDetails::MakeInstance()
 
 void ULandscapeVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
-	const TArray<TWeakObjectPtr<AActor>>& SelectedObjects = DetailLayout.GetDetailsView()->GetSelectedActors();
+	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailLayout.GetDetailsView().GetSelectedObjects();
 
 	for (int32 ObjectIndex = 0; ObjectIndex < SelectedObjects.Num(); ++ObjectIndex)
 	{
@@ -38,6 +38,7 @@ void ULandscapeVoxelAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailL
 		}
 	}
 
+	//DetailLayout.HideCategory("Hide");
 	DetailLayout.EditCategory("Import")
 		.AddCustomRow(FText::FromString(TEXT("Create")))
 		.NameContent()
