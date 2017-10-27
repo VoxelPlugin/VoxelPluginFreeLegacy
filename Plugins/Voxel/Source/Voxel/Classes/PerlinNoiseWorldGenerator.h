@@ -23,5 +23,7 @@ public:
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 private:
+	float GetNoise(float Frequency, int X, int Y, int Z);
+
 	PerlinNoise Noise;
 };
