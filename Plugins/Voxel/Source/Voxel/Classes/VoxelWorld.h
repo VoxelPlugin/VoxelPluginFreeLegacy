@@ -155,6 +155,8 @@ protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;
 	void Tick(float DeltaTime) override;
+	void BeginDestroy() override;
+
 #if WITH_EDITOR
 	bool ShouldTickIfViewportsOnly() const override;
 	void PostLoad() override;

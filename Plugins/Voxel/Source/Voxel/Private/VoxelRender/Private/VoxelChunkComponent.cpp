@@ -37,6 +37,7 @@ UVoxelChunkComponent::~UVoxelChunkComponent()
 	{
 		Render->ChunkHasBeenDestroyed(this);
 	}
+	DeleteTasks();
 }
 
 void UVoxelChunkComponent::Init(TWeakPtr<FChunkOctree> NewOctree)

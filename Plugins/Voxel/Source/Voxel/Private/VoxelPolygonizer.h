@@ -44,14 +44,14 @@ private:
 	// Too slow
 	//FColor GetMajorColor(int X, int Y, int Z, uint32 CellWidth);
 
-	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
-	void Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial);
+	FORCEINLINE void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
+	FORCEINLINE void Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial);
 
 	FORCEINLINE void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);
 	FORCEINLINE int LoadVertex(int X, int Y, int Z, short Direction, short EdgeIndex);
 
-	void SaveVertex2D(TransitionDirection Direction, int X, int Y, short EdgeIndex, int Index);
-	int LoadVertex2D(TransitionDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex);
+	FORCEINLINE void SaveVertex2D(TransitionDirection Direction, int X, int Y, short EdgeIndex, int Index);
+	FORCEINLINE int LoadVertex2D(TransitionDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex);
 
 	void InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha);
 	void InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha);
