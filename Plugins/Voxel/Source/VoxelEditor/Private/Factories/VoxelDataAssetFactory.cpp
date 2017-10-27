@@ -14,7 +14,7 @@ UVoxelDataAssetFactory::UVoxelDataAssetFactory(const FObjectInitializer& ObjectI
 
 UObject* UVoxelDataAssetFactory::FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
-	auto NewDataAsset = NewObject<UVoxelDataAsset>(InParent, Class, Name, Flags | RF_Transactional);
+	auto NewDataAsset = NewObject<UVoxelDataAsset>(InParent, Class, Name, Flags);
 
 	return NewDataAsset;
 }

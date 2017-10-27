@@ -10,8 +10,3 @@
 ALandscapeVoxelModifier::ALandscapeVoxelModifier()
 {
 };
-
-void ALandscapeVoxelModifier::InitExportedLandscape(TArray<float>& Heights, TArray<FVoxelMaterial>& Materials, int Size)
-{
-	ExportedLandscape->Init(Heights, Materials, Size);
-}
