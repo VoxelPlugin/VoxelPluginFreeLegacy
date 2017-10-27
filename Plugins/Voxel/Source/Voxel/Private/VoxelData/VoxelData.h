@@ -45,8 +45,8 @@ public:
 	* @return	Value
 	* @return	Color
 	*/
-	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const;
-	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, FValueOctree*& LastOctree) const;
+	FORCEINLINE void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const;
+	FORCEINLINE void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, FValueOctree*& LastOctree) const;
 
 
 	/**
@@ -54,17 +54,17 @@ public:
 	 * @param	Position	Position in voxel space
 	 * @param	Value to set
 	 */
-	void SetValue(int X, int Y, int Z, float Value);
-	void SetValue(int X, int Y, int Z, float Value, FValueOctree*& LastOctree);
+	FORCEINLINE void SetValue(int X, int Y, int Z, float Value);
+	FORCEINLINE void SetValue(int X, int Y, int Z, float Value, FValueOctree*& LastOctree);
 	/**
 	 * Set color at position
 	 * @param	Position	Position in voxel space
 	 * @param	Color to set
 	 */
-	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
-	void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material, FValueOctree*& LastOctree);
+	FORCEINLINE void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material);
+	FORCEINLINE void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material, FValueOctree*& LastOctree);
 
-	void SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelMaterial Material, FValueOctree*& LastOctree);
+	FORCEINLINE void SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelMaterial Material, FValueOctree*& LastOctree);
 
 	/**
 	 * Is Position in this world?

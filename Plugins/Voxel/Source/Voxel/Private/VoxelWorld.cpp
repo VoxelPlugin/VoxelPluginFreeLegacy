@@ -78,6 +78,18 @@ void AVoxelWorld::Tick(float DeltaTime)
 	}
 }
 
+void AVoxelWorld::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	if (Render)
+	{
+		Render->Destroy();
+		delete Render;
+		Render = nullptr;
+	}
+}
+
 #if WITH_EDITOR
 bool AVoxelWorld::ShouldTickIfViewportsOnly() const
 {
@@ -343,13 +355,13 @@ void AVoxelWorld::DestroyWorld()
 
 	UE_LOG(VoxelLog, Warning, TEXT("Unloading world"));
 
-	check(Data);
 	check(Render);
-	delete Data;
+	check(Data);
 	Render->Destroy();
 	delete Render;
-	Data = nullptr;
+	delete Data; // Data must be deleted AFTER Render
 	Render = nullptr;
+	Data = nullptr;
 
 	bIsCreated = false;
 }

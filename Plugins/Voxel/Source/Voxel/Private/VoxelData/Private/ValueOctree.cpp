@@ -32,7 +32,7 @@ bool FValueOctree::IsDirty() const
 void FValueOctree::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	check(IsInOctree(X, Y, Z));
-	check(IsLeaf()); // If crash here just comment this line
+	check(IsLeaf());
 
 	if (IsDirty())
 	{
@@ -327,14 +327,16 @@ FValueOctree* FValueOctree::GetLeaf(int X, int Y, int Z)
 {
 	check(IsInOctree(X, Y, Z));
 
-	if (IsLeaf())
+	FValueOctree* Ptr = this;
+
+	while (!Ptr->IsLeaf())
 	{
-		return this;
+		Ptr = Ptr->GetChild(X, Y, Z);
 	}
-	else
-	{
-		return GetChild(X, Y, Z)->GetLeaf(X, Y, Z);
-	}
+
+	check(Ptr->IsInOctree(X, Y, Z));
+
+	return Ptr;
 }
 
 void FValueOctree::GetDirtyChunksPositions(std::forward_list<FIntVector>& OutPositions)

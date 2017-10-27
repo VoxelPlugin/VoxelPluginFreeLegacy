@@ -77,8 +77,7 @@ public:
 	*/
 	FORCEINLINE FValueOctree* GetChild(int X, int Y, int Z);
 
-	// TODO: remove recursive
-	FValueOctree* GetLeaf(int X, int Y, int Z);
+	FORCEINLINE FValueOctree* GetLeaf(int X, int Y, int Z);
 
 	/**
 	 * Queue update of dirty chunks
