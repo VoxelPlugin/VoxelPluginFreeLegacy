@@ -8,7 +8,6 @@
 
 struct FDecompressedVoxelLandscapeAsset
 {
-public:
 	TArray<float> Heights;
 	TArray<FVoxelMaterial> Materials;
 	int Size;
@@ -22,9 +21,6 @@ public:
 
 	FORCEINLINE float GetValue(const int X, const int Y, const int Z, const float VoxelSize);
 	FORCEINLINE FVoxelMaterial GetMaterial(const int X, const int Y, const int Z, const float VoxelSize);
-
-private:
-	;
 };
 
 FORCEINLINE FArchive& operator<<(FArchive &Ar, FDecompressedVoxelLandscapeAsset& Asset)
@@ -47,10 +43,6 @@ class UVoxelLandscapeAsset : public UObject
 public:
 	UVoxelLandscapeAsset(const FObjectInitializer& ObjectInitializer);
 
-
-	UPROPERTY()
-		TArray<uint8> Data;
-
 	VOXEL_API void Init(TArray<float>& Heights, TArray<FVoxelMaterial>& Materials, int Size);
 	VOXEL_API bool GetDecompressedAsset(FDecompressedVoxelLandscapeAsset& Asset);
 
@@ -61,4 +53,7 @@ private:
 
 	UPROPERTY(EditAnywhere)
 		float HardnessMultiplier;
+
+	UPROPERTY()
+		TArray<uint8> Data;
 };
