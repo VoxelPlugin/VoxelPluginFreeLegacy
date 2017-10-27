@@ -7,8 +7,6 @@ ULandscapeWorldGenerator::ULandscapeWorldGenerator()
 	, VoxelSize(0)
 {
 	DefaultWorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UFlatWorldGenerator::StaticClass());
-	TArray<float> Heights;
-	TArray<FVoxelMaterial> Materials;
 }
 
 float ULandscapeWorldGenerator::GetDefaultValue(int X, int Y, int Z)

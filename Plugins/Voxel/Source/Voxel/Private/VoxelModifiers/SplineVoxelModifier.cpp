@@ -245,13 +245,6 @@ void ASplineVoxelModifier::BeginPlay()
 
 void ASplineVoxelModifier::Tick(float DeltaTime)
 {
-	UE_LOG(VoxelLog, Warning, TEXT("VoxelDataAsset"));
-
-	if (VoxelDataAsset)
-	{
-		VoxelDataAsset->Name = TEXT("VoxelDataAsset");
-	}
-
 	if (GetWorld()->WorldType == EWorldType::Editor)
 	{
 		if (IsSelectedInEditor())

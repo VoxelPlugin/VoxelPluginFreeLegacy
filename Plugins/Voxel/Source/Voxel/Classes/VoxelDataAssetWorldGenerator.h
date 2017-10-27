@@ -3,27 +3,29 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelDataAsset.h"
 #include "VoxelWorldGenerator.h"
-#include "VoxelLandscapeAsset.h"
-#include "LandscapeWorldGenerator.generated.h"
+#include "VoxelDataAssetWorldGenerator.generated.h"
+
+// TODO: UBoundedVoxelWorldGenerator
 
 /**
- *
- */
+*
+*/
 UCLASS(Blueprintable)
-class VOXEL_API ULandscapeWorldGenerator : public UVoxelWorldGenerator
+class VOXEL_API UVoxelDataAssetWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
 public:
 	UPROPERTY(EditAnywhere)
-		UVoxelLandscapeAsset* Landscape;
+		UVoxelDataAsset* Asset;
 
 	UPROPERTY(EditAnywhere)
 		TSubclassOf<UVoxelWorldGenerator> DefaultWorldGenerator;
 
-	
-	ULandscapeWorldGenerator();
+
+	UVoxelDataAssetWorldGenerator();
 
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
@@ -36,8 +38,7 @@ private:
 	UPROPERTY()
 		UVoxelWorldGenerator* InstancedWorldGenerator;
 
-	FDecompressedVoxelLandscapeAsset Asset;
-	int VoxelSize;
+	FDecompressedVoxelDataAsset DecompressedAsset;
 
 	void CreateGeneratorAndDecompressedAsset();
 };

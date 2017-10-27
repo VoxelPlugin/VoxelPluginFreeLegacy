@@ -8,6 +8,8 @@
 
 class AVoxelWorld;
 
+// TODO: GetValueAndMaterial
+
 /**
  *
  */
