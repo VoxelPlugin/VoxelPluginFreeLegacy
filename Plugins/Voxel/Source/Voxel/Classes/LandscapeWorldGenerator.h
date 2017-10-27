@@ -34,7 +34,9 @@ public:
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 private:
-	UVoxelWorldGenerator* InstancedWorldGenerator;
+	UPROPERTY()
+		UVoxelWorldGenerator* InstancedWorldGenerator;
+
 	FDecompressedVoxelLandscapeAsset Asset;
 	int VoxelSize;
 

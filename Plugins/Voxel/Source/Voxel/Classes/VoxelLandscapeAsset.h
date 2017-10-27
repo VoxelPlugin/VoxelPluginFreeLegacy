@@ -51,9 +51,8 @@ public:
 	UPROPERTY()
 		TArray<uint8> Data;
 
-	void Init(TArray<float>& Heights, TArray<FVoxelMaterial>& Materials, int Size);
-
-	bool GetDecompressedAsset(FDecompressedVoxelLandscapeAsset& Asset);
+	VOXEL_API void Init(TArray<float>& Heights, TArray<FVoxelMaterial>& Materials, int Size);
+	VOXEL_API bool GetDecompressedAsset(FDecompressedVoxelLandscapeAsset& Asset);
 
 private:
 	// Higher precision can improve render quality, but voxel values are lower (hardness not constant)

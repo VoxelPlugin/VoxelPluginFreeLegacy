@@ -8,9 +8,9 @@
 
 // See sky light details in the engine code
 
-class ALandscapeVoxelModifier;
+class AVoxelLandscapeImporter;
 
-class ULandscapeVoxelModifierDetails : public IDetailCustomization
+class UVoxelLandscapeImporterDetails : public IDetailCustomization
 {
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
@@ -20,7 +20,8 @@ private:
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
 	FReply OnCreateFromLandscape();
+
 private:
 	/** The selected landscape modifier */
-	TWeakObjectPtr<ALandscapeVoxelModifier> LandscapeModifier;
+	TWeakObjectPtr<AVoxelLandscapeImporter> LandscapeImporter;
 };

@@ -14,7 +14,7 @@ UVoxelLandscapeAssetFactory::UVoxelLandscapeAssetFactory(const FObjectInitialize
 
 UObject* UVoxelLandscapeAssetFactory::FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
-	auto NewLandscapeAsset = NewObject<UVoxelLandscapeAsset>(InParent, Class, Name, Flags | RF_Transactional);
+	auto NewLandscapeAsset = NewObject<UVoxelLandscapeAsset>(InParent, Class, Name, Flags);
 
 	return NewLandscapeAsset;
 }

@@ -5,7 +5,7 @@
 UFunnyWorldGenerator::UFunnyWorldGenerator()
 	: ValueMultiplier(1)
 	, SphereLayerHeight(100)
-	, Radius(10)
+	, Radius(1000)
 	, RadiusDivisor(1.5)
 {
 

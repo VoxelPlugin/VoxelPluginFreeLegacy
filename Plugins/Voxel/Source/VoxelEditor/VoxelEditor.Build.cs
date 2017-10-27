@@ -23,6 +23,7 @@ public class VoxelEditor : ModuleRules
                 "AssetTools",
                 "MainFrame",
                 "DetailCustomizations",
+                "AssetRegistry",
             });
 
         PrivateDependencyModuleNames.AddRange(
