@@ -179,7 +179,7 @@ FReply UVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 		// Create a VoxelLandscapeAsset
 		UVoxelLandscapeAssetFactory* LandscapeFactory = NewObject<UVoxelLandscapeAssetFactory>();
 
-		UVoxelLandscapeAsset* LandscapeAsset = (UVoxelLandscapeAsset*)LandscapeFactory->FactoryCreateNew(UVoxelLandscapeAsset::StaticClass(), Package, LandscapeImporter->FileName, RF_Standalone | RF_Public, NULL, GWarn);
+		UVoxelLandscapeAsset* LandscapeAsset = (UVoxelLandscapeAsset*)LandscapeFactory->FactoryCreateNew(UVoxelLandscapeAsset::StaticClass(), Package, FName(*(LandscapeImporter->FileName)), RF_Standalone | RF_Public, NULL, GWarn);
 
 		check(LandscapeAsset);
 
