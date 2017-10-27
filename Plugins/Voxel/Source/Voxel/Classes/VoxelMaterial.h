@@ -27,11 +27,6 @@ public:
 
 	}
 
-	FVoxelMaterial(uint8 Index1, uint8 Index2, float Alpha) : Index1(Index1), Index2(Index2), Alpha(255 * FMath::Clamp(Alpha, 0.f, 1.f))
-	{
-
-	}
-
 	FVoxelMaterial(FColor Color) : Index1(Color.R), Index2(Color.G), Alpha(Color.B)
 	{
 
@@ -54,8 +49,7 @@ public:
 
 	FORCEINLINE bool HasSameIndexesAs(FVoxelMaterial Other) const
 	{
-		return (Index1 == Other.Index1 && Index2 == Other.Index2)
-			|| (Index1 == Other.Index2 && Index2 == Other.Index1);
+		return (Index1 == Other.Index1) && (Index2 == Other.Index2);
 	}
 };
 

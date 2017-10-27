@@ -202,9 +202,9 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 											FVoxelMaterial Material;
 											float Value;
 											GetValueAndMaterial(
-												X - static_cast<bool>((CacheDirection & 0x01) * Step() != 0),
-												Y - static_cast<bool>((CacheDirection & 0x02) * Step() != 0),
-												Z - static_cast<bool>((CacheDirection & 0x04) * Step() != 0),
+												(X - static_cast<bool>((CacheDirection & 0x01) != 0)) * Step(),
+												(Y - static_cast<bool>((CacheDirection & 0x02) != 0)) * Step(),
+												(Z - static_cast<bool>((CacheDirection & 0x04) != 0)) * Step(),
 												Value,
 												Material
 											);
@@ -214,7 +214,7 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 
 										if ((ValidityMask & CacheDirection) != CacheDirection || ForceVertexCreation)
 										{
-											// If we are on the edge of the chunk, or precedent color is not the same as current one
+											// If we are on one the lower edges of the chunk, or precedent color is not the same as current one
 
 											const bool bIsAlongX = (EdgeIndex == 1);
 											const bool bIsAlongY = (EdgeIndex == 0);
