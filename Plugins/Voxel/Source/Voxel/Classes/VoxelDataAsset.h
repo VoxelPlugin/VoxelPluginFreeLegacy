@@ -4,16 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
+#include "VoxelAsset.h"
+#include "BufferArchive.h"
+#include "MemoryReader.h"
 #include "VoxelDataAsset.generated.h"
 
-enum EVoxelType : uint8
-{
-	UseValue,
-	UseValueIfSameSign,
-	IgnoreValue
-};
-
-struct FDecompressedVoxelDataAsset
+// 0, 0, 0 is the center
+struct VOXEL_API FDecompressedVoxelDataAsset : FDecompressedVoxelAsset
 {
 	int32 SizeX;
 	int32 SizeY;
@@ -25,15 +22,16 @@ struct FDecompressedVoxelDataAsset
 	TArray<uint8> VoxelTypes;
 
 	// Warning: Doesn't initialize values
-	FORCEINLINE VOXEL_API void SetSize(int32 NewSizeX, int32 NewSizeY, int32 NewSizeZ);
+	void SetSize(int32 NewSizeX, int32 NewSizeY, int32 NewSizeZ);
 
-	FORCEINLINE VOXEL_API float GetValue(const int X, const int Y, const int Z);
-	FORCEINLINE VOXEL_API FVoxelMaterial GetMaterial(const int X, const int Y, const int Z);
-	FORCEINLINE VOXEL_API EVoxelType GetVoxelType(const int X, const int Y, const int Z);
+	float GetValue(const int X, const int Y, const int Z) override;
+	FVoxelMaterial GetMaterial(const int X, const int Y, const int Z) override;
+	EVoxelType GetVoxelType(const int X, const int Y, const int Z) override;
+	FVoxelBox GetBounds() override;
 
-	FORCEINLINE VOXEL_API void SetValue(const int X, const int Y, const int Z, const float NewValue);
-	FORCEINLINE VOXEL_API void SetMaterial(const int X, const int Y, const int Z, const FVoxelMaterial NewMaterial);
-	FORCEINLINE VOXEL_API void SetVoxelType(const int X, const int Y, const int Z, const EVoxelType VoxelType);
+	void SetValue(const int X, const int Y, const int Z, const float NewValue);
+	void SetMaterial(const int X, const int Y, const int Z, const FVoxelMaterial NewMaterial);
+	void SetVoxelType(const int X, const int Y, const int Z, const EVoxelType VoxelType);
 };
 
 FORCEINLINE FArchive& operator<<(FArchive &Ar, FDecompressedVoxelDataAsset& Asset)
@@ -52,17 +50,16 @@ FORCEINLINE FArchive& operator<<(FArchive &Ar, FDecompressedVoxelDataAsset& Asse
 
 
 UCLASS(MinimalAPI)
-class UVoxelDataAsset : public UObject
+class UVoxelDataAsset : public UVoxelAsset
 {
 	GENERATED_BODY()
 
 public:
 	UVoxelDataAsset(const FObjectInitializer& ObjectInitializer);
 
-	VOXEL_API void Init(FDecompressedVoxelDataAsset& Asset);
-	VOXEL_API bool GetDecompressedAsset(FDecompressedVoxelDataAsset& Asset);
+	bool GetDecompressedAsset(FDecompressedVoxelAsset*& Asset, const float VoxelSize) override;
 
-private:
-	UPROPERTY()
-		TArray<uint8> Data;
+protected:
+	void AddAssetToArchive(FBufferArchive& ToBinary, FDecompressedVoxelAsset* Asset) override;
+	void GetAssetFromArchive(FMemoryReader& FromBinary, FDecompressedVoxelAsset* Asset) override;
 };
