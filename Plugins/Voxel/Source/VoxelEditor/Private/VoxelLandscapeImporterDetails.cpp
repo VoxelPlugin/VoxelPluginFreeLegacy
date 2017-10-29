@@ -56,14 +56,14 @@ void UVoxelLandscapeImporterDetails::CustomizeDetails(IDetailLayoutBuilder& Deta
 		[
 			SNew(SButton)
 			.ContentPadding(2)
-			.VAlign(VAlign_Center)
-			.HAlign(HAlign_Center)
-			.OnClicked(this, &UVoxelLandscapeImporterDetails::OnCreateFromLandscape)
-			[
-				SNew(STextBlock)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(FText::FromString(TEXT("Create")))
-			]
+		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Center)
+		.OnClicked(this, &UVoxelLandscapeImporterDetails::OnCreateFromLandscape)
+		[
+			SNew(STextBlock)
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+		.Text(FText::FromString(TEXT("Create")))
+		]
 		];
 }
 
@@ -74,6 +74,8 @@ FReply UVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 		int MipLevel = 0;
 		int ComponentSize = 0;
 		int Count = 0;
+
+		// TODO: Non square landscapes?
 
 		for (auto Component : LandscapeImporter->Landscape->GetLandscapeActor()->LandscapeComponents)
 		{
@@ -93,10 +95,11 @@ FReply UVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 		check(FMath::RoundToInt(FMath::Sqrt(Count)) * FMath::RoundToInt(FMath::Sqrt(Count)) == Count);
 		int TotalSize = FMath::RoundToInt(FMath::Sqrt(Count)) * ComponentSize;
 
-		TArray<float> Heights;
-		TArray<FVoxelMaterial> Materials;
-		Heights.SetNum(TotalSize * TotalSize);
-		Materials.SetNum(TotalSize * TotalSize);
+		FDecompressedVoxelLandscapeAsset Asset;
+
+		Asset.Size = TotalSize;
+		Asset.Heights.SetNum(TotalSize * TotalSize);
+		Asset.Materials.SetNum(TotalSize * TotalSize);
 
 		for (auto Component : LandscapeImporter->Landscape->GetLandscapeActor()->LandscapeComponents)
 		{
@@ -119,7 +122,7 @@ FReply UVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 				{
 					FVector Vertex = DataInterface.GetWorldVertex(X, Y);
 					FVector LocalVertex = (Vertex - LandscapeImporter->Landscape->GetActorLocation()) / Component->GetComponentTransform().GetScale3D();
-					Heights[LocalVertex.X + TotalSize * LocalVertex.Y] = Vertex.Z;
+					Asset.Heights[LocalVertex.X + TotalSize * LocalVertex.Y] = Vertex.Z;
 
 					uint8 MaxIndex = 0;
 					uint8 MaxValue = 0;
@@ -146,7 +149,7 @@ FReply UVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 						}
 					}
 
-					Materials[LocalVertex.X + TotalSize * LocalVertex.Y] = FVoxelMaterial(MaxIndex, SecondMaxIndex, FMath::Clamp<uint8>(((255 - MaxValue) + SecondMaxValue) / 2, 0, 255));
+					Asset.Materials[LocalVertex.X + TotalSize * LocalVertex.Y] = FVoxelMaterial(MaxIndex, SecondMaxIndex, FMath::Clamp<uint8>(((255 - MaxValue) + SecondMaxValue) / 2, 0, 255));
 				}
 			}
 		}
@@ -183,7 +186,7 @@ FReply UVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 
 		check(LandscapeAsset);
 
-		LandscapeAsset->Init(Heights, Materials, TotalSize);
+		LandscapeAsset->InitFromAsset(&Asset);
 
 		// Notify the asset registry
 		FAssetRegistryModule::AssetCreated(LandscapeAsset);

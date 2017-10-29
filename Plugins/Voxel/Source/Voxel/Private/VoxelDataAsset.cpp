@@ -3,12 +3,6 @@
 #pragma once
 #include "VoxelPrivatePCH.h"
 #include "VoxelDataAsset.h"
-#include "Engine/World.h"
-#include "BufferArchive.h"
-#include "ArchiveSaveCompressedProxy.h"
-#include "ArchiveLoadCompressedProxy.h"
-#include "MemoryReader.h"
-#include "Engine/Texture2D.h"
 
 
 UVoxelDataAsset::UVoxelDataAsset(const FObjectInitializer& ObjectInitializer)
@@ -16,50 +10,23 @@ UVoxelDataAsset::UVoxelDataAsset(const FObjectInitializer& ObjectInitializer)
 {
 };
 
-void UVoxelDataAsset::Init(FDecompressedVoxelDataAsset& Asset)
+bool UVoxelDataAsset::GetDecompressedAsset(FDecompressedVoxelAsset*& Asset, const float VoxelSize)
 {
-	FBufferArchive ToBinary;
-
-	ToBinary << Asset;
-
-	Data.Empty();
-	FArchiveSaveCompressedProxy Compressor = FArchiveSaveCompressedProxy(Data, ECompressionFlags::COMPRESS_ZLIB);
-
-	// Send entire binary array/archive to compressor
-	Compressor << ToBinary;
-
-	// Send archive serialized data to binary array
-	Compressor.Flush();
+	Asset = new FDecompressedVoxelDataAsset();
+	return Super::GetDecompressedAsset(Asset, VoxelSize);
 }
 
-bool UVoxelDataAsset::GetDecompressedAsset(FDecompressedVoxelDataAsset& Asset)
+void UVoxelDataAsset::AddAssetToArchive(FBufferArchive& ToBinary, FDecompressedVoxelAsset* Asset)
 {
-	if (Data.Num() != 0)
-	{
-		FArchiveLoadCompressedProxy Decompressor = FArchiveLoadCompressedProxy(Data, ECompressionFlags::COMPRESS_ZLIB);
-
-		check(!Decompressor.GetError());
-
-		//Decompress
-		FBufferArchive DecompressedBinaryArray;
-		Decompressor << DecompressedBinaryArray;
-
-		FMemoryReader FromBinary = FMemoryReader(DecompressedBinaryArray);
-		FromBinary.Seek(0);
-
-		FromBinary << Asset;
-
-		check(FromBinary.AtEnd());
-
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	ToBinary << *((FDecompressedVoxelDataAsset*)Asset);
 }
 
-FORCEINLINE void FDecompressedVoxelDataAsset::SetSize(int32 NewSizeX, int32 NewSizeY, int32 NewSizeZ)
+void UVoxelDataAsset::GetAssetFromArchive(FMemoryReader& FromBinary, FDecompressedVoxelAsset* Asset)
+{
+	FromBinary << *((FDecompressedVoxelDataAsset*)Asset);
+}
+
+void FDecompressedVoxelDataAsset::SetSize(int32 NewSizeX, int32 NewSizeY, int32 NewSizeZ)
 {
 	SizeX = NewSizeX;
 	SizeY = NewSizeY;
@@ -74,48 +41,58 @@ FORCEINLINE void FDecompressedVoxelDataAsset::SetSize(int32 NewSizeX, int32 NewS
 
 float FDecompressedVoxelDataAsset::GetValue(const int X, const int Y, const int Z)
 {
-	check(0 <= X && X < SizeX);
-	check(0 <= Y && Y < SizeY);
-	check(0 <= Z && Z < SizeZ);
-	return Values[X + SizeX * Y + SizeX * SizeY * Z];
+	check(-SizeX / 2 <= X && X < SizeX / 2);
+	check(-SizeY / 2 <= Y && Y < SizeY / 2);
+	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
+	return Values[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)];
 }
 
 FVoxelMaterial FDecompressedVoxelDataAsset::GetMaterial(const int X, const int Y, const int Z)
 {
-	check(0 <= X && X < SizeX);
-	check(0 <= Y && Y < SizeY);
-	check(0 <= Z && Z < SizeZ);
-	return Materials[X + SizeX * Y + SizeX * SizeY * Z];
+	check(-SizeX / 2 <= X && X < SizeX / 2);
+	check(-SizeY / 2 <= Y && Y < SizeY / 2);
+	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
+	return Materials[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)];
 }
 
 EVoxelType FDecompressedVoxelDataAsset::GetVoxelType(const int X, const int Y, const int Z)
 {
-	check(0 <= X && X < SizeX);
-	check(0 <= Y && Y < SizeY);
-	check(0 <= Z && Z < SizeZ);
-	return (EVoxelType)VoxelTypes[X + SizeX * Y + SizeX * SizeY * Z];
+	check(-SizeX / 2 <= X && X < SizeX / 2);
+	check(-SizeY / 2 <= Y && Y < SizeY / 2);
+	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
+	return (EVoxelType)VoxelTypes[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)];
+}
+
+FVoxelBox FDecompressedVoxelDataAsset::GetBounds()
+{
+	const FIntVector Bounds(SizeX / 2, SizeY / 2, SizeZ / 2);
+
+	FVoxelBox Box;
+	Box.Min = Bounds * -1;
+	Box.Max = Bounds;
+	return Box;
 }
 
 void FDecompressedVoxelDataAsset::SetValue(const int X, const int Y, const int Z, const float NewValue)
 {
-	check(0 <= X && X < SizeX);
-	check(0 <= Y && Y < SizeY);
-	check(0 <= Z && Z < SizeZ);
-	Values[X + SizeX * Y + SizeX * SizeY * Z] = NewValue;
+	check(-SizeX / 2 <= X && X < SizeX / 2);
+	check(-SizeY / 2 <= Y && Y < SizeY / 2);
+	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
+	Values[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = NewValue;
 }
 
 void FDecompressedVoxelDataAsset::SetMaterial(const int X, const int Y, const int Z, const FVoxelMaterial NewMaterial)
 {
-	check(0 <= X && X < SizeX);
-	check(0 <= Y && Y < SizeY);
-	check(0 <= Z && Z < SizeZ);
-	Materials[X + SizeX * Y + SizeX * SizeY * Z] = NewMaterial;
+	check(-SizeX / 2 <= X && X < SizeX / 2);
+	check(-SizeY / 2 <= Y && Y < SizeY / 2);
+	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
+	Materials[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = NewMaterial;
 }
 
 void FDecompressedVoxelDataAsset::SetVoxelType(const int X, const int Y, const int Z, const EVoxelType VoxelType)
 {
-	check(0 <= X && X < SizeX);
-	check(0 <= Y && Y < SizeY);
-	check(0 <= Z && Z < SizeZ);
-	VoxelTypes[X + SizeX * Y + SizeX * SizeY * Z] = VoxelType;
+	check(-SizeX / 2 <= X && X < SizeX / 2);
+	check(-SizeY / 2 <= Y && Y < SizeY / 2);
+	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
+	VoxelTypes[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = VoxelType;
 }

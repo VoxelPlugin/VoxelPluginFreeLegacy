@@ -4,23 +4,25 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
+#include "VoxelAsset.h"
 #include "VoxelLandscapeAsset.generated.h"
 
-struct FDecompressedVoxelLandscapeAsset
+// Center: bottom center
+struct VOXEL_API FDecompressedVoxelLandscapeAsset : FDecompressedVoxelAsset
 {
 	TArray<float> Heights;
 	TArray<FVoxelMaterial> Materials;
 	int Size;
 
+	// Will be set by UVoxelLandscapeAsset
 	int Precision;
 	float HardnessMultiplier;
+	float VoxelSize;
 
-
-	FORCEINLINE int GetLowerBound(int X, int Y, const float VoxelSize);
-	FORCEINLINE int GetUpperBound(int X, int Y, const float VoxelSize);
-
-	FORCEINLINE float GetValue(const int X, const int Y, const int Z, const float VoxelSize);
-	FORCEINLINE FVoxelMaterial GetMaterial(const int X, const int Y, const int Z, const float VoxelSize);
+	float GetValue(const int X, const int Y, const int Z) override;
+	FVoxelMaterial GetMaterial(const int X, const int Y, const int Z) override;
+	EVoxelType GetVoxelType(const int X, const int Y, const int Z) override;
+	FVoxelBox GetBounds() override;
 };
 
 FORCEINLINE FArchive& operator<<(FArchive &Ar, FDecompressedVoxelLandscapeAsset& Asset)
@@ -36,15 +38,18 @@ FORCEINLINE FArchive& operator<<(FArchive &Ar, FDecompressedVoxelLandscapeAsset&
  *
  */
 UCLASS(MinimalAPI)
-class UVoxelLandscapeAsset : public UObject
+class UVoxelLandscapeAsset : public UVoxelAsset
 {
 	GENERATED_BODY()
 
 public:
 	UVoxelLandscapeAsset(const FObjectInitializer& ObjectInitializer);
 
-	VOXEL_API void Init(TArray<float>& Heights, TArray<FVoxelMaterial>& Materials, int Size);
-	VOXEL_API bool GetDecompressedAsset(FDecompressedVoxelLandscapeAsset& Asset);
+	bool GetDecompressedAsset(FDecompressedVoxelAsset*& Asset, const float VoxelSize) override;
+
+protected:
+	void AddAssetToArchive(FBufferArchive& ToBinary, FDecompressedVoxelAsset* Asset) override;
+	void GetAssetFromArchive(FMemoryReader& FromBinary, FDecompressedVoxelAsset* Asset) override;
 
 private:
 	// Higher precision can improve render quality, but voxel values are lower (hardness not constant)
@@ -53,7 +58,4 @@ private:
 
 	UPROPERTY(EditAnywhere)
 		float HardnessMultiplier;
-
-	UPROPERTY()
-		TArray<uint8> Data;
 };

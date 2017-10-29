@@ -19,93 +19,88 @@ UVoxelLandscapeAsset::UVoxelLandscapeAsset(const FObjectInitializer& ObjectIniti
 {
 };
 
-void UVoxelLandscapeAsset::Init(TArray<float>& Heights, TArray<FVoxelMaterial>& Materials, int Size)
+bool UVoxelLandscapeAsset::GetDecompressedAsset(FDecompressedVoxelAsset*& Asset, const float VoxelSize)
 {
-	FDecompressedVoxelLandscapeAsset Asset;
-	Asset.Heights = Heights;
-	Asset.Materials = Materials;
-	Asset.Size = Size;
+	Asset = new FDecompressedVoxelLandscapeAsset();
+	bool bSuccess = Super::GetDecompressedAsset(Asset, VoxelSize);
+	FDecompressedVoxelLandscapeAsset* LandscapeAsset = (FDecompressedVoxelLandscapeAsset*)Asset;
+	LandscapeAsset->Precision = Precision;
+	LandscapeAsset->HardnessMultiplier = HardnessMultiplier;
+	LandscapeAsset->VoxelSize = VoxelSize;
 
-	FBufferArchive ToBinary;
-
-	ToBinary << Asset;
-
-	Data.Empty();
-	FArchiveSaveCompressedProxy Compressor = FArchiveSaveCompressedProxy(Data, ECompressionFlags::COMPRESS_ZLIB);
-
-	// Send entire binary array/archive to compressor
-	Compressor << ToBinary;
-
-	// Send archive serialized data to binary array
-	Compressor.Flush();
+	return bSuccess;
 }
 
-bool UVoxelLandscapeAsset::GetDecompressedAsset(FDecompressedVoxelLandscapeAsset& Asset)
+void UVoxelLandscapeAsset::AddAssetToArchive(FBufferArchive& ToBinary, FDecompressedVoxelAsset* Asset)
 {
-	if (Data.Num() != 0)
-	{
-		FArchiveLoadCompressedProxy Decompressor = FArchiveLoadCompressedProxy(Data, ECompressionFlags::COMPRESS_ZLIB);
-
-		check(!Decompressor.GetError());
-
-		//Decompress
-		FBufferArchive DecompressedBinaryArray;
-		Decompressor << DecompressedBinaryArray;
-
-		FMemoryReader FromBinary = FMemoryReader(DecompressedBinaryArray);
-		FromBinary.Seek(0);
-
-		FromBinary << Asset;
-
-		check(FromBinary.AtEnd());
-
-
-		Asset.Precision = Precision;
-		Asset.HardnessMultiplier = HardnessMultiplier;
-
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	ToBinary << *((FDecompressedVoxelLandscapeAsset*)Asset);
 }
 
-float FDecompressedVoxelLandscapeAsset::GetValue(const int X, const int Y, const int Z, const float VoxelSize)
+void UVoxelLandscapeAsset::GetAssetFromArchive(FMemoryReader& FromBinary, FDecompressedVoxelAsset* Asset)
 {
-	check(0 <= X && X < Size && 0 <= Y && Y < Size);
+	FromBinary << *((FDecompressedVoxelLandscapeAsset*)Asset);
+}
 
-	if ((Z + Precision) * VoxelSize < Heights[X + Size * Y])
+float FDecompressedVoxelLandscapeAsset::GetValue(const int X, const int Y, const int Z)
+{
+	const int HalfSize = Size / 2;
+
+	check(-HalfSize <= X && X < HalfSize && -HalfSize <= Y && Y < HalfSize);
+
+	const float CurrentHeight = Heights[(X + HalfSize) + Size * (Y + HalfSize)];
+
+	if (CurrentHeight > (Z + Precision) * VoxelSize)
 	{
 		// If voxel over us is in, we're entirely in
 		return -HardnessMultiplier;
 	}
-	else if ((Z - Precision) * VoxelSize > Heights[X + Size * Y])
+	else if ((Z - Precision) * VoxelSize > CurrentHeight)
 	{
 		// If voxel under us is out, we're entirely out
 		return HardnessMultiplier;
 	}
 	else
 	{
-		float Alpha = (Z * VoxelSize - Heights[X + Size * Y]) / VoxelSize / Precision;
+		float Alpha = (Z * VoxelSize - CurrentHeight) / VoxelSize / Precision;
 
 		return Alpha * HardnessMultiplier;
 	}
 }
 
-FVoxelMaterial FDecompressedVoxelLandscapeAsset::GetMaterial(const int X, const int Y, const int Z, const float VoxelSize)
+FVoxelMaterial FDecompressedVoxelLandscapeAsset::GetMaterial(const int X, const int Y, const int Z)
 {
-	check(0 <= X && X < Size && 0 <= Y && Y < Size);
+	const int HalfSize = Size / 2;
 
-	return Materials[X + Size * Y];
+	check(-HalfSize <= X && X < HalfSize && -HalfSize <= Y && Y < HalfSize);
+
+	return Materials[(X + HalfSize) + Size * (Y + HalfSize)];
 }
 
-int FDecompressedVoxelLandscapeAsset::GetLowerBound(int X, int Y, const float VoxelSize)
+EVoxelType FDecompressedVoxelLandscapeAsset::GetVoxelType(const int X, const int Y, const int Z)
 {
-	return FMath::FloorToInt(Heights[X + Size * Y] / (float)VoxelSize - Precision);
+	const int HalfSize = Size / 2;
+
+	check(-HalfSize <= X && X < HalfSize && -HalfSize <= Y && Y < HalfSize);
+
+	const float CurrentHeight = Heights[(X + HalfSize) + Size * (Y + HalfSize)];
+
+	if ((Z - Precision) * VoxelSize < CurrentHeight || CurrentHeight < (Z + Precision) * VoxelSize)
+	{
+		return (Z * VoxelSize - CurrentHeight <= 0) ? EVoxelType::UseValue : EVoxelType::UseValueIfSameSign;
+	}
+	else
+	{
+		return EVoxelType::IgnoreValue;
+	}
 }
 
-int FDecompressedVoxelLandscapeAsset::GetUpperBound(int X, int Y, const float VoxelSize)
+FVoxelBox FDecompressedVoxelLandscapeAsset::GetBounds()
 {
-	return FMath::CeilToInt(Heights[X + Size * Y] / (float)VoxelSize + Precision);
+	FIntVector Bound(Size / 2, Size / 2, Size / 2);
+
+	FVoxelBox Box;
+	Box.Min = Bound * -1;
+	Box.Max = Bound;
+
+	return Box;
 }
