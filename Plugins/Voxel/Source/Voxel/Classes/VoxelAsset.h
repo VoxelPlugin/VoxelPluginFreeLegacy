@@ -39,7 +39,7 @@ struct VOXEL_API FVoxelType
 	}
 
 	FVoxelType(EVoxelValueType ValueType, EVoxelMaterialType MaterialType)
-		: Value(ValueType & (MaterialType << 4))
+		: Value(ValueType | (MaterialType << 4))
 	{
 	}
 
@@ -61,7 +61,7 @@ struct VOXEL_API FVoxelBox
 
 	FORCEINLINE bool IsInside(const int X, const int Y, const int Z) const
 	{
-		return ((X >= Min.X) && (X < Max.X) && (Y >= Min.Y) && (Y < Max.Y) && (Z >= Min.Z) && (Z < Max.Z));
+		return ((X > Min.X) && (X < Max.X) && (Y > Min.Y) && (Y < Max.Y) && (Z > Min.Z) && (Z < Max.Z));
 	}
 };
 
