@@ -76,7 +76,7 @@ FVoxelMaterial FDecompressedVoxelLandscapeAsset::GetMaterial(const int X, const 
 	return Materials[(X + HalfSize) + Size * (Y + HalfSize)];
 }
 
-EVoxelType FDecompressedVoxelLandscapeAsset::GetVoxelType(const int X, const int Y, const int Z)
+FVoxelType FDecompressedVoxelLandscapeAsset::GetVoxelType(const int X, const int Y, const int Z)
 {
 	const int HalfSize = Size / 2;
 
@@ -84,13 +84,13 @@ EVoxelType FDecompressedVoxelLandscapeAsset::GetVoxelType(const int X, const int
 
 	const float CurrentHeight = Heights[(X + HalfSize) + Size * (Y + HalfSize)];
 
-	if ((Z - Precision) * VoxelSize < CurrentHeight || CurrentHeight < (Z + Precision) * VoxelSize)
+	if ((Z - Precision) * VoxelSize <= CurrentHeight || CurrentHeight <= (Z + Precision) * VoxelSize)
 	{
-		return (Z * VoxelSize - CurrentHeight <= 0) ? EVoxelType::UseValue : EVoxelType::UseValueIfSameSign;
+		return (Z * VoxelSize - CurrentHeight <= 0) ? FVoxelType(UseValue, UseMaterial) : FVoxelType(UseValueIfSameSign, UseMaterial);
 	}
 	else
 	{
-		return EVoxelType::IgnoreValue;
+		return FVoxelType(IgnoreValue, IgnoreMaterial);
 	}
 }
 

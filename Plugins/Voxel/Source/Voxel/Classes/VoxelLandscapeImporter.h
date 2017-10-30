@@ -22,12 +22,14 @@ public:
 	UPROPERTY(EditAnywhere, meta = (DisplayName = "Save Path: /Game/", RelativeToGameContentDir), Category = "Save configuration")
 		FDirectoryPath SavePath;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Save configuration")
+	UPROPERTY(EditAnywhere, Category = "Save configuration")
 		FString FileName;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import configuration")
+
+	UPROPERTY(EditAnywhere, Category = "Import configuration")
 		ALandscape* Landscape;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Import configuration")
+	// TODO: Custom materials
+	UPROPERTY(EditAnywhere, Category = "Import configuration")
 		TArray<ULandscapeLayerInfoObject*> LayerInfos;
 };
