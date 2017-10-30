@@ -8,7 +8,6 @@
 #include <forward_list>
 #include "FlatWorldGenerator.h"
 #include "VoxelInvokerComponent.h"
-#include "VoxelModifier.h"
 #include "VoxelWorldEditorInterface.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
@@ -200,36 +199,6 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 	}
 }
 
-
-
-void AVoxelWorld::UpdateVoxelModifiers()
-{
-	if (IsCreated())
-	{
-		DestroyWorld();
-	}
-	CreateWorld(false);
-
-	TArray<AActor*> FoundActors;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), FoundActors);
-
-	for (AActor* Actor : FoundActors)
-	{
-		AVoxelModifier* Modifier = Cast<AVoxelModifier>(Actor);
-
-		if (Modifier)
-		{
-			Modifier->ApplyToWorld(this);
-		}
-	}
-
-	GetSave(WorldSave);
-
-	DestroyWorld();
-
-	CreateInEditor();
-}
-
 AVoxelWorldEditorInterface* AVoxelWorld::GetVoxelWorldEditor() const
 {
 	return VoxelWorldEditor;
@@ -306,7 +275,7 @@ void AVoxelWorld::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 	Render->AddInvoker(Invoker);
 }
 
-void AVoxelWorld::CreateWorld(bool bLoadFromSave)
+void AVoxelWorld::CreateWorld()
 {
 	check(!IsCreated());
 
@@ -338,14 +307,7 @@ void AVoxelWorld::CreateWorld(bool bLoadFromSave)
 
 	// Create Render
 	Render = new FVoxelRender(this, this, Data, MeshThreadCount, FoliageThreadCount);
-
-	// Load from save
-	if (bLoadFromSave && WorldSave.Depth == Depth)
-	{
-		std::forward_list<FIntVector> ModifiedPositions;
-		Data->LoadFromSaveAndGetModifiedPositions(WorldSave, ModifiedPositions, false);
-	}
-
+	
 	bIsCreated = true;
 }
 

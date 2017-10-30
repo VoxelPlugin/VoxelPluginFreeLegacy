@@ -12,6 +12,8 @@
 // 0, 0, 0 is the center
 struct VOXEL_API FDecompressedVoxelDataAsset : FDecompressedVoxelAsset
 {
+	// TODO: Hardness multiplier
+
 	int32 HalfSizeX;
 	int32 HalfSizeY;
 	int32 HalfSizeZ;
