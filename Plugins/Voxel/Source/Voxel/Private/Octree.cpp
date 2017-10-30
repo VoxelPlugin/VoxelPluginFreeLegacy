@@ -5,7 +5,13 @@ FOctree::FOctree(FIntVector Position, uint8 Depth, uint64 Id /*= -1*/) : Positio
 {
 	// Max for Id
 	check(Depth <= 20);
-};
+}
+
+bool FOctree::operator==(const FOctree& Other) const
+{
+	check((Id == Other.Id) == (Position == Other.Position && Depth == Other.Depth));
+	return Id == Other.Id;
+}
 
 bool FOctree::operator<(const FOctree& Other) const
 {
@@ -22,9 +28,14 @@ int FOctree::Size() const
 	return 16 << Depth;
 }
 
-FORCEINLINE FIntVector FOctree::GetMinimalCornerPosition() const
+FIntVector FOctree::GetMinimalCornerPosition() const
 {
 	return Position - FIntVector(Size() / 2, Size() / 2, Size() / 2);
+}
+
+FIntVector FOctree::GetMaximalCornerPosition() const
+{
+	return Position + FIntVector(Size() / 2, Size() / 2, Size() / 2);
 }
 
 bool FOctree::IsLeaf() const
@@ -56,10 +67,4 @@ void FOctree::GlobalToLocal(int X, int Y, int Z, int& OutX, int& OutY, int& OutZ
 uint64 FOctree::GetTopIdFromDepth(int8 Depth)
 {
 	return IntPow9(Depth);
-}
-
-bool FOctree::operator==(const FOctree& Other) const
-{
-	check((Id == Other.Id) == (Position == Other.Position && Depth == Other.Depth));
-	return Id == Other.Id;
 }

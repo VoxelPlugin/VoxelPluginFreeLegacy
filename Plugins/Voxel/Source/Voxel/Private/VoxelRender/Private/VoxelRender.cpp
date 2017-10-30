@@ -199,6 +199,17 @@ void FVoxelRender::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
 	}
 }
 
+void FVoxelRender::UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync)
+{
+	std::forward_list<TWeakPtr<FChunkOctree>> OverlappingLeafs;
+	MainOctree->GetLeafsOverlappingBox(Box, OverlappingLeafs);
+
+	for (auto Chunk : OverlappingLeafs)
+	{
+		UpdateChunk(Chunk, bAsync);
+	}
+}
+
 void FVoxelRender::ApplyUpdates()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyUpdates);

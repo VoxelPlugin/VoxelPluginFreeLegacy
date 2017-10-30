@@ -47,6 +47,7 @@ public:
 	FORCEINLINE int Size() const;
 
 	FORCEINLINE FIntVector GetMinimalCornerPosition() const;
+	FORCEINLINE FIntVector GetMaximalCornerPosition() const;
 
 	/**
 	 * Is Leaf?

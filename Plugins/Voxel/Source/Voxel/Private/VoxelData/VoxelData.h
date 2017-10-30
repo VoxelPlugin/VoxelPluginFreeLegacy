@@ -31,6 +31,7 @@ public:
 	// Size = 16 * 2^Depth
 	FORCEINLINE int Size() const;
 
+	// TODO: Doc
 	void BeginSet();
 	void EndSet();
 
