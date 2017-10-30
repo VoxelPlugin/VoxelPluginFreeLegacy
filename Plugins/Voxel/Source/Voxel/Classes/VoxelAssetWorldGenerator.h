@@ -26,6 +26,7 @@ public:
 
 
 	UVoxelAssetWorldGenerator();
+	~UVoxelAssetWorldGenerator();
 
 
 	virtual float GetDefaultValue(int X, int Y, int Z) override;

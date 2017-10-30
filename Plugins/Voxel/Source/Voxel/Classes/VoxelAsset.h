@@ -44,12 +44,12 @@ struct VOXEL_API FVoxelType
 	{
 	}
 
-	EVoxelValueType GetValueType() const
+	FORCEINLINE EVoxelValueType GetValueType() const
 	{
 		return (EVoxelValueType)(0x0F & Value);
 	}
 
-	EVoxelMaterialType GetMaterialType() const
+	FORCEINLINE EVoxelMaterialType GetMaterialType() const
 	{
 		return (EVoxelMaterialType)(Value >> 4);
 	}

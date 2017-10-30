@@ -113,15 +113,15 @@ public:
 			bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true, float MinValue = -1, float MaxValue = 1);
 
 	/**
-	 * Import a mesh into voxels. WARNING: Slow (use raycasts)
-	 * @param	World			Voxel world
-	 * @param	MeshToImport	Subclass of VoxelMeshAsset
-	 * @param	Position		Position in world space
-	 * @param	bAsync			Update async?
-	 * @param	bDebugPoints	Draw debug points?
+	 * Import a VoxelAsset in the world
+	 * @param	World					Voxel world
+	 * @param	Asset					Asset to import
+	 * @param	Position				Position in world space
+	 * @param	bForceUseOfAllVoxels	Set all the voxels to the asset values?
+	 * @param	bAsync					Update async?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
-		static void ImportMesh(AVoxelWorld* World, UVoxelDataAsset* MeshToImport, FVector Position, bool bAsync = false, bool bDebugPoints = false);
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
+		static void ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, const FVector Position, const bool bPositionZIsBottom = true, const bool bForceUseOfAllVoxels = false, const bool bAsync = false);
 
 	/**
 	 * Get Voxel World from mouse world position and direction given by GetMouseWorldPositionAndDirection

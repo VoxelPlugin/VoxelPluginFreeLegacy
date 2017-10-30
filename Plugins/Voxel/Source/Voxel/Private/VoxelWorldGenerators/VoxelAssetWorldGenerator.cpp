@@ -9,6 +9,11 @@ UVoxelAssetWorldGenerator::UVoxelAssetWorldGenerator()
 	DefaultWorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UFlatWorldGenerator::StaticClass());
 }
 
+UVoxelAssetWorldGenerator::~UVoxelAssetWorldGenerator()
+{
+	delete DecompressedAsset;
+}
+
 float UVoxelAssetWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
 	if (Bounds.IsInside(X, Y, Z))
