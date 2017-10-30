@@ -25,241 +25,178 @@ DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ApplyWaterEffect"), STAT_ApplyWaterEffect, 
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ RemoveNonConnectedBlocks"), STAT_RemoveNonConnectedBlocks, STATGROUP_Voxel);
 
-// TODO: Max delta value when outside
-void UVoxelTools::SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bAsync, float ValueMultiplier)
+void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const bool bAsync, const float HardnessMultiplier)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetValueSphere);
 
-	if (World == nullptr)
+	if (!World)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		UE_LOG(VoxelLog, Error, TEXT("SetValueSphere: World is NULL"));
 		return;
 	}
-	check(World);
 
 	// Position in voxel space
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
 	int IntRadius = FMath::CeilToInt(Radius) + 2;
 
-	for (int X = -IntRadius; X <= IntRadius; X++)
+	FValueOctree* LastOctree = nullptr;
+	FVoxelData* Data = World->GetData();
+
 	{
-		for (int Y = -IntRadius; Y <= IntRadius; Y++)
+		Data->BeginSet();
+		for (int X = -IntRadius; X <= IntRadius; X++)
 		{
-			for (int Z = -IntRadius; Z <= IntRadius; Z++)
+			for (int Y = -IntRadius; Y <= IntRadius; Y++)
 			{
-				FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
-				float Distance = FVector(X, Y, Z).Size();
-
-				if (Distance <= Radius + 3)
+				for (int Z = -IntRadius; Z <= IntRadius; Z++)
 				{
-					float Value = FMath::Clamp(Radius - Distance, -2.f, 2.f) / 2;
+					const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
+					const float Distance = FVector(X, Y, Z).Size();
 
-					Value *= ValueMultiplier * (bAdd ? -1 : 1);
-
-					if (World->IsInWorld(CurrentPosition)) // Prevent crash
+					if (Distance <= Radius + 2)
 					{
-						if ((bAdd && (Value <= 0 || World->GetValue(CurrentPosition) * Value >= 0)) || (!bAdd && (Value > 0 || World->GetValue(CurrentPosition) * Value > 0)))
+						// We want (Radius - Distance) != 0
+						const float Noise = (Radius - Distance == 0) ? 0.0001f : 0;
+						float Value = FMath::Clamp(Radius - Distance + Noise, -2.f, 2.f) / 2;
+
+						Value *= HardnessMultiplier;
+						Value *= (bAdd ? -1 : 1);
+
+						float OldValue;
+						FVoxelMaterial Dummy;
+						Data->GetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, OldValue, Dummy, LastOctree);
+
+						if ((bAdd && (Value <= 0 || OldValue * Value >= 0)) || (!bAdd && (Value > 0 || OldValue * Value > 0)))
 						{
 							//DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), 5, FColor::Red, false, 1);
 							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::UpVector), FColor::Green, false, 1);
 							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::RightVector), FColor::Green, false, 1);
 							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::ForwardVector), FColor::Green, false, 1);
-							World->SetValue(CurrentPosition, Value);
-							World->UpdateChunksAtPosition(CurrentPosition, bAsync);
+							Data->SetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value, LastOctree);
 						}
 					}
 				}
 			}
 		}
+		Data->EndSet();
 	}
+	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -IntRadius, LocalPosition + FIntVector(1, 1, 1) * IntRadius), bAsync);
 }
 
-void UVoxelTools::SetValueBox(AVoxelWorld * World, FVector Position, float ExtentXInVoxel, float ExtentYInVoxel, float ExtentZInVoxel, bool bAdd, bool bAsync, float ValueMultiplier)
-{
-	if (World == nullptr)
-	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
-		return;
-	}
-	check(World);
+//void UVoxelTools::SetValueBox(AVoxelWorld* const World, const FVector Position, const float ExtentXInVoxel, const float ExtentYInVoxel, const float ExtentZInVoxel, const bool bAdd, const bool bAsync, const float HardnessMultiplier)
+//{
+//	if (World == nullptr)
+//	{
+//		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+//		return;
+//	}
+//	check(World);
+//
+//	FIntVector LocalPosition = World->GlobalToLocal(Position);
+//	int IntExtentX = FMath::CeilToInt(ExtentXInVoxel);
+//	int IntExtentY = FMath::CeilToInt(ExtentYInVoxel);
+//	int IntHeight = FMath::CeilToInt(ExtentZInVoxel * 2);
+//
+//	float Value = HardnessMultiplier * (bAdd ? -1 : 1);
+//
+//	for (int X = -IntExtentX; X <= IntExtentX; X++)
+//	{
+//		for (int Y = -IntExtentY; Y <= IntExtentY; Y++)
+//		{
+//			for (int Z = 0; Z <= IntHeight; Z++)
+//			{
+//				FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
+//
+//				if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
+//				{
+//					World->SetValue(CurrentPosition, Value);
+//					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
+//				}
+//			}
+//		}
+//	}
+//}
 
-	FIntVector LocalPosition = World->GlobalToLocal(Position);
-	int IntExtentX = FMath::CeilToInt(ExtentXInVoxel);
-	int IntExtentY = FMath::CeilToInt(ExtentYInVoxel);
-	int IntHeight = FMath::CeilToInt(ExtentZInVoxel * 2);
-
-	float Value = ValueMultiplier * (bAdd ? -1 : 1);
-
-	for (int X = -IntExtentX; X <= IntExtentX; X++)
-	{
-		for (int Y = -IntExtentY; Y <= IntExtentY; Y++)
-		{
-			for (int Z = 0; Z <= IntHeight; Z++)
-			{
-				FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
-
-				if ((Value < 0 && bAdd) || (Value >= 0 && !bAdd) || (World->GetValue(CurrentPosition) * Value > 0))
-				{
-					World->SetValue(CurrentPosition, Value);
-					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
-				}
-			}
-		}
-	}
-}
-
-void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, bool bUseLayer1, float FadeDistance, bool bAsync)
+void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1, const float FadeDistance, const bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetMaterialSphere);
 
 	if (World == nullptr)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		UE_LOG(VoxelLog, Error, TEXT("SetMaterialSphere: World is NULL"));
 		return;
 	}
-	check(World);
+
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
 
 	const float VoxelDiagonalLength = 1.73205080757f;
-	int Size = FMath::CeilToInt(Radius + FadeDistance + VoxelDiagonalLength);
+	const int Size = FMath::CeilToInt(Radius + FadeDistance + VoxelDiagonalLength);
 
-	for (int X = -Size; X <= Size; X++)
+	FValueOctree* LastOctree = nullptr;
+	FVoxelData* Data = World->GetData();
+
 	{
-		for (int Y = -Size; Y <= Size; Y++)
+		Data->BeginSet();
+		for (int X = -Size; X <= Size; X++)
 		{
-			for (int Z = -Size; Z <= Size; Z++)
+			for (int Y = -Size; Y <= Size; Y++)
 			{
-				FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
-				float Distance = FVector(X, Y, Z).Size();
-
-				FVoxelMaterial Material = World->GetMaterial(CurrentPosition);
-				if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
+				for (int Z = -Size; Z <= Size; Z++)
 				{
-					// Set alpha
-					int8 Alpha = 255 * FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
-					if (bUseLayer1)
-					{
-						Alpha = 256 - Alpha;
-					}
-					if ((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex)
-					{
-						// Same color
-						Alpha = bUseLayer1 ? FMath::Min<int>(Alpha, Material.Alpha) : FMath::Max<int>(Alpha, Material.Alpha);
-					}
-					Material.Alpha = Alpha;
+					const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
+					const float Distance = FVector(X, Y, Z).Size();
 
-					// Set index
-					if (bUseLayer1)
-					{
-						Material.Index1 = MaterialIndex;
-					}
-					else
-					{
-						Material.Index2 = MaterialIndex;
-					}
 
-					// Apply changes
-					World->SetMaterial(CurrentPosition, Material);
-					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
-				}
-				else if (Distance < Radius + FadeDistance + 2 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
-				{
-					Material.Alpha = bUseLayer1 ? 255 : 0;
-					World->SetMaterial(CurrentPosition, Material);
-					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
+					float Dummy;
+					FVoxelMaterial Material;
+					Data->GetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Dummy, Material, LastOctree);
+
+					if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
+					{
+						// Set alpha
+						int8 Alpha = 255 * FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
+						if (bUseLayer1)
+						{
+							Alpha = 256 - Alpha;
+						}
+						if ((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex)
+						{
+							// Same color
+							Alpha = bUseLayer1 ? FMath::Min<uint8>(Alpha, Material.Alpha) : FMath::Max<uint8>(Alpha, Material.Alpha);
+						}
+						Material.Alpha = Alpha;
+
+						// Set index
+						if (bUseLayer1)
+						{
+							Material.Index1 = MaterialIndex;
+						}
+						else
+						{
+							Material.Index2 = MaterialIndex;
+						}
+
+						// Apply changes
+						Data->SetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Material, LastOctree);
+					}
+					else if (Distance < Radius + FadeDistance + 2 * VoxelDiagonalLength && (bUseLayer1 ? Material.Index1 : Material.Index2) != MaterialIndex)
+					{
+						Material.Alpha = bUseLayer1 ? 255 : 0;
+						Data->SetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Material, LastOctree);
+					}
 				}
 			}
 		}
+		Data->EndSet();
 	}
+	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -Size, LocalPosition + FIntVector(1, 1, 1) * Size), bAsync);
 }
 
-// TODO: Rewrite
-void UVoxelTools::SetValueProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Stength, bool bAdd,
-	float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
+
+void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector Position, const FVector Direction, const float Radius, const float MaxDistance, const float Precision,
+	const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, std::forward_list<TTuple<FIntVector, float>>& OutModifiedPositionsAndDistances)
 {
-	SCOPE_CYCLE_COUNTER(STAT_SetValueProjection);
-
-	if (World == nullptr)
-	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
-		return;
-	}
-	check(World);
-	FVector ToolPosition = Position + Direction * MaxDistance / 2;
-
-	/**
-	 * Create a 2D basis from (Tangent, Bitangent)
-	 */
-	 // Compute tangent
-	FVector Tangent;
-	// N dot T = 0
-	// <=> N.X * T.X + N.Y * T.Y + N.Z * T.Z = 0
-	// <=> T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y)
-	Tangent.X = 1;
-	Tangent.Y = 1;
-	Tangent.Z = -1 / Direction.Z * (Direction.X * Tangent.X + Direction.Y * Tangent.Y);
-	Tangent.Normalize();
-
-	// Compute bitangent
-	FVector Bitangent = FVector::CrossProduct(Tangent, Direction).GetSafeNormal();
-
-	TSet<FIntVector> ModifiedPositions;
-	// Scale to make sure we don't miss any point when rounding
-	float Scale = World->GetVoxelSize() / 4;
-
-	int IntRadius = FMath::CeilToInt(Radius);
-	for (int x = -IntRadius; x <= IntRadius; x++)
-	{
-		for (int y = -IntRadius; y <= IntRadius; y++)
-		{
-			if (x*x + y*y < Radius*Radius)
-			{
-				FHitResult Hit;
-				// Use precedent basis
-				FVector Start = ToolPosition + (Tangent * x + Bitangent * y) * Scale;
-				FVector End = Start - Direction * MaxDistance;
-				if (bDebugLines)
-				{
-					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
-				}
-				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelWorld::StaticClass()))
-				{
-					if (bDebugPoints)
-					{
-						DrawDebugPoint(World->GetWorld(), Hit.ImpactPoint, 2, FColor::Red, false, 1);
-					}
-					ModifiedPositions.Add(World->GlobalToLocal(Hit.ImpactPoint - Hit.ImpactNormal / 2 * (bAdd ? 1 : -1)));
-				}
-			}
-		}
-	}
-	for (FIntVector Point : ModifiedPositions)
-	{
-		if (bAdd)
-		{
-			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) - Stength, MinValue, MaxValue));
-		}
-		else
-		{
-			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) + Stength, MinValue, MaxValue));
-		}
-		World->UpdateChunksAtPosition(Point, bAsync);
-	}
-}
-
-// TODO: Rewrite
-void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, bool bUseLayer1,
-	float FadeDistance, float MaxDistance, bool bAsync, bool bDebugLines, bool bDebugPoints)
-{
-	SCOPE_CYCLE_COUNTER(STAT_SetMaterialProjection);
-
-	if (World == NULL)
-	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
-		return;
-	}
-	check(World);
-	FVector ToolPosition = Position + Direction * MaxDistance / 2;
+	const FVector ToolPosition = Position + Direction * MaxDistance / 2;
 
 	/**
 	* Create a 2D basis from (Tangent, Bitangent)
@@ -275,88 +212,139 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, FVector Position, F
 	Tangent.Normalize();
 
 	// Compute bitangent
-	FVector Bitangent = FVector::CrossProduct(Tangent, Direction).GetSafeNormal();
+	const FVector Bitangent = FVector::CrossProduct(Tangent, Direction).GetSafeNormal();
 
-	TArray<FIntVector> Positions;
-	TArray<FVoxelMaterial> Materials;
+	TSet<FIntVector> AddedPoints;
 
-	float Scale = World->GetVoxelSize() / 4;
-	const float VoxelDiagonalLength = World->GetVoxelSize();
+	// Scale to make sure we don't miss any point when rounding
+	const float Scale = Precision * World->GetVoxelSize();
 
-	int IntRadius = FMath::CeilToInt(Radius + FadeDistance);
-	for (int x = -IntRadius; x <= IntRadius; x++)
+	for (int X = -Radius; X <= Radius; X += Scale)
 	{
-		for (int y = -IntRadius; y <= IntRadius; y++)
+		for (int Y = -Radius; Y <= Radius; Y += Scale)
 		{
-			FHitResult Hit;
-			// Use precedent basis
-			FVector Start = ToolPosition + (Tangent * x + Bitangent * y) * Scale;
-			FVector End = Start - Direction * MaxDistance;
-			if (bDebugLines)
+			const float Distance = FVector2D(X, Y).Size();
+			if (Distance < Radius)
 			{
-				DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
-			}
-
-			if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelWorld::StaticClass()))
-			{
-				if (bDebugPoints)
+				FHitResult Hit;
+				// Use 2D basis
+				FVector Start = ToolPosition + (Tangent * X + Bitangent * Y);
+				FVector End = Start - Direction * MaxDistance;
+				if (bShowRaycasts)
 				{
-					DrawDebugPoint(World->GetWorld(), Hit.ImpactPoint, 2, FColor::Red, false, 1);
+					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 				}
-				TArray<FVector> CurrentPositions;
-				CurrentPositions.Add(Hit.ImpactPoint);
-
-				CurrentPositions.Add(Hit.ImpactPoint - Hit.ImpactNormal / 2);
-				CurrentPositions.Add(Hit.ImpactPoint + Hit.ImpactNormal / 2);
-
-				for (FVector CurrentPosition : CurrentPositions)
+				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldDynamic) && Hit.Actor->IsA(AVoxelWorld::StaticClass()))
 				{
-					FIntVector CurrentLocalPosition = World->GlobalToLocal(CurrentPosition);
-					float Distance = FVector2D(FVector::DotProduct(CurrentPosition - Position, Tangent), FVector::DotProduct(CurrentPosition - Position, Bitangent)).Size() / Scale;
-
-
-					if (!Positions.Contains(CurrentLocalPosition))
+					if (bShowHitPoints)
 					{
-						Positions.Add(CurrentLocalPosition);
-						FVoxelMaterial Material = World->GetMaterial(CurrentLocalPosition);
-						if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
+						DrawDebugPoint(World->GetWorld(), Hit.ImpactPoint, 2, FColor::Red, false, 1);
+					}
+					for (auto Point : World->GetNeighboringPositions(Hit.ImpactPoint))
+					{
+						if (bShowModifiedVoxels)
 						{
-							// Set alpha
-							int8 Alpha = 255 * FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
-							if (bUseLayer1)
-							{
-								Alpha = 256 - Alpha;
-							}
-							if ((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex)
-							{
-								// Same color
-								Alpha = bUseLayer1 ? FMath::Min<int>(Alpha, Material.Alpha) : FMath::Max<int>(Alpha, Material.Alpha);
-							}
-							Material.Alpha = Alpha;
-
-							// Set index
-							if (bUseLayer1)
-							{
-								Material.Index1 = MaterialIndex;
-							}
-							else
-							{
-								Material.Index2 = MaterialIndex;
-							}
-
-							// Apply changes
-							World->SetMaterial(CurrentLocalPosition, Material);
-							World->UpdateChunksAtPosition(CurrentLocalPosition, bAsync);
+							DrawDebugPoint(World->GetWorld(), World->LocalToGlobal(Point), 3, FColor::White, false, 1);
 						}
-						else if (Distance < Radius + FadeDistance + 3 * VoxelDiagonalLength && !((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex))
+						if (!AddedPoints.Contains(Point))
 						{
-							Material.Alpha = bUseLayer1 ? 255 : 0;
-							World->SetMaterial(CurrentLocalPosition, Material);
-							World->UpdateChunksAtPosition(CurrentLocalPosition, bAsync);
+							AddedPoints.Add(Point);
+							OutModifiedPositionsAndDistances.push_front(TTuple<FIntVector, float>(Point, Distance));
 						}
 					}
 				}
 			}
+		}
+	}
+}
+
+void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector Position, const FVector Direction, const float Radius, const float Strength, const bool bAdd,
+	const float MaxDistance, const float Precision, const bool bAsync, const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, const float MinValue, const float MaxValue)
+{
+	SCOPE_CYCLE_COUNTER(STAT_SetValueProjection);
+
+	if (!World)
+	{
+		UE_LOG(VoxelLog, Error, TEXT("SetValueProjection: World is NULL"));
+		return;
+	}
+
+	std::forward_list<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
+	FindModifiedPositionsForRaycasts(World, Position, Direction, Radius, MaxDistance, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
+
+	for (auto Tuple : ModifiedPositionsAndDistances)
+	{
+		const FIntVector Point = Tuple.Get<0>();
+		const float Distance = Tuple.Get<1>();
+		if (bAdd)
+		{
+			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) - Strength, MinValue, MaxValue));
+		}
+		else
+		{
+			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) + Strength, MinValue, MaxValue));
+		}
+		World->UpdateChunksAtPosition(Point, bAsync);
+	}
+}
+
+void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector Position, const FVector Direction, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1,
+	const float FadeDistance, const float MaxDistance, const float Precision, const bool bAsync, const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels)
+{
+	SCOPE_CYCLE_COUNTER(STAT_SetMaterialProjection);
+
+	if (!World)
+	{
+		UE_LOG(VoxelLog, Error, TEXT("SetMaterialProjection: World is NULL"));
+		return;
+	}
+
+	const float VoxelDiagonalLength = 1.73205080757f * World->GetVoxelSize();
+
+	std::forward_list<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
+	FindModifiedPositionsForRaycasts(World, Position, Direction, Radius + FadeDistance + 2 * VoxelDiagonalLength, MaxDistance, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
+
+	for (auto Tuple : ModifiedPositionsAndDistances)
+	{
+		const FIntVector Point = Tuple.Get<0>();
+		const float Distance = Tuple.Get<1>();
+
+		FVoxelMaterial Material = World->GetMaterial(Point);
+
+		if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
+		{
+			// Set alpha
+			int8 Alpha = 255 * FMath::Clamp((Radius + FadeDistance - Distance) / FadeDistance, 0.f, 1.f);
+			if (bUseLayer1)
+			{
+				Alpha = 256 - Alpha;
+			}
+			if ((bUseLayer1 ? Material.Index1 : Material.Index2) == MaterialIndex)
+			{
+				// Same color
+				Alpha = bUseLayer1 ? FMath::Min<uint8>(Alpha, Material.Alpha) : FMath::Max<uint8>(Alpha, Material.Alpha);
+			}
+			Material.Alpha = Alpha;
+
+			// Set index
+			if (bUseLayer1)
+			{
+				Material.Index1 = MaterialIndex;
+			}
+			else
+			{
+				Material.Index2 = MaterialIndex;
+			}
+
+			// Apply changes
+			World->SetMaterial(Point, Material);
+			World->UpdateChunksAtPosition(Point, bAsync);
+		}
+		else if ((bUseLayer1 ? Material.Index1 : Material.Index2) != MaterialIndex)
+		{
+			Material.Alpha = bUseLayer1 ? 255 : 0;
+			World->SetMaterial(Point, Material);
+			World->UpdateChunksAtPosition(Point, bAsync);
 		}
 	}
 }

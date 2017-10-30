@@ -9,6 +9,7 @@
 #include "QueuedThreadPool.h"
 #include "Camera/PlayerCameraManager.h"
 #include "VoxelMaterial.h"
+#include "VoxelBox.h"
 #include "VoxelGrassType.h"
 #include "LandscapeGrassType.h"
 #include "VoxelWorld.generated.h"
@@ -86,6 +87,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		FVector LocalToGlobal(FIntVector Position) const;
 
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		TArray<FIntVector> GetNeighboringPositions(FVector GlobalPosition);
+
 	/**
 	 * Add chunk to update queue that will be processed at the end of the frame
 	 * @param	Position	Position in voxel space
@@ -93,6 +97,9 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateChunksAtPosition(FIntVector Position, bool bAsync);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateAll(bool bAsync);

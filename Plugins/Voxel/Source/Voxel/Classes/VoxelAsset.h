@@ -6,6 +6,7 @@
 #include "VoxelMaterial.h"
 #include "BufferArchive.h"
 #include "MemoryReader.h"
+#include "VoxelBox.h"
 #include "VoxelAsset.generated.h"
 
 enum VOXEL_API EVoxelValueType : uint8
@@ -51,17 +52,6 @@ struct VOXEL_API FVoxelType
 	EVoxelMaterialType GetMaterialType() const
 	{
 		return (EVoxelMaterialType)(Value >> 4);
-	}
-};
-
-struct VOXEL_API FVoxelBox
-{
-	FIntVector Min; // Inclusive
-	FIntVector Max; // Exclusive
-
-	FORCEINLINE bool IsInside(const int X, const int Y, const int Z) const
-	{
-		return ((X > Min.X) && (X < Max.X) && (Y > Min.Y) && (Y < Max.Y) && (Z > Min.Z) && (Z < Max.Z));
 	}
 };
 

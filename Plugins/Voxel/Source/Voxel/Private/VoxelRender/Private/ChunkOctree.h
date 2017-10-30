@@ -1,6 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Octree.h"
+#include "VoxelBox.h"
 
 class UVoxelChunkComponent;
 class FVoxelRender;
@@ -50,6 +51,8 @@ public:
 	TSharedPtr<FChunkOctree> GetChild(FIntVector PointPosition);
 
 	TWeakPtr<FChunkOctree> GetAdjacentChunk(TransitionDirection Direction);
+
+	void GetLeafsOverlappingBox(FVoxelBox Box, std::forward_list<TWeakPtr<FChunkOctree>>& Octrees);
 
 private:
 	/*

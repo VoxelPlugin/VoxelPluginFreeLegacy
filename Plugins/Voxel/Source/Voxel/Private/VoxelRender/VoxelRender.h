@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelBox.h"
 #include <list>
 
 class AVoxelWorld;
@@ -48,6 +49,7 @@ public:
 
 	void UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync);
 	void UpdateChunksAtPosition(FIntVector Position, bool bAsync);
+	void UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync);
 	void ApplyUpdates();
 
 	void UpdateAll(bool bAsync);

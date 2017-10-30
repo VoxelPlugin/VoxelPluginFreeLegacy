@@ -241,3 +241,23 @@ TWeakPtr<FChunkOctree> FChunkOctree::GetAdjacentChunk(TransitionDirection Direct
 		return TWeakPtr<FChunkOctree>(nullptr);
 	}
 }
+
+void FChunkOctree::GetLeafsOverlappingBox(FVoxelBox Box, std::forward_list<TWeakPtr<FChunkOctree>>& Octrees)
+{
+	FVoxelBox OctreeBox(GetMinimalCornerPosition(), GetMaximalCornerPosition());
+
+	if (OctreeBox.Intersect(Box))
+	{
+		if (IsLeaf())
+		{
+			Octrees.push_front(AsShared());
+		}
+		else
+		{
+			for (auto Child : Childs)
+			{
+				Child->GetLeafsOverlappingBox(Box, Octrees);
+			}
+		}
+	}
+}

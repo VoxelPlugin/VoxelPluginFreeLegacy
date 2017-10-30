@@ -260,9 +260,29 @@ FVector AVoxelWorld::LocalToGlobal(FIntVector Position) const
 	return GetTransform().TransformPosition(GetVoxelSize() * (FVector)Position);
 }
 
+TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(FVector GlobalPosition)
+{
+	FVector P = GetTransform().InverseTransformPosition(GlobalPosition) / GetVoxelSize();
+	return TArray<FIntVector>({
+		FIntVector(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z)),
+		FIntVector(FMath::CeilToInt(P.X) , FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z)),
+		FIntVector(FMath::FloorToInt(P.X), FMath::CeilToInt(P.Y) , FMath::FloorToInt(P.Z)),
+		FIntVector(FMath::CeilToInt(P.X) , FMath::CeilToInt(P.Y) , FMath::FloorToInt(P.Z)),
+		FIntVector(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::CeilToInt(P.Z)),
+		FIntVector(FMath::CeilToInt(P.X) , FMath::FloorToInt(P.Y), FMath::CeilToInt(P.Z)),
+		FIntVector(FMath::FloorToInt(P.X), FMath::CeilToInt(P.Y) , FMath::CeilToInt(P.Z)),
+		FIntVector(FMath::CeilToInt(P.X) , FMath::CeilToInt(P.Y) , FMath::CeilToInt(P.Z))
+	});
+}
+
 void AVoxelWorld::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
 {
 	Render->UpdateChunksAtPosition(Position, bAsync);
+}
+
+void AVoxelWorld::UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync)
+{
+	Render->UpdateChunksOverlappingBox(Box, bAsync);
 }
 
 void AVoxelWorld::UpdateAll(bool bAsync)
@@ -307,7 +327,7 @@ void AVoxelWorld::CreateWorld()
 
 	// Create Render
 	Render = new FVoxelRender(this, this, Data, MeshThreadCount, FoliageThreadCount);
-	
+
 	bIsCreated = true;
 }
 

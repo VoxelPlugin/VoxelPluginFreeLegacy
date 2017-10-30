@@ -32,10 +32,10 @@ public:
 	 * @param	Radius				Radius of the sphere in voxel space
 	 * @param	bAdd				Add or remove?
 	 * @param	bAsync				Update async
-	 * @param	ValueMultiplier		-ValueMultiplier will be set inside the sphere and ValueMultiplier outside
+	 * @param	HardnessMultiplier	-HardnessMultiplier will be set inside the sphere and HardnessMultiplier outside
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
-		static void SetValueSphere(AVoxelWorld* World, FVector Position, float Radius, bool bAdd, bool bAsync = false, float ValueMultiplier = 1);
+		static void SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const bool bAsync = false, const float HardnessMultiplier = 1);
 
 	/**
 	* Set value to positive or negative in a specified box. Box is placed on its bottom side, relative to the supplied world space position.
@@ -48,8 +48,9 @@ public:
 	* @param	bAsync				Update async
 	* @param	ValueMultiplier		-ValueMultiplier will be set inside and ValueMultiplier outside
 	*/
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
-		static void SetValueBox(AVoxelWorld* World, FVector Position, float ExtentXInVoxel, float ExtentYInVoxel, float ExtentZInVoxel, bool bAdd, bool bAsync, float ValueMultiplier = 1);
+	//UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
+	//	static void SetValueBox(AVoxelWorld* const World, const FVector Position, const float ExtentXInVoxel, const float ExtentYInVoxel,
+	//		const float ExtentZInVoxel, const bool bAdd, const bool bAsync, const float ValueMultiplier = 1);
 
 	/**
 	 * Set color in a sphere
@@ -61,7 +62,7 @@ public:
 	 * @param	bAsync				Update async
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
-		static void SetMaterialSphere(AVoxelWorld* World, FVector Position, float Radius, uint8 MaterialIndex, bool bUseLayer1 = true, float FadeDistance = 3, bool bAsync = false);
+		static void SetMaterialSphere(AVoxelWorld* World, const FVector Position, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1 = true, const float FadeDistance = 3, const bool bAsync = false);
 
 	/**
 	 * Add or remove continuously
@@ -69,16 +70,17 @@ public:
 	 * @param	Position		Position in world space
 	 * @param	Direction		Direction of the projection in world space
 	 * @param	Radius			Radius in world space
-	 * @param	Stength			Speed of modification
+	 * @param	Strength		Speed of modification
 	 * @param	bAdd			Add or remove?
 	 * @param	MaxDistance		Max distance to modify
+	 * @param	Precision		How close are raycasts (relative to VoxelSize)
 	 * @param	bAsync			Update async
 	 * @param	MinValue		New values are clamped between MinValue and MaxValue
 	 * @param	MaxValue		New values are clamped between MinValue and MaxValue
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
-		static void SetValueProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Stength, bool bAdd, float MaxDistance = 1000,
-									   bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true, float MinValue = -1, float MaxValue = 1);
+		static void SetValueProjection(AVoxelWorld* World, const FVector Position, const FVector Direction, const float Radius, const float Strength, const bool bAdd, const float MaxDistance = 1000,
+			const float Precision = 0.25f, const bool bAsync = false, const bool bShowRaycasts = false, const bool bShowHitPoints = true, const bool bShowModifiedVoxels = false, const float MinValue = -1, const float MaxValue = 1);
 
 	/**
 	 * Set color on surface
@@ -92,8 +94,8 @@ public:
 	 * @param	bAsync			Update async
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
-		static void SetMaterialProjection(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, uint8 MaterialIndex, bool bUseLayer1 = true,
-										  float FadeDistance = 3, float MaxDistance = 1000, bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true);
+		static void SetMaterialProjection(AVoxelWorld* World, FVector Position, const FVector Direction, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1 = true, const float FadeDistance = 3,
+			const float MaxDistance = 1000, const float Precision = 0.25f, const bool bAsync = false, const bool bShowRaycasts = false, const bool bShowHitPoints = true, const bool bShowModifiedVoxels = false);
 	/**
 	 * Set color on surface
 	 * @param	World			Voxel world
@@ -108,7 +110,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
 		static void SmoothValue(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Speed = 0.01f, float MaxDistance = 1000,
-								bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true, float MinValue = -1, float MaxValue = 1);
+			bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true, float MinValue = -1, float MaxValue = 1);
 
 	/**
 	 * Import a mesh into voxels. WARNING: Slow (use raycasts)
@@ -134,7 +136,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", Meta = (ExpandEnumAsExecs = "Branches"))
 		static void GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController,
-								  AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches);
+			AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches);
 
 	/**
 	 * Get mouse world position and direction
