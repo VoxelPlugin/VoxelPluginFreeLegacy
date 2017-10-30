@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelMeshAsset.h"
 #include "VoxelMaterial.h"
+#include "VoxelDataAsset.h"
 #include "VoxelTools.generated.h"
 
 class AVoxelWorld;
@@ -119,7 +119,7 @@ public:
 	 * @param	bDebugPoints	Draw debug points?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
-		static void ImportMesh(AVoxelWorld* World, TSubclassOf<AVoxelMeshAsset> MeshToImport, FVector Position, bool bAsync = false, bool bDebugPoints = false);
+		static void ImportMesh(AVoxelWorld* World, UVoxelDataAsset* MeshToImport, FVector Position, bool bAsync = false, bool bDebugPoints = false);
 
 	/**
 	 * Get Voxel World from mouse world position and direction given by GetMouseWorldPositionAndDirection

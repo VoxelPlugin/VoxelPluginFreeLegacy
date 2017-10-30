@@ -1,5 +1,6 @@
-#include "VoxelMeshAssetDetails.h"
-#include "VoxelMeshAsset.h"
+#include "VoxelMeshImporterDetails.h"
+#include "VoxelMeshImporter.h"
+
 #include "PropertyHandle.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -10,12 +11,12 @@
 #include "Widgets/Input/SButton.h"
 #include "Editor.h"
 
-TSharedRef<IDetailCustomization> FVoxelMeshAssetDetails::MakeInstance()
+TSharedRef<IDetailCustomization> FVoxelMeshImporterDetails::MakeInstance()
 {
-	return MakeShareable(new FVoxelMeshAssetDetails());
+	return MakeShareable(new FVoxelMeshImporterDetails());
 }
 
-void FVoxelMeshAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
+void FVoxelMeshImporterDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailLayout.GetDetailsView().GetSelectedObjects();
 
@@ -24,23 +25,23 @@ void FVoxelMeshAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout
 		const TWeakObjectPtr<UObject>& CurrentObject = SelectedObjects[ObjectIndex];
 		if (CurrentObject.IsValid())
 		{
-			AVoxelMeshAsset* CurrentCaptureActor = Cast<AVoxelMeshAsset>(CurrentObject.Get());
+			AVoxelMeshImporter* CurrentCaptureActor = Cast<AVoxelMeshImporter>(CurrentObject.Get());
 			if (CurrentCaptureActor != NULL)
 			{
-				MeshAsset = CurrentCaptureActor;
+				MeshImporter = CurrentCaptureActor;
 				break;
 			}
 		}
 	}
 
 	//DetailLayout.HideCategory("Hide");
-	DetailLayout.EditCategory("VoxelMeshAsset")
+	DetailLayout.EditCategory("Create VoxelDataAsset from Mesh")
 		.AddCustomRow(FText::FromString(TEXT("Import")))
 		.NameContent()
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Import from mesh")))
+		.Text(FText::FromString(TEXT("Create from mesh")))
 		]
 	.ValueContent()
 		.MaxDesiredWidth(125.f)
@@ -50,24 +51,24 @@ void FVoxelMeshAssetDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout
 			.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked(this, &FVoxelMeshAssetDetails::OnImportFromAsset)
+		.OnClicked(this, &FVoxelMeshImporterDetails::OnCreateFromMesh)
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Import")))
+		.Text(FText::FromString(TEXT("Create")))
 		]
 		];
 }
 
-FReply FVoxelMeshAssetDetails::OnImportFromAsset()
+FReply FVoxelMeshImporterDetails::OnCreateFromMesh()
 {
-	if (MeshAsset.IsValid())
+	if (MeshImporter.IsValid())
 	{
-		if (MeshAsset->StaticMeshComponent)
+		if (MeshImporter->StaticMeshComponent)
 		{
 			// See \Engine\Source\Editor\UnrealEd\PrivateLevelEditorViewport.cpp:409
 
-			FString NewPackageName = PackageTools::SanitizePackageName(TEXT("/Game/") + MeshAsset->SavePath.Path + TEXT("/") + MeshAsset->FileName);
+			FString NewPackageName = PackageTools::SanitizePackageName(TEXT("/Game/") + MeshImporter->SavePath.Path + TEXT("/") + MeshImporter->FileName);
 			UPackage* Package = CreatePackage(NULL, *NewPackageName);
 
 			FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
@@ -93,12 +94,12 @@ FReply FVoxelMeshAssetDetails::OnImportFromAsset()
 			// Create a VoxelLandscapeAsset
 			UVoxelDataAssetFactory* DataAssetFactory = NewObject<UVoxelDataAssetFactory>();
 
-			UVoxelDataAsset* DataAsset = (UVoxelDataAsset*)DataAssetFactory->FactoryCreateNew(UVoxelDataAsset::StaticClass(), Package, FName(*(MeshAsset->FileName)), RF_Standalone | RF_Public, NULL, GWarn);
+			UVoxelDataAsset* DataAsset = (UVoxelDataAsset*)DataAssetFactory->FactoryCreateNew(UVoxelDataAsset::StaticClass(), Package, FName(*(MeshImporter->FileName)), RF_Standalone | RF_Public, NULL, GWarn);
 
 			check(DataAsset);
 
 			FDecompressedVoxelDataAsset Asset;
-			MeshAsset->ImportToAsset(Asset);
+			MeshImporter->ImportToAsset(Asset);
 			DataAsset->InitFromAsset(&Asset);
 
 			// Notify the asset registry
@@ -116,7 +117,7 @@ FReply FVoxelMeshAssetDetails::OnImportFromAsset()
 		}
 		else
 		{
-			if (!MeshAsset->StaticMeshComponent)
+			if (!MeshImporter->StaticMeshComponent)
 			{
 				FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Invalid Mesh")));
 			}

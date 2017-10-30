@@ -6,11 +6,11 @@
 #include "Input/Reply.h"
 #include "IDetailCustomization.h"
 
-class AVoxelMeshAsset;
+class AVoxelMeshImporter;
 
 // See sky light details in the engine code
 
-class FVoxelMeshAssetDetails : public IDetailCustomization
+class FVoxelMeshImporterDetails : public IDetailCustomization
 {
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
@@ -19,8 +19,8 @@ private:
 	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
-	FReply OnImportFromAsset();
+	FReply OnCreateFromMesh();
 
 private:
-	TWeakObjectPtr<AVoxelMeshAsset> MeshAsset;
+	TWeakObjectPtr<AVoxelMeshImporter> MeshImporter;
 };

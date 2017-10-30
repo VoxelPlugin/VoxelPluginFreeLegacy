@@ -11,9 +11,9 @@
 #include "PropertyEditorModule.h"
 
 #include "VoxelWorldDetails.h"
-#include "VoxelMeshAssetDetails.h"
 #include "VoxelLandscapeImporterDetails.h"
 #include "VoxelSplineImporterDetails.h"
+#include "VoxelMeshImporterDetails.h"
 
 #include "IAssetTools.h"
 #include "AssetToolsModule.h"
@@ -59,7 +59,7 @@ protected:
 		PropertyModule.RegisterCustomClassLayout("VoxelWorld", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldDetails::MakeInstance));
 		PropertyModule.RegisterCustomClassLayout("VoxelLandscapeImporter", FOnGetDetailCustomizationInstance::CreateStatic(&UVoxelLandscapeImporterDetails::MakeInstance));
 		PropertyModule.RegisterCustomClassLayout("VoxelSplineImporter", FOnGetDetailCustomizationInstance::CreateStatic(&UVoxelSplineImporterDetails::MakeInstance));
-		PropertyModule.RegisterCustomClassLayout("VoxelMeshAsset", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelMeshAssetDetails::MakeInstance));
+		PropertyModule.RegisterCustomClassLayout("VoxelMeshImporter", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelMeshImporterDetails::MakeInstance));
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}
 
@@ -72,7 +72,7 @@ protected:
 			PropertyModule->UnregisterCustomClassLayout("VoxelWorld");
 			PropertyModule->UnregisterCustomClassLayout("VoxelLandscapeImporter");
 			PropertyModule->UnregisterCustomClassLayout("VoxelSplineImporter");
-			PropertyModule->UnregisterCustomClassLayout("VoxelMeshAsset");
+			PropertyModule->UnregisterCustomClassLayout("VoxelMeshImporter");
 			PropertyModule->NotifyCustomizationModuleChanged();
 		}
 	}
