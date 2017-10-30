@@ -467,24 +467,23 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 	}
 }
 
-void UVoxelTools::ImportMesh(AVoxelWorld* World, TSubclassOf<AVoxelMeshAsset> MeshToImport, FVector Position, bool bAsync, bool bDebugPoints)
+void UVoxelTools::ImportMesh(AVoxelWorld* World, UVoxelDataAsset* MeshToImport, FVector Position, bool bAsync, bool bDebugPoints)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ImportMesh);
 
-	if (World == nullptr)
+	if (!World)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
 		return;
 	}
 	check(World);
 
-	auto MeshAsset = MeshToImport.GetDefaultObject();
-	if (MeshAsset == nullptr)
+	if (!MeshToImport)
 	{
 		UE_LOG(VoxelLog, Error, TEXT("MeshToImport is NULL"));
 		return;
 	}
-	//MeshAsset->ImportIntoWorld(World, World->GlobalToLocal(Position), bAsync, bDebugPoints);
+	// TODO
 }
 
 void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches)

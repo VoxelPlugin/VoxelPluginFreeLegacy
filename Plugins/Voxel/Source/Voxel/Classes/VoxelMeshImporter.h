@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "VoxelDataAsset.h"
-#include "VoxelMeshAsset.generated.h"
+#include "VoxelMeshImporter.generated.h"
 
 /**
  *
  */
 UCLASS(BlueprintType, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering"))
-class VOXEL_API AVoxelMeshAsset : public AActor
+class VOXEL_API AVoxelMeshImporter : public AActor
 {
 	GENERATED_BODY()
 
@@ -26,17 +26,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Import configuration")
 		UStaticMeshComponent* StaticMeshComponent;
 
-	UPROPERTY(EditAnywhere, Category = "Import configuration")
-		int MeshVoxelSize;
+	UPROPERTY(EditAnywhere, Category = "Import configuration", meta = (ClampMin = "0", UIMin = "0"))
+		float MeshVoxelSize;
 
-	// TODO: UIMIN = 1
-	UPROPERTY(EditAnywhere, Category = "Import configuration")
+	UPROPERTY(EditAnywhere, Category = "Import configuration", meta = (ClampMin = "1", UIMin = "1"))
 		int HalfFinalVoxelSizeDivisor;
 
 	UPROPERTY(EditAnywhere, Category = "Import configuration")
+		AActor* ActorInsideTheMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Debug")
 		bool bDrawPoints;
 
-	AVoxelMeshAsset();
+	AVoxelMeshImporter();
 
 	void ImportToAsset(FDecompressedVoxelDataAsset& Asset);
 };

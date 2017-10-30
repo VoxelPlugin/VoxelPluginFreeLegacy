@@ -2,7 +2,7 @@
 
 #pragma once
 #include "VoxelPrivatePCH.h"
-#include "VoxelMeshAsset.h"
+#include "VoxelMeshImporter.h"
 
 #include "Components/PrimitiveComponent.h"
 #include "DrawDebugHelpers.h"
@@ -18,14 +18,14 @@
 #include "voxelizer.h"
 
 
-AVoxelMeshAsset::AVoxelMeshAsset()
+AVoxelMeshImporter::AVoxelMeshImporter()
 	: MeshVoxelSize(10)
 	, HalfFinalVoxelSizeDivisor(1)
 {
 
 };
 
-void AVoxelMeshAsset::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
+void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 {
 	TArray<FVector> Vertices;
 	TArray<int32> Triangles;
@@ -109,7 +109,8 @@ void AVoxelMeshAsset::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 
 
 	std::forward_list<FIntVector> Stack;
-	Stack.push_front(FIntVector(Size.X / 2, Size.Y / 2, Size.Z / 2));
+	FVector PointInsideTheMesh = GetTransform().InverseTransformPosition(ActorInsideTheMesh->GetActorLocation());
+	Stack.push_front(FIntVector(PointInsideTheMesh.X  - MinX, PointInsideTheMesh.Y - MinY, PointInsideTheMesh.Z - MinZ));
 
 	while (!Stack.empty())
 	{
@@ -152,7 +153,7 @@ void AVoxelMeshAsset::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 					int Index = X + Size.X * Y + Size.X * Size.Y * Z;
 					if (IsInside[Index])
 					{
-						DrawDebugPoint(GetWorld(), FVector(X + MinX, Y + MinY, Z + MinZ) * MeshVoxelSize, 7, FColor::Red, true, 30);
+						DrawDebugPoint(GetWorld(), FVector(X + MinX, Y + MinY, Z + MinZ) * MeshVoxelSize, 7, FColor::Red, true, 10);
 					}
 				}
 			}
