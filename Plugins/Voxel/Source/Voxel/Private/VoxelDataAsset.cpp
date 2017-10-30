@@ -26,13 +26,13 @@ void UVoxelDataAsset::GetAssetFromArchive(FMemoryReader& FromBinary, FDecompress
 	FromBinary << *((FDecompressedVoxelDataAsset*)Asset);
 }
 
-void FDecompressedVoxelDataAsset::SetSize(int32 NewSizeX, int32 NewSizeY, int32 NewSizeZ)
+void FDecompressedVoxelDataAsset::SetHalfSize(int32 NewHalfSizeX, int32 NewHalfSizeY, int32 NewHalfSizeZ)
 {
-	SizeX = NewSizeX;
-	SizeY = NewSizeY;
-	SizeZ = NewSizeZ;
+	HalfSizeX = NewHalfSizeX;
+	HalfSizeY = NewHalfSizeY;
+	HalfSizeZ = NewHalfSizeZ;
 
-	int Count = SizeX * SizeY * SizeZ;
+	int Count = HalfSizeX * HalfSizeY * HalfSizeZ * 2 * 2 * 2;
 
 	Values.SetNumUninitialized(Count);
 	Materials.SetNumUninitialized(Count);
@@ -41,58 +41,58 @@ void FDecompressedVoxelDataAsset::SetSize(int32 NewSizeX, int32 NewSizeY, int32 
 
 float FDecompressedVoxelDataAsset::GetValue(const int X, const int Y, const int Z)
 {
-	check(-SizeX / 2 <= X && X < SizeX / 2);
-	check(-SizeY / 2 <= Y && Y < SizeY / 2);
-	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
-	return Values[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)];
+	check(-HalfSizeX <= X && X < HalfSizeX);
+	check(-HalfSizeY <= Y && Y < HalfSizeY);
+	check(-HalfSizeZ <= Z && Z < HalfSizeZ);
+	return Values[(X + HalfSizeX) + 2 * HalfSizeX * (Y + HalfSizeY) + 2 * HalfSizeX * 2 * HalfSizeY * (Z + HalfSizeZ)];
 }
 
 FVoxelMaterial FDecompressedVoxelDataAsset::GetMaterial(const int X, const int Y, const int Z)
 {
-	check(-SizeX / 2 <= X && X < SizeX / 2);
-	check(-SizeY / 2 <= Y && Y < SizeY / 2);
-	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
-	return Materials[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)];
+	check(-HalfSizeX <= X && X < HalfSizeX);
+	check(-HalfSizeY <= Y && Y < HalfSizeY);
+	check(-HalfSizeZ <= Z && Z < HalfSizeZ);
+	return Materials[(X + HalfSizeX) + 2 * HalfSizeX * (Y + HalfSizeY) + 2 * HalfSizeX * 2 * HalfSizeY * (Z + HalfSizeZ)];
 }
 
 FVoxelType FDecompressedVoxelDataAsset::GetVoxelType(const int X, const int Y, const int Z)
 {
-	check(-SizeX / 2 <= X && X < SizeX / 2);
-	check(-SizeY / 2 <= Y && Y < SizeY / 2);
-	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
-	return FVoxelType(VoxelTypes[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)]);
+	check(-HalfSizeX <= X && X < HalfSizeX);
+	check(-HalfSizeY <= Y && Y < HalfSizeY);
+	check(-HalfSizeZ <= Z && Z < HalfSizeZ);
+	return FVoxelType(VoxelTypes[(X + HalfSizeX) + 2 * HalfSizeX * (Y + HalfSizeY) + 2 * HalfSizeX * 2 * HalfSizeY * (Z + HalfSizeZ)]);
 }
 
 FVoxelBox FDecompressedVoxelDataAsset::GetBounds()
 {
-	const FIntVector Bounds(SizeX / 2, SizeY / 2, SizeZ / 2);
+	const FIntVector Bounds;
 
 	FVoxelBox Box;
-	Box.Min = Bounds * -1;
-	Box.Max = Bounds;
+	Box.Min = FIntVector(-HalfSizeX, -HalfSizeY, -HalfSizeZ);
+	Box.Max = FIntVector(HalfSizeX, HalfSizeY, HalfSizeZ);
 	return Box;
 }
 
 void FDecompressedVoxelDataAsset::SetValue(const int X, const int Y, const int Z, const float NewValue)
 {
-	check(-SizeX / 2 <= X && X < SizeX / 2);
-	check(-SizeY / 2 <= Y && Y < SizeY / 2);
-	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
-	Values[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = NewValue;
+	check(-HalfSizeX <= X && X < HalfSizeX);
+	check(-HalfSizeY <= Y && Y < HalfSizeY);
+	check(-HalfSizeZ <= Z && Z < HalfSizeZ);
+	Values[(X + HalfSizeX) + 2 * HalfSizeX * (Y + HalfSizeY) + 2 * HalfSizeX * 2 * HalfSizeY * (Z + HalfSizeZ)] = NewValue;
 }
 
 void FDecompressedVoxelDataAsset::SetMaterial(const int X, const int Y, const int Z, const FVoxelMaterial NewMaterial)
 {
-	check(-SizeX / 2 <= X && X < SizeX / 2);
-	check(-SizeY / 2 <= Y && Y < SizeY / 2);
-	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
-	Materials[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = NewMaterial;
+	check(-HalfSizeX <= X && X < HalfSizeX);
+	check(-HalfSizeY <= Y && Y < HalfSizeY);
+	check(-HalfSizeZ <= Z && Z < HalfSizeZ);
+	Materials[(X + HalfSizeX) + 2 * HalfSizeX * (Y + HalfSizeY) + 2 * HalfSizeX * 2 * HalfSizeY * (Z + HalfSizeZ)] = NewMaterial;
 }
 
 void FDecompressedVoxelDataAsset::SetVoxelType(const int X, const int Y, const int Z, const FVoxelType VoxelType)
 {
-	check(-SizeX / 2 <= X && X < SizeX / 2);
-	check(-SizeY / 2 <= Y && Y < SizeY / 2);
-	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
-	VoxelTypes[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = VoxelType.Value;
+	check(-HalfSizeX <= X && X < HalfSizeX);
+	check(-HalfSizeY <= Y && Y < HalfSizeY);
+	check(-HalfSizeZ <= Z && Z < HalfSizeZ);
+	VoxelTypes[(X + HalfSizeX) + 2 * HalfSizeX * (Y + HalfSizeY) + 2 * HalfSizeX * 2 * HalfSizeY * (Z + HalfSizeZ)] = VoxelType.Value;
 }

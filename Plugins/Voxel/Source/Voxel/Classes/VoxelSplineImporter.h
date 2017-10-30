@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
 #include "VoxelDataAsset.h"
+#include "Components/SphereComponent.h"
 #include "VoxelSplineImporter.generated.h"
 
 class USplineComponent;
@@ -37,7 +38,7 @@ public:
 	UPROPERTY(EditAnywhere, meta = (EditCondition = "bSetMaterial"), Category = "Splines configuration")
 		FVoxelMaterial Material;
 
-	UPROPERTY(EditAnywhere, meta = (EditCondition = "bSetMaterial"), Category = "Splines configuration")
+	UPROPERTY(EditAnywhere, Category = "Splines configuration")
 		float VoxelSize;
 
 
@@ -45,4 +46,14 @@ public:
 
 	void ImportToAsset(FDecompressedVoxelDataAsset& Asset);
 
+protected:
+#if WITH_EDITOR
+	void Tick(float DeltaTime) override;
+	bool ShouldTickIfViewportsOnly() const override;
+	void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
+private:
+	UPROPERTY()
+		TArray<USphereComponent*> Spheres;
 };

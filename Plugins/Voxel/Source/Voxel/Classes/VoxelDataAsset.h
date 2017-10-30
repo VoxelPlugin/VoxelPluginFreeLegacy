@@ -12,9 +12,9 @@
 // 0, 0, 0 is the center
 struct VOXEL_API FDecompressedVoxelDataAsset : FDecompressedVoxelAsset
 {
-	int32 SizeX;
-	int32 SizeY;
-	int32 SizeZ;
+	int32 HalfSizeX;
+	int32 HalfSizeY;
+	int32 HalfSizeZ;
 
 	TArray<float> Values;
 	TArray<FVoxelMaterial> Materials;
@@ -22,7 +22,7 @@ struct VOXEL_API FDecompressedVoxelDataAsset : FDecompressedVoxelAsset
 	TArray<uint8> VoxelTypes;
 
 	// Warning: Doesn't initialize values
-	void SetSize(int32 NewSizeX, int32 NewSizeY, int32 NewSizeZ);
+	void SetHalfSize(int32 NewHalfSizeX, int32 NewHalfSizeY, int32 NewHalfSizeZ);
 
 	float GetValue(const int X, const int Y, const int Z) override;
 	FVoxelMaterial GetMaterial(const int X, const int Y, const int Z) override;
@@ -36,9 +36,9 @@ struct VOXEL_API FDecompressedVoxelDataAsset : FDecompressedVoxelAsset
 
 FORCEINLINE FArchive& operator<<(FArchive &Ar, FDecompressedVoxelDataAsset& Asset)
 {
-	Ar << Asset.SizeX;
-	Ar << Asset.SizeY;
-	Ar << Asset.SizeZ;
+	Ar << Asset.HalfSizeX;
+	Ar << Asset.HalfSizeY;
+	Ar << Asset.HalfSizeZ;
 
 	Ar << Asset.Values;
 	Ar << Asset.Materials;
