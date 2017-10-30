@@ -56,12 +56,12 @@ struct VOXEL_API FVoxelType
 
 struct VOXEL_API FVoxelBox
 {
-	FIntVector Min;
-	FIntVector Max;
+	FIntVector Min; // Inclusive
+	FIntVector Max; // Exclusive
 
 	FORCEINLINE bool IsInside(const int X, const int Y, const int Z) const
 	{
-		return ((X > Min.X) && (X < Max.X) && (Y > Min.Y) && (Y < Max.Y) && (Z > Min.Z) && (Z < Max.Z));
+		return ((X >= Min.X) && (X < Max.X) && (Y >= Min.Y) && (Y < Max.Y) && (Z >= Min.Z) && (Z < Max.Z));
 	}
 };
 

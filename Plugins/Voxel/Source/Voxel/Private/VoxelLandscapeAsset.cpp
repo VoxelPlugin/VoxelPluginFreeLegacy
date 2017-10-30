@@ -16,6 +16,8 @@ UVoxelLandscapeAsset::UVoxelLandscapeAsset(const FObjectInitializer& ObjectIniti
 	: Super(ObjectInitializer)
 	, Precision(1)
 	, HardnessMultiplier(1)
+	, ScaleMultiplier(1)
+	, bShrink(false)
 {
 };
 
@@ -27,6 +29,8 @@ bool UVoxelLandscapeAsset::GetDecompressedAsset(FDecompressedVoxelAsset*& Asset,
 	LandscapeAsset->Precision = Precision;
 	LandscapeAsset->HardnessMultiplier = HardnessMultiplier;
 	LandscapeAsset->VoxelSize = VoxelSize;
+	LandscapeAsset->ScaleMultiplier = ScaleMultiplier;
+	LandscapeAsset->bShrink = bShrink;
 
 	return bSuccess;
 }
@@ -43,25 +47,30 @@ void UVoxelLandscapeAsset::GetAssetFromArchive(FMemoryReader& FromBinary, FDecom
 
 float FDecompressedVoxelLandscapeAsset::GetValue(const int X, const int Y, const int Z)
 {
-	const int HalfSize = Size / 2;
+	const int HalfSize = bShrink ? (Size / 2 / ScaleMultiplier) : (Size * ScaleMultiplier / 2);
 
 	check(-HalfSize <= X && X < HalfSize && -HalfSize <= Y && Y < HalfSize);
 
-	const float CurrentHeight = Heights[(X + HalfSize) + Size * (Y + HalfSize)];
+	const int IndexX = bShrink ? ((X + HalfSize) * ScaleMultiplier) : ((X + HalfSize) / ScaleMultiplier);
+	const int IndexY = bShrink ? ((Y + HalfSize) * ScaleMultiplier) : ((Y + HalfSize) / ScaleMultiplier);
+	const float CurrentHeight = Heights[IndexX + Size * IndexY];
 
-	if (CurrentHeight > (Z + Precision) * VoxelSize)
+	const int RealZ = bShrink ? (Z * ScaleMultiplier) : (Z / ScaleMultiplier);
+
+
+	if (CurrentHeight > (RealZ + Precision) * VoxelSize)
 	{
 		// If voxel over us is in, we're entirely in
 		return -HardnessMultiplier;
 	}
-	else if ((Z - Precision) * VoxelSize > CurrentHeight)
+	else if ((RealZ - Precision) * VoxelSize > CurrentHeight)
 	{
 		// If voxel under us is out, we're entirely out
 		return HardnessMultiplier;
 	}
 	else
 	{
-		float Alpha = (Z * VoxelSize - CurrentHeight) / VoxelSize / Precision;
+		float Alpha = (RealZ * VoxelSize - CurrentHeight) / VoxelSize / Precision;
 
 		return Alpha * HardnessMultiplier;
 	}
@@ -69,24 +78,32 @@ float FDecompressedVoxelLandscapeAsset::GetValue(const int X, const int Y, const
 
 FVoxelMaterial FDecompressedVoxelLandscapeAsset::GetMaterial(const int X, const int Y, const int Z)
 {
-	const int HalfSize = Size / 2;
+	const int HalfSize = bShrink ? (Size / 2 / ScaleMultiplier) : (Size * ScaleMultiplier / 2);
 
 	check(-HalfSize <= X && X < HalfSize && -HalfSize <= Y && Y < HalfSize);
 
-	return Materials[(X + HalfSize) + Size * (Y + HalfSize)];
+	const int IndexX = bShrink ? ((X + HalfSize) * ScaleMultiplier) : ((X + HalfSize) / ScaleMultiplier);
+	const int IndexY = bShrink ? ((Y + HalfSize) * ScaleMultiplier) : ((Y + HalfSize) / ScaleMultiplier);
+
+	return Materials[IndexX + Size * IndexY];
 }
 
 FVoxelType FDecompressedVoxelLandscapeAsset::GetVoxelType(const int X, const int Y, const int Z)
 {
-	const int HalfSize = Size / 2;
+	const int HalfSize = bShrink ? (Size / 2 / ScaleMultiplier) : (Size * ScaleMultiplier / 2);
 
 	check(-HalfSize <= X && X < HalfSize && -HalfSize <= Y && Y < HalfSize);
 
-	const float CurrentHeight = Heights[(X + HalfSize) + Size * (Y + HalfSize)];
+	const int IndexX = bShrink ? ((X + HalfSize) * ScaleMultiplier) : ((X + HalfSize) / ScaleMultiplier);
+	const int IndexY = bShrink ? ((Y + HalfSize) * ScaleMultiplier) : ((Y + HalfSize) / ScaleMultiplier);
+	const float CurrentHeight = Heights[IndexX + Size * IndexY];
 
-	if ((Z - Precision) * VoxelSize <= CurrentHeight || CurrentHeight <= (Z + Precision) * VoxelSize)
+	const int RealZ = bShrink ? (Z * ScaleMultiplier) : (Z / ScaleMultiplier);
+
+
+	if ((RealZ - Precision) * VoxelSize <= CurrentHeight || CurrentHeight <= (RealZ + Precision) * VoxelSize)
 	{
-		return (Z * VoxelSize - CurrentHeight <= 0) ? FVoxelType(UseValue, UseMaterial) : FVoxelType(UseValueIfSameSign, UseMaterial);
+		return (RealZ * VoxelSize - CurrentHeight <= 0) ? FVoxelType(UseValue, UseMaterial) : FVoxelType(UseValueIfSameSign, UseMaterial);
 	}
 	else
 	{
@@ -96,7 +113,9 @@ FVoxelType FDecompressedVoxelLandscapeAsset::GetVoxelType(const int X, const int
 
 FVoxelBox FDecompressedVoxelLandscapeAsset::GetBounds()
 {
-	FIntVector Bound(Size / 2, Size / 2, Size / 2);
+	const int HalfSize = bShrink ? (Size / 2 / ScaleMultiplier) : (Size * ScaleMultiplier / 2);
+
+	FIntVector Bound(HalfSize, HalfSize, HalfSize);
 
 	FVoxelBox Box;
 	Box.Min = Bound * -1;

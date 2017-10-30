@@ -18,6 +18,8 @@ struct VOXEL_API FDecompressedVoxelLandscapeAsset : FDecompressedVoxelAsset
 	int Precision;
 	float HardnessMultiplier;
 	float VoxelSize;
+	int ScaleMultiplier;
+	bool bShrink;
 
 	float GetValue(const int X, const int Y, const int Z) override;
 	FVoxelMaterial GetMaterial(const int X, const int Y, const int Z) override;
@@ -58,4 +60,10 @@ private:
 
 	UPROPERTY(EditAnywhere)
 		float HardnessMultiplier;
+
+	UPROPERTY(EditAnywhere, meta = (ClampMin = "1", UIMin = "1"))
+		int ScaleMultiplier;
+
+	UPROPERTY(EditAnywhere)
+		bool bShrink;
 };
