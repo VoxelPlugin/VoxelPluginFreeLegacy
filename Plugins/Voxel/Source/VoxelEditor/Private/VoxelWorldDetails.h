@@ -27,8 +27,6 @@ private:
 
 	FReply OnWorldPreviewToggle();
 
-	FReply OnUpdateVoxelModifiers();
-
 private:
 	//void CreateEditorWorld();
 

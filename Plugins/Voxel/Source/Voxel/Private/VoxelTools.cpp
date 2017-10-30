@@ -484,7 +484,7 @@ void UVoxelTools::ImportMesh(AVoxelWorld* World, TSubclassOf<AVoxelMeshAsset> Me
 		UE_LOG(VoxelLog, Error, TEXT("MeshToImport is NULL"));
 		return;
 	}
-	MeshAsset->ImportIntoWorld(World, World->GlobalToLocal(Position), bAsync, bDebugPoints);
+	//MeshAsset->ImportIntoWorld(World, World->GlobalToLocal(Position), bAsync, bDebugPoints);
 }
 
 void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches)

@@ -47,8 +47,6 @@ public:
 	void CreateInEditor();
 	void DestroyInEditor();
 
-	void UpdateVoxelModifiers();
-
 	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
 
 	FORCEINLINE AVoxelWorldEditorInterface	* GetVoxelWorldEditor() const;
@@ -208,9 +206,6 @@ private:
 	UPROPERTY()
 		AVoxelWorldEditorInterface* VoxelWorldEditor;
 
-	UPROPERTY()
-		FVoxelWorldSave WorldSave;
-
 	FVoxelData* Data;
 	FVoxelRender* Render;
 
@@ -221,6 +216,6 @@ private:
 
 	bool bComputeCollisions;
 
-	void CreateWorld(bool bLoadFromSave = true);
+	void CreateWorld();
 	void DestroyWorld();
 };

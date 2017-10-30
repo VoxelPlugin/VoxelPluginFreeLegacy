@@ -19,9 +19,8 @@ private:
 	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
-	FReply OnImport();
+	FReply OnImportFromAsset();
 
-	//FReply OnUpdateLines();
 private:
 	TWeakObjectPtr<AVoxelMeshAsset> MeshAsset;
 };

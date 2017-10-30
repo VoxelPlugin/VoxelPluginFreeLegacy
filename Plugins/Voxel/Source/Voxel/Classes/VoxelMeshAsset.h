@@ -3,66 +3,40 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include <forward_list>
-#include "Components/LineBatchComponent.h"
+#include "VoxelDataAsset.h"
 #include "VoxelMeshAsset.generated.h"
 
 /**
  *
  */
-UCLASS(BlueprintType, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "Hide"))
+UCLASS(BlueprintType, HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering"))
 class VOXEL_API AVoxelMeshAsset : public AActor
 {
 	GENERATED_BODY()
 
 public:
-	AVoxelMeshAsset();
+	UPROPERTY(EditAnywhere, meta = (DisplayName = "Save Path: /Game/", RelativeToGameContentDir), Category = "Save configuration")
+		FDirectoryPath SavePath;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		AActor* ActorToImport;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		TSubclassOf<UPrimitiveComponent> ComponentClass;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Save configuration")
+		FString FileName;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+
+
+	UPROPERTY(EditAnywhere, Category = "Import configuration")
 		UStaticMeshComponent* StaticMeshComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		AActor* MinPosition;
+	UPROPERTY(EditAnywhere, Category = "Import configuration")
+		int MeshVoxelSize;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		AActor* MaxPosition;
+	// TODO: UIMIN = 1
+	UPROPERTY(EditAnywhere, Category = "Import configuration")
+		int HalfFinalVoxelSizeDivisor;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float VoxelSizeInUnit;
+	UPROPERTY(EditAnywhere, Category = "Import configuration")
+		bool bDrawPoints;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		bool bAdd;
+	AVoxelMeshAsset();
 
-
-	UPROPERTY(EditAnywhere)
-		float ValueMultiplier;
-
-	// Avoid crash
-	UPROPERTY(EditAnywhere, AdvancedDisplay)
-		int MaxResolution;
-
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
-		TArray<bool> IsInside;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hide")
-		FIntVector Size;
-
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ImportIntoWorld(AVoxelWorld* World, FIntVector Position, bool bAsync, bool bDebugPoints);
-
-	void Import();
-
-	void UpdateLines();
-
-private:
-	UPROPERTY()
-		ULineBatchComponent* DebugLineBatch;
-
-	void LineTrace(UPrimitiveComponent* Component, TArray<std::forward_list<float>>& ValuesLists, FIntVector IMin, int X, int Y, int Z, int DeltaX, int DeltaY, int DeltaZ);
+	void ImportToAsset(FDecompressedVoxelDataAsset& Asset);
 };

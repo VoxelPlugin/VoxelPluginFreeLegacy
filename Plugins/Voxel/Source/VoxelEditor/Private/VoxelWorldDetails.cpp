@@ -72,30 +72,6 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		.Text(FText::FromString(TEXT("Toggle")))
 		]
 		];
-
-	DetailLayout.EditCategory("Voxel")
-		.AddCustomRow(FText::FromString(TEXT("Update")))
-		.NameContent()
-		[
-			SNew(STextBlock)
-			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Update voxel modifiers")))
-		]
-	.ValueContent()
-		.MaxDesiredWidth(125.f)
-		.MinDesiredWidth(125.f)
-		[
-			SNew(SButton)
-			.ContentPadding(2)
-		.VAlign(VAlign_Center)
-		.HAlign(HAlign_Center)
-		.OnClicked(this, &FVoxelWorldDetails::OnUpdateVoxelModifiers)
-		[
-			SNew(STextBlock)
-			.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(FText::FromString(TEXT("Update")))
-		]
-		];
 }
 
 FReply FVoxelWorldDetails::OnWorldPreviewToggle()
@@ -112,27 +88,6 @@ FReply FVoxelWorldDetails::OnWorldPreviewToggle()
 		{
 			World->CreateInEditor();
 		}
-	}
-
-	return FReply::Handled();
-}
-
-FReply FVoxelWorldDetails::OnUpdateVoxelModifiers()
-{
-	if (World.IsValid() && World->GetWorld()->WorldType == EWorldType::Editor)
-	{
-		if (World->IsCreated())
-		{
-			World->DestroyInEditor();
-		}
-
-		World->UpdateVoxelModifiers();
-
-		World->CreateInEditor();
-	}
-	else
-	{
-		UE_LOG(VoxelEditorLog, Error, TEXT("Not in editor"));
 	}
 
 	return FReply::Handled();
