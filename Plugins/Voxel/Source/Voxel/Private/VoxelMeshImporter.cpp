@@ -110,7 +110,7 @@ void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 
 	std::forward_list<FIntVector> Stack;
 	FVector PointInsideTheMesh = GetTransform().InverseTransformPosition(ActorInsideTheMesh->GetActorLocation());
-	Stack.push_front(FIntVector(PointInsideTheMesh.X  - MinX, PointInsideTheMesh.Y - MinY, PointInsideTheMesh.Z - MinZ));
+	Stack.push_front(FIntVector(PointInsideTheMesh.X - MinX, PointInsideTheMesh.Y - MinY, PointInsideTheMesh.Z - MinZ));
 
 	while (!Stack.empty())
 	{
@@ -203,7 +203,7 @@ void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 				float NewValue = 1 - 2 * (VoxelInsideCount / (float)TotalVoxelCount);
 				Asset.SetValue(X, Y, Z, NewValue);
 				Asset.SetMaterial(X, Y, Z, FVoxelMaterial(0, 0, 0));
-				Asset.SetVoxelType(X, Y, Z, FVoxelType(UseValue, UseMaterial));
+				Asset.SetVoxelType(X, Y, Z, FVoxelType(NewValue > 1 - KINDA_SMALL_NUMBER ? IgnoreValue : (NewValue >= 0 ? UseValueIfSameSign : UseValue), IgnoreMaterial));
 			}
 		}
 	}

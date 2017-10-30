@@ -455,23 +455,91 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 	}
 }
 
-void UVoxelTools::ImportMesh(AVoxelWorld* World, UVoxelDataAsset* MeshToImport, FVector Position, bool bAsync, bool bDebugPoints)
+void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Position, const bool bPositionZIsBottom, const bool bForceUseOfAllVoxels, const bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ImportMesh);
 
 	if (!World)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		UE_LOG(VoxelLog, Error, TEXT("ImportAsset: World is NULL"));
 		return;
 	}
 	check(World);
 
-	if (!MeshToImport)
+	if (!Asset)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("MeshToImport is NULL"));
+		UE_LOG(VoxelLog, Error, TEXT("ImportAsset: Asset is NULL"));
 		return;
 	}
-	// TODO
+
+	FIntVector P = World->GlobalToLocal(Position);
+
+	FDecompressedVoxelAsset* DecompressedAsset;
+	Asset->GetDecompressedAsset(DecompressedAsset, World->GetVoxelSize());
+
+	FVoxelBox Bounds = DecompressedAsset->GetBounds();
+	FVoxelData* Data = World->GetData();
+	FValueOctree* LastOctree = nullptr;
+
+	if (bPositionZIsBottom)
+	{
+		P.Z -= Bounds.Min.Z;
+	}
+
+	{
+		Data->BeginSet();
+		for (int X = Bounds.Min.X; X < Bounds.Max.X; X++)
+		{
+			for (int Y = Bounds.Min.Y; Y < Bounds.Max.Y; Y++)
+			{
+				for (int Z = Bounds.Min.Z; Z < Bounds.Max.Z; Z++)
+				{
+					const float AssetValue = DecompressedAsset->GetValue(X, Y, Z);
+					const FVoxelMaterial AssetMaterial = DecompressedAsset->GetMaterial(X, Y, Z);
+					const FVoxelType VoxelType = DecompressedAsset->GetVoxelType(X, Y, Z);
+
+					if (bForceUseOfAllVoxels)
+					{
+						Data->SetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, AssetValue, AssetMaterial, LastOctree);
+					}
+					else if (VoxelType.GetValueType() != IgnoreValue || VoxelType.GetMaterialType() != IgnoreMaterial)
+					{
+						float OldValue;
+						FVoxelMaterial OldMaterial;
+						Data->GetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, OldValue, OldMaterial, LastOctree);
+
+						const FVoxelMaterial NewMaterial = (VoxelType.GetMaterialType() == UseMaterial) ? AssetMaterial : OldMaterial;
+						float NewValue;
+
+						switch (VoxelType.GetValueType())
+						{
+						case IgnoreValue:
+							NewValue = OldValue;
+							break;
+						case UseValue:
+							NewValue = AssetValue;
+							break;
+						case UseValueIfSameSign:
+							NewValue = (AssetValue * OldValue >= 0) ? AssetValue : OldValue;
+							break;
+						case UseValueIfDifferentSign:
+							NewValue = (AssetValue * OldValue <= 0) ? AssetValue : OldValue;
+							break;
+						default:
+							check(false);
+						}
+
+						Data->SetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, NewValue, NewMaterial, LastOctree);
+					}
+				}
+			}
+		}
+		Data->EndSet();
+	}
+
+	World->UpdateChunksOverlappingBox(FVoxelBox(Bounds.Min + P, Bounds.Max + P), bAsync);
+
+	delete DecompressedAsset;
 }
 
 void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches)
