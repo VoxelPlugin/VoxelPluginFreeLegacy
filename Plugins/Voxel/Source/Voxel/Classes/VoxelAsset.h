@@ -8,7 +8,7 @@
 #include "MemoryReader.h"
 #include "VoxelAsset.generated.h"
 
-enum EVoxelType : uint8
+enum VOXEL_API EVoxelValueType : uint8
 {
 	// Value should be used
 	UseValue,
@@ -16,11 +16,45 @@ enum EVoxelType : uint8
 	// Use if A * B >= 0
 	UseValueIfSameSign,
 
+	// Use if A * B <= 0
+	UseValueIfDifferentSign,
+
 	// Value is not valid
 	IgnoreValue
 };
 
-struct FVoxelBox
+enum VOXEL_API EVoxelMaterialType : uint8
+{
+	UseMaterial,
+	IgnoreMaterial
+};
+
+struct VOXEL_API FVoxelType
+{
+	const uint8 Value;
+
+	FVoxelType(uint8 Value)
+		: Value(Value)
+	{
+	}
+
+	FVoxelType(EVoxelValueType ValueType, EVoxelMaterialType MaterialType)
+		: Value(ValueType & (MaterialType << 4))
+	{
+	}
+
+	EVoxelValueType GetValueType() const
+	{
+		return (EVoxelValueType)(0x0F & Value);
+	}
+
+	EVoxelMaterialType GetMaterialType() const
+	{
+		return (EVoxelMaterialType)(Value >> 4);
+	}
+};
+
+struct VOXEL_API FVoxelBox
 {
 	FIntVector Min;
 	FIntVector Max;
@@ -37,7 +71,7 @@ struct VOXEL_API FDecompressedVoxelAsset
 
 	virtual float GetValue(const int X, const int Y, const int Z) = 0;
 	virtual FVoxelMaterial GetMaterial(const int X, const int Y, const int Z) = 0;
-	virtual EVoxelType GetVoxelType(const int X, const int Y, const int Z) = 0;
+	virtual FVoxelType GetVoxelType(const int X, const int Y, const int Z) = 0;
 	virtual FVoxelBox GetBounds() = 0;
 };
 

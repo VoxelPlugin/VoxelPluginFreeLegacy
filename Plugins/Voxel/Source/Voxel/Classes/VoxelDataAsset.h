@@ -26,12 +26,12 @@ struct VOXEL_API FDecompressedVoxelDataAsset : FDecompressedVoxelAsset
 
 	float GetValue(const int X, const int Y, const int Z) override;
 	FVoxelMaterial GetMaterial(const int X, const int Y, const int Z) override;
-	EVoxelType GetVoxelType(const int X, const int Y, const int Z) override;
+	FVoxelType GetVoxelType(const int X, const int Y, const int Z) override;
 	FVoxelBox GetBounds() override;
 
 	void SetValue(const int X, const int Y, const int Z, const float NewValue);
 	void SetMaterial(const int X, const int Y, const int Z, const FVoxelMaterial NewMaterial);
-	void SetVoxelType(const int X, const int Y, const int Z, const EVoxelType VoxelType);
+	void SetVoxelType(const int X, const int Y, const int Z, const FVoxelType VoxelType);
 };
 
 FORCEINLINE FArchive& operator<<(FArchive &Ar, FDecompressedVoxelDataAsset& Asset)

@@ -55,12 +55,12 @@ FVoxelMaterial FDecompressedVoxelDataAsset::GetMaterial(const int X, const int Y
 	return Materials[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)];
 }
 
-EVoxelType FDecompressedVoxelDataAsset::GetVoxelType(const int X, const int Y, const int Z)
+FVoxelType FDecompressedVoxelDataAsset::GetVoxelType(const int X, const int Y, const int Z)
 {
 	check(-SizeX / 2 <= X && X < SizeX / 2);
 	check(-SizeY / 2 <= Y && Y < SizeY / 2);
 	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
-	return (EVoxelType)VoxelTypes[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)];
+	return FVoxelType(VoxelTypes[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)]);
 }
 
 FVoxelBox FDecompressedVoxelDataAsset::GetBounds()
@@ -89,10 +89,10 @@ void FDecompressedVoxelDataAsset::SetMaterial(const int X, const int Y, const in
 	Materials[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = NewMaterial;
 }
 
-void FDecompressedVoxelDataAsset::SetVoxelType(const int X, const int Y, const int Z, const EVoxelType VoxelType)
+void FDecompressedVoxelDataAsset::SetVoxelType(const int X, const int Y, const int Z, const FVoxelType VoxelType)
 {
 	check(-SizeX / 2 <= X && X < SizeX / 2);
 	check(-SizeY / 2 <= Y && Y < SizeY / 2);
 	check(-SizeZ / 2 <= Z && Z < SizeZ / 2);
-	VoxelTypes[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = VoxelType;
+	VoxelTypes[(X + SizeX / 2) + SizeX * (Y + SizeY / 2) + SizeX * SizeY * (Z + SizeZ / 2)] = VoxelType.Value;
 }

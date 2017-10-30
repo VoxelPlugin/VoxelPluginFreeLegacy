@@ -14,16 +14,17 @@ float UVoxelAssetWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	if (Bounds.IsInside(X, Y, Z))
 	{
 		float AssetValue = DecompressedAsset->GetValue(X, Y, Z);
-		EVoxelType VoxelType = DecompressedAsset->GetVoxelType(X, Y, Z);
+		EVoxelValueType ValueType = DecompressedAsset->GetVoxelType(X, Y, Z).GetValueType();
 
-		if (VoxelType == EVoxelType::UseValue)
+		if (ValueType == UseValue)
 		{
 			return AssetValue;
 		}
 		else
 		{
 			float DefaultValue = InstancedWorldGenerator->GetDefaultValue(X, Y, Z);
-			if (VoxelType == EVoxelType::UseValueIfSameSign && DefaultValue * AssetValue >= 0)
+			if ((ValueType == UseValueIfSameSign && DefaultValue * AssetValue >= 0) ||
+				(ValueType == UseValueIfDifferentSign && DefaultValue * AssetValue <= 0))
 			{
 				return AssetValue;
 			}
@@ -43,9 +44,9 @@ FVoxelMaterial UVoxelAssetWorldGenerator::GetDefaultMaterial(int X, int Y, int Z
 {
 	if (Bounds.IsInside(X, Y, Z))
 	{
-		EVoxelType VoxelType = DecompressedAsset->GetVoxelType(X, Y, Z);
+		EVoxelMaterialType MaterialType = DecompressedAsset->GetVoxelType(X, Y, Z).GetMaterialType();
 
-		if (VoxelType == EVoxelType::UseValue || VoxelType == EVoxelType::UseValueIfSameSign)
+		if (MaterialType == UseMaterial)
 		{
 			return DecompressedAsset->GetMaterial(X, Y, Z);
 		}
@@ -77,7 +78,7 @@ void UVoxelAssetWorldGenerator::CreateGeneratorAndDecompressedAsset(const float 
 	}
 
 	bool bSuccess = Asset && Asset->GetDecompressedAsset(DecompressedAsset, VoxelSize);
-	
+
 	if (bSuccess)
 	{
 		Bounds = DecompressedAsset->GetBounds();

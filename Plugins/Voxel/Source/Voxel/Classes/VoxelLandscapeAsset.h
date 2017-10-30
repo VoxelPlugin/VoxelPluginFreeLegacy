@@ -21,7 +21,7 @@ struct VOXEL_API FDecompressedVoxelLandscapeAsset : FDecompressedVoxelAsset
 
 	float GetValue(const int X, const int Y, const int Z) override;
 	FVoxelMaterial GetMaterial(const int X, const int Y, const int Z) override;
-	EVoxelType GetVoxelType(const int X, const int Y, const int Z) override;
+	FVoxelType GetVoxelType(const int X, const int Y, const int Z) override;
 	FVoxelBox GetBounds() override;
 };
 
