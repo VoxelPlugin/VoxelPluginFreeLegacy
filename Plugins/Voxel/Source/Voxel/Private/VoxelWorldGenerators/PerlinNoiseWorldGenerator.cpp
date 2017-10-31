@@ -4,7 +4,6 @@
 
 #include "VoxelPrivatePCH.h"
 #include "CoreMinimal.h"
-#include "PerlinNoise.h"
 #include "PerlinNoiseWorldGenerator.h"
 
 UPerlinNoiseWorldGenerator::UPerlinNoiseWorldGenerator() : Noise()
@@ -14,29 +13,47 @@ UPerlinNoiseWorldGenerator::UPerlinNoiseWorldGenerator() : Noise()
 float UPerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
 	float Density = Z;
-	float Warp = 5 * GetNoise(25, X, Y, Z);
-	Density += 10 * GetNoise(10 / 4.03, Warp + X, Warp + Y, Warp + Z) * 0.25;
-	Density += 10 * GetNoise(10 / 1.01, Warp + X, Warp + Y, Warp + Z) * 1.00;
-	Density += 1000 * GetNoise(1000 / 4.03, X, Y, Z) * 0.25;
-	Density += 1000 * GetNoise(1000 / 1.01, X, Y, Z) * 1.00;
-	Density += 10000 * FMath::Max(0.5f, GetNoise(10000 / 4.03, X, Y, Z)) * 0.25;
-	Density += 10000 * FMath::Max(0.5f, GetNoise(10000 / 1.01, X, Y, Z)) * 1.00;
+
+	float x = X;
+	float y = Y;
+	float z = Z;
+
+	Density += 1000 * Noise.GetSimplexFractal(x / 100, y / 100, z / 100);
+
+	Noise.GradientPerturb(x, y, z);
+
+	Density += 5 * Noise.GetSimplexFractal(x, y, z);
+
 	return Density;
 }
 
 FVoxelMaterial UPerlinNoiseWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
-	return FVoxelMaterial();
+	if (Z < -10)
+	{
+		return FVoxelMaterial(0, 0, 0);
+	}
+	else if (Z < 0)
+	{
+		return FVoxelMaterial(0, 1, FMath::Clamp<uint8>((10 + Z) * 256.f / 10.f, 0, 255));
+	}
+	else if (Z < 10)
+	{
+		return FVoxelMaterial(2, 1, 255 - FMath::Clamp<uint8>(Z * 256.f / 10.f, 0, 255));
+	}
+	else if (Z < 100)
+	{
+		return FVoxelMaterial(2, 2, 0);
+	}
+	else
+	{
+		return FVoxelMaterial(3, 3, 255);
+	}
 }
 
 void UPerlinNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
-
+	Noise = FastNoise();
+	Noise.SetGradientPerturbAmp(45);
+	Noise.SetFrequency(0.02);
 };
-
-float UPerlinNoiseWorldGenerator::GetNoise(float Frequency, int X, int Y, int Z)
-{
-	float n = Noise.Noise(X / Frequency, Y / Frequency, Z / Frequency);
-	n = n - FMath::FloorToInt(n);
-	return n;
-}

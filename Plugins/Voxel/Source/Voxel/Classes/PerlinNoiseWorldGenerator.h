@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelWorldGenerator.h"
-#include "PerlinNoise.h"
+#include "FastNoise/FastNoise.h"
 #include "PerlinNoiseWorldGenerator.generated.h"
 
 /**
@@ -23,7 +23,5 @@ public:
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 private:
-	float GetNoise(float Frequency, int X, int Y, int Z);
-
-	PerlinNoise Noise;
+	FastNoise Noise;
 };

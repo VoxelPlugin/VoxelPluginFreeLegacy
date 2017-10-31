@@ -238,23 +238,30 @@ bool UVoxelChunkComponent::UpdateFoliage()
 	if (FoliageTasks.Num() == 0)
 	{
 		CompletedFoliageTaskCount = 0;
+
+		int GrassVarietyIndex = 0;
 		for (int Index = 0; Index < Render->World->GrassTypes.Num(); Index++)
 		{
-			auto GrassType = Render->World->GrassTypes[Index];
-			for (auto GrassVariety : GrassType->GrassVarieties)
+			if (Render->World->GrassTypes[Index])
 			{
-				if (GrassVariety.CullDepth >= CurrentOctree->Depth)
+				auto GrassType = Render->World->GrassTypes[Index];
+				for (auto GrassVariety : GrassType->GrassVarieties)
 				{
-					FAsyncTask<FAsyncFoliageTask>* FoliageTask = new FAsyncTask<FAsyncFoliageTask>(
-						Section
-						, GrassVariety
-						, Index
-						, Render->World
-						, CurrentOctree->GetMinimalCornerPosition()
-						, this);
+					if (GrassVariety.CullDepth >= CurrentOctree->Depth)
+					{
+						FAsyncTask<FAsyncFoliageTask>* FoliageTask = new FAsyncTask<FAsyncFoliageTask>(
+							Section
+							, GrassVariety
+							, GrassVarietyIndex
+							, Index
+							, Render->World
+							, CurrentOctree->GetMinimalCornerPosition()
+							, this);
+						GrassVarietyIndex++;
 
-					FoliageTask->StartBackgroundTask(Render->FoliageThreadPool);
-					FoliageTasks.Add(FoliageTask);
+						FoliageTask->StartBackgroundTask(Render->FoliageThreadPool);
+						FoliageTasks.Add(FoliageTask);
+					}
 				}
 			}
 		}

@@ -26,7 +26,7 @@ public:
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-	FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk);
+	FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, int GrassVarietyIndex, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk);
 
 	void DoWork();
 
@@ -40,6 +40,7 @@ private:
 	UVoxelChunkComponent* Chunk;
 
 	FProcMeshSection const Section;
+	int GrassVarietyIndex;
 	uint8 const Material;
 	float const VoxelSize;
 	FIntVector const ChunkPosition;
