@@ -193,7 +193,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay, meta = (DisplayName = "Voxel Size"))
 		float NewVoxelSize;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"))
 		int32 Seed;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)

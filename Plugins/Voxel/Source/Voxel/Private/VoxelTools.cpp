@@ -80,7 +80,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 		}
 		Data->EndSet();
 	}
-	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -IntRadius, LocalPosition + FIntVector(1, 1, 1) * IntRadius), bAsync);
+	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -(IntRadius + 1), LocalPosition + FIntVector(1, 1, 1) * (IntRadius + 1)), bAsync);
 }
 
 //void UVoxelTools::SetValueBox(AVoxelWorld* const World, const FVector Position, const float ExtentXInVoxel, const float ExtentYInVoxel, const float ExtentZInVoxel, const bool bAdd, const bool bAsync, const float HardnessMultiplier)
@@ -189,7 +189,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 		}
 		Data->EndSet();
 	}
-	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -Size, LocalPosition + FIntVector(1, 1, 1) * Size), bAsync);
+	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -(Size + 1), LocalPosition + FIntVector(1, 1, 1) * (Size + 1)), bAsync);
 }
 
 
@@ -526,6 +526,7 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 							NewValue = (AssetValue * OldValue <= 0) ? AssetValue : OldValue;
 							break;
 						default:
+							NewValue = 0;
 							check(false);
 						}
 

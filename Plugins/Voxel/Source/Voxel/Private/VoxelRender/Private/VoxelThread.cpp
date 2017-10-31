@@ -11,9 +11,10 @@
 #include "VoxelWorldGenerator.h"
 
 
-FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk)
+FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, int GrassVarietyIndex, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
+	, GrassVarietyIndex(GrassVarietyIndex)
 	, Material(Material)
 	, VoxelSize(World->GetVoxelSize())
 	, ChunkPosition(ChunkPosition)
@@ -43,11 +44,17 @@ void FAsyncFoliageTask::DoWork()
 		FVoxelMaterial MatB = FVoxelMaterial(Section.ProcVertexBuffer[IndexB].Color);
 		FVoxelMaterial MatC = FVoxelMaterial(Section.ProcVertexBuffer[IndexC].Color);
 
-		const float ToleranceZone = 0.25f;
-		if ((Material == MatA.Index1 && MatA.Alpha < 1 - ToleranceZone) || (Material == MatA.Index2 && ((MatA.Alpha > ToleranceZone) || (MatA.Index1 == MatA.Index2))) ||
-			(Material == MatB.Index1 && MatB.Alpha < 1 - ToleranceZone) || (Material == MatB.Index2 && ((MatB.Alpha > ToleranceZone) || (MatB.Index1 == MatB.Index2))) ||
-			(Material == MatC.Index1 && MatC.Alpha < 1 - ToleranceZone) || (Material == MatC.Index2 && ((MatC.Alpha > ToleranceZone) || (MatC.Index1 == MatC.Index2))))
+		if ((Material == MatA.Index1) || (Material == MatA.Index2) ||
+			(Material == MatB.Index1) || (Material == MatB.Index2) ||
+			(Material == MatC.Index1) || (Material == MatC.Index2))
 		{
+			const float AlphaA = (Material == MatA.Index1) ? (255 - MatA.Alpha) : ((Material == MatA.Index2) ? MatA.Alpha : 0);
+			const float AlphaB = (Material == MatB.Index1) ? (255 - MatB.Alpha) : ((Material == MatB.Index2) ? MatB.Alpha : 0);
+			const float AlphaC = (Material == MatC.Index1) ? (255 - MatC.Alpha) : ((Material == MatC.Index2) ? MatC.Alpha : 0);
+
+			const float AlphaMean = (AlphaA + AlphaB + AlphaC) / 3.f;
+			const float CurrentMeanGrassPerTrig = MeanGrassPerTrig * AlphaMean / 255.f;
+
 
 			const FVector A = Section.ProcVertexBuffer[IndexA].Position;
 			const FVector B = Section.ProcVertexBuffer[IndexB].Position;
@@ -68,10 +75,10 @@ void FAsyncFoliageTask::DoWork()
 			const FVector ExactCenter = (A + B + C) / 3 * 1000000;
 			const FIntVector IntCenter = ChunkPosition + FIntVector(FMath::RoundToInt(ExactCenter.X), FMath::RoundToInt(ExactCenter.Y), FMath::RoundToInt(ExactCenter.Z));
 
-			FRandomStream Stream(Seed * (IntCenter.X + Seed) * (IntCenter.Y + Seed * Seed) * (IntCenter.Z + Seed * Seed * Seed));
+			FRandomStream Stream((100 + Seed * GrassVarietyIndex) * Seed * (IntCenter.X + Seed) * (IntCenter.Y + Seed * Seed) * (IntCenter.Z + Seed * Seed * Seed));
 
-			int Count = 2 * MeanGrassPerTrig;
-			if (Stream.GetFraction() < 2 * MeanGrassPerTrig - Count)
+			int Count = 2 * CurrentMeanGrassPerTrig;
+			if (Stream.GetFraction() < 2 * CurrentMeanGrassPerTrig - Count)
 			{
 				Count++;
 			}

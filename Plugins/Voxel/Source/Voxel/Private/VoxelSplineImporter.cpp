@@ -7,6 +7,7 @@
 
 
 AVoxelSplineImporter::AVoxelSplineImporter()
+	: VoxelSize(100)
 {
 #if WITH_EDITOR
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
