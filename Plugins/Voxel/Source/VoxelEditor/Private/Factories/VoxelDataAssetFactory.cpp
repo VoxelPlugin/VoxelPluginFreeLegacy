@@ -7,7 +7,7 @@
 UVoxelDataAssetFactory::UVoxelDataAssetFactory(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	bCreateNew = true;
+	bCreateNew = false;
 	bEditAfterNew = true;
 	SupportedClass = UVoxelDataAsset::StaticClass();
 }

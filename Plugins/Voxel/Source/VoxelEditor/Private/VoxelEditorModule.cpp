@@ -19,6 +19,8 @@
 #include "AssetToolsModule.h"
 
 #include "AssetTools/AssetTypeActions_VoxelGrassType.h"
+#include "AssetTools/AssetTypeActions_VoxelDataAsset.h"
+#include "AssetTools/AssetTypeActions_VoxelLandscapeAsset.h"
 
 #define LOCTEXT_NAMESPACE "FVoxelEditorModule"
 
@@ -83,6 +85,8 @@ protected:
 		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 
 		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelGrassType));
+		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelDataAsset));
+		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelLandscapeAsset));
 	}
 
 	/**
