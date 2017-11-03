@@ -10,6 +10,7 @@
 #include "EmptyWorldGenerator.h"
 #include "VoxelData.h"
 #include "VoxelPart.h"
+#include "Fluids.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetValueSphere"), STAT_SetValueSphere, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetMaterialSphere"), STAT_SetMaterialSphere, STATGROUP_Voxel);
@@ -606,148 +607,70 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 	}
 }
 
-void UVoxelTools::ApplyWaterEffect(AVoxelWorld* WaterWorld, AVoxelWorld* SolidWorld, FVector Position, float Radius, float DownSpeed, float LateralSpeed, bool bAsync, float ValueMultiplier)
+void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, TArray<float> PrevDens, TArray<float> PrevU, TArray<float> PrevV, const float Visc, const float Diff, const float Dt, TArray<float>& OutDens, TArray<float>& OutU, TArray<float>& OutV)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyWaterEffect);
 
-	if (SolidWorld == nullptr || WaterWorld == nullptr)
+	if (!World)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		UE_LOG(VoxelLog, Error, TEXT("ApplyWaterEffect: World is NULL"));
 		return;
 	}
-	check(SolidWorld);
-	check(WaterWorld);
 
-	// Position in voxel space
-	FIntVector LocalPosition = WaterWorld->GlobalToLocal(Position);
-	int IntRadius = FMath::CeilToInt(Radius) + 2;
-
-
-	for (int Z = -IntRadius + 1; Z < IntRadius; Z++)
+	FVoxelData* Data = World->GetData();
+	if (Data)
 	{
-		for (int Y = -IntRadius + 1; Y < IntRadius; Y++)
+		if (PrevDens.Num() == 0 || PrevU.Num() == 0 || PrevV.Num() == 0)
 		{
-			for (int X = -IntRadius + 1; X < IntRadius; X++)
+			PrevDens.SetNum((N + 2) * (N + 2));
+			PrevU.SetNum((N + 2) * (N + 2));
+			PrevV.SetNum((N + 2) * (N + 2));
+
+			for (int i = 1; i < N + 1; i++)
 			{
-				const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
-				const float CurrentSolidValue = SolidWorld->GetValue(CurrentPosition);
-				if (CurrentSolidValue <= 0)
+				for (int j = 1; j < N + 1; j++)
 				{
-					WaterWorld->SetValue(CurrentPosition, -CurrentSolidValue);
-					//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
-				}
-				else
-				{
-					float CurrentValue = WaterWorld->GetValue(CurrentPosition);
-
-					//DrawDebugString(WaterWorld->GetWorld(), WaterWorld->GetTransform().TransformPosition((FVector)CurrentPosition), FString::FromInt(1000 * CurrentValue), 0, FColor::Black, 0.1f, false);
-
-					if (CurrentValue < ValueMultiplier)
-					{
-						{
-							const FIntVector BelowPosition = CurrentPosition + FIntVector(0, 0, -1);
-							const float BelowValue = WaterWorld->GetValue(BelowPosition);
-
-							const FIntVector AbovePosition = CurrentPosition + FIntVector(0, 0, 1);
-							const float AboveValue = WaterWorld->GetValue(AbovePosition);
-
-							const float BelowSolidValue = SolidWorld->GetValue(BelowPosition);
-
-							float DownDeltaValue = 0;
-
-							if (Z != 1 - IntRadius && BelowValue > -ValueMultiplier && (CurrentValue <= 0 || (BelowValue <= 0 && AboveValue >= 0)) && BelowSolidValue > 0)
-							{
-								DownDeltaValue = FMath::Clamp(FMath::Min(1 - CurrentValue, 1 + BelowValue), 0.f, DownSpeed) + KINDA_SMALL_NUMBER;
-
-								WaterWorld->SetValue(CurrentPosition, CurrentValue + DownDeltaValue);
-								WaterWorld->SetValue(BelowPosition, BelowValue - DownDeltaValue);
-
-								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
-								//WaterWorld->QueueUpdate(BelowPosition, bAsync);
-
-								CurrentValue = CurrentValue + DownDeltaValue;
-							}
-						}
-
-						{
-							const FIntVector ForwardPosition = CurrentPosition + FIntVector(1, 0, 0);
-							const float ForwardValue = WaterWorld->GetValue(ForwardPosition);
-							const float ForwardSolidValue = SolidWorld->GetValue(ForwardPosition);
-
-							if (X != IntRadius - 1 && CurrentValue < ForwardValue && ForwardValue > -ValueMultiplier && ForwardSolidValue > 0)
-							{
-								float DeltaValue = FMath::Clamp(ForwardValue - CurrentValue, 0.f, LateralSpeed) / 4 + KINDA_SMALL_NUMBER;
-
-								WaterWorld->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-								WaterWorld->SetValue(ForwardPosition, ForwardValue - DeltaValue);
-
-								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
-								//WaterWorld->QueueUpdate(ForwardPosition, bAsync);
-
-								CurrentValue = CurrentValue + DeltaValue;
-							}
-						}
-						{
-							const FIntVector BackPosition = CurrentPosition + FIntVector(-1, 0, 0);
-							const float BackValue = WaterWorld->GetValue(BackPosition);
-							const float BackSolidValue = SolidWorld->GetValue(BackPosition);
-
-							if (X != 1 - IntRadius && CurrentValue < BackValue && BackValue > -ValueMultiplier && BackSolidValue > 0)
-							{
-								float DeltaValue = FMath::Clamp(BackValue - CurrentValue, 0.f, LateralSpeed) / 3 + KINDA_SMALL_NUMBER;
-
-								WaterWorld->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-								WaterWorld->SetValue(BackPosition, BackValue - DeltaValue);
-
-								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
-								//WaterWorld->QueueUpdate(BackPosition, bAsync);
-
-								CurrentValue = CurrentValue + DeltaValue;
-							}
-						}
-						{
-							const FIntVector RightPosition = CurrentPosition + FIntVector(0, 1, 0);
-							const float RightValue = WaterWorld->GetValue(RightPosition);
-							const float RightSolidValue = SolidWorld->GetValue(RightPosition);
-
-							if (Y != IntRadius - 1 && CurrentValue < RightValue && RightValue > -ValueMultiplier && RightSolidValue > 0)
-							{
-								float DeltaValue = FMath::Clamp(RightValue - CurrentValue, 0.f, LateralSpeed) / 2 + KINDA_SMALL_NUMBER;
-
-								WaterWorld->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-								WaterWorld->SetValue(RightPosition, RightValue - DeltaValue);
-
-								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
-								//WaterWorld->QueueUpdate(RightPosition, bAsync);
-
-								CurrentValue = CurrentValue + DeltaValue;
-							}
-						}
-						{
-							const FIntVector LeftPosition = CurrentPosition + FIntVector(0, -1, 0);
-							const float LeftValue = WaterWorld->GetValue(LeftPosition);
-							const float LeftSolidValue = SolidWorld->GetValue(LeftPosition);
-
-							if (Y != 1 - IntRadius && CurrentValue < LeftValue && LeftValue > -ValueMultiplier && LeftSolidValue > 0)
-							{
-								float DeltaValue = FMath::Clamp(LeftValue - CurrentValue, 0.f, LateralSpeed) / 1 + KINDA_SMALL_NUMBER;
-
-								WaterWorld->SetValue(CurrentPosition, CurrentValue + DeltaValue);
-								WaterWorld->SetValue(LeftPosition, LeftValue - DeltaValue);
-
-								//WaterWorld->QueueUpdate(CurrentPosition, bAsync);
-								//WaterWorld->QueueUpdate(LeftPosition, bAsync);
-
-								CurrentValue = CurrentValue + DeltaValue;
-							}
-						}
-					}
+					PrevDens[i + (N + 2) * j] = (FVector2D(i - 1, j - 1) - FVector2D(N / 2, N / 2)).Size() > N / 4 ? 0 : 1;
+					PrevU[i + (N + 2) * j] = j > N / 2 ? -1 : 1;
 				}
 			}
 		}
-	}
 
-	WaterWorld->UpdateAll(bAsync);
+		for (int i = 1; i < N + 1; i++)
+		{
+			for (int j = 1; j < N + 1; j++)
+			{
+				PrevU[i + (N + 2) * j] = j > N / 2 ? -1 : 1;
+			}
+		}
+
+		static TArray<float> Dens;
+		static TArray<float> U;
+		static TArray<float> V;
+
+		if (Dens.Num() == 0 || U.Num() == 0 || V.Num() == 0)
+		{
+			Dens.SetNum((N + 2) * (N + 2));
+			U.SetNum((N + 2) * (N + 2));
+			V.SetNum((N + 2) * (N + 2));
+		}
+
+		FluidStep(N, PrevDens, PrevU, PrevV, Visc, Diff, Dt, Dens, U, V);
+
+		{
+			Data->BeginSet();
+			for (int i = 1; i < N + 1; i++)
+			{
+				for (int j = 1; j < N + 1; j++)
+				{
+					Data->SetValue(i, j, 0, 1 - 2 * Dens[i + (N + 2) * j]);
+				}
+			}
+			Data->EndSet();
+		}
+
+		World->UpdateAll(false);
+	}
 }
 
 void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected, bool bAsync, float ValueMultiplier)
