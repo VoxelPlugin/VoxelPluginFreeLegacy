@@ -1,157 +1,188 @@
 #include "VoxelPrivatePCH.h"
 #include "Fluids.h"
 
-#define Ix(i, j) ((i) + (N + 2) * (j))
+// From https://github.com/BlainMaguire/3dfluid
 
-void SetBnd(const int N, const int b, TArray<float>& x)
+/**
+ * A 3D Real Time Fluid Solver based on Jos Stam's fluid solver (stable N-S solver).
+ *
+ * Reference: Jos Stam, "Real-Time Fluid Dynamics for Games". Proceedings of the Game Developer Conference, March 2003.
+ * http://www.dgp.toronto.edu/people/stam/reality/Research/pdf/GDC03.pdf]
+ */
+
+#define IX(i,j,k) ((i)+(M+2)*(j) + (M+2)*(N+2)*(k))
+#define SWAP(x0,x) {TArray<float>& tmp=x0;x0=x;x=tmp;}
+#define MAX(a,b)            (((a) > (b)) ? (a) : (b))
+#define LINEARSOLVERTIMES 10
+
+void add_source(int M, int N, int O, TArray<float>& x, TArray<float>& s, float dt)
 {
-	for (int i = 1; i <= N; i++)
-	{
-		x[Ix(0, i)] = b == 1 ? -x[Ix(1, i)] : x[Ix(1, i)];
-		x[Ix(N + 1, i)] = b == 1 ? -x[Ix(N, i)] : x[Ix(N, i)];
-		x[Ix(i, 0)] = b == 2 ? -x[Ix(i, 1)] : x[Ix(i, 1)];
-		x[Ix(i, N + 1)] = b == 2 ? -x[Ix(i, N)] : x[Ix(i, N)];
-	}
-	x[Ix(0, 0)] = 0.5 * (x[Ix(1, 0)] + x[Ix(0, 1)]);
-	x[Ix(0, N + 1)] = 0.5 * (x[Ix(1, N + 1)] + x[Ix(0, N)]);
-	x[Ix(N + 1, 0)] = 0.5 * (x[Ix(N, 0)] + x[Ix(N + 1, 1)]);
-	x[Ix(N + 1, N + 1)] = 0.5 * (x[Ix(N, N + 1)] + x[Ix(N + 1, N)]);
+	int i, size = (M + 2)*(N + 2)*(O + 2);
+	for (i = 0; i < size; i++) x[i] += dt*s[i];
 }
 
-
-void AddSource(const int N, TArray<float>& x, TArray<float>& s, const float dt)
+void  set_bnd(int M, int N, int O, int b, TArray<float>& x)
 {
-	for (int i = 0; i < (N + 2) * (N + 2); i++)
-	{
-		x[i] += dt * s[i];
-	}
-}
 
-void Diffuse(const int N, const int b, TArray<float>& x, TArray<float>& x0, const float diff, const float dt)
-{
-	float a = dt * diff * N * N;
-	for (int k = 0; k < 20; k++)
+	// bounds are cells at faces of the cube
+
+	int i, j;
+
+	for (i = 1; i <= M; i++)
 	{
-		for (int i = 1; i <= N; i++)
+		for (j = 1; j <= N; j++)
 		{
-			for (int j = 1; j <= N; j++)
-			{
-				x[Ix(i, j)] = (x0[Ix(i, j)] + a * (x[Ix(i - 1, j)] + x[Ix(i + 1, j)] + x[Ix(i, j - 1)] + x[Ix(i, j + 1)])) / (1 + 4 * a);
-			}
-		}
-		SetBnd(N, b, x);
-	}
-}
-
-void Advect(const int N, const int b, TArray<float>& d, TArray<float>& d0, TArray<float>& u, TArray<float>& v, const float dt)
-{
-	const float dt0 = dt * N;
-	for (int i = 1; i <= N; i++)
-	{
-		for (int j = 1; j <= N; j++)
-		{
-			float x = i - dt0 * u[Ix(i, j)];
-			float y = j - dt0 * v[Ix(i, j)];
-
-			if (x < 0.5)
-			{
-				x = 0.5;
-			}
-			if (x > N + 0.5)
-			{
-				x = N + 0.5;
-			}
-			const int i0 = (int)x;
-			const int i1 = i0 + 1;
-
-			if (y < 0.5)
-			{
-				y = 0.5;
-			}
-			if (y > N + 0.5)
-			{
-				y = N + 0.5;
-			}
-			const int j0 = (int)y;
-			const int j1 = j0 + 1;
-
-			const float s1 = x - i0;
-			const float s0 = 1 - s1;
-			const float t1 = y - j0;
-			const float t0 = 1 - t1;
-
-			d[Ix(i, j)] = s0 * (t0 * d0[Ix(i0, j0)] + t1 * d0[Ix(i0, j1)]) + s1 * (t0 * d0[Ix(i1, j0)] + t1 * d0[Ix(i1, j1)]);
-		}
-	}
-	SetBnd(N, b, d);
-}
-
-void DensityStep(const int N, TArray<float>& x, TArray<float>& x0, TArray<float>& u, TArray<float>& v, const float diff, const float dt)
-{
-	AddSource(N, x, x0, dt);
-	Diffuse(N, 0, x0, x, diff, dt);
-	Advect(N, 0, x, x0, u, v, dt);
-}
-
-void Project(const int N, TArray<float>& u, TArray<float>& v, TArray<float>& p, TArray<float>& div)
-{
-	const float h = 1.0 / N;
-	for (int i = 1; i <= N; i++)
-	{
-		for (int j = 1; j <= N; j++)
-		{
-			div[Ix(i, j)] = -0.5 * h * (u[Ix(i + 1, j)] - u[Ix(i - 1, j)] + v[Ix(i, j + 1)] - v[Ix(i, j - 1)]);
-			p[Ix(i, j)] = 0;
+			x[IX(i, j, 0)] = b == 3 ? -x[IX(i, j, 1)] : x[IX(i, j, 1)];
+			x[IX(i, j, O + 1)] = b == 3 ? -x[IX(i, j, O)] : x[IX(i, j, O)];
 		}
 	}
 
-	SetBnd(N, 0, div);
-	SetBnd(N, 0, p);
-
-	for (int k = 0; k < 20; k++)
+	for (i = 1; i <= N; i++)
 	{
-		for (int i = 1; i <= N; i++)
+		for (j = 1; j <= O; j++)
 		{
-			for (int j = 1; j <= N; j++)
+			x[IX(0, i, j)] = b == 1 ? -x[IX(1, i, j)] : x[IX(1, i, j)];
+			x[IX(M + 1, i, j)] = b == 1 ? -x[IX(M, i, j)] : x[IX(M, i, j)];
+		}
+	}
+
+	for (i = 1; i <= M; i++)
+	{
+		for (j = 1; j <= O; j++)
+		{
+			x[IX(i, 0, j)] = b == 2 ? -x[IX(i, 1, j)] : x[IX(i, 1, j)];
+			x[IX(i, N + 1, j)] = b == 2 ? -x[IX(i, N, j)] : x[IX(i, N, j)];
+		}
+	}
+
+	x[IX(0, 0, 0)] = 1.0 / 3.0*(x[IX(1, 0, 0)] + x[IX(0, 1, 0)] + x[IX(0, 0, 1)]);
+	x[IX(0, N + 1, 0)] = 1.0 / 3.0*(x[IX(1, N + 1, 0)] + x[IX(0, N, 0)] + x[IX(0, N + 1, 1)]);
+
+	x[IX(M + 1, 0, 0)] = 1.0 / 3.0*(x[IX(M, 0, 0)] + x[IX(M + 1, 1, 0)] + x[IX(M + 1, 0, 1)]);
+	x[IX(M + 1, N + 1, 0)] = 1.0 / 3.0*(x[IX(M, N + 1, 0)] + x[IX(M + 1, N, 0)] + x[IX(M + 1, N + 1, 1)]);
+
+	x[IX(0, 0, O + 1)] = 1.0 / 3.0*(x[IX(1, 0, O + 1)] + x[IX(0, 1, O + 1)] + x[IX(0, 0, O)]);
+	x[IX(0, N + 1, O + 1)] = 1.0 / 3.0*(x[IX(1, N + 1, O + 1)] + x[IX(0, N, O + 1)] + x[IX(0, N + 1, O)]);
+
+	x[IX(M + 1, 0, O + 1)] = 1.0 / 3.0*(x[IX(M, 0, O + 1)] + x[IX(M + 1, 1, O + 1)] + x[IX(M + 1, 0, O)]);
+	x[IX(M + 1, N + 1, O + 1)] = 1.0 / 3.0*(x[IX(M, N + 1, O + 1)] + x[IX(M + 1, N, O + 1)] + x[IX(M + 1, N + 1, O)]);
+}
+
+void lin_solve(int M, int N, int O, int b, TArray<float>& x, TArray<float>& x0, float a, float c)
+{
+	int i, j, k, l;
+
+	// iterate the solver
+	for (l = 0; l < LINEARSOLVERTIMES; l++)
+	{
+		// update for each cell
+		for (i = 1; i <= M; i++)
+		{
+			for (j = 1; j <= N; j++)
 			{
-				p[Ix(i, j)] = (div[Ix(i, j)] + p[Ix(i - 1, j)] + p[Ix(i + 1, j)] + p[Ix(i, j - 1)] + p[Ix(i, j + 1)]) / 4;
+				for (k = 1; k <= O; k++)
+				{
+					x[IX(i, j, k)] = (x0[IX(i, j, k)] + a*(x[IX(i - 1, j, k)] + x[IX(i + 1, j, k)] + x[IX(i, j - 1, k)] + x[IX(i, j + 1, k)] + x[IX(i, j, k - 1)] + x[IX(i, j, k + 1)])) / c;
+				}
 			}
 		}
-		SetBnd(N, 0, p);
+		set_bnd(M, N, O, b, x);
 	}
-	for (int i = 1; i <= N; i++)
+}
+
+void diffuse(int M, int N, int O, int b, TArray<float>& x, TArray<float>& x0, float diff, float dt)
+{
+	int max = MAX(MAX(M, N), MAX(N, O));
+	float a = dt*diff*max*max*max;
+	lin_solve(M, N, O, b, x, x0, a, 1 + 6 * a);
+}
+
+void advect(int M, int N, int O, int b, TArray<float>& d, TArray<float>& d0, TArray<float>& u, TArray<float>& v, TArray<float>& w, float dt)
+{
+	int i, j, k, i0, j0, k0, i1, j1, k1;
+	float x, y, z, s0, t0, s1, t1, u1, u0, dtx, dty, dtz;
+
+	dtx = dty = dtz = dt*MAX(MAX(M, N), MAX(N, O));
+
+	for (i = 1; i <= M; i++)
 	{
-		for (int j = 1; j <= N; j++)
+		for (j = 1; j <= N; j++)
 		{
-			u[Ix(i, j)] -= 0.5 * (p[Ix(i + 1, j)] - p[Ix(i - 1, j)]) / h;
-			v[Ix(i, j)] -= 0.5 * (p[Ix(i, j + 1)] - p[Ix(i, j - 1)]) / h;
+			for (k = 1; k <= O; k++)
+			{
+				x = i - dtx*u[IX(i, j, k)]; y = j - dty*v[IX(i, j, k)]; z = k - dtz*w[IX(i, j, k)];
+				if (x < 0.5f) x = 0.5f; if (x > M + 0.5f) x = M + 0.5f; i0 = (int)x; i1 = i0 + 1;
+				if (y < 0.5f) y = 0.5f; if (y > N + 0.5f) y = N + 0.5f; j0 = (int)y; j1 = j0 + 1;
+				if (z < 0.5f) z = 0.5f; if (z > O + 0.5f) z = O + 0.5f; k0 = (int)z; k1 = k0 + 1;
+
+				s1 = x - i0; s0 = 1 - s1; t1 = y - j0; t0 = 1 - t1; u1 = z - k0; u0 = 1 - u1;
+				d[IX(i, j, k)] = s0*(t0*u0*d0[IX(i0, j0, k0)] + t1*u0*d0[IX(i0, j1, k0)] + t0*u1*d0[IX(i0, j0, k1)] + t1*u1*d0[IX(i0, j1, k1)]) +
+					s1*(t0*u0*d0[IX(i1, j0, k0)] + t1*u0*d0[IX(i1, j1, k0)] + t0*u1*d0[IX(i1, j0, k1)] + t1*u1*d0[IX(i1, j1, k1)]);
+			}
 		}
 	}
 
-	SetBnd(N, 1, u);
-	SetBnd(N, 2, v);
+	set_bnd(M, N, O, b, d);
 }
 
-void VelocityStep(const int N, TArray<float>& u, TArray<float>& v, TArray<float>& u0, TArray<float>& v0, const float visc, const float dt)
+void project(int M, int N, int O, TArray<float>& u, TArray<float>& v, TArray<float>& w, TArray<float>& p, TArray<float>& div)
 {
-	AddSource(N, u, u0, dt);
-	AddSource(N, v, v0, dt);
+	int i, j, k;
 
-	Diffuse(N, 1, u0, u, visc, dt);
-	Diffuse(N, 2, v0, v, visc, dt);
-	Project(N, u0, v0, u, v);
+	for (i = 1; i <= M; i++)
+	{
+		for (j = 1; j <= N; j++)
+		{
+			for (k = 1; k <= O; k++)
+			{
+				div[IX(i, j, k)] = -1.0 / 3.0*((u[IX(i + 1, j, k)] - u[IX(i - 1, j, k)]) / M + (v[IX(i, j + 1, k)] - v[IX(i, j - 1, k)]) / M + (w[IX(i, j, k + 1)] - w[IX(i, j, k - 1)]) / M);
+				p[IX(i, j, k)] = 0;
+			}
+		}
+	}
 
-	Advect(N, 1, u, u0, u0, v0, dt);
-	Advect(N, 2, v, v0, u0, v0, dt);
-	Project(N, u, v, u0, v0);
+	set_bnd(M, N, O, 0, div); set_bnd(M, N, O, 0, p);
+
+	lin_solve(M, N, O, 0, p, div, 1, 6);
+
+	for (i = 1; i <= M; i++)
+	{
+		for (j = 1; j <= N; j++)
+		{
+			for (k = 1; k <= O; k++)
+			{
+				u[IX(i, j, k)] -= 0.5f*M*(p[IX(i + 1, j, k)] - p[IX(i - 1, j, k)]);
+				v[IX(i, j, k)] -= 0.5f*M*(p[IX(i, j + 1, k)] - p[IX(i, j - 1, k)]);
+				w[IX(i, j, k)] -= 0.5f*M*(p[IX(i, j, k + 1)] - p[IX(i, j, k - 1)]);
+			}
+		}
+	}
+
+	set_bnd(M, N, O, 1, u); set_bnd(M, N, O, 2, v); set_bnd(M, N, O, 3, w);
 }
 
-void FluidStep(const int N, TArray<float> PrevDens, TArray<float> PrevU, TArray<float> PrevV, const float Visc, const float Diff, const float Dt, TArray<float>& OutDens, TArray<float>& OutU, TArray<float>& OutV)
+void dens_step(int M, int N, int O, TArray<float>& x, TArray<float>& x0, TArray<float>& u, TArray<float>& v, TArray<float>& w, float diff, float dt)
 {
-	OutDens.SetNum((N + 2) * (N + 2));
-	OutU.SetNum((N + 2) * (N + 2));
-	OutV.SetNum((N + 2) * (N + 2));
+	add_source(M, N, O, x, x0, dt);
+	diffuse(M, N, O, 0, x0, x, diff, dt);
+	advect(M, N, O, 0, x, x0, u, v, w, dt);
+}
 
-	VelocityStep(N, OutU, OutV, PrevU, PrevV, Visc, Dt);
-	DensityStep(N, OutDens, PrevDens, OutU, OutV, Diff, Dt);
+void vel_step(int M, int N, int O, TArray<float>& u, TArray<float>& v, TArray<float>& w, TArray<float>& u0, TArray<float>& v0, TArray<float>& w0, float visc, float dt)
+{
+	add_source(M, N, O, u, u0, dt); add_source(M, N, O, v, v0, dt); add_source(M, N, O, w, w0, dt);
+
+	diffuse(M, N, O, 1, u0, u, visc, dt);
+	diffuse(M, N, O, 2, v0, v, visc, dt);
+	diffuse(M, N, O, 3, w0, w, visc, dt);
+	project(M, N, O, u0, v0, w0, u, v);
+
+	advect(M, N, O, 1, u, u0, u0, v0, w0, dt); advect(M, N, O, 2, v, v0, u0, v0, w0, dt); advect(M, N, O, 3, w, w0, u0, v0, w0, dt);
+	project(M, N, O, u, v, w, u0, v0);
+}
+
+void FluidStep(const int N, TArray<float>& Dens0, TArray<float>& U0, TArray<float>& V0, TArray<float>& W0, const float Visc, const float Diff, const float Dt, TArray<float>& Dens, TArray<float>& U, TArray<float>& V, TArray<float> W)
+{
+	vel_step(N, N, N, U, V, W, U0, V0, W0, Visc, Dt);
+	dens_step(N, N, N, Dens, Dens0, U, V, W, Diff, Dt);
 }

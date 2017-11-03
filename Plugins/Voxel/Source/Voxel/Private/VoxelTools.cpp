@@ -607,7 +607,7 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 	}
 }
 
-void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, TArray<float> PrevDens, TArray<float> PrevU, TArray<float> PrevV, const float Visc, const float Diff, const float Dt, TArray<float>& OutDens, TArray<float>& OutU, TArray<float>& OutV)
+void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, const bool bInit, TArray<float>& Dens0, TArray<float>& U0, TArray<float>& V0, TArray<float>& W0, const float Visc, const float Diff, const float Dt, TArray<float>& Dens, TArray<float>&U, TArray<float>& V, TArray<float>& W)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyWaterEffect);
 
@@ -620,18 +620,21 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, TArray<float
 	FVoxelData* Data = World->GetData();
 	if (Data)
 	{
-		if (PrevDens.Num() == 0 || PrevU.Num() == 0 || PrevV.Num() == 0)
+		if (Dens0.Num() == 0 || U0.Num() == 0 || V0.Num() == 0 || W0.Num() == 0 || bInit)
 		{
-			PrevDens.SetNum((N + 2) * (N + 2));
-			PrevU.SetNum((N + 2) * (N + 2));
-			PrevV.SetNum((N + 2) * (N + 2));
+			Dens0.SetNum((N + 2) * (N + 2) * (N + 2));
+			U0.SetNum((N + 2) * (N + 2) * (N + 2));
+			V0.SetNum((N + 2) * (N + 2) * (N + 2));
+			W0.SetNum((N + 2) * (N + 2) * (N + 2));
 
 			for (int i = 1; i < N + 1; i++)
 			{
 				for (int j = 1; j < N + 1; j++)
 				{
-					PrevDens[i + (N + 2) * j] = (FVector2D(i - 1, j - 1) - FVector2D(N / 2, N / 2)).Size() > N / 4 ? 0 : 1;
-					PrevU[i + (N + 2) * j] = j > N / 2 ? -1 : 1;
+					for (int k = 1; k < N + 1; k++)
+					{
+						Dens0[i + (N + 2) * j + (N + 2) * (N + 2) * k] = (FVector(i - 1, j - 1, k - 1) - FVector(N / 2, N / 2, N / 2)).Size() > N / 4 ? 0 : 1;
+					}
 				}
 			}
 		}
@@ -640,22 +643,22 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, TArray<float
 		{
 			for (int j = 1; j < N + 1; j++)
 			{
-				PrevU[i + (N + 2) * j] = j > N / 2 ? -1 : 1;
+				for (int k = 2; k < N + 1; k++)
+				{
+					W0[i + (N + 2) * j + (N + 2) * (N + 2) * k] -= 10 * Dt;
+				}
 			}
 		}
 
-		static TArray<float> Dens;
-		static TArray<float> U;
-		static TArray<float> V;
-
 		if (Dens.Num() == 0 || U.Num() == 0 || V.Num() == 0)
 		{
-			Dens.SetNum((N + 2) * (N + 2));
-			U.SetNum((N + 2) * (N + 2));
-			V.SetNum((N + 2) * (N + 2));
+			Dens.SetNum((N + 2) * (N + 2) * (N + 2));
+			U.SetNum((N + 2) * (N + 2) * (N + 2));
+			V.SetNum((N + 2) * (N + 2) * (N + 2));
+			W.SetNum((N + 2) * (N + 2) * (N + 2));
 		}
 
-		FluidStep(N, PrevDens, PrevU, PrevV, Visc, Diff, Dt, Dens, U, V);
+		FluidStep(N, Dens0, U0, V0, W0, Visc, Diff, Dt, Dens, U, V, W);
 
 		{
 			Data->BeginSet();
@@ -663,13 +666,30 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, TArray<float
 			{
 				for (int j = 1; j < N + 1; j++)
 				{
-					Data->SetValue(i, j, 0, 1 - 2 * Dens[i + (N + 2) * j]);
+					for (int k = 1; k < N + 1; k++)
+					{
+						Data->SetValue(i - 1, j - 1, k - 1, 1 - 2 * Dens[i + (N + 2) * j + (N + 2) *(N + 2) *k]);
+					}
 				}
 			}
 			Data->EndSet();
 		}
 
-		World->UpdateAll(false);
+		World->UpdateChunksOverlappingBox(FVoxelBox(FIntVector(-1, -1, -1), FIntVector(N + 1, N + 1, N + 1)), false);
+
+		for (int i = 1; i < N + 1; i++)
+		{
+			for (int j = 1; j < N + 1; j++)
+			{
+				for (int k = 1; k < N + 1; k++)
+				{
+					Dens0[i + (N + 2) * j + (N + 2) *(N + 2) *k] = 0;
+					U0[i + (N + 2) * j + (N + 2) *(N + 2) *k] = 0;
+					V0[i + (N + 2) * j + (N + 2) *(N + 2) *k] = 0;
+					W0[i + (N + 2) * j + (N + 2) *(N + 2) *k] = 0;
+				}
+			}
+		}
 	}
 }
 

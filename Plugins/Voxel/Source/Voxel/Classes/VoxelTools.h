@@ -158,7 +158,7 @@ public:
 	 * @param	ValueMultiplier		-ValueMultiplier will be set inside and ValueMultiplier outside
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
-		static void ApplyWaterEffect(AVoxelWorld* World, const int N, TArray<float> PrevDens, TArray<float> PrevU, TArray<float> PrevV, const float Visc, const float Diff, const float Dt, TArray<float>& OutDens, TArray<float>& OutU, TArray<float>& OutV);
+		static void ApplyWaterEffect(AVoxelWorld* World, const int N, const bool bInit, UPARAM(ref) TArray<float>& Dens0, UPARAM(ref) TArray<float>& U0, UPARAM(ref) TArray<float>& V0, UPARAM(ref) TArray<float>& W0, const float Visc, const float Diff, const float Dt, UPARAM(ref) TArray<float>& Dens, UPARAM(ref) TArray<float>&U, UPARAM(ref) TArray<float>& V, UPARAM(ref) TArray<float>& W);
 
 	/**
 	 * Remove all blocks not connected to Position
