@@ -18,7 +18,7 @@ float UPerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 	float y = Y;
 	float z = Z;
 
-	Density += 1000 * Noise.GetSimplexFractal(x / 100, y / 100, z / 100);
+	//Density += 1000 * Noise.GetSimplexFractal(x / 100, y / 100, z / 100);
 
 	Noise.GradientPerturb(x, y, z);
 

@@ -29,6 +29,9 @@ AVoxelWorld::AVoxelWorld()
 	, InstancedWorldGenerator(nullptr)
 	, VoxelWorldEditor(nullptr)
 	, bComputeCollisions(false)
+	, bEnableAmbientOcclusion(false)
+	, RayMaxDistance(5)
+	, RayCount(25)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -248,6 +251,21 @@ bool AVoxelWorld::GetComputeCollisions() const
 float AVoxelWorld::GetDeletionDelay() const
 {
 	return DeletionDelay;
+}
+
+bool AVoxelWorld::GetEnableAmbientOcclusion() const
+{
+	return bEnableAmbientOcclusion;
+}
+
+int AVoxelWorld::GetRayMaxDistance() const
+{
+	return RayMaxDistance;
+}
+
+int AVoxelWorld::GetRayCount() const
+{
+	return RayCount;
 }
 
 FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const

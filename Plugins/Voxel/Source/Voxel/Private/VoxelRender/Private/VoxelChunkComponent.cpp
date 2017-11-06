@@ -421,6 +421,9 @@ void UVoxelChunkComponent::CreateBuilder()
 		CurrentOctree->GetMinimalCornerPosition(),
 		ChunkHasHigherRes,
 		CurrentOctree->Depth != 0 && Render->World->GetComputeTransitions(),
-		CurrentOctree->Depth == 0 && Render->World->GetComputeCollisions()
+		CurrentOctree->Depth == 0 && Render->World->GetComputeCollisions(),
+		Render->World->GetEnableAmbientOcclusion(),
+		Render->World->GetRayMaxDistance(),
+		Render->World->GetRayCount()
 	);
 }

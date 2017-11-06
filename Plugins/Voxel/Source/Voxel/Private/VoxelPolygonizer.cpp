@@ -13,14 +13,18 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Add transitions to Section"), STAT_A
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ MajorColor"), STAT_MAJOR_COLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ GetValueAndColor"), STAT_GETVALUEANDCOLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Get2DValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ AmbientOcclusion"), STAT_AMBIENT_OCCLUSION, STATGROUP_Voxel);
 
-FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions)
+FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount)
 	: Depth(Depth)
 	, Data(Data)
 	, ChunkPosition(ChunkPosition)
 	, ChunkHasHigherRes(ChunkHasHigherRes)
 	, bComputeTransitions(bComputeTransitions)
 	, bComputeCollisions(bComputeCollisions)
+	, bEnableAmbientOcclusion(bEnableAmbientOcclusion)
+	, RayMaxDistance(RayMaxDistance)
+	, RayCount(RayCount)
 	, LastOctree(nullptr)
 {
 
@@ -674,6 +678,59 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 			}
 		}
 	}
+
+	if (bEnableAmbientOcclusion)
+	{
+		SCOPE_CYCLE_COUNTER(STAT_AMBIENT_OCCLUSION);
+
+		{
+			Data->BeginGet();
+			for (auto& Vertex : OutSection.ProcVertexBuffer)
+			{
+				int HitCount = 0;
+				int TotalRays = 0;
+				FRandomStream Stream(0 * (Vertex.Position.X * 29 + Vertex.Position.Y * 284736 + Vertex.Position.Z * 49994837 + ChunkPosition.X * 292 + ChunkPosition.Y * 2929 + ChunkPosition.Z * 29938 + Step() * 282));
+
+				while (TotalRays < RayCount)
+				{
+					const float X = Stream.FRandRange(-1, 1);
+					const float Y = Stream.FRandRange(-1, 1);
+					const float Z = Stream.FRandRange(-1, 1);
+
+					if (X * X + Y * Y + Z * Z > 1)
+					{
+						// Ignore ones outside unit
+						continue;
+					}
+
+					if (FVector::DotProduct(FVector(X, Y, Z), Vertex.Normal) < 0)
+					{
+						// Ignore "down" directions
+						continue;
+					}
+
+					const FVector Direction = FVector(X, Y, Z).GetSafeNormal();
+
+					TotalRays++;
+					for (int i = 1; i < RayMaxDistance; i++)
+					{
+						const FVector CurrentPosition = Vertex.Position + Direction * i * Step();
+						float Value;
+						FVoxelMaterial Dummy;
+						GetValueAndMaterial(FMath::RoundToInt(CurrentPosition.X), FMath::RoundToInt(CurrentPosition.Y), FMath::RoundToInt(CurrentPosition.Z), Value, Dummy);
+
+						if (Value <= 0)
+						{
+							HitCount++;
+							break;
+						}
+					}
+				}
+				Vertex.Color.A = FMath::Clamp<uint8>(255.f * (1.f - HitCount / (float)TotalRays), 0, 255);
+			}
+			Data->EndGet();
+		}
+	}
 }
 
 int FVoxelPolygonizer::Size()
@@ -764,8 +821,12 @@ int FVoxelPolygonizer::Step()
 void FVoxelPolygonizer::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	//SCOPE_CYCLE_COUNTER(STAT_GETVALUEANDCOLOR);
-	if ((X % Step() == 0) && (Y % Step() == 0) && (Z % Step() == 0))
+	if ((X % Step() == 0) && (Y % Step() == 0) && (Z % Step() == 0) && (-1 <= X && X < 17 * Step()) && (-1 <= Y && Y < 17 * Step()) && (-1 <= Z && Z < 17 * Step()))
 	{
+		check(0 <= (X / Step() + 1) && (X / Step() + 1) < 18);
+		check(0 <= (Y / Step() + 1) && (Y / Step() + 1) < 18);
+		check(0 <= (Z / Step() + 1) && (Z / Step() + 1) < 18);
+
 		OutValue = CachedValues[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
 		OutMaterial = CachedMaterials[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
 	}
@@ -877,12 +938,12 @@ int FVoxelPolygonizer::LoadVertex2D(TransitionDirection Direction, int X, int Y,
 	return Cache2D[Direction][X - XIsDifferent][Y - YIsDifferent][EdgeIndex];
 }
 
-void FVoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateX(int MinX, int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
 	while (MaxX - MinX != 1)
 	{
 		check((MaxX + MinX) % 2 == 0);
-		int MiddleX = (MaxX + MinX) / 2;
+		const int MiddleX = (MaxX + MinX) / 2;
 
 		float ValueAtA;
 		FVoxelMaterial MaterialAtA;
@@ -895,12 +956,12 @@ void FVoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
-			return InterpolateX(MiddleX, MaxX, Y, Z, OutVector, OutAlpha);
+			MinX = MiddleX;
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateX(MinX, MiddleX, Y, Z, OutVector, OutAlpha);
+			MaxX = MiddleX;
 		}
 	}
 
@@ -911,18 +972,18 @@ void FVoxelPolygonizer::InterpolateX(const int MinX, const int MaxX, const int Y
 	GetValueAndMaterial(MaxX, Y, Z, ValueAtB, MaterialAtB);
 
 	check(ValueAtA - ValueAtB != 0);
-	float t = ValueAtB / (ValueAtB - ValueAtA);
+	const float t = ValueAtB / (ValueAtB - ValueAtA);
 
 	OutVector = t * FVector(MinX, Y, Z) + (1 - t) *  FVector(MaxX, Y, Z);
 	OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 }
 
-void FVoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateY(const int X, int MinY, int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha)
 {
 	while (MaxY - MinY != 1)
 	{
 		check((MaxY + MinY) % 2 == 0);
-		int MiddleY = (MaxY + MinY) / 2;
+		const int MiddleY = (MaxY + MinY) / 2;
 
 		float ValueAtA;
 		FVoxelMaterial MaterialAtA;
@@ -935,12 +996,12 @@ void FVoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
-			return InterpolateY(X, MiddleY, MaxY, Z, OutVector, OutAlpha);
+			MinY = MiddleY;
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateY(X, MinY, MiddleY, Z, OutVector, OutAlpha);
+			MaxY = MiddleY;
 		}
 	}
 
@@ -951,18 +1012,18 @@ void FVoxelPolygonizer::InterpolateY(const int X, const int MinY, const int MaxY
 	GetValueAndMaterial(X, MaxY, Z, ValueAtB, MaterialAtB);
 
 	check(ValueAtA - ValueAtB != 0);
-	float t = ValueAtB / (ValueAtB - ValueAtA);
+	const float t = ValueAtB / (ValueAtB - ValueAtA);
 
 	OutVector = t * FVector(X, MinY, Z) + (1 - t) *  FVector(X, MaxY, Z);
 	OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 }
 
-void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, const int MaxZ, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, int MinZ, int MaxZ, FVector& OutVector, uint8& OutAlpha)
 {
 	while (MaxZ - MinZ != 1)
 	{
 		check((MaxZ + MinZ) % 2 == 0);
-		int MiddleZ = (MaxZ + MinZ) / 2;
+		const int MiddleZ = (MaxZ + MinZ) / 2;
 
 		float ValueAtA;
 		FVoxelMaterial MaterialAtA;
@@ -975,12 +1036,12 @@ void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, c
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
-			return InterpolateZ(X, Y, MiddleZ, MaxZ, OutVector, OutAlpha);
+			MinZ = MiddleZ;
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateZ(X, Y, MinZ, MiddleZ, OutVector, OutAlpha);
+			MaxZ = MiddleZ;
 		}
 	}
 
@@ -991,7 +1052,7 @@ void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, c
 	GetValueAndMaterial(X, Y, MaxZ, ValueAtB, MaterialAtB);
 
 	check(ValueAtA - ValueAtB != 0);
-	float t = ValueAtB / (ValueAtB - ValueAtA);
+	const float t = ValueAtB / (ValueAtB - ValueAtA);
 
 	OutVector = t * FVector(X, Y, MinZ) + (1 - t) *  FVector(X, Y, MaxZ);
 	OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
@@ -999,7 +1060,7 @@ void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, const int MinZ, c
 
 
 
-void FVoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, int MinX, int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha)
 {
 	while (MaxX - MinX != 1)
 	{
@@ -1017,12 +1078,12 @@ void FVoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int 
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
-			return InterpolateX2D(Direction, MiddleX, MaxX, Y, OutVector, OutAlpha);
+			MinX = MiddleX;
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateX2D(Direction, MinX, MiddleX, Y, OutVector, OutAlpha);
+			MaxX = MiddleX;
 		}
 	}
 
@@ -1033,7 +1094,7 @@ void FVoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int 
 	Get2DValueAndMaterial(Direction, MaxX, Y, ValueAtB, MaterialAtB);
 
 	check(ValueAtA - ValueAtB != 0);
-	float t = ValueAtB / (ValueAtB - ValueAtA);
+	const float t = ValueAtB / (ValueAtB - ValueAtA);
 
 	int GMinX, GMaxX, GMinY, GMaxY, GMinZ, GMaxZ;
 	Local2DToGlobal(Size(), Direction, MinX, Y, 0, GMinX, GMinY, GMinZ);
@@ -1043,12 +1104,12 @@ void FVoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, const int 
 	OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 }
 
-void FVoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int X, const int MinY, const int MaxY, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, int X, int MinY, int MaxY, FVector& OutVector, uint8& OutAlpha)
 {
 	while (MaxY - MinY != 1)
 	{
 		check((MaxY + MinY) % 2 == 0);
-		int MiddleY = (MaxY + MinY) / 2;
+		const int MiddleY = (MaxY + MinY) / 2;
 
 		float ValueAtA;
 		FVoxelMaterial MaterialAtA;
@@ -1061,12 +1122,12 @@ void FVoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int 
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
 			// If min and middle have same sign
-			return InterpolateY2D(Direction, X, MiddleY, MaxY, OutVector, OutAlpha);
+			MinY = MiddleY;
 		}
 		else
 		{
 			// If max and middle have same sign
-			return InterpolateY2D(Direction, X, MinY, MiddleY, OutVector, OutAlpha);
+			MaxY = MiddleY;
 		}
 	}
 
@@ -1077,7 +1138,7 @@ void FVoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, const int 
 	Get2DValueAndMaterial(Direction, X, MaxY, ValueAtB, MaterialAtB);
 
 	check(ValueAtA - ValueAtB != 0);
-	float t = ValueAtB / (ValueAtB - ValueAtA);
+	const float t = ValueAtB / (ValueAtB - ValueAtA);
 
 	int GMinX, GMaxX, GMinY, GMaxY, GMinZ, GMaxZ;
 	Local2DToGlobal(Size(), Direction, X, MinY, 0, GMinX, GMinY, GMinZ);

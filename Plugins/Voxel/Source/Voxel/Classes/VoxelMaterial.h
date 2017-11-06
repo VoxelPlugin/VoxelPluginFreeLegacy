@@ -32,9 +32,9 @@ public:
 
 	}
 
-	FORCEINLINE FColor ToFColor() const
+	FORCEINLINE FColor ToFColor(uint8 AmbientOcclusion = 255) const
 	{
-		return FColor(Index1, Index2, Alpha, 0);
+		return FColor(Index1, Index2, Alpha, AmbientOcclusion);
 	}
 
 	FORCEINLINE uint8 GetMax() const

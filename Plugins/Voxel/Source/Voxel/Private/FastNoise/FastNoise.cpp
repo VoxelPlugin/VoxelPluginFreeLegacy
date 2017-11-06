@@ -1,4 +1,5 @@
 #include "VoxelPrivatePCH.h"
+#pragma warning( disable : 4701 )
 
 // FastNoise.cpp
 //
@@ -471,9 +472,9 @@ FN_DECIMAL FastNoise::GetNoise(FN_DECIMAL x, FN_DECIMAL y) const
 		{
 		case FBM:
 			return SingleCubicFractalFBM(x, y);
-		case Billow:	 
+		case Billow:
 			return SingleCubicFractalBillow(x, y);
-		case RigidMulti: 
+		case RigidMulti:
 			return SingleCubicFractalRigidMulti(x, y);
 		}
 	}
@@ -1128,12 +1129,12 @@ FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIM
 	FN_DECIMAL x1 = x0 - i1 + G3;
 	FN_DECIMAL y1 = y0 - j1 + G3;
 	FN_DECIMAL z1 = z0 - k1 + G3;
-	FN_DECIMAL x2 = x0 - i2 + 2*G3;
-	FN_DECIMAL y2 = y0 - j2 + 2*G3;
-	FN_DECIMAL z2 = z0 - k2 + 2*G3;
-	FN_DECIMAL x3 = x0 - 1 + 3*G3;
-	FN_DECIMAL y3 = y0 - 1 + 3*G3;
-	FN_DECIMAL z3 = z0 - 1 + 3*G3;
+	FN_DECIMAL x2 = x0 - i2 + 2 * G3;
+	FN_DECIMAL y2 = y0 - j2 + 2 * G3;
+	FN_DECIMAL z2 = z0 - k2 + 2 * G3;
+	FN_DECIMAL x3 = x0 - 1 + 3 * G3;
+	FN_DECIMAL y3 = y0 - 1 + 3 * G3;
+	FN_DECIMAL z3 = z0 - 1 + 3 * G3;
 
 	FN_DECIMAL n0, n1, n2, n3;
 
@@ -1299,8 +1300,8 @@ FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIM
 
 	FN_DECIMAL x1 = x0 - (FN_DECIMAL)i1 + G2;
 	FN_DECIMAL y1 = y0 - (FN_DECIMAL)j1 + G2;
-	FN_DECIMAL x2 = x0 - 1 + 2*G2;
-	FN_DECIMAL y2 = y0 - 1 + 2*G2;
+	FN_DECIMAL x2 = x0 - 1 + 2 * G2;
+	FN_DECIMAL y2 = y0 - 1 + 2 * G2;
 
 	FN_DECIMAL n0, n1, n2;
 
@@ -1394,46 +1395,51 @@ FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIM
 	FN_DECIMAL y1 = y0 - j1 + G4;
 	FN_DECIMAL z1 = z0 - k1 + G4;
 	FN_DECIMAL w1 = w0 - l1 + G4;
-	FN_DECIMAL x2 = x0 - i2 + 2*G4;
-	FN_DECIMAL y2 = y0 - j2 + 2*G4;
-	FN_DECIMAL z2 = z0 - k2 + 2*G4;
-	FN_DECIMAL w2 = w0 - l2 + 2*G4;
-	FN_DECIMAL x3 = x0 - i3 + 3*G4;
-	FN_DECIMAL y3 = y0 - j3 + 3*G4;
-	FN_DECIMAL z3 = z0 - k3 + 3*G4;
-	FN_DECIMAL w3 = w0 - l3 + 3*G4;
-	FN_DECIMAL x4 = x0 - 1 + 4*G4;
-	FN_DECIMAL y4 = y0 - 1 + 4*G4;
-	FN_DECIMAL z4 = z0 - 1 + 4*G4;
-	FN_DECIMAL w4 = w0 - 1 + 4*G4;
+	FN_DECIMAL x2 = x0 - i2 + 2 * G4;
+	FN_DECIMAL y2 = y0 - j2 + 2 * G4;
+	FN_DECIMAL z2 = z0 - k2 + 2 * G4;
+	FN_DECIMAL w2 = w0 - l2 + 2 * G4;
+	FN_DECIMAL x3 = x0 - i3 + 3 * G4;
+	FN_DECIMAL y3 = y0 - j3 + 3 * G4;
+	FN_DECIMAL z3 = z0 - k3 + 3 * G4;
+	FN_DECIMAL w3 = w0 - l3 + 3 * G4;
+	FN_DECIMAL x4 = x0 - 1 + 4 * G4;
+	FN_DECIMAL y4 = y0 - 1 + 4 * G4;
+	FN_DECIMAL z4 = z0 - 1 + 4 * G4;
+	FN_DECIMAL w4 = w0 - 1 + 4 * G4;
 
 	t = FN_DECIMAL(0.6) - x0*x0 - y0*y0 - z0*z0 - w0*w0;
 	if (t < 0) n0 = 0;
-	else {
+	else
+	{
 		t *= t;
 		n0 = t * t * GradCoord4D(offset, i, j, k, l, x0, y0, z0, w0);
 	}
 	t = FN_DECIMAL(0.6) - x1*x1 - y1*y1 - z1*z1 - w1*w1;
 	if (t < 0) n1 = 0;
-	else {
+	else
+	{
 		t *= t;
 		n1 = t * t * GradCoord4D(offset, i + i1, j + j1, k + k1, l + l1, x1, y1, z1, w1);
 	}
 	t = FN_DECIMAL(0.6) - x2*x2 - y2*y2 - z2*z2 - w2*w2;
 	if (t < 0) n2 = 0;
-	else {
+	else
+	{
 		t *= t;
 		n2 = t * t * GradCoord4D(offset, i + i2, j + j2, k + k2, l + l2, x2, y2, z2, w2);
 	}
 	t = FN_DECIMAL(0.6) - x3*x3 - y3*y3 - z3*z3 - w3*w3;
 	if (t < 0) n3 = 0;
-	else {
+	else
+	{
 		t *= t;
 		n3 = t * t * GradCoord4D(offset, i + i3, j + j3, k + k3, l + l3, x3, y3, z3, w3);
 	}
 	t = FN_DECIMAL(0.6) - x4*x4 - y4*y4 - z4*z4 - w4*w4;
 	if (t < 0) n4 = 0;
-	else {
+	else
+	{
 		t *= t;
 		n4 = t * t * GradCoord4D(offset, i + 1, j + 1, k + 1, l + 1, x4, y4, z4, w4);
 	}
@@ -1452,9 +1458,9 @@ FN_DECIMAL FastNoise::GetCubicFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) 
 	{
 	case FBM:
 		return SingleCubicFractalFBM(x, y, z);
-	case Billow:	 
+	case Billow:
 		return SingleCubicFractalBillow(x, y, z);
-	case RigidMulti: 
+	case RigidMulti:
 		return SingleCubicFractalRigidMulti(x, y, z);
 	default:
 		return 0;
@@ -1547,29 +1553,29 @@ FN_DECIMAL FastNoise::SingleCubic(unsigned char offset, FN_DECIMAL x, FN_DECIMAL
 
 	return CubicLerp(
 		CubicLerp(
-		CubicLerp(ValCoord3DFast(offset, x0, y0, z0), ValCoord3DFast(offset, x1, y0, z0), ValCoord3DFast(offset, x2, y0, z0), ValCoord3DFast(offset, x3, y0, z0), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y1, z0), ValCoord3DFast(offset, x1, y1, z0), ValCoord3DFast(offset, x2, y1, z0), ValCoord3DFast(offset, x3, y1, z0), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y2, z0), ValCoord3DFast(offset, x1, y2, z0), ValCoord3DFast(offset, x2, y2, z0), ValCoord3DFast(offset, x3, y2, z0), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y3, z0), ValCoord3DFast(offset, x1, y3, z0), ValCoord3DFast(offset, x2, y3, z0), ValCoord3DFast(offset, x3, y3, z0), xs),
-		ys),
+			CubicLerp(ValCoord3DFast(offset, x0, y0, z0), ValCoord3DFast(offset, x1, y0, z0), ValCoord3DFast(offset, x2, y0, z0), ValCoord3DFast(offset, x3, y0, z0), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y1, z0), ValCoord3DFast(offset, x1, y1, z0), ValCoord3DFast(offset, x2, y1, z0), ValCoord3DFast(offset, x3, y1, z0), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y2, z0), ValCoord3DFast(offset, x1, y2, z0), ValCoord3DFast(offset, x2, y2, z0), ValCoord3DFast(offset, x3, y2, z0), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y3, z0), ValCoord3DFast(offset, x1, y3, z0), ValCoord3DFast(offset, x2, y3, z0), ValCoord3DFast(offset, x3, y3, z0), xs),
+			ys),
 		CubicLerp(
-		CubicLerp(ValCoord3DFast(offset, x0, y0, z1), ValCoord3DFast(offset, x1, y0, z1), ValCoord3DFast(offset, x2, y0, z1), ValCoord3DFast(offset, x3, y0, z1), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y1, z1), ValCoord3DFast(offset, x1, y1, z1), ValCoord3DFast(offset, x2, y1, z1), ValCoord3DFast(offset, x3, y1, z1), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y2, z1), ValCoord3DFast(offset, x1, y2, z1), ValCoord3DFast(offset, x2, y2, z1), ValCoord3DFast(offset, x3, y2, z1), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y3, z1), ValCoord3DFast(offset, x1, y3, z1), ValCoord3DFast(offset, x2, y3, z1), ValCoord3DFast(offset, x3, y3, z1), xs),
-		ys),
+			CubicLerp(ValCoord3DFast(offset, x0, y0, z1), ValCoord3DFast(offset, x1, y0, z1), ValCoord3DFast(offset, x2, y0, z1), ValCoord3DFast(offset, x3, y0, z1), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y1, z1), ValCoord3DFast(offset, x1, y1, z1), ValCoord3DFast(offset, x2, y1, z1), ValCoord3DFast(offset, x3, y1, z1), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y2, z1), ValCoord3DFast(offset, x1, y2, z1), ValCoord3DFast(offset, x2, y2, z1), ValCoord3DFast(offset, x3, y2, z1), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y3, z1), ValCoord3DFast(offset, x1, y3, z1), ValCoord3DFast(offset, x2, y3, z1), ValCoord3DFast(offset, x3, y3, z1), xs),
+			ys),
 		CubicLerp(
-		CubicLerp(ValCoord3DFast(offset, x0, y0, z2), ValCoord3DFast(offset, x1, y0, z2), ValCoord3DFast(offset, x2, y0, z2), ValCoord3DFast(offset, x3, y0, z2), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y1, z2), ValCoord3DFast(offset, x1, y1, z2), ValCoord3DFast(offset, x2, y1, z2), ValCoord3DFast(offset, x3, y1, z2), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y2, z2), ValCoord3DFast(offset, x1, y2, z2), ValCoord3DFast(offset, x2, y2, z2), ValCoord3DFast(offset, x3, y2, z2), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y3, z2), ValCoord3DFast(offset, x1, y3, z2), ValCoord3DFast(offset, x2, y3, z2), ValCoord3DFast(offset, x3, y3, z2), xs),
-		ys),
+			CubicLerp(ValCoord3DFast(offset, x0, y0, z2), ValCoord3DFast(offset, x1, y0, z2), ValCoord3DFast(offset, x2, y0, z2), ValCoord3DFast(offset, x3, y0, z2), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y1, z2), ValCoord3DFast(offset, x1, y1, z2), ValCoord3DFast(offset, x2, y1, z2), ValCoord3DFast(offset, x3, y1, z2), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y2, z2), ValCoord3DFast(offset, x1, y2, z2), ValCoord3DFast(offset, x2, y2, z2), ValCoord3DFast(offset, x3, y2, z2), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y3, z2), ValCoord3DFast(offset, x1, y3, z2), ValCoord3DFast(offset, x2, y3, z2), ValCoord3DFast(offset, x3, y3, z2), xs),
+			ys),
 		CubicLerp(
-		CubicLerp(ValCoord3DFast(offset, x0, y0, z3), ValCoord3DFast(offset, x1, y0, z3), ValCoord3DFast(offset, x2, y0, z3), ValCoord3DFast(offset, x3, y0, z3), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y1, z3), ValCoord3DFast(offset, x1, y1, z3), ValCoord3DFast(offset, x2, y1, z3), ValCoord3DFast(offset, x3, y1, z3), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y2, z3), ValCoord3DFast(offset, x1, y2, z3), ValCoord3DFast(offset, x2, y2, z3), ValCoord3DFast(offset, x3, y2, z3), xs),
-		CubicLerp(ValCoord3DFast(offset, x0, y3, z3), ValCoord3DFast(offset, x1, y3, z3), ValCoord3DFast(offset, x2, y3, z3), ValCoord3DFast(offset, x3, y3, z3), xs),
-		ys),
+			CubicLerp(ValCoord3DFast(offset, x0, y0, z3), ValCoord3DFast(offset, x1, y0, z3), ValCoord3DFast(offset, x2, y0, z3), ValCoord3DFast(offset, x3, y0, z3), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y1, z3), ValCoord3DFast(offset, x1, y1, z3), ValCoord3DFast(offset, x2, y1, z3), ValCoord3DFast(offset, x3, y1, z3), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y2, z3), ValCoord3DFast(offset, x1, y2, z3), ValCoord3DFast(offset, x2, y2, z3), ValCoord3DFast(offset, x3, y2, z3), xs),
+			CubicLerp(ValCoord3DFast(offset, x0, y3, z3), ValCoord3DFast(offset, x1, y3, z3), ValCoord3DFast(offset, x2, y3, z3), ValCoord3DFast(offset, x3, y3, z3), xs),
+			ys),
 		zs) * CUBIC_3D_BOUNDING;
 }
 
@@ -1583,9 +1589,9 @@ FN_DECIMAL FastNoise::GetCubicFractal(FN_DECIMAL x, FN_DECIMAL y) const
 	{
 	case FBM:
 		return SingleCubicFractalFBM(x, y);
-	case Billow:	 
+	case Billow:
 		return SingleCubicFractalBillow(x, y);
-	case RigidMulti: 
+	case RigidMulti:
 		return SingleCubicFractalRigidMulti(x, y);
 	default:
 		return 0;
@@ -1815,7 +1821,7 @@ FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL
 	int yr = FastRound(y);
 	int zr = FastRound(z);
 
-	FN_DECIMAL distance[FN_CELLULAR_INDEX_MAX+1] = { 999999,999999,999999,999999 };
+	FN_DECIMAL distance[FN_CELLULAR_INDEX_MAX + 1] = { 999999,999999,999999,999999 };
 
 	switch (m_cellularDistanceFunction)
 	{
@@ -1836,7 +1842,7 @@ FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL
 
 					for (int i = m_cellularDistanceIndex1; i > 0; i--)
 						distance[i] = fmax(fmin(distance[i], newDistance), distance[i - 1]);
-					distance[0] = fmin(distance[0], newDistance); 
+					distance[0] = fmin(distance[0], newDistance);
 				}
 			}
 		}
@@ -1942,7 +1948,7 @@ FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y) const
 
 				FN_DECIMAL vecX = xi - x + CELL_2D_X[lutPos] * m_cellularJitter;
 				FN_DECIMAL vecY = yi - y + CELL_2D_Y[lutPos] * m_cellularJitter;
-															
+
 				FN_DECIMAL newDistance = vecX * vecX + vecY * vecY;
 
 				if (newDistance < distance)
@@ -2256,3 +2262,5 @@ void FastNoise::SingleGradientPerturb(unsigned char offset, FN_DECIMAL warpAmp, 
 	x += Lerp(lx0x, lx1x, ys) * warpAmp;
 	y += Lerp(ly0x, ly1x, ys) * warpAmp;
 }
+
+#pragma warning( default : 4701 )
