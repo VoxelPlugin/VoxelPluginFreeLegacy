@@ -211,10 +211,13 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		float LODUpdateFPS;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"), AdvancedDisplay)
 		int MeshThreadCount;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"), AdvancedDisplay)
+		int HighPriorityMeshThreadCount;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"), AdvancedDisplay)
 		int FoliageThreadCount;
 
 

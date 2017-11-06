@@ -92,7 +92,7 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 		{
 			CreateBuilder();
 			MeshBuilder = new FAsyncTask<FAsyncPolygonizerTask>(Builder, this);
-			MeshBuilder->StartBackgroundTask(Render->MeshThreadPool);
+			MeshBuilder->StartBackgroundTask(CurrentOctree->Depth == 0 ? Render->HighPriorityMeshThreadPool : Render->MeshThreadPool);
 
 			return true;
 		}
