@@ -60,6 +60,9 @@ public:
 	FORCEINLINE bool GetComputeTransitions() const;
 	FORCEINLINE bool GetComputeCollisions() const;
 	FORCEINLINE float GetDeletionDelay() const;
+	FORCEINLINE bool GetEnableAmbientOcclusion() const;
+	FORCEINLINE int GetRayMaxDistance() const;
+	FORCEINLINE int GetRayCount() const;
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -168,20 +171,6 @@ protected:
 #endif
 
 private:
-	// TODO: sort (advanced)
-	// Time to wait before deleting old chunks to avoid holes
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", UIMin = "0"))
-		float DeletionDelay;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
-		bool bComputeTransitions;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-		float FoliageFPS;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-		float LODUpdateFPS;
-
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 		UMaterialInterface* VoxelMaterial;
 
@@ -190,11 +179,37 @@ private:
 		int NewDepth;
 
 	// Size of a voxel in cm
-	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay, meta = (DisplayName = "Voxel Size"))
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Voxel Size"))
 		float NewVoxelSize;
+
+	// Generator for this world
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+		TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"))
 		int32 Seed;
+
+	UPROPERTY(EditAnywhere, Category = "Ambient Occlusion")
+		bool bEnableAmbientOcclusion;
+
+	UPROPERTY(EditAnywhere, Category = "Ambient Occlusion", meta = (EditCondition = "bEnableAmbientOcclusion"))
+		int RayCount;
+
+	UPROPERTY(EditAnywhere, Category = "Ambient Occlusion", meta = (EditCondition = "bEnableAmbientOcclusion"))
+		int RayMaxDistance;
+
+	// Time to wait before deleting old chunks to avoid holes
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", UIMin = "0"), AdvancedDisplay)
+		float DeletionDelay;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+		bool bComputeTransitions;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+		float FoliageFPS;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+		float LODUpdateFPS;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		int MeshThreadCount;
@@ -202,9 +217,6 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		int FoliageThreadCount;
 
-	// Generator for this world
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-		TSubclassOf<UVoxelWorldGenerator> WorldGenerator;
 
 	// Instanced world generator
 	UPROPERTY()

@@ -11,7 +11,7 @@ struct FVoxelMaterial;
 class FVoxelPolygonizer
 {
 public:
-	FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions);
+	FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount);
 
 	void CreateSection(FProcMeshSection& OutSection);
 
@@ -20,8 +20,13 @@ private:
 	FVoxelData* const Data;
 	FIntVector const ChunkPosition;
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
-	bool const bComputeTransitions;
-	bool const bComputeCollisions;
+
+	const bool bComputeTransitions;
+	const bool bComputeCollisions;
+	const bool bEnableAmbientOcclusion;
+
+	const int RayMaxDistance;
+	const int RayCount;
 
 
 	FValueOctree* LastOctree;
@@ -53,12 +58,12 @@ private:
 	FORCEINLINE void SaveVertex2D(TransitionDirection Direction, int X, int Y, short EdgeIndex, int Index);
 	FORCEINLINE int LoadVertex2D(TransitionDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex);
 
-	void InterpolateX(const int MinX, const int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha);
-	void InterpolateY(const int X, const int MinY, const int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha);
-	void InterpolateZ(const int X, const int Y, const int MinZ, const int MaxZ, FVector& OutVector, uint8& OutAlpha);
+	void InterpolateX(int MinX, int MaxX, const int Y, const int Z, FVector& OutVector, uint8& OutAlpha);
+	void InterpolateY(const int X, int MinY, int MaxY, const int Z, FVector& OutVector, uint8& OutAlpha);
+	void InterpolateZ(const int X, const int Y, int MinZ, int MaxZ, FVector& OutVector, uint8& OutAlpha);
 
-	void InterpolateX2D(TransitionDirection Direction, const int MinX, const int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha);
-	void InterpolateY2D(TransitionDirection Direction, const int X, const int MinY, const int MaxY, FVector& OutVector, uint8& OutAlpha);
+	void InterpolateX2D(TransitionDirection Direction, int MinX, int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha);
+	void InterpolateY2D(TransitionDirection Direction, const int X, int MinY, int MaxY, FVector& OutVector, uint8& OutAlpha);
 
 	FORCEINLINE void GlobalToLocal2D(int Size, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ);
 	FORCEINLINE void Local2DToGlobal(int Size, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ);
