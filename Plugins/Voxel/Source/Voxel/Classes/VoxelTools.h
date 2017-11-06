@@ -67,49 +67,49 @@ public:
 	/**
 	 * Add or remove continuously
 	 * @param	World			Voxel world
-	 * @param	Position		Position in world space
+	 * @param	StartPosition	Start Position in world space
 	 * @param	Direction		Direction of the projection in world space
 	 * @param	Radius			Radius in world space
 	 * @param	Strength		Speed of modification
 	 * @param	bAdd			Add or remove?
-	 * @param	MaxDistance		Max distance to modify
+	 * @param	MaxDistance		Max distance for raycasts
 	 * @param	Precision		How close are raycasts (relative to VoxelSize)
 	 * @param	bAsync			Update async
 	 * @param	MinValue		New values are clamped between MinValue and MaxValue
 	 * @param	MaxValue		New values are clamped between MinValue and MaxValue
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
-		static void SetValueProjection(AVoxelWorld* World, const FVector Position, const FVector Direction, const float Radius, const float Strength, const bool bAdd, const float MaxDistance = 1000,
+		static void SetValueProjection(AVoxelWorld* World, const FVector StartPosition, const FVector Direction, const float Radius, const float Strength, const bool bAdd, const float MaxDistance = 10000,
 			const float Precision = 0.25f, const bool bAsync = false, const bool bShowRaycasts = false, const bool bShowHitPoints = true, const bool bShowModifiedVoxels = false, const float MinValue = -1, const float MaxValue = 1);
 
 	/**
 	 * Set color on surface
 	 * @param	World			Voxel world
-	 * @param	Position		Position in world space
+	 * @param	Start Position	Start Position in world space
 	 * @param	Direction		Direction of the projection in world space
 	 * @param	Radius			Radius in world space
 	 * @param	Color			Color to set
 	 * @param	FadeDistance	Size in world space of external band where color is interpolated with existing one
-	 * @param	MaxDistance		Max distance to modify
+	 * @param	MaxDistance		Max distance for raycasts
 	 * @param	bAsync			Update async
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
-		static void SetMaterialProjection(AVoxelWorld* World, FVector Position, const FVector Direction, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1 = true, const float FadeDistance = 3,
-			const float MaxDistance = 1000, const float Precision = 0.25f, const bool bAsync = false, const bool bShowRaycasts = false, const bool bShowHitPoints = true, const bool bShowModifiedVoxels = false);
+		static void SetMaterialProjection(AVoxelWorld* World, FVector StartPosition, const FVector Direction, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1 = true, const float FadeDistance = 3,
+			const float MaxDistance = 10000, const float Precision = 0.25f, const bool bAsync = false, const bool bShowRaycasts = false, const bool bShowHitPoints = true, const bool bShowModifiedVoxels = false);
 	/**
 	 * Set color on surface
 	 * @param	World			Voxel world
-	 * @param	Position		Position in world space
+	 * @param	StartPosition	Start Position in world space
 	 * @param	Direction		Direction to align to in world space
 	 * @param	Radius			Radius
 	 * @param	Speed			Speed of changes
-	 * @param	MaxDistance		Max distance to modify
+	 * @param	MaxDistance		Max distance for raycasts
 	 * @param	bAsync			Update async
 	 * @param	MinValue		New values are clamped between MinValue and MaxValue
 	 * @param	MaxValue		New values are clamped between MinValue and MaxValue
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
-		static void SmoothValue(AVoxelWorld* World, FVector Position, FVector Direction, float Radius, float Speed = 0.01f, float MaxDistance = 1000,
+		static void SmoothValue(AVoxelWorld* World, FVector StartPosition, FVector Direction, float Radius, float Speed = 0.01f, float MaxDistance = 10000,
 			bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true, float MinValue = -1, float MaxValue = 1);
 
 	/**
@@ -130,13 +130,12 @@ public:
 	 * @param	MaxDistance			Raycast distance limit
 	 * @param	PlayerController	To get world
 	 * @return	World				Voxel world
-	 * @return	Position			Position in world space of the hit
-	 * @return	Normal				Normal of the hit (given by the mesh)
-	 * @return	CameraDirection		Direction of the raycast (useful for smooth)
+	 * @return	HitPosition			Position in world space of the hit
+	 * @return	HitNormal			Normal of the hit (given by the mesh)
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", Meta = (ExpandEnumAsExecs = "Branches"))
 		static void GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController,
-			AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches);
+			AVoxelWorld*& World, FVector& HitPosition, FVector& HitNormal, EBlueprintSuccess& Branches);
 
 	/**
 	 * Get mouse world position and direction

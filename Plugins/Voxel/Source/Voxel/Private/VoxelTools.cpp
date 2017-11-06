@@ -194,10 +194,10 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 }
 
 
-void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector Position, const FVector Direction, const float Radius, const float MaxDistance, const float Precision,
+void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector StartPosition, const FVector Direction, const float Radius, const float MaxDistance, const float Precision,
 	const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, std::forward_list<TTuple<FIntVector, float>>& OutModifiedPositionsAndDistances)
 {
-	const FVector ToolPosition = Position + Direction * MaxDistance / 2;
+	const FVector ToolPosition = StartPosition;
 
 	/**
 	* Create a 2D basis from (Tangent, Bitangent)
@@ -230,7 +230,7 @@ void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector Position
 				FHitResult Hit;
 				// Use 2D basis
 				FVector Start = ToolPosition + (Tangent * X + Bitangent * Y);
-				FVector End = Start - Direction * MaxDistance;
+				FVector End = Start + Direction * MaxDistance;
 				if (bShowRaycasts)
 				{
 					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
@@ -259,7 +259,7 @@ void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector Position
 	}
 }
 
-void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector Position, const FVector Direction, const float Radius, const float Strength, const bool bAdd,
+void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector StartPosition, const FVector Direction, const float Radius, const float Strength, const bool bAdd,
 	const float MaxDistance, const float Precision, const bool bAsync, const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, const float MinValue, const float MaxValue)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetValueProjection);
@@ -271,7 +271,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector Position,
 	}
 
 	std::forward_list<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
-	FindModifiedPositionsForRaycasts(World, Position, Direction, Radius, MaxDistance, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
+	FindModifiedPositionsForRaycasts(World, StartPosition, Direction, Radius, MaxDistance, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
 
 	for (auto Tuple : ModifiedPositionsAndDistances)
 	{
@@ -289,7 +289,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector Position,
 	}
 }
 
-void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector Position, const FVector Direction, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1,
+void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector StartPosition, const FVector Direction, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1,
 	const float FadeDistance, const float MaxDistance, const float Precision, const bool bAsync, const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetMaterialProjection);
@@ -303,7 +303,7 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector Posit
 	const float VoxelDiagonalLength = 1.73205080757f * World->GetVoxelSize();
 
 	std::forward_list<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
-	FindModifiedPositionsForRaycasts(World, Position, Direction, Radius + FadeDistance + 2 * VoxelDiagonalLength, MaxDistance, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
+	FindModifiedPositionsForRaycasts(World, StartPosition, Direction, Radius + FadeDistance + 2 * VoxelDiagonalLength, MaxDistance, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
 
 	for (auto Tuple : ModifiedPositionsAndDistances)
 	{
@@ -350,7 +350,7 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector Posit
 	}
 }
 
-void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Direction, float Radius, float Speed, float MaxDistance,
+void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector StartPosition, FVector Direction, float Radius, float Speed, float MaxDistance,
 	bool bAsync, bool bDebugLines, bool bDebugPoints, float MinValue, float MaxValue)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SmoothValue);
@@ -361,7 +361,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 		return;
 	}
 	check(World);
-	FVector ToolPosition = Position + Direction * MaxDistance / 2;
+	FVector ToolPosition = StartPosition;
 
 	/**
 	* Create a 2D basis from (Tangent, Bitangent)
@@ -395,7 +395,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector Position, FVector Dir
 				FHitResult Hit;
 				// Use precedent basis
 				FVector Start = ToolPosition + (Tangent * x + Bitangent * y) * Scale;
-				FVector End = Start - Direction * MaxDistance;
+				FVector End = Start + Direction * MaxDistance;
 				if (bDebugLines)
 				{
 					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
@@ -544,7 +544,7 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 	delete DecompressedAsset;
 }
 
-void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& Position, FVector& Normal, FVector& CameraDirection, EBlueprintSuccess& Branches)
+void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& HitPosition, FVector& HitNormal, EBlueprintSuccess& Branches)
 {
 	FHitResult HitResult;
 	if (PlayerController->GetWorld()->LineTraceSingleByChannel(HitResult, WorldPosition, WorldPosition + WorldDirection * MaxDistance, ECC_WorldDynamic))
@@ -554,9 +554,8 @@ void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, f
 			World = Cast<AVoxelWorld>(HitResult.Actor.Get());
 			check(World);
 
-			Position = HitResult.ImpactPoint;
-			Normal = HitResult.ImpactNormal;
-			CameraDirection = (HitResult.TraceEnd - HitResult.TraceStart).GetSafeNormal();
+			HitPosition = HitResult.ImpactPoint;
+			HitNormal = HitResult.ImpactNormal;
 			Branches = EBlueprintSuccess::Sucess;
 		}
 		else
