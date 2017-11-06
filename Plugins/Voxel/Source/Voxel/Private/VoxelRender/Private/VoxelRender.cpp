@@ -8,11 +8,12 @@
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
 
-FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 FoliageThreadCount)
+FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 HighPriorityMeshThreadCount, uint32 FoliageThreadCount)
 	: World(World)
 	, ChunksParent(ChunksParent)
 	, Data(Data)
 	, MeshThreadPool(FQueuedThreadPool::Allocate())
+	, HighPriorityMeshThreadPool(FQueuedThreadPool::Allocate())
 	, FoliageThreadPool(FQueuedThreadPool::Allocate())
 	, TimeSinceFoliageUpdate(0)
 	, TimeSinceLODUpdate(0)
@@ -35,6 +36,7 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 	}
 
 	MeshThreadPool->Create(MeshThreadCount, 64 * 1024);
+	HighPriorityMeshThreadPool->Create(HighPriorityMeshThreadCount, 64 * 1024, TPri_AboveNormal);
 	FoliageThreadPool->Create(FoliageThreadCount, 32 * 1024);
 
 	MainOctree = MakeShareable(new FChunkOctree(this, FIntVector::ZeroValue, Data->Depth, FOctree::GetTopIdFromDepth(Data->Depth)));
@@ -337,6 +339,7 @@ int FVoxelRender::GetDepthAt(FIntVector Position) const
 void FVoxelRender::Destroy()
 {
 	MeshThreadPool->Destroy();
+	HighPriorityMeshThreadPool->Destroy();
 	FoliageThreadPool->Destroy();
 
 	for (auto Chunk : ActiveChunks)

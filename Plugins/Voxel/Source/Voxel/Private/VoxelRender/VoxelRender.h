@@ -34,10 +34,11 @@ public:
 	FVoxelData* const Data;
 
 	FQueuedThreadPool* const MeshThreadPool;
+	FQueuedThreadPool* const HighPriorityMeshThreadPool;
 	FQueuedThreadPool* const FoliageThreadPool;
 
 
-	FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 FoliageThreadCount);
+	FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 HighPriorityMeshThreadCount, uint32 FoliageThreadCount);
 	~FVoxelRender();
 
 

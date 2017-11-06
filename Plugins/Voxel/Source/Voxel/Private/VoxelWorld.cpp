@@ -23,6 +23,7 @@ AVoxelWorld::AVoxelWorld()
 	, NewVoxelSize(100)
 	, Seed(100)
 	, MeshThreadCount(4)
+	, HighPriorityMeshThreadCount(4)
 	, FoliageThreadCount(4)
 	, Render(nullptr)
 	, Data(nullptr)
@@ -345,7 +346,7 @@ void AVoxelWorld::CreateWorld()
 	Data = new FVoxelData(Depth, InstancedWorldGenerator);
 
 	// Create Render
-	Render = new FVoxelRender(this, this, Data, MeshThreadCount, FoliageThreadCount);
+	Render = new FVoxelRender(this, this, Data, MeshThreadCount, HighPriorityMeshThreadCount, FoliageThreadCount);
 
 	bIsCreated = true;
 }
