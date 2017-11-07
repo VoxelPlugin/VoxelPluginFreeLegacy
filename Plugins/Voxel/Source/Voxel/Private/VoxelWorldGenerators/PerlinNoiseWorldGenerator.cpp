@@ -12,19 +12,41 @@ UPerlinNoiseWorldGenerator::UPerlinNoiseWorldGenerator() : Noise()
 
 float UPerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {
-	float Density = Z;
+	if (Z < -1000)
+	{
+		return -1;
+	}
+	else if (1000 < Z)
+	{
+		return 1;
+	}
+	else
+	{
+		float Density = Z;
 
-	float x = X;
-	float y = Y;
-	float z = Z;
+		float x = X;
+		float y = Y;
+		float z = Z;
 
-	//Density += 1000 * Noise.GetSimplexFractal(x / 100, y / 100, z / 100);
+		Density += 1000 * Noise.GetSimplexFractal(x / 100, y / 100, z / 100);
 
-	Noise.GradientPerturb(x, y, z);
+		if (Density + 5 < -1)
+		{
+			return -1;
+		}
+		else if (1 < Density - 5)
+		{
+			return 1;
+		}
+		else
+		{
+			Noise.GradientPerturb(x, y, z);
 
-	Density += 5 * Noise.GetSimplexFractal(x, y, z);
+			Density += 5 * Noise.GetSimplexFractal(x, y, z);
 
-	return Density;
+			return FMath::Clamp(Density, -2.f, 2.f) / 2.f;
+		}
+	}
 }
 
 FVoxelMaterial UPerlinNoiseWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
