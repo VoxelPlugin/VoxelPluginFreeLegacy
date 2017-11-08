@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "ProceduralMeshComponent.h"
+#include "VoxelProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 #include "LandscapeGrassType.h"
 #include "VoxelThread.h"
@@ -18,7 +18,7 @@ class FVoxelPolygonizer;
  * Voxel Chunk actor class
  */
 UCLASS()
-class UVoxelChunkComponent : public UProceduralMeshComponent
+class UVoxelChunkComponent : public UVoxelProceduralMeshComponent
 {
 	GENERATED_BODY()
 
@@ -61,7 +61,7 @@ public:
 	/**
 	* Copy Task section to PrimaryMesh section
 	*/
-	void OnMeshComplete(FProcMeshSection& InSection);
+	void OnMeshComplete(FVoxelProcMeshSection& InSection);
 
 	void ApplyNewMesh();
 
@@ -77,7 +77,7 @@ protected:
 private:
 	TArray<UHierarchicalInstancedStaticMeshComponent*> FoliageComponents;
 
-	FProcMeshSection Section;
+	FVoxelProcMeshSection Section;
 
 	FTimerHandle DeleteTimer;
 

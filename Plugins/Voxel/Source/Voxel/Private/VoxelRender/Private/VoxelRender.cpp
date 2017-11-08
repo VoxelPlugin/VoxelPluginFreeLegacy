@@ -24,7 +24,7 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 		UVoxelChunkComponent* ChunkComponent = Cast<UVoxelChunkComponent>(Component);
 		if (ChunkComponent)
 		{
-			ChunkComponent->SetProcMeshSection(0, FProcMeshSection());
+			ChunkComponent->SetProcMeshSection(0, FVoxelProcMeshSection());
 			ChunkComponent->SetVoxelMaterial(World->GetVoxelMaterial());
 			InactiveChunks.push_front(ChunkComponent);
 		}

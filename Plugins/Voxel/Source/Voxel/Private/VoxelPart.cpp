@@ -2,7 +2,7 @@
 
 #include "VoxelPrivatePCH.h"
 #include "VoxelPart.h"
-#include "ProceduralMeshComponent.h"
+#include "VoxelProceduralMeshComponent.h"
 #include "VoxelData.h"
 #include "VoxelPolygonizer.h"
 #include "VoxelAutoDisableComponent.h"
@@ -12,7 +12,7 @@
 AVoxelPart::AVoxelPart()
 {
 	// Create primary mesh
-	PrimaryMesh = CreateDefaultSubobject<UProceduralMeshComponent>(FName("PrimaryMesh"));
+	PrimaryMesh = CreateDefaultSubobject<UVoxelProceduralMeshComponent>(FName("PrimaryMesh"));
 	RootComponent = PrimaryMesh;
 
 	PrimaryMesh->SetSimulatePhysics(true);
@@ -52,7 +52,7 @@ void AVoxelPart::Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorl
 				// TODO: Ambient Occlusion
 				TSharedPtr<FVoxelPolygonizer> Render = MakeShareable(new FVoxelPolygonizer(0, Data, Position, ChunkHasHigherRes, false, true, false, 0, 0));
 
-				TSharedPtr<FProcMeshSection> Section = MakeShareable(new FProcMeshSection());
+				TSharedPtr<FVoxelProcMeshSection> Section = MakeShareable(new FVoxelProcMeshSection());
 				Render->CreateSection(*Section);
 
 				TArray<FVector> Vertice;
@@ -60,7 +60,7 @@ void AVoxelPart::Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorl
 
 				int i = 0;
 				Section->SectionLocalBox.Init();
-				for (FProcMeshVertex& ProcVertex : Section->ProcVertexBuffer)
+				for (FVoxelProcMeshVertex& ProcVertex : Section->ProcVertexBuffer)
 				{
 					ProcVertex.Position += (FVector)Position;
 					Section->SectionLocalBox += ProcVertex.Position;

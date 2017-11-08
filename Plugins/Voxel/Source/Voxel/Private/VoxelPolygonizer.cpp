@@ -30,7 +30,7 @@ FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector Chu
 
 }
 
-void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
+void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 {
 	Data->BeginGet();
 	{
@@ -349,9 +349,9 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 			{
 				AllToFiltered[AllVertexIndex] = FilteredVertexIndex;
 
-				FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexIndex];
+				FVoxelProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexIndex];
 				ProcMeshVertex.Position = Vertex;
-				ProcMeshVertex.Tangent = FProcMeshTangent();
+				ProcMeshVertex.Tangent = FVoxelProcMeshTangent();
 				ProcMeshVertex.Color = Color;
 				ProcMeshVertex.UV0 = FVector2D::ZeroVector;
 				OutSection.SectionLocalBox += Vertex;
@@ -418,7 +418,7 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 		// Apply normals
 		for (int32 i = 0; i < FilteredVertexCount; i++)
 		{
-			FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[i];
+			FVoxelProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[i];
 			ProcMeshVertex.Normal = Normals[i].GetSafeNormal();
 			ProcMeshVertex.Position = bComputeTransitions ? GetTranslated(ProcMeshVertex.Position, ProcMeshVertex.Normal) : ProcMeshVertex.Position;
 		}
@@ -603,9 +603,9 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 				Vertices.pop_front();
 				Colors.pop_front();
 
-				FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexCount + TransitionVertexIndex];
+				FVoxelProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexCount + TransitionVertexIndex];
 				ProcMeshVertex.Position = Vertex;
-				ProcMeshVertex.Tangent = FProcMeshTangent();
+				ProcMeshVertex.Tangent = FVoxelProcMeshTangent();
 				ProcMeshVertex.Color = Color;
 				ProcMeshVertex.UV0 = FVector2D::ZeroVector;
 				OutSection.SectionLocalBox += Vertex;
@@ -673,7 +673,7 @@ void FVoxelPolygonizer::CreateSection(FProcMeshSection& OutSection)
 			// Apply normals
 			for (int32 i = 0; i < TransitionsVerticesSize; i++)
 			{
-				FProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[i + FilteredVertexCount];
+				FVoxelProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[i + FilteredVertexCount];
 				ProcMeshVertex.Normal = Normals[i].GetSafeNormal();
 			}
 		}
