@@ -81,6 +81,7 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 			}
 			else
 			{
+				// Chunks at the edges of the world
 				ChunkHasHigherRes[i] = false;
 			}
 		}
@@ -132,6 +133,7 @@ void UVoxelChunkComponent::CheckTransitions()
 
 	if (Render->World->GetComputeTransitions())
 	{
+		const int Depth = Render->GetDepthAt(CurrentOctree->Position);
 		for (int i = 0; i < 6; i++)
 		{
 			auto Direction = (TransitionDirection)i;
@@ -140,7 +142,7 @@ void UVoxelChunkComponent::CheckTransitions()
 			{
 				TSharedPtr<FChunkOctree> ChunkPtr = Chunk.Pin();
 
-				bool bThisHasHigherRes = ChunkPtr->Depth > CurrentOctree->Depth;
+				bool bThisHasHigherRes = ChunkPtr->Depth > Depth;
 
 				check(ChunkPtr->GetVoxelChunk());
 				if (bThisHasHigherRes != ChunkPtr->GetVoxelChunk()->HasChunkHigherRes(InvertTransitionDirection(Direction)))
