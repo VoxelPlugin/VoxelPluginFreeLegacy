@@ -99,11 +99,11 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 					{
 						continue;
 					}
-					for (int LocalX = 0; LocalX < 3 - (CubeX == 5); LocalX++)
+					for (int LocalX = 0; LocalX < 3; LocalX++)
 					{
-						for (int LocalY = 0; LocalY < 3 - (CubeY == 5); LocalY++)
+						for (int LocalY = 0; LocalY < 3; LocalY++)
 						{
-							for (int LocalZ = 0; LocalZ < 3 - (CubeZ == 5); LocalZ++)
+							for (int LocalZ = 0; LocalZ < 3; LocalZ++)
 							{
 								const uint64 ONE = 1;
 								unsigned long CaseCode =
@@ -852,9 +852,9 @@ void FVoxelPolygonizer::Get2DValueAndMaterial(TransitionDirection Direction, int
 void FVoxelPolygonizer::SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index)
 {
 	// +1: normals offset
-	check(0 <= X + 1 && X + 1 < 17);
-	check(0 <= Y + 1 && Y + 1 < 17);
-	check(0 <= Z + 1 && Z + 1 < 17);
+	check(0 <= X + 1 && X + 1 < 18);
+	check(0 <= Y + 1 && Y + 1 < 18);
+	check(0 <= Z + 1 && Z + 1 < 18);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
 	Cache[X + 1][Y + 1][Z + 1][EdgeIndex] = Index;
@@ -867,9 +867,9 @@ int FVoxelPolygonizer::LoadVertex(int X, int Y, int Z, short Direction, short Ed
 	bool ZIsDifferent = static_cast<bool>((Direction & 0x04) != 0);
 
 	// +1: normals offset
-	check(0 <= X - XIsDifferent + 1 && X - XIsDifferent + 1 < 17);
-	check(0 <= Y - YIsDifferent + 1 && Y - YIsDifferent + 1 < 17);
-	check(0 <= Z - ZIsDifferent + 1 && Z - ZIsDifferent + 1 < 17);
+	check(0 <= X - XIsDifferent + 1 && X - XIsDifferent + 1 < 18);
+	check(0 <= Y - YIsDifferent + 1 && Y - YIsDifferent + 1 < 18);
+	check(0 <= Z - ZIsDifferent + 1 && Z - ZIsDifferent + 1 < 18);
 	check(0 <= EdgeIndex && EdgeIndex < 3);
 
 

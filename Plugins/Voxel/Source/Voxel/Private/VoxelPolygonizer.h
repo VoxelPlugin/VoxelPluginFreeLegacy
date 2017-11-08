@@ -38,7 +38,7 @@ private:
 	FVoxelMaterial CachedMaterials[18 * 18 * 18];
 
 	// Cache to get index of already created vertices
-	int Cache[17][17][17][3];
+	int Cache[18][18][18][3];
 
 	int Cache2D[6][17][17][7]; // Edgeindex: 0 -> 8; 1 -> 9; 2 -> Not used; 3-6 -> 3-6
 

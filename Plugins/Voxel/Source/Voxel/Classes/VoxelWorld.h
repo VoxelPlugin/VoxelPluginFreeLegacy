@@ -30,7 +30,7 @@ DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
 /**
  * Voxel World actor class
  */
-UCLASS(HideCategories = ("Hide"))
+UCLASS()
 class VOXEL_API AVoxelWorld : public AActor
 {
 	GENERATED_BODY()
