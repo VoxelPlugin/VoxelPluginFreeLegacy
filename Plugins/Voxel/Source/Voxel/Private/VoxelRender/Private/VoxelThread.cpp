@@ -11,7 +11,7 @@
 #include "VoxelWorldGenerator.h"
 
 
-FAsyncFoliageTask::FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, int GrassVarietyIndex, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk)
+FAsyncFoliageTask::FAsyncFoliageTask(FVoxelProcMeshSection Section, FVoxelGrassVariety GrassVariety, int GrassVarietyIndex, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
 	, GrassVarietyIndex(GrassVarietyIndex)
@@ -221,7 +221,7 @@ FAsyncPolygonizerTask::FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxe
 
 void FAsyncPolygonizerTask::DoWork()
 {
-	FProcMeshSection Section = FProcMeshSection();
+	FVoxelProcMeshSection Section = FVoxelProcMeshSection();
 	Builder->CreateSection(Section);
 
 	Chunk->OnMeshComplete(Section);

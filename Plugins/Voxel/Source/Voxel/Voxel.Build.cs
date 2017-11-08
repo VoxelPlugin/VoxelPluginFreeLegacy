@@ -12,9 +12,9 @@ namespace UnrealBuildTool.Rules
             // Hack to include engine private folder
             // Get the engine path. Ends with "Engine/"
             string engine_path = Path.GetFullPath(BuildConfiguration.RelativeEnginePath);
-            // Now get the base of UE4's modules dir (could also be Developer, Editor, ThirdParty)
-            string srcrt_path = engine_path + "Source/Runtime/";
-            PublicIncludePaths.Add(srcrt_path + "Engine/Private");
+
+            PublicIncludePaths.Add(engine_path + "Source/Runtime/Engine/Private");
+            PublicIncludePaths.Add(engine_path + "Source/ThirdParty/nvtesslib/inc");
 
             PublicIncludePaths.AddRange(
                 new string[] { }
@@ -45,7 +45,10 @@ namespace UnrealBuildTool.Rules
                     "ProceduralMeshComponent",
                     "Landscape",
                     "Sockets",
-                    "Networking"
+                    "Networking",
+                    "RenderCore",
+                    "ShaderCore",
+                    "RHI",
                 }
                 );
 

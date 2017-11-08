@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelGrassType.h"
-#include "ProceduralMeshComponent.h"
+#include "VoxelProceduralMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 
@@ -26,7 +26,7 @@ public:
 	TArray<FClusterNode> ClusterTree;
 	int OutOcclusionLayerNum;
 
-	FAsyncFoliageTask(FProcMeshSection Section, FVoxelGrassVariety GrassVariety, int GrassVarietyIndex, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk);
+	FAsyncFoliageTask(FVoxelProcMeshSection Section, FVoxelGrassVariety GrassVariety, int GrassVarietyIndex, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk);
 
 	void DoWork();
 
@@ -39,7 +39,7 @@ public:
 private:
 	UVoxelChunkComponent* Chunk;
 
-	FProcMeshSection const Section;
+	FVoxelProcMeshSection const Section;
 	int GrassVarietyIndex;
 	uint8 const Material;
 	float const VoxelSize;

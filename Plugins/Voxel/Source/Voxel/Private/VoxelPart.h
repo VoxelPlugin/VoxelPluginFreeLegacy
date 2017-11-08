@@ -6,7 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "VoxelPart.generated.h"
 
-class UProceduralMeshComponent;
+class UVoxelProceduralMeshComponent;
 class UVoxelAutoDisableComponent;
 class FVoxelData;
 class AVoxelWorld;
@@ -24,7 +24,7 @@ public:
 
 private:
 	UPROPERTY(EditAnywhere)
-		UProceduralMeshComponent* PrimaryMesh;
+		UVoxelProceduralMeshComponent* PrimaryMesh;
 
 	UPROPERTY(EditAnywhere)
 		UVoxelAutoDisableComponent* AutoDisableComponent;

@@ -171,7 +171,7 @@ void UVoxelChunkComponent::Delete()
 	DeleteTasks();
 
 	// Reset mesh
-	SetProcMeshSection(0, FProcMeshSection());
+	SetProcMeshSection(0, FVoxelProcMeshSection());
 
 	// Delete foliage
 	for (auto FoliageComponent : FoliageComponents)
@@ -184,7 +184,7 @@ void UVoxelChunkComponent::Delete()
 	CurrentOctree.Reset();
 }
 
-void UVoxelChunkComponent::OnMeshComplete(FProcMeshSection& InSection)
+void UVoxelChunkComponent::OnMeshComplete(FVoxelProcMeshSection& InSection)
 {
 	check(Render);
 	check(MeshBuilder);
