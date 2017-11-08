@@ -82,6 +82,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 	std::forward_list<FVector> Vertices;
 	std::forward_list<FColor> Colors;
 	std::forward_list<int32> Triangles;
+	std::forward_list<TPair<int32, int32>> VerticesWithSamePosition;
 	int VerticesSize = 0;
 	int TrianglesSize = 0;
 
@@ -268,6 +269,12 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 											Vertices.push_front(Q);
 											Colors.push_front(FVoxelMaterial(CellMaterial.Index1, CellMaterial.Index2, Alpha).ToFColor());
 											VerticesSize++;
+
+											if (ForceVertexCreation)
+											{
+												const int CachedIndex = LoadVertex(X, Y, Z, CacheDirection, EdgeIndex);
+												VerticesWithSamePosition.push_front(TPair<int32, int32>(CachedIndex, VertexIndex));
+											}
 										}
 										else
 										{
@@ -277,6 +284,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 										// If own vertex, save it
 										if (CacheDirection & 0x08)
 										{
+											check(!ForceVertexCreation);
 											SaveVertex(X, Y, Z, EdgeIndex, VertexIndex);
 										}
 
@@ -368,6 +376,21 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		FilteredVertexCount = FilteredVertexIndex;
 		OutSection.ProcVertexBuffer.SetNum(FilteredVertexCount);
 
+		// Create bijection for VerticesWithSamePosition
+		TArray<int32> RealNormalIndex;
+		RealNormalIndex.SetNumUninitialized(VerticesSize);
+		for (int i = 0; i < VerticesSize; i++)
+		{
+			RealNormalIndex[i] = i;
+		}
+		for (auto P : VerticesWithSamePosition)
+		{
+			const int32 RealIndex = P.Get<0>();
+			const int32 AddedIndex = P.Get<1>();
+			RealNormalIndex[AddedIndex] = RealIndex;
+			check(RealNormalIndex[RealIndex] == RealIndex);
+		}
+
 		// Normal array to compute normals while iterating over triangles
 		TArray<FVector> Normals;
 		Normals.SetNumZeroed(FilteredVertexCount); // Zeroed because +=
@@ -376,42 +399,55 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		while (!Triangles.empty())
 		{
 			int32 A = Triangles.front();
-			int32 FA = AllToFiltered[VerticesSize - 1 - A]; // Invert triangles because AllVertex and OutSection.ProcVertexBuffer are inverted
 			Triangles.pop_front();
 
 			int32 B = Triangles.front();
-			int32 FB = AllToFiltered[VerticesSize - 1 - B];
 			Triangles.pop_front();
 
 			int32 C = Triangles.front();
-			int32 FC = AllToFiltered[VerticesSize - 1 - C];
 			Triangles.pop_front();
 
-			if (FA != -1 && FB != -1 && FC != -1)
 			{
-				// If all vertex of this triangle are not for normal only, this is a valid triangle
-				OutSection.ProcIndexBuffer[FilteredTriangleIndex] = FC;
-				OutSection.ProcIndexBuffer[FilteredTriangleIndex + 1] = FB;
-				OutSection.ProcIndexBuffer[FilteredTriangleIndex + 2] = FA;
-				FilteredTriangleIndex += 3;
+				// Add trig
+
+				int32 FA = AllToFiltered[VerticesSize - 1 - A]; // Invert triangles because AllVertex and OutSection.ProcVertexBuffer are inverted
+				int32 FB = AllToFiltered[VerticesSize - 1 - B];
+				int32 FC = AllToFiltered[VerticesSize - 1 - C];
+
+				if (FA != -1 && FB != -1 && FC != -1)
+				{
+					// If all vertex of this triangle are not for normal only, this is a valid triangle
+					OutSection.ProcIndexBuffer[FilteredTriangleIndex] = FC;
+					OutSection.ProcIndexBuffer[FilteredTriangleIndex + 1] = FB;
+					OutSection.ProcIndexBuffer[FilteredTriangleIndex + 2] = FA;
+					FilteredTriangleIndex += 3;
+				}
 			}
 
-			FVector PA = AllVertex[VerticesSize - 1 - A];
-			FVector PB = AllVertex[VerticesSize - 1 - B];
-			FVector PC = AllVertex[VerticesSize - 1 - C];
+			{
+				// Compute normals
 
-			FVector Normal = FVector::CrossProduct(PB - PA, PC - PA).GetSafeNormal();
-			if (FA != -1)
-			{
-				Normals[FA] += Normal;
-			}
-			if (FB != -1)
-			{
-				Normals[FB] += Normal;
-			}
-			if (FC != -1)
-			{
-				Normals[FC] += Normal;
+				FVector PA = AllVertex[VerticesSize - 1 - RealNormalIndex[A]];
+				FVector PB = AllVertex[VerticesSize - 1 - RealNormalIndex[B]];
+				FVector PC = AllVertex[VerticesSize - 1 - RealNormalIndex[C]];
+
+				int32 FA = AllToFiltered[VerticesSize - 1 - RealNormalIndex[A]];
+				int32 FB = AllToFiltered[VerticesSize - 1 - RealNormalIndex[B]];
+				int32 FC = AllToFiltered[VerticesSize - 1 - RealNormalIndex[C]];
+
+				FVector Normal = FVector::CrossProduct(PB - PA, PC - PA).GetSafeNormal();
+				if (FA != -1)
+				{
+					Normals[FA] += Normal;
+				}
+				if (FB != -1)
+				{
+					Normals[FB] += Normal;
+				}
+				if (FC != -1)
+				{
+					Normals[FC] += Normal;
+				}
 			}
 		}
 		FilteredTriangleCount = FilteredTriangleIndex;;
@@ -423,7 +459,25 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		{
 			FVoxelProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[i];
 			ProcMeshVertex.Normal = Normals[i].GetSafeNormal();
+
 			ProcMeshVertex.Position = bComputeTransitions ? GetTranslated(ProcMeshVertex.Position, ProcMeshVertex.Normal) : ProcMeshVertex.Position;
+		}
+		for (auto P : VerticesWithSamePosition)
+		{
+			const int32 RealIndex = P.Get<0>();
+			const int32 AddedIndex = P.Get<1>();
+
+			const int32 FilteredRealIndex = AllToFiltered[VerticesSize - 1 - RealIndex];
+			const int32 FilteredAddedIndex = AllToFiltered[VerticesSize - 1 - AddedIndex];
+
+			if (FilteredRealIndex != -1 && FilteredAddedIndex != -1)
+			{
+				FVoxelProcMeshVertex Real = OutSection.ProcVertexBuffer[FilteredRealIndex];
+				FVoxelProcMeshVertex& Added = OutSection.ProcVertexBuffer[FilteredAddedIndex];
+
+				Added.Position = Real.Position;
+				Added.Normal = Real.Normal;
+			}
 		}
 	}
 
