@@ -318,6 +318,9 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		OutSection.Reset();
 		OutSection.bEnableCollision = bComputeCollisions;
 		OutSection.bSectionVisible = true;
+		OutSection.SectionLocalBox.Min = -FVector::OneVector * Step();
+		OutSection.SectionLocalBox.Max = 18 * FVector::OneVector * Step();
+		OutSection.SectionLocalBox.IsValid = true;
 
 		OutSection.ProcVertexBuffer.SetNumUninitialized(VerticesSize);
 		OutSection.ProcIndexBuffer.SetNumUninitialized(TrianglesSize);
@@ -354,7 +357,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 				ProcMeshVertex.Tangent = FVoxelProcMeshTangent();
 				ProcMeshVertex.Color = Color;
 				ProcMeshVertex.UV0 = FVector2D::ZeroVector;
-				OutSection.SectionLocalBox += Vertex;
+				//OutSection.SectionLocalBox += Vertex;
 
 				FilteredVertexIndex++;
 			}
@@ -608,7 +611,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 				ProcMeshVertex.Tangent = FVoxelProcMeshTangent();
 				ProcMeshVertex.Color = Color;
 				ProcMeshVertex.UV0 = FVector2D::ZeroVector;
-				OutSection.SectionLocalBox += Vertex;
+				//OutSection.SectionLocalBox += Vertex;
 
 				TransitionVertex[TransitionVertexIndex] = Vertex;
 			}
