@@ -1,15 +1,13 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelNetworking.h"
 
-AVoxelTcpSender::AVoxelTcpSender(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+FVoxelTcpSender::FVoxelTcpSender()
+	: Socket(nullptr)
 {
-	Socket = nullptr;
 }
 
-void AVoxelTcpSender::EndPlay(const EEndPlayReason::Type EndPlayReason)
+FVoxelTcpSender::~FVoxelTcpSender()
 {
-	Super::EndPlay(EndPlayReason);
-
 	if (Socket)
 	{
 		Socket->Close();
@@ -17,7 +15,7 @@ void AVoxelTcpSender::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 }
 
-bool AVoxelTcpSender::StartTCPSender(const FString& Ip, const int32 Port)
+bool FVoxelTcpSender::StartTCPSender(const FString& Ip, const int32 Port)
 {
 	//Create Remote Address.
 	RemoteAddr = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
@@ -54,7 +52,7 @@ bool AVoxelTcpSender::StartTCPSender(const FString& Ip, const int32 Port)
 	}
 }
 
-bool AVoxelTcpSender::SendString(FString ToSend)
+bool FVoxelTcpSender::SendData(TArray<uint8> Data)
 {
 	if (!Socket)
 	{
@@ -65,11 +63,11 @@ bool AVoxelTcpSender::SendString(FString ToSend)
 	int32 BytesSent = 0;
 	FArrayWriter Writer;
 
-	Writer << ToSend;
+	Writer << Data;
 
 	bool bSuccess = Socket->Send(Writer.GetData(), Writer.Num(), BytesSent);
-
-	UE_LOG(LogTemp, Error, TEXT("Bytes sent: %d. Success: %d"), BytesSent, bSuccess);
+	
+	UE_LOG(LogTemp, Log, TEXT("Bytes sent: %d. Success: %d"), BytesSent, bSuccess);
 
 
 	return true;
@@ -79,22 +77,18 @@ bool AVoxelTcpSender::SendString(FString ToSend)
 
 
 
-
-AVoxelTcpListener::AVoxelTcpListener(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+FVoxelTcpListener::FVoxelTcpListener()
+	: Socket(nullptr)
 {
-	AcceptClassInstance = new AcceptClass(Socket);
-	Socket = nullptr;
+
 }
 
-void AVoxelTcpListener::EndPlay(const EEndPlayReason::Type EndPlayReason)
+FVoxelTcpListener::~FVoxelTcpListener()
 {
-	Super::EndPlay(EndPlayReason);
-
 	delete TcpListener;
-	TcpListener = nullptr;
 }
 
-void AVoxelTcpListener::StartTCPListener(const FString& Ip, const int32 Port)
+void FVoxelTcpListener::StartTCPListener(const FString& Ip, const int32 Port)
 {
 	FIPv4Address Addr;
 	FIPv4Address::Parse(Ip, Addr);
@@ -103,10 +97,10 @@ void AVoxelTcpListener::StartTCPListener(const FString& Ip, const int32 Port)
 
 	TcpListener = new FTcpListener(Endpoint);
 
-	TcpListener->OnConnectionAccepted().BindRaw(AcceptClassInstance, &AcceptClass::Accept);
+	TcpListener->OnConnectionAccepted().BindRaw(this, &FVoxelTcpListener::Accept);
 }
 
-bool AVoxelTcpListener::ReceiveMessages()
+bool FVoxelTcpListener::ReceiveData(TArray<uint8>& OutData)
 {
 	if (Socket)
 	{
@@ -119,16 +113,22 @@ bool AVoxelTcpListener::ReceiveMessages()
 			int32 BytesRead = 0;
 			Socket->Recv(ReceivedData.GetData(), ReceivedData.Num(), BytesRead);
 
-			FString Message;
-			ReceivedData << Message;
+			ReceivedData << OutData;
 
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Message);
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%d bytes received"), BytesRead));
 		}
 
 		return true;
 	}
 	else
 	{
+		UE_LOG(LogTemp, Error, TEXT("No listener socket"));
 		return false;
 	}
+}
+
+bool FVoxelTcpListener::Accept(FSocket* NewSocket, const FIPv4Endpoint& Endpoint)
+{
+	Socket = NewSocket;
+	return true;
 }

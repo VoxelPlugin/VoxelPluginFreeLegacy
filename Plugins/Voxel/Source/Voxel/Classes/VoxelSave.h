@@ -70,6 +70,15 @@ public:
 	FVoxelValueDiff(uint64 Id, int Index, float Value);
 };
 
+FORCEINLINE FArchive& operator<<(FArchive &Ar, FVoxelValueDiff& ValueDiff)
+{
+	Ar << ValueDiff.Id;
+	Ar << ValueDiff.Index;
+	Ar << ValueDiff.Value;
+
+	return Ar;
+}
+
 USTRUCT()
 struct FVoxelMaterialDiff
 {
@@ -90,26 +99,11 @@ public:
 	FVoxelMaterialDiff(uint64 Id, int Index, FVoxelMaterial Material);
 };
 
-struct VoxelValueDiffArray
+FORCEINLINE FArchive& operator<<(FArchive &Ar, FVoxelMaterialDiff& MaterialDiff)
 {
-	std::forward_list<uint64> Ids;
-	std::forward_list<int> Indexes;
-	std::forward_list<float> Values;
-	int Size = 0;
+	Ar << MaterialDiff.Id;
+	Ar << MaterialDiff.Index;
+	Ar << MaterialDiff.Material;
 
-	void Add(uint64 Id, int Index, float Value);
-
-	void AddPackets(std::forward_list<TArray<FVoxelValueDiff>>& List, const int MaxSize = 2048);
-};
-
-struct VoxelMaterialDiffArray
-{
-	std::forward_list<uint64> Ids;
-	std::forward_list<int> Indexes;
-	std::forward_list<FVoxelMaterial> Materials;
-	int Size = 0;
-
-	void Add(uint64 Id, int Index, FVoxelMaterial Material);
-
-	void AddPackets(std::forward_list<TArray<FVoxelMaterialDiff>>& List, const int MaxSize = 2048);
-};
+	return Ar;
+}

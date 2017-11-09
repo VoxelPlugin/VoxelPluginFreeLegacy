@@ -20,11 +20,12 @@ public:
 	 * @param	Depth			Depth of this world; Width = 16 * 2^Depth
 	 * @param	WorldGenerator	Generator for this world
 	 */
-	FVoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator);
+	FVoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator, bool bMultiplayer);
 	~FVoxelData();
 
 	// Depth of the octree
 	const int Depth;
+	const bool bMultiplayer;
 
 	UVoxelWorldGenerator* const WorldGenerator;
 
@@ -95,7 +96,7 @@ public:
 	 * @param	OutValueDiffPacketsList		Each packet is sorted by Id
 	 * @param	OutColorDiffPacketsList		Each packet is sorted by Id
 	 */
-	void GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelMaterialDiff>>& OutColorDiffPacketsList) const;
+	void GetDiffLists(std::forward_list<FVoxelValueDiff>& OutValueDiffList, std::forward_list<FVoxelMaterialDiff>& OutMaterialDiffList) const;
 
 	/**
 	 * Load values and colors from diff arrays, and queue update of chunks that have changed
@@ -103,7 +104,7 @@ public:
 	 * @param	ColorDiffArray	First element has lowest Id
 	 * @param	World			Voxel world
 	 */
-	void LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelMaterialDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions);
+	void LoadFromDiffListsAndGetModifiedPositions(std::forward_list<FVoxelValueDiff> ValueDiffList, std::forward_list<FVoxelMaterialDiff> MaterialDiffList, std::forward_list<FIntVector>& OutModifiedPositions);
 
 private:
 	FValueOctree* MainOctree;

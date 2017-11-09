@@ -17,21 +17,23 @@ void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 	if (bNeedUpdate)
 	{
-		TArray<AActor*> FoundActors;
-		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorld::StaticClass(), FoundActors);
+		if (true || GetNetMode() < ENetMode::NM_Client || (Cast<APawn>(GetOwner()) && Cast<APawn>(GetOwner())->Role == ROLE_AutonomousProxy))
+		{
+			TArray<AActor*> FoundActors;
+			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorld::StaticClass(), FoundActors);
 
-		if (FoundActors.Num() == 0)
-		{
-			UE_LOG(VoxelLog, Warning, TEXT("No world found"));
-		}
-		else
-		{
-			for (auto Actor : FoundActors)
+			if (FoundActors.Num() == 0)
 			{
-				((AVoxelWorld*)Actor)->AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent>(this));
+				UE_LOG(VoxelLog, Warning, TEXT("No world found"));
+			}
+			else
+			{
+				for (auto Actor : FoundActors)
+				{
+					((AVoxelWorld*)Actor)->AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent>(this));
+				}
 			}
 		}
-
 		bNeedUpdate = false;
 	}
 }

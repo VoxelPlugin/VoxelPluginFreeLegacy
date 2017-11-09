@@ -9,6 +9,7 @@
 #include "FlatWorldGenerator.h"
 #include "VoxelInvokerComponent.h"
 #include "VoxelWorldEditorInterface.h"
+#include "VoxelNetworking.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 
@@ -25,6 +26,8 @@ AVoxelWorld::AVoxelWorld()
 	, MeshThreadCount(4)
 	, HighPriorityMeshThreadCount(4)
 	, FoliageThreadCount(4)
+	, bMultiplayer(false)
+	, MultiplayerSyncRate(10)
 	, Render(nullptr)
 	, Data(nullptr)
 	, InstancedWorldGenerator(nullptr)
@@ -33,6 +36,9 @@ AVoxelWorld::AVoxelWorld()
 	, bEnableAmbientOcclusion(false)
 	, RayMaxDistance(5)
 	, RayCount(25)
+	, TCPListener(nullptr)
+	, TCPSender(nullptr)
+	, TimeSinceSync(0)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -43,8 +49,6 @@ AVoxelWorld::AVoxelWorld()
 	RootComponent = TouchCapsule;
 
 	WorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UFlatWorldGenerator::StaticClass());
-
-	bReplicates = true;
 }
 
 AVoxelWorld::~AVoxelWorld()
@@ -79,6 +83,16 @@ void AVoxelWorld::Tick(float DeltaTime)
 	if (IsCreated())
 	{
 		Render->Tick(DeltaTime);
+	}
+
+	if (bMultiplayer && (TCPSender || TCPListener))
+	{
+		TimeSinceSync += DeltaTime;
+		if (TimeSinceSync > 1.f / MultiplayerSyncRate)
+		{
+			TimeSinceSync = 0;
+			Sync();
+		}
 	}
 }
 
@@ -201,6 +215,117 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 	else
 	{
 		UE_LOG(VoxelLog, Error, TEXT("LoadFromSave: Current Depth is %d while Save one is %d"), Depth, Save.Depth);
+	}
+}
+
+void AVoxelWorld::StartServer(const FString& Ip, const int32 Port)
+{
+	TCPListener = new FVoxelTcpListener();
+	TCPListener->StartTCPListener(Ip, Port);
+}
+
+void AVoxelWorld::StartClient(const FString& Ip, const int32 Port)
+{
+	TCPSender = new FVoxelTcpSender();
+	TCPSender->StartTCPSender(Ip, Port);
+}
+
+void AVoxelWorld::Sync()
+{
+	if (TCPSender)
+	{
+		FBufferArchive ToBinary;
+
+		std::forward_list<FVoxelValueDiff> ValueDiffList;
+		std::forward_list<FVoxelMaterialDiff> MaterialDiffList;
+		Data->GetDiffLists(ValueDiffList, MaterialDiffList);
+
+		int ValueDiffCount = 0;
+		int MaterialDiffCount = 0;
+		for (auto ValueDiff : ValueDiffList)
+		{
+			ValueDiffCount++;
+		}
+		for (auto MaterialDiff : MaterialDiffList)
+		{
+			MaterialDiffCount++;
+		}
+
+		ToBinary << ValueDiffCount;
+		ToBinary << MaterialDiffCount;
+		for (auto ValueDiff : ValueDiffList)
+		{
+			ToBinary << ValueDiff;
+		}
+		for (auto MaterialDiff : MaterialDiffList)
+		{
+			ToBinary << MaterialDiff;
+		}
+
+		TArray<uint8> BinaryData;
+		FArchiveSaveCompressedProxy Compressor = FArchiveSaveCompressedProxy(BinaryData, ECompressionFlags::COMPRESS_ZLIB);
+
+		// Send entire binary array/archive to compressor
+		Compressor << ToBinary;
+
+		// Send archive serialized data to binary array
+		Compressor.Flush();
+
+		TCPSender->SendData(BinaryData);
+	}
+	else if (TCPListener)
+	{
+		TArray<uint8> BinaryData;
+		TCPListener->ReceiveData(BinaryData);
+
+		if (BinaryData.Num())
+		{
+			FArchiveLoadCompressedProxy Decompressor = FArchiveLoadCompressedProxy(BinaryData, ECompressionFlags::COMPRESS_ZLIB);
+
+			check(!Decompressor.GetError());
+
+			//Decompress
+			FBufferArchive DecompressedBinaryArray;
+			Decompressor << DecompressedBinaryArray;
+
+			FMemoryReader FromBinary = FMemoryReader(DecompressedBinaryArray);
+			FromBinary.Seek(0);
+
+			std::forward_list<FVoxelValueDiff> ValueDiffList;
+			std::forward_list<FVoxelMaterialDiff> MaterialDiffList;
+
+			int ValueDiffCount = 0;
+			int MaterialDiffCount = 0;
+			FromBinary << ValueDiffCount;
+			FromBinary << MaterialDiffCount;
+			for (int i = 0; i < ValueDiffCount; i++)
+			{
+				FVoxelValueDiff ValueDiff;
+				FromBinary << ValueDiff;
+				ValueDiffList.push_front(ValueDiff);
+			}
+			for (int i = 0; i < MaterialDiffCount; i++)
+			{
+				FVoxelMaterialDiff MaterialDiff;
+				FromBinary << MaterialDiff;
+				MaterialDiffList.push_front(MaterialDiff);
+			}
+
+			std::forward_list<FIntVector> ModifiedPositions;
+			Data->LoadFromDiffListsAndGetModifiedPositions(ValueDiffList, MaterialDiffList, ModifiedPositions);
+
+			for (auto Position : ModifiedPositions)
+			{
+				UpdateChunksAtPosition(Position, true);
+				DrawDebugPoint(GetWorld(), LocalToGlobal(Position), 10, FColor::Magenta, false, 10);
+			}
+
+			check(FromBinary.AtEnd());
+		}
+	}
+	else
+	{
+		UE_LOG(VoxelLog, Error, TEXT("No TCPSender/TCPListener"));
 	}
 }
 
@@ -343,7 +468,7 @@ void AVoxelWorld::CreateWorld()
 	InstancedWorldGenerator->SetVoxelWorld(this);
 
 	// Create Data
-	Data = new FVoxelData(Depth, InstancedWorldGenerator);
+	Data = new FVoxelData(Depth, InstancedWorldGenerator, bMultiplayer);
 
 	// Create Render
 	Render = new FVoxelRender(this, this, Data, MeshThreadCount, HighPriorityMeshThreadCount, FoliageThreadCount);
@@ -400,7 +525,11 @@ void AVoxelWorld::CreateInEditor()
 		{
 			DestroyWorld();
 		}
+
+		const bool bTmp = bMultiplayer;
+		bMultiplayer = false;
 		CreateWorld();
+		bMultiplayer = bTmp;
 
 		bComputeCollisions = false;
 

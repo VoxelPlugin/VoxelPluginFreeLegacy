@@ -23,6 +23,8 @@ class FVoxelRender;
 class FVoxelData;
 class UVoxelInvokerComponent;
 class AVoxelWorldEditorInterface;
+class FVoxelTcpListener;
+class FVoxelTcpSender;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
@@ -159,6 +161,16 @@ public:
 		void LoadFromSave(FVoxelWorldSave Save, bool bReset = true);
 
 
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void StartServer(const FString& Ip, const int32 Port);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void StartClient(const FString& Ip, const int32 Port);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void Sync();
+
+
 protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;
@@ -221,12 +233,22 @@ private:
 		int FoliageThreadCount;
 
 
-	// Instanced world generator
+	UPROPERTY(EditAnywhere, Category = "Multiplayer")
+		bool bMultiplayer;
+
+	UPROPERTY(EditAnywhere, Category = "Multiplayer", meta = (EditCondition = "bMultiplayer"))
+		float MultiplayerSyncRate;
+
+
 	UPROPERTY()
 		UVoxelWorldGenerator* InstancedWorldGenerator;
 
 	UPROPERTY()
 		AVoxelWorldEditorInterface* VoxelWorldEditor;
+
+
+	FVoxelTcpListener* TCPListener;
+	FVoxelTcpSender* TCPSender;
 
 	FVoxelData* Data;
 	FVoxelRender* Render;
@@ -237,6 +259,8 @@ private:
 	float VoxelSize;
 
 	bool bComputeCollisions;
+
+	float TimeSinceSync;
 
 	void CreateWorld();
 	void DestroyWorld();

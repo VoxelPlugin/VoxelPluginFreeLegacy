@@ -129,7 +129,7 @@ UVoxelChunkComponent* FVoxelRender::GetInactiveChunk()
 	UVoxelChunkComponent* Chunk;
 	if (InactiveChunks.empty())
 	{
-		Chunk = NewObject<UVoxelChunkComponent>(ChunksParent, NAME_None);
+		Chunk = NewObject<UVoxelChunkComponent>(ChunksParent, NAME_None, RF_Transient | RF_NonPIEDuplicateTransient);
 		Chunk->SetupAttachment(ChunksParent->GetRootComponent(), NAME_None);
 		Chunk->RegisterComponent();
 		Chunk->SetVoxelMaterial(World->GetVoxelMaterial());

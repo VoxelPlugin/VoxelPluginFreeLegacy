@@ -6,11 +6,12 @@
 #include "VoxelSave.h"
 #include "GenericPlatformProcess.h"
 
-FVoxelData::FVoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator)
+FVoxelData::FVoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator, bool bMultiplayer)
 	: Depth(Depth)
 	, WorldGenerator(WorldGenerator)
+	, bMultiplayer(bMultiplayer)
 {
-	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth));
+	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth), bMultiplayer);
 
 	GetCount.Reset();
 
@@ -63,7 +64,7 @@ void FVoxelData::EndGet()
 void FVoxelData::Reset()
 {
 	delete MainOctree;
-	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth));
+	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth), bMultiplayer);
 }
 
 void FVoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const
@@ -148,6 +149,7 @@ void FVoxelData::GetSave(FVoxelWorldSave& OutSave) const
 
 void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset)
 {
+	BeginSet();
 	if (bReset)
 	{
 		MainOctree->GetDirtyChunksPositions(OutModifiedPositions);
@@ -157,32 +159,17 @@ void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std:
 	auto SaveList = Save.GetChunksList();
 	MainOctree->LoadFromSaveAndGetModifiedPositions(SaveList, OutModifiedPositions);
 	check(SaveList.empty());
+	EndSet();
 }
 
-void FVoxelData::GetDiffArrays(std::forward_list<TArray<FVoxelValueDiff>>& OutValueDiffPacketsList, std::forward_list<TArray<FVoxelMaterialDiff>>& OutColorDiffPacketsList) const
+void FVoxelData::GetDiffLists(std::forward_list<FVoxelValueDiff>& OutValueDiffList, std::forward_list<FVoxelMaterialDiff>& OutMaterialDiffList) const
 {
-	VoxelValueDiffArray ValueDiffArray;
-	VoxelMaterialDiffArray ColorDiffArray;
-
-	MainOctree->AddChunksToDiffArrays(ValueDiffArray, ColorDiffArray);
-
-	ValueDiffArray.AddPackets(OutValueDiffPacketsList);
-	ColorDiffArray.AddPackets(OutColorDiffPacketsList);
+	MainOctree->AddChunksToDiffLists(OutValueDiffList, OutMaterialDiffList);
 }
 
-void FVoxelData::LoadFromDiffArrayAndGetModifiedPositions(TArray<FVoxelValueDiff>& ValueDiffArray, TArray<FVoxelMaterialDiff>& ColorDiffArray, std::forward_list<FIntVector>& OutModifiedPositions)
+void FVoxelData::LoadFromDiffListsAndGetModifiedPositions(std::forward_list<FVoxelValueDiff> ValueDiffList, std::forward_list<FVoxelMaterialDiff> MaterialDiffList, std::forward_list<FIntVector>& OutModifiedPositions)
 {
-	std::forward_list<FVoxelValueDiff> ValueDiffList;
-	std::forward_list<FVoxelMaterialDiff> ColorDiffList;
-
-	for (int i = ValueDiffArray.Num() - 1; i >= 0; i--)
-	{
-		ValueDiffList.push_front(ValueDiffArray[i]);
-	}
-	for (int i = ColorDiffArray.Num() - 1; i >= 0; i--)
-	{
-		ColorDiffList.push_front(ColorDiffArray[i]);
-	}
-
-	MainOctree->LoadFromDiffListAndGetModifiedPositions(ValueDiffList, ColorDiffList, OutModifiedPositions);
+	BeginSet();
+	MainOctree->LoadFromDiffListsAndGetModifiedPositions(ValueDiffList, MaterialDiffList, OutModifiedPositions);
+	EndSet();
 }
