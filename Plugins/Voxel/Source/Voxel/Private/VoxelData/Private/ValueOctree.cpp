@@ -4,11 +4,12 @@
 #include "VoxelWorldGenerator.h"
 #include "GenericPlatformProcess.h"
 
-FValueOctree::FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id)
+FValueOctree::FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id, bool bMultiplayer)
 	: FOctree(Position, Depth, Id)
 	, WorldGenerator(WorldGenerator)
 	, bIsDirty(false)
 	, bIsNetworkDirty(false)
+	, bMultiplayer(bMultiplayer)
 {
 
 }
@@ -161,36 +162,36 @@ void FValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave
 	}
 }
 
-void FValueOctree::AddChunksToDiffArrays(VoxelValueDiffArray& ValuesDiffs, VoxelMaterialDiffArray& ColorsDiffs)
+void FValueOctree::AddChunksToDiffLists(std::forward_list<FVoxelValueDiff>& OutValueDiffList, std::forward_list<FVoxelMaterialDiff>& OutColorDiffList)
 {
-	if (bIsNetworkDirty)
+	if (IsLeaf())
 	{
-		bIsNetworkDirty = false;
-
-		if (IsLeaf())
+		if (bIsNetworkDirty)
 		{
+			bIsNetworkDirty = false;
+
 			for (int Index : DirtyValues)
 			{
-				ValuesDiffs.Add(Id, Index, Values[Index]);
+				OutValueDiffList.push_front(FVoxelValueDiff(Id, Index, Values[Index]));
 			}
 			for (int Index : DirtyColors)
 			{
-				ColorsDiffs.Add(Id, Index, Materials[Index]);
+				OutColorDiffList.push_front(FVoxelMaterialDiff(Id, Index, Materials[Index]));
 			}
 			DirtyValues.Empty(4096);
 			DirtyColors.Empty(4096);
 		}
-		else
+	}
+	else
+	{
+		for (auto Child : Childs)
 		{
-			for (auto Child : Childs)
-			{
-				Child->AddChunksToDiffArrays(ValuesDiffs, ColorsDiffs);
-			}
+			Child->AddChunksToDiffLists(OutValueDiffList, OutColorDiffList);
 		}
 	}
 }
 
-void FValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelMaterialDiff>& MaterialsDiffs, std::forward_list<FIntVector>& OutModifiedPositions)
+void FValueOctree::LoadFromDiffListsAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelMaterialDiff>& MaterialsDiffs, std::forward_list<FIntVector>& OutModifiedPositions)
 {
 	if (ValuesDiffs.empty() && MaterialsDiffs.empty())
 	{
@@ -211,7 +212,7 @@ void FValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVo
 
 			int X, Y, Z;
 			CoordinatesFromIndex(ValuesDiffs.front().Index, X, Y, Z);
-			OutModifiedPositions.push_front(FIntVector(X, Y, Z) + Position);
+			OutModifiedPositions.push_front(FIntVector(X, Y, Z) + GetMinimalCornerPosition());
 
 			ValuesDiffs.pop_front();
 		}
@@ -227,7 +228,7 @@ void FValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVo
 
 			int X, Y, Z;
 			CoordinatesFromIndex(MaterialsDiffs.front().Index, X, Y, Z);
-			OutModifiedPositions.push_front(FIntVector(X, Y, Z) + Position);
+			OutModifiedPositions.push_front(FIntVector(X, Y, Z) + GetMinimalCornerPosition());
 
 			MaterialsDiffs.pop_front();
 		}
@@ -244,7 +245,7 @@ void FValueOctree::LoadFromDiffListAndGetModifiedPositions(std::forward_list<FVo
 			}
 			for (auto Child : Childs)
 			{
-				Child->LoadFromDiffListAndGetModifiedPositions(ValuesDiffs, MaterialsDiffs, OutModifiedPositions);
+				Child->LoadFromDiffListsAndGetModifiedPositions(ValuesDiffs, MaterialsDiffs, OutModifiedPositions);
 			}
 		}
 	}
@@ -260,14 +261,14 @@ void FValueOctree::CreateChilds()
 	int d = Size() / 4;
 	uint64 Pow = IntPow9(Depth - 1);
 
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow, bMultiplayer));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow, bMultiplayer));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow, bMultiplayer));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow, bMultiplayer));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow, bMultiplayer));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow, bMultiplayer));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow, bMultiplayer));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow, bMultiplayer));
 
 	bHasChilds = true;
 	check(!IsLeaf() == (Childs.Num() == 8));
