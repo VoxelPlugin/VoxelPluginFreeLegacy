@@ -12,6 +12,7 @@
 #include "VoxelBox.h"
 #include "VoxelGrassType.h"
 #include "LandscapeGrassType.h"
+#include "VoxelNetworking.h"
 #include "VoxelWorld.generated.h"
 
 using namespace UP;
@@ -23,8 +24,6 @@ class FVoxelRender;
 class FVoxelData;
 class UVoxelInvokerComponent;
 class AVoxelWorldEditorInterface;
-class FVoxelTcpListener;
-class FVoxelTcpSender;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
@@ -165,10 +164,7 @@ public:
 		void StartServer(const FString& Ip, const int32 Port);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void StartClient(const FString& Ip, const int32 Port);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void Sync();
+		void ConnectClient(const FString& Ip, const int32 Port);
 
 
 protected:
@@ -247,8 +243,8 @@ private:
 		AVoxelWorldEditorInterface* VoxelWorldEditor;
 
 
-	FVoxelTcpListener* TCPListener;
-	FVoxelTcpSender* TCPSender;
+	FVoxelTcpServer TcpServer;
+	FVoxelTcpClient TcpClient;
 
 	FVoxelData* Data;
 	FVoxelRender* Render;
@@ -264,4 +260,6 @@ private:
 
 	void CreateWorld();
 	void DestroyWorld();
+
+	void Sync();
 };

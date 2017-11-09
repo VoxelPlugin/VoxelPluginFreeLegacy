@@ -9,7 +9,6 @@
 #include "FlatWorldGenerator.h"
 #include "VoxelInvokerComponent.h"
 #include "VoxelWorldEditorInterface.h"
-#include "VoxelNetworking.h"
 
 DEFINE_LOG_CATEGORY(VoxelLog)
 
@@ -36,8 +35,6 @@ AVoxelWorld::AVoxelWorld()
 	, bEnableAmbientOcclusion(false)
 	, RayMaxDistance(5)
 	, RayCount(25)
-	, TCPListener(nullptr)
-	, TCPSender(nullptr)
 	, TimeSinceSync(0)
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -85,7 +82,7 @@ void AVoxelWorld::Tick(float DeltaTime)
 		Render->Tick(DeltaTime);
 	}
 
-	if (bMultiplayer && (TCPSender || TCPListener))
+	if (bMultiplayer && (TcpClient.IsValid() || TcpServer.IsValid()))
 	{
 		TimeSinceSync += DeltaTime;
 		if (TimeSinceSync > 1.f / MultiplayerSyncRate)
@@ -220,19 +217,17 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 
 void AVoxelWorld::StartServer(const FString& Ip, const int32 Port)
 {
-	TCPListener = new FVoxelTcpListener();
-	TCPListener->StartTCPListener(Ip, Port);
+	TcpServer.StartTcpServer(Ip, Port);
 }
 
-void AVoxelWorld::StartClient(const FString& Ip, const int32 Port)
+void AVoxelWorld::ConnectClient(const FString& Ip, const int32 Port)
 {
-	TCPSender = new FVoxelTcpSender();
-	TCPSender->StartTCPSender(Ip, Port);
+	TcpClient.ConnectTcpClient(Ip, Port);
 }
 
 void AVoxelWorld::Sync()
 {
-	if (TCPSender)
+	if (TcpServer.IsValid())
 	{
 		FBufferArchive ToBinary;
 
@@ -262,33 +257,20 @@ void AVoxelWorld::Sync()
 			ToBinary << MaterialDiff;
 		}
 
-		TArray<uint8> BinaryData;
-		FArchiveSaveCompressedProxy Compressor = FArchiveSaveCompressedProxy(BinaryData, ECompressionFlags::COMPRESS_ZLIB);
-
-		// Send entire binary array/archive to compressor
-		Compressor << ToBinary;
-
-		// Send archive serialized data to binary array
-		Compressor.Flush();
-
-		TCPSender->SendData(BinaryData);
+		bool bSuccess = TcpServer.SendData(ToBinary);
+		if (!bSuccess)
+		{
+			UE_LOG(LogTemp, Error, TEXT("SendData failed"));
+		}
 	}
-	else if (TCPListener)
+	else if (TcpClient.IsValid())
 	{
 		TArray<uint8> BinaryData;
-		TCPListener->ReceiveData(BinaryData);
+		TcpClient.ReceiveData(BinaryData);
 
 		if (BinaryData.Num())
 		{
-			FArchiveLoadCompressedProxy Decompressor = FArchiveLoadCompressedProxy(BinaryData, ECompressionFlags::COMPRESS_ZLIB);
-
-			check(!Decompressor.GetError());
-
-			//Decompress
-			FBufferArchive DecompressedBinaryArray;
-			Decompressor << DecompressedBinaryArray;
-
-			FMemoryReader FromBinary = FMemoryReader(DecompressedBinaryArray);
+			FMemoryReader FromBinary(BinaryData);
 			FromBinary.Seek(0);
 
 			std::forward_list<FVoxelValueDiff> ValueDiffList;
@@ -298,6 +280,7 @@ void AVoxelWorld::Sync()
 			int MaterialDiffCount = 0;
 			FromBinary << ValueDiffCount;
 			FromBinary << MaterialDiffCount;
+
 			for (int i = 0; i < ValueDiffCount; i++)
 			{
 				FVoxelValueDiff ValueDiff;
@@ -317,15 +300,13 @@ void AVoxelWorld::Sync()
 			for (auto Position : ModifiedPositions)
 			{
 				UpdateChunksAtPosition(Position, true);
-				DrawDebugPoint(GetWorld(), LocalToGlobal(Position), 10, FColor::Magenta, false, 10);
+				DrawDebugPoint(GetWorld(), LocalToGlobal(Position), 10, FColor::Magenta, false, 1.1f / MultiplayerSyncRate);
 			}
-
-			check(FromBinary.AtEnd());
 		}
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("No TCPSender/TCPListener"));
+		UE_LOG(VoxelLog, Error, TEXT("No valid TCPSender/TCPListener"));
 	}
 }
 
