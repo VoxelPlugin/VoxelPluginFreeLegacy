@@ -14,22 +14,17 @@ struct VOXEL_API FFlatWorldStruct
 
 public:
 	UPROPERTY(EditAnywhere)
-		uint8 Material1;
-
-	UPROPERTY(EditAnywhere)
-		uint8 Material2;
-
-	UPROPERTY(EditAnywhere)
-		float Alpha;
+		uint8 Material;
 
 	// Start (Z position) of the layer
 	UPROPERTY(EditAnywhere)
 		int Start;
-
-	// Height of the layer
-	UPROPERTY(EditAnywhere)
-		int Height;
 };
+
+FORCEINLINE bool operator<(const FFlatWorldStruct& Left, const FFlatWorldStruct& Right)
+{
+	return Left.Material < Right.Material;
+}
 
 /**
  *
@@ -51,11 +46,10 @@ public:
 		int Height;
 
 	UPROPERTY(EditAnywhere)
-		uint8 DefaultMaterial1;
+		uint8 DefaultMaterial;
+
 	UPROPERTY(EditAnywhere)
-		uint8 DefaultMaterial2;
-	UPROPERTY(EditAnywhere)
-		float DefaultAlpha;
+		float FadeHeight;
 
 	// Layers
 	UPROPERTY(EditAnywhere)
@@ -63,5 +57,5 @@ public:
 
 	// Value to set
 	UPROPERTY(EditAnywhere)
-		float ValueMultiplier;
+		float HardnessMultiplier;
 };
