@@ -783,7 +783,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 						}
 					}
 				}
-				Vertex.Color.A = FMath::Clamp<uint8>(255.f * (1.f - HitCount / (float)TotalRays), 0, 255);
+				Vertex.Color.A = FMath::Clamp<int>(255.f * (1.f - HitCount / (float)TotalRays), 0, 255);
 			}
 			Data->EndGet();
 		}
