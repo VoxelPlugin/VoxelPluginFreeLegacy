@@ -8,7 +8,7 @@
 
 
 USTRUCT(Blueprintable)
-struct VOXEL_API FFlatWorldStruct
+struct VOXEL_API FFlatWorldLayer
 {
 	GENERATED_BODY()
 
@@ -20,11 +20,6 @@ public:
 	UPROPERTY(EditAnywhere)
 		int Start;
 };
-
-FORCEINLINE bool operator<(const FFlatWorldStruct& Left, const FFlatWorldStruct& Right)
-{
-	return Left.Material < Right.Material;
-}
 
 /**
  *
@@ -43,17 +38,14 @@ public:
 
 	// Height of the difference between full and empty
 	UPROPERTY(EditAnywhere)
-		int Height;
-
-	UPROPERTY(EditAnywhere)
-		uint8 DefaultMaterial;
+		int TerrainHeight;
 
 	UPROPERTY(EditAnywhere)
 		float FadeHeight;
 
 	// Layers
 	UPROPERTY(EditAnywhere)
-		TArray<FFlatWorldStruct> TerrainLayers;
+		TArray<FFlatWorldLayer> TerrainLayers;
 
 	// Value to set
 	UPROPERTY(EditAnywhere)

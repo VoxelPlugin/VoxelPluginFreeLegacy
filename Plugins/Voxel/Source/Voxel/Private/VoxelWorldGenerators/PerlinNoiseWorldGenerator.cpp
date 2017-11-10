@@ -57,11 +57,11 @@ FVoxelMaterial UPerlinNoiseWorldGenerator::GetDefaultMaterial(int X, int Y, int 
 	}
 	else if (Z < 0)
 	{
-		return FVoxelMaterial(0, 1, FMath::Clamp<uint8>((10 + Z) * 256.f / 10.f, 0, 255));
+		return FVoxelMaterial(0, 1, FMath::Clamp<int>((10 + Z) * 256.f / 10.f, 0, 255));
 	}
 	else if (Z < 10)
 	{
-		return FVoxelMaterial(2, 1, 255 - FMath::Clamp<uint8>(Z * 256.f / 10.f, 0, 255));
+		return FVoxelMaterial(2, 1, 255 - FMath::Clamp<int>(Z * 256.f / 10.f, 0, 255));
 	}
 	else if (Z < 100)
 	{

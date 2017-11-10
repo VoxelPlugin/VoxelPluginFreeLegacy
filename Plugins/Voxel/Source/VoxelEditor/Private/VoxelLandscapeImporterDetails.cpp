@@ -149,7 +149,7 @@ FReply UVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 						}
 					}
 
-					Asset.Materials[LocalVertex.X + TotalSize * LocalVertex.Y] = FVoxelMaterial(MaxIndex, SecondMaxIndex, FMath::Clamp<uint8>(((255 - MaxValue) + SecondMaxValue) / 2, 0, 255));
+					Asset.Materials[LocalVertex.X + TotalSize * LocalVertex.Y] = FVoxelMaterial(MaxIndex, SecondMaxIndex, FMath::Clamp<int>(((255 - MaxValue) + SecondMaxValue) / 2, 0, 255));
 				}
 			}
 		}
