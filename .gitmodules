@@ -1,0 +1,3 @@
+[submodule "Plugins/Voxel"]
+	path = Plugins/Voxel
+	url = https://github.com/Phyronnaz/Voxel
