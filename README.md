@@ -22,6 +22,8 @@ Based on [transvoxel](http://transvoxel.org/)
 
 ## [Install guide](https://github.com/Phyronnaz/MarchingCubes/wiki/Install-guide)
 
+## [Discord](https://discord.gg/58ZqEbg)
+
 ## [Youtube playlist](https://www.youtube.com/playlist?list=PLjYKpKPK8E-_lxP5EuRxizhNuNBDYnT15)
 
 ## [Progress](https://github.com/Phyronnaz/MarchingCubes/projects/1)
