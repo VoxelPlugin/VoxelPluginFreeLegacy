@@ -15,9 +15,9 @@ class PROCEDURAL_API UCirclesWorldGenerator : public UVoxelWorldGenerator
 public:
 	UCirclesWorldGenerator();
 
-	virtual float GetDefaultValue(int X, int Y, int Z) override;
-	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
-	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
+	//virtual float GetDefaultValue(int X, int Y, int Z) override;
+	//virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
+	//virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 	UPROPERTY(EditAnywhere)
 		FVector2D Scale;

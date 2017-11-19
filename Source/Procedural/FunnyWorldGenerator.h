@@ -15,9 +15,9 @@ class PROCEDURAL_API UFunnyWorldGenerator : public UVoxelWorldGenerator
 public:
 	UFunnyWorldGenerator();
 
-	virtual float GetDefaultValue(int X, int Y, int Z) override;
+	/*virtual float GetDefaultValue(int X, int Y, int Z) override;
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
-	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
+	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;*/
 
 	UPROPERTY(EditAnywhere)
 		FVoxelMaterial TopMaterial;
