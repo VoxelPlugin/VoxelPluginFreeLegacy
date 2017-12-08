@@ -1,6 +1,6 @@
 # UE4 Voxels
 
-<b>Requires 4.17 (async collision cooking)</b>
+<b>Requires UE > 4.17 (async collision cooking)</b>
 
 Based on [transvoxel](http://transvoxel.org/)
 
