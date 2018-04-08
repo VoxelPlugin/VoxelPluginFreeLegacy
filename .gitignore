@@ -4,8 +4,6 @@ DerivedDataCache
 Intermediate
 Saved
 .vs
-Content/KiteDemo
-Content/StarterContent
 *.VC.db
 *.opensdf
 *.opendb
@@ -14,3 +12,5 @@ Content/StarterContent
 *.suo
 *.xcodeproj
 *.xcworkspace
+Documentation
+Parser/.idea
