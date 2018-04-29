@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Input/Reply.h"
 #include "IDetailCustomization.h"
+#include "SButton.h"
 
 class AVoxelWorld;
 class AVoxelWorldEditor;
