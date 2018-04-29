@@ -6,6 +6,8 @@
 #include "Components/CapsuleComponent.h"
 #include "VoxelChunksOwner.generated.h"
 
+class AVoxelWorld;
+
 UCLASS()
 class VOXEL_API AVoxelChunksOwner : public AActor
 {

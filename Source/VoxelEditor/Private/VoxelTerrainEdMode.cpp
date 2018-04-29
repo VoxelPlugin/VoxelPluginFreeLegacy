@@ -104,9 +104,6 @@ bool FVoxelTerrainEdMode::MouseMove(FEditorViewportClient* ViewportClient, FView
 {
 	FVector Start, End;
 	{
-		// Cache a copy of the world pointer	
-		UWorld* World = ViewportClient->GetWorld();
-
 		// Compute a world space ray from the screen space mouse coordinates
 		FSceneViewFamilyContext ViewFamily(FSceneViewFamilyContext::ConstructionValues(ViewportClient->Viewport, ViewportClient->GetScene(), ViewportClient->EngineShowFlags)
 			.SetRealtimeUpdate(ViewportClient->IsRealtime()));

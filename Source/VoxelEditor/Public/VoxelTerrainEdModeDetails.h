@@ -7,6 +7,8 @@
 #include "IDetailCustomNodeBuilder.h"
 #include "IDetailCustomization.h"
 
+class FVoxelTerrainEdMode;
+
 class FVoxelTerrainEdModeDetails : public IDetailCustomization
 {
 public:

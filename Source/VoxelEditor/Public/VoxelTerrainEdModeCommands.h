@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Commands.h"
+#include "VoxelTerrainEdModeStyle.h"
 
 #define LOCTEXT_NAMESPACE ""
 

@@ -6,6 +6,7 @@
 #include "IntBox.h"
 #include "VoxelProceduralMeshComponent.h"
 #include "VoxelPart.h"
+#include "VoxelMaterial.h"
 #include "VoxelTools.generated.h"
 
 class AVoxelWorld;
