@@ -49,6 +49,8 @@ To get support, you can either:
 * join the discord: https://discord.gg/58ZqEbg
 * leave a message on the UE forums: https://forums.unrealengine.com/community/released-projects/125045-voxel-plugin
 
+For issues, please use https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
+
 ## Screenshots
 ![Materials](https://i.imgur.com/du0V5i6.png)
 ![50Hz Edits](https://i.imgur.com/4ouIrX9.png)
