@@ -4,6 +4,7 @@
 #include "VoxelProceduralMeshComponent.h"
 #include "VoxelGlobals.h"
 #include "VoxelDirection.h"
+#include "VoxelMaterial.h"
 
 class FVoxelData;
 struct FVoxelMaterial;

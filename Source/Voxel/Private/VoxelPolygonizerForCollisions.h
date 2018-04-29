@@ -5,6 +5,14 @@
 
 #define CHUNKSIZE_FC 18
 
+// Return the smallest multiple N of y such that:
+//   x <= y * N
+#define CEILING(x,y) (((x) + (y) - 1) / (y))
+
+// A cube is 4x4x4 values, with last positions overlapping with next one ("owning" 3x3x3 values)
+#define CUBE_COUNT_FC (CEILING(CHUNKSIZE_FC, 3))
+#define END_CUBE_OFFSET_FC ((3 - CHUNKSIZE_FC % 3) % 3)
+
 class FVoxelData;
 struct FVoxelMaterial;
 
@@ -22,7 +30,7 @@ private:
 
 
 	// Cache of the sign of the values. Can lead to crash if value changed between cache and 2nd access
-	uint64 CachedSigns[216];
+	uint64 CachedSigns[CUBE_COUNT_FC * CUBE_COUNT_FC * CUBE_COUNT_FC];
 
 	// Cache to get index of already created vertices
 	int Cache[CHUNKSIZE_FC][CHUNKSIZE_FC][CHUNKSIZE_FC][3];

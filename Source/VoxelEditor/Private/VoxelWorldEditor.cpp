@@ -13,6 +13,7 @@ AVoxelWorldEditor::AVoxelWorldEditor()
 	PrimaryActorTick.bCanEverTick = true;
 
 	Invoker = CreateDefaultSubobject<UVoxelInvokerComponent>(FName("Editor Invoker"));
+	Invoker->DistanceOffset = 5000;
 
 	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
 	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);

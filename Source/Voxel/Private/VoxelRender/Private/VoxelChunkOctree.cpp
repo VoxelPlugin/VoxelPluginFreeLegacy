@@ -2,10 +2,11 @@
 
 #include "VoxelChunkOctree.h"
 
-FVoxelChunkOctree::FVoxelChunkOctree(const TArray<FIntBox>& CameraBounds, uint8 LOD)
+FVoxelChunkOctree::FVoxelChunkOctree(const TArray<FIntBox>& CameraBounds, uint8 LOD, uint8 LODLimit)
 	: TVoxelOctree(LOD)
 	, Root(this)
 	, CameraBounds(CameraBounds)
+	, LODLimit(LODLimit)
 {
 	check(LOD > 0);
 
@@ -22,15 +23,23 @@ FVoxelChunkOctree::FVoxelChunkOctree(const TArray<FIntBox>& CameraBounds, uint8 
 FVoxelChunkOctree::FVoxelChunkOctree(FVoxelChunkOctree* Parent, uint8 ChildIndex)
 	: TVoxelOctree(Parent, ChildIndex)
 	, Root(Parent->Root)
+	, LODLimit(Parent->LODLimit)
 {
 	if (LOD > 0)
 	{
-		for (const FIntBox& Bound : Root->CameraBounds)
+		if (LOD > LODLimit)
 		{
-			if (GetBounds().Intersect(Bound))
+			CreateChilds();
+		}
+		else
+		{
+			for (const FIntBox& Bound : Root->CameraBounds)
 			{
-				CreateChilds();
-				break;
+				if (GetBounds().Intersect(Bound))
+				{
+					CreateChilds();
+					break;
+				}
 			}
 		}
 	}

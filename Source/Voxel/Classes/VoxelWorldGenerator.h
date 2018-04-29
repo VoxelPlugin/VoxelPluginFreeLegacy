@@ -103,7 +103,7 @@ public:
 /**
  * A UVoxelWorldGenerator is used to create a FVoxelWorldGeneratorInstance
  */
-UCLASS()
+UCLASS(abstract)
 class VOXEL_API UVoxelWorldGenerator : public UObject
 {
 	GENERATED_BODY()

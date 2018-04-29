@@ -28,6 +28,9 @@
 #include "ClassIconFinder.h"
 #include "IPluginManager.h"
 #include "VoxelWorld.h"
+#include "VoxelTerrainEdModeStyle.h"
+#include "VoxelTerrainEdMode.h"
+#include "AssetTypeActions_VoxelWorldSaveObject.h"
 
 #define LOCTEXT_NAMESPACE "FVoxelEditorModule"
 
@@ -45,9 +48,12 @@ class FVoxelEditorModule : public IVoxelEditorModule
 {
 public:
 	//~ IModuleInterface interface
-
+	// TODO: clean this mess
 	virtual void StartupModule() override
 	{
+		FVoxelTerrainEdModeStyle::Initialize();
+		FEditorModeRegistry::Get().RegisterMode<FVoxelTerrainEdMode>(FVoxelTerrainEdMode::EM_VoxelTerrainEdModeId, LOCTEXT("VoxelTerrainEdModeName", "Voxels"), FSlateIcon(FVoxelTerrainEdModeStyle::Get()->GetStyleSetName(), "Plugins.Tab"), true);
+
 		// Register CrashReporter. TODO: Maybe should be done with a load module?
 		FVoxelCrashReporter::CrashReporter = MakeShareable(new FVoxelCrashReporterEditor());
 
@@ -109,12 +115,18 @@ public:
 			StyleSet->Set("ClassThumbnail.VoxelAsset", new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/VoxelAsset_64x.png"), Icon64x64));
 			StyleSet->Set("ClassIcon.VoxelAsset", new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/VoxelAsset_16x.png"), Icon16x16));
 			
+			// Voxel World Object Save
+			StyleSet->Set("ClassThumbnail.VoxelWorldSaveObject", new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/VoxelWorldSaveObject_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelWorldSaveObject", new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/VoxelWorldSaveObject_16x.png"), Icon16x16));
+			
 			FSlateStyleRegistry::RegisterSlateStyle(*StyleSet.Get());
 		}
 	}
 
 	virtual void ShutdownModule() override
 	{
+		FEditorModeRegistry::Get().UnregisterMode(FVoxelTerrainEdMode::EM_VoxelTerrainEdModeId);
+
 		UnregisterPlacementModeExtensions();
 		UnregisterClassLayout();
 		UnregisterAssetTools();
@@ -191,7 +203,8 @@ protected:
 	void RegisterAssetTools()
 	{
 		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
-		
+
+		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelWorldSaveObject(VoxelAssetCategoryBit)));		
 	}
 
 	/**

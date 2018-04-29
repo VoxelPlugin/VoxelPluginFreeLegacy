@@ -50,3 +50,15 @@ struct VOXEL_API FVoxelWorldSave
 	void Init(int NewLOD, const TArray<FVoxelChunkSave>& ChunksList);
 	void GetChunksQueue(TArray<FVoxelChunkSave>& SaveQueue) const;
 };
+
+///////////////////////////////////////////////////////////////////////////////
+
+UCLASS(Blueprintable, Category = Voxel)
+class VOXEL_API UVoxelWorldSaveObject : public UObject
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY()
+	FVoxelWorldSave Save;
+};

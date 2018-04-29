@@ -21,9 +21,10 @@ DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::UpdateLOD.ChunksToCreate.FindOldChunks
 DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::UpdateLOD.ChunksToCreate.UpdateChunks"), STAT_LODVoxelRender_UpdateLOD_ChunksToCreate_UpdateChunks, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::UpdateLOD.UpdateTransitions"), STAT_LODVoxelRender_UpdateLOD_UpdateTransitions, STATGROUP_Voxel);
 
-FAsyncOctreeBuilderTask::FAsyncOctreeBuilderTask(const TArray<FIntBox>& CameraBounds, uint8 LOD, TSharedPtr<FVoxelChunkOctree> Octree)
+FAsyncOctreeBuilderTask::FAsyncOctreeBuilderTask(const TArray<FIntBox>& CameraBounds, uint8 LOD, uint8 LODLimit, TSharedPtr<FVoxelChunkOctree> Octree)
 	: CameraBounds(CameraBounds)
 	, LOD(LOD)
+	, LODLimit(LODLimit)
 	, Octree(Octree)
 {
 
@@ -31,7 +32,7 @@ FAsyncOctreeBuilderTask::FAsyncOctreeBuilderTask(const TArray<FIntBox>& CameraBo
 
 void FAsyncOctreeBuilderTask::DoWork()
 {
-	NewOctree = MakeShared<FVoxelChunkOctree>(CameraBounds, LOD);
+	NewOctree = MakeShared<FVoxelChunkOctree>(CameraBounds, LOD, LODLimit);
 	OldOctree = Octree;
 
 	TSet<FIntBox> OldBounds;
@@ -453,7 +454,7 @@ void FLODVoxelRender::Tick(float DeltaTime)
 					}
 				}
 			}
-			OctreeBuilder = MakeShared<FAsyncTask<FAsyncOctreeBuilderTask>>(CameraBounds, World->GetLOD() - CHUNK_MULTIPLIER_EXPONENT, Octree);
+			OctreeBuilder = MakeShared<FAsyncTask<FAsyncOctreeBuilderTask>>(CameraBounds, World->GetLOD() - CHUNK_MULTIPLIER_EXPONENT, World->GetLODLimit(), Octree);
 			OctreeBuilder->StartBackgroundTask(OctreeBuilderThreadPool);
 		}
 	}
@@ -520,6 +521,10 @@ UVoxelProceduralMeshComponent* FLODVoxelRender::GetNewMesh(const FIntVector& Pos
 		NewMesh->RegisterComponent();
 		NewMesh->SetWorldScale3D(FVector::OneVector * World->GetVoxelSize());
 		NewMesh->SetCollisionEnabled(bCollisions ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+		if (bCollisions)
+		{
+			NewMesh->BodyInstance = World->GetCollisionPresets();
+		}
 		NewMesh->bCastShadowAsTwoSided = true;
 
 		UMaterialInstanceDynamic* NewMat = UMaterialInstanceDynamic::Create(World->GetVoxelMaterial(), World);

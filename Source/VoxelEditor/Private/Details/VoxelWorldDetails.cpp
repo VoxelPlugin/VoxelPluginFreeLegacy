@@ -2,6 +2,7 @@
 
 #include "VoxelWorldDetails.h"
 #include "VoxelWorld.h"
+#include "VoxelData.h"
 
 #include "VoxelWorldEditor.h"
 #include "PropertyEditorModule.h"
@@ -14,6 +15,12 @@
 TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
 {
 	return MakeShareable(new FVoxelWorldDetails());
+}
+
+FVoxelWorldDetails::FVoxelWorldDetails()
+	: LastSaveHistoryPosition(0)
+{
+
 }
 
 void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
@@ -31,6 +38,57 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			LOCTEXT("Toggle", "Toggle"),
 			this,
 			&FVoxelWorldDetails::OnWorldPreviewToggle)
+
+
+		SaveButton =
+		SNew(SButton)
+		.ContentPadding(2)
+		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Center)
+		.OnClicked(this, &FVoxelWorldDetails::OnSave)
+		[
+			SNew(STextBlock)
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			.Text(LOCTEXT("Save", "Save"))
+		];
+
+		LoadButton =
+		SNew(SButton)
+		.ContentPadding(2)
+		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Center)
+		.OnClicked(this, &FVoxelWorldDetails::OnLoad)
+		[
+			SNew(STextBlock)
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			.Text(LOCTEXT("Load", "Load"))
+		];
+
+		DetailLayout.EditCategory("Voxel")
+		.AddCustomRow(LOCTEXT("SaveLoad", "Save Load"))
+		.NameContent()
+		[
+			SNew(STextBlock)
+			.Font(IDetailLayoutBuilder::GetDetailFont())
+			.Text(LOCTEXT("SaveLoadWorld", "Save/Load World from Save Object"))
+		]
+		.ValueContent()
+		.MaxDesiredWidth(125.f)
+		.MinDesiredWidth(125.f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			[
+				SaveButton.ToSharedRef()
+			]
+			+ SHorizontalBox::Slot()
+			[
+				LoadButton.ToSharedRef()
+			]
+		];
+		
+		SaveButton->SetEnabled(World->IsCreated());
+		LoadButton->SetEnabled(World->IsCreated());
 	}
 }
 
@@ -47,12 +105,62 @@ FReply FVoxelWorldDetails::OnWorldPreviewToggle()
 		else
 		{
 			World->CreateInEditor();
+
 		}
+
+		SaveButton->SetEnabled(World->IsCreated());
+		LoadButton->SetEnabled(World->IsCreated());
 
 		FPropertyEditorModule& PropertyEditorModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
 		PropertyEditorModule.NotifyCustomizationModuleChanged();
 	}
 
+	return FReply::Handled();
+}
+
+FReply FVoxelWorldDetails::OnLoad()
+{
+	if (World->IsCreated() && World->GetSaveObject())
+	{
+		bool bDoIt = true;
+
+		if (World->GetData()->GetHistoryPosition() != LastSaveHistoryPosition)
+		{
+			bDoIt = FMessageDialog::Open(EAppMsgType::YesNoCancel, LOCTEXT("", "There are unsaved changes. Loading from Save Object will override them. Confirm?")) == EAppReturnType::Yes;
+		}
+		else if (World->GetData()->GetMaxHistory() != LastSaveHistoryPosition)
+		{
+			bDoIt = FMessageDialog::Open(EAppMsgType::YesNoCancel, LOCTEXT("", "There are unsaved changes in the redo history. Loading from Save Object will override them. Confirm?")) == EAppReturnType::Yes;
+		}
+
+		if (bDoIt)
+		{
+			UVoxelWorldSaveObject* SaveObject = World->GetSaveObject();
+			World->LoadFromSave(SaveObject->Save);
+			LastSaveHistoryPosition = 0;
+		}
+	}
+	return FReply::Handled();
+}
+
+FReply FVoxelWorldDetails::OnSave()
+{
+	if (World->IsCreated() && World->GetSaveObject())
+	{
+		UVoxelWorldSaveObject* SaveObject = World->GetSaveObject();
+
+		World->GetSave(SaveObject->Save);
+
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+
+		// Notify the asset registry
+		FAssetRegistryModule::AssetCreated(SaveObject);
+
+		// Set the dirty flag so this package will get saved later
+		SaveObject->MarkPackageDirty();
+
+		LastSaveHistoryPosition = World->GetData()->GetHistoryPosition();
+	}
 	return FReply::Handled();
 }
 

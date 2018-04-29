@@ -59,6 +59,7 @@ FCollisionMeshHandler::FCollisionMeshHandler(TWeakObjectPtr<UVoxelInvokerCompone
 				Chunk->RegisterComponent();
 				Chunk->SetWorldScale3D(FVector::OneVector * World->GetVoxelSize());
 				Chunk->SetWorldLocation(World->LocalToGlobal(CurrentCenter + FIntVector(X - 1, Y - 1, Z - 1) * CHUNKSIZE_FC));
+				Chunk->BodyInstance = World->GetCollisionPresets();
 				Components[X][Y][Z] = Chunk;
 				Tasks[X][Y][Z] = nullptr;
 				Update(X, Y, Z);

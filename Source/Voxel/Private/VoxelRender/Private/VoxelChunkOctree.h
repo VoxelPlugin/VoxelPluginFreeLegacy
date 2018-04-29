@@ -16,8 +16,9 @@ class FVoxelChunkOctree : public TVoxelOctree<FVoxelChunkOctree, RENDER_CHUNK_SI
 public:
 	FVoxelChunkOctree* const Root;
 	const TArray<FIntBox> CameraBounds;
+	const uint8 LODLimit;
 
-	FVoxelChunkOctree(const TArray<FIntBox>& CameraBounds, uint8 LOD);
+	FVoxelChunkOctree(const TArray<FIntBox>& CameraBounds, uint8 LOD, uint8 LODLimit);
 	FVoxelChunkOctree(FVoxelChunkOctree* Parent, uint8 ChildIndex);
 
 	void GetLeavesBounds(TSet<FIntBox>& Bounds) const;

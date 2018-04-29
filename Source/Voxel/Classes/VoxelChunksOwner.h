@@ -13,6 +13,7 @@ class VOXEL_API AVoxelChunksOwner : public AActor
 
 public:
 	AVoxelChunksOwner()
+		: World(nullptr)
 	{
 		auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
 		TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
@@ -20,4 +21,6 @@ public:
 		TouchCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
 		RootComponent = TouchCapsule;
 	}
+
+	AVoxelWorld* World;
 };

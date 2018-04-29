@@ -98,18 +98,19 @@ public:
 
 	/**
 	 * Edit the surface of the world
-	 * @param	World			Voxel world
-	 * @param	StartPosition	Start Position in world space
-	 * @param	Direction		Direction of the projection in world space
-	 * @param	Radius			Radius in world space
-	 * @param	Strength		Speed of modification
-	 * @param	bAdd			Add or remove?
-	 * @param	ToolHeight		Tool height (projected on normal)
-	 * @param	Precision		How close are raycasts (relative to VoxelSize)
+	 * @param	World				Voxel world
+	 * @param	StartPosition		Start Position in world space
+	 * @param	Direction			Direction of the projection in world space
+	 * @param	Radius				Radius in world space
+	 * @param	Strength			Speed of modification
+	 * @param	bAdd				Add or remove?
+	 * @param	ToolHeight			Tool height (projected on normal)
+	 * @param	Precision			How close are raycasts (relative to VoxelSize)
+	 * @return	ModifiedPositions	The edited positions
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
-	static void SetValueProjection(AVoxelWorld* World, FVector StartPosition, FVector Direction, float Radius, float Strength, bool bAdd, float ToolHeight = 200,
-								   float Precision = 0.5f, bool bShowRaycasts = false, bool bShowHitPoints = false, bool bShowModifiedVoxels = false);
+	static void SetValueProjection(TArray<FIntVector>& ModifiedPositions, AVoxelWorld* World, FVector StartPosition, FVector Direction, float Radius, float Strength, bool bAdd, float ToolHeight = 200,
+								   float Precision = 0.5f, bool bShowRaycasts = false, bool bShowHitPoints = false, bool bShowModifiedVoxels = false, bool bEnableMultiTrace = true);
 
 	/**
 	 * Paint the surface of the world
@@ -126,7 +127,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "6"))
 	static void SetMaterialProjection(AVoxelWorld* World, FVector StartPosition, FVector Direction, float Radius, uint8 MaterialIndex, EVoxelLayer Layer = EVoxelLayer::Layer1, float FadeDistance = 3, float Exponent = 2,
-								      float ToolHeight = 200, float Precision = 0.5f, bool bShowRaycasts = false, bool bShowHitPoints = false, bool bShowModifiedVoxels = false);
+								      float ToolHeight = 200, float Precision = 0.5f, bool bShowRaycasts = false, bool bShowHitPoints = false, bool bShowModifiedVoxels = false, bool bEnableMultiTrace = true);
 
 	/**
 	 * Flatten the surface of the world

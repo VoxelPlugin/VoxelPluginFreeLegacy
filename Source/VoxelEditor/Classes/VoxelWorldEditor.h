@@ -28,7 +28,7 @@ public:
 
 private:
 	UPROPERTY()
-		UVoxelInvokerComponent* Invoker;
+	UVoxelInvokerComponent* Invoker;
 
 	TWeakObjectPtr<AVoxelWorld> World;
 

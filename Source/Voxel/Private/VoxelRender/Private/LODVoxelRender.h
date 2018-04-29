@@ -34,7 +34,7 @@ public:
 	TSharedPtr<FVoxelChunkOctree> OldOctree;
 	TMap<FIntBox, uint8> TransitionsMasks;
 
-	FAsyncOctreeBuilderTask(const TArray<FIntBox>& CameraBounds, uint8 LOD, TSharedPtr<FVoxelChunkOctree> Octree);
+	FAsyncOctreeBuilderTask(const TArray<FIntBox>& CameraBounds, uint8 LOD, uint8 LODLimit, TSharedPtr<FVoxelChunkOctree> Octree);
 
 	void DoWork();
 
@@ -49,6 +49,7 @@ public:
 private:
 	TSharedPtr<FVoxelChunkOctree> Octree;
 	const uint8 LOD;
+	const uint8 LODLimit;
 	const TArray<FIntBox> CameraBounds;
 };
 

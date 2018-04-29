@@ -9,7 +9,6 @@
 #include "IntBox.h"
 #include "VoxelDiff.h"
 #include "VoxelSave.h"
-#include "VoxelDirection.h"
 
 class FValueOctree;
 class FVoxelWorldGeneratorInstance;
@@ -26,7 +25,7 @@ public:
 	 * @param	WorldGenerator	Generator for this world
 	 * @param	bMultiplayer	Is this for a multiplayer world
 	 */
-	FVoxelData(int LOD, TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator, bool bMultiplayer);
+	FVoxelData(int LOD, TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator, bool bMultiplayer, bool bEnableUndoRedo);
 	~FVoxelData();
 
 	// LOD of the octree
@@ -182,7 +181,40 @@ public:
 		DiscardValuesByPredicateF(std::function<int(const FIntBox&)>(P));
 	}
 	void DiscardValuesByPredicateF(const std::function<int(const FIntBox&)>& P);
+	
+	/**
+	 * Undo one frame and add it to the redo stack. Current frame must be empty
+	 */
+	void Undo(TArray<FIntVector>& OutPositionsToUpdate);
+	/**
+	 * Redo one frame and add it to the undo stack. Current frame must be empty
+	 */
+	void Redo(TArray<FIntVector>& OutPositionsToUpdate);
+	
+	/**
+	 * Clear all the frames
+	 */
+	void ClearFrames();
+	/**
+	 * Add the current frame to the undo stack. Clear the redo stack
+	 */
+	void SaveFrame();
+	/**
+	 * Check that the current frame is empty (safe to call Undo/Redo)
+	 */
+	bool CheckIfCurrentFrameIsEmpty();
+
+	/**
+	 * Get the history position
+	 */
+	int GetHistoryPosition() const;
+	/**
+	 * Get the max history position (including redo frames)
+	 */
+	int GetMaxHistory() const;
 
 private:
 	FValueOctree* const MainOctree;
+	int HistoryPosition;
+	int MaxHistory;
 };

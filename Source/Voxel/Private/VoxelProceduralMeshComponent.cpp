@@ -24,6 +24,7 @@
 #include "StaticMeshVertexBuffer.h"
 #include "TessellationRendering.h"
 #include "ColorVertexBuffer.h"
+#include <AI/Navigation/NavigationSystem.h>
 
 DECLARE_STATS_GROUP(TEXT("ProceduralMesh"), STATGROUP_ProceduralMesh, STATCAT_Advanced);
 
@@ -448,7 +449,7 @@ void UVoxelProceduralMeshComponent::SetProcMeshSection(int32 SectionIndex, const
 	ProcMeshSections[SectionIndex] = Section;
 
 	UpdateLocalBounds(); // Update overall bounds
-	if (GetOwner() && GetOwner()->GetWorld() && GetOwner()->GetWorld()->WorldType != EWorldType::Editor) UpdateCollision(); // Mark collision as dirty
+	UpdateCollision(); // Mark collision as dirty
 	MarkRenderStateDirty(); // New section requires recreating scene proxy
 }
 
@@ -552,7 +553,7 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 	SCOPE_CYCLE_COUNTER(STAT_ProcMesh_UpdateCollision);
 
 	UWorld* World = GetWorld();
-	const bool bUseAsyncCook = World && World->IsGameWorld() && bUseAsyncCooking;
+	const bool bUseAsyncCook = World && bUseAsyncCooking;
 
 	if (bUseAsyncCook)
 	{
@@ -599,6 +600,17 @@ void UVoxelProceduralMeshComponent::FinishPhysicsAsyncCook(UBodySetup* FinishedB
 		//The new body was found in the array meaning it's newer so use it
 		ProcMeshBodySetup = FinishedBodySetup;
 		RecreatePhysicsState();
+
+		// Now update the navigation.
+		if (UNavigationSystem::ShouldUpdateNavOctreeOnComponentChange() && IsRegistered())
+		{
+			UWorld* MyWorld = GetWorld();
+
+			if (MyWorld != nullptr && MyWorld->GetNavigationSystem() != nullptr && (MyWorld->GetNavigationSystem()->ShouldAllowClientSideNavigation() || !MyWorld->IsNetMode(ENetMode::NM_Client)))
+			{
+				UNavigationSystem::UpdateComponentInNavOctree(*this);
+			}
+		}
 
 		//remove any async body setups that were requested before this one
 		for (int32 AsyncIdx = FoundIdx + 1; AsyncIdx < AsyncBodySetupQueue.Num(); ++AsyncIdx)
