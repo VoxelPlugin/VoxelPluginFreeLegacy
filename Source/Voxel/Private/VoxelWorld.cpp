@@ -29,6 +29,7 @@ DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::GetIntersection"), STAT_VoxelWorld_GetInte
 AVoxelWorld::AVoxelWorld()
 	: VoxelWorldEditorClass(nullptr)
 	, LOD(9)
+	, LODLimit(19)
 	, bIsCreated(false)
 	, VoxelSize(100)
 	, Seed(100)
@@ -142,8 +143,6 @@ void AVoxelWorld::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	// Make sure all async tasks are ended
 	AsyncTasksThreadPool->Destroy();
 
-	TcpClient.Reset();
-	TcpServer.Reset();
 	Render.Reset();
 	Data.Reset();
 
@@ -187,7 +186,7 @@ bool AVoxelWorld::ShouldTickIfViewportsOnly() const
 
 bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 {
-	return !bIsCreated && Super::CanEditChange(InProperty);
+	return (!bIsCreated || InProperty->GetNameCPP() == TEXT("SaveObject")) && Super::CanEditChange(InProperty);
 }
 
 void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -201,6 +200,12 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 
 float AVoxelWorld::GetValue(const FIntVector& Position) const
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetValue called but the world isn't created"));
+		return 0;
+	}
+
 	if (IsInWorld(Position))
 	{
 		FVoxelMaterial Material;
@@ -221,6 +226,12 @@ float AVoxelWorld::GetValue(const FIntVector& Position) const
 
 FVoxelMaterial AVoxelWorld::GetMaterial(const FIntVector& Position) const
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetMaterial called but the world isn't created"));
+		return FVoxelMaterial();
+	}
+
 	if (IsInWorld(Position))
 	{
 		FVoxelMaterial Material;
@@ -241,6 +252,12 @@ FVoxelMaterial AVoxelWorld::GetMaterial(const FIntVector& Position) const
 
 void AVoxelWorld::SetValue(const FIntVector& Position, float Value)
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("SetValue called but the world isn't created"));
+		return;
+	}
+
 	if (IsInWorld(Position))
 	{
 		auto Octrees = Data->BeginSet(FIntBox(Position));
@@ -255,6 +272,11 @@ void AVoxelWorld::SetValue(const FIntVector& Position, float Value)
 
 void AVoxelWorld::SetMaterial(const FIntVector& Position, const FVoxelMaterial& Material)
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("SetMaterial called but the world isn't created"));
+		return;
+	}
 	if (IsInWorld(Position))
 	{
 		auto Octrees = Data->BeginSet(FIntBox(Position));
@@ -270,6 +292,11 @@ void AVoxelWorld::SetMaterial(const FIntVector& Position, const FVoxelMaterial& 
 
 bool AVoxelWorld::IsInside(const FVector& Position)
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("IsInside called but the world isn't created"));
+		return false;
+	}
 	for (auto P : GetNeighboringPositions(Position))
 	{
 		if (GetValue(P) <= 0)
@@ -282,11 +309,21 @@ bool AVoxelWorld::IsInside(const FVector& Position)
 
 void AVoxelWorld::GetSave(FVoxelWorldSave& OutSave) const
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetSave called but the world isn't created"));
+		return;
+	}
 	Data->GetSave(OutSave);
 }
 
 void AVoxelWorld::LoadFromSave(const FVoxelWorldSave& Save, bool bReset)
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("LoadFromSave called but the world isn't created"));
+		return;
+	}
 	if (Save.LOD == LOD)
 	{
 		TArray<FIntVector> ModifiedPositions;
@@ -478,6 +515,21 @@ bool AVoxelWorld::GetEnableNormals() const
 	return bEnableNormals;
 }
 
+int AVoxelWorld::GetLODLimit() const
+{
+	return LODLimit;
+}
+
+const FBodyInstance& AVoxelWorld::GetCollisionPresets() const
+{
+	return CollisionPresets;
+}
+
+UVoxelWorldSaveObject* AVoxelWorld::GetSaveObject() const
+{
+	return SaveObject;
+}
+
 
 int AVoxelWorld::GetMaxCollisionsLOD() const
 {
@@ -562,16 +614,31 @@ TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPos
 
 void AVoxelWorld::UpdateChunksAtPosition(const FIntVector& Position)
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("UpdateChunksAtPosition called but the world isn't created"));
+		return;
+	}
 	Render->UpdateBox(FIntBox(Position));
 }
 
 void AVoxelWorld::UpdateChunksOverlappingBox(const FIntBox& Box)
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("UpdateChunksOverlappingBox called but the world isn't created"));
+		return;
+	}
 	Render->UpdateBox(Box);
 }
 
 void AVoxelWorld::UpdateAll()
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("UpdateAll called but the world isn't created"));
+		return;
+	}
 	Render->UpdateBox(FIntBox::Infinite());
 }
 
@@ -602,7 +669,7 @@ void AVoxelWorld::CreateWorldInternal(AActor* InChunksOwner)
 	InstancedWorldGenerator->SetVoxelWorld(this);
 
 	// Create Data
-	Data = MakeShareable(new FVoxelData(LOD, InstancedWorldGenerator.ToSharedRef(), false));
+	Data = MakeShareable(new FVoxelData(LOD, InstancedWorldGenerator.ToSharedRef(), false, bEnableUndoRedo));
 
 #if DO_CHECK
 	FVoxelUtilities::TestRLE();
@@ -616,7 +683,14 @@ void AVoxelWorld::CreateWorldInternal(AActor* InChunksOwner)
 	Render = FVoxelRenderFactory::GetVoxelRender(RenderType, this, InChunksOwner);
 
 	
+	
 	bIsCreated = true;
+
+	// Load if possible
+	if (SaveObject)
+	{
+		LoadFromSave(SaveObject->Save);
+	}
 }
 
 void AVoxelWorld::DestroyWorldInternal()
@@ -657,7 +731,9 @@ void AVoxelWorld::CreateInEditor()
 			if (!VoxelWorldEditor)
 			{
 				// else spawn
-				VoxelWorldEditor = Cast<AVoxelWorldEditorInterface>(GetWorld()->SpawnActor(VoxelWorldEditorClass));
+				FActorSpawnParameters Transient = FActorSpawnParameters();
+				Transient.ObjectFlags = RF_Transient;
+				VoxelWorldEditor = GetWorld()->SpawnActor<AVoxelWorldEditorInterface>(VoxelWorldEditorClass, Transient);
 			}
 		}
 		VoxelWorldEditor->Init(this);
@@ -668,6 +744,8 @@ void AVoxelWorld::CreateInEditor()
 			DestroyWorldInternal();
 		}
 
+		const bool bEnableUndoRedoSave = bEnableUndoRedo;
+		bEnableUndoRedo = true;
 
 		// Create/Find ChunksOwner
 		{
@@ -688,11 +766,17 @@ void AVoxelWorld::CreateInEditor()
 			if (!ChunksOwner)
 			{
 				// else spawn
-				ChunksOwner = Cast<AVoxelChunksOwner>(GetWorld()->SpawnActor(AVoxelChunksOwner::StaticClass()));
+				FActorSpawnParameters Transient = FActorSpawnParameters();
+				Transient.ObjectFlags = RF_Transient;
+				ChunksOwner = GetWorld()->SpawnActor<AVoxelChunksOwner>(AVoxelChunksOwner::StaticClass(), Transient);
 			}
+
+			ChunksOwner->World = this;
 		}
 
 		CreateWorldInternal(ChunksOwner);
+
+		bEnableUndoRedo = bEnableUndoRedoSave;
 
 		AddInvoker(VoxelWorldEditor->GetInvoker());
 
@@ -716,6 +800,11 @@ bool AVoxelWorld::IsCreated() const
 
 int AVoxelWorld::GetLODAt(const FIntVector& Position) const
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetLODAt called but the world isn't created"));
+		return 0;
+	}
 	if (IsInWorld(Position))
 	{
 		return Render->GetLODAtPosition(Position);
@@ -729,11 +818,21 @@ int AVoxelWorld::GetLODAt(const FIntVector& Position) const
 
 bool AVoxelWorld::IsInWorld(const FIntVector& Position) const
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("IsInWorld called but the world isn't created"));
+		return false;
+	}
 	return Data->IsInWorld(Position);
 }
 
 bool AVoxelWorld::GetIntersectionBP(const FIntVector& Start, const FIntVector& End, FVector& GlobalPosition, FIntVector& VoxelPosition)
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetIntersection called but the world isn't created"));
+		return false;
+	}
 	return GetIntersection(Start, End, GlobalPosition, VoxelPosition);
 }
 
@@ -825,6 +924,12 @@ bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End
 
 FVector AVoxelWorld::GetNormal(const FIntVector& Position) const
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetNormal called but the world isn't created"));
+		return FVector::ZeroVector;
+	}
+
 	int X = Position.X;
 	int Y = Position.Y;
 	int Z = Position.Z;
@@ -843,5 +948,10 @@ float AVoxelWorld::GetVoxelSize() const
 
 FIntBox AVoxelWorld::GetBounds() const
 {
+	if (!IsCreated())
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetBounds called but the world isn't created"));
+		return FIntBox();
+	}
 	return Data->GetBounds();
 }

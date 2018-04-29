@@ -5,16 +5,20 @@
 #include "VoxelUtilities.h"
 #include "ScopeLock.h"
 
-FValueOctree::FValueOctree(TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator, uint8 LOD, bool bMultiplayer)
+FValueOctree::FValueOctree(TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator, uint8 LOD, bool bMultiplayer, bool bEnableUndoRedo)
 	: TVoxelOctree(LOD)
 	, WorldGenerator(WorldGenerator)
 	, bIsDirty(false)
 	, bIsNetworkDirty(false)
 	, bMultiplayer(bMultiplayer)
+	, bEnableUndoRedo(bEnableUndoRedo)
 	, Values(nullptr)
 	, Materials(nullptr)
 {
-
+	if (bEnableUndoRedo)
+	{
+		CurrentFrame = MakeShared<Frame>();
+	}
 }
 
 FValueOctree::FValueOctree(FValueOctree* Parent, uint8 ChildIndex)
@@ -23,10 +27,14 @@ FValueOctree::FValueOctree(FValueOctree* Parent, uint8 ChildIndex)
 	, bIsDirty(false)
 	, bIsNetworkDirty(false)
 	, bMultiplayer(Parent->bMultiplayer)
+	, bEnableUndoRedo(Parent->bEnableUndoRedo)
 	, Values(nullptr)
 	, Materials(nullptr)
 {
-
+	if (bEnableUndoRedo)
+	{
+		CurrentFrame = MakeShared<Frame>();
+	}
 }
 
 FValueOctree::~FValueOctree()
@@ -429,8 +437,14 @@ void FValueOctree::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelM
 		GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
 
 		uint32 Index = IndexFromCoordinates(LocalX, LocalY, LocalZ);
+
 		if (bSetValue)
 		{
+			if (bEnableUndoRedo)
+			{
+				CurrentFrame->ModifiedValues.Add(ModifiedValue<float>(Values[Index], Index));
+			}
+
 			Values[Index] = Value;
 
 			if (bMultiplayer)
@@ -440,6 +454,11 @@ void FValueOctree::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelM
 		}
 		if (bSetMaterial)
 		{
+			if (bEnableUndoRedo)
+			{
+				CurrentFrame->ModifiedMaterials.Add(ModifiedValue<FVoxelMaterial>(Materials[Index], Index));
+			}
+
 			Materials[Index] = Material;
 
 			if (bMultiplayer)
@@ -871,4 +890,162 @@ void FValueOctree::EndGet(TArray<uint64>& Ids)
 void FValueOctree::LockTransactions()
 {
 	TransactionLock.lock();
+}
+
+void FValueOctree::SaveFrame(int HistoryPosition)
+{
+	check(bEnableUndoRedo);
+
+	if (LOD == 0)
+	{
+		CurrentFrame->HistoryPosition = HistoryPosition;
+		UndoFramesStack.Add(CurrentFrame);
+		CurrentFrame = MakeShared<Frame>();
+		RedoFramesStack.Empty();
+	}
+	else
+	{
+		for (auto& Child : GetChilds())
+		{
+			Child->SaveFrame(HistoryPosition);
+		}
+	}
+}
+
+void FValueOctree::Undo(int HistoryPosition, TArray<FIntVector>& OutPositionsToUpdate)
+{
+	check(bEnableUndoRedo);
+
+	if (LOD == 0)
+	{
+		check(CurrentFrame->ModifiedValues.Num() == 0 && CurrentFrame->ModifiedMaterials.Num() == 0);
+
+		if (UndoFramesStack.Num() > 0 && UndoFramesStack.Last()->HistoryPosition == HistoryPosition)
+		{
+			auto UndoFrame = UndoFramesStack.Pop();
+			TSharedPtr<Frame> RedoFrame = MakeShared<Frame>();
+			RedoFrame->HistoryPosition = HistoryPosition + 1;
+
+			if (UndoFrame->ModifiedValues.Num() > 0 || UndoFrame->ModifiedMaterials.Num() > 0)
+			{
+				RedoFrame->ModifiedValues.SetNumUninitialized(UndoFrame->ModifiedValues.Num());
+				for (int I = UndoFrame->ModifiedValues.Num() - 1; I >= 0; I--)
+				{
+					auto& M = UndoFrame->ModifiedValues[I];
+
+					RedoFrame->ModifiedValues[I] = ModifiedValue<float>(Values[M.Index], M.Index);
+
+					Values[M.Index] = M.Value;
+				}
+
+				RedoFrame->ModifiedMaterials.SetNumUninitialized(UndoFrame->ModifiedMaterials.Num());
+				for (int I = UndoFrame->ModifiedMaterials.Num() - 1; I >= 0; I--)
+				{
+					auto& M = UndoFrame->ModifiedMaterials[I];
+
+					RedoFrame->ModifiedMaterials[I] = ModifiedValue<FVoxelMaterial>(Materials[M.Index], M.Index);
+
+					Materials[M.Index] = M.Value;
+				}
+
+				GetPositionsToUpdate(OutPositionsToUpdate);
+			}
+
+			RedoFramesStack.Add(RedoFrame);
+		}
+	}
+	else
+	{
+		for (auto& Child : GetChilds())
+		{
+			Child->Undo(HistoryPosition, OutPositionsToUpdate);
+		}
+	}
+}
+
+void FValueOctree::Redo(int HistoryPosition, TArray<FIntVector>& OutPositionsToUpdate)
+{
+	check(bEnableUndoRedo);
+
+	if (LOD == 0)
+	{
+		check(CurrentFrame->ModifiedValues.Num() == 0 && CurrentFrame->ModifiedMaterials.Num() == 0);
+
+		if (RedoFramesStack.Num() > 0 && RedoFramesStack.Last()->HistoryPosition == HistoryPosition)
+		{
+			auto RedoFrame = RedoFramesStack.Pop();
+			TSharedPtr<Frame> UndoFrame = MakeShared<Frame>();
+			UndoFrame->HistoryPosition = HistoryPosition - 1;
+
+			if (RedoFrame->ModifiedValues.Num() > 0 || RedoFrame->ModifiedMaterials.Num() > 0)
+			{
+				UndoFrame->ModifiedValues.SetNumUninitialized(RedoFrame->ModifiedValues.Num());
+				for (int I = RedoFrame->ModifiedValues.Num() - 1; I >= 0; I--)
+				{
+					auto& M = RedoFrame->ModifiedValues[I];
+
+					UndoFrame->ModifiedValues[I] = ModifiedValue<float>(Values[M.Index], M.Index);
+
+					Values[M.Index] = M.Value;
+				}
+
+				UndoFrame->ModifiedMaterials.SetNumUninitialized(RedoFrame->ModifiedMaterials.Num());
+				for (int I = RedoFrame->ModifiedMaterials.Num() - 1; I >= 0; I--)
+				{
+					auto& M = RedoFrame->ModifiedMaterials[I];
+
+					UndoFrame->ModifiedMaterials[I] = ModifiedValue<FVoxelMaterial>(Materials[M.Index], M.Index);
+
+					Materials[M.Index] = M.Value;
+				}
+
+				GetPositionsToUpdate(OutPositionsToUpdate);
+			}
+
+			UndoFramesStack.Add(UndoFrame);
+		}
+	}
+	else
+	{
+		for (auto& Child : GetChilds())
+		{
+			Child->Redo(HistoryPosition, OutPositionsToUpdate);
+		}
+	}
+}
+
+void FValueOctree::ClearFrames()
+{
+	if (bEnableUndoRedo)
+	{
+		if (LOD == 0)
+		{
+			UndoFramesStack.Empty();
+			RedoFramesStack.Empty();
+		}
+		else
+		{
+			for (auto& Child : GetChilds())
+			{
+				Child->ClearFrames();
+			}
+		}
+	}
+}
+
+bool FValueOctree::CheckIfCurrentFrameIsEmpty() const
+{
+	if (LOD == 0)
+	{
+		return CurrentFrame->ModifiedValues.Num() == 0 && CurrentFrame->ModifiedMaterials.Num() == 0;
+	}
+	else
+	{
+		bool bSuccess = true;
+		for (auto& Child : GetChilds())
+		{
+			bSuccess = bSuccess && Child->CheckIfCurrentFrameIsEmpty();
+		}
+		return bSuccess;
+	}
 }

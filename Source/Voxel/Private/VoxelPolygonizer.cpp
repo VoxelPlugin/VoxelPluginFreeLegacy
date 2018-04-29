@@ -666,6 +666,24 @@ bool FVoxelPolygonizer::CreateChunk(FVoxelIntermediateChunk& OutChunk)
 		OutChunk.Reset();
 	}
 
+	// TODO: Speed up using raw ptrs
+	// Else sweeps crash PhysX
+	for (int I = 0; I < OutChunk.IndexBuffer.Num();)
+	{
+		const FVector& A = OutChunk.VertexBuffer[OutChunk.IndexBuffer[I]].Position;
+		I++;
+		const FVector& B = OutChunk.VertexBuffer[OutChunk.IndexBuffer[I]].Position;
+		I++;
+		const FVector& C = OutChunk.VertexBuffer[OutChunk.IndexBuffer[I]].Position;
+		I++;
+
+		if (A == B || A == C || B == C)
+		{
+			I -= 3;
+			OutChunk.IndexBuffer.RemoveAt(I, 3, false);
+		}
+	}
+
 	return true;
 }
 

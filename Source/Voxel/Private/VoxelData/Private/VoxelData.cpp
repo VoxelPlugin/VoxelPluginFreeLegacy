@@ -9,11 +9,13 @@
 #include "Algo/Reverse.h"
 #include "ScopeLock.h"
 
-FVoxelData::FVoxelData(int LOD, TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator, bool bMultiplayer)
+FVoxelData::FVoxelData(int LOD, TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator, bool bMultiplayer, bool bEnableUndoRedo)
 	: LOD(LOD)
 	, WorldGenerator(WorldGenerator)
 	, bMultiplayer(bMultiplayer)
-	, MainOctree(new FValueOctree(WorldGenerator, LOD, bMultiplayer))
+	, MainOctree(new FValueOctree(WorldGenerator, LOD, bMultiplayer, bEnableUndoRedo))
+	, HistoryPosition(0)
+	, MaxHistory(0)
 {
 }
 
@@ -265,6 +267,11 @@ void FVoxelData::LoadFromSaveAndGetModifiedPositions(const FVoxelWorldSave& Save
 {
 	auto Octrees = BeginSet(FIntBox::Infinite());
 
+	MainOctree->ClearFrames();
+
+	HistoryPosition = 0;
+	MaxHistory = 0;
+
 	if (bReset)
 	{
 		TArray<FValueOctree*> Leaves;
@@ -306,4 +313,76 @@ void FVoxelData::DiscardValuesByPredicateF(const std::function<int(const FIntBox
 	MainOctree->DiscardValuesByPredicate(P);
 	
 	EndSet(Octrees);
+}
+
+void FVoxelData::Undo(TArray<FIntVector>& OutPositionsToUpdate)
+{
+	auto Octrees = BeginSet(FIntBox::Infinite());
+	
+	HistoryPosition--;
+	if (HistoryPosition < 0)
+	{
+		HistoryPosition = 0;
+	}
+
+	MainOctree->Undo(HistoryPosition, OutPositionsToUpdate);
+
+	EndSet(Octrees);
+}
+
+void FVoxelData::Redo(TArray<FIntVector>& OutPositionsToUpdate)
+{
+	auto Octrees = BeginSet(FIntBox::Infinite());
+	
+	HistoryPosition++;
+	if (HistoryPosition > MaxHistory)
+	{
+		HistoryPosition = MaxHistory;
+	}
+	MainOctree->Redo(HistoryPosition, OutPositionsToUpdate);
+
+	EndSet(Octrees);
+}
+
+void FVoxelData::ClearFrames()
+{
+	auto Octrees = BeginSet(FIntBox::Infinite());
+	
+	MainOctree->ClearFrames();
+
+	HistoryPosition = 0;
+	MaxHistory = 0;
+
+	EndSet(Octrees);
+}
+
+void FVoxelData::SaveFrame()
+{
+	auto Octrees = BeginSet(FIntBox::Infinite());
+	
+	MainOctree->SaveFrame(HistoryPosition);
+
+	HistoryPosition++;
+	MaxHistory = HistoryPosition;
+
+	EndSet(Octrees);
+}
+
+bool FVoxelData::CheckIfCurrentFrameIsEmpty()
+{
+	auto Octrees = BeginGet(FIntBox::Infinite());
+
+	return MainOctree->CheckIfCurrentFrameIsEmpty();
+
+	EndGet(Octrees);
+}
+
+int FVoxelData::GetHistoryPosition() const
+{
+	return HistoryPosition;
+}
+
+int FVoxelData::GetMaxHistory() const
+{
+	return MaxHistory;
 }

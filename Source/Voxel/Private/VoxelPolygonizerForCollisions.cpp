@@ -47,19 +47,19 @@ bool FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 		}
 
 		// Cache signs
-		for (int CubeX = 0; CubeX < 6; CubeX++)
+		for (int CubeX = 0; CubeX < CUBE_COUNT_FC; CubeX++)
 		{
-			for (int CubeY = 0; CubeY < 6; CubeY++)
+			for (int CubeY = 0; CubeY < CUBE_COUNT_FC; CubeY++)
 			{
-				for (int CubeZ = 0; CubeZ < 6; CubeZ++)
+				for (int CubeZ = 0; CubeZ < CUBE_COUNT_FC; CubeZ++)
 				{
-					uint64& CurrentCube = CachedSigns[CubeX + 6 * CubeY + 6 * 6 * CubeZ];
+					uint64& CurrentCube = CachedSigns[CubeX + CUBE_COUNT_FC * CubeY + CUBE_COUNT_FC * CUBE_COUNT_FC * CubeZ];
 					CurrentCube = 0;
-					for (int LocalX = 0; LocalX < 4; LocalX++)
+					for (int LocalX = 0; LocalX < 4 - (CubeX == CUBE_COUNT_FC - 1 ? END_CUBE_OFFSET_FC : 0); LocalX++)
 					{
-						for (int LocalY = 0; LocalY < 4; LocalY++)
+						for (int LocalY = 0; LocalY < 4 - (CubeY == CUBE_COUNT_FC - 1 ? END_CUBE_OFFSET_FC : 0); LocalY++)
 						{
-							for (int LocalZ = 0; LocalZ < 4; LocalZ++)
+							for (int LocalZ = 0; LocalZ < 4 - (CubeZ == CUBE_COUNT_FC - 1 ? END_CUBE_OFFSET_FC : 0); LocalZ++)
 							{
 								const int X = 3 * CubeX + LocalX;
 								const int Y = 3 * CubeY + LocalY;
@@ -86,22 +86,22 @@ bool FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 		CONDITIONAL_SCOPE_CYCLE_COUNTER(STAT_FVoxelPolygonizerForCollisions_CreateSection_Iter, VOXEL_MULTITHREAD_STAT);
 
 		// Iterate over cubes
-		for (int CubeX = 0; CubeX < 6; CubeX++)
+		for (int CubeX = 0; CubeX < CUBE_COUNT_FC; CubeX++)
 		{
-			for (int CubeY = 0; CubeY < 6; CubeY++)
+			for (int CubeY = 0; CubeY < CUBE_COUNT_FC; CubeY++)
 			{
-				for (int CubeZ = 0; CubeZ < 6; CubeZ++)
+				for (int CubeZ = 0; CubeZ < CUBE_COUNT_FC; CubeZ++)
 				{
-					uint64 CurrentCube = CachedSigns[CubeX + 6 * CubeY + 6 * 6 * CubeZ];
+					uint64 CurrentCube = CachedSigns[CubeX + CUBE_COUNT_FC * CubeY + CUBE_COUNT_FC * CUBE_COUNT_FC * CubeZ];
 					if (CurrentCube == 0 || CurrentCube == /*MAXUINT64*/ ((uint64)~((uint64)0)))
 					{
 						continue;
 					}
-					for (int LocalX = 0; LocalX < 3; LocalX++)
+					for (int LocalX = 0; LocalX < 3 - (CubeX == CUBE_COUNT_FC - 1 ? END_CUBE_OFFSET_FC : 0); LocalX++)
 					{
-						for (int LocalY = 0; LocalY < 3; LocalY++)
+						for (int LocalY = 0; LocalY < 3 - (CubeY == CUBE_COUNT_FC - 1 ? END_CUBE_OFFSET_FC : 0); LocalY++)
 						{
-							for (int LocalZ = 0; LocalZ < 3; LocalZ++)
+							for (int LocalZ = 0; LocalZ < 3 - (CubeZ == CUBE_COUNT_FC - 1 ? END_CUBE_OFFSET_FC : 0); LocalZ++)
 							{
 								const uint64 ONE = 1;
 								unsigned long CaseCode =
@@ -114,7 +114,7 @@ bool FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 0) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1)))) != 0) << 6)
 									| (static_cast<bool>((CurrentCube & (ONE << ((LocalX + 1) + 4 * (LocalY + 1) + 4 * 4 * (LocalZ + 1)))) != 0) << 7);
 
-								if (CaseCode != 0 && CaseCode != 511)
+								if (CaseCode != 0 && CaseCode != 255)
 								{
 									// Cell has a nontrivial triangulation
 
@@ -244,6 +244,24 @@ bool FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 	{
 		// Else physics thread crash
 		OutSection.Reset();
+	}
+
+	// TODO: Speed up using raw ptrs
+	// Else sweeps crash PhysX
+	for (int I = 0; I < OutSection.ProcIndexBuffer.Num();)
+	{
+		const FVector& A = OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[I]].Position;
+		I++;
+		const FVector& B = OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[I]].Position;
+		I++;
+		const FVector& C = OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[I]].Position;
+		I++;
+
+		if (A == B || A == C || B == C)
+		{
+			I -= 3;
+			OutSection.ProcIndexBuffer.RemoveAt(I, 3, false);
+		}
 	}
 
 	return true;

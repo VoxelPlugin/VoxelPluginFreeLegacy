@@ -16,9 +16,9 @@ class UHierarchicalInstancedStaticMeshComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVoxelPartSetVoxelWorld, AVoxelWorld*, World);
 
 /**
- * Abstract class, does nothing
+ * Does nothing
  */
-UCLASS(Abstract)
+UCLASS()
 class AVoxelPart : public AActor
 {
 	GENERATED_BODY()

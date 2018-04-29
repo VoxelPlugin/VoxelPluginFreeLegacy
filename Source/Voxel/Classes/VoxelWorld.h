@@ -11,6 +11,7 @@
 #include "Templates/SubclassOf.h"
 #include "VoxelRenderFactory.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "PhysicsEngine/BodyInstance.h"
 #include "VoxelWorld.generated.h"
 
 class IVoxelRender;
@@ -78,6 +79,9 @@ public:
 	UMaterialInstanceDynamic* GetVoxelMaterialDynamicInstance();
 	FORCEINLINE UMaterialInterface* GetVoxelMaterial() const;
 	FORCEINLINE bool GetEnableNormals() const;
+	FORCEINLINE int GetLODLimit() const;
+	FORCEINLINE const FBodyInstance& GetCollisionPresets() const;
+	FORCEINLINE UVoxelWorldSaveObject* GetSaveObject() const;
 
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -289,6 +293,10 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Voxel|General")
 	int WorldSizeInVoxel;
+	
+	// Chunks can't have a LOD higher than this. Useful is background has a too low resolution. WARNING: Don't set this too low, 5 under LOD should be safe
+	UPROPERTY(EditAnywhere, Category = "Voxel|General", meta = (ClampMin = "1", ClampMax = "19", UIMin = "1", UIMax = "19"))
+	int LODLimit;
 
 	// Size of a voxel in cm
 	UPROPERTY(EditAnywhere, Category = "Voxel|General")
@@ -298,12 +306,19 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Voxel|General")
 	FVoxelWorldGeneratorPicker WorldGenerator;
 
+	UPROPERTY(EditAnywhere, Category = "Voxel|General")
+	UVoxelWorldSaveObject* SaveObject;
+
 	// The seed of this world. For now only used for grass
 	UPROPERTY(EditAnywhere, Category = "Voxel|General", meta = (ClampMin = "1", UIMin = "1"))
 	int32 Seed;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel|General")
 	bool bCreateWorldAutomatically;
+
+	// Keep all the changes in memory to enable undo/redo. Can be expensive
+	UPROPERTY(EditAnywhere, Category = "Voxel|General")
+	bool bEnableUndoRedo;
 
 
 
@@ -334,7 +349,9 @@ private:
 	// Should the collisions meshes around the player be rendered?
 	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions", AdvancedDisplay)
 	bool bDebugCollisions;
-	
+
+	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions", AdvancedDisplay)
+	FBodyInstance CollisionPresets;
 
 
 	// Number of collision update per second
@@ -367,12 +384,11 @@ private:
 
 	UPROPERTY()
 	UMaterialInstanceDynamic* VoxelMaterialInstance;
+
 	
 
 	FQueuedThreadPool* AsyncTasksThreadPool;
-
-	TSharedPtr<class FVoxelTcpServer> TcpServer;
-	TSharedPtr<class FVoxelTcpClient> TcpClient;
+	
 
 	TSharedPtr<FVoxelData> Data;
 	TSharedPtr<IVoxelRender> Render;

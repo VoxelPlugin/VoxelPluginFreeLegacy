@@ -13,6 +13,7 @@
 #include "VoxelUtilities.h"
 #include "Engine/World.h"
 #include "VoxelThread.h"
+#include "VoxelChunksOwner.h"
 
 DECLARE_CYCLE_STAT(TEXT("UVoxelTools::SimulatePhysicsOnFloatingVoxelActors"), STAT_UVoxelTools_SimulatePhysicsOnFloatingVoxelActors, STATGROUP_Voxel);
 
@@ -310,7 +311,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 
 
 void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector StartPosition, const FVector Direction, const float Radius, const float ToolHeight, const float Precision,
-	const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, TArray<TTuple<FIntVector, float>>& OutModifiedPositionsAndDistances)
+	const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, TArray<TTuple<FIntVector, float>>& OutModifiedPositionsAndDistances, bool bMultitrace)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UVoxelTools_FindModifiedPositionsForRaycasts);
 
@@ -359,7 +360,41 @@ void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector StartPos
 				{
 					DrawDebugLine(World->GetWorld(), Start, End, FColor::Magenta, false, 1);
 				}
-				if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldStatic) && Hit.Actor->IsA(AVoxelWorld::StaticClass()))
+				bool bSuccess;
+				if (bMultitrace)
+				{
+					TArray<FHitResult> Hits;
+					if (World->GetWorld()->LineTraceMultiByChannel(Hits, Start, End, ECollisionChannel::ECC_WorldStatic))
+					{
+						bSuccess = false;
+						for (auto& SingleHit : Hits)
+						{
+							if (SingleHit.Actor == World || (Cast<AVoxelChunksOwner>(SingleHit.Actor.Get()) && Cast<AVoxelChunksOwner>(SingleHit.Actor.Get())->World == World))
+							{
+								Hit = SingleHit;
+								bSuccess = true;
+								break;
+							}
+						}
+					}
+					else
+					{
+						bSuccess = false;
+					}
+				}
+				else
+				{
+					if (World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_WorldStatic) && (Hit.Actor == World || (Cast<AVoxelChunksOwner>(Hit.Actor.Get()) && Cast<AVoxelChunksOwner>(Hit.Actor.Get())->World == World)))
+					{
+						bSuccess = true;
+					}
+					else
+					{
+						bSuccess = false;
+					}
+				}
+
+				if (bSuccess)
 				{
 					if (bShowHitPoints)
 					{
@@ -383,8 +418,8 @@ void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector StartPos
 	}
 }
 
-void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector StartPosition, const FVector Direction, const float Radius, const float Strength, const bool bAdd,
-	const float ToolHeight, const float Precision, const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels)
+void UVoxelTools::SetValueProjection(TArray<FIntVector>& ModifiedPositions, AVoxelWorld* World, const FVector StartPosition, const FVector Direction, const float Radius, const float Strength, const bool bAdd,
+	const float ToolHeight, const float Precision, const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, const bool bEnableMultiTrace)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UVoxelTools_SetValueProjection);
 
@@ -395,7 +430,7 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector StartPosi
 	}
 
 	TArray<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
-	FindModifiedPositionsForRaycasts(World, StartPosition, Direction, Radius, ToolHeight, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
+	FindModifiedPositionsForRaycasts(World, StartPosition, Direction, Radius, ToolHeight, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances, bEnableMultiTrace);
 	
 	if (ModifiedPositionsAndDistances.Num() > 0)
 	{
@@ -444,12 +479,13 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector StartPosi
 		{
 			const FIntVector Point = Tuple.Get<0>();
 			World->UpdateChunksAtPosition(Point);
+			ModifiedPositions.Add(Point);
 		}
 	}
 }
 
 void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector StartPosition, const FVector Direction, const float Radius, const uint8 MaterialIndex, const EVoxelLayer Layer,
-	const float FadeDistance, const float Exponent, const float ToolHeight, const float Precision, const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels)
+	const float FadeDistance, const float Exponent, const float ToolHeight, const float Precision, const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, const bool bEnableMultiTrace)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UVoxelTools_SetMaterialProjection);
 
@@ -462,7 +498,7 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector Start
 	const float VoxelDiagonalLength = 1.73205080757f * World->GetVoxelSize();
 
 	TArray<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
-	FindModifiedPositionsForRaycasts(World, StartPosition, Direction, Radius + FadeDistance + 2 * VoxelDiagonalLength, ToolHeight, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
+	FindModifiedPositionsForRaycasts(World, StartPosition, Direction, Radius + FadeDistance + 2 * VoxelDiagonalLength, ToolHeight, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances, bEnableMultiTrace);
 	
 	if (ModifiedPositionsAndDistances.Num() > 0)
 	{

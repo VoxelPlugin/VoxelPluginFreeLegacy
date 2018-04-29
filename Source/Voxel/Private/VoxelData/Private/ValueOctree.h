@@ -20,12 +20,14 @@ class FVoxelAssetInstance;
 class FValueOctree : public TVoxelOctree<FValueOctree, DATA_CHUNK_SIZE>
 {
 public:
-	FValueOctree(TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator, uint8 LOD, bool bMultiplayer);
+	FValueOctree(TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator, uint8 LOD, bool bMultiplayer, bool bEnableUndoRedo);
 	FValueOctree(FValueOctree* Parent, uint8 ChildIndex);
 	~FValueOctree();
 
 	// Is the game multiplayer?
 	const bool bMultiplayer;
+	// Enable reversing edits
+	const bool bEnableUndoRedo;
 
 	// Generator for this world
 	TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator;
@@ -74,7 +76,7 @@ public:
 	
 	
 	/**
-	 * Get the positions to update for this chunk. Must be called only if LOD == 0
+	 * Get the positions to update for this chunk. Must be called only with LOD == 0
 	 */
 	void GetPositionsToUpdate(TArray<FIntVector>& OutPositions);
 
@@ -107,6 +109,27 @@ public:
 
 	void LockTransactions();
 
+	/**
+	 * Add the current frame to the undo stack. Clear the redo stack
+	 */
+	void SaveFrame(int HistoryPosition);
+	/**
+	 * Undo one frame and add it to the redo stack. Current frame must be empty
+	 */
+	void Undo(int HistoryPosition, TArray<FIntVector>& OutPositionsToUpdate);
+	/**
+	 * Redo one frame and add it to the undo stack. Current frame must be empty
+	 */
+	void Redo(int HistoryPosition, TArray<FIntVector>& OutPositionsToUpdate);
+	/**
+	 * Clear all the frames
+	 */
+	void ClearFrames();
+	/**
+	 * Check that the current frame is empty (safe to call Undo/Redo)
+	 */
+	bool CheckIfCurrentFrameIsEmpty() const;
+
 private:
 	// Values if dirty
 	float* Values;
@@ -131,6 +154,27 @@ private:
 	FThreadSafeCounter SetCounter;
 
 	FThreadSafeBool bIsLocked;
+
+	template<typename T>
+	struct ModifiedValue
+	{
+		T Value;
+		int32 Index;
+
+		ModifiedValue(T Value, int32 Index) : Value(Value), Index(Index) {}
+	};
+
+	struct Frame
+	{
+		int HistoryPosition;
+		TArray<ModifiedValue<float>> ModifiedValues;
+		TArray<ModifiedValue<FVoxelMaterial>> ModifiedMaterials;
+	};
+
+	TSharedPtr<Frame> CurrentFrame;
+
+	TArray<TSharedPtr<Frame>> UndoFramesStack;
+	TArray<TSharedPtr<Frame>> RedoFramesStack;
 
 
 	/**
