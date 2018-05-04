@@ -37,7 +37,17 @@ public:
 };
 
 UCLASS(Blueprintable)
-class VOXEL_API AVoxelBoxMarker : public AVoxelMarker
+class VOXEL_API AVoxelEditorMarker : public AVoxelMarker
+{
+	GENERATED_BODY()
+public:
+	AVoxelEditorMarker();
+
+	void Tick(float DeltaTime) override;
+};
+
+UCLASS(Blueprintable)
+class VOXEL_API AVoxelBoxMarker : public AVoxelEditorMarker
 {
     GENERATED_BODY()
 public:
@@ -57,7 +67,7 @@ public:
 };
 
 UCLASS(Blueprintable)
-class VOXEL_API AVoxelSphereMarker : public AVoxelMarker
+class VOXEL_API AVoxelSphereMarker : public AVoxelEditorMarker
 {
     GENERATED_BODY()
 public:
@@ -77,7 +87,7 @@ public:
 };
 
 UCLASS(Blueprintable)
-class VOXEL_API AVoxelProjectionMarker : public AVoxelMarker
+class VOXEL_API AVoxelProjectionMarker : public AVoxelEditorMarker
 {
     GENERATED_BODY()
 public:

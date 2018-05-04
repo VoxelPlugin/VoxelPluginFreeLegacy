@@ -372,9 +372,11 @@ bool FVoxelData::CheckIfCurrentFrameIsEmpty()
 {
 	auto Octrees = BeginGet(FIntBox::Infinite());
 
-	return MainOctree->CheckIfCurrentFrameIsEmpty();
+	bool bSuccess = MainOctree->CheckIfCurrentFrameIsEmpty();
 
 	EndGet(Octrees);
+
+	return bSuccess;
 }
 
 int FVoxelData::GetHistoryPosition() const

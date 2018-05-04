@@ -63,7 +63,9 @@ public:
 	virtual bool UsesToolkits() const override;
 	
 	/** Check to see if an actor can be selected in this mode - no side effects */
-	virtual bool IsSelectionAllowed( AActor* InActor, bool bInSelection ) const override;
+	virtual bool IsSelectionAllowed( AActor* InActor, bool bInSelection ) const override;	
+	
+	virtual bool GetCursor(EMouseCursor::Type& OutCursor) const override;
 	// End of FEdMode interface
 
 	void SetCurrentTool(FName Tool);
@@ -72,8 +74,12 @@ public:
 	FName GetCurrentTool() const;
 	FName GetCurrentMode() const;
 
-	void Undo();
-	void Redo();
+	void Undo(int Times);
+	void Redo(int Times);
+
+	void ClearFrames();
+
+	bool IsEnabled() const;
 
 	UVoxelTerrainEdModeData* EdModeSettings;
 
@@ -93,6 +99,7 @@ private:
 	AVoxelProjectionMarker* ProjectionMarker;
 
 	float LastProjectionEditTime;
+	float LastForceGCTime;
 	float Time;
 	
 	float SpotlightHeight = 400;

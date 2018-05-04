@@ -210,8 +210,7 @@ public:
 	 * @return	VoxelPosition		The voxel position of the intersection if found
 	 * @return	Has intersected?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (DisplayName = "Get Intersection"))
-	bool GetIntersectionBP(const FIntVector& Start, const FIntVector& End, FVector& GlobalPosition, FIntVector& VoxelPosition); // BP Function can't be const for performance (pure are called for each output)
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Voxel", meta = (DisplayName = "Get Intersection"))
 	bool GetIntersection(const FIntVector& Start, const FIntVector& End, FVector& GlobalPosition, FIntVector& VoxelPosition) const;
 
 	/**
@@ -282,16 +281,17 @@ protected:
 #if WITH_EDITOR
 	bool ShouldTickIfViewportsOnly() const override;
 	bool CanEditChange(const UProperty* InProperty) const override;
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
+	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 	//~ End AActor Interface
 
 private:
-	// Size = CHUNK_SIZE * 2^LOD. Has little impact on performance
-	UPROPERTY(EditAnywhere, Category = "Voxel|General", meta = (ClampMin = "1", ClampMax = "19", UIMin = "1", UIMax = "19"))
+	// WorldSizeInVoxel = CHUNK_SIZE * 2^Depth. Has little impact on performance
+	UPROPERTY(EditAnywhere, Category = "Voxel|General", meta = (ClampMin = "1", ClampMax = "19", UIMin = "1", UIMax = "19", DisplayName = "Octree Depth"))
 	int LOD;
 
-	UPROPERTY(VisibleAnywhere, Category = "Voxel|General")
+	// Size of an edge of the world
+	UPROPERTY(EditAnywhere, Category = "Voxel|General", meta = (ClampMin = "1"))
 	int WorldSizeInVoxel;
 	
 	// Chunks can't have a LOD higher than this. Useful is background has a too low resolution. WARNING: Don't set this too low, 5 under LOD should be safe

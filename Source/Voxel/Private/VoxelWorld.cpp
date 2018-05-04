@@ -193,7 +193,18 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	WorldSizeInVoxel = CHUNK_SIZE * (1 << LOD);
+	if (PropertyChangedEvent.MemberProperty)
+	{
+		if (PropertyChangedEvent.MemberProperty->GetNameCPP() == TEXT("LOD"))
+		{
+			WorldSizeInVoxel = CHUNK_SIZE * (1 << LOD);
+		}
+		else if (PropertyChangedEvent.MemberProperty->GetNameCPP() == TEXT("WorldSizeInVoxel"))
+		{
+			LOD = FMath::Clamp(FMath::CeilToInt(FMath::Log2(WorldSizeInVoxel / (float)CHUNK_SIZE)), 1, 19);
+			WorldSizeInVoxel = CHUNK_SIZE * (1 << LOD);
+		}
+	}
 }
 
 #endif
@@ -533,7 +544,7 @@ UVoxelWorldSaveObject* AVoxelWorld::GetSaveObject() const
 
 int AVoxelWorld::GetMaxCollisionsLOD() const
 {
-	return MaxCollisionsLOD;
+	return GetWorld()->WorldType == EWorldType::Editor ? 5 : MaxCollisionsLOD;
 }
 
 bool AVoxelWorld::GetDebugCollisions() const
@@ -826,19 +837,15 @@ bool AVoxelWorld::IsInWorld(const FIntVector& Position) const
 	return Data->IsInWorld(Position);
 }
 
-bool AVoxelWorld::GetIntersectionBP(const FIntVector& Start, const FIntVector& End, FVector& GlobalPosition, FIntVector& VoxelPosition)
+bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End, FVector& OutGlobalPosition, FIntVector& OutVoxelPosition) const
 {
+	SCOPE_CYCLE_COUNTER(STAT_VoxelWorld_GetIntersection);
+	
 	if (!IsCreated())
 	{
 		UE_LOG(LogVoxel, Error, TEXT("GetIntersection called but the world isn't created"));
 		return false;
 	}
-	return GetIntersection(Start, End, GlobalPosition, VoxelPosition);
-}
-
-bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End, FVector& OutGlobalPosition, FIntVector& OutVoxelPosition) const
-{
-	SCOPE_CYCLE_COUNTER(STAT_VoxelWorld_GetIntersection);
 
 	FIntVector Diff = End - Start;
 	if (Diff.X != 0)
