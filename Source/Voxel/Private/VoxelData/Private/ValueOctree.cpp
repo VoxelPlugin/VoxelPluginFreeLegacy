@@ -14,10 +14,11 @@ FValueOctree::FValueOctree(TSharedRef<FVoxelWorldGeneratorInstance> WorldGenerat
 	, bEnableUndoRedo(bEnableUndoRedo)
 	, Values(nullptr)
 	, Materials(nullptr)
+	, CurrentFrame(nullptr)
 {
-	if (bEnableUndoRedo)
+	if (bEnableUndoRedo && LOD == 0)
 	{
-		CurrentFrame = MakeShared<Frame>();
+		CurrentFrame = new Frame();
 	}
 }
 
@@ -30,10 +31,11 @@ FValueOctree::FValueOctree(FValueOctree* Parent, uint8 ChildIndex)
 	, bEnableUndoRedo(Parent->bEnableUndoRedo)
 	, Values(nullptr)
 	, Materials(nullptr)
+	, CurrentFrame(nullptr)
 {
-	if (bEnableUndoRedo)
+	if (bEnableUndoRedo && LOD == 0)
 	{
-		CurrentFrame = MakeShared<Frame>();
+		CurrentFrame = new Frame();
 	}
 }
 
@@ -46,6 +48,18 @@ FValueOctree::~FValueOctree()
 	if (Materials)
 	{
 		delete[] Materials;
+	}
+	if (CurrentFrame)
+	{
+		delete CurrentFrame;
+	}
+	for (auto& UndoFrame : UndoFramesStack)
+	{
+		delete UndoFrame;
+	}
+	for (auto& RedoFrame : RedoFramesStack)
+	{
+		delete RedoFrame;
 	}
 }
 
@@ -440,8 +454,9 @@ void FValueOctree::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelM
 
 		if (bSetValue)
 		{
-			if (bEnableUndoRedo)
+			if (bEnableUndoRedo && !AlreadyModifiedValues.Contains(Index))
 			{
+				AlreadyModifiedValues.Add(Index);
 				CurrentFrame->ModifiedValues.Add(ModifiedValue<float>(Values[Index], Index));
 			}
 
@@ -454,8 +469,9 @@ void FValueOctree::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelM
 		}
 		if (bSetMaterial)
 		{
-			if (bEnableUndoRedo)
+			if (bEnableUndoRedo && !AlreadyModifiedMaterials.Contains(Index))
 			{
+				AlreadyModifiedMaterials.Add(Index);
 				CurrentFrame->ModifiedMaterials.Add(ModifiedValue<FVoxelMaterial>(Materials[Index], Index));
 			}
 
@@ -898,10 +914,22 @@ void FValueOctree::SaveFrame(int HistoryPosition)
 
 	if (LOD == 0)
 	{
-		CurrentFrame->HistoryPosition = HistoryPosition;
-		UndoFramesStack.Add(CurrentFrame);
-		CurrentFrame = MakeShared<Frame>();
-		RedoFramesStack.Empty();
+		if (CurrentFrame->ModifiedValues.Num() != 0 || CurrentFrame->ModifiedMaterials.Num() != 0)
+		{
+			CurrentFrame->HistoryPosition = HistoryPosition;
+			UndoFramesStack.Add(CurrentFrame);
+			CurrentFrame = new Frame();
+			AlreadyModifiedValues.Empty();
+			AlreadyModifiedMaterials.Empty();
+		}
+		if (RedoFramesStack.Num() > 0)
+		{	
+			for (auto& RedoFrame : RedoFramesStack)
+			{
+				delete RedoFrame;
+			}
+			RedoFramesStack.Empty();
+		}
 	}
 	else
 	{
@@ -922,8 +950,8 @@ void FValueOctree::Undo(int HistoryPosition, TArray<FIntVector>& OutPositionsToU
 
 		if (UndoFramesStack.Num() > 0 && UndoFramesStack.Last()->HistoryPosition == HistoryPosition)
 		{
-			auto UndoFrame = UndoFramesStack.Pop();
-			TSharedPtr<Frame> RedoFrame = MakeShared<Frame>();
+			Frame* const UndoFrame = UndoFramesStack.Pop();
+			Frame* const RedoFrame = new Frame();
 			RedoFrame->HistoryPosition = HistoryPosition + 1;
 
 			if (UndoFrame->ModifiedValues.Num() > 0 || UndoFrame->ModifiedMaterials.Num() > 0)
@@ -952,6 +980,7 @@ void FValueOctree::Undo(int HistoryPosition, TArray<FIntVector>& OutPositionsToU
 			}
 
 			RedoFramesStack.Add(RedoFrame);
+			delete UndoFrame;
 		}
 	}
 	else
@@ -973,8 +1002,8 @@ void FValueOctree::Redo(int HistoryPosition, TArray<FIntVector>& OutPositionsToU
 
 		if (RedoFramesStack.Num() > 0 && RedoFramesStack.Last()->HistoryPosition == HistoryPosition)
 		{
-			auto RedoFrame = RedoFramesStack.Pop();
-			TSharedPtr<Frame> UndoFrame = MakeShared<Frame>();
+			Frame* const RedoFrame = RedoFramesStack.Pop();
+			Frame* const UndoFrame = new Frame();
 			UndoFrame->HistoryPosition = HistoryPosition - 1;
 
 			if (RedoFrame->ModifiedValues.Num() > 0 || RedoFrame->ModifiedMaterials.Num() > 0)
@@ -1003,6 +1032,7 @@ void FValueOctree::Redo(int HistoryPosition, TArray<FIntVector>& OutPositionsToU
 			}
 
 			UndoFramesStack.Add(UndoFrame);
+			delete RedoFrame;
 		}
 	}
 	else
@@ -1020,6 +1050,14 @@ void FValueOctree::ClearFrames()
 	{
 		if (LOD == 0)
 		{
+			for (auto& UndoFrame : UndoFramesStack)
+			{
+				delete UndoFrame;
+			}
+			for (auto& RedoFrame : RedoFramesStack)
+			{
+				delete RedoFrame;
+			}
 			UndoFramesStack.Empty();
 			RedoFramesStack.Empty();
 		}

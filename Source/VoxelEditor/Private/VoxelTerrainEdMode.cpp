@@ -24,6 +24,7 @@ FVoxelTerrainEdMode::FVoxelTerrainEdMode()
 	, LastProjectionEditTime(0)
 	, Time(0)
 	, bMousePressed(false)
+	, LastForceGCTime(0)
 {
 	EdModeSettings = NewObject<UVoxelTerrainEdModeData>(GetTransientPackage(), TEXT("VoxelTerrainEdModeData"), RF_Transactional);
 }
@@ -51,24 +52,6 @@ void FVoxelTerrainEdMode::Enter()
 	{
 		Toolkit = MakeShareable(new FVoxelTerrainEdModeToolkit);
 		Toolkit->Init(Owner->GetToolkitHost());
-	}
-
-	FActorSpawnParameters Transient;
-	Transient.ObjectFlags = RF_Transient;
-
-	if (!SphereMarker)
-	{
-		SphereMarker = GetWorld()->SpawnActor<AVoxelSphereMarker>(AVoxelSphereMarker::StaticClass(), Transient);
-	}
-
-	if (!BoxMarker)
-	{
-		BoxMarker = GetWorld()->SpawnActor<AVoxelBoxMarker>(AVoxelBoxMarker::StaticClass(), Transient);
-	}
-
-	if (!ProjectionMarker)
-	{
-		ProjectionMarker = GetWorld()->SpawnActor<AVoxelProjectionMarker>(AVoxelProjectionMarker::StaticClass(), Transient);
 	}
 }
 
@@ -102,6 +85,11 @@ void FVoxelTerrainEdMode::Exit()
 
 bool FVoxelTerrainEdMode::MouseMove(FEditorViewportClient* ViewportClient, FViewport* Viewport, int32 MouseX, int32 MouseY)
 {
+	if (!IsEnabled())
+	{
+		return false;
+	}
+
 	FVector Start, End;
 	{
 		// Compute a world space ray from the screen space mouse coordinates
@@ -146,7 +134,7 @@ bool FVoxelTerrainEdMode::MouseMove(FEditorViewportClient* ViewportClient, FView
 		SphereMarker->SetActorLocation(FVector(1e9, 1e9, 1e9));
 		BoxMarker->SetActorLocation(FVector(1e9, 1e9, 1e9));
 
-		ProjectionMarker->SetParametersCpp(World, Mode, HitPosition, HitNormal, SpotlightHeight, ToolHeight, EdModeSettings->Radius, IsCtrlDown(ViewportClient->Viewport));
+		ProjectionMarker->SetParametersCpp(World, Mode, HitPosition, HitNormal, SpotlightHeight, ToolHeight, EdModeSettings->Radius, ViewportClient->Viewport->KeyState(EdModeSettings->Add));
 		break;
 	}
 	case EVoxelTool::Sphere:
@@ -154,7 +142,7 @@ bool FVoxelTerrainEdMode::MouseMove(FEditorViewportClient* ViewportClient, FView
 		BoxMarker->SetActorLocation(FVector(1e9, 1e9, 1e9));
 		ProjectionMarker->SetActorLocation(FVector(1e9, 1e9, 1e9));
 
-		SphereMarker->SetParametersCpp(World, Mode, HitPosition, HitNormal, SpotlightHeight, ToolHeight, EdModeSettings->Radius, IsCtrlDown(ViewportClient->Viewport));
+		SphereMarker->SetParametersCpp(World, Mode, HitPosition, HitNormal, SpotlightHeight, ToolHeight, EdModeSettings->Radius, ViewportClient->Viewport->KeyState(EdModeSettings->Add));
 		break;
 	}
 	case EVoxelTool::Box:
@@ -162,7 +150,7 @@ bool FVoxelTerrainEdMode::MouseMove(FEditorViewportClient* ViewportClient, FView
 		SphereMarker->SetActorLocation(FVector(1e9, 1e9, 1e9));
 		ProjectionMarker->SetActorLocation(FVector(1e9, 1e9, 1e9));
 
-		BoxMarker->SetParametersCpp(World, Mode, HitPosition, HitNormal, SpotlightHeight, ToolHeight, EdModeSettings->Radius, IsCtrlDown(ViewportClient->Viewport));
+		BoxMarker->SetParametersCpp(World, Mode, HitPosition, HitNormal, SpotlightHeight, ToolHeight, EdModeSettings->Radius, ViewportClient->Viewport->KeyState(EdModeSettings->Add));
 		break;
 	}
 	default:
@@ -189,6 +177,30 @@ bool FVoxelTerrainEdMode::DisallowMouseDeltaTracking() const
 
 void FVoxelTerrainEdMode::Tick(FEditorViewportClient * ViewportClient, float DeltaTime)
 {
+	if (!IsEnabled())
+	{
+		return;
+	}
+	{
+		FActorSpawnParameters Transient;
+		Transient.ObjectFlags = RF_Transient;
+
+		if (!SphereMarker)
+		{
+			SphereMarker = GetWorld()->SpawnActor<AVoxelSphereMarker>(AVoxelSphereMarker::StaticClass(), Transient);
+		}
+
+		if (!BoxMarker)
+		{
+			BoxMarker = GetWorld()->SpawnActor<AVoxelBoxMarker>(AVoxelBoxMarker::StaticClass(), Transient);
+		}
+
+		if (!ProjectionMarker)
+		{
+			ProjectionMarker = GetWorld()->SpawnActor<AVoxelProjectionMarker>(AVoxelProjectionMarker::StaticClass(), Transient);
+		}
+	}
+
 	ViewportClient->Viewport->CaptureMouse(true);
 	Time += DeltaTime;
 
@@ -202,7 +214,7 @@ void FVoxelTerrainEdMode::Tick(FEditorViewportClient * ViewportClient, float Del
 			case EVoxelMode::Edit:
 			{
 				TArray<FIntVector> ModifiedPositions;
-				UVoxelTools::SetValueProjection(ModifiedPositions, World, HitPosition, -HitNormal, EdModeSettings->Radius, EdModeSettings->Strength, IsCtrlDown(ViewportClient->Viewport), ToolHeight);
+				UVoxelTools::SetValueProjection(ModifiedPositions, World, HitPosition, -HitNormal, EdModeSettings->Radius, EdModeSettings->Strength, ViewportClient->Viewport->KeyState(EdModeSettings->Add), ToolHeight);
 				World->GetData()->SaveFrame();
 				break;
 			}
@@ -226,74 +238,85 @@ void FVoxelTerrainEdMode::Tick(FEditorViewportClient * ViewportClient, float Del
 				break;
 			}
 			}
-			ViewportClient->Invalidate(false, false);
 		}
+	}
+
+	if (Time - LastForceGCTime > 1)
+	{
+		LastForceGCTime = Time;
+		GEngine->ForceGarbageCollection(true);
 	}
 }
 
 bool FVoxelTerrainEdMode::HandleClick(FEditorViewportClient* ViewportClient, HHitProxy* HitProxy, const FViewportClick& Click)
 {
-	if (World)
-	{
-		switch (Tool)
-		{
-		case EVoxelTool::Projection:
-		{
-			break;
-		}
-		case EVoxelTool::Sphere:
-		{
-			if (Mode == EVoxelMode::Material)
-			{
-				UVoxelTools::SetMaterialSphere(World, HitPosition, EdModeSettings->Radius, EdModeSettings->MaterialIndex, EdModeSettings->Layer);
-			}
-			else
-			{
-				UVoxelTools::SetValueSphere(World, HitPosition, EdModeSettings->Radius, IsCtrlDown(ViewportClient->Viewport));
-			}
-			World->GetData()->SaveFrame();
-			break;
-		}
-		case EVoxelTool::Box:
-		{
-			const int R = FMath::CeilToInt(EdModeSettings->Radius / World->GetVoxelSize());
-			const FVector P = HitPosition - EdModeSettings->Radius / 2;
-			if (Mode == EVoxelMode::Material)
-			{
-				UVoxelTools::SetMaterialBox(World, P, FIntVector(R, R, R), EdModeSettings->MaterialIndex, EdModeSettings->Layer);
-			}
-			else
-			{
-				UVoxelTools::SetValueBox(World, P, FIntVector(R, R, R), IsCtrlDown(ViewportClient->Viewport));
-			}
-			World->GetData()->SaveFrame();
-			break;
-		}
-		default:
-		{
-			check(false);
-			break;
-		}
-		}
-
-		return true;
-	}
-	else
+	if (!IsEnabled())
 	{
 		return false;
 	}
+
+	if (!World)
+	{
+		return false;
+	}
+
+	switch (Tool)
+	{
+	case EVoxelTool::Projection:
+	{
+		break;
+	}
+	case EVoxelTool::Sphere:
+	{
+		if (Mode == EVoxelMode::Material)
+		{
+			UVoxelTools::SetMaterialSphere(World, HitPosition, EdModeSettings->Radius, EdModeSettings->MaterialIndex, EdModeSettings->Layer);
+		}
+		else
+		{
+			UVoxelTools::SetValueSphere(World, HitPosition, EdModeSettings->Radius, ViewportClient->Viewport->KeyState(EdModeSettings->Add));
+		}
+		World->GetData()->SaveFrame();
+		break;
+	}
+	case EVoxelTool::Box:
+	{
+		const int R = FMath::CeilToInt(EdModeSettings->Radius / World->GetVoxelSize());
+		const FVector P = HitPosition - EdModeSettings->Radius / 2;
+		if (Mode == EVoxelMode::Material)
+		{
+			UVoxelTools::SetMaterialBox(World, P, FIntVector(R, R, R), EdModeSettings->MaterialIndex, EdModeSettings->Layer);
+		}
+		else
+		{
+			UVoxelTools::SetValueBox(World, P, FIntVector(R, R, R), ViewportClient->Viewport->KeyState(EdModeSettings->Add));
+		}
+		World->GetData()->SaveFrame();
+		break;
+	}
+	default:
+	{
+		check(false);
+		break;
+	}
+	}
+
+	return true;
 }
 
 bool FVoxelTerrainEdMode::InputKey(FEditorViewportClient* ViewportClient, FViewport* Viewport, FKey Key, EInputEvent Event)
 {
-	if (Event == IE_Released && (Key == EKeys::LeftMouseButton || Key == EKeys::MiddleMouseButton || Key == EKeys::RightMouseButton))
+	if (IsEnabled())
 	{
-		//Set the cursor position to that of the slate cursor so it wont snap back
-		Viewport->SetPreCaptureMousePosFromSlateCursor();
-	}
-	if (Key == EKeys::LeftMouseButton && Event != EInputEvent::IE_Repeat)
-	{
-		bMousePressed = (Event == EInputEvent::IE_Pressed);
+		if (Event == IE_Released && (Key == EKeys::LeftMouseButton || Key == EKeys::MiddleMouseButton || Key == EKeys::RightMouseButton))
+		{
+			//Set the cursor position to that of the slate cursor so it wont snap back
+			Viewport->SetPreCaptureMousePosFromSlateCursor();
+		}
+		if (Key == EKeys::LeftMouseButton && Event != EInputEvent::IE_Repeat)
+		{
+			bMousePressed = (Event == EInputEvent::IE_Pressed);
+		}
 	}
 
 	return false;
@@ -316,7 +339,20 @@ bool FVoxelTerrainEdMode::UsesToolkits() const
 
 bool FVoxelTerrainEdMode::IsSelectionAllowed(AActor* InActor, bool bInSelection) const
 {
-	return false;
+	return !IsEnabled(); // Disallow selection if enabled
+}
+
+bool FVoxelTerrainEdMode::GetCursor(EMouseCursor::Type& OutCursor) const
+{
+	if (IsEnabled())
+	{
+		OutCursor = EMouseCursor::Crosshairs;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 void FVoxelTerrainEdMode::SetCurrentTool(FName InTool)
@@ -341,12 +377,21 @@ FName FVoxelTerrainEdMode::GetCurrentMode() const
 	return CurrentModeName;
 }
 
-void FVoxelTerrainEdMode::Undo()
+void FVoxelTerrainEdMode::Undo(int Times)
 {
 	if (World)
 	{
 		TArray<FIntVector> PositionsToUpdate;
-		World->GetData()->Undo(PositionsToUpdate);
+		if (!World->GetData()->CheckIfCurrentFrameIsEmpty())
+		{
+			World->GetData()->SaveFrame();
+		}
+
+		for (int i = 0; i < Times; i++)
+		{
+			World->GetData()->Undo(PositionsToUpdate);
+		}
+
 		for (auto Position : PositionsToUpdate)
 		{
 			World->UpdateChunksAtPosition(Position);
@@ -354,15 +399,37 @@ void FVoxelTerrainEdMode::Undo()
 	}
 }
 
-void FVoxelTerrainEdMode::Redo()
+void FVoxelTerrainEdMode::Redo(int Times)
 {
 	if (World)
 	{
 		TArray<FIntVector> PositionsToUpdate;
-		World->GetData()->Redo(PositionsToUpdate);
+		if (!World->GetData()->CheckIfCurrentFrameIsEmpty())
+		{
+			World->GetData()->SaveFrame();
+		}
+		
+		for (int i = 0; i < Times; i++)
+		{
+			World->GetData()->Redo(PositionsToUpdate);
+		}
+		
 		for (auto Position : PositionsToUpdate)
 		{
 			World->UpdateChunksAtPosition(Position);
 		}
 	}
+}
+
+void FVoxelTerrainEdMode::ClearFrames()
+{
+	if (World)
+	{
+		World->GetData()->ClearFrames();
+	}
+}
+
+bool FVoxelTerrainEdMode::IsEnabled() const
+{
+	return !GEditor->PlayWorld && !GEditor->bIsSimulatingInEditor;
 }

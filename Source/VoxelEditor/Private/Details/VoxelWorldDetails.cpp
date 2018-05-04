@@ -136,8 +136,17 @@ FReply FVoxelWorldDetails::OnLoad()
 		if (bDoIt)
 		{
 			UVoxelWorldSaveObject* SaveObject = World->GetSaveObject();
-			World->LoadFromSave(SaveObject->Save);
-			LastSaveHistoryPosition = 0;
+			if (SaveObject->Save.LOD == World->GetLOD())
+			{
+				World->LoadFromSave(SaveObject->Save);
+				LastSaveHistoryPosition = 0;
+			}
+			else
+			{
+				FFormatNamedArguments Arguments;
+				Arguments.Add(TEXT("Depth"), FText::FromString(FString::FromInt(SaveObject->Save.LOD)));
+				FMessageDialog::Open(EAppMsgType::Ok, FText::Format(LOCTEXT("", "Can't load the save: World Size is different (Save Octree Depth = {Depth})"), Arguments));
+			}
 		}
 	}
 	return FReply::Handled();

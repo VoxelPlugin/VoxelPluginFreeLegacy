@@ -171,10 +171,12 @@ private:
 		TArray<ModifiedValue<FVoxelMaterial>> ModifiedMaterials;
 	};
 
-	TSharedPtr<Frame> CurrentFrame;
+	Frame* CurrentFrame;
+	TSet<uint32> AlreadyModifiedValues;
+	TSet<uint32> AlreadyModifiedMaterials;
 
-	TArray<TSharedPtr<Frame>> UndoFramesStack;
-	TArray<TSharedPtr<Frame>> RedoFramesStack;
+	TArray<Frame*> UndoFramesStack;
+	TArray<Frame*> RedoFramesStack;
 
 
 	/**

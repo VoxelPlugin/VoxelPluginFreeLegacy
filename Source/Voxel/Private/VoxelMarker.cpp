@@ -7,6 +7,22 @@
 #include "Engine/StaticMesh.h"
 #include "Components/SpotLightComponent.h"
 
+
+AVoxelEditorMarker::AVoxelEditorMarker()
+{
+	PrimaryActorTick.bCanEverTick = true;
+}
+
+void AVoxelEditorMarker::Tick(float DeltaTime)
+{
+	if (GetWorld()->WorldType != EWorldType::Editor && GetWorld()->WorldType != EWorldType::EditorPreview)
+	{
+		Destroy();
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 AVoxelBoxMarker::AVoxelBoxMarker()
 {
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));

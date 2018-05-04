@@ -483,7 +483,7 @@ void FLODVoxelRender::UpdateBoxInternal(const FIntBox& Box)
 	}
 	else
 	{
-		UE_LOG(LogVoxel, Error, TEXT("UpdateBox called too soon"));
+		//UE_LOG(LogVoxel, Error, TEXT("UpdateBox called too soon"));
 	}
 }
 

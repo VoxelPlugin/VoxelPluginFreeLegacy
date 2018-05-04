@@ -88,6 +88,7 @@ void FVoxelTerrainEdModeToolkit::Init(const TSharedPtr<IToolkitHost>& InitToolki
 	}
 
 	SAssignNew(ToolkitWidget, SScrollBox)
+		.IsEnabled(this, &FVoxelTerrainEdModeToolkit::GetIsEnabled)
 		+ SScrollBox::Slot()
 		.Padding(5)
 		.HAlign(HAlign_Center)
@@ -295,7 +296,7 @@ FReply FVoxelTerrainEdModeToolkit::Undo()
 
 	if (VoxelTerrainEdMode)
 	{
-		VoxelTerrainEdMode->Undo();
+		VoxelTerrainEdMode->Undo(1);
 	}
 
 	return FReply::Handled();
@@ -307,7 +308,7 @@ FReply FVoxelTerrainEdModeToolkit::Redo()
 
 	if (VoxelTerrainEdMode)
 	{
-		VoxelTerrainEdMode->Redo();
+		VoxelTerrainEdMode->Redo(1);
 	}
 
 	return FReply::Handled();
@@ -320,10 +321,7 @@ FReply FVoxelTerrainEdModeToolkit::Undo10()
 
 	if (VoxelTerrainEdMode)
 	{
-		for (int i = 0; i < 10; i++)
-		{
-			VoxelTerrainEdMode->Undo();
-		}
+		VoxelTerrainEdMode->Undo(10);
 	}
 
 	return FReply::Handled();
@@ -335,10 +333,7 @@ FReply FVoxelTerrainEdModeToolkit::Redo10()
 
 	if (VoxelTerrainEdMode)
 	{
-		for (int i = 0; i < 10; i++)
-		{
-			VoxelTerrainEdMode->Redo();
-		}
+		VoxelTerrainEdMode->Redo(10);
 	}
 
 	return FReply::Handled();
@@ -350,10 +345,7 @@ FReply FVoxelTerrainEdModeToolkit::Undo100()
 
 	if (VoxelTerrainEdMode)
 	{
-		for (int i = 0; i < 100; i++)
-		{
-			VoxelTerrainEdMode->Undo();
-		}
+		VoxelTerrainEdMode->Undo(100);
 	}
 
 	return FReply::Handled();
@@ -365,13 +357,16 @@ FReply FVoxelTerrainEdModeToolkit::Redo100()
 
 	if (VoxelTerrainEdMode)
 	{
-		for (int i = 0; i < 100; i++)
-		{
-			VoxelTerrainEdMode->Redo();
-		}
+		VoxelTerrainEdMode->Redo(100);
 	}
 
 	return FReply::Handled();
+}
+
+bool FVoxelTerrainEdModeToolkit::GetIsEnabled() const
+{
+	FVoxelTerrainEdMode* VoxelTerrainEdMode = (FVoxelTerrainEdMode*)GetEditorMode();
+	return VoxelTerrainEdMode && VoxelTerrainEdMode->IsEnabled();
 }
 
 bool FVoxelTerrainEdModeToolkit::GetIsPropertyVisible(const FPropertyAndParent& PropertyAndParent) const

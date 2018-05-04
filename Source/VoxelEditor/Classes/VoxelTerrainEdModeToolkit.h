@@ -36,6 +36,8 @@ public:
 	FReply Undo100();
 	FReply Redo100();
 
+	bool GetIsEnabled() const;
+
 private:
 	TSharedPtr<IDetailsView> DetailsPanel;
 	TSharedPtr<FVoxelTerrainEdModeDetails> Customization;
