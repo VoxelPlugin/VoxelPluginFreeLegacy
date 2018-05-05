@@ -40,7 +40,7 @@ Both versions can be used commercially.
 You can get a precompiled version of the plugin on [Gumroad](https://gumroad.com/voxelplugin) and [Sellfy](https://sellfy.com/voxelplugin).
 
 ### Building from source
-You can also build this repo. To do that, you will need the Texture Arrays fork of UE, available here: https://github.com/Phyronnaz/UnrealEngine
+You can also build this repo. To do that, you will need the Texture Arrays fork of UE: https://voxel-plugin.readthedocs.io/en/latest/texturearrays.html
 
 ## Docs & Support
 The docs of the plugin are hosted at https://voxel-plugin.readthedocs.io/en/latest/
