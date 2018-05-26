@@ -7,6 +7,14 @@ For more info, check the website: https://voxelplugin.com
 
 [![Trailer](https://i.imgur.com/RRmA4qg.png)](https://youtu.be/LhRQbaGJ8bI)
 
+## Installation
+### Precompiled version (recommended)
+You can get a precompiled version of the plugin on [Gumroad](https://gumroad.com/voxelplugin) and [Sellfy](https://sellfy.com/voxelplugin).
+
+### Building from source
+You can also build this repo. To do that, you will need the Texture Arrays fork of UE: https://voxel-plugin.readthedocs.io/en/latest/texturearrays.html. **If you don't have the Texture Arrays fork, please use the [Gumroad](https://gumroad.com/voxelplugin) version.**
+
+
 ## Pricing & Licensing
 
 There are two editions of the plugin available:
@@ -34,13 +42,6 @@ Both versions can be used commercially.
 * Voxel Physics: enable physics on floating voxel blocks
 * Grass and Voxel Actors
 * Pro Support
-
-## Installation
-### Precompiled version
-You can get a precompiled version of the plugin on [Gumroad](https://gumroad.com/voxelplugin) and [Sellfy](https://sellfy.com/voxelplugin).
-
-### Building from source
-You can also build this repo. To do that, you will need the Texture Arrays fork of UE: https://voxel-plugin.readthedocs.io/en/latest/texturearrays.html
 
 ## Docs & Support
 The docs of the plugin are hosted at https://voxel-plugin.readthedocs.io/en/latest/
