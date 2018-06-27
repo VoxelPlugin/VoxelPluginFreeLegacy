@@ -5,8 +5,6 @@ It is compatible with 4.18 and 4.19.
 
 For more info, check the website: https://voxelplugin.com
 
-[![Trailer](https://i.imgur.com/RRmA4qg.png)](https://youtu.be/LhRQbaGJ8bI)
-
 ## Installation
 ### Precompiled version (recommended)
 You can get a precompiled version of the plugin on [Gumroad](https://gumroad.com/voxelplugin) and [Sellfy](https://sellfy.com/voxelplugin).
