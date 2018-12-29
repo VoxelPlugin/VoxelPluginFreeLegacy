@@ -6,12 +6,21 @@ It is compatible with 4.18 and 4.19.
 For more info, check the website: https://voxelplugin.com
 
 ## Installation
-### Precompiled version (recommended)
-You can get a precompiled version of the plugin on [Gumroad](https://gumroad.com/voxelplugin) and [Sellfy](https://sellfy.com/voxelplugin).
+* In your game’s root directory, create a folder named Plugins
+* Copy the Voxel folder into it. You should have something like::
 
-### Building from source
-You can also build this repo. To do that, you will need the Texture Arrays fork of UE: https://voxel-plugin.readthedocs.io/en/latest/texturearrays.html. **If you don't have the Texture Arrays fork, please use the [Gumroad](https://gumroad.com/voxelplugin) version.**
+    MyProject
+    ├── Content
+    └── Plugins
+        └── Voxel
+            └── Voxel.uplugin
 
+* If you want to use it in your C++ project: add **"Voxel"** as public dependency in **MyProject.Build.cs**. You should have ::
+    
+    PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Voxel" });
+
+## Quick start
+Follow [this video](https://www.youtube.com/watch?v=EpXu9kqFoSM)
 
 ## Pricing & Licensing
 
