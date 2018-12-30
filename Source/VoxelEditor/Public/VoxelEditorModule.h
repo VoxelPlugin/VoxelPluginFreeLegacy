@@ -6,8 +6,12 @@
 #include "Modules/ModuleInterface.h"
 #include "Toolkits/AssetEditorToolkit.h"
 
-/** Sound class editor module interface */
+class UVoxelDataAsset;
+
+/** Voxel class editor module interface */
 class IVoxelEditorModule : public IModuleInterface
 {
 public:
 };
+
+DECLARE_LOG_CATEGORY_EXTERN(LogVoxelEditor, Verbose, All);
