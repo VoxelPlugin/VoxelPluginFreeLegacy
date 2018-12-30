@@ -22,6 +22,12 @@ For more info, check the website: https://voxelplugin.com
 ## Quick start
 Follow [this video](https://www.youtube.com/watch?v=EpXu9kqFoSM)
 
+Basically:
+* Add a **Voxel Invoker Component** to your character
+* Add a **VoxelWorld** to your scene
+* Set your player controller to the **BP_VoxelPlayerController** (need to toggle *Show Plugin Content*)
+* Hit play
+
 ## Pricing & Licensing
 
 There are two editions of the plugin available:
