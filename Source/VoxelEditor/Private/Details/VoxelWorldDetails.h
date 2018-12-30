@@ -5,10 +5,9 @@
 #include "CoreMinimal.h"
 #include "Input/Reply.h"
 #include "IDetailCustomization.h"
-#include "SButton.h"
 
 class AVoxelWorld;
-class AVoxelWorldEditor;
+class SButton;
 
 class FVoxelWorldDetails : public IDetailCustomization
 {
@@ -25,13 +24,16 @@ private:
 	FReply OnWorldPreviewToggle();
 	FReply OnLoad();
 	FReply OnSave();
-
-	bool IsSaveLoadEnabled();
+	FReply OnSaveToFile();
+	FReply OnLoadFromFile();
 
 private:
 	TWeakObjectPtr<AVoxelWorld> World;
+
 	TSharedPtr<SButton> SaveButton;
 	TSharedPtr<SButton> LoadButton;
+	TSharedPtr<SButton> SaveFileButton;
+	TSharedPtr<SButton> LoadFileButton;
 
 	int LastSaveHistoryPosition;
 };

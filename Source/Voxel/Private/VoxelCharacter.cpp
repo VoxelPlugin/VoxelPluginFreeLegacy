@@ -1,7 +1,7 @@
 // Copyright 2018 Phyronnaz
 
 #include "VoxelCharacter.h"
-#include "VoxelProceduralMeshComponent.h"
+#include "VoxelRender/VoxelProceduralMeshComponent.h"
 
 void AVoxelCharacter::SetBase(UPrimitiveComponent* NewBase, const FName BoneName /*= NAME_None*/, bool bNotifyActor /*= true*/)
 {

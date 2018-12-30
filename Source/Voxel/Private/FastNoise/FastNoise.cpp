@@ -1,3 +1,5 @@
+// Copyright 2018 Phyronnaz
+
 #pragma warning( disable : 4701 )
 #pragma warning( disable : 4244 )
 

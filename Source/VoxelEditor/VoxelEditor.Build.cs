@@ -1,5 +1,6 @@
 // Copyright 2018 Phyronnaz
 
+using System.IO;
 using UnrealBuildTool;
 
 public class VoxelEditor : ModuleRules
@@ -7,21 +8,12 @@ public class VoxelEditor : ModuleRules
     public VoxelEditor(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+#if UE_4_20_OR_LATER
+        bLegacyPublicIncludePaths = false;
+#endif
 
-        PublicIncludePaths.AddRange(
-            new string[]
-            {
-                "Public"
-            });
-
-        PrivateIncludePaths.AddRange(
-            new string[] {
-                "VoxelEditor/Private",
-                "VoxelEditor/Private/AssetTools",
-                "VoxelEditor/Private/Factories",
-                "VoxelEditor/Private/Graph",
-                "VoxelEditor/Private/Details",
-            });
+        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
+        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
 
         AddEngineThirdPartyPrivateStaticDependencies(Target,
             "zlib",
@@ -41,10 +33,12 @@ public class VoxelEditor : ModuleRules
         PrivateDependencyModuleNames.AddRange(
             new string[] {
                 "DesktopWidgets",
+                "KismetWidgets",
                 "Projects",
                 "Voxel",
                 "Landscape",
                 "LandscapeEditor",
+                "DesktopPlatform",
 
                 "Core",
                 "CoreUObject",
@@ -64,6 +58,8 @@ public class VoxelEditor : ModuleRules
                 "ContentBrowser",
 
                 "BlueprintGraph",
+
+                "AdvancedPreviewScene",
             });
 
         PrivateIncludePathModuleNames.AddRange(

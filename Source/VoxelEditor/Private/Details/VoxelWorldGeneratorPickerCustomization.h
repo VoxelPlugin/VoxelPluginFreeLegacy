@@ -43,7 +43,7 @@ private:
 
 	/** Property handles of the properties we're editing */
 	TSharedPtr<class IPropertyHandle> PropertyHandle;
-	TSharedPtr<class IPropertyHandle> ClassHandle, ObjectHandle, ClassOrObjectHandle;
+	TSharedPtr<class IPropertyHandle> ClassHandle, ObjectHandle, TypeHandle;
 
 	struct FClassOrObject
 	{

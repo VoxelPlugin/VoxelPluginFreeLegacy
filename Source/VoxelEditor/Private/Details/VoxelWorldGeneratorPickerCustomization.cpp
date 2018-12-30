@@ -7,11 +7,11 @@
 #include "IDetailChildrenBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "PropertyCustomizationHelpers.h"
-#include "ComboBox.h"
+#include "Components/ComboBox.h"
 
 #include "PropertyEditorModule.h"
-#include "ModuleManager.h"
-#include "VoxelWorldGenerator.h"
+#include "Modules/ModuleManager.h"
+#include "VoxelWorldGeneratorPicker.h"
 
 #define LOCTEXT_NAMESPACE "VoxelWorldGeneratorPickerCustomization"
 
@@ -21,14 +21,14 @@ void FVoxelWorldGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IProper
 
 	ClassHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelWorldGeneratorPicker, WorldGeneratorClass));
 	ObjectHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelWorldGeneratorPicker, WorldGeneratorObject));
-	ClassOrObjectHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelWorldGeneratorPicker, UseClassOrObject));
+	TypeHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelWorldGeneratorPicker, Type));
 
 	ClassOrObjectArray.Reset();
 	ClassOrObjectArray.Add(MakeShareable(new FClassOrObject{ LOCTEXT("Class", "Class") }));
 	ClassOrObjectArray.Add(MakeShareable(new FClassOrObject{ LOCTEXT("Object", "Object") }));
 
 	FString SelectedType;
-	ClassOrObjectHandle->GetValueAsDisplayString(SelectedType);
+	TypeHandle->GetValueAsDisplayString(SelectedType);
 	bool bClassIsSelected = (SelectedType == TEXT("Class"));
 
 	CurrentIndex = bClassIsSelected ? 0 : 1;
@@ -60,6 +60,7 @@ void FVoxelWorldGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IProper
 			.VAlign(EVerticalAlignment::VAlign_Center)
 			[
 				SNew(SComboBox<TSharedPtr<FClassOrObject>>)
+				.IsEnabled(!TypeHandle->IsEditConst())
 				.OptionsSource(&ClassOrObjectArray)
 				.OnSelectionChanged_Lambda([&](TSharedPtr<FClassOrObject> Value, ESelectInfo::Type)
 				{
@@ -125,7 +126,7 @@ void FVoxelWorldGeneratorPickerCustomization::UpdateProperty()
 {
 	const TSharedPtr<FClassOrObject>& Value = ClassOrObjectArray[CurrentIndex];
 
-	ClassOrObjectHandle->SetValueFromFormattedString(Value->DisplayName.ToString());
+	TypeHandle->SetValueFromFormattedString(Value->DisplayName.ToString());
 
 	if (Value->DisplayName.ToString() == TEXT("Class"))
 	{

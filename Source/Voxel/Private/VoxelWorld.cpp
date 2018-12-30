@@ -1,616 +1,638 @@
 // Copyright 2018 Phyronnaz
 
 #include "VoxelWorld.h"
-#include "VoxelPrivate.h"
-#include "VoxelData.h"
-#include "IVoxelRender.h"
-#include "Components/CapsuleComponent.h"
-#include "VoxelWorldGenerators/FlatWorldGenerator.h"
-#include "VoxelInvokerComponent.h"
-#include "VoxelWorldEditorInterface.h"
+#include "VoxelLogStatDefinitions.h"
+#include "VoxelData/VoxelData.h"
+#include "VoxelRender/IVoxelRender.h"
+#include "VoxelComponents/VoxelInvokerComponent.h"
 #include "VoxelUtilities.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
-#include "VoxelChunksOwner.h"
-#include "Octree.h"
-#include "VoxelCrashReporter.h"
+#include "VoxelDebug/VoxelCrashReporter.h"
 #include "Engine/World.h"
-#include "ConstructorHelpers.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Components/BillboardComponent.h"
 #include "Engine/Texture2D.h"
-#include "VoxelProceduralMeshComponent.h"
-#include "VoxelWorldGenerators/VoxelShapeWorldGenerators.h"
+#include "VoxelRender/VoxelProceduralMeshComponent.h"
+#include "EngineUtils.h"
+#include "Logging/MessageLog.h"
+#include "FastNoise.h"
+#include "Engine/Engine.h"
+#include "VoxelMaterialCollection.h"
+#include "UObject/UObjectIterator.h"
+#include "VoxelThreadPool.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "VoxelCacheManager.h"
+#include "HAL/IConsoleManager.h"
+#include "TimerManager.h"
+
+#define LOCTEXT_NAMESPACE "VoxelWorld"
 
 DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::Tick"), STAT_VoxelWorld_Tick, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::ReceiveData"), STAT_VoxelWorld_ReceiveData, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::SendData"), STAT_VoxelWorld_SendData, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::GetIntersection"), STAT_VoxelWorld_GetIntersection, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateWorldInternal"), STAT_VoxelWorld_CreateWorldInternal, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::DestroyWorldInternal"), STAT_VoxelWorld_DestroyWorldInternal, STATGROUP_Voxel);
+
+///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////// Commands ///////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+#define CmdHelperBool(Name) \
+static void	Name(const TArray<FString>& Args, UWorld* World) \
+{ \
+	bool bShow = Args.Num() == 0 || (Args[0] == "1" || Args[0] == "true"); \
+	 \
+	for (TActorIterator<AVoxelWorld> It(World); It; ++It) \
+	{ \
+		(*It)->b##Name = bShow; \
+	} \
+}
+
+CmdHelperBool(ShowInvokersPositions);
+CmdHelperBool(ShowWorldBounds);
+CmdHelperBool(ShowDataOctreeLeavesStatus);
+CmdHelperBool(ShowUpdatedChunks);
+
+FAutoConsoleCommandWithWorldAndArgs ShowInvokersPositionsCmd(
+	TEXT("voxel.ShowInvokersPositions"),
+	TEXT("Show Voxel Invokers Positions"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(ShowInvokersPositions));
+
+FAutoConsoleCommandWithWorldAndArgs ShowWorldBoundsCmd(
+	TEXT("voxel.ShowWorldBounds"),
+	TEXT("Show Voxel Worlds Bounds"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(ShowWorldBounds));
+
+FAutoConsoleCommandWithWorldAndArgs ShowDataOctreeLeavesStatusCmd(
+	TEXT("voxel.ShowDataOctreeLeavesStatus"),
+	TEXT("Show Data Octree Leaves Status. Useful to debug the cache status & to see which chunks are stored in memory"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(ShowDataOctreeLeavesStatus));
+
+FAutoConsoleCommandWithWorldAndArgs ShowUpdatedChunksCmd(
+	TEXT("voxel.ShowUpdatedChunks"),
+	TEXT("Show Updated Chunks"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(ShowUpdatedChunks));
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////// Macros to generate getters/setters //////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+static TArray<FString> __NoCheckVariables;
+struct FLocalAddToCheckVariables
+{
+	FLocalAddToCheckVariables(FString String)
+	{
+		__NoCheckVariables.Add(String);
+	}
+};
+#define COMBINEIMPL(A, B) A##B
+#define COMBINE(A, B) COMBINEIMPL(A, B)
+#define ADD_TO_NOCHECKVARIABLES(Text)\
+static FLocalAddToCheckVariables COMBINE(__NoCheckVar, __LINE__) = FLocalAddToCheckVariables(Text);
+
+inline void __VoxelLogError(const FText& Error)
+{
+	FMessageLog("PIE").Error(Error);
+}
+
+#define CHECK_VOXELWORLD_IS_CREATED(Name, ...) if(!IsCreated()) { __VoxelLogError(FText::FromString(FString(#Name) + TEXT(": World isn't created!"))); return __VA_ARGS__; }
+#define CHECK_VOXELWORLD_ISNT_CREATED(Name, ...) if(IsCreated()) { __VoxelLogError(FText::FromString(FString(#Name) + TEXT(": World is created!"))); return __VA_ARGS__; }
+
+#define GETTER_SETTER_IMPL(Name, Prefix, CheckFunc, Accessor) \
+void AVoxelWorld::Set##Name(decltype(AVoxelWorld::Prefix##Name) New) \
+{ \
+	CheckFunc(Set##Name); \
+	Prefix##Name = Accessor; \
+} \
+decltype(AVoxelWorld::Prefix##Name) AVoxelWorld::Get##Name() const \
+{ \
+	return Prefix##Name; \
+}
+
+#define IGNOREMACRO(...)
+#define GETTER_SETTER_NOCHECK(Name)              GETTER_SETTER_IMPL(Name,,  IGNOREMACRO, New); ADD_TO_NOCHECKVARIABLES(#Name);
+#define GETTER_SETTER_NOCHECK_BOOL(Name)         GETTER_SETTER_IMPL(Name,b, IGNOREMACRO, New); ADD_TO_NOCHECKVARIABLES("b"#Name);
+#define GETTER_SETTER_CHECKNOTCREATED(Name)      GETTER_SETTER_IMPL(Name,,  CHECK_VOXELWORLD_ISNT_CREATED, New)
+#define GETTER_SETTER_CHECKNOTCREATED_BOOL(Name) GETTER_SETTER_IMPL(Name,b, CHECK_VOXELWORLD_ISNT_CREATED, New)
+
+#define GETTER_SETTER_NOCHECK_ACCESSOR(Name, Accessor)         GETTER_SETTER_IMPL(Name,, IGNOREMACRO, Accessor); ADD_TO_NOCHECKVARIABLES(#Name);
+#define GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(Name, Accessor) GETTER_SETTER_IMPL(Name,, CHECK_VOXELWORLD_ISNT_CREATED, Accessor)
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+inline bool IsDedicatedServerInternal(UWorld* World)
+{
+	auto* GameInstance = World->GetGameInstance();
+	if (!GameInstance)
+	{
+		return false;
+	}
+	auto* WorldContext = GameInstance->GetWorldContext();
+	if (!WorldContext)
+	{
+		return false;
+	}
+	return WorldContext->RunAsDedicated;
+}
+
+inline void FixWorldBoundsMinMax(int& Min, int& Max)
+{
+	if (Min >= Max)
+	{
+		if (Max > 0)
+		{
+			Min = Max - CHUNK_SIZE;
+		}
+		else
+		{
+			Max = Min + CHUNK_SIZE;
+		}
+	}
+}
+
+inline void FixWorldBounds(FIntBox& WorldBounds, int Depth)
+{
+	FixWorldBoundsMinMax(WorldBounds.Min.X, WorldBounds.Max.X);
+	FixWorldBoundsMinMax(WorldBounds.Min.Y, WorldBounds.Max.Y);
+	FixWorldBoundsMinMax(WorldBounds.Min.Z, WorldBounds.Max.Z);
+	if (!WorldBounds.IsMultipleOf(CHUNK_SIZE))
+	{
+		WorldBounds.MakeMultipleOfInclusive(CHUNK_SIZE);
+	}
+	WorldBounds = FVoxelUtilities::GetBoundsFromDepth<CHUNK_SIZE>(Depth).Overlap(WorldBounds);
+	check(WorldBounds.IsMultipleOf(CHUNK_SIZE));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 AVoxelWorld::AVoxelWorld()
-	: VoxelWorldEditorClass(nullptr)
-	, LOD(9)
-	, LODLimit(19)
-	, bIsCreated(false)
-	, VoxelSize(100)
-	, Seed(100)
-	, MeshThreadCount(2)
-	, CollisionsThreadCount(2)
-	, CollisionsUpdateRate(30)
-	, LODUpdateRate(15)
-	, VoxelWorldEditor(nullptr)
-	, bCreateWorldAutomatically(true)
-	, ChunksFadeDuration(1)
-	, AsyncTasksThreadPool(FQueuedThreadPool::Allocate())
-	, bCreateAdditionalVerticesForMaterialsTransitions(true)
-	, bEnableNormals(true)
-	, MaxCollisionsLOD(3)
 {
 	PrimaryActorTick.bCanEverTick = true;
-
-	auto TouchCapsule = CreateDefaultSubobject<UCapsuleComponent>(FName("Capsule"));
-	TouchCapsule->InitCapsuleSize(0.1f, 0.1f);
-	TouchCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	TouchCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
-	RootComponent = TouchCapsule;
+	PrimaryActorTick.bHighPriority = true;
+	RootComponent = CreateDefaultSubobject<USceneComponent>("Root");
 
 #if WITH_EDITORONLY_DATA
-	auto SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
-
-	// Structure to hold one-time initialization
-	struct FConstructorStatics
 	{
-		ConstructorHelpers::FObjectFinderOptional<UTexture2D> SpriteTextureObject;
-		FName ID_Voxel;
-		FText NAME_Voxel;
-		FConstructorStatics()
-			: SpriteTextureObject(TEXT("/Engine/EditorResources/S_Terrain"))
-			, ID_Voxel(TEXT("VoxelWorld"))
-			, NAME_Voxel(NSLOCTEXT("VoxelCategory", "Voxel World", "Voxel World"))
+		auto SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
+
+		// Structure to hold one-time initialization
+		struct FConstructorStatics
 		{
-		}
-	};
-	static FConstructorStatics ConstructorStatics;
+			ConstructorHelpers::FObjectFinderOptional<UTexture2D> SpriteTextureObject;
+			FName ID_Voxel;
+			FText NAME_Voxel;
+			FConstructorStatics()
+				: SpriteTextureObject(TEXT("/Engine/EditorResources/S_Terrain"))
+				, ID_Voxel(TEXT("VoxelWorld"))
+				, NAME_Voxel(NSLOCTEXT("VoxelCategory", "Voxel World", "Voxel World"))
+			{
+			}
+		};
+		static FConstructorStatics ConstructorStatics;
 
-	if (SpriteComponent)
-	{
-		SpriteComponent->Sprite = ConstructorStatics.SpriteTextureObject.Get();
-		SpriteComponent->RelativeScale3D = FVector(0.5f, 0.5f, 0.5f);
-		SpriteComponent->bHiddenInGame = true;
-		SpriteComponent->bIsScreenSizeScaled = true;
-		SpriteComponent->SpriteInfo.Category = ConstructorStatics.ID_Voxel;
-		SpriteComponent->SpriteInfo.DisplayName = ConstructorStatics.NAME_Voxel;
-		SpriteComponent->SetupAttachment(RootComponent);
-		SpriteComponent->bReceivesDecals = false;
+		if (SpriteComponent)
+		{
+			SpriteComponent->Sprite = ConstructorStatics.SpriteTextureObject.Get();
+			SpriteComponent->RelativeScale3D = FVector(0.5f, 0.5f, 0.5f);
+			SpriteComponent->bHiddenInGame = true;
+			SpriteComponent->bIsScreenSizeScaled = true;
+			SpriteComponent->SpriteInfo.Category = ConstructorStatics.ID_Voxel;
+			SpriteComponent->SpriteInfo.DisplayName = ConstructorStatics.NAME_Voxel;
+			SpriteComponent->SetupAttachment(RootComponent);
+			SpriteComponent->bReceivesDecals = false;
+		}
 	}
 #endif // WITH_EDITORONLY_DATA
-
-	AsyncTasksThreadPool->Create(1, 1024 * 1024);
-
+	{
+		ConstructorHelpers::FObjectFinderOptional<UMaterialInterface> MaterialFinder(TEXT("/Voxel/M_MissingMaterial"));
+		MissingMaterial = MaterialFinder.Get();
+	}
 }
 
-AVoxelWorld::~AVoxelWorld()
-{
-	delete AsyncTasksThreadPool;
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 void AVoxelWorld::CreateWorld()
 {
 	if (!IsCreated())
 	{
-		CreateWorldInternal();
+		CreateWorldInternal(
+			EPlayType::Normal,
+			false,
+			bEnableUndoRedo,
+			bDontUseGlobalPool);
 	}
 	else
 	{
-		UE_LOG(LogVoxel, Error, TEXT("Can't create world: already created"));
+		FMessageLog("PIE").Error(LOCTEXT("CreateWorld", "Can't create world: already created"));
 	}
 }
 
-void AVoxelWorld::DestroyWorld()
+void AVoxelWorld::DestroyWorld(bool bClearMeshes)
 {
 	if (IsCreated())
 	{
 		DestroyWorldInternal();
-		for (auto& Component : GetComponents())
+		auto Components = GetComponents(); // need a copy as we are modifying it when destroying comps
+		for (auto& Component : Components)
 		{
 			auto Mesh = Cast<UVoxelProceduralMeshComponent>(Component);
-			if (Mesh)
+			if (bClearMeshes && Mesh)
+			{
+				Mesh->ClearSections();
+			}
+			
+			if (!Mesh)
+			{
+				auto HISM = Cast<UHierarchicalInstancedStaticMeshComponent>(Component);
+				if (HISM)
+				{
+					HISM->DestroyComponent();
+				}
+			}
+		}
+	}
+	else
+	{
+		FMessageLog("PIE").Error(LOCTEXT("DestroyWorld", "Can't destroy world: not created"));
+	}
+}
+
+void AVoxelWorld::CreateInEditor(UClass* VoxelWorldEditorClass)
+{
+	check(VoxelWorldEditorClass);
+
+	if (IsCreated())
+	{
+		DestroyWorldInternal();
+	}
+
+	if (!VoxelWorldEditor)
+	{
+		// Create/Find VoxelWorldEditor
+		for (TActorIterator<AVoxelWorldEditorInterface> It(GetWorld()); It; ++It)
+		{
+			VoxelWorldEditor = *It;
+			break;
+		}
+		if (!VoxelWorldEditor)
+		{
+			FActorSpawnParameters Transient;
+			Transient.ObjectFlags = RF_Transient;
+			VoxelWorldEditor = GetWorld()->SpawnActor<AVoxelWorldEditorInterface>(VoxelWorldEditorClass, Transient);
+		}
+	}
+	VoxelWorldEditor->Init(this);
+
+	CreateWorldInternal(
+		EPlayType::Editor,
+		false,
+		true,
+		true);
+}
+
+void AVoxelWorld::DestroyInEditor()
+{
+	if (IsCreated())
+	{
+		DestroyWorldInternal();
+		auto Components = GetComponents(); // need a copy as we are modifying it when destroying comps
+		for (auto& Component : Components)
+		{
+			if (auto Mesh = Cast<UVoxelProceduralMeshComponent>(Component))
 			{
 				Mesh->DestroyComponent();
 			}
-		}
-	}
-	else
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Can't destroy world: not created"));
-	}
-}
-
-void AVoxelWorld::BeginPlay()
-{
-	Super::BeginPlay();
-
-	FVoxelCrashReporter::bIgnoreMessages = false;
-
-	if (!IsCreated() && bCreateWorldAutomatically)
-	{
-		CreateWorldInternal();
-	}
-}
-
-void AVoxelWorld::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	// Make sure all async tasks are ended
-	AsyncTasksThreadPool->Destroy();
-
-	Render.Reset();
-	Data.Reset();
-
-	// Make sure all physics threads are ended (maybe?). Might reduce crashes
-	FPlatformProcess::Sleep(0.1f);
-}
-
-void AVoxelWorld::Tick(float DeltaTime)
-{
-	SCOPE_CYCLE_COUNTER(STAT_VoxelWorld_Tick);
-
-	Super::Tick(DeltaTime);
-	
-	if (GetActorScale3D() != FVector::OneVector)
-	{
-		SetActorScale3D(FVector::OneVector);
-	}
-	if (GetActorRotation() != FRotator::ZeroRotator)
-	{
-		SetActorRotation(FRotator::ZeroRotator);
-	}
-
-	if (IsCreated())
-	{
-		Render->Tick(DeltaTime);
-
-		if (GetWorld()->WorldType == EWorldType::Editor)
-		{
-			ChunksOwner->SetActorTransform(GetActorTransform());
-		}
-
-	}
-	
-}
-
-#if WITH_EDITOR
-bool AVoxelWorld::ShouldTickIfViewportsOnly() const
-{
-	return true;
-}
-
-bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
-{
-	return (!bIsCreated || InProperty->GetNameCPP() == TEXT("SaveObject")) && Super::CanEditChange(InProperty);
-}
-
-void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.MemberProperty)
-	{
-		if (PropertyChangedEvent.MemberProperty->GetNameCPP() == TEXT("LOD"))
-		{
-			WorldSizeInVoxel = CHUNK_SIZE * (1 << LOD);
-		}
-		else if (PropertyChangedEvent.MemberProperty->GetNameCPP() == TEXT("WorldSizeInVoxel"))
-		{
-			LOD = FMath::Clamp(FMath::CeilToInt(FMath::Log2(WorldSizeInVoxel / (float)CHUNK_SIZE)), 1, 19);
-			WorldSizeInVoxel = CHUNK_SIZE * (1 << LOD);
-		}
-	}
-}
-
-#endif
-
-float AVoxelWorld::GetValue(const FIntVector& Position) const
-{
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("GetValue called but the world isn't created"));
-		return 0;
-	}
-
-	if (IsInWorld(Position))
-	{
-		FVoxelMaterial Material;
-		float Value;
-
-		auto Octrees = Data->BeginGet(FIntBox(Position));
-		Data->GetValueAndMaterial(Position, Value, Material);
-		Data->EndGet(Octrees);
-
-		return Value;
-	}
-	else
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Get value: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-		return 0;
-	}
-}
-
-FVoxelMaterial AVoxelWorld::GetMaterial(const FIntVector& Position) const
-{
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("GetMaterial called but the world isn't created"));
-		return FVoxelMaterial();
-	}
-
-	if (IsInWorld(Position))
-	{
-		FVoxelMaterial Material;
-		float Value;
-
-		auto Octrees = Data->BeginGet(FIntBox(Position));
-		Data->GetValueAndMaterial(Position, Value, Material);
-		Data->EndGet(Octrees);
-
-		return Material;
-	}
-	else
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Get material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-		return FVoxelMaterial();
-	}
-}
-
-void AVoxelWorld::SetValue(const FIntVector& Position, float Value)
-{
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("SetValue called but the world isn't created"));
-		return;
-	}
-
-	if (IsInWorld(Position))
-	{
-		auto Octrees = Data->BeginSet(FIntBox(Position));
-		Data->SetValue(Position, Value);
-		Data->EndSet(Octrees);
-	}
-	else
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Get material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-	}
-}
-
-void AVoxelWorld::SetMaterial(const FIntVector& Position, const FVoxelMaterial& Material)
-{
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("SetMaterial called but the world isn't created"));
-		return;
-	}
-	if (IsInWorld(Position))
-	{
-		auto Octrees = Data->BeginSet(FIntBox(Position));
-		Data->SetMaterial(Position, Material);
-		Data->EndSet(Octrees);
-	}
-	else
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Set material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-	}
-}
-
-
-bool AVoxelWorld::IsInside(const FVector& Position)
-{
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("IsInside called but the world isn't created"));
-		return false;
-	}
-	for (auto P : GetNeighboringPositions(Position))
-	{
-		if (GetValue(P) <= 0)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-void AVoxelWorld::GetSave(FVoxelWorldSave& OutSave) const
-{
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("GetSave called but the world isn't created"));
-		return;
-	}
-	Data->GetSave(OutSave);
-}
-
-void AVoxelWorld::LoadFromSave(const FVoxelWorldSave& Save, bool bReset)
-{
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("LoadFromSave called but the world isn't created"));
-		return;
-	}
-	if (Save.LOD == LOD)
-	{
-		TArray<FIntVector> ModifiedPositions;
-		Data->LoadFromSaveAndGetModifiedPositions(Save, ModifiedPositions, bReset);
-		for (auto Position : ModifiedPositions)
-		{
-			if (IsInWorld(Position))
+			if (auto Mesh = Cast<UHierarchicalInstancedStaticMeshComponent>(Component))
 			{
-				UpdateChunksAtPosition(Position);
-			}
-		}
-	}
-	else
-	{
-		UE_LOG(LogVoxel, Error, TEXT("LoadFromSave: Current Depth is %d while Save one is %d"), LOD, Save.LOD);
-	}
-}
-
-
-AVoxelWorldEditorInterface* AVoxelWorld::GetVoxelWorldEditor() const
-{
-	return VoxelWorldEditor;
-}
-
-FVoxelData* AVoxelWorld::GetData() const
-{
-	return Data.Get();
-}
-
-FVoxelWorldGeneratorInstance* AVoxelWorld::GetWorldGenerator() const
-{
-	return InstancedWorldGenerator.Get();
-}
-
-int AVoxelWorld::GetSeed() const
-{
-	return Seed;
-}
-
-void AVoxelWorld::SetSeed(int InSeed)
-{
-	if (IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Can't set seed when created"));
-	}
-	else
-	{
-		Seed = InSeed;
-	}
-}
-
-uint8 AVoxelWorld::GetLOD() const
-{
-	return LOD;
-}
-
-void AVoxelWorld::SetVoxelMaterial(UMaterialInterface* NewMaterial)
-{
-	auto DynamicInstance = Cast<UMaterialInstanceDynamic>(NewMaterial);
-	if (DynamicInstance)
-	{
-		VoxelMaterial = DynamicInstance->Parent;
-		VoxelMaterialInstance = DynamicInstance;
-	}
-	else
-	{
-		VoxelMaterial = NewMaterial;
-		VoxelMaterialInstance = UMaterialInstanceDynamic::Create(NewMaterial, this);
-	}
-
-	if (IsCreated())
-	{
-		for (auto& Component : GetComponents())
-		{
-			auto Mesh = Cast<UVoxelProceduralMeshComponent>(Component);
-			if (Mesh)
-			{
-				for (int Index = 0; Index < Mesh->GetNumSections(); Index++)
+				if (Mesh->HasAnyFlags(RF_Transient))
 				{
-					UMaterialInstanceDynamic* NewMat = UMaterialInstanceDynamic::Create(VoxelMaterial, this);
-					NewMat->CopyInterpParameters(VoxelMaterialInstance);
-					NewMat->SetScalarParameterValue(FName(TEXT("EndTime")), 0); // Needed for first init, as 1e10 is too big
-					NewMat->SetScalarParameterValue(FName(TEXT("FadeDuration")), GetChunksFadeDuration());
-					NewMat->SetScalarParameterValue(FName(TEXT("StartTime")), -GetChunksFadeDuration());
-					NewMat->SetScalarParameterValue(FName(TEXT("EndTime")), 1e10);
-					Mesh->SetMaterial(Index, NewMat);
+					Mesh->DestroyComponent();
 				}
 			}
 		}
 	}
 }
 
-void AVoxelWorld::SetLOD(uint8 NewLOD)
+void AVoxelWorld::Recreate()
 {
-	if (!IsCreated())
+	check(IsCreated());
+
+	Render.Reset();
+	auto Components = GetComponents();
+	for (auto& Component : Components)
 	{
-		LOD = NewLOD;
+		auto Mesh = Cast<UVoxelProceduralMeshComponent>(Component);
+		if (Mesh)
+		{
+			Mesh->DestroyComponent();
+		}
 	}
-	else
+	Render = FVoxelRenderFactory::GetVoxelRender(RenderType, this);
+	InvokerComponentChangeVersion = -1;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void AVoxelWorld::UpdateCollisionProfile()
+{
+	CollisionPresets.LoadProfileData(false);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UMaterialInterface* AVoxelWorld::GetVoxelMaterial(const FVoxelBlendedMaterial& Index) const
+{
+	auto* Value = MaterialCollection ? MaterialCollection->GetVoxelMaterial(Index) : nullptr;
+	if (!Value)
 	{
-		UE_LOG(LogVoxel, Error, TEXT("SetLOD: World is created"));
+		if (!MaterialCollection)
+		{
+			FMessageLog("PIE").Error(LOCTEXT("InvalidMaterialCollection", "Invalid Material Collection"));
+		}
+		else
+		{
+			FMessageLog("PIE").Error(FText::FromString(FString::Printf(TEXT("Missing the following generated material in %s: %s"), *MaterialCollection->GetPathName(), *Index.ToString())));
+		}
+	}
+	return Value ? Value : MissingMaterial;
+}
+
+UMaterialInterface* AVoxelWorld::GetVoxelMaterialWithTessellation(const FVoxelBlendedMaterial& Index) const
+{
+	auto* Value = MaterialCollection ? MaterialCollection->GetVoxelMaterialWithTessellation(Index) : nullptr;
+	if (!Value)
+	{
+		if (!MaterialCollection)
+		{
+			FMessageLog("PIE").Error(LOCTEXT("InvalidMaterialCollection", "Invalid Material Collection"));
+		}
+		else
+		{
+			FMessageLog("PIE").Error(FText::FromString(FString::Printf(TEXT("Missing the following generated material in %s: Tessellation %s"), *MaterialCollection->GetPathName(), *Index.ToString())));
+		}
+	}
+	return Value ? Value : MissingMaterial;
+}
+
+void AVoxelWorld::SetScalarParameterValue(FName ParameterName, float Value)
+{
+	CHECK_VOXELWORLD_IS_CREATED(SetScalarParameterValue);
+	for (auto Prefix : { "", "INPUT0_", "INPUT1_", "INPUT2_" })
+	{
+		FName Name(*(Prefix + ParameterName.ToString()));
+		MaterialInstance->SetScalarParameterValue(Name, Value);
+		Render->SetScalarParameterValue(Name, Value);
 	}
 }
 
-void AVoxelWorld::SetWorldGenerator(UVoxelWorldGenerator* NewGenerator)
+void AVoxelWorld::SetTextureParameterValue(FName ParameterName, UTexture* Value)
+{
+	CHECK_VOXELWORLD_IS_CREATED(SetTextureParameterValue);
+	for (auto Prefix : { "", "INPUT0_", "INPUT1_", "INPUT2_" })
+	{
+		FName Name(*(Prefix + ParameterName.ToString()));
+		MaterialInstance->SetTextureParameterValue(Name, Value);
+		Render->SetTextureParameterValue(Name, Value);
+	}
+}
+
+void AVoxelWorld::SetVectorParameterValue(FName ParameterName, FLinearColor Value)
+{
+	CHECK_VOXELWORLD_IS_CREATED(SetVectorParameterValue);
+	for (auto Prefix : { "", "INPUT0_", "INPUT1_", "INPUT2_" })
+	{
+		FName Name(*(Prefix + ParameterName.ToString()));
+		MaterialInstance->SetVectorParameterValue(Name, Value);
+		Render->SetVectorParameterValue(Name, Value);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelWorldGeneratorInit AVoxelWorld::GetInitStruct() const
+{
+	return FVoxelWorldGeneratorInit(GetSeeds(), GetVoxelSize());
+}
+
+FVector AVoxelWorld::GetChunkRelativePosition(const FIntVector& Position) const
+{
+	return FVector(Position + WorldOffset) * GetVoxelSize();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void AVoxelWorld::SetOctreeDepth(int NewDepth)
+{
+	CHECK_VOXELWORLD_ISNT_CREATED(SetOctreeDepth);
+	OctreeDepth = FMath::Clamp(NewDepth, 1, MAX_WORLD_DEPTH - 1);
+	// Update world size
+	WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(OctreeDepth);
+}
+
+int AVoxelWorld::GetOctreeDepth() const
+{
+	return OctreeDepth;
+}
+
+void AVoxelWorld::SetLODToMinDistance(const TMap<uint8, float>& NewLODToMinDistance)
+{
+	LODToMinDistance.Empty();
+	for (auto& It : NewLODToMinDistance)
+	{
+		LODToMinDistance.Add(FString::FromInt(It.Key), It.Value);
+	}
+}
+
+TMap<uint8, float> AVoxelWorld::GetLODToMinDistance() const
+{
+	TMap<uint8, float> Result;
+	for (auto& It : LODToMinDistance)
+	{
+		Result.Add(TCString<TCHAR>::Atoi(*It.Key), It.Value);
+	}
+	return Result;
+}
+
+void AVoxelWorld::SetWorldGeneratorObject(UVoxelWorldGenerator* NewGenerator)
 {
 	if (!NewGenerator)
 	{
-		UE_LOG(LogVoxel, Error, TEXT("SetWorldGenerator: NewGenerator is NULL"));
+		FMessageLog("PIE").Error(LOCTEXT("SetWorldGeneratorObjectNull", "SetWorldGeneratorObject: NewGenerator is NULL"));
 		return;
 	}
 
+	CHECK_VOXELWORLD_ISNT_CREATED(SetWorldGeneratorObject);
 
-	WorldGenerator.UseClassOrObject = EVoxelWorldGeneratorClassOrObject::Object;
+	WorldGenerator.Type = EVoxelWorldGeneratorPickerType::Object;
 	WorldGenerator.WorldGeneratorObject = NewGenerator;
-
-	if (IsCreated())
-	{
-		InstancedWorldGenerator = NewGenerator->GetWorldGenerator();
-		InstancedWorldGenerator->SetVoxelWorld(this);
-		Data->SetWorldGenerator(InstancedWorldGenerator.ToSharedRef());
-		Data->DiscardValuesByPredicate([](const FIntBox& Box) { return -1; });
-	}	
 }
 
-void AVoxelWorld::SwapWorldGeneratorSphere(UVoxelWorldGenerator* NewGenerator, const FIntVector& Center, float Radius)
+void AVoxelWorld::SetWorldGeneratorClass(TSubclassOf<UVoxelWorldGenerator> NewGeneratorClass)
 {
-	if (!IsCreated())
+	if(!NewGeneratorClass)
 	{
-		UE_LOG(LogVoxel, Error, TEXT("SwapWorldGeneratorSphere: can't swap if not created"));
+		FMessageLog("PIE").Error(LOCTEXT("SetWorldGeneratorClassNull", "SetWorldGeneratorClass: NewGeneratorClass is NULL"));
+		return;
 	}
-	else
-	{
-		const FIntVector P(FMath::CeilToInt(Radius));
-		const FIntBox SphereBox(Center - P, Center + P + FIntVector(1, 1, 1));
 
-		auto IsInside = [&](FIntVector& V) { return (V - Center).Size() < Radius; };
+	CHECK_VOXELWORLD_ISNT_CREATED(SetWorldGeneratorObject);
 
-		auto OldGeneratorInstance = InstancedWorldGenerator.ToSharedRef();
-		auto NewGeneratorInstance = NewGenerator->GetWorldGenerator();
-		NewGeneratorInstance->SetVoxelWorld(this);
-
-		InstancedWorldGenerator = MakeShared<FVoxelSphereShapeWorldGenerator>(NewGeneratorInstance, OldGeneratorInstance, Center, Radius);
-
-		Data->SetWorldGenerator(InstancedWorldGenerator.ToSharedRef());
-		Data->DiscardValuesByPredicate(
-			[&](const FIntBox& Box)
-		{
-			bool bAllInside = true;
-			bool bAllOutside = true;
-			for (auto& Corner : Box.GetCorners())
-			{
-				bool bInside = IsInside(Corner);
-				bAllInside = bAllInside && bInside;
-				bAllOutside = bAllOutside && !bInside;
-			}
-			if (bAllInside)
-			{
-				return 1;
-			}
-			else if (bAllOutside && (FMath::Max(SphereBox.Size().GetMin(), 1.f) > Box.Size().GetMax() || !SphereBox.Intersect(Box)))
-			{
-				return -1;
-			}
-			else
-			{
-				return 0;
-			}
-		});
-	}
+	WorldGenerator.Type = EVoxelWorldGeneratorPickerType::Class;
+	WorldGenerator.WorldGeneratorClass = NewGeneratorClass;
 }
 
-UMaterialInstanceDynamic* AVoxelWorld::GetVoxelMaterialDynamicInstance()
+void AVoxelWorld::AddSeeds(const TMap<FString, int>& NewSeeds)
 {
-	if (!VoxelMaterialInstance && VoxelMaterial)
-	{
-		VoxelMaterialInstance = UMaterialInstanceDynamic::Create(VoxelMaterial, this);
-	}
-	return VoxelMaterialInstance;
+	CHECK_VOXELWORLD_ISNT_CREATED(AddSeeds);
+	Seeds.Append(NewSeeds);
 }
 
-UMaterialInterface* AVoxelWorld::GetVoxelMaterial() const
+void AVoxelWorld::AddSeed(FString Name, int Value)
 {
-	return VoxelMaterial;
+	CHECK_VOXELWORLD_ISNT_CREATED(AddSeed);
+	Seeds.Add(Name, Value);
 }
 
-bool AVoxelWorld::GetEnableNormals() const
+void AVoxelWorld::ClearSeeds()
 {
-	return bEnableNormals;
+	CHECK_VOXELWORLD_ISNT_CREATED(ClearSeeds);
+	Seeds.Reset();
 }
 
-int AVoxelWorld::GetLODLimit() const
+TMap<FString, int> AVoxelWorld::GetSeeds() const
 {
-	return LODLimit;
+	return Seeds;
 }
 
-const FBodyInstance& AVoxelWorld::GetCollisionPresets() const
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(VoxelSize, FMath::Max(New, 0.0001f));
+GETTER_SETTER_NOCHECK(VoxelMassMultiplierInKg);
+GETTER_SETTER_CHECKNOTCREATED(SaveObject);
+GETTER_SETTER_CHECKNOTCREATED_BOOL(CreateWorldAutomatically);
+GETTER_SETTER_CHECKNOTCREATED_BOOL(EnableUndoRedo);
+GETTER_SETTER_NOCHECK_BOOL(EnableWorldRebasing);
+
+GETTER_SETTER_CHECKNOTCREATED_BOOL(UseCustomWorldBounds);
+GETTER_SETTER_CHECKNOTCREATED(CustomWorldBounds);
+
+GETTER_SETTER_NOCHECK_ACCESSOR(LODLimit, FVoxelUtilities::ClampLOD(New));
+
+GETTER_SETTER_CHECKNOTCREATED(UVConfig);
+GETTER_SETTER_CHECKNOTCREATED(NormalConfig);
+GETTER_SETTER_CHECKNOTCREATED(MaterialConfig);
+GETTER_SETTER_CHECKNOTCREATED(VoxelMaterial);
+GETTER_SETTER_CHECKNOTCREATED(VoxelMaterialWithTessellation);
+GETTER_SETTER_CHECKNOTCREATED(MaterialCollection);
+GETTER_SETTER_CHECKNOTCREATED_BOOL(EnableTessellation);
+GETTER_SETTER_CHECKNOTCREATED(BoundsExtension);
+GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(TessellationMaxLOD, FVoxelUtilities::ClampLOD(New));
+
+GETTER_SETTER_CHECKNOTCREATED(RenderType);
+GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(ChunksCullingLOD, FVoxelUtilities::ClampLOD(New));
+GETTER_SETTER_NOCHECK_ACCESSOR(ChunksFadeDuration, FMath::Max(New, 0.f));
+GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(ProcMeshClass, New ? (UClass*)New : UVoxelProceduralMeshComponent::StaticClass());
+
+	
+GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(MaxCollisionsLOD, FVoxelUtilities::ClampLOD(New));
+GETTER_SETTER_CHECKNOTCREATED(CollisionPresets);
+		
+GETTER_SETTER_NOCHECK_ACCESSOR(LODUpdateRate, FMath::Max(New, 0.000001f));
+GETTER_SETTER_CHECKNOTCREATED_BOOL(DontUseGlobalPool);
+GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(MeshThreadCount, FMath::Max(New, 1));
+GETTER_SETTER_NOCHECK_BOOL(OptimizeIndices);
+GETTER_SETTER_NOCHECK_BOOL(WaitForOtherChunksToAvoidHoles);
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+bool AVoxelWorld::IsCreated() const
 {
-	return CollisionPresets;
+	return bIsCreated;
 }
 
-UVoxelWorldSaveObject* AVoxelWorld::GetSaveObject() const
+FIntBox AVoxelWorld::GetBounds() const
 {
-	return SaveObject;
+	CHECK_VOXELWORLD_IS_CREATED(GetBounds, FIntBox());
+	return Data->GetBounds();
 }
 
-
-int AVoxelWorld::GetMaxCollisionsLOD() const
+int32 AVoxelWorld::GetTaskCount() const
 {
-	return GetWorld()->WorldType == EWorldType::Editor ? 5 : MaxCollisionsLOD;
+	return IsCreated() ? FMath::Max(Render->GetTaskCount(), 0) : 0;
 }
 
-bool AVoxelWorld::GetDebugCollisions() const
-{
-	return bDebugCollisions;
-}
-
-float AVoxelWorld::GetCollisionsUpdateRate() const
-{
-	return CollisionsUpdateRate;
-}
-
-float AVoxelWorld::GetLODUpdateRate() const
-{
-	return LODUpdateRate;
-}
-
-float AVoxelWorld::GetChunksFadeDuration() const
-{
-	return ChunksFadeDuration;
-}
-
-int AVoxelWorld::GetCollisionsThreadCount() const
-{
-	return CollisionsThreadCount;
-}
-
-int AVoxelWorld::GetMeshThreadCount() const
-{
-	return MeshThreadCount;
-}
-
-FQueuedThreadPool* AVoxelWorld::GetAsyncTasksThreadPool() const
-{
-	return AsyncTasksThreadPool;
-}
-
-bool AVoxelWorld::GetCreateAdditionalVerticesForMaterialsTransitions() const
-{
-	return bCreateAdditionalVerticesForMaterialsTransitions;
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 FIntVector AVoxelWorld::GlobalToLocal(const FVector& Position) const
 {
 	FVector P = GetTransform().InverseTransformPosition(Position) / GetVoxelSize();
-	return FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+
+	FIntVector LocalPosition;
+
+	switch (GetRenderType())
+	{
+	case EVoxelRenderType::Cubic:
+	{
+		LocalPosition = FIntVector(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z));
+		break;
+	}
+	case EVoxelRenderType::MarchingCubes:
+	default:
+	{
+		LocalPosition = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
+		break;
+	}
+	}
+
+	return LocalPosition - WorldOffset;
 }
 
 FVector AVoxelWorld::GlobalToLocalFloat(const FVector& Position) const
 {
-	return GetTransform().InverseTransformPosition(Position) / GetVoxelSize();
+	return GetTransform().InverseTransformPosition(Position) / GetVoxelSize() - FVector(WorldOffset);
 }
 
 FVector AVoxelWorld::LocalToGlobal(const FIntVector& Position) const
 {
-	return LocalToGlobalFloat((FVector)Position);
+	return GetTransform().TransformPosition(GetVoxelSize() * FVector(Position + WorldOffset));
 }
 
 FVector AVoxelWorld::LocalToGlobalFloat(const FVector& Position) const
 {
-	return GetTransform().TransformPosition(GetVoxelSize() * Position);
+	return GetTransform().TransformPosition(GetVoxelSize() * (Position + FVector(WorldOffset)));
 }
 
 TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition) const
 {
-	FVector P = GetTransform().InverseTransformPosition(GlobalPosition) / GetVoxelSize();
+	FVector P = GlobalToLocalFloat(GlobalPosition);
 	return TArray<FIntVector>({
 		FIntVector(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z)),
 		FIntVector(FMath::CeilToInt(P.X) , FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z)),
@@ -623,236 +645,83 @@ TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPos
 		});
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 void AVoxelWorld::UpdateChunksAtPosition(const FIntVector& Position)
 {
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("UpdateChunksAtPosition called but the world isn't created"));
-		return;
-	}
-	Render->UpdateBox(FIntBox(Position));
+	CHECK_VOXELWORLD_IS_CREATED(UpdateChunksAtPosition);
+	Render->UpdateBox(FIntBox(Position), false);
 }
 
-void AVoxelWorld::UpdateChunksOverlappingBox(const FIntBox& Box)
+void AVoxelWorld::UpdateChunksOverlappingBox(const FIntBox& Box, bool bRemoveHoles)
 {
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("UpdateChunksOverlappingBox called but the world isn't created"));
-		return;
-	}
-	Render->UpdateBox(Box);
+	CHECK_VOXELWORLD_IS_CREATED(UpdateChunksOverlappingBox);
+	Render->UpdateBox(Box, bRemoveHoles);
+}
+
+void AVoxelWorld::UpdateChunksOverlappingBox(const FIntBox& Box, TFunction<void()> CallbackWhenUpdated)
+{
+	Render->UpdateBox(Box, true, CallbackWhenUpdated);
 }
 
 void AVoxelWorld::UpdateAll()
 {
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("UpdateAll called but the world isn't created"));
-		return;
-	}
-	Render->UpdateBox(FIntBox::Infinite());
+	CHECK_VOXELWORLD_IS_CREATED(UpdateAll);
+	Render->UpdateBox(FIntBox::Infinite, false);
 }
 
-void AVoxelWorld::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
-{
-	check(IsCreated());
-	if (Invoker.IsValid())
-	{
-		Render->AddInvoker(Invoker);
-		Invokers.Add(Invoker);
-	}
-}
-
-
-void AVoxelWorld::CreateWorldInternal(AActor* InChunksOwner)
-{
-	check(!IsCreated());
-
-	UE_LOG(LogVoxel, Warning, TEXT("Loading world"));
-	
-	SetActorScale3D(FVector::OneVector);
-	SetActorRotation(FRotator::ZeroRotator.Quaternion());
-
-	check(!Data.IsValid());
-	check(!Render.IsValid());
-
-	InstancedWorldGenerator = WorldGenerator.GetWorldGenerator();
-	InstancedWorldGenerator->SetVoxelWorld(this);
-
-	// Create Data
-	Data = MakeShareable(new FVoxelData(LOD, InstancedWorldGenerator.ToSharedRef(), false, bEnableUndoRedo));
-
-#if DO_CHECK
-	FVoxelUtilities::TestRLE();
-#endif
-
-	// Create Render
-	if (!InChunksOwner)
-	{
-		InChunksOwner = this;
-	}
-	Render = FVoxelRenderFactory::GetVoxelRender(RenderType, this, InChunksOwner);
-
-	
-	
-	bIsCreated = true;
-
-	// Load if possible
-	if (SaveObject)
-	{
-		LoadFromSave(SaveObject->Save);
-	}
-}
-
-void AVoxelWorld::DestroyWorldInternal()
-{
-	check(IsCreated());
-
-	UE_LOG(LogVoxel, Warning, TEXT("Unloading world"));
-
-	check(Render.IsValid());
-	check(Data.IsValid());
-
-	Render.Reset();
-	Data.Reset(); // Data must be deleted AFTER Render
-
-	bIsCreated = false;
-}
-
-void AVoxelWorld::CreateInEditor()
-{
-	if (VoxelWorldEditorClass)
-	{
-		// Create/Find VoxelWorldEditor
-		{
-			VoxelWorldEditor = nullptr;
-
-			TArray<AActor*> FoundActors;
-			UGameplayStatics::GetAllActorsOfClass(GetWorld(), VoxelWorldEditorClass, FoundActors);
-
-			for (auto Actor : FoundActors)
-			{
-				auto VoxelWorldEditorActor = Cast<AVoxelWorldEditorInterface>(Actor);
-				if (VoxelWorldEditorActor)
-				{
-					VoxelWorldEditor = VoxelWorldEditorActor;
-					break;
-				}
-			}
-			if (!VoxelWorldEditor)
-			{
-				// else spawn
-				FActorSpawnParameters Transient = FActorSpawnParameters();
-				Transient.ObjectFlags = RF_Transient;
-				VoxelWorldEditor = GetWorld()->SpawnActor<AVoxelWorldEditorInterface>(VoxelWorldEditorClass, Transient);
-			}
-		}
-		VoxelWorldEditor->Init(this);
-
-
-		if (IsCreated())
-		{
-			DestroyWorldInternal();
-		}
-
-		const bool bEnableUndoRedoSave = bEnableUndoRedo;
-		bEnableUndoRedo = true;
-
-		// Create/Find ChunksOwner
-		{
-			ChunksOwner = nullptr;
-
-			TArray<AActor*> FoundActors;
-			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelChunksOwner::StaticClass(), FoundActors);
-
-			for (auto Actor : FoundActors)
-			{
-				auto ChunksOwnerActor = Cast<AVoxelChunksOwner>(Actor);
-				if (ChunksOwnerActor)
-				{
-					ChunksOwner = ChunksOwnerActor;
-					break;
-				}
-			}
-			if (!ChunksOwner)
-			{
-				// else spawn
-				FActorSpawnParameters Transient = FActorSpawnParameters();
-				Transient.ObjectFlags = RF_Transient;
-				ChunksOwner = GetWorld()->SpawnActor<AVoxelChunksOwner>(AVoxelChunksOwner::StaticClass(), Transient);
-			}
-
-			ChunksOwner->World = this;
-		}
-
-		CreateWorldInternal(ChunksOwner);
-
-		bEnableUndoRedo = bEnableUndoRedoSave;
-
-		AddInvoker(VoxelWorldEditor->GetInvoker());
-
-		UpdateAll();
-	}
-}
-
-void AVoxelWorld::DestroyInEditor()
-{
-	if (IsCreated())
-	{
-		DestroyWorldInternal();
-		ChunksOwner->Destroy();
-	}
-}
-
-bool AVoxelWorld::IsCreated() const
-{
-	return bIsCreated;
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 int AVoxelWorld::GetLODAt(const FIntVector& Position) const
 {
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("GetLODAt called but the world isn't created"));
-		return 0;
-	}
+	CHECK_VOXELWORLD_IS_CREATED(GetLODAt, 0);
+
 	if (IsInWorld(Position))
 	{
 		return Render->GetLODAtPosition(Position);
 	}
 	else
 	{
-		UE_LOG(LogVoxel, Error, TEXT("GetDepthAt: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		FMessageLog("PIE").Error(FText::Format(LOCTEXT("GetLODAtNIW", "GetLODAt: Not in world: ({0}, {1}, {2})"), Position.X, Position.Y, Position.Z));
 		return 0;
 	}
 }
 
 bool AVoxelWorld::IsInWorld(const FIntVector& Position) const
 {
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("IsInWorld called but the world isn't created"));
-		return false;
-	}
+	CHECK_VOXELWORLD_IS_CREATED(IsInWorld, false);
 	return Data->IsInWorld(Position);
+}
+
+bool AVoxelWorld::IsInside(const FVector& Position) const
+{
+	CHECK_VOXELWORLD_IS_CREATED(IsInside, false);
+	for (auto& P : GetNeighboringPositions(Position))
+	{
+		if (!FVoxelValue(GetValue(P)).IsEmpty())
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End, FVector& OutGlobalPosition, FIntVector& OutVoxelPosition) const
 {
 	SCOPE_CYCLE_COUNTER(STAT_VoxelWorld_GetIntersection);
 	
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("GetIntersection called but the world isn't created"));
-		return false;
-	}
+	CHECK_VOXELWORLD_IS_CREATED(GetIntersection, false);
 
 	FIntVector Diff = End - Start;
 	if (Diff.X != 0)
 	{
 		if (Diff.Y != 0 || Diff.Z != 0)
 		{
-			UE_LOG(LogVoxel, Error, TEXT("GetIntersection: Start and end should have 2 common coordinates"));
+			FMessageLog("PIE").Error(LOCTEXT("GetIntersectionError", "GetIntersection: Start and end should have 2 common coordinates"));
 			return false;
 		}
 	}
@@ -860,7 +729,7 @@ bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End
 	{
 		if (Diff.X != 0 || Diff.Z != 0)
 		{
-			UE_LOG(LogVoxel, Error, TEXT("GetIntersection: Start and end should have 2 common coordinates"));
+			FMessageLog("PIE").Error(LOCTEXT("GetIntersectionError", "GetIntersection: Start and end should have 2 common coordinates"));
 			return false;
 		}
 	}
@@ -868,7 +737,7 @@ bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End
 	{
 		if (Diff.X != 0 || Diff.Y != 0)
 		{
-			UE_LOG(LogVoxel, Error, TEXT("GetIntersection: Start and end should have 2 common coordinates"));
+			FMessageLog("PIE").Error(LOCTEXT("GetIntersectionError", "GetIntersection: Start and end should have 2 common coordinates"));
 			return false;
 		}
 	}
@@ -877,38 +746,47 @@ bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End
 	FIntVector RealEnd(FMath::Max(Start.X, End.X) + 1, FMath::Max(Start.Y, End.Y) + 1, FMath::Max(Start.Z, End.Z) + 1);
 
 	bool bFound = false;
-	auto Octrees = Data->BeginGet(FIntBox(RealStart, RealEnd));
-	float OldValue = Data->GetValue(RealStart.X, RealStart.Y, RealStart.Z);
-	FIntVector OldPosition = RealStart;
-	for (int X = RealStart.X; X < RealEnd.X; X++)
+	
 	{
-		for (int Y = RealStart.Y; Y < RealEnd.Y; Y++)
+		FVoxelScopeGetLock Lock(Data, FIntBox(RealStart, RealEnd));
+
+		FVoxelValue OldValue = Data->GetValue(RealStart.X, RealStart.Y, RealStart.Z, 0);
+		FIntVector OldPosition = RealStart;
+		for (int X = RealStart.X; X < RealEnd.X; X++)
 		{
-			for (int Z = RealStart.Z; Z < RealEnd.Z; Z++)
+			for (int Y = RealStart.Y; Y < RealEnd.Y; Y++)
 			{
-				if (UNLIKELY(!Data->IsInWorld(X, Y, Z))) 
+				for (int Z = RealStart.Z; Z < RealEnd.Z; Z++)
 				{
-					UE_LOG(LogVoxel, Error, TEXT("GetIntersection: Out of world!"));
-					return false;
+					if (UNLIKELY(!Data->IsInWorld(X, Y, Z)))
+					{
+						FMessageLog("PIE").Error(LOCTEXT("GetIntersectionOOB", "GetIntersection: Out of world!"));
+						return false;
+					}
+
+					FVoxelValue Value = Data->GetValue(X, Y, Z, 0);
+					FIntVector Position(X, Y, Z);
+
+					if (!FVoxelUtilities::HaveSameSign(OldValue, Value))
+					{
+						bool bSuccess;
+						const float t = OldValue.ThisDividedByThisMinusA(Value, bSuccess);
+						check(bSuccess);
+
+						FVector Q = t * FVector(Position) + (1 - t) * FVector(OldPosition);
+						OutGlobalPosition = LocalToGlobalFloat(Q);
+						OutVoxelPosition = Position;
+						bFound = true;
+					}
+
+					OldValue = Value;
+					OldPosition = Position;
+
+					if (bFound)
+					{
+						break;
+					}
 				}
-
-				float Value = Data->GetValue(X, Y, Z);
-				FIntVector Position(X, Y, Z);
-
-				if (!FVoxelUtilities::HaveSameSign(OldValue, Value))
-				{
-					check(OldValue - Value != 0);
-					const float t = OldValue / (OldValue - Value);
-
-					FVector Q = t * static_cast<FVector>(Position) + (1 - t) * static_cast<FVector>(OldPosition);
-					OutGlobalPosition = LocalToGlobalFloat(Q);
-					OutVoxelPosition = Position;
-					bFound = true;
-				}
-
-				OldValue = Value;
-				OldPosition = Position;
-
 				if (bFound)
 				{
 					break;
@@ -919,46 +797,708 @@ bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End
 				break;
 			}
 		}
-		if (bFound)
-		{
-			break;
-		}
 	}
-	Data->EndGet(Octrees);
 
 	return bFound;
 }
 
 FVector AVoxelWorld::GetNormal(const FIntVector& Position) const
-{
-	if (!IsCreated())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("GetNormal called but the world isn't created"));
-		return FVector::ZeroVector;
-	}
+{	
+	CHECK_VOXELWORLD_IS_CREATED(GetNormal, FVector::ZeroVector);
 
-	int X = Position.X;
-	int Y = Position.Y;
-	int Z = Position.Z;
-
-	auto Octrees = Data->BeginGet(FIntBox(FIntVector(Position.X - 1, Position.Y - 1, Position.Z - 1), FIntVector(Position.X + 2, Position.Y + 2, Position.Z + 2)));
-	FVector Gradient = Data->GetGradient(Position);
-	Data->EndGet(Octrees);
+	FVoxelScopeGetLock Lock(Data, FIntBox(FIntVector(Position.X - 1, Position.Y - 1, Position.Z - 1), FIntVector(Position.X + 2, Position.Y + 2, Position.Z + 2)));
+	FVector Gradient = Data->GetGradient(Position, 0);
 
 	return Gradient;
 }
 
-float AVoxelWorld::GetVoxelSize() const
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+float AVoxelWorld::GetValue(const FIntVector& Position) const
 {
-	return VoxelSize;
+	CHECK_VOXELWORLD_IS_CREATED(GetValue, 0);
+
+	if (IsInWorld(Position))
+	{
+		FVoxelValue Value;
+
+		{
+			FVoxelScopeGetLock Lock(Data, FIntBox(Position));
+			Value = Data->GetValue(Position, 0);
+		}
+
+		return Value.ToFloat();
+	}
+	else
+	{
+		FMessageLog("PIE").Error(FText::Format(LOCTEXT("GetValueOOB", "Get value: Not in world: ({0}, {1}, {2})"), Position.X, Position.Y, Position.Z));
+		return 0;
+	}
 }
 
-FIntBox AVoxelWorld::GetBounds() const
+void AVoxelWorld::SetValue(const FIntVector& Position, float Value, bool bUpdateRender)
 {
-	if (!IsCreated())
+	CHECK_VOXELWORLD_IS_CREATED(SetValue);
+
+	if (IsInWorld(Position))
 	{
-		UE_LOG(LogVoxel, Error, TEXT("GetBounds called but the world isn't created"));
-		return FIntBox();
+		{
+			FVoxelScopeSetLock Lock(Data, FIntBox(Position));
+			Data->SetValue(Position, Value);
+		}
+
+		if (bUpdateRender)
+		{
+			UpdateChunksAtPosition(Position);
+		}
 	}
-	return Data->GetBounds();
+	else
+	{
+		FMessageLog("PIE").Error(FText::Format(LOCTEXT("SetValueOOB", "Set Value: Not in world: ({0}, {1}, {2})"), Position.X, Position.Y, Position.Z));
+	}
 }
+
+FVoxelMaterial AVoxelWorld::GetMaterial(const FIntVector& Position) const
+{
+	CHECK_VOXELWORLD_IS_CREATED(GetMaterial, FVoxelMaterial());
+
+	if (IsInWorld(Position))
+	{
+		FVoxelMaterial Material;
+		
+		{
+			FVoxelScopeGetLock Lock(Data, FIntBox(Position));
+			Material = Data->GetMaterial(Position, 0);
+		}
+
+		return Material;
+	}
+	else
+	{
+		FMessageLog("PIE").Error(FText::Format(LOCTEXT("GetMaterialOOB", "Get material: Not in world: ({0}, {1}, {2})"), Position.X, Position.Y, Position.Z));
+		return FVoxelMaterial();
+	}
+}
+
+void AVoxelWorld::SetMaterial(const FIntVector& Position, const FVoxelMaterial& Material, bool bUpdateRender)
+{
+	CHECK_VOXELWORLD_IS_CREATED(SetMaterial);
+
+	if (IsInWorld(Position))
+	{
+		
+		{
+			FVoxelScopeSetLock Lock(Data, FIntBox(Position));
+			Data->SetMaterial(Position, Material);
+		}
+
+		if (bUpdateRender)
+		{
+			UpdateChunksAtPosition(Position);
+		}
+	}
+	else
+	{
+		FMessageLog("PIE").Error(FText::Format(LOCTEXT("SetMaterialOOB", "Set material: Not in world: ({0}, {1}, {2})"), Position.X, Position.Y, Position.Z));
+	}
+}
+
+float AVoxelWorld::GetFloatOutput(FName Name, int X, int Y, int Z) const
+{
+	CHECK_VOXELWORLD_IS_CREATED(GetFloatOutput, 0);
+
+	int Index = Data->WorldGenerator->GetOutputIndex(Name);
+	if (Index < 0)
+	{
+		check(Index == -1);
+		FMessageLog("PIE").Error(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " found!"));
+		return 0;
+	}
+	return Data->WorldGenerator->GetFloatOutput(X, Y, Z, Index);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void AVoxelWorld::GetSave(FVoxelUncompressedWorldSave& OutSave) const
+{
+	CHECK_VOXELWORLD_IS_CREATED(GetSave);
+	Data->GetSave(OutSave);
+}
+
+void AVoxelWorld::GetCompressedSave(FVoxelCompressedWorldSave& OutSave) const
+{
+	CHECK_VOXELWORLD_IS_CREATED(GetCompressedSave);
+	FVoxelUncompressedWorldSave Save;
+	Data->GetSave(Save);
+	UVoxelSaveUtilities::CompressVoxelSave(Save, OutSave);
+}
+
+void AVoxelWorld::LoadFromSave(const FVoxelUncompressedWorldSave& Save)
+{
+	CHECK_VOXELWORLD_IS_CREATED(LoadFromSave, );
+	if (Save.GetDepth() == -1)
+	{
+		FMessageLog("PIE").Error(LOCTEXT("LoadFromSaveError", "LoadFromSave: Invalid save"));
+	}
+	else
+	{
+		if (Save.GetDepth() > OctreeDepth)
+		{
+			FMessageLog("PIE").Warning(LOCTEXT("LoadFromSaveWarning", "LoadFromSave: Save depth is bigger than world depth, possible loss of data"));
+		}
+		TArray<FIntBox> BoundsToUpdate;
+		Data->LoadFromSave(Save, BoundsToUpdate);
+		for (auto& Bounds : BoundsToUpdate)
+		{
+			UpdateChunksOverlappingBox(Bounds, false);
+		}
+	}
+}
+
+void AVoxelWorld::LoadFromCompressedSave(FVoxelCompressedWorldSave& Save)
+{
+	CHECK_VOXELWORLD_IS_CREATED(LoadFromCompressedSave);
+	FVoxelUncompressedWorldSave UncompressedSave;
+	UVoxelSaveUtilities::DecompressVoxelSave(Save, UncompressedSave);
+	LoadFromSave(UncompressedSave);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void AVoxelWorld::Undo()
+{
+	CHECK_VOXELWORLD_IS_CREATED(Undo);
+
+	if (!bEnableUndoRedo)
+	{
+		FMessageLog("PIE").Error(LOCTEXT("UndobEnableUndoRedo", "Undo: Undo called but bEnableUndoRedo is false"));
+	}
+	else if (!GetData()->CheckIfCurrentFrameIsEmpty())
+	{
+		FMessageLog("PIE").Error(LOCTEXT("UndoSaveFrame", "Undo: Undo called before SaveFrame"));
+	}
+	else
+	{
+		TArray<FIntBox> BoundsToUpdate;
+		GetData()->Undo(BoundsToUpdate);
+		for (auto& Bounds : BoundsToUpdate)
+		{
+			UpdateChunksOverlappingBox(Bounds, false);
+		}
+	}
+}
+
+void AVoxelWorld::Redo()
+{
+	CHECK_VOXELWORLD_IS_CREATED(Redo);
+
+	if (!bEnableUndoRedo)
+	{
+		FMessageLog("PIE").Error(LOCTEXT("RedobEnableUndoRedo", "Redo: Redo called but bEnableUndoRedo is false"));
+	}
+	else if (!GetData()->CheckIfCurrentFrameIsEmpty())
+	{
+		FMessageLog("PIE").Error(LOCTEXT("RedoSaveFrame", "Redo: Redo called before SaveFrame"));
+	}
+	else
+	{
+		TArray<FIntBox> BoundsToUpdate;
+		GetData()->Redo(BoundsToUpdate);
+		for (auto& Bounds : BoundsToUpdate)
+		{
+			UpdateChunksOverlappingBox(Bounds, false);
+		}
+	}
+}
+
+void AVoxelWorld::SaveFrame()
+{
+	CHECK_VOXELWORLD_IS_CREATED(SaveFrame);
+	if (!bEnableUndoRedo)
+	{
+		FMessageLog("PIE").Error(LOCTEXT("SaveFrame", "SaveFrame: SaveFrame called but bEnableUndoRedo is false"));
+	}
+	else
+	{
+		GetData()->SaveFrame();
+	}
+}
+
+void AVoxelWorld::ClearFrames()
+{
+	CHECK_VOXELWORLD_IS_CREATED(ClearFrames);
+	if (!bEnableUndoRedo)
+	{
+		FMessageLog("PIE").Error(LOCTEXT("ClearFrames", "ClearFrames: ClearFrames called but bEnableUndoRedo is false"));
+	}
+	else
+	{
+		GetData()->ClearFrames();
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void AVoxelWorld::DrawDebugIntBox(const FIntBox& Box, float Lifetime, float Thickness, FLinearColor Color) const
+{
+	DrawDebugIntBox(Box, Lifetime, Thickness, Color.ToFColor(false));
+}
+
+void AVoxelWorld::DrawDebugIntBox(const FIntBox& Box, float Lifetime, float Thickness, FColor Color, float BorderOffset) const
+{
+	FVector Min = LocalToGlobal(Box.Min);
+	FVector Max = LocalToGlobal(Box.Max);
+
+	FBox DebugBox(Min + BorderOffset, Max - BorderOffset);
+
+	DrawDebugBox(GetWorld(), DebugBox.GetCenter(), DebugBox.GetExtent(), Color, false, Lifetime, 0, Thickness);
+}
+
+void AVoxelWorld::DebugVoxelsInsideBox(FIntBox Box, FLinearColor Color, float Lifetime, float Thickness, bool bDebugDensities, FLinearColor TextColor) const
+{
+	CHECK_VOXELWORLD_IS_CREATED(DebugVoxelsInsideBox);
+	for (int X = Box.Min.X; X < Box.Max.X; X++)
+	{
+		for (int Y = Box.Min.Y; Y < Box.Max.Y; Y++)
+		{
+			for (int Z = Box.Min.Z; Z < Box.Max.Z; Z++)
+			{
+				DrawDebugIntBox(FIntBox(X, Y, Z), Lifetime, Thickness, Color);
+
+				if (bDebugDensities)
+				{
+					FVoxelScopeGetLock Lock(GetData(), FIntBox(X, Y, Z));
+					FVoxelValue Value = GetData()->GetValue(X, Y, Z, 0);
+					DrawDebugString(GetWorld(), LocalToGlobal(FIntVector(X, Y, Z)), Value.ToString(), nullptr, TextColor.ToFColor(false), Lifetime);
+				}
+			}
+		}
+	}
+}
+
+void AVoxelWorld::ClearCache(const TArray<FIntBox>& BoundsToKeepCached)
+{
+	CHECK_VOXELWORLD_IS_CREATED(ClearCache);
+	CacheManager->ClearCache(BoundsToKeepCached);
+}
+
+void AVoxelWorld::Cache(const TArray<FIntBox>& BoundsToCache)
+{
+	CHECK_VOXELWORLD_IS_CREATED(Cache);
+	CacheManager->Cache(BoundsToCache);
+}
+
+void AVoxelWorld::AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor)
+{
+	CHECK_VOXELWORLD_IS_CREATED(AddOffset);
+	if (bMoveActor)
+	{
+		SetActorLocation(GetTransform().TransformPosition(GetVoxelSize() * FVector(OffsetInVoxels)));
+	}
+	WorldOffset -= OffsetInVoxels;
+	Render->RecomputeMeshPositions();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void AVoxelWorld::BeginPlay()
+{
+	Super::BeginPlay();
+
+	FVoxelCrashReporter::ResetIgnoreMessages();
+
+	UpdateCollisionProfile();
+
+	if (!IsCreated() && bCreateWorldAutomatically)
+	{
+		CreateWorld();
+	}
+}
+
+void AVoxelWorld::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (IsCreated())
+	{
+		DestroyWorld(false);
+	}
+}
+
+void AVoxelWorld::Tick(float DeltaTime)
+{
+	SCOPE_CYCLE_COUNTER(STAT_VoxelWorld_Tick);
+
+	Super::Tick(DeltaTime);
+
+	if (IsCreated())
+	{
+		const float Time = GetWorld()->GetTimeSeconds();
+
+		// Debug
+		{
+			if (bShowWorldBounds)
+			{
+				FIntBox Bounds = Data->GetBounds();
+				DrawDebugIntBox(Bounds, 2 * DeltaTime, WorldBoundsThickness, FLinearColor::Red);
+			}
+			if (bShowInvokersPositions)
+			{
+				for (auto& Invoker : Invokers)
+				{
+					if (Invoker.IsValid())
+					{
+						DrawDebugPoint(
+							GetWorld(),
+							LocalToGlobal(GlobalToLocal(Invoker->GetPosition())),
+							InvokersPointSize, 
+							Invoker->IsLocalInvoker() ? FColor::Red : FColor::Silver, 
+							2 * DeltaTime);
+					}
+				}
+			}
+		}
+
+		auto TaskCount = Render->GetTaskCount();
+		if (TaskCount >= 0)
+		{
+			if (TaskCount > 0)
+			{
+				GEngine->AddOnScreenDebugMessage((uint64)((PTRINT)this), 0.1, FColor::White, FString::Printf(TEXT("Tasks remaining: %d"), TaskCount));
+			}
+			else
+			{
+				if (!bWorldLoadAlreadyFinished)
+				{
+					bWorldLoadAlreadyFinished = true;
+					OnWorldLoaded.Broadcast();
+				}
+			}
+		}
+
+		if (CacheManager->IsCaching())
+		{			
+			GEngine->AddOnScreenDebugMessage((uint64)((PTRINT)this) + 1, 0.1, FColor::White, TEXT("Building cache"));
+		}
+
+		if (InvokerComponentChangeVersion < UVoxelInvokerComponent::GetChangeVersion())
+		{
+			InvokerComponentChangeVersion = UVoxelInvokerComponent::GetChangeVersion();
+			Invokers = UVoxelInvokerComponent::GetInvokers(GetWorld());
+			Invokers.RemoveAll([](auto Ptr) { return !Ptr.IsValid(); });
+		}
+
+		Render->Tick(DeltaTime);
+
+	}
+}
+
+void AVoxelWorld::Serialize(FArchive& Ar)
+{
+	Super::Serialize(Ar);
+
+	// Temp fix
+	if (IsTemplate())
+	{
+		CollisionPresets.FixupData(this);
+	}
+}
+
+void AVoxelWorld::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
+{
+	if (!IsCreated() || !bEnableWorldRebasing)
+	{
+		Super::ApplyWorldOffset(InOffset, bWorldShift);
+	}
+	else
+	{
+		const FVector RelativeOffset = InOffset / GetVoxelSize();
+		const FIntVector IntegerOffset = FVoxelIntVector::RoundToInt(RelativeOffset);
+		const FVector GlobalIntegerOffset = (FVector)IntegerOffset * GetVoxelSize();
+		const FVector Diff = InOffset - GlobalIntegerOffset;
+
+		Super::ApplyWorldOffset(Diff, bWorldShift);
+
+		WorldOffset += IntegerOffset;
+
+		Render->RecomputeMeshPositions();
+	}
+}
+
+void AVoxelWorld::PostLoad()
+{
+	Super::PostLoad();
+
+	if (LOD_DEPRECATED > 0)
+	{
+		OctreeDepth = LOD_DEPRECATED;
+	}
+
+	if (ChunkCullingLOD_DEPRECATED > 0)
+	{
+		ChunksCullingLOD = ChunkCullingLOD_DEPRECATED;
+	}
+
+	if (WorldBounds_DEPRECATED.Min != FIntVector::ZeroValue || WorldBounds_DEPRECATED.Max != FIntVector::ZeroValue)
+	{
+		CustomWorldBounds = WorldBounds_DEPRECATED;
+	}
+
+	if (bOverrideBounds_DEPRECATED)
+	{
+		bUseCustomWorldBounds = true;
+	}
+
+	if (!ProcMeshClass)
+	{
+		ProcMeshClass = UVoxelProceduralMeshComponent::StaticClass();
+	}
+}
+
+#if WITH_EDITOR
+bool AVoxelWorld::ShouldTickIfViewportsOnly() const
+{
+	return true;
+}
+
+bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
+{
+	if (!InProperty)
+	{
+		return Super::CanEditChange(InProperty);
+	}
+
+	const FString Name = InProperty->GetNameCPP();
+
+	bool bCanEdit;
+
+	if (Name == GET_MEMBER_NAME_STRING_CHECKED(AVoxelWorld, NormalConfig))
+	{
+		bCanEdit = RenderType == EVoxelRenderType::MarchingCubes;
+	}
+	else if (Name == GET_MEMBER_NAME_STRING_CHECKED(AVoxelWorld, VoxelMaterial))
+	{
+		bCanEdit = MaterialConfig == EVoxelMaterialConfig::RGB;
+	}
+	else if (Name == GET_MEMBER_NAME_STRING_CHECKED(AVoxelWorld, VoxelMaterialWithTessellation))
+	{
+		bCanEdit = MaterialConfig == EVoxelMaterialConfig::RGB;
+	}
+	else if (Name == GET_MEMBER_NAME_STRING_CHECKED(AVoxelWorld, MaterialCollection))
+	{
+		bCanEdit = MaterialConfig != EVoxelMaterialConfig::RGB;
+	}
+	else
+	{
+		bCanEdit = true;
+	}
+
+	checkf(!__NoCheckVariables.Contains(Name) || InProperty->HasMetaData("EditWhenCreated"), TEXT("Invalid voxel property access rights: %s"), *InProperty->GetNameCPP());
+
+	if (IsCreated())
+	{
+		return bCanEdit 
+			&& (InProperty->HasMetaData("EditWhenCreated") ||
+				__NoCheckVariables.Contains(Name) ||
+				Name.StartsWith(GET_MEMBER_NAME_STRING_CHECKED(AVoxelWorld, LODToMinDistance)))
+			&& Super::CanEditChange(InProperty);
+	}
+	else
+	{
+		return bCanEdit && Super::CanEditChange(InProperty);
+	}
+}
+
+void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	OctreeDepth = FMath::Clamp(OctreeDepth, 1, MAX_WORLD_DEPTH - 1);
+
+	if (!ProcMeshClass)
+	{
+		ProcMeshClass = UVoxelProceduralMeshComponent::StaticClass();
+	}
+
+	if (PropertyChangedEvent.MemberProperty)
+	{
+		auto Name = PropertyChangedEvent.MemberProperty->GetNameCPP();
+		if (Name == GET_MEMBER_NAME_STRING_CHECKED(AVoxelWorld, OctreeDepth))
+		{
+			WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(OctreeDepth);
+		}
+		else if (Name == GET_MEMBER_NAME_STRING_CHECKED(AVoxelWorld, WorldSizeInVoxel))
+		{
+			OctreeDepth = FVoxelUtilities::GetDepthFromSize<CHUNK_SIZE>(WorldSizeInVoxel);
+			WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(OctreeDepth);
+		}
+		else if (Name == GET_MEMBER_NAME_STRING_CHECKED(AVoxelWorld, LODToMinDistance))
+		{
+			if (!LODToMinDistance.Contains("0"))
+			{
+				LODToMinDistance.Add("0", 1000);
+			}
+
+			for (auto& It : LODToMinDistance)
+			{
+				if (!It.Key.IsEmpty())
+				{
+					It.Key = FString::FromInt(FVoxelUtilities::ClampLOD(TCString<TCHAR>::Atoi(*It.Key)));
+				}
+			}
+			LODToMinDistance.KeySort([](const FString& A, const FString& B) { return TCString<TCHAR>::Atoi(*A) < TCString<TCHAR>::Atoi(*B); });
+
+			float LastValue = 0;
+			for (auto& It : LODToMinDistance)
+			{
+				It.Value = FMath::Max(LastValue, It.Value);
+				LastValue = It.Value;
+			}
+		}
+		if (IsCreated())
+		{
+			if (PropertyChangedEvent.MemberProperty->HasMetaData("Recreate"))
+			{
+				Recreate();
+			}
+			else if (PropertyChangedEvent.MemberProperty->HasMetaData("UpdateAll"))
+			{
+				UpdateAll();
+			}
+		}
+	}
+
+	FixWorldBounds(CustomWorldBounds, OctreeDepth);
+}
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void AVoxelWorld::CreateWorldInternal(
+	EPlayType InPlayType,
+	bool bInMultiplayer,
+	bool bInEnableUndoRedo,
+	bool bInDontUseGlobalPool)
+{
+	SCOPE_CYCLE_COUNTER(STAT_VoxelWorld_CreateWorldInternal);
+
+	check(!IsCreated());
+	check(!Data.IsValid());
+	check(!Render.IsValid());
+	check(!Pool.IsValid());
+
+	UE_LOG(LogVoxel, Warning, TEXT("Loading world"));
+	
+	// Create Pool
+	if (!bInDontUseGlobalPool)
+	{
+		if (FVoxelPool::IsGlobalVoxelPoolCreated())
+		{
+			Pool = FVoxelPool::GetGlobalPool();
+		}
+		else
+		{
+			FMessageLog("PIE").Error(LOCTEXT("GlobalPoolNotCreated", "DontUseGlobalPool = false but global pool isn't created!"));
+		}
+	}
+	if (!Pool.IsValid())
+	{
+		Pool = FVoxelPool::Create(MeshThreadCount);
+	}
+	
+	// Create Data
+	{
+		auto InstancedWorldGenerator = WorldGenerator.GetWorldGenerator();
+		InstancedWorldGenerator->Init(GetInitStruct());
+
+		FIntBox Bounds = FVoxelUtilities::GetBoundsFromDepth<CHUNK_SIZE>(OctreeDepth);
+		if (bUseCustomWorldBounds)
+		{
+			Bounds = CustomWorldBounds;
+		}
+		FixWorldBounds(Bounds, OctreeDepth);
+
+		Data = MakeShared<FVoxelData, ESPMode::ThreadSafe>(
+			OctreeDepth + DATA_OCTREE_DEPTH_DIFF,
+			Bounds,
+			InstancedWorldGenerator,
+			bInMultiplayer,
+			bInEnableUndoRedo);
+	}
+
+	// Create Render AFTER Data & Pool
+	Render = FVoxelRenderFactory::GetVoxelRender(RenderType, this);
+
+	// Create cache manager
+	CacheManager = MakeShared<FVoxelCacheManager>(this);
+
+	
+	// Set variables
+	PlayType = InPlayType;
+	bIsCreated = true;
+	InvokerComponentChangeVersion = -1;
+	WorldOffset = FIntVector::ZeroValue;
+	bWorldLoadAlreadyFinished = false;
+	MaterialInstance = UMaterialInstanceDynamic::Create(MissingMaterial, this);
+	bIsDedicatedServer = IsDedicatedServerInternal(GetWorld());
+
+	// Load if possible
+	if (SaveObject)
+	{
+		LoadFromCompressedSave(SaveObject->Save);
+	}
+
+
+	// Start timers
+	auto& TimerManager = GetWorld()->GetTimerManager();
+	TimerManager.SetTimer(CacheDebugHandle, [this]
+	{
+		if (bShowDataOctreeLeavesStatus)
+		{
+			CacheManager->DebugCache(bHideEmptyDataOctreeLeaves, 0.5f, DataOctreeLeavesThickness);
+		}
+	}, 0.5f, true);
+}
+
+void AVoxelWorld::DestroyWorldInternal()
+{
+	SCOPE_CYCLE_COUNTER(STAT_VoxelWorld_DestroyWorldInternal);
+
+	check(IsCreated());
+	check(Render.IsValid());
+	check(Data.IsValid());
+	check(Pool.IsValid());
+
+	UE_LOG(LogVoxel, Warning, TEXT("Unloading world"));
+	
+	CacheManager.Reset();
+	Render.Reset();
+	Data.Reset();
+	Pool.Reset();
+
+
+	bIsCreated = false;
+	PlayType = EPlayType::Destroyed;
+
+	// Cancel timers
+	auto& TimerManager = GetWorld()->GetTimerManager();
+	TimerManager.ClearTimer(CacheDebugHandle);
+}
+
+#undef LOCTEXT_NAMESPACE

@@ -3,25 +3,27 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "MessageDialog.h"
-#include "VoxelCrashReporter.h"
+#include "Misc/MessageDialog.h"
+#include "VoxelDebug/VoxelCrashReporter.h"
 
 class FVoxelCrashReporterEditor : public IVoxelCrashReporter
 {
 public:
-	virtual bool ShowError(const FString& Error) override
+	virtual bool ShowError(const FString& Error, bool bCanIgnore) override
 	{
-		auto Result = FMessageDialog::Open(EAppMsgType::YesNo, FText::Format(FText::FromString(TEXT("Error: {0}")), FText::FromString(Error)));
+		auto Result = FMessageDialog::Open(bCanIgnore ? EAppMsgType::YesNo : EAppMsgType::Ok, FText::FromString(TEXT("Error: ") + Error + (bCanIgnore ? TEXT("\n\nHide future errors?") : TEXT(""))));
 
 		switch (Result)
 		{
-		case EAppReturnType::No:
-			return false;
 		case EAppReturnType::Yes:
 			return true;
 		default:
-			check(false);
 			return false;
 		}
+	}
+
+	static void Register()
+	{
+		FVoxelCrashReporter::CrashReporter = MakeShareable(new FVoxelCrashReporterEditor());
 	}
 };
