@@ -4,7 +4,9 @@
 It is compatible with 4.20 and 4.21.
 
 For more info, check the website: https://voxelplugin.com
+
 Join the discord for all the latest news! https://discord.gg/58ZqEbg
+
 You can get a binary build here: https://gumroad.com/voxelplugin
 
 ## Installation
