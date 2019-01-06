@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -23,14 +23,14 @@ public:
 	class FVoxelScopeSetLock
 	{
 	public:
-		FVoxelScopeSetLock(FVoxelData* Data, const FIntBox& Bounds)
+		FVoxelScopeSetLock(FVoxelData* Data, const FIntBox& Bounds, const FString& Name)
 			: Data(Data)
 		{
-			Data->BeginSet(Bounds, LockedOctrees);
+			Data->BeginSet(Bounds, LockedOctrees, Name);
 		}
 		template<ESPMode Mode>
-		FVoxelScopeSetLock(const TSharedPtr<FVoxelData, Mode>& Data, const FIntBox& Bounds)
-			: FVoxelScopeSetLock(Data.Get(), Bounds)
+		FVoxelScopeSetLock(const TSharedPtr<FVoxelData, Mode>& Data, const FIntBox& Bounds, const FString& Name)
+			: FVoxelScopeSetLock(Data.Get(), Bounds, Name)
 		{
 		}
 
@@ -47,14 +47,14 @@ public:
 	class FVoxelScopeGetLock
 	{
 	public:
-		FVoxelScopeGetLock(FVoxelData* Data, const FIntBox& Bounds)
+		FVoxelScopeGetLock(FVoxelData* Data, const FIntBox& Bounds, const FString& Name)
 			: Data(Data)
 		{
-			Data->BeginGet(Bounds, LockedOctrees);
+			Data->BeginGet(Bounds, LockedOctrees, Name);
 		}
 		template<ESPMode Mode>
-		FVoxelScopeGetLock(const TSharedPtr<FVoxelData, Mode>& Data, const FIntBox& Bounds)
-			: FVoxelScopeGetLock(Data.Get(), Bounds)
+		FVoxelScopeGetLock(const TSharedPtr<FVoxelData, Mode>& Data, const FIntBox& Bounds, const FString& Name)
+			: FVoxelScopeGetLock(Data.Get(), Bounds, Name)
 		{
 		}
 
@@ -249,8 +249,8 @@ public:
 	 * @param	Box			Box to lock
 	 * @param	OutOctrees	Locked octrees
 	 */
-	void BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees);
-	bool TryBeginSet(const FIntBox& Box, int TimeoutMicroSeconds, TArray<FVoxelId>& OutOctrees);
+	void BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FString Name);
+	bool TryBeginSet(const FIntBox& Box, int TimeoutMicroSeconds, TArray<FVoxelId>& OutOctrees, FString& InOutName);
 	/**
 	 * End the lock on LockedOctrees
 	 * @param	LockedOctrees		Returned by BeginSet
@@ -262,8 +262,8 @@ public:
 	 * @param	Box		Box to lock
 	 * @param	OutOctrees	Locked octrees
 	 */
-	 void BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees);
-	 bool TryBeginGet(const FIntBox& Box, int TimeoutMicroSeconds, TArray<FVoxelId>& OutOctrees);
+	 void BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FString Name);
+	 bool TryBeginGet(const FIntBox& Box, int TimeoutMicroSeconds, TArray<FVoxelId>& OutOctrees, FString& InOutName);
 	/**
 	 * End the lock on LockedOctrees
 	 * @param	LockedOctrees		Returned by BeginGet
@@ -280,6 +280,14 @@ public:
 
 	template<bool bOnlyIfDirty, typename F>
 	void CallLambdaOnValuesInBounds(const FIntBox& Bounds, F Lambda) { Octree->CallLambdaOnValuesInBounds<bOnlyIfDirty>(Bounds, Lambda); }
+
+	void CacheMostUsedChunks(
+		uint32 Threshold,
+		uint32 MaxCacheSize, 
+		uint32& NumChunksSubdivided, 
+		uint32& NumChunksCached, 
+		uint32& NumRemovedFromCache,
+		uint32& TotalNumCachedChunks);
 
 public:
 	inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int QueryLOD) const
@@ -394,7 +402,7 @@ public:
 	 */
 	void Undo(TArray<FIntBox>& OutBoundsToUpdate)
 	{
-		FVoxelScopeSetLock Lock(this, FIntBox::Infinite);
+		FVoxelScopeSetLock Lock(this, FIntBox::Infinite, "Undo");
 		if (HistoryPosition > 0)
 		{
 			HistoryPosition--;
@@ -406,7 +414,7 @@ public:
 	 */
 	void Redo(TArray<FIntBox>& OutBoundsToUpdate)
 	{
-		FVoxelScopeSetLock Lock(this, FIntBox::Infinite);
+		FVoxelScopeSetLock Lock(this, FIntBox::Infinite, "Redo");
 		if (HistoryPosition < MaxHistoryPosition)
 		{
 			HistoryPosition++;
@@ -418,7 +426,7 @@ public:
 	 */
 	void ClearFrames()
 	{
-		FVoxelScopeSetLock Lock(this, FIntBox::Infinite);
+		FVoxelScopeSetLock Lock(this, FIntBox::Infinite, "ClearFrames");
 		Octree->ClearFrames();
 		HistoryPosition = 0;
 		MaxHistoryPosition = 0;
@@ -428,7 +436,7 @@ public:
 	 */
 	void SaveFrame()
 	{
-		FVoxelScopeSetLock Lock(this, FIntBox::Infinite);
+		FVoxelScopeSetLock Lock(this, FIntBox::Infinite, "SaveFrame");
 		Octree->SaveFrame(HistoryPosition);
 		HistoryPosition++;
 		MaxHistoryPosition = HistoryPosition;
@@ -438,7 +446,7 @@ public:
 	 */
 	bool CheckIfCurrentFrameIsEmpty()
 	{
-		FVoxelScopeGetLock Lock(this, FIntBox::Infinite);
+		FVoxelScopeGetLock Lock(this, FIntBox::Infinite, "CheckIfCurrentFrameIsEmpty");
 		return Octree->CheckIfCurrentFrameIsEmpty();
 	}
 	/**
@@ -464,6 +472,7 @@ private:
 	int HistoryPosition;
 	int MaxHistoryPosition;
 	TArray<TUniquePtr<FVoxelPlaceableItem>> Items;
+	uint32 CacheTime = 0;
 };
 
 using FVoxelScopeSetLock = FVoxelData::FVoxelScopeSetLock;

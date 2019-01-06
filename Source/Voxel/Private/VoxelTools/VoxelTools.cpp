@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelTools/VoxelTools.h"
 #include "VoxelLogStatDefinitions.h"
@@ -87,7 +87,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, FIntVector Position, float 
 
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "SetValueSphere");
 
 		Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
 		{
@@ -115,7 +115,7 @@ void UVoxelTools::AddSphere(AVoxelWorld* World, FIntVector Position, float Radiu
 
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "AddSphere");
 
 		Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
 		{
@@ -148,7 +148,7 @@ void UVoxelTools::RemoveSphere(AVoxelWorld* World, FIntVector Position, float Ra
 
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "RemoveSphere");
 
 		Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
 		{
@@ -183,7 +183,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, FIntVector Position, flo
 
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "SetMaterialSphere");
 
 		Data->SetValueOrMaterialLambda<FVoxelMaterial>(Bounds, [&](int X, int Y, int Z, FVoxelMaterial& Material)
 		{
@@ -210,7 +210,7 @@ void UVoxelTools::SetValueBox(AVoxelWorld* World, FIntBox Bounds, float Value)
 	
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "SetValueBox");
 
 		Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
 		{
@@ -230,7 +230,7 @@ void UVoxelTools::AddBox(AVoxelWorld* World, FIntBox Bounds)
 	
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "AddBox");
 
 		Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& Value)
 		{
@@ -257,7 +257,7 @@ void UVoxelTools::RemoveBox(AVoxelWorld* World, FIntBox Bounds)
 	
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "RemoveBox");
 
 		Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& Value)
 		{
@@ -287,7 +287,7 @@ void UVoxelTools::SetMaterialBox(AVoxelWorld* World, FIntBox Bounds, FVoxelPaint
 	
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "SetMaterialBox");
 
 		Data->SetValueOrMaterialLambda<FVoxelMaterial>(Bounds, [&](int X, int Y, int Z, FVoxelMaterial& Material)
 		{
@@ -309,7 +309,7 @@ void UVoxelTools::SetBoxAsDirty(AVoxelWorld* World, FIntBox Bounds, bool bSetVal
 
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeSetLock Lock(Data, Bounds);
+		FVoxelScopeSetLock Lock(Data, Bounds, "SetBoxAsDirty");
 
 		if (bSetValuesAsDirty)
 		{
@@ -338,7 +338,7 @@ void UVoxelTools::RoundVoxels(AVoxelWorld* World, FIntBox Bounds)
 	Values.SetNumUninitialized(Size.X * Size.Y * Size.Z);
 
 	FVoxelData* Data = World->GetData();
-	FVoxelScopeSetLock Lock(Data, Bounds);
+	FVoxelScopeSetLock Lock(Data, Bounds, "RoundVoxels");
 
 	Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& Value) {}); // Make sure values are cached for faster access
 	Data->GetValuesAndMaterials(Values.GetData(), nullptr, FVoxelWorldGeneratorQueryZone(Bounds, Size, 0), 0);
@@ -467,7 +467,8 @@ bool UVoxelTools::Flatten(AVoxelWorld* World, FVector Position, FVector Normal, 
 	TArray<FVoxelId> Octrees;
 	{
 		SCOPE_CYCLE_COUNTER(STAT_UVoxelTools_BeginSet);
-		if (!Data->TryBeginSet(Bounds, TimeoutInMicroSeconds, Octrees))
+		FString Name = "Flatten";
+		if (!Data->TryBeginSet(Bounds, TimeoutInMicroSeconds, Octrees, Name))
 		{
 			return false;
 		}

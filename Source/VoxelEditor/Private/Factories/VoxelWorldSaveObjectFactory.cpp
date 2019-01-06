@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelWorldSaveObjectFactory.h"
 #include "VoxelSave.h"

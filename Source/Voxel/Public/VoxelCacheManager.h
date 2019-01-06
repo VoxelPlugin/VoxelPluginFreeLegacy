@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -6,6 +6,7 @@
 #include "IntBox.h"
 #include "VoxelThreadPool.h"
 #include "Math/NumericLimits.h"
+#include "HAL/ThreadSafeBool.h"
 
 class FVoxelDataOctree;
 class AVoxelWorld;
@@ -17,9 +18,14 @@ public:
 	// Output
 	TMap<FIntBox, FVoxelDataOctree*> CachedOctrees;
 
-	FVoxelAsyncCacheWork(TSharedPtr<FVoxelData, ESPMode::ThreadSafe> Data, const TArray<FIntBox>& BoundsToCache)
-		: Data(Data)
+	FThreadSafeCounter Progress;
+	const int32 Total;
+
+	FVoxelAsyncCacheWork(TSharedPtr<FVoxelData, ESPMode::ThreadSafe> Data, const TArray<FIntBox>& BoundsToCache, bool bCheckIfChunksAreEmpty)
+		: Total(BoundsToCache.Num())
+		, Data(Data)
 		, BoundsToCache(BoundsToCache)
+		, bCheckIfChunksAreEmpty(bCheckIfChunksAreEmpty)
 	{
 	}
 
@@ -33,6 +39,7 @@ public:
 private:
 	TSharedPtr<FVoxelData, ESPMode::ThreadSafe> const Data;
 	TArray<FIntBox> const BoundsToCache;
+	bool const bCheckIfChunksAreEmpty;
 };
 
 // Autodelete
@@ -67,16 +74,17 @@ public:
 	}
 	~FVoxelCacheManager();
 
-	void Cache(const TArray<FIntBox>& BoundsToCache);
+	void Cache(const TArray<FIntBox>& BoundsToCache, bool bCheckIfChunksAreEmpty);
 	void ClearCache(const TArray<FIntBox>& BoundsToKeepCached);
 
 	void DebugCache(bool bHideEmpty, float DeltaTime, float Thickness);
 
 	inline bool IsCaching() { UpdateFromWork(); return CacheWork.IsValid(); }
+	FString GetProgress() const;
 
 	static const FColor CreatedDirty;
-	static const FColor CreatedCached;
-	static const FColor CreatedNotCached;
+	static const FColor CreatedManualCached;
+	static const FColor CreatedAutoCached;
 	static const FColor Empty;
 
 private:

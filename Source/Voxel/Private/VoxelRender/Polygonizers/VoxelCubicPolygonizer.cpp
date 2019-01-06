@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelRender/Polygonizers/VoxelCubicPolygonizer.h"
 #include "VoxelLogStatDefinitions.h"
@@ -221,7 +221,7 @@ bool FVoxelCubicPolygonizer::CreateSection(FVoxelChunk& OutChunk, FVoxelStatsEle
 
 	TArray<FVoxelId> Octrees;
 	Stats.StartStat("BeginGet");
-	Data->BeginGet(Bounds, Octrees);
+	Data->BeginGet(Bounds, Octrees, FString::Printf(TEXT("CubicPolygonizer LOD=%d"), LOD));
 	
 	Stats.StartStat("IsEmpty");
 	bool bIsEmpty = Data->IsEmpty(Bounds, LOD);
@@ -331,7 +331,7 @@ bool FVoxelCubicTransitionsPolygonizer::CreateTransitions(FVoxelChunk& OutChunk,
 
 	TArray<FVoxelId> Octrees;
 	Stats.StartStat("BeginGet");
-	Data->BeginGet(Bounds, Octrees);
+	Data->BeginGet(Bounds, Octrees, FString::Printf(TEXT("CubicTransitionsPolygonizer LOD=%d"), LOD));
 	
 	Stats.StartStat("GetMap");
 	MapAccelerator = MakeUnique<FVoxelData::MapAccelerator>(Bounds, Data);

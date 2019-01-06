@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelRender/Polygonizers/VoxelMCPolygonizer.h"
 #include "VoxelLogStatDefinitions.h"
@@ -74,13 +74,7 @@ FVoxelMCPolygonizer::FVoxelMCPolygonizer(
 	, MaterialConfig(MaterialConfig)
 	, UVConfig(UVConfig)
 	, MeshParameters(MeshParameters)
-	, CachedMaterials (LOD == 0 ? new FVoxelMaterial[MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE] : nullptr)
 {
-}
-
-FVoxelMCPolygonizer::~FVoxelMCPolygonizer()
-{
-	delete[] CachedMaterials;
 }
 
 bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement& Stats)
@@ -90,7 +84,7 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 
 	TArray<FVoxelId> Octrees;
 	Stats.StartStat("BeginGet");
-	Data->BeginGet(Bounds, Octrees);
+	Data->BeginGet(Bounds, Octrees, FString::Printf(TEXT("MarchingCubesPolygonizer LOD=%d"), LOD));
 	
 	Stats.StartStat("IsEmpty");
 	bool bIsEmpty = Data->IsEmpty(Bounds, LOD);
@@ -104,20 +98,10 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 	}
 
 	Stats.StartStat("GetValuesAndMaterials");
-	Data->GetValuesAndMaterials(CachedValues, CachedMaterials, FVoxelWorldGeneratorQueryZone(Bounds, ChunkDataSize, LOD), LOD);
+	Data->GetValuesAndMaterials(CachedValues, nullptr, FVoxelWorldGeneratorQueryZone(Bounds, ChunkDataSize, LOD), LOD);
 
-	if (LOD > 0)
-	{
-		Stats.StartStat("GetMap");
-		MapAccelerator = MakeUnique<FVoxelData::MapAccelerator>(Bounds, Data);
-	}
-
-	if (LOD == 0)
-	{
-		// We won't use it after
-		Stats.StartStat("EndGet");
-		Data->EndGet(Octrees);
-	}
+	Stats.StartStat("GetMap");
+	MapAccelerator = MakeUnique<FVoxelData::MapAccelerator>(Bounds, Data);
 
 	Stats.StartStat("Iteration");
 	
@@ -262,13 +246,13 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 									if (ValueAtA.IsNull())
 									{
 										IntersectionPoint = FVector(PositionA);
-										Material = LOD == 0 ? CachedMaterials[IndexA] : GetMaterialNoCache(PositionA);
+										Material = GetMaterialNoCache(PositionA);
 									}
 									else 
 									{
 										checkVoxelSlow(ValueAtB.IsNull());
 										IntersectionPoint = FVector(PositionB);
-										Material = LOD == 0 ? CachedMaterials[IndexB] : GetMaterialNoCache(PositionB);
+										Material = GetMaterialNoCache(PositionB);
 									}
 								}
 								else if (LOD == 0)
@@ -293,7 +277,7 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 									}
 
 									// Use the material of the point inside
-									Material = !ValueAtA.IsEmpty() ? CachedMaterials[IndexA] : CachedMaterials[IndexB];
+									Material = GetMaterialNoCache(!ValueAtA.IsEmpty() ? PositionA : PositionB);
 								}
 								else
 								{
@@ -442,12 +426,9 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 		bCurrentCacheIs0 = !bCurrentCacheIs0;
 	}
 
-	if (LOD > 0)
-	{
-		Stats.StartStat("EndGet");
-		Data->EndGet(Octrees);
-	}	
-	
+	Stats.StartStat("EndGet");
+	Data->EndGet(Octrees);
+
 	Stats.SetValue("Num Vertices", FString::FromInt(Vertices.Num()));
 
 	Stats.StartStat("ConvertArrays");
@@ -456,23 +437,13 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 	return true;
 
 generatorerror: 
-	if (LOD > 0)
-	{
-		Data->EndGet(Octrees);
-	}
+	Data->EndGet(Octrees);
 	return false;
 }
 
 FVector FVoxelMCPolygonizer::GetNormal(const FVector& Position) const
 {
-	if (LOD == 0)
-	{
-		return GetNormalImpl(this, LOD, Position, FIntVector::ZeroValue);
-	}
-	else
-	{
-		return GetNormalImpl(MapAccelerator.Get(), LOD, Position, ChunkPosition);
-	}
+	return GetNormalImpl(MapAccelerator.Get(), LOD, Position, ChunkPosition);
 }
 
 FVoxelValue FVoxelMCPolygonizer::GetValue(int X, int Y, int Z, int QueryLOD) const
@@ -522,7 +493,7 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions(FVoxelChunk& OutChunk, FV
 
 	TArray<FVoxelId> Octrees;
 	Stats.StartStat("BeginGet");
-	Data->BeginGet(Bounds, Octrees);
+	Data->BeginGet(Bounds, Octrees, FString::Printf(TEXT("MarchingCubesTransitionsPolygonizer LOD=%d"), LOD));
 
 	Stats.StartStat("GetMap");
 	MapAccelerator = MakeUnique<FVoxelData::MapAccelerator>(Bounds, Data);

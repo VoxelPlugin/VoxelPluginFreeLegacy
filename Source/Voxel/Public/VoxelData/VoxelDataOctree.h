@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -55,9 +55,28 @@ public:
 	inline bool IsCreated() const { check(LOD == 0); return Cell.IsValid(); }
 	inline bool IsEmpty() const { check(LOD == 0); check(ItemHolder->IsEmpty() || EmptyState == EVoxelEmptyState::Unknown); return !IsCreated() && EmptyState != EVoxelEmptyState::Unknown; }
 	inline bool IsCacheOnly() const { check(LOD == 0); return !IsCreated() || (!Cell->IsBufferDirty<FVoxelValue>() && !Cell->IsBufferDirty<FVoxelMaterial>()); }
+	inline bool IsCached() const { check(LOD == 0); return IsCreated() && IsCacheOnly(); }
+		
+	inline bool ShouldBeCached(uint32 Threshold) const { return NumberOfWorldGeneratorReadsSinceLastCache > Threshold; }
+	inline uint32 GetCachePriority() const { return LastAccessTime; }
 
-	void Cache();
+	inline bool IsManuallyCached() const { return IsCached() && bIsManuallyCached; }
+
+	void Cache(bool bIsManualCache, bool bCheckIfEmpty);
 	void ClearCache();
+	void ClearManualCache();
+	
+	struct CacheElement
+	{
+		bool bIsCached;
+		uint32 Priority;
+		FVoxelDataOctree* Octree;
+	};
+	void GetOctreesToCacheAndExistingCachedOctrees(
+		uint32 Time,
+		uint32 Threshold, 
+		TArray<CacheElement>& OutOctreesToCacheAndCachedOctrees,
+		TArray<FVoxelDataOctree*>& OutOctreesToSubdivide);
 
 public:
 	void GetMap(const FIntBox& Bounds, FVoxelMap& OutMap) const;
@@ -65,8 +84,8 @@ public:
 public:
 	EVoxelEmptyState IsEmpty(const FIntBox& Bounds, int LOD) const;
 
-	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int QueryLOD) const;
-	inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* Value, FVoxelMaterial* Material, int QueryLOD) const
+	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int QueryLOD);
+	inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* Value, FVoxelMaterial* Material, int QueryLOD)
 	{
 		check(IsLeaf());
 		check(IsInOctree(X, Y, Z));
@@ -114,7 +133,7 @@ public:
 			TValue* Array = Cell->GetArray<TValue>();
 			FVoxelCellIndex Index = IndexFromGlobalCoordinates(X, Y, Z);
 
-			AddEdit(Index, Array[Index], bEnableMultiplayer, bEnableUndoRedo);
+			AddEdit(Index, Array[Index]);
 
 			Array[Index] = Value;
 		}
@@ -322,12 +341,12 @@ public:
 		
 public:
 	// sorted by increasing Id
-	bool BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutIds, int MicroSeconds);
+	bool BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutIds, int MicroSeconds, FString& InOutLockerName);
 	// sorted by decreasing Id
 	void EndSet(TArray<FVoxelId>& Ids);
 	
 	// sorted by increasing Id
-	bool BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutIds, int MicroSeconds);
+	bool BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutIds, int MicroSeconds, FString& InOutLockerName);
 	// sorted by decreasing Id
 	void EndGet(TArray<FVoxelId>& Ids);
 
@@ -382,9 +401,11 @@ public:
 	 */
 	bool CheckIfCurrentFrameIsEmpty() const;
 
-protected:
+public:
+	void CreateChildren();
+
+private:
 	TUniquePtr<FVoxelDataCell> Cell;
-	TUniquePtr<FVoxelDataCellMultiplayer> MultiplayerCell;
 	TUniquePtr<FVoxelDataCellUndoRedo> UndoRedoCell;
 	TUniquePtr<FVoxelPlaceableItemHolder> ItemHolder = MakeUnique<FVoxelPlaceableItemHolder>(); // Always valid on a leaf
 
@@ -392,13 +413,15 @@ protected:
 	const bool bEnableMultiplayer : 1;
 	const bool bEnableUndoRedo : 1;
 
+	bool bIsManuallyCached : 1;
 	EVoxelEmptyState EmptyState = EVoxelEmptyState::Unknown;
-
-	virtual void CreateChildren() override;
+	uint32 NumberOfWorldGeneratorReadsSinceLastCache = 0;
+	uint32 LastAccessTime = 0;
 
 private:
 	std::shared_timed_mutex MainLock;
 	std::mutex TransactionLock;
+	FString LockerName;
 	
 private:
 	void Create(bool bInitFromWorldGenerator);
@@ -414,13 +437,9 @@ private:
 	}
 
 	template<typename T>
-	inline void AddEdit(FVoxelCellIndex Index, T& Old, bool bInEnableMultiplayer, bool bInEnableUndoRedo)
+	inline void AddEdit(FVoxelCellIndex Index, T& Old)
 	{
-		if (bInEnableMultiplayer)
-		{
-			MultiplayerCell->AddEdit(Index, Old);
-		}
-		if (bInEnableUndoRedo)
+		if (bEnableUndoRedo)
 		{
 			UndoRedoCell->AddEdit(Index, Old);
 		}
@@ -428,10 +447,6 @@ private:
 	template<typename T, bool bInEnableMultiplayer, bool bInEnableUndoRedo>
 	inline void AddEdit(FVoxelCellIndex Index, T& Old)
 	{
-		if (bInEnableMultiplayer)
-		{
-			MultiplayerCell->AddEdit(Index, Old);
-		}
 		if (bInEnableUndoRedo)
 		{
 			UndoRedoCell->AddEdit(Index, Old);

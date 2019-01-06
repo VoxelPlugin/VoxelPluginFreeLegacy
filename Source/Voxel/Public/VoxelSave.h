@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -73,14 +73,17 @@ public:
 	}
 	inline void AddChunk(const FIntVector& InPosition, TVoxelBuffer<FVoxelValue>* InValues, TVoxelBuffer<FVoxelMaterial>* InMaterials)
 	{
-		TmpChunks.Add({ InPosition, InValues, InMaterials });
-		if (InValues)
+		if (InValues || InMaterials)
 		{
-			ChunksWithValuesCount++;
-		}
-		if (InMaterials)
-		{
-			ChunksWithMaterialsCount++;
+			TmpChunks.Add({ InPosition, InValues, InMaterials });
+			if (InValues)
+			{
+				ChunksWithValuesCount++;
+			}
+			if (InMaterials)
+			{
+				ChunksWithMaterialsCount++;
+			}
 		}
 	}
 	void Save()

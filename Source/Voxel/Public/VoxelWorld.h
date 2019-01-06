@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -37,8 +37,8 @@ class FVoxelActorComputedChunksOctree;
 class UHierarchicalInstancedStaticMeshComponent;
 class UVoxelProceduralMeshComponent;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClientConnection);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWorldLoaded);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWorldDestroyed);
 
 /**
  * Voxel World actor class
@@ -49,11 +49,13 @@ class VOXEL_API AVoxelWorld : public AActor
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintAssignable)
-	FOnClientConnection OnClientConnection;
 
 	UPROPERTY(BlueprintAssignable)
 	FOnWorldLoaded OnWorldLoaded;
+
+	// Called right before destroying the world. Use this if you want to save data
+	UPROPERTY(BlueprintAssignable)
+	FOnWorldDestroyed OnWorldDestroyed;
 
 	UPROPERTY()
 	FVoxelMaterialsRefHolder MaterialsRef;
@@ -65,6 +67,9 @@ public:
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 	void CreateWorld();
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+	void CreateWorldUsingOtherWorldData(AVoxelWorld* OtherWorld);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 	void DestroyWorld(bool bClearMeshes = true);
@@ -155,6 +160,12 @@ public:
 	void SetCreateWorldAutomatically(bool bNewCreateWorldAutomatically);
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
 	bool GetCreateWorldAutomatically() const;
+	
+	// CAN be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
+	void AddWorldToUpdateWhenUpdated(AVoxelWorld* World);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
+	TArray<AVoxelWorld*> GetWorldsToUpdateWhenUpdated() const;
 
 	// CANNOT be called when created
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
@@ -207,6 +218,12 @@ public:
 	void SetLODLimit(int NewLODLimit);
 	UFUNCTION(BlueprintCallable, Category = "Voxel|LOD Settings")
 	int GetLODLimit() const;
+
+	// CAN be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|LOD Settings")
+	void SetLODLowerLimit(int NewLODLowerLimit);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|LOD Settings")
+	int GetLODLowerLimit() const;
 
 	// CAN be called when created
 	UFUNCTION(BlueprintCallable, Category = "Voxel|LOD Settings")
@@ -283,6 +300,12 @@ public:
 	void SetChunksCullingLOD(int NewChunksCullingLOD);
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Rendering")
 	int GetChunksCullingLOD() const;
+
+	// CANNOT be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Rendering")
+	void SetChunksCullingLowerLOD(int NewChunksCullingLOD);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Rendering")
+	int GetChunksCullingLowerLOD() const;
 	
 	// CAN be called when created
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Rendering")
@@ -296,31 +319,78 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Rendering")
 	TSubclassOf<UVoxelProceduralMeshComponent> GetProcMeshClass() const;
 	
+	// CANNOT be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Rendering")
+	void SetDontRender(bool bNewDontRender);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Rendering")
+	bool GetDontRender() const;
 
 
 ///////////////////////////////////////////////////////////////////////////////
 	
+
+	// CANNOT be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
+	void SetEnableCollisions(bool bNewEnableCollisions);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
+	bool GetEnableCollisions() const;
 	
 	// CANNOT be called when created
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
 	void SetMaxCollisionsLOD(int NewMaxCollisionsLOD);
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
 	int GetMaxCollisionsLOD() const;
 
 	// CANNOT be called when created
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
 	void SetCollisionPresets(FBodyInstance NewCollisionPresets);
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
 	FBodyInstance GetCollisionPresets() const;
+
+	// CANNOT be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
+	void SetEnableNavmesh(bool bNewEnableNavmesh);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
+	bool GetEnableNavmesh() const;
+	
+	// CANNOT be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
+	void SetMaxNavmeshLOD(int NewNavmeshLOD);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions & Navmesh")
+	int GetMaxNavmeshLOD() const;
 		
 ///////////////////////////////////////////////////////////////////////////////
 		
-	// CAN be called when created
+	// CANNOT be called when created
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
 	void SetLODUpdateRate(float NewLODUpdateRate);
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
 	float GetLODUpdateRate() const;
 	
+	
+	// CAN be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	void SetEnableAutomaticCache(bool bNewEnableAutomaticCache);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	bool GetEnableAutomaticCache() const;
+
+	// CANNOT be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	void SetCacheUpdateDelayInSeconds(float NewCacheUpdateDelayInSeconds);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	float GetCacheUpdateDelayInSeconds() const;
+
+	// CAN be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	void SetCacheAccessThreshold(int NewCacheAccessThreshold);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	int GetCacheAccessThreshold() const;
+
+	// CAN be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	void SetMaxCacheSize(int NewMaxCacheSize);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	int GetMaxCacheSize() const;
 
 	// CANNOT be called when created
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
@@ -343,6 +413,7 @@ public:
 	// CAN be called when created
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
 	void SetWaitForOtherChunksToAvoidHoles(bool bNewWaitForOtherChunksToAvoidHoles);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
 	bool GetWaitForOtherChunksToAvoidHoles() const;
 	
 ///////////////////////////////////////////////////////////////////////////////
@@ -499,12 +570,36 @@ public:
 	void DrawDebugIntBox(const FIntBox& Box, float Lifetime = 1, float Thickness = 10, FColor Color = FColor::Red, float BorderOffset = 0) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Voxel")
-	void DebugVoxelsInsideBox(FIntBox Box, FLinearColor Color = FLinearColor::Red, float Lifetime = 1, float Thickness = 1, bool bDebugDensities = true, FLinearColor TextColor = FLinearColor::Black) const;
+	void DebugVoxelsInsideBox(
+		FIntBox Box, 
+		FLinearColor Color = FLinearColor::Red, 
+		float Lifetime = 1, 
+		float Thickness = 1, 
+		bool bDebugDensities = true, 
+		FLinearColor TextColor = FLinearColor::Black) const;
 	
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Voxel")
 	void ClearCache(const TArray<FIntBox>& BoundsToKeepCached);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Voxel")
-	void Cache(const TArray<FIntBox>& BoundsToCache);
+	void ClearAllCache() { ClearCache({}); }
+
+	/**
+	 * Cache a zone of the world
+	 * @param	BoundsToCache			The bounds to cache
+	 * @param	bCheckIfChunksAreEmpty	If true, the chunks will be iterated to see if all their values have the same sign.
+										Useful to reduce memory usage, but not if you want to query/edit the world as it'll need to be cached again.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Voxel")
+	void Cache(const TArray<FIntBox>& BoundsToCache, bool bCheckIfChunksAreEmpty = false);
+	/**
+	 * Cache a zone of the world
+	 * @param	BoundsToCache			The bounds to cache
+	 * @param	bCheckIfChunksAreEmpty	If true, the chunks will be iterated to see if all their values have the same sign.
+										Useful to reduce memory usage, but not if you want to query/edit the world as it'll need to be cached again.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Voxel")
+	void CacheBounds(FIntBox BoundsToCache, bool bCheckIfChunksAreEmpty = false) { Cache({ BoundsToCache }, bCheckIfChunksAreEmpty); }
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 	void AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor = true);
@@ -558,6 +653,13 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Voxel|General")
 	bool bCreateWorldAutomatically = false;
+	
+	// Share the data between multiple worlds
+	UPROPERTY(EditAnywhere, Category = "Voxel|General", meta = (EditCondition = bCreateWorldAutomatically))
+	AVoxelWorld* VoxelWorldToCopyDataFrom = nullptr;
+	
+	UPROPERTY(EditAnywhere, Category = "Voxel|General", meta = (EditWhenCreated))
+	TArray<TWeakObjectPtr<AVoxelWorld>> WorldsToUpdateWhenUpdated;
 
 	// Keep all the changes in memory to enable undo/redo. Can be expensive
 	UPROPERTY(EditAnywhere, Category = "Voxel|General")
@@ -573,7 +675,7 @@ protected:
 	//////////////////////////////////////////////////////////////////////////////
 
 	// WorldSizeInVoxel = CHUNK_SIZE * 2^Depth. Has little impact on performance
-	UPROPERTY(EditAnywhere, Category = "Voxel|World Size", meta = (ClampMin = 1, ClampMax = 25, UIMin = 1, UIMax = 25))
+	UPROPERTY(EditAnywhere, Category = "Voxel|World Size", meta = (ClampMin = 1, ClampMax = 24, UIMin = 1, UIMax = 24))
 	int OctreeDepth = 10;
 
 	// Size of an edge of the world
@@ -588,9 +690,13 @@ protected:
 	
 	//////////////////////////////////////////////////////////////////////////////
 
-	// Chunks can't have a LOD higher than this. Useful is background has a too low resolution. WARNING: Don't set this too low, 5 under Octree Depth should be safe
+	// Chunks can't have a LOD strictly higher than this. Useful is background has a too low resolution. WARNING: Don't set this too low, 5 under Octree Depth should be safe
 	UPROPERTY(EditAnywhere, Category = "Voxel|LOD Settings", meta = (EditWhenCreated, DisplayName = "LOD Limit", ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
 	int LODLimit = MAX_WORLD_DEPTH - 1;
+
+	// Chunks can't have a LOD strictly lower than this. Mainly useful when you have multiple voxel worlds using the same data
+	UPROPERTY(EditAnywhere, Category = "Voxel|LOD Settings", meta = (EditWhenCreated, DisplayName = "LOD Lower Limit", ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
+	int LODLowerLimit = 0;
 
 	// In world space. Chunks under this distance from voxel invokers will have at least the given LOD
 	UPROPERTY(EditAnywhere, Category = "Voxel|LOD Settings", meta = (EditWhenCreated, DisplayName = "LOD to Min Distance"))
@@ -617,7 +723,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Voxel|Materials", meta = (EditWhenCreated, Recreate))
 	UVoxelMaterialCollection* MaterialCollection;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel|Materials", meta = (EditWhenCreated, UpdateAll))
+	UPROPERTY(EditAnywhere, Category = "Voxel|Materials", meta = (EditWhenCreated, Recreate))
 	bool bEnableTessellation = false;
 
 	// Increases the chunks bounding boxes, useful when using tessellation
@@ -637,28 +743,57 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Voxel|Rendering", meta = (EditWhenCreated, Recreate, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
 	int ChunksCullingLOD = MAX_WORLD_DEPTH - 1;
 
+	// Chunks with a LOD strictly lower than this won't be rendered
+	UPROPERTY(EditAnywhere, Category = "Voxel|Rendering", meta = (EditWhenCreated, Recreate, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
+	int ChunksCullingLowerLOD = 0;
+
 	UPROPERTY(EditAnywhere, Category = "Voxel|Rendering", meta = (EditWhenCreated, ClampMin = 0))
 	float ChunksFadeDuration = 1;
 	
 	UPROPERTY(EditAnywhere, Category = "Voxel|Rendering", meta = (EditWhenCreated, Recreate))
 	TSubclassOf<UVoxelProceduralMeshComponent> ProcMeshClass;
 
+	UPROPERTY(EditAnywhere, Category = "Voxel|Rendering", meta = (EditWhenCreated, Recreate))
+	bool bDontRender = false;
+
 	//////////////////////////////////////////////////////////////////////////////
 
 
+	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions & Navmesh", meta = (EditWhenCreated, Recreate))
+	bool bEnableCollisions = true;
+
 	// Max LOD to compute collisions on. Inclusive.
-	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions", meta = (EditWhenCreated, Recreate, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
+	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions & Navmesh", meta = (EditWhenCreated, Recreate, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25, EditCondition = bEnableCollisions))
 	int MaxCollisionsLOD = 3;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions", meta = (EditWhenCreated, Recreate))
+	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions & Navmesh", meta = (EditWhenCreated, Recreate, EditCondition = bEnableCollisions))
 	FBodyInstance CollisionPresets;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions & Navmesh", meta = (EditWhenCreated, Recreate))
+	bool bEnableNavmesh = false;
+
+	// Max LOD to compute navmesh on. Inclusive.
+	UPROPERTY(EditAnywhere, Category = "Voxel|Collisions & Navmesh", meta = (EditWhenCreated, Recreate, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25, EditCondition = bEnableNavmesh))
+	int MaxNavmeshLOD = 3;
 	
 	//////////////////////////////////////////////////////////////////////////////
 	
 	// Number of LOD update per second
-	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (EditWhenCreated, ClampMin = 0.000001), DisplayName = "LOD Update Rate")
+	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (ClampMin = 0.000001), DisplayName = "LOD Update Rate")
 	float LODUpdateRate = 15;
 
+	
+	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (EditWhenCreated))
+	bool bEnableAutomaticCache = true;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (ClampMin = 0, EditCondition = bEnableAutomaticCache))
+	float CacheUpdateDelayInSeconds = 1;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (EditWhenCreated, EditCondition = bEnableAutomaticCache, ClampMin = 0))
+	int CacheAccessThreshold = 3;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (EditWhenCreated, EditCondition = bEnableAutomaticCache, ClampMin = 0))
+	int MaxCacheSize = 1000;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel|Performance")
 	bool bDontUseGlobalPool = true;
@@ -679,6 +814,9 @@ protected:
 
 	
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Debug")
+	bool bShowPopupIfNoInvokers = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Debug", meta = (EditWhenCreated))
 	bool bShowWorldBounds = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Debug", meta = (EditWhenCreated, EditCondition = "bShowWorldBounds"))
@@ -701,6 +839,12 @@ public:
 	bool bShowUpdatedChunks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Debug", meta = (EditWhenCreated, EditCondition = "bShowUpdatedChunks"))
 	float UpdatedChunksThickness = 50;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Debug", meta = (EditWhenCreated))
+	bool bLogRenderOctreeStats = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Debug", meta = (EditWhenCreated))
+	int MaxRenderOctreeLeaves = 10000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Debug", meta = (EditWhenCreated))
+	bool bLogCacheStats = false;
 
 private:
 	UPROPERTY()
@@ -731,8 +875,10 @@ private:
 	int InvokerComponentChangeVersion = -1;
 	bool bWorldLoadAlreadyFinished = false;
 	bool bIsDedicatedServer = false;
+	bool bIsOwningData = false;
 
-	FTimerHandle CacheDebugHandle;
+	FVoxelTimer CacheDebugTimer;
+	FVoxelTimer AutomaticCacheTimer;
 
 	TArray<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers;
 
@@ -744,6 +890,7 @@ private:
 	// Create the world
 	void CreateWorldInternal(
 		EPlayType InPlayType,
+		AVoxelWorld* WorldToCopyDataFrom,
 		bool bInMultiplayer,
 		bool bInEnableUndoRedo,
 		bool bInDontUseGlobalPool);

@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -214,54 +214,9 @@ public:
 	UMaterialInterface* GetVoxelMaterialWithTessellation(const FVoxelBlendedMaterial& Index);
 
 protected:
-	virtual void PostLoad() override
-	{
-		Super::PostLoad();
-
-		if (MaterialFunctions_DEPRECATED.Num() > 0)
-		{
-			for (int Index = 0; Index < MaterialFunctions_DEPRECATED.Num(); Index++)
-			{
-				int Last = Materials.Emplace();
-				auto& NewMaterial = Materials[Last];
-				NewMaterial.Index = Index;
-				NewMaterial.MaterialFunction = MaterialFunctions_DEPRECATED[Index];
-				if (PhysicalMaterials_DEPRECATED.IsValidIndex(Index))
-				{
-					NewMaterial.PhysicalMaterial = PhysicalMaterials_DEPRECATED[Index];
-				}
-			}
-		}
-
-		InitVariables();
-	}
-	virtual void PostInitProperties() override
-	{
-		Super::PostInitProperties();
-
-		if (!HasAnyFlags(RF_ClassDefaultObject | RF_NeedLoad))
-		{
-			InitVariables();
-		}
-	}
+	virtual void PostLoad() override;
+	virtual void PostInitProperties() override;
 
 private:
-	inline void InitVariables()
-	{
-		if (!SingleMaterialTemplate)
-		{
-			Modify();
-			SingleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_SingleMaterialTemplate"));
-		}
-		if (!DoubleMaterialTemplate)
-		{
-			Modify();
-			DoubleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_DoubleMaterialTemplate"));
-		}
-		if (!TripleMaterialTemplate)
-		{
-			Modify();
-			TripleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_TripleMaterialTemplate"));
-		}
-	}
+	void InitVariables();
 };

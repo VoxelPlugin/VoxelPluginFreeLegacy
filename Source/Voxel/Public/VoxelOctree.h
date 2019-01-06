@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -271,7 +271,7 @@ public:
 		{
 			if (Octree->IsLeaf())
 			{
-				Octree->CreateChildren();
+				static_cast<ElementType*>(Octree)->CreateChildren();
 			}
 			Octree = Octree->GetChild(InPosition);
 		}
@@ -308,7 +308,7 @@ protected:
 	/**
 	 * Create childs of this octree
 	 */
-	virtual void CreateChildren()
+	void CreateChildren()
 	{		
 		check(IsLeaf());
 		check(Children.Num() == 0);
@@ -326,7 +326,7 @@ protected:
 		bIsLeaf = false;
 	}
 
-	virtual void DestroyChildren()
+	void DestroyChildren()
 	{
 		check(!IsLeaf());
 

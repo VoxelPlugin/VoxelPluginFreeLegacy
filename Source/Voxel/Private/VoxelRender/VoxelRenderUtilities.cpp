@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelRender/VoxelRenderUtilities.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -127,6 +127,7 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(int LOD, bool bShouldFad
 
 	FBox SectionBounds = FBox(-FVector::OneVector * (1 + World->GetBoundsExtension()), (ChunkSize + 2 + World->GetBoundsExtension()) * FVector::OneVector);
 	bool bEnableCollision = Mesh->GetCollisionEnabled() != ECollisionEnabled::NoCollision;
+	bool bEnableNavmesh = LOD <= World->GetMaxNavmeshLOD();
 
 	if (MainChunk->bSingleBuffers)
 	{
@@ -149,6 +150,8 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(int LOD, bool bShouldFad
 		}
 		Section.SectionLocalBox = SectionBounds;
 		Section.bEnableCollision = bEnableCollision;
+		Section.bEnableNavmesh = bEnableNavmesh;
+		Section.bSectionVisible = !World->GetDontRender();
 		Section.Material = MaterialInstance;
 
 		Mesh->SetProcMeshSection(0, MoveTemp(Section), EVoxelProcMeshSectionUpdate::DelayUpdate);
@@ -201,6 +204,8 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(int LOD, bool bShouldFad
 			}
 			Section.SectionLocalBox = SectionBounds;
 			Section.bEnableCollision = bEnableCollision;
+			Section.bEnableNavmesh = bEnableNavmesh;
+			Section.bSectionVisible = !World->GetDontRender();
 			Section.Material = MaterialInstance;
 
 			Mesh->SetProcMeshSection(SectionIndex++, MoveTemp(Section), EVoxelProcMeshSectionUpdate::DelayUpdate);

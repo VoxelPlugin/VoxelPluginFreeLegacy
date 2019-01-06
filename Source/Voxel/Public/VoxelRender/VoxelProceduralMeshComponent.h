@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -212,6 +212,7 @@ struct FVoxelProcMeshSection
 
 	FBox SectionLocalBox = FBox(ForceInit);
 	bool bEnableCollision = false;
+	bool bEnableNavmesh = false;
 	bool bSectionVisible = true;
 
 	FVoxelProcMeshSection() = default;
@@ -318,6 +319,10 @@ public:
 	void InitChunk(uint8 LOD, FIntVector Position);
 	
 public:
+	
+	void SetCollisionsAreAlwaysDisabled(bool bValue);
+	void SetNavmeshesAreAlwaysDisabled(bool bValue);
+
 	/** Add simple collision convex to this component */
 	void AddCollisionConvexMesh(TArray<FVector> ConvexVerts);
 	/** Add simple collision convex to this component */
@@ -347,6 +352,7 @@ public:
 	UMaterialInterface* GetMaterialFromCollisionFaceIndex(int32 FaceIndex, int32& SectionIndex) const override;
 	void GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const override;	
 	UMaterialInterface* GetMaterial(int32 ElementIndex) const override;
+	bool DoCustomNavigableGeometryExport(FNavigableGeometryExport& GeomExport) const override;
 	//~ End UPrimitiveComponent Interface.
 
 	//~ Begin UMeshComponent Interface.
@@ -363,6 +369,7 @@ public:
 
 	
 private:
+	void UpdateNavigation();
 	/** Mark collision data as dirty, and re-create on instance if necessary */
 	void UpdateCollision();
 	/** Update LocalBounds member from the local box of each section */
@@ -390,6 +397,9 @@ private:
 
 	UPROPERTY()
 	TArray<UMaterialInterface*> SectionMaterials;
+
+	bool bCollisionsAreAlwaysDisabled = false;
+	bool bNavmeshesAreAlwaysDisabled = false;
 
 	friend class FVoxelProceduralMeshSceneProxy;
 };

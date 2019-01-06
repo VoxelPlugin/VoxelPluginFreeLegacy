@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelTools/VoxelProjectionTools.h"
 #include "DrawDebugHelpers.h"
@@ -190,7 +190,8 @@ inline void SetValueProjectionHelper(
 	UCurveFloat* StrengthCurve, 
 	TArray<FModifiedVoxelValue>& ModifiedVoxels,
 	EBlueprintSuccess& Branches, 
-	EFailReason& FailReason)
+	EFailReason& FailReason,
+	FString& LockerName)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_SetValueProjection);
 	
@@ -206,8 +207,10 @@ inline void SetValueProjectionHelper(
 	TArray<FVoxelId> Octrees;
 	{
 		SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_BeginSet);
-		if (!Data->TryBeginSet(Work.Bounds, TimeoutInMicroSeconds, Octrees))
+		FString Name = "SetValueProjection";
+		if (!Data->TryBeginSet(Work.Bounds, TimeoutInMicroSeconds, Octrees, Name))
 		{
+			LockerName = Name;
 			FailReason = EFailReason::VoxelDataLocked;
 			return;
 		}
@@ -256,7 +259,8 @@ inline void SetMaterialProjectionHelper(
 	UCurveFloat* StrengthCurve,
 	TArray<FModifiedVoxelMaterial>& ModifiedVoxels, 
 	EBlueprintSuccess& Branches,
-	EFailReason& FailReason)
+	EFailReason& FailReason,
+	FString& LockerName)
 {
 	SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_SetMaterialProjection);
 	
@@ -272,8 +276,10 @@ inline void SetMaterialProjectionHelper(
 	TArray<FVoxelId> Octrees;
 	{
 		SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_BeginSet);
-		if (!Data->TryBeginSet(Work.Bounds, TimeoutInMicroSeconds, Octrees))
+		FString Name = "SetMaterialProjection";
+		if (!Data->TryBeginSet(Work.Bounds, TimeoutInMicroSeconds, Octrees, Name))
 		{
+			LockerName = Name;
 			FailReason = EFailReason::VoxelDataLocked;
 			return;
 		}
@@ -322,7 +328,7 @@ void GetVoxelsProjectionHelper(
 
 	FVoxelData* Data = World->GetData();
 	{
-		FVoxelScopeGetLock Lock(Data, Work.Bounds);
+		FVoxelScopeGetLock Lock(Data, Work.Bounds, "GetVoxelsProjection");
 
 		FVoxelData::LastOctreeAccelerator OctreeAccelerator(Data);
 		for (auto& Hit : Work.HitVoxels)
@@ -352,6 +358,7 @@ void UVoxelProjectionTools::SetValueProjectionAsync(
 	FLatentActionInfo LatentInfo,
 	EBlueprintSuccess& Branches,
 	EFailReason& FailReason,
+	FString& LockerName,
 	TArray<FModifiedVoxelValue>& ModifiedVoxels, 
 	AVoxelWorld* World, 
 	FVector Position,
@@ -367,12 +374,14 @@ void UVoxelProjectionTools::SetValueProjectionAsync(
 {
 	Branches = EBlueprintSuccess::Failed;
 	FailReason = EFailReason::OtherError;
+	LockerName = "";
 
 	CHECK_WORLD_VOXELTOOLS(SetValueProjectionAsync);
 
 	auto* ModifiedVoxelsPtr = &ModifiedVoxels;
 	auto* BranchesPtr = &Branches;
 	auto* FailReasonPtr = &FailReason;
+	auto* LockerNamePtr = &LockerName;
 
 	if (UWorld* ObjectWorld = GEngine->GetWorldFromContextObjectChecked(WorldContextObject))
 	{
@@ -385,7 +394,7 @@ void UVoxelProjectionTools::SetValueProjectionAsync(
 			LatentActionManager.AddNewAction(LatentInfo.CallbackTarget, LatentInfo.UUID, new FVoxelProjectionEditLatentAction(Work, LatentInfo,
 				[=](FVoxelProjectionEditWork& Work)
 				{
-					SetValueProjectionHelper(Work, Radius, TimeoutInMicroSeconds, Strength, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr);
+					SetValueProjectionHelper(Work, Radius, TimeoutInMicroSeconds, Strength, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr, *LockerNamePtr);
 				}
 			));
 		}
@@ -403,6 +412,7 @@ void UVoxelProjectionTools::SetMaterialProjectionAsync(
 	FLatentActionInfo LatentInfo,
 	EBlueprintSuccess& Branches, 
 	EFailReason& FailReason,
+	FString& LockerName,
 	TArray<FModifiedVoxelMaterial>& ModifiedVoxels, 
 	AVoxelWorld* World,
 	FVector Position, 
@@ -418,12 +428,14 @@ void UVoxelProjectionTools::SetMaterialProjectionAsync(
 {
 	Branches = EBlueprintSuccess::Failed;
 	FailReason = EFailReason::OtherError;
+	LockerName = "";
 	
 	CHECK_WORLD_VOXELTOOLS(SetMaterialProjectionAsync);
 
 	auto* ModifiedVoxelsPtr = &ModifiedVoxels;
 	auto* BranchesPtr = &Branches;
 	auto* FailReasonPtr = &FailReason;
+	auto* LockerNamePtr = &LockerName;
 
 	if (UWorld* ObjectWorld = GEngine->GetWorldFromContextObjectChecked(WorldContextObject))
 	{
@@ -436,7 +448,7 @@ void UVoxelProjectionTools::SetMaterialProjectionAsync(
 			LatentActionManager.AddNewAction(LatentInfo.CallbackTarget, LatentInfo.UUID, new FVoxelProjectionEditLatentAction(Work, LatentInfo,
 				[=](FVoxelProjectionEditWork& Work)
 				{
-					SetMaterialProjectionHelper(Work, Radius, TimeoutInMicroSeconds, PaintMaterial, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr);
+					SetMaterialProjectionHelper(Work, Radius, TimeoutInMicroSeconds, PaintMaterial, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr, *LockerNamePtr);
 				}
 			));
 		}
@@ -493,6 +505,7 @@ void UVoxelProjectionTools::GetVoxelsProjectionAsync(
 void UVoxelProjectionTools::SetValueProjectionNew(
 	EBlueprintSuccess& Branches,
 	EFailReason& FailReason,
+	FString& LockerName,
 	TArray<FModifiedVoxelValue>& ModifiedVoxels,
 	AVoxelWorld* World,
 	FVector Position,
@@ -508,12 +521,13 @@ void UVoxelProjectionTools::SetValueProjectionNew(
 {
 	Branches = EBlueprintSuccess::Failed;
 	FailReason = EFailReason::OtherError;
+	LockerName = "";
 
 	CHECK_WORLD_VOXELTOOLS(SetValueProjection);
 
 	FVoxelProjectionEditWork Work(World, bShowRaycasts, Strength <= 0);
 	FindHitVoxelsForRaycasts<false>(Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-	SetValueProjectionHelper(Work, Radius, TimeoutInMicroSeconds, Strength, StrengthCurve, ModifiedVoxels, Branches, FailReason);
+	SetValueProjectionHelper(Work, Radius, TimeoutInMicroSeconds, Strength, StrengthCurve, ModifiedVoxels, Branches, FailReason, LockerName);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -521,6 +535,7 @@ void UVoxelProjectionTools::SetValueProjectionNew(
 void UVoxelProjectionTools::SetMaterialProjectionNew(
 	EBlueprintSuccess& Branches,
 	EFailReason& FailReason,
+	FString& LockerName,
 	TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
 	AVoxelWorld* World,
 	FVector Position,
@@ -536,15 +551,26 @@ void UVoxelProjectionTools::SetMaterialProjectionNew(
 {
 	Branches = EBlueprintSuccess::Failed;
 	FailReason = EFailReason::OtherError;
+	LockerName = "";
 
 	CHECK_WORLD_VOXELTOOLS(SetMaterialProjection);
 
 	FVoxelProjectionEditWork Work(World, bShowRaycasts, false);
 	FindHitVoxelsForRaycasts<false>(Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-	SetMaterialProjectionHelper(Work, Radius, TimeoutInMicroSeconds, PaintMaterial, StrengthCurve, ModifiedVoxels, Branches, FailReason);
+	SetMaterialProjectionHelper(Work, Radius, TimeoutInMicroSeconds, PaintMaterial, StrengthCurve, ModifiedVoxels, Branches, FailReason, LockerName);
 }
 
-void UVoxelProjectionTools::GetVoxelsProjection(EBlueprintSuccess& Branches, TArray<FGetVoxelProjectionVoxel>& OutVoxels, AVoxelWorld* World, FVector Position, FVector Normal, float Radius /*= 100*/, float ToolHeight /*= 200*/, float EditDistance /*= 400*/, float StepInVoxel /*= 0.5f*/, bool bShowRaycasts /*= false*/)
+void UVoxelProjectionTools::GetVoxelsProjection(
+	EBlueprintSuccess& Branches,
+	TArray<FGetVoxelProjectionVoxel>& OutVoxels,
+	AVoxelWorld* World,
+	FVector Position, 
+	FVector Normal, 
+	float Radius,
+	float ToolHeight, 
+	float EditDistance,
+	float StepInVoxel,
+	bool bShowRaycasts)
 {
 	Branches = EBlueprintSuccess::Failed;
 

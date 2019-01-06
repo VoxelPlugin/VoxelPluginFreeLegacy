@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -79,45 +79,6 @@ template<> inline void FVoxelDataCell::SetBufferAsDirty<FVoxelMaterial>() { bMat
 template<> inline bool FVoxelDataCell::IsBufferDirty<FVoxelValue   >() const { return bValuesAreDirty   ; }
 template<> inline bool FVoxelDataCell::IsBufferDirty<FVoxelMaterial>() const { return bMaterialsAreDirty; }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-class FVoxelDataCellMultiplayer
-{
-public:
-	TSet<FVoxelCellIndex> DirtyValues;
-	TSet<FVoxelCellIndex> DirtyMaterials;
-
-	template<typename T> inline TSet<FVoxelCellIndex>& GetDirty();
-	
-public:
-	template<typename T>
-	void AddEdit(FVoxelCellIndex Index, T& Value)
-	{
-		GetDirty<T>().Add(Index);
-	}
-	
-	template<typename T>
-	void AddToDiffQueueAndReset(FVoxelDataCell* Cell, TArray<TVoxelDiff<T>>& OutDiffQueue)
-	{
-		T* Values = Cell->GetArray<T>();
-		for (int Index : GetDirty<T>())
-		{
-			OutDiffQueue.Emplace(Index, Values[Index]);
-		}
-		GetDirty<T>().Empty();
-	}
-
-	template<typename T>
-	bool IsNetworkDirty()
-	{
-		return GetDirty<T>().Num() > 0;
-	}
-};
-
-template<> inline TSet<FVoxelCellIndex>& FVoxelDataCellMultiplayer::GetDirty<FVoxelValue   >() { return DirtyValues;    }
-template<> inline TSet<FVoxelCellIndex>& FVoxelDataCellMultiplayer::GetDirty<FVoxelMaterial>() { return DirtyMaterials; }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

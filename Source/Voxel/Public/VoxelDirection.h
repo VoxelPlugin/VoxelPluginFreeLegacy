@@ -1,8 +1,8 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
-enum EVoxelDirection
+enum EVoxelDirection : uint8
 {
 	XMin = 0x1,
 	XMax = 0x2,

@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 using System.IO;
 using UnrealBuildTool;
@@ -27,6 +27,8 @@ public class Voxel : ModuleRules
                 "Networking",
                 "RenderCore",
                 "ShaderCore",
+                "SlateCore",
+                "Slate",
                 "RHI"
             }
         );

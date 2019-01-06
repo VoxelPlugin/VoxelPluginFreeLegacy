@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -14,12 +14,13 @@ public:
 
 	FVoxelPlaceableItem(const FIntBox& InBounds, int Priority = 0) : Bounds(InBounds), Priority(Priority) {}
 
-	enum Ids : uint32
+	enum Ids : uint8
 	{
 		EVoxelPerlinWorm       = 0,
 		EVoxelAssetItem        = 1,
 		EVoxelExclusionBoxItem = 2,
-		EVoxelDisableEditsBox  = 3
+		EVoxelDisableEditsBox  = 3,
+		EBuiltinMax			   = 32,
 	};
 
 	inline bool operator<(const FVoxelPlaceableItem& Other) const
@@ -36,7 +37,7 @@ public:
 	{
 		AddItem(T::StaticId(), static_cast<FVoxelPlaceableItem*>(Item));
 	}
-	void AddItem(uint32 Id, FVoxelPlaceableItem* Item)
+	void AddItem(uint8 Id, FVoxelPlaceableItem* Item)
 	{
 		while (Items.Num() <= (int)Id)
 		{
@@ -60,7 +61,7 @@ public:
 			return TArrayView<T*>();
 		}
 	}
-	const TArrayView<FVoxelPlaceableItem* const> GetItems(uint32 Id) const
+	const TArrayView<FVoxelPlaceableItem* const> GetItems(uint8 Id) const
 	{
 		if (Items.IsValidIndex(Id))
 		{

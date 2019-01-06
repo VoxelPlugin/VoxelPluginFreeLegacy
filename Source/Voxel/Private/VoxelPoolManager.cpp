@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelPoolManager.h"
 #include "VoxelThreadPool.h"
@@ -21,6 +21,7 @@ FVoxelPool::~FVoxelPool()
 {
 	delete MeshPool;
 	delete OctreeBuilderPool;
+	// TODO: Delete async too?
 }
 
 FVoxelPoolRef FVoxelPool::Create(int MeshThreadCount)
