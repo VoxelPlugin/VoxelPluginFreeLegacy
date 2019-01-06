@@ -1,22 +1,27 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelMCRenderer.h"
-#include "VoxelLogStatDefinitions.h"
-#include "VoxelWorld.h"
-#include "VoxelData/VoxelData.h"
-#include "VoxelChunkOctree.h"
-#include "VoxelComponents/VoxelInvokerComponent.h"
-#include "VoxelRender/VoxelProceduralMeshComponent.h"
-#include "Misc/QueuedThreadPool.h"
-#include "DrawDebugHelpers.h"
-#include "VoxelPoolManager.h"
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
-#include "VoxelRender/VoxelRenderUtilities.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Engine.h"
+#include "Misc/QueuedThreadPool.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "DrawDebugHelpers.h"
+
+#include "VoxelWorld.h"
+#include "VoxelData/VoxelData.h"
+#include "VoxelChunkOctree.h"
+#include "VoxelRenderChunk.h"
+#include "VoxelComponents/VoxelInvokerComponent.h"
+#include "VoxelRender/VoxelProceduralMeshComponent.h"
+#include "VoxelRender/VoxelRenderUtilities.h"
+#include "VoxelPoolManager.h"
+#include "VoxelLogStatDefinitions.h"
+
+#define LOCTEXT_NAMESPACE "VoxelLODRenderer"
 
 DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::ScheduleTick"), STAT_LODVoxelRender_ScheduleTick, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::UpdateBox.RemoveOldChunks"), STAT_LODVoxelRender_UpdateBox_RemoveOldChunks, STATGROUP_Voxel);
@@ -33,131 +38,6 @@ DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::UpdateLOD.ChunksToCreate.FindOldChunks
 DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::UpdateLOD.ChunksToCreate.UpdateChunks"), STAT_LODVoxelRender_UpdateLOD_ChunksToCreate_UpdateChunks, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::UpdateLOD.UpdateTransitions"), STAT_LODVoxelRender_UpdateLOD_UpdateTransitions, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FLODVoxelRender::UpdateLOD.ChunksToDelete.CancelTicks"), STAT_LODVoxelRender_UpdateLOD_ChunksToDelete_CancelTicks, STATGROUP_Voxel);
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-FAsyncOctreeBuilderTask::FAsyncOctreeBuilderTask(uint8 LOD, const FIntBox& WorldBounds)
-	: LOD(LOD)
-	, WorldBounds(WorldBounds)
-{
-}
-
-void FAsyncOctreeBuilderTask::Init(
-	const TArray<FIntVector>& InCameraPositions, 
-	TSharedPtr<FVoxelChunkOctree> InOctree, 
-	const TMap<uint8, float>& InLODToMinDistance,
-	float InVoxelSize,
-	uint8 InLODLimit)
-{
-	check(!bIsActive);
-
-	CameraPositions = InCameraPositions;
-	Octree = InOctree;
-	LODToMinDistance = InLODToMinDistance;
-	VoxelSize = InVoxelSize;
-	LODLimit = InLODLimit;
-
-	bIsActive = true;
-}
-
-void FAsyncOctreeBuilderTask::Reset()
-{
-	bIsActive = false;
-	IsDoneCounter.Reset();
-}
-
-void FAsyncOctreeBuilderTask::DoWork()
-{
-	check(bIsActive);
-
-	ChunksToDelete.Reset();
-	ChunksToCreate.Reset();
-	NewOctree.Reset();
-	OldOctree.Reset();
-	TransitionsMasks.Reset();
-
-	FVoxelChunkOctreeSettings Settings;
-	Settings.LODLimit = LODLimit;
-	Settings.WorldBounds = WorldBounds;
-	Settings.CameraPositions = CameraPositions;
-	Settings.SquaredDistances.SetNum(MAX_WORLD_DEPTH);
-	for (int Index = 1; Index < MAX_WORLD_DEPTH; Index++)
-	{
-		// +1: We want to divide LOD 2 if LOD _1_ min distance isn't met, not if LOD _2_ min distance isn't met
-		int CurrentLOD = Index - 1;
-		while (!LODToMinDistance.Contains(CurrentLOD))
-		{
-			check(CurrentLOD > 0);
-			CurrentLOD--;
-		}
-		Settings.SquaredDistances[Index] = FMath::Square<uint64>(FMath::CeilToInt(LODToMinDistance[CurrentLOD] / VoxelSize));
-	}
-
-	NewOctree = MakeShared<FVoxelChunkOctree>(&Settings, LOD);
-	OldOctree = Octree;
-
-	TSet<FIntBox> OldBounds;
-	TSet<FIntBox> NewBounds;
-	TMap<FIntBox, uint8> OldTransitionsMasks;
-
-	if (OldOctree.IsValid())
-	{
-		OldOctree->GetLeavesBounds(OldBounds);
-		OldOctree->GetLeavesTransitionsMasks(OldTransitionsMasks);
-	}
-	NewOctree->GetLeavesBounds(NewBounds);
-
-	ChunksToDelete = OldBounds.Difference(NewBounds);
-	ChunksToCreate = NewBounds.Difference(OldBounds);
-
-	NewOctree->GetLeavesTransitionsMasks(TransitionsMasks);
-	for (auto It = OldTransitionsMasks.CreateIterator(); It; ++It)
-	{
-		uint8* Value = TransitionsMasks.Find(It.Key());
-		if (Value && It.Value() == *Value)
-		{
-			TransitionsMasks.Remove(It.Key());
-		}
-	}
-
-	check(bIsActive);
-}
-
-void FAsyncOctreeBuilderTask::DoThreadedWork()
-{
-	DoWork();
-
-	FScopeLock Lock(&DoneSection);
-	IsDoneCounter.Increment();
-
-	if (bAutodelete)
-	{
-		delete this;
-	}
-}
-
-void FAsyncOctreeBuilderTask::Abandon()
-{
-	
-}
-
-bool FAsyncOctreeBuilderTask::IsDone() const
-{
-	return IsDoneCounter.GetValue() > 0;
-}
-
-void FAsyncOctreeBuilderTask::Autodelete()
-{
-	FScopeLock Lock(&DoneSection);
-	bAutodelete = true;
-
-	if (IsDone())
-	{
-		delete this;
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -183,11 +63,66 @@ FVoxelChunkToDelete::~FVoxelChunkToDelete()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+void FVoxelTasksDependenciesHandler::AddGroup(TArray<FLockedTask>&& Tasks, TFunction<void()> CallbackWhenUpdated)
+{
+	TArray<TSharedPtr<FGroup>> GroupsToMerge;
+	for (auto& Task : Tasks)
+	{
+		auto* Result = TaskGroupsMap.Find(Task.Id);
+		if (Result && Result->IsValid())
+		{
+			auto GroupToMerge = Result->Pin();
+			TasksGroups.Remove(GroupToMerge);
+			GroupsToMerge.Add(GroupToMerge);
+		}
+	}
+	GroupsToMerge.Add(MakeShared<FGroup>(MoveTemp(Tasks), CallbackWhenUpdated));
+
+	TSharedPtr<FGroup> FinalGroup = MakeShared<FGroup>();
+	TMap<TWeakPtr<FVoxelRenderChunk>, uint64> ChunkIds;
+	for (auto& GroupToMerge : GroupsToMerge)
+	{
+		for (auto& Task : GroupToMerge->Tasks)
+		{
+			auto& Id = ChunkIds.FindOrAdd(Task.Chunk);
+			if (Id == 0 || Id > Task.Id) { Id = Task.Id; }
+		}
+		FinalGroup->CallbacksWhenUpdated.Append(MoveTemp(GroupToMerge->CallbacksWhenUpdated));
+	}
+	for (auto& It : ChunkIds)
+	{
+		FinalGroup->Tasks.Emplace(It.Key, It.Value);
+		TaskGroupsMap.Add(It.Value, FinalGroup);
+	}
+	TasksGroups.Add(FinalGroup);
+}
+
+void FVoxelTasksDependenciesHandler::ClearGroup(const TSharedPtr<FGroup>& Group)
+{
+	for (auto& Task : Group->Tasks)
+	{
+		TaskGroupsMap.Remove(Task.Id);
+	}
+	for (auto& Callback : Group->CallbacksWhenUpdated)
+	{
+		if (Callback)
+		{
+			Callback();
+		}
+	}
+	Group->bValid = false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 FVoxelLODRenderer::FVoxelLODRenderer(AVoxelWorld* World)
 	: IVoxelRender(World)
 	, Pool(World->GetPool())
 	, OctreeBuilder(MakeUnique<FAsyncOctreeBuilderTask>(World->GetOctreeDepth(), World->GetData()->GetBounds()))
 {
+	OctreeTimer.Init(double(1) / World->GetLODUpdateRate());
 }
 
 FVoxelLODRenderer::~FVoxelLODRenderer()
@@ -308,25 +243,45 @@ void FVoxelLODRenderer::Tick(float DeltaTime)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_LODVoxelRender_Tick_Update);
 
-		if (NextUpdateTime < Time && !OctreeBuilder->IsActive())
+		if (OctreeTimer.Tick(DeltaTime))
 		{
-			NextUpdateTime = Time + 1.f / World->GetLODUpdateRate();
-
-			TArray<FIntVector> CameraPositions;
-			for (const auto& Invoker : World->GetInvokers())
+			if (OctreeBuilder->IsActive())
 			{
-				if (Invoker.IsValid() && (Invoker->IsLocalInvoker() || World->IsDedicatedServer()))
-				{
-					CameraPositions.Add(World->GlobalToLocal(Invoker->GetPosition()));
-				}
+				UE_LOG(LogVoxel, Warning, TEXT("Octree took too long to build, skipping this update tick. "
+					"You should increase LOD Updates Rate, or decrease your LOD settings."));
 			}
-			OctreeBuilder->Init(
-				CameraPositions,
-				Octree,
-				World->GetLODToMinDistance(),
-				World->GetVoxelSize(),
-				World->GetLODLimit());
-			Pool->OctreeBuilderPool->AddQueuedWork(OctreeBuilder.Get());
+			else
+			{
+				if (World->bLogRenderOctreeStats)
+				{
+					OctreeBuilder->Log();
+				}
+				if (OctreeBuilder->WasCanceled())
+				{
+					FMessageLog("PIE").Error(FText::Format(LOCTEXT("OctreeStopped",
+						"Octree update was stopped! Max octree leaves reached ({0}). "
+						"This is likely caused by too high LOD settings. "
+						"If you know what you're doing, you can increase the limit in your voxel world details Debug category."),
+						FText::FromString(FString::FromInt(World->MaxRenderOctreeLeaves))));
+				}
+				TArray<FIntVector> CameraPositions;
+				for (const auto& Invoker : World->GetInvokers())
+				{
+					if (Invoker.IsValid() && (Invoker->IsLocalInvoker() || World->IsDedicatedServer()))
+					{
+						CameraPositions.Add(World->GlobalToLocal(Invoker->GetPosition()));
+					}
+				}
+				OctreeBuilder->Init(
+					CameraPositions,
+					Octree,
+					World->GetLODToMinDistance(),
+					World->GetVoxelSize(),
+					World->GetLODLimit(),
+					World->GetLODLowerLimit(),
+					World->MaxRenderOctreeLeaves);
+				Pool->OctreeBuilderPool->AddQueuedWork(OctreeBuilder.Get());
+			}
 		}
 	}
 }
@@ -377,10 +332,13 @@ void FVoxelLODRenderer::UpdateBoxInternal(const FIntBox& Box, bool bRemoveHoles,
 
 		if (World->bShowUpdatedChunks)
 		{
+			FString Log = "Updated chunks: ";
 			for (auto& DebugBound : DebugBounds)
 			{
 				World->DrawDebugIntBox(DebugBound, 0.5, World->UpdatedChunksThickness, FLinearColor::Blue);
+				Log += DebugBound.ToString() + "; ";
 			}
+			GEngine->AddOnScreenDebugMessage((uint64)((PTRINT)this), 0.1, FColor::Blue, Log);
 		}
 	}
 
@@ -485,9 +443,8 @@ void FVoxelLODRenderer::RemoveMesh(UVoxelProceduralMeshComponent* Mesh, const FI
 
 UVoxelProceduralMeshComponent* FVoxelLODRenderer::GetNewMesh(const FIntVector& Position, uint8 LOD)
 {
-	auto WorldType = World->GetWorld()->WorldType;
-	bool bInEditor = WorldType == EWorldType::Editor || WorldType == EWorldType::EditorPreview;
-	bool bCollisions = bInEditor ? LOD < 5 : LOD <= World->GetMaxCollisionsLOD();
+	bool bInEditor = World->IsEditor();
+	bool bCollisions = bInEditor ? LOD < 5 : (LOD <= World->GetMaxCollisionsLOD() && World->GetEnableCollisions());
 
 	UVoxelProceduralMeshComponent* NewMesh;
 	if ((bCollisions ? InactiveMeshesCollisions : InactiveMeshesNoCollisions).Num() > 0)
@@ -498,6 +455,8 @@ UVoxelProceduralMeshComponent* FVoxelLODRenderer::GetNewMesh(const FIntVector& P
 	else
 	{
 		NewMesh = NewObject<UVoxelProceduralMeshComponent>(World, World->GetProcMeshClass(), NAME_None, RF_Transient);
+		NewMesh->SetCollisionsAreAlwaysDisabled(!bCollisions);
+		NewMesh->SetNavmeshesAreAlwaysDisabled(!World->GetEnableNavmesh());
 		NewMesh->SetupAttachment(World->GetRootComponent(), NAME_None);
 		NewMesh->RegisterComponent();
 		NewMesh->SetRelativeScale3D(FVector::OneVector * World->GetVoxelSize());
@@ -613,7 +572,7 @@ void FVoxelLODRenderer::UpdateLOD()
 		for (auto& NewChunkBounds : ChunksToCreate)
 		{
 			int LOD = FMath::RoundToInt(FMath::Log2(NewChunkBounds.Size().X / CHUNK_SIZE));
-			if (World->GetChunksCullingLOD() < LOD || (World->IsDedicatedServer() && LOD != 0))
+			if (World->GetChunksCullingLOD() < LOD || LOD < World->GetChunksCullingLowerLOD() || (World->IsDedicatedServer() && LOD != 0))
 			{
 				continue;
 			}
@@ -661,13 +620,15 @@ void FVoxelLODRenderer::UpdateLOD()
 	}
 }
 
-float FVoxelLODRenderer::GetWorldTime() const
+double FVoxelLODRenderer::GetWorldTime() const
 {
 	// Validity check as it can crash sometimes when closing UE
-	float Time = World->GetWorld() ? World->GetWorld()->GetTimeSeconds() : 0;
+	double Time = IsValid(World->GetWorld()) ? World->GetWorld()->GetTimeSeconds() : 0;
 	if (Time == 0.f)
 	{
 		Time = WorldTime;
 	}
 	return Time;
 }
+
+#undef LOCTEXT_NAMESPACE

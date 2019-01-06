@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -51,6 +51,9 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox")
 	static FIntBox TranslateBox(const FIntBox& Box, const FIntVector& Position) { return Box.TranslateBy(Position); }
+
+	UFUNCTION(BlueprintPure, meta=(DisplayName = "ToString (IntBox)", CompactNodeTitle = "->", BlueprintAutocast), Category="Utilities|String")
+	static FString Conv_IntVectorToString(const FIntBox& IntBox) { return IntBox.ToString(); }
 
 	// From -Radius(included) to Radius(excluded)
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox")

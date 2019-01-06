@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelMCPolygonizerAsyncWork.h"
 #include "VoxelRender/Polygonizers/VoxelMCPolygonizer.h"

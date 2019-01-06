@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -11,6 +11,8 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Build.h"
 #include "UObject/Package.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #include "VoxelStats.generated.h"
 
 UENUM()
@@ -21,6 +23,8 @@ enum class EVoxelStatsType
 	NormalCubic,
 	TransitionsCubic
 };
+
+#define LOCTEXT_NAMESPACE "VoxelStats"
 
 #if STATS
 struct FVoxelStatsElement
@@ -186,14 +190,21 @@ public:
 
 		FString FullPath = Path + Name + ".csv";
 
+		FNotificationInfo Info = FNotificationInfo(FText());
+		Info.ExpireDuration = 10.f;
 		if (FFileHelper::SaveStringToFile(Text, *FullPath))
 		{
 			UE_LOG(LogVoxel, Log, TEXT("VoxelStats: Saved! %s"), *FullPath);
+			Info.CheckBoxState = ECheckBoxState::Checked;
+			Info.Text = FText::Format(LOCTEXT("Success", "Saved! {0}"), FText::FromString(FullPath));
 		}
 		else
 		{
 			UE_LOG(LogVoxel, Error, TEXT("VoxelStats: Error when saving"));
+			Info.CheckBoxState = ECheckBoxState::Unchecked;
+			Info.Text = LOCTEXT("Error", "Error when saving");
 		}
+		FSlateNotificationManager::Get().AddNotification(Info);
 	}
 
 	static void StartRecording()
@@ -201,6 +212,10 @@ public:
 		FScopeLock Lock(&CriticalSection);
 		bRecord = true;
 		Elements.Reset();
+		
+		FNotificationInfo Info = FNotificationInfo(FText());
+		Info.Text = LOCTEXT("Started", "Recording started");
+		FSlateNotificationManager::Get().AddNotification(Info);
 
 		UE_LOG(LogVoxel, Log, TEXT("VoxelStats: Recording started"));
 	}
@@ -238,3 +253,5 @@ public:
 		FVoxelStats::StartRecording();
 	}
 };
+
+#undef LOCTEXT_NAMESPACE

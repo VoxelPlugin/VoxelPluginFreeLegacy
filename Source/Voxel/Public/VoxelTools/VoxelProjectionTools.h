@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -172,6 +172,7 @@ public:
 		struct FLatentActionInfo LatentInfo,
 		EBlueprintSuccess& Branches,
 		EFailReason& FailReason,
+		FString& LockerName,
 		TArray<FModifiedVoxelValue>& ModifiedVoxels,
 		AVoxelWorld* World,
 		FVector Position,
@@ -205,6 +206,7 @@ public:
 		struct FLatentActionInfo LatentInfo,
 		EBlueprintSuccess& Branches, 
 		EFailReason& FailReason,
+		FString& LockerName,
 		TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
 		AVoxelWorld* World, 
 		FVector Position, 
@@ -253,6 +255,7 @@ public:
 	 static void SetValueProjectionNew(
 		EBlueprintSuccess& Branches, 
 		EFailReason& FailReason,
+		FString& LockerName,
 		TArray<FModifiedVoxelValue>& ModifiedVoxels,
 		AVoxelWorld* World,
 		FVector Position,
@@ -284,6 +287,7 @@ public:
 	static void SetMaterialProjectionNew(
 		EBlueprintSuccess& Branches, 
 		EFailReason& FailReason,
+		FString& LockerName,
 		TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
 		AVoxelWorld* World, 
 		FVector Position, 

@@ -1,11 +1,9 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
 #include "VoxelRender/IVoxelRender.h"
-#include "Async/AsyncWork.h"
-#include "VoxelRender/VoxelPolygonizerAsyncWork.h"
-#include "VoxelRenderChunk.h"
+#include "VoxelUtilities.h"
 
 class UHierarchicalInstancedStaticMeshComponent;
 class UVoxelProceduralMeshComponent;
@@ -14,6 +12,8 @@ class FVoxelLODRenderer;
 class FVoxelChunkToDelete;
 class FVoxelPool;
 class IVoxelQueuedWork;
+class FAsyncOctreeBuilderTask;
+class FVoxelRenderChunk;
 
 struct FVoxelChunkToRemove
 {
@@ -22,58 +22,6 @@ struct FVoxelChunkToRemove
 	bool bCollisions;
 	FIntBox Bounds;
 };
-
-class FAsyncOctreeBuilderTask : public IQueuedWork
-{
-public:
-	TSet<FIntBox> ChunksToDelete;
-	TSet<FIntBox> ChunksToCreate;
-	TSharedPtr<FVoxelChunkOctree> NewOctree;
-	TSharedPtr<FVoxelChunkOctree> OldOctree;
-	TMap<FIntBox, uint8> TransitionsMasks;
-
-	FAsyncOctreeBuilderTask(uint8 LOD, const FIntBox& WorldBounds);
-
-public:
-	void Init(
-		const TArray<FIntVector>& CameraPositions,
-		TSharedPtr<FVoxelChunkOctree> Octree,
-		const TMap<uint8, float>& LODToMinDistance,
-		float VoxelSize,
-		uint8 LODLimit);
-	void Reset();
-	bool IsActive() const { return bIsActive; }
-
-public:
-	void DoWork();
-
-public:
-	void DoThreadedWork() override;
-	void Abandon() override;
-
-	bool IsDone() const;
-	void WaitForCompletion();
-	void Autodelete();
-
-private:
-	FThreadSafeCounter IsDoneCounter;
-	FCriticalSection DoneSection;
-	bool bIsActive = false;
-	bool bAutodelete = false;
-
-private:
-	const uint8 LOD;
-	const FIntBox WorldBounds;
-
-	TArray<FIntVector> CameraPositions;
-	TSharedPtr<FVoxelChunkOctree> Octree;
-	TMap<uint8, float> LODToMinDistance;
-	float VoxelSize = 0;
-	uint8 LODLimit = 0;
-
-};
-
-///////////////////////////////////////////////////////////////////////////////
 
 class FVoxelChunkToDelete
 {
@@ -93,8 +41,6 @@ private:
 	
 	UVoxelProceduralMeshComponent* const Mesh;
 };
-
-///////////////////////////////////////////////////////////////////////////////
 
 struct FVoxelTasksDependenciesHandler
 {
@@ -117,56 +63,10 @@ public:
 
 	inline uint64 GetTaskId() { return TaskIdCounter++; }
 
-	inline void AddGroup(TArray<FLockedTask>&& Tasks, TFunction<void()> CallbackWhenUpdated)
-	{
-		TArray<TSharedPtr<FGroup>> GroupsToMerge;
-		for (auto& Task : Tasks)
-		{
-			auto* Result = TaskGroupsMap.Find(Task.Id);
-			if (Result && Result->IsValid())
-			{
-				auto GroupToMerge = Result->Pin();
-				TasksGroups.Remove(GroupToMerge);
-				GroupsToMerge.Add(GroupToMerge);
-			}
-		}
-		GroupsToMerge.Add(MakeShared<FGroup>(MoveTemp(Tasks), CallbackWhenUpdated));
-
-		TSharedPtr<FGroup> FinalGroup = MakeShared<FGroup>();
-		TMap<TWeakPtr<FVoxelRenderChunk>, uint64> ChunkIds;
-		for (auto& GroupToMerge : GroupsToMerge)
-		{
-			for (auto& Task : GroupToMerge->Tasks)
-			{
-				auto& Id = ChunkIds.FindOrAdd(Task.Chunk);
-				if (Id == 0 || Id > Task.Id) { Id = Task.Id; }
-			}
-			FinalGroup->CallbacksWhenUpdated.Append(MoveTemp(GroupToMerge->CallbacksWhenUpdated));
-		}
-		for (auto& It : ChunkIds)
-		{
-			FinalGroup->Tasks.Emplace(It.Key, It.Value);
-			TaskGroupsMap.Add(It.Value, FinalGroup);
-		}
-		TasksGroups.Add(FinalGroup);
-	}
+	void AddGroup(TArray<FLockedTask>&& Tasks, TFunction<void()> CallbackWhenUpdated);
 	inline const TArray<TSharedPtr<FGroup>>& GetTaskGroups() const { return TasksGroups; }
 	inline bool CanApplyTask(uint64 TaskId) const { auto* Ptr = TaskGroupsMap.Find(TaskId); return !Ptr || !Ptr->IsValid(); }
-	inline void ClearGroup(const TSharedPtr<FGroup>& Group)
-	{
-		for (auto& Task : Group->Tasks)
-		{
-			TaskGroupsMap.Remove(Task.Id);
-		}
-		for (auto& Callback : Group->CallbacksWhenUpdated)
-		{
-			if (Callback)
-			{
-				Callback();
-			}
-		}
-		Group->bValid = false;
-	}
+	void ClearGroup(const TSharedPtr<FGroup>& Group);
 	inline void CleanGroups()
 	{		
 		TasksGroups.RemoveAll([](auto& T) { return !T->bValid; });
@@ -225,12 +125,14 @@ private:
 	TArray<UVoxelProceduralMeshComponent*> InactiveMeshesCollisions;
 
 	TMap<FIntBox, TSharedPtr<FVoxelRenderChunk>> Chunks;
+	TArray<FVoxelChunkToRemove> ChunkToRemove;
+
 	TSharedPtr<FVoxelChunkOctree> Octree;	
 	TUniquePtr<FAsyncOctreeBuilderTask> OctreeBuilder;
-	TArray<FVoxelChunkToRemove> ChunkToRemove;
-	float NextUpdateTime = 0;
+	FVoxelTimer OctreeTimer;
+	
 	// Can't use game time in data asset editor
-	float WorldTime = 0;
+	double WorldTime = 0;
 
 	int TaskCount = 0;
 	bool bOctreeBuilt = false;
@@ -241,5 +143,5 @@ private:
 	FVoxelTasksDependenciesHandler DependenciesHandler;
 
 	void UpdateLOD();
-	float GetWorldTime() const;
+	double GetWorldTime() const;
 };

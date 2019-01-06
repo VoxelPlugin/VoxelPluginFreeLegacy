@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelEditorModule.h"
 
@@ -6,11 +6,10 @@
 #include "IPlacementModeModule.h"
 #include "PropertyEditorModule.h"
 #include "Styling/SlateStyle.h"
+#include "Styling/SlateStyleRegistry.h"
 #include "EditorModeRegistry.h"
 
 #include "VoxelWorld.h"
-
-#include "VoxelCrashReporterEditor.h"
 
 #include "AssetTools/AssetTypeActions_VoxelWorldSaveObject.h"
 #include "AssetTools/AssetTypeActions_VoxelMaterialCollection.h"
@@ -25,7 +24,7 @@
 #include "Details/VoxelWorldDetails.h"
 #include "Details/VoxelWorldGeneratorPickerCustomization.h"
 #include "Details/VoxelMaterialCollectionDetails.h"
-#include "Styling/SlateStyleRegistry.h"
+#include "Details/VoxelMaterialCollectionHelpers.h"
 
 
 #define LOCTEXT_NAMESPACE "VoxelEditorModule"
@@ -47,8 +46,6 @@ class FVoxelEditorModule : public IVoxelEditorModule
 public:
 	virtual void StartupModule() override
 	{
-		FVoxelCrashReporterEditor::Register();
-
 		// Voxel asset category
 		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 		VoxelAssetCategoryBit = AssetTools.RegisterAdvancedAssetCategory(FName(TEXT("Voxel")), LOCTEXT("VoxelAssetCategory", "Voxel"));
@@ -73,7 +70,7 @@ public:
 			// Voxel Material Collection								     
 			StyleSet->Set("ClassThumbnail.VoxelMaterialCollection"           , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/AssetIcons/PaperTileMap_64x.png")), Icon64x64));
 			StyleSet->Set("ClassIcon.VoxelMaterialCollection"                , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/AssetIcons/PaperTileMap_16x.png")), Icon16x16));
-																		     
+
 																		     
 			// World generator											     
 			StyleSet->Set("ClassThumbnail.VoxelWorldGenerator"               , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/WorldGenerator_64x.png"), Icon64x64));
@@ -107,6 +104,21 @@ public:
 		return true;
 	}
 
+public:
+	virtual bool GenerateSingleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) override
+	{
+		return FVoxelMaterialCollectionHelpers::GenerateSingleMaterials(Collection, OutError);
+	}
+
+	virtual bool GenerateDoubleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) override
+	{
+		return FVoxelMaterialCollectionHelpers::GenerateDoubleMaterials(Collection, OutError);
+	}
+
+	virtual bool GenerateTripleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) override
+	{
+		return FVoxelMaterialCollectionHelpers::GenerateTripleMaterials(Collection, OutError);
+	}
 
 protected:
 	

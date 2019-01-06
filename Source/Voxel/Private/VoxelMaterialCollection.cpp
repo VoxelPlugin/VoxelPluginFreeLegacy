@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelMaterialCollection.h"
 #include "VoxelRender/VoxelIntermediateChunk.h"
@@ -51,4 +51,55 @@ UMaterialInterface* UVoxelMaterialCollection::GetVoxelMaterial(const FVoxelBlend
 UMaterialInterface* UVoxelMaterialCollection::GetVoxelMaterialWithTessellation(const FVoxelBlendedMaterial& Index)
 {
 	return GeneratedMaterialsTess.GetVoxelMaterial(Index);
+}
+
+void UVoxelMaterialCollection::PostLoad()
+{
+	Super::PostLoad();
+
+	if (MaterialFunctions_DEPRECATED.Num() > 0)
+	{
+		for (int Index = 0; Index < MaterialFunctions_DEPRECATED.Num(); Index++)
+		{
+			int Last = Materials.Emplace();
+			auto& NewMaterial = Materials[Last];
+			NewMaterial.Index = Index;
+			NewMaterial.MaterialFunction = MaterialFunctions_DEPRECATED[Index];
+			if (PhysicalMaterials_DEPRECATED.IsValidIndex(Index))
+			{
+				NewMaterial.PhysicalMaterial = PhysicalMaterials_DEPRECATED[Index];
+			}
+		}
+	}
+
+	InitVariables();
+}
+
+void UVoxelMaterialCollection::PostInitProperties()
+{
+	Super::PostInitProperties();
+
+	if (!HasAnyFlags(RF_ClassDefaultObject | RF_NeedLoad))
+	{
+		InitVariables();
+	}
+}
+
+void UVoxelMaterialCollection::InitVariables()
+{
+	if (!SingleMaterialTemplate)
+	{
+		Modify();
+		SingleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_SingleMaterialTemplate"));
+	}
+	if (!DoubleMaterialTemplate)
+	{
+		Modify();
+		DoubleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_DoubleMaterialTemplate"));
+	}
+	if (!TripleMaterialTemplate)
+	{
+		Modify();
+		TripleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_TripleMaterialTemplate"));
+	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelMaterialCollectionDetails.h"
 #include "PropertyEditorModule.h"

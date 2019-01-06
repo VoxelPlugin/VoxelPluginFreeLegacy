@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -203,8 +203,8 @@ struct VOXEL_API FIntBox
 		}
 	}
 
-	template<typename T = int>
-	inline uint32 ComputeSquaredDistanceFromBoxToPoint(const FIntVector& Point) const
+	template<typename T = uint32>
+	inline T ComputeSquaredDistanceFromBoxToPoint(const FIntVector& Point) const
 	{
 		// Accumulates the distance as we iterate axis
 		T DistSquared = 0;
@@ -241,9 +241,10 @@ struct VOXEL_API FIntBox
 		return DistSquared;
 	}
 
-	inline int ComputeSquaredDistanceFromBoxToBox(const FIntBox& Box) const
+	template<typename T>
+	inline T ComputeSquaredDistanceFromBoxToBox(const FIntBox& Box) const
 	{
-		return FMath::Min(ComputeSquaredDistanceFromBoxToPoint(Box.Min), ComputeSquaredDistanceFromBoxToPoint(Box.Max));
+		return FMath::Min<T>(ComputeSquaredDistanceFromBoxToPoint<T>(Box.Min), ComputeSquaredDistanceFromBoxToPoint<T>(Box.Max));
 	}
 
 	/**
@@ -307,6 +308,11 @@ struct VOXEL_API FIntBox
 				}
 			}
 		}
+	}
+
+	inline FString ToString() const
+	{
+		return FString::Printf(TEXT("(%d/%d, %d/%d, %d/%d)"), Min.X, Max.X, Min.Y, Max.Y, Min.Z, Max.Z);
 	}
 
 	/**

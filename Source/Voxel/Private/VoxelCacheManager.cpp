@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelCacheManager.h"
 #include "VoxelData/VoxelData.h"
@@ -8,26 +8,34 @@
 #include "VoxelLogStatDefinitions.h"
 
 const FColor FVoxelCacheManager::CreatedDirty = FColorList::Red;
-const FColor FVoxelCacheManager::CreatedCached = FColorList::Pink;
-const FColor FVoxelCacheManager::CreatedNotCached = FColorList::Orange;
+const FColor FVoxelCacheManager::CreatedManualCached = FColorList::Pink;
+const FColor FVoxelCacheManager::CreatedAutoCached = FColorList::Orange;
 const FColor FVoxelCacheManager::Empty = FColorList::White;
 
 ///////////////////////////////////////////////////////////////////////////////
 
 void FVoxelAsyncCacheWork::DoWork()
 {
+	Progress.Reset();
+
 	for (auto& Bounds : BoundsToCache)
 	{
 		TArray<FVoxelId> Ids;
-		Data->BeginSet(Bounds, Ids);
+		Data->BeginSet(Bounds, Ids, "AsyncCacheWork");
 		check(Ids.Num() == 1);
 
 		auto* Leaf = Data->GetOctree()->CreateLeafAt(Bounds.Min);
-		Leaf->Cache();
+		Leaf->Cache(true, bCheckIfChunksAreEmpty);
 
 		CachedOctrees.Add(Bounds, Leaf);
 
 		Data->EndSet(Ids);
+
+		Progress.Increment();
+		if (IsCanceled())
+		{
+			break;
+		}
 	}
 }
 
@@ -36,15 +44,17 @@ void FVoxelAsyncClearCacheWork::DoWork()
 	for (auto& Octree : OctreesToClear)
 	{
 		TArray<FVoxelId> Ids;
-		Data->BeginSet(Octree->GetBounds(), Ids);
+		Data->BeginSet(Octree->GetBounds(), Ids, "AsyncClearCacheWork");
 		check(Ids.Num() == 1);
 
-		Octree->ClearCache();
+		if (Octree->IsManuallyCached()) // If we cached it (ie if it wasn't already cached when when tried to cache it)
+		{
+			Octree->ClearManualCache();
+		}
 
 		Data->EndSet(Ids);
 	}
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -62,7 +72,7 @@ FVoxelCacheManager::~FVoxelCacheManager()
 	}
 }
 
-void FVoxelCacheManager::Cache(const TArray<FIntBox>& BoundsToCache)
+void FVoxelCacheManager::Cache(const TArray<FIntBox>& BoundsToCache, bool bCheckIfChunksAreEmpty)
 {
 	UpdateFromWork();
 
@@ -87,7 +97,7 @@ void FVoxelCacheManager::Cache(const TArray<FIntBox>& BoundsToCache)
 		}
 	}
 
-	CacheWork = MakeUnique<FVoxelAsyncCacheWork>(World->GetDataSharedPtr(), NewBoundsToCache);
+	CacheWork = MakeUnique<FVoxelAsyncCacheWork>(World->GetDataSharedPtr(), NewBoundsToCache, bCheckIfChunksAreEmpty);
 	World->GetPool()->MeshPool->AddQueuedWork(CacheWork.Get());
 }
 
@@ -131,13 +141,13 @@ void FVoxelCacheManager::DebugCache(bool bHideEmpty, float DeltaTime, float Thic
 {
 	UpdateFromWork();
 
-	GEngine->AddOnScreenDebugMessage((uint64)((PTRINT)this) + 3, 1, CreatedNotCached, TEXT("Not dirty chunks NOT handled by the cache system"));
-	GEngine->AddOnScreenDebugMessage((uint64)((PTRINT)this) + 2, 1, CreatedCached, TEXT("Not dirty chunks handled by the cache system"));
-	GEngine->AddOnScreenDebugMessage((uint64)((PTRINT)this) + 1, 1, Empty, TEXT("Empty chunks"));
-	GEngine->AddOnScreenDebugMessage((uint64)((PTRINT)this) + 0, 1, CreatedDirty, TEXT("Dirty chunks"));
+	GEngine->AddOnScreenDebugMessage((uint64)this + 3, 1, CreatedAutoCached, TEXT("Not dirty chunks automatically cached"));
+	GEngine->AddOnScreenDebugMessage((uint64)this + 2, 1, CreatedManualCached, TEXT("Not dirty chunks manually cached"));
+	GEngine->AddOnScreenDebugMessage((uint64)this + 1, 1, Empty, TEXT("Empty chunks"));
+	GEngine->AddOnScreenDebugMessage((uint64)this + 0, 1, CreatedDirty, TEXT("Dirty chunks"));
 
 	auto* Data = World->GetData();
-	FVoxelScopeGetLock Lock(Data, FIntBox::Infinite);
+	FVoxelScopeGetLock Lock(Data, FIntBox::Infinite, "DebugCache");
 	TArray<FVoxelDataOctree*> Octrees;
 	Data->GetOctree()->GetLeaves(Octrees, 0);
 
@@ -153,13 +163,14 @@ void FVoxelCacheManager::DebugCache(bool bHideEmpty, float DeltaTime, float Thic
 		{
 			if (Octree->IsCacheOnly())
 			{
-				if (CachedOctree)
+				if (Octree->IsManuallyCached())
 				{
-					Color = CreatedCached;
+					check(CachedOctree);
+					Color = CreatedManualCached;
 				}
 				else
 				{
-					Color = CreatedNotCached;
+					Color = CreatedAutoCached;
 				}
 			}
 			else
@@ -200,4 +211,13 @@ void FVoxelCacheManager::UpdateFromWork()
 		}
 		CacheWork.Reset();
 	}
+}
+
+FString FVoxelCacheManager::GetProgress() const
+{
+	if (!CacheWork.IsValid())
+	{
+		return "";
+	}
+	return FString::Printf(TEXT("%d/%d"), CacheWork->Progress.GetValue(), CacheWork->Total);
 }

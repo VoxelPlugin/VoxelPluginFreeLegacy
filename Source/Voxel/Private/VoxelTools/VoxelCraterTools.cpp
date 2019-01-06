@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelTools/VoxelCraterTools.h"
 #include "VoxelData/VoxelData.h"
@@ -15,7 +15,7 @@ inline void AddCraterImpl(FVoxelData* Data, const FIntVector& Position, float Ra
 
 	OutBounds = Bounds;
 
-	FVoxelScopeSetLock Lock(Data, Bounds);
+	FVoxelScopeSetLock Lock(Data, Bounds, "AddCrater");
 
 	Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
 	{

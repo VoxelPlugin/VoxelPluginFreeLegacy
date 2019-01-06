@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -36,9 +36,14 @@ namespace FVoxelUtilities
 		return FIntBox(-Size, Size);
 	}
 
-	inline int ClampLOD(int LOD)
+	inline int ClampChunkLOD(int LOD)
 	{
 		return FMath::Clamp(LOD, 0, MAX_WORLD_DEPTH - 1);
+	}
+
+	inline int ClampDataLOD(int LOD)
+	{
+		return FMath::Clamp(LOD, 1, MAX_WORLD_DEPTH - DATA_OCTREE_DEPTH_DIFF - 1);
 	}
 
 	inline bool HaveSameSign(const FVoxelValue& A, const FVoxelValue& B)
@@ -141,4 +146,35 @@ namespace FVoxelUtilities
 
 		check(Ptr == Array.GetData() + Array.Num());
 	}
+};
+
+struct FVoxelTimer
+{
+public:
+	FVoxelTimer()
+	{
+	}
+	
+	void Init(float InRateInSeconds)
+	{
+		RateInSeconds = InRateInSeconds;
+		TimeLeft = 0;
+	}
+
+	bool Tick(float DeltaTime)
+	{
+		check(RateInSeconds >= 0);
+
+		TimeLeft -= DeltaTime;
+		if (TimeLeft <= 0)
+		{
+			TimeLeft = RateInSeconds;
+			return true;
+		}
+		return false;
+	}
+
+private:
+	float RateInSeconds = -1;
+	float TimeLeft = 0;
 };

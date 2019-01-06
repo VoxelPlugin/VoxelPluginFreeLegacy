@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #include "VoxelData/VoxelData.h"
 #include "VoxelLogStatDefinitions.h"
@@ -12,23 +12,23 @@
 DECLARE_CYCLE_STAT(TEXT("FVoxelData::LoadFromDiffQueues"), STAT_VoxelData_LoadFromDiffQueues, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FVoxelData::LoadFromDiffQueues::BeginSet"), STAT_VoxelData_LoadFromDiffQueues_BeginSet, STATGROUP_Voxel);
 
-void FVoxelData::BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees)
+void FVoxelData::BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FString Name)
 {
 	OutOctrees.Empty();
 
 	Octree->LockTransactions();
-	Octree->BeginSet(Box, OutOctrees, 1e9);
+	Octree->BeginSet(Box, OutOctrees, 1e9, Name);
 
 	Algo::Reverse(OutOctrees);
 }
 
-bool FVoxelData::TryBeginSet(const FIntBox& Box, int MicroSeconds, TArray<FVoxelId>& OutOctrees)
+bool FVoxelData::TryBeginSet(const FIntBox& Box, int MicroSeconds, TArray<FVoxelId>& OutOctrees, FString& InOutName)
 {
 	OutOctrees.Empty();
 
 	Octree->LockTransactions();
 
-	bool bSuccess = Octree->BeginSet(Box, OutOctrees, MicroSeconds);
+	bool bSuccess = Octree->BeginSet(Box, OutOctrees, MicroSeconds, InOutName);
 
 	Algo::Reverse(OutOctrees);
 
@@ -46,23 +46,23 @@ void FVoxelData::EndSet(TArray<FVoxelId>& LockedOctrees)
 	check(LockedOctrees.Num() == 0);
 }
 
-void FVoxelData::BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees)
+void FVoxelData::BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FString Name)
 {
 	OutOctrees.Empty();
 
 	Octree->LockTransactions();
-	Octree->BeginGet(Box, OutOctrees, 1e9);
+	Octree->BeginGet(Box, OutOctrees, 1e9, Name);
 
 	Algo::Reverse(OutOctrees);
 }
 
-bool FVoxelData::TryBeginGet(const FIntBox& Box, int MicroSeconds, TArray<FVoxelId>& OutOctrees)
+bool FVoxelData::TryBeginGet(const FIntBox& Box, int MicroSeconds, TArray<FVoxelId>& OutOctrees, FString& InOutName)
 {
 	OutOctrees.Empty();
 
 	Octree->LockTransactions();
 
-	bool bSuccess = Octree->BeginGet(Box, OutOctrees, MicroSeconds);
+	bool bSuccess = Octree->BeginGet(Box, OutOctrees, MicroSeconds, InOutName);
 
 	Algo::Reverse(OutOctrees);
 
@@ -105,13 +105,78 @@ void FVoxelData::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Mate
 	}
 }
 
+void FVoxelData::CacheMostUsedChunks(
+	uint32 Threshold,
+	uint32 MaxCacheSize,
+	uint32& NumChunksSubdivided,
+	uint32& NumChunksCached, 
+	uint32& NumRemovedFromCache,
+	uint32& TotalNumCachedChunks)
+{
+	CacheTime++;
+	NumChunksSubdivided = 0;
+	NumChunksCached = 0;
+	NumRemovedFromCache = 0;
+
+	TArray<FVoxelDataOctree::CacheElement> OctreesToCacheAndCachedOctrees;
+	TArray<FVoxelDataOctree*> OctreesToSubdivide;
+	{
+		FVoxelScopeGetLock Lock(this, FIntBox::Infinite, "CacheMostUsedChunks FindChunks");
+		Octree->GetOctreesToCacheAndExistingCachedOctrees(CacheTime, Threshold, OctreesToCacheAndCachedOctrees, OctreesToSubdivide);
+	}
+
+	if ((uint32)OctreesToCacheAndCachedOctrees.Num() > MaxCacheSize)
+	{
+		OctreesToCacheAndCachedOctrees.Sort([](auto& A, auto& B) { return A.Priority > B.Priority; }); // Highest first
+		while ((uint32)OctreesToCacheAndCachedOctrees.Num() > MaxCacheSize)
+		{
+			auto CacheElement = OctreesToCacheAndCachedOctrees.Pop(false);
+			if (CacheElement.bIsCached)
+			{
+				CacheElement.Octree->ClearCache();
+				NumRemovedFromCache++;
+			}
+		}
+	}
+	
+	for (auto& CacheElement : OctreesToCacheAndCachedOctrees)
+	{
+		if (!CacheElement.bIsCached)
+		{
+			auto* Chunk = CacheElement.Octree;
+			FVoxelScopeSetLock Lock(this, Chunk->GetBounds(), "CacheMostUsedChunks CacheOctrees");
+			check(Chunk->LOD == 0);
+			if (!Chunk->IsCreated()) // Might have been created since FindChunks
+			{
+				NumChunksCached++;
+				TotalNumCachedChunks++;
+				Chunk->Cache(false, false);
+			}
+		}
+		else
+		{
+			TotalNumCachedChunks++;
+		}
+	}
+
+	for (auto& OctreeToSubdivide : OctreesToSubdivide)
+	{
+		FVoxelScopeSetLock Lock(this, OctreeToSubdivide->GetBounds(), "CacheMostUsedChunks SubdivideOctrees");
+		if (OctreeToSubdivide->IsLeaf())
+		{
+			NumChunksSubdivided++;
+			OctreeToSubdivide->CreateChildren();
+		}
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 void FVoxelData::GetSave(FVoxelUncompressedWorldSave& OutSave)
 {
-	FVoxelScopeGetLock Lock(this, FIntBox::Infinite);
+	FVoxelScopeGetLock Lock(this, FIntBox::Infinite, "GetSave");
 
 	OutSave.Init(Depth);
 	Octree->Save(OutSave);
@@ -120,7 +185,7 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSave& OutSave)
 
 void FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSave& Save, TArray<FIntBox>& OutBoundsToUpdate)
 {
-	FVoxelScopeSetLock Lock(this, FIntBox::Infinite);
+	FVoxelScopeSetLock Lock(this, FIntBox::Infinite, "LoadFromSave");
 
 	Octree->GetLeavesBounds(OutBoundsToUpdate, 0);
 	Octree->ClearData();

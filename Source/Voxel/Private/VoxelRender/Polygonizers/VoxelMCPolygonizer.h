@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -21,7 +21,6 @@ class FVoxelMCPolygonizer
 {
 public:
 	FVoxelMCPolygonizer(int LOD, FVoxelData* Data, const FIntVector& ChunkPosition, EVoxelNormalConfig NormalConfig, EVoxelMaterialConfig MaterialConfig, EVoxelUVConfig UVConfig, FVoxelMeshProcessingParameters MeshParameters);
-	~FVoxelMCPolygonizer();
 
 	bool CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement& Stats);
 	
@@ -43,7 +42,6 @@ private:
 	TUniquePtr<FVoxelData::MapAccelerator> MapAccelerator;
 
 	FVoxelValue CachedValues[MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE];
-	FVoxelMaterial* const CachedMaterials; // Only if LOD == 0
 
 	// Cache to get index of already created vertices
 	int Cache0[CHUNK_SIZE * CHUNK_SIZE * EDGE_INDEX_COUNT];
@@ -69,7 +67,6 @@ private:
 	}
 	inline FVoxelMaterial GetMaterialNoCache(int X, int Y, int Z) const
 	{
-		checkVoxelSlow(LOD > 0);
 		return MapAccelerator->GetMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, LOD);
 	}	
 	inline FVoxelMaterial GetMaterialNoCache(const FIntVector& P) const { return GetMaterialNoCache(P.X, P.Y, P.Z); }

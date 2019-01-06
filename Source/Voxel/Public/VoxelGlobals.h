@@ -1,4 +1,4 @@
-// Copyright 2018 Phyronnaz
+// Copyright 2019 Phyronnaz
 
 #pragma once
 
@@ -82,6 +82,9 @@ static_assert(VoxelGlobalsUtils::IsPowerOfTwo(VOXEL_CELL_SIZE), "VOXEL_CELL_SIZE
 static_assert(MAX_WORLD_DEPTH % 2 == 0, "MAX_WORLD_DEPTH must be a multiple of 2");
 
 #define MAX_PLACEABLE_ITEMS_PER_OCTREE 4
+
+// Inclusive
+#define MAX_LOD_USED_FOR_CACHE 1
 
 ///////////////////////////////////////////////////////////////////////////////
 
