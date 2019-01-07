@@ -20,7 +20,15 @@
 class FVoxelMCPolygonizer
 {
 public:
-	FVoxelMCPolygonizer(int LOD, FVoxelData* Data, const FIntVector& ChunkPosition, EVoxelNormalConfig NormalConfig, EVoxelMaterialConfig MaterialConfig, EVoxelUVConfig UVConfig, FVoxelMeshProcessingParameters MeshParameters);
+	FVoxelMCPolygonizer(
+		int LOD, 
+		FVoxelData* Data, 
+		const FIntVector& ChunkPosition, 
+		EVoxelNormalConfig NormalConfig, 
+		EVoxelMaterialConfig MaterialConfig, 
+		EVoxelUVConfig UVConfig,
+		bool bCacheLOD0Chunks,
+		FVoxelMeshProcessingParameters MeshParameters);
 
 	bool CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement& Stats);
 	
@@ -37,6 +45,7 @@ private:
 	const EVoxelNormalConfig NormalConfig;
 	const EVoxelMaterialConfig MaterialConfig;
 	const EVoxelUVConfig UVConfig;
+	const bool bCacheLOD0Chunks;
 	const FVoxelMeshProcessingParameters MeshParameters;
 
 	TUniquePtr<FVoxelData::MapAccelerator> MapAccelerator;

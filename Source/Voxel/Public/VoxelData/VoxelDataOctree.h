@@ -13,8 +13,8 @@
 #include "VoxelLogStatDefinitions.h"
 #include "VoxelData/VoxelDataCell.h"
 
-DECLARE_MEMORY_STAT(TEXT("Value Octrees Memory"), STAT_VoxelOctreesMemory, STATGROUP_VoxelMemory);
-DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Num Value Octrees"), STAT_VoxelNumValueOctrees, STATGROUP_VoxelMemory);
+DECLARE_MEMORY_STAT(TEXT("Voxel Data Octrees Memory"), STAT_VoxelDataOctreesMemory, STATGROUP_VoxelMemory);
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Data Octrees Count"), STAT_VoxelDataOctreesCount, STATGROUP_VoxelMemory);
 
 class FVoxelPlaceableItem;
 struct FVoxelUncompressedWorldSave;
@@ -33,8 +33,8 @@ public:
 		, bEnableUndoRedo(bEnableUndoRedo)
 	{
 		check(LOD > 0);
-		INC_DWORD_STAT_BY(STAT_VoxelNumValueOctrees, 1);
-		INC_MEMORY_STAT_BY(STAT_VoxelOctreesMemory, sizeof(FVoxelDataOctree));
+		INC_DWORD_STAT_BY(STAT_VoxelDataOctreesCount, 1);
+		INC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctree));
 	}
 	FVoxelDataOctree(FVoxelDataOctree* Parent, uint8 ChildIndex)
 		: TVoxelOctree(Parent, ChildIndex)
@@ -42,14 +42,14 @@ public:
 		, bEnableMultiplayer(Parent->bEnableMultiplayer)
 		, bEnableUndoRedo(Parent->bEnableUndoRedo)
 	{
-		INC_DWORD_STAT_BY(STAT_VoxelNumValueOctrees, 1);
-		INC_MEMORY_STAT_BY(STAT_VoxelOctreesMemory, sizeof(FVoxelDataOctree));
+		INC_DWORD_STAT_BY(STAT_VoxelDataOctreesCount, 1);
+		INC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctree));
 	}
 
 	~FVoxelDataOctree()
 	{
-		DEC_DWORD_STAT_BY(STAT_VoxelNumValueOctrees, 1);
-		DEC_MEMORY_STAT_BY(STAT_VoxelOctreesMemory, sizeof(FVoxelDataOctree));
+		DEC_DWORD_STAT_BY(STAT_VoxelDataOctreesCount, 1);
+		DEC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctree));
 	}
 
 	inline bool IsCreated() const { check(LOD == 0); return Cell.IsValid(); }
@@ -61,10 +61,11 @@ public:
 	inline uint32 GetCachePriority() const { return LastAccessTime; }
 
 	inline bool IsManuallyCached() const { return IsCached() && bIsManuallyCached; }
-
+	
+	void Cache(const FIntBox& Bounds, bool bIsManualCache);
 	void Cache(bool bIsManualCache, bool bCheckIfEmpty);
 	void ClearCache();
-	void ClearManualCache();
+	void ClearManualCache();	
 	
 	struct CacheElement
 	{
@@ -403,6 +404,8 @@ public:
 
 public:
 	void CreateChildren();
+	void DestroyChildren();
+	bool Compact(uint32& NumDeleted);
 
 private:
 	TUniquePtr<FVoxelDataCell> Cell;

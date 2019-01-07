@@ -279,6 +279,7 @@ void FVoxelLODRenderer::Tick(float DeltaTime)
 					World->GetVoxelSize(),
 					World->GetLODLimit(),
 					World->GetLODLowerLimit(),
+					World->GetChunksCullingLOD(),
 					World->MaxRenderOctreeLeaves);
 				Pool->OctreeBuilderPool->AddQueuedWork(OctreeBuilder.Get());
 			}

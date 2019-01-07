@@ -8,6 +8,34 @@
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 #include "HAL/Platform.h"
 
+void FVoxelDataOctree::Cache(const FIntBox& Bounds, bool bIsManualCache)
+{
+	if (!Bounds.Intersect(OctreeBounds))
+	{
+		return;
+	}
+
+	if (LOD == 0)
+	{
+		if (!IsCreated())
+		{
+			bIsManuallyCached = bIsManualCache;
+			Create(true);
+		}
+	}
+	else
+	{
+		if (IsLeaf())
+		{
+			CreateChildren();
+		}
+		for (auto& Child : GetChildren())
+		{
+			Child->Cache(Bounds, bIsManualCache);
+		}
+	}
+}
+
 void FVoxelDataOctree::Cache(bool bIsManualCache, bool bCheckIfEmpty)
 {
 	check(LOD == 0);
@@ -16,9 +44,11 @@ void FVoxelDataOctree::Cache(bool bIsManualCache, bool bCheckIfEmpty)
 	{
 		return; // Already cached
 	}
+	
+	bIsManuallyCached = bIsManualCache;
+
 	if (!ItemHolder->IsEmpty() || !bCheckIfEmpty)
 	{
-		bIsManuallyCached = bIsManualCache;
 		// No need to check if it's empty
 		Create(true);
 		return;
@@ -86,6 +116,12 @@ void FVoxelDataOctree::GetOctreesToCacheAndExistingCachedOctrees(
 	TArray<CacheElement>& OutOctreesToCacheAndCachedOctrees,
 	TArray<FVoxelDataOctree*>& OutOctreesToSubdivide)
 {
+	if (NumberOfWorldGeneratorReadsSinceLastCache > 0)
+	{
+		check(LastAccessTime <= Time);
+		LastAccessTime = Time;
+	}
+
 	if (IsLeaf())
 	{
 		if (LOD == 0 && IsCached())
@@ -117,11 +153,7 @@ void FVoxelDataOctree::GetOctreesToCacheAndExistingCachedOctrees(
 			Child->GetOctreesToCacheAndExistingCachedOctrees(Time, Threshold, OutOctreesToCacheAndCachedOctrees, OutOctreesToSubdivide);
 		}
 	}
-	if (NumberOfWorldGeneratorReadsSinceLastCache > 0)
-	{
-		check(LastAccessTime <= Time);
-		LastAccessTime = Time;
-	}
+
 	NumberOfWorldGeneratorReadsSinceLastCache = 0;
 }
 
@@ -166,7 +198,7 @@ EVoxelEmptyState FVoxelDataOctree::IsEmpty(const FIntBox& Bounds, int InLOD) con
 
 		if (LOD == 0)
 		{
-			if (IsCreated())
+			if (IsCreated() && !IsCacheOnly())
 			{
 				return EVoxelEmptyState::Unknown;
 			}
@@ -226,12 +258,13 @@ void FVoxelDataOctree::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMateria
 
 	if (IsLeaf())
 	{
+		if (QueryLOD <= MAX_LOD_USED_FOR_CACHE)
+		{
+			NumberOfWorldGeneratorReadsSinceLastCache++;
+		}
+	
 		if (LOD > 0 || !IsCreated())
 		{
-			if (QueryLOD <= MAX_LOD_USED_FOR_CACHE)
-			{
-				NumberOfWorldGeneratorReadsSinceLastCache++;
-			}
 			WorldGenerator->GetValuesAndMaterials(Values, Materials, QueryZone, QueryLOD, *ItemHolder);
 		}
 		else
@@ -575,6 +608,34 @@ void FVoxelDataOctree::CreateChildren()
 		}
 	}
 	ItemHolder.Reset();
+}
+
+void FVoxelDataOctree::DestroyChildren()
+{
+	TVoxelOctree::DestroyChildren();
+	ItemHolder = MakeUnique<FVoxelPlaceableItemHolder>(); // Always valid on a leaf
+}
+
+bool FVoxelDataOctree::Compact(uint32& NumDeleted)
+{
+	if (IsLeaf())
+	{
+		return (LOD > 0 || !IsCreated()) && ItemHolder->Num() == 0;
+	}
+	else
+	{
+		bool bCanCompact = true;
+		for (auto& Child : GetChildren())
+		{
+			bCanCompact = Child->Compact(NumDeleted) && bCanCompact; // bCanCompact in second so that child is always compacted
+		}
+		if (bCanCompact)
+		{
+			DestroyChildren();
+			NumDeleted += 8;
+		}
+		return bCanCompact;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

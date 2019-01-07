@@ -64,6 +64,7 @@ FVoxelMCPolygonizer::FVoxelMCPolygonizer(
 	EVoxelNormalConfig NormalConfig,
 	EVoxelMaterialConfig MaterialConfig,
 	EVoxelUVConfig UVConfig,
+	bool bCacheLOD0Chunks,
 	FVoxelMeshProcessingParameters MeshParameters)
 	: LOD(LOD)
 	, Step(1 << LOD)
@@ -73,6 +74,7 @@ FVoxelMCPolygonizer::FVoxelMCPolygonizer(
 	, NormalConfig(NormalConfig)
 	, MaterialConfig(MaterialConfig)
 	, UVConfig(UVConfig)
+	, bCacheLOD0Chunks(bCacheLOD0Chunks)
 	, MeshParameters(MeshParameters)
 {
 }
@@ -81,6 +83,20 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 {
 	FIntVector ChunkDataSize(MC_EXTENDED_CHUNK_SIZE);
 	const FIntBox Bounds = FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition - FIntVector(Step) + ChunkDataSize * Step);
+	
+	if (bCacheLOD0Chunks && LOD == 0)
+	{
+		TArray<FVoxelId> Octrees;
+
+		Stats.StartStat("BeginSet");
+		Data->BeginSet(Bounds, Octrees, FString::Printf(TEXT("MarchingCubesPolygonizer LOD=%d Cache"), LOD));
+		
+		Stats.StartStat("Cache");
+		Data->Cache(Bounds, false);
+		
+		Stats.StartStat("EndSet");
+		Data->EndSet(Octrees);
+	}
 
 	TArray<FVoxelId> Octrees;
 	Stats.StartStat("BeginGet");
@@ -96,7 +112,7 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 		Data->EndGet(Octrees);
 		return true;
 	}
-
+	
 	Stats.StartStat("GetValuesAndMaterials");
 	Data->GetValuesAndMaterials(CachedValues, nullptr, FVoxelWorldGeneratorQueryZone(Bounds, ChunkDataSize, LOD), LOD);
 

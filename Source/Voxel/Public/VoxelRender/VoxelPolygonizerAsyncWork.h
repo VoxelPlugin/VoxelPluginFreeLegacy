@@ -24,6 +24,7 @@ public:
 	const EVoxelNormalConfig NormalConfig;
 	const EVoxelMaterialConfig MaterialConfig;
 	const EVoxelUVConfig UVConfig;
+	const bool bCacheLOD0Chunks;
 	const FVoxelMeshProcessingParameters MeshParameters;
 	// Output
 	TSharedRef<FVoxelChunk> Chunk = MakeShared<FVoxelChunk>();

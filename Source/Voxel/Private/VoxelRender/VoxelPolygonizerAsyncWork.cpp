@@ -25,8 +25,10 @@ FVoxelPolygonizerAsyncWorkBase::FVoxelPolygonizerAsyncWorkBase(
 	, NormalConfig(World->GetNormalConfig())
 	, MaterialConfig(World->GetMaterialConfig())
 	, UVConfig(World->GetUVConfig())
+	, bCacheLOD0Chunks(World->GetEnableAutomaticCache() && World->GetCacheLOD0Chunks())
 	, MeshParameters(World->IsTessellationEnabled(LOD), World->GetOptimizeIndices())
 {
+	check(IsInGameThread());
 	Stats.SetLOD(LOD);
 	Stats.StartStat("Waiting In Thread Queue");
 }

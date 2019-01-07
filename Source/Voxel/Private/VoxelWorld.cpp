@@ -172,6 +172,11 @@ inline void FixWorldBounds(FIntBox& WorldBounds, int Depth)
 	check(WorldBounds.IsMultipleOf(CHUNK_SIZE));
 }
 
+inline int GetCacheSizeInMB(int CacheSize)
+{
+	return FMath::CeilToInt((double)CacheSize * sizeof(FVoxelDataCell) / (1 << 20)); // 1 MB;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -644,9 +649,11 @@ GETTER_SETTER_CHECKNOTCREATED_BOOL(EnableNavmesh);
 GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(MaxNavmeshLOD, FVoxelUtilities::ClampChunkLOD(New));
 		
 GETTER_SETTER_CHECKNOTCREATED_ACCESSOR(LODUpdateRate, FMath::Max(New, 0.000001f));
+GETTER_SETTER_CHECKNOTCREATED(DataOctreeCompactDelayInSeconds);
 GETTER_SETTER_NOCHECK_BOOL(EnableAutomaticCache);
 GETTER_SETTER_CHECKNOTCREATED(CacheUpdateDelayInSeconds);
 GETTER_SETTER_NOCHECK(CacheAccessThreshold);
+GETTER_SETTER_NOCHECK_BOOL(CacheLOD0Chunks);
 GETTER_SETTER_NOCHECK(MaxCacheSize);
 
 GETTER_SETTER_CHECKNOTCREATED_BOOL(DontUseGlobalPool);
@@ -737,8 +744,37 @@ TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPos
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+class FUpdateGuard
+{
+	const AVoxelWorld* ThisPtr;
+	TArray<const AVoxelWorld*>& Ptrs;
+
+public:
+	FUpdateGuard(const AVoxelWorld* ThisPtr, TArray<const AVoxelWorld*>& Ptrs)
+		: ThisPtr(ThisPtr)
+		, Ptrs(Ptrs)
+	{
+		Ptrs.Push(ThisPtr);
+	}
+	~FUpdateGuard()
+	{
+		ensure(Ptrs.Pop() == ThisPtr);
+	}
+};
+
+#define UPDATE_GUARD() \
+	static TArray<const AVoxelWorld*> __Ptrs; \
+	if (__Ptrs.Contains(this)) \
+	{ \
+		FMessageLog("PIE").Warning(LOCTEXT("CircularWorldsToUpdateWhenUpdated", "WorldsToUpdateWhenUpdated circular loop!")); \
+		return; \
+	} \
+	FUpdateGuard __UpdateGuard(this, __Ptrs);
+
 void AVoxelWorld::UpdateChunksAtPosition(const FIntVector& Position)
 {
+	UPDATE_GUARD();
+
 	CHECK_VOXELWORLD_IS_CREATED(UpdateChunksAtPosition);
 	Render->UpdateBox(FIntBox(Position), false);
 	
@@ -751,6 +787,8 @@ void AVoxelWorld::UpdateChunksAtPosition(const FIntVector& Position)
 
 void AVoxelWorld::UpdateChunksOverlappingBox(const FIntBox& Box, bool bRemoveHoles)
 {
+	UPDATE_GUARD();
+
 	CHECK_VOXELWORLD_IS_CREATED(UpdateChunksOverlappingBox);
 	Render->UpdateBox(Box, bRemoveHoles);
 	
@@ -763,6 +801,8 @@ void AVoxelWorld::UpdateChunksOverlappingBox(const FIntBox& Box, bool bRemoveHol
 
 void AVoxelWorld::UpdateChunksOverlappingBox(const FIntBox& Box, TFunction<void()> CallbackWhenUpdated)
 {
+	UPDATE_GUARD();
+
 	check(IsCreated());
 	Render->UpdateBox(Box, true, CallbackWhenUpdated);
 	
@@ -775,6 +815,8 @@ void AVoxelWorld::UpdateChunksOverlappingBox(const FIntBox& Box, TFunction<void(
 
 void AVoxelWorld::UpdateAll()
 {
+	UPDATE_GUARD();
+
 	CHECK_VOXELWORLD_IS_CREATED(UpdateAll);
 	Render->UpdateBox(FIntBox::Infinite, false);
 	
@@ -1337,6 +1379,28 @@ void AVoxelWorld::Tick(float DeltaTime)
 
 		Render->Tick(DeltaTime);
 
+		if (bIsOwningData && DataOctreeCompactTimer.Tick(DeltaTime))
+		{
+			TSharedPtr<FVoxelData, ESPMode::ThreadSafe> DataCopy = Data;
+			auto* ThisPtr = this;
+			AsyncTask(ENamedThreads::AnyThread, [DataCopy, ThisPtr]()
+			{
+				uint32 NumDeleted = 0;
+				auto Before = std::chrono::high_resolution_clock::now();
+				DataCopy->Compact(NumDeleted);
+				auto After = std::chrono::high_resolution_clock::now();
+
+				float Duration = std::chrono::duration_cast<std::chrono::microseconds>(After - Before).count() / 1000.f;
+				FString String = FString::Printf(TEXT("Octree compacted. Time: %fms; Octrees deleted: %d"), Duration, NumDeleted);
+				
+				AsyncTask(ENamedThreads::GameThread, [=]()
+				{
+					GEngine->AddOnScreenDebugMessage((uint64)ThisPtr + 2, 1, FColor::White, String);
+					UE_LOG(LogVoxel, Log, TEXT("%s"), *String);
+				});
+			});
+		}
+
 		if (bEnableAutomaticCache && bIsOwningData && AutomaticCacheTimer.Tick(DeltaTime))
 		{
 			TSharedPtr<FVoxelData, ESPMode::ThreadSafe> DataCopy = Data;
@@ -1351,25 +1415,28 @@ void AVoxelWorld::Tick(float DeltaTime)
 				uint32 NumChunksCached = 0;
 				uint32 NumRemovedFromCache = 0;
 				uint32 TotalNumCachedChunks = 0;
+
 				auto Before = std::chrono::high_resolution_clock::now();
 				DataCopy->CacheMostUsedChunks(CacheAccessThresholdCopy, MaxCacheSizeCopy, NumChunksSubdivided, NumChunksCached, NumRemovedFromCache, TotalNumCachedChunks);
 				auto After = std::chrono::high_resolution_clock::now();
+
 				if (bLogCacheStatsCopy)
 				{
 					float Duration = std::chrono::duration_cast<std::chrono::microseconds>(After - Before).count() / 1000.f;
-					bool bIsGamethread = IsInGameThread();
+					FString String = FString::Printf(
+						TEXT("Cache stats: %d data chunks subdivided; %d cached; %d removed from cache; Cache usage: %d/%d (%d/%dMB, %.2f%%); Time: %fms"),
+						NumChunksSubdivided,
+						NumChunksCached,
+						NumRemovedFromCache,
+						TotalNumCachedChunks,
+						MaxCacheSizeCopy,
+						GetCacheSizeInMB(TotalNumCachedChunks),
+						GetCacheSizeInMB(MaxCacheSizeCopy),
+						100 * double(TotalNumCachedChunks) / MaxCacheSizeCopy,
+						Duration);
 					AsyncTask(ENamedThreads::GameThread, [=]()
 					{
-						FString String = FString::Printf(
-							TEXT("Cache stats: %d data chunks subdivided; %d cached; %d removed from cache; Total cache size: %d/%d; Time: %fms; Thread: %s"),
-							NumChunksSubdivided,
-							NumChunksCached,
-							NumRemovedFromCache,
-							TotalNumCachedChunks,
-							MaxCacheSizeCopy,
-							Duration,
-							bIsGamethread ? TEXT("Gamethread") : TEXT("Other thread"));
-						GEngine->AddOnScreenDebugMessage((uint64)ThisPtr + 2, 1, FColor::White, String);
+						GEngine->AddOnScreenDebugMessage((uint64)ThisPtr + 3, 1, FColor::White, String);
 						UE_LOG(LogVoxel, Log, TEXT("%s"), *String);
 							
 					});
@@ -1443,6 +1510,7 @@ void AVoxelWorld::PostLoad()
 
 	OctreeDepth = FVoxelUtilities::ClampDataLOD(OctreeDepth);
 	WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(OctreeDepth);
+	MaxCacheSizeInMB = GetCacheSizeInMB(MaxCacheSize);
 }
 
 #if WITH_EDITOR
@@ -1502,6 +1570,8 @@ bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
 void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	MaxCacheSizeInMB = GetCacheSizeInMB(MaxCacheSize);
 	
 	if (!ProcMeshClass)
 	{
@@ -1652,6 +1722,7 @@ void AVoxelWorld::CreateWorldInternal(
 
 	// Start timers
 	CacheDebugTimer.Init(0.5f);
+	DataOctreeCompactTimer.Init(DataOctreeCompactDelayInSeconds);
 	AutomaticCacheTimer.Init(CacheUpdateDelayInSeconds);
 }
 
