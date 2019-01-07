@@ -48,7 +48,7 @@ Both versions can be used commercially.
 * Infinite worlds with seamless LODs
 * Ultra smooth edits: up to 50 times per second on a single chunk
 * VR Ready: everything is done in background threads, allowing for a constant 90fps
-* Up to 256 materials, with smooth transitions and texture support through Texture Arrays
+* Up to 256 materials, with smooth transitions and texture support
 * Complete Blueprint interface
 * C++ World Generators to create your own worlds
 
