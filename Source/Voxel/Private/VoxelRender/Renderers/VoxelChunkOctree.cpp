@@ -16,6 +16,7 @@ void FAsyncOctreeBuilderTask::Init(
 	float InVoxelSize,
 	uint8 InLODLimit,
 	uint8 InLODLowerLimit,
+	uint8 InChunkCullingLOD,
 	int InMaxOctreeLeaves)
 {
 	check(!bIsActive);
@@ -26,6 +27,7 @@ void FAsyncOctreeBuilderTask::Init(
 	VoxelSize = InVoxelSize;
 	LODLimit = InLODLimit;
 	LODLowerLimit = InLODLowerLimit;
+	ChunkCullingLOD = InChunkCullingLOD;
 	MaxOctreeLeaves = InMaxOctreeLeaves;
 
 	bIsActive = true;
@@ -94,7 +96,7 @@ void FAsyncOctreeBuilderTask::DoWork()
 		}
 		SquaredDistances[Index] = FMath::Square<uint64>(FMath::CeilToInt(LODToMinDistance[CurrentLOD] / VoxelSize));
 	}
-	FVoxelChunkOctreeSettings Settings(LODLimit, LODLowerLimit, MaxOctreeLeaves, WorldBounds, CameraPositions, SquaredDistances);
+	FVoxelChunkOctreeSettings Settings(LODLimit, LODLowerLimit, ChunkCullingLOD, MaxOctreeLeaves, WorldBounds, CameraPositions, SquaredDistances);
 
 	NewOctree = MakeShared<FVoxelChunkOctree>(Settings, LOD);
 	OldOctree = Octree;
@@ -325,15 +327,18 @@ void FVoxelChunkOctree::Init()
 
 	if (IsLeaf())
 	{
-		for (auto& Direction : { XMin, XMax, YMin, YMax, ZMin, ZMax })
+		if (LOD < Settings.ChunkCullingLOD) // Else we're going to create chunks that won't be rendered anyway
 		{
-			FVoxelChunkOctree* AdjacentChunk = GetAdjacentChunk(Direction);
-			while (AdjacentChunk && AdjacentChunk->LOD > LOD + 1 && AdjacentChunk->GetBounds().Intersect(Settings.WorldBounds))
+			for (auto& Direction : { XMin, XMax, YMin, YMax, ZMin, ZMax })
 			{
-				Settings.NumberOfLeaves += 3; // 4 new childs, 1 less leaf
-				AdjacentChunk->CreateChildren();
-				AdjacentChunk = GetAdjacentChunk(Direction);
-				Root->bContinueInit = true;
+				FVoxelChunkOctree* AdjacentChunk = GetAdjacentChunk(Direction);
+				while (AdjacentChunk && AdjacentChunk->LOD > LOD + 1 && AdjacentChunk->GetBounds().Intersect(Settings.WorldBounds))
+				{
+					Settings.NumberOfLeaves += 3; // 4 new childs, 1 less leaf
+					AdjacentChunk->CreateChildren();
+					AdjacentChunk = GetAdjacentChunk(Direction);
+					Root->bContinueInit = true;
+				}
 			}
 		}
 	}

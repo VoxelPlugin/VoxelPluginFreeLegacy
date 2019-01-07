@@ -14,6 +14,8 @@ DECLARE_CYCLE_STAT(TEXT("FVoxelData::LoadFromDiffQueues::BeginSet"), STAT_VoxelD
 
 void FVoxelData::BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FString Name)
 {
+	MainLock.lock_shared();
+
 	OutOctrees.Empty();
 
 	Octree->LockTransactions();
@@ -24,6 +26,8 @@ void FVoxelData::BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FStr
 
 bool FVoxelData::TryBeginSet(const FIntBox& Box, int MicroSeconds, TArray<FVoxelId>& OutOctrees, FString& InOutName)
 {
+	MainLock.lock_shared();
+
 	OutOctrees.Empty();
 
 	Octree->LockTransactions();
@@ -44,10 +48,14 @@ void FVoxelData::EndSet(TArray<FVoxelId>& LockedOctrees)
 {
 	Octree->EndSet(LockedOctrees);
 	check(LockedOctrees.Num() == 0);
+
+	MainLock.unlock_shared();
 }
 
 void FVoxelData::BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FString Name)
 {
+	MainLock.lock_shared();
+
 	OutOctrees.Empty();
 
 	Octree->LockTransactions();
@@ -58,6 +66,8 @@ void FVoxelData::BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FStr
 
 bool FVoxelData::TryBeginGet(const FIntBox& Box, int MicroSeconds, TArray<FVoxelId>& OutOctrees, FString& InOutName)
 {
+	MainLock.lock_shared();
+
 	OutOctrees.Empty();
 
 	Octree->LockTransactions();
@@ -78,6 +88,8 @@ void FVoxelData::EndGet(TArray<FVoxelId>& LockedOctrees)
 {
 	Octree->EndGet(LockedOctrees);
 	check(LockedOctrees.Num() == 0);
+	
+	MainLock.unlock_shared();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,6 +125,8 @@ void FVoxelData::CacheMostUsedChunks(
 	uint32& NumRemovedFromCache,
 	uint32& TotalNumCachedChunks)
 {
+	FScopeLock CacheLock(&CacheTimeSection);
+
 	CacheTime++;
 	NumChunksSubdivided = 0;
 	NumChunksCached = 0;
@@ -168,6 +182,16 @@ void FVoxelData::CacheMostUsedChunks(
 			OctreeToSubdivide->CreateChildren();
 		}
 	}
+}
+
+void FVoxelData::Compact(uint32& NumDeleted)
+{
+	MainLock.lock();
+
+	NumDeleted = 0;
+	Octree->Compact(NumDeleted);
+
+	MainLock.unlock();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

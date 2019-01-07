@@ -43,9 +43,17 @@ public:
 	FIntVector const ChunkPosition;
 	const EVoxelMaterialConfig MaterialConfig;
 	const EVoxelUVConfig UVConfig;
+	const bool bCacheLOD0Chunks;
 	const FVoxelMeshProcessingParameters MeshParameters;
 
-	FVoxelCubicPolygonizer(int LOD, FVoxelData* Data, const FIntVector& ChunkPosition, EVoxelMaterialConfig MaterialConfig, EVoxelUVConfig UVConfig, FVoxelMeshProcessingParameters MeshParameters);
+	FVoxelCubicPolygonizer(
+		int LOD, 
+		FVoxelData* Data, 
+		const FIntVector& ChunkPosition, 
+		EVoxelMaterialConfig MaterialConfig, 
+		EVoxelUVConfig UVConfig,
+		bool bCacheLOD0Chunks,
+		FVoxelMeshProcessingParameters MeshParameters);
 
 	bool CreateSection(FVoxelChunk& OutChunk, FVoxelStatsElement& Stats);
 	

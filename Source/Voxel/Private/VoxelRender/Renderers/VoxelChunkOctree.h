@@ -18,6 +18,7 @@ struct FVoxelChunkOctreeSettings
 {
 	const uint8 LODLimit;
 	const uint8 LODLowerLimit;
+	const uint8 ChunkCullingLOD;
 	const int MaxOctreeLeaves;
 	const FIntBox WorldBounds;
 	const TArray<FIntVector> CameraPositions;
@@ -31,12 +32,14 @@ struct FVoxelChunkOctreeSettings
 	FVoxelChunkOctreeSettings(
 		uint8 LODLimit,
 		uint8 LODLowerLimit,
+		uint8 ChunkCullingLOD,
 		int MaxOctreeLeaves,
 		const FIntBox& WorldBounds,
 		const TArray<FIntVector>& CameraPositions,
 		const TArray<uint64>& SquaredDistances)
 		: LODLimit(LODLimit)
 		, LODLowerLimit(LODLowerLimit)
+		, ChunkCullingLOD(ChunkCullingLOD)
 		, MaxOctreeLeaves(MaxOctreeLeaves)
 		, WorldBounds(WorldBounds)
 		, CameraPositions(CameraPositions)
@@ -66,6 +69,7 @@ public:
 		float VoxelSize,
 		uint8 LODLimit,
 		uint8 LODLowerLimit,
+		uint8 ChunkCullingLOD,
 		int MaxOctreeLeaves);
 	void Reset();
 	inline bool IsActive() const { return bIsActive; }
@@ -99,6 +103,7 @@ private:
 	float VoxelSize = 0;
 	uint8 LODLimit = 0;
 	uint8 LODLowerLimit = 0;
+	uint8 ChunkCullingLOD = 0;
 	int MaxOctreeLeaves = 0;
 
 	bool bIsActive = false;

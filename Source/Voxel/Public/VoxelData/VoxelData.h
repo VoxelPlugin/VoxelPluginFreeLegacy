@@ -289,6 +289,9 @@ public:
 		uint32& NumRemovedFromCache,
 		uint32& TotalNumCachedChunks);
 
+	void Cache(const FIntBox& Bounds, bool bIsManualCache) { Octree->Cache(Bounds, bIsManualCache); }
+	void Compact(uint32& NumDeleted);
+
 public:
 	inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int QueryLOD) const
 	{
@@ -473,6 +476,8 @@ private:
 	int MaxHistoryPosition;
 	TArray<TUniquePtr<FVoxelPlaceableItem>> Items;
 	uint32 CacheTime = 0;
+	FCriticalSection CacheTimeSection;
+	std::shared_timed_mutex MainLock;
 };
 
 using FVoxelScopeSetLock = FVoxelData::FVoxelScopeSetLock;

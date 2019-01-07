@@ -8,7 +8,15 @@ void FVoxelMCPolygonizerAsyncWork::DoWork()
 	Stats.SetType(EVoxelStatsType::NormalMarchingCubes);
 
 	Stats.StartStat("Polygonizer Creation");
-	TSharedPtr<FVoxelMCPolygonizer> Builder = MakeShareable(new FVoxelMCPolygonizer(LOD, &Data.Get(), ChunkPosition, NormalConfig, MaterialConfig, UVConfig, MeshParameters));
+	TSharedPtr<FVoxelMCPolygonizer> Builder = MakeShareable(new FVoxelMCPolygonizer(
+		LOD, 
+		&Data.Get(), 
+		ChunkPosition, 
+		NormalConfig, 
+		MaterialConfig, 
+		UVConfig,
+		bCacheLOD0Chunks,
+		MeshParameters));
 
 	if (!Builder->CreateChunk(*Chunk, Stats))
 	{

@@ -367,6 +367,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
 	float GetLODUpdateRate() const;
 	
+
+	// CANNOT be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	void SetDataOctreeCompactDelayInSeconds(float NewDataOctreeCompactDelayInSeconds);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	float GetDataOctreeCompactDelayInSeconds() const;
 	
 	// CAN be called when created
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
@@ -385,6 +391,12 @@ public:
 	void SetCacheAccessThreshold(int NewCacheAccessThreshold);
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
 	int GetCacheAccessThreshold() const;
+
+	// CAN be called when created
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	void SetCacheLOD0Chunks(bool bNewCacheLOD0Chunks);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
+	bool GetCacheLOD0Chunks() const;
 
 	// CAN be called when created
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Performance")
@@ -782,6 +794,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (ClampMin = 0.000001), DisplayName = "LOD Update Rate")
 	float LODUpdateRate = 15;
 
+
+	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (ClampMin = 0))
+	float DataOctreeCompactDelayInSeconds = 30;
 	
 	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (EditWhenCreated))
 	bool bEnableAutomaticCache = true;
@@ -790,10 +805,16 @@ protected:
 	float CacheUpdateDelayInSeconds = 1;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (EditWhenCreated, EditCondition = bEnableAutomaticCache, ClampMin = 0))
-	int CacheAccessThreshold = 3;
+	int CacheAccessThreshold = 8;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (EditWhenCreated, EditCondition = bEnableAutomaticCache))
+	bool bCacheLOD0Chunks = true;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel|Performance", meta = (EditWhenCreated, EditCondition = bEnableAutomaticCache, ClampMin = 0))
-	int MaxCacheSize = 1000;
+	int MaxCacheSize = 10000;
+
+	UPROPERTY(VisibleAnywhere, Category = "Voxel|Performance", meta = (EditCondition = bEnableAutomaticCache))
+	int MaxCacheSizeInMB = 0;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel|Performance")
 	bool bDontUseGlobalPool = true;
@@ -878,6 +899,7 @@ private:
 	bool bIsOwningData = false;
 
 	FVoxelTimer CacheDebugTimer;
+	FVoxelTimer DataOctreeCompactTimer;
 	FVoxelTimer AutomaticCacheTimer;
 
 	TArray<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers;
