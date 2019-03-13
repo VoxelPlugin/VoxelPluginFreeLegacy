@@ -9,6 +9,8 @@ Join the discord for all the latest news! https://discord.gg/58ZqEbg
 
 You can get a binary build here: https://gumroad.com/voxelplugin
 
+To report an issue: https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
+
 ## Installation
 * In your game’s root directory, create a folder named Plugins
 * Copy the Voxel folder into it. You should have something like
