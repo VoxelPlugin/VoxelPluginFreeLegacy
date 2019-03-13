@@ -13,7 +13,7 @@
 #include "Modules/ModuleManager.h"
 #include "VoxelWorldGeneratorPicker.h"
 
-#define LOCTEXT_NAMESPACE "VoxelWorldGeneratorPickerCustomization"
+#define LOCTEXT_NAMESPACE "Voxel"
 
 void FVoxelWorldGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> InPropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {

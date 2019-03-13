@@ -1,11 +1,10 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelWorldGeneratorPicker.h"
-#include "VoxelLogStatDefinitions.h"
 #include "VoxelWorldGenerators/EmptyWorldGenerator.h"
 #include "Logging/MessageLog.h"
 
-#define LOCTEXT_NAMESPACE "VoxelWorldGeneratorPicker"
+#define LOCTEXT_NAMESPACE "Voxel"
 
 FVoxelWorldGeneratorPicker::FVoxelWorldGeneratorPicker()
 	: Type(EVoxelWorldGeneratorPickerType::Object)

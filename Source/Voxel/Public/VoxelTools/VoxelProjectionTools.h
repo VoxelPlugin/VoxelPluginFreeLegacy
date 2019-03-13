@@ -3,10 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelMaterial.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Engine/LatentActionManager.h"
 #include "LatentActions.h"
-#include "VoxelPaintMaterial.h"
+#include "WorldCollision.h"
+
+#include "VoxelMaterial.h"
+#include "VoxelTools/VoxelPaintMaterial.h"
 #include "VoxelWorld.h"
 #include "VoxelProjectionTools.generated.h"
 
@@ -142,13 +145,7 @@ class VOXEL_API UVoxelProjectionTools : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 
 public:
-	UVoxelProjectionTools()
-	{
-		if (!TraceDelegate.IsBound())
-		{
-			TraceDelegate.BindStatic(&TraceDone);
-		}
-	}
+	UVoxelProjectionTools();
 	
 public:
 	/**
@@ -163,11 +160,11 @@ public:
 	 * @param	ToolHeight				
 	 * @param	EditDistance
 	 * @param	StepInVoxel				Step between traces
-	 * @param	TimeoutInMicroSeconds	Timeout on the lock query
+	 * @param	LockTimeoutInSeconds	Timeout on the lock query
 	 * @param	bShowRaycasts
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (Latent, LatentInfo="LatentInfo", ExpandEnumAsExecs = "Branches", WorldContext = "WorldContextObject", AdvancedDisplay = 11))
-	 static void SetValueProjectionAsync(
+	static void SetValueProjectionAsync(
 		UObject* WorldContextObject,
 		struct FLatentActionInfo LatentInfo,
 		EBlueprintSuccess& Branches,
@@ -183,7 +180,7 @@ public:
 		float ToolHeight = 200, 
 		float EditDistance = 400, 
 		float StepInVoxel = 0.5f, 
-		int TimeoutInMicroSeconds = 500,
+		float LockTimeoutInSeconds = 0.0001,
 		bool bShowRaycasts = false);
 	
 	/**
@@ -197,7 +194,7 @@ public:
 	 * @param	ToolHeight				
 	 * @param	EditDistance
 	 * @param	StepInVoxel				Step between traces
-	 * @param	TimeoutInMicroSeconds	Timeout on the lock query
+	 * @param	LockTimeoutInSeconds	Timeout on the lock query
 	 * @param	bShowRaycasts
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (Latent, LatentInfo="LatentInfo", ExpandEnumAsExecs = "Branches", WorldContext = "WorldContextObject", AdvancedDisplay = 11))
@@ -217,7 +214,7 @@ public:
 		float ToolHeight = 200,
 		float EditDistance = 400,
 		float StepInVoxel = 0.5f, 
-		int TimeoutInMicroSeconds = 500,
+		float LockTimeoutInSeconds = 0.0001,
 		bool bShowRaycasts = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (Latent, LatentInfo="LatentInfo", ExpandEnumAsExecs = "Branches", WorldContext = "WorldContextObject", AdvancedDisplay = 8))
@@ -248,7 +245,7 @@ public:
 	 * @param	ToolHeight				
 	 * @param	EditDistance
 	 * @param	StepInVoxel				Step between traces
-	 * @param	TimeoutInMicroSeconds	Timeout on the lock query
+	 * @param	LockTimeoutInSeconds	Timeout on the lock query
 	 * @param	bShowRaycasts
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (ExpandEnumAsExecs = "Branches", AdvancedDisplay = 9, DisplayName = "Set Value Projection"))
@@ -266,7 +263,7 @@ public:
 		float ToolHeight = 200, 
 		float EditDistance = 400, 
 		float StepInVoxel = 0.5f, 
-		int TimeoutInMicroSeconds = 500,
+		float LockTimeoutInSeconds = 0.0001,
 		bool bShowRaycasts = false);
 	
 	/**
@@ -280,7 +277,7 @@ public:
 	 * @param	ToolHeight				
 	 * @param	EditDistance
 	 * @param	StepInVoxel				Step between traces
-	 * @param	TimeoutInMicroSeconds	Timeout on the lock query
+	 * @param	LockTimeoutInSeconds	Timeout on the lock query
 	 * @param	bShowRaycasts
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (ExpandEnumAsExecs = "Branches", AdvancedDisplay = 9, DisplayName = "Set Material Projection"))
@@ -298,7 +295,7 @@ public:
 		float ToolHeight = 200,
 		float EditDistance = 400,
 		float StepInVoxel = 0.5f, 
-		int TimeoutInMicroSeconds = 500,
+		float LockTimeoutInSeconds = 0.0001,
 		bool bShowRaycasts = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (ExpandEnumAsExecs = "Branches", AdvancedDisplay = 6))

@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Modules/ModuleInterface.h"
-#include "Toolkits/AssetEditorToolkit.h"
 
 class FVoxelEditorDefaultModule : public IModuleInterface
 {

@@ -1,7 +1,6 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelRender/Polygonizers/VoxelMCPolygonizer.h"
-#include "VoxelLogStatDefinitions.h"
 #include "Transvoxel.h"
 #include "VoxelDebug/VoxelStats.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
@@ -24,8 +23,8 @@ inline FVector GetNormalImpl(T* Data, int QueryLOD, const FVector& LocalPosition
 	FIntVector A, B;
 	GetClosestPoints(LocalPosition, A, B);
 
-	FVector NormalA = FVoxelData::GetGradient(*Data, A + Offset, QueryLOD);
-	FVector NormalB = FVoxelData::GetGradient(*Data, B + Offset, QueryLOD);
+	FVector NormalA = FVoxelDataUtilities::GetGradient(*Data, A + Offset, QueryLOD);
+	FVector NormalB = FVoxelDataUtilities::GetGradient(*Data, B + Offset, QueryLOD);
 
 	float Alpha = (LocalPosition - (FVector)A).GetAbsMax();
 	return FMath::Lerp(NormalA, NormalB, Alpha).GetSafeNormal();
@@ -48,76 +47,38 @@ inline FVector2D GetUVs(EVoxelUVConfig UVConfig, FVoxelData* Data, const FIntVec
 	{
 		return FVector2D::ZeroVector;
 	}
+	else if (UVConfig == EVoxelUVConfig::UseRGAsUVs)
+	{
+		return FVector2D(Material.GetR(), Material.GetG());
+	}
 	else
 	{
-		check(UVConfig == EVoxelUVConfig::UseRGAsUVs);
-		return FVector2D(Material.GetR(), Material.GetG());
+		check(UVConfig == EVoxelUVConfig::UseGrassAndActorIdsAsUVs);
+		return FVector2D(Material.GetVoxelGrassId(), Material.GetVoxelActorId());
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelMCPolygonizer::FVoxelMCPolygonizer(
-	int LOD,
-	FVoxelData* Data,
-	const FIntVector& ChunkPosition,
-	EVoxelNormalConfig NormalConfig,
-	EVoxelMaterialConfig MaterialConfig,
-	EVoxelUVConfig UVConfig,
-	bool bCacheLOD0Chunks,
-	FVoxelMeshProcessingParameters MeshParameters)
-	: LOD(LOD)
-	, Step(1 << LOD)
-	, Size(CHUNK_SIZE << LOD)
-	, Data(Data)
-	, ChunkPosition(ChunkPosition)
-	, NormalConfig(NormalConfig)
-	, MaterialConfig(MaterialConfig)
-	, UVConfig(UVConfig)
-	, bCacheLOD0Chunks(bCacheLOD0Chunks)
-	, MeshParameters(MeshParameters)
+static const FIntVector MCChunkDataSize = FIntVector(MC_EXTENDED_CHUNK_SIZE);
+
+FIntBox FVoxelMCPolygonizer::GetValuesBounds() const
 {
+	return FIntBox(ChunkPosition, ChunkPosition + MCChunkDataSize * Step);
 }
 
-bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement& Stats)
+FIntBox FVoxelMCPolygonizer::GetLockedBounds() const
 {
-	FIntVector ChunkDataSize(MC_EXTENDED_CHUNK_SIZE);
-	const FIntBox Bounds = FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition - FIntVector(Step) + ChunkDataSize * Step);
-	
-	if (bCacheLOD0Chunks && LOD == 0)
-	{
-		TArray<FVoxelId> Octrees;
+	return FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition + FIntVector(Step) + MCChunkDataSize * Step);
+}
 
-		Stats.StartStat("BeginSet");
-		Data->BeginSet(Bounds, Octrees, FString::Printf(TEXT("MarchingCubesPolygonizer LOD=%d Cache"), LOD));
-		
-		Stats.StartStat("Cache");
-		Data->Cache(Bounds, false);
-		
-		Stats.StartStat("EndSet");
-		Data->EndSet(Octrees);
-	}
-
-	TArray<FVoxelId> Octrees;
-	Stats.StartStat("BeginGet");
-	Data->BeginGet(Bounds, Octrees, FString::Printf(TEXT("MarchingCubesPolygonizer LOD=%d"), LOD));
-	
-	Stats.StartStat("IsEmpty");
-	bool bIsEmpty = Data->IsEmpty(Bounds, LOD);
-	Stats.SetValue("bIsEmpty", bIsEmpty ? "1" : "0");
-
-	if (bIsEmpty)
-	{
-		Stats.StartStat("EndGet");
-		Data->EndGet(Octrees);
-		return true;
-	}
-	
+bool FVoxelMCPolygonizer::CreateChunk()
+{
 	Stats.StartStat("GetValuesAndMaterials");
-	Data->GetValuesAndMaterials(CachedValues, nullptr, FVoxelWorldGeneratorQueryZone(Bounds, ChunkDataSize, LOD), LOD);
+	Data->GetValuesAndMaterials(CachedValues, nullptr, FVoxelWorldGeneratorQueryZone(GetValuesBounds(), MCChunkDataSize, LOD), LOD);
 
 	Stats.StartStat("GetMap");
-	MapAccelerator = MakeUnique<FVoxelData::MapAccelerator>(Bounds, Data);
+	MapAccelerator = MakeUnique<FVoxelDataUtilities::MapAccelerator>(GetLockedBounds(), Data);
 
 	Stats.StartStat("Iteration");
 	
@@ -127,23 +88,10 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 	uint32 Index = 0;
 	for (int LZ = 0; LZ < CHUNK_SIZE; LZ++)
 	{
-		if (LZ == 0)
-		{
-			Index += 1 * MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE;
-		}
 		for (int LY = 0; LY < CHUNK_SIZE; LY++)
 		{
-			if (LY == 0)
-			{
-				Index += 1 * MC_EXTENDED_CHUNK_SIZE;
-			}
 			for (int LX = 0; LX < CHUNK_SIZE; LX++)
 			{
-				if (LX == 0)
-				{
-					Index += 1;
-				}
-
 				{
 					GetCurrentCache()[GetCacheIndex(0, LX, LY)] = -1; // Set EdgeIndex 0 to -1 if the cell isn't voxelized, eg all corners = 0
 
@@ -188,7 +136,7 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 						Transvoxel::RegularCellData CellData = Transvoxel::regularCellData[CellClass];
 
 						// Indices of the vertices used in this cube
-						TArray<int> VertexIndices;
+						TArray<int, TFixedAllocator<16>> VertexIndices;
 						VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
 
 						for (int I = 0; I < CellData.GetVertexCount(); I++)
@@ -427,33 +375,31 @@ bool FVoxelMCPolygonizer::CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement&
 
 				if (LX == CHUNK_SIZE - 1)
 				{
-					Index += 2;
+					Index += 1;
 				}
 			}
 			if (LY == CHUNK_SIZE - 1)
 			{
-				Index += 2 * MC_EXTENDED_CHUNK_SIZE;
+				Index += MC_EXTENDED_CHUNK_SIZE;
 			}
 		}
 		if (LZ == CHUNK_SIZE - 1)
 		{
-			Index += 2 * MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE;
+			Index += MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE;
 		}
 		bCurrentCacheIs0 = !bCurrentCacheIs0;
 	}
 
-	Stats.StartStat("EndGet");
-	Data->EndGet(Octrees);
-
-	Stats.SetValue("Num Vertices", FString::FromInt(Vertices.Num()));
+	Stats.StartStat("UnlockRead");
+	Data->Unlock<EVoxelLockType::Read>(Octrees);
 
 	Stats.StartStat("ConvertArrays");
-	FVoxelRenderUtilities::ConvertArraysToMap(LOD, MaterialConfig, MeshParameters, MoveTemp(Indices), MoveTemp(Vertices), OutChunk, Stats);
+	FVoxelRenderUtilities::ConvertArrays(LOD, MaterialConfig, MeshParameters, MoveTemp(Indices), MoveTemp(Vertices), Chunk, Stats);
 
 	return true;
 
 generatorerror: 
-	Data->EndGet(Octrees);
+	Data->Unlock<EVoxelLockType::Read>(Octrees);
 	return false;
 }
 
@@ -462,57 +408,19 @@ FVector FVoxelMCPolygonizer::GetNormal(const FVector& Position) const
 	return GetNormalImpl(MapAccelerator.Get(), LOD, Position, ChunkPosition);
 }
 
-FVoxelValue FVoxelMCPolygonizer::GetValue(int X, int Y, int Z, int QueryLOD) const
-{
-	checkVoxelSlow(LOD == 0);
-	checkVoxelSlow(-1 <= X && X < CHUNK_SIZE + 2 && -1 <= Y && Y < CHUNK_SIZE + 2 && -1 <= Z && Z < CHUNK_SIZE + 2);
-
-	return CachedValues[(X + 1) + MC_EXTENDED_CHUNK_SIZE * (Y + 1) + MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE * (Z + 1)];
-}
-
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelMCTransitionsPolygonizer::FVoxelMCTransitionsPolygonizer(
-	int LOD, 
-	FVoxelData* Data,
-	const FIntVector& ChunkPosition,
-	uint8 TransitionsMask, 
-	EVoxelNormalConfig NormalConfig,
-	EVoxelMaterialConfig MaterialConfig,
-	EVoxelUVConfig UVConfig, 
-	FVoxelMeshProcessingParameters MeshParameters)
-	: LOD(LOD)
-	, HalfLOD(LOD - 1)
-	, Step(1 << LOD)
-	, HalfStep(Step / 2)
-	, Size(CHUNK_SIZE << LOD)
-	, Data(Data)
-	, ChunkPosition(ChunkPosition)
-	, TransitionsMask(TransitionsMask)
-	, NormalConfig(NormalConfig)
-	, MaterialConfig(MaterialConfig)
-	, UVConfig(UVConfig)
-	, MeshParameters(MeshParameters)
+FIntBox FVoxelMCTransitionsPolygonizer::GetBounds() const
 {
-
+	return FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition + FIntVector(Step) + MCChunkDataSize * Step);
 }
 
-bool FVoxelMCTransitionsPolygonizer::CreateTransitions(FVoxelChunk& OutChunk, FVoxelStatsElement& Stats)
+bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 {
-	if (!TransitionsMask)
-	{
-		return true;
-	}
-
-	FIntVector ChunkDataSize(MC_EXTENDED_CHUNK_SIZE);
-	const FIntBox Bounds = FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition - FIntVector(Step) + ChunkDataSize * Step);
-
-	TArray<FVoxelId> Octrees;
-	Stats.StartStat("BeginGet");
-	Data->BeginGet(Bounds, Octrees, FString::Printf(TEXT("MarchingCubesTransitionsPolygonizer LOD=%d"), LOD));
-
 	Stats.StartStat("GetMap");
-	MapAccelerator = MakeUnique<FVoxelData::MapAccelerator>(Bounds, Data);
+	MapAccelerator = MakeUnique<FVoxelDataUtilities::MapAccelerator>(GetBounds(), Data);
 
 	Stats.StartStat("Iteration");
 
@@ -810,18 +718,16 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions(FVoxelChunk& OutChunk, FV
 		}
 	}
 
-	Stats.StartStat("EndGet");
-	Data->EndGet(Octrees);
+	Stats.StartStat("UnlockRead");
+	Data->Unlock<EVoxelLockType::Read>(Octrees);
 	
-	Stats.SetValue("Num Vertices", FString::FromInt(Vertices.Num()));
-
 	Stats.StartStat("ConvertArrays");
-	FVoxelRenderUtilities::ConvertArraysToMap(LOD, MaterialConfig, MeshParameters, MoveTemp(Indices), MoveTemp(Vertices), OutChunk, Stats);
+	FVoxelRenderUtilities::ConvertArrays(LOD, MaterialConfig, MeshParameters, MoveTemp(Indices), MoveTemp(Vertices), Chunk, Stats);
 
 	return true;
 	
 generatorerror: 
-	Data->EndGet(Octrees);
+	Data->Unlock<EVoxelLockType::Read>(Octrees);
 	return false;
 }
 

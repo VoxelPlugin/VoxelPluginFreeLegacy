@@ -1,14 +1,48 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelData/VoxelDataOctree.h"
-#include "VoxelWorldGenerator.h"
-#include "VoxelUtilities.h"
 #include "Misc/ScopeLock.h"
-#include "VoxelData/VoxelData.h"
-#include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 #include "HAL/Platform.h"
 
-void FVoxelDataOctree::Cache(const FIntBox& Bounds, bool bIsManualCache)
+#include "VoxelWorldGenerator.h"
+#include "VoxelUtilities.h"
+#include "VoxelData/VoxelData.h"
+#include "VoxelData/VoxelSaveUtilities.h"
+#include "VoxelPlaceableItems/VoxelPlaceableItem.h"
+
+bool FVoxelDataOctree::AreBoundsCached(const FIntBox& Bounds)
+{
+	if (!OctreeBounds.Intersect(Bounds))
+	{
+		return true;
+	}
+
+	if (IsLeaf())
+	{
+		ensureThreadSafe(IsLockedForRead());
+		if (LOD == 0)
+		{
+			return IsCached();
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
+	{
+		for (auto& Child : GetChildren())
+		{
+			if (!Child.AreBoundsCached(Bounds))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
+void FVoxelDataOctree::CacheBounds(const FIntBox& Bounds, bool bIsManualCache, bool bCacheValues, bool bCacheMaterials)
 {
 	if (!Bounds.Intersect(OctreeBounds))
 	{
@@ -17,11 +51,8 @@ void FVoxelDataOctree::Cache(const FIntBox& Bounds, bool bIsManualCache)
 
 	if (LOD == 0)
 	{
-		if (!IsCreated())
-		{
-			bIsManuallyCached = bIsManualCache;
-			Create(true);
-		}
+		ensureThreadSafe(IsLockedForWrite());
+		Cache(bIsManualCache, bCacheValues, bCacheMaterials);
 	}
 	else
 	{
@@ -31,70 +62,26 @@ void FVoxelDataOctree::Cache(const FIntBox& Bounds, bool bIsManualCache)
 		}
 		for (auto& Child : GetChildren())
 		{
-			Child->Cache(Bounds, bIsManualCache);
+			Child.CacheBounds(Bounds, bIsManualCache, bCacheValues, bCacheMaterials);
 		}
 	}
 }
 
-void FVoxelDataOctree::Cache(bool bIsManualCache, bool bCheckIfEmpty)
+void FVoxelDataOctree::Cache(bool bIsManualCache, bool bCacheValues, bool bCacheMaterials)
 {
+	ensureThreadSafe(IsLockedForWrite());
 	check(LOD == 0);
-
-	if (IsCreated() || (bCheckIfEmpty && IsEmpty()))
+	bIsManuallyCached = IsCreated() ? bIsManualCache || bIsManuallyCached : bIsManualCache; // Manual cache after auto: manual; auto after manual: manual
+	if (!IsCreated())
 	{
-		return; // Already cached
+		Create();
 	}
-	
-	bIsManuallyCached = bIsManualCache;
-
-	if (!ItemHolder->IsEmpty() || !bCheckIfEmpty)
-	{
-		// No need to check if it's empty
-		Create(true);
-		return;
-	}
-	else
-	{
-		auto WorldGeneratorState = WorldGenerator->IsEmpty(GetBounds(), 0);
-		if (WorldGeneratorState != EVoxelEmptyState::Unknown)
-		{
-			EmptyState = WorldGeneratorState;
-			return;
-		}
-
-		TUniquePtr<FVoxelDataCell> TmpCell = MakeUnique<FVoxelDataCell>();
-
-		auto* Values = TmpCell->GetArray<FVoxelValue>();
-		auto* Materials = TmpCell->GetArray<FVoxelMaterial>();
-		WorldGenerator->GetValuesAndMaterials(Values, Materials, FVoxelWorldGeneratorQueryZone(OctreeBounds, FIntVector(VOXEL_CELL_SIZE), 0), 0, *ItemHolder);
-
-		bool bAllSame = true;
-		bool bAreEmpty = Values[0].IsEmpty();
-		for (int Index = 1; Index < VOXEL_CELL_COUNT; Index++)
-		{
-			if (bAreEmpty != Values[Index].IsEmpty())
-			{
-				bAllSame = false;
-				break;
-			}
-		}
-
-		if (bAllSame)
-		{
-			// Don't create & save that info in bIsEmpty
-			EmptyState = bAreEmpty ? EVoxelEmptyState::AllEmpty : EVoxelEmptyState::AllFull;
-		}
-		else
-		{
-			// Create
-			Create(false);
-			Cell = MoveTemp(TmpCell);
-		}
-	}
+	CreateArrayAndInitFromWorldGenerator(bCacheValues && !Cell->GetArray<FVoxelValue>(), bCacheMaterials && !Cell->GetArray<FVoxelMaterial>());
 }
 
 void FVoxelDataOctree::ClearCache()
 {
+	ensureThreadSafe(IsLockedForWrite());
 	check(LOD == 0);
 	check(!IsManuallyCached());
 
@@ -106,6 +93,7 @@ void FVoxelDataOctree::ClearCache()
 
 void FVoxelDataOctree::ClearManualCache()
 {
+	ensureThreadSafe(IsLockedForWrite());
 	check(IsManuallyCached());
 	bIsManuallyCached = false;
 }
@@ -118,12 +106,13 @@ void FVoxelDataOctree::GetOctreesToCacheAndExistingCachedOctrees(
 {
 	if (NumberOfWorldGeneratorReadsSinceLastCache > 0)
 	{
-		check(LastAccessTime <= Time);
+		ensure(LastAccessTime <= Time);
 		LastAccessTime = Time;
 	}
 
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForRead());
 		if (LOD == 0 && IsCached())
 		{
 			if (!IsManuallyCached())
@@ -150,7 +139,7 @@ void FVoxelDataOctree::GetOctreesToCacheAndExistingCachedOctrees(
 	{
 		for (auto& Child : GetChildren())
 		{
-			Child->GetOctreesToCacheAndExistingCachedOctrees(Time, Threshold, OutOctreesToCacheAndCachedOctrees, OutOctreesToSubdivide);
+			Child.GetOctreesToCacheAndExistingCachedOctrees(Time, Threshold, OutOctreesToCacheAndCachedOctrees, OutOctreesToSubdivide);
 		}
 	}
 
@@ -167,16 +156,17 @@ void FVoxelDataOctree::GetMap(const FIntBox& Bounds, FVoxelMap& OutMap) const
 	{
 		if (IsLeaf())
 		{
+			ensureThreadSafe(IsLockedForRead());
 			if (LOD == 0 && IsCreated())
 			{
-				OutMap.Add(GetBounds().Min / VOXEL_CELL_SIZE, Cell.Get());
+				OutMap.Add(GetBounds().Min / VOXEL_CELL_SIZE, this);
 			}
 		}
 		else
 		{
 			for (auto& Child : GetChildren())
 			{
-				Child->GetMap(Bounds, OutMap);
+				Child.GetMap(Bounds, OutMap);
 			}
 		}
 	}
@@ -188,12 +178,11 @@ void FVoxelDataOctree::GetMap(const FIntBox& Bounds, FVoxelMap& OutMap) const
 
 EVoxelEmptyState FVoxelDataOctree::IsEmpty(const FIntBox& Bounds, int InLOD) const
 {
-	const int Step = 1 << InLOD;
-
-	check(Bounds.IsMultipleOf(Step));
+	check(Bounds.IsMultipleOf(1 << InLOD));
 
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForRead());
 		check(ItemHolder);
 
 		if (LOD == 0)
@@ -201,10 +190,6 @@ EVoxelEmptyState FVoxelDataOctree::IsEmpty(const FIntBox& Bounds, int InLOD) con
 			if (IsCreated() && !IsCacheOnly())
 			{
 				return EVoxelEmptyState::Unknown;
-			}
-			if (ItemHolder->IsEmpty() && IsEmpty())
-			{
-				return EmptyState;
 			}
 		}
 		for (auto& Items : ItemHolder->GetAllItems())
@@ -217,16 +202,16 @@ EVoxelEmptyState FVoxelDataOctree::IsEmpty(const FIntBox& Bounds, int InLOD) con
 				}
 			}
 		}
-		return WorldGenerator->IsEmpty(Bounds, Step);
+		return WorldGenerator->IsEmpty(Bounds, InLOD);
 	}
 	else
 	{
 		EVoxelEmptyState TmpEmptyState = EVoxelEmptyState::Unknown;
 		for (auto& Child : GetChildren())
 		{
-			if (Child->GetBounds().Intersect(Bounds))
+			if (Child.GetBounds().Intersect(Bounds))
 			{
-				auto ChildEmptyState = Child->IsEmpty(Bounds, InLOD);
+				auto ChildEmptyState = Child.IsEmpty(Bounds, InLOD);
 				if (TmpEmptyState == EVoxelEmptyState::Unknown)
 				{
 					// First init
@@ -258,6 +243,8 @@ void FVoxelDataOctree::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMateria
 
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForRead());
+
 		if (QueryLOD <= MAX_LOD_USED_FOR_CACHE)
 		{
 			NumberOfWorldGeneratorReadsSinceLastCache++;
@@ -281,16 +268,21 @@ void FVoxelDataOctree::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMateria
 						int Index = QueryZone.GetIndex(X, Y, Z);
 						int CellIndex = IndexFromGlobalCoordinates(X, Y, Z);
 
-						if (Values)
+						if (Values && CellValues)
 						{
 							Values[Index] = CellValues[CellIndex];
 						}
-						if (Materials)
+						if (Materials && CellMaterials)
 						{
 							Materials[Index] = CellMaterials[CellIndex];
 						}
 					}
 				}
+			}
+
+			if ((!CellValues && Values) || (!CellMaterials && Materials))
+			{
+				WorldGenerator->GetValuesAndMaterials(CellValues ? nullptr : Values, CellMaterials ? nullptr : Materials, QueryZone, QueryLOD, *ItemHolder);
 			}
 		}
 	}
@@ -298,9 +290,9 @@ void FVoxelDataOctree::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMateria
 	{
 		for (auto& Child : GetChildren())
 		{
-			if (Child->OctreeBounds.Intersect(QueryZone.Bounds))
+			if (Child.OctreeBounds.Intersect(QueryZone.Bounds))
 			{
-				Child->GetValuesAndMaterials(Values, Materials, QueryZone, QueryLOD);
+				Child.GetValuesAndMaterials(Values, Materials, QueryZone, QueryLOD);
 			}
 		}
 	}
@@ -310,6 +302,7 @@ void FVoxelDataOctree::ClearData()
 {	
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForWrite());
 		check(ItemHolder);
 		ItemHolder = MakeUnique<FVoxelPlaceableItemHolder>();
 
@@ -323,7 +316,7 @@ void FVoxelDataOctree::ClearData()
 		check(!ItemHolder);
 		for (auto& Child : GetChildren())
 		{
-			Child->ClearData();
+			Child.ClearData();
 		}
 	}
 }
@@ -332,53 +325,89 @@ void FVoxelDataOctree::ClearData()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDataOctree::Save(FVoxelUncompressedWorldSave& Save)
+void FVoxelDataOctree::GetCreatedChunksOverlappingBox(const FIntBox& Box, TArray<FVoxelDataOctree*>& OutOctrees)
+{
+	if (GetBounds().Intersect(Box))
+	{
+		if (IsLeaf())
+		{
+			ensureThreadSafe(IsLockedForRead());
+			if (LOD == 0 && IsCreated())
+			{
+				OutOctrees.Add(this);
+			}
+		}
+		else
+		{
+			for (auto& Child : GetChildren())
+			{
+				Child.GetCreatedChunksOverlappingBox(Box, OutOctrees);
+			}
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelDataOctree::Save(FVoxelSaveBuilder& Builder)
 {
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForRead());
 		if (LOD == 0 && IsCreated())
 		{
-			Save.AddChunk(Position,
-				Cell->IsBufferDirty<FVoxelValue   >() ? &Cell->GetBuffer<FVoxelValue   >() : nullptr,
-				Cell->IsBufferDirty<FVoxelMaterial>() ? &Cell->GetBuffer<FVoxelMaterial>() : nullptr);
+			Builder.AddChunk(Position,
+				Cell->IsArrayDirty<FVoxelValue   >() ? Cell->GetArray<FVoxelValue   >() : nullptr,
+				Cell->IsArrayDirty<FVoxelMaterial>() ? Cell->GetArray<FVoxelMaterial>() : nullptr);
 		}
 	}
 	else
 	{
 		for (auto& Child : GetChildren())
 		{
-			Child->Save(Save);
+			Child.Save(Builder);
 		}
 	}
 }
 
-void FVoxelDataOctree::Load(int& Index, const FVoxelUncompressedWorldSave& Save, TArray<FIntBox>& OutBoundsToUpdate)
+void FVoxelDataOctree::Load(int& Index, const FVoxelSaveLoader& Loader, TArray<FIntBox>& OutBoundsToUpdate)
 {
-	if (Index == Save.NumChunks())
+	if (Index == Loader.NumChunks())
 	{
 		return;
 	}
 
-	FIntVector CurrentPosition = Save.GetChunkPosition(Index);
+	FIntVector CurrentPosition = Loader.GetChunkPosition(Index);
 	if (LOD == 0)
 	{
+		ensureThreadSafe(IsLockedForWrite());
 		if (CurrentPosition == Position)
 		{
 			if (!IsCreated())
 			{
-				Create(false);
+				Create();
 			}
 			
+			if (!Cell->GetArray<FVoxelValue>())
+			{
+				Cell->CreateArray<FVoxelValue>();
+			}
+			if (!Cell->GetArray<FVoxelMaterial>())
+			{
+				Cell->CreateArray<FVoxelMaterial>();
+			}
 			bool bValuesAreSet;
 			bool bMaterialsAreSet;
-			Save.CopyChunkToBuffers(Index, Cell->GetBuffer<FVoxelValue>(), Cell->GetBuffer<FVoxelMaterial>(), bValuesAreSet, bMaterialsAreSet);
+			Loader.CopyChunkToBuffers(Index, Cell->GetArray<FVoxelValue>(), Cell->GetArray<FVoxelMaterial>(), bValuesAreSet, bMaterialsAreSet);
 			if (bValuesAreSet)
 			{
-				Cell->SetBufferAsDirty<FVoxelValue>();
+				Cell->SetArrayAsDirty<FVoxelValue>();
 			}
 			if (bMaterialsAreSet)
 			{
-				Cell->SetBufferAsDirty<FVoxelMaterial>();
+				Cell->SetArrayAsDirty<FVoxelMaterial>();
 			}
 
 			if (!bValuesAreSet || !bMaterialsAreSet)
@@ -402,7 +431,7 @@ void FVoxelDataOctree::Load(int& Index, const FVoxelUncompressedWorldSave& Save,
 			}
 			for (auto& Child : GetChildren())
 			{
-				Child->Load(Index, Save, OutBoundsToUpdate);
+				Child.Load(Index, Loader, OutBoundsToUpdate);
 			}
 		}
 	}
@@ -412,197 +441,119 @@ void FVoxelDataOctree::Load(int& Index, const FVoxelUncompressedWorldSave& Save,
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-bool FVoxelDataOctree::BeginSet(const FIntBox& Box, TArray<FVoxelId>& Ids, int MicroSeconds, FString& InOutLockerName)
+template<EVoxelLockType LockType>
+bool FVoxelDataOctree::TryLock(const FIntBox& Bounds, double TimeToTimeout, FVoxelLockedOctrees& OutIds, FString& InOutLockerName)
 {
-	if (GetBounds().Intersect(Box))
+	if (!OctreeBounds.Intersect(Bounds))
 	{
-#if !PLATFORM_ANDROID
-		if (!MainLock.try_lock_for(std::chrono::microseconds(MicroSeconds)))
+		TransactionsSection.Unlock();
+		return true;
+	}
+	if (!Mutex.TryLockUntil<LockType>(TimeToTimeout))
+	{
+#if ENABLE_LOCKER_NAME
 		{
-			InOutLockerName = LockerName + "; Bounds: " + OctreeBounds.ToString();
-			TransactionLock.unlock();
-			return false;
-		}		
-#else
-        MainLock.lock();
+			FScopeLock Lock(&LockerNameSection);
+			InOutLockerName = LockerName.IsEmpty() ? "Timeout!" : (LockerName + "; Octree Bounds: " + OctreeBounds.ToString());
+		}
 #endif
-		MainLock.unlock();
+		TransactionsSection.Unlock();
+		return false;
+	}
 
-		if (IsLeaf())
+	if (IsLeaf())
+	{
+#if ENABLE_LOCKER_NAME
 		{
-			// Lock
-			MainLock.lock();
-			Ids.Add(Id);
-
-			LockerName = "SetLock: " + InOutLockerName;
-
-			// Unlock transactions
-			TransactionLock.unlock();
-			return true;
+			FScopeLock Lock(&LockerNameSection);
+			LockerName = InOutLockerName;
 		}
-		else
-		{
-			// First lock childs
-			for (auto& Child : GetChildren())
-			{
-				Child->LockTransactions();
-			}
-			// Then unlock this
-			TransactionLock.unlock();
-			
-			// Finally propagate to childs
-			for (int I = 0; I < 8; I++)
-			{
-				auto& Child = GetChildren()[I];
-
-				if (!Child->BeginSet(Box, Ids, MicroSeconds, InOutLockerName))
-				{
-					for (int J = I + 1; J < 8; J++)
-					{
-						GetChildren()[J]->TransactionLock.unlock();
-					}
-					return false;
-				}
-			}
-
-			return true;
-		}
+#endif
+		OutIds.Add(Id);
+		TransactionsSection.Unlock();
+		return true;
 	}
 	else
-	{		
-		TransactionLock.unlock();
+	{
+		Mutex.Unlock<LockType>();
+
+		for (auto& Child : GetChildren())
+		{
+			Child.LockTransactions();
+		}
+		TransactionsSection.Unlock();
+
+		for (int ChildIndex = 0; ChildIndex < 8 ; ChildIndex++)
+		{
+			if (!GetChild(ChildIndex).TryLock<LockType>(Bounds, TimeToTimeout, OutIds, InOutLockerName))
+			{
+				for (int Index = ChildIndex + 1; Index < 8 ; Index++)
+				{
+					GetChild(Index).TransactionsSection.Unlock();
+				}
+				return false;
+			}
+		}
 		return true;
 	}
 }
 
-void FVoxelDataOctree::EndSet(TArray<FVoxelId>& Ids)
+template<EVoxelLockType LockType>
+void FVoxelDataOctree::Unlock(FVoxelLockedOctrees& Ids)
 {
 	if (Ids.Num() > 0)
 	{
 		if (Ids.Last() == Id)
 		{
 			Ids.Pop(false);
-			MainLock.unlock();
-		}
-
-		if (Ids.Num() > 0)
-		{
-			if (IsIdChild(Ids.Last()))
+#if ENABLE_LOCKER_NAME
 			{
-				for (auto& Child : GetChildren())
-				{
-					Child->EndSet(Ids);
-				}
+				FScopeLock Lock(&LockerNameSection);
+				LockerName.Reset();
 			}
-		}
-	}
-}
-
-bool FVoxelDataOctree::BeginGet(const FIntBox& Box, TArray<FVoxelId>& Ids, int MicroSeconds, FString& InOutLockerName)
-{
-	if (GetBounds().Intersect(Box))
-	{
-#if !PLATFORM_ANDROID
-		if (!MainLock.try_lock_shared_for(std::chrono::microseconds(MicroSeconds)))
-		{
-			InOutLockerName = LockerName + "; Bounds: " + OctreeBounds.ToString();
-			TransactionLock.unlock();
-			return false;
-		}
-#else
-        MainLock.lock_shared();
 #endif
-		MainLock.unlock_shared();
-
-		if (IsLeaf())
-		{
-			// Lock
-			MainLock.lock_shared();
-			Ids.Add(Id);
-		
-			LockerName = "GetLock: " + InOutLockerName;
-
-			// Unlock transactions
-			TransactionLock.unlock();
-			return true;
+			Mutex.Unlock<LockType>();
 		}
-		else
+		else if (IsIdChild(Ids.Last()))
 		{
-			// First lock childs
-			for (auto& Child : GetChildren())
+			for (int Index = 8 - 1; Index >= 0; Index--)
 			{
-				Child->LockTransactions();
-			}
-			// Then unlock this
-			TransactionLock.unlock();
-
-			// Finally propagate to childs
-			for (int I = 0; I < 8; I++)
-			{
-				auto& Child = GetChildren()[I];
-
-				if (!Child->BeginGet(Box, Ids, MicroSeconds, InOutLockerName))
-				{
-					for (int J = I + 1; J < 8; J++)
-					{
-						GetChildren()[J]->TransactionLock.unlock();
-					}
-					return false;
-				}
-			}
-
-			return true;
-		}
-	}
-	else
-	{
-		TransactionLock.unlock();
-		return true;
-	}
-}
-
-void FVoxelDataOctree::EndGet(TArray<FVoxelId>& Ids)
-{
-	if (Ids.Num() > 0)
-	{
-		if (Ids.Last() == Id)
-		{
-			Ids.Pop(false);
-			MainLock.unlock_shared();
-		}
-
-		if (Ids.Num() > 0)
-		{
-			if (IsIdChild(Ids.Last()))
-			{
-				for (auto& Child : GetChildren())
-				{
-					Child->EndGet(Ids);
-				}
+				GetChild(Index).Unlock<LockType>(Ids);
 			}
 		}
 	}
 }
 
-void FVoxelDataOctree::LockTransactions()
-{
-	TransactionLock.lock();
-}
+template bool FVoxelDataOctree::TryLock<EVoxelLockType::Read>(const FIntBox&, double, FVoxelLockedOctrees&, FString&);
+template bool FVoxelDataOctree::TryLock<EVoxelLockType::ReadWrite>(const FIntBox&, double, FVoxelLockedOctrees&, FString&);
+
+template void FVoxelDataOctree::Unlock<EVoxelLockType::Read>(FVoxelLockedOctrees&);
+template void FVoxelDataOctree::Unlock<EVoxelLockType::ReadWrite>(FVoxelLockedOctrees&);
 
 void FVoxelDataOctree::CreateChildren()
 {
 	TVoxelOctree::CreateChildren();
-
-	const auto& AllItems = ItemHolder->GetAllItems();
+	
+#if DO_THREADSAFE_CHECKS
 	for (auto& Child : GetChildren())
 	{
-		for (uint32 ItemId = 0; ItemId < (uint32)AllItems.Num(); ItemId++)
+		Child.Parent = this;
+	}
+#endif
+
+	const auto& AllItems = ItemHolder->GetAllItems();
+	if (AllItems.Num() > 0)
+	{
+		for (auto& Child : GetChildren())
 		{
-			for (auto Item : AllItems[ItemId])
+			for (uint32 ItemId = 0; ItemId < (uint32)AllItems.Num(); ItemId++)
 			{
-				if (Item->Bounds.Intersect(Child->GetBounds()))
+				for (auto* Item : AllItems[ItemId])
 				{
-					Child->ItemHolder->AddItem(ItemId, Item);
+					if (Item->Bounds.Intersect(Child.GetBounds()))
+					{
+						Child.ItemHolder->AddItem(ItemId, Item);
+					}
 				}
 			}
 		}
@@ -627,7 +578,7 @@ bool FVoxelDataOctree::Compact(uint32& NumDeleted)
 		bool bCanCompact = true;
 		for (auto& Child : GetChildren())
 		{
-			bCanCompact = Child->Compact(NumDeleted) && bCanCompact; // bCanCompact in second so that child is always compacted
+			bCanCompact = Child.Compact(NumDeleted) && bCanCompact; // bCanCompact in second so that child is always compacted
 		}
 		if (bCanCompact)
 		{
@@ -642,8 +593,10 @@ bool FVoxelDataOctree::Compact(uint32& NumDeleted)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDataOctree::Create(bool bInitFromWorldGenerator)
+void FVoxelDataOctree::Create()
 {
+	ensureThreadSafe(IsLockedForWrite());
+
 	check(LOD == 0 && !IsCreated());
 
 	Cell = MakeUnique<FVoxelDataCell>();
@@ -651,20 +604,45 @@ void FVoxelDataOctree::Create(bool bInitFromWorldGenerator)
 	{
 		UndoRedoCell = MakeUnique<FVoxelDataCellUndoRedo>();
 	}
-
-	if (bInitFromWorldGenerator)
-	{
-		auto* Values = Cell->GetArray<FVoxelValue>();
-		auto* Materials = Cell->GetArray<FVoxelMaterial>();
-		WorldGenerator->GetValuesAndMaterials(Values, Materials, FVoxelWorldGeneratorQueryZone(OctreeBounds, FIntVector(VOXEL_CELL_SIZE), 0), 0, *ItemHolder);
-	}
 }
 
 void FVoxelDataOctree::Destroy()
 {
+	ensureThreadSafe(IsLockedForWrite());
+
 	check(LOD == 0 && IsCreated());
 	Cell.Reset();
 	UndoRedoCell.Reset();
+}
+
+void FVoxelDataOctree::CreateArrayAndInitFromWorldGenerator(bool bInitValues, bool bInitMaterials)
+{
+	ensureThreadSafe(IsLockedForWrite());
+	check(LOD == 0 && IsCreated());
+
+	if (bInitValues || bInitMaterials)
+	{
+		if (bInitValues)
+		{
+			Cell->CreateArray<FVoxelValue>();
+		}
+		if (bInitMaterials)
+		{
+			Cell->CreateArray<FVoxelMaterial>();
+		}
+		auto* Values = bInitValues ? Cell->GetArray<FVoxelValue>() : nullptr;
+		auto* Materials = bInitMaterials ? Cell->GetArray<FVoxelMaterial>() : nullptr;
+		auto QueryZone = FVoxelWorldGeneratorQueryZone(OctreeBounds, FIntVector(VOXEL_CELL_SIZE), 0);
+		if (WorldGenerator->HasCache2D())
+		{
+			float* Cache2DValues = Data->GetCache2DValues(FIntPoint(OctreeBounds.Min.X, OctreeBounds.Min.Y));
+			WorldGenerator->GetValuesAndMaterialsCache2D(Values, Materials, Cache2DValues, QueryZone, *ItemHolder);
+		}
+		else
+		{
+			WorldGenerator->GetValuesAndMaterials(Values, Materials, QueryZone, 0, *ItemHolder);
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -680,6 +658,7 @@ void FVoxelDataOctree::SaveFrame(int HistoryPosition)
 {	
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForWrite());
 		if (LOD == 0 && IsCreated())
 		{
 			UndoRedoCell->SaveFrame(HistoryPosition);
@@ -689,7 +668,7 @@ void FVoxelDataOctree::SaveFrame(int HistoryPosition)
 	{
 		for (auto& Child : GetChildren())
 		{
-			Child->SaveFrame(HistoryPosition);
+			Child.SaveFrame(HistoryPosition);
 		}
 	}
 }
@@ -698,6 +677,7 @@ void FVoxelDataOctree::Undo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpd
 {
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForWrite());
 		if (LOD == 0 && IsCreated())
 		{
 			if (UndoRedoCell->TryUndo(Cell.Get(), HistoryPosition))
@@ -710,7 +690,7 @@ void FVoxelDataOctree::Undo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpd
 	{
 		for (auto& Child : GetChildren())
 		{
-			Child->Undo(HistoryPosition, OutBoundsToUpdate);
+			Child.Undo(HistoryPosition, OutBoundsToUpdate);
 		}
 	}
 }
@@ -719,6 +699,7 @@ void FVoxelDataOctree::Redo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpd
 {	
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForWrite());
 		if (LOD == 0 && IsCreated())
 		{
 			if (UndoRedoCell->TryRedo(Cell.Get(), HistoryPosition))
@@ -731,7 +712,7 @@ void FVoxelDataOctree::Redo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpd
 	{
 		for (auto& Child : GetChildren())
 		{
-			Child->Redo(HistoryPosition, OutBoundsToUpdate);
+			Child.Redo(HistoryPosition, OutBoundsToUpdate);
 		}
 	}
 }
@@ -740,6 +721,7 @@ void FVoxelDataOctree::ClearFrames()
 {	
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForWrite());
 		if (LOD == 0 && IsCreated())
 		{
 			UndoRedoCell->ClearFrames();
@@ -749,15 +731,16 @@ void FVoxelDataOctree::ClearFrames()
 	{
 		for (auto& Child : GetChildren())
 		{
-			Child->ClearFrames();
+			Child.ClearFrames();
 		}
 	}
 }
 
-bool FVoxelDataOctree::CheckIfCurrentFrameIsEmpty() const
+bool FVoxelDataOctree::IsCurrentFrameEmpty() const
 {
 	if (IsLeaf())
 	{
+		ensureThreadSafe(IsLockedForRead());
 		if (LOD == 0 && IsCreated())
 		{
 			return UndoRedoCell->IsCurrentFrameEmpty();
@@ -766,11 +749,13 @@ bool FVoxelDataOctree::CheckIfCurrentFrameIsEmpty() const
 	}
 	else
 	{
-		bool bSuccess = true;
 		for (auto& Child : GetChildren())
 		{
-			bSuccess = bSuccess && Child->CheckIfCurrentFrameIsEmpty();
+			if (!Child.IsCurrentFrameEmpty())
+			{
+				return false;
+			}
 		}
-		return bSuccess;
+		return true;
 	}
 }

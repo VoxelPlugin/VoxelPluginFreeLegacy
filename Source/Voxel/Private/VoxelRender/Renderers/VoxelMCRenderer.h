@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelLODRenderer.h"
+#include "VoxelDefaultRenderer.h"
 #include "VoxelRenderChunk.h"
 
 class FVoxelMCRenderChunk : public FVoxelRenderChunk
@@ -11,14 +11,14 @@ class FVoxelMCRenderChunk : public FVoxelRenderChunk
 public:
 	using FVoxelRenderChunk::FVoxelRenderChunk;
 
-	TUniquePtr<FVoxelPolygonizerAsyncWork> GetNewTask(const FVoxelPreviousGrassInfo& InPreviousGrassInfo) const override;
-	TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> GetNewTransitionTask(uint8 InTransitionsMask) const override;
+	TUniquePtr<FVoxelPolygonizerAsyncWork> GetNewTask() override;
+	TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> GetNewTransitionTask() override;
 };
 
-class FVoxelMCRenderer : public FVoxelLODRenderer
+class FVoxelMCRenderer : public FVoxelDefaultRenderer
 {
 public:
-	using FVoxelLODRenderer::FVoxelLODRenderer;
+	using FVoxelDefaultRenderer::FVoxelDefaultRenderer;
 
-	virtual TSharedRef<FVoxelRenderChunk> GetRenderChunk(FVoxelLODRenderer* Render, uint8 LOD, const FIntBox& Bounds) override;
+	virtual TSharedRef<FVoxelRenderChunk, ESPMode::ThreadSafe> GetRenderChunk(uint8 LOD, const FIntBox& Bounds, const FVoxelRenderChunkSettings& Settings) override;
 };

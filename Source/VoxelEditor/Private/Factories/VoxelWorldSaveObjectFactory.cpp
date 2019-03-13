@@ -1,7 +1,7 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelWorldSaveObjectFactory.h"
-#include "VoxelSave.h"
+#include "VoxelData/VoxelSave.h"
 #include "AssetTypeCategories.h"
 
 UVoxelWorldSaveObjectFactory::UVoxelWorldSaveObjectFactory(const FObjectInitializer& ObjectInitializer)
@@ -14,7 +14,5 @@ UVoxelWorldSaveObjectFactory::UVoxelWorldSaveObjectFactory(const FObjectInitiali
 
 UObject* UVoxelWorldSaveObjectFactory::FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
-	auto NewSave = NewObject<UVoxelWorldSaveObject>(InParent, Class, Name, Flags | RF_Transactional);
-
-	return NewSave;
+	return NewObject<UVoxelWorldSaveObject>(InParent, Class, Name, Flags);
 }

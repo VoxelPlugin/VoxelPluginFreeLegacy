@@ -8,46 +8,43 @@
 #include "VoxelConfigEnums.h"
 #include "VoxelDebug/VoxelStats.h"
 
-class AVoxelWorld;
 class FVoxelData;
 class FVoxelRenderChunk;
-struct FVoxelGrassBuffer;
+struct FVoxelRendererSettings;
+class FVoxelDebugManager;
+class FVoxelPolygonizerBase;
 
 class VOXEL_API FVoxelPolygonizerAsyncWorkBase : public FVoxelAsyncWork
 {
 public:
 	const int LOD;
-	const uint64 Distance;
 	const FIntVector ChunkPosition;
-	TSharedRef<FVoxelData, ESPMode::ThreadSafe> const Data;
+	const FVoxelMeshProcessingParameters MeshParameters;
+
 	const int VoxelSize;
+	TSharedRef<FVoxelData, ESPMode::ThreadSafe> const Data;
+	TWeakPtr<FVoxelDebugManager, ESPMode::ThreadSafe> const DebugManager;
+	const EVoxelUVConfig UVConfig;
 	const EVoxelNormalConfig NormalConfig;
 	const EVoxelMaterialConfig MaterialConfig;
-	const EVoxelUVConfig UVConfig;
-	const bool bCacheLOD0Chunks;
-	const FVoxelMeshProcessingParameters MeshParameters;
+
 	// Output
 	TSharedRef<FVoxelChunk> Chunk = MakeShared<FVoxelChunk>();
 
-	FVoxelPolygonizerAsyncWorkBase(
-		int LOD, 
-		uint64 Distance,
-		const FIntVector& ChunkPosition,
-		AVoxelWorld* World, 
-		TSharedRef<FVoxelData, ESPMode::ThreadSafe> Data, // Data in constructor as sometimes World.Data != Data (eg asset actor)
-		FVoxelRenderChunk* ChunkCallback);
-
-	virtual ~FVoxelPolygonizerAsyncWorkBase() override
-	{
-		FVoxelStats::AddElement(Stats);
-	}
-
-	virtual uint64 GetPriority() const final { return MAX_uint64 - Distance; }
-
-protected:
 	FVoxelStatsElement Stats;
 
-	void ShowError();
+	FVoxelPolygonizerAsyncWorkBase(FVoxelRenderChunk* Chunk, bool bIsTransitionsTask);
+
+	virtual ~FVoxelPolygonizerAsyncWorkBase() override;
+
+protected:
+	virtual void PostMeshCreation() {};
+	virtual TSharedRef<FVoxelPolygonizerBase> GetPolygonizer() = 0;
+	virtual EVoxelStatsType GetTaskType() = 0;
+
+private:
+	void DoWork() final;
+	static void Callback(TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> Chunk, bool bIsTransitionsTask, uint64 TaskId);
 };
 
 typedef int FVoxelPreviousGrassInfo;
@@ -56,16 +53,7 @@ class VOXEL_API FVoxelPolygonizerAsyncWork : public FVoxelPolygonizerAsyncWorkBa
 {
 public:
 
-	FVoxelPolygonizerAsyncWork(
-		int LOD,
-		uint64 Distance,
-		const FIntVector& ChunkPosition,
-		AVoxelWorld* World,
-		TSharedRef<FVoxelData, ESPMode::ThreadSafe> Data,
-		bool bComputeGrass,
-		bool bComputeActors,
-		const FVoxelPreviousGrassInfo& OldPreviousGrassInfo = FVoxelPreviousGrassInfo(),
-		FVoxelRenderChunk* ChunkCallback = nullptr);
+	FVoxelPolygonizerAsyncWork(FVoxelRenderChunk* Chunk);
 	
 };
 
@@ -74,16 +62,5 @@ class VOXEL_API FVoxelTransitionsPolygonizerAsyncWork : public FVoxelPolygonizer
 public:
 	const uint8 TransitionsMask;
 	
-	FVoxelTransitionsPolygonizerAsyncWork(
-		int LOD,
-		uint64 Distance,
-		const FIntVector& ChunkPosition,
-		AVoxelWorld* World,
-		TSharedRef<FVoxelData, ESPMode::ThreadSafe> Data,
-		FVoxelRenderChunk* ChunkCallback,
-		uint8 TransitionsMask)
-		: FVoxelPolygonizerAsyncWorkBase(LOD, Distance, ChunkPosition, World, Data, ChunkCallback)
-		, TransitionsMask(TransitionsMask)
-	{
-	}
+	FVoxelTransitionsPolygonizerAsyncWork(FVoxelRenderChunk* Chunk);
 };

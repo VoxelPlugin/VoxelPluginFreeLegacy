@@ -3,45 +3,22 @@
 #include "VoxelMCPolygonizerAsyncWork.h"
 #include "VoxelRender/Polygonizers/VoxelMCPolygonizer.h"
 
-void FVoxelMCPolygonizerAsyncWork::DoWork()
+TSharedRef<FVoxelPolygonizerBase> FVoxelMCPolygonizerAsyncWork::GetPolygonizer()
 {
-	Stats.SetType(EVoxelStatsType::NormalMarchingCubes);
-
-	Stats.StartStat("Polygonizer Creation");
-	TSharedPtr<FVoxelMCPolygonizer> Builder = MakeShareable(new FVoxelMCPolygonizer(
-		LOD, 
-		&Data.Get(), 
-		ChunkPosition, 
-		NormalConfig, 
-		MaterialConfig, 
-		UVConfig,
-		bCacheLOD0Chunks,
-		MeshParameters));
-
-	if (!Builder->CreateChunk(*Chunk, Stats))
-	{
-		ShowError();
-	}
-
-	Stats.SetValue("Canceled (polygonization was done for nothing)", IsCanceled() ? "1" : "0");
-
-	
-	Stats.StartStat("Waiting to be picked up by render chunk");
+	return MakeShared<FVoxelMCPolygonizer>(this);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelMCTransitionsPolygonizerAsyncWork::DoWork()
+EVoxelStatsType FVoxelMCPolygonizerAsyncWork::GetTaskType()
 {
-	Stats.SetType(EVoxelStatsType::TransitionsMarchingCubes);
+	return EVoxelStatsType::NormalMarchingCubes;
+}
 
-	Stats.StartStat("Polygonizer Creation");
-	TSharedPtr<FVoxelMCTransitionsPolygonizer> Builder = MakeShareable(new FVoxelMCTransitionsPolygonizer(LOD, &Data.Get(), ChunkPosition, TransitionsMask, NormalConfig, MaterialConfig, UVConfig, MeshParameters));
-	
-	if (!Builder->CreateTransitions(*Chunk, Stats))
-	{
-		ShowError();
-	}
-	
-	Stats.StartStat("Waiting to be picked up by render chunk");
+TSharedRef<FVoxelPolygonizerBase> FVoxelMCTransitionsPolygonizerAsyncWork::GetPolygonizer()
+{
+	return MakeShared<FVoxelMCTransitionsPolygonizer>(this);
+}
+
+EVoxelStatsType FVoxelMCTransitionsPolygonizerAsyncWork::GetTaskType()
+{
+	return EVoxelStatsType::TransitionsMarchingCubes;
 }

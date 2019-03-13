@@ -32,6 +32,11 @@ public:
 	inline FVoxelValue GetInverse() const { FVoxelValue V = *this; return V.Inverse(); }
 	inline float ToFloat() const { return float(F) / float(MAX_VOXELVALUE); }
 	inline FString ToString() const { return FString::SanitizeFloat(ToFloat()); }
+
+	inline static bool HaveSameSign(const FVoxelValue& A, const FVoxelValue& B)
+	{
+		return A.IsEmpty() == B.IsEmpty();
+	}
 	
 public:	
 	bool operator==(const FVoxelValue& rhs) const { return F == rhs.F; }

@@ -16,7 +16,7 @@
 #include "Materials/MaterialExpressionStaticSwitchParameter.h"
 #include "FileHelpers.h"
 
-#define LOCTEXT_NAMESPACE "VoxelMaterialCollectionHelpers"
+#define LOCTEXT_NAMESPACE "Voxel"
 
 inline UPackage* CreateOrRetrievePackage(UVoxelMaterialCollection* Collection, const FString& Suffix)
 {
@@ -32,11 +32,6 @@ inline UPackage* CreateOrRetrievePackage(UVoxelMaterialCollection* Collection, c
 	Package = CreatePackage(NULL, *PackageName);
 	Package->FullyLoad();
 	Package->Modify();
-
-	// Target level filename
-	const FString FileName = FPackageName::LongPackageNameToFilename(PackageName);
-	// This is a hack to avoid save file dialog when we will be saving HLOD map package
-	//Package->FileName = FName(*FileName);
 
 	return Package;
 }

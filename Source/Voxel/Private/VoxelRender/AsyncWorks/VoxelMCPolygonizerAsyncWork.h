@@ -3,15 +3,15 @@
 #pragma once
 
 #include "VoxelRender/VoxelPolygonizerAsyncWork.h"
-#include "VoxelRender/VoxelIntermediateChunk.h"
 
 class FVoxelMCPolygonizerAsyncWork : public FVoxelPolygonizerAsyncWork
 {
 public:
 	using FVoxelPolygonizerAsyncWork::FVoxelPolygonizerAsyncWork;
 	
-	virtual void DoWork() override;
-
+protected:
+	TSharedRef<FVoxelPolygonizerBase> GetPolygonizer() final;
+	EVoxelStatsType GetTaskType() final;
 };
 
 class FVoxelMCTransitionsPolygonizerAsyncWork : public FVoxelTransitionsPolygonizerAsyncWork
@@ -19,5 +19,7 @@ class FVoxelMCTransitionsPolygonizerAsyncWork : public FVoxelTransitionsPolygoni
 public:	
 	using FVoxelTransitionsPolygonizerAsyncWork::FVoxelTransitionsPolygonizerAsyncWork;
 	
-	virtual void DoWork() override;
+protected:
+	TSharedRef<FVoxelPolygonizerBase> GetPolygonizer() final;
+	EVoxelStatsType GetTaskType() final;
 };

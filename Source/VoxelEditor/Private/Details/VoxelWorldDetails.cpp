@@ -3,6 +3,9 @@
 #include "VoxelWorldDetails.h"
 #include "VoxelWorld.h"
 #include "VoxelData/VoxelData.h"
+#include "VoxelData/VoxelSaveUtilities.h"
+#include "VoxelTools/VoxelBlueprintLibrary.h"
+#include "VoxelTools/VoxelDataTools.h"
 
 #include "VoxelWorldEditor.h"
 #include "PropertyEditorModule.h"
@@ -14,301 +17,169 @@
 #include "HAL/PlatformFilemanager.h"
 #include "Misc/FileHelper.h"
 #include "Widgets/Input/SButton.h"
+#include "Serialization/BufferArchive.h"
+#include "Serialization/MemoryReader.h"
 
-#define LOCTEXT_NAMESPACE "VoxelWorldDetails"
+#define LOCTEXT_NAMESPACE "Voxel"
 
 TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
 {
 	return MakeShareable(new FVoxelWorldDetails());
 }
 
-FVoxelWorldDetails::FVoxelWorldDetails()
-	: LastSaveHistoryPosition(0)
-{
-
-}
-
 void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	World = FVoxelEditorDetailsUtils::GetCurrentObjectFromDetails<AVoxelWorld>(DetailLayout);
 	World->UpdateCollisionProfile();
-
 	World->PostEditChange();
+
+	switch (World->MaterialConfig)
+	{
+	case EVoxelMaterialConfig::RGB:
+		DetailLayout.HideProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, MaterialCollection));
+		break;
+	case EVoxelMaterialConfig::SingleIndex:
+	case EVoxelMaterialConfig::DoubleIndex:
+		DetailLayout.HideProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, VoxelMaterial));
+		DetailLayout.HideProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, TessellatedVoxelMaterial));
+		break;
+	default:
+		check(false);
+		break;
+	}
 	
-	if (World->GetWorld())
+	TSharedRef<IPropertyHandle> PropertiesHandle = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, MaterialConfig));
+	FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([&DetailLayout]()
+	{			
+		DetailLayout.ForceRefreshDetails();
+	});
+	PropertiesHandle->SetOnPropertyValueChanged(RefreshDelegate);
+
+	if (World->GetWorld()) // Could be BP details
 	{
 		if (World->GetWorld()->WorldType == EWorldType::Editor)
 		{
-			ADD_BUTTON_TO_CATEGORY(DetailLayout,
+			FVoxelEditorDetailsUtils::AddButtonToCategory(
+				DetailLayout,
 				"Voxel",
 				LOCTEXT("Toggle", "Toggle"),
 				LOCTEXT("ToggleWorldPreview", "Toggle World Preview"),
 				LOCTEXT("Toggle", "Toggle"),
-				this,
-				&FVoxelWorldDetails::OnWorldPreviewToggle);
+				FOnClicked::CreateLambda([World = World]()
+				{
+					if (World.IsValid())
+					{
+						if (World->IsCreated())
+						{
+							World->DestroyWorld();
+						}
+						else
+						{
+							World->CreateForPreview(AVoxelWorldEditor::StaticClass());
+						}
+
+						GEditor->SelectActor(World.Get(), true, true, true, true);
+					}
+
+					return FReply::Handled();
+				}));
 		}
 
-		{
-			SAssignNew(SaveButton, SButton)
-			.ContentPadding(2)
-			.VAlign(VAlign_Center)
-			.HAlign(HAlign_Center)
-			.OnClicked(this, &FVoxelWorldDetails::OnSave)
-			.IsEnabled_Lambda([=]() { return World.IsValid() && World->IsCreated(); })
-			[
-				SNew(STextBlock)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(LOCTEXT("Save", "Save"))
-			];
-
-			SAssignNew(LoadButton, SButton)
-			.ContentPadding(2)
-			.VAlign(VAlign_Center)
-			.HAlign(HAlign_Center)
-			.OnClicked(this, &FVoxelWorldDetails::OnLoad)
-			.IsEnabled_Lambda([=]() { return World.IsValid() && World->IsCreated(); })
-			[
-				SNew(STextBlock)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(LOCTEXT("Load", "Load"))
-			];
-
-			DetailLayout.EditCategory("Voxel")
-			.AddCustomRow(LOCTEXT("SaveLoad", "Save Load"))
-			.NameContent()
-			[
-				SNew(STextBlock)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(LOCTEXT("SaveLoadWorld", "Save/Load World from Save Object"))
-			]
-			.ValueContent()
-			.MaxDesiredWidth(125.f)
-			.MinDesiredWidth(125.f)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				[
-					SaveButton.ToSharedRef()
-				]
-				+ SHorizontalBox::Slot()
-				[
-					LoadButton.ToSharedRef()
-				]
-			];
-		}
-
-		{
-			SAssignNew(SaveFileButton, SButton)
-			.ContentPadding(2)
-			.VAlign(VAlign_Center)
-			.HAlign(HAlign_Center)
-			.OnClicked(this, &FVoxelWorldDetails::OnSaveToFile)
-			.IsEnabled_Lambda([=]() { return World.IsValid() && World->IsCreated(); })
-			[
-				SNew(STextBlock)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(LOCTEXT("SaveFile", "Save file"))
-			];
-
-			SAssignNew(LoadFileButton, SButton)
-			.ContentPadding(2)
-			.VAlign(VAlign_Center)
-			.HAlign(HAlign_Center)
-			.OnClicked(this, &FVoxelWorldDetails::OnLoadFromFile)
-			.IsEnabled_Lambda([=]() { return World.IsValid() && World->IsCreated(); })
-			[
-				SNew(STextBlock)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(LOCTEXT("LoadFile", "Load file"))
-			];
-
-			DetailLayout.EditCategory("Voxel")
-			.AddCustomRow(LOCTEXT("SaveLoadFile", "Save Load File"))
-			.NameContent()
-			[
-				SNew(STextBlock)
-				.Font(IDetailLayoutBuilder::GetDetailFont())
-				.Text(LOCTEXT("SaveLoadWorldFile", "Save/Load World from file"))
-			]
-			.ValueContent()
-			.MaxDesiredWidth(125.f)
-			.MinDesiredWidth(125.f)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				[
-					SaveFileButton.ToSharedRef()
-				]
-				+ SHorizontalBox::Slot()
-				[
-					LoadFileButton.ToSharedRef()
-				]
-			];
-		}
-	}
-}
-
-FReply FVoxelWorldDetails::OnWorldPreviewToggle()
-{
-	if (World.IsValid())
-	{
-		if (World->IsCreated())
-		{
-			World->DestroyInEditor();
-		}
-		else
-		{
-			World->CreateInEditor(AVoxelWorldEditor::StaticClass());
-		}
-
-		GEditor->SelectActor(World.Get(), true, true, true, true);
-	}
-
-	return FReply::Handled();
-}
-
-FReply FVoxelWorldDetails::OnLoad()
-{
-	if (World->IsCreated() && World->GetSaveObject())
-	{
-		bool bDoIt = true;
-
-		if (World->GetData()->GetHistoryPosition() != LastSaveHistoryPosition)
-		{
-			bDoIt = FMessageDialog::Open(EAppMsgType::YesNoCancel, LOCTEXT("Unsaved", "There are unsaved changes. Loading from Save Object will override them. Confirm?")) == EAppReturnType::Yes;
-		}
-		else if (World->GetData()->GetMaxHistory() != LastSaveHistoryPosition)
-		{
-			bDoIt = FMessageDialog::Open(EAppMsgType::YesNoCancel, LOCTEXT("UnsavedRedo", "There are unsaved changes in the redo history. Loading from Save Object will override them. Confirm?")) == EAppReturnType::Yes;
-		}
-
-		if (bDoIt)
-		{
-			UVoxelWorldSaveObject* SaveObject = World->GetSaveObject();
-			if (SaveObject->Save.GetDepth() == -1)
+		FVoxelEditorDetailsUtils::AddButtonToCategory(
+			DetailLayout,
+			"Voxel",
+			LOCTEXT("Load", "Load"),
+			LOCTEXT("LoadFromSave", "Load from Save Object"),
+			LOCTEXT("Load", "Load"),
+			FOnClicked::CreateLambda([World = World]()
 			{
-				FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("InvalidSave", "Invalid save"));
-			}else
+				if (World.IsValid() && ensure(World->IsCreated()) && ensure(World->SaveObject))
+				{
+					World->LoadFromSaveObjectEditor();
+				}
+				return FReply::Handled();
+			}),
+			TAttribute<bool>::Create([=]()
 			{
-				FVoxelUncompressedWorldSave Save;
-				UVoxelSaveUtilities::DecompressVoxelSave(SaveObject->Save, Save);
-				World->LoadFromSave(Save);
-				LastSaveHistoryPosition = 0;
-			}
-		}
-	}
-	return FReply::Handled();
-}
-
-FReply FVoxelWorldDetails::OnSave()
-{
-	UVoxelWorldSaveObject* SaveObject = World->GetSaveObject();
-	if (World->IsCreated() && SaveObject)
-	{		
-		SaveObject->Modify();
-
-		FVoxelUncompressedWorldSave Save;
-		World->GetSave(Save);
-		UVoxelSaveUtilities::CompressVoxelSave(Save, SaveObject->Save);
-
-		LastSaveHistoryPosition = World->GetData()->GetHistoryPosition();
-	}
-	return FReply::Handled();
-}
-
-FReply FVoxelWorldDetails::OnSaveToFile()
-{
-	const FString DefaultPath = FPaths::GetProjectFilePath();
-
-	TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().FindWidgetWindow(SaveFileButton.ToSharedRef());
-	check(ParentWindow.IsValid() && ParentWindow->GetNativeWindow().IsValid());
-	void* ParentWindowHandle = ParentWindow->GetNativeWindow()->GetOSWindowHandle();
-
-	IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
-	
-	TArray<FString> OutFiles;
-	if (DesktopPlatform->SaveFileDialog(ParentWindowHandle, TEXT("File to create"), FPaths::ProjectSavedDir(), World->GetName() + TEXT("_") + FDateTime::Now().ToString() + TEXT(".sav"), TEXT(".sav"), EFileDialogFlags::None, OutFiles))
-	{
-		check(OutFiles.Num() == 1);
-
-		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-		FString AbsoluteFilePath = OutFiles[0];
+				return World.IsValid() && World->IsCreated() && World->SaveObject;
+			}));
 		
-		FBufferArchive Archive;
-		{
-			FVoxelCompressedWorldSave CompressedSave;
-			FVoxelUncompressedWorldSave Save;
-			World->GetSave(Save);
-			UVoxelSaveUtilities::CompressVoxelSave(Save, CompressedSave);
+		DetailLayout.HideProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, SaveObject));
+		FVoxelEditorDetailsUtils::AddPropertyToCategory(
+			DetailLayout,
+			"Voxel",
+			GET_MEMBER_NAME_CHECKED(AVoxelWorld, SaveObject));
 
-			CompressedSave.Serialize(Archive);
-		}
+		auto IsWorldCreatedDelegate = TAttribute<bool>::Create([=]() { return World.IsValid() && World->IsCreated(); });
 
-		if (FFileHelper::SaveArrayToFile(Archive, *AbsoluteFilePath))
-		{
-			FString Text = AbsoluteFilePath + TEXT(" was successfully created");
-			FNotificationInfo Info(FText::FromString(Text));
-			Info.ExpireDuration = 10.0f;
-			FSlateNotificationManager::Get().AddNotification(Info);
-		}
-		else
-		{
-			FString Text = AbsoluteFilePath + TEXT(" was NOT successfully created");
-			FNotificationInfo Info(FText::FromString(Text));
-			Info.ExpireDuration = 10.0f;
-			Info.CheckBoxState = ECheckBoxState::Unchecked;
-			FSlateNotificationManager::Get().AddNotification(Info);
-		}
+		FVoxelEditorDetailsUtils::AddButtonToCategory(
+			DetailLayout,
+			"Voxel",
+			LOCTEXT("SaveFile", "Save File"),
+			LOCTEXT("SaveToFile", "Save to File"),
+			LOCTEXT("Save", "Save"),
+			FOnClicked::CreateLambda([World = World]()
+			{
+				if (World.IsValid() && ensure(World->IsCreated()))
+				{
+					FString FilePath = World->GetDefaultFilePath();
+					if (FilePath.IsEmpty())
+					{
+						TArray<FString> OutFiles;
+						if (FDesktopPlatformModule::Get()->SaveFileDialog(
+							FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr),
+							TEXT("File to open"),
+							FPaths::ProjectSavedDir(),
+							"",
+							TEXT("Voxel Save (*.voxelsave)|*.voxelsave"),
+							EFileDialogFlags::None,
+							OutFiles))
+						{
+							FilePath = OutFiles[0];
+						}
+					}
+					FText Error;
+					if (!World->SaveToFile(FilePath, Error))
+					{
+						FMessageDialog::Open(EAppMsgType::Ok, Error);
+					}
+				}
+				return FReply::Handled();
+			}),
+			IsWorldCreatedDelegate);
+
+		FVoxelEditorDetailsUtils::AddButtonToCategory(
+			DetailLayout,
+			"Voxel",
+			LOCTEXT("LoadFile", "Load File"),
+			LOCTEXT("LoadFromFile", "Load from File"),
+			LOCTEXT("Load", "Load"),
+			FOnClicked::CreateLambda([World = World]()
+			{
+				if (World.IsValid() && ensure(World->IsCreated()))
+				{
+					TArray<FString> OutFiles;
+					if (FDesktopPlatformModule::Get()->OpenFileDialog(
+						FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr),
+						TEXT("File to open"),
+						FPaths::ProjectSavedDir(),
+						"",
+						TEXT("Voxel Save (*.voxelsave)|*.voxelsave"),
+						EFileDialogFlags::None,
+						OutFiles))
+					{
+						check(OutFiles.Num() == 1);
+						FText Error;
+						if (!World->LoadFromFile(OutFiles[0], Error))
+						{
+							FMessageDialog::Open(EAppMsgType::Ok, Error);
+						}
+					}
+				}
+				return FReply::Handled();
+			}),
+			IsWorldCreatedDelegate);
 	}
-	
-	return FReply::Handled();
-}
-
-FReply FVoxelWorldDetails::OnLoadFromFile()
-{	
-	const FString DefaultPath = FPaths::GetProjectFilePath();
-
-	TSharedPtr<SWindow> ParentWindow = FSlateApplication::Get().FindWidgetWindow(SaveFileButton.ToSharedRef());
-	check(ParentWindow.IsValid() && ParentWindow->GetNativeWindow().IsValid());
-	void* ParentWindowHandle = ParentWindow->GetNativeWindow()->GetOSWindowHandle();
-
-	IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
-	
-	TArray<FString> OutFiles;
-	if (DesktopPlatform->OpenFileDialog(ParentWindowHandle, TEXT("File to open"), FPaths::ProjectSavedDir(), World->GetName() + TEXT(".sav"), TEXT(".sav"), EFileDialogFlags::None, OutFiles))
-	{
-		check(OutFiles.Num() == 1);
-
-		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-		FString AbsoluteFilePath = OutFiles[0];		
-
-		TArray<uint8> Array;
-		if (!FFileHelper::LoadFileToArray(Array, *AbsoluteFilePath))
-		{
-			FString Text = AbsoluteFilePath + TEXT(" was NOT successfully loaded");
-			FNotificationInfo Info(FText::FromString(Text));
-			Info.ExpireDuration = 10.0f;
-			Info.CheckBoxState = ECheckBoxState::Unchecked;
-			FSlateNotificationManager::Get().AddNotification(Info);
-			return FReply::Handled();
-		}
-
-		FMemoryReader Reader(Array);
-		{
-			FVoxelCompressedWorldSave CompressedSave;
-			CompressedSave.Serialize(Reader);
-			FVoxelUncompressedWorldSave Save;
-			UVoxelSaveUtilities::DecompressVoxelSave(CompressedSave, Save);
-			World->LoadFromSave(Save);
-		}
-		
-		FString Text = AbsoluteFilePath + TEXT(" was successfully created");
-		FNotificationInfo Info(FText::FromString(Text));
-		Info.ExpireDuration = 10.0f;
-		FSlateNotificationManager::Get().AddNotification(Info);
-	}
-	
-	return FReply::Handled();
 }
 
 #undef LOCTEXT_NAMESPACE

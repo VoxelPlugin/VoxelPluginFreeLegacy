@@ -4,12 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Modules/ModuleInterface.h"
-#include "Toolkits/AssetEditorToolkit.h"
+#include "Toolkits/IToolkit.h"
 
 class UVoxelDataAsset;
 class UVoxelMaterialCollection;
+class IToolkitHost;
 
-/** Voxel class editor module interface */
 class IVoxelEditorModule : public IModuleInterface
 {
 public:
@@ -18,5 +18,3 @@ public:
 	virtual bool GenerateDoubleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) = 0;
 	virtual bool GenerateTripleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) = 0;
 };
-
-DECLARE_LOG_CATEGORY_EXTERN(LogVoxelEditor, Verbose, All);

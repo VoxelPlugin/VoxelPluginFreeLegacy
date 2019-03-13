@@ -2108,12 +2108,12 @@ FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y) const
 	}
 }
 
-void FastNoise::GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z) const
+void FastNoise::GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z, float m_gradientPerturbAmp) const
 {
 	SingleGradientPerturb(0, m_gradientPerturbAmp, m_frequency, x, y, z);
 }
 
-void FastNoise::GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z) const
+void FastNoise::GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z, float m_gradientPerturbAmp) const
 {
 	FN_DECIMAL amp = m_gradientPerturbAmp * m_fractalBounding;
 	FN_DECIMAL freq = m_frequency;
@@ -2200,12 +2200,12 @@ void FastNoise::SingleGradientPerturb(unsigned char offset, FN_DECIMAL warpAmp, 
 	z += Lerp(lz0y, Lerp(lz0x, lz1x, ys), zs) * warpAmp;
 }
 
-void FastNoise::GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y) const
+void FastNoise::GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, float m_gradientPerturbAmp) const
 {
 	SingleGradientPerturb(0, m_gradientPerturbAmp, m_frequency, x, y);
 }
 
-void FastNoise::GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y) const
+void FastNoise::GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, float m_gradientPerturbAmp) const
 {
 	FN_DECIMAL amp = m_gradientPerturbAmp * m_fractalBounding;
 	FN_DECIMAL freq = m_frequency;

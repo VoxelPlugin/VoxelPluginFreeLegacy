@@ -1,37 +1,41 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelTools/VoxelCraterTools.h"
-#include "VoxelData/VoxelData.h"
-#include "Async/Async.h"
-#include "VoxelTools/VoxelTools.h"
-#include "VoxelPoolManager.h"
-#include "Engine/Engine.h"
+#include "VoxelTools/VoxelToolsHelpers.h"
+#include "VoxelTools/VoxelLatentActionHelpers.h"
+#include "VoxelRender/IVoxelLODManager.h"
+#include "FastNoise.h"
 
-template<bool bUseSampleRate>
-inline void AddCraterImpl(FVoxelData* Data, const FIntVector& Position, float Radius, const FastNoise& Noise, float SampleRate, FIntBox& OutBounds, TArray<FIntVector>& OutPositions)
+inline FIntBox GetCraterBounds(float Radius, const FIntVector& Position)
 {
 	FIntVector R(FMath::CeilToInt(Radius) + 3);
-	const FIntBox Bounds(Position - R, Position + R);
+	return FIntBox(Position - R, Position + R);
+}
 
-	OutBounds = Bounds;
-
-	FVoxelScopeSetLock Lock(Data, Bounds, "AddCrater");
-
-	Data->SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
+template<bool bUseSampleRate>
+inline void AddCraterHelperImpl(FVoxelData& Data, const FIntBox& Bounds, const FIntVector& Position, float Radius, float SampleRate, TArray<FIntVector>& OutPositions)
+{
+	FastNoise Noise;
+		
+	const float SquaredRadiusPlus2 = FMath::Square(Radius + 2);
+	const float SquaredRadiusMinus2 = FMath::Square(Radius - 2);
+	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
 	{
-		float Distance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).Size();
+		float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
 
-		if (Distance <= Radius + 2)
+		if (SquaredDistance <= SquaredRadiusPlus2)
 		{
 			float WhiteNoise = 0;
-			if (FMath::Abs(Distance - Radius) < 2)
+			if (SquaredRadiusMinus2 <= SquaredDistance)
 			{
-				WhiteNoise = Noise.GetWhiteNoise(X / Distance, Y / Distance, Z / Distance);
+				WhiteNoise = Noise.GetWhiteNoise(X, Y, Z);
 			}
+
+			float Distance = FMath::Sqrt(SquaredDistance);
 
 			FVoxelValue NewValue = FMath::Clamp(Radius - Distance + WhiteNoise, -2.f, 2.f) / 2;
 
-			if (NewValue.IsEmpty() || FVoxelUtilities::HaveSameSign(OldValue, NewValue))
+			if (NewValue.IsEmpty() || FVoxelValue::HaveSameSign(OldValue, NewValue))
 			{
 				if (bUseSampleRate && !OldValue.IsEmpty() && (SampleRate >= 1 || FMath::FRand() < SampleRate))
 				{
@@ -43,60 +47,61 @@ inline void AddCraterImpl(FVoxelData* Data, const FIntVector& Position, float Ra
 	});
 }
 
-void FVoxelAddCraterAsyncWork::DoWork()
+inline void AddCraterHelper(FVoxelData& Data, const FIntBox& Bounds, const FIntVector& Position, float Radius, float SampleRate, TArray<FIntVector>& OutPositions)
 {
 	if (SampleRate > 0)
 	{
-		AddCraterImpl<true>(Data.Get(), Position, Radius, Noise, SampleRate, Bounds, Positions);
+		AddCraterHelperImpl<true>(Data, Bounds, Position, Radius, SampleRate, OutPositions);
 	}
 	else
 	{
-		AddCraterImpl<false>(Data.Get(), Position, Radius, Noise, SampleRate, Bounds, Positions);
+		AddCraterHelperImpl<false>(Data, Bounds, Position, Radius, SampleRate, OutPositions);
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelCraterTools::AddCrater(AVoxelWorld* World, FIntVector Position, float Radius, float SampleRate, TArray<FIntVector>& Positions)
-{
-	CHECK_WORLD_VOXELTOOLS(AddCrater);
-	
-	Positions.Reset();
+DECLARE_CYCLE_STAT(TEXT("UVoxelCraterTools::AddCrater"), STAT_UVoxelCraterTools_AddCrater, STATGROUP_Voxel);
 
-	FIntBox Bounds;
-	FastNoise Noise;
-	if (SampleRate > 0)
+bool UVoxelCraterTools::AddCrater(
+		AVoxelWorld* World, 
+		FIntVector Position, 
+		float Radius, 
+		float PositionsSampleRate, 
+		TArray<FIntVector>& SampledPositions,
+		bool bUpdateRender, 
+		bool bAllowFailure)
+{
+	SCOPE_CYCLE_COUNTER(STAT_UVoxelCraterTools_AddCrater);
+	CHECK_VOXELWORLD_IS_CREATED();
+	
+	SampledPositions.Reset();
+	auto Bounds = GetCraterBounds(Radius, Position);
+
+	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::ReadWrite>(__FUNCTION__, World, Bounds, bUpdateRender, bAllowFailure, [&](FVoxelData& Data)
 	{
-		AddCraterImpl<true>(World->GetData(), Position, Radius, Noise, SampleRate, Bounds, Positions);
-	}
-	else
-	{
-		AddCraterImpl<false>(World->GetData(), Position, Radius, Noise, SampleRate, Bounds, Positions);
-	}
-	World->UpdateChunksOverlappingBox(Bounds, true);
+		AddCraterHelper(Data, Bounds, Position, Radius, PositionsSampleRate, SampledPositions);
+	});
 }
 
-void UVoxelCraterTools::AddCraterAsync(UObject* WorldContextObject, AVoxelWorld* World, FIntVector Position, float Radius, float SampleRate, TArray<FIntVector>& Positions, FLatentActionInfo LatentInfo)
+void UVoxelCraterTools::AddCraterAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		AVoxelWorld* World, 
+		const FIntVector& Position, 
+		float Radius, 
+		float PositionsSampleRate, 
+		TArray<FIntVector>& SampledPositions,
+		bool bUpdateRender)
 {
-	CHECK_WORLD_VOXELTOOLS(AddCraterAsync, );
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	auto* PositionsPtr = &Positions;
+	SampledPositions.Reset();
+	auto Bounds = GetCraterBounds(Radius, Position);
 
-	if (UWorld* ObjectWorld = GEngine->GetWorldFromContextObjectChecked(WorldContextObject))
+	FVoxelLatentActionHelpers::AsyncHelperWithValue(WorldContextObject, LatentInfo, __FUNCTION__, World, SampledPositions, [Bounds, Position, Radius, PositionsSampleRate](FVoxelData& Data, TArray<FIntVector>& OutSampledPositions)
 	{
-		FLatentActionManager& LatentActionManager = ObjectWorld->GetLatentActionManager();
-		if (!LatentActionManager.FindExistingAction<FVoxelLatentAction<FVoxelAddCraterAsyncWork>>(LatentInfo.CallbackTarget, LatentInfo.UUID))
-		{
-			TSharedPtr<FVoxelAddCraterAsyncWork> Task = MakeShared<FVoxelAddCraterAsyncWork>(World, Position, Radius, SampleRate);
-			auto* Pool = World->GetPool()->AsyncTasksPool;
-			Pool->AddQueuedWork(Task.Get());
-			LatentActionManager.AddNewAction(LatentInfo.CallbackTarget, LatentInfo.UUID, new FVoxelLatentAction<FVoxelAddCraterAsyncWork>(Task, LatentInfo, "AddCrater: Waiting for completion",
-				[=](FVoxelAddCraterAsyncWork& Work)
-				{
-					*PositionsPtr = Work.Positions;
-					Work.World->UpdateChunksOverlappingBox(Work.Bounds, true);
-				}
-			));
-		}
-	}
+		FVoxelReadWriteScopeLock Lock(Data, Bounds, __FUNCTION__);
+		AddCraterHelper(Data, Bounds, Position, Radius, PositionsSampleRate, OutSampledPositions);
+	}, bUpdateRender, Bounds);
 }

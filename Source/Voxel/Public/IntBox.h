@@ -69,6 +69,23 @@ struct VOXEL_API FIntBox
 		return (FVector)(Min + Max) / 2.f;
 	}
 
+	/**
+	 * Get the corners that are inside the box (max - 1)
+	 */
+	inline TArray<FIntVector> GetCorners() const
+	{
+		return {
+			FIntVector(Min.X    , Min.Y    , Min.Z),
+			FIntVector(Max.X - 1, Min.Y    , Min.Z),
+			FIntVector(Min.X    , Max.Y - 1, Min.Z),
+			FIntVector(Max.X - 1, Max.Y - 1, Min.Z),
+			FIntVector(Min.X    , Min.Y    , Max.Z - 1),
+			FIntVector(Max.X - 1, Min.Y    , Max.Z - 1),
+			FIntVector(Min.X    , Max.Y - 1, Max.Z - 1),
+			FIntVector(Max.X - 1, Max.Y - 1, Max.Z - 1)
+		};
+	}
+
 	inline bool IsValid() const
 	{
 		return Min.X < Max.X && Min.Y < Max.Y && Min.Z < Max.Z;
@@ -135,8 +152,7 @@ struct VOXEL_API FIntBox
 	{
 		if (!Intersect(Other))
 		{
-			static FIntBox EmptyBox = FIntBox();
-			return EmptyBox;
+			return FIntBox();
 		}
 
 		// otherwise they overlap
@@ -247,23 +263,6 @@ struct VOXEL_API FIntBox
 		return FMath::Min<T>(ComputeSquaredDistanceFromBoxToPoint<T>(Box.Min), ComputeSquaredDistanceFromBoxToPoint<T>(Box.Max));
 	}
 
-	/**
-	 * Get the corners that are inside the box (max - 1)
-	 */
-	inline TArray<FIntVector> GetCorners() const
-	{
-		return {
-			FIntVector(Min.X    , Min.Y    , Min.Z),
-			FIntVector(Max.X - 1, Min.Y    , Min.Z),
-			FIntVector(Min.X    , Max.Y - 1, Min.Z),
-			FIntVector(Max.X - 1, Max.Y - 1, Min.Z),
-			FIntVector(Min.X    , Min.Y    , Max.Z - 1),
-			FIntVector(Max.X - 1, Min.Y    , Max.Z - 1),
-			FIntVector(Min.X    , Max.Y - 1, Max.Z - 1),
-			FIntVector(Max.X - 1, Max.Y - 1, Max.Z - 1)
-		};
-	}
-
 	inline bool IsMultipleOf(int Step) const
 	{
 		return Min.X % Step == 0 && Min.Y % Step == 0 && Min.Z % Step == 0 &&
@@ -372,4 +371,16 @@ inline FIntBox operator*(int Scale, const FIntBox& Box)
 {
 	FIntBox Copy = Box;
 	return Copy *= Scale;
+}
+
+inline FIntBox operator+(const FIntBox& Box, const FIntBox& Other)
+{
+	FIntBox Copy = Box;
+	return Copy += Other;
+}
+
+inline FIntBox operator+(const FIntBox& Box, const FIntVector& Point)
+{
+	FIntBox Copy = Box;
+	return Copy += Point;
 }

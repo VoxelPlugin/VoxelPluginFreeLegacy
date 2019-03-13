@@ -8,9 +8,13 @@ public class VoxelEditorDefault : ModuleRules
     public VoxelEditorDefault(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-#if UE_4_20_OR_LATER
+        bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
-#endif
+        
+        if (!Target.bUseUnityBuild)
+        {
+            PrivatePCHHeaderFile = "Private/VoxelEditorDefaultPCH.h";
+        }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));

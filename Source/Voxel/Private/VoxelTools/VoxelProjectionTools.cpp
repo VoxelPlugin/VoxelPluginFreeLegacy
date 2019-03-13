@@ -4,12 +4,15 @@
 #include "DrawDebugHelpers.h"
 #include "VoxelTools/VoxelTools.h"
 #include "VoxelData/VoxelData.h"
+#include "VoxelData/VoxelDataUtilities.h"
+#include "VoxelRender/IVoxelLODManager.h"
+
 #include "Engine/Engine.h"
 #include "Curves/CurveFloat.h"
+#include "VoxelToolsHelpers.h"
 
 DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::SetValueProjection"), STAT_UVoxelProjectionTools_SetValueProjection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::SetMaterialProjection"), STAT_UVoxelProjectionTools_SetMaterialProjection, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::*.BeginSet"), STAT_UVoxelProjectionTools_BeginSet, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::TraceDone"), STAT_UVoxelProjectionTools_TraceDone, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::FindHitVoxelsForRaycasts"), STAT_UVoxelProjectionTools_FindHitVoxelsForRaycasts, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::FindHitVoxelsForRaycasts::StartAsyncTrace"), STAT_UVoxelProjectionTools_FindHitVoxelsForRaycasts_StartAsyncTrace, STATGROUP_Voxel);
@@ -30,10 +33,10 @@ inline void ProcessTraceResult(FVoxelProjectionEditWork& Work, const FHitResult&
 	}
 
 	TArray<FIntVector> Points;
-	if(Work.World->GetRenderType() == EVoxelRenderType::Cubic)
+	if(Work.World->RenderType == EVoxelRenderType::Cubic)
 	{
 		// Make sure we're inside the cube
-		FVector HitPoint = Hit.ImpactPoint + Hit.Normal * Work.World->GetVoxelSize() / 2 * (Work.bAdd ? 1 : -1);
+		FVector HitPoint = Hit.ImpactPoint + Hit.Normal * Work.World->VoxelSize / 2 * (Work.bAdd ? 1 : -1);
 		Points.Add(Work.World->GlobalToLocal(HitPoint));
 	}
 	else
@@ -43,7 +46,7 @@ inline void ProcessTraceResult(FVoxelProjectionEditWork& Work, const FHitResult&
 
 	for (auto& Point : Points)
 	{
-		if (!Work.AddedPoints.Contains(Point) && Work.World->IsInWorld(Point))
+		if (!Work.AddedPoints.Contains(Point) && Work.World->GetData().IsInWorld(Point))
 		{
 			Work.AddedPoints.Add(Point);
 			Work.HitVoxels.Emplace(Point, Distance);
@@ -131,9 +134,9 @@ void UVoxelProjectionTools::FindHitVoxelsForRaycasts(FVoxelProjectionEditWork& W
 		Bitangent = FVector::CrossProduct(Tangent, Normal).GetSafeNormal();
 	}
 
-	const float Step = StepInVoxel * World->GetVoxelSize();
+	const float Step = StepInVoxel * World->VoxelSize;
 	const int Count = FMath::CeilToInt(Radius / Step);
-	const ECollisionChannel CollisionChannel = World->GetCollisionPresets().GetObjectType();
+	const ECollisionChannel CollisionChannel = World->CollisionPresets.GetObjectType();
 
 	for (int I = -Count; I <= Count; I++)
 	{
@@ -147,6 +150,8 @@ void UVoxelProjectionTools::FindHitVoxelsForRaycasts(FVoxelProjectionEditWork& W
 			{
 				continue;
 			}
+
+			//DrawDebugPoint(World->GetWorld(), Position + (Tangent * X + Bitangent * Y), 10, FColor::Red, false, World->GetWorld()->GetDeltaSeconds() * 2);
 
 			// Use 2D basis
 			FVector Start = ToolPosition + (Tangent * X + Bitangent * Y);
@@ -185,7 +190,7 @@ void UVoxelProjectionTools::FindHitVoxelsForRaycasts(FVoxelProjectionEditWork& W
 inline void SetValueProjectionHelper(
 	FVoxelProjectionEditWork& Work,
 	float Radius,
-	int TimeoutInMicroSeconds,
+	float LockTimeoutInSeconds,
 	float Strength, 
 	UCurveFloat* StrengthCurve, 
 	TArray<FModifiedVoxelValue>& ModifiedVoxels,
@@ -203,48 +208,44 @@ inline void SetValueProjectionHelper(
 	AVoxelWorld* World = Work.World.Get();
 	if (!World) { return; }
 
-	FVoxelData* Data = World->GetData();
-	TArray<FVoxelId> Octrees;
+	FVoxelData& Data = World->GetData();
 	{
-		SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_BeginSet);
-		FString Name = "SetValueProjection";
-		if (!Data->TryBeginSet(Work.Bounds, TimeoutInMicroSeconds, Octrees, Name))
+		FVoxelReadWriteScopeTryLock Lock(Data, Work.Bounds, LockTimeoutInSeconds, "SetValueProjection");
+		if (!Lock.Success())
 		{
-			LockerName = Name;
+			LockerName = Lock.GetLockerName();
 			FailReason = EFailReason::VoxelDataLocked;
 			return;
 		}
-	}
-	
-	FVoxelData::LastOctreeAccelerator OctreeAccelerator(Data);
-	for (auto& Hit : Work.HitVoxels)
-	{
-		if (LIKELY(Data->IsInWorld(Hit.Position)))
-		{
-			float OldValue = OctreeAccelerator.GetValue(Hit.Position, 0).ToFloat();
-			float NewValue;
-			if (World->GetRenderType() == EVoxelRenderType::MarchingCubes)
-			{
-				float CurrentStrength = Strength * (StrengthCurve ? StrengthCurve->FloatCurve.Eval(Hit.Distance / Radius) : 1.f);
-				NewValue = FMath::Clamp<float>(OldValue + CurrentStrength, -1, 1);
-			}
-			else
-			{
-				NewValue = Work.bAdd ? -1 : 1;
-			}
-			OctreeAccelerator.SetValue(Hit.Position, NewValue);
 
-			FModifiedVoxelValue Voxel;
-			Voxel.Position = Hit.Position;
-			Voxel.OldValue = OldValue;
-			Voxel.NewValue = NewValue;
-			ModifiedVoxels.Add(Voxel);
+		FVoxelDataUtilities::LastOctreeAccelerator OctreeAccelerator(Data);
+		for (auto& Hit : Work.HitVoxels)
+		{
+			if (LIKELY(Data.IsInWorld(Hit.Position)))
+			{
+				float OldValue = OctreeAccelerator.GetValue(Hit.Position, 0).ToFloat();
+				float NewValue;
+				if (World->RenderType == EVoxelRenderType::MarchingCubes)
+				{
+					float CurrentStrength = Strength * (StrengthCurve ? StrengthCurve->FloatCurve.Eval(Hit.Distance / Radius) : 1.f);
+					NewValue = FMath::Clamp<float>(OldValue + CurrentStrength, -1, 1);
+				}
+				else
+				{
+					NewValue = Work.bAdd ? -1 : 1;
+				}
+				OctreeAccelerator.SetValue(Hit.Position, NewValue);
+
+				FModifiedVoxelValue Voxel;
+				Voxel.Position = Hit.Position;
+				Voxel.OldValue = OldValue;
+				Voxel.NewValue = NewValue;
+				ModifiedVoxels.Add(Voxel);
+			}
 		}
 	}
 
-	Data->EndSet(Octrees);
-
-	World->UpdateChunksOverlappingBox(Work.Bounds, true);
+	World->GetLODManager().UpdateBounds(Work.Bounds, true);
 
 	Branches = EBlueprintSuccess::Success;
 }
@@ -254,7 +255,7 @@ inline void SetValueProjectionHelper(
 inline void SetMaterialProjectionHelper(
 	FVoxelProjectionEditWork& Work,
 	float Radius,
-	int TimeoutInMicroSeconds,
+	float LockTimeoutInSeconds,
 	FVoxelPaintMaterial PaintMaterial,
 	UCurveFloat* StrengthCurve,
 	TArray<FModifiedVoxelMaterial>& ModifiedVoxels, 
@@ -272,42 +273,38 @@ inline void SetMaterialProjectionHelper(
 	AVoxelWorld* World = Work.World.Get();
 	if (!World) { return; }
 
-	FVoxelData* Data = World->GetData();
-	TArray<FVoxelId> Octrees;
+	FVoxelData& Data = World->GetData();
 	{
-		SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_BeginSet);
-		FString Name = "SetMaterialProjection";
-		if (!Data->TryBeginSet(Work.Bounds, TimeoutInMicroSeconds, Octrees, Name))
+		FVoxelReadWriteScopeTryLock Lock(Data, Work.Bounds, LockTimeoutInSeconds, "SetMaterialProjection");
+		if (!Lock.Success())
 		{
-			LockerName = Name;
+			LockerName = Lock.GetLockerName();
 			FailReason = EFailReason::VoxelDataLocked;
 			return;
 		}
-	}
-	
-	FVoxelData::LastOctreeAccelerator OctreeAccelerator(Data);
-	for (auto& Hit : Work.HitVoxels)
-	{
-		if (LIKELY(Data->IsInWorld(Hit.Position)))
+
+		FVoxelDataUtilities::LastOctreeAccelerator OctreeAccelerator(Data);
+		for (auto& Hit : Work.HitVoxels)
 		{
-			FModifiedVoxelMaterial Voxel;
-			Voxel.Position = Hit.Position;
+			if (LIKELY(Data.IsInWorld(Hit.Position)))
+			{
+				FModifiedVoxelMaterial Voxel;
+				Voxel.Position = Hit.Position;
 
-			FVoxelMaterial Material = OctreeAccelerator.GetMaterial(Hit.Position, 0);
+				FVoxelMaterial Material = OctreeAccelerator.GetMaterial(Hit.Position, 0);
 
-			Voxel.OldMaterial = Material;
-			PaintMaterial.ApplyToMaterial(Material, StrengthCurve ? StrengthCurve->FloatCurve.Eval(Hit.Distance / Radius) : 1);
-			Voxel.NewMaterial = Material;
+				Voxel.OldMaterial = Material;
+				PaintMaterial.ApplyToMaterial(Material, StrengthCurve ? StrengthCurve->FloatCurve.Eval(Hit.Distance / Radius) : 1);
+				Voxel.NewMaterial = Material;
 
-			OctreeAccelerator.SetMaterial(Hit.Position, Material);
+				OctreeAccelerator.SetMaterial(Hit.Position, Material);
 
-			ModifiedVoxels.Add(Voxel);
+				ModifiedVoxels.Add(Voxel);
+			}
 		}
 	}
 
-	Data->EndSet(Octrees);
-
-	World->UpdateChunksOverlappingBox(Work.Bounds, true);
+	World->GetLODManager().UpdateBounds(Work.Bounds, true);
 
 	Branches = EBlueprintSuccess::Success;
 }
@@ -326,14 +323,14 @@ void GetVoxelsProjectionHelper(
 	AVoxelWorld* World = Work.World.Get();
 	if (!World) { return; }
 
-	FVoxelData* Data = World->GetData();
+	FVoxelData& Data = World->GetData();
 	{
-		FVoxelScopeGetLock Lock(Data, Work.Bounds, "GetVoxelsProjection");
+		FVoxelReadScopeLock Lock(Data, Work.Bounds, "GetVoxelsProjection");
 
-		FVoxelData::LastOctreeAccelerator OctreeAccelerator(Data);
+		FVoxelDataUtilities::LastOctreeAccelerator OctreeAccelerator(Data);
 		for (auto& Hit : Work.HitVoxels)
 		{
-			if (LIKELY(Data->IsInWorld(Hit.Position)))
+			if (LIKELY(Data.IsInWorld(Hit.Position)))
 			{
 				FGetVoxelProjectionVoxel Voxel;
 				Voxel.Position = Hit.Position;
@@ -353,6 +350,14 @@ void GetVoxelsProjectionHelper(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+UVoxelProjectionTools::UVoxelProjectionTools()
+{
+	if (!TraceDelegate.IsBound())
+	{
+		TraceDelegate.BindStatic(&TraceDone);
+	}
+}
+
 void UVoxelProjectionTools::SetValueProjectionAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
@@ -369,14 +374,14 @@ void UVoxelProjectionTools::SetValueProjectionAsync(
 	float ToolHeight, 
 	float EditDistance, 
 	float StepInVoxel, 
-	int TimeoutInMicroSeconds, 
+	float LockTimeoutInSeconds, 
 	bool bShowRaycasts)
 {
 	Branches = EBlueprintSuccess::Failed;
 	FailReason = EFailReason::OtherError;
 	LockerName = "";
 
-	CHECK_WORLD_VOXELTOOLS(SetValueProjectionAsync);
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	auto* ModifiedVoxelsPtr = &ModifiedVoxels;
 	auto* BranchesPtr = &Branches;
@@ -394,7 +399,7 @@ void UVoxelProjectionTools::SetValueProjectionAsync(
 			LatentActionManager.AddNewAction(LatentInfo.CallbackTarget, LatentInfo.UUID, new FVoxelProjectionEditLatentAction(Work, LatentInfo,
 				[=](FVoxelProjectionEditWork& Work)
 				{
-					SetValueProjectionHelper(Work, Radius, TimeoutInMicroSeconds, Strength, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr, *LockerNamePtr);
+					SetValueProjectionHelper(Work, Radius, LockTimeoutInSeconds, Strength, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr, *LockerNamePtr);
 				}
 			));
 		}
@@ -423,14 +428,14 @@ void UVoxelProjectionTools::SetMaterialProjectionAsync(
 	float ToolHeight,
 	float EditDistance,
 	float StepInVoxel,
-	int TimeoutInMicroSeconds, 
+	float LockTimeoutInSeconds, 
 	bool bShowRaycasts)
 {
 	Branches = EBlueprintSuccess::Failed;
 	FailReason = EFailReason::OtherError;
 	LockerName = "";
 	
-	CHECK_WORLD_VOXELTOOLS(SetMaterialProjectionAsync);
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	auto* ModifiedVoxelsPtr = &ModifiedVoxels;
 	auto* BranchesPtr = &Branches;
@@ -448,7 +453,7 @@ void UVoxelProjectionTools::SetMaterialProjectionAsync(
 			LatentActionManager.AddNewAction(LatentInfo.CallbackTarget, LatentInfo.UUID, new FVoxelProjectionEditLatentAction(Work, LatentInfo,
 				[=](FVoxelProjectionEditWork& Work)
 				{
-					SetMaterialProjectionHelper(Work, Radius, TimeoutInMicroSeconds, PaintMaterial, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr, *LockerNamePtr);
+					SetMaterialProjectionHelper(Work, Radius, LockTimeoutInSeconds, PaintMaterial, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr, *LockerNamePtr);
 				}
 			));
 		}
@@ -475,7 +480,7 @@ void UVoxelProjectionTools::GetVoxelsProjectionAsync(
 {
 	Branches = EBlueprintSuccess::Failed;
 	
-	CHECK_WORLD_VOXELTOOLS(GetVoxelsProjectionAsync);
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	auto* OutVoxelsPtr = &OutVoxels;
 	auto* BranchesPtr = &Branches;
@@ -516,18 +521,18 @@ void UVoxelProjectionTools::SetValueProjectionNew(
 	float ToolHeight,
 	float EditDistance,
 	float StepInVoxel,
-	int TimeoutInMicroSeconds,
+	float LockTimeoutInSeconds,
 	bool bShowRaycasts)
 {
 	Branches = EBlueprintSuccess::Failed;
 	FailReason = EFailReason::OtherError;
 	LockerName = "";
 
-	CHECK_WORLD_VOXELTOOLS(SetValueProjection);
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	FVoxelProjectionEditWork Work(World, bShowRaycasts, Strength <= 0);
 	FindHitVoxelsForRaycasts<false>(Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-	SetValueProjectionHelper(Work, Radius, TimeoutInMicroSeconds, Strength, StrengthCurve, ModifiedVoxels, Branches, FailReason, LockerName);
+	SetValueProjectionHelper(Work, Radius, LockTimeoutInSeconds, Strength, StrengthCurve, ModifiedVoxels, Branches, FailReason, LockerName);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -546,18 +551,18 @@ void UVoxelProjectionTools::SetMaterialProjectionNew(
 	float ToolHeight,
 	float EditDistance,
 	float StepInVoxel,
-	int TimeoutInMicroSeconds,
+	float LockTimeoutInSeconds,
 	bool bShowRaycasts)
 {
 	Branches = EBlueprintSuccess::Failed;
 	FailReason = EFailReason::OtherError;
 	LockerName = "";
 
-	CHECK_WORLD_VOXELTOOLS(SetMaterialProjection);
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	FVoxelProjectionEditWork Work(World, bShowRaycasts, false);
 	FindHitVoxelsForRaycasts<false>(Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-	SetMaterialProjectionHelper(Work, Radius, TimeoutInMicroSeconds, PaintMaterial, StrengthCurve, ModifiedVoxels, Branches, FailReason, LockerName);
+	SetMaterialProjectionHelper(Work, Radius, LockTimeoutInSeconds, PaintMaterial, StrengthCurve, ModifiedVoxels, Branches, FailReason, LockerName);
 }
 
 void UVoxelProjectionTools::GetVoxelsProjection(
@@ -574,7 +579,7 @@ void UVoxelProjectionTools::GetVoxelsProjection(
 {
 	Branches = EBlueprintSuccess::Failed;
 
-	CHECK_WORLD_VOXELTOOLS(GetVoxelsProjection);
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	FVoxelProjectionEditWork Work(World, bShowRaycasts, false);
 	FindHitVoxelsForRaycasts<false>(Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);

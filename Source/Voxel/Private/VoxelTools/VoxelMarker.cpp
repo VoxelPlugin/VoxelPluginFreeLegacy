@@ -1,13 +1,13 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelTools/VoxelMarker.h"
-#include "VoxelLogStatDefinitions.h"
 #include "UObject/ConstructorHelpers.h"
 #include "VoxelWorld.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/DecalComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 #define CHECK_WORLD_VOXELMARKERS(Name) \
 if (!World) \
@@ -100,15 +100,12 @@ AVoxelSphereMarker::AVoxelSphereMarker()
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
 	SetRootComponent(StaticMesh);
 
-	StaticMesh->SetStaticMesh(Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), this, TEXT("/Engine/BasicShapes/Sphere.Sphere"))));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshFinder(TEXT("/Engine/BasicShapes/Sphere"));
+	StaticMesh->SetStaticMesh(MeshFinder.Object);
 	StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	static ConstructorHelpers::FObjectFinder<UMaterial> MaterialParentFinder(TEXT("Material'/Voxel/Markers/M_VoxelMarker.M_VoxelMarker'"));
- 
-	if (MaterialParentFinder.Object)
-	{
-		MaterialParent = MaterialParentFinder.Object;
-	}
+	static ConstructorHelpers::FObjectFinder<UMaterial> MaterialParentFinder(TEXT("/Voxel/Markers/M_VoxelMarker"));
+	MaterialParent = MaterialParentFinder.Object;
 }
 
 void AVoxelSphereMarker::UpdateSphereMarker(AVoxelWorld* World, EVoxelMode Mode, FIntVector Position, float Radius)
@@ -122,7 +119,7 @@ void AVoxelSphereMarker::UpdateSphereMarker(AVoxelWorld* World, EVoxelMode Mode,
 	}
 
 	SetActorLocation(World->LocalToGlobal(Position));
-	SetActorScale3D(FVector::OneVector * Radius * World->GetVoxelSize() / 50);
+	SetActorScale3D(FVector::OneVector * Radius * World->VoxelSize / 50);
 
 	switch (Mode)
 	{
@@ -150,15 +147,12 @@ AVoxelBoxMarker::AVoxelBoxMarker()
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
 	SetRootComponent(StaticMesh);
 
-	StaticMesh->SetStaticMesh(Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), this, TEXT("/Voxel/Markers/Shape_Cube.Shape_Cube"))));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshFinder(TEXT("/Voxel/Markers/Shape_Cube"));
+	StaticMesh->SetStaticMesh(MeshFinder.Object);
 	StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	static ConstructorHelpers::FObjectFinder<UMaterial> MaterialParentFinder(TEXT("Material'/Voxel/Markers/M_VoxelMarker.M_VoxelMarker'"));
- 
-	if (MaterialParentFinder.Object)
-	{
-		MaterialParent = MaterialParentFinder.Object;
-	}
+	static ConstructorHelpers::FObjectFinder<UMaterial> MaterialParentFinder(TEXT("/Voxel/Markers/M_VoxelMarker"));
+	MaterialParent = MaterialParentFinder.Object;
 }
 
 void AVoxelBoxMarker::UpdateBoxMarker(AVoxelWorld* World, EVoxelMode Mode, FIntBox Bounds)
@@ -174,9 +168,9 @@ void AVoxelBoxMarker::UpdateBoxMarker(AVoxelWorld* World, EVoxelMode Mode, FIntB
 	FIntVector Size = Bounds.Size();
 	FIntVector Position = Bounds.Min;
 
-	FVector Scale = (FVector)(Size - FIntVector(1, 1, 1)) * World->GetVoxelSize() / 100;
+	FVector Scale = (FVector)(Size - FIntVector(1, 1, 1)) * World->VoxelSize / 100;
 
-	FVector WorldPosition = World->LocalToGlobal(Position) + (FVector)Size * World->GetVoxelSize() / 2 - FVector(0, 0, 50) * Scale - FVector::OneVector * 30.75;
+	FVector WorldPosition = World->LocalToGlobal(Position) + (FVector)Size * World->VoxelSize / 2 - FVector(0, 0, 50) * Scale - FVector::OneVector * 30.75;
 
 	SetActorLocation(WorldPosition);
 	SetActorScale3D(FVector::OneVector * Scale);

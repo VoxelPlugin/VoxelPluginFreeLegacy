@@ -12,7 +12,7 @@ class AVoxelWorld;
 /**
  * Disable physics on actors that are out of the Voxel World collision range
  */
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Voxel), meta = (BlueprintSpawnableComponent))
 class VOXEL_API UVoxelAutoDisableComponent : public UActorComponent
 {
 	GENERATED_BODY()

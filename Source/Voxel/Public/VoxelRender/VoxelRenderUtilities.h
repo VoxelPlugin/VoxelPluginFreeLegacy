@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGlobals.h"
 #include "VoxelDirection.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
@@ -10,6 +11,8 @@
 #include "VoxelDebug/VoxelStats.h"
 
 class AVoxelWorld;
+struct FVoxelRendererSettings;
+struct FVoxelRenderChunkSettings;
 
 class VOXEL_API FVoxelRenderUtilities
 {
@@ -75,11 +78,19 @@ public:
 		return Vertex + Q;
 	}
 
-	template<typename TVertex>
-	static void ConvertArraysToMap(int LOD, EVoxelMaterialConfig MaterialConfig, FVoxelMeshProcessingParameters MeshParameters, TArray<uint32>&& Indices, TArray<TVertex>&& Vertices, FVoxelChunk& OutChunk, FVoxelStatsElement& Stats)
+	template<typename TVertex, typename TAllocatorA, typename TAllocatorB>
+	static void ConvertArrays(
+		int LOD,
+		EVoxelMaterialConfig MaterialConfig,
+		FVoxelMeshProcessingParameters MeshParameters,
+		TArray<uint32, TAllocatorA>&& Indices,
+		TArray<TVertex, TAllocatorB>&& Vertices,
+		FVoxelChunk& OutChunk, 
+		FVoxelStatsElement& Stats)
 	{
-		const static UEnum* Enum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EVoxelMaterialConfig"));
-		Stats.SetValue("MaterialConfig", Enum->GetNameStringByValue((int64)MaterialConfig));
+		Stats.SetNumIndices(Indices.Num());
+		Stats.SetNumVertices(Vertices.Num());
+		Stats.SetMaterialConfig(MaterialConfig);
 
 		if (MaterialConfig == EVoxelMaterialConfig::RGB)
 		{
@@ -335,5 +346,19 @@ public:
 	}
 
 	static float GetWorldCurrentTime(UWorld* World);
-	static void CreateMeshSectionFromChunks(int LOD, bool bShouldFade, AVoxelWorld* World, UVoxelProceduralMeshComponent* Mesh, const TSharedPtr<FVoxelChunkMaterials>& ChunkMaterials, const TSharedPtr<FVoxelChunk>& MainChunk, uint8 TransitionsMask = 0, const TSharedPtr<FVoxelChunk>& TransitionChunk = TSharedPtr<FVoxelChunk>());
+	static void StartMeshDithering(UVoxelProceduralMeshComponent* Mesh, float ChunksDitheringDuration);
+	static void ResetDithering(UVoxelProceduralMeshComponent* Mesh);
+	static void HideMesh(UVoxelProceduralMeshComponent* Mesh);
+	static void CreateMeshSectionFromChunks(
+		int LOD, 
+		uint64 Priority,
+		bool bShouldFade, 
+		const FVoxelRendererSettings& RendererSettings, 
+		const FVoxelRenderChunkSettings& ChunkSettings, 
+		UVoxelProceduralMeshComponent* Mesh, 
+		FVoxelChunkMaterials& ChunkMaterials, 
+		const TSharedPtr<FVoxelChunk>& MainChunk, 
+		uint8 TransitionsMask = 0, 
+		const TSharedPtr<FVoxelChunk>& TransitionChunk = TSharedPtr<FVoxelChunk>());
+	static bool DebugInvisibleChunks();
 };

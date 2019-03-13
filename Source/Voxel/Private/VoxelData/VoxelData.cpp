@@ -1,96 +1,83 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelData/VoxelData.h"
-#include "VoxelLogStatDefinitions.h"
-#include "VoxelData/VoxelDataOctree.h"
-#include "VoxelSave.h"
-#include "VoxelDiff.h"
 #include "VoxelWorldGenerator.h"
+#include "VoxelData/VoxelSaveUtilities.h"
+
 #include "Algo/Reverse.h"
 #include "Misc/ScopeLock.h"
+#include "Async/Async.h"
 
 DECLARE_CYCLE_STAT(TEXT("FVoxelData::LoadFromDiffQueues"), STAT_VoxelData_LoadFromDiffQueues, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("FVoxelData::LoadFromDiffQueues::BeginSet"), STAT_VoxelData_LoadFromDiffQueues_BeginSet, STATGROUP_Voxel);
 
-void FVoxelData::BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FString Name)
+template<EVoxelLockType LockType>
+bool FVoxelData::TryLock(const FIntBox& Bounds, float TimeoutInSeconds, FVoxelLockedOctrees& OutOctrees, FString& InOutName)
 {
-	MainLock.lock_shared();
+	ensure(!InOutName.IsEmpty());
+	InOutName = (LockType == EVoxelLockType::Read ? "Read Lock: " : "ReadWrite Lock: ") + InOutName;
+	OutOctrees.Reset();
 
-	OutOctrees.Empty();
+	MainLock.Lock<EVoxelLockType::Read>();
 
-	Octree->LockTransactions();
-	Octree->BeginSet(Box, OutOctrees, 1e9, Name);
-
-	Algo::Reverse(OutOctrees);
-}
-
-bool FVoxelData::TryBeginSet(const FIntBox& Box, int MicroSeconds, TArray<FVoxelId>& OutOctrees, FString& InOutName)
-{
-	MainLock.lock_shared();
-
-	OutOctrees.Empty();
+	double StartTime = FPlatformTime::Seconds();
 
 	Octree->LockTransactions();
 
-	bool bSuccess = Octree->BeginSet(Box, OutOctrees, MicroSeconds, InOutName);
+	bool bSuccess = Octree->TryLock<LockType>(Bounds, StartTime + TimeoutInSeconds, OutOctrees, InOutName);
 
-	Algo::Reverse(OutOctrees);
+	double Duration = FPlatformTime::Seconds() - StartTime;
+	if (Duration > TimeoutInSeconds)
+	{
+		UE_LOG(LogVoxel, Warning, TEXT("TryLock took longer than timeout: %fs instead of %fs. Success: %s"), Duration, TimeoutInSeconds, bSuccess ? TEXT("true") : TEXT("false"));
+	}
 
 	if (!bSuccess)
 	{
-		EndSet(OutOctrees);
+		if (OutOctrees.Num() == 0)
+		{
+			Unlock<LockType>(OutOctrees);
+		}
+		else
+		{
+			AsyncTask(ENamedThreads::AnyThread, [Octrees = OutOctrees, WeakData = TWeakPtr<FVoxelData, ESPMode::ThreadSafe>(AsShared())]()
+			{
+				auto Data = WeakData.Pin();
+				if (Data.IsValid())
+				{
+					double StartTime = FPlatformTime::Seconds();
+					auto NotConstOctrees = Octrees;
+					Data->Unlock<LockType>(NotConstOctrees);
+					double Duration = FPlatformTime::Seconds() - StartTime;
+					AsyncTask(ENamedThreads::GameThread, [Duration]()
+					{
+						UE_LOG(LogVoxel, Log, TEXT("Unlocking failed TryLock took %fs"), Duration);
+					});
+				}
+			});
+		}
+		OutOctrees.Reset();
 	}
 
 	return bSuccess;
 }
 
-void FVoxelData::EndSet(TArray<FVoxelId>& LockedOctrees)
+template<EVoxelLockType LockType>
+void FVoxelData::Unlock(FVoxelLockedOctrees& LockedOctrees)
 {
-	Octree->EndSet(LockedOctrees);
-	check(LockedOctrees.Num() == 0);
-
-	MainLock.unlock_shared();
-}
-
-void FVoxelData::BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutOctrees, FString Name)
-{
-	MainLock.lock_shared();
-
-	OutOctrees.Empty();
-
-	Octree->LockTransactions();
-	Octree->BeginGet(Box, OutOctrees, 1e9, Name);
-
-	Algo::Reverse(OutOctrees);
-}
-
-bool FVoxelData::TryBeginGet(const FIntBox& Box, int MicroSeconds, TArray<FVoxelId>& OutOctrees, FString& InOutName)
-{
-	MainLock.lock_shared();
-
-	OutOctrees.Empty();
-
-	Octree->LockTransactions();
-
-	bool bSuccess = Octree->BeginGet(Box, OutOctrees, MicroSeconds, InOutName);
-
-	Algo::Reverse(OutOctrees);
-
-	if (!bSuccess)
+	Octree->Unlock<LockType>(LockedOctrees);
+	if (!ensureMsgf(LockedOctrees.Num() == 0, TEXT("Unlock failed! %d octrees remaining"), LockedOctrees.Num()))
 	{
-		EndGet(OutOctrees);
+		LockedOctrees.Reset();
 	}
 
-	return bSuccess;
+	MainLock.Unlock<EVoxelLockType::Read>();
 }
 
-void FVoxelData::EndGet(TArray<FVoxelId>& LockedOctrees)
-{
-	Octree->EndGet(LockedOctrees);
-	check(LockedOctrees.Num() == 0);
-	
-	MainLock.unlock_shared();
-}
+template bool FVoxelData::TryLock<EVoxelLockType::Read>(const FIntBox&, float, FVoxelLockedOctrees&, FString&);
+template bool FVoxelData::TryLock<EVoxelLockType::ReadWrite>(const FIntBox&, float, FVoxelLockedOctrees&, FString&);
+
+template void FVoxelData::Unlock<EVoxelLockType::Read>(FVoxelLockedOctrees&);
+template void FVoxelData::Unlock<EVoxelLockType::ReadWrite>(FVoxelLockedOctrees&);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -135,7 +122,7 @@ void FVoxelData::CacheMostUsedChunks(
 	TArray<FVoxelDataOctree::CacheElement> OctreesToCacheAndCachedOctrees;
 	TArray<FVoxelDataOctree*> OctreesToSubdivide;
 	{
-		FVoxelScopeGetLock Lock(this, FIntBox::Infinite, "CacheMostUsedChunks FindChunks");
+		FVoxelReadScopeLock Lock(this, FIntBox::Infinite, "CacheMostUsedChunks FindChunks");
 		Octree->GetOctreesToCacheAndExistingCachedOctrees(CacheTime, Threshold, OctreesToCacheAndCachedOctrees, OctreesToSubdivide);
 	}
 
@@ -147,6 +134,7 @@ void FVoxelData::CacheMostUsedChunks(
 			auto CacheElement = OctreesToCacheAndCachedOctrees.Pop(false);
 			if (CacheElement.bIsCached)
 			{
+				FVoxelReadWriteScopeLock Lock(this, CacheElement.Octree->GetBounds(), "CacheMostUsedChunks ClearCache");
 				CacheElement.Octree->ClearCache();
 				NumRemovedFromCache++;
 			}
@@ -158,13 +146,13 @@ void FVoxelData::CacheMostUsedChunks(
 		if (!CacheElement.bIsCached)
 		{
 			auto* Chunk = CacheElement.Octree;
-			FVoxelScopeSetLock Lock(this, Chunk->GetBounds(), "CacheMostUsedChunks CacheOctrees");
+			FVoxelReadWriteScopeLock Lock(this, Chunk->GetBounds(), "CacheMostUsedChunks CacheOctrees");
 			check(Chunk->LOD == 0);
 			if (!Chunk->IsCreated()) // Might have been created since FindChunks
 			{
 				NumChunksCached++;
 				TotalNumCachedChunks++;
-				Chunk->Cache(false, false);
+				Chunk->Cache(false, true, false);
 			}
 		}
 		else
@@ -175,7 +163,7 @@ void FVoxelData::CacheMostUsedChunks(
 
 	for (auto& OctreeToSubdivide : OctreesToSubdivide)
 	{
-		FVoxelScopeSetLock Lock(this, OctreeToSubdivide->GetBounds(), "CacheMostUsedChunks SubdivideOctrees");
+		FVoxelReadWriteScopeLock Lock(this, OctreeToSubdivide->GetBounds(), "CacheMostUsedChunks SubdivideOctrees");
 		if (OctreeToSubdivide->IsLeaf())
 		{
 			NumChunksSubdivided++;
@@ -186,12 +174,11 @@ void FVoxelData::CacheMostUsedChunks(
 
 void FVoxelData::Compact(uint32& NumDeleted)
 {
-	MainLock.lock();
-
 	NumDeleted = 0;
-	Octree->Compact(NumDeleted);
 
-	MainLock.unlock();
+	MainLock.Lock<EVoxelLockType::ReadWrite>();
+	Octree->Compact(NumDeleted);
+	MainLock.Unlock<EVoxelLockType::ReadWrite>();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -200,16 +187,17 @@ void FVoxelData::Compact(uint32& NumDeleted)
 
 void FVoxelData::GetSave(FVoxelUncompressedWorldSave& OutSave)
 {
-	FVoxelScopeGetLock Lock(this, FIntBox::Infinite, "GetSave");
+	FVoxelReadScopeLock Lock(this, FIntBox::Infinite, "GetSave");
 
-	OutSave.Init(Depth);
-	Octree->Save(OutSave);
-	OutSave.Save();
+	FVoxelSaveBuilder Builder(Depth);
+
+	Octree->Save(Builder);
+	Builder.Save(OutSave);
 }
 
 void FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSave& Save, TArray<FIntBox>& OutBoundsToUpdate)
 {
-	FVoxelScopeSetLock Lock(this, FIntBox::Infinite, "LoadFromSave");
+	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "LoadFromSave");
 
 	Octree->GetLeavesBounds(OutBoundsToUpdate, 0);
 	Octree->ClearData();
@@ -219,13 +207,74 @@ void FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSave& Save, TArray<FI
 		MaxHistoryPosition = 0;
 	}
 
-	int Index = 0;
-	Octree->Load(Index, Save, OutBoundsToUpdate);
+	FVoxelSaveLoader Loader(Save);
 
-	check(Index == Save.NumChunks() || Save.GetDepth() > Depth);
+	int Index = 0;
+	Octree->Load(Index, Loader, OutBoundsToUpdate);
+
+	check(Index == Loader.NumChunks() || Save.GetDepth() > Depth);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelData::Undo(TArray<FIntBox>& OutBoundsToUpdate)
+{
+	check(IsInGameThread());
+	ensure(bEnableUndoRedo);
+	MarkAsDirty();
+	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "Undo");
+	if (HistoryPosition > 0)
+	{
+		HistoryPosition--;
+		Octree->Undo(HistoryPosition, OutBoundsToUpdate);
+	}
+}
+
+void FVoxelData::Redo(TArray<FIntBox>& OutBoundsToUpdate)
+{
+	check(IsInGameThread());
+	ensure(bEnableUndoRedo);
+	MarkAsDirty();
+	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "Redo");
+	if (HistoryPosition < MaxHistoryPosition)
+	{
+		HistoryPosition++;
+		Octree->Redo(HistoryPosition, OutBoundsToUpdate);
+	}
+}
+
+void FVoxelData::ClearFrames()
+{
+	check(IsInGameThread());
+	ensure(bEnableUndoRedo);
+	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "ClearFrames");
+	Octree->ClearFrames();
+	HistoryPosition = 0;
+	MaxHistoryPosition = 0;
+}
+
+void FVoxelData::SaveFrame()
+{
+	check(IsInGameThread());
+	ensure(bEnableUndoRedo);
+	MarkAsDirty();
+	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "SaveFrame");
+	Octree->SaveFrame(HistoryPosition);
+	HistoryPosition++;
+	MaxHistoryPosition = HistoryPosition;
+}
+
+bool FVoxelData::IsCurrentFrameEmpty()
+{
+	check(IsInGameThread());
+	ensure(bEnableUndoRedo);
+	FVoxelReadScopeLock Lock(this, FIntBox::Infinite, "IsCurrentFrameEmpty");
+	return Octree->IsCurrentFrameEmpty();
+}

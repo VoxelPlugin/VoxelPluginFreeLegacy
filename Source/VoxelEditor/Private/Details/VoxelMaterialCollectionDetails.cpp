@@ -17,7 +17,7 @@
 #include "IDetailChildrenBuilder.h"
 #include "PropertyCustomizationHelpers.h"
 
-#define LOCTEXT_NAMESPACE "VoxelMaterialCollectionDetails"
+#define LOCTEXT_NAMESPACE "Voxel"
 
 TSharedRef<IDetailCustomization> FVoxelMaterialCollectionDetails::MakeInstance()
 {
@@ -33,29 +33,26 @@ void FVoxelMaterialCollectionDetails::CustomizeDetails(IDetailLayoutBuilder& Det
 {
 	Collection = FVoxelEditorDetailsUtils::GetCurrentObjectFromDetails<UVoxelMaterialCollection>(DetailLayout);
 
-	ADD_BUTTON_TO_CATEGORY(DetailLayout,
+	FVoxelEditorDetailsUtils::AddButtonToCategory(DetailLayout,
 		"Generate",
 		LOCTEXT("GenerateSingle", "Generate Single"),
 		LOCTEXT("GenerateSingleMaterials", "Generate Single Materials"),
 		LOCTEXT("GenerateSingle", "Generate Single"),
-		this,
-		&FVoxelMaterialCollectionDetails::OnGenerateSingleMaterials)
+		FOnClicked::CreateSP(this, &FVoxelMaterialCollectionDetails::OnGenerateSingleMaterials));
 
-	ADD_BUTTON_TO_CATEGORY(DetailLayout,
+	FVoxelEditorDetailsUtils::AddButtonToCategory(DetailLayout,
 		"Generate",
 		LOCTEXT("GenerateDouble", "Generate Double"),
 		LOCTEXT("GenerateDoubleMaterials", "Generate Double Materials"),
 		LOCTEXT("GenerateDouble", "Generate Double"),
-		this,
-		&FVoxelMaterialCollectionDetails::OnGenerateDoubleMaterials)
+		FOnClicked::CreateSP(this, &FVoxelMaterialCollectionDetails::OnGenerateDoubleMaterials));
 
-	ADD_BUTTON_TO_CATEGORY(DetailLayout,
+	FVoxelEditorDetailsUtils::AddButtonToCategory(DetailLayout,
 		"Generate",
 		LOCTEXT("GenerateTriple", "Generate Triple"),
 		LOCTEXT("GenerateTripleMaterials", "Generate Triple Materials"),
 		LOCTEXT("GenerateTriple", "Generate Triple"),
-		this,
-		&FVoxelMaterialCollectionDetails::OnGenerateTripleMaterials)
+		FOnClicked::CreateSP(this, &FVoxelMaterialCollectionDetails::OnGenerateTripleMaterials));
 }
 
 
