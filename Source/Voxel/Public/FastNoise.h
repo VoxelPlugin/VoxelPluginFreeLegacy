@@ -162,10 +162,10 @@ public:
 
 	// Sets the maximum warp distance from original location when using GradientPerturb{Fractal}(...)
 	// Default: 1.0
-	void SetGradientPerturbAmp(FN_DECIMAL gradientPerturbAmp) { m_gradientPerturbAmp = gradientPerturbAmp; }
+	//void SetGradientPerturbAmp(FN_DECIMAL gradientPerturbAmp) { m_gradientPerturbAmp = gradientPerturbAmp; }
 
 	// Returns the maximum warp distance from original location when using GradientPerturb{Fractal}(...)
-	FN_DECIMAL GetGradientPerturbAmp() const { return m_gradientPerturbAmp; }
+	//FN_DECIMAL GetGradientPerturbAmp() const { return m_gradientPerturbAmp; }
 
 	//2D
 	FN_DECIMAL GetValue(FN_DECIMAL x, FN_DECIMAL y) const;
@@ -187,8 +187,8 @@ public:
 
 	FN_DECIMAL GetNoise(FN_DECIMAL x, FN_DECIMAL y) const;
 
-	void GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y) const;
-	void GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y) const;
+	void GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, float m_gradientPerturbAmp) const;
+	void GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, float m_gradientPerturbAmp) const;
 
 	//3D
 	FN_DECIMAL GetValue(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const;
@@ -210,8 +210,8 @@ public:
 
 	FN_DECIMAL GetNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const;
 
-	void GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z) const;
-	void GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z) const;
+	void GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z, float m_gradientPerturbAmp) const;
+	void GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z, float m_gradientPerturbAmp) const;
 
 	//4D
 	FN_DECIMAL GetSimplex(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w) const;
@@ -241,7 +241,7 @@ private:
 	int m_cellularDistanceIndex1 = 1;
 	FN_DECIMAL m_cellularJitter = FN_DECIMAL(0.45);
 
-	FN_DECIMAL m_gradientPerturbAmp = FN_DECIMAL(1);
+	//FN_DECIMAL m_gradientPerturbAmp = FN_DECIMAL(1);
 
 	void CalculateFractalBounding();
 

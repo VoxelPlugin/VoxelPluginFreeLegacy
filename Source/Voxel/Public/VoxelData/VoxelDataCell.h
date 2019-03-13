@@ -5,12 +5,69 @@
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "VoxelLogStatDefinitions.h"
 #include "IntBox.h"
 #include "VoxelDiff.h"
 
 DECLARE_MEMORY_STAT(TEXT("Voxel UndoRedo Memory"), STAT_VoxelUndoRedoMemory, STATGROUP_VoxelMemory);
 DECLARE_MEMORY_STAT(TEXT("Voxel Cells Memory"), STAT_VoxelCellsMemory, STATGROUP_VoxelMemory);
+
+class FVoxelDataCell
+{
+public:
+	FVoxelDataCell()
+	{
+		INC_MEMORY_STAT_BY(STAT_VoxelCellsMemory, sizeof(FVoxelDataCell));
+	}
+	~FVoxelDataCell()
+	{
+		if (Values)
+		{
+			FMemory::Free(Values);
+			DEC_MEMORY_STAT_BY(STAT_VoxelCellsMemory, VOXEL_CELL_COUNT * sizeof(FVoxelValue));
+		}
+		if (Materials)
+		{
+			FMemory::Free(Materials);
+			DEC_MEMORY_STAT_BY(STAT_VoxelCellsMemory, VOXEL_CELL_COUNT * sizeof(FVoxelMaterial));
+		}
+		DEC_MEMORY_STAT_BY(STAT_VoxelCellsMemory, sizeof(FVoxelDataCell));
+	}
+
+	template<typename T> inline       T* GetArray();
+	template<typename T> inline const T* GetArray() const;
+	
+	template<typename T> inline void CreateArray()
+	{
+		check(!GetArray<T>());
+		GetArrayRef<T>() = (T*)FMemory::Malloc(VOXEL_CELL_COUNT * sizeof(T));
+		INC_MEMORY_STAT_BY(STAT_VoxelCellsMemory, VOXEL_CELL_COUNT * sizeof(T));
+	}
+
+	template<typename T> inline void SetArrayAsDirty();
+	template<typename T> inline bool IsArrayDirty() const;
+
+private:
+	FVoxelValue* Values = nullptr;
+	FVoxelMaterial* Materials = nullptr;
+	bool bValuesAreDirty = false;
+	bool bMaterialsAreDirty = false;
+	
+	template<typename T> inline T*& GetArrayRef();
+};
+
+template<> inline       FVoxelValue*    FVoxelDataCell::GetArray<FVoxelValue   >()       { return Values; }
+template<> inline const FVoxelValue*    FVoxelDataCell::GetArray<FVoxelValue   >() const { return Values; }
+template<> inline       FVoxelMaterial* FVoxelDataCell::GetArray<FVoxelMaterial>()       { return Materials; }
+template<> inline const FVoxelMaterial* FVoxelDataCell::GetArray<FVoxelMaterial>() const { return Materials; }
+
+template<> inline void FVoxelDataCell::SetArrayAsDirty<FVoxelValue   >() { bValuesAreDirty    = true; }
+template<> inline void FVoxelDataCell::SetArrayAsDirty<FVoxelMaterial>() { bMaterialsAreDirty = true; }
+
+template<> inline bool FVoxelDataCell::IsArrayDirty<FVoxelValue   >() const { return bValuesAreDirty   ; }
+template<> inline bool FVoxelDataCell::IsArrayDirty<FVoxelMaterial>() const { return bMaterialsAreDirty; }
+
+template<> inline FVoxelValue   *& FVoxelDataCell::GetArrayRef<FVoxelValue   >() { return Values   ; }
+template<> inline FVoxelMaterial*& FVoxelDataCell::GetArrayRef<FVoxelMaterial>() { return Materials; }
 
 namespace FVoxelDataCellUtilities
 {
@@ -28,61 +85,12 @@ namespace FVoxelDataCellUtilities
 		Index -= OutY;
 		OutX = Index;
 	}
+	inline int GetCacheSizeInMB(int CacheSize)
+	{
+		return FMath::CeilToInt((double)CacheSize * (sizeof(FVoxelDataCell) + VOXEL_CELL_COUNT * sizeof(FVoxelValue)) / (1 << 20)); // 1 MB;
+	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-class FVoxelDataCell
-{
-public:
-	FVoxelDataCell()
-	{
-		INC_MEMORY_STAT_BY(STAT_VoxelCellsMemory, sizeof(FVoxelDataCell));
-	}
-	~FVoxelDataCell()
-	{
-		DEC_MEMORY_STAT_BY(STAT_VoxelCellsMemory, sizeof(FVoxelDataCell));
-	}
-
-	template<typename T> inline       T* GetArray();
-	template<typename T> inline const T* GetArray() const;
-
-	template<typename T> inline       TVoxelBuffer<T>& GetBuffer();
-	template<typename T> inline const TVoxelBuffer<T>& GetBuffer() const;
-
-	template<typename T> inline void SetBufferAsDirty();
-
-	template<typename T> inline bool IsBufferDirty() const;
-
-private:
-	TVoxelBuffer<FVoxelValue> Values;
-	TVoxelBuffer<FVoxelMaterial> Materials;
-	bool bValuesAreDirty = false;
-	bool bMaterialsAreDirty = false;
-};
-
-template<> inline       FVoxelValue*    FVoxelDataCell::GetArray<FVoxelValue   >()       { return Values   .data(); }
-template<> inline const FVoxelValue*    FVoxelDataCell::GetArray<FVoxelValue   >() const { return Values   .data(); }
-template<> inline       FVoxelMaterial* FVoxelDataCell::GetArray<FVoxelMaterial>()       { return Materials.data(); }
-template<> inline const FVoxelMaterial* FVoxelDataCell::GetArray<FVoxelMaterial>() const { return Materials.data(); }
-
-template<> inline       TVoxelBuffer<FVoxelValue>&    FVoxelDataCell::GetBuffer<FVoxelValue   >()       { return Values   ; }
-template<> inline const TVoxelBuffer<FVoxelValue>&    FVoxelDataCell::GetBuffer<FVoxelValue   >() const { return Values   ; }
-template<> inline       TVoxelBuffer<FVoxelMaterial>& FVoxelDataCell::GetBuffer<FVoxelMaterial>()       { return Materials; }
-template<> inline const TVoxelBuffer<FVoxelMaterial>& FVoxelDataCell::GetBuffer<FVoxelMaterial>() const { return Materials; }
-
-template<> inline void FVoxelDataCell::SetBufferAsDirty<FVoxelValue   >() { bValuesAreDirty    = true; }
-template<> inline void FVoxelDataCell::SetBufferAsDirty<FVoxelMaterial>() { bMaterialsAreDirty = true; }
-
-template<> inline bool FVoxelDataCell::IsBufferDirty<FVoxelValue   >() const { return bValuesAreDirty   ; }
-template<> inline bool FVoxelDataCell::IsBufferDirty<FVoxelMaterial>() const { return bMaterialsAreDirty; }
-
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
 
 class FVoxelDataCellUndoRedo
 {

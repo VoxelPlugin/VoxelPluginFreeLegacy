@@ -14,7 +14,5 @@ UVoxelMaterialCollectionFactory::UVoxelMaterialCollectionFactory(const FObjectIn
 
 UObject* UVoxelMaterialCollectionFactory::FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
-	auto NewCollection = NewObject<UVoxelMaterialCollection>(InParent, Class, Name, Flags | RF_Transactional);
-
-	return NewCollection;
+	return NewObject<UVoxelMaterialCollection>(InParent, Class, Name, Flags | RF_Transactional);
 }

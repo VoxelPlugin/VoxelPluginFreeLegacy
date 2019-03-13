@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
 #include "VoxelConfigEnums.generated.h"
 
 UENUM(BlueprintType)
@@ -32,8 +31,9 @@ enum class EVoxelMaterialConfig : uint8
 UENUM(BlueprintType)
 enum class EVoxelUVConfig : uint8
 {
-	GlobalUVs,
-	UseRGAsUVs UMETA(DisplayName="Use Red and Green as UVs"),
-	PackWorldUpInUVs UMETA(DisplayName="Pack WorldUp in UVs"),
-	PerVoxelUVs UMETA(DisplayName="Per Voxel UVs (Cubic only)")
+	GlobalUVs					UMETA(DisplayName = "Global UVs"),
+	UseRGAsUVs					UMETA(DisplayName = "Use Red and Green as UVs"),
+	PackWorldUpInUVs			UMETA(DisplayName = "Pack WorldUp in UVs"),
+	PerVoxelUVs					UMETA(DisplayName = "Per Voxel UVs (Cubic only)"),
+	UseGrassAndActorIdsAsUVs	UMETA(DisplayName = "Use Grass and Actor Ids as UVs")
 };

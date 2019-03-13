@@ -8,66 +8,53 @@ public class VoxelEditor : ModuleRules
     public VoxelEditor(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-#if UE_4_20_OR_LATER
+        bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
-#endif
+
+        if (!Target.bUseUnityBuild)
+        {
+            PrivatePCHHeaderFile = "Private/VoxelEditorPCH.h";
+        }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
 
-        AddEngineThirdPartyPrivateStaticDependencies(Target,
-            "zlib",
-            "UElibPNG",
-            "UElibJPG"
-        );
-
         DynamicallyLoadedModuleNames.AddRange(
             new string[] {
-                "AssetTools",
-                "MainFrame",
-                "DetailCustomizations",
+                "VoxelGraphEditor",
                 "AssetRegistry",
-                "PlacementMode",
             });
 
         PrivateDependencyModuleNames.AddRange(
             new string[] {
-                "DesktopWidgets",
-                "KismetWidgets",
-                "Projects",
-                "Voxel",
-                "Landscape",
-                "LandscapeEditor",
-                "DesktopPlatform",
-
                 "Core",
                 "CoreUObject",
-                "ApplicationCore",
-                "InputCore",
                 "Engine",
+                "Voxel",
+                "VoxelGraph",
+                "Engine",
+                "Landscape",
+                "LandscapeEditor",
+                "PlacementMode",
+                "AdvancedPreviewScene",
+                "DesktopPlatform",
                 "UnrealEd",
+                "InputCore",
                 "Slate",
                 "SlateCore",
-                "EditorStyle",
-                "RenderCore",
-                "LevelEditor",
-                "Landscape",
                 "PropertyEditor",
-                "ClassViewer",
-                "GraphEditor",
-                "ContentBrowser",
-
-                "BlueprintGraph",
-
-                "AdvancedPreviewScene",
+                "EditorStyle",
+                "Projects"
             });
 
         PrivateIncludePathModuleNames.AddRange(
             new string[] {
-                "AssetTools",
-                "UnrealEd",
-                "DetailCustomizations",
-                "PlacementMode",
+                "VoxelGraphEditor"
             });
+
+        if (Target.Configuration == UnrealTargetConfiguration.DebugGame)
+        {
+            PublicDefinitions.Add("VOXEL_DEBUG=1");
+        }
     }
 }

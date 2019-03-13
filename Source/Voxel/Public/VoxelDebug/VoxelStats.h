@@ -2,18 +2,11 @@
 
 #pragma once
 
-#include <chrono>
-
 #include "CoreMinimal.h"
-#include "VoxelLogStatDefinitions.h"
-#include "Misc/ScopeLock.h"
-#include "Misc/Paths.h"
-#include "Misc/FileHelper.h"
-#include "Misc/Build.h"
-#include "UObject/Package.h"
-#include "Framework/Notifications/NotificationManager.h"
-#include "Widgets/Notifications/SNotificationList.h"
+#include "VoxelConfigEnums.h"
 #include "VoxelStats.generated.h"
+
+#define RECORD_QUERIES_STATS 0
 
 UENUM()
 enum class EVoxelStatsType
@@ -24,201 +17,78 @@ enum class EVoxelStatsType
 	TransitionsCubic
 };
 
-#define LOCTEXT_NAMESPACE "VoxelStats"
-
 #if STATS
 struct FVoxelStatsElement
 {
 	FVoxelStatsElement() = default;
 
-	void StartStat(const FString& Name)
-	{
-		auto Now = std::chrono::high_resolution_clock::now();
-		if (!PendingStat.IsEmpty())
-		{
-			float Duration = std::chrono::duration_cast<std::chrono::nanoseconds>(Now - PendingTime).count() / 1000000.f;
-			SetFloatValue(PendingStat, Duration);
-		}
-		PendingStat = Name;
-		PendingTime = Now;
-	}
-	
-	void SetLOD(int LOD)
-	{
-		PendingTime = std::chrono::high_resolution_clock::now();
-		SetValue("LOD", FString::FromInt(LOD));
-	}
-	void SetType(EVoxelStatsType Type)
-	{
-		const static UEnum* Enum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EVoxelStatsType"));
-		SetValue("Type", Enum->GetNameStringByValue((int64)Type));
-	}
+	void StartStat(const FName& Name, bool bIsActiveWork = true);
 
-public:
-	void SetValue(const FString& Name, const FString& Value)
-	{
-		check(!Values.Contains(Name));
-		Values.Add(Name, Value);
-	}
-	void SetFloatValue(const FString& Name, float Value)
-	{
-		check(!Values.Contains(Name));
-		FloatValues.Add(Name, Value);
-	}
-
-public:
-	FString GetValue(const FString& Name) const
-	{
-		auto* Result = Values.Find(Name);
-		return Result ? *Result : "";
-	}
-	float GetFloatValue(const FString& Name) const
-	{
-		auto* Result = FloatValues.Find(Name);
-		return Result ? *Result : 0;
-	}
-	float GetTotalTime() const
-	{
-		float Result = 0;
-		for (auto& It : FloatValues)
-		{
-			Result += It.Value;
-		}
-		return Result;
-	}
+	void SetLOD(int LOD);
+	void SetType(EVoxelStatsType Type);
+	void SetIsEmpty(bool bIsEmpty);
+	void SetNumIndices(int NumIndices);
+	void SetNumVertices(int NumVertices);
+	void SetMaterialConfig(EVoxelMaterialConfig MaterialConfig);
+	void SetIsCanceled(bool bIsCanceled);
 
 private:
-	FString PendingStat;
-	std::chrono::time_point<std::chrono::high_resolution_clock> PendingTime;
-	TMap<FString, FString> Values;
-	TMap<FString, float> FloatValues;
+	void SetValue(const FName& Name, const FString& Value)
+	{
+		Values.Add({ Name, Value });
+	}
+	void SetFloatValue(const FName& Name, double Value, bool bIsActiveWork)
+	{
+		FloatValues.Add({ Name, Value, bIsActiveWork });
+	}
+	void AddValueAccessTime(double Time)
+	{
+		ValueAccessTimes.Add(Time);
+	}
+	void AddMaterialAccessTime(double Time)
+	{
+		MaterialAccessTimes.Add(Time);
+	}
+
+	FString GetValue(const FName& Name) const;
+	double GetFloatValue(const FName& Name) const;
+
+private:
+	FName PendingStat;
+	double PendingTime;
+	bool bPendingIsActiveWork;
+
+	struct FValue
+	{
+		FName Name;
+		FString Value;
+	};
+	TArray<FValue> Values;
+
+	struct FFloatValue
+	{
+		FName Name;
+		double Value;
+		bool bIsActiveWork;
+	};
+	TArray<FFloatValue> FloatValues;
+
+	TArray<double> ValueAccessTimes;
+	TArray<double> MaterialAccessTimes;
 
 	friend class FVoxelStats;
+	friend struct FVoxelScopeValueAccessCounter;
+	friend struct FVoxelScopeMaterialAccessCounter;
 };
-#else
-struct FVoxelStatsElement
-{
-	FVoxelStatsElement() = default;
-	
-	void StartStat(const FString& Name) {}	
-	void SetLOD(int LOD) {}
-	void SetType(EVoxelStatsType Type) {}
 
-	void SetValue(const FString& Name, const FString& Value) {}
-	void SetFloatValue(const FString& Name, float Value) {}
-
-	FString GetValue(const FString& Name) const { return FString(); }
-	float GetFloatValue(const FString& Name) const { return 0; }
-	float GetTotalTime() const { return 0; }
-};
-#endif
-
-#if STATS
 class FVoxelStats
 {
 public:
-	static void AddElement(FVoxelStatsElement Element)
-	{
-		FScopeLock Lock(&CriticalSection);
-		if (bRecord)
-		{
-			// Make sure it's finished
-			Element.StartStat("");
-			Elements.Add(Element);
-		}
-	}
+	static void AddElement(FVoxelStatsElement Element);
 
-	static void StopRecordingAndSaveStatsFile()
-	{
-		FScopeLock Lock(&CriticalSection);
-		bRecord = false;
-		FString Text;
-		{
-			TSet<FString> NamesSet;
-			TSet<FString> FloatNamesSet;
-			for (auto& Element : Elements)
-			{
-				for (auto& It : Element.Values)
-				{
-					NamesSet.Add(It.Key);
-				}
-				for (auto& It : Element.FloatValues)
-				{
-					FloatNamesSet.Add(It.Key);
-				}
-			}
-			auto Names = NamesSet.Array();
-			auto FloatNames = FloatNamesSet.Array();
+	static void StopRecordingAndSaveStatsFile();
 
-			for (auto& Name : Names)
-			{
-				Text.Append(Name + ";");
-			}
-			for (auto& Name : FloatNames)
-			{
-				Text.Append(Name + ";");
-			}
-			Text.Append("Total\n");
-
-			for (auto& Element : Elements)
-			{
-				for (auto& Name : Names)
-				{
-					Text.Append(Element.GetValue(Name) + ";");
-				}
-				for (auto& Name : FloatNames)
-				{
-					Text.Append(FString::SanitizeFloat(Element.GetFloatValue(Name)) + ";");
-				}
-				Text.Append(FString::SanitizeFloat(Element.GetTotalTime()) + "\n");
-			}
-		}
-
-		FString Path = FPaths::ProfilingDir() + "VoxelStats/";
-
-		FString Sep = TEXT("_");
-		int32 Year = 0, Month = 0, DayOfWeek = 0, Day = 0, Hour = 0, Min = 0, Sec = 0, MSec = 0;
-		FPlatformTime::SystemTime(Year, Month, DayOfWeek, Day, Hour, Min, Sec, MSec);
-		FString Name = FString::FromInt(Year) +
-			Sep + FString::FromInt(Month) +
-			Sep + FString::FromInt(DayOfWeek) +
-			Sep + FString::FromInt(Day) +
-			Sep + FString::FromInt(Hour) +
-			Sep + FString::FromInt(Min) +
-			Sep + FString::FromInt(Sec) +
-			Sep + FString::FromInt(MSec);
-
-		FString FullPath = Path + Name + ".csv";
-
-		FNotificationInfo Info = FNotificationInfo(FText());
-		Info.ExpireDuration = 10.f;
-		if (FFileHelper::SaveStringToFile(Text, *FullPath))
-		{
-			UE_LOG(LogVoxel, Log, TEXT("VoxelStats: Saved! %s"), *FullPath);
-			Info.CheckBoxState = ECheckBoxState::Checked;
-			Info.Text = FText::Format(LOCTEXT("Success", "Saved! {0}"), FText::FromString(FullPath));
-		}
-		else
-		{
-			UE_LOG(LogVoxel, Error, TEXT("VoxelStats: Error when saving"));
-			Info.CheckBoxState = ECheckBoxState::Unchecked;
-			Info.Text = LOCTEXT("Error", "Error when saving");
-		}
-		FSlateNotificationManager::Get().AddNotification(Info);
-	}
-
-	static void StartRecording()
-	{
-		FScopeLock Lock(&CriticalSection);
-		bRecord = true;
-		Elements.Reset();
-		
-		FNotificationInfo Info = FNotificationInfo(FText());
-		Info.Text = LOCTEXT("Started", "Recording started");
-		FSlateNotificationManager::Get().AddNotification(Info);
-
-		UE_LOG(LogVoxel, Log, TEXT("VoxelStats: Recording started"));
-	}
+	static void StartRecording();
 
 private:
 	static TArray<FVoxelStatsElement> Elements;
@@ -226,12 +96,73 @@ private:
 	static bool bRecord;
 };
 #else
+struct FVoxelStatsElement
+{
+	FVoxelStatsElement() = default;
+	
+	void StartStat(const FName& Name, bool bIsActiveWork = true) {}
+
+	void SetLOD(int LOD) {}
+	void SetType(EVoxelStatsType Type) {}
+	void SetIsEmpty(bool bIsEmpty) {}
+	void SetNumIndices(int NumIndices) {}
+	void SetNumVertices(int NumVertices) {}
+	void SetMaterialConfig(EVoxelMaterialConfig MaterialConfig) {}
+	void SetIsCanceled(bool bIsCanceled) {}
+};
+
 class FVoxelStats
 {
 public:
 	static void AddElement(const FVoxelStatsElement& Element) {}
 	static void StopRecordingAndSaveStatsFile() {}
 	static void StartRecording() {}
+};
+#endif
+
+#if STATS && RECORD_QUERIES_STATS
+struct FVoxelScopeValueAccessCounter
+{
+	FVoxelScopeValueAccessCounter(FVoxelStatsElement& Stats)
+		: Stats(Stats)
+		, StartTime(FPlatformTime::Seconds())
+	{
+	}
+	~FVoxelScopeValueAccessCounter()
+	{
+		Stats.AddValueAccessTime((FPlatformTime::Seconds() - StartTime) * 1000);
+	}
+
+private:
+	FVoxelStatsElement& Stats;
+	const double StartTime;
+};
+
+struct FVoxelScopeMaterialAccessCounter
+{
+	FVoxelScopeMaterialAccessCounter(FVoxelStatsElement& Stats)
+		: Stats(Stats)
+		, StartTime(FPlatformTime::Seconds())
+	{
+	}
+	~FVoxelScopeMaterialAccessCounter()
+	{
+		Stats.AddMaterialAccessTime((FPlatformTime::Seconds() - StartTime) * 1000);
+	}
+
+private:
+	FVoxelStatsElement& Stats;
+	const double StartTime;
+};
+#else
+struct FVoxelScopeValueAccessCounter
+{
+	FVoxelScopeValueAccessCounter(FVoxelStatsElement& Stats) {}
+};
+
+struct FVoxelScopeMaterialAccessCounter
+{
+	FVoxelScopeMaterialAccessCounter(FVoxelStatsElement& Stats) {}
 };
 #endif
 
@@ -253,5 +184,3 @@ public:
 		FVoxelStats::StartRecording();
 	}
 };
-
-#undef LOCTEXT_NAMESPACE

@@ -8,7 +8,7 @@ For more info, check the website: https://voxelplugin.com
 
 ## Installation
 
-* In your game’s root directory, create a folder named Plugins
+* In your project's directory, create a folder named Plugins
 * Copy the Voxel folder into it. You should have something like
 ```
     MyProject

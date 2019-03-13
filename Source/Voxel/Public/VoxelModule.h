@@ -5,10 +5,6 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleInterface.h"
 
-
-/**
- * The public interface to this module
- */
-class IVoxel : public IModuleInterface
+class FVoxelModule : public IModuleInterface
 {
 };

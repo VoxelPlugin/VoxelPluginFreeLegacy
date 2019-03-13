@@ -1,41 +1,19 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelMCRenderer.h"
-#include "VoxelWorld.h"
 #include "VoxelRender/AsyncWorks/VoxelMCPolygonizerAsyncWork.h"
 
-TUniquePtr<FVoxelPolygonizerAsyncWork> FVoxelMCRenderChunk::GetNewTask(const FVoxelPreviousGrassInfo& InPreviousGrassInfo) const
+TUniquePtr<FVoxelPolygonizerAsyncWork> FVoxelMCRenderChunk::GetNewTask()
 {
-	return MakeUnique<FVoxelMCPolygonizerAsyncWork>(
-		LOD,
-		Render->GetSquaredDistanceToInvokers(Position),
-		Position,
-		Render->World,
-		Render->World->GetDataSharedPtr(),
-		false,
-		false,
-		InPreviousGrassInfo,
-		(FVoxelRenderChunk*)this
-		);
+	return MakeUnique<FVoxelMCPolygonizerAsyncWork>(this);
 }
 
-TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> FVoxelMCRenderChunk::GetNewTransitionTask(uint8 InTransitionsMask) const
+TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> FVoxelMCRenderChunk::GetNewTransitionTask()
 {
-	return  MakeUnique<FVoxelMCTransitionsPolygonizerAsyncWork>(
-		LOD,
-		Render->GetSquaredDistanceToInvokers(Position),
-		Position,
-		Render->World,
-		Render->World->GetDataSharedPtr(),
-		(FVoxelRenderChunk*)this, 
-		InTransitionsMask);
+	return  MakeUnique<FVoxelMCTransitionsPolygonizerAsyncWork>(this);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-TSharedRef<FVoxelRenderChunk> FVoxelMCRenderer::GetRenderChunk(FVoxelLODRenderer* Render, uint8 LOD, const FIntBox& Bounds)
+TSharedRef<FVoxelRenderChunk, ESPMode::ThreadSafe> FVoxelMCRenderer::GetRenderChunk(uint8 LOD, const FIntBox& Bounds, const FVoxelRenderChunkSettings& InSettings)
 {
-	return MakeShared<FVoxelMCRenderChunk>(Render, LOD, Bounds);
+	return MakeShared<FVoxelMCRenderChunk, ESPMode::ThreadSafe>(this, LOD, Bounds, InSettings);
 }

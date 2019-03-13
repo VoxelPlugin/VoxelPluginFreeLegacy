@@ -26,18 +26,22 @@ public:
 		, LOD(LOD)
 		, Id(EForceInit::ForceInitToZero)
 		, OctreeBounds(GetCachedBounds())
-		, bIsLeaf(true)
 	{
-		check(LOD < MAX_WORLD_DEPTH);
+		checkVoxelSlow(LOD < MAX_WORLD_DEPTH);
 	}
 	virtual ~TVoxelOctree()
 	{
-		for (auto& Child : Children)
+		if (!IsLeaf())
 		{
-			delete Child;
+			DestroyChildren();
 		}
 	}
 
+	TVoxelOctree(const TVoxelOctree&) = delete;
+	TVoxelOctree(const TVoxelOctree&&) = delete;
+    TVoxelOctree& operator=(const TVoxelOctree&) = delete;
+
+public:
 	/**
 	 * Get the width at this level
 	 * @return	Width of this chunk
@@ -58,7 +62,7 @@ public:
 	 */
 	inline bool IsLeaf() const
 	{
-		return bIsLeaf;
+		return !Children;
 	}
 
 	/**
@@ -69,11 +73,6 @@ public:
 		return FVoxelId::IsChild(Id, ChildId);
 	}
 
-	/**
-	 * Is GlobalPosition in this octree?
-	 * @param	GlobalPosition	Position in voxel space
-	 * @return	If IsInOctree
-	 */
 	template<typename TNumeric>
 	inline bool IsInOctree(TNumeric X, TNumeric Y, TNumeric Z) const
 	{
@@ -111,28 +110,54 @@ public:
 		OutZ = Z - OctreeBounds.Min.Z;
 	}
 	
-	/**
-	 * Get direct child that owns GlobalPosition
-	 * @param	X,Y,Z	Global Position
-	 */
+public:
 	template<typename TNumeric>
-	inline ElementType* GetChild(TNumeric X, TNumeric Y, TNumeric Z) const
+	inline const ElementType& GetChild(TNumeric X, TNumeric Y, TNumeric Z) const
 	{
-		check(!IsLeaf());
-		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-		return Children[(X >= Position.X) + 2 * (Y >= Position.Y) + 4 * (Z >= Position.Z)];
+		return GetChild(GetChildIndex(X, Y, Z));
+	}
+	template<typename TNumeric>
+	inline ElementType& GetChild(TNumeric X, TNumeric Y, TNumeric Z)
+	{
+		return GetChild(GetChildIndex(X, Y, Z));
+	}
+
+	template<typename TVector>
+	inline const ElementType& GetChild(const TVector& P) const
+	{
+		return GetChild(P.X, P.Y, P.Z);
 	}
 	template<typename TVector>
-	inline ElementType* GetChild(const TVector& P) const
+	inline ElementType& GetChild(const TVector& P)
 	{
 		return GetChild(P.X, P.Y, P.Z);
 	}
 
-	inline const TArray<ElementType*, TFixedAllocator<8>>& GetChildren() const
+	inline const ElementType& GetChild(int Index) const
 	{
-		return this->Children;
+		checkVoxelSlow((Children != nullptr) & (0 <= Index) & (Index < 8));
+		return Children[Index];
+	}
+	inline ElementType& GetChild(int Index)
+	{
+		checkVoxelSlow((Children != nullptr) & (0 <= Index) & (Index < 8));
+		return Children[Index];
 	}
 
+	using FChildrenArray = ElementType[8];
+
+	inline const FChildrenArray& GetChildren() const
+	{
+		checkVoxelSlow(Children);
+		return reinterpret_cast<const FChildrenArray&>(*Children);
+	}
+	inline FChildrenArray& GetChildren()
+	{
+		checkVoxelSlow(Children);
+		return reinterpret_cast<FChildrenArray&>(*Children);
+	}
+
+public:
 	/**
 	 * Get the octree leaf at global position
 	 * @param	X,Y,Z	Global Position
@@ -140,16 +165,16 @@ public:
 	template<typename TNumeric>
 	inline ElementType* GetLeaf(TNumeric X, TNumeric Y, TNumeric Z) const
 	{
-		check(IsInOctree(X, Y, Z));
+		checkVoxelSlow(IsInOctree(X, Y, Z));
 
 		const ElementType* Ptr = static_cast<const ElementType*>(this);
 
 		while (!Ptr->IsLeaf())
 		{
-			Ptr = Ptr->GetChild(X, Y, Z);
+			Ptr = &Ptr->GetChild(X, Y, Z);
 		}
 
-		check(Ptr->IsInOctree(X, Y, Z));
+		checkVoxelSlow(Ptr->IsInOctree(X, Y, Z));
 
 		return const_cast<ElementType*>(Ptr);
 	}
@@ -168,9 +193,9 @@ public:
 			}
 			else
 			{
-				for (auto& Child : Children)
+				for (auto& Child : GetChildren())
 				{
-					Child->GetLeavesOverlappingBox(Box, OutOctrees);
+					Child.GetLeavesOverlappingBox(Box, OutOctrees);
 				}
 			}
 		}
@@ -181,14 +206,17 @@ public:
 	{
 		Lambda(static_cast<ElementType*>(this));
 
-		for (auto& Child : GetChildren())
+		if (!IsLeaf())
 		{
-			Child->ApplyLambda(Lambda);
+			for (auto& Child : GetChildren())
+			{
+				Child.ApplyLambda(Lambda);
+			}
 		}
 	}
 
-	template<template <typename...> class TContainer, typename... TArgs>
-	void GetLeavesBounds(TContainer<FIntBox, TArgs...>& OutBounds, int LeafMaxLOD = MAX_WORLD_DEPTH) const
+	template<typename TContainer>
+	void GetLeavesBounds(TContainer& OutBounds, int LeafMaxLOD = MAX_WORLD_DEPTH) const
 	{
 		if (IsLeaf())
 		{
@@ -201,7 +229,7 @@ public:
 		{
 			for (auto& Child : GetChildren())
 			{
-				Child->template GetLeavesBounds<TContainer>(OutBounds, LeafMaxLOD);
+				Child.template GetLeavesBounds<TContainer>(OutBounds, LeafMaxLOD);
 			}
 		}
 	}
@@ -220,7 +248,7 @@ public:
 		{
 			for (auto& Child : GetChildren())
 			{
-				Child->template GetLeaves<TContainer>(OutOctrees, LeafMaxLOD);
+				Child.template GetLeaves<TContainer>(OutOctrees, LeafMaxLOD);
 			}
 		}
 	}
@@ -257,7 +285,7 @@ public:
 				{
 					for (auto& Child : GetChildren())
 					{
-						Child->GetLeavesWithIds(Ids, OutOctrees);
+						Child.GetLeavesWithIds(Ids, OutOctrees);
 					}
 				}
 			}
@@ -273,22 +301,12 @@ public:
 			{
 				static_cast<ElementType*>(Octree)->CreateChildren();
 			}
-			Octree = Octree->GetChild(InPosition);
+			Octree = &Octree->GetChild(InPosition);
 		}
 		return static_cast<ElementType*>(Octree);
 	}
 
 protected:
-	TVoxelOctree(FIntVector Position, uint8 LOD, const FVoxelId& Id)
-		: Position(Position)
-		, LOD(LOD)
-		, Id(Id)
-		, OctreeBounds(GetCachedBounds())
-		, bIsLeaf(true)
-	{
-		check(LOD <= MAX_WORLD_DEPTH);
-	}
-
 	TVoxelOctree(ElementType* Parent, uint8 ChildIndex)
 		: Position(Parent->Position +
 			FIntVector(
@@ -300,47 +318,43 @@ protected:
 		, LOD(Parent->LOD - 1)
 		, Id(FVoxelId::FromParent(Parent->Id, Parent->LOD - 1, ChildIndex + 1))
 		, OctreeBounds(GetCachedBounds())
-		, bIsLeaf(true)
 	{
-		check(0 <= ChildIndex && ChildIndex < 8);
+		checkVoxelSlow(0 <= ChildIndex && ChildIndex < 8);
 	}
 
 	/**
 	 * Create childs of this octree
 	 */
-	void CreateChildren()
+	template<typename... TArgs>
+	inline void CreateChildren(TArgs&&... Args)
 	{		
-		check(IsLeaf());
-		check(Children.Num() == 0);
-		check(LOD != 0);
+		checkVoxelSlow(IsLeaf());
+		checkVoxelSlow(!Children);
+		checkVoxelSlow(LOD != 0);
 
-		Children.Add(new ElementType(static_cast<ElementType*>(this), 0));
-		Children.Add(new ElementType(static_cast<ElementType*>(this), 1));
-		Children.Add(new ElementType(static_cast<ElementType*>(this), 2));
-		Children.Add(new ElementType(static_cast<ElementType*>(this), 3));
-		Children.Add(new ElementType(static_cast<ElementType*>(this), 4));
-		Children.Add(new ElementType(static_cast<ElementType*>(this), 5));
-		Children.Add(new ElementType(static_cast<ElementType*>(this), 6));
-		Children.Add(new ElementType(static_cast<ElementType*>(this), 7));
+		Children = (ElementType*)FMemory::Malloc(8 * sizeof(ElementType));
 
-		bIsLeaf = false;
+		for (int Index = 0; Index < 8 ; Index++)
+		{
+			new (&Children[Index]) ElementType(static_cast<ElementType*>(this), Index, Forward<TArgs>(Args)...);
+		}
 	}
 
-	void DestroyChildren()
+	inline void DestroyChildren()
 	{
-		check(!IsLeaf());
+		checkVoxelSlow(!IsLeaf());
 
-		for (auto& Child : Children)
+		for (auto& Child : GetChildren())
 		{
-			delete Child;
+			Child.~ElementType();
 		}
-		Children.Reset();
-		bIsLeaf = true;
+
+		FMemory::Free(Children);
+		Children = nullptr;
 	}
 
 
 private:
-	bool bIsLeaf;	
 	/*
 	Children of this octree in the following order:
 
@@ -350,10 +364,17 @@ private:
 	v 1 | 3    5 | 7
 	x
 	*/
-	TArray<ElementType*, TFixedAllocator<8>> Children;
+	ElementType* Children = nullptr;
 
 	inline FIntBox GetCachedBounds() const
 	{
 		return FIntBox(Position - FIntVector(Size() / 2), Position + FIntVector(Size() / 2));
+	}
+
+	template<typename TNumeric>
+	inline int GetChildIndex(TNumeric X, TNumeric Y, TNumeric Z) const
+	{
+		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
+		return (X >= Position.X) + 2 * (Y >= Position.Y) + 4 * (Z >= Position.Z);
 	}
 };

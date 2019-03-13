@@ -6,10 +6,11 @@
 #include "IntBox.h"
 #include "VoxelGlobals.h"
 #include "VoxelRender/VoxelIntermediateChunk.h"
-#include "VoxelRender/VoxelPolygonizerAsyncWork.h"
+#include "VoxelRender/IVoxelRenderer.h"
+#include "Engine/EngineTypes.h"
 
 class FVoxelChunkToDelete;
-class FVoxelLODRenderer;
+class FVoxelDefaultRenderer;
 class FVoxelPolygonizerAsyncWork;
 class FVoxelTransitionsPolygonizerAsyncWork;
 class FVoxelMCTransitionsPolygonizerAsyncWork;
@@ -17,88 +18,92 @@ class UHierarchicalInstancedStaticMeshComponent;
 class UVoxelProceduralMeshComponent;
 
 
-class FVoxelRenderChunk : public IVoxelAsyncCallback
+class FVoxelRenderChunk : public TSharedFromThis<FVoxelRenderChunk, ESPMode::ThreadSafe>
 {
 public:
-	FVoxelLODRenderer* const Render;
+	FVoxelDefaultRenderer* const Renderer;
 	// Minimal corner
 	const FIntVector Position;
 	const uint8 LOD;
 	const FIntBox Bounds;
-	
+	FVoxelRenderChunkSettings Settings;
+
 public:
-	FVoxelRenderChunk(FVoxelLODRenderer* Render, uint8 LOD, const FIntBox& Bounds);
-	virtual ~FVoxelRenderChunk() { check(bDestroyed); }
+	FVoxelRenderChunk(FVoxelDefaultRenderer* Renderer, uint8 LOD, const FIntBox& Bounds, const FVoxelRenderChunkSettings& Settings);
+	virtual ~FVoxelRenderChunk();
 
 public:
 	void Destroy();
 	void AddPreviousChunk(const TSharedRef<FVoxelChunkToDelete>& Chunk);
 public:
-	void ResetAlpha();
-	void RecreateMaterials();
+	void CancelDithering();
 	void RecomputeMeshPosition();
-
-public:
-	void SetScalarParameterValue(FName ParameterName, float Value);
-	void SetTextureParameterValue(FName ParameterName, UTexture* Value);
-	void SetVectorParameterValue(FName ParameterName, FLinearColor Value);
+	void UpdateSettings(const FVoxelRenderChunkSettings& NewSettings);
 	
 public:
-	void UpdateChunk(uint64 TaskId);
+	void UpdateChunk(uint64 TaskId, const FVoxelOnUpdateFinished& Delegate = FVoxelOnUpdateFinished());
 	void UpdateTransitions(uint8 NewTransitionsMask);
+	void UpdateTransitions();
 	
 public:
-	void Tick();
-	void ScheduleTick();
-
-	virtual void OnCallback() override
-	{
-		ScheduleTick();
-	}
+	void MeshCallback(uint64 TaskId);
+	void TransitionsCallback();
+	void WaitForDependenciesCallback(bool bTimeout);
+	void NewChunksAreUpdated(); // Called when bVisible is set to false & new chunks are updated (can start dithering)
+	void HideMeshAfterDithering(); // Called when dithering is finished
 	
 public:
 	inline UVoxelProceduralMeshComponent* GetMesh() const { return Mesh; }
-	inline FIntBox GetBounds() const { check(Bounds == FIntBox(Position, Position + FIntVector(TotalSize(), TotalSize(), TotalSize()))); return Bounds; }
+	inline const FIntBox& GetBounds() const { check(Bounds == FIntBox(Position, Position + FIntVector(TotalSize(), TotalSize(), TotalSize()))); return Bounds; }
 	inline int TotalSize() const { return CHUNK_SIZE << LOD; }
 	inline const TArray<TSharedRef<FVoxelChunkToDelete>>& GetPreviousChunks() const { return PreviousChunks; }
 	inline bool IsInitialLoad() const { return PreviousChunks.Num() > 0; }
 	inline uint64 GetTaskId() const { return TaskId; }
-	inline uint64 GetQueuedTaskId() const { return QueuedTaskId; }
-	bool IsDone() const;
+	inline uint8 GetWantedTransitionsMask() const { return WantedTransitionsMask; }
+	inline bool NeedsToBeDeleted() const { return Mesh || PreviousChunks.Num() > 0; }
+	bool CanStartUpdateWithCustomTaskId() const;
+	uint64 GetPriority() const;
 
 protected:
-	virtual TUniquePtr<FVoxelPolygonizerAsyncWork> GetNewTask(const FVoxelPreviousGrassInfo& InPreviousGrassInfo) const = 0;
-	virtual TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> GetNewTransitionTask(uint8 InTransitionsMask) const = 0;
+	virtual TUniquePtr<FVoxelPolygonizerAsyncWork> GetNewTask() = 0;
+	virtual TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> GetNewTransitionTask() = 0;
 	
 private:	
-	UVoxelProceduralMeshComponent* Mesh = nullptr;
+	TUniquePtr<FVoxelChunkMaterials> ChunkMaterials;
 
-	FVoxelPreviousGrassInfo PreviousGrassInfo;
+	UVoxelProceduralMeshComponent* Mesh = nullptr;
 	
-	TSharedRef<FVoxelChunkMaterials> ChunkMaterials;
 	TArray<TSharedRef<FVoxelChunkToDelete>> PreviousChunks; // Will be reset after first update
 
-	bool bNeedUpdate = false;
+	bool bUpdateQueued = false;
 	bool bDestroyed = false; // Only for assert
 
 	TUniquePtr<FVoxelPolygonizerAsyncWork> MeshTask;
 	TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> TransitionsTask;
 	
 	TSharedPtr<FVoxelChunk> MainChunk;
-	TSharedPtr<FVoxelChunk> TransitionChunk;
+	TSharedPtr<FVoxelChunk> TransitionsChunk;
 	
 	// Transitions
-	uint8 TransitionsMaskBeingComputed = 0;
-	uint8 TransitionsDisplayedMask = 0;
+	uint8 TransitionsBeingComputedMask = 0;
+	uint8 TransitionsChunkMask = 0;
 	uint8 WantedTransitionsMask = 0;
 	uint8 MeshDisplayedMask = 0;
-	bool bTransitionsNeedUpdate = false;
+	bool bTransitionsUpdateQueued = false;
 
 	uint64 TaskId = 0;
-	uint64 QueuedTaskId = 0;
 
-	void Update();
-	void UpdateTransitions();
+	FTimerHandle HideMeshAfterDitheringHandle;
+
+	TArray<FVoxelOnUpdateFinished> OnUpdate;
+	TArray<FVoxelOnUpdateFinished> OnQueuedUpdate;
+
+
+	void StartUpdate();
+	void StartTransitionsUpdate();
+
+	bool TryToUpdateFromMeshTask();
+	bool TryToUpdateFromTransitionsTask();
 	
 	void UpdateMeshFromChunks();
 	void EndTasks();

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AssetTypeActions_Base.h"
-#include "VoxelSave.h"
+#include "VoxelData/VoxelSave.h"
 
 class FAssetTypeActions_VoxelWorldSaveObject : public FAssetTypeActions_Base
 {

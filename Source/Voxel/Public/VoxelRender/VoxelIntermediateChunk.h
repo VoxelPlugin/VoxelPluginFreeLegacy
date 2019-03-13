@@ -3,16 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelRender/VoxelProceduralMeshComponent.h"
-#include "VoxelMaterial.h"
+#include "UObject/WeakObjectPtr.h"
+#include "UObject/GCObject.h"
+#include "Materials/MaterialInterface.h"
 #include "VoxelGlobals.h"
-#include "VoxelDirection.h"
-#include "Materials/MaterialInstanceDynamic.h"
-#include "VoxelLogStatDefinitions.h"
-#include "VoxelIntermediateChunk.generated.h"
+#include "VoxelRender/VoxelProcMeshTangent.h"
 
 DECLARE_MEMORY_STAT(TEXT("Voxel Intermediate Chunks Memory"), STAT_VoxelIntermediateChunksMemory, STATGROUP_VoxelMemory);
 
+class UMaterialInterface;
+class UTexture;
 class AVoxelWorld;
 
 struct FVoxelBlendedMaterial
@@ -136,13 +136,14 @@ struct VOXEL_API FVoxelChunkBuffers
 		DEC_DWORD_STAT_BY(STAT_VoxelIntermediateChunksMemory, LastAllocatedSize);
 	}
 
-	inline void SetIndices(TArray<uint32>&& InIndices)
+	template<typename TAllocator>
+	inline void SetIndices(TArray<uint32, TAllocator>&& InIndices)
 	{
 		Indices = MoveTemp(InIndices);
 	}
 
-	template<typename T>
-	void LoadVerticesFromArray(const TArray<T>& Vertices)
+	template<typename T, typename TAllocator>
+	void LoadVerticesFromArray(const TArray<T, TAllocator>& Vertices)
 	{
 		Positions.Reserve(Vertices.Num());
 		Normals.Reserve(Vertices.Num());
@@ -284,93 +285,61 @@ struct FVoxelChunk
 			}
 		}
 	}
-};
-
-USTRUCT()
-struct FVoxelMaterialsRefHolder
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	TSet<UMaterialInterface*> UsedMaterials;
-};
-
-struct FVoxelChunkMaterials
-{
-public:
-	FVoxelChunkMaterials(FVoxelMaterialsRefHolder* MaterialsRef) : MaterialsRef(MaterialsRef) {}
-
-	inline UMaterialInstanceDynamic* GetSingleMaterial() const { return SingleMaterial; }
-	inline UMaterialInstanceDynamic* GetMultipleMaterial(const FVoxelBlendedMaterial& Key) const { UMaterialInstanceDynamic* const * Result = Materials.Find(Key); return Result ? *Result : nullptr; }
-	
-	void SetSingleMaterial(UMaterialInstanceDynamic* NewSingleMaterial)
-	{
-		if (SingleMaterial)
-		{
-			MaterialsRef->UsedMaterials.Remove(SingleMaterial);
-		}
-		SingleMaterial = NewSingleMaterial;
-		if (SingleMaterial)
-		{
-			MaterialsRef->UsedMaterials.Add(SingleMaterial);
-		}
-	}
-
-	void SetMultipleMaterial(const FVoxelBlendedMaterial& Key, UMaterialInstanceDynamic* NewMultipleMaterial)
-	{
-		UMaterialInstanceDynamic*& Ref = Materials.FindOrAdd(Key);
-		if (Ref)
-		{
-			MaterialsRef->UsedMaterials.Remove(Ref);
-		}
-		Ref = NewMultipleMaterial;
-		if (Ref)
-		{
-			MaterialsRef->UsedMaterials.Add(Ref);
-		}
-	}
-	void Reset()
-	{
-		MaterialsRef->UsedMaterials.Remove(SingleMaterial);
-		for (auto& Material : Materials)
-		{
-			MaterialsRef->UsedMaterials.Remove(Material.Value);
-		}
-		SingleMaterial = nullptr;
-		Materials.Reset();
-	}
-	
-	void SetScalarParameterValue(FName ParameterName, float Value)
-	{
-		Apply([&](auto& M) { M->SetScalarParameterValue(ParameterName, Value); });
-	}
-	void SetTextureParameterValue(FName ParameterName, UTexture* Value)
-	{		
-		Apply([&](auto& M) { M->SetTextureParameterValue(ParameterName, Value); });
-	}
-	void SetVectorParameterValue(FName ParameterName, FLinearColor Value)
-	{
-		Apply([&](auto& M) { M->SetVectorParameterValue(ParameterName, Value); });
-	}
-
-private:
-	FVoxelMaterialsRefHolder* MaterialsRef;
-	UMaterialInstanceDynamic* SingleMaterial = nullptr;
-	TMap<FVoxelBlendedMaterial, UMaterialInstanceDynamic*> Materials;
-
 	template<typename T>
-	inline void Apply(T F)
+	inline void IterateOnBuffers(T F) const
 	{
-		if (SingleMaterial)
+		if (bSingleBuffers)
 		{
-			F(SingleMaterial);
+			F(SingleBuffers);
 		}
 		else
 		{
-			for (auto& MaterialIt : Materials)
+			for (auto& BufferIt : Map)
 			{
-				F(MaterialIt.Value);
+				F(BufferIt.Value);
 			}
 		}
 	}
+};
+
+struct FVoxelChunkMaterials : public FGCObject
+{
+public:
+	FVoxelChunkMaterials() = default;
+
+	inline UMaterialInterface* GetSingleMaterial() const
+	{
+		return SingleMaterial;
+	}
+	inline UMaterialInterface* GetMultipleMaterial(const FVoxelBlendedMaterial& Key) const
+	{
+		auto* Result = Materials.Find(Key);
+		return Result ? *Result : nullptr;
+	}
+
+	inline void SetSingleMaterial(UMaterialInterface* NewSingleMaterial)
+	{
+		SingleMaterial = NewSingleMaterial;
+	}
+	inline void SetMultipleMaterial(const FVoxelBlendedMaterial& Key, UMaterialInterface* NewMultipleMaterial)
+	{
+		Materials.Add(Key, NewMultipleMaterial);
+	}
+
+	inline void Reset()
+	{
+		SingleMaterial = nullptr;
+		Materials.Empty();
+	}
+
+protected:
+	virtual void AddReferencedObjects(FReferenceCollector& Collector) final
+	{
+		Collector.AddReferencedObject(SingleMaterial);
+		Collector.AddReferencedObjects(Materials);
+	}
+
+private:
+	UMaterialInterface* SingleMaterial = nullptr;
+	TMap<FVoxelBlendedMaterial, UMaterialInterface*> Materials;
 };

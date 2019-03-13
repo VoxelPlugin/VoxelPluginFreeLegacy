@@ -9,10 +9,11 @@
 class VOXEL_API FVoxelPlaceableItem
 {
 public:
+	const uint64 UniqueId;
 	const FIntBox Bounds;
 	const int Priority;
 
-	FVoxelPlaceableItem(const FIntBox& InBounds, int Priority = 0) : Bounds(InBounds), Priority(Priority) {}
+	FVoxelPlaceableItem(const FIntBox& InBounds, int Priority = 0) : UniqueId(StaticUniqueId++), Bounds(InBounds), Priority(Priority) {}
 
 	enum Ids : uint8
 	{
@@ -27,51 +28,46 @@ public:
 	{
 		return Priority > Other.Priority;
 	}
+
+private:
+	static uint64 StaticUniqueId;
 };
 
 struct VOXEL_API FVoxelPlaceableItemHolder
 {
 public:
+	void AddItem(uint8 Id, FVoxelPlaceableItem* Item)
+	{
+		if (Items.Num() <= (int)Id)
+		{
+			Items.SetNum(Id + 1);
+			Items.Shrink();
+		}
+		Items[Id].Add(Item);
+		Items[Id].Shrink();
+	}
 	template<typename T>
 	void AddItem(T* Item)
 	{
 		AddItem(T::StaticId(), static_cast<FVoxelPlaceableItem*>(Item));
 	}
-	void AddItem(uint8 Id, FVoxelPlaceableItem* Item)
-	{
-		while (Items.Num() <= (int)Id)
-		{
-			Items.Emplace();
-		}
 
-		Items[Id].Add(Item);
-		Items[Id].Sort();
-	}
-
-	template<typename T>
-	const TArrayView<T* const> GetItems() const
-	{
-		if (Items.IsValidIndex(T::StaticId()))
-		{
-			auto& ItemsT = Items[T::StaticId()];
-			return TArrayView<T* const>((T* const *)ItemsT.GetData(), ItemsT.Num());
-		}
-		else
-		{
-			return TArrayView<T*>();
-		}
-	}
-	const TArrayView<FVoxelPlaceableItem* const> GetItems(uint8 Id) const
+	const TArray<FVoxelPlaceableItem*>& GetItems(uint8 Id) const
 	{
 		if (Items.IsValidIndex(Id))
 		{
-			auto& ItemsT = Items[Id];
-			return TArrayView<FVoxelPlaceableItem* const>(ItemsT.GetData(), ItemsT.Num());
+			return Items[Id];
 		}
 		else
 		{
-			return TArrayView<FVoxelPlaceableItem*>();
+			static TArray<FVoxelPlaceableItem*> EmptyArray;
+			return EmptyArray;
 		}
+	}
+	template<typename T>
+	const TArray<T*>& GetItems() const
+	{
+		return reinterpret_cast<const TArray<T*>&>(GetItems(T::StaticId()));
 	}
 
 	const TArray<TArray<FVoxelPlaceableItem*>>& GetAllItems() const { return Items; }

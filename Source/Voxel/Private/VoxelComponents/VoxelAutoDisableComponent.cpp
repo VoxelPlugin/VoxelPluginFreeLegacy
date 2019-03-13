@@ -1,7 +1,6 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelComponents/VoxelAutoDisableComponent.h"
-#include "VoxelLogStatDefinitions.h"
 #include "VoxelWorld.h"
 #include "Kismet/GameplayStatics.h"
 #include "Logging/MessageLog.h"
@@ -32,7 +31,7 @@ void UVoxelAutoDisableComponent::BeginPlay()
 
 	if (!bAutoFindWorld)
 	{
-		check(InGameWorlds.Num() == 0);
+		ensure(InGameWorlds.Num() == 0);
 		InGameWorlds.Add(DefaultWorld);
 	}
 }
@@ -71,10 +70,10 @@ void UVoxelAutoDisableComponent::TickComponent(float DeltaTime, ELevelTick TickT
 			for (auto& GameWorld : InGameWorlds)
 			{
 				FIntVector LocalPosition = GameWorld->GlobalToLocal(Position);
-				if (GameWorld->IsInWorld(LocalPosition))
+				/*if (GameWorld->GetData().IsInWorld(LocalPosition)) TODO
 				{
 					MinLOD = FMath::Min(MinLOD, GameWorld->GetLODAt(LocalPosition));
-				}
+				}*/
 			}
 			bool bShouldSimulatePhysics = MinLOD <= MaxLODForPhysics;
 			if (bPhysicsEnabled != bShouldSimulatePhysics)

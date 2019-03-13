@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialFunction.h"
 #include "VoxelMaterialCollection.generated.h"
 
 struct FVoxelBlendedMaterial;
@@ -11,6 +10,9 @@ class UTexture;
 class UMaterialInstanceDynamic;
 class UPhysicalMaterial;
 class UMaterialInstanceConstant;
+class UMaterialFunction;
+class UMaterialInterface;
+class UMaterial;
 
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelMaterialCollectionDoubleIndex

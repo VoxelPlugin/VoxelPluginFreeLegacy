@@ -1,6 +1,7 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelRender/VoxelIntermediateChunk.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "VoxelGlobals.h"
 #if ENABLE_TESSELLATION
 #include "ThirdParty/nvtesslib/inc/nvtess.h"

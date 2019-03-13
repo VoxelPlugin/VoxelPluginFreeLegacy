@@ -5,7 +5,9 @@
 #include "VoxelWorldGenerators/VoxelFlatWorldGenerator.h"
 #include "VoxelMaterialCollection.h"
 
-#define LOCTEXT_NAMESPACE "VoxelWorldFactory"
+#include "Materials/MaterialInterface.h"
+
+#define LOCTEXT_NAMESPACE "Voxel"
 
 UVoxelWorldFactory::UVoxelWorldFactory()
 {
@@ -18,12 +20,14 @@ void UVoxelWorldFactory::PostSpawnActor(UObject* Asset, AActor* NewActor)
 	Super::PostSpawnActor(Asset, NewActor);
 
 	AVoxelWorld* VoxelWorld = CastChecked<AVoxelWorld>(NewActor);
-	VoxelWorld->SetCreateWorldAutomatically(true);
+	VoxelWorld->bCreateWorldAutomatically = true;
+	VoxelWorld->bUseCameraIfNoInvokersFound = true;
 	VoxelWorld->SetWorldGeneratorClass(UVoxelFlatWorldGenerator::StaticClass());
-	VoxelWorld->SetEnableTessellation(true);
-	VoxelWorld->SetMaterialConfig(EVoxelMaterialConfig::SingleIndex);
-	VoxelWorld->SetMaterialCollection(LoadObject<UVoxelMaterialCollection>(this, TEXT("/Voxel/Example/TriplanarExampleCollection/TriplanarExampleCollection")));
-	VoxelWorld->bShowPopupIfNoInvokers = true;
+	VoxelWorld->bEnableTessellation = true;
+	VoxelWorld->MaterialConfig = EVoxelMaterialConfig::SingleIndex;
+	VoxelWorld->MaterialCollection = LoadObject<UVoxelMaterialCollection>(this, TEXT("/Voxel/Example/TriplanarExampleCollection/TriplanarExampleCollection"));
+	VoxelWorld->VoxelMaterial = LoadObject<UMaterialInterface>(this, TEXT("/Voxel/M_VoxelMaterial_Colors"));
+	VoxelWorld->TessellatedVoxelMaterial = LoadObject<UMaterialInterface>(this, TEXT("/Voxel/M_VoxelMaterial_Colors_Tess"));
 }
 
 #undef LOCTEXT_NAMESPACE

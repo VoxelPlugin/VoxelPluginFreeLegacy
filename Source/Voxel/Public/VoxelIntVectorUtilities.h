@@ -59,10 +59,7 @@ namespace FVoxelIntVector
 	}
 	inline uint64 SquaredSize(const FIntVector& V)
 	{
-		uint64 X = V.X;
-		uint64 Y = V.Y;
-		uint64 Z = V.Z;
-		return X * X + Y * Y + Z * Z;
+		return V.X * V.X + V.Y * V.Y + V.Z * V.Z;
 	}
 };
 

@@ -7,48 +7,29 @@
 #include "VoxelGlobals.h"
 #include "VoxelMaterial.h"
 #include "VoxelValue.h"
+#include "VoxelPolygonizer.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelRender/VoxelIntermediateChunk.h"
-#include "VoxelConfigEnums.h"
-#include "VoxelDebug/VoxelStats.h"
+#include "VoxelData/VoxelDataUtilities.h"
 
-// +1: for end edge, +2: for normals
-#define MC_EXTENDED_CHUNK_SIZE (CHUNK_SIZE + 3)
+class AVoxelWorld;
+
+// +1: for end edge
+#define MC_EXTENDED_CHUNK_SIZE (CHUNK_SIZE + 1)
 
 #define EDGE_INDEX_COUNT 4
 
-class FVoxelMCPolygonizer
+class FVoxelMCPolygonizer : public FVoxelPolygonizer
 {
 public:
-	FVoxelMCPolygonizer(
-		int LOD, 
-		FVoxelData* Data, 
-		const FIntVector& ChunkPosition, 
-		EVoxelNormalConfig NormalConfig, 
-		EVoxelMaterialConfig MaterialConfig, 
-		EVoxelUVConfig UVConfig,
-		bool bCacheLOD0Chunks,
-		FVoxelMeshProcessingParameters MeshParameters);
+	using FVoxelPolygonizer::FVoxelPolygonizer;
 
-	bool CreateChunk(FVoxelChunk& OutChunk, FVoxelStatsElement& Stats);
-	
-	// For NormalImpl
-	inline FVoxelValue GetValue(int X, int Y, int Z, int QueryLOD) const;
+protected:
+	FIntBox GetValuesBounds() const final;
+	FIntBox GetLockedBounds() const final;
+	bool CreateChunk() final;
 
 private:
-	const int LOD;
-	// Step between cubes
-	const int Step;
-	const int Size;
-	FVoxelData* const Data;
-	const FIntVector ChunkPosition;
-	const EVoxelNormalConfig NormalConfig;
-	const EVoxelMaterialConfig MaterialConfig;
-	const EVoxelUVConfig UVConfig;
-	const bool bCacheLOD0Chunks;
-	const FVoxelMeshProcessingParameters MeshParameters;
-
-	TUniquePtr<FVoxelData::MapAccelerator> MapAccelerator;
+	TUniquePtr<FVoxelDataUtilities::MapAccelerator> MapAccelerator;
 
 	FVoxelValue CachedValues[MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE];
 
@@ -69,16 +50,18 @@ private:
 
 	FVector GetNormal(const FVector& Position) const;
 
-	inline FVoxelValue GetValueNoCache(int X, int Y, int Z) const
+	inline FVoxelValue GetValueNoCache(int X, int Y, int Z)
 	{
+		FVoxelScopeValueAccessCounter Counter(Stats);
 		checkVoxelSlow(LOD > 0);
 		return MapAccelerator->GetValue(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, LOD);
 	}
-	inline FVoxelMaterial GetMaterialNoCache(int X, int Y, int Z) const
+	inline FVoxelMaterial GetMaterialNoCache(int X, int Y, int Z)
 	{
+		FVoxelScopeMaterialAccessCounter Counter(Stats);
 		return MapAccelerator->GetMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, LOD);
 	}	
-	inline FVoxelMaterial GetMaterialNoCache(const FIntVector& P) const { return GetMaterialNoCache(P.X, P.Y, P.Z); }
+	inline FVoxelMaterial GetMaterialNoCache(const FIntVector& P) { return GetMaterialNoCache(P.X, P.Y, P.Z); }
 
 private:	
 	struct FLocalVoxelVertex
@@ -117,28 +100,17 @@ private:
 
 #define TRANSITION_EDGE_INDEX_COUNT 10
 
-class FVoxelMCTransitionsPolygonizer
+class FVoxelMCTransitionsPolygonizer : public FVoxelTransitionsPolygonizer
 {
 public:
-	FVoxelMCTransitionsPolygonizer(int LOD, FVoxelData* Data, const FIntVector& ChunkPosition, uint8 TransitionsMask, EVoxelNormalConfig NormalConfig, EVoxelMaterialConfig MaterialConfig, EVoxelUVConfig UVConfig, FVoxelMeshProcessingParameters MeshParameters);
+	using FVoxelTransitionsPolygonizer::FVoxelTransitionsPolygonizer;
 
-	bool CreateTransitions(FVoxelChunk& OutChunk, FVoxelStatsElement& Stats);
+protected:
+	FIntBox GetBounds() const final;
+	bool CreateTransitions() final;
 
-private:
-	const int LOD; // LOD of the low res chunk (ie highest LOD value)
-	const int HalfLOD;
-	const int Step;
-	const int HalfStep;
-	const int Size;
-	FVoxelData* const Data;
-	const FIntVector ChunkPosition;
-	const uint8 TransitionsMask;
-	const EVoxelNormalConfig NormalConfig;
-	const EVoxelMaterialConfig MaterialConfig;
-	const EVoxelUVConfig UVConfig;
-	const FVoxelMeshProcessingParameters MeshParameters;
-	
-	TUniquePtr<FVoxelData::MapAccelerator> MapAccelerator;
+private:	
+	TUniquePtr<FVoxelDataUtilities::MapAccelerator> MapAccelerator;
 	
 	int Cache2D[CHUNK_SIZE * CHUNK_SIZE * TRANSITION_EDGE_INDEX_COUNT];
 	inline int GetCacheIndex(int EdgeIndex, int LX, int LY) const

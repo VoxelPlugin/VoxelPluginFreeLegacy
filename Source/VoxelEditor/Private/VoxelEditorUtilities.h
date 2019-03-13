@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelWorldGenerator.h"
+#include "VoxelData/VoxelSave.h"
 
 class FVoxelEditorUtilities
 {
@@ -15,9 +17,9 @@ public:
 		}
 		else
 		{
-			if (World->GetSaveObject())
+			if (World->SaveObject)
 			{
-				World->GetSaveObject()->Modify();
+				World->SaveObject->Modify();
 			}
 		}
 	}

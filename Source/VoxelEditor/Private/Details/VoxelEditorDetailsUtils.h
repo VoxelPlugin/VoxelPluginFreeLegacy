@@ -2,44 +2,34 @@
 
 #pragma once
 
-#include "Runtime/Launch/Resources/Version.h"
-
-#include "PropertyHandle.h"
-#include "DetailLayoutBuilder.h"
-#include "DetailWidgetRow.h"
-#include "DetailCategoryBuilder.h"
-#include "IDetailsView.h"
-#include "PropertyHandle.h"
-#include "DetailWidgetRow.h"
-#include "DetailCategoryBuilder.h"
-#include "IDetailsView.h"
-#include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/Text/STextBlock.h"
-#include "Widgets/Input/SButton.h"
+#include "CoreMinimal.h"
 #include "Misc/MessageDialog.h"
-#include "PackageTools.h"
-
-#include "AssetRegistryModule.h"
-#include "Widgets/Notifications/SNotificationList.h"
+#include "UnrealClient.h"
 #include "EditorViewportClient.h"
-#include "Framework/Notifications/NotificationManager.h"
 #include "Editor.h"
 #include "ObjectTools.h"
 #include "AssetToolsModule.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Notifications/SNotificationList.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "DetailLayoutBuilder.h"
+#include "DetailCategoryBuilder.h"
+#include "DetailWidgetRow.h"
 
-#define LOCTEXT_NAMESPACE "VoxelEditorDetailsUtils"
+#define LOCTEXT_NAMESPACE "Voxel"
 
 class FVoxelEditorDetailsUtils
 {
 public:
 	static inline bool ShowWarning(const FText& Text)
 	{
-		return FMessageDialog::Open(EAppMsgType::YesNo, FText::Format(LOCTEXT("Warning", "Warning: {0} \nContinue?"), Text)) == EAppReturnType::Yes;
+		return FMessageDialog::Open(EAppMsgType::YesNo, FText::Format(LOCTEXT("EditorUtilsWarning", "Warning: {0} \nContinue?"), Text)) == EAppReturnType::Yes;
 	}
 
 	static inline void ShowError(const FText& Text)
 	{
-		FMessageDialog::Open(EAppMsgType::Ok, FText::Format(LOCTEXT("Error", "Error: {0}"), Text));
+		FMessageDialog::Open(EAppMsgType::Ok, FText::Format(LOCTEXT("EditorUtilsError", "Error: {0}"), Text));
 	}
 
 	template<class T>
@@ -73,45 +63,96 @@ public:
 		return nullptr;
 	}
 
-};
+	template<class TAsset, class TAssetFactory, typename F>
+	static void CreateAsset(const F& CreateAsset)
+	{
+		// Create the asset
+		TAssetFactory* AssetFactory = NewObject<TAssetFactory>();
+		TAsset* Asset = Cast<TAsset>(FAssetToolsModule::GetModule().Get().CreateAssetWithDialog(TAsset::StaticClass(), AssetFactory));
+		if (!Asset) return;
 
-#define ADD_BUTTON_TO_CATEGORY(DetailLayout, CategoryName, NewRowFilterString, TextLeftToButton, ButtonText, ObjectPtr, FunctionPtr) \
-	{ \
-		DetailLayout.EditCategory((CategoryName)) \
-			.AddCustomRow((NewRowFilterString)) \
-			.NameContent() \
-			[ \
-				SNew(STextBlock) \
-				.Font(IDetailLayoutBuilder::GetDetailFont()) \
-				.Text((TextLeftToButton)) \
-			] \
-			.ValueContent() \
-			.MaxDesiredWidth(125.f) \
-			.MinDesiredWidth(125.f) \
-			[ \
-				SNew(SButton) \
-				.ContentPadding(2) \
-				.VAlign(VAlign_Center) \
-				.HAlign(HAlign_Center) \
-				.OnClicked((ObjectPtr), (FunctionPtr)) \
-				[ \
-					SNew(STextBlock) \
-					.Font(IDetailLayoutBuilder::GetDetailFont()) \
-					.Text((ButtonText)) \
-				] \
-			]; \
+		FNotificationInfo Info = FNotificationInfo(FText());
+		Info.ExpireDuration = 10.f;
+		if (CreateAsset(Asset))
+		{
+			Info.Text = FText::FromString(Asset->GetPathName() + " was successfully created");
+			Info.CheckBoxState = ECheckBoxState::Checked;
+		}
+		else
+		{
+			Info.Text = FText::FromString(Asset->GetPathName() + " was NOT successfully created");
+			Info.CheckBoxState = ECheckBoxState::Unchecked;
+			ObjectTools::DeleteSingleObject(Asset, false);
+		}
+		FSlateNotificationManager::Get().AddNotification(Info);
 	}
 
-#define ADD_PROPERTY_TO_CATEGORY(CategoryName, PropertyName, Class) \
-DetailLayout.EditCategory(CategoryName).AddCustomRow(LOCTEXT(PropertyName, PropertyName)) \
-.NameContent() \
-[ \
-	DetailLayout.GetProperty(PropertyName, Class::StaticClass())->CreatePropertyNameWidget() \
-] \
-.ValueContent() \
-[ \
-	DetailLayout.GetProperty(PropertyName, Class::StaticClass())->CreatePropertyValueWidget() \
-];
+	static TSharedRef<STextBlock> CreateText(const FText& Text)
+	{
+		return SNew(STextBlock)
+			   .Font(IDetailLayoutBuilder::GetDetailFont())
+			   .Text(Text);
+	}
+
+	static TSharedRef<SButton> CreateButton(
+		const FText& Text,
+		const FOnClicked& OnClicked,
+		const TAttribute<bool>& IsEnabled = true)
+	{
+		return SNew(SButton)
+			   .ContentPadding(2)
+			   .VAlign(VAlign_Center)
+			   .HAlign(HAlign_Center)
+			   .OnClicked(OnClicked)
+			   .IsEnabled(IsEnabled)
+			   [
+				   CreateText(Text)
+			   ];
+	}
+
+	static void AddButtonToCategory(
+		IDetailLayoutBuilder& DetailLayout,
+		const FName& CategoryName,
+		const FText& FilterString,
+		const FText& TextLeftToButton,
+		const FText& ButtonText,
+		const FOnClicked& OnClicked,
+		const TAttribute<bool>& IsEnabled = true)
+	{
+		DetailLayout.EditCategory(CategoryName)
+		.AddCustomRow(FilterString)
+		.NameContent()
+		[
+			CreateText(TextLeftToButton)
+		]
+		.ValueContent()
+		.MinDesiredWidth(125.0f)
+		.MaxDesiredWidth(125.0f)
+		[
+			CreateButton(ButtonText, OnClicked, IsEnabled)
+		];
+	}
+
+	static void AddPropertyToCategory(
+		IDetailLayoutBuilder& DetailLayout,
+		const FName& CategoryName,
+		const FName& PropertyName,
+		UClass* Class = nullptr)
+	{
+		auto Property = DetailLayout.GetProperty(PropertyName, Class);
+		DetailLayout.EditCategory(CategoryName).AddCustomRow(FText::FromString(PropertyName.ToString()))
+		.NameContent()
+		[
+			Property->CreatePropertyNameWidget()
+		]
+		.ValueContent()
+		.MinDesiredWidth(125.0f)
+		.MaxDesiredWidth(600.0f)
+		[
+			Property->CreatePropertyValueWidget()
+		];
+	}
+};
 
 #define RETURN_IF_CANCEL() { if (Progress.ShouldCancel()) { FVoxelEditorDetailsUtils::ShowError(LOCTEXT("Canceled", "Canceled!"));  return false; } }
 

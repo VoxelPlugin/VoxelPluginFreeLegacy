@@ -1,41 +1,19 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelCubicRenderer.h"
-#include "VoxelWorld.h"
 #include "VoxelRender/AsyncWorks/VoxelCubicPolygonizerAsyncWork.h"
 
-TUniquePtr<FVoxelPolygonizerAsyncWork> FVoxelCubicRenderChunk::GetNewTask(const FVoxelPreviousGrassInfo& InPreviousGrassInfo) const
+TUniquePtr<FVoxelPolygonizerAsyncWork> FVoxelCubicRenderChunk::GetNewTask()
 {
-	return MakeUnique<FVoxelCubicPolygonizerAsyncWork>(
-		LOD,
-		Render->GetSquaredDistanceToInvokers(Position),
-		Position,
-		Render->World,
-		Render->World->GetDataSharedPtr(),
-		false,
-		false,
-		InPreviousGrassInfo,
-		(FVoxelRenderChunk*)this
-		);
+	return MakeUnique<FVoxelCubicPolygonizerAsyncWork>(this);
 }
 
-TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> FVoxelCubicRenderChunk::GetNewTransitionTask(uint8 InTransitionsMask) const
+TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> FVoxelCubicRenderChunk::GetNewTransitionTask()
 {
-	return MakeUnique<FVoxelCubicTransitionsPolygonizerAsyncWork>(
-		LOD,
-		Render->GetSquaredDistanceToInvokers(Position),
-		Position,
-		Render->World,
-		Render->World->GetDataSharedPtr(),
-		(FVoxelRenderChunk*)this, 
-		InTransitionsMask);
+	return MakeUnique<FVoxelCubicTransitionsPolygonizerAsyncWork>(this);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-TSharedRef<FVoxelRenderChunk> FVoxelCubicRenderer::GetRenderChunk(FVoxelLODRenderer* Render, uint8 LOD, const FIntBox& Bounds)
+TSharedRef<FVoxelRenderChunk, ESPMode::ThreadSafe> FVoxelCubicRenderer::GetRenderChunk(uint8 LOD, const FIntBox& Bounds, const FVoxelRenderChunkSettings& InSettings)
 {
-	return MakeShared<FVoxelCubicRenderChunk>(Render, LOD, Bounds);
+	return MakeShared<FVoxelCubicRenderChunk, ESPMode::ThreadSafe>(this, LOD, Bounds, InSettings);
 }

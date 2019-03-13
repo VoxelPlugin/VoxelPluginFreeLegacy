@@ -1,26 +1,54 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelRenderChunk.h"
-#include "VoxelLODRenderer.h"
+#include "VoxelDefaultRenderer.h"
 #include "VoxelWorld.h"
+#include "IVoxelPool.h"
+#include "VoxelRender/VoxelRenderUtilities.h"
+#include "VoxelRender/VoxelPolygonizerAsyncWork.h"
+
+#include "Async/Async.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "VoxelLogStatDefinitions.h"
-#include "VoxelPoolManager.h"
-#include "VoxelRender/VoxelRenderUtilities.h"
+#include "TimerManager.h"
 
 DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::EndTasks"), STAT_VoxelRenderChunk_EndTasks, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::Tick"), STAT_VoxelRenderChunk_Tick, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::Update"), STAT_VoxelRenderChunk_Update, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateSettings"), STAT_VoxelRenderChunk_UpdateSettings, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateSettings::BuildTessellation"), STAT_VoxelRenderChunk_UpdateSettings_BuildAdjacency, STATGROUP_Voxel);
+
+DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateFromMeshTask"), STAT_VoxelRenderChunk_UpdateFromMeshTask, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateFromTransitionsTask"), STAT_VoxelRenderChunk_UpdateFromTransitionsTask, STATGROUP_Voxel);
+
+DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::StartUpdate"), STAT_VoxelRenderChunk_StartUpdate, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::StartTransitionsUpdate"), STAT_VoxelRenderChunk_StartTransitionsUpdate, STATGROUP_Voxel);
+
 DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateMeshFromMainChunk"), STAT_VoxelRenderChunk_UpdateMeshFromMainChunk, STATGROUP_Voxel);
 
-FVoxelRenderChunk::FVoxelRenderChunk(FVoxelLODRenderer* Render, uint8 LOD, const FIntBox& Bounds)
-	: Render(Render)
+DECLARE_MEMORY_STAT(TEXT("Voxel Render Chunks Memory"), STAT_VoxelRenderChunksMemory, STATGROUP_VoxelMemory);
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Render Chunks Count"), STAT_VoxelRenderChunksCount, STATGROUP_VoxelMemory);
+
+FVoxelRenderChunk::FVoxelRenderChunk(FVoxelDefaultRenderer* Renderer, uint8 LOD, const FIntBox& Bounds, const FVoxelRenderChunkSettings& Settings)
+	: Renderer(Renderer)
 	, Position(Bounds.Min)
 	, LOD(LOD)
 	, Bounds(Bounds)
-	, ChunkMaterials(MakeShared<FVoxelChunkMaterials>(&Render->World->MaterialsRef))
+	, Settings(Settings)
 {
+	INC_DWORD_STAT_BY(STAT_VoxelRenderChunksCount, 1);
+	INC_MEMORY_STAT_BY(STAT_VoxelRenderChunksMemory, sizeof(FVoxelRenderChunk));
+}
+
+FVoxelRenderChunk::~FVoxelRenderChunk()
+{
+	DEC_DWORD_STAT_BY(STAT_VoxelRenderChunksCount, 1);
+	DEC_MEMORY_STAT_BY(STAT_VoxelRenderChunksMemory, sizeof(FVoxelRenderChunk));
+
+	ensure(bDestroyed);
+	ensure(OnUpdate.Num() == 0);
+	ensure(OnQueuedUpdate.Num() == 0);
+	ensure(!MeshTask.IsValid());
+	ensure(!TransitionsTask.IsValid());
+	ensure(!ChunkMaterials.IsValid());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -30,190 +58,8 @@ void FVoxelRenderChunk::Destroy()
 	bDestroyed = true;
 	// Release previous chunks, as else they have an invalid ref to Render
 	PreviousChunks.Reset();
+	ChunkMaterials.Reset();
 	EndTasks();
-}
-
-void FVoxelRenderChunk::AddPreviousChunk(const TSharedRef<FVoxelChunkToDelete>& Chunk)
-{
-	PreviousChunks.Add(Chunk);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelRenderChunk::ResetAlpha()
-{
-	if (Mesh)
-	{
-		for (int Index = 0; Index < Mesh->GetNumSections(); Index++)
-		{
-			UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Mesh->GetProcMeshSection(Index)->Material);
-			if (Material)
-			{
-				Material->SetScalarParameterValue(FName(TEXT("StartTime")), 0);
-			}
-		}
-	}
-}
-
-void FVoxelRenderChunk::RecreateMaterials()
-{
-	ChunkMaterials->Reset();
-	if (Mesh)
-	{
-		UpdateMeshFromChunks();
-	}
-}
-
-void FVoxelRenderChunk::RecomputeMeshPosition()
-{
-	if (Mesh)
-	{
-		Mesh->SetRelativeLocation(Render->World->GetChunkRelativePosition(Position));
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelRenderChunk::SetScalarParameterValue(FName ParameterName, float Value)
-{
-	ChunkMaterials->SetScalarParameterValue(ParameterName, Value);
-}
-
-void FVoxelRenderChunk::SetTextureParameterValue(FName ParameterName, UTexture* Value)
-{
-	ChunkMaterials->SetTextureParameterValue(ParameterName, Value);
-}
-
-void FVoxelRenderChunk::SetVectorParameterValue(FName ParameterName, FLinearColor Value)
-{
-	ChunkMaterials->SetVectorParameterValue(ParameterName, Value);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelRenderChunk::UpdateChunk(uint64 InTaskId)
-{
-	QueuedTaskId = InTaskId;
-	if (MeshTask.IsValid())
-	{
-		bNeedUpdate = true;
-		ScheduleTick();
-	}
-	else
-	{
-		Update();
-	}
-}
-
-void FVoxelRenderChunk::UpdateTransitions(uint8 NewTransitionsMask)
-{
-	if (WantedTransitionsMask != NewTransitionsMask)
-	{
-		WantedTransitionsMask = NewTransitionsMask;
-		ScheduleTick();
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelRenderChunk::Tick()
-{
-	SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_Tick);
-
-	if (bNeedUpdate)
-	{
-		if (MeshTask.IsValid())
-		{
-			ScheduleTick();
-		}
-		else
-		{
-			Update();
-		}
-	}
-
-	if (MeshTask.IsValid())
-	{
-		if (MeshTask->IsDone() && Render->CanApplyTask(TaskId))
-		{
-			MainChunk = MeshTask.Get()->Chunk;
-
-			UpdateMeshFromChunks();
-
-
-			Render->DecreaseTaskCount();
-			MeshTask.Reset();
-			PreviousChunks.Reset(); // Free previous chunks
-		}
-	}
-
-	bool bTransitionsMeshNeedUpdate = false;
-
-	if (TransitionsTask.IsValid() && TransitionsTask->IsDone())
-	{
-		check(TransitionsMaskBeingComputed == TransitionsTask->TransitionsMask);
-
-		TransitionChunk = TransitionsTask->Chunk;
-
-		TransitionsDisplayedMask = TransitionsMaskBeingComputed;
-		bTransitionsMeshNeedUpdate = true;
-		
-		Render->DecreaseTaskCount();
-		TransitionsTask.Reset();
-	}
-
-	if (TransitionsDisplayedMask != WantedTransitionsMask || bTransitionsNeedUpdate)
-	{
-		if (TransitionsTask.IsValid() && Render->RetractQueuedWork(TransitionsTask.Get()))
-		{
-			TransitionsTask.Reset();
-			Render->DecreaseTaskCount();
-		}
-		// Will queue if retract failed, or do it now if succeeded
-		UpdateTransitions();
-	}
-
-	if (MeshDisplayedMask != TransitionsDisplayedMask || bTransitionsMeshNeedUpdate)
-	{
-		UpdateMeshFromChunks();
-	}
-}
-
-void FVoxelRenderChunk::ScheduleTick()
-{
-	Render->ScheduleTick(this);
-}
-
-bool FVoxelRenderChunk::IsDone() const
-{
-	return !MeshTask || MeshTask->IsDone();
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelRenderChunk::UpdateMeshFromChunks()
-{
-	SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_UpdateMeshFromMainChunk);
-	
-	if (!Mesh && MainChunk.IsValid() && (!MainChunk->IsEmpty() || (TransitionChunk.IsValid() && !TransitionChunk->IsEmpty())))
-	{
-		Mesh = Render->GetNewMesh(Position, LOD);
-	}
-
-	if (Mesh)
-	{
-		FVoxelRenderUtilities::CreateMeshSectionFromChunks(
-			LOD,
-			IsInitialLoad(),
-			Render->World,
-			Mesh,
-			ChunkMaterials,
-			MainChunk,
-			Render->World->GetRenderType() == EVoxelRenderType::MarchingCubes ? TransitionsDisplayedMask : 0,
-			TransitionChunk);
-
-		MeshDisplayedMask = TransitionsDisplayedMask;
-	}
 }
 
 void FVoxelRenderChunk::EndTasks()
@@ -222,66 +68,362 @@ void FVoxelRenderChunk::EndTasks()
 
 	if (MeshTask.IsValid())
 	{
-		if (!MeshTask->IsDone() && !Render->RetractQueuedWork(MeshTask.Get()))
-		{
-			MeshTask->CancelAndAutodelete();
-			MeshTask.Release();
-		}
-		Render->DecreaseTaskCount();
+		MeshTask->CancelAndAutodelete();
+		MeshTask.Release();
+		Renderer->DecreaseTaskCount();
 	}
 
 	if (TransitionsTask.IsValid())
 	{
-		if (!TransitionsTask->IsDone() && !Render->RetractQueuedWork(TransitionsTask.Get()))
+		TransitionsTask->CancelAndAutodelete();
+		TransitionsTask.Release();
+		Renderer->DecreaseTaskCount();
+	}
+
+	// Always fire delegates
+	for (auto& Delegate : OnUpdate)
+	{
+		Delegate.ExecuteIfBound(Bounds);
+	}
+	for (auto& Delegate : OnQueuedUpdate)
+	{
+		Delegate.ExecuteIfBound(Bounds);
+	}
+	OnUpdate.Reset();
+	OnQueuedUpdate.Reset();
+}
+
+void FVoxelRenderChunk::AddPreviousChunk(const TSharedRef<FVoxelChunkToDelete>& Chunk)
+{
+	PreviousChunks.Add(Chunk);
+	Chunk->AddNewChunk(AsShared());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelRenderChunk::CancelDithering()
+{
+	auto& TimerManager = Renderer->Settings.World->GetTimerManager();
+	TimerManager.ClearTimer(HideMeshAfterDitheringHandle);
+
+	if (Mesh)
+	{
+		if (Settings.bVisible || FVoxelRenderUtilities::DebugInvisibleChunks())
 		{
-			TransitionsTask->CancelAndAutodelete();
-			TransitionsTask.Release();
+			FVoxelRenderUtilities::ResetDithering(Mesh);
 		}
-		Render->DecreaseTaskCount();
+		else
+		{
+			FVoxelRenderUtilities::HideMesh(Mesh);
+		}
+	}
+}
+
+void FVoxelRenderChunk::RecomputeMeshPosition()
+{
+	FVector WorldPosition = Renderer->Settings.GetChunkRelativePosition(Position);
+	if (Mesh)
+	{
+		Mesh->SetRelativeLocation(WorldPosition);
+	}
+}
+
+void FVoxelRenderChunk::UpdateSettings(const FVoxelRenderChunkSettings& NewSettings)
+{
+	SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_UpdateSettings);
+
+	ensure(Settings != NewSettings);
+	FVoxelRenderChunkSettings OldSettings = Settings;
+	Settings = NewSettings;
+
+	if (OldSettings.bEnableCollisions != NewSettings.bEnableCollisions && Mesh)
+	{
+		Renderer->RemoveMesh(Mesh);
+		Mesh = nullptr;
+	}
+	if (NewSettings.bVisible && !OldSettings.bVisible)
+	{
+		CancelDithering();
+	}
+	if (OldSettings.bEnableTessellation != NewSettings.bEnableTessellation)
+	{
+		if (ChunkMaterials.IsValid())
+		{
+			ChunkMaterials->Reset();
+		}
+		if (MainChunk.IsValid())
+		{
+			SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_UpdateSettings_BuildAdjacency);
+			MainChunk->IterateOnBuffers([](auto& Buffer) { Buffer.BuildAdjacency(); });
+		}
+	}
+
+	if (!NewSettings.bVisible && OldSettings.bVisible)
+	{
+		// Hack to allow dithering instead of hiding the section
+		Settings.bVisible = true;
+	}
+	UpdateMeshFromChunks();
+	if (!NewSettings.bVisible && OldSettings.bVisible)
+	{
+		Settings.bVisible = false;
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelRenderChunk::Update()
+void FVoxelRenderChunk::UpdateChunk(uint64 InTaskId, const FVoxelOnUpdateFinished& Delegate)
 {
-	SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_Update);
+	OnQueuedUpdate.Add(Delegate);
+	if (MeshTask.IsValid() && !TryToUpdateFromMeshTask())
+	{
+		check(InTaskId == 0);
+		bUpdateQueued = true;
+	}
+	else
+	{
+		TaskId = InTaskId;
+		StartUpdate();
+	}
+}
 
-	check(!MeshTask.IsValid());
-
-	MeshTask = GetNewTask(PreviousGrassInfo);
-
-	Render->AddQueuedWork(MeshTask.Get());
-	Render->IncreaseTaskCount();
-
-	bNeedUpdate = false;
-	TaskId = QueuedTaskId;
-	QueuedTaskId = 0;
-
-	UpdateTransitions();
+void FVoxelRenderChunk::UpdateTransitions(uint8 NewTransitionsMask)
+{
+	if (WantedTransitionsMask != NewTransitionsMask)
+	{
+		WantedTransitionsMask = NewTransitionsMask;
+		UpdateTransitions();
+	}
 }
 
 void FVoxelRenderChunk::UpdateTransitions()
 {
-	if (!TransitionsTask.IsValid())
+	if (TransitionsTask.IsValid() && !TryToUpdateFromTransitionsTask())
 	{
-		if (WantedTransitionsMask != 0)
-		{
-			TransitionsTask = GetNewTransitionTask(WantedTransitionsMask);
-			Render->AddQueuedWork(TransitionsTask.Get());
-			Render->IncreaseTaskCount();
-			TransitionsMaskBeingComputed = WantedTransitionsMask;
-		}
-		else
-		{			
-			TransitionChunk.Reset();
-			TransitionsDisplayedMask = WantedTransitionsMask;
-		}
-		bTransitionsNeedUpdate = false;
+		bTransitionsUpdateQueued = true;
 	}
 	else
 	{
-		bTransitionsNeedUpdate = true;
+		StartTransitionsUpdate();
 	}
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelRenderChunk::MeshCallback(uint64 InTaskId)
+{
+	Renderer->ReportTaskFinished(InTaskId);
+	if (MeshTask.IsValid())
+	{
+		TryToUpdateFromMeshTask();
+	}
+	if (bUpdateQueued && !MeshTask.IsValid())
+	{
+		StartUpdate();
+	}
+}
+
+void FVoxelRenderChunk::TransitionsCallback()
+{
+	if (TransitionsTask.IsValid())
+	{
+		TryToUpdateFromTransitionsTask();
+	}
+	if (bTransitionsUpdateQueued && !TransitionsTask.IsValid())
+	{
+		StartTransitionsUpdate();
+	}
+}
+
+void FVoxelRenderChunk::WaitForDependenciesCallback(bool bTimeout)
+{
+	ensure(MeshTask.IsValid());
+
+	bool bSuccess = TryToUpdateFromMeshTask();
+	ensure(bSuccess || bTimeout);
+
+	if (bUpdateQueued && bSuccess && ensure(!MeshTask.IsValid()))
+	{
+		StartUpdate();
+	}
+}
+
+void FVoxelRenderChunk::NewChunksAreUpdated()
+{
+	if (!Settings.bVisible && Mesh) // If it's still needed
+	{
+		if (FVoxelRenderUtilities::DebugInvisibleChunks())
+		{
+			UpdateMeshFromChunks();
+		}
+		else
+		{
+			auto& TimerManager = Renderer->Settings.World->GetTimerManager();
+			float ChunksDitheringDuration = Renderer->Settings.ChunksDitheringDuration;
+			
+			// 2x: first dither in new chunk, then dither out old chunk
+			TimerManager.SetTimer(HideMeshAfterDitheringHandle, FTimerDelegate::CreateThreadSafeSP(this, &FVoxelRenderChunk::HideMeshAfterDithering), 2 * ChunksDitheringDuration, false);
+			FVoxelRenderUtilities::StartMeshDithering(Mesh, 2 * ChunksDitheringDuration);
+		}
+	}
+}
+
+void FVoxelRenderChunk::HideMeshAfterDithering()
+{
+	if (!Settings.bVisible && Mesh && !FVoxelRenderUtilities::DebugInvisibleChunks()) // If it's still needed
+	{
+		FVoxelRenderUtilities::HideMesh(Mesh);
+	}
+}
+
+bool FVoxelRenderChunk::CanStartUpdateWithCustomTaskId() const
+{
+	return !MeshTask.IsValid() || (MeshTask->IsDone() && Renderer->CanApplyTask(TaskId));
+}
+
+uint64 FVoxelRenderChunk::GetPriority() const
+{
+	return MAX_uint64 - Renderer->GetSquaredDistanceToInvokers(Position);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+bool FVoxelRenderChunk::TryToUpdateFromMeshTask()
+{
+	check(MeshTask.IsValid());
+
+	if (MeshTask->IsDone() && Renderer->CanApplyTask(TaskId))
+	{
+		SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_UpdateFromMeshTask);
+
+		MainChunk = MeshTask.Get()->Chunk;
+
+
+		Renderer->DecreaseTaskCount();
+		MeshTask.Reset();
+
+		UpdateMeshFromChunks();
+
+		for (auto& Delegate : OnUpdate)
+		{
+			Delegate.ExecuteIfBound(Bounds);
+		}
+		OnUpdate.Reset();
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool FVoxelRenderChunk::TryToUpdateFromTransitionsTask()
+{
+	check(TransitionsTask.IsValid());
+
+	if (TransitionsTask->IsDone())
+	{
+		SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_UpdateFromTransitionsTask);
+
+		check(TransitionsBeingComputedMask == TransitionsTask->TransitionsMask);
+
+		TransitionsChunk = TransitionsTask->Chunk;
+
+		TransitionsChunkMask = TransitionsBeingComputedMask;
+
+		Renderer->DecreaseTaskCount();
+		TransitionsTask.Reset();
+
+		UpdateMeshFromChunks();
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelRenderChunk::UpdateMeshFromChunks()
+{
+	SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_UpdateMeshFromMainChunk);
+
+	if (!Mesh && MainChunk.IsValid() && (!MainChunk->IsEmpty() || (TransitionsChunk.IsValid() && !TransitionsChunk->IsEmpty())))
+	{
+		Mesh = Renderer->GetNewMesh(Position, LOD, Settings.bEnableCollisions);
+	}
+
+	if (Mesh)
+	{
+		if (!ChunkMaterials)
+		{
+			ChunkMaterials = MakeUnique<FVoxelChunkMaterials>();
+		}
+		FVoxelRenderUtilities::CreateMeshSectionFromChunks(
+			LOD,
+			GetPriority(),
+			IsInitialLoad(),
+			Renderer->Settings,
+			Settings,
+			Mesh,
+			*ChunkMaterials,
+			MainChunk,
+			TransitionsChunkMask,
+			TransitionsChunk);
+
+		MeshDisplayedMask = TransitionsChunkMask;
+	}
+
+	if (MainChunk.IsValid())
+	{
+		PreviousChunks.Reset(); // Free previous chunks AFTER updating as IsInitialLoad uses them, and only if the update was really done
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelRenderChunk::StartUpdate()
+{
+	SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_StartUpdate);
+
+	check(!MeshTask.IsValid());
+
+	MeshTask = GetNewTask();
+
+	Renderer->Settings.Pool->QueueMeshingTask(MeshTask.Get());
+	Renderer->IncreaseTaskCount();
+
+	bUpdateQueued = false;
+	check(OnUpdate.Num() == 0);
+	Swap(OnUpdate, OnQueuedUpdate);
+
+	UpdateTransitions();
+}
+
+void FVoxelRenderChunk::StartTransitionsUpdate()
+{
+	SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_StartTransitionsUpdate);
+
+	check(!TransitionsTask.IsValid());
+
+	if (WantedTransitionsMask != 0)
+	{
+		TransitionsTask = GetNewTransitionTask();
+		Renderer->Settings.Pool->QueueMeshingTask(TransitionsTask.Get());
+		Renderer->IncreaseTaskCount();
+		TransitionsBeingComputedMask = WantedTransitionsMask;
+	}
+	else
+	{
+		TransitionsChunk.Reset();
+		TransitionsChunkMask = WantedTransitionsMask;
+		UpdateMeshFromChunks();
+	}
+	bTransitionsUpdateQueued = false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 

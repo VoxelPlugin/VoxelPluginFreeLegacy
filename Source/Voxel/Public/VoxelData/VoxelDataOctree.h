@@ -2,23 +2,26 @@
 
 #pragma once
 
-#include <shared_mutex>
-
 #include "CoreMinimal.h"
 #include "VoxelOctree.h"
 #include "VoxelDiff.h"
 #include "VoxelGlobals.h"
 #include "VoxelWorldGenerator.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
-#include "VoxelLogStatDefinitions.h"
 #include "VoxelData/VoxelDataCell.h"
+#include "VoxelData/VoxelSharedMutex.h"
 
 DECLARE_MEMORY_STAT(TEXT("Voxel Data Octrees Memory"), STAT_VoxelDataOctreesMemory, STATGROUP_VoxelMemory);
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Data Octrees Count"), STAT_VoxelDataOctreesCount, STATGROUP_VoxelMemory);
 
+class FVoxelData;
 class FVoxelPlaceableItem;
-struct FVoxelUncompressedWorldSave;
-using FVoxelMap = TMap<FIntVector, const FVoxelDataCell*>;
+class FVoxelSaveLoader;
+class FVoxelSaveBuilder;
+class FVoxelDataOctree;
+
+using FVoxelMap = TMap<FIntVector, const FVoxelDataOctree*>;
+using FVoxelLockedOctrees = TArray<FVoxelId>;
 
 /**
  * Octree that holds modified values & materials
@@ -26,8 +29,9 @@ using FVoxelMap = TMap<FIntVector, const FVoxelDataCell*>;
 class VOXEL_API FVoxelDataOctree : public TVoxelOctree<FVoxelDataOctree, VOXEL_CELL_SIZE>
 {
 public:
-	FVoxelDataOctree(const FVoxelWorldGeneratorInstance* WorldGenerator, uint8 LOD, bool bEnableMultiplayer, bool bEnableUndoRedo)
+	FVoxelDataOctree(FVoxelData* Data, const FVoxelWorldGeneratorInstance* WorldGenerator, uint8 LOD, bool bEnableMultiplayer, bool bEnableUndoRedo)
 		: TVoxelOctree(LOD)
+		, Data(Data)
 		, WorldGenerator(WorldGenerator)
 		, bEnableMultiplayer(bEnableMultiplayer)
 		, bEnableUndoRedo(bEnableUndoRedo)
@@ -38,6 +42,7 @@ public:
 	}
 	FVoxelDataOctree(FVoxelDataOctree* Parent, uint8 ChildIndex)
 		: TVoxelOctree(Parent, ChildIndex)
+		, Data(Parent->Data)
 		, WorldGenerator(Parent->WorldGenerator)
 		, bEnableMultiplayer(Parent->bEnableMultiplayer)
 		, bEnableUndoRedo(Parent->bEnableUndoRedo)
@@ -52,18 +57,22 @@ public:
 		DEC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctree));
 	}
 
-	inline bool IsCreated() const { check(LOD == 0); return Cell.IsValid(); }
-	inline bool IsEmpty() const { check(LOD == 0); check(ItemHolder->IsEmpty() || EmptyState == EVoxelEmptyState::Unknown); return !IsCreated() && EmptyState != EVoxelEmptyState::Unknown; }
-	inline bool IsCacheOnly() const { check(LOD == 0); return !IsCreated() || (!Cell->IsBufferDirty<FVoxelValue>() && !Cell->IsBufferDirty<FVoxelMaterial>()); }
-	inline bool IsCached() const { check(LOD == 0); return IsCreated() && IsCacheOnly(); }
+	inline bool IsCreated() const { checkVoxelSlow(LOD == 0); return Cell.IsValid(); }
+	inline bool IsCacheOnly() const { checkVoxelSlow(LOD == 0); return !IsCreated() || (!Cell->IsArrayDirty<FVoxelValue>() && !Cell->IsArrayDirty<FVoxelMaterial>()); }
+	inline bool IsCached() const { checkVoxelSlow(LOD == 0); return IsCreated() && IsCacheOnly(); }
 		
 	inline bool ShouldBeCached(uint32 Threshold) const { return NumberOfWorldGeneratorReadsSinceLastCache > Threshold; }
 	inline uint32 GetCachePriority() const { return LastAccessTime; }
 
 	inline bool IsManuallyCached() const { return IsCached() && bIsManuallyCached; }
 	
-	void Cache(const FIntBox& Bounds, bool bIsManualCache);
-	void Cache(bool bIsManualCache, bool bCheckIfEmpty);
+	inline bool AreValuesCreated() const { return IsCreated() && Cell->GetArray<FVoxelValue>(); }
+	inline bool AreMaterialsCreated() const { return IsCreated() && Cell->GetArray<FVoxelMaterial>(); }
+	
+	bool AreBoundsCached(const FIntBox& Bounds);
+	void CacheBounds(const FIntBox& Bounds, bool bIsManualCache, bool bCacheValues, bool bCacheMaterials);
+
+	void Cache(bool bIsManualCache, bool bCacheValues, bool bCacheMaterials);
 	void ClearCache();
 	void ClearManualCache();	
 	
@@ -86,298 +95,49 @@ public:
 	EVoxelEmptyState IsEmpty(const FIntBox& Bounds, int LOD) const;
 
 	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int QueryLOD);
-	inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* Value, FVoxelMaterial* Material, int QueryLOD)
-	{
-		check(IsLeaf());
-		check(IsInOctree(X, Y, Z));
-
-		if (LOD > 0 || !IsCreated())
-		{
-			WorldGenerator->GetValueAndMaterial(X, Y, Z, Value, Material, QueryLOD, *ItemHolder);
-		}
-		else
-		{
-			auto* CellValues = Cell->GetArray<FVoxelValue>();
-			auto* CellMaterials = Cell->GetArray<FVoxelMaterial>();
-
-			int Index = IndexFromGlobalCoordinates(X, Y, Z);
-
-			if (Value)
-			{
-				*Value = CellValues[Index];
-			}
-			if (Material)
-			{
-				*Material = CellMaterials[Index];
-			}
-		}
-	}
+	void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* Value, FVoxelMaterial* Material, int QueryLOD) const;
 	
 	template<typename TValue>
-	inline void SetValueOrMaterial(int X, int Y, int Z, const TValue& Value)
-	{
-		check(IsLeaf());
-		check(IsInOctree(X, Y, Z));
-
-		if (LOD == 0)
-		{
-			if (!IsCreated())
-			{
-				Create(true);
-			}
-			if (!CanEdit(X, Y, Z))
-			{
-				return;
-			}
-
-			Cell->SetBufferAsDirty<TValue>();
-			TValue* Array = Cell->GetArray<TValue>();
-			FVoxelCellIndex Index = IndexFromGlobalCoordinates(X, Y, Z);
-
-			AddEdit(Index, Array[Index]);
-
-			Array[Index] = Value;
-		}
-		else
-		{
-			CreateChildren();
-			GetChild(X, Y, Z)->SetValueOrMaterial<TValue>(X, Y, Z, Value);
-		}
-	}
+	void SetValueOrMaterial(int X, int Y, int Z, const TValue& Value);
 
 	template<typename TValue, typename F>
-	inline void SetValueOrMaterialLambda(const FIntBox& Bounds, F Lambda)
-	{
-		if (bEnableMultiplayer)
-		{
-			if (bEnableUndoRedo)
-			{
-				SetValueOrMaterialLambdaInternal<TValue, F, true, true>(Bounds, Lambda);
-			}
-			else
-			{
-				SetValueOrMaterialLambdaInternal<TValue, F, true, false>(Bounds, Lambda);
-			}
-		}
-		else
-		{
-			if (bEnableUndoRedo)
-			{
-				SetValueOrMaterialLambdaInternal<TValue, F, false, true>(Bounds, Lambda);
-			}
-			else
-			{
-				SetValueOrMaterialLambdaInternal<TValue, F, false, false>(Bounds, Lambda);
-			}
-		}
-	}
+	void SetValueOrMaterialLambda(const FIntBox& Bounds, F Lambda);
 	template<typename TValue, typename F, bool bTEnableMultiplayer, bool bTEnableUndoRedo>
-	inline void SetValueOrMaterialLambdaInternal(const FIntBox& Bounds, F Lambda)
-	{
-		if (Bounds.Intersect(GetBounds()))
-		{
-			if (LOD == 0)
-			{
-				if (!IsCreated())
-				{
-					Create(true);
-				}
-				
-				Cell->SetBufferAsDirty<TValue>();
-				TValue* Array = Cell->GetArray<TValue>();
-
-				TArray<FIntBox> LocalBoundsArray = GetEditableBoxes(Bounds.Overlap(GetBounds()));
-				for (auto& LocalBounds : LocalBoundsArray)
-				{
-					const FIntVector& Offset = OctreeBounds.Min;
-					const FIntVector Min = LocalBounds.Min - Offset;
-					const FIntVector Max = LocalBounds.Max - Offset;
-
-					for (int Z = Min.Z; Z < Max.Z; Z++)
-					{
-						for (int Y = Min.Y; Y < Max.Y; Y++)
-						{
-							for (int X = Min.X; X < Max.X; X++)
-							{
-								FVoxelCellIndex Index = FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
-
-								if (bTEnableMultiplayer || bTEnableUndoRedo)
-								{
-									TValue& Ref = Array[Index];
-									TValue Old = Ref;
-
-									Lambda(X + Offset.X, Y + Offset.Y, Z + Offset.Z, Ref);
-
-									if (Ref != Old)
-									{
-										AddEdit<TValue, bTEnableMultiplayer, bTEnableUndoRedo>(Index, Old);
-									}
-								}
-								else
-								{
-									Lambda(X + Offset.X, Y + Offset.Y, Z + Offset.Z, Array[Index]);
-								}
-							}
-						}
-					}
-				}
-			}
-			else
-			{
-				if (IsLeaf())
-				{
-					CreateChildren();
-				}
-
-				for (auto& Child : GetChildren())
-				{
-					Child->SetValueOrMaterialLambdaInternal<TValue, F, bTEnableMultiplayer, bTEnableUndoRedo>(Bounds, Lambda);
-				}
-			}
-		}
-	}
+	void SetValueOrMaterialLambdaInternal(const FIntBox& Bounds, F Lambda);
 
 	template<bool bOnlyIfDirty, typename F>
-	inline void CallLambdaOnValuesInBounds(const FIntBox& Bounds, F Lambda) const
-	{
-		if (Bounds.Intersect(OctreeBounds))
-		{
-			if (LOD == 0 && IsCreated())
-			{
-				auto* Values = Cell->GetArray<FVoxelValue>();
-				auto* Materials = Cell->GetArray<FVoxelMaterial>();
-
-				const FIntVector& Offset = OctreeBounds.Min;
-				const FIntVector Min = FVoxelIntVector::Clamp(Bounds.Min - Offset, 0, VOXEL_CELL_SIZE);
-				const FIntVector Max = FVoxelIntVector::Clamp(Bounds.Max - Offset, 0, VOXEL_CELL_SIZE);
-
-				for (int Z = Min.Z; Z < Max.Z; Z++)
-				{
-					for (int Y = Min.Y; Y < Max.Y; Y++)
-					{
-						for (int X = Min.X; X < Max.X; X++)
-						{
-							FVoxelCellIndex Index = FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
-							Lambda(X + Offset.X, Y + Offset.Y, Z + Offset.Z, (const FVoxelValue&)Values[Index], (const FVoxelMaterial&)Materials[Index]);
-						}
-					}
-				}
-			}
-			else if (IsLeaf())
-			{
-				if (!bOnlyIfDirty)
-				{
-					const FIntBox LocalBounds = Bounds.Overlap(GetBounds());
-					const FIntVector Size = LocalBounds.Size();
-					const FIntVector& Offset = LocalBounds.Min;
-					
-					int Num = Size.X * Size.Y * Size.Z;
-					TArray<FVoxelValue> Values;
-					TArray<FVoxelMaterial> Materials;
-					Values.SetNumUninitialized(Num);
-					Materials.SetNumUninitialized(Num);
-
-					WorldGenerator->GetValuesAndMaterials(Values.GetData(), Materials.GetData(), FVoxelWorldGeneratorQueryZone(LocalBounds, Size, 0), 0, *ItemHolder);
-
-					int Index = 0;
-					for (int Z = 0; Z < Size.Z; Z++)
-					{
-						for (int Y = 0; Y < Size.Y; Y++)
-						{
-							for (int X = 0; X < Size.X; X++)
-							{
-								Lambda(X + Offset.X, Y + Offset.Y, Z + Offset.Z, Values[Index], Materials[Index]);
-								Index++;
-							}
-						}
-					}
-				}
-			}
-			else
-			{
-				for (auto& Child : GetChildren())
-				{
-					Child->CallLambdaOnValuesInBounds<bOnlyIfDirty>(Bounds, Lambda);
-				}
-			}
-		}
-	}
+	void CallLambdaOnValuesInBounds(const FIntBox& Bounds, F Lambda) const;
 
 	void ClearData();
 
 public:
-	void GetCreatedChunksOverlappingBox(const FIntBox& Box, TArray<FVoxelDataOctree*>& OutOctrees)
-	{
-		if (GetBounds().Intersect(Box))
-		{
-			if (IsLeaf())
-			{
-				if (LOD == 0 && IsCreated())
-				{
-					OutOctrees.Add(this);
-				}
-			}
-			else
-			{
-				for (auto& Child : GetChildren())
-				{
-					Child->GetCreatedChunksOverlappingBox(Box, OutOctrees);
-				}
-			}
-		}
-	}
+	void GetCreatedChunksOverlappingBox(const FIntBox& Box, TArray<FVoxelDataOctree*>& OutOctrees);
 	
 public:
 	/**
 	 * Add dirty chunks to SaveList
 	 * @param	SaveQueue				Queue to save chunks into. Sorted by increasing Id
 	 */
-	void Save(FVoxelUncompressedWorldSave& Save);
+	void Save(FVoxelSaveBuilder& Builder);
 	/**
 	 * Load chunks from Save list
 	 * @param	SaveQueue				Queue to load chunks from. Sorted by decreasing Id (top is lowest Id)
 	 * @param	OutBoundsToUpdate		The modified bounds
 	 */
-	void Load(int& Index, const FVoxelUncompressedWorldSave& Save, TArray<FIntBox>& OutBoundsToUpdate);
+	void Load(int& Index, const FVoxelSaveLoader& Loader, TArray<FIntBox>& OutBoundsToUpdate);
 		
 public:
-	// sorted by increasing Id
-	bool BeginSet(const FIntBox& Box, TArray<FVoxelId>& OutIds, int MicroSeconds, FString& InOutLockerName);
-	// sorted by decreasing Id
-	void EndSet(TArray<FVoxelId>& Ids);
-	
-	// sorted by increasing Id
-	bool BeginGet(const FIntBox& Box, TArray<FVoxelId>& OutIds, int MicroSeconds, FString& InOutLockerName);
-	// sorted by decreasing Id
-	void EndGet(TArray<FVoxelId>& Ids);
+	template<EVoxelLockType LockType>
+	bool TryLock(const FIntBox& Bounds, double TimeToTimeout, FVoxelLockedOctrees& OutIds, FString& InOutLockerName);
 
-	void LockTransactions();
+	template<EVoxelLockType LockType>
+	void Unlock(FVoxelLockedOctrees& Ids);
+
+	inline void LockTransactions() { TransactionsSection.Lock(); }
 
 public:
 	template<typename T>
-	void AddItem(T* Item)
-	{
-		if (Item->Bounds.Intersect(GetBounds()))
-		{
-			if (IsLeaf())
-			{
-				ItemHolder->AddItem<T>(Item);
-
-				if (ItemHolder->Num() > MAX_PLACEABLE_ITEMS_PER_OCTREE && LOD > 0)
-				{
-					CreateChildren();
-					
-				}
-			}
-			else
-			{
-				for (auto& Child : GetChildren())
-				{
-					Child->AddItem(Item);
-				}
-			}
-		}
-	}
+	void AddItem(T* Item);
 
 
 public:
@@ -400,7 +160,7 @@ public:
 	/**
 	 * Check that the current frame is empty (safe to call Undo/Redo)
 	 */
-	bool CheckIfCurrentFrameIsEmpty() const;
+	bool IsCurrentFrameEmpty() const;
 
 public:
 	void CreateChildren();
@@ -412,23 +172,57 @@ private:
 	TUniquePtr<FVoxelDataCellUndoRedo> UndoRedoCell;
 	TUniquePtr<FVoxelPlaceableItemHolder> ItemHolder = MakeUnique<FVoxelPlaceableItemHolder>(); // Always valid on a leaf
 
+	FVoxelData* const Data;
 	const FVoxelWorldGeneratorInstance* const WorldGenerator;
 	const bool bEnableMultiplayer : 1;
 	const bool bEnableUndoRedo : 1;
 
 	bool bIsManuallyCached : 1;
-	EVoxelEmptyState EmptyState = EVoxelEmptyState::Unknown;
 	uint32 NumberOfWorldGeneratorReadsSinceLastCache = 0;
 	uint32 LastAccessTime = 0;
 
 private:
-	std::shared_timed_mutex MainLock;
-	std::mutex TransactionLock;
+	FVoxelSharedMutex Mutex;
+	FCriticalSection TransactionsSection;
+#if ENABLE_LOCKER_NAME
 	FString LockerName;
+	FCriticalSection LockerNameSection;
+#endif
+
+#if DO_THREADSAFE_CHECKS
+	FVoxelDataOctree* Parent = nullptr;
 	
+	inline bool IsLockedForWrite() const
+	{
+		if (Mutex.IsLockedForWrite())
+		{
+			return true;
+		}
+		else
+		{
+			return Parent && Parent->IsLockedForWrite();
+		}
+	}
+	inline bool IsLockedForRead() const
+	{
+		if (Mutex.IsLockedForRead())
+		{
+			return true;
+		}
+		else
+		{
+			return Parent && Parent->IsLockedForRead();
+		}
+	}
+#endif
+
 private:
-	void Create(bool bInitFromWorldGenerator);
+	void Create();
 	void Destroy();
+
+	void CreateArrayAndInitFromWorldGenerator(bool bInitValues, bool bInitMaterials);
+	
+	template<typename T> inline void CreateArrayAndInitFromWorldGenerator();
 
 private:
 	inline FVoxelCellIndex IndexFromGlobalCoordinates(int X, int Y, int Z) const
@@ -468,3 +262,314 @@ private:
 		return Result;
 	}
 };
+
+inline void FVoxelDataOctree::GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* Value, FVoxelMaterial* Material, int QueryLOD) const
+{
+	ensureThreadSafe(IsLockedForRead());
+	check(IsLeaf());
+	check(IsInOctree(X, Y, Z));
+
+	if (LOD > 0 || !IsCreated())
+	{
+		WorldGenerator->GetValueAndMaterial(X, Y, Z, Value, Material, QueryLOD, *ItemHolder);
+	}
+	else
+	{
+		int Index = IndexFromGlobalCoordinates(X, Y, Z);
+
+		if (Value)
+		{
+			if (auto* Array = Cell->GetArray<FVoxelValue>())
+			{
+				*Value = Array[Index];
+			}
+			else
+			{
+				WorldGenerator->GetValueAndMaterial(X, Y, Z, Value, nullptr, QueryLOD, *ItemHolder);
+			}
+		}
+		if (Material)
+		{
+			if (auto* Array = Cell->GetArray<FVoxelMaterial>())
+			{
+				*Material = Array[Index];
+			}
+			else
+			{
+				WorldGenerator->GetValueAndMaterial(X, Y, Z, nullptr, Material, QueryLOD, *ItemHolder);
+			}
+		}
+	}
+}
+
+template<typename TValue>
+inline void FVoxelDataOctree::SetValueOrMaterial(int X, int Y, int Z, const TValue& Value)
+{
+	ensureThreadSafe(IsLockedForWrite());
+	check(IsLeaf());
+	check(IsInOctree(X, Y, Z));
+
+	if (LOD == 0)
+	{
+		if (!CanEdit(X, Y, Z))
+		{
+			return;
+		}
+		if (!IsCreated())
+		{
+			Create();
+		}
+		if (!Cell->GetArray<TValue>())
+		{
+			CreateArrayAndInitFromWorldGenerator<TValue>();
+		}
+
+		Cell->SetArrayAsDirty<TValue>();
+		TValue* Array = Cell->GetArray<TValue>();
+		FVoxelCellIndex Index = IndexFromGlobalCoordinates(X, Y, Z);
+
+		AddEdit(Index, Array[Index]);
+
+		Array[Index] = Value;
+	}
+	else
+	{
+		CreateChildren();
+		GetChild(X, Y, Z).SetValueOrMaterial<TValue>(X, Y, Z, Value);
+	}
+}
+
+template<typename TValue, typename F>
+inline void FVoxelDataOctree::SetValueOrMaterialLambda(const FIntBox& Bounds, F Lambda)
+{
+	if (bEnableMultiplayer)
+	{
+		if (bEnableUndoRedo)
+		{
+			SetValueOrMaterialLambdaInternal<TValue, F, true, true>(Bounds, Lambda);
+		}
+		else
+		{
+			SetValueOrMaterialLambdaInternal<TValue, F, true, false>(Bounds, Lambda);
+		}
+	}
+	else
+	{
+		if (bEnableUndoRedo)
+		{
+			SetValueOrMaterialLambdaInternal<TValue, F, false, true>(Bounds, Lambda);
+		}
+		else
+		{
+			SetValueOrMaterialLambdaInternal<TValue, F, false, false>(Bounds, Lambda);
+		}
+	}
+}
+
+template<typename TValue, typename F, bool bTEnableMultiplayer, bool bTEnableUndoRedo>
+inline void FVoxelDataOctree::SetValueOrMaterialLambdaInternal(const FIntBox& Bounds, F Lambda)
+{
+	if (Bounds.Intersect(GetBounds()))
+	{
+		if (LOD == 0)
+		{
+			ensureThreadSafe(IsLockedForWrite());
+
+			const TArray<FIntBox> LocalBoundsArray = GetEditableBoxes(Bounds.Overlap(GetBounds()));
+			if (LocalBoundsArray.Num() == 0)
+			{
+				return;
+			}
+			if (!IsCreated())
+			{
+				Create();
+			}
+			if (!Cell->GetArray<TValue>())
+			{
+				CreateArrayAndInitFromWorldGenerator<TValue>();
+			}
+
+			Cell->SetArrayAsDirty<TValue>();
+			TValue* Array = Cell->GetArray<TValue>();
+
+			for (auto& LocalBounds : LocalBoundsArray)
+			{
+				const FIntVector& Offset = OctreeBounds.Min;
+				const FIntVector Min = LocalBounds.Min - Offset;
+				const FIntVector Max = LocalBounds.Max - Offset;
+
+				for (int Z = Min.Z; Z < Max.Z; Z++)
+				{
+					for (int Y = Min.Y; Y < Max.Y; Y++)
+					{
+						for (int X = Min.X; X < Max.X; X++)
+						{
+							FVoxelCellIndex Index = FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
+
+							if (bTEnableMultiplayer || bTEnableUndoRedo)
+							{
+								TValue& Ref = Array[Index];
+								TValue Old = Ref;
+
+								Lambda(X + Offset.X, Y + Offset.Y, Z + Offset.Z, Ref);
+
+								if (Ref != Old)
+								{
+									AddEdit<TValue, bTEnableMultiplayer, bTEnableUndoRedo>(Index, Old);
+								}
+							}
+							else
+							{
+								Lambda(X + Offset.X, Y + Offset.Y, Z + Offset.Z, Array[Index]);
+							}
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			if (IsLeaf())
+			{
+				CreateChildren();
+			}
+
+			for (auto& Child : GetChildren())
+			{
+				Child.SetValueOrMaterialLambdaInternal<TValue, F, bTEnableMultiplayer, bTEnableUndoRedo>(Bounds, Lambda);
+			}
+		}
+	}
+}
+
+template<bool bOnlyIfDirty, typename F>
+inline void FVoxelDataOctree::CallLambdaOnValuesInBounds(const FIntBox& Bounds, F Lambda) const
+{
+	if (Bounds.Intersect(OctreeBounds))
+	{
+		if (IsLeaf())
+		{
+			ensureThreadSafe(IsLockedForRead());
+
+			const bool bCreatedLOD0 = LOD == 0 && IsCreated();
+			if (bCreatedLOD0 || !bOnlyIfDirty)
+			{
+				const FIntBox LocalBounds = Bounds.Overlap(GetBounds());
+
+				auto* Values = bCreatedLOD0 ? Cell->GetArray<FVoxelValue>() : nullptr;
+				auto* Materials = bCreatedLOD0 ? Cell->GetArray<FVoxelMaterial>() : nullptr;
+
+				TArray<FVoxelValue> ValuesArray;
+				TArray<FVoxelMaterial> MaterialsArray;
+				bool bUsingValuesArray = false;
+				bool bUsingMaterialsArray = false;
+
+
+				if (!bOnlyIfDirty && (!Values || !Materials))
+				{
+					const FIntVector Size = LocalBounds.Size();
+					const int Num = Size.X * Size.Y * Size.Z;
+
+					if (!Values)
+					{
+						ValuesArray.SetNumUninitialized(Num);
+					}
+					if (!Materials)
+					{
+						MaterialsArray.SetNumUninitialized(Num);
+					}
+
+					WorldGenerator->GetValuesAndMaterials(
+						Values ? nullptr : ValuesArray.GetData(),
+						Materials ? nullptr : MaterialsArray.GetData(),
+						FVoxelWorldGeneratorQueryZone(LocalBounds, Size, 0),
+						0,
+						*ItemHolder);
+
+					if (!Values)
+					{
+						Values = ValuesArray.GetData();
+						bUsingValuesArray = true;
+					}
+					if (!Materials)
+					{
+						Materials = MaterialsArray.GetData();
+						bUsingMaterialsArray = true;
+					}
+				}
+
+				if (Values || Materials)
+				{
+					const FIntVector& Offset = OctreeBounds.Min;
+					const FIntVector Min = LocalBounds.Min;
+					const FIntVector Max = LocalBounds.Max;
+
+					int ArrayIndex = 0;
+					for (int Z = Min.Z; Z < Max.Z; Z++)
+					{
+						for (int Y = Min.Y; Y < Max.Y; Y++)
+						{
+							for (int X = Min.X; X < Max.X; X++)
+							{
+								int ValuesIndex = bUsingValuesArray ? ArrayIndex : FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
+								int MaterialsIndex = bUsingMaterialsArray ? ArrayIndex : FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
+								Lambda(
+									X + Offset.X,
+									Y + Offset.Y,
+									Z + Offset.Z,
+									(const FVoxelValue   *)(Values    ? &Values   [ValuesIndex   ] : nullptr),
+									(const FVoxelMaterial*)(Materials ? &Materials[MaterialsIndex] : nullptr));
+								ArrayIndex++;
+							}
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			for (auto& Child : GetChildren())
+			{
+				Child.CallLambdaOnValuesInBounds<bOnlyIfDirty>(Bounds, Lambda);
+			}
+		}
+	}
+}
+
+template<typename T>
+inline void FVoxelDataOctree::AddItem(T* Item)
+{
+	if (Item->Bounds.Intersect(GetBounds()))
+	{
+		if (IsLeaf())
+		{
+			ensureThreadSafe(IsLockedForWrite());
+
+			ItemHolder->AddItem<T>(Item);
+
+			if (ItemHolder->Num() > MAX_PLACEABLE_ITEMS_PER_OCTREE && LOD > 0)
+			{
+				CreateChildren();
+
+			}
+		}
+		else
+		{
+			for (auto& Child : GetChildren())
+			{
+				Child.AddItem(Item);
+			}
+		}
+	}
+}
+
+
+template<> inline void FVoxelDataOctree::CreateArrayAndInitFromWorldGenerator<FVoxelValue>()
+{
+	CreateArrayAndInitFromWorldGenerator(true, false);
+}
+
+template<> inline void FVoxelDataOctree::CreateArrayAndInitFromWorldGenerator<FVoxelMaterial>()
+{
+	CreateArrayAndInitFromWorldGenerator(false, true);
+}

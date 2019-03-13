@@ -11,6 +11,16 @@
 class IVoxelQueuedWork
 {
 public:
+	const uint64 Priority;
+	const FName Name;
+
+	IVoxelQueuedWork(uint64 Priority, const FName& Name)
+		: Priority(Priority)
+		, Name(Name)
+	{
+	}
+	virtual ~IVoxelQueuedWork() {}
+public:
 
 	/**
 	 * This is where the real thread work is done. All work that is done for
@@ -25,70 +35,34 @@ public:
 	 * itself using whatever heap it was allocated in.
 	 */
 	virtual void Abandon() = 0;
-
-	virtual uint64 GetPriority() const = 0;
-
-public:
-
-	/**
-	 * Virtual destructor so that child implementations are guaranteed a chance
-	 * to clean up any resources they allocated.
-	 */
-	virtual ~IVoxelQueuedWork() {}
-};
-
-// Needed because of priorities queries
-struct FVoxelQueuedWorkPtr
-{
-	IVoxelQueuedWork* Work;
-	const TSet<IVoxelQueuedWork*>* ValidQueuedWork;
-
-	FVoxelQueuedWorkPtr(IVoxelQueuedWork* InWork, const TSet<IVoxelQueuedWork*>& InValidQueuedWork)
-		: Work(InWork)
-		, ValidQueuedWork(&InValidQueuedWork)
-	{
-	}
-
-	uint64 GetPriority() const
-	{
-		if (ValidQueuedWork->Contains(Work))
-		{
-			return Work->GetPriority();
-		}
-		else
-		{
-			return MAX_uint64; // Put invalid jobs on top to avoid too much memory usage
-		}
-	}
 };
 
 class FVoxelQueuedWorkCompare
 {
 public:
-	bool operator() (const FVoxelQueuedWorkPtr& A, const FVoxelQueuedWorkPtr& B)
+	inline bool operator() (const IVoxelQueuedWork* A, const IVoxelQueuedWork* B)
 	{
-		return A.GetPriority() < B.GetPriority();
+		return A->Priority < B->Priority;
 	}
 };
 
 class VOXEL_API FVoxelQueuedThread : public FRunnable
 {
 protected:
-
 	/** The event that tells the thread there is work to do. */
-	FEvent * DoWorkEvent;
+	FEvent* DoWorkEvent = nullptr;
 
 	/** If true, the thread should exit. */
-	volatile int32 TimeToDie;
+	volatile int32 TimeToDie = 0;
 
 	/** The work this thread is doing. */
-	IVoxelQueuedWork* volatile QueuedWork;
+	IVoxelQueuedWork* volatile QueuedWork = nullptr;
 
 	/** The pool this thread belongs to. */
-	class FVoxelQueuedThreadPool* OwningThreadPool;
+	class FVoxelQueuedThreadPool* OwningThreadPool = nullptr;
 
 	/** My Thread  */
-	FRunnableThread* Thread;
+	FRunnableThread* Thread = nullptr;
 
 	/**
 	 * The real thread entry point. It waits for work events to be queued. Once
@@ -97,9 +71,7 @@ protected:
 	virtual uint32 Run() override;
 
 public:
-
-	/** Default constructor **/
-	FVoxelQueuedThread();
+	FVoxelQueuedThread() = default;
 
 	/**
 	 * Creates the thread with the specified stack size and creates the various
@@ -137,8 +109,7 @@ class VOXEL_API FVoxelQueuedThreadPool
 protected:
 
 	/** The work queue to pull from. */
-	std::priority_queue<FVoxelQueuedWorkPtr, std::vector<FVoxelQueuedWorkPtr>, FVoxelQueuedWorkCompare> QueuedWork;
-	TSet<IVoxelQueuedWork*> ValidQueuedWork;
+	std::priority_queue<IVoxelQueuedWork*, std::vector<IVoxelQueuedWork*>, FVoxelQueuedWorkCompare> QueuedWork;
 
 	/** The thread pool to dole work out to. */
 	TArray<FVoxelQueuedThread*> QueuedThreads;
@@ -147,17 +118,17 @@ protected:
 	TArray<FVoxelQueuedThread*> AllThreads;
 
 	/** The synchronization object used to protect access to the queued work. */
-	FCriticalSection* SynchQueue;
+	FCriticalSection* SyncQueue = nullptr;
 
 	/** If true, indicates the destruction process has taken place. */
-	bool TimeToDie;
+	bool TimeToDie = false;
 
 public:
 
 	static FVoxelQueuedThreadPool* Allocate() { return new FVoxelQueuedThreadPool(); }
 
 	/** Default constructor. */
-	FVoxelQueuedThreadPool();
+	FVoxelQueuedThreadPool() = default;
 
 	/** Virtual destructor (cleans up the synchronization objects). */
 	~FVoxelQueuedThreadPool();
@@ -173,43 +144,39 @@ public:
 
 	void AddQueuedWork(IVoxelQueuedWork* InQueuedWork);
 
-	bool RetractQueuedWork(IVoxelQueuedWork* InQueuedWork);
-
 	IVoxelQueuedWork* ReturnToPoolOrGetNextJob(FVoxelQueuedThread* InQueuedThread);
 };
 
-class IVoxelAsyncCallback
-{
-public:
-	virtual void OnCallback() = 0;
-};
+DECLARE_DELEGATE(FVoxelAsyncWorkCallback);
 
 class VOXEL_API FVoxelAsyncWork : public IVoxelQueuedWork
 {
 public:
-	FVoxelAsyncWork(IVoxelAsyncCallback* Callback = nullptr, bool bAutodelete = false);
+	FVoxelAsyncWork(const FName& Name, uint64 Priority, FVoxelAsyncWorkCallback Callback = FVoxelAsyncWorkCallback(), bool bAutodelete = false);
 	~FVoxelAsyncWork() override;
-
-	virtual void DoWork() = 0;
 
 	virtual void DoThreadedWork() final;
 	virtual void Abandon() final;
 
-	bool IsDone() const;
-	void WaitForCompletion();
+	virtual void DoWork() = 0;
 
+	inline bool IsDone() const { return IsDoneCounter.GetValue() > 0; }
+
+	void WaitForCompletion();
 	void CancelAndAutodelete();
 
 protected:
-	bool IsCanceled() const { return bCanceled; }
+	inline bool IsCanceled() const { return bCanceled.GetValue() > 0; }
 
 private:
 	FThreadSafeCounter IsDoneCounter;
 	FEvent* DoneEvent;
 	FCriticalSection DoneSection;
 
-	IVoxelAsyncCallback* Callback;
+	FVoxelAsyncWorkCallback Callback;
+	uint64 CallbackInfo;
+	
+	FThreadSafeCounter bCanceled;
 	bool bAutodelete = false;
-	bool bCanceled = false;
 };
 
