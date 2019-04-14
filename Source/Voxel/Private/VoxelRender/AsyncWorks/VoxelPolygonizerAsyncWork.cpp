@@ -10,20 +10,22 @@
 #include "Misc/ScopeLock.h"
 #include "Misc/MessageDialog.h"
 
-FVoxelPolygonizerAsyncWorkBase::FVoxelPolygonizerAsyncWorkBase(FVoxelRenderChunk* Chunk, bool bIsTransitionsTask)
+FVoxelPolygonizerAsyncWorkBase::FVoxelPolygonizerAsyncWorkBase(FVoxelRenderChunk* Chunk, const FString& Name)
 	: FVoxelAsyncWork(
-		*FString::Printf(TEXT("PolygonizerWork LOD=%d Transitions=%d"), Chunk->LOD, bIsTransitionsTask ? 1 : 0),
-		Chunk->GetPriority(),
-		FVoxelAsyncWorkCallback::CreateStatic(FVoxelPolygonizerAsyncWorkBase::Callback, TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>(Chunk->AsShared()), bIsTransitionsTask, Chunk->GetTaskId()))
+		*FString::Printf(TEXT("PolygonizerWork LOD=%d Class=%s"), Chunk->LOD, *Name),
+		Chunk->GetPriority())
 	, LOD           (Chunk->LOD)
 	, ChunkPosition (Chunk->Position)
+	, MeshParameters(Chunk->Settings.bEnableTessellation, Chunk->Renderer->Settings.bOptimizeIndices)
+	, VoxelSize     (Chunk->Renderer->Settings.VoxelSize)
 	, Data          (Chunk->Renderer->Settings.Data.ToSharedRef())
 	, DebugManager  (Chunk->Renderer->Settings.DebugManager)
-	, VoxelSize     (Chunk->Renderer->Settings.VoxelSize)
 	, UVConfig      (Chunk->Renderer->Settings.UVConfig)
+	, UVScale       (Chunk->Renderer->Settings.UVScale)
 	, NormalConfig  (Chunk->Renderer->Settings.NormalConfig)
 	, MaterialConfig(Chunk->Renderer->Settings.MaterialConfig)
-	, MeshParameters(Chunk->Settings.bEnableTessellation, Chunk->Renderer->Settings.bOptimizeIndices)
+	, RenderChunk(Chunk->AsShared())
+	, TaskId(Chunk->GetTaskId())
 {
 	check(IsInGameThread());
 	Stats.StartStat("Waiting for thread queue", false);
@@ -31,7 +33,7 @@ FVoxelPolygonizerAsyncWorkBase::FVoxelPolygonizerAsyncWorkBase(FVoxelRenderChunk
 
 FVoxelPolygonizerAsyncWorkBase::~FVoxelPolygonizerAsyncWorkBase()
 {
-	if (IsDone() && !IsCanceled())
+	if (bDoWorkWasCalled)
 	{
 		FVoxelStats::AddElement(Stats);
 	}
@@ -63,6 +65,7 @@ void ShowWorldGeneratorError(FVoxelData* Data)
 
 void FVoxelPolygonizerAsyncWorkBase::DoWork()
 {
+	bDoWorkWasCalled = true;
 	Stats.SetLOD(LOD);
 	Stats.SetType(GetTaskType());
 
@@ -77,17 +80,12 @@ void FVoxelPolygonizerAsyncWorkBase::DoWork()
 
 	Stats.SetIsCanceled(IsCanceled());
 
-	if (!IsCanceled())
-	{
-		PostMeshCreation();
-	}
-
 	Stats.StartStat("Waiting for game thread", false);
 }
 
-void FVoxelPolygonizerAsyncWorkBase::Callback(TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> Chunk, bool bIsTransitionsTask, uint64 TaskId)
+void FVoxelPolygonizerAsyncWorkBase::PostDoWork()
 {
-	AsyncTask(ENamedThreads::GameThread, [=]()
+	AsyncTask(ENamedThreads::GameThread, [Chunk = RenderChunk, TaskId = TaskId, bIsTransitionsTask = IsTransitionTask()]()
 	{
 		auto ChunkPtr = Chunk.Pin();
 		if (ChunkPtr.IsValid())
@@ -104,14 +102,8 @@ void FVoxelPolygonizerAsyncWorkBase::Callback(TWeakPtr<FVoxelRenderChunk, ESPMod
 	});
 }
 
-FVoxelPolygonizerAsyncWork::FVoxelPolygonizerAsyncWork(FVoxelRenderChunk* Chunk)
-	: FVoxelPolygonizerAsyncWorkBase(Chunk, false)
-{
-}
-
-
-FVoxelTransitionsPolygonizerAsyncWork::FVoxelTransitionsPolygonizerAsyncWork(FVoxelRenderChunk* Chunk)
-	: FVoxelPolygonizerAsyncWorkBase(Chunk, true)
+FVoxelTransitionsPolygonizerAsyncWork::FVoxelTransitionsPolygonizerAsyncWork(FVoxelRenderChunk* Chunk, const FString& Name)
+	: FVoxelPolygonizerAsyncWorkBase(Chunk, Name)
 	, TransitionsMask(Chunk->GetWantedTransitionsMask())
 {
 

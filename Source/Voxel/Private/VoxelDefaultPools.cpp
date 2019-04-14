@@ -4,7 +4,7 @@
 #include "VoxelThreadPool.h"
 #include "Misc/QueuedThreadPool.h"
 
-FVoxelDefaultPool::FVoxelDefaultPool(int MeshThreadCount)
+FVoxelDefaultPool::FVoxelDefaultPool(int32 MeshThreadCount)
 	: MeshPool(FVoxelQueuedThreadPool::Allocate())
 	, OctreeBuilderPool(FQueuedThreadPool::Allocate())
 	, AsyncTasksPool(FQueuedThreadPool::Allocate())
@@ -21,12 +21,12 @@ FVoxelDefaultPool::~FVoxelDefaultPool()
 	delete AsyncTasksPool;
 }
 
-void FVoxelDefaultPool::CreateGlobalPool(int MeshThreadCount)
+void FVoxelDefaultPool::CreateGlobalPool(int32 MeshThreadCount)
 {
 	IVoxelPool::SetGlobalVoxelPool(Create(MeshThreadCount));
 }
 
-TSharedRef<FVoxelDefaultPool> FVoxelDefaultPool::Create(int MeshThreadCount)
+TSharedRef<FVoxelDefaultPool> FVoxelDefaultPool::Create(int32 MeshThreadCount)
 {
 	if (!ensureMsgf(MeshThreadCount >= 1, TEXT("Invalid MeshThreadCount: %d"), MeshThreadCount))
 	{

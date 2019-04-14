@@ -11,7 +11,7 @@ class FVoxelEditorUtilities
 public:
 	static void ModifyWorld(AVoxelWorld* World)
 	{
-		if (Cast<AVoxelDataAssetEditorVoxelWorld>(World))
+		/*TODO if (Cast<AVoxelDataAssetEditorVoxelWorld>(World))
 		{
 			World->GetWorldGeneratorPicker().WorldGeneratorObject->Modify();
 		}
@@ -21,6 +21,6 @@ public:
 			{
 				World->SaveObject->Modify();
 			}
-		}
+		}*/
 	}
 };

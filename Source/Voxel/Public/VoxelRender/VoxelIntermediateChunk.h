@@ -57,7 +57,6 @@ struct FVoxelBlendedMaterial
 
 	inline FString ToString() const
 	{
-		FString Result;
 		switch (Kind)
 		{
 		case Single:
@@ -69,6 +68,38 @@ struct FVoxelBlendedMaterial
 		case Invalid:
 		default:
 			return "Invalid";
+		}
+	}
+
+	inline FString KindToString() const
+	{
+		switch (Kind)
+		{
+		case Single:
+			return "Single";
+		case Double:
+			return "Double";
+		case Triple:
+			return "Triple";
+		case Invalid:
+		default:
+			return "Invalid";
+		}
+	}
+
+	inline TArray<uint8, TFixedAllocator<3>> GetElements() const
+	{
+		switch (Kind)
+		{
+		case Single:
+			return { Index0 };
+		case Double:
+			return { Index0, Index1 };
+		case Triple:
+			return { Index0, Index1, Index2 };
+		case Invalid:
+		default:
+			return {};
 		}
 	}
 
@@ -88,6 +119,7 @@ struct FVoxelMeshProcessingParameters
 	bool bBuildAdjacency;
 	bool bOptimizeIndices;
 
+	FVoxelMeshProcessingParameters() = default;
 	FVoxelMeshProcessingParameters(bool bBuildAdjacency, bool bOptimizeIndices)
 		: bBuildAdjacency(bBuildAdjacency)
 		, bOptimizeIndices(bOptimizeIndices)
@@ -102,19 +134,15 @@ struct FVoxelProcMeshVertex
 	FVoxelProcMeshTangent Tangent = FVoxelProcMeshTangent(FVector::RightVector, false);
 	FColor Color = FColor::White;
 	FVector2D TextureCoordinate = FVector2D::ZeroVector;
-	uint8 GrassId = 0;
-	uint8 ActorId = 0;
 
 	FVoxelProcMeshVertex() = default;
 
-	FVoxelProcMeshVertex(const FVector& Position, const FVector& Normal, const FVoxelProcMeshTangent& Tangent, const FColor& Color, const FVector2D& TextureCoordinate, uint8 GrassId, uint8 ActorId)
+	FVoxelProcMeshVertex(const FVector& Position, const FVector& Normal, const FVoxelProcMeshTangent& Tangent, const FColor& Color, const FVector2D& TextureCoordinate)
 		: Position(Position)
 		, Normal(Normal)
 		, Tangent(Tangent)
 		, Color(Color)
 		, TextureCoordinate(TextureCoordinate)
-		, GrassId(GrassId)
-		, ActorId(ActorId)
 	{
 	}
 };
@@ -127,8 +155,6 @@ struct VOXEL_API FVoxelChunkBuffers
 	TArray<FVoxelProcMeshTangent> Tangents;
 	TArray<FColor> Colors;
 	TArray<FVector2D> TextureCoordinates;
-	TArray<uint8> GrassIds;
-	TArray<uint8> ActorIds;
 	TArray<uint32> AdjacencyIndices;
 
 	~FVoxelChunkBuffers()
@@ -150,8 +176,6 @@ struct VOXEL_API FVoxelChunkBuffers
 		Tangents.Reserve(Vertices.Num());
 		Colors.Reserve(Vertices.Num());
 		TextureCoordinates.Reserve(Vertices.Num());
-		GrassIds.Reserve(Vertices.Num());
-		ActorIds.Reserve(Vertices.Num());
 
 		for (auto& Vertex : Vertices)
 		{
@@ -163,13 +187,11 @@ struct VOXEL_API FVoxelChunkBuffers
 
 	inline uint32 AddVertex(const FVoxelProcMeshVertex& Vertex)
 	{
-		int Index = Positions.Emplace(Vertex.Position);
+		int32 Index = Positions.Emplace(Vertex.Position);
 		Normals.Emplace(Vertex.Normal);
 		Tangents.Emplace(Vertex.Tangent);
 		Colors.Emplace(Vertex.Color);
 		TextureCoordinates.Emplace(Vertex.TextureCoordinate);
-		GrassIds.Emplace(Vertex.GrassId);
-		ActorIds.Emplace(Vertex.ActorId);
 		return Index;
 	}
 	
@@ -178,9 +200,9 @@ struct VOXEL_API FVoxelChunkBuffers
 		Indices.Add(Index);
 	}
 
-	inline FVoxelProcMeshVertex GetVertex(int Index) const
+	inline FVoxelProcMeshVertex GetVertex(int32 Index) const
 	{
-		return FVoxelProcMeshVertex(Positions[Index], Normals[Index], Tangents[Index], Colors[Index], TextureCoordinates[Index], GrassIds[Index], ActorIds[Index]);
+		return FVoxelProcMeshVertex(Positions[Index], Normals[Index], Tangents[Index], Colors[Index], TextureCoordinates[Index]);
 	}
 
 	inline void Shrink()
@@ -190,19 +212,17 @@ struct VOXEL_API FVoxelChunkBuffers
 		Tangents.Shrink();
 		Colors.Shrink();
 		TextureCoordinates.Shrink();
-		GrassIds.Shrink();
-		ActorIds.Shrink();
 		AdjacencyIndices.Shrink();
 
 		UpdateStat();
 	}
 
-	inline int GetNumVertices() const
+	inline int32 GetNumVertices() const
 	{
 		return Positions.Num();
 	}
 
-	inline int GetAllocatedSize() const
+	inline int32 GetAllocatedSize() const
 	{
 		return Indices.GetAllocatedSize()
 			+ Positions.GetAllocatedSize()
@@ -210,29 +230,32 @@ struct VOXEL_API FVoxelChunkBuffers
 			+ Tangents.GetAllocatedSize()
 			+ Colors.GetAllocatedSize()
 			+ TextureCoordinates.GetAllocatedSize()
-			+ GrassIds.GetAllocatedSize()
-			+ ActorIds.GetAllocatedSize()
 			+ AdjacencyIndices.GetAllocatedSize();
+	}
+
+	inline bool HasAdjacency() const
+	{
+		return bHasAdjacency;
 	}
 
 	void BuildAdjacency();
 	void OptimizeIndices();
 
 private:
+	bool bHasAdjacency = false;
+	int32 LastAllocatedSize = 0;
 
-	int LastAllocatedSize = 0;
 	void UpdateStat()
 	{
 		DEC_DWORD_STAT_BY(STAT_VoxelIntermediateChunksMemory, LastAllocatedSize);
 		LastAllocatedSize = GetAllocatedSize();
 		INC_DWORD_STAT_BY(STAT_VoxelIntermediateChunksMemory, LastAllocatedSize);
 
-		check(Positions.Num() == Normals.Num() &&
+		check(
+			Positions.Num() == Normals.Num() &&
 			Positions.Num() == Tangents.Num() &&
 			Positions.Num() == Colors.Num() &&
-			Positions.Num() == TextureCoordinates.Num() &&
-			Positions.Num() == GrassIds.Num() &&
-			Positions.Num() == ActorIds.Num()
+			Positions.Num() == TextureCoordinates.Num()
 		);
 	}
 };
@@ -249,7 +272,7 @@ struct FVoxelChunk
 	{
 		if (bSingleBuffers)
 		{
-			for (int I = 0; I < SingleBuffers.Indices.Num(); I += 3)
+			for (int32 I = 0; I < SingleBuffers.Indices.Num(); I += 3)
 			{
 				F(SingleBuffers.GetVertex(SingleBuffers.Indices[I]), 
 				  SingleBuffers.GetVertex(SingleBuffers.Indices[I + 1]), 
@@ -261,7 +284,7 @@ struct FVoxelChunk
 			for (auto& BufferIt : Map)
 			{
 				auto& Buffer = BufferIt.Value;
-				for (int I = 0; I < Buffer.Indices.Num(); I += 3)
+				for (int32 I = 0; I < Buffer.Indices.Num(); I += 3)
 				{
 					F(Buffer.GetVertex(Buffer.Indices[I]),
 					  Buffer.GetVertex(Buffer.Indices[I + 1]),

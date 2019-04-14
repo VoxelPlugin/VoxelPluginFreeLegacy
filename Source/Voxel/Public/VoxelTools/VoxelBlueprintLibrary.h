@@ -60,7 +60,11 @@ public:
 	
 	// Get a custom float output value
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data")
-	static float GetFloatOutput(AVoxelWorld* World, FName Name, int X, int Y, int Z);
+	static float GetFloatOutput(AVoxelWorld* World, FName Name, int32 X, int32 Y, int32 Z);
+	
+	// Get a custom int32 output value
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data")
+	static int32 GetIntOutput(AVoxelWorld* World, FName Name, int32 X, int32 Y, int32 Z);
 
 	// Bounds of this world
 	UFUNCTION(BlueprintPure, Category = "Voxel|Data")
@@ -104,7 +108,7 @@ public:
 	 * @param	MeshThreadCount		At least 1
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads")
-	 static void CreateGlobalVoxelThreadPool(int MeshThreadCount = 2);
+	 static void CreateGlobalVoxelThreadPool(int32 MeshThreadCount = 2);
 	
 	// Destroy the global voxel thread pool
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads")
@@ -136,19 +140,19 @@ public:
 	static FIntVector Multiply_IntVectorIntVector(const FIntVector& Left, const FIntVector& Right);
 
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "IntVector / int", CompactNodeTitle = "/", Keywords = "/ divide"), Category = "Math|IntVector")
-	static FIntVector Divide_IntVectorInt(const FIntVector& Left, int Right);
+	static FIntVector Divide_IntVectorInt(const FIntVector& Left, int32 Right);
 	
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "IntVector * int", CompactNodeTitle = "*", Keywords = "* multiply"), Category = "Math|IntVector")
-	static FIntVector Multiply_IntVectorInt(const FIntVector& Left, int Right);
+	static FIntVector Multiply_IntVectorInt(const FIntVector& Left, int32 Right);
 	
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "int * IntVector", CompactNodeTitle = "*", Keywords = "* multiply"), Category = "Math|IntVector")
-	static FIntVector Multiply_IntIntVector(int Left, const FIntVector& Right);
+	static FIntVector Multiply_IntIntVector(int32 Left, const FIntVector& Right);
 	
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Get Max"), Category = "Math|IntVector")
-	static int GetMax_Intvector(const FIntVector& Vector);
+	static int32 GetMax_Intvector(const FIntVector& Vector);
 	
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Get Min"), Category = "Math|IntVector")
-	static int GetMin_Intvector(const FIntVector& Vector);
+	static int32 GetMin_Intvector(const FIntVector& Vector);
 		
 public:
 	/**
@@ -170,14 +174,6 @@ public:
 	// Create from double index
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
 	static FVoxelPaintMaterial CreateDoubleIndexBlendPaintMaterial(uint8 Index, float Amount);
-
-	// Create from grass id
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelPaintMaterial CreateGrassPaintMaterial(uint8 GrassId);
-
-	// Create from actor id
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelPaintMaterial CreateActorPaintMaterial(uint8 ActorId);
 
 	// Apply a Paint Material to a Voxel Material
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
@@ -217,14 +213,4 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
 	static FVoxelMaterial CreateMaterialFromDoubleIndex(uint8 IndexA, uint8 IndexB, float Blend);
-	
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static uint8 GetVoxelActorId(FVoxelMaterial Material);
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelMaterial SetVoxelActorId(FVoxelMaterial Material, uint8 VoxelSpawnedActorId);
-
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static uint8 GetVoxelGrassId(FVoxelMaterial Material);
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelMaterial SetVoxelGrassId(FVoxelMaterial Material, uint8 VoxelGrassId);
 };

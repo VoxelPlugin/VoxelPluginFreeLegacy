@@ -27,9 +27,9 @@ inline bool SphereHelper(const FString& Name, AVoxelWorld* World, const FIntVect
 void SetValueSphereImpl(FVoxelData& Data, const FIntBox& Bounds, const FIntVector& Position, float Radius, float Value)
 {
 	const float SquaredRadius = FMath::Square(Radius);
-	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
+	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& OldValue)
 	{
-		uint64 SquaredDistance = FVoxelIntVector::SquaredSize(FIntVector(X - Position.X, Y - Position.Y, Z - Position.Z));
+		uint64 SquaredDistance = FVoxelUtilities::SquaredSize(FIntVector(X - Position.X, Y - Position.Y, Z - Position.Z));
 		if (SquaredDistance <= SquaredRadius)
 		{
 			OldValue = Value;
@@ -42,7 +42,7 @@ void SphereEditImpl(FVoxelData& Data, const FIntBox& Bounds, const FIntVector& P
 {
 	const float SquaredRadiusPlus2 = FMath::Square(Radius + 2);
 	const float SquaredRadiusMinus2 = FMath::Square(Radius - 2);
-	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
+	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& OldValue)
 	{
 		float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
 
@@ -66,7 +66,7 @@ void SphereEditImpl(FVoxelData& Data, const FIntBox& Bounds, const FIntVector& P
 void SetMaterialSphereImpl(FVoxelData& Data, const FIntBox& Bounds, const FIntVector& Position, float Radius, const FVoxelPaintMaterial& PaintMaterial, const FRichCurve* StrengthCurve)
 {
 	const float SquaredRadius = FMath::Square(Radius);
-	Data.SetValueOrMaterialLambda<FVoxelMaterial>(Bounds, [&](int X, int Y, int Z, FVoxelMaterial& Material)
+	Data.SetValueOrMaterialLambda<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
 	{
 		float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
 		if (SquaredDistance <= SquaredRadius)

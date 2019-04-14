@@ -54,7 +54,7 @@ void FVoxelStatsElement::StartStat(const FName& Name, bool bIsActiveWork)
 	bPendingIsActiveWork = bIsActiveWork;
 }
 
-void FVoxelStatsElement::SetLOD(int LOD)
+void FVoxelStatsElement::SetLOD(int32 LOD)
 {
 	PendingTime = FPlatformTime::Seconds();
 	SetValue("LOD", FString::FromInt(LOD));
@@ -71,12 +71,12 @@ void FVoxelStatsElement::SetIsEmpty(bool bIsEmpty)
 	SetValue("bIsEmpty", bIsEmpty ? "true" : "false");
 }
 
-void FVoxelStatsElement::SetNumIndices(int NumIndices)
+void FVoxelStatsElement::SetNumIndices(int32 NumIndices)
 {
 	SetValue("NumIndices", LexToString(NumIndices));
 }
 
-void FVoxelStatsElement::SetNumVertices(int NumVertices)
+void FVoxelStatsElement::SetNumVertices(int32 NumVertices)
 {
 	SetValue("NumVertices", LexToString(NumVertices));
 }
@@ -110,7 +110,7 @@ inline FString ToString(const TArray<double>& Array)
 	if (Array.Num() > 0)
 	{
 		Result += LexToString(Array[0]);
-		for (int Index = 0; Index < Array.Num() ; Index++)
+		for (int32 Index = 0; Index < Array.Num() ; Index++)
 		{
 			Result += ", " + LexToString(Array[Index]);
 		}
@@ -127,15 +127,17 @@ TArray<FVoxelStatsElement> FVoxelStats::Elements;
 FCriticalSection FVoxelStats::CriticalSection;
 bool FVoxelStats::bRecord = false;
 
-void FVoxelStats::AddElement(FVoxelStatsElement Element)
+void FVoxelStats::AddElement(const FVoxelStatsElement& Element)
 {
-	check(!Element.GetValue("Type").IsEmpty());
-	FScopeLock Lock(&CriticalSection);
-	if (bRecord)
+	if (ensure(!Element.GetValue("Type").IsEmpty()))
 	{
-		// Make sure it's finished
-		Element.StartStat("");
-		Elements.Add(Element);
+		FScopeLock Lock(&CriticalSection);
+		if (bRecord)
+		{
+			int32 Index = Elements.Add(Element);
+			// Make sure it's finished
+			Elements[Index].StartStat("");
+		}
 	}
 }
 

@@ -12,7 +12,6 @@ class FVoxelData;
 class FVoxelDebugManager;
 class UMaterialInterface;
 class UVoxelMaterialCollection;
-struct FVoxelGrassSpawner;
 struct FVoxelBlendedMaterial;
 
 DECLARE_MULTICAST_DELEGATE(FVoxelRendererOnWorldLoaded);
@@ -23,26 +22,26 @@ struct FVoxelRenderChunkSettings
 	bool bVisible : 1;
 	bool bEnableCollisions : 1;
 	bool bEnableNavmesh : 1;
-	bool bEnableGrass : 1;
 	bool bEnableTessellation : 1;
+	bool bForceRender : 1;
 
-	inline bool IsRendered() const { return bVisible || bEnableCollisions || bEnableNavmesh; }
+	inline bool IsRendered() const { return bVisible || bEnableCollisions || bEnableNavmesh || bForceRender; }
 
 	inline bool operator!=(const FVoxelRenderChunkSettings& Other) const
 	{
 		return bVisible != Other.bVisible ||
 			bEnableCollisions != Other.bEnableCollisions ||
 			bEnableNavmesh != Other.bEnableNavmesh ||
-			bEnableGrass != Other.bEnableGrass ||
-			bEnableTessellation != Other.bEnableTessellation;
+			bEnableTessellation != Other.bEnableTessellation ||
+			bForceRender != Other.bForceRender;
 	}
 	inline bool operator==(const FVoxelRenderChunkSettings& Other) const
 	{
 		return bVisible == Other.bVisible &&
 			bEnableCollisions == Other.bEnableCollisions &&
 			bEnableNavmesh == Other.bEnableNavmesh &&
-			bEnableGrass == Other.bEnableGrass &&
-			bEnableTessellation == Other.bEnableTessellation;
+			bEnableTessellation == Other.bEnableTessellation &&
+			bForceRender == Other.bForceRender;
 	}
 
 	inline static FVoxelRenderChunkSettings Visible()
@@ -54,7 +53,7 @@ struct FVoxelRenderChunkSettings
 struct FVoxelRendererSettings
 {
 	float VoxelSize;
-	int OctreeDepth;
+	int32 OctreeDepth;
 	FIntBox WorldBounds;
 	UClass* ProcMeshClass;
 
@@ -69,6 +68,7 @@ struct FVoxelRendererSettings
 	TSharedPtr<FVoxelDebugManager, ESPMode::ThreadSafe> DebugManager;
 
 	EVoxelUVConfig UVConfig;
+	float UVScale;
 	EVoxelNormalConfig NormalConfig;
 	EVoxelMaterialConfig MaterialConfig;
 	TWeakObjectPtr<UMaterialInterface> VoxelMaterialWithoutTessellation;
@@ -84,34 +84,21 @@ struct FVoxelRendererSettings
 	float ChunksDitheringDuration;
 	bool bOptimizeIndices;
 
-
 public:
 	FVector GetChunkRelativePosition(const FIntVector& Position) const
 	{
 		return FVector(Position + *WorldOffset) * VoxelSize;
 	}
-
-	inline UMaterialInterface* GetVoxelMaterial(bool bEnableTessellation, int InLOD, const FVoxelBlendedMaterial& Index) const
-	{
-		return bEnableTessellation ? GetVoxelMaterialWithTessellation(Index) : GetVoxelMaterialWithoutTessellation(Index);
-	}
-	inline UMaterialInterface* GetVoxelMaterial(bool bEnableTessellation, int InLOD) const
-	{
-		return bEnableTessellation ? GetVoxelMaterialWithTessellation() : GetVoxelMaterialWithoutTessellation();
-	}
-
-private:
-	UMaterialInterface* GetVoxelMaterialWithoutTessellation(const FVoxelBlendedMaterial& Index) const;
-	UMaterialInterface* GetVoxelMaterialWithTessellation(const FVoxelBlendedMaterial& Index) const;
-	UMaterialInterface* GetVoxelMaterialWithoutTessellation() const;
-	UMaterialInterface* GetVoxelMaterialWithTessellation() const;
+	
+	UMaterialInterface* GetVoxelMaterial(const FVoxelBlendedMaterial& Index, bool bTessellation) const;
+	UMaterialInterface* GetVoxelMaterial(bool bTessellation) const;
 };
 
 struct FVoxelChunkToAdd
 {
 	uint64 Id;
 	FIntBox Bounds;
-	int LOD;
+	int32 LOD;
 	FVoxelRenderChunkSettings Settings;
 	TArray<uint64> PreviousChunks; // Can be chunks to remove or visible chunks that become hidden
 };
@@ -152,7 +139,7 @@ public:
 	virtual void UpdateChunks(const TArray<uint64>& ChunksToUpdate, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) = 0;
 	virtual void CancelDithering(const FIntBox& Bounds, const TArray<uint64>& Chunks) = 0;
 
-	virtual int GetTaskCount() const = 0;
+	virtual int32 GetTaskCount() const = 0;
 
 	virtual void RecomputeMeshPositions() = 0;
 	

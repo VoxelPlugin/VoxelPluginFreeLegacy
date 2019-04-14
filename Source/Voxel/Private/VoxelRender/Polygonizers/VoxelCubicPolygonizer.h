@@ -10,6 +10,7 @@
 #include "VoxelPolygonizer.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelDataUtilities.h"
+#include "VoxelDebug/VoxelStats.h"
 
 class FVoxelData;
 struct FVoxelMaterial;
@@ -28,7 +29,7 @@ struct FCubicLocalVoxelVertex
 
 	inline FVoxelProcMeshVertex GetProcMeshVertex() const
 	{
-		return FVoxelProcMeshVertex(Position, Normal, Tangent, Material.GetColor(), UVs, Material.GetVoxelGrassId(), Material.GetVoxelActorId());
+		return FVoxelProcMeshVertex(Position, Normal, Tangent, Material.GetColor(), UVs);
 	}
 };
 
@@ -46,18 +47,18 @@ private:
 	FVoxelValue CachedValues[CUBIC_EXTENDED_CHUNK_SIZE * CUBIC_EXTENDED_CHUNK_SIZE * CUBIC_EXTENDED_CHUNK_SIZE];
 	FVoxelMaterial CachedMaterials[CUBIC_EXTENDED_CHUNK_SIZE * CUBIC_EXTENDED_CHUNK_SIZE * CUBIC_EXTENDED_CHUNK_SIZE];
 
-	inline int GetIndex(int X, int Y, int Z) const { return (X + 1) + (Y + 1) * CUBIC_EXTENDED_CHUNK_SIZE + (Z + 1) * CUBIC_EXTENDED_CHUNK_SIZE * CUBIC_EXTENDED_CHUNK_SIZE; }
-	inline FVoxelValue GetValue(int X, int Y, int Z) const
+	inline int32 GetIndex(int32 X, int32 Y, int32 Z) const { return (X + 1) + (Y + 1) * CUBIC_EXTENDED_CHUNK_SIZE + (Z + 1) * CUBIC_EXTENDED_CHUNK_SIZE * CUBIC_EXTENDED_CHUNK_SIZE; }
+	inline FVoxelValue GetValue(int32 X, int32 Y, int32 Z) const
 	{
 		check(IsInBounds(X, Y, Z));
 		return CachedValues[GetIndex(X, Y, Z)];
 	}
-	inline FVoxelMaterial GetMaterial(int X, int Y, int Z) const
+	inline FVoxelMaterial GetMaterial(int32 X, int32 Y, int32 Z) const
 	{
 		check(IsInBounds(X, Y, Z));
 		return CachedMaterials[GetIndex(X, Y, Z)];
 	}
-	inline bool IsInBounds(int X, int Y, int Z) const
+	inline bool IsInBounds(int32 X, int32 Y, int32 Z) const
 	{
 		return -1 <= X && -1 <= Y && -1 <= Z && X <= CHUNK_SIZE && Y <= CHUNK_SIZE && Z <= CHUNK_SIZE;
 	}
@@ -75,18 +76,18 @@ protected:
 private:
 	TUniquePtr<FVoxelDataUtilities::MapAccelerator> MapAccelerator;
 	
-	inline int GetIndex(int X, int Y, int Z) const { return (X + 1) + (Y + 1) * (CHUNK_SIZE + 3) + (Z + 1) * (CHUNK_SIZE + 3) * (CHUNK_SIZE + 3); }
-	inline FVoxelValue GetValue(int InStep, EVoxelDirection Direction, int X, int Y, int Z)
+	inline int32 GetIndex(int32 X, int32 Y, int32 Z) const { return (X + 1) + (Y + 1) * (CHUNK_SIZE + 3) + (Z + 1) * (CHUNK_SIZE + 3) * (CHUNK_SIZE + 3); }
+	inline FVoxelValue GetValue(int32 InStep, EVoxelDirection Direction, int32 X, int32 Y, int32 Z)
 	{
-		int GX, GY, GZ;
+		int32 GX, GY, GZ;
 		Local2DToGlobal(CHUNK_SIZE * Step - InStep, Direction, X, Y, Z, GX, GY, GZ);
 
 		FVoxelScopeValueAccessCounter Counter(Stats);
 		return MapAccelerator->GetValue(GX + ChunkPosition.X, GY + ChunkPosition.Y, GZ + ChunkPosition.Z, LOD);
 	}	
-	inline FVoxelMaterial GetMaterial(int InStep, EVoxelDirection Direction, int X, int Y, int Z)
+	inline FVoxelMaterial GetMaterial(int32 InStep, EVoxelDirection Direction, int32 X, int32 Y, int32 Z)
 	{
-		int GX, GY, GZ;
+		int32 GX, GY, GZ;
 		Local2DToGlobal(CHUNK_SIZE * Step - InStep, Direction, X, Y, Z, GX, GY, GZ);
 		
 		FVoxelScopeMaterialAccessCounter Counter(Stats);
@@ -94,11 +95,11 @@ private:
 	}
 	
 	// LX * HalfStep = GX
-	void Add2DFace(int InStep, EVoxelDirection Direction, bool bInvert, const FVoxelMaterial& Material, int LX, int LY, TArray<FCubicLocalVoxelVertex>& Vertices, TArray<uint32>& Indices);
+	void Add2DFace(int32 InStep, EVoxelDirection Direction, bool bInvert, const FVoxelMaterial& Material, int32 LX, int32 LY, TArray<FCubicLocalVoxelVertex>& Vertices, TArray<uint32>& Indices);
 
-	inline void Local2DToGlobal(int InSize, EVoxelDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ) const
+	inline void Local2DToGlobal(int32 InSize, EVoxelDirection Direction, int32 LX, int32 LY, int32 LZ, int32& OutGX, int32& OutGY, int32& OutGZ) const
 	{
-		const int& S = InSize;
+		const int32& S = InSize;
 		switch (Direction)
 		{
 		case XMin:

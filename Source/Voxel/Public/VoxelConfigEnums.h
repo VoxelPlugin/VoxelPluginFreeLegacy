@@ -35,5 +35,5 @@ enum class EVoxelUVConfig : uint8
 	UseRGAsUVs					UMETA(DisplayName = "Use Red and Green as UVs"),
 	PackWorldUpInUVs			UMETA(DisplayName = "Pack WorldUp in UVs"),
 	PerVoxelUVs					UMETA(DisplayName = "Per Voxel UVs (Cubic only)"),
-	UseGrassAndActorIdsAsUVs	UMETA(DisplayName = "Use Grass and Actor Ids as UVs")
+	CustomFVoxelMaterial    	UMETA(DisplayName = "Use FVoxelMaterial::GetUVs()")
 };

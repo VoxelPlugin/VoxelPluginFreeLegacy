@@ -16,6 +16,8 @@ class FVoxelAsyncPhysicsCooker;
 class AVoxelWorld;
 class IVoxelPool;
 
+// TODO: memory stats
+
 USTRUCT()
 struct FVoxelProcMeshSection
 {

@@ -7,15 +7,16 @@
 #include "VoxelValue.h"
 #include "IntBox.h"
 #include "VoxelDiff.h"
-#include "VoxelUtilities.h"
+#include "VoxelVersionsFixup.h"
+#include "VoxelMathUtilities.h"
 #include "VoxelData/VoxelSave.h"
 #include "VoxelData/VoxelDataOctree.h"
-#include "VoxelMath.h"
 
 struct FVoxelChunk;
 class FVoxelData;
 class FVoxelWorldGeneratorInstance;
 class FVoxelPlaceableItem;
+struct FVoxelStatsElement;
 
 DECLARE_MEMORY_STAT(TEXT("Voxel 2D Cache Memory"), STAT_Voxel2DCacheMemory, STATGROUP_VoxelMemory);
 DECLARE_MEMORY_STAT(TEXT("Voxel GeneratedChunksSet Memory"), STAT_VoxelGeneratedChunksSetMemory, STATGROUP_VoxelMemory);
@@ -25,28 +26,40 @@ DECLARE_CYCLE_STAT(TEXT("Unlock"), STAT_Unlock, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FVoxelData::~FVoxelData"), STAT_VoxelData_Destructor, STATGROUP_Voxel);
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FVoxelPreGenerationDelegate, FVoxelData&, const FIntBox&);
-DECLARE_MULTICAST_DELEGATE_ThreeParams(FVoxelPostGenerationDelegate, FVoxelData&, const FIntBox&, const FVoxelChunk&);
+DECLARE_MULTICAST_DELEGATE_FourParams(FVoxelPostGenerationDelegate, FVoxelStatsElement&, FVoxelData&, const FIntBox&, const FVoxelChunk&);
+
+struct FVoxelDataSettings
+{
+	int32 Depth;
+	FIntBox WorldBounds;
+	TSharedPtr<const FVoxelWorldGeneratorInstance, ESPMode::ThreadSafe> WorldGenerator;
+	bool bEnableMultiplayer = false;
+	bool bEnableUndoRedo = false;
+	bool bCacheLOD0Chunks = false;
+
+	void ComputeBoundsFromDepth()
+	{
+		WorldBounds = FVoxelUtilities::GetBoundsFromDepth<VOXEL_CELL_SIZE>(Depth);
+	}
+	void ComputeDepthFromBounds()
+	{
+		Depth = FVoxelUtilities::GetOctreeDepthContainingBounds<VOXEL_CELL_SIZE>(WorldBounds);
+	}
+};
 
 /**
  * Class that handle voxel data
  */
 class VOXEL_API FVoxelData : public TSharedFromThis<FVoxelData, ESPMode::ThreadSafe>
 {
-public:
-	/**
-	 * Constructor
-	 * @param	Depth				Depth of this world; Size = VOXEL_CELL_SIZE * 2^Depth
-	 * @param	WorldGenerator		Generator for this world
-	 * @param	bEnableMultiplayer	Is this for a multiplayer world
-	 * @param	bEnableUndoRedo	    Enable Undo/Redo?
-	 */
-	FVoxelData(int Depth, const FIntBox& WorldBounds, TSharedRef<const FVoxelWorldGeneratorInstance, ESPMode::ThreadSafe> WorldGenerator, bool bEnableMultiplayer, bool bEnableUndoRedo, bool bCacheLOD0Chunks)
-		: Depth(Depth)
-		, WorldBounds(WorldBounds)
-		, bEnableMultiplayer(bEnableMultiplayer)
-		, bEnableUndoRedo(bEnableUndoRedo)
-		, bCacheLOD0Chunks(bCacheLOD0Chunks)
-		, WorldGenerator(WorldGenerator)
+private:
+	FVoxelData(const FVoxelDataSettings& Settings)
+		: Depth(Settings.Depth)
+		, WorldBounds(Settings.WorldBounds)
+		, bEnableMultiplayer(Settings.bEnableMultiplayer)
+		, bEnableUndoRedo(Settings.bEnableUndoRedo)
+		, bCacheLOD0Chunks(Settings.bCacheLOD0Chunks)
+		, WorldGenerator(Settings.WorldGenerator.ToSharedRef())
 		, Octree(MakeUnique<FVoxelDataOctree>(this, &WorldGenerator.Get(), Depth, bEnableMultiplayer, bEnableUndoRedo))
 	{
 		check(Depth > 0);
@@ -54,10 +67,16 @@ public:
 
 		INC_MEMORY_STAT_BY(STAT_VoxelGeneratedChunksSetMemory, GeneratedChunks.GetAllocatedSize());
 	}
-	FVoxelData(int Depth, TSharedRef<const FVoxelWorldGeneratorInstance, ESPMode::ThreadSafe> WorldGenerator, bool bEnableMultiplayer, bool bEnableUndoRedo, bool bCacheLOD0Chunks)
-		: FVoxelData(Depth, FVoxelUtilities::GetBoundsFromDepth<VOXEL_CELL_SIZE>(Depth), WorldGenerator, bEnableMultiplayer, bEnableUndoRedo, bCacheLOD0Chunks)
+public:
+	/**
+	 * @param	Depth				Depth of this world; Size = VOXEL_CELL_SIZE * 2^Depth
+	 * @param	WorldGenerator		Generator for this world
+	 * @param	bEnableMultiplayer	Is this for a multiplayer world
+	 * @param	bEnableUndoRedo	    Enable Undo/Redo?
+	 */
+	static TSharedRef<FVoxelData, ESPMode::ThreadSafe> Create(const FVoxelDataSettings& Settings)
 	{
-
+		return MakeShareable(new FVoxelData(Settings));
 	}
 	~FVoxelData()
 	{
@@ -65,11 +84,7 @@ public:
 		DEC_MEMORY_STAT_BY(STAT_VoxelGeneratedChunksSetMemory, GeneratedChunks.GetAllocatedSize());
 	}
 
-	FVoxelData(const FVoxelData&) = delete;
-	FVoxelData(const FVoxelData&&) = delete;
-    FVoxelData& operator=(const FVoxelData&) = delete;
-
-	const int Depth;
+	const int32 Depth;
 	const FIntBox WorldBounds;
 	const bool bEnableMultiplayer;
 	const bool bEnableUndoRedo;
@@ -84,8 +99,8 @@ private:
 public:
 	inline int32 Size() const { return VOXEL_CELL_SIZE << Depth; } // Size = VOXEL_CELL_SIZE * 2^Depth
 	inline FVoxelDataOctree* GetOctree() const { return Octree.Get(); }
-	inline bool IsInWorld(int X, int Y, int Z) const { return WorldBounds.IsInside(X, Y, Z); }
-	inline int IsInWorld(const FIntVector& P) const { return IsInWorld(P.X, P.Y, P.Z); }
+	inline bool IsInWorld(int32 X, int32 Y, int32 Z) const { return WorldBounds.IsInside(X, Y, Z); }
+	inline int32 IsInWorld(const FIntVector& P) const { return IsInWorld(P.X, P.Y, P.Z); }
 
 public:
 	/**
@@ -118,16 +133,18 @@ public:
 	void Unlock(FVoxelLockedOctrees& LockedOctrees);
 	 	
 public:	
+	void ClearData();
+
 	// Get the values and materials in this zone. Values and Materials can be null. Requires read lock
-	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int QueryLOD) const;
+	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int32 QueryLOD) const;
 
 	// Is this region of the world empty at this LOD? Requires read lock
-	inline bool IsEmpty(const FIntBox& Bounds, int QueryLOD) const { return Octree->IsEmpty(Bounds, QueryLOD) != EVoxelEmptyState::Unknown; }
+	inline bool IsEmpty(const FIntBox& Bounds, int32 QueryLOD) const { return Octree->IsEmpty(Bounds, QueryLOD) != EVoxelEmptyState::Unknown; }
 	
 	/**
 	 * Set values or materials in a zone. T is either FVoxelValue or FVoxelMaterial. Requires write lock
 	 * @param	Bounds	Bounds to modify
-	 * @param	Lambda	Lambda called on every position inside Bounds. Signature: void Lambda(int X, int Y, int Z, T& Ref); You need to modify Ref
+	 * @param	Lambda	Lambda called on every position inside Bounds. Signature: void Lambda(int32 X, int32 Y, int32 Z, T& Ref); You need to modify Ref
 	 */
 	 template<typename T, typename F>
 	inline void SetValueOrMaterialLambda(const FIntBox& Bounds, F Lambda) { Octree->SetValueOrMaterialLambda<T>(Bounds.Overlap(WorldBounds), Lambda); }
@@ -135,19 +152,19 @@ public:
 	/**
 	 * Call lambda on every value & material in bounds. Requires read lock
 	 * @param	Bounds	Bounds to call lambda in
-	 * @param	Lambda	Lambda called on every position inside Bounds. Signature: void Lambda(int X, int Y, int Z, const FVoxelValue* Value, const FVoxelMaterial* Material); 
+	 * @param	Lambda	Lambda called on every position inside Bounds. Signature: void Lambda(int32 X, int32 Y, int32 Z, const FVoxelValue* Value, const FVoxelMaterial* Material); 
 						If bOnlyIfDirty is false, the world generator will be queried if the values/materials in bounds aren't loaded.
 						Value and Material are always valid when bOnlyIfDirty is false, but not when bOnlyIfDirty is true
 	 */
 	 template<bool bOnlyIfDirty, typename F>
 	inline void CallLambdaOnValuesInBounds(const FIntBox& Bounds, F Lambda) const { Octree->CallLambdaOnValuesInBounds<bOnlyIfDirty>(Bounds, Lambda); }
-
+	
 public:
 	/**
 	 * Getters/Setters
 	 */
 	// Get value and material at position
-	inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int QueryLOD) const
+	inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int32 QueryLOD) const
 	{
 		if (UNLIKELY(!IsInWorld(X, Y, Z)))
 		{
@@ -160,7 +177,7 @@ public:
 	}
 	// Set value or material at position depending on template argument (FVoxelValue or FVoxelMaterial)
 	template<typename T>
-	inline void SetValueOrMaterial(int X, int Y, int Z, const T& Value)
+	inline void SetValueOrMaterial(int32 X, int32 Y, int32 Z, const T& Value)
 	{
 		if (LIKELY(IsInWorld(X, Y, Z)))
 		{
@@ -169,20 +186,20 @@ public:
 	}
 
 	// Get the value & material at position. Requires read lock
-	inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int QueryLOD) const { GetValueAndMaterial(X, Y, Z, &OutValue, &OutMaterial, QueryLOD); }
-	inline void GetValueAndMaterial(const FIntVector& P, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int QueryLOD) const { GetValueAndMaterial(P.X, P.Y, P.Z, &OutValue, &OutMaterial, QueryLOD); }
+	inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int32 QueryLOD) const { GetValueAndMaterial(X, Y, Z, &OutValue, &OutMaterial, QueryLOD); }
+	inline void GetValueAndMaterial(const FIntVector& P, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int32 QueryLOD) const { GetValueAndMaterial(P.X, P.Y, P.Z, &OutValue, &OutMaterial, QueryLOD); }
 	// Get the value at position. Requires read lock
-	inline FVoxelValue GetValue(int X, int Y, int Z, int QueryLOD) const { FVoxelValue Value; GetValueAndMaterial(X, Y, Z, &Value, nullptr, QueryLOD); return Value; }
-	inline FVoxelValue GetValue(const FIntVector& P, int QueryLOD) const { return GetValue(P.X, P.Y, P.Z, QueryLOD); }
+	inline FVoxelValue GetValue(int32 X, int32 Y, int32 Z, int32 QueryLOD) const { FVoxelValue Value; GetValueAndMaterial(X, Y, Z, &Value, nullptr, QueryLOD); return Value; }
+	inline FVoxelValue GetValue(const FIntVector& P, int32 QueryLOD) const { return GetValue(P.X, P.Y, P.Z, QueryLOD); }
 	// Get the material at position. Requires read lock
-	inline FVoxelMaterial GetMaterial(int X, int Y, int Z, int QueryLOD) const { FVoxelMaterial Material; GetValueAndMaterial(X, Y, Z, nullptr, &Material, QueryLOD); return Material; }
-	inline FVoxelMaterial GetMaterial(const FIntVector& P, int QueryLOD) const { return GetMaterial(P.X, P.Y, P.Z, QueryLOD); }
+	inline FVoxelMaterial GetMaterial(int32 X, int32 Y, int32 Z, int32 QueryLOD) const { FVoxelMaterial Material; GetValueAndMaterial(X, Y, Z, nullptr, &Material, QueryLOD); return Material; }
+	inline FVoxelMaterial GetMaterial(const FIntVector& P, int32 QueryLOD) const { return GetMaterial(P.X, P.Y, P.Z, QueryLOD); }
 	
 	// Set value at position. Requires write lock
-	inline void SetValue(int X, int Y, int Z, FVoxelValue Value) { SetValueOrMaterial<FVoxelValue>(X, Y, Z, Value); }
+	inline void SetValue(int32 X, int32 Y, int32 Z, FVoxelValue Value) { SetValueOrMaterial<FVoxelValue>(X, Y, Z, Value); }
 	inline void SetValue(const FIntVector& P, FVoxelValue Value) { SetValueOrMaterial<FVoxelValue>(P.X, P.Y, P.Z, Value); }
 	// Set material at position. Requires write lock
-	inline void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material) { SetValueOrMaterial<FVoxelMaterial>(X, Y, Z, Material); }
+	inline void SetMaterial(int32 X, int32 Y, int32 Z, FVoxelMaterial Material) { SetValueOrMaterial<FVoxelMaterial>(X, Y, Z, Material); }
 	inline void SetMaterial(const FIntVector& P, FVoxelMaterial Material) { SetValueOrMaterial<FVoxelMaterial>(P.X, P.Y, P.Z, Material); }
 	
 public:
@@ -213,7 +230,7 @@ public:
 
 private:
 	uint32 CacheTime = 0;
-	FCriticalSection CacheTimeSection;
+	FCriticalSection CacheSection;
 
 public:
 	/**
@@ -247,9 +264,9 @@ public:
 	// Check that the current frame is empty (safe to call Undo/Redo). No lock required
 	bool IsCurrentFrameEmpty();
 	// Get the history position. No lock required
-	inline int GetHistoryPosition() const { return HistoryPosition; }
+	inline int32 GetHistoryPosition() const { return HistoryPosition; }
 	// Get the max history position, ie HistoryPosition + redo frames. No lock required
-	inline int GetMaxHistoryPosition() const { return MaxHistoryPosition; }
+	inline int32 GetMaxHistoryPosition() const { return MaxHistoryPosition; }
 
 	// Mark the world as dirty
 	inline void MarkAsDirty() { bIsDirty = true; }
@@ -259,26 +276,54 @@ public:
 	inline bool IsDirty() { return bIsDirty; }
 
 private:
-	int HistoryPosition = 0;
-	int MaxHistoryPosition = 0;
+	int32 HistoryPosition = 0;
+	int32 MaxHistoryPosition = 0;
 	bool bIsDirty = false;
 
 public:
-	// Add a FVoxelPlaceableItem to the world. Args will be forwarded to its constructor. Requires write lock
+	/**
+	 * Placeable items
+	 */
+
+	// Add a FVoxelPlaceableItem to the world. Requires write lock on the item bounds
 	template<typename T, typename... TArgs>
-	uint64 AddItem(TArgs&&... Args)
+	inline TWeakPtr<T> AddItem(TArgs&&... Args)
 	{
-		TUniquePtr<T> Item = MakeUnique<T>(Forward<TArgs>(Args)...);
-		uint64 ItemId = Item->UniqueId;
-
-		Octree->AddItem<T>(Item.Get());
-		Items.Add(ItemId, MoveTemp(Item));
-
-		return ItemId;
+		auto Item = MakeShared<T>(Forward<TArgs>(Args)...);
+		AddItem(Item, true);
+		return Item;
+	}
+	// Requires write lock on item bounds
+	template<typename T>
+	inline void RemoveItem(TWeakPtr<T>& Item)
+	{
+		auto ItemPtr = Item.Pin();
+		if (ItemPtr.IsValid())
+		{
+			RemoveItem(ItemPtr.Get(), true);
+		}
+		Item.Reset();
 	}
 
 private:
-	TMap<uint64, TUniquePtr<FVoxelPlaceableItem>> Items;
+	void AddItem(const TSharedRef<FVoxelPlaceableItem>& Item, bool bRecordInHistory);
+	void RemoveItem(FVoxelPlaceableItem* Item, bool bRecordInHistory);
+	
+	struct FItemFrame
+	{
+		int32 HistoryPosition = -1;
+		TArray<TSharedPtr<FVoxelPlaceableItem>> AddedItems;
+		TArray<TSharedPtr<FVoxelPlaceableItem>> RemovedItems;
+
+		inline bool IsEmpty() const { return AddedItems.Num() == 0 && RemovedItems.Num() == 0; }
+	};
+
+	FCriticalSection ItemsSection;
+	TArray<TSharedPtr<FVoxelPlaceableItem>> Items;
+	TArray<int32> FreeItems;
+	TUniquePtr<FItemFrame> ItemFrame = MakeUnique<FItemFrame>();
+	TArray<TUniquePtr<FItemFrame>> ItemUndoFrames;
+	TArray<TUniquePtr<FItemFrame>> ItemRedoFrames;
 
 public:
 	/**
@@ -286,37 +331,7 @@ public:
 	 */
 
 	// Get the cached buffer at the 2D point Position
-	inline float* GetCache2DValues(const FIntPoint& Position)
-	{
-		Cache2DLock.lock_shared();
-		TUniquePtr<FCache2DValues>* Values = Cache2DValues.Find(Position);
-		Cache2DLock.unlock_shared();
-		if (Values)
-		{
-			return Values->Get()->Values;
-		}
-		else
-		{
-			TUniquePtr<FCache2DValues> NewValues = MakeUnique<FCache2DValues>();
-			WorldGenerator->Cache2D(NewValues->Values, FVoxelWorldGeneratorQueryZone2D(Position, Position + FIntPoint(VOXEL_CELL_SIZE, VOXEL_CELL_SIZE)));
-			float* ReturnValues = NewValues->Values;
-
-			Cache2DLock.lock();
-			if (TUniquePtr<FCache2DValues>* ExistingValues = Cache2DValues.Find(Position))
-			{
-				UE_LOG(LogVoxel, Warning, TEXT("Position (%d, %d) was cached twice, dropping one"), Position.X, Position.Y);
-				ReturnValues = ExistingValues->Get()->Values;
-			}
-			else
-			{
-				Cache2DValues.Add(Position, MoveTemp(NewValues));
-				Cache2DValues.Compact();
-			}
-			Cache2DLock.unlock();
-
-			return ReturnValues;
-		}
-	}
+	float* GetCache2DValues(const FIntPoint& Position);
 
 private:
 	std::shared_timed_mutex Cache2DLock;
@@ -336,25 +351,11 @@ private:
 	TMap<FIntPoint, TUniquePtr<FCache2DValues>> Cache2DValues;
 
 public:
-	inline bool NeedToGenerateChunk(const FIntVector& Position)
-	{
-		FScopeLock Lock(&GeneratedChunksSection);
-		
-		const FIntVector Index = Position / CHUNK_SIZE;
-		if (GeneratedChunks.Contains(Index))
-		{
-			return false;
-		}
-		else
-		{
-			DEC_MEMORY_STAT_BY(STAT_VoxelGeneratedChunksSetMemory, GeneratedChunks.GetAllocatedSize());
-			GeneratedChunks.Add(Index);
-			GeneratedChunks.Compact();
-			INC_MEMORY_STAT_BY(STAT_VoxelGeneratedChunksSetMemory, GeneratedChunks.GetAllocatedSize());
+	/**
+	 * Generation
+	 */
 
-			return true;
-		}
-	}
+	bool NeedToGenerateChunk(const FIntVector& Position);
 	
 	// Always use those before using any of the delegates below
 	
@@ -465,5 +466,5 @@ using FVoxelReadWriteScopeLock = FVoxelScopeLock<EVoxelLockType::ReadWrite>;
 using FVoxelReadScopeTryLock      = FVoxelScopeTryLock<EVoxelLockType::Read>;
 using FVoxelReadWriteScopeTryLock = FVoxelScopeTryLock<EVoxelLockType::ReadWrite>;
 
-class DEPRECATED(0, "Please use FVoxelReadScopeLock instead."     ) FVoxelScopeGetLock : public FVoxelReadScopeLock      { using FVoxelScopeLock::FVoxelScopeLock; };
-class DEPRECATED(0, "Please use FVoxelReadWriteScopeLock instead.") FVoxelScopeSetLock : public FVoxelReadWriteScopeLock { using FVoxelScopeLock::FVoxelScopeLock; };
+class UE_DEPRECATED(0, "Please use FVoxelReadScopeLock instead."     ) FVoxelScopeGetLock : public FVoxelReadScopeLock      { using FVoxelScopeLock::FVoxelScopeLock; };
+class UE_DEPRECATED(0, "Please use FVoxelReadWriteScopeLock instead.") FVoxelScopeSetLock : public FVoxelReadWriteScopeLock { using FVoxelScopeLock::FVoxelScopeLock; };

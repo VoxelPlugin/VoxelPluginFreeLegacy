@@ -57,18 +57,46 @@ public:
 		DEC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctree));
 	}
 
-	inline bool IsCreated() const { checkVoxelSlow(LOD == 0); return Cell.IsValid(); }
-	inline bool IsCacheOnly() const { checkVoxelSlow(LOD == 0); return !IsCreated() || (!Cell->IsArrayDirty<FVoxelValue>() && !Cell->IsArrayDirty<FVoxelMaterial>()); }
-	inline bool IsCached() const { checkVoxelSlow(LOD == 0); return IsCreated() && IsCacheOnly(); }
-		
-	inline bool ShouldBeCached(uint32 Threshold) const { return NumberOfWorldGeneratorReadsSinceLastCache > Threshold; }
-	inline uint32 GetCachePriority() const { return LastAccessTime; }
+	inline bool IsCreated() const
+	{
+		checkVoxelSlow(LOD == 0); 
+		return Cell.IsValid();
+	}
+	inline bool IsCacheOnly() const
+	{
+		checkVoxelSlow(LOD == 0 && IsCreated());
+		return !Cell->IsArrayDirty<FVoxelValue>() && !Cell->IsArrayDirty<FVoxelMaterial>();
+	}
+	inline bool IsCached() const
+	{
+		checkVoxelSlow(LOD == 0);
+		return IsCreated() && IsCacheOnly();
+	}
 
-	inline bool IsManuallyCached() const { return IsCached() && bIsManuallyCached; }
+	inline bool IsManuallyCached() const
+	{
+		return IsCached() && bIsManuallyCached;
+	}
 	
-	inline bool AreValuesCreated() const { return IsCreated() && Cell->GetArray<FVoxelValue>(); }
-	inline bool AreMaterialsCreated() const { return IsCreated() && Cell->GetArray<FVoxelMaterial>(); }
+	inline bool AreValuesCreated() const
+	{
+		return IsCreated() && Cell->GetArray<FVoxelValue>();
+	}
+	inline bool AreMaterialsCreated() const
+	{
+		return IsCreated() && Cell->GetArray<FVoxelMaterial>();
+	}
 	
+public:
+	inline bool ShouldBeCached(uint32 Threshold) const
+	{
+		return NumberOfWorldGeneratorReadsSinceLastCache > Threshold;
+	}
+	inline uint32 GetCachePriority() const
+	{
+		return LastAccessTime;
+	}
+
 	bool AreBoundsCached(const FIntBox& Bounds);
 	void CacheBounds(const FIntBox& Bounds, bool bIsManualCache, bool bCacheValues, bool bCacheMaterials);
 
@@ -92,13 +120,13 @@ public:
 	void GetMap(const FIntBox& Bounds, FVoxelMap& OutMap) const;
 
 public:
-	EVoxelEmptyState IsEmpty(const FIntBox& Bounds, int LOD) const;
+	EVoxelEmptyState IsEmpty(const FIntBox& Bounds, int32 LOD) const;
 
-	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int QueryLOD);
-	void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* Value, FVoxelMaterial* Material, int QueryLOD) const;
+	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int32 QueryLOD);
+	void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue* Value, FVoxelMaterial* Material, int32 QueryLOD) const;
 	
 	template<typename TValue>
-	void SetValueOrMaterial(int X, int Y, int Z, const TValue& Value);
+	void SetValueOrMaterial(int32 X, int32 Y, int32 Z, const TValue& Value);
 
 	template<typename TValue, typename F>
 	void SetValueOrMaterialLambda(const FIntBox& Bounds, F Lambda);
@@ -124,7 +152,7 @@ public:
 	 * @param	SaveQueue				Queue to load chunks from. Sorted by decreasing Id (top is lowest Id)
 	 * @param	OutBoundsToUpdate		The modified bounds
 	 */
-	void Load(int& Index, const FVoxelSaveLoader& Loader, TArray<FIntBox>& OutBoundsToUpdate);
+	void Load(int32& Index, const FVoxelSaveLoader& Loader, TArray<FIntBox>& OutBoundsToUpdate);
 		
 public:
 	template<EVoxelLockType LockType>
@@ -136,23 +164,23 @@ public:
 	inline void LockTransactions() { TransactionsSection.Lock(); }
 
 public:
-	template<typename T>
-	void AddItem(T* Item);
+	void AddItem(FVoxelPlaceableItem* Item);
+	void RemoveItem(FVoxelPlaceableItem* Item);
 
 
 public:
 	/**
 	 * Add the current frame to the undo stack. Clear the redo stack
 	 */
-	void SaveFrame(int HistoryPosition);
+	void SaveFrame(int32 HistoryPosition);
 	/**
 	 * Undo one frame and add it to the redo stack. Current frame must be empty
 	 */
-	void Undo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpdate);
+	void Undo(int32 HistoryPosition, TArray<FIntBox>& OutBoundsToUpdate);
 	/**
 	 * Redo one frame and add it to the undo stack. Current frame must be empty
 	 */
-	void Redo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpdate);
+	void Redo(int32 HistoryPosition, TArray<FIntBox>& OutBoundsToUpdate);
 	/**
 	 * Clear all the frames
 	 */
@@ -225,7 +253,7 @@ private:
 	template<typename T> inline void CreateArrayAndInitFromWorldGenerator();
 
 private:
-	inline FVoxelCellIndex IndexFromGlobalCoordinates(int X, int Y, int Z) const
+	inline FVoxelCellIndex IndexFromGlobalCoordinates(int32 X, int32 Y, int32 Z) const
 	{
 		X -= OctreeBounds.Min.X;
 		Y -= OctreeBounds.Min.Y;
@@ -250,7 +278,7 @@ private:
 		}
 	}
 
-	inline bool CanEdit(int X, int Y, int Z)
+	inline bool CanEdit(int32 X, int32 Y, int32 Z)
 	{		
 		return true;
 	}
@@ -263,7 +291,7 @@ private:
 	}
 };
 
-inline void FVoxelDataOctree::GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* Value, FVoxelMaterial* Material, int QueryLOD) const
+inline void FVoxelDataOctree::GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue* Value, FVoxelMaterial* Material, int32 QueryLOD) const
 {
 	ensureThreadSafe(IsLockedForRead());
 	check(IsLeaf());
@@ -275,7 +303,7 @@ inline void FVoxelDataOctree::GetValueAndMaterial(int X, int Y, int Z, FVoxelVal
 	}
 	else
 	{
-		int Index = IndexFromGlobalCoordinates(X, Y, Z);
+		int32 Index = IndexFromGlobalCoordinates(X, Y, Z);
 
 		if (Value)
 		{
@@ -303,7 +331,7 @@ inline void FVoxelDataOctree::GetValueAndMaterial(int X, int Y, int Z, FVoxelVal
 }
 
 template<typename TValue>
-inline void FVoxelDataOctree::SetValueOrMaterial(int X, int Y, int Z, const TValue& Value)
+inline void FVoxelDataOctree::SetValueOrMaterial(int32 X, int32 Y, int32 Z, const TValue& Value)
 {
 	ensureThreadSafe(IsLockedForWrite());
 	check(IsLeaf());
@@ -398,11 +426,11 @@ inline void FVoxelDataOctree::SetValueOrMaterialLambdaInternal(const FIntBox& Bo
 				const FIntVector Min = LocalBounds.Min - Offset;
 				const FIntVector Max = LocalBounds.Max - Offset;
 
-				for (int Z = Min.Z; Z < Max.Z; Z++)
+				for (int32 Z = Min.Z; Z < Max.Z; Z++)
 				{
-					for (int Y = Min.Y; Y < Max.Y; Y++)
+					for (int32 Y = Min.Y; Y < Max.Y; Y++)
 					{
-						for (int X = Min.X; X < Max.X; X++)
+						for (int32 X = Min.X; X < Max.X; X++)
 						{
 							FVoxelCellIndex Index = FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
 
@@ -468,7 +496,7 @@ inline void FVoxelDataOctree::CallLambdaOnValuesInBounds(const FIntBox& Bounds, 
 				if (!bOnlyIfDirty && (!Values || !Materials))
 				{
 					const FIntVector Size = LocalBounds.Size();
-					const int Num = Size.X * Size.Y * Size.Z;
+					const int32 Num = Size.X * Size.Y * Size.Z;
 
 					if (!Values)
 					{
@@ -504,15 +532,15 @@ inline void FVoxelDataOctree::CallLambdaOnValuesInBounds(const FIntBox& Bounds, 
 					const FIntVector Min = LocalBounds.Min;
 					const FIntVector Max = LocalBounds.Max;
 
-					int ArrayIndex = 0;
-					for (int Z = Min.Z; Z < Max.Z; Z++)
+					int32 ArrayIndex = 0;
+					for (int32 Z = Min.Z; Z < Max.Z; Z++)
 					{
-						for (int Y = Min.Y; Y < Max.Y; Y++)
+						for (int32 Y = Min.Y; Y < Max.Y; Y++)
 						{
-							for (int X = Min.X; X < Max.X; X++)
+							for (int32 X = Min.X; X < Max.X; X++)
 							{
-								int ValuesIndex = bUsingValuesArray ? ArrayIndex : FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
-								int MaterialsIndex = bUsingMaterialsArray ? ArrayIndex : FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
+								int32 ValuesIndex = bUsingValuesArray ? ArrayIndex : FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
+								int32 MaterialsIndex = bUsingMaterialsArray ? ArrayIndex : FVoxelDataCellUtilities::IndexFromCoordinates(X, Y, Z);
 								Lambda(
 									X + Offset.X,
 									Y + Offset.Y,
@@ -531,33 +559,6 @@ inline void FVoxelDataOctree::CallLambdaOnValuesInBounds(const FIntBox& Bounds, 
 			for (auto& Child : GetChildren())
 			{
 				Child.CallLambdaOnValuesInBounds<bOnlyIfDirty>(Bounds, Lambda);
-			}
-		}
-	}
-}
-
-template<typename T>
-inline void FVoxelDataOctree::AddItem(T* Item)
-{
-	if (Item->Bounds.Intersect(GetBounds()))
-	{
-		if (IsLeaf())
-		{
-			ensureThreadSafe(IsLockedForWrite());
-
-			ItemHolder->AddItem<T>(Item);
-
-			if (ItemHolder->Num() > MAX_PLACEABLE_ITEMS_PER_OCTREE && LOD > 0)
-			{
-				CreateChildren();
-
-			}
-		}
-		else
-		{
-			for (auto& Child : GetChildren())
-			{
-				Child.AddItem(Item);
 			}
 		}
 	}

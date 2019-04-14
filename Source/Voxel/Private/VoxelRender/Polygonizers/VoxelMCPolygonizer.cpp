@@ -1,9 +1,8 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelRender/Polygonizers/VoxelMCPolygonizer.h"
-#include "Transvoxel.h"
-#include "VoxelDebug/VoxelStats.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
+#include "Transvoxel.h"
 
 #define checkError(x) if(!(x)) goto generatorerror;
 
@@ -18,7 +17,7 @@ inline void GetClosestPoints(const FVector& Point, FIntVector& A, FIntVector& B)
 }
 
 template<class T>
-inline FVector GetNormalImpl(T* Data, int QueryLOD, const FVector& LocalPosition, const FIntVector& Offset)
+inline FVector GetNormalImpl(T* Data, int32 QueryLOD, const FVector& LocalPosition, const FIntVector& Offset)
 {
 	FIntVector A, B;
 	GetClosestPoints(LocalPosition, A, B);
@@ -32,16 +31,16 @@ inline FVector GetNormalImpl(T* Data, int QueryLOD, const FVector& LocalPosition
 
 ///////////////////////////////////////////////////////////////////////////////
 
-inline FVector2D GetUVs(EVoxelUVConfig UVConfig, FVoxelData* Data, const FIntVector& ChunkPosition, const FVector& IntersectionPoint, const FVoxelMaterial& Material)
+inline FVector2D GetUVs(EVoxelUVConfig UVConfig, float UVScale, FVoxelData* Data, const FIntVector& ChunkPosition, const FVector& IntersectionPoint, const FVoxelMaterial& Material)
 {
 	if (UVConfig == EVoxelUVConfig::PackWorldUpInUVs)
 	{
-		FVector WorldUp = Data->WorldGenerator->GetUpVector(ChunkPosition + FVoxelIntVector::RoundToInt(IntersectionPoint)).GetSafeNormal();
+		FVector WorldUp = Data->WorldGenerator->GetUpVector(ChunkPosition + FVoxelUtilities::RoundToInt(IntersectionPoint)).GetSafeNormal();
 		return FVector2D(WorldUp.X, WorldUp.Y);
 	}
 	else if (UVConfig == EVoxelUVConfig::GlobalUVs)
 	{
-		return FVector2D(ChunkPosition.X + IntersectionPoint.X, ChunkPosition.Y + IntersectionPoint.Y);
+		return FVector2D(ChunkPosition.X + IntersectionPoint.X, ChunkPosition.Y + IntersectionPoint.Y) / UVScale;
 	}
 	else if (UVConfig == EVoxelUVConfig::PerVoxelUVs)
 	{
@@ -53,8 +52,8 @@ inline FVector2D GetUVs(EVoxelUVConfig UVConfig, FVoxelData* Data, const FIntVec
 	}
 	else
 	{
-		check(UVConfig == EVoxelUVConfig::UseGrassAndActorIdsAsUVs);
-		return FVector2D(Material.GetVoxelGrassId(), Material.GetVoxelActorId());
+		check(UVConfig == EVoxelUVConfig::CustomFVoxelMaterial);
+		return Material.GetUVs();
 	}
 }
 
@@ -86,11 +85,11 @@ bool FVoxelMCPolygonizer::CreateChunk()
 	TArray<uint32> Indices;
 
 	uint32 Index = 0;
-	for (int LZ = 0; LZ < CHUNK_SIZE; LZ++)
+	for (int32 LZ = 0; LZ < CHUNK_SIZE; LZ++)
 	{
-		for (int LY = 0; LY < CHUNK_SIZE; LY++)
+		for (int32 LY = 0; LY < CHUNK_SIZE; LY++)
 		{
-			for (int LX = 0; LX < CHUNK_SIZE; LX++)
+			for (int32 LX = 0; LX < CHUNK_SIZE; LX++)
 			{
 				{
 					GetCurrentCache()[GetCacheIndex(0, LX, LY)] = -1; // Set EdgeIndex 0 to -1 if the cell isn't voxelized, eg all corners = 0
@@ -114,14 +113,15 @@ bool FVoxelMCPolygonizer::CreateChunk()
 					checkVoxelSlow(CubeIndices[6] < MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE);
 					checkVoxelSlow(CubeIndices[7] < MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE * MC_EXTENDED_CHUNK_SIZE);
 
-					unsigned long CaseCode = (CachedValues[CubeIndices[0]].IsEmpty() << 0)
-						| (CachedValues[CubeIndices[1]].IsEmpty() << 1)
-						| (CachedValues[CubeIndices[2]].IsEmpty() << 2)
-						| (CachedValues[CubeIndices[3]].IsEmpty() << 3)
-						| (CachedValues[CubeIndices[4]].IsEmpty() << 4)
-						| (CachedValues[CubeIndices[5]].IsEmpty() << 5)
-						| (CachedValues[CubeIndices[6]].IsEmpty() << 6)
-						| (CachedValues[CubeIndices[7]].IsEmpty() << 7);
+					unsigned long CaseCode =
+						(CachedValues[CubeIndices[0]].IsEmpty() << 0) |
+						(CachedValues[CubeIndices[1]].IsEmpty() << 1) |
+						(CachedValues[CubeIndices[2]].IsEmpty() << 2) |
+						(CachedValues[CubeIndices[3]].IsEmpty() << 3) |
+						(CachedValues[CubeIndices[4]].IsEmpty() << 4) |
+						(CachedValues[CubeIndices[5]].IsEmpty() << 5) |
+						(CachedValues[CubeIndices[6]].IsEmpty() << 6) |
+						(CachedValues[CubeIndices[7]].IsEmpty() << 7);
 
 					if (CaseCode != 0 && CaseCode != 255)
 					{
@@ -136,12 +136,12 @@ bool FVoxelMCPolygonizer::CreateChunk()
 						Transvoxel::RegularCellData CellData = Transvoxel::regularCellData[CellClass];
 
 						// Indices of the vertices used in this cube
-						TArray<int, TFixedAllocator<16>> VertexIndices;
+						TArray<int32, TFixedAllocator<16>> VertexIndices;
 						VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
 
-						for (int I = 0; I < CellData.GetVertexCount(); I++)
+						for (int32 I = 0; I < CellData.GetVertexCount(); I++)
 						{
-							int VertexIndex = -2;
+							int32 VertexIndex = -2;
 							const uint16 EdgeCode = VertexData[I];
 
 							// A: low point / B: high point
@@ -241,6 +241,7 @@ bool FVoxelMCPolygonizer::CreateChunk()
 									}
 
 									// Use the material of the point inside
+									// TODO: DO THIS AT THE END!!!!!!!
 									Material = GetMaterialNoCache(!ValueAtA.IsEmpty() ? PositionA : PositionB);
 								}
 								else
@@ -255,8 +256,8 @@ bool FVoxelMCPolygonizer::CreateChunk()
 									checkVoxelSlow(!bIsAlongY || (PositionA.X == PositionB.X && PositionA.Z == PositionB.Z));
 									checkVoxelSlow(!bIsAlongZ || (PositionA.X == PositionB.X && PositionA.Y == PositionB.Y));
 
-									int Min = bIsAlongX ? PositionA.X : bIsAlongY ? PositionA.Y : PositionA.Z;
-									int Max = bIsAlongX ? PositionB.X : bIsAlongY ? PositionB.Y : PositionB.Z;
+									int32 Min = bIsAlongX ? PositionA.X : bIsAlongY ? PositionA.Y : PositionA.Z;
+									int32 Max = bIsAlongX ? PositionB.X : bIsAlongY ? PositionB.Y : PositionB.Z;
 
 									FVoxelValue ValueAtACopy = ValueAtA;
 									FVoxelValue ValueAtBCopy = ValueAtB;
@@ -264,7 +265,7 @@ bool FVoxelMCPolygonizer::CreateChunk()
 									while (Max - Min != 1)
 									{
 										checkError((Max + Min) % 2 == 0);
-										const int Middle = (Max + Min) / 2;
+										const int32 Middle = (Max + Min) / 2;
 
 										FVoxelValue ValueAtMiddle = GetValueNoCache(bIsAlongX ? Middle : PositionA.X, bIsAlongY ? Middle : PositionA.Y, bIsAlongZ ? Middle : PositionA.Z);
 
@@ -295,6 +296,7 @@ bool FVoxelMCPolygonizer::CreateChunk()
 									// Get intersection material
 									if (!ValueAtACopy.IsEmpty())
 									{
+										// TODO: DO THIS AT THE END!!!!!!!
 										checkVoxelSlow(ValueAtBCopy.IsEmpty());
 										Material = GetMaterialNoCache(bIsAlongX ? Min : PositionA.X, bIsAlongY ? Min : PositionA.Y, bIsAlongZ ? Min : PositionA.Z);
 									}
@@ -310,7 +312,7 @@ bool FVoxelMCPolygonizer::CreateChunk()
 								FLocalVoxelVertex Vertex(NormalConfig);
 								Vertex.Position = IntersectionPoint;
 								Vertex.Material = Material;
-								Vertex.UVs = GetUVs(UVConfig, Data, ChunkPosition, IntersectionPoint, Material);
+								Vertex.UVs = GetUVs(UVConfig, UVScale, Data, ChunkPosition, IntersectionPoint, Material);
 
 								if (NormalConfig == EVoxelNormalConfig::GradientNormal
 									|| Vertex.Position.X < Step
@@ -343,12 +345,12 @@ bool FVoxelMCPolygonizer::CreateChunk()
 
 						// Add triangles
 						// 3 vertex per triangle
-						const int N = 3 * CellData.GetTriangleCount();
-						for (int I = 0; I < N; I += 3)
+						const int32 N = 3 * CellData.GetTriangleCount();
+						for (int32 I = 0; I < N; I += 3)
 						{
-							const int& IndexA = VertexIndices[CellData.vertexIndex[I]];
-							const int& IndexB = VertexIndices[CellData.vertexIndex[I + 1]];
-							const int& IndexC = VertexIndices[CellData.vertexIndex[I + 2]];
+							const int32& IndexA = VertexIndices[CellData.vertexIndex[I]];
+							const int32& IndexB = VertexIndices[CellData.vertexIndex[I + 1]];
+							const int32& IndexC = VertexIndices[CellData.vertexIndex[I + 2]];
 							FLocalVoxelVertex& A = Vertices[IndexA];
 							FLocalVoxelVertex& B = Vertices[IndexB];
 							FLocalVoxelVertex& C = Vertices[IndexC];
@@ -434,16 +436,16 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 	TArray<FLocalVoxelVertex> Vertices;
 	TArray<uint32> Indices;
 
-	int DirectionIndex = -1;
+	int32 DirectionIndex = -1;
 	for (auto& Direction : { XMin, XMax, YMin, YMax, ZMin, ZMax })
 	{
 		DirectionIndex++;
 
 		if (TransitionsMask & Direction)
 		{
-			for (int LX = 0; LX < CHUNK_SIZE; LX++)
+			for (int32 LX = 0; LX < CHUNK_SIZE; LX++)
 			{
-				for (int LY = 0; LY < CHUNK_SIZE; LY++)
+				for (int32 LY = 0; LY < CHUNK_SIZE; LY++)
 				{
 					// Set EdgeIndex 0, 1, 2 and 7 to -1 for when the cell aren't polygonized (0 on all corners)
 					Cache2D[GetCacheIndex(0, LX, LY)] = -1;
@@ -524,12 +526,12 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 						const Transvoxel::TransitionCellData CellData = Transvoxel::transitionCellData[CellClass & 0x7F];
 						const bool bFlip = ((CellClass >> 7) != 0);
 
-						TArray<int> VertexIndices;
+						TArray<int32> VertexIndices;
 						VertexIndices.SetNumUninitialized(CellData.GetVertexCount());
 
-						for (int i = 0; i < CellData.GetVertexCount(); i++)
+						for (int32 i = 0; i < CellData.GetVertexCount(); i++)
 						{
-							int VertexIndex = -1;
+							int32 VertexIndex = -1;
 							const uint16& EdgeCode = VertexData[i];
 
 							// A: low point / B: high point
@@ -595,7 +597,7 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 								{
 									if (ValueAtA.IsNull())
 									{
-										int GX, GY, GZ;
+										int32 GX, GY, GZ;
 										Local2DToGlobal(Direction, PositionA.X, PositionA.Y, 0, GX, GY, GZ);
 										IntersectionPoint = FVector(GX, GY, GZ);
 										Material = GetMaterial(GX, GY, GZ);
@@ -603,7 +605,7 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 									else
 									{
 										checkVoxelSlow(ValueAtB.IsNull());
-										int GX, GY, GZ;
+										int32 GX, GY, GZ;
 										Local2DToGlobal(Direction, PositionB.X, PositionB.Y, 0, GX, GY, GZ);
 										IntersectionPoint = FVector(GX, GY, GZ);
 										Material = GetMaterial(GX, GY, GZ);
@@ -616,8 +618,8 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 
 									checkVoxelSlow((bIsAlongX && !bIsAlongY) || (!bIsAlongX && bIsAlongY));
 
-									int Min = bIsAlongX ? PositionA.X : PositionA.Y;
-									int Max = bIsAlongX ? PositionB.X : PositionB.Y;
+									int32 Min = bIsAlongX ? PositionA.X : PositionA.Y;
+									int32 Max = bIsAlongX ? PositionB.X : PositionB.Y;
 									
 									FVoxelValue ValueAtACopy = ValueAtA;
 									FVoxelValue ValueAtBCopy = ValueAtB;
@@ -625,7 +627,7 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 									while (Max - Min != 1)
 									{
 										checkError((Max + Min) % 2 == 0);
-										int Middle = (Max + Min) / 2;
+										int32 Middle = (Max + Min) / 2;
 
 										FVoxelValue ValueAtMiddle = GetValue(Direction, bIsAlongX ? Middle : PositionA.X, bIsAlongY ? Middle : PositionA.Y, bIsLowResChunk ? LOD : HalfLOD);
 
@@ -649,7 +651,7 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 									const float Alpha = ValueAtBCopy.ThisDividedByThisMinusA(ValueAtACopy, bSuccess);
 									checkError(bSuccess);
 
-									int GMinX, GMaxX, GMinY, GMaxY, GMinZ, GMaxZ;
+									int32 GMinX, GMaxX, GMinY, GMaxY, GMinZ, GMaxZ;
 									Local2DToGlobal(Direction, bIsAlongX ? Min : PositionA.X, bIsAlongY ? Min : PositionA.Y, 0, GMinX, GMinY, GMinZ);
 									Local2DToGlobal(Direction, bIsAlongX ? Max : PositionA.X, bIsAlongY ? Max : PositionA.Y, 0, GMaxX, GMaxY, GMaxZ);
 
@@ -679,7 +681,7 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 								Vertex.Position = FinalPoint;
 								Vertex.GradientNormal = Normal;
 								Vertex.Material = Material;
-								Vertex.UVs = GetUVs(UVConfig, Data, ChunkPosition, FinalPoint, Material);
+								Vertex.UVs = GetUVs(UVConfig, UVScale, Data, ChunkPosition, FinalPoint, Material);
 
 								Vertices.Add(Vertex);
 
@@ -695,12 +697,12 @@ bool FVoxelMCTransitionsPolygonizer::CreateTransitions()
 						}
 
 						// Add triangles
-						const int N = 3 * CellData.GetTriangleCount();
-						for (int I = 0; I < N; I += 3)
+						const int32 N = 3 * CellData.GetTriangleCount();
+						for (int32 I = 0; I < N; I += 3)
 						{
-							const int& IndexA = VertexIndices[CellData.vertexIndex[bFlip ? (N - 1 - (I + 0)) : (I + 0)]];
-							const int& IndexB = VertexIndices[CellData.vertexIndex[bFlip ? (N - 1 - (I + 1)) : (I + 1)]];
-							const int& IndexC = VertexIndices[CellData.vertexIndex[bFlip ? (N - 1 - (I + 2)) : (I + 2)]];
+							const int32& IndexA = VertexIndices[CellData.vertexIndex[bFlip ? (N - 1 - (I + 0)) : (I + 0)]];
+							const int32& IndexB = VertexIndices[CellData.vertexIndex[bFlip ? (N - 1 - (I + 1)) : (I + 1)]];
+							const int32& IndexC = VertexIndices[CellData.vertexIndex[bFlip ? (N - 1 - (I + 2)) : (I + 2)]];
 							FLocalVoxelVertex& A = Vertices[IndexA];
 							FLocalVoxelVertex& B = Vertices[IndexB];
 							FLocalVoxelVertex& C = Vertices[IndexC];

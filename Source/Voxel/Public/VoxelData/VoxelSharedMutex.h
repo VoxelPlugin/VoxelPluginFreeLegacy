@@ -61,6 +61,24 @@ public:
 private:
 	FThreadSafeCounter ReadLocks;
 	FThreadSafeCounter WriteLocks;
+
+	FCriticalSection ThreadIdsSection;
+	TSet<uint32> ThreadIds;
+
+	inline void AddThreadId()
+	{
+		uint32 Id = FPlatformTLS::GetCurrentThreadId();
+		FScopeLock ScopeLock(&ThreadIdsSection);
+		ensure(!ThreadIds.Contains(Id));
+		ThreadIds.Add(Id);
+	}
+	inline void RemoveThreadId()
+	{
+		uint32 Id = FPlatformTLS::GetCurrentThreadId();
+		FScopeLock ScopeLock(&ThreadIdsSection);
+		ensure(ThreadIds.Contains(Id));
+		ThreadIds.Remove(Id);
+	}
 #endif
 };
 
@@ -69,6 +87,7 @@ template<> inline void FVoxelSharedMutex::Lock<EVoxelLockType::Read>()
 	Mutex.lock_shared();
 #if DO_THREADSAFE_CHECKS
 	ReadLocks.Increment();
+	AddThreadId();
 #endif
 }
 template<> inline void FVoxelSharedMutex::Lock<EVoxelLockType::ReadWrite>()
@@ -76,6 +95,7 @@ template<> inline void FVoxelSharedMutex::Lock<EVoxelLockType::ReadWrite>()
 	Mutex.lock();
 #if DO_THREADSAFE_CHECKS
 	WriteLocks.Increment();
+	AddThreadId();
 #endif
 }
 
@@ -84,7 +104,7 @@ template<> inline void FVoxelSharedMutex::Unlock<EVoxelLockType::Read>()
 	Mutex.unlock_shared();
 #if DO_THREADSAFE_CHECKS
 	ReadLocks.Decrement();
-	ensure(ReadLocks.GetValue() >= 0);
+	RemoveThreadId();
 #endif
 }
 template<> inline void FVoxelSharedMutex::Unlock<EVoxelLockType::ReadWrite>()
@@ -92,7 +112,7 @@ template<> inline void FVoxelSharedMutex::Unlock<EVoxelLockType::ReadWrite>()
 	Mutex.unlock();
 #if DO_THREADSAFE_CHECKS
 	WriteLocks.Decrement();
-	ensure(WriteLocks.GetValue() >= 0);
+	RemoveThreadId();
 #endif
 }
 
@@ -102,6 +122,7 @@ template<> inline bool FVoxelSharedMutex::TryLockImpl<EVoxelLockType::Read>()
 	{
 #if DO_THREADSAFE_CHECKS
 		ReadLocks.Increment();
+		AddThreadId();
 #endif
 		return true;
 	}
@@ -116,6 +137,7 @@ template<> inline bool FVoxelSharedMutex::TryLockImpl<EVoxelLockType::ReadWrite>
 	{
 #if DO_THREADSAFE_CHECKS
 		WriteLocks.Increment();
+		AddThreadId();
 #endif
 		return true;
 	}
@@ -131,7 +153,7 @@ bool inline FVoxelSharedMutex::TryLockUntil(double TimeToTimeout)
 {
 	const double TimeLeft = TimeToTimeout - FPlatformTime::Seconds();
 	const double TimeBetweenRetry = FMath::Min(0.001, TimeLeft / 32);
-	const int NumberOfRetry = FMath::Max(1, FMath::FloorToInt(TimeLeft / TimeBetweenRetry));
+	const int32 NumberOfRetry = FMath::Max(1, FMath::FloorToInt(TimeLeft / TimeBetweenRetry));
 	
 	if (TimeLeft > 3600)
 	{
@@ -139,7 +161,7 @@ bool inline FVoxelSharedMutex::TryLockUntil(double TimeToTimeout)
 		return true;
 	}
 	
-	for (int Retry = 0; Retry < NumberOfRetry; Retry++)
+	for (int32 Retry = 0; Retry < NumberOfRetry; Retry++)
 	{
 		if (TimeToTimeout < FPlatformTime::Seconds())
 		{

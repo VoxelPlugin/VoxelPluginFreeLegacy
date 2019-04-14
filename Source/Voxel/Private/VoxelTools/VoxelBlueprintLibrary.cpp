@@ -20,10 +20,8 @@
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
-#define VOXELINDEX_DISABLED(Name)  FMessageLog("PIE").Error(FText::FromString(FString(#Name) + TEXT(": Voxel index   is disabled (DISABLE_VOXELINDEX == ") + FString::FromInt(DISABLE_VOXELINDEX) + TEXT(")!")));
-#define VOXELCOLORS_DISABLED(Name) FMessageLog("PIE").Error(FText::FromString(FString(#Name) + TEXT(": Voxel colors are disabled (ENABLE_VOXELCOLORS == ") + FString::FromInt(ENABLE_VOXELCOLORS) + TEXT(")!")));
-#define VOXELACTORS_DISABLED(Name) FMessageLog("PIE").Error(FText::FromString(FString(#Name) + TEXT(": Voxel actors are disabled (ENABLE_VOXELACTORS == ") + FString::FromInt(ENABLE_VOXELACTORS) + TEXT(")!")));
-#define VOXELGRASS_DISABLED(Name)  FMessageLog("PIE").Error(FText::FromString(FString(#Name) + TEXT(": Voxel grass is disabled (ENABLE_VOXELGRASS == ")    + FString::FromInt(ENABLE_VOXELGRASS)  + TEXT(")!")));
+#define VOXELINDEX_DISABLED(Name)  VoxelLogBlueprintError(FText::FromString(FString(#Name) + TEXT(": Voxel index   is disabled (DISABLE_VOXELINDEX == ") + FString::FromInt(DISABLE_VOXELINDEX) + TEXT(")!")));
+#define VOXELCOLORS_DISABLED(Name) VoxelLogBlueprintError(FText::FromString(FString(#Name) + TEXT(": Voxel colors are disabled (ENABLE_VOXELCOLORS == ") + FString::FromInt(ENABLE_VOXELCOLORS) + TEXT(")!")));
 
 #if DISABLE_VOXELINDEX
 #define CHECK_VOXELINDEX(Name) VOXELINDEX_DISABLED(Name)
@@ -31,23 +29,12 @@
 #define CHECK_VOXELINDEX(Name)
 #endif
 
-#if !ENABLE_VOXELACTORS
+#if !ENABLE_VOXELCOLORS
 #define CHECK_VOXELCOLORS(Name) VOXELCOLORS_DISABLED(Name)
 #else
 #define CHECK_VOXELCOLORS(Name)
 #endif
 
-#if !ENABLE_VOXELACTORS
-#define CHECK_VOXELACTORS(Name) VOXELACTORS_DISABLED(Name)
-#else
-#define CHECK_VOXELACTORS(Name)
-#endif
-
-#if !ENABLE_VOXELGRASS
-#define CHECK_VOXELGRASS(Name) VOXELGRASS_DISABLED(Name)
-#else
-#define CHECK_VOXELGRASS(Name)
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -83,12 +70,12 @@ void UVoxelBlueprintLibrary::Undo(AVoxelWorld* World)
 
 	if (!Data.bEnableUndoRedo)
 	{
-		FMessageLog("PIE").Error(LOCTEXT("UndobEnableUndoRedo", "Undo: Undo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		VoxelLogBlueprintError(LOCTEXT("UndobEnableUndoRedo", "Undo: Undo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
 		return;
 	}
 	if (!Data.IsCurrentFrameEmpty())
 	{
-		FMessageLog("PIE").Error(LOCTEXT("UndoSaveFrame", "Undo: Undo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
+		VoxelLogBlueprintError(LOCTEXT("UndoSaveFrame", "Undo: Undo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
 		return;
 	}
 
@@ -105,12 +92,12 @@ void UVoxelBlueprintLibrary::Redo(AVoxelWorld* World)
 
 	if (!Data.bEnableUndoRedo)
 	{
-		FMessageLog("PIE").Error(LOCTEXT("RedobEnableUndoRedo", "Redo: Redo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		VoxelLogBlueprintError(LOCTEXT("RedobEnableUndoRedo", "Redo: Redo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
 		return;
 	}
 	if (!Data.IsCurrentFrameEmpty())
 	{
-		FMessageLog("PIE").Error(LOCTEXT("RedoSaveFrame", "Redo: Redo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
+		VoxelLogBlueprintError(LOCTEXT("RedoSaveFrame", "Redo: Redo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
 		return;
 	}
 	
@@ -127,7 +114,7 @@ void UVoxelBlueprintLibrary::SaveFrame(AVoxelWorld* World)
 
 	if (!Data.bEnableUndoRedo)
 	{
-		FMessageLog("PIE").Error(LOCTEXT("SaveFrame", "SaveFrame: SaveFrame called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		VoxelLogBlueprintError(LOCTEXT("SaveFrame", "SaveFrame: SaveFrame called but bEnableUndoRedo is false. Please enable it on your voxel world"));
 		return;
 	}
 	Data.SaveFrame();
@@ -141,7 +128,7 @@ void UVoxelBlueprintLibrary::ClearFrames(AVoxelWorld* World)
 
 	if (!Data.bEnableUndoRedo)
 	{
-		FMessageLog("PIE").Error(LOCTEXT("ClearFrames", "ClearFrames: ClearFrames called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		VoxelLogBlueprintError(LOCTEXT("ClearFrames", "ClearFrames: ClearFrames called but bEnableUndoRedo is false. Please enable it on your voxel world"));
 	}
 	Data.ClearFrames();
 }
@@ -157,20 +144,34 @@ FVector UVoxelBlueprintLibrary::GetNormal(AVoxelWorld* World, const FIntVector& 
 	return FVoxelDataUtilities::GetGradient(Data, Position, 0);
 }
 
-float UVoxelBlueprintLibrary::GetFloatOutput(AVoxelWorld* World, FName Name, int X, int Y, int Z)
+float UVoxelBlueprintLibrary::GetFloatOutput(AVoxelWorld* World, FName Name, int32 X, int32 Y, int32 Z)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
 	
 	auto& Data = World->GetData();
 
-	int Index = Data.WorldGenerator->GetOutputIndex(Name);
-	if (Index < 0)
+	const uint8* Index = Data.WorldGenerator->SingleFloatOutputsNames.Find(Name);
+	if (!Index)
 	{
-		ensure(Index == -1);
-		FMessageLog("PIE").Error(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " found!"));
+		VoxelLogBlueprintError(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " and with type float found!"));
 		return 0;
 	}
-	return Data.WorldGenerator->GetFloatOutput(X, Y, Z, Index);
+	return Data.WorldGenerator->GetFloatOutput(X, Y, Z, *Index);
+}
+
+int32 UVoxelBlueprintLibrary::GetIntOutput(AVoxelWorld* World, FName Name, int32 X, int32 Y, int32 Z)
+{
+	CHECK_VOXELWORLD_IS_CREATED();
+	
+	auto& Data = World->GetData();
+
+	const uint8* Index = Data.WorldGenerator->SingleIntOutputsNames.Find(Name);
+	if (!Index)
+	{
+		VoxelLogBlueprintError(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " and with type int found!"));
+		return 0;
+	}
+	return Data.WorldGenerator->GetIntOutput(X, Y, Z, *Index);
 }
 
 FIntBox UVoxelBlueprintLibrary::GetBounds(AVoxelWorld* World)
@@ -186,7 +187,7 @@ void UVoxelBlueprintLibrary::BindDelegateToChunkGeneration(AVoxelWorld* World, F
 	TWeakObjectPtr<AVoxelWorld> WorldPtr = World;
 
 	Data.LockDelegatesForWrite();
-	Data.PostGenerationDelegate.AddLambda([=](FVoxelData& Data, const FIntBox& Bounds, const FVoxelChunk& Mesh)
+	Data.PostGenerationDelegate.AddLambda([=](FVoxelStatsElement& Stats, FVoxelData& Data, const FIntBox& Bounds, const FVoxelChunk& Mesh)
 	{
 		AsyncTask(ENamedThreads::GameThread, [=]()
 		{
@@ -232,11 +233,11 @@ int32 UVoxelBlueprintLibrary::GetTaskCount(AVoxelWorld* World)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(int MeshThreadCount)
+void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(int32 MeshThreadCount)
 {
 	if (IsGlobalVoxelPoolCreated())
 	{
-		FMessageLog("PIE").Error(LOCTEXT("CreateGlobalVoxelPool", "CreateGlobalVoxelPool called but global pool already created!"));
+		VoxelLogBlueprintError(LOCTEXT("CreateGlobalVoxelPool", "CreateGlobalVoxelPool called but global pool already created!"));
 		return;
 	}
 	FVoxelDefaultPool::CreateGlobalPool(FMath::Max(1, MeshThreadCount));
@@ -246,7 +247,7 @@ void UVoxelBlueprintLibrary::DestroyGlobalVoxelThreadPool()
 {
 	if (!IsGlobalVoxelPoolCreated())
 	{
-		FMessageLog("PIE").Error(LOCTEXT("DestroyGlobalVoxelPool", "DestroyGlobalVoxelPool called but global pool isn't created!"));
+		VoxelLogBlueprintError(LOCTEXT("DestroyGlobalVoxelPool", "DestroyGlobalVoxelPool called but global pool isn't created!"));
 		return;
 	}
 	IVoxelPool::DestroyGlobalVoxelPool();
@@ -286,27 +287,27 @@ FIntVector UVoxelBlueprintLibrary::Multiply_IntVectorIntVector(const FIntVector&
 	return FIntVector(Left.X * Right.X, Left.Y * Right.Y, Left.Z * Right.Z);
 }
 
-FIntVector UVoxelBlueprintLibrary::Divide_IntVectorInt(const FIntVector& Left, int Right)
+FIntVector UVoxelBlueprintLibrary::Divide_IntVectorInt(const FIntVector& Left, int32 Right)
 {
 	return Left / Right;
 }
 
-FIntVector UVoxelBlueprintLibrary::Multiply_IntVectorInt(const FIntVector& Left, int Right)
+FIntVector UVoxelBlueprintLibrary::Multiply_IntVectorInt(const FIntVector& Left, int32 Right)
 {
 	return Left * Right;
 }
 
-FIntVector UVoxelBlueprintLibrary::Multiply_IntIntVector(int Left, const FIntVector& Right)
+FIntVector UVoxelBlueprintLibrary::Multiply_IntIntVector(int32 Left, const FIntVector& Right)
 {
 	return Right * Left;
 }
 
-int UVoxelBlueprintLibrary::GetMax_Intvector(const FIntVector& Vector)
+int32 UVoxelBlueprintLibrary::GetMax_Intvector(const FIntVector& Vector)
 {
 	return Vector.GetMax();
 }
 
-int UVoxelBlueprintLibrary::GetMin_Intvector(const FIntVector& Vector)
+int32 UVoxelBlueprintLibrary::GetMin_Intvector(const FIntVector& Vector)
 {
 	return Vector.GetMin();
 }
@@ -359,24 +360,6 @@ FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateDoubleIndexBlendPaintMaterial(
 	FVoxelPaintMaterial Material(EVoxelPaintMaterialType::DoubleIndexBlend);
 	Material.Index = Index;
 	Material.Amount = Amount;
-	return Material;
-}
-
-FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateGrassPaintMaterial(uint8 GrassId)
-{
-	CHECK_VOXELINDEX(CreateIndexPaintMaterial);
-
-	FVoxelPaintMaterial Material(EVoxelPaintMaterialType::Grass);
-	Material.Index = GrassId;
-	return Material;
-}
-
-FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateActorPaintMaterial(uint8 ActorId)
-{
-	CHECK_VOXELINDEX(CreateIndexPaintMaterial);
-
-	FVoxelPaintMaterial Material(EVoxelPaintMaterialType::Actor);
-	Material.Index = ActorId;
 	return Material;
 }
 
@@ -484,37 +467,4 @@ FVoxelMaterial UVoxelBlueprintLibrary::CreateMaterialFromDoubleIndex(uint8 Index
 	SetBlend(Material, Blend);
 	return Material;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-
-uint8 UVoxelBlueprintLibrary::GetVoxelActorId(FVoxelMaterial Material)
-{
-	CHECK_VOXELACTORS(GetVoxelActorId);
-	return Material.GetVoxelActorId();
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::SetVoxelActorId(FVoxelMaterial Material, uint8 VoxelSpawnedActorId)
-{
-	CHECK_VOXELACTORS(SetVoxelActorId);
-	Material.SetVoxelActorId(VoxelSpawnedActorId);
-	return Material;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-uint8 UVoxelBlueprintLibrary::GetVoxelGrassId(FVoxelMaterial Material)
-{
-	CHECK_VOXELGRASS(GetVoxelGrassId);
-	return Material.GetVoxelGrassId();
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::SetVoxelGrassId(FVoxelMaterial Material, uint8 VoxelGrassId)
-{
-	CHECK_VOXELGRASS(SetVoxelGrassId);
-	Material.SetVoxelGrassId(VoxelGrassId);
-	return Material;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
 #undef LOCTEXT_NAMESPACE

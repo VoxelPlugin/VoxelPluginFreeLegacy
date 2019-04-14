@@ -57,6 +57,8 @@ private:
 void FVoxelChunkBuffers::BuildAdjacency()
 {
 #if ENABLE_TESSELLATION
+	ensure(!bHasAdjacency);
+	bHasAdjacency = true;
 	if (Indices.Num())
 	{
 		FVoxelStaticMeshNvRenderBuffer StaticMeshRenderBuffer(Positions, Indices);

@@ -3,24 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AssetTypeActions_Base.h"
+#include "AssetTypeActions_VoxelBase.h"
 #include "VoxelData/VoxelSave.h"
 
-class FAssetTypeActions_VoxelWorldSaveObject : public FAssetTypeActions_Base
+class FAssetTypeActions_VoxelWorldSaveObject : public FAssetTypeActions_VoxelBase
 {
 public:
-	FAssetTypeActions_VoxelWorldSaveObject(EAssetTypeCategories::Type InAssetCategory)
-		: MyAssetCategory(InAssetCategory)
-	{
+	using FAssetTypeActions_VoxelBase::FAssetTypeActions_VoxelBase;
 
-	}
-
-	// IAssetTypeActions Implementation
 	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelWorldSaveObject", "Voxel World Save Object"); }
 	virtual FColor GetTypeColor() const override { return FColor(255, 140, 0); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelWorldSaveObject::StaticClass(); }
-	virtual uint32 GetCategories() override { return MyAssetCategory; }
-
-private:
-	EAssetTypeCategories::Type MyAssetCategory;
 };

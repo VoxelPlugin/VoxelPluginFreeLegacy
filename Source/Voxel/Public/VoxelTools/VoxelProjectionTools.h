@@ -88,8 +88,8 @@ struct FVoxelProjectionEditWork
 	bool const bShowRaycasts;
 	bool const bAdd;
 
-	int TracesCompleted = 0;
-	int TotalTraces = 0;
+	int32 TracesCompleted = 0;
+	int32 TotalTraces = 0;
 
 	TSet<FIntVector> AddedPoints;
 	

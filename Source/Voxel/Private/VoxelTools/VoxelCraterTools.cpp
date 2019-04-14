@@ -19,7 +19,7 @@ inline void AddCraterHelperImpl(FVoxelData& Data, const FIntBox& Bounds, const F
 		
 	const float SquaredRadiusPlus2 = FMath::Square(Radius + 2);
 	const float SquaredRadiusMinus2 = FMath::Square(Radius - 2);
-	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
+	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& OldValue)
 	{
 		float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
 

@@ -6,7 +6,7 @@
 #include "VoxelGlobals.h"
 #include "VoxelMaterial.generated.h"
 
-FORCEINLINE uint8 CastToUINT8(int Value)
+FORCEINLINE uint8 CastToUINT8(int32 Value)
 {
 	ensureAlwaysMsgf(0 <= Value && Value < 256, TEXT("Invalid uint8 value: %d"), Value);
 	return Value;
@@ -26,8 +26,7 @@ struct VOXEL_API FVoxelMaterialBase
 	inline uint8 GetIndexB() const { return 0; }
 	inline uint8 GetBlend() const { return 0; }
 
-	inline uint8 GetVoxelActorId() const { return 0; }
-	inline uint8 GetVoxelGrassId() const { return 0; }
+	inline FVector2D GetUVs() const { return {}; }
 
 public:
 	inline void SetIndex(uint8 NewIndex) {}
@@ -41,9 +40,6 @@ public:
 	inline void SetIndexB(uint8 NewIndexB) {}
 	inline void SetBlend(uint8 NewBlend) {}
 
-	inline void SetVoxelActorId(uint8 NewVoxelActorId) {}
-	inline void SetVoxelGrassId(uint8 NewVoxelGrassId) {}
-
 public:
 	// Amount: between 0 and 1
 	inline void AddColor(const FLinearColor& Color, float Amount, bool bPaintR = true, bool bPaintG = true, bool bPaintB = true, bool bPaintA = true) { AddColor(Color.ToFColor(false), Amount, bPaintR, bPaintG, bPaintB, bPaintA); }
@@ -51,19 +47,19 @@ public:
 	{
 		if (bPaintR)
 		{
-			static_cast<T*>(this)->SetR(FMath::Clamp<int>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetR(), Color.R, Amount)), 0, 255));
+			static_cast<T*>(this)->SetR(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetR(), Color.R, Amount)), 0, 255));
 		}
 		if (bPaintG)
 		{
-			static_cast<T*>(this)->SetG(FMath::Clamp<int>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetG(), Color.G, Amount)), 0, 255));
+			static_cast<T*>(this)->SetG(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetG(), Color.G, Amount)), 0, 255));
 		}
 		if (bPaintB)
 		{
-			static_cast<T*>(this)->SetB(FMath::Clamp<int>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetB(), Color.B, Amount)), 0, 255));
+			static_cast<T*>(this)->SetB(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetB(), Color.B, Amount)), 0, 255));
 		}
 		if (bPaintA)
 		{
-			static_cast<T*>(this)->SetA(FMath::Clamp<int>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetA(), Color.A, Amount)), 0, 255));
+			static_cast<T*>(this)->SetA(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetA(), Color.A, Amount)), 0, 255));
 		}
 	}
 	inline void SetColor(const FLinearColor& Color) { SetColor(Color.ToFColor(false)); }
@@ -146,12 +142,6 @@ public:
 		G = 0;
 		B = 0;
 #endif
-#if ENABLE_VOXELACTORS
-		VoxelActorId = 0;
-#endif
-#if ENABLE_VOXELGRASS
-		VoxelGrassId = 0;
-#endif
 	}
 
 	FVoxelMaterial(ENoInit NoInit)
@@ -171,12 +161,6 @@ public:
 	inline uint8 GetIndexB() const { return G; }
 	inline uint8 GetBlend() const { return B; }
 #endif
-#if ENABLE_VOXELACTORS
-	inline uint8 GetVoxelActorId() const { return VoxelActorId; }
-#endif
-#if ENABLE_VOXELGRASS
-	inline uint8 GetVoxelGrassId() const { return VoxelGrassId; }
-#endif
 
 public:
 #if !DISABLE_VOXELINDEX
@@ -192,27 +176,18 @@ public:
 	inline void SetIndexB(uint8 NewIndexB) { G = NewIndexB; }
 	inline void SetBlend(uint8 NewBlend) { B = NewBlend; }
 #endif
-#if ENABLE_VOXELACTORS
-	inline void SetVoxelActorId(uint8 NewVoxelActorId) { VoxelActorId = NewVoxelActorId; }
-#endif
-#if ENABLE_VOXELGRASS
-	inline void SetVoxelGrassId(uint8 NewVoxelGrassId) { VoxelGrassId = NewVoxelGrassId; }
-#endif
 
 public:
-	inline void SetIndex(int NewIndex) { SetIndex(CastToUINT8(NewIndex)); }
+	inline void SetIndex(int32 NewIndex) { SetIndex(CastToUINT8(NewIndex)); }
 
-	inline void SetR(int NewR) { SetR(CastToUINT8(NewR)); }
-	inline void SetG(int NewG) { SetG(CastToUINT8(NewG)); }
-	inline void SetB(int NewB) { SetB(CastToUINT8(NewB)); }
-	inline void SetA(int NewA) { SetA(CastToUINT8(NewA)); }
+	inline void SetR(int32 NewR) { SetR(CastToUINT8(NewR)); }
+	inline void SetG(int32 NewG) { SetG(CastToUINT8(NewG)); }
+	inline void SetB(int32 NewB) { SetB(CastToUINT8(NewB)); }
+	inline void SetA(int32 NewA) { SetA(CastToUINT8(NewA)); }
 
-	inline void SetIndexA(int NewIndexA) { SetIndexA(CastToUINT8(NewIndexA)); }
-	inline void SetIndexB(int NewIndexB) { SetIndexB(CastToUINT8(NewIndexB)); }
-	inline void SetBlend(int NewBlend) { SetBlend(CastToUINT8(NewBlend)); }
-
-	inline void SetVoxelActorId(int NewVoxelActorId) { SetVoxelActorId(CastToUINT8(NewVoxelActorId)); }
-	inline void SetVoxelGrassId(int NewVoxelGrassId) { SetVoxelGrassId(CastToUINT8(NewVoxelGrassId)); }
+	inline void SetIndexA(int32 NewIndexA) { SetIndexA(CastToUINT8(NewIndexA)); }
+	inline void SetIndexB(int32 NewIndexB) { SetIndexB(CastToUINT8(NewIndexB)); }
+	inline void SetBlend(int32 NewBlend) { SetBlend(CastToUINT8(NewBlend)); }
 
 public:
 	template<typename T>
@@ -233,10 +208,6 @@ public:
 	inline void SetIndexB(T) = delete;
 	template<typename T>
 	inline void SetBlend(T) = delete;
-	template<typename T>
-	inline void SetVoxelActorId(T) = delete;
-	template<typename T>
-	inline void SetVoxelGrassId(T) = delete;
 
 public:
 	inline bool operator==(const FVoxelMaterial& Other) const
@@ -249,12 +220,6 @@ public:
 			&& R          == Other.R
 			&& G          == Other.G
 			&& B          == Other.B
-#endif
-#if ENABLE_VOXELACTORS
-			&& VoxelActorId == Other.VoxelActorId
-#endif
-#if ENABLE_VOXELGRASS
-			&& VoxelGrassId == Other.VoxelGrassId
 #endif
 			;
 	}
@@ -270,12 +235,6 @@ public:
 			|| G          != Other.G
 			|| B          != Other.B
 #endif
-#if ENABLE_VOXELACTORS
-			|| VoxelActorId != Other.VoxelActorId
-#endif
-#if ENABLE_VOXELGRASS
-			|| VoxelGrassId != Other.VoxelGrassId
-#endif
 			;
 	}
 
@@ -289,12 +248,6 @@ public:
 		Ar << Material.R;
 		Ar << Material.G;
 		Ar << Material.B;
-#endif
-#if ENABLE_VOXELACTORS
-		Ar << Material.VoxelActorId;
-#endif
-#if ENABLE_VOXELGRASS
-		Ar << Material.VoxelGrassId;
 #endif
 		return Ar;
 	}
@@ -340,8 +293,6 @@ public:
 		Material.SetR(R);
 		Material.SetG(G);
 		Material.SetB(B);
-		Material.SetVoxelActorId(VoxelActor);
-		Material.SetVoxelGrassId(VoxelGrass);
 
 		return Material;
 	}
@@ -354,12 +305,6 @@ private:
 	uint8 R;
 	uint8 G;
 	uint8 B;
-#endif
-#if ENABLE_VOXELACTORS
-	uint8 VoxelActorId;
-#endif
-#if ENABLE_VOXELGRASS
-	uint8 VoxelGrassId;
 #endif
 };
 

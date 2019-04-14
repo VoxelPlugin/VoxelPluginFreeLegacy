@@ -43,14 +43,16 @@ UMaterialInterface* FVoxelMaterialCollectionGenerated::GetVoxelMaterial(const FV
 	}
 }
 
-UMaterialInterface* UVoxelMaterialCollection::GetVoxelMaterial(const FVoxelBlendedMaterial& Index)
+UMaterialInterface* UVoxelMaterialCollection::GetVoxelMaterial(const FVoxelBlendedMaterial& Index, bool bTessellation)
 {
-	return GeneratedMaterials.GetVoxelMaterial(Index);
-}
-
-UMaterialInterface* UVoxelMaterialCollection::GetVoxelMaterialWithTessellation(const FVoxelBlendedMaterial& Index)
-{
-	return GeneratedMaterialsTess.GetVoxelMaterial(Index);
+	if (bTessellation)
+	{
+		return GeneratedMaterialsTess.GetVoxelMaterial(Index);
+	}
+	else
+	{
+		return GeneratedMaterials.GetVoxelMaterial(Index);
+	}
 }
 
 void UVoxelMaterialCollection::PostLoad()
@@ -59,9 +61,9 @@ void UVoxelMaterialCollection::PostLoad()
 
 	if (MaterialFunctions_DEPRECATED.Num() > 0)
 	{
-		for (int Index = 0; Index < MaterialFunctions_DEPRECATED.Num(); Index++)
+		for (int32 Index = 0; Index < MaterialFunctions_DEPRECATED.Num(); Index++)
 		{
-			int Last = Materials.Emplace();
+			int32 Last = Materials.Emplace();
 			auto& NewMaterial = Materials[Last];
 			NewMaterial.Index = Index;
 			NewMaterial.MaterialFunction = MaterialFunctions_DEPRECATED[Index];

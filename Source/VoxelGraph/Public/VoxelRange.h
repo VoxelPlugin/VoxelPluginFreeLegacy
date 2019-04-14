@@ -326,9 +326,7 @@ struct FVoxelMaterialRange
 	FVoxelMaterialRange() = default;
 	FVoxelMaterialRange(const struct FVoxelMaterial&) {}
 
-	TVoxelRange<int> GetIndex() const { return { 0, 255 }; }
-	TVoxelRange<int> GetVoxelActorId() const { return { 0, 255 }; }
-	TVoxelRange<int> GetVoxelGrassId() const { return { 0, 255 }; }
+	TVoxelRange<int32> GetIndex() const { return { 0, 255 }; }
 
 	inline FString ToString() const
 	{

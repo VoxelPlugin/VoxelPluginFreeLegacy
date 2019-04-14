@@ -3,7 +3,7 @@
 #pragma once
 
 #include "VoxelRender/IVoxelRenderer.h"
-#include "VoxelUtilities.h"
+#include "VoxelMathUtilities.h"
 #include "Engine/EngineTypes.h"
 
 class UHierarchicalInstancedStaticMeshComponent;
@@ -46,20 +46,17 @@ private:
 class FVoxelChunkToDelete
 {
 public:
-	FVoxelChunkToDelete(FVoxelRenderChunk& OldChunk, bool bDontRemoveMeshAndCallChunkInstead);
+	FVoxelChunkToDelete(FVoxelRenderChunk& OldChunk, bool bDontRemoveMeshAndNotifyChunkInstead);
 	~FVoxelChunkToDelete();
 
-	FVoxelChunkToDelete(const FVoxelChunkToDelete&) = delete;
-	FVoxelChunkToDelete& operator=(const FVoxelChunkToDelete&) = delete;
-
 	template<typename T>
-	inline void AddNewChunk(T NewChunk) { NewRenderChunks.Add(NewChunk); }
+	inline void AddNewChunk(const T& NewChunk) { NewRenderChunks.Add(NewChunk); }
 
 private:
 	const TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> OldRenderChunk;
 	TArray<TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>> NewRenderChunks;
 
-	const bool bDontRemoveMeshAndCallChunkInstead;
+	const bool bDontRemoveMeshAndNotifyChunkInstead;
 
 	const TWeakPtr<FVoxelDefaultRenderer> Render;
 	const FIntBox Bounds;
@@ -124,7 +121,7 @@ public:
 	//~ Begin IVoxelRender Interface
 	virtual void UpdateChunks(const TArray<uint64>& ChunksToUpdate, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) override;
 	virtual void CancelDithering(const FIntBox& Bounds, const TArray<uint64>& Chunks) override;
-	virtual int GetTaskCount() const override { return bUpdatesStarted ? TaskCount : -1; }
+	virtual int32 GetTaskCount() const override { return bUpdatesStarted ? TaskCount : -1; }
 	virtual void RecomputeMeshPositions() override;
 	virtual void UpdateLODs(const TArray<FVoxelChunkToAdd>& ChunksToAdd, const TArray<FVoxelChunkToUpdate>& ChunksToUpdate, const TArray<FVoxelChunkToRemove>& ChunksToRemove, const TArray<FVoxelTransitionsToUpdate>& TransitionsToUpdate) override;
 	//~ End IVoxelRender Interface
@@ -135,9 +132,9 @@ public:
 
 public:
 	void StartMeshDithering(UVoxelProceduralMeshComponent* Mesh, const FIntBox& Bounds, const TArray<TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>>& NewRenderChunks);
+	void SetMeshPosition(UVoxelProceduralMeshComponent* Mesh, const FIntVector& Position);
 	void RemoveMesh(UVoxelProceduralMeshComponent* Mesh);
 	UVoxelProceduralMeshComponent* GetNewMesh(const FIntVector& Position, uint8 LOD, bool bCollisions);
-
 
 public:
 	void IncreaseTaskCount();
@@ -166,11 +163,10 @@ private:
 		return bCollisions ? InactiveMeshesCollisions : InactiveMeshesNoCollisions;
 	}
 
-
 	TMap<uint64, TSharedPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>> ChunksMap;
 	TArray<TUniquePtr<FVoxelChunkToRemoveAfterDithering>> ChunksToRemoveAfterDithering;
 
-	int TaskCount = 0;
+	int32 TaskCount = 0;
 	bool bUpdatesStarted = false;
 	bool bOnLoadedCallbackFired = false;
 

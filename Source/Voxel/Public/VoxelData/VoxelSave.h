@@ -22,8 +22,8 @@ public:
 	struct FVoxelChunkSave
 	{
 		FIntVector Position;
-		int ValuesIndex;
-		int MaterialsIndex;
+		int32 ValuesIndex;
+		int32 MaterialsIndex;
 
 		friend inline FArchive& operator<<(FArchive &Ar, FVoxelChunkSave& Save)
 		{
@@ -46,14 +46,18 @@ public:
 	}
 
 public:
-	inline int GetDepth() const
+	inline int32 GetDepth() const
 	{
 		return Depth;
 	}
 
-	inline int GetAllocatedSize() const
+	inline int32 GetAllocatedSize() const
 	{
-		return Chunks.GetAllocatedSize() + Values.GetAllocatedSize() + Materials.GetAllocatedSize();
+		return 
+			Chunks.GetAllocatedSize() +
+			Values.GetAllocatedSize() + 
+			Materials.GetAllocatedSize() +
+			PlaceableItems.GetAllocatedSize();
 	}
 
 public:
@@ -62,14 +66,21 @@ public:
 
 	inline bool operator==(const FVoxelUncompressedWorldSave& Other) const
 	{
-		return Depth == Other.Depth && Chunks == Other.Chunks && Values == Other.Values && Materials == Other.Materials;
+		return 
+			Depth == Other.Depth && 
+			Chunks == Other.Chunks && 
+			Values == Other.Values && 
+			Materials == Other.Materials &&
+			PlaceableItems == Other.PlaceableItems;
 	}
 
 private:
-	int Depth = -1;
+	int32 Version;
+	int32 Depth = -1;
 	TArray<FVoxelValue> Values;
 	TArray<FVoxelMaterial> Materials;
 	TArray<FVoxelChunkSave> Chunks;
+	TArray<uint8> PlaceableItems;
 
 	friend class FVoxelSaveBuilder;
 	friend class FVoxelSaveLoader;
@@ -110,31 +121,26 @@ struct VOXEL_API FVoxelCompressedWorldSave
 		DEC_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, GetAllocatedSize());
 	}
 
-	inline int GetDepth() const
+	inline int32 GetDepth() const
 	{
 		return Depth;
 	}
 
 	bool Serialize(FArchive& Ar);
 
-	inline int GetAllocatedSize() const
+	inline int32 GetAllocatedSize() const
 	{
 		return CompressedData.GetAllocatedSize();
 	}
 
 	inline bool operator==(const FVoxelCompressedWorldSave& Other) const
 	{
-		return Depth == Other.Depth && Version == Other.Version && ConfigFlags == Other.ConfigFlags && CompressedData == Other.CompressedData;
+		return Depth == Other.Depth && ConfigFlags == Other.ConfigFlags && CompressedData == Other.CompressedData;
 	}
 	
 private:
-	enum EVersion : int
-	{
-		V0 = 0
-	};
-	
-	int Version;
-	int Depth = -1;
+	int32 Version;
+	int32 Depth = -1;
 	uint32 ConfigFlags;
 	TArray<uint8> CompressedData;
 
@@ -162,8 +168,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	FVoxelCompressedWorldSave Save;
 
+	// Depth of the world
 	UPROPERTY(VisibleAnywhere, Category = "Voxel")
-	int Depth = 0;
+	int32 Depth = 0;
 
 	virtual void PostLoad() override;
 

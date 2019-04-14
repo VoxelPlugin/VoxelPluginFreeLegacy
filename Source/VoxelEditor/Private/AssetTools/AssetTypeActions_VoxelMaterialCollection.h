@@ -3,24 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AssetTypeActions_Base.h"
+#include "AssetTypeActions_VoxelBase.h"
 #include "VoxelMaterialCollection.h"
 
-class FAssetTypeActions_VoxelMaterialCollection : public FAssetTypeActions_Base
+class FAssetTypeActions_VoxelMaterialCollection : public FAssetTypeActions_VoxelBase
 {
 public:
-	FAssetTypeActions_VoxelMaterialCollection(EAssetTypeCategories::Type InAssetCategory)
-		: MyAssetCategory(InAssetCategory)
-	{
+	using FAssetTypeActions_VoxelBase::FAssetTypeActions_VoxelBase;
 
-	}
-
-	// IAssetTypeActions Implementation
 	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelMaterialCollection", "Voxel Material Collection"); }
 	virtual FColor GetTypeColor() const override { return FColor(0, 192, 0); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelMaterialCollection::StaticClass(); }
-	virtual uint32 GetCategories() override { return MyAssetCategory; }
-
-private:
-	EAssetTypeCategories::Type MyAssetCategory;
 };

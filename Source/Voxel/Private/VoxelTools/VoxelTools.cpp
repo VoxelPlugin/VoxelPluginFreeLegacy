@@ -3,7 +3,7 @@
 #include "VoxelTools/VoxelTools.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelWorld.h"
-#include "VoxelUtilities.h"
+#include "VoxelMathUtilities.h"
 #include "VoxelTools/VoxelToolsHelpers.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelDebug/VoxelDebugManager.h"
@@ -36,7 +36,7 @@ bool UVoxelTools::Flatten(
 
 	const FVector LocalPosition = (FVector)World->GlobalToLocal(Position);
 	const float Radius = WorldRadius / World->VoxelSize;
-	const int IntRadius = FMath::CeilToInt(Radius);
+	const int32 IntRadius = FMath::CeilToInt(Radius);
 
 	/**
 	 * Create a 2D basis from (Tangent, Bitangent)
@@ -67,9 +67,9 @@ bool UVoxelTools::Flatten(
 	TSet<TTuple<FIntVector, float>> Positions;
 	TSet<FIntVector> AddedPositions;
 
-	for (int X = -IntRadius; X <= IntRadius; X++)
+	for (int32 X = -IntRadius; X <= IntRadius; X++)
 	{
-		for (int Y = -IntRadius; Y <= IntRadius; Y++)
+		for (int32 Y = -IntRadius; Y <= IntRadius; Y++)
 		{
 			if (FVector2D(X, Y).Size() <= Radius)
 			{

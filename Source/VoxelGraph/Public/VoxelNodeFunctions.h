@@ -10,13 +10,13 @@
 
 namespace FVoxelNodeFunctions
 {
-	inline void GetDoubleIndex(const FVoxelMaterial& Material, int& OutA, int& OutB, float& OutBlend)
+	inline void GetDoubleIndex(const FVoxelMaterial& Material, int32& OutA, int32& OutB, float& OutBlend)
 	{
 		OutA = Material.GetIndexA();
 		OutB = Material.GetIndexB();
 		OutBlend = Material.GetBlend() / 255.999f;
 	}
-	inline void GetDoubleIndex(const FVoxelMaterialRange& Material, TVoxelRange<int>& OutA, TVoxelRange<int>& OutB, TVoxelRange<float>& OutBlend)
+	inline void GetDoubleIndex(const FVoxelMaterialRange& Material, TVoxelRange<int32>& OutA, TVoxelRange<int32>& OutB, TVoxelRange<float>& OutBlend)
 	{
 		OutA = { 0, 255 };
 		OutB = { 0, 255 };
@@ -114,20 +114,20 @@ namespace FVoxelNodeFunctions
 		float Dist = 0;
 		return Dist;
 	}
-	inline float GetPerlinWormsDistance(const FVoxelPlaceableItemHolder& ItemHolder, int X, int Y, int Z)
+	inline float GetPerlinWormsDistance(const FVoxelPlaceableItemHolder& ItemHolder, int32 X, int32 Y, int32 Z)
 	{
 		return GetPerlinWormsDistance(ItemHolder, FVector(X, Y, Z));
 	}
-	inline TVoxelRange<float> GetPerlinWormsDistance(const FVoxelPlaceableItemHolder& ItemHolder, const TVoxelRange<int>& X, const TVoxelRange<int>& Y, const TVoxelRange<int>& Z)
+	inline TVoxelRange<float> GetPerlinWormsDistance(const FVoxelPlaceableItemHolder& ItemHolder, const TVoxelRange<int32>& X, const TVoxelRange<int32>& Y, const TVoxelRange<int32>& Z)
 	{
 		return { 0, 0 };
 	}
 
-	inline int RoundToInt(float Value)
+	inline int32 RoundToInt(float Value)
 	{
 		return FMath::RoundToInt(Value);
 	}
-	inline TVoxelRange<int> RoundToInt(const TVoxelRange<float>& Value)
+	inline TVoxelRange<int32> RoundToInt(const TVoxelRange<float>& Value)
 	{
 		return { FMath::FloorToInt(Value.Min), FMath::CeilToInt(Value.Max) };
 	}
@@ -174,7 +174,7 @@ namespace FVoxelNodeFunctions
 		if (B.IsSingleValue())
 		{
 			float Exp = B.Min;
-			int IntExp = FMath::RoundToInt(Exp);
+			int32 IntExp = FMath::RoundToInt(Exp);
 			if (Exp == IntExp) // If integer
 			{
 				if (IntExp % 2 == 0) // If multiple of 2: decreasing [-infinity, 0] and increasing [0, infinity]
@@ -232,20 +232,20 @@ namespace FVoxelNodeFunctions
 		return { FMath::Min(FMath::Abs(A.Min), FMath::Abs(A.Max)), FMath::Max(FMath::Abs(A.Min), FMath::Abs(A.Max)) };
 	}
 
-	inline int CeilToInt(float A)
+	inline int32 CeilToInt(float A)
 	{
 		return FMath::CeilToInt(A);
 	}
-	inline TVoxelRange<int> CeilToInt(const TVoxelRange<float>& A)
+	inline TVoxelRange<int32> CeilToInt(const TVoxelRange<float>& A)
 	{
 		return { FMath::CeilToInt(A.Min), FMath::CeilToInt(A.Max) };
 	}
 
-	inline int FloorToInt(float A)
+	inline int32 FloorToInt(float A)
 	{
 		return FMath::FloorToInt(A);
 	}
-	inline TVoxelRange<int> FloorToInt(const TVoxelRange<float>& A)
+	inline TVoxelRange<int32> FloorToInt(const TVoxelRange<float>& A)
 	{
 		return { FMath::FloorToInt(A.Min), FMath::FloorToInt(A.Max) };
 	}

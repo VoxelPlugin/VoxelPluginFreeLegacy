@@ -49,29 +49,6 @@ namespace VoxelGlobalsUtils
 	{
 		return ((Value & (Value - 1)) == (T)0);
 	}
-
-	inline constexpr int IntLog2(int X)
-	{
-		int Exp = -1;
-		while (X)
-		{
-			X >>= 1;
-			++Exp;
-		}
-		return Exp;
-	}
-
-	inline constexpr int DataOctreeDepthDiff(int DataChunkSize, int ChunkSize)
-	{
-		if (DataChunkSize <= ChunkSize)
-		{
-			return IntLog2(ChunkSize / DataChunkSize); // Depth must be higher if chunk size is smaller
-		}
-		else
-		{
-			return -IntLog2(DataChunkSize / ChunkSize);
-		}
-	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -81,8 +58,6 @@ static_assert(VoxelGlobalsUtils::IsPowerOfTwo(CHUNK_SIZE), "CHUNK_SIZE must be a
 
 #define VOXEL_CELL_SIZE 16 // size of data chunks
 static_assert(VoxelGlobalsUtils::IsPowerOfTwo(VOXEL_CELL_SIZE), "VOXEL_CELL_SIZE must be a power of 2");
-
-#define DATA_OCTREE_DEPTH_DIFF VoxelGlobalsUtils::DataOctreeDepthDiff(VOXEL_CELL_SIZE, CHUNK_SIZE) 
 
 #define VOXEL_CELL_COUNT (VOXEL_CELL_SIZE * VOXEL_CELL_SIZE * VOXEL_CELL_SIZE)
 
@@ -100,22 +75,20 @@ static_assert(MAX_WORLD_DEPTH % 2 == 0, "MAX_WORLD_DEPTH must be a multiple of 2
 
 #define DISABLE_VOXELINDEX 0
 #define ENABLE_VOXELCOLORS 1
-#define ENABLE_VOXELACTORS 1
-#define ENABLE_VOXELGRASS 1
 
-enum EVoxelConfigFlags : uint32
+enum EVoxelMaterialConfigFlag : uint32
 {
 	EnableVoxelColors        = 0x01,
 	EnableVoxelSpawnedActors = 0x02,
 	EnableVoxelGrass         = 0x04,
 	DisableIndex             = 0x10
 }; 
-inline constexpr uint32 GetVoxelConfigFlags()
+inline constexpr uint32 GetVoxelMaterialConfigFlag()
 {
 	return
-		EnableVoxelColors * ENABLE_VOXELCOLORS        +
-		EnableVoxelSpawnedActors * ENABLE_VOXELACTORS +
-		EnableVoxelGrass * ENABLE_VOXELGRASS          +
+		EnableVoxelColors * ENABLE_VOXELCOLORS +
+		EnableVoxelSpawnedActors * 0 +
+		EnableVoxelGrass * 0 +
 		DisableIndex * DISABLE_VOXELINDEX
 		;
 }

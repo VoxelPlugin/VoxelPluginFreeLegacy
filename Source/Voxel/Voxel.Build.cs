@@ -14,6 +14,10 @@ public class Voxel : ModuleRules
         if (!Target.bUseUnityBuild)
         {
             PrivatePCHHeaderFile = "Private/VoxelPCH.h";
+#if UE_4_22_OR_LATER
+#else
+            PrivateDependencyModuleNames.Add("LivePP");
+#endif
         }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
@@ -53,6 +57,7 @@ public class Voxel : ModuleRules
             PublicLibraryPaths.Add(SDKDir + "lib");
             PublicAdditionalLibraries.Add("embree.2.14.0.lib");
             RuntimeDependencies.Add("$(EngineDir)/Binaries/Win64/embree.2.14.0.dll");
+            PublicDelayLoadDLLs.Add("embree.2.14.0.dll");
             RuntimeDependencies.Add("$(EngineDir)/Binaries/Win64/tbb.dll");
             RuntimeDependencies.Add("$(EngineDir)/Binaries/Win64/tbbmalloc.dll");
             PublicDefinitions.Add("USE_EMBREE=1");

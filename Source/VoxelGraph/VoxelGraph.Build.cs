@@ -14,6 +14,10 @@ public class VoxelGraph : ModuleRules
         if (!Target.bUseUnityBuild)
         {
             PrivatePCHHeaderFile = "Private/VoxelGraphPCH.h";
+#if UE_4_22_OR_LATER
+#else
+            PrivateDependencyModuleNames.Add("LivePP");
+#endif
         }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));

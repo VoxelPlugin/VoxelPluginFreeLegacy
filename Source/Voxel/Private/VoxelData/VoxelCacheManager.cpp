@@ -57,7 +57,7 @@ class FVoxelAsyncClearCacheWork : public FVoxelAsyncWork
 {
 public:
 	FVoxelAsyncClearCacheWork(TSharedRef<FVoxelData, ESPMode::ThreadSafe> Data, const TArray<FIntBox>& BoundsToKeepCached)
-		: FVoxelAsyncWork("ClearCacheWork", 0, FVoxelAsyncWorkCallback(), true)
+		: FVoxelAsyncWork("ClearCacheWork", 0, true)
 		, Data(Data)
 		, BoundsToKeepCached(BoundsToKeepCached)
 	{
@@ -91,15 +91,22 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelCacheManager::FVoxelCacheManager(const FVoxelCacheSettings& Settings)
-	: Settings(Settings)
+TSharedRef<FVoxelCacheManager> FVoxelCacheManager::Create(const FVoxelCacheSettings& Settings)
 {
+	TSharedRef<FVoxelCacheManager> CacheManager = MakeShareable(new FVoxelCacheManager(Settings));
 	if (Settings.bEnableAutomaticCache)
 	{
 		auto& TimerManager = Settings.World->GetTimerManager();
-		TimerManager.SetTimer(OctreeCompactHandle, FTimerDelegate::CreateRaw(this, &FVoxelCacheManager::CompactOctree), Settings.DataOctreeCompactDelayInSeconds, true);
-		TimerManager.SetTimer(CacheHandle, FTimerDelegate::CreateRaw(this, &FVoxelCacheManager::UpdateCache), Settings.CacheUpdateDelayInSeconds, true);
+		TimerManager.SetTimer(CacheManager->OctreeCompactHandle, FTimerDelegate::CreateSP(CacheManager, &FVoxelCacheManager::CompactOctree), Settings.DataOctreeCompactDelayInSeconds, true);
+		TimerManager.SetTimer(CacheManager->CacheHandle, FTimerDelegate::CreateSP(CacheManager, &FVoxelCacheManager::UpdateCache), Settings.CacheUpdateDelayInSeconds, true);
 	}
+	return CacheManager;
+}
+
+FVoxelCacheManager::FVoxelCacheManager(const FVoxelCacheSettings& Settings) 
+	: Settings(Settings)
+{
+
 }
 
 FVoxelCacheManager::~FVoxelCacheManager()

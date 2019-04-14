@@ -68,7 +68,7 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 	// Copy each section
 	const int32 NumSections = Component->ProcMeshSections.Num();
 	Sections.AddZeroed(NumSections);
-	for (int SectionIdx = 0; SectionIdx < NumSections; SectionIdx++)
+	for (int32 SectionIdx = 0; SectionIdx < NumSections; SectionIdx++)
 	{
 		FVoxelProcMeshSection& SrcSection = Component->ProcMeshSections[SectionIdx];
 		if (SrcSection.Indices.Num() > 0 && SrcSection.Positions.Num() > 0)
@@ -87,9 +87,8 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 			{
 				SCOPE_CYCLE_COUNTER(STAT_FVoxelProceduralMeshSceneProxy_FVoxelProceduralMeshSceneProxy_CopySection);
 
-				int VertexCount = SrcSection.Positions.Num();
-				bool bNeeds32BitIndices = VertexCount > MAX_uint16;
-				NewSection->IndexBuffer.SetIndices(SrcSection.Indices, bNeeds32BitIndices ? EIndexBufferStride::Force32Bit : EIndexBufferStride::Force16Bit);
+				int32 VertexCount = SrcSection.Positions.Num();
+				NewSection->IndexBuffer.SetIndices(SrcSection.Indices, SrcSection.Indices.Num() > MAX_uint16 ? EIndexBufferStride::Force32Bit : EIndexBufferStride::Force16Bit);
 
 				auto& PositionBuffer = NewSection->VertexBuffers.PositionVertexBuffer;
 				auto& ColorBuffer = NewSection->VertexBuffers.ColorVertexBuffer;
@@ -99,7 +98,7 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 				ColorBuffer.InitFromColorArray(SrcSection.Colors);
 
 				SMBuffer.Init(VertexCount, 1);
-				for (int I = 0; I < VertexCount; I++)
+				for (int32 I = 0; I < VertexCount; I++)
 				{
 					auto& Tangent = SrcSection.Tangents[I];
 					auto& Normal = SrcSection.Normals[I];
@@ -112,7 +111,9 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 
 				if (NewSection->bRequiresAdjacencyInformation)
 				{
-					NewSection->AdjacencyIndexBuffer.SetIndices(SrcSection.AdjacencyIndices, bNeeds32BitIndices ? EIndexBufferStride::Force32Bit : EIndexBufferStride::Force16Bit);
+					check(SrcSection.AdjacencyIndices.Num() == 0 || SrcSection.AdjacencyIndices.Num() == 4 * SrcSection.Indices.Num());
+					ensure(SrcSection.AdjacencyIndices.Num() != 0);
+					NewSection->AdjacencyIndexBuffer.SetIndices(SrcSection.AdjacencyIndices, SrcSection.AdjacencyIndices.Num() > MAX_uint16 ? EIndexBufferStride::Force32Bit : EIndexBufferStride::Force16Bit);
 				}
 #else 
 				NewSection->bRequiresAdjacencyInformation = false;
@@ -151,7 +152,11 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 	{
 		if (Section != nullptr && Section->bSectionVisible)
 		{
+#if ENGINE_MINOR_VERSION < 22
 			FMaterialRenderProxy* MaterialProxy = Section->Material->GetRenderProxy(false);
+#else
+			FMaterialRenderProxy* MaterialProxy = Section->Material->GetRenderProxy();
+#endif
 
 			// For each view..
 			for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
@@ -171,7 +176,13 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 
 					FMeshBatchElement& BatchElement = Mesh.Elements[0];
 					BatchElement.IndexBuffer = &Section->IndexBuffer;
+#if ENGINE_MINOR_VERSION < 22
 					BatchElement.PrimitiveUniformBufferResource = &GetUniformBuffer();
+#else
+					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+					DynamicPrimitiveUniformBuffer.Set(GetLocalToWorld(), GetLocalToWorld(), GetBounds(), GetLocalBounds(), true, false, UseEditorDepthTest());
+					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+#endif
 					BatchElement.FirstIndex = 0;
 					BatchElement.NumPrimitives = Section->IndexBuffer.GetNumIndices() / 3;
 					BatchElement.MinVertexIndex = 0;
@@ -221,7 +232,13 @@ FPrimitiveViewRelevance FVoxelProceduralMeshSceneProxy::GetViewRelevance(const F
 	Result.bRenderInMainPass = ShouldRenderInMainPass();
 	Result.bUsesLightingChannels = GetLightingChannelMask() != GetDefaultLightingChannelMask();
 	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
+#if ENGINE_MINOR_VERSION >= 22
+	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
+#endif
 	MaterialRelevance.SetPrimitiveViewRelevance(Result);
+#if ENGINE_MINOR_VERSION >= 22
+	Result.bVelocityRelevance = IsMovable() && Result.bOpaqueRelevance && Result.bRenderInMainPass;
+#endif
 	return Result;
 }
 

@@ -8,8 +8,8 @@
 class VOXEL_API FVoxelDefaultPool : public IVoxelPool
 {
 public:
-	static void CreateGlobalPool(int MeshThreadCount);
-	static TSharedRef<FVoxelDefaultPool> Create(int MeshThreadCount);
+	static void CreateGlobalPool(int32 MeshThreadCount);
+	static TSharedRef<FVoxelDefaultPool> Create(int32 MeshThreadCount);
 
 public:
 	virtual void QueueAsyncEditTask(IQueuedWork* Work) override;
@@ -23,7 +23,7 @@ private:
 	FQueuedThreadPool* const OctreeBuilderPool;
 	FQueuedThreadPool* const AsyncTasksPool;
 
-	FVoxelDefaultPool(int MeshThreadCount);
+	FVoxelDefaultPool(int32 MeshThreadCount);
 
 public:
 	virtual ~FVoxelDefaultPool();

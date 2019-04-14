@@ -130,7 +130,7 @@ inline void CopyInstanceParameters(const TArray<UMaterialInstanceConstant*>& Fro
 #define IMPL(Type, InName) \
 	{ \
 		TArray<FTmpStruct> Infos; \
-		for (int Index = 0; Index < Froms.Num(); Index++) \
+		for (int32 Index = 0; Index < Froms.Num(); Index++) \
 		{ \
 			auto* From = Froms[Index]; \
 			auto& Suffix = Suffixes[Index]; \
@@ -159,7 +159,7 @@ inline void CopyInstanceParameters(const TArray<UMaterialInstanceConstant*>& Fro
 #undef IMPL
 
 	FStaticParameterSet Values;
-	for (int Index = 0; Index < Froms.Num(); Index++)
+	for (int32 Index = 0; Index < Froms.Num(); Index++)
 	{
 		auto* From = Froms[Index];
 		auto& Suffix = Suffixes[Index];
@@ -418,9 +418,9 @@ struct FVoxelIntermediateMaterialsHolder
 		CreateGenerated(GetGenerated().GeneratedDoubleMaterials);
 
 		auto& Materials = Collection->Materials;
-		for (int IndexA = 0; IndexA < Materials.Num(); IndexA++)
+		for (int32 IndexA = 0; IndexA < Materials.Num(); IndexA++)
 		{
-			for (int IndexB = 0; IndexB <= IndexA; IndexB++)
+			for (int32 IndexB = 0; IndexB <= IndexA; IndexB++)
 			{
 				auto& MaterialA = Materials[IndexA];
 				auto& MaterialB = Materials[IndexB];
@@ -451,9 +451,9 @@ struct FVoxelIntermediateMaterialsHolder
 			}
 		}
 
-		for (int IndexA = 0; IndexA < IntermediateMaterials.Num(); IndexA++)
+		for (int32 IndexA = 0; IndexA < IntermediateMaterials.Num(); IndexA++)
 		{
-			for (int IndexB = 0; IndexB < IndexA; IndexB++)
+			for (int32 IndexB = 0; IndexB < IndexA; IndexB++)
 			{
 				auto* MaterialAPtr = &IntermediateMaterials[IndexA];
 				auto* MaterialBPtr = &IntermediateMaterials[IndexB];
@@ -470,8 +470,8 @@ struct FVoxelIntermediateMaterialsHolder
 				auto& MaterialA = *MaterialAPtr;
 				auto& MaterialB = *MaterialBPtr;
 
-				int I = FMath::Min(MaterialA.Index, MaterialB.Index);
-				int J = FMath::Max(MaterialA.Index, MaterialB.Index);
+				int32 I = FMath::Min(MaterialA.Index, MaterialB.Index);
+				int32 J = FMath::Max(MaterialA.Index, MaterialB.Index);
 				auto DoubleIndex = FVoxelMaterialCollectionDoubleIndex(I, J);
 
 				UMaterialInstanceConstant* Instance = CreateMaterialInstance("Double_" + MaterialA.GetName() + "_" + MaterialB.GetName(), Material);
@@ -512,11 +512,11 @@ struct FVoxelIntermediateMaterialsHolder
 		CreateGenerated(GetGenerated().GeneratedTripleMaterials);
 
 		auto& Materials = Collection->Materials;
-		for (int IndexA = 0; IndexA < Materials.Num(); IndexA++)
+		for (int32 IndexA = 0; IndexA < Materials.Num(); IndexA++)
 		{
-			for (int IndexB = 0; IndexB <= IndexA; IndexB++)
+			for (int32 IndexB = 0; IndexB <= IndexA; IndexB++)
 			{
-				for (int IndexC = 0; IndexC <= IndexB; IndexC++)
+				for (int32 IndexC = 0; IndexC <= IndexB; IndexC++)
 				{
 					auto& MaterialA = Materials[IndexA];
 					auto& MaterialB = Materials[IndexB];
@@ -551,11 +551,11 @@ struct FVoxelIntermediateMaterialsHolder
 			}
 		}
 
-		for (int IndexA = 0; IndexA < IntermediateMaterials.Num(); IndexA++)
+		for (int32 IndexA = 0; IndexA < IntermediateMaterials.Num(); IndexA++)
 		{
-			for (int IndexB = 0; IndexB < IndexA; IndexB++)
+			for (int32 IndexB = 0; IndexB < IndexA; IndexB++)
 			{
-				for (int IndexC = 0; IndexC < IndexB; IndexC++)
+				for (int32 IndexC = 0; IndexC < IndexB; IndexC++)
 				{
 					auto* APtr = &IntermediateMaterials[IndexA];
 					auto* BPtr = &IntermediateMaterials[IndexB];
@@ -588,9 +588,9 @@ struct FVoxelIntermediateMaterialsHolder
 					auto& MaterialB = *BPtr;
 					auto& MaterialC = *CPtr;
 
-					int I = FMath::Min(MaterialA.Index, FMath::Min(MaterialB.Index, MaterialC.Index));
-					int K = FMath::Max(MaterialA.Index, FMath::Max(MaterialB.Index, MaterialC.Index));
-					int J = MaterialA.Index + MaterialB.Index + MaterialC.Index - I - K;
+					int32 I = FMath::Min(MaterialA.Index, FMath::Min(MaterialB.Index, MaterialC.Index));
+					int32 K = FMath::Max(MaterialA.Index, FMath::Max(MaterialB.Index, MaterialC.Index));
+					int32 J = MaterialA.Index + MaterialB.Index + MaterialC.Index - I - K;
 
 					auto TripleIndex = FVoxelMaterialCollectionTripleIndex(I, J, K);
 

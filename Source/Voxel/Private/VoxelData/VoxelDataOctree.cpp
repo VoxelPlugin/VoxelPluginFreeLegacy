@@ -5,7 +5,7 @@
 #include "HAL/Platform.h"
 
 #include "VoxelWorldGenerator.h"
-#include "VoxelUtilities.h"
+#include "VoxelMathUtilities.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelSaveUtilities.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
@@ -176,7 +176,7 @@ void FVoxelDataOctree::GetMap(const FIntBox& Bounds, FVoxelMap& OutMap) const
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-EVoxelEmptyState FVoxelDataOctree::IsEmpty(const FIntBox& Bounds, int InLOD) const
+EVoxelEmptyState FVoxelDataOctree::IsEmpty(const FIntBox& Bounds, int32 InLOD) const
 {
 	check(Bounds.IsMultipleOf(1 << InLOD));
 
@@ -232,7 +232,7 @@ EVoxelEmptyState FVoxelDataOctree::IsEmpty(const FIntBox& Bounds, int InLOD) con
 	}
 }
 
-void FVoxelDataOctree::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& InQueryZone, int QueryLOD)
+void FVoxelDataOctree::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& InQueryZone, int32 QueryLOD)
 {
 	if (!InQueryZone.Bounds.Intersect(OctreeBounds))
 	{
@@ -259,14 +259,14 @@ void FVoxelDataOctree::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMateria
 			auto* CellValues = Cell->GetArray<FVoxelValue>();
 			auto* CellMaterials = Cell->GetArray<FVoxelMaterial>();
 
-			for (int Z : QueryZone.ZIt())
+			for (int32 Z : QueryZone.ZIt())
 			{
-				for (int Y : QueryZone.YIt())
+				for (int32 Y : QueryZone.YIt())
 				{
-					for (int X : QueryZone.XIt())
+					for (int32 X : QueryZone.XIt())
 					{
-						int Index = QueryZone.GetIndex(X, Y, Z);
-						int CellIndex = IndexFromGlobalCoordinates(X, Y, Z);
+						int32 Index = QueryZone.GetIndex(X, Y, Z);
+						int32 CellIndex = IndexFromGlobalCoordinates(X, Y, Z);
 
 						if (Values && CellValues)
 						{
@@ -306,9 +306,9 @@ void FVoxelDataOctree::ClearData()
 		check(ItemHolder);
 		ItemHolder = MakeUnique<FVoxelPlaceableItemHolder>();
 
-		if (LOD == 0)
+		if (LOD == 0 && IsCreated())
 		{
-			Cell.Reset();
+			Destroy();
 		}
 	}
 	else
@@ -372,7 +372,7 @@ void FVoxelDataOctree::Save(FVoxelSaveBuilder& Builder)
 	}
 }
 
-void FVoxelDataOctree::Load(int& Index, const FVoxelSaveLoader& Loader, TArray<FIntBox>& OutBoundsToUpdate)
+void FVoxelDataOctree::Load(int32& Index, const FVoxelSaveLoader& Loader, TArray<FIntBox>& OutBoundsToUpdate)
 {
 	if (Index == Loader.NumChunks())
 	{
@@ -483,11 +483,11 @@ bool FVoxelDataOctree::TryLock(const FIntBox& Bounds, double TimeToTimeout, FVox
 		}
 		TransactionsSection.Unlock();
 
-		for (int ChildIndex = 0; ChildIndex < 8 ; ChildIndex++)
+		for (int32 ChildIndex = 0; ChildIndex < 8 ; ChildIndex++)
 		{
 			if (!GetChild(ChildIndex).TryLock<LockType>(Bounds, TimeToTimeout, OutIds, InOutLockerName))
 			{
-				for (int Index = ChildIndex + 1; Index < 8 ; Index++)
+				for (int32 Index = ChildIndex + 1; Index < 8 ; Index++)
 				{
 					GetChild(Index).TransactionsSection.Unlock();
 				}
@@ -516,7 +516,7 @@ void FVoxelDataOctree::Unlock(FVoxelLockedOctrees& Ids)
 		}
 		else if (IsIdChild(Ids.Last()))
 		{
-			for (int Index = 8 - 1; Index >= 0; Index--)
+			for (int32 Index = 8 - 1; Index >= 0; Index--)
 			{
 				GetChild(Index).Unlock<LockType>(Ids);
 			}
@@ -546,14 +546,11 @@ void FVoxelDataOctree::CreateChildren()
 	{
 		for (auto& Child : GetChildren())
 		{
-			for (uint32 ItemId = 0; ItemId < (uint32)AllItems.Num(); ItemId++)
+			for (auto& Items : AllItems)
 			{
-				for (auto* Item : AllItems[ItemId])
+				for (auto* Item : Items)
 				{
-					if (Item->Bounds.Intersect(Child.GetBounds()))
-					{
-						Child.ItemHolder->AddItem(ItemId, Item);
-					}
+					Child.AddItem(Item);
 				}
 			}
 		}
@@ -649,12 +646,77 @@ void FVoxelDataOctree::CreateArrayAndInitFromWorldGenerator(bool bInitValues, bo
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+void FVoxelDataOctree::AddItem(FVoxelPlaceableItem* Item)
+{	
+	if (Item->Bounds.Intersect(OctreeBounds))
+	{
+		if (IsLeaf())
+		{
+			ensureThreadSafe(IsLockedForWrite());
+
+			ItemHolder->AddItem(Item);
+
+			if (LOD == 0)
+			{
+				if (IsCreated())
+				{
+					if (IsCacheOnly())
+					{
+						ClearCache();
+						ensure(!IsCreated());
+					}
+					else
+					{
+						Item->MergeWithOctree(this);
+					}
+				}
+			}
+			else if (ItemHolder->Num() > MAX_PLACEABLE_ITEMS_PER_OCTREE)
+			{
+				CreateChildren();
+			}
+		}
+		else
+		{
+			for (auto& Child : GetChildren())
+			{
+				Child.AddItem(Item);
+			}
+		}
+	}
+}
+
+void FVoxelDataOctree::RemoveItem(FVoxelPlaceableItem* Item)
+{
+	if (Item->Bounds.Intersect(OctreeBounds))
+	{
+		if (IsLeaf())
+		{
+			ensureThreadSafe(IsLockedForWrite());
+			ItemHolder->RemoveItem(Item);
+
+			if (LOD == 0 && IsCached())
+			{
+				ClearCache();
+				ensure(!IsCreated());
+			}
+		}
+		else
+		{
+			for (auto& Child : GetChildren())
+			{
+				Child.RemoveItem(Item);
+			}
+		}
+	}
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDataOctree::SaveFrame(int HistoryPosition)
+void FVoxelDataOctree::SaveFrame(int32 HistoryPosition)
 {	
 	if (IsLeaf())
 	{
@@ -673,7 +735,7 @@ void FVoxelDataOctree::SaveFrame(int HistoryPosition)
 	}
 }
 
-void FVoxelDataOctree::Undo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpdate)
+void FVoxelDataOctree::Undo(int32 HistoryPosition, TArray<FIntBox>& OutBoundsToUpdate)
 {
 	if (IsLeaf())
 	{
@@ -695,7 +757,7 @@ void FVoxelDataOctree::Undo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpd
 	}
 }
 
-void FVoxelDataOctree::Redo(int HistoryPosition, TArray<FIntBox>& OutBoundsToUpdate)
+void FVoxelDataOctree::Redo(int32 HistoryPosition, TArray<FIntBox>& OutBoundsToUpdate)
 {	
 	if (IsLeaf())
 	{

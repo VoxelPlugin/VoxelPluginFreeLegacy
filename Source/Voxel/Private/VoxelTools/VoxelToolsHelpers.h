@@ -8,6 +8,8 @@
 #include "VoxelWorld.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelDebug/VoxelDebugManager.h"
+#include "VoxelRender/IVoxelLODManager.h"
+
 #include "Logging/MessageLog.h"
 #include "Misc/CoreMisc.h"
 #include "UObject/Stack.h"

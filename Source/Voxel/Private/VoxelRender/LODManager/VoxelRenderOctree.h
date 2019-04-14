@@ -29,18 +29,15 @@ struct FVoxelRenderOctreeSettings
 	// If SquaredDistance < SquaredLODsDistances[LOD], subdivide
 	TArray<uint64> SquaredLODsDistances;
 
-	int ChunksCullingLOD;
+	int32 ChunksCullingLOD;
 
 	bool bEnableRender;
 
 	bool bEnableCollisions;
 	bool bComputeVisibleChunksCollisions;
-	int VisibleChunksCollisionsMaxLOD;
+	int32 VisibleChunksCollisionsMaxLOD;
 
 	bool bEnableNavmesh;
-
-	bool bEnableGrass;
-	uint64 SquaredGrassDistance;
 
 	bool bEnableTessellation;
 	uint64 SquaredTessellationDistance;
@@ -53,6 +50,7 @@ public:
 	TArray<FVoxelChunkToUpdate> ChunksToUpdate;
 	TArray<FVoxelChunkToRemove> ChunksToRemove;
 	TArray<FVoxelTransitionsToUpdate> TransitionsToUpdate;
+	TArray<FIntBox> ChunksWithLOD0Collisions;
 
 	TSharedPtr<FVoxelRenderOctree, ESPMode::ThreadSafe> NewOctree;
 	TSharedPtr<FVoxelRenderOctree, ESPMode::ThreadSafe> OldOctree;
@@ -91,7 +89,7 @@ private:
 	bool bTooManyChunks = false;
 	double Counter;
 	FString Log;
-	int NumberOfChunks = 0;
+	int32 NumberOfChunks = 0;
 };
 
 class FVoxelRenderOctree : public TVoxelOctree<FVoxelRenderOctree, CHUNK_SIZE>
@@ -116,7 +114,9 @@ public:
 		uint8 TransitionMask = 0;
 	}; 
 	FChunkSettings ChunkSettings;
-	int CurrentChunksCount = 0;
+	int32 CurrentChunksCount = 0;
+
+	inline const FVoxelRenderChunkSettings& GetSettings() const { return ChunkSettings.Settings; }
 
 	FVoxelRenderOctree(uint8 LOD);
 	FVoxelRenderOctree(const FVoxelRenderOctree* Source);
@@ -140,6 +140,7 @@ public:
 		TArray<FVoxelChunkToUpdate>& ChunksToUpdate,
 		TArray<FVoxelChunkToRemove>& ChunksToRemove,
 		TArray<FVoxelTransitionsToUpdate>& TransitionsToUpdate,
+		TArray<FIntBox>& ChunksWithLOD0Collisions,
 		bool bVisible = true);
 
 	void GetChunksToUpdateForBounds(const FIntBox& Bounds, TArray<uint64>& ChunksToUpdate) const;
@@ -152,7 +153,7 @@ private:
 	bool ShouldSubdivideByNeighbors(const FVoxelRenderOctreeSettings& Settings) const;
 	bool ShouldSubdivideByOthers(const FVoxelRenderOctreeSettings& Settings) const;
 	
-	const FVoxelRenderOctree* GetVisibleAdjacentChunk(EVoxelDirection Direction, int Index) const;
+	const FVoxelRenderOctree* GetVisibleAdjacentChunk(EVoxelDirection Direction, int32 Index) const;
 	
 	uint64 GetId();
 };

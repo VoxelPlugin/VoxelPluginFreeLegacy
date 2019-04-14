@@ -12,7 +12,7 @@ DECLARE_CYCLE_STAT(TEXT("UVoxelBoxTools::SetMaterialBox"), STAT_UVoxelBoxTools_S
 
 void SetValueBoxImpl(FVoxelData& Data, const FIntBox& Bounds, float Value)
 {
-	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& OldValue)
+	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& OldValue)
 	{
 		OldValue = Value;
 	});
@@ -21,7 +21,7 @@ void SetValueBoxImpl(FVoxelData& Data, const FIntBox& Bounds, float Value)
 template<bool bAdd>
 void BoxEditImpl(FVoxelData& Data, const FIntBox& Bounds)
 {
-	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int X, int Y, int Z, FVoxelValue& Value)
+	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
 	{
 		if (X == Bounds.Min.X || X == Bounds.Max.X - 1 || Y == Bounds.Min.Y || Y == Bounds.Max.Y - 1 || Z == Bounds.Min.Z || Z == Bounds.Max.Z - 1)
 		{
@@ -39,7 +39,7 @@ void BoxEditImpl(FVoxelData& Data, const FIntBox& Bounds)
 
 void SetMaterialBoxImpl(FVoxelData& Data, const FIntBox& Bounds, const FVoxelPaintMaterial& PaintMaterial)
 {
-	Data.SetValueOrMaterialLambda<FVoxelMaterial>(Bounds, [&](int X, int Y, int Z, FVoxelMaterial& Material)
+	Data.SetValueOrMaterialLambda<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
 	{
 		PaintMaterial.ApplyToMaterial(Material);
 	});

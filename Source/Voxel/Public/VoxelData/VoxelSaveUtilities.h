@@ -7,14 +7,17 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelSaveUtilities.generated.h"
 
+class FVoxelPlaceableItem;
+
 class FVoxelSaveBuilder
 {
 public:
-	FVoxelSaveBuilder(int Depth)
+	FVoxelSaveBuilder(int32 Depth)
 		: Depth(Depth)
 	{
 	}
 	void AddChunk(const FIntVector& InPosition, FVoxelValue* InValues, FVoxelMaterial* InMaterials);
+	void AddPlaceableItem(const TSharedPtr<FVoxelPlaceableItem>& PlaceableItem);
 	void Save(FVoxelUncompressedWorldSave& OutSave);
 
 private:
@@ -24,10 +27,11 @@ private:
 		FVoxelValue* Values;
 		FVoxelMaterial* Materials;
 	};
-	const int Depth;
+	const int32 Depth;
 	uint32 ChunksWithValuesCount = 0;
 	uint32 ChunksWithMaterialsCount = 0;
 	TArray<FVoxelChunkSaveTmp> TmpChunks;
+	TArray<TSharedPtr<FVoxelPlaceableItem>> PlaceableItems;
 };
 
 class FVoxelSaveLoader
@@ -38,14 +42,15 @@ public:
 	{
 	}
 	
-	void CopyChunkToBuffers(int Index, FVoxelValue* DestValues, FVoxelMaterial* DestMaterials, bool& bOutValuesAreSet, bool& bOutMaterialsAreSet) const;
+	void CopyChunkToBuffers(int32 Index, FVoxelValue* DestValues, FVoxelMaterial* DestMaterials, bool& bOutValuesAreSet, bool& bOutMaterialsAreSet) const;
+	TArray<TSharedPtr<FVoxelPlaceableItem>> GetPlaceableItems();
 
 public:
-	inline int NumChunks() const
+	inline int32 NumChunks() const
 	{
 		return Save.Chunks.Num();
 	}
-	inline FIntVector GetChunkPosition(int Index) const
+	inline FIntVector GetChunkPosition(int32 Index) const
 	{
 		return Save.Chunks[Index].Position;
 	}
