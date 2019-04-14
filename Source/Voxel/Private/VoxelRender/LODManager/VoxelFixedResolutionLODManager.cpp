@@ -2,28 +2,27 @@
 
 #include "VoxelRender/LODManager/VoxelFixedResolutionLODManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
-#include "VoxelUtilities.h"
+#include "VoxelMathUtilities.h"
 
-FVoxelFixedResolutionLODManager::FVoxelFixedResolutionLODManager(const FVoxelLODSettings& LODSettings, int ChunkLOD)
-	: IVoxelLODManager(LODSettings)
+TSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager::Create(const FVoxelLODSettings& LODSettings, int32 ChunkLOD)
 {
 	TArray<FVoxelChunkToAdd> ChunksToAdd;
 	
-	const int ChunkSize = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(ChunkLOD);
-	const FIntBox& WorldBounds = Settings.WorldBounds;
+	const int32 ChunkSize = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(ChunkLOD);
+	const FIntBox& WorldBounds = LODSettings.WorldBounds;
 
-	FIntVector Min = FVoxelIntVector::FloorToInt(FVector(WorldBounds.Min) / ChunkSize) * ChunkSize;
-	FIntVector Max = FVoxelIntVector::CeilToInt(FVector(WorldBounds.Max) / ChunkSize) * ChunkSize;
+	FIntVector Min = FVoxelUtilities::FloorToInt(FVector(WorldBounds.Min) / ChunkSize) * ChunkSize;
+	FIntVector Max = FVoxelUtilities::CeilToInt(FVector(WorldBounds.Max) / ChunkSize) * ChunkSize;
 	
 	uint64 Id = 0;
-	for (int X = Min.X; X < Max.X; X += ChunkSize)
+	for (int32 X = Min.X; X < Max.X; X += ChunkSize)
 	{
-		for (int Y = Min.Y; Y < Max.Y; Y += ChunkSize)
+		for (int32 Y = Min.Y; Y < Max.Y; Y += ChunkSize)
 		{
-			for (int Z = Min.Z; Z < Max.Z; Z += ChunkSize)
+			for (int32 Z = Min.Z; Z < Max.Z; Z += ChunkSize)
 			{
 				const FIntVector Position = FIntVector(X, Y, Z);
-				const FIntBox ChunkBounds = FVoxelUtilities::GetBoundsFromPositionAndLOD<CHUNK_SIZE>(Position, ChunkLOD);
+				const FIntBox ChunkBounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<CHUNK_SIZE>(Position, ChunkLOD);
 				if (WorldBounds.Intersect(ChunkBounds))
 				{
 					ChunksToAdd.Emplace(FVoxelChunkToAdd{
@@ -37,5 +36,7 @@ FVoxelFixedResolutionLODManager::FVoxelFixedResolutionLODManager(const FVoxelLOD
 		}
 	}
 
-	Settings.Renderer->UpdateLODs(ChunksToAdd, {}, {}, {});
+	LODSettings.Renderer->UpdateLODs(ChunksToAdd, {}, {}, {});
+	
+	return MakeShareable(new FVoxelFixedResolutionLODManager(LODSettings));
 }

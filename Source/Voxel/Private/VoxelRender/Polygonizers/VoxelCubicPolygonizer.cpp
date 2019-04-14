@@ -7,28 +7,28 @@
 #include "VoxelRender/VoxelRenderUtilities.h"
 
 
-inline FVector2D ExtractUVs(const FVector& V, EVoxelDirection Direction)
+inline FVector2D ExtractGlobalUVs(const FVector& V, EVoxelDirection Direction, float UVScale)
 {
 	switch (Direction)
 	{
 	case XMin:
-		return FVector2D(V.Y, -V.Z);
+		return FVector2D(V.Y, -V.Z) / UVScale;
 	case XMax:
-		return FVector2D(-V.Y, -V.Z);
+		return FVector2D(-V.Y, -V.Z) / UVScale;
 	case YMin:
-		return FVector2D(-V.X, -V.Z);
+		return FVector2D(-V.X, -V.Z) / UVScale;
 	case YMax:
-		return FVector2D(V.X, -V.Z);
+		return FVector2D(V.X, -V.Z) / UVScale;
 	case ZMin:
-		return FVector2D(V.X, -V.Y);
+		return FVector2D(V.X, -V.Y) / UVScale;
 	default:
 		check(Direction == ZMax);
-		return FVector2D(-V.X, -V.Y);
+		return FVector2D(-V.X, -V.Y) / UVScale;
 	}
 }
 
 template<typename TPolygonizer>
-inline void AddFace(TPolygonizer& This, int Step, const FVoxelMaterial& Material, int X, int Y, int Z, EVoxelDirection Direction, TArray<uint32>& Indices, TArray<FCubicLocalVoxelVertex>& Vertices)
+inline void AddFace(TPolygonizer& This, int32 Step, const FVoxelMaterial& Material, int32 X, int32 Y, int32 Z, EVoxelDirection Direction, TArray<uint32>& Indices, TArray<FCubicLocalVoxelVertex>& Vertices)
 {
 	FVector AP, BP, CP, DP;
 	FVector Normal;
@@ -109,18 +109,18 @@ inline void AddFace(TPolygonizer& This, int Step, const FVoxelMaterial& Material
 	{
 		Vertex.UVs = FVector2D(Material.GetR(), Material.GetG());
 	}
-	else if (This.UVConfig == EVoxelUVConfig::UseGrassAndActorIdsAsUVs)
+	else if (This.UVConfig == EVoxelUVConfig::CustomFVoxelMaterial)
 	{
-		Vertex.UVs = FVector2D(Material.GetVoxelGrassId(), Material.GetVoxelActorId());
+		Vertex.UVs = Material.GetUVs();
 	}
 
-	int A = Vertices.Num();
+	int32 A = Vertices.Num();
 	{
 		FCubicLocalVoxelVertex AV = Vertex;
 		AV.Position = (AP + P) * Step;
 		if (This.UVConfig == EVoxelUVConfig::GlobalUVs)
 		{
-			AV.UVs = ExtractUVs(AV.Position + FVector(This.ChunkPosition), Direction);
+			AV.UVs = ExtractGlobalUVs(AV.Position + FVector(This.ChunkPosition), Direction, This.UVScale);
 		}
 		else if(This.UVConfig == EVoxelUVConfig::PerVoxelUVs)
 		{			
@@ -129,13 +129,13 @@ inline void AddFace(TPolygonizer& This, int Step, const FVoxelMaterial& Material
 		Vertices.Add(AV);
 	}
 
-	int B = Vertices.Num();
+	int32 B = Vertices.Num();
 	{
 		FCubicLocalVoxelVertex BV = Vertex;
 		BV.Position = (BP + P) * Step;
 		if (This.UVConfig == EVoxelUVConfig::GlobalUVs)
 		{
-			BV.UVs = ExtractUVs(BV.Position + FVector(This.ChunkPosition), Direction);
+			BV.UVs = ExtractGlobalUVs(BV.Position + FVector(This.ChunkPosition), Direction, This.UVScale);
 		}
 		else if(This.UVConfig == EVoxelUVConfig::PerVoxelUVs)
 		{
@@ -144,13 +144,13 @@ inline void AddFace(TPolygonizer& This, int Step, const FVoxelMaterial& Material
 		Vertices.Add(BV);
 	}
 
-	int C = Vertices.Num();
+	int32 C = Vertices.Num();
 	{
 		FCubicLocalVoxelVertex CV = Vertex;
 		CV.Position = (CP + P) * Step;
 		if (This.UVConfig == EVoxelUVConfig::GlobalUVs)
 		{
-			CV.UVs = ExtractUVs(CV.Position + FVector(This.ChunkPosition), Direction);
+			CV.UVs = ExtractGlobalUVs(CV.Position + FVector(This.ChunkPosition), Direction, This.UVScale);
 		}
 		else if(This.UVConfig == EVoxelUVConfig::PerVoxelUVs)
 		{			
@@ -159,13 +159,13 @@ inline void AddFace(TPolygonizer& This, int Step, const FVoxelMaterial& Material
 		Vertices.Add(CV);
 	}
 
-	int D = Vertices.Num();
+	int32 D = Vertices.Num();
 	{
 		FCubicLocalVoxelVertex DV = Vertex;
 		DV.Position = (DP + P) * Step;
 		if (This.UVConfig == EVoxelUVConfig::GlobalUVs)
 		{
-			DV.UVs = ExtractUVs(DV.Position + FVector(This.ChunkPosition), Direction);
+			DV.UVs = ExtractGlobalUVs(DV.Position + FVector(This.ChunkPosition), Direction, This.UVScale);
 		}
 		else if(This.UVConfig == EVoxelUVConfig::PerVoxelUVs)
 		{		
@@ -225,11 +225,11 @@ bool FVoxelCubicPolygonizer::CreateChunk()
 	TArray<FCubicLocalVoxelVertex> Vertices;
 	TArray<uint32> Indices;
 
-	for (int X = 0; X < CHUNK_SIZE; X++)
+	for (int32 X = 0; X < CHUNK_SIZE; X++)
 	{
-		for (int Y = 0; Y < CHUNK_SIZE; Y++)
+		for (int32 Y = 0; Y < CHUNK_SIZE; Y++)
 		{
-			for (int Z = 0; Z < CHUNK_SIZE; Z++)
+			for (int32 Z = 0; Z < CHUNK_SIZE; Z++)
 			{
 				const FVoxelValue Value = GetValue(X, Y, Z);
 
@@ -290,16 +290,16 @@ bool FVoxelCubicTransitionsPolygonizer::CreateTransitions()
 	TArray<FCubicLocalVoxelVertex> Vertices;
 	TArray<uint32> Indices;
 
-	int DirectionIndex = -1;
+	int32 DirectionIndex = -1;
 	for (auto& Direction : { XMin, XMax, YMin, YMax, ZMin, ZMax })
 	{
 		DirectionIndex++;
 
 		if (TransitionsMask & Direction)
 		{
-			for (int LX = 0; LX < CHUNK_SIZE; LX++)
+			for (int32 LX = 0; LX < CHUNK_SIZE; LX++)
 			{
-				for (int LY = 0; LY < CHUNK_SIZE; LY++)
+				for (int32 LY = 0; LY < CHUNK_SIZE; LY++)
 				{
 					bool bBigIsFull = !GetValue(Step, Direction, LX * Step, LY * Step, 0).IsEmpty();
 
@@ -390,10 +390,10 @@ inline bool IsDirectionMax(EVoxelDirection Direction)
 	return Direction == XMax || Direction == YMax || Direction == ZMax;
 }
 
-void FVoxelCubicTransitionsPolygonizer::Add2DFace(int InStep, EVoxelDirection Direction, bool bInvert, const FVoxelMaterial& Material, int LX, int LY, TArray<FCubicLocalVoxelVertex>& Vertices, TArray<uint32>& Indices)
+void FVoxelCubicTransitionsPolygonizer::Add2DFace(int32 InStep, EVoxelDirection Direction, bool bInvert, const FVoxelMaterial& Material, int32 LX, int32 LY, TArray<FCubicLocalVoxelVertex>& Vertices, TArray<uint32>& Indices)
 {
 	auto FaceDirection = bInvert ? Direction : InverseVoxelDirection(Direction); // AddFace takes reversed directions
-	int LZ = 0;
+	int32 LZ = 0;
 	if (IsDirectionMax(FaceDirection))
 	{
 		if (IsDirectionMax(Direction))
@@ -405,7 +405,7 @@ void FVoxelCubicTransitionsPolygonizer::Add2DFace(int InStep, EVoxelDirection Di
 			LZ = -1;
 		}
 	}
-	int GX, GY, GZ;
+	int32 GX, GY, GZ;
 	Local2DToGlobal(Step / InStep * CHUNK_SIZE, Direction, LX, LY, LZ, GX, GY, GZ);
 	AddFace(*this, InStep, Material, GX, GY, GZ, FaceDirection, Indices, Vertices);
 }

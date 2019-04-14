@@ -20,26 +20,26 @@ public:
 		FVoxelValue Values[],
 		FVoxelMaterial Materials[],
 		const FVoxelWorldGeneratorQueryZone& QueryZone,
-		int QueryLOD,
+		int32 QueryLOD,
 		const FVoxelPlaceableItemHolder& ItemHolder) const final
 	{
-		for (int X : QueryZone.XIt())
+		for (int32 X : QueryZone.XIt())
 		{
-			for (int Y : QueryZone.YIt())
+			for (int32 Y : QueryZone.YIt())
 			{
-				for (int Z : QueryZone.ZIt())
+				for (int32 Z : QueryZone.ZIt())
 				{
 					SetValueAndMaterial(Values, Materials, QueryZone, QueryLOD, ItemHolder, X, Y, Z, FVoxelValue::Empty, FVoxelMaterial());
 				}
 			}
 		}
 	}
-	EVoxelEmptyState IsEmpty(const FIntBox& Bounds, int LOD) const final
+	EVoxelEmptyState IsEmpty(const FIntBox& Bounds, int32 LOD) const final
 	{
 		return EVoxelEmptyState::Unknown;
 	}
 
-	FVector GetUpVector(int X, int Y, int Z) const final
+	FVector GetUpVector(int32 X, int32 Y, int32 Z) const final
 	{
 		return WorldUpGenerator.IsValid() ? WorldUpGenerator->GetUpVector(X, Y, Z) : FVector::UpVector;
 	}

@@ -19,8 +19,8 @@ class VOXEL_API FVoxelRenderUtilities
 public:
 	inline static FVector GetTranslated(const FVector& Vertex, const FVector& Normal, uint8 TransitionsMask, uint8 LOD)
 	{
-		const int Step = 1 << LOD;
-		const int Size = CHUNK_SIZE << LOD;
+		const int32 Step = 1 << LOD;
+		const int32 Size = CHUNK_SIZE << LOD;
 		
 		const float LowerBound = Step;
 		const float UpperBound = (CHUNK_SIZE - 1) * Step;
@@ -80,7 +80,7 @@ public:
 
 	template<typename TVertex, typename TAllocatorA, typename TAllocatorB>
 	static void ConvertArrays(
-		int LOD,
+		int32 LOD,
 		EVoxelMaterialConfig MaterialConfig,
 		FVoxelMeshProcessingParameters MeshParameters,
 		TArray<uint32, TAllocatorA>&& Indices,
@@ -116,7 +116,7 @@ public:
 				{
 				}
 				 // Maximize blend (as big or a low as possible)
-				inline int GetStrength() const { return FMath::Max<int>(Blend, 255 - Blend); }
+				inline int32 GetStrength() const { return FMath::Max<int32>(Blend, 255 - Blend); }
 				inline bool operator>=(const FDoubleIndexBlend& RHS) const { return GetStrength() >= RHS.GetStrength(); }
 
 				inline bool operator==(const FDoubleIndexBlend& Other) const { return IndexA == Other.IndexA && IndexB == Other.IndexB; }
@@ -126,11 +126,11 @@ public:
 
 			TMap<FVoxelBlendedMaterial, TMap<int32, int32>> IndicesMaps;
 
-			for (int I = 0; I < Indices.Num(); I += 3)
+			for (int32 I = 0; I < Indices.Num(); I += 3)
 			{				
-				int IndexA = Indices[I];
-				int IndexB = Indices[I + 1];
-				int IndexC = Indices[I + 2];
+				int32 IndexA = Indices[I];
+				int32 IndexB = Indices[I + 1];
+				int32 IndexC = Indices[I + 2];
 
 				const TVertex& VertexA = Vertices[IndexA];
 				const TVertex& VertexB = Vertices[IndexB];
@@ -187,12 +187,12 @@ public:
 				FVoxelChunkBuffers& Buffer = OutChunk.Map.FindOrAdd(Material);
 				auto& IndicesMap = IndicesMaps.FindOrAdd(Material);
 
-				int FinalIndexA;
-				int FinalIndexB;
-				int FinalIndexC;
+				int32 FinalIndexA;
+				int32 FinalIndexB;
+				int32 FinalIndexC;
 
 				{
-					int* FinalIndexARef = IndicesMap.Find(IndexA);
+					int32* FinalIndexARef = IndicesMap.Find(IndexA);
 					if (FinalIndexARef)
 					{
 						FinalIndexA = *FinalIndexARef;
@@ -205,7 +205,7 @@ public:
 					}
 				}
 				{
-					int* FinalIndexBRef = IndicesMap.Find(IndexB);
+					int32* FinalIndexBRef = IndicesMap.Find(IndexB);
 					if (FinalIndexBRef)
 					{
 						FinalIndexB = *FinalIndexBRef;
@@ -218,7 +218,7 @@ public:
 					}
 				}
 				{
-					int* FinalIndexCRef = IndicesMap.Find(IndexC);
+					int32* FinalIndexCRef = IndicesMap.Find(IndexC);
 					if (FinalIndexCRef)
 					{
 						FinalIndexC = *FinalIndexCRef;
@@ -244,11 +244,11 @@ public:
 
 			TMap<FVoxelBlendedMaterial, TMap<int32, int32>> SingleIndicesMaps;
 
-			for (int I = 0; I < Indices.Num(); I += 3)
+			for (int32 I = 0; I < Indices.Num(); I += 3)
 			{
-				int IndexA = Indices[I];
-				int IndexB = Indices[I + 1];
-				int IndexC = Indices[I + 2];
+				int32 IndexA = Indices[I];
+				int32 IndexB = Indices[I + 1];
+				int32 IndexC = Indices[I + 2];
 
 				const TVertex& VertexA = Vertices[IndexA];
 				const TVertex& VertexB = Vertices[IndexB];
@@ -264,14 +264,14 @@ public:
 					FVoxelChunkBuffers& Buffer = OutChunk.Map.FindOrAdd(Material);
 					auto& SingleIndicesMap = SingleIndicesMaps.FindOrAdd(Material);
 
-					int* FinalIndexARef = SingleIndicesMap.Find(IndexA);
-					int FinalIndexA = FinalIndexARef ? *FinalIndexARef : SingleIndicesMap.Add(IndexA, Buffer.AddVertex(VertexA.GetProcMeshVertex()));
+					int32* FinalIndexARef = SingleIndicesMap.Find(IndexA);
+					int32 FinalIndexA = FinalIndexARef ? *FinalIndexARef : SingleIndicesMap.Add(IndexA, Buffer.AddVertex(VertexA.GetProcMeshVertex()));
 
-					int* FinalIndexBRef = SingleIndicesMap.Find(IndexB);
-					int FinalIndexB = FinalIndexBRef ? *FinalIndexBRef : SingleIndicesMap.Add(IndexB, Buffer.AddVertex(VertexB.GetProcMeshVertex()));
+					int32* FinalIndexBRef = SingleIndicesMap.Find(IndexB);
+					int32 FinalIndexB = FinalIndexBRef ? *FinalIndexBRef : SingleIndicesMap.Add(IndexB, Buffer.AddVertex(VertexB.GetProcMeshVertex()));
 
-					int* FinalIndexCRef = SingleIndicesMap.Find(IndexC);
-					int FinalIndexC = FinalIndexCRef ? *FinalIndexCRef : SingleIndicesMap.Add(IndexC, Buffer.AddVertex(VertexC.GetProcMeshVertex()));
+					int32* FinalIndexCRef = SingleIndicesMap.Find(IndexC);
+					int32 FinalIndexC = FinalIndexCRef ? *FinalIndexCRef : SingleIndicesMap.Add(IndexC, Buffer.AddVertex(VertexC.GetProcMeshVertex()));
 
 					Buffer.AddIndex(FinalIndexA);
 					Buffer.AddIndex(FinalIndexB);
@@ -291,9 +291,9 @@ public:
 
 					if (MaterialIndexA != MaterialIndexB && MaterialIndexA != MaterialIndexC && MaterialIndexB != MaterialIndexC)
 					{
-						int Min = FMath::Min(MaterialIndexA, FMath::Min(MaterialIndexB, MaterialIndexC));
-						int Max = FMath::Max(MaterialIndexA, FMath::Max(MaterialIndexB, MaterialIndexC));
-						int Med = MaterialIndexA + MaterialIndexB + MaterialIndexC - Min - Max;
+						int32 Min = FMath::Min(MaterialIndexA, FMath::Min(MaterialIndexB, MaterialIndexC));
+						int32 Max = FMath::Max(MaterialIndexA, FMath::Max(MaterialIndexB, MaterialIndexC));
+						int32 Med = MaterialIndexA + MaterialIndexB + MaterialIndexC - Min - Max;
 
 						Material = FVoxelBlendedMaterial(Min, Med, Max);
 
@@ -307,8 +307,8 @@ public:
 					}
 					else
 					{
-						int Min = FMath::Min(MaterialIndexA, FMath::Min(MaterialIndexB, MaterialIndexC));
-						int Max = FMath::Max(MaterialIndexA, FMath::Max(MaterialIndexB, MaterialIndexC));
+						int32 Min = FMath::Min(MaterialIndexA, FMath::Min(MaterialIndexB, MaterialIndexC));
+						int32 Max = FMath::Max(MaterialIndexA, FMath::Max(MaterialIndexB, MaterialIndexC));
 
 						Material = FVoxelBlendedMaterial(Min, Max);
 
@@ -350,7 +350,7 @@ public:
 	static void ResetDithering(UVoxelProceduralMeshComponent* Mesh);
 	static void HideMesh(UVoxelProceduralMeshComponent* Mesh);
 	static void CreateMeshSectionFromChunks(
-		int LOD, 
+		int32 LOD, 
 		uint64 Priority,
 		bool bShouldFade, 
 		const FVoxelRendererSettings& RendererSettings, 

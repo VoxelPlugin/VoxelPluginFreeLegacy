@@ -16,8 +16,8 @@ struct FVoxelCacheSettings
 	float DataOctreeCompactDelayInSeconds;
 	bool bEnableAutomaticCache;
 	float CacheUpdateDelayInSeconds;
-	int CacheAccessThreshold;
-	int MaxCacheSize;
+	int32 CacheAccessThreshold;
+	int32 MaxCacheSize;
 
 	TSharedPtr<FVoxelData, ESPMode::ThreadSafe> Data;
 	TSharedPtr<FVoxelDebugManager, ESPMode::ThreadSafe> DebugManager;
@@ -30,7 +30,7 @@ class VOXEL_API FVoxelCacheManager : public TSharedFromThis<FVoxelCacheManager>
 public:
 	const FVoxelCacheSettings Settings;
 
-	FVoxelCacheManager(const FVoxelCacheSettings& Settings);
+	static TSharedRef<FVoxelCacheManager> Create(const FVoxelCacheSettings& Settings);
 	~FVoxelCacheManager();
 
 	void Cache(const TArray<FIntBox>& BoundsToCache, bool bCacheValues, bool bCacheMaterials);
@@ -40,6 +40,8 @@ public:
 private:
 	TUniquePtr<FVoxelAsyncCacheWork> CacheWork;
 
+	FVoxelCacheManager(const FVoxelCacheSettings& Settings);
+	
 	void CompactOctree();
 	void UpdateCache();
 	void UpdateManualCacheProgress();

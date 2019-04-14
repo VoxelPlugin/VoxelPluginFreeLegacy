@@ -14,6 +14,10 @@ public class VoxelEditorDefault : ModuleRules
         if (!Target.bUseUnityBuild)
         {
             PrivatePCHHeaderFile = "Private/VoxelEditorDefaultPCH.h";
+#if UE_4_22_OR_LATER
+#else
+            PrivateDependencyModuleNames.Add("LivePP");
+#endif
         }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));

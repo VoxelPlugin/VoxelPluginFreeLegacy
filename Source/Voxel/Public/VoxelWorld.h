@@ -8,7 +8,7 @@
 #include "PhysicsEngine/BodyInstance.h"
 
 #include "IntBox.h"
-#include "VoxelUtilities.h"
+#include "VoxelMathUtilities.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelWorldGeneratorPicker.h"
 #include "VoxelWorldInterface.h"
@@ -27,13 +27,13 @@ class FVoxelDebugManager;
 class FVoxelMultiplayerManager;
 struct FVoxelWorldGeneratorInit;
 class UVoxelWorldSaveObject;
-class UVoxelGrassSpawner;
-class UVoxelActorSpawner;
+class UVoxelSpawnerConfig;
 class AVoxelWorldEditorInterface;
 class UVoxelMaterialCollection;
-struct FVoxelGrassSpawner;
 struct FVoxelLODDynamicSettings;
 class UVoxelProceduralMeshComponent;
+class FVoxelSpawnerManager;
+class UPrimitiveComponent;
 
 /**
  * Voxel World actor class
@@ -91,17 +91,17 @@ public:
 	bool bEnableWorldRebasing = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|General", meta = (Recreate))
-	TMap<FString, int> Seeds;
+	TMap<FString, int32> Seeds;
 
 	//////////////////////////////////////////////////////////////////////////////
 
 	// WorldSizeInVoxel = CHUNK_SIZE * 2^Depth. Has little impact on performance
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Voxel|World Size", meta = (Recreate, ClampMin = 1, ClampMax = 24, UIMin = 1, UIMax = 24))
-	int OctreeDepth = 10;
+	int32 OctreeDepth = 10;
 
 	// Size of an edge of the world
 	UPROPERTY(EditAnywhere, Category = "Voxel|World Size", meta = (Recreate, ClampMin = 1))
-	int WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(10);
+	int32 WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(10);
 
 	UPROPERTY(meta = (Recreate))
 	bool bUseCustomWorldBounds = false;
@@ -113,7 +113,7 @@ public:
 
 	// Chunks can't have a LOD strictly higher than this. Useful is background has a too low resolution. WARNING: Don't set this too low, 5 under Octree Depth should be safe
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|LOD Settings", meta = (UpdateLODs, DisplayName = "LOD Limit", ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
-	int LODLimit = MAX_WORLD_DEPTH - 1;
+	int32 LODLimit = MAX_WORLD_DEPTH - 1;
 
 	// In world space. Chunks under this distance from voxel invokers will have at least the given LOD
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|LOD Settings", meta = (UpdateLODs, DisplayName = "LOD to Min Distance"))
@@ -132,6 +132,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, UpdateAll, DisplayName = "UV Config"))
 	EVoxelUVConfig UVConfig = EVoxelUVConfig::GlobalUVs;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, UpdateAll, DisplayName = "UV Scale"))
+	float UVScale = 1;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, UpdateAll))
 	EVoxelNormalConfig NormalConfig = EVoxelNormalConfig::GradientNormal;
 	
@@ -154,7 +157,7 @@ public:
 	
 	// Tessellation distance in world space
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (UpdateLODs, ClampMin = 0, EditCondition ="bEnableTessellation"))
-	float TessellationDistance = 1000;
+	float TessellationDistance = 10000;
 
 	// Increases the chunks bounding boxes, useful when using tessellation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, UpdateAll, EditCondition ="bEnableTessellation"))
@@ -173,7 +176,7 @@ public:
 
 	// Chunks with a LOD strictly higher than this won't be rendered
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
-	int ChunksCullingLOD = MAX_WORLD_DEPTH - 1;
+	int32 ChunksCullingLOD = MAX_WORLD_DEPTH - 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (RecreateRender))
 	bool bRenderWorld = true;
@@ -197,7 +200,7 @@ public:
 
 	// Max LOD to compute collisions on. Inclusive. If not 0 collisions won't be precise
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Collisions & Navmesh", meta = (RecreateRender, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25, EditCondition = bEnableCollisions))
-	int VisibleChunksCollisionsMaxLOD = 0;
+	int32 VisibleChunksCollisionsMaxLOD = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Collisions & Navmesh", meta = (RecreateRender, EditCondition = bEnableCollisions))
 	FBodyInstance CollisionPresets;
@@ -217,16 +220,16 @@ public:
 	float CacheUpdateDelayInSeconds = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache, ClampMin = 0))
-	int CacheAccessThreshold = 8;
+	int32 CacheAccessThreshold = 8;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache))
 	bool bCacheLOD0Chunks = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache, ClampMin = 0))
-	int MaxCacheSize = 10000;
+	int32 MaxCacheSize = 10000;
 
 	UPROPERTY(VisibleAnywhere, Category = "Voxel|Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache))
-	int MaxCacheSizeInMB = 0;
+	int32 MaxCacheSizeInMB = 0;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
@@ -235,7 +238,7 @@ public:
 
 	// Number of threads allocated for the mesh processing. Setting it too high may impact performance
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Threads", meta = (Recreate, ClampMin = 1, EditCondition = "!bUseGlobalPool"))
-	int MeshThreadCount = 2;
+	int32 MeshThreadCount = 2;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
@@ -269,6 +272,8 @@ public:
 	inline FVoxelCacheManager& GetCacheManager() const { return *CacheManager; }
 	inline FVoxelDebugManager& GetDebugManager() const { return *DebugManager; }
 
+	inline UPrimitiveComponent* GetPrimitiveComponent() const { return PrimitiveComponent; }
+
 	inline const FVoxelWorldGeneratorPicker GetWorldGeneratorPicker() const { return WorldGenerator; }
 	FVoxelWorldGeneratorInit GetInitStruct() const;
 	inline TSharedPtr<FVoxelData, ESPMode::ThreadSafe> GetDataSharedPtr() const { return Data; }
@@ -281,14 +286,14 @@ public:
 
 	// Adds to existing seeds
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
-	void AddSeeds(const TMap<FString, int>& NewSeeds);
+	void AddSeeds(const TMap<FString, int32>& NewSeeds);
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
-	void AddSeed(FString Name, int Value);
+	void AddSeed(FString Name, int32 Value);
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
 	void ClearSeeds();
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|World Size")
-	void SetOctreeDepth(int NewDepth);
+	void SetOctreeDepth(int32 NewDepth);
 
 public:
 	// Is this world created?
@@ -352,8 +357,13 @@ public:
 	void UpdateCollisionProfile();
 
 private:
+#if WITH_EDITORONLY_DATA
 	UPROPERTY(Transient)
 	AActor* VoxelWorldEditor;
+#endif
+
+	UPROPERTY()
+	UPrimitiveComponent* PrimitiveComponent;
 
 	bool bIsCreated = false;
 	bool bIsPreviewing = false;
@@ -366,8 +376,6 @@ private:
 	TSharedPtr<IVoxelRenderer> Renderer;
 	TSharedPtr<IVoxelLODManager> LODManager;
 	TSharedPtr<FVoxelCacheManager> CacheManager;
-	TSharedPtr<FVoxelMultiplayerManager> MultiplayerManager;
-
 
 	TSharedRef<FIntVector> WorldOffset = MakeShared<FIntVector>(FIntVector::ZeroValue);
 	TSharedPtr<FVoxelLODDynamicSettings> LODDynamicSettings;
@@ -423,7 +431,7 @@ public:
 	virtual ~IVoxelWorldEditor() = default;
 
 	virtual UVoxelWorldSaveObject* CreateSaveObject() = 0;
-	virtual void BindEditorDelegates(AVoxelWorld* World) = 0;
+	virtual void BindEditorDelegates(UObject* Object) = 0;
 
 public:
 	// Sets the voxel world editor implementation.*

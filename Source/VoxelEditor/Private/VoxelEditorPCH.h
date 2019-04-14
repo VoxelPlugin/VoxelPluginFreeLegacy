@@ -12,6 +12,7 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Notifications/SNotificationList.h"
+#include "Framework/SlateDelegates.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailCategoryBuilder.h"
@@ -19,3 +20,5 @@
 #include "AssetTypeActions_Base.h"
 #include "SCommonEditorViewportToolbarBase.h"
 #include "EngineUtils.h"
+
+#include "AssetTools/AssetTypeActions_VoxelBase.h"

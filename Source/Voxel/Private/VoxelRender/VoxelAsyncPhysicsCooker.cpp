@@ -7,6 +7,7 @@
 #include "Physics/IPhysXCooking.h"
 #include "Physics/IPhysXCookingModule.h"
 #include "Async/Async.h"
+#include "PhysicsPublic.h"
 
 DECLARE_CYCLE_STAT(TEXT("FVoxelAsyncPhysicsCooker::WaitForCompletion"), STAT_FVoxelAsyncPhysicsCooker_WaitForCompletion, STATGROUP_Voxel);
 
@@ -29,22 +30,10 @@ inline uint64 GetUniqueId()
 }
 
 FVoxelAsyncPhysicsCooker::FVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component, UBodySetup* BodySetup)
-	: FVoxelAsyncWork(
-		"AsyncPhysicsCooker",
-		Component->Priority,
-		FVoxelAsyncWorkCallback::CreateLambda(
-			[WeakPtr = TWeakObjectPtr<UVoxelProceduralMeshComponent>(Component), this]()
-			{
-				AsyncTask(ENamedThreads::GameThread, [WeakPtr, Id = UniqueId]()
-				{
-					if (WeakPtr.IsValid())
-					{
-						WeakPtr->AsyncPhysicsCookerCallback(Id);
-					}
-				});
-			}))
-	, PhysXCooking(GetPhysXCooking())
+	: FVoxelAsyncWork("AsyncPhysicsCooker", Component->Priority)
 	, UniqueId(GetUniqueId())
+	, PhysXCooking(GetPhysXCooking())
+	, Component(Component)
 {
 	check(IsInGameThread());
 	BodySetup->GetCookInfo(CookInfo, EPhysXMeshCookFlags::Default);
@@ -58,6 +47,16 @@ void FVoxelAsyncPhysicsCooker::DoWork()
 		{
 			SuccessCounter.Increment();
 		}
+	}
+	if (!IsCanceled())
+	{
+		AsyncTask(ENamedThreads::GameThread, [Component = Component, UniqueId = UniqueId]()
+		{
+			if (Component.IsValid())
+			{
+				Component->AsyncPhysicsCookerCallback(UniqueId);
+			}
+		});
 	}
 }
 

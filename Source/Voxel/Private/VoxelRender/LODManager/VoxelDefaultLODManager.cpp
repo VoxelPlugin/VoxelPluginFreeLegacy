@@ -18,6 +18,16 @@ DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultLODManager::OnTaskFinished"), STAT_FVoxelD
 DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultLODManager::UpdateBounds"), STAT_FVoxelDefaultLODManager_UpdateBounds, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultLODManager::~FVoxelDefaultLODManager"), STAT_FVoxelDefaultLODManager_FVoxelDefaultLODManager, STATGROUP_Voxel);
 
+TSharedRef<FVoxelDefaultLODManager> FVoxelDefaultLODManager::Create(
+		const FVoxelLODSettings& LODSettings,
+		TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
+		const TSharedPtr<FVoxelLODDynamicSettings>& DynamicSettings)
+{
+	TSharedRef<FVoxelDefaultLODManager> LODManager = MakeShareable(new FVoxelDefaultLODManager(LODSettings, VoxelWorldInterface, DynamicSettings));
+	LODManager->StartTimer();
+	return LODManager;
+}
+
 FVoxelDefaultLODManager::FVoxelDefaultLODManager(
 	const FVoxelLODSettings& LODSettings,
 	TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
@@ -25,9 +35,8 @@ FVoxelDefaultLODManager::FVoxelDefaultLODManager(
 	: IVoxelLODManager(LODSettings)
 	, VoxelWorldInterface(VoxelWorldInterface)
 	, DynamicSettings(DynamicSettings)
-	, Task(MakeUnique<FVoxelRenderOctreeAsyncBuilder>(Settings.OctreeDepth, Settings.WorldBounds))
+	, Task(MakeUnique<FVoxelRenderOctreeAsyncBuilder>(LODSettings.OctreeDepth, LODSettings.WorldBounds))
 {
-	StartTimer();
 }
 
 FVoxelDefaultLODManager::~FVoxelDefaultLODManager()
@@ -107,6 +116,22 @@ void FVoxelDefaultLODManager::ForceLODsUpdate()
 	}
 }
 
+bool FVoxelDefaultLODManager::AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const
+{
+	if (!Octree.IsValid())
+	{
+		return false;
+	}
+	auto* Ptr = Octree.Get();
+	while (!Ptr->IsLeaf() && !Ptr->GetSettings().bEnableCollisions)
+	{
+		Ptr = &Ptr->GetChild(Position);
+	}
+
+	OutLOD = Ptr->LOD;
+	return Ptr->GetSettings().bEnableCollisions;
+}
+
 void FVoxelDefaultLODManager::UpdateLODs()
 {
 	SCOPE_CYCLE_COUNTER(STAT_FVoxelDefaultLODManager_UpdateLODs);
@@ -141,8 +166,6 @@ void FVoxelDefaultLODManager::UpdateLODs()
 		
 		OctreeSettings.bEnableNavmesh = DynamicSettings->bEnableNavmesh;
 
-		OctreeSettings.bEnableGrass = DynamicSettings->bEnableGrass;
-		OctreeSettings.SquaredGrassDistance = GetSquaredDistance(DynamicSettings->GrassDistance);
 		OctreeSettings.bEnableTessellation = DynamicSettings->bEnableTessellation;
 		OctreeSettings.SquaredTessellationDistance = GetSquaredDistance(DynamicSettings->TessellationDistance);
 
@@ -170,7 +193,7 @@ void FVoxelDefaultLODManager::StartTimer()
 	if (Settings.World.IsValid())
 	{
 		auto& TimerManager = Settings.World->GetTimerManager();
-		TimerManager.SetTimer(UpdateHandle, FTimerDelegate::CreateRaw(this, &FVoxelDefaultLODManager::UpdateLODs), 1.f / Settings.LODUpdateRate, false); // Can't use CreateSP as we are calling it in the constructor
+		TimerManager.SetTimer(UpdateHandle, FTimerDelegate::CreateSP(this, &FVoxelDefaultLODManager::UpdateLODs), 1.f / Settings.LODUpdateRate, false);
 	}
 }
 
@@ -228,15 +251,16 @@ bool FVoxelDefaultLODManager::UpdateInvokers()
 			InvokerSettings.SquaredCollisionsRange = GetSquaredDistance(Invoker->CollisionsRange);
 			InvokerSettings.bUseForNavmesh = Invoker->bUseForNavmesh;
 			InvokerSettings.SquaredNavmeshRange = GetSquaredDistance(Invoker->NavmeshRange);
+			InvokerSettings.SquaredGenerationRange = GetSquaredDistance(Invoker->GenerationRange);
 			Invokers.Emplace(InvokerSettings);
 		}
 		
 		SquaredLODsDistances.SetNum(MAX_WORLD_DEPTH);
 		auto& LODToMinDistance = DynamicSettings->LODToMinDistance;
-		for (int Index = 1; Index < MAX_WORLD_DEPTH; Index++)
+		for (int32 Index = 1; Index < MAX_WORLD_DEPTH; Index++)
 		{
 			// -1: We want to divide LOD 2 if LOD _1_ min distance isn't met, not if LOD _2_ min distance isn't met
-			int CurrentLOD = Index - 1;
+			int32 CurrentLOD = Index - 1;
 			while (!LODToMinDistance.Contains(CurrentLOD))
 			{
 				check(CurrentLOD > 0);

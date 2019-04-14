@@ -32,9 +32,9 @@ namespace FVoxelDataUtilities
 			Map.Compact();
 		}
 
-		inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int QueryLOD)
+		inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int32 QueryLOD)
 		{
-			FIntVector Position = FVoxelIntVector::DivideFloor(FIntVector(X, Y, Z), VOXEL_CELL_SIZE);
+			FIntVector Position = FVoxelUtilities::DivideFloor(FIntVector(X, Y, Z), VOXEL_CELL_SIZE);
 			if (!LastQuery.bValid || LastQuery.Position != Position)
 			{
 				LastQuery.Position = Position;
@@ -50,23 +50,23 @@ namespace FVoxelDataUtilities
 				Data.GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial, QueryLOD);
 			}
 		}
-		inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int QueryLOD) { GetValueAndMaterial(X, Y, Z, &OutValue, &OutMaterial, QueryLOD); }
+		inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int32 QueryLOD) { GetValueAndMaterial(X, Y, Z, &OutValue, &OutMaterial, QueryLOD); }
 
-		inline FVoxelValue GetValue(int X, int Y, int Z, int QueryLOD)
+		inline FVoxelValue GetValue(int32 X, int32 Y, int32 Z, int32 QueryLOD)
 		{
 			FVoxelValue Value;
 			GetValueAndMaterial(X, Y, Z, &Value, nullptr, QueryLOD);
 			return Value;
 		}
-		inline FVoxelValue GetValue(const FIntVector& P, int QueryLOD) { return GetValue(P.X, P.Y, P.Z, QueryLOD); }
+		inline FVoxelValue GetValue(const FIntVector& P, int32 QueryLOD) { return GetValue(P.X, P.Y, P.Z, QueryLOD); }
 
-		inline FVoxelMaterial GetMaterial(int X, int Y, int Z, int QueryLOD)
+		inline FVoxelMaterial GetMaterial(int32 X, int32 Y, int32 Z, int32 QueryLOD)
 		{
 			FVoxelMaterial Material;
 			GetValueAndMaterial(X, Y, Z, nullptr, &Material, QueryLOD);
 			return Material;
 		}
-		inline FVoxelMaterial GetMaterial(const FIntVector& P, int QueryLOD) { return GetMaterial(P.X, P.Y, P.Z, QueryLOD); }
+		inline FVoxelMaterial GetMaterial(const FIntVector& P, int32 QueryLOD) { return GetMaterial(P.X, P.Y, P.Z, QueryLOD); }
 	};
 
 	/**
@@ -84,7 +84,7 @@ namespace FVoxelDataUtilities
 		{
 		}
 
-		inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int QueryLOD)
+		inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int32 QueryLOD)
 		{
 			if (UNLIKELY(!Data.IsInWorld(X, Y, Z)))
 			{
@@ -100,7 +100,7 @@ namespace FVoxelDataUtilities
 			}
 		}
 		template<typename T>
-		void SetValueOrMaterial(int X, int Y, int Z, const T& Value)
+		void SetValueOrMaterial(int32 X, int32 Y, int32 Z, const T& Value)
 		{
 			if (UNLIKELY(!Data.IsInWorld(X, Y, Z)))
 			{
@@ -113,19 +113,19 @@ namespace FVoxelDataUtilities
 			LastOctree->SetValueOrMaterial<T>(X, Y, Z, Value);
 		}
 
-		inline void GetValueAndMaterial(int X, int Y, int Z, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int QueryLOD) { GetValueAndMaterial(X, Y, Z, &OutValue, &OutMaterial, QueryLOD); }
-		inline void GetValueAndMaterial(const FIntVector& P, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int QueryLOD) { GetValueAndMaterial(P.X, P.Y, P.Z, &OutValue, &OutMaterial, QueryLOD); }
+		inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int32 QueryLOD) { GetValueAndMaterial(X, Y, Z, &OutValue, &OutMaterial, QueryLOD); }
+		inline void GetValueAndMaterial(const FIntVector& P, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int32 QueryLOD) { GetValueAndMaterial(P.X, P.Y, P.Z, &OutValue, &OutMaterial, QueryLOD); }
 
-		inline FVoxelValue GetValue(int X, int Y, int Z, int QueryLOD) { FVoxelValue Value; GetValueAndMaterial(X, Y, Z, &Value, nullptr, QueryLOD); return Value; }
-		inline FVoxelValue GetValue(const FIntVector& P, int QueryLOD) { return GetValue(P.X, P.Y, P.Z, QueryLOD); }
+		inline FVoxelValue GetValue(int32 X, int32 Y, int32 Z, int32 QueryLOD) { FVoxelValue Value; GetValueAndMaterial(X, Y, Z, &Value, nullptr, QueryLOD); return Value; }
+		inline FVoxelValue GetValue(const FIntVector& P, int32 QueryLOD) { return GetValue(P.X, P.Y, P.Z, QueryLOD); }
 
-		inline FVoxelMaterial GetMaterial(int X, int Y, int Z, int QueryLOD) { FVoxelMaterial Material; GetValueAndMaterial(X, Y, Z, nullptr, &Material, QueryLOD); return Material; }
-		inline FVoxelMaterial GetMaterial(const FIntVector& P, int QueryLOD) { return GetMaterial(P.X, P.Y, P.Z, QueryLOD); }
+		inline FVoxelMaterial GetMaterial(int32 X, int32 Y, int32 Z, int32 QueryLOD) { FVoxelMaterial Material; GetValueAndMaterial(X, Y, Z, nullptr, &Material, QueryLOD); return Material; }
+		inline FVoxelMaterial GetMaterial(const FIntVector& P, int32 QueryLOD) { return GetMaterial(P.X, P.Y, P.Z, QueryLOD); }
 
-		inline void SetValue(int X, int Y, int Z, FVoxelValue Value) { SetValueOrMaterial<FVoxelValue>(X, Y, Z, Value); }
+		inline void SetValue(int32 X, int32 Y, int32 Z, FVoxelValue Value) { SetValueOrMaterial<FVoxelValue>(X, Y, Z, Value); }
 		inline void SetValue(const FIntVector& P, FVoxelValue Value) { SetValueOrMaterial<FVoxelValue>(P.X, P.Y, P.Z, Value); }
 
-		inline void SetMaterial(int X, int Y, int Z, FVoxelMaterial Material) { SetValueOrMaterial<FVoxelMaterial>(X, Y, Z, Material); }
+		inline void SetMaterial(int32 X, int32 Y, int32 Z, FVoxelMaterial Material) { SetValueOrMaterial<FVoxelMaterial>(X, Y, Z, Material); }
 		inline void SetMaterial(const FIntVector& P, FVoxelMaterial Material) { SetValueOrMaterial<FVoxelMaterial>(P.X, P.Y, P.Z, Material); }
 	};
 	
@@ -133,7 +133,7 @@ namespace FVoxelDataUtilities
 	 * Requires read lock in FIntBox(Position - Offset, Position + Offset + 1)
 	 */
 	template<typename T>
-	inline FVector GetGradient(T& Data, int X, int Y, int Z, int QueryLOD, int Offset = 1)
+	inline FVector GetGradient(T& Data, int32 X, int32 Y, int32 Z, int32 QueryLOD, int32 Offset = 1)
 	{
 		FVector Gradient;
 		Gradient.X = Data.GetValue(X + Offset, Y, Z, QueryLOD).ToFloat() - Data.GetValue(X - Offset, Y, Z, QueryLOD).ToFloat();
@@ -142,7 +142,7 @@ namespace FVoxelDataUtilities
 		return Gradient.GetSafeNormal();
 	}
 	template<typename T>
-	inline FVector GetGradient(T& Data, const FIntVector& P, int QueryLOD)
+	inline FVector GetGradient(T& Data, const FIntVector& P, int32 QueryLOD)
 	{
 		return GetGradient(Data, P.X, P.Y, P.Z, QueryLOD);
 	}

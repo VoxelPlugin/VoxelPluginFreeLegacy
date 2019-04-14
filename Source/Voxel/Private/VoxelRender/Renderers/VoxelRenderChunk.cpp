@@ -12,9 +12,10 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TimerManager.h"
 
+DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::Destroy"), STAT_VoxelRenderChunk_Destroy, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::EndTasks"), STAT_VoxelRenderChunk_EndTasks, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateSettings"), STAT_VoxelRenderChunk_UpdateSettings, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateSettings::BuildTessellation"), STAT_VoxelRenderChunk_UpdateSettings_BuildAdjacency, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("BuildTessellation"), STAT_VoxelRenderChunk_BuildAdjacency, STATGROUP_Voxel);
 
 DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateFromMeshTask"), STAT_VoxelRenderChunk_UpdateFromMeshTask, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FVoxelRenderChunk::UpdateFromTransitionsTask"), STAT_VoxelRenderChunk_UpdateFromTransitionsTask, STATGROUP_Voxel);
@@ -55,6 +56,8 @@ FVoxelRenderChunk::~FVoxelRenderChunk()
 
 void FVoxelRenderChunk::Destroy()
 {
+	SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_Destroy);
+
 	bDestroyed = true;
 	// Release previous chunks, as else they have an invalid ref to Render
 	PreviousChunks.Reset();
@@ -121,10 +124,9 @@ void FVoxelRenderChunk::CancelDithering()
 
 void FVoxelRenderChunk::RecomputeMeshPosition()
 {
-	FVector WorldPosition = Renderer->Settings.GetChunkRelativePosition(Position);
 	if (Mesh)
 	{
-		Mesh->SetRelativeLocation(WorldPosition);
+		Renderer->SetMeshPosition(Mesh, Position);
 	}
 }
 
@@ -150,11 +152,6 @@ void FVoxelRenderChunk::UpdateSettings(const FVoxelRenderChunkSettings& NewSetti
 		if (ChunkMaterials.IsValid())
 		{
 			ChunkMaterials->Reset();
-		}
-		if (MainChunk.IsValid())
-		{
-			SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_UpdateSettings_BuildAdjacency);
-			MainChunk->IterateOnBuffers([](auto& Buffer) { Buffer.BuildAdjacency(); });
 		}
 	}
 
@@ -298,7 +295,6 @@ bool FVoxelRenderChunk::TryToUpdateFromMeshTask()
 
 		MainChunk = MeshTask.Get()->Chunk;
 
-
 		Renderer->DecreaseTaskCount();
 		MeshTask.Reset();
 
@@ -362,6 +358,27 @@ void FVoxelRenderChunk::UpdateMeshFromChunks()
 		{
 			ChunkMaterials = MakeUnique<FVoxelChunkMaterials>();
 		}
+		
+		if (Settings.bEnableCollisions)
+		{
+			SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_BuildAdjacency);
+			auto BuildAdjacency = [](auto& Buffer)
+			{
+				if (!Buffer.HasAdjacency())
+				{
+					Buffer.BuildAdjacency();
+				}
+			};
+			if (MainChunk.IsValid())
+			{
+				MainChunk->IterateOnBuffers(BuildAdjacency);
+			}
+			if (TransitionsChunk.IsValid())
+			{
+				TransitionsChunk->IterateOnBuffers(BuildAdjacency);
+			}
+		}
+
 		FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 			LOD,
 			GetPriority(),
@@ -424,6 +441,3 @@ void FVoxelRenderChunk::StartTransitionsUpdate()
 	}
 	bTransitionsUpdateQueued = false;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-

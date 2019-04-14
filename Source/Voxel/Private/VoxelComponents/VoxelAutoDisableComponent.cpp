@@ -1,12 +1,14 @@
 // Copyright 2019 Phyronnaz
 
 #include "VoxelComponents/VoxelAutoDisableComponent.h"
+#include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelWorld.h"
-#include "Kismet/GameplayStatics.h"
-#include "Logging/MessageLog.h"
-#include "EngineUtils.h"
 
-DECLARE_CYCLE_STAT(TEXT("VoxelAutoDisableComponent::Tick"), STAT_VoxelAutoDisable_Tick, STATGROUP_Voxel);
+#include "EngineUtils.h"
+#include "TimerManager.h"
+#include "Components/PrimitiveComponent.h"
+
+DECLARE_CYCLE_STAT(TEXT("VoxelAutoDisableComponent::Tick"), STAT_VoxelAutoDisableComponent_Tick, STATGROUP_Voxel);
 
 UVoxelAutoDisableComponent::UVoxelAutoDisableComponent()
 {
@@ -24,77 +26,82 @@ void UVoxelAutoDisableComponent::BeginPlay()
 		{
 			if (PrimitiveComponent->IsSimulatingPhysics())
 			{
-				PrimitiveComponents.Add(PrimitiveComponent);
+				PrimitiveComponentsWithPhysicsEnabled.Add(PrimitiveComponent);
 			}
 		}
 	}
 
-	if (!bAutoFindWorld)
+	if (PrimitiveComponentsWithPhysicsEnabled.Num() == 0)
 	{
-		ensure(InGameWorlds.Num() == 0);
-		InGameWorlds.Add(DefaultWorld);
+		SetComponentTickEnabled(false);
 	}
+
+	SetComponentTickInterval(TickInterval);
 }
 
 
 void UVoxelAutoDisableComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	SCOPE_CYCLE_COUNTER(STAT_VoxelAutoDisable_Tick);
+	SCOPE_CYCLE_COUNTER(STAT_VoxelAutoDisableComponent_Tick);
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (PrimitiveComponents.Num())
+	if (PrimitiveComponentsWithPhysicsEnabled.Num() == 0)
 	{
-		InGameWorlds.RemoveAll([](auto& X) { return !X.IsValid(); });
+		return;
+	}
 
-		if (bAutoFindWorld && InGameWorlds.Num() == 0)
+	bool bShouldSimulatePhysics = false;
+	FVector Position = GetOwner()->GetActorLocation();
+	for (TActorIterator<AVoxelWorld> It(GetWorld()); It; ++It)
+	{
+		auto* World = *It;
+		auto LocalPosition = World->GlobalToLocal(Position);
+		auto& LODManager = World->GetLODManager();
+		if (LODManager.Settings.WorldBounds.IsInside(LocalPosition))
 		{
-			for (TActorIterator<AVoxelWorld> It(GetWorld()); It; ++It)
+			uint8 LOD;
+			if (LODManager.AreCollisionsEnabled(LocalPosition, LOD) && LOD <= MaxVoxelChunksLODForPhysics)
 			{
-				if (IsValid(*It))
-				{
-					InGameWorlds.Add(*It);
-				}
-			}
-
-			if (InGameWorlds.Num() == 0)
-			{
-				FMessageLog("PIE").Error(FText::FromString("VoxelAutoDisableComponent: No world found (actor: " + GetOwner()->GetName() + ")"));
+				bShouldSimulatePhysics = true;
+				break;
 			}
 		}
-
-		if (InGameWorlds.Num() > 0)
+	}
+	if (bArePhysicsEnabled != bShouldSimulatePhysics)
+	{
+		if (bShouldSimulatePhysics)
 		{
-			FVector Position = GetOwner()->GetActorLocation();
-			int MinLOD = 255;
-			for (auto& GameWorld : InGameWorlds)
+			if (!bWaitingToBeActivated)
 			{
-				FIntVector LocalPosition = GameWorld->GlobalToLocal(Position);
-				/*if (GameWorld->GetData().IsInWorld(LocalPosition)) TODO
-				{
-					MinLOD = FMath::Min(MinLOD, GameWorld->GetLODAt(LocalPosition));
-				}*/
-			}
-			bool bShouldSimulatePhysics = MinLOD <= MaxLODForPhysics;
-			if (bPhysicsEnabled != bShouldSimulatePhysics)
-			{
-				if (bShouldSimulatePhysics && TimeUntilActivation > 0)
-				{
-					TimeUntilActivation -= DeltaTime;
-				}
-				else
-				{
-					if (!bShouldSimulatePhysics)
-					{
-						TimeUntilActivation = TimeToWaitBeforeActivating;
-					}
-					bPhysicsEnabled = bShouldSimulatePhysics;
-					for (auto& Component : PrimitiveComponents)
-					{
-						Component->SetSimulatePhysics(bPhysicsEnabled);
-					}
-				}
+				auto& TimerManager = GetWorld()->GetTimerManager();
+				TimerManager.SetTimer(Handle, this, &UVoxelAutoDisableComponent::ActivatePhysics, TimeToWaitBeforeActivating);
+				bWaitingToBeActivated = true;
 			}
 		}
+		else
+		{
+			if (bWaitingToBeActivated)
+			{
+				auto& TimerManager = GetWorld()->GetTimerManager();
+				TimerManager.ClearTimer(Handle);
+				bWaitingToBeActivated = false;
+			}
+			bArePhysicsEnabled = false;
+			for (auto& Component : PrimitiveComponentsWithPhysicsEnabled)
+			{
+				Component->SetSimulatePhysics(false);
+			}
+		}
+	}
+}
+
+void UVoxelAutoDisableComponent::ActivatePhysics()
+{
+	bWaitingToBeActivated = false;
+	bArePhysicsEnabled = true;
+	for (auto& Component : PrimitiveComponentsWithPhysicsEnabled)
+	{
+		Component->SetSimulatePhysics(true);
 	}
 }

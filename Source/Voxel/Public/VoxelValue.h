@@ -17,7 +17,7 @@ struct VOXEL_API FVoxelValue
 
 public:
 	FVoxelValue() : F(0) {}
-    FVoxelValue(float InValue) : F(FMath::Clamp<int>(FMath::RoundToInt(FMath::Clamp<float>(InValue, -1, 1) * MAX_VOXELVALUE), MIN_int16, MAX_int16)) {}
+    FVoxelValue(float InValue) : F(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Clamp<float>(InValue, -1, 1) * MAX_VOXELVALUE), MIN_int16, MAX_int16)) {}
 
 public:
 	inline bool IsNull() const { return F == 0; }

@@ -7,7 +7,10 @@
 class FVoxelCubicPolygonizerAsyncWork : public FVoxelPolygonizerAsyncWork
 {
 public:
-	using FVoxelPolygonizerAsyncWork::FVoxelPolygonizerAsyncWork;
+	FVoxelCubicPolygonizerAsyncWork(FVoxelRenderChunk* Chunk)
+		: FVoxelPolygonizerAsyncWork(Chunk, "FVoxelCubicPolygonizerAsyncWork")
+	{
+	}
 		
 protected:
 	TSharedRef<FVoxelPolygonizerBase> GetPolygonizer() final;
@@ -17,7 +20,10 @@ protected:
 class FVoxelCubicTransitionsPolygonizerAsyncWork : public FVoxelTransitionsPolygonizerAsyncWork
 {
 public:	
-	using FVoxelTransitionsPolygonizerAsyncWork::FVoxelTransitionsPolygonizerAsyncWork;
+	FVoxelCubicTransitionsPolygonizerAsyncWork(FVoxelRenderChunk* Chunk)
+		: FVoxelTransitionsPolygonizerAsyncWork(Chunk, "FVoxelCubicTransitionsPolygonizerAsyncWork")
+	{
+	}
 		
 protected:
 	TSharedRef<FVoxelPolygonizerBase> GetPolygonizer() final;

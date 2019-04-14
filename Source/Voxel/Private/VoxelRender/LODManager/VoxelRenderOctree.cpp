@@ -3,7 +3,7 @@
 #include "VoxelRenderOctree.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "Async/Async.h"
-#include "VoxelUtilities.h"
+#include "VoxelMathUtilities.h"
 #include "VoxelRender/IVoxelLODManager.h"
 
 DECLARE_MEMORY_STAT(TEXT("Voxel Render Octrees Memory"), STAT_VoxelRenderOctreesMemory, STATGROUP_VoxelMemory);
@@ -54,6 +54,7 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 	ChunksToUpdate.Reset();
 	ChunksToRemove.Reset();
 	TransitionsToUpdate.Reset();
+	ChunksWithLOD0Collisions.Reset();
 	NewOctree.Reset();
 	LOG_TIME("\tResetting arrays");
 
@@ -69,7 +70,7 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 
 	if (bChanged)
 	{
-		int UpdateSubdividedByNeighborsCounter = 0;
+		int32 UpdateSubdividedByNeighborsCounter = 0;
 		while (NewOctree->UpdateSubdividedByNeighbors(OctreeSettings)) { UpdateSubdividedByNeighborsCounter++; }
 		LOG_TIME("\tUpdateSubdividedByNeighbors");
 		Log += "; Iterations: " + FString::FromInt(UpdateSubdividedByNeighborsCounter);
@@ -85,7 +86,7 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 	NewOctree->DeleteChunks(ChunksToRemove);
 	LOG_TIME("\tDeleteChunks");
 
-	NewOctree->GetUpdates(bChanged, OctreeSettings, ChunksToAdd, ChunksToUpdate, ChunksToRemove, TransitionsToUpdate);
+	NewOctree->GetUpdates(bChanged, OctreeSettings, ChunksToAdd, ChunksToUpdate, ChunksToRemove, TransitionsToUpdate, ChunksWithLOD0Collisions);
 	LOG_TIME("\tGetUpdates");
 
 	if(OldOctree.IsValid())
@@ -398,6 +399,7 @@ void FVoxelRenderOctree::GetUpdates(
 	TArray<FVoxelChunkToUpdate>& ChunksToUpdate,
 	TArray<FVoxelChunkToRemove>& ChunksToRemove,
 	TArray<FVoxelTransitionsToUpdate>& TransitionsToUpdate,
+	TArray<FIntBox>& ChunksWithLOD0Collisions,
 	bool bInVisible)
 {
 	CHECK_MAX_CHUNKS_COUNT();
@@ -431,7 +433,7 @@ void FVoxelRenderOctree::GetUpdates(
 
 		for (auto& Child : GetChildren())
 		{
-			Child.GetUpdates(bRecomputeTransitionMasks, Settings, ChunksToAdd, ChunksToUpdate, ChunksToRemove, TransitionsToUpdate, bChildrenVisible);
+			Child.GetUpdates(bRecomputeTransitionMasks, Settings, ChunksToAdd, ChunksToUpdate, ChunksToRemove, TransitionsToUpdate, ChunksWithLOD0Collisions, bChildrenVisible);
 		}
 	}
 
@@ -453,20 +455,18 @@ void FVoxelRenderOctree::GetUpdates(
 			[](auto& X) { return X.bUseForNavmesh; }, 
 			[](auto& X) { return X.SquaredNavmeshRange; });
 
-	NewSettings.bEnableGrass = 
-		Settings.bEnableGrass && 
-		LOD == 0 && 
-		NewSettings.bVisible && 
-		IsInRange(this, Settings.Invokers, 
-			[](auto& X) { return X.bUseForLODs; }, 
-			[&](auto&) { return Settings.SquaredGrassDistance; });
-
 	NewSettings.bEnableTessellation = 
 		Settings.bEnableTessellation && 
 		NewSettings.bVisible && 
 		IsInRange(this, Settings.Invokers, 
 			[](auto& X) { return X.bUseForLODs; }, 
 			[&](auto&) { return Settings.SquaredTessellationDistance; });
+
+	NewSettings.bForceRender = 
+		LOD == 0 &&
+		IsInRange(this, Settings.Invokers, 
+			[](auto& X) { return true; }, 
+			[](auto& X) { return X.SquaredGenerationRange; });
 
 	if (NewSettings.IsRendered())
 	{
@@ -513,6 +513,11 @@ void FVoxelRenderOctree::GetUpdates(
 		{
 			ChunksToRemove.Emplace(FVoxelChunkToRemove{ ChunkId });
 		}
+	}
+
+	if (LOD == 0 && NewSettings.bEnableCollisions)
+	{
+		ChunksWithLOD0Collisions.Add(OctreeBounds);
 	}
 	
 	ChunkSettings.Settings = NewSettings;
@@ -618,7 +623,7 @@ bool FVoxelRenderOctree::ShouldSubdivideByNeighbors(const FVoxelRenderOctreeSett
 	}
 	for (auto& Direction : { XMin, XMax, YMin, YMax, ZMin, ZMax })
 	{
-		for (int Index = 0; Index < 4; Index++) // Iterate the 4 adjacent subdivided chunks
+		for (int32 Index = 0; Index < 4; Index++) // Iterate the 4 adjacent subdivided chunks
 		{
 			const FVoxelRenderOctree* AdjacentChunk = GetVisibleAdjacentChunk(Direction, Index);
 			if (!AdjacentChunk)
@@ -662,7 +667,11 @@ bool FVoxelRenderOctree::ShouldSubdivideByOthers(const FVoxelRenderOctreeSetting
 		||
 		(Settings.bEnableNavmesh &&	IsInRange(this, Settings.Invokers,
 			[](auto& X) { return X.bUseForNavmesh; },
-			[](auto& X) { return X.SquaredNavmeshRange; })))
+			[](auto& X) { return X.SquaredNavmeshRange; }))
+		||
+		IsInRange(this, Settings.Invokers,
+			[](auto& X) { return true; },
+			[](auto& X) { return X.SquaredGenerationRange; }))
 	{
 		return true;
 	}
@@ -677,13 +686,13 @@ inline bool IsVisibleParent(const FVoxelRenderOctree* Chunk)
 	return Chunk->ChunkSettings.DivisionType == FVoxelRenderOctree::EDivisionType::ByDistance || Chunk->ChunkSettings.DivisionType == FVoxelRenderOctree::EDivisionType::ByNeighbors;
 }
 
-const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDirection Direction, int Index) const
+const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDirection Direction, int32 Index) const
 {
-	int HalfSize = Size() / 2;
-	int HalfHalfSize = Size() / 4;
+	int32 HalfSize = Size() / 2;
+	int32 HalfHalfSize = Size() / 4;
 
-	int S = HalfSize + HalfHalfSize; // Size / 2: on the border; Size / 4: center of child chunk
-	int X, Y;
+	int32 S = HalfSize + HalfHalfSize; // Size / 2: on the border; Size / 4: center of child chunk
+	int32 X, Y;
 	if (Index & 0x1)
 	{
 		X = -HalfHalfSize;

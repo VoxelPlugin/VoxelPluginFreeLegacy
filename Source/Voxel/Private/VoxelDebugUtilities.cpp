@@ -36,11 +36,11 @@ void UVoxelDebugUtilities::DebugVoxelsInsideBounds(
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	for (int X = Bounds.Min.X; X < Bounds.Max.X; X++)
+	for (int32 X = Bounds.Min.X; X < Bounds.Max.X; X++)
 	{
-		for (int Y = Bounds.Min.Y; Y < Bounds.Max.Y; Y++)
+		for (int32 Y = Bounds.Min.Y; Y < Bounds.Max.Y; Y++)
 		{
-			for (int Z = Bounds.Min.Z; Z < Bounds.Max.Z; Z++)
+			for (int32 Z = Bounds.Min.Z; Z < Bounds.Max.Z; Z++)
 			{
 				DrawDebugIntBox(World, FIntBox(X, Y, Z), Lifetime, Thickness, Color);
 

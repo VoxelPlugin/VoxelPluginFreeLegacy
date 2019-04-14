@@ -18,20 +18,20 @@ public:
 	}
 
 	//~ Begin FVoxelWorldGeneratorInstance Interface
-	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int QueryLOD, const FVoxelPlaceableItemHolder& ItemHolder) const final
+	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int32 QueryLOD, const FVoxelPlaceableItemHolder& ItemHolder) const final
 	{
-		for (int X : QueryZone.XIt())
+		for (int32 X : QueryZone.XIt())
 		{
-			for (int Y : QueryZone.YIt())
+			for (int32 Y : QueryZone.YIt())
 			{
-				for (int Z : QueryZone.ZIt())
+				for (int32 Z : QueryZone.ZIt())
 				{
 					SetValueAndMaterial(Values, Materials, QueryZone, QueryLOD, ItemHolder, X, Y, Z, GetSphereValue(X, Y, Z), Material);
 				}
 			}
 		}
 	}
-	void GetValueAndMaterialInternal(int X, int Y, int Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int QueryLOD, const FVoxelPlaceableItemHolder& ItemHolder) const final
+	void GetValueAndMaterialInternal(int32 X, int32 Y, int32 Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int32 QueryLOD, const FVoxelPlaceableItemHolder& ItemHolder) const final
 	{
 		if (OutValue)
 		{
@@ -42,7 +42,7 @@ public:
 			*OutMaterial = Material;
 		}
 	}
-	FVector GetUpVector(int X, int Y, int Z) const final
+	FVector GetUpVector(int32 X, int32 Y, int32 Z) const final
 	{
 		return FVector(X, Y, Z).GetSafeNormal();
 	}
@@ -53,7 +53,7 @@ private:
 	const FVoxelMaterial Material;
 	const bool bInverseOutsideInside;
 
-	inline FVoxelValue GetSphereValue(int X, int Y, int Z) const
+	inline FVoxelValue GetSphereValue(int32 X, int32 Y, int32 Z) const
 	{
 		// Distance to the center
 		float Distance = FVector(X, Y, Z).Size();

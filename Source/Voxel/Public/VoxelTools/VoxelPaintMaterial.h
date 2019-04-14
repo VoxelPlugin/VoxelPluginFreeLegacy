@@ -13,9 +13,7 @@ enum class EVoxelPaintMaterialType
 	RGBA,
 	Index,
 	DoubleIndexSet,
-	DoubleIndexBlend,
-	Grass,
-	Actor
+	DoubleIndexBlend
 };
 
 USTRUCT()
@@ -130,22 +128,12 @@ struct VOXEL_API FVoxelPaintMaterial
 			}
 			if (Index == Material.GetIndexA())
 			{
-				Material.SetBlend(FMath::Clamp(FMath::RoundToInt(FMath::Lerp<int>(Material.GetBlend(), 0, Amount)), 0, 255));
+				Material.SetBlend(FMath::Clamp(FMath::RoundToInt(FMath::Lerp<int32>(Material.GetBlend(), 0, Amount)), 0, 255));
 			}
 			else if (Index == Material.GetIndexB())
 			{
-				Material.SetBlend(FMath::Clamp(FMath::RoundToInt(FMath::Lerp<int>(Material.GetBlend(), 255, Amount)), 0, 255));
+				Material.SetBlend(FMath::Clamp(FMath::RoundToInt(FMath::Lerp<int32>(Material.GetBlend(), 255, Amount)), 0, 255));
 			}
-		}
-		case EVoxelPaintMaterialType::Grass:
-		{
-			Material.SetVoxelGrassId(Index);
-			break;
-		}
-		case EVoxelPaintMaterialType::Actor:
-		{
-			Material.SetVoxelActorId(Index);
-			break;
 		}
 		default:
 			check(false);

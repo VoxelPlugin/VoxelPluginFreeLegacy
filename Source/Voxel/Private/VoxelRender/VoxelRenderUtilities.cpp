@@ -7,8 +7,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 
 DECLARE_CYCLE_STAT(TEXT("FVoxelRenderUtilities::CreateMeshSectionFromChunks"), STAT_FVoxelRenderUtilities_CreateMeshSectionFromChunks, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("FVoxelRenderUtilities::CreateMeshSectionFromChunks.AddTransitions"), STAT_FVoxelRenderUtilities_CreateMeshSectionFromChunks_AddTransitions, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("FVoxelRenderUtilities::CreateMeshSectionFromChunks.SetBuffers"), STAT_FVoxelRenderUtilities_CreateMeshSectionFromChunks_SetBuffers, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("AddTransitions"), STAT_FVoxelRenderUtilities_CreateMeshSectionFromChunks_AddTransitions, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("SetBuffers"), STAT_FVoxelRenderUtilities_CreateMeshSectionFromChunks_SetBuffers, STATGROUP_Voxel);
 
 static TAutoConsoleVariable<int32> CVarShowLODs(
 	TEXT("voxel.ShowLODs"),
@@ -22,7 +22,7 @@ static TAutoConsoleVariable<int32> CVarShowInvisibleChunks( //TODO: Tick in debu
 	TEXT("If true, will show chunks used only for collisions/navmesh"),
 	ECVF_Default);
 
-inline FColor GetLODColor(int LOD)
+inline FColor GetLODColor(int32 LOD)
 {
 	static const TArray<FColor> Colors = { FColor::Red, FColor::Green, FColor::Blue, FColor::Yellow, FColor::Cyan, FColor::Magenta, FColor::Orange, FColor::Purple, FColor::Turquoise, FColor::Emerald };
 	return Colors[LOD % Colors.Num()];
@@ -45,7 +45,7 @@ inline FColor GetChunkSettingsColor(const FVoxelRenderChunkSettings& Settings)
 	return FColor::White;
 }
 
-inline UMaterialInstanceDynamic* InitializeMaterialInstance(int LOD, bool bShouldFade, UVoxelProceduralMeshComponent* Mesh, UMaterialInterface* Interface, float ChunksDitheringDuration)
+inline UMaterialInstanceDynamic* InitializeMaterialInstance(int32 LOD, bool bShouldFade, UVoxelProceduralMeshComponent* Mesh, UMaterialInterface* Interface, float ChunksDitheringDuration)
 {
 	UMaterialInstanceDynamic* MaterialInstance = UMaterialInstanceDynamic::Create(Interface, Mesh);
 	MaterialInstance->AddToCluster(Mesh, true);
@@ -110,11 +110,14 @@ inline void AddTransitions(
 	const FVoxelChunkBuffers& TransitionChunkBuffers,
 	uint8 TransitionsMask, 
 	bool bTranslateVertices,
-	int LOD)
+	int32 LOD,
+	bool bEnableTessellation)
 {
 	SCOPE_CYCLE_COUNTER(STAT_FVoxelRenderUtilities_CreateMeshSectionFromChunks_AddTransitions);
 
-	int VertexCount = MainChunkBuffers.GetNumVertices() + TransitionChunkBuffers.GetNumVertices();
+	check(!bEnableTessellation || MainChunkBuffers.HasAdjacency() == TransitionChunkBuffers.HasAdjacency());
+
+	int32 VertexCount = MainChunkBuffers.GetNumVertices() + TransitionChunkBuffers.GetNumVertices();
 
 	// Reserve
 	Section.Indices.Reserve(MainChunkBuffers.Indices.Num() + TransitionChunkBuffers.Indices.Num());
@@ -128,10 +131,13 @@ inline void AddTransitions(
 
 	// Main
 	Section.Indices.Append(MainChunkBuffers.Indices);
-	Section.AdjacencyIndices.Append(MainChunkBuffers.AdjacencyIndices);
-	
+	if (bEnableTessellation)
+	{
+		Section.AdjacencyIndices.Append(MainChunkBuffers.AdjacencyIndices);
+	}
+
 	Section.Positions.AddUninitialized(MainChunkBuffers.GetNumVertices());
-	for (int I = 0; I < MainChunkBuffers.GetNumVertices(); I++)
+	for (int32 I = 0; I < MainChunkBuffers.GetNumVertices(); I++)
 	{
 		Section.Positions[I] = (bTranslateVertices && TransitionsMask) ? FVoxelRenderUtilities::GetTranslated(MainChunkBuffers.Positions[I], MainChunkBuffers.Normals[I], TransitionsMask, LOD) : MainChunkBuffers.Positions[I];
 	}
@@ -141,24 +147,29 @@ inline void AddTransitions(
 	Section.TextureCoordinates.Append(MainChunkBuffers.TextureCoordinates);
 
 	// Transition
-	int VertexOffset = MainChunkBuffers.GetNumVertices();
-	int IndexOffset = MainChunkBuffers.Indices.Num();
+	int32 VertexOffset = MainChunkBuffers.GetNumVertices();
+	int32 IndexOffset = MainChunkBuffers.Indices.Num();
 	Section.Indices.AddUninitialized(TransitionChunkBuffers.Indices.Num());
-	for (int I = 0; I < TransitionChunkBuffers.Indices.Num(); I++)
+	for (int32 I = 0; I < TransitionChunkBuffers.Indices.Num(); I++)
 	{
 		Section.Indices[IndexOffset + I] = VertexOffset + TransitionChunkBuffers.Indices[I];
 	}
-	int AdjacencyIndexOffset = MainChunkBuffers.AdjacencyIndices.Num();
-	Section.AdjacencyIndices.AddUninitialized(TransitionChunkBuffers.AdjacencyIndices.Num());
-	for (int I = 0; I < TransitionChunkBuffers.AdjacencyIndices.Num(); I++)
+	if (bEnableTessellation)
 	{
-		Section.AdjacencyIndices[AdjacencyIndexOffset + I] = VertexOffset + TransitionChunkBuffers.AdjacencyIndices[I];
+		int32 AdjacencyIndexOffset = MainChunkBuffers.AdjacencyIndices.Num();
+		Section.AdjacencyIndices.AddUninitialized(TransitionChunkBuffers.AdjacencyIndices.Num());
+		for (int32 I = 0; I < TransitionChunkBuffers.AdjacencyIndices.Num(); I++)
+		{
+			Section.AdjacencyIndices[AdjacencyIndexOffset + I] = VertexOffset + TransitionChunkBuffers.AdjacencyIndices[I];
+		}
 	}
 	Section.Positions.Append(TransitionChunkBuffers.Positions);
 	Section.Normals.Append(TransitionChunkBuffers.Normals);
 	Section.Tangents.Append(TransitionChunkBuffers.Tangents);
 	Section.Colors.Append(TransitionChunkBuffers.Colors);
 	Section.TextureCoordinates.Append(TransitionChunkBuffers.TextureCoordinates);
+
+	check(bEnableTessellation || Section.AdjacencyIndices.Num() == 0);
 }
 
 inline void SetBuffers(FVoxelProcMeshSection& Section, const FVoxelChunkBuffers& Buffers)
@@ -187,7 +198,7 @@ inline UMaterialInterface* GetDebugMaterial()
 	return Material.Get();
 }
 
-inline void ApplyDebugSettings(FVoxelProcMeshSection& Section, int LOD, const FVoxelRenderChunkSettings& ChunkSettings)
+inline void ApplyDebugSettings(FVoxelProcMeshSection& Section, int32 LOD, const FVoxelRenderChunkSettings& ChunkSettings)
 {
 	if (CVarShowLODs.GetValueOnAnyThread())
 	{
@@ -211,7 +222,7 @@ inline void ApplyDebugSettings(FVoxelProcMeshSection& Section, int LOD, const FV
 }
 
 void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
-	int LOD,
+	int32 LOD,
 	uint64 Priority,
 	bool bShouldFade,
 	const FVoxelRendererSettings& RendererSettings, 
@@ -227,7 +238,7 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 	check(Mesh);
 	check(MainChunk.IsValid());
 
-	const int ChunkSize = CHUNK_SIZE << LOD;
+	const int32 ChunkSize = CHUNK_SIZE << LOD;
 	const bool bTranslateVertices = RendererSettings.RenderType == EVoxelRenderType::MarchingCubes;
 	const float BoundsExtension = ChunkSettings.bEnableTessellation ? RendererSettings.TessellationBoundsExtension : 0;
 	const FBox SectionBounds = FBox(-FVector::OneVector * (1 + BoundsExtension), (ChunkSize + 2 + BoundsExtension) * FVector::OneVector);
@@ -243,13 +254,20 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 		UMaterialInterface* MaterialInstance = ChunkMaterials.GetSingleMaterial();
 		if (!MaterialInstance)
 		{
-			MaterialInstance = InitializeMaterialInstance(LOD, bShouldFade, Mesh, RendererSettings.GetVoxelMaterial(ChunkSettings.bEnableTessellation, LOD), RendererSettings.ChunksDitheringDuration);
+			MaterialInstance = InitializeMaterialInstance(LOD, bShouldFade, Mesh, RendererSettings.GetVoxelMaterial(ChunkSettings.bEnableTessellation), RendererSettings.ChunksDitheringDuration);
 			ChunkMaterials.SetSingleMaterial(MaterialInstance);
 			bNeedMaterialUpdate = true;
 		}
 		if (TransitionChunk.IsValid())
 		{
-			AddTransitions(Section, MainChunk->SingleBuffers, TransitionChunk->SingleBuffers, TransitionsMask, bTranslateVertices, LOD);
+			AddTransitions(
+				Section, 
+				MainChunk->SingleBuffers, 
+				TransitionChunk->SingleBuffers, 
+				TransitionsMask, 
+				bTranslateVertices, 
+				LOD, 
+				ChunkSettings.bEnableTessellation);
 		}
 		else
 		{
@@ -280,7 +298,7 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 			}
 		}
 
-		int SectionIndex = 0;
+		int32 SectionIndex = 0;
 		for (auto& Material : MaterialsSet)
 		{
 			FVoxelProcMeshSection Section;
@@ -288,7 +306,7 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 			UMaterialInterface* MaterialInstance = ChunkMaterials.GetMultipleMaterial(Material);
 			if (!MaterialInstance)
 			{
-				MaterialInstance = InitializeMaterialInstance(LOD, bShouldFade, Mesh, RendererSettings.GetVoxelMaterial(ChunkSettings.bEnableTessellation, LOD, Material), RendererSettings.ChunksDitheringDuration);
+				MaterialInstance = InitializeMaterialInstance(LOD, bShouldFade, Mesh, RendererSettings.GetVoxelMaterial(Material, ChunkSettings.bEnableTessellation), RendererSettings.ChunksDitheringDuration);
 				ChunkMaterials.SetMultipleMaterial(Material, MaterialInstance);
 				bNeedMaterialUpdate = true;
 			}
@@ -299,7 +317,14 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 			{
 				if (TransitionBuffers)
 				{
-					AddTransitions(Section, *MainBuffers, *TransitionBuffers, TransitionsMask, bTranslateVertices, LOD);
+					AddTransitions(
+						Section, 
+						*MainBuffers, 
+						*TransitionBuffers, 
+						TransitionsMask, 
+						bTranslateVertices, 
+						LOD,
+						ChunkSettings.bEnableTessellation);
 				}
 				else
 				{

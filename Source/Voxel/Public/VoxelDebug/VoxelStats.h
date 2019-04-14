@@ -23,12 +23,16 @@ struct FVoxelStatsElement
 	FVoxelStatsElement() = default;
 
 	void StartStat(const FName& Name, bool bIsActiveWork = true);
+	inline void StartStatString(const FString& String, bool bIsActiveWork = true)
+	{
+		StartStat(*String, bIsActiveWork);
+	}
 
-	void SetLOD(int LOD);
+	void SetLOD(int32 LOD);
 	void SetType(EVoxelStatsType Type);
 	void SetIsEmpty(bool bIsEmpty);
-	void SetNumIndices(int NumIndices);
-	void SetNumVertices(int NumVertices);
+	void SetNumIndices(int32 NumIndices);
+	void SetNumVertices(int32 NumVertices);
 	void SetMaterialConfig(EVoxelMaterialConfig MaterialConfig);
 	void SetIsCanceled(bool bIsCanceled);
 
@@ -84,10 +88,8 @@ private:
 class FVoxelStats
 {
 public:
-	static void AddElement(FVoxelStatsElement Element);
-
+	static void AddElement(const FVoxelStatsElement& Element);
 	static void StopRecordingAndSaveStatsFile();
-
 	static void StartRecording();
 
 private:
@@ -100,23 +102,24 @@ struct FVoxelStatsElement
 {
 	FVoxelStatsElement() = default;
 	
-	void StartStat(const FName& Name, bool bIsActiveWork = true) {}
+	inline void StartStat(const FName& Name, bool bIsActiveWork = true) {}
+	inline void StartStatString(const FString& Name, bool bIsActiveWork = true) {}
 
-	void SetLOD(int LOD) {}
-	void SetType(EVoxelStatsType Type) {}
-	void SetIsEmpty(bool bIsEmpty) {}
-	void SetNumIndices(int NumIndices) {}
-	void SetNumVertices(int NumVertices) {}
-	void SetMaterialConfig(EVoxelMaterialConfig MaterialConfig) {}
-	void SetIsCanceled(bool bIsCanceled) {}
+	inline void SetLOD(int32 LOD) {}
+	inline void SetType(EVoxelStatsType Type) {}
+	inline void SetIsEmpty(bool bIsEmpty) {}
+	inline void SetNumIndices(int32 NumIndices) {}
+	inline void SetNumVertices(int32 NumVertices) {}
+	inline void SetMaterialConfig(EVoxelMaterialConfig MaterialConfig) {}
+	inline void SetIsCanceled(bool bIsCanceled) {}
 };
 
 class FVoxelStats
 {
 public:
-	static void AddElement(const FVoxelStatsElement& Element) {}
-	static void StopRecordingAndSaveStatsFile() {}
-	static void StartRecording() {}
+	inline static void AddElement(const FVoxelStatsElement& Element) {}
+	inline static void StopRecordingAndSaveStatsFile() {}
+	inline static void StartRecording() {}
 };
 #endif
 

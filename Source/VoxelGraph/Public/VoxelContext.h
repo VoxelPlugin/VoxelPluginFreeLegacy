@@ -9,12 +9,12 @@
 struct VOXELGRAPH_API FVoxelContext
 {
 	const FVoxelPlaceableItemHolder& ItemHolder;
-	const int LOD;
+	const int32 LOD;
 	int32 X;
 	int32 Y;
 	int32 Z;
 
-	FVoxelContext(const FVoxelPlaceableItemHolder& ItemHolder, int LOD, int X = 0, int Y = 0, int Z = 0)
+	FVoxelContext(const FVoxelPlaceableItemHolder& ItemHolder, int32 LOD, int32 X = 0, int32 Y = 0, int32 Z = 0)
 		: ItemHolder(ItemHolder)
 		, LOD(LOD)
 		, X(X)
@@ -23,7 +23,7 @@ struct VOXELGRAPH_API FVoxelContext
 	{
 	}
 
-	FVoxelContext(int X, int Y, int Z)
+	FVoxelContext(int32 X, int32 Y, int32 Z)
 		: ItemHolder(StaticItem)
 		, LOD(0)
 		, X(X)
@@ -47,7 +47,7 @@ private:
 
 struct VOXELGRAPH_API FVoxelContextRange
 {
-	const int LOD;
+	const int32 LOD;
 	TVoxelRange<int32> X;
 	TVoxelRange<int32> Y;
 	TVoxelRange<int32> Z;
@@ -60,7 +60,7 @@ struct VOXELGRAPH_API FVoxelContextRange
 		, Z(0)
 	{
 	}
-	FVoxelContextRange(int LOD, TVoxelRange<int32> X, TVoxelRange<int32> Y, TVoxelRange<int32> Z )
+	FVoxelContextRange(int32 LOD, TVoxelRange<int32> X, TVoxelRange<int32> Y, TVoxelRange<int32> Z )
 		: LOD(LOD)
 		, X(X)
 		, Y(Y)

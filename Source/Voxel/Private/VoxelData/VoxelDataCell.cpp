@@ -9,7 +9,7 @@ void FVoxelDataCellUndoRedo::ClearFrames()
 	RedoFramesStack.Empty();
 }
 
-void FVoxelDataCellUndoRedo::SaveFrame(int HistoryPosition)
+void FVoxelDataCellUndoRedo::SaveFrame(int32 HistoryPosition)
 {
 	if (!CurrentFrame->IsEmpty())
 	{
@@ -27,7 +27,7 @@ void FVoxelDataCellUndoRedo::SaveFrame(int HistoryPosition)
 	}
 }
 
-bool FVoxelDataCellUndoRedo::TryUndo(FVoxelDataCell* Cell, int HistoryPosition)
+bool FVoxelDataCellUndoRedo::TryUndo(FVoxelDataCell* Cell, int32 HistoryPosition)
 {
 	check(CurrentFrame->IsEmpty());
 
@@ -36,14 +36,14 @@ bool FVoxelDataCellUndoRedo::TryUndo(FVoxelDataCell* Cell, int HistoryPosition)
 		auto* Values    = Cell->GetArray<FVoxelValue>();
 		auto* Materials = Cell->GetArray<FVoxelMaterial>();
 
-		TUniquePtr<Frame> UndoFrame = UndoFramesStack.Pop();
+		TUniquePtr<Frame> UndoFrame = UndoFramesStack.Pop(false);
 		TUniquePtr<Frame> RedoFrame = MakeUnique<Frame>();
 		RedoFrame->HistoryPosition = HistoryPosition + 1;
 
 		check(!UndoFrame->IsEmpty());
 
 		RedoFrame->ModifiedValues.SetNumUninitialized(UndoFrame->ModifiedValues.Num());
-		for (int I = UndoFrame->ModifiedValues.Num() - 1; I >= 0; I--) // Reversed because we are modifying Values array
+		for (int32 I = UndoFrame->ModifiedValues.Num() - 1; I >= 0; I--) // Reversed because we are modifying Values array
 		{
 			auto& M = UndoFrame->ModifiedValues[I];
 			RedoFrame->ModifiedValues[I] = TModifiedValue<FVoxelValue>(M.Index, Values[M.Index]);
@@ -51,7 +51,7 @@ bool FVoxelDataCellUndoRedo::TryUndo(FVoxelDataCell* Cell, int HistoryPosition)
 		}
 
 		RedoFrame->ModifiedMaterials.SetNumUninitialized(UndoFrame->ModifiedMaterials.Num());
-		for (int I = UndoFrame->ModifiedMaterials.Num() - 1; I >= 0; I--) // Reversed because we are modifying Materials array
+		for (int32 I = UndoFrame->ModifiedMaterials.Num() - 1; I >= 0; I--) // Reversed because we are modifying Materials array
 		{
 			auto& M = UndoFrame->ModifiedMaterials[I];
 			RedoFrame->ModifiedMaterials[I] = TModifiedValue<FVoxelMaterial>(M.Index, Materials[M.Index]);
@@ -68,7 +68,7 @@ bool FVoxelDataCellUndoRedo::TryUndo(FVoxelDataCell* Cell, int HistoryPosition)
 	}
 }
 
-bool FVoxelDataCellUndoRedo::TryRedo(FVoxelDataCell* Cell, int HistoryPosition)
+bool FVoxelDataCellUndoRedo::TryRedo(FVoxelDataCell* Cell, int32 HistoryPosition)
 {
 	check(CurrentFrame->IsEmpty());
 
@@ -77,14 +77,14 @@ bool FVoxelDataCellUndoRedo::TryRedo(FVoxelDataCell* Cell, int HistoryPosition)
 		auto* Values    = Cell->GetArray<FVoxelValue>();
 		auto* Materials = Cell->GetArray<FVoxelMaterial>();
 
-		TUniquePtr<Frame> RedoFrame = RedoFramesStack.Pop();
+		TUniquePtr<Frame> RedoFrame = RedoFramesStack.Pop(false);
 		TUniquePtr<Frame> UndoFrame = MakeUnique<Frame>();
 		UndoFrame->HistoryPosition = HistoryPosition - 1;
 
 		check(!RedoFrame->IsEmpty());
 
 		UndoFrame->ModifiedValues.SetNumUninitialized(RedoFrame->ModifiedValues.Num());
-		for (int I = RedoFrame->ModifiedValues.Num() - 1; I >= 0; I--) // Reversed because we are modifying Values array
+		for (int32 I = RedoFrame->ModifiedValues.Num() - 1; I >= 0; I--) // Reversed because we are modifying Values array
 		{
 			auto& M = RedoFrame->ModifiedValues[I];
 			UndoFrame->ModifiedValues[I] = TModifiedValue<FVoxelValue>(M.Index, Values[M.Index]);
@@ -92,7 +92,7 @@ bool FVoxelDataCellUndoRedo::TryRedo(FVoxelDataCell* Cell, int HistoryPosition)
 		}
 
 		UndoFrame->ModifiedMaterials.SetNumUninitialized(RedoFrame->ModifiedMaterials.Num());
-		for (int I = RedoFrame->ModifiedMaterials.Num() - 1; I >= 0; I--) // Reversed because we are modifying Materials array
+		for (int32 I = RedoFrame->ModifiedMaterials.Num() - 1; I >= 0; I--) // Reversed because we are modifying Materials array
 		{
 			auto& M = RedoFrame->ModifiedMaterials[I];
 			UndoFrame->ModifiedMaterials[I] = TModifiedValue<FVoxelMaterial>(M.Index, Materials[M.Index]);

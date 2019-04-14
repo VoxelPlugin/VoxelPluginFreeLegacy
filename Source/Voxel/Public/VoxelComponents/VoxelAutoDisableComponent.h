@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Components/PrimitiveComponent.h"
+#include "Engine/EngineTypes.h"
 #include "VoxelAutoDisableComponent.generated.h"
 
-class AVoxelWorld;
+class UPrimitiveComponent;
 
 /**
  * Disable physics on actors that are out of the Voxel World collision range
@@ -20,20 +20,16 @@ class VOXEL_API UVoxelAutoDisableComponent : public UActorComponent
 public:
 	UVoxelAutoDisableComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	bool bAutoFindWorld = true;
-
-	// Set automatically if bAutoFindWorld
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (EditCondition = "!bAutoFindWorld", DisplayName = "World"))
-	AVoxelWorld* DefaultWorld;
-
 	// Inclusive
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (AdvancedDisplay, ClampMin = "0", ClampMax = "25", UIMin = "0", UIMax = "25"), DisplayName = "Max LOD For Collisions")
-	uint8 MaxLODForPhysics = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (ClampMin = "0", ClampMax = "24", UIMin = "0", UIMax = "24"), DisplayName = "Max LOD For Physics")
+	uint8 MaxVoxelChunksLODForPhysics = 0;
 
-	// Delay to allow physics cooking
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (AdvancedDisplay))
-	float TimeToWaitBeforeActivating = 10;
+	// Delay to allow the voxel chunks collisions to be updated. In seconds
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	float TimeToWaitBeforeActivating = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	float TickInterval = 0.1;
 
 protected:
 	//~ Begin UActorComponent Interface
@@ -42,8 +38,10 @@ protected:
 	//~ End UActorComponent Interface
 
 private:
-	TArray<UPrimitiveComponent*> PrimitiveComponents;
-	float TimeUntilActivation = 0;
-	TArray<TWeakObjectPtr<AVoxelWorld>> InGameWorlds;
-	bool bPhysicsEnabled = true;
+	TArray<UPrimitiveComponent*> PrimitiveComponentsWithPhysicsEnabled;
+	bool bArePhysicsEnabled = true;
+	FTimerHandle Handle;
+	bool bWaitingToBeActivated = false;
+
+	void ActivatePhysics();
 };

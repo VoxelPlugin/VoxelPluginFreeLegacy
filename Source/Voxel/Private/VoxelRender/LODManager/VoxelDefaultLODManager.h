@@ -9,26 +9,24 @@
 class FVoxelRenderOctreeAsyncBuilder;
 class FVoxelRenderOctree;
 class UVoxelInvokerComponent;
+class AVoxelWorldInterface;
 
 struct FVoxelLODDynamicSettings
 {
-	int LODLimit;
+	int32 LODLimit;
 	TMap<uint8, float> LODToMinDistance;
 	
 	float InvokerDistanceThreshold;
 	
-	int ChunksCullingLOD;
+	int32 ChunksCullingLOD;
 
 	bool bEnableRender;
 
 	bool bEnableCollisions;
 	bool bComputeVisibleChunksCollisions;
-	int VisibleChunksCollisionsMaxLOD;
+	int32 VisibleChunksCollisionsMaxLOD;
 	
 	bool bEnableNavmesh;
-
-	bool bEnableGrass;
-	float GrassDistance; // In cm
 
 	bool bEnableTessellation;
 	float TessellationDistance; // In cm
@@ -44,12 +42,14 @@ struct FVoxelInvoker
 	
 	bool bUseForNavmesh;
 	uint64 SquaredNavmeshRange;
+
+	uint64 SquaredGenerationRange;
 };
 
 class FVoxelDefaultLODManager : public IVoxelLODManager, public TSharedFromThis<FVoxelDefaultLODManager>
 {
 public:
-	FVoxelDefaultLODManager(
+	static TSharedRef<FVoxelDefaultLODManager> Create(
 		const FVoxelLODSettings& LODSettings,
 		TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
 		const TSharedPtr<FVoxelLODDynamicSettings>& DynamicSettings);
@@ -59,9 +59,15 @@ public:
 	virtual void UpdateBounds(const TArray<FIntBox>& Bounds, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) final;
 	virtual void UpdatePosition(const FIntVector& Position, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) final;
 
-	void ForceLODsUpdate() override;
+	virtual void ForceLODsUpdate() final;
+	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const final;
 
 private:
+	FVoxelDefaultLODManager(
+		const FVoxelLODSettings& LODSettings,
+		TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
+		const TSharedPtr<FVoxelLODDynamicSettings>& DynamicSettings);
+
 	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
 	const TSharedPtr<FVoxelLODDynamicSettings> DynamicSettings;
 

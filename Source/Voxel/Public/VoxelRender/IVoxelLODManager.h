@@ -8,14 +8,14 @@
 class IVoxelRenderer;
 class IVoxelPool;
 class FVoxelDebugManager;
-class AVoxelWorldInterface;
+class FVoxelSpawnerManager;
 
 DECLARE_DELEGATE_OneParam(FVoxelOnUpdateFinished, FIntBox);
 
 struct FVoxelLODSettings
 {
 	float VoxelSize;
-	int OctreeDepth;
+	int32 OctreeDepth;
 	FIntBox WorldBounds;
 	float LODUpdateRate;
 	
@@ -43,4 +43,6 @@ public:
 	virtual void UpdateBounds(const FIntBox& Bounds, bool bWaitForAllChunksToFinishUpdating = false, const FVoxelOnUpdateFinished& FinishDelegate = FVoxelOnUpdateFinished()) = 0;
 	
 	virtual void ForceLODsUpdate() = 0;
+
+	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const = 0;
 };

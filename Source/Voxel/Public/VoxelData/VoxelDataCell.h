@@ -71,12 +71,12 @@ template<> inline FVoxelMaterial*& FVoxelDataCell::GetArrayRef<FVoxelMaterial>()
 
 namespace FVoxelDataCellUtilities
 {
-	inline FVoxelCellIndex IndexFromCoordinates(int X, int Y, int Z)
+	inline FVoxelCellIndex IndexFromCoordinates(int32 X, int32 Y, int32 Z)
 	{
 		checkVoxelSlow(0 <= X && X < VOXEL_CELL_SIZE && 0 <= Y && Y < VOXEL_CELL_SIZE && 0 <= Z && Z < VOXEL_CELL_SIZE);
 		return X + VOXEL_CELL_SIZE * Y + VOXEL_CELL_SIZE * VOXEL_CELL_SIZE * Z;
 	}
-	inline void CoordinatesFromIndex(FVoxelCellIndex Index, int& OutX, int& OutY, int& OutZ)
+	inline void CoordinatesFromIndex(FVoxelCellIndex Index, int32& OutX, int32& OutY, int32& OutZ)
 	{
 		checkVoxelSlow(0 <= Index && Index < VOXEL_CELL_COUNT);
 		OutZ = Index / (VOXEL_CELL_SIZE * VOXEL_CELL_SIZE);
@@ -85,7 +85,7 @@ namespace FVoxelDataCellUtilities
 		Index -= OutY;
 		OutX = Index;
 	}
-	inline int GetCacheSizeInMB(int CacheSize)
+	inline int32 GetCacheSizeInMB(int32 CacheSize)
 	{
 		return FMath::CeilToInt((double)CacheSize * (sizeof(FVoxelDataCell) + VOXEL_CELL_COUNT * sizeof(FVoxelValue)) / (1 << 20)); // 1 MB;
 	}
@@ -111,21 +111,21 @@ public:
 			DEC_MEMORY_STAT_BY(STAT_VoxelUndoRedoMemory, GetAllocatedSize());
 		}
 
-		int HistoryPosition = -1;
+		int32 HistoryPosition = -1;
 		TArray<TModifiedValue<FVoxelValue   >> ModifiedValues;
 		TArray<TModifiedValue<FVoxelMaterial>> ModifiedMaterials;
 
 		template<typename T> inline TArray<TModifiedValue<T>>& GetModified();
 
-		inline int GetAllocatedSize() const { return sizeof(Frame) + ModifiedValues.GetAllocatedSize() + ModifiedMaterials.GetAllocatedSize(); }
+		inline int32 GetAllocatedSize() const { return sizeof(Frame) + ModifiedValues.GetAllocatedSize() + ModifiedMaterials.GetAllocatedSize(); }
 		inline bool IsEmpty() const { return ModifiedValues.Num() == 0 && ModifiedMaterials.Num() == 0; }
 	};
 
 public:
 	void ClearFrames();
-	void SaveFrame(int HistoryPosition);
-	bool TryUndo(FVoxelDataCell* Cell, int HistoryPosition);
-	bool TryRedo(FVoxelDataCell* Cell,int HistoryPosition);
+	void SaveFrame(int32 HistoryPosition);
+	bool TryUndo(FVoxelDataCell* Cell, int32 HistoryPosition);
+	bool TryRedo(FVoxelDataCell* Cell,int32 HistoryPosition);
 	bool IsCurrentFrameEmpty() const { return CurrentFrame->IsEmpty(); }
 	
 	template<typename T>

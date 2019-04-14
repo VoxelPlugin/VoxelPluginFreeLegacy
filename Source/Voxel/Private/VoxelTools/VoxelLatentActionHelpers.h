@@ -3,13 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelWorld.h"
+#include "IVoxelPool.h"
+#include "VoxelRender/IVoxelLODManager.h"
+
 #include "LatentActions.h"
-#include "Misc/IQueuedWork.h"
 #include "Engine/LatentActionManager.h"
 #include "Engine/Engine.h"
 #include "Misc/QueuedThreadPool.h"
-#include "VoxelWorld.h"
-#include "IVoxelPool.h"
+#include "Misc/IQueuedWork.h"
 
 class FVoxelData;
 

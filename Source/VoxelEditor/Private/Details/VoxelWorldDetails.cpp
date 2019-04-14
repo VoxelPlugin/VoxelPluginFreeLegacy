@@ -16,9 +16,12 @@
 #include "DesktopPlatformModule.h"
 #include "HAL/PlatformFilemanager.h"
 #include "Misc/FileHelper.h"
+#include "Misc/MessageDialog.h"
 #include "Widgets/Input/SButton.h"
 #include "Serialization/BufferArchive.h"
 #include "Serialization/MemoryReader.h"
+#include "DetailLayoutBuilder.h"
+#include "Editor.h"
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
@@ -29,7 +32,14 @@ TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
 
 void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
-	World = FVoxelEditorDetailsUtils::GetCurrentObjectFromDetails<AVoxelWorld>(DetailLayout);
+	FVoxelEditorDetailsUtils::EnableRealtime();
+	TArray<TWeakObjectPtr<UObject>> Objects;
+	DetailLayout.GetObjectsBeingCustomized(Objects);
+	if (Objects.Num() != 1)
+	{
+		return;
+	}
+	World = CastChecked<AVoxelWorld>(Objects[0].Get());;
 	World->UpdateCollisionProfile();
 	World->PostEditChange();
 
@@ -47,13 +57,28 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		check(false);
 		break;
 	}
+
+	switch (World->UVConfig)
+	{
+	case EVoxelUVConfig::GlobalUVs:
+		break;
+	case EVoxelUVConfig::UseRGAsUVs:
+	case EVoxelUVConfig::PackWorldUpInUVs:
+	case EVoxelUVConfig::PerVoxelUVs:
+	case EVoxelUVConfig::CustomFVoxelMaterial:
+		DetailLayout.HideProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, UVScale));
+		break;
+	default:
+		check(false);
+		break;
+	}
 	
-	TSharedRef<IPropertyHandle> PropertiesHandle = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, MaterialConfig));
 	FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([&DetailLayout]()
 	{			
 		DetailLayout.ForceRefreshDetails();
 	});
-	PropertiesHandle->SetOnPropertyValueChanged(RefreshDelegate);
+	DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, MaterialConfig))->SetOnPropertyValueChanged(RefreshDelegate);
+	DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, UVConfig))->SetOnPropertyValueChanged(RefreshDelegate);
 
 	if (World->GetWorld()) // Could be BP details
 	{

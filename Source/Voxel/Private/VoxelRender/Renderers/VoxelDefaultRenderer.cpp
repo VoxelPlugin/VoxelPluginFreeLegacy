@@ -86,33 +86,30 @@ void FVoxelChunkToRemoveAfterDithering::SetMeshRelativeLocation(const FVector& L
 DECLARE_MEMORY_STAT(TEXT("Voxel Chunks To Delete Memory"), STAT_VoxelChunksToDeleteMemory, STATGROUP_VoxelMemory);
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Chunks To Delete Count"), STAT_VoxelChunksToDeleteCount, STATGROUP_VoxelMemory);
 
-FVoxelChunkToDelete::FVoxelChunkToDelete(FVoxelRenderChunk& OldRenderChunk, bool bDontRemoveMeshAndCallChunkInstead)
+DECLARE_CYCLE_STAT(TEXT("FVoxelChunkToDelete::~FVoxelChunkToDelete"), STAT_FVoxelChunkToDelete_FVoxelChunkToDelete_Destructor, STATGROUP_Voxel);
+
+FVoxelChunkToDelete::FVoxelChunkToDelete(FVoxelRenderChunk& OldRenderChunk, bool bDontRemoveMeshAndNotifyChunkInstead)
 	: OldRenderChunk(OldRenderChunk.AsShared())
-	, bDontRemoveMeshAndCallChunkInstead(bDontRemoveMeshAndCallChunkInstead)	
+	, bDontRemoveMeshAndNotifyChunkInstead(bDontRemoveMeshAndNotifyChunkInstead)	
 	, Render(OldRenderChunk.Renderer->AsShared())
 	, Bounds(OldRenderChunk.GetBounds())
-	, OldChunksToDelete(OldRenderChunk.GetPreviousChunks())
+	, OldChunksToDelete(OldRenderChunk.MovePreviousChunks())
 	, Mesh(OldRenderChunk.GetMesh())
 {
 	INC_DWORD_STAT_BY(STAT_VoxelChunksToDeleteCount, 1);
 	INC_MEMORY_STAT_BY(STAT_VoxelChunksToDeleteMemory, sizeof(FVoxelChunkToDelete));
-
-
-	for (auto& OldChunk : OldChunksToDelete)
-	{
-		NewRenderChunks.Append(OldChunk->NewRenderChunks);
-	}
 }
 
 FVoxelChunkToDelete::~FVoxelChunkToDelete()
 {
+	SCOPE_CYCLE_COUNTER(STAT_FVoxelChunkToDelete_FVoxelChunkToDelete_Destructor);
 	DEC_DWORD_STAT_BY(STAT_VoxelChunksToDeleteCount, 1);
 	DEC_MEMORY_STAT_BY(STAT_VoxelChunksToDeleteMemory, sizeof(FVoxelChunkToDelete));
 	
 	auto RenderPtr = Render.Pin();
 	if (RenderPtr.IsValid())
 	{
-		if (bDontRemoveMeshAndCallChunkInstead)
+		if (bDontRemoveMeshAndNotifyChunkInstead)
 		{
 			auto OldRenderChunkPtr = OldRenderChunk.Pin();
 			if (OldRenderChunkPtr.IsValid())
@@ -195,7 +192,7 @@ void FVoxelTasksDependenciesHandler::ReportTaskFinished(uint64 TaskId)
 		auto GroupPtr = GroupWeakPtr->Pin();
 		auto& Group = *GroupPtr;
 
-		int Removed = Group.PendingIds.RemoveAll([&](auto& Id) { return Id == TaskId; });
+		int32 Removed = Group.PendingIds.RemoveAll([&](auto& Id) { return Id == TaskId; });
 		ensure(Removed == 1);
 
 		if (Group.PendingIds.Num() == 0)
@@ -314,6 +311,12 @@ void FVoxelDefaultRenderer::RecomputeMeshPositions()
 	}
 }
 
+DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultRenderer::UpdateLODs ChunksToAdd"), STAT_VoxelDefaultRenderer_UpdateLODs_ChunksToAdd, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultRenderer::UpdateLODs ChunksToUpdate1"), STAT_VoxelDefaultRenderer_UpdateLODs_ChunksToUpdate1, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultRenderer::UpdateLODs ChunksToUpdate2"), STAT_VoxelDefaultRenderer_UpdateLODs_ChunksToUpdate2, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultRenderer::UpdateLODs ChunksToRemove"), STAT_VoxelDefaultRenderer_UpdateLODs_ChunksToRemove, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultRenderer::UpdateLODs Update"), STAT_VoxelDefaultRenderer_UpdateLODs_Update, STATGROUP_Voxel);
+
 void FVoxelDefaultRenderer::UpdateLODs(const TArray<FVoxelChunkToAdd>& ChunksToAdd, const TArray<FVoxelChunkToUpdate>& ChunksToUpdate, const TArray<FVoxelChunkToRemove>& ChunksToRemove, const TArray<FVoxelTransitionsToUpdate>& TransitionsToUpdate)
 {
 	SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_UpdateLODs);
@@ -322,48 +325,57 @@ void FVoxelDefaultRenderer::UpdateLODs(const TArray<FVoxelChunkToAdd>& ChunksToA
 	bUpdatesStarted = true;
 
 	TMap<uint64, TArray<FVoxelRenderChunk*>> OldChunksToNewChunks;
-	for (auto& ChunkToAdd : ChunksToAdd)
 	{
-		TSharedPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> NewChunk = GetRenderChunk(ChunkToAdd.LOD, ChunkToAdd.Bounds, ChunkToAdd.Settings);
-		NewChunk->UpdateChunk(0);
-
-		check(!ChunksMap.Contains(ChunkToAdd.Id));
-		ChunksMap.Add(ChunkToAdd.Id, NewChunk);
-
-		for (auto& PreviousChunkId : ChunkToAdd.PreviousChunks)
+		SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_UpdateLODs_ChunksToAdd);
+		for (auto& ChunkToAdd : ChunksToAdd)
 		{
-			OldChunksToNewChunks.FindOrAdd(PreviousChunkId).Add(NewChunk.Get());
+			TSharedPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> NewChunk = GetRenderChunk(ChunkToAdd.LOD, ChunkToAdd.Bounds, ChunkToAdd.Settings);
+			NewChunk->UpdateChunk(0);
+
+			check(!ChunksMap.Contains(ChunkToAdd.Id));
+			ChunksMap.Add(ChunkToAdd.Id, NewChunk);
+
+			for (auto& PreviousChunkId : ChunkToAdd.PreviousChunks)
+			{
+				OldChunksToNewChunks.FindOrAdd(PreviousChunkId).Add(NewChunk.Get());
+			}
 		}
 	}
 
 	// First add chunks that are visible to OldChunksToNewChunks
-	for (auto& ChunkToUpdate : ChunksToUpdate)
 	{
-		if (ChunkToUpdate.NewSettings.bVisible)
+		SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_UpdateLODs_ChunksToUpdate1);
+		for (auto& ChunkToUpdate : ChunksToUpdate)
 		{
-			auto* Chunk = ChunksMap.FindChecked(ChunkToUpdate.Id).Get();
-			for (auto& PreviousChunkId : ChunkToUpdate.PreviousChunks)
+			if (ChunkToUpdate.NewSettings.bVisible)
 			{
-				ensure(!ChunkToUpdate.OldSettings.bVisible);
-				OldChunksToNewChunks.FindOrAdd(PreviousChunkId).Add(Chunk);
+				auto* Chunk = ChunksMap.FindChecked(ChunkToUpdate.Id).Get();
+				for (auto& PreviousChunkId : ChunkToUpdate.PreviousChunks)
+				{
+					ensure(!ChunkToUpdate.OldSettings.bVisible);
+					OldChunksToNewChunks.FindOrAdd(PreviousChunkId).Add(Chunk);
+				}
 			}
 		}
 	}
 
 	// Then add previous chunks
-	for (auto& ChunkToUpdate : ChunksToUpdate)
 	{
-		if (!ChunkToUpdate.NewSettings.bVisible)
+		SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_UpdateLODs_ChunksToUpdate2);
+		for (auto& ChunkToUpdate : ChunksToUpdate)
 		{
-			auto& Chunk = ChunksMap.FindChecked(ChunkToUpdate.Id);
-			if (ChunkToUpdate.OldSettings.bVisible && Chunk->NeedsToBeDeleted())
+			if (!ChunkToUpdate.NewSettings.bVisible)
 			{
-				auto ChunkToDelete = MakeShared<FVoxelChunkToDelete>(*Chunk, true);
-				if (auto* NewChunks = OldChunksToNewChunks.Find(ChunkToUpdate.Id))
+				auto& Chunk = ChunksMap.FindChecked(ChunkToUpdate.Id);
+				if (ChunkToUpdate.OldSettings.bVisible && Chunk->NeedsToBeDeleted())
 				{
-					for (auto* NewChunk : *NewChunks)
+					auto ChunkToDelete = MakeShared<FVoxelChunkToDelete>(*Chunk, true);
+					if (auto* NewChunks = OldChunksToNewChunks.Find(ChunkToUpdate.Id))
 					{
-						NewChunk->AddPreviousChunk(ChunkToDelete);
+						for (auto* NewChunk : *NewChunks)
+						{
+							NewChunk->AddPreviousChunk(ChunkToDelete);
+						}
 					}
 				}
 			}
@@ -371,38 +383,44 @@ void FVoxelDefaultRenderer::UpdateLODs(const TArray<FVoxelChunkToAdd>& ChunksToA
 	}
 
 	// From ChunksToRemove too
-	for (auto& ChunkToRemove : ChunksToRemove)
 	{
-		TSharedPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> Chunk;
-		verify(ChunksMap.RemoveAndCopyValue(ChunkToRemove.Id, Chunk));
-
-		if (Chunk->NeedsToBeDeleted())
+		SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_UpdateLODs_ChunksToRemove);
+		for (auto& ChunkToRemove : ChunksToRemove)
 		{
-			auto ChunkToDelete = MakeShared<FVoxelChunkToDelete>(*Chunk, false);
-			if (auto* NewChunks = OldChunksToNewChunks.Find(ChunkToRemove.Id))
+			TSharedPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> Chunk;
+			verify(ChunksMap.RemoveAndCopyValue(ChunkToRemove.Id, Chunk));
+
+			if (Chunk->NeedsToBeDeleted())
 			{
-				for (auto* NewChunk : *NewChunks)
+				auto ChunkToDelete = MakeShared<FVoxelChunkToDelete>(*Chunk, false);
+				if (auto* NewChunks = OldChunksToNewChunks.Find(ChunkToRemove.Id))
 				{
-					NewChunk->AddPreviousChunk(ChunkToDelete);
+					for (auto* NewChunk : *NewChunks)
+					{
+						NewChunk->AddPreviousChunk(ChunkToDelete);
+					}
 				}
 			}
+			
+			Chunk->Destroy();
+		}
+	}
+
+	{
+		SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_UpdateLODs_Update);
+		// And only after all that update them
+		for (auto& ChunkToUpdate : ChunksToUpdate)
+		{
+			auto& Chunk = ChunksMap.FindChecked(ChunkToUpdate.Id);
+			ensure(Chunk->Settings == ChunkToUpdate.OldSettings);
+			Chunk->UpdateSettings(ChunkToUpdate.NewSettings);
 		}
 
-		Chunk->Destroy();
-	}
-
-	// And only after all that update them
-	for (auto& ChunkToUpdate : ChunksToUpdate)
-	{
-		auto& Chunk = ChunksMap.FindChecked(ChunkToUpdate.Id);
-		ensure(Chunk->Settings == ChunkToUpdate.OldSettings);
-		Chunk->UpdateSettings(ChunkToUpdate.NewSettings);
-	}
-
-	for (auto& TransitionToUpdate : TransitionsToUpdate)
-	{
-		auto& Chunk = ChunksMap.FindChecked(TransitionToUpdate.Id);
-		Chunk->UpdateTransitions(TransitionToUpdate.TransitionsMask);
+		for (auto& TransitionToUpdate : TransitionsToUpdate)
+		{
+			auto& Chunk = ChunksMap.FindChecked(TransitionToUpdate.Id);
+			Chunk->UpdateTransitions(TransitionToUpdate.TransitionsMask);
+		}
 	}
 
 	Settings.DebugManager->ReportRenderChunks(ChunksMap);
@@ -424,14 +442,30 @@ void FVoxelDefaultRenderer::StartMeshDithering(UVoxelProceduralMeshComponent* Me
 	ChunksToRemoveAfterDithering.Add(MoveTemp(Chunk));
 }
 
+DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultRenderer::SetMeshPosition"), STAT_VoxelDefaultRenderer_SetMeshPosition, STATGROUP_Voxel);
+
+void FVoxelDefaultRenderer::SetMeshPosition(UVoxelProceduralMeshComponent* Mesh, const FIntVector& Position)
+{
+	SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_SetMeshPosition);
+	Mesh->SetRelativeLocation(Settings.GetChunkRelativePosition(Position));
+}
+
+DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultRenderer::RemoveMesh"), STAT_VoxelDefaultRenderer_RemoveMesh, STATGROUP_Voxel);
+
 void FVoxelDefaultRenderer::RemoveMesh(UVoxelProceduralMeshComponent* Mesh)
 {
+	SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_RemoveMesh);
+
 	Mesh->ClearSections();
 	GetMeshPool(Mesh->GetCollisionEnabled() != ECollisionEnabled::NoCollision).Add(Mesh);
 }
 
+DECLARE_CYCLE_STAT(TEXT("FVoxelDefaultRenderer::GetNewMesh"), STAT_VoxelDefaultRenderer_GetNewMesh, STATGROUP_Voxel);
+
 UVoxelProceduralMeshComponent* FVoxelDefaultRenderer::GetNewMesh(const FIntVector& Position, uint8 LOD, bool bCollisions)
 {
+	SCOPE_CYCLE_COUNTER(STAT_VoxelDefaultRenderer_GetNewMesh);
+
 	if (!Settings.ComponentsOwner.IsValid())
 	{
 		return nullptr;
@@ -461,14 +495,15 @@ UVoxelProceduralMeshComponent* FVoxelDefaultRenderer::GetNewMesh(const FIntVecto
 		}
 	}
 
-	NewMesh->SetRelativeLocation(Settings.GetChunkRelativePosition(Position));
+	SetMeshPosition(NewMesh, Position);
+
 	if (Settings.World->WorldType != EWorldType::Editor)
 	{
-		NewMesh->InitChunk(LOD, FVoxelUtilities::GetBoundsFromPositionAndLOD<CHUNK_SIZE>(Position, LOD));
+		NewMesh->InitChunk(LOD, FVoxelUtilities::GetBoundsFromPositionAndDepth<CHUNK_SIZE>(Position, LOD));
 	}
+
 	return NewMesh;
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -496,7 +531,7 @@ uint64 FVoxelDefaultRenderer::GetSquaredDistanceToInvokers(const FIntVector& Pos
 	uint64 Distance = MAX_uint64;
 	for (auto& InvokerPosition : *Settings.InvokersPositions)
 	{
-		Distance = FMath::Min<uint64>(Distance, FVoxelIntVector::SquaredSize(Position - InvokerPosition));
+		Distance = FMath::Min<uint64>(Distance, FVoxelUtilities::SquaredSize(Position - InvokerPosition));
 	}
 	return Distance;
 }

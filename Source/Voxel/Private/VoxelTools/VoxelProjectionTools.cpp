@@ -135,12 +135,12 @@ void UVoxelProjectionTools::FindHitVoxelsForRaycasts(FVoxelProjectionEditWork& W
 	}
 
 	const float Step = StepInVoxel * World->VoxelSize;
-	const int Count = FMath::CeilToInt(Radius / Step);
+	const int32 Count = FMath::CeilToInt(Radius / Step);
 	const ECollisionChannel CollisionChannel = World->CollisionPresets.GetObjectType();
 
-	for (int I = -Count; I <= Count; I++)
+	for (int32 I = -Count; I <= Count; I++)
 	{
-		for (int J = -Count; J <= Count; J++)
+		for (int32 J = -Count; J <= Count; J++)
 		{
 			float X = I * Step;
 			float Y = J * Step;

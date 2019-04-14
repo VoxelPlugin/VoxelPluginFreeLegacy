@@ -14,8 +14,12 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Notifications/SNotificationList.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "IDetailChildrenBuilder.h"
 #include "PropertyCustomizationHelpers.h"
+#include "Misc/MessageDialog.h"
+#include "DetailLayoutBuilder.h"
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
@@ -31,7 +35,13 @@ FVoxelMaterialCollectionDetails::FVoxelMaterialCollectionDetails()
 
 void FVoxelMaterialCollectionDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
-	Collection = FVoxelEditorDetailsUtils::GetCurrentObjectFromDetails<UVoxelMaterialCollection>(DetailLayout);
+	TArray<TWeakObjectPtr<UObject>> Objects;
+	DetailLayout.GetObjectsBeingCustomized(Objects);
+	if (Objects.Num() != 1)
+	{
+		return;
+	}
+	Collection = CastChecked<UVoxelMaterialCollection>(Objects[0].Get());;
 
 	FVoxelEditorDetailsUtils::AddButtonToCategory(DetailLayout,
 		"Generate",

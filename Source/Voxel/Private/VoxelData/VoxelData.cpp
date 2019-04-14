@@ -33,6 +33,7 @@ bool FVoxelData::TryLock(const FIntBox& Bounds, float TimeoutInSeconds, FVoxelLo
 
 	if (!bSuccess)
 	{
+#if 0 // Way faster, but there might be race conditions if we relock it right away on the same thread
 		if (OutOctrees.Num() == 0)
 		{
 			Unlock<LockType>(OutOctrees);
@@ -56,6 +57,8 @@ bool FVoxelData::TryLock(const FIntBox& Bounds, float TimeoutInSeconds, FVoxelLo
 			});
 		}
 		OutOctrees.Reset();
+#endif
+		Unlock<LockType>(OutOctrees);
 	}
 
 	return bSuccess;
@@ -73,17 +76,32 @@ void FVoxelData::Unlock(FVoxelLockedOctrees& LockedOctrees)
 	MainLock.Unlock<EVoxelLockType::Read>();
 }
 
-template bool FVoxelData::TryLock<EVoxelLockType::Read>(const FIntBox&, float, FVoxelLockedOctrees&, FString&);
-template bool FVoxelData::TryLock<EVoxelLockType::ReadWrite>(const FIntBox&, float, FVoxelLockedOctrees&, FString&);
+template VOXEL_API bool FVoxelData::TryLock<EVoxelLockType::Read>(const FIntBox&, float, FVoxelLockedOctrees&, FString&);
+template VOXEL_API bool FVoxelData::TryLock<EVoxelLockType::ReadWrite>(const FIntBox&, float, FVoxelLockedOctrees&, FString&);
 
-template void FVoxelData::Unlock<EVoxelLockType::Read>(FVoxelLockedOctrees&);
-template void FVoxelData::Unlock<EVoxelLockType::ReadWrite>(FVoxelLockedOctrees&);
+template VOXEL_API void FVoxelData::Unlock<EVoxelLockType::Read>(FVoxelLockedOctrees&);
+template VOXEL_API void FVoxelData::Unlock<EVoxelLockType::ReadWrite>(FVoxelLockedOctrees&);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelData::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int QueryLOD) const
+void FVoxelData::ClearData()
+{
+	Octree->ClearData();
+	HistoryPosition = 0;
+	MaxHistoryPosition = 0;
+	bIsDirty = true;
+	
+	FScopeLock Lock(&ItemsSection);
+	FreeItems.Empty();
+	Items.Empty();
+	ItemFrame = MakeUnique<FItemFrame>();
+	ItemUndoFrames.Empty();
+	ItemRedoFrames.Empty();
+}
+
+void FVoxelData::GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int32 QueryLOD) const
 {
 	auto& OctreeBounds = Octree->GetBounds();
 
@@ -112,7 +130,7 @@ void FVoxelData::CacheMostUsedChunks(
 	uint32& NumRemovedFromCache,
 	uint32& TotalNumCachedChunks)
 {
-	FScopeLock CacheLock(&CacheTimeSection);
+	FScopeLock CacheLock(&CacheSection);
 
 	CacheTime++;
 	NumChunksSubdivided = 0;
@@ -175,7 +193,9 @@ void FVoxelData::CacheMostUsedChunks(
 void FVoxelData::Compact(uint32& NumDeleted)
 {
 	NumDeleted = 0;
-
+	
+	// Can't allow compact & cache to run at the same time as cache have ref to octrees
+	FScopeLock CacheLock(&CacheSection);
 	MainLock.Lock<EVoxelLockType::ReadWrite>();
 	Octree->Compact(NumDeleted);
 	MainLock.Unlock<EVoxelLockType::ReadWrite>();
@@ -192,6 +212,18 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSave& OutSave)
 	FVoxelSaveBuilder Builder(Depth);
 
 	Octree->Save(Builder);
+
+	{
+		FScopeLock ItemLock(&ItemsSection);
+		for (auto& Item : Items)
+		{
+			if (Item.IsValid() && Item->ShouldBeSaved())
+			{
+				Builder.AddPlaceableItem(Item);
+			}
+		}
+	}
+
 	Builder.Save(OutSave);
 }
 
@@ -200,17 +232,18 @@ void FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSave& Save, TArray<FI
 	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "LoadFromSave");
 
 	Octree->GetLeavesBounds(OutBoundsToUpdate, 0);
-	Octree->ClearData();
-	if (bEnableUndoRedo)
-	{
-		HistoryPosition = 0;
-		MaxHistoryPosition = 0;
-	}
+	
+	ClearData();
 
 	FVoxelSaveLoader Loader(Save);
 
-	int Index = 0;
+	int32 Index = 0;
 	Octree->Load(Index, Loader, OutBoundsToUpdate);
+	
+	for (auto& Item : Loader.GetPlaceableItems())
+	{
+		AddItem(Item.ToSharedRef(), false);
+	}
 
 	check(Index == Loader.NumChunks() || Save.GetDepth() > Depth);
 }
@@ -224,57 +257,243 @@ void FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSave& Save, TArray<FI
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+#define CHECK_UNDO_REDO_IMPL(r) check(IsInGameThread()); if(!ensure(bEnableUndoRedo)) { return r; }
+#define NOARG
+#define CHECK_UNDO_REDO() CHECK_UNDO_REDO_IMPL(NOARG)
+#define CHECK_UNDO_REDO_BOOL() CHECK_UNDO_REDO_IMPL(false)
+
 void FVoxelData::Undo(TArray<FIntBox>& OutBoundsToUpdate)
 {
-	check(IsInGameThread());
-	ensure(bEnableUndoRedo);
-	MarkAsDirty();
-	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "Undo");
+	CHECK_UNDO_REDO();
+
 	if (HistoryPosition > 0)
 	{
+		MarkAsDirty();
 		HistoryPosition--;
+		
+		FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "Undo");
+		{
+			FScopeLock ItemLock(&ItemsSection);
+			check(ItemFrame->IsEmpty());
+			if (ItemUndoFrames.Num() > 0 && ItemUndoFrames.Last()->HistoryPosition == HistoryPosition)
+			{
+				auto UndoFrame = ItemUndoFrames.Pop(false);
+
+				for (auto& Item : UndoFrame->AddedItems)
+				{
+					RemoveItem(Item.Get(), true);
+					OutBoundsToUpdate.Add(Item->Bounds);
+				}
+				for (auto& Item : UndoFrame->RemovedItems)
+				{
+					AddItem(Item.ToSharedRef(), true);
+					OutBoundsToUpdate.Add(Item->Bounds);
+				}
+
+				UndoFrame->HistoryPosition = HistoryPosition + 1;
+				ItemRedoFrames.Add(MoveTemp(UndoFrame));
+				ItemFrame = MakeUnique<FItemFrame>();
+			}
+		}
 		Octree->Undo(HistoryPosition, OutBoundsToUpdate);
 	}
 }
 
 void FVoxelData::Redo(TArray<FIntBox>& OutBoundsToUpdate)
 {
-	check(IsInGameThread());
-	ensure(bEnableUndoRedo);
-	MarkAsDirty();
-	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "Redo");
+	CHECK_UNDO_REDO();
+
 	if (HistoryPosition < MaxHistoryPosition)
 	{
+		MarkAsDirty();
 		HistoryPosition++;
+
+		FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "Redo");
+		{
+			FScopeLock ItemLock(&ItemsSection);
+			check(ItemFrame->IsEmpty());
+			if (ItemRedoFrames.Num() > 0 && ItemRedoFrames.Last()->HistoryPosition == HistoryPosition)
+			{
+				auto RedoFrame = ItemRedoFrames.Pop(false);
+
+				for (auto& Item : RedoFrame->AddedItems)
+				{
+					AddItem(Item.ToSharedRef(), true);
+					OutBoundsToUpdate.Add(Item->Bounds);
+				}
+				for (auto& Item : RedoFrame->RemovedItems)
+				{
+					RemoveItem(Item.Get(), true);
+					OutBoundsToUpdate.Add(Item->Bounds);
+				}
+
+				RedoFrame->HistoryPosition = HistoryPosition - 1;
+				ItemUndoFrames.Add(MoveTemp(RedoFrame));
+				ItemFrame = MakeUnique<FItemFrame>();
+			}
+		}
 		Octree->Redo(HistoryPosition, OutBoundsToUpdate);
 	}
 }
 
 void FVoxelData::ClearFrames()
 {
-	check(IsInGameThread());
-	ensure(bEnableUndoRedo);
-	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "ClearFrames");
-	Octree->ClearFrames();
+	CHECK_UNDO_REDO();
+
 	HistoryPosition = 0;
 	MaxHistoryPosition = 0;
+
+	{
+		FScopeLock Lock(&ItemsSection);
+		ItemFrame = MakeUnique<FItemFrame>();
+		ItemUndoFrames.Empty();
+		ItemRedoFrames.Empty();
+	}
+
+	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "ClearFrames");
+	Octree->ClearFrames();
 }
 
 void FVoxelData::SaveFrame()
 {
-	check(IsInGameThread());
-	ensure(bEnableUndoRedo);
+	CHECK_UNDO_REDO();
+
 	MarkAsDirty();
-	FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "SaveFrame");
-	Octree->SaveFrame(HistoryPosition);
+	{
+		FScopeLock Lock(&ItemsSection);
+		if (!ItemFrame->IsEmpty())
+		{
+			ItemFrame->HistoryPosition = HistoryPosition;
+			ItemUndoFrames.Add(MoveTemp(ItemFrame));
+			ItemFrame = MakeUnique<FItemFrame>();
+		}
+		ItemRedoFrames.Reset();
+	}
+	{
+		FVoxelReadWriteScopeLock Lock(this, FIntBox::Infinite, "SaveFrame");
+		Octree->SaveFrame(HistoryPosition);
+	}
+
 	HistoryPosition++;
 	MaxHistoryPosition = HistoryPosition;
 }
 
 bool FVoxelData::IsCurrentFrameEmpty()
 {
-	check(IsInGameThread());
-	ensure(bEnableUndoRedo);
+	CHECK_UNDO_REDO_BOOL();
+
+	{
+		FScopeLock Lock(&ItemsSection);
+		if (!ItemFrame->IsEmpty())
+		{
+			return false;
+		}
+	}
+
 	FVoxelReadScopeLock Lock(this, FIntBox::Infinite, "IsCurrentFrameEmpty");
 	return Octree->IsCurrentFrameEmpty();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelData::AddItem(const TSharedRef<FVoxelPlaceableItem>& Item, bool bRecordInHistory)
+{
+	Octree->AddItem(&Item.Get());
+
+	FScopeLock Lock(&ItemsSection);
+	if (FreeItems.Num() == 0)
+	{
+		Item->ItemIndex = Items.Add(Item);
+	}
+	else
+	{
+		int32 Index = FreeItems.Pop();
+		check(!Items[Index].IsValid());
+		Item->ItemIndex = Index;
+		Items[Index] = Item;
+	}
+	if (bEnableUndoRedo && bRecordInHistory)
+	{
+		ItemFrame->AddedItems.Add(Item);
+	}
+}
+
+void FVoxelData::RemoveItem(FVoxelPlaceableItem* Item, bool bRecordInHistory)
+{
+	check(Item);
+
+	if (!ensureMsgf(Items.IsValidIndex(Item->ItemIndex), TEXT("Invalid item: %s"), *Item->GetDescription()) ||
+		!ensureMsgf(Items[Item->ItemIndex].IsValid(), TEXT("Item already removed: %s"), *Item->GetDescription()))
+	{
+		return;
+	}
+
+	Octree->RemoveItem(Item);
+	
+	FScopeLock Lock(&ItemsSection);
+	auto& ItemPtr = Items[Item->ItemIndex];
+	if (bEnableUndoRedo && bRecordInHistory)
+	{
+		ItemFrame->RemovedItems.Add(ItemPtr);
+	}
+	ItemPtr.Reset();
+	FreeItems.Add(Item->ItemIndex);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+float* FVoxelData::GetCache2DValues(const FIntPoint& Position)
+{
+	Cache2DLock.lock_shared();
+	TUniquePtr<FCache2DValues>* Values = Cache2DValues.Find(Position);
+	Cache2DLock.unlock_shared();
+	if (Values)
+	{
+		return Values->Get()->Values;
+	}
+	else
+	{
+		TUniquePtr<FCache2DValues> NewValues = MakeUnique<FCache2DValues>();
+		WorldGenerator->Cache2D(NewValues->Values, FVoxelWorldGeneratorQueryZone2D(Position, Position + FIntPoint(VOXEL_CELL_SIZE, VOXEL_CELL_SIZE)));
+		float* ReturnValues = NewValues->Values;
+
+		Cache2DLock.lock();
+		if (TUniquePtr<FCache2DValues>* ExistingValues = Cache2DValues.Find(Position))
+		{
+			UE_LOG(LogVoxel, Warning, TEXT("Position (%d, %d) was cached twice, dropping one"), Position.X, Position.Y);
+			ReturnValues = ExistingValues->Get()->Values;
+		}
+		else
+		{
+			Cache2DValues.Add(Position, MoveTemp(NewValues));
+			Cache2DValues.Compact();
+		}
+		Cache2DLock.unlock();
+
+		return ReturnValues;
+	}
+}
+
+bool FVoxelData::NeedToGenerateChunk(const FIntVector& Position)
+{
+	FScopeLock Lock(&GeneratedChunksSection);
+
+	const FIntVector Index = Position / CHUNK_SIZE;
+	if (GeneratedChunks.Contains(Index))
+	{
+		return false;
+	}
+	else
+	{
+		DEC_MEMORY_STAT_BY(STAT_VoxelGeneratedChunksSetMemory, GeneratedChunks.GetAllocatedSize());
+		GeneratedChunks.Add(Index);
+		GeneratedChunks.Compact();
+		INC_MEMORY_STAT_BY(STAT_VoxelGeneratedChunksSetMemory, GeneratedChunks.GetAllocatedSize());
+
+		return true;
+	}
 }

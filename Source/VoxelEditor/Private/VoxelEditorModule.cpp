@@ -16,8 +16,6 @@
 
 
 
-
-
 #include "Factories/VoxelWorldFactory.h"
 
 #include "Details/VoxelWorldDetails.h"
@@ -45,10 +43,10 @@ public:
 	{
 		// Voxel asset category
 		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
-		VoxelAssetCategoryBit = AssetTools.RegisterAdvancedAssetCategory(FName(TEXT("Voxel")), LOCTEXT("VoxelAssetCategory", "Voxel"));
+		VoxelAssetCategoryBit = AssetTools.RegisterAdvancedAssetCategory("Voxel", LOCTEXT("VoxelAssetCategory", "Voxel"));
 
 		RegisterPlacementModeExtensions();
-		RegisterClassLayout();
+		RegisterCustomClassLayouts();
 		RegisterAssetTools();
 
 
@@ -101,7 +99,101 @@ public:
 		return true;
 	}
 
+private:
+	template<typename T>
+	void RegisterPlacementModeExtension(IPlacementModeModule& PlacementModeModule, UActorFactory* Factory = nullptr)
+	{
+		PlacementModeModule.RegisterPlaceableItem(PlacementCategoryInfo.UniqueHandle, MakeShared<FPlaceableItem>(Factory, FAssetData(T::StaticClass())));
+	}
+	void RegisterPlacementModeExtensions()
+	{
+		IPlacementModeModule& PlacementModeModule = IPlacementModeModule::Get();
+		PlacementModeModule.RegisterPlacementCategory(PlacementCategoryInfo);
+
+		RegisterPlacementModeExtension<AVoxelWorld       >(PlacementModeModule, GetMutableDefault<UVoxelWorldFactory       >());
+	}
+	void UnregisterPlacementModeExtensions()
+	{
+		if (IPlacementModeModule::IsAvailable())
+		{
+			IPlacementModeModule::Get().UnregisterPlacementCategory(PlacementCategoryInfo.UniqueHandle);
+		}
+	}
+
+private:
+	template<typename T>
+	void RegisterCustomClassLayout(FPropertyEditorModule& PropertyModule, FName Name)
+	{
+		PropertyModule.RegisterCustomClassLayout(Name, FOnGetDetailCustomizationInstance::CreateStatic(&T::MakeInstance));
+		RegisteredCustomClassLayouts.Add(Name);
+	}
+	template<typename T>
+	void RegisterCustomPropertyLayout(FPropertyEditorModule& PropertyModule, FName Name)
+	{
+		PropertyModule.RegisterCustomPropertyTypeLayout(Name, FOnGetPropertyTypeCustomizationInstance::CreateStatic(&T::MakeInstance));
+		RegisteredCustomPropertyLayouts.Add(Name);
+	}
+
+	void RegisterCustomClassLayouts()
+	{
+		FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+
+		RegisterCustomClassLayout<FVoxelWorldDetails                    >(PropertyModule, "VoxelWorld");
+		RegisterCustomClassLayout<FVoxelMaterialCollectionDetails       >(PropertyModule, "VoxelMaterialCollection");
+
+		RegisterCustomPropertyLayout<FVoxelWorldGeneratorPickerCustomization      >(PropertyModule, "VoxelWorldGeneratorPicker");
+		RegisterCustomPropertyLayout<FVoxelMaterialCollectionElementCustomization >(PropertyModule, "VoxelMaterialCollectionElement");
+
+		PropertyModule.NotifyCustomizationModuleChanged();
+	}
+
+	void UnregisterClassLayout()
+	{
+		if (auto* PropertyModule = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
+		{
+			for (auto& Name : RegisteredCustomClassLayouts)
+			{
+				PropertyModule->UnregisterCustomClassLayout(Name);
+			}
+			for (auto& Name : RegisteredCustomPropertyLayouts)
+			{
+				PropertyModule->UnregisterCustomPropertyTypeLayout(Name);
+			}
+			PropertyModule->NotifyCustomizationModuleChanged();
+		}
+	}
+	
+private:
+	template<typename T>
+	void RegisterAssetTypeAction(IAssetTools& AssetTools)
+	{
+		auto Action = MakeShared<T>(VoxelAssetCategoryBit);
+		AssetTools.RegisterAssetTypeActions(Action);
+		RegisteredAssetTypeActions.Add(Action);
+	}
+
+	void RegisterAssetTools()
+	{
+		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
+
+		RegisterAssetTypeAction<FAssetTypeActions_VoxelWorldSaveObject    >(AssetTools);
+		RegisterAssetTypeAction<FAssetTypeActions_VoxelMaterialCollection >(AssetTools);
+	}
+
+	void UnregisterAssetTools()
+	{
+		if (auto* AssetToolsModule = FModuleManager::GetModulePtr<FAssetToolsModule>("AssetTools"))
+		{
+			IAssetTools& AssetTools = AssetToolsModule->Get();
+			for (auto& Action : RegisteredAssetTypeActions)
+			{
+				AssetTools.UnregisterAssetTypeActions(Action);
+			}
+		}
+	}
+	
 public:
+
 	virtual bool GenerateSingleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) override
 	{
 		return FVoxelMaterialCollectionHelpers::GenerateSingleMaterials(Collection, OutError);
@@ -117,106 +209,17 @@ public:
 		return FVoxelMaterialCollectionHelpers::GenerateTripleMaterials(Collection, OutError);
 	}
 
-protected:
-	
-	/** Registers placement mode extensions. */
-	void RegisterPlacementModeExtensions()
-	{
-		FPlacementCategoryInfo Info(
-			LOCTEXT("VoxelCategoryName", "Voxel"),
-			"Voxel",
-			TEXT("PMVoxel"),
-			25
-		);
-
-		IPlacementModeModule::Get().RegisterPlacementCategory(Info);
-		IPlacementModeModule::Get().RegisterPlaceableItem(Info.UniqueHandle, MakeShareable(new FPlaceableItem(UVoxelWorldFactory::StaticClass()->GetDefaultObject<UVoxelWorldFactory>(), FAssetData(AVoxelWorld::StaticClass()))));
-	}
-
-	/** Unregisters placement mode extensions. */
-	void UnregisterPlacementModeExtensions()
-	{
-		if (IPlacementModeModule::IsAvailable())
-		{
-			IPlacementModeModule::Get().UnregisterPlacementCategory("Voxel");
-		}
-	}
-
-	void RegisterClassLayout()
-	{
-		FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-
-		//Custom detail views
-		PropertyModule.RegisterCustomClassLayout("VoxelWorld"                          , FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldDetails                    ::MakeInstance));
-		PropertyModule.RegisterCustomClassLayout("VoxelMaterialCollection"             , FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelMaterialCollectionDetails       ::MakeInstance));
-		
-		PropertyModule.RegisterCustomPropertyTypeLayout("VoxelWorldGeneratorPicker"     , FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FVoxelWorldGeneratorPickerCustomization     ::MakeInstance));
-		PropertyModule.RegisterCustomPropertyTypeLayout("VoxelMaterialCollectionElement", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FVoxelMaterialCollectionElementCustomization::MakeInstance));
-
-		PropertyModule.NotifyCustomizationModuleChanged();
-	}
-
-	void UnregisterClassLayout()
-	{
-		FPropertyEditorModule* PropertyModule = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor");
-
-		if (PropertyModule != nullptr)
-		{
-			PropertyModule->UnregisterCustomClassLayout("VoxelWorld");
-			PropertyModule->UnregisterCustomClassLayout("VoxelMaterialCollection");
-			
-			PropertyModule->UnregisterCustomPropertyTypeLayout("VoxelWorldGeneratorPicker");
-
-			PropertyModule->NotifyCustomizationModuleChanged();
-		}
-	}
-
-	/** Registers asset tool actions. */
-	void RegisterAssetTools()
-	{
-		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
-
-		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelWorldSaveObject(    VoxelAssetCategoryBit)));
-		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelMaterialCollection( VoxelAssetCategoryBit)));
-	}
-
-	/**
-	* Registers a single asset type action.
-	*
-	* @param AssetTools The asset tools object to register with.
-	* @param Action The asset type action to register.
-	*/
-	void RegisterAssetTypeAction(IAssetTools& AssetTools, TSharedRef<IAssetTypeActions> Action)
-	{
-		AssetTools.RegisterAssetTypeActions(Action);
-		RegisteredAssetTypeActions.Add(Action);
-	}
-
-	/** Unregisters asset tool actions. */
-	void UnregisterAssetTools()
-	{
-		FAssetToolsModule* AssetToolsModule = FModuleManager::GetModulePtr<FAssetToolsModule>("AssetTools");
-
-		if (AssetToolsModule != nullptr)
-		{
-			IAssetTools& AssetTools = AssetToolsModule->Get();
-
-			for (auto& Action : RegisteredAssetTypeActions)
-			{
-				AssetTools.UnregisterAssetTypeActions(Action);
-			}
-		}
-	}
-
-
 private:
 	/** The collection of registered asset type actions. */
 	TArray<TSharedRef<IAssetTypeActions>> RegisteredAssetTypeActions;
+	TArray<FName> RegisteredCustomClassLayouts;
+	TArray<FName> RegisteredCustomPropertyLayouts;
+
 	EAssetTypeCategories::Type VoxelAssetCategoryBit;
-	TSharedPtr< class FSlateStyleSet > StyleSet;
+	FPlacementCategoryInfo PlacementCategoryInfo = FPlacementCategoryInfo(LOCTEXT("VoxelCategoryName", "Voxel"), "Voxel", TEXT("PMVoxel"), 25);
+	TSharedPtr<FSlateStyleSet> StyleSet;
 };
 
 IMPLEMENT_MODULE(FVoxelEditorModule, VoxelEditor);
 
 #undef LOCTEXT_NAMESPACE
-#undef IMAGE_PLUGIN_BRUSH

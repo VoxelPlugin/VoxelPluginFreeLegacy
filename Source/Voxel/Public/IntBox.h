@@ -7,7 +7,7 @@
 #include "IntBox.generated.h"
 
 /**
- * A Box with int coordinates
+ * A Box with int32 coordinates
  */
 USTRUCT(BlueprintType)
 struct VOXEL_API FIntBox
@@ -42,7 +42,7 @@ struct VOXEL_API FIntBox
 	{
 	}
 
-	FIntBox(int X, int Y, int Z)
+	FIntBox(int32 X, int32 Y, int32 Z)
 		: Min(X, Y, Z)
 		, Max(X + 1, Y + 1, Z + 1)
 	{
@@ -190,8 +190,8 @@ struct VOXEL_API FIntBox
 			OutBoxes.Emplace(FIntVector(Initial.Min.X, Initial.Min.Y, BoxToSubstract.Max.Z), Initial.Max);
 		}
 
-		int ZMin = FMath::Max(Initial.Min.Z, BoxToSubstract.Min.Z);
-		int ZMax = FMath::Min(Initial.Max.Z, BoxToSubstract.Max.Z);
+		int32 ZMin = FMath::Max(Initial.Min.Z, BoxToSubstract.Min.Z);
+		int32 ZMax = FMath::Min(Initial.Max.Z, BoxToSubstract.Max.Z);
 
 		if (Initial.Min.X < BoxToSubstract.Min.X)
 		{
@@ -204,8 +204,8 @@ struct VOXEL_API FIntBox
 			OutBoxes.Emplace(FIntVector(BoxToSubstract.Max.X, Initial.Min.Y, ZMin), FIntVector(Initial.Max.X, Initial.Max.Y, ZMax));
 		}
 		
-		int XMin = FMath::Max(Initial.Min.X, BoxToSubstract.Min.X);
-		int XMax = FMath::Min(Initial.Max.X, BoxToSubstract.Max.X);
+		int32 XMin = FMath::Max(Initial.Min.X, BoxToSubstract.Min.X);
+		int32 XMax = FMath::Min(Initial.Max.X, BoxToSubstract.Max.X);
 
 		if (Initial.Min.Y < BoxToSubstract.Min.Y)
 		{
@@ -263,14 +263,14 @@ struct VOXEL_API FIntBox
 		return FMath::Min<T>(ComputeSquaredDistanceFromBoxToPoint<T>(Box.Min), ComputeSquaredDistanceFromBoxToPoint<T>(Box.Max));
 	}
 
-	inline bool IsMultipleOf(int Step) const
+	inline bool IsMultipleOf(int32 Step) const
 	{
 		return Min.X % Step == 0 && Min.Y % Step == 0 && Min.Z % Step == 0 &&
 			   Max.X % Step == 0 && Max.Y % Step == 0 && Max.Z % Step == 0;
 	}
 
 	// NewBox included in OldBox, but OldBox not included in NewBox
-	inline void MakeMultipleOfExclusive(int Step)
+	inline void MakeMultipleOfExclusive(int32 Step)
 	{
 		Min.X = FMath::CeilToInt((float)Min.X / Step) * Step;
 		Min.Y = FMath::CeilToInt((float)Min.Y / Step) * Step;
@@ -281,7 +281,7 @@ struct VOXEL_API FIntBox
 		Max.Z = FMath::CeilToInt((float)Max.Z / Step) * Step;
 	}
 	// OldBox included in NewBox, but NewBox not included in OldBox
-	inline void MakeMultipleOfInclusive(int Step)
+	inline void MakeMultipleOfInclusive(int32 Step)
 	{
 		Min.X = FMath::FloorToInt((float)Min.X / Step) * Step;
 		Min.Y = FMath::FloorToInt((float)Min.Y / Step) * Step;
@@ -293,20 +293,29 @@ struct VOXEL_API FIntBox
 	}
 
 	// union(OutChilds).Contains(this)
-	inline void Subdivide(int ChildsSize, TArray<FIntBox>& OutChilds) const
+	inline void Subdivide(int32 ChildsSize, TArray<FIntBox>& OutChilds) const
 	{
-		FIntVector LowerBound = FVoxelIntVector::FloorToInt(FVector(Min) / ChildsSize) * ChildsSize;
-		FIntVector UpperBound = FVoxelIntVector::CeilToInt(FVector(Max) / ChildsSize) * ChildsSize;
-		for (int X = LowerBound.X; X < UpperBound.X; X += ChildsSize)
+		FIntVector LowerBound = FVoxelUtilities::FloorToInt(FVector(Min) / ChildsSize) * ChildsSize;
+		FIntVector UpperBound = FVoxelUtilities::CeilToInt(FVector(Max) / ChildsSize) * ChildsSize;
+		for (int32 X = LowerBound.X; X < UpperBound.X; X += ChildsSize)
 		{
-			for (int Y = LowerBound.Y; Y < UpperBound.Y; Y += ChildsSize)
+			for (int32 Y = LowerBound.Y; Y < UpperBound.Y; Y += ChildsSize)
 			{
-				for (int Z = LowerBound.Z; Z < UpperBound.Z; Z += ChildsSize)
+				for (int32 Z = LowerBound.Z; Z < UpperBound.Z; Z += ChildsSize)
 				{
 					OutChilds.Emplace(FIntVector(X, Y, Z), FIntVector(X + ChildsSize, Y + ChildsSize, Z + ChildsSize));
 				}
 			}
 		}
+	}
+	
+	inline FIntBox Extend(const FIntVector& Amount) const
+	{
+		return { Min - Amount, Max + Amount };
+	}
+	inline FIntBox Extend(int32 Amount) const
+	{
+		return Extend(FIntVector(Amount));
 	}
 
 	inline FString ToString() const
@@ -317,7 +326,7 @@ struct VOXEL_API FIntBox
 	/**
 	 * Scales this box
 	 */
-	inline FIntBox& operator*=(int Scale)
+	inline FIntBox& operator*=(int32 Scale)
 	{
 		Min *= Scale;
 		Max *= Scale;
@@ -361,13 +370,13 @@ inline uint32 GetTypeHash(const FIntBox& Box)
 	return FCrc::MemCrc32(&Box, sizeof(FIntBox));
 }
 
-inline FIntBox operator*(const FIntBox& Box, int Scale)
+inline FIntBox operator*(const FIntBox& Box, int32 Scale)
 {
 	FIntBox Copy = Box;
 	return Copy *= Scale;
 }
 
-inline FIntBox operator*(int Scale, const FIntBox& Box)
+inline FIntBox operator*(int32 Scale, const FIntBox& Box)
 {
 	FIntBox Copy = Box;
 	return Copy *= Scale;
@@ -383,4 +392,11 @@ inline FIntBox operator+(const FIntBox& Box, const FIntVector& Point)
 {
 	FIntBox Copy = Box;
 	return Copy += Point;
+}
+
+inline FArchive& operator<<(FArchive& Ar, FIntBox& Box)
+{
+	Ar << Box.Min;
+	Ar << Box.Max;
+	return Ar;
 }

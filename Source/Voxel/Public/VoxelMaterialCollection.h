@@ -20,12 +20,12 @@ struct VOXEL_API FVoxelMaterialCollectionDoubleIndex
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category = "Config")
-	int I;
+	int32 I;
 	UPROPERTY(EditAnywhere, Category = "Config")
-	int J;
+	int32 J;
 
 	FVoxelMaterialCollectionDoubleIndex() {}
-	FVoxelMaterialCollectionDoubleIndex(int I, int J)
+	FVoxelMaterialCollectionDoubleIndex(int32 I, int32 J)
 		: I(I)
 		, J(J)
 	{
@@ -49,14 +49,14 @@ struct VOXEL_API FVoxelMaterialCollectionTripleIndex
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category = "Config")
-	int I;
+	int32 I;
 	UPROPERTY(EditAnywhere, Category = "Config")
-	int J;
+	int32 J;
 	UPROPERTY(EditAnywhere, Category = "Config")
-	int K;
+	int32 K;
 
 	FVoxelMaterialCollectionTripleIndex() {}
-	FVoxelMaterialCollectionTripleIndex(int I, int J, int K)
+	FVoxelMaterialCollectionTripleIndex(int32 I, int32 J, int32 K)
 		: I(I)
 		, J(J)
 		, K(K)
@@ -212,8 +212,7 @@ public:
 	FVoxelMaterialCollectionGenerated GeneratedMaterialsTess;
 
 public:
-	UMaterialInterface* GetVoxelMaterial(const FVoxelBlendedMaterial& Index);
-	UMaterialInterface* GetVoxelMaterialWithTessellation(const FVoxelBlendedMaterial& Index);
+	UMaterialInterface* GetVoxelMaterial(const FVoxelBlendedMaterial& Index, bool bTessellation);
 
 protected:
 	virtual void PostLoad() override;

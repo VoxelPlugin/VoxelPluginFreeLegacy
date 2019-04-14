@@ -37,16 +37,12 @@ public:
 		}
 	}
 
-	TVoxelOctree(const TVoxelOctree&) = delete;
-	TVoxelOctree(const TVoxelOctree&&) = delete;
-    TVoxelOctree& operator=(const TVoxelOctree&) = delete;
-
 public:
 	/**
 	 * Get the width at this level
 	 * @return	Width of this chunk
 	 */
-	inline int Size() const
+	inline int32 Size() const
 	{
 		return ChunkSize << LOD;
 	}
@@ -133,12 +129,12 @@ public:
 		return GetChild(P.X, P.Y, P.Z);
 	}
 
-	inline const ElementType& GetChild(int Index) const
+	inline const ElementType& GetChild(int32 Index) const
 	{
 		checkVoxelSlow((Children != nullptr) & (0 <= Index) & (Index < 8));
 		return Children[Index];
 	}
-	inline ElementType& GetChild(int Index)
+	inline ElementType& GetChild(int32 Index)
 	{
 		checkVoxelSlow((Children != nullptr) & (0 <= Index) & (Index < 8));
 		return Children[Index];
@@ -216,7 +212,7 @@ public:
 	}
 
 	template<typename TContainer>
-	void GetLeavesBounds(TContainer& OutBounds, int LeafMaxLOD = MAX_WORLD_DEPTH) const
+	void GetLeavesBounds(TContainer& OutBounds, int32 LeafMaxLOD = MAX_WORLD_DEPTH) const
 	{
 		if (IsLeaf())
 		{
@@ -235,7 +231,7 @@ public:
 	}
 
 	template<template <typename...> class TContainer, typename... TArgs>
-	void GetLeaves(TContainer<ElementType*, TArgs...>& OutOctrees, int LeafMaxLOD = MAX_WORLD_DEPTH)
+	void GetLeaves(TContainer<ElementType*, TArgs...>& OutOctrees, int32 LeafMaxLOD = MAX_WORLD_DEPTH)
 	{
 		if (IsLeaf())
 		{
@@ -334,7 +330,7 @@ protected:
 
 		Children = (ElementType*)FMemory::Malloc(8 * sizeof(ElementType));
 
-		for (int Index = 0; Index < 8 ; Index++)
+		for (int32 Index = 0; Index < 8 ; Index++)
 		{
 			new (&Children[Index]) ElementType(static_cast<ElementType*>(this), Index, Forward<TArgs>(Args)...);
 		}
@@ -372,7 +368,7 @@ private:
 	}
 
 	template<typename TNumeric>
-	inline int GetChildIndex(TNumeric X, TNumeric Y, TNumeric Z) const
+	inline int32 GetChildIndex(TNumeric X, TNumeric Y, TNumeric Z) const
 	{
 		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
 		return (X >= Position.X) + 2 * (Y >= Position.Y) + 4 * (Z >= Position.Z);

@@ -2,8 +2,39 @@
 
 #include "VoxelPolygonizer.h"
 #include "VoxelData/VoxelData.h"
-#include "Async/Async.h"
 #include "VoxelDebug/VoxelDebugManager.h"
+#include "VoxelDebug/VoxelStats.h"
+#include "VoxelDebug/VoxelDebugManager.h"
+#include "VoxelRender/VoxelPolygonizerAsyncWork.h"
+
+#include "Async/Async.h"
+
+FVoxelPolygonizerBaseSettings::FVoxelPolygonizerBaseSettings(FVoxelPolygonizerAsyncWorkBase* Work)
+	: LOD(Work->LOD)
+	, Data(&Work->Data.Get())
+	, DebugManager(Work->DebugManager)
+	, ChunkPosition(Work->ChunkPosition)
+	, NormalConfig(Work->NormalConfig)
+	, MaterialConfig(Work->MaterialConfig)
+	, UVConfig(Work->UVConfig)
+	, UVScale(Work->UVScale)
+	, MeshParameters(Work->MeshParameters)
+	, Chunk(&Work->Chunk.Get())
+	, Stats(&Work->Stats)
+{
+
+}
+
+FVoxelTransitionsPolygonizerSettings::FVoxelTransitionsPolygonizerSettings(FVoxelTransitionsPolygonizerAsyncWork* Work)
+	: FVoxelPolygonizerBaseSettings(Work)
+	, TransitionsMask(Work->TransitionsMask)
+{
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 bool FVoxelPolygonizer::Create()
 {
@@ -56,7 +87,7 @@ bool FVoxelPolygonizer::Create()
 		{
 			Stats.StartStat("PreGenerationDelegate");
 			Data->LockDelegatesForRead();
-			Data->PreGenerationDelegate.Broadcast(*Data, FVoxelUtilities::GetBoundsFromPositionAndLOD<CHUNK_SIZE>(ChunkPosition, LOD));
+			Data->PreGenerationDelegate.Broadcast(*Data, FVoxelUtilities::GetBoundsFromPositionAndDepth<CHUNK_SIZE>(ChunkPosition, LOD));
 			Data->UnlockDelegatesForRead();
 		}
 
@@ -82,9 +113,9 @@ bool FVoxelPolygonizer::Create()
 
 	if (bIsGenerating)
 	{
-		Stats.StartStat("PostGenerationDelegate");
+		Stats.StartStat("PostGenerationDelegate Call");
 		Data->LockDelegatesForRead();
-		Data->PostGenerationDelegate.Broadcast(*Data, FVoxelUtilities::GetBoundsFromPositionAndLOD<CHUNK_SIZE>(ChunkPosition, LOD), Chunk);
+		Data->PostGenerationDelegate.Broadcast(Stats, *Data, FVoxelUtilities::GetBoundsFromPositionAndDepth<CHUNK_SIZE>(ChunkPosition, LOD), Chunk);
 		Data->UnlockDelegatesForRead();
 	}
 

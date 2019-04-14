@@ -120,6 +120,18 @@ FAutoConsoleCommandWithWorldAndArgs UpdateAllCmd(
 	TEXT("Update all the chunks in all the voxel world in the scene"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(UpdateAll));
 
+static void LogSecondsPerCycles()
+{
+	double SecondsPerCycles = FPlatformTime::GetSecondsPerCycle();
+    UE_LOG(LogVoxel, Log, TEXT("SECONDS PER CYCLES: %e"), SecondsPerCycles);
+}
+
+FAutoConsoleCommand CmdLogSecondsPerCycles(
+    TEXT("voxel.LogSecondsPerCycles"),
+    TEXT(""),
+    FConsoleCommandDelegate::CreateStatic(&LogSecondsPerCycles)
+    );
+
 ///////////////////////////////////////////////////////////////////////////////
 
 inline float GetBoundsThickness(const FIntBox& Bounds)
@@ -242,7 +254,7 @@ bool GetDataOctreeColor(FColor& OutColor, AVoxelWorld* World, float DebugDT, FVo
 		}
 		else
 		{
-			for (int Index = 0; Index < ChildToPrint.Num() ; Index++)
+			for (int32 Index = 0; Index < ChildToPrint.Num() ; Index++)
 			{
 				DRAW_BOUNDS(ChildToPrint[Index]->GetBounds(), ChildColors[Index], false);
 			}
@@ -374,7 +386,7 @@ void FVoxelDebugManager::ReportRenderChunks(const TMap<uint64, TSharedPtr<FVoxel
 	}
 }
 
-void FVoxelDebugManager::ReportRenderOctreeBuild(const FString& Log, int NumberOfLeaves, bool bTooManyChunks)
+void FVoxelDebugManager::ReportRenderOctreeBuild(const FString& Log, int32 NumberOfLeaves, bool bTooManyChunks)
 {
 	if (CVarLogRenderOctreeBuildTime.GetValueOnGameThread())
 	{
@@ -429,12 +441,12 @@ void FVoxelDebugManager::ReportCacheUpdate(
 	}
 }
 
-void FVoxelDebugManager::ReportManualCacheProgress(int Current, int Total)
+void FVoxelDebugManager::ReportManualCacheProgress(int32 Current, int32 Total)
 {
 	GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), 0.1, FColor::White, FString::Printf(TEXT("Building cache: %d/%d"), Current, Total));
 }
 
-void FVoxelDebugManager::ReportTasksCount(int InTaskCount)
+void FVoxelDebugManager::ReportTasksCount(int32 InTaskCount)
 {
 	TaskCount = InTaskCount;
 }

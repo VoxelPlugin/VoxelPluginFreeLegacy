@@ -5,58 +5,88 @@
 #include "VoxelMaterialCollection.h"
 
 #include "Logging/MessageLog.h"
+#include "Misc/UObjectToken.h"
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
-UMaterialInterface* FVoxelRendererSettings::GetVoxelMaterialWithoutTessellation(const FVoxelBlendedMaterial& Index) const
+UMaterialInterface* FVoxelRendererSettings::GetVoxelMaterial(const FVoxelBlendedMaterial& BlendedIndex, bool bTessellation) const
 {
 	if (!MaterialCollection.IsValid())
 	{
 		FMessageLog("PIE").Error(LOCTEXT("InvalidMaterialCollection", "Invalid Material Collection"));
 		return nullptr;
 	}
-	auto* Value = MaterialCollection->GetVoxelMaterial(Index);
+	auto* Value = MaterialCollection->GetVoxelMaterial(BlendedIndex, bTessellation);
 	if (!Value)
 	{
-		FMessageLog("PIE").Error(FText::FromString(FString::Printf(TEXT("Missing the following generated material in %s: %s"), *MaterialCollection->GetPathName(), *Index.ToString())));
+		for (uint8 Index : BlendedIndex.GetElements())
+		{
+			if (!MaterialCollection->Materials.ContainsByPredicate([&](FVoxelMaterialCollectionElement& Element)
+			{
+				if (Element.Children.Num() == 0)
+				{
+					return Element.Index == Index;
+				}
+				else
+				{
+					return Element.Children.ContainsByPredicate([&](FVoxelMaterialCollectionElementIndex& Child)
+					{
+						return Child.InstanceIndex == Index;
+					});
+				}
+			}))
+			{
+				static TMap<const FVoxelRendererSettings*, TSet<uint8>> AlreadyWarnedIndex;
+				auto& Set = AlreadyWarnedIndex.FindOrAdd(this);
+				if (!Set.Contains(Index))
+				{
+					Set.Add(Index);
+					TSharedRef<FTokenizedMessage> Message = FTokenizedMessage::Create(EMessageSeverity::Error);
+					Message->AddToken(FTextToken::Create(FText::Format(LOCTEXT("MaterialCollectionInvalidIndex", "Index {0} not in "), Index)));
+					Message->AddToken(FUObjectToken::Create(MaterialCollection.Get()));
+					Message->AddToken(FTextToken::Create(LOCTEXT(
+						"MaterialCollectionInvalidIndexHelp",
+						". It's either because you painted/set an invalid index,"
+						" or because you forgot to add this index in your material collection.")));
+					FMessageLog("PIE").AddMessage(Message);
+				}
+				return nullptr;
+			}
+		}
+
+		static TMap<const FVoxelRendererSettings*, TSet<FVoxelBlendedMaterial>> AlreadyWarnedIndex;
+		auto& Set = AlreadyWarnedIndex.FindOrAdd(this);
+		if (!Set.Contains(BlendedIndex))
+		{
+			Set.Add(BlendedIndex);
+			TSharedRef<FTokenizedMessage> Message = FTokenizedMessage::Create(EMessageSeverity::Error);
+			Message->AddToken(FTextToken::Create(LOCTEXT("MaterialCollectionMissingText", "Missing the following generated material in ")));
+			Message->AddToken(FUObjectToken::Create(MaterialCollection.Get()));
+			Message->AddToken(FTextToken::Create(
+				FText::Format(LOCTEXT("MaterialCollectionMissing", ": {0} {1}. You need to open the asset and click the Generate {2} button. {3}"),
+					FText::FromString(bTessellation ? "Tessellation" : ""),
+					FText::FromString(BlendedIndex.ToString()),
+					FText::FromString(BlendedIndex.KindToString()),
+					FText::FromString(bTessellation && !MaterialCollection->bEnableTessellation ?
+						"You also need to tick Enable Tessellation." :
+						""))));
+			FMessageLog("PIE").AddMessage(Message);
+		}
+		return nullptr;
 	}
 	return Value;
 }
 
-UMaterialInterface* FVoxelRendererSettings::GetVoxelMaterialWithTessellation(const FVoxelBlendedMaterial& Index) const
+UMaterialInterface* FVoxelRendererSettings::GetVoxelMaterial(bool bTessellation) const
 {
-	// TODO: Improve with fancy tokens & how to fix it
-	if (!MaterialCollection.IsValid())
+	const auto& Material = bTessellation ? VoxelMaterialWithTessellation : VoxelMaterialWithoutTessellation;
+	if (!Material.IsValid())
 	{
-		FMessageLog("PIE").Error(LOCTEXT("InvalidMaterialCollection", "Invalid Material Collection"));
+		FMessageLog("PIE").Error(bTessellation ?
+			LOCTEXT("InvalidVoxelMaterialWithTessellation", "Invalid Tessellated Voxel Material") :
+			LOCTEXT("InvalidVoxelMaterial", "Invalid Voxel Material"));
 		return nullptr;
 	}
-	auto* Value = MaterialCollection->GetVoxelMaterialWithTessellation(Index);
-	if (!Value)
-	{
-		FMessageLog("PIE").Error(FText::FromString(FString::Printf(TEXT("Missing the following generated material in %s: Tessellation %s"), *MaterialCollection->GetPathName(), *Index.ToString())));
-	}
-	return Value;
+	return Material.Get();
 }
-
-UMaterialInterface* FVoxelRendererSettings::GetVoxelMaterialWithoutTessellation() const
-{
-	if (!VoxelMaterialWithoutTessellation.IsValid())
-	{
-		FMessageLog("PIE").Error(LOCTEXT("InvalidVoxelMaterial", "Invalid Voxel Material"));
-		return nullptr;
-	}
-	return VoxelMaterialWithoutTessellation.Get();
-}
-
-UMaterialInterface* FVoxelRendererSettings::GetVoxelMaterialWithTessellation() const
-{
-	if (!VoxelMaterialWithTessellation.IsValid())
-	{
-		FMessageLog("PIE").Error(LOCTEXT("InvalidVoxelMaterialWithTessellation", "Invalid Tessellated Voxel Material"));
-		return nullptr;
-	}
-	return VoxelMaterialWithTessellation.Get();
-}
-
 #undef LOCTEXT_NAMESPACE

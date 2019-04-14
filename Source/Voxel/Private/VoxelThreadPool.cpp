@@ -11,7 +11,6 @@ DECLARE_DWORD_COUNTER_STAT( TEXT( "VoxelThreadPoolDummyCounter" ), STAT_VoxelThr
 DECLARE_CYCLE_STAT(TEXT("FVoxelQueuedThreadPool::AddQueuedWork"), STAT_FVoxelQueuedThreadPool_AddQueuedWork, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FVoxelQueuedThreadPool::RetractQueuedWork"), STAT_FVoxelQueuedThreadPool_RetractQueuedWork, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("FVoxelQueuedThreadPool::RetractQueuedWork.EraseFromQueue"), STAT_FVoxelQueuedThreadPool_RetractQueuedWork_EraseFromQueue, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("FVoxelAsyncWork::WaitForCompletion"), STAT_FVoxelAsyncWork_WaitForCompletion, STATGROUP_Voxel);
 
 uint32 FVoxelQueuedThread::Run()
 {
@@ -78,7 +77,7 @@ void FVoxelQueuedThread::DoWork(IVoxelQueuedWork* InQueuedWork)
 {
 	//DECLARE_SCOPE_CYCLE_COUNTER(TEXT("FVoxelQueuedThread::DoWork"), STAT_FVoxelQueuedThread_DoWork, STATGROUP_ThreadPoolAsyncTasks);
 
-	check(QueuedWork == nullptr && "Can't do more than one task at a time");
+	checkf(QueuedWork == nullptr, TEXT("Can't do more than one task at a time"));
 	// Tell the thread the work to be done
 	QueuedWork = InQueuedWork;
 	FPlatformMisc::MemoryBarrier();
@@ -253,23 +252,18 @@ IVoxelQueuedWork* FVoxelQueuedThreadPool::ReturnToPoolOrGetNextJob(FVoxelQueuedT
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelAsyncWork::FVoxelAsyncWork(const FName& Name, uint64 Priority, FVoxelAsyncWorkCallback Callback, bool bAutodelete)
+FVoxelAsyncWork::FVoxelAsyncWork(const FName& Name, uint64 Priority, bool bAutodelete)
 	: IVoxelQueuedWork(Priority, Name)
-	, Callback(Callback)
 	, bAutodelete(bAutodelete)
 {
-	DoneEvent = FPlatformProcess::GetSynchEventFromPool(true);
-	DoneEvent->Reset();
 }
 
 FVoxelAsyncWork::~FVoxelAsyncWork()
 {
+	// Can't delete while we're in a critical section, eg if delete is called async by PostDoWork
+	DoneSection.Lock();
+	DoneSection.Unlock();
 	ensure(IsDone());
-	if (DoneEvent)
-	{
-		FPlatformProcess::ReturnSynchEventToPool(DoneEvent);
-		DoneEvent = nullptr;
-	}
 }
 
 void FVoxelAsyncWork::DoThreadedWork()
@@ -281,27 +275,25 @@ void FVoxelAsyncWork::DoThreadedWork()
 		DoWork();
 	}
 
-	check(!IsDone());
-	
 	DoneSection.Lock();
-	
-	DoneEvent->Trigger();
+
 	IsDoneCounter.Increment();
-	
+
 	if (!IsCanceled())
 	{
-		Callback.ExecuteIfBound();
+		check(IsDone());
+		PostDoWork();
 	}
-	
+
 	if (bAutodelete)
 	{
 		DoneSection.Unlock();
 		delete this;
+		return;
 	}
-	else
-	{
-		DoneSection.Unlock();
-	}
+
+	DoneSection.Unlock();
+	// Might be deleted right after this
 }
 
 void FVoxelAsyncWork::Abandon()
@@ -310,7 +302,6 @@ void FVoxelAsyncWork::Abandon()
 
 	DoneSection.Lock();
 
-	DoneEvent->Trigger();
 	IsDoneCounter.Increment();
 
 	if (bAutodelete)
@@ -324,27 +315,14 @@ void FVoxelAsyncWork::Abandon()
 	}
 }
 
-void FVoxelAsyncWork::WaitForCompletion()
-{
-	SCOPE_CYCLE_COUNTER(STAT_FVoxelAsyncWork_WaitForCompletion);
-
-	DoneEvent->Wait();
-	check(!bAutodelete);
-
-	// Make sure IsDoneCounter had the time to increment
-	DoneSection.Lock();
-	DoneSection.Unlock();
-}
-
 void FVoxelAsyncWork::CancelAndAutodelete()
 {
 	DoneSection.Lock();
 	
 	check(!bAutodelete);
 
-	Callback.Unbind();
 	bAutodelete = true;
-	bCanceled.Increment();
+	CanceledCounter.Increment();
 
 	if (IsDone())
 	{

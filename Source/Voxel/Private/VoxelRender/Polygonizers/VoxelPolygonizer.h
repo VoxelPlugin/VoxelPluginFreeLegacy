@@ -7,50 +7,75 @@
 #include "IntBox.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelRender/VoxelIntermediateChunk.h"
-#include "VoxelRender/VoxelPolygonizerAsyncWork.h"
 #include "VoxelData/VoxelDataOctree.h"
 
 class FVoxelData;
 class AVoxelWorld;
 struct FVoxelStatsElement;
+class FVoxelDebugManager;
+class FVoxelPolygonizerAsyncWorkBase;
+class FVoxelTransitionsPolygonizerAsyncWork;
+
+struct FVoxelPolygonizerBaseSettings
+{
+	int32 LOD;
+	FVoxelData* Data;
+	TWeakPtr<FVoxelDebugManager, ESPMode::ThreadSafe> DebugManager;
+	FIntVector ChunkPosition;
+	EVoxelNormalConfig NormalConfig;
+	EVoxelMaterialConfig MaterialConfig;
+	EVoxelUVConfig UVConfig;
+	float UVScale;
+	FVoxelMeshProcessingParameters MeshParameters;
+
+	FVoxelChunk* Chunk;
+	FVoxelStatsElement* Stats;
+
+	FVoxelPolygonizerBaseSettings() = default;
+	FVoxelPolygonizerBaseSettings(FVoxelPolygonizerAsyncWorkBase* Work);
+};
 
 class FVoxelPolygonizerBase
 {
 public:
-	const int LOD;
+	const int32 LOD;
 	// Step between cubes
-	const int Step;
-	const int Size;
+	const int32 Step;
+	const int32 Size;
 	FVoxelData* const Data;
 	TWeakPtr<FVoxelDebugManager, ESPMode::ThreadSafe> const DebugManager;
 	const FIntVector ChunkPosition;
 	const EVoxelNormalConfig NormalConfig;
 	const EVoxelMaterialConfig MaterialConfig;
 	const EVoxelUVConfig UVConfig;
+	const float UVScale;
 	const FVoxelMeshProcessingParameters MeshParameters;
 
 	FVoxelChunk& Chunk;
 	FVoxelStatsElement& Stats;
 
-	FVoxelPolygonizerBase(FVoxelPolygonizerAsyncWorkBase* Work)
-		: LOD(Work->LOD)
-		, Step(1 << Work->LOD)
-		, Size(CHUNK_SIZE << Work->LOD)
-		, Data(&Work->Data.Get())
-		, DebugManager(Work->DebugManager)
-		, ChunkPosition(Work->ChunkPosition)
-		, NormalConfig(Work->NormalConfig)
-		, MaterialConfig(Work->MaterialConfig)
-		, UVConfig(Work->UVConfig)
-		, MeshParameters(Work->MeshParameters)
-		, Chunk(*Work->Chunk)
-		, Stats(Work->Stats)
+	FVoxelPolygonizerBase(const FVoxelPolygonizerBaseSettings& Settings)
+		: LOD(Settings.LOD)
+		, Step(1 << Settings.LOD)
+		, Size(CHUNK_SIZE << Settings.LOD)
+		, Data(Settings.Data)
+		, DebugManager(Settings.DebugManager)
+		, ChunkPosition(Settings.ChunkPosition)
+		, NormalConfig(Settings.NormalConfig)
+		, MaterialConfig(Settings.MaterialConfig)
+		, UVConfig(Settings.UVConfig)
+		, UVScale(Settings.UVScale)
+		, MeshParameters(Settings.MeshParameters)
+		, Chunk(*Settings.Chunk)
+		, Stats(*Settings.Stats)
 	{
 	}
 	virtual ~FVoxelPolygonizerBase() = default;
 
 	virtual bool Create() = 0;
 };
+
+using FVoxelPolygonizerSettings = FVoxelPolygonizerBaseSettings;
 
 class FVoxelPolygonizer : public FVoxelPolygonizerBase
 {
@@ -68,16 +93,24 @@ protected:
 	virtual bool CreateChunk() = 0;
 };
 
+struct FVoxelTransitionsPolygonizerSettings : public FVoxelPolygonizerBaseSettings
+{
+	uint8 TransitionsMask;
+
+	FVoxelTransitionsPolygonizerSettings() = default;
+	FVoxelTransitionsPolygonizerSettings(FVoxelTransitionsPolygonizerAsyncWork* Work);
+};
+
 class FVoxelTransitionsPolygonizer : public FVoxelPolygonizerBase
 {
 public:
 	const uint8 TransitionsMask;
-	const int HalfLOD;
-	const int HalfStep;
+	const int32 HalfLOD;
+	const int32 HalfStep;
 
-	FVoxelTransitionsPolygonizer(FVoxelTransitionsPolygonizerAsyncWork* Work)
-		: FVoxelPolygonizerBase(Work)
-		, TransitionsMask(Work->TransitionsMask)
+	FVoxelTransitionsPolygonizer(const FVoxelTransitionsPolygonizerSettings& Settings)
+		: FVoxelPolygonizerBase(Settings)
+		, TransitionsMask(Settings.TransitionsMask)
 		, HalfLOD(LOD - 1)
 		, HalfStep(Step / 2)
 	{

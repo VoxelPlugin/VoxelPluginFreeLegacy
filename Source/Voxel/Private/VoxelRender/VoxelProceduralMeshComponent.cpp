@@ -28,11 +28,11 @@ static TAutoConsoleVariable<int32> CVarShowCollisionsUpdates(
 void FVoxelProcMeshSection::Check()
 {
 #if DO_CHECK
-	for (int Index : Indices)
+	for (int32 Index : Indices)
 	{
 		check(0 <= Index && Index < Positions.Num());
 	}
-	for (int Index : AdjacencyIndices)
+	for (int32 Index : AdjacencyIndices)
 	{
 		check(0 <= Index && Index < Positions.Num());
 	}
@@ -218,7 +218,7 @@ UMaterialInterface* UVoxelProceduralMeshComponent::GetMaterialFromCollisionFaceI
 
 void UVoxelProceduralMeshComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
 {
-	for (int SectionIndex = 0; SectionIndex < ProcMeshSections.Num(); SectionIndex++)
+	for (int32 SectionIndex = 0; SectionIndex < ProcMeshSections.Num(); SectionIndex++)
 	{
 		if (UMaterialInterface* Material = GetMaterial(SectionIndex))
 		{
@@ -258,7 +258,7 @@ bool UVoxelProceduralMeshComponent::DoCustomNavigableGeometryExport(FNavigableGe
 			TArray<int32> Indices;
 			// int32 vs uint32 so we must iterate
 			Indices.SetNumUninitialized(Section.Indices.Num());
-			for (int Index = 0; Index < Indices.Num(); Index++)
+			for (int32 Index = 0; Index < Indices.Num(); Index++)
 			{
 				Indices[Index] = Section.Indices[Index];
 			}

@@ -50,6 +50,7 @@ private:
 	void CreateConvexElements(const TArray<TArray<FVector>>& Elements, TArray<physx::PxConvexMesh*>& OutConvexMeshes, bool bFlipped);
 
 	IPhysXCooking* const PhysXCooking;
+	TWeakObjectPtr<UVoxelProceduralMeshComponent> const Component;
 	FCookBodySetupInfo CookInfo;
 	FThreadSafeCounter SuccessCounter;
 };

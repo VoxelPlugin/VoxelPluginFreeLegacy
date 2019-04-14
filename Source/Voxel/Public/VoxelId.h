@@ -24,7 +24,7 @@ struct FVoxelId
 	{
 		if (Init == EForceInit::ForceInitToZero)
 		{
-			for (int I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
+			for (int32 I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
 			{
 				B[I] = 0;
 			}
@@ -42,7 +42,7 @@ struct FVoxelId
 
 	inline static bool IsChild(const FVoxelId& Parent, const FVoxelId& Child)
 	{
-		for (int I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
+		for (int32 I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
 		{
 			if (((Parent.B[I] & 0x0F) != 0 && ((Parent.B[I] & 0x0F) != (Child.B[I] & 0x0F))) || 
 				((Parent.B[I] & 0xF0) != 0 && ((Parent.B[I] & 0xF0) != (Child.B[I] & 0xF0))))
@@ -55,7 +55,7 @@ struct FVoxelId
 
 	inline bool operator==(const FVoxelId& Other) const
 	{
-		for (int I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
+		for (int32 I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
 		{
 			if (B[I] != Other.B[I])
 			{
@@ -67,7 +67,7 @@ struct FVoxelId
 
 	inline bool operator!=(const FVoxelId& Other) const
 	{
-		for (int I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
+		for (int32 I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
 		{
 			if (B[I] != Other.B[I])
 			{
@@ -80,7 +80,7 @@ struct FVoxelId
 
 inline FArchive& operator<<(FArchive &Ar, FVoxelId& Id)
 {
-	for (int I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
+	for (int32 I = 0; I < MAX_WORLD_DEPTH_HALF; I++)
 	{
 		Ar << Id.B[I];
 	}

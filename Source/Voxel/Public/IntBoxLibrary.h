@@ -27,7 +27,7 @@ public:
 
 	// From -Radius(included) to Radius(excluded)
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox")
-	static FIntBox MakeBoxFromLocalPositionAndRadius(const FIntVector& Position, int Radius)
+	static FIntBox MakeBoxFromLocalPositionAndRadius(const FIntVector& Position, int32 Radius)
 	{
 		return FIntBox(FIntVector(-Radius), FIntVector(Radius)).TranslateBy(Position);
 	}
@@ -93,7 +93,7 @@ public:
 	}
 	
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox", meta = (CompactNodeTitle = "x"))
-	static FIntBox Scale(const FIntBox& Box, int Scale)
+	static FIntBox Scale(const FIntBox& Box, int32 Scale)
 	{
 		return Box * Scale;
 	}

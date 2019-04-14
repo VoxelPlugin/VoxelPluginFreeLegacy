@@ -152,31 +152,27 @@ DECLARE_DELEGATE(FVoxelAsyncWorkCallback);
 class VOXEL_API FVoxelAsyncWork : public IVoxelQueuedWork
 {
 public:
-	FVoxelAsyncWork(const FName& Name, uint64 Priority, FVoxelAsyncWorkCallback Callback = FVoxelAsyncWorkCallback(), bool bAutodelete = false);
+	FVoxelAsyncWork(const FName& Name, uint64 Priority, bool bAutodelete = false);
 	~FVoxelAsyncWork() override;
 
 	virtual void DoThreadedWork() final;
 	virtual void Abandon() final;
 
 	virtual void DoWork() = 0;
+	virtual void PostDoWork() {} // Will be called when IsDone is true
 
 	inline bool IsDone() const { return IsDoneCounter.GetValue() > 0; }
 
-	void WaitForCompletion();
 	void CancelAndAutodelete();
 
 protected:
-	inline bool IsCanceled() const { return bCanceled.GetValue() > 0; }
+	inline bool IsCanceled() const { return CanceledCounter.GetValue() > 0; }
 
 private:
 	FThreadSafeCounter IsDoneCounter;
-	FEvent* DoneEvent;
 	FCriticalSection DoneSection;
-
-	FVoxelAsyncWorkCallback Callback;
-	uint64 CallbackInfo;
 	
-	FThreadSafeCounter bCanceled;
+	FThreadSafeCounter CanceledCounter;
 	bool bAutodelete = false;
 };
 

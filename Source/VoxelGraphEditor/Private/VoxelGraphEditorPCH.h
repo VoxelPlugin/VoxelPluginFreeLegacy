@@ -18,5 +18,7 @@
 #include "EdGraph/EdGraphSchema.h"
 #include "AdvancedPreviewScene.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "Kismet2/SClassPickerDialog.h"
 #include "PropertyEditorModule.h"
 #include "Modules/ModuleManager.h"
+#include "ClassViewerFilter.h"
