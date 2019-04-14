@@ -63,7 +63,7 @@ Both versions can be used commercially.
 * Pro Support
 
 ## Docs & Support
-The docs of the plugin are hosted at https://voxel-plugin.readthedocs.io/en/latest/
+The docs of the plugin are hosted at http://wiki.voxelplugin.com
 
 To get support, you can either:
 * join the discord: https://discord.gg/58ZqEbg
