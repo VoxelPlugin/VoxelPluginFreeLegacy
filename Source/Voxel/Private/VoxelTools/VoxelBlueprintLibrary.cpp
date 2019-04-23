@@ -15,13 +15,12 @@
 #include "IVoxelPool.h"
 #include "VoxelDefaultPools.h"
 
-#include "Logging/MessageLog.h"
 #include "Async/Async.h"
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
-#define VOXELINDEX_DISABLED(Name)  VoxelLogBlueprintError(FText::FromString(FString(#Name) + TEXT(": Voxel index   is disabled (DISABLE_VOXELINDEX == ") + FString::FromInt(DISABLE_VOXELINDEX) + TEXT(")!")));
-#define VOXELCOLORS_DISABLED(Name) VoxelLogBlueprintError(FText::FromString(FString(#Name) + TEXT(": Voxel colors are disabled (ENABLE_VOXELCOLORS == ") + FString::FromInt(ENABLE_VOXELCOLORS) + TEXT(")!")));
+#define VOXELINDEX_DISABLED(Name)  FVoxelBPErrors::Error(FText::FromString(FString(#Name) + TEXT(": Voxel index   is disabled (DISABLE_VOXELINDEX == ") + FString::FromInt(DISABLE_VOXELINDEX) + TEXT(")!")));
+#define VOXELCOLORS_DISABLED(Name) FVoxelBPErrors::Error(FText::FromString(FString(#Name) + TEXT(": Voxel colors are disabled (ENABLE_VOXELCOLORS == ") + FString::FromInt(ENABLE_VOXELCOLORS) + TEXT(")!")));
 
 #if DISABLE_VOXELINDEX
 #define CHECK_VOXELINDEX(Name) VOXELINDEX_DISABLED(Name)
@@ -70,12 +69,12 @@ void UVoxelBlueprintLibrary::Undo(AVoxelWorld* World)
 
 	if (!Data.bEnableUndoRedo)
 	{
-		VoxelLogBlueprintError(LOCTEXT("UndobEnableUndoRedo", "Undo: Undo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		FVoxelBPErrors::Error(LOCTEXT("UndobEnableUndoRedo", "Undo: Undo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
 		return;
 	}
 	if (!Data.IsCurrentFrameEmpty())
 	{
-		VoxelLogBlueprintError(LOCTEXT("UndoSaveFrame", "Undo: Undo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
+		FVoxelBPErrors::Error(LOCTEXT("UndoSaveFrame", "Undo: Undo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
 		return;
 	}
 
@@ -92,12 +91,12 @@ void UVoxelBlueprintLibrary::Redo(AVoxelWorld* World)
 
 	if (!Data.bEnableUndoRedo)
 	{
-		VoxelLogBlueprintError(LOCTEXT("RedobEnableUndoRedo", "Redo: Redo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		FVoxelBPErrors::Error(LOCTEXT("RedobEnableUndoRedo", "Redo: Redo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
 		return;
 	}
 	if (!Data.IsCurrentFrameEmpty())
 	{
-		VoxelLogBlueprintError(LOCTEXT("RedoSaveFrame", "Redo: Redo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
+		FVoxelBPErrors::Error(LOCTEXT("RedoSaveFrame", "Redo: Redo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
 		return;
 	}
 	
@@ -114,7 +113,7 @@ void UVoxelBlueprintLibrary::SaveFrame(AVoxelWorld* World)
 
 	if (!Data.bEnableUndoRedo)
 	{
-		VoxelLogBlueprintError(LOCTEXT("SaveFrame", "SaveFrame: SaveFrame called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		FVoxelBPErrors::Error(LOCTEXT("SaveFrame", "SaveFrame: SaveFrame called but bEnableUndoRedo is false. Please enable it on your voxel world"));
 		return;
 	}
 	Data.SaveFrame();
@@ -128,7 +127,8 @@ void UVoxelBlueprintLibrary::ClearFrames(AVoxelWorld* World)
 
 	if (!Data.bEnableUndoRedo)
 	{
-		VoxelLogBlueprintError(LOCTEXT("ClearFrames", "ClearFrames: ClearFrames called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		FVoxelBPErrors::Error(LOCTEXT("ClearFrames", "ClearFrames: ClearFrames called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		return;
 	}
 	Data.ClearFrames();
 }
@@ -153,7 +153,7 @@ float UVoxelBlueprintLibrary::GetFloatOutput(AVoxelWorld* World, FName Name, int
 	const uint8* Index = Data.WorldGenerator->SingleFloatOutputsNames.Find(Name);
 	if (!Index)
 	{
-		VoxelLogBlueprintError(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " and with type float found!"));
+		FVoxelBPErrors::Error(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " and with type float found!"));
 		return 0;
 	}
 	return Data.WorldGenerator->GetFloatOutput(X, Y, Z, *Index);
@@ -168,7 +168,7 @@ int32 UVoxelBlueprintLibrary::GetIntOutput(AVoxelWorld* World, FName Name, int32
 	const uint8* Index = Data.WorldGenerator->SingleIntOutputsNames.Find(Name);
 	if (!Index)
 	{
-		VoxelLogBlueprintError(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " and with type int found!"));
+		FVoxelBPErrors::Error(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " and with type int found!"));
 		return 0;
 	}
 	return Data.WorldGenerator->GetIntOutput(X, Y, Z, *Index);
@@ -233,21 +233,21 @@ int32 UVoxelBlueprintLibrary::GetTaskCount(AVoxelWorld* World)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(int32 MeshThreadCount)
+void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(int32 NumberOfThreads)
 {
 	if (IsGlobalVoxelPoolCreated())
 	{
-		VoxelLogBlueprintError(LOCTEXT("CreateGlobalVoxelPool", "CreateGlobalVoxelPool called but global pool already created!"));
+		FVoxelBPErrors::Error(LOCTEXT("CreateGlobalVoxelPool", "CreateGlobalVoxelPool called but global pool already created!"));
 		return;
 	}
-	FVoxelDefaultPool::CreateGlobalPool(FMath::Max(1, MeshThreadCount));
+	FVoxelDefaultPool::CreateGlobalPool(FMath::Max(1, NumberOfThreads), "CreateGlobalVoxelThreadPool");
 }
 
 void UVoxelBlueprintLibrary::DestroyGlobalVoxelThreadPool()
 {
 	if (!IsGlobalVoxelPoolCreated())
 	{
-		VoxelLogBlueprintError(LOCTEXT("DestroyGlobalVoxelPool", "DestroyGlobalVoxelPool called but global pool isn't created!"));
+		FVoxelBPErrors::Error(LOCTEXT("DestroyGlobalVoxelPool", "DestroyGlobalVoxelPool called but global pool isn't created!"));
 		return;
 	}
 	IVoxelPool::DestroyGlobalVoxelPool();
@@ -319,48 +319,25 @@ int32 UVoxelBlueprintLibrary::GetMin_Intvector(const FIntVector& Vector)
 FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateRGBPaintMaterial(FLinearColor Color, float Amount, bool bPaintR, bool bPaintG, bool bPaintB, bool bPaintA)
 {
 	CHECK_VOXELCOLORS(CreateRGBPaintMaterial);
-
-	FVoxelPaintMaterial Material(EVoxelPaintMaterialType::RGBA);
-	Material.Color.Color = Color;
-	Material.Color.bPaintR = bPaintR;
-	Material.Color.bPaintG = bPaintG;
-	Material.Color.bPaintB = bPaintB;
-	Material.Color.bPaintA = bPaintA;
-	Material.Amount = Amount;
-	return Material;
+	return FVoxelPaintMaterial::CreateRGB(Color, Amount, bPaintR, bPaintG, bPaintB, bPaintA);
 }
 
-FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateIndexPaintMaterial(uint8 Index)
+FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateSingleIndexPaintMaterial(uint8 Index)
 {
 	CHECK_VOXELINDEX(CreateIndexPaintMaterial);
-
-	FVoxelPaintMaterial Material(EVoxelPaintMaterialType::Index);
-	Material.Index = Index;
-	return Material;
+	return FVoxelPaintMaterial::CreateSingleIndex(Index);
 }
 
 FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateDoubleIndexSetPaintMaterial(uint8 IndexA, uint8 IndexB, float Blend, bool bSetIndexA, bool bSetIndexB, bool bSetBlend)
 {
 	CHECK_VOXELINDEX(CreateIndexPaintMaterial);
-
-	FVoxelPaintMaterial Material(EVoxelPaintMaterialType::DoubleIndexSet);
-	Material.DoubleIndex.IndexA = IndexA;
-	Material.DoubleIndex.IndexB = IndexB;
-	Material.DoubleIndex.Blend = Blend;
-	Material.DoubleIndex.bSetIndexA = bSetIndexA;
-	Material.DoubleIndex.bSetIndexB = bSetIndexB;
-	Material.DoubleIndex.bSetBlend = bSetBlend;
-	return Material;
+	return FVoxelPaintMaterial::CreateDoubleIndexSet(IndexA, IndexB, Blend, bSetIndexA, bSetIndexB, bSetBlend);
 }
 
 FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateDoubleIndexBlendPaintMaterial(uint8 Index, float Amount)
 {
 	CHECK_VOXELINDEX(CreateIndexPaintMaterial);
-
-	FVoxelPaintMaterial Material(EVoxelPaintMaterialType::DoubleIndexBlend);
-	Material.Index = Index;
-	Material.Amount = Amount;
-	return Material;
+	return FVoxelPaintMaterial::CreateDoubleIndexBlend(Index, Amount);
 }
 
 FVoxelMaterial UVoxelBlueprintLibrary::ApplyPaintMaterial(FVoxelMaterial Material, FVoxelPaintMaterial PaintMaterial)
@@ -454,7 +431,7 @@ FVoxelMaterial UVoxelBlueprintLibrary::SetIndexB(FVoxelMaterial Material, uint8 
 FVoxelMaterial UVoxelBlueprintLibrary::SetBlend(FVoxelMaterial Material, float Blend)
 {
 	CHECK_VOXELCOLORS(SetBlend);
-	Material.SetBlend(FMath::Clamp(FMath::RoundToInt(Blend * 255.999f), 0, 255));
+	Material.SetBlend(FVoxelUtilities::FloatToUINT8(Blend));
 	return Material;
 }
 

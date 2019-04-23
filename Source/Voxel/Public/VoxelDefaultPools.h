@@ -8,7 +8,7 @@
 class VOXEL_API FVoxelDefaultPool : public IVoxelPool
 {
 public:
-	static void CreateGlobalPool(int32 MeshThreadCount);
+	static void CreateGlobalPool(int32 MeshThreadCount, const FString& Creator);
 	static TSharedRef<FVoxelDefaultPool> Create(int32 MeshThreadCount);
 
 public:

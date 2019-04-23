@@ -60,6 +60,7 @@ public:
 	inline uint64 GetTaskId() const { return TaskId; }
 	inline uint8 GetWantedTransitionsMask() const { return WantedTransitionsMask; }
 	inline bool NeedsToBeDeleted() const { return Mesh || PreviousChunks.Num() > 0; }
+	inline bool IsDestroyed() const { return bDestroyed; }
 	bool CanStartUpdateWithCustomTaskId() const;
 	uint64 GetPriority() const;
 	
@@ -75,7 +76,7 @@ private:
 	TArray<TSharedRef<FVoxelChunkToDelete>> PreviousChunks; // Will be reset after first update
 
 	bool bUpdateQueued = false;
-	bool bDestroyed = false; // Only for assert
+	bool bDestroyed = false;
 
 	TUniquePtr<FVoxelPolygonizerAsyncWork> MeshTask;
 	TUniquePtr<FVoxelTransitionsPolygonizerAsyncWork> TransitionsTask;

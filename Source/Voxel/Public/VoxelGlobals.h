@@ -12,6 +12,11 @@ VOXEL_API DECLARE_LOG_CATEGORY_EXTERN(LogVoxel, Verbose, All);
 
 #define VOXELPLUGIN_VERSION TEXT("0")
 
+#ifdef __INTELLISENSE__
+#define USE_STEAM 1
+#define VOXEL_DEBUG 1
+#endif
+
 #ifndef VOXEL_DEBUG
 #define VOXEL_DEBUG 0
 #endif // !VOXEL_DEBUG

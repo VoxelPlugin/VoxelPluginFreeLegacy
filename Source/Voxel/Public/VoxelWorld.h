@@ -54,203 +54,217 @@ public:
 
 public:
 	// Automatically loaded on creation
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Save")
 	UVoxelWorldSaveObject* SaveObject = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (FilePathFilter = "voxelsave"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Save", meta = (FilePathFilter = "voxelsave"))
 	FFilePath SaveFilePath;
 
 	// If true, will save the world to SaveFilePath each time it's saved to the save object
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Save")
 	bool bAutomaticallySaveToFile = false;
 
 	// If true, will add the current time & date to the filepath when saving
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Save")
 	bool bAppendDateToSavePath = false;
+	
+	// Automatically toggle the world
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Preview")
+	bool bAutomaticallyToggle = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Preview", meta = (Recreate, ClampMin = 1))
+	int32 NumberOfThreadsForPreview = 2;
 
 	//////////////////////////////////////////////////////////////////////////////
 
 	// Size of a voxel in cm
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|General", meta = (RecreateRender, ClampMin = 0.0001))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (RecreateRender, ClampMin = 0.0001))
 	float VoxelSize = 100;
 
 	// Mass in kg of a voxel (multiplied by its density)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|General")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General")
 	float VoxelMassMultiplierInKg = 1;
 
 	// Generator of this world
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|General", meta = (Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
 	FVoxelWorldGeneratorPicker WorldGenerator;
 	
 	// Keep all the changes in memory to enable undo/redo. Can be expensive
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|General", meta = (Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
 	bool bEnableUndoRedo = false;
 
 	// If true, the voxel world will try to stay near its original coordinates when rebasing, and will offset the voxel coordinates instead
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|General")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General")
 	bool bEnableWorldRebasing = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|General", meta = (Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
 	TMap<FString, int32> Seeds;
 
 	//////////////////////////////////////////////////////////////////////////////
 
 	// WorldSizeInVoxel = CHUNK_SIZE * 2^Depth. Has little impact on performance
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Voxel|World Size", meta = (Recreate, ClampMin = 1, ClampMax = 24, UIMin = 1, UIMax = 24))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Voxel - World Size", meta = (Recreate, ClampMin = 1, ClampMax = 24, UIMin = 1, UIMax = 24))
 	int32 OctreeDepth = 10;
 
 	// Size of an edge of the world
-	UPROPERTY(EditAnywhere, Category = "Voxel|World Size", meta = (Recreate, ClampMin = 1))
+	UPROPERTY(EditAnywhere, Category = "Voxel - World Size", meta = (Recreate, ClampMin = 1))
 	int32 WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(10);
 
 	UPROPERTY(meta = (Recreate))
 	bool bUseCustomWorldBounds = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|World Size", meta = (Recreate, EditCondition = "bUseCustomWorldBounds"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - World Size", meta = (Recreate, EditCondition = "bUseCustomWorldBounds"))
 	FIntBox CustomWorldBounds;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
 	// Chunks can't have a LOD strictly higher than this. Useful is background has a too low resolution. WARNING: Don't set this too low, 5 under Octree Depth should be safe
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|LOD Settings", meta = (UpdateLODs, DisplayName = "LOD Limit", ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - LOD Settings", meta = (UpdateLODs, DisplayName = "LOD Limit", ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
 	int32 LODLimit = MAX_WORLD_DEPTH - 1;
 
 	// In world space. Chunks under this distance from voxel invokers will have at least the given LOD
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|LOD Settings", meta = (UpdateLODs, DisplayName = "LOD to Min Distance"))
-	TMap<FString, float> LODToMinDistance = { {"0", 1000.f } };
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - LOD Settings", meta = (UpdateLODs, DisplayName = "LOD to Min Distance"))
+	TMap<FString, float> LODToMinDistance = { {"0", 10000.f } };
 	
 	// In world space. If invokers move by less than this distance LODs won't be updated
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|LOD Settings", meta = (UpdateLODs))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - LOD Settings", meta = (UpdateLODs))
 	float InvokerDistanceThreshold = 100;
 	
 	// Number of LOD update per second
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|LOD Settings", meta = (RecreateRender, ClampMin = 0.000001), DisplayName = "LOD Update Rate")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - LOD Settings", meta = (RecreateRender, ClampMin = 0.000001), DisplayName = "LOD Update Rate")
 	float LODUpdateRate = 15;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, UpdateAll, DisplayName = "UV Config"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender, UpdateAll, DisplayName = "UV Config"))
 	EVoxelUVConfig UVConfig = EVoxelUVConfig::GlobalUVs;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, UpdateAll, DisplayName = "UV Scale"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender, UpdateAll, DisplayName = "UV Scale"))
 	float UVScale = 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, UpdateAll))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender, UpdateAll))
 	EVoxelNormalConfig NormalConfig = EVoxelNormalConfig::GradientNormal;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender, Recreate))
 	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
 
 	// Only used if Material Config = RGB
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender, Recreate))
 	UMaterialInterface* VoxelMaterial = nullptr;
 
 	// Only used if Material Config = RGB
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, Recreate, EditCondition ="bEnableTessellation"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender, Recreate, EditCondition ="bEnableTessellation"))
 	UMaterialInterface* TessellatedVoxelMaterial = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender, Recreate))
 	UVoxelMaterialCollection* MaterialCollection;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender, Recreate))
 	bool bEnableTessellation = false;
 	
 	// Tessellation distance in world space
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (UpdateLODs, ClampMin = 0, EditCondition ="bEnableTessellation"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (UpdateLODs, ClampMin = 0, EditCondition ="bEnableTessellation"))
 	float TessellationDistance = 10000;
 
 	// Increases the chunks bounding boxes, useful when using tessellation
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Materials", meta = (RecreateRender, UpdateAll, EditCondition ="bEnableTessellation"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender, UpdateAll, EditCondition ="bEnableTessellation"))
 	float TessellationBoundsExtension = 0;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (RecreateRender))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Rendering", meta = (RecreateRender))
 	EVoxelRenderType RenderType = EVoxelRenderType::MarchingCubes;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (RecreateRender, ClampMin = 0))
+	// Dithering duration when changing LODs
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0))
 	float ChunksDitheringDuration = 1;
+
+	// When enabled, the component will be rendering into the far shadow cascades (only for directional lights).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Rendering", meta = (RecreateRender))
+	bool bCastFarShadow = false;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (RecreateRender))
+	// Custom procedural mesh class to use
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	TSubclassOf<UVoxelProceduralMeshComponent> ProcMeshClass;
 
 	// Chunks with a LOD strictly higher than this won't be rendered
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Rendering", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
 	int32 ChunksCullingLOD = MAX_WORLD_DEPTH - 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (RecreateRender))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bRenderWorld = true;
 
 	// Will update all the chunks modified by a single edit at once, by waiting for their completion. This will look better but will add latency
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (RecreateRender))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bWaitForOtherChunksToAvoidHoles = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Rendering", meta = (RecreateRender, ClampMin = 0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0))
 	float WaitForOtherChunksToAvoidHolesTimeout = 10;
 
 	//////////////////////////////////////////////////////////////////////////////
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Collisions & Navmesh", meta = (RecreateRender))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions & Navmesh", meta = (RecreateRender))
 	bool bEnableCollisions = true;
 
 	// If false, use only invokers collisions settings
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Collisions & Navmesh", meta = (RecreateRender, EditCondition = bEnableCollisions))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions & Navmesh", meta = (RecreateRender, EditCondition = bEnableCollisions))
 	bool bComputeVisibleChunksCollisions = true;
 
 	// Max LOD to compute collisions on. Inclusive. If not 0 collisions won't be precise
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Collisions & Navmesh", meta = (RecreateRender, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25, EditCondition = bEnableCollisions))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions & Navmesh", meta = (RecreateRender, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25, EditCondition = bEnableCollisions))
 	int32 VisibleChunksCollisionsMaxLOD = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Collisions & Navmesh", meta = (RecreateRender, EditCondition = bEnableCollisions))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions & Navmesh", meta = (RecreateRender, EditCondition = bEnableCollisions, ShowOnlyInnerProperties))
 	FBodyInstance CollisionPresets;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Collisions & Navmesh", meta = (RecreateRender))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions & Navmesh", meta = (RecreateRender))
 	bool bEnableNavmesh = false;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate, ClampMin = 0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Cache", meta = (Recreate, ClampMin = 0))
 	float DataOctreeCompactDelayInSeconds = 30;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Cache", meta = (Recreate))
 	bool bEnableAutomaticCache = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate, ClampMin = 0, EditCondition = bEnableAutomaticCache))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Cache", meta = (Recreate, ClampMin = 0, EditCondition = bEnableAutomaticCache))
 	float CacheUpdateDelayInSeconds = 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache, ClampMin = 0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache, ClampMin = 0))
 	int32 CacheAccessThreshold = 8;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache))
 	bool bCacheLOD0Chunks = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache, ClampMin = 0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache, ClampMin = 0))
 	int32 MaxCacheSize = 10000;
 
-	UPROPERTY(VisibleAnywhere, Category = "Voxel|Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache))
+	UPROPERTY(VisibleAnywhere, Category = "Voxel - Cache", meta = (Recreate, EditCondition = bEnableAutomaticCache))
 	int32 MaxCacheSizeInMB = 0;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Threads")
+	// If you have more than one voxel world, set this to false and call CreateGlobalVoxelThreadPool at BeginPlay (for instance in your level blueprint)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Threads")
 	bool bCreateGlobalPool = true;
 
-	// Number of threads allocated for the mesh processing. Setting it too high may impact performance
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Threads", meta = (Recreate, ClampMin = 1, EditCondition = "!bUseGlobalPool"))
-	int32 MeshThreadCount = 2;
+	// Number of threads allocated for the voxel background processing. Setting it too high may impact performance
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Threads", meta = (Recreate, ClampMin = 1, EditCondition = "bCreateGlobalPool"))
+	int32 NumberOfThreads = 2;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
 		
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Misc")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Misc")
 	bool bCreateWorldAutomatically = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Misc", meta = (DisplayName = "Use camera if no invokers found"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Misc", meta = (DisplayName = "Use camera if no invokers found"))
 	bool bUseCameraIfNoInvokersFound = false;
 	
 	// If true, the mesh indices will be sorted to improve GPU cache performance. Adds a cost to the async mesh building. If you don't see any perf difference, leave it off
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel|Misc", meta = (RecreateRender))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Misc", meta = (RecreateRender))
 	bool bOptimizeIndices = false;
 
 public:
@@ -341,18 +355,26 @@ public:
 
 public:
 	//~ Begin AActor Interface
-	void BeginPlay() override;
-	void EndPlay(EEndPlayReason::Type EndPlayReason) override;
-	void BeginDestroy() override;
-	void Tick(float DeltaTime) override;
-	void Serialize(FArchive& Ar) override;
-	void ApplyWorldOffset(const FVector& InOffset, bool bWorldShift) override;
-	void PostLoad() override;
+	virtual void BeginPlay() override;
+	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
+	virtual void Tick(float DeltaTime) override;
+	virtual void ApplyWorldOffset(const FVector& InOffset, bool bWorldShift) override;
+	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void UnregisterAllComponents(bool bForReregister = false) override;
 #if WITH_EDITOR
-	bool ShouldTickIfViewportsOnly() const override;
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual bool ShouldTickIfViewportsOnly() const override;
 #endif // WITH_EDITOR
 	//~ End AActor Interface
+
+	//~ Begin UObject Interface
+	virtual void BeginDestroy() override;
+	virtual void Serialize(FArchive& Ar) override;
+	virtual void PostLoad() override;
+#if WITH_EDITOR
+	virtual void PreEditChange(UProperty* PropertyThatWillChange) override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif // WITH_EDITOR
+	//~ End UObject Interface
 
 	void UpdateCollisionProfile();
 
@@ -368,6 +390,9 @@ private:
 	bool bIsCreated = false;
 	bool bIsPreviewing = false;
 	double TimeOfCreation = 0;
+
+	// Temporary variable set in PreEditChange to avoid reregistering proc meshes
+	bool bDisableComponentUnregister = false;
 
 private:	
 	TSharedPtr<FVoxelDebugManager, ESPMode::ThreadSafe> DebugManager;
@@ -408,7 +433,7 @@ public:
 	FSimpleMulticastDelegate OnUpdateAll;
 	FSimpleMulticastDelegate OnUpdateLODs;
 
-	void CreateForPreview(UClass* VoxelWorldEditorClass);
+	void CreateForPreview();
 	void SaveData();
 	void LoadFromSaveObjectEditor();
 	bool SaveToFile(const FString& Path, FText& Error);
@@ -432,6 +457,7 @@ public:
 
 	virtual UVoxelWorldSaveObject* CreateSaveObject() = 0;
 	virtual void BindEditorDelegates(UObject* Object) = 0;
+	virtual UClass* GetVoxelWorldEditorClass() = 0;
 
 public:
 	// Sets the voxel world editor implementation.*

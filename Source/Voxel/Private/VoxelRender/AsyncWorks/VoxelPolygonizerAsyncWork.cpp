@@ -9,6 +9,7 @@
 #include "Async/Async.h"
 #include "Misc/ScopeLock.h"
 #include "Misc/MessageDialog.h"
+#include "TimerManager.h"
 
 FVoxelPolygonizerAsyncWorkBase::FVoxelPolygonizerAsyncWorkBase(FVoxelRenderChunk* Chunk, const FString& Name)
 	: FVoxelAsyncWork(
@@ -83,12 +84,22 @@ void FVoxelPolygonizerAsyncWorkBase::DoWork()
 	Stats.StartStat("Waiting for game thread", false);
 }
 
-void FVoxelPolygonizerAsyncWorkBase::PostDoWork()
+void PostDoWorkCallback(const TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>& Chunk, bool bIsTransitionsTask, uint64 TaskId)
 {
-	AsyncTask(ENamedThreads::GameThread, [Chunk = RenderChunk, TaskId = TaskId, bIsTransitionsTask = IsTransitionTask()]()
+	auto ChunkPtr = Chunk.Pin();
+	if (ChunkPtr.IsValid() && !ChunkPtr->IsDestroyed())
 	{
-		auto ChunkPtr = Chunk.Pin();
-		if (ChunkPtr.IsValid())
+		if (GIsSavingPackage)
+		{
+			// Can't call GetNewMesh/NewObject now, so delay
+			if (UWorld* World = ChunkPtr->Renderer->Settings.World.Get()) // Safe because !IsDestroyed
+			{
+				auto& TimerManager = World->GetTimerManager();
+				FTimerHandle Handle;
+				TimerManager.SetTimer(Handle, FTimerDelegate::CreateLambda([=]() { PostDoWorkCallback(Chunk, bIsTransitionsTask, TaskId); }), 0.1, false);
+			}
+		}
+		else
 		{
 			if (bIsTransitionsTask)
 			{
@@ -99,6 +110,14 @@ void FVoxelPolygonizerAsyncWorkBase::PostDoWork()
 				ChunkPtr->MeshCallback(TaskId);
 			}
 		}
+	}
+}
+
+void FVoxelPolygonizerAsyncWorkBase::PostDoWork()
+{
+	AsyncTask(ENamedThreads::GameThread, [Chunk = RenderChunk, TaskId = TaskId, bIsTransitionsTask = IsTransitionTask()]()
+	{
+		PostDoWorkCallback(Chunk, bIsTransitionsTask, TaskId);
 	});
 }
 

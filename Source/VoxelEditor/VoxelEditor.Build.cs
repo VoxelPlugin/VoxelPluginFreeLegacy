@@ -36,6 +36,7 @@ public class VoxelEditor : ModuleRules
                 "Engine",
                 "Voxel",
                 "VoxelGraph",
+                "VoxelEditorDefault",
                 "Engine",
                 "Landscape",
                 "LandscapeEditor",

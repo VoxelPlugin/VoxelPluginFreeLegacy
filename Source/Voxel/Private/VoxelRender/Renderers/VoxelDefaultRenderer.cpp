@@ -430,8 +430,7 @@ void FVoxelDefaultRenderer::UpdateLODs(const TArray<FVoxelChunkToAdd>& ChunksToA
 
 void FVoxelDefaultRenderer::StartMeshDithering(UVoxelProceduralMeshComponent* Mesh, const FIntBox& Bounds, const TArray<TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>>& NewRenderChunks)
 {	
-	// 2x: first dither in new chunk, then dither out old chunk
-	FVoxelRenderUtilities::StartMeshDithering(Mesh, 2 * Settings.ChunksDitheringDuration);
+	FVoxelRenderUtilities::StartMeshDithering(Mesh, Settings);
 	auto Chunk = MakeUnique<FVoxelChunkToRemoveAfterDithering>(
 		Mesh,
 		Bounds,
@@ -484,6 +483,7 @@ UVoxelProceduralMeshComponent* FVoxelDefaultRenderer::GetNewMesh(const FIntVecto
 		{
 			NewMesh->DisableCollisions();
 		}
+		NewMesh->bCastFarShadow = Settings.bCastFarShadow;
 		NewMesh->Pool = Settings.Pool;
 		NewMesh->SetupAttachment(Settings.ComponentsOwner->GetRootComponent(), NAME_None);
 		NewMesh->RegisterComponent();
@@ -497,7 +497,7 @@ UVoxelProceduralMeshComponent* FVoxelDefaultRenderer::GetNewMesh(const FIntVecto
 
 	SetMeshPosition(NewMesh, Position);
 
-	if (Settings.World->WorldType != EWorldType::Editor)
+	if (!Settings.bIsPreviewing)
 	{
 		NewMesh->InitChunk(LOD, FVoxelUtilities::GetBoundsFromPositionAndDepth<CHUNK_SIZE>(Position, LOD));
 	}

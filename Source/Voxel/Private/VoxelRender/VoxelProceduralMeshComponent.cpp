@@ -3,6 +3,7 @@
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/VoxelProceduralMeshSceneProxy.h"
 #include "VoxelRender/VoxelAsyncPhysicsCooker.h"
+#include "VoxelBlueprintErrors.h"
 #include "VoxelGlobals.h"
 #include "IVoxelPool.h"
 
@@ -12,6 +13,8 @@
 #include "AI/NavigationSystemBase.h"
 #include "Async/Async.h"
 #include "DrawDebugHelpers.h"
+
+#define LOCTEXT_NAMESPACE "Voxel"
 
 DECLARE_CYCLE_STAT(TEXT("UVoxelProceduralMeshComponent::CreateSceneProxy")               , STAT_UVoxelProceduralMeshComponent_CreateSceneProxy               , STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("UVoxelProceduralMeshComponent::UpdateCollision")                , STAT_UVoxelProceduralMeshComponent_UpdateCollision                , STATGROUP_Voxel);
@@ -50,6 +53,7 @@ void FVoxelProcMeshSection::Check()
 
 UVoxelProceduralMeshComponent::UVoxelProceduralMeshComponent()
 {
+	bAllowReregistration = false; // Slows down the editor
 	bCastShadowAsTwoSided = true;
 	bHasCustomNavigableGeometry = EHasCustomNavigableGeometry::EvenIfNotCollidable;
 
@@ -66,6 +70,52 @@ UVoxelProceduralMeshComponent::~UVoxelProceduralMeshComponent()
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+bool UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen()
+{
+	return bAreCollisionsFrozen;
+}
+
+void UVoxelProceduralMeshComponent::FreezeVoxelCollisions()
+{
+	if (bAreCollisionsFrozen)
+	{
+		FVoxelBPErrors::Warning(LOCTEXT("CollisionsAlreadyFrozen", "FreezeVoxelCollisions: Collisions are already frozen!"));
+		return;
+	}
+	bAreCollisionsFrozen = true;
+}
+
+void UVoxelProceduralMeshComponent::ResumeVoxelCollisions()
+{
+	if (!bAreCollisionsFrozen)
+	{
+		FVoxelBPErrors::Warning(LOCTEXT("CollisionsNotFrozen", "ResumeVoxelCollisions: Collisions aren't frozen!"));
+		return;
+	}
+	bAreCollisionsFrozen = false;
+
+	for (auto& Component : PendingCollisions)
+	{
+		if (Component.IsValid())
+		{
+			Component->UpdateCollision();
+		}
+	}
+	PendingCollisions.Reset();
+}
+
+bool UVoxelProceduralMeshComponent::bAreCollisionsFrozen = false;
+TSet<TWeakObjectPtr<UVoxelProceduralMeshComponent>> UVoxelProceduralMeshComponent::PendingCollisions;
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+
 void UVoxelProceduralMeshComponent::SetCollisionConvexMeshes(TArray<FKConvexElem>&& InCollisionConvexElems)
 {
 	CollisionConvexElems = InCollisionConvexElems;
@@ -81,6 +131,7 @@ void UVoxelProceduralMeshComponent::SetProcMeshSection(int32 SectionIndex, FVoxe
 	}
 
 	ProcMeshSections[SectionIndex] = MoveTemp(Section);
+	ProcMeshSections[SectionIndex].UpdateStat();
 
 	if (Update == EVoxelProcMeshSectionUpdate::UpdateNow)
 	{
@@ -329,6 +380,12 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 		return;
 	}
 
+	if (bAreCollisionsFrozen)
+	{
+		PendingCollisions.Add(this);
+		return;
+	}
+
 	// Cancel exiting task
 	if (AsyncCooker)
 	{
@@ -431,3 +488,5 @@ UBodySetup* UVoxelProceduralMeshComponent::CreateBodySetupHelper()
 	NewBodySetup->bGenerateMirroredCollision = false;
 	return NewBodySetup;
 }
+
+#undef LOCTEXT_NAMESPACE

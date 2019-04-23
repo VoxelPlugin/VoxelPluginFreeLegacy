@@ -255,12 +255,11 @@ void FVoxelRenderChunk::NewChunksAreUpdated()
 		}
 		else
 		{
-			auto& TimerManager = Renderer->Settings.World->GetTimerManager();
-			float ChunksDitheringDuration = Renderer->Settings.ChunksDitheringDuration;
+			auto& RendererSettings = Renderer->Settings;
+			auto& TimerManager = RendererSettings.World->GetTimerManager();
 			
-			// 2x: first dither in new chunk, then dither out old chunk
-			TimerManager.SetTimer(HideMeshAfterDitheringHandle, FTimerDelegate::CreateThreadSafeSP(this, &FVoxelRenderChunk::HideMeshAfterDithering), 2 * ChunksDitheringDuration, false);
-			FVoxelRenderUtilities::StartMeshDithering(Mesh, 2 * ChunksDitheringDuration);
+			TimerManager.SetTimer(HideMeshAfterDitheringHandle, FTimerDelegate::CreateThreadSafeSP(this, &FVoxelRenderChunk::HideMeshAfterDithering), RendererSettings.GetRealChunksDitheringDuration(), false);
+			FVoxelRenderUtilities::StartMeshDithering(Mesh, RendererSettings);
 		}
 	}
 }
@@ -359,7 +358,7 @@ void FVoxelRenderChunk::UpdateMeshFromChunks()
 			ChunkMaterials = MakeUnique<FVoxelChunkMaterials>();
 		}
 		
-		if (Settings.bEnableCollisions)
+		if (Settings.bEnableTessellation)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_VoxelRenderChunk_BuildAdjacency);
 			auto BuildAdjacency = [](auto& Buffer)

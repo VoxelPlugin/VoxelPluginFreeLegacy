@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "UObject/TextProperty.h"
 #include "VoxelPaintMaterial.h"
 #include "IntBox.h"
 #include "VoxelBlueprintLibrary.generated.h"
@@ -12,6 +13,8 @@
 class UHierarchicalInstancedStaticMeshComponent;
 class AVoxelActor;
 class AVoxelWorld;
+class APlayerState;
+class AController;
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FVoxelOnChunkGenerationDynamicDelegate, AVoxelWorld*, World, FIntBox, Bounds);
 
@@ -105,10 +108,10 @@ public:
 
 	/**
 	 * Create the global voxel thread pool. Must not be already created.
-	 * @param	MeshThreadCount		At least 1
+	 * @param	NumberOfThreads		At least 1
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads")
-	 static void CreateGlobalVoxelThreadPool(int32 MeshThreadCount = 2);
+	 static void CreateGlobalVoxelThreadPool(int32 NumberOfThreads = 2);
 	
 	// Destroy the global voxel thread pool
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads")
@@ -165,7 +168,7 @@ public:
 
 	// Create from index
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelPaintMaterial CreateIndexPaintMaterial(uint8 Index);
+	static FVoxelPaintMaterial CreateSingleIndexPaintMaterial(uint8 Index);
 
 	// Create from double index
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")

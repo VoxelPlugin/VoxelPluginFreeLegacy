@@ -45,12 +45,12 @@ inline FColor GetChunkSettingsColor(const FVoxelRenderChunkSettings& Settings)
 	return FColor::White;
 }
 
-inline UMaterialInstanceDynamic* InitializeMaterialInstance(int32 LOD, bool bShouldFade, UVoxelProceduralMeshComponent* Mesh, UMaterialInterface* Interface, float ChunksDitheringDuration)
+inline UMaterialInstanceDynamic* InitializeMaterialInstance(int32 LOD, bool bShouldFade, UVoxelProceduralMeshComponent* Mesh, UMaterialInterface* Interface, const FVoxelRendererSettings& Settings)
 {
 	UMaterialInstanceDynamic* MaterialInstance = UMaterialInstanceDynamic::Create(Interface, Mesh);
 	MaterialInstance->AddToCluster(Mesh, true);
-	MaterialInstance->SetScalarParameterValue(FName(TEXT("StartTime")), bShouldFade ? FVoxelRenderUtilities::GetWorldCurrentTime(Mesh->GetWorld()) : -ChunksDitheringDuration);
-	MaterialInstance->SetScalarParameterValue(FName(TEXT("FadeDuration")), ChunksDitheringDuration);
+	MaterialInstance->SetScalarParameterValue(FName(TEXT("StartTime")), bShouldFade ? FVoxelRenderUtilities::GetWorldCurrentTime(Mesh->GetWorld()) : -Settings.ChunksDitheringDuration);
+	MaterialInstance->SetScalarParameterValue(FName(TEXT("FadeDuration")), Settings.ChunksDitheringDuration);
 	MaterialInstance->SetScalarParameterValue(FName(TEXT("EndTime")), 0); // Needed for first init, as 1e10 is too big
 	MaterialInstance->SetScalarParameterValue(FName(TEXT("EndTime")), 1e10);
 	MaterialInstance->SetScalarParameterValue(FName(TEXT("LOD")), LOD);
@@ -69,14 +69,14 @@ float FVoxelRenderUtilities::GetWorldCurrentTime(UWorld* World)
 	}
 }
 
-void FVoxelRenderUtilities::StartMeshDithering(UVoxelProceduralMeshComponent* Mesh, float ChunksDitheringDuration)
+void FVoxelRenderUtilities::StartMeshDithering(UVoxelProceduralMeshComponent* Mesh, const FVoxelRendererSettings& Settings)
 {
 	for (auto& Section : Mesh->GetSections())
 	{
 		UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Section.Material);
 		if (Material)
 		{
-			Material->SetScalarParameterValue(FName(TEXT("EndTime")), FVoxelRenderUtilities::GetWorldCurrentTime(Mesh->GetWorld()) + ChunksDitheringDuration);
+			Material->SetScalarParameterValue("EndTime", FVoxelRenderUtilities::GetWorldCurrentTime(Mesh->GetWorld()) + Settings.GetRealChunksDitheringDuration());
 		}
 	}
 }
@@ -88,9 +88,9 @@ void FVoxelRenderUtilities::ResetDithering(UVoxelProceduralMeshComponent* Mesh)
 		UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Section.Material);
 		if (Material)
 		{
-			Material->SetScalarParameterValue(FName(TEXT("StartTime")), 0);
-			Material->SetScalarParameterValue(FName(TEXT("EndTime")), 0); // Needed for first init, as 1e10 is too big
-			Material->SetScalarParameterValue(FName(TEXT("EndTime")), 1e10);
+			Material->SetScalarParameterValue("StartTime", 0);
+			Material->SetScalarParameterValue("EndTime", 0); // Needed for first init, as 1e10 is too big
+			Material->SetScalarParameterValue("EndTime", 1e10);
 		}
 	}
 }
@@ -254,7 +254,7 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 		UMaterialInterface* MaterialInstance = ChunkMaterials.GetSingleMaterial();
 		if (!MaterialInstance)
 		{
-			MaterialInstance = InitializeMaterialInstance(LOD, bShouldFade, Mesh, RendererSettings.GetVoxelMaterial(ChunkSettings.bEnableTessellation), RendererSettings.ChunksDitheringDuration);
+			MaterialInstance = InitializeMaterialInstance(LOD, bShouldFade, Mesh, RendererSettings.GetVoxelMaterial(ChunkSettings.bEnableTessellation), RendererSettings);
 			ChunkMaterials.SetSingleMaterial(MaterialInstance);
 			bNeedMaterialUpdate = true;
 		}
@@ -306,7 +306,7 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 			UMaterialInterface* MaterialInstance = ChunkMaterials.GetMultipleMaterial(Material);
 			if (!MaterialInstance)
 			{
-				MaterialInstance = InitializeMaterialInstance(LOD, bShouldFade, Mesh, RendererSettings.GetVoxelMaterial(Material, ChunkSettings.bEnableTessellation), RendererSettings.ChunksDitheringDuration);
+				MaterialInstance = InitializeMaterialInstance(LOD, bShouldFade, Mesh, RendererSettings.GetVoxelMaterial(Material, ChunkSettings.bEnableTessellation), RendererSettings);
 				ChunkMaterials.SetMultipleMaterial(Material, MaterialInstance);
 				bNeedMaterialUpdate = true;
 			}
@@ -358,5 +358,5 @@ void FVoxelRenderUtilities::CreateMeshSectionFromChunks(
 
 bool FVoxelRenderUtilities::DebugInvisibleChunks()
 {
-	return CVarShowInvisibleChunks.GetValueOnGameThread();
+	return CVarShowInvisibleChunks.GetValueOnGameThread() != 0;
 }

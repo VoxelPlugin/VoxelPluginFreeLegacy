@@ -21,8 +21,9 @@ FVoxelDefaultPool::~FVoxelDefaultPool()
 	delete AsyncTasksPool;
 }
 
-void FVoxelDefaultPool::CreateGlobalPool(int32 MeshThreadCount)
+void FVoxelDefaultPool::CreateGlobalPool(int32 MeshThreadCount, const FString& Creator)
 {
+	UE_LOG(LogVoxel, Log, TEXT("Creating global voxel pool from %s with %d threads"), *Creator, MeshThreadCount);
 	IVoxelPool::SetGlobalVoxelPool(Create(MeshThreadCount));
 }
 

@@ -147,7 +147,7 @@ struct TVoxelRange
 
 	inline FString ToString() const
 	{
-		return FString::Printf(TEXT("%s, %s"), *LexToString(Min), *LexToString(Max));
+		return IsSingleValue() ? LexToString(Min) : FString::Printf(TEXT("%s, %s"), *LexToString(Min), *LexToString(Max));
 	}
 	
 	template<typename TOther>
@@ -163,6 +163,11 @@ struct TVoxelRange
 	inline bool IsSingleValue() const
 	{
 		return Min == Max;
+	}
+	inline T GetSingleValue() const
+	{
+		check(IsSingleValue());
+		return Min;
 	}
 
 	template<typename TOther>
@@ -259,6 +264,18 @@ public:
 	template<typename TOther>
 	TVoxelRange<T> operator/(const TVoxelRange<TOther>& Other) const
 	{
+		if (Other.IsSingleValue())
+		{
+			if (Other.GetSingleValue() == 0)
+			{
+				return 0;
+			}
+			else
+			{
+				return { Min / Other.GetSingleValue(), Max / Other.GetSingleValue() };
+			}
+		}
+
 		if (!Other.Contains(0))
 		{
 			TArray<T> Values = { Min / Other.Min, Min / Other.Max, Max / Other.Min, Max / Other.Max };
@@ -275,7 +292,7 @@ public:
 	{
 		if (Other.IsSingleValue())
 		{
-			return { 0, Other.Min - 1 };
+			return { 0, Other.GetSingleValue() - 1 };
 		}
 		else
 		{
@@ -288,7 +305,7 @@ public:
 	{
 		if (Other.IsSingleValue())
 		{
-			return { Min << Other.Min, Max << Other.Max };
+			return { Min << Other.GetSingleValue(), Max << Other.GetSingleValue() };
 		}
 		else
 		{
@@ -301,7 +318,7 @@ public:
 	{
 		if (Other.IsSingleValue())
 		{
-			return { Min >> Other.Min, Max >> Other.Max };
+			return { Min >> Other.GetSingleValue(), Max >> Other.GetSingleValue() };
 		}
 		else
 		{

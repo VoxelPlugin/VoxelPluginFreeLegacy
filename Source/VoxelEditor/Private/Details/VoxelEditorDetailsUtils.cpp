@@ -43,14 +43,14 @@ void FVoxelEditorDetailsUtils::EnableRealtime()
 		if (Client)
 		{
 #if ENGINE_MINOR_VERSION < 22
-			for (FEditorViewportClient* EditorViewport : GEditor->AllViewportClients)
+			for (FEditorViewportClient* EditorViewportClient : GEditor->AllViewportClients)
 #else
-			for (FEditorViewportClient* EditorViewport : GEditor->GetAllViewportClients())
+			for (FEditorViewportClient* EditorViewportClient : GEditor->GetAllViewportClients())
 #endif
 			{
-				if (EditorViewport == Client)
+				if (EditorViewportClient == Client)
 				{
-					EditorViewport->SetRealtime(true);
+					EditorViewportClient->SetRealtime(true);
 					break;
 				}
 			}

@@ -59,7 +59,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox")
 	static TArray<FIntVector> GetCorners(const FIntBox& Box)
 	{
-		return Box.GetCorners();
+		return TArray<FIntVector>(Box.GetCorners());
 	}
 	
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox")

@@ -55,10 +55,8 @@ void SphereEditImpl(FVoxelData& Data, const FIntBox& Bounds, const FIntVector& P
 			float Distance = FMath::Sqrt(SquaredDistance);
 			FVoxelValue NewValue = FMath::Clamp(Radius - Distance, -2.f, 2.f) / 2 * (bAdd ? -1 : 1);
 
-			if ((bAdd && !NewValue.IsEmpty()) || (!bAdd && NewValue.IsEmpty()) || FVoxelValue::HaveSameSign(OldValue, NewValue))
-			{
-				OldValue = NewValue;
-			}
+			// We want to cover as many surface as possible, so we take the biggest value
+			OldValue = bAdd ? FMath::Min(OldValue, NewValue) : FMath::Max(OldValue, NewValue);
 		}
 	});
 }

@@ -37,3 +37,4 @@ enum class EVoxelUVConfig : uint8
 	PerVoxelUVs					UMETA(DisplayName = "Per Voxel UVs (Cubic only)"),
 	CustomFVoxelMaterial    	UMETA(DisplayName = "Use FVoxelMaterial::GetUVs()")
 };
+

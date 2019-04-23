@@ -95,12 +95,12 @@ inline bool CheckSave(const FVoxelData& Data, const T& Save)
 {
 	if (Save.GetDepth() == -1)
 	{
-		FMessageLog("PIE").Error(LOCTEXT("LoadFromSaveInvalidDepth", "LoadFromSave: Invalid save (Depth == -1). You're trying to load a save object that wasn't initialized"));
+		FVoxelBPErrors::Error(LOCTEXT("LoadFromSaveInvalidDepth", "LoadFromSave: Invalid save (Depth == -1). You're trying to load a save object that wasn't initialized"));
 		return false;
 	}
 	if (Save.GetDepth() > Data.Depth)
 	{
-		FMessageLog("PIE").Warning(LOCTEXT("LoadFromSaveDepthBigger", "LoadFromSave: Save depth is bigger than world depth, the save data outside world bounds will be ignored"));
+		FVoxelBPErrors::Warning(LOCTEXT("LoadFromSaveDepthBigger", "LoadFromSave: Save depth is bigger than world depth, the save data outside world bounds will be ignored"));
 	}
 	return true;
 }

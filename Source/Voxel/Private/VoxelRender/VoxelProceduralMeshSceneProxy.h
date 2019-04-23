@@ -10,8 +10,6 @@
 class UMaterialInterface;
 class UVoxelProceduralMeshComponent;
 
-// TODO: memory stats
-
 class FVoxelProcMeshProxySection
 {
 public:

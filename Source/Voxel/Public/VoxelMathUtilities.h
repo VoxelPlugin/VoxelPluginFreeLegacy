@@ -133,4 +133,22 @@ namespace FVoxelUtilities
 			}
 		}
 	}
+	
+	inline uint8 LerpUINT8(uint8 A, uint8 B, float Amount)
+	{
+		float LerpResult = FMath::Lerp<float>(A, B, Amount);
+		// Do special rounding to not get stuck, eg Lerp(251, 255, 0.1) = 251
+		int32 RoundedResult = Amount > 0 ? FMath::CeilToInt(LerpResult) : FMath::FloorToInt(LerpResult);
+		return FMath::Clamp(RoundedResult, 0, 255);
+	}
+
+	inline uint8 FloatToUINT8(float Float)
+	{
+		return FMath::Clamp(FMath::RoundToInt(Float * 255.999f), 0, 255);
+	}
+
+	inline float UINT8ToFloat(uint8 Int)
+	{
+		return Int / 255.999f;
+	}
 }

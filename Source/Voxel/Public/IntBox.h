@@ -72,7 +72,7 @@ struct VOXEL_API FIntBox
 	/**
 	 * Get the corners that are inside the box (max - 1)
 	 */
-	inline TArray<FIntVector> GetCorners() const
+	inline TArray<FIntVector, TFixedAllocator<8>> GetCorners() const
 	{
 		return {
 			FIntVector(Min.X    , Min.Y    , Min.Z),
