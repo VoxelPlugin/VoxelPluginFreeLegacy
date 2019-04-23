@@ -41,9 +41,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (EditCondition = bUseForNavmesh))
 	float NavmeshRange = 1000;
 
-	// In cm
+	// In cm, used for voxel spawners
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (EditCondition = bUseForNavmesh))
-	float GenerationRange = 1000;
+	float GenerationRange = 10000;
 
 public:
 	bool IsLocalInvoker();

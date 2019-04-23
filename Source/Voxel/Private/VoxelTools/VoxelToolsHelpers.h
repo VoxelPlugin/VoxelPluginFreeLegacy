@@ -9,37 +9,17 @@
 #include "VoxelData/VoxelData.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelRender/IVoxelLODManager.h"
-
-#include "Logging/MessageLog.h"
-#include "Misc/CoreMisc.h"
-#include "UObject/Stack.h"
-
-// TODO: Proper thing instead of AccessViolation
-inline void VoxelLogBlueprintError(const FText& Error)
-{
-#if WITH_EDITOR
-	FBlueprintExceptionTracker& BlueprintExceptionTracker = FBlueprintExceptionTracker::Get();
-	if (BlueprintExceptionTracker.ScriptStack.Num() > 0)
-	{
-		FBlueprintExceptionInfo ExceptionInfo(EBlueprintExceptionType::AccessViolation, Error);
-		FBlueprintCoreDelegates::ThrowScriptException(nullptr, *BlueprintExceptionTracker.ScriptStack.Last(), ExceptionInfo);
-	}
-	else
-#endif
-	{
-		FMessageLog("PIE").Error(Error);
-	}
-}
+#include "VoxelBlueprintErrors.h"
 
 #define CHECK_VOXELWORLD_IS_CREATED_IMPL(Name, ReturnValue) \
 if (!World) \
 { \
-	VoxelLogBlueprintError(FText::Format(NSLOCTEXT("Voxel", "VoxelWorldIsInvalid", "{0}: Voxel World is invalid!"), FText::FromString(FString(Name)))); \
+	FVoxelBPErrors::Error(FText::Format(NSLOCTEXT("Voxel", "VoxelWorldIsInvalid", "{0}: Voxel World is invalid!"), FText::FromString(FString(Name)))); \
 	return ReturnValue; \
 } \
 if (!World->IsCreated()) \
 { \
-	VoxelLogBlueprintError(FText::Format(NSLOCTEXT("Voxel", "VoxelWorldIsntCreated", "{0}: Voxel World isn't created!"), FText::FromString(FString(Name)))); \
+	FVoxelBPErrors::Error(FText::Format(NSLOCTEXT("Voxel", "VoxelWorldIsntCreated", "{0}: Voxel World isn't created!"), FText::FromString(FString(Name)))); \
 	return ReturnValue; \
 }
 #define CHECK_VOXELWORLD_IS_CREATED() CHECK_VOXELWORLD_IS_CREATED_IMPL(__FUNCTION__, {});

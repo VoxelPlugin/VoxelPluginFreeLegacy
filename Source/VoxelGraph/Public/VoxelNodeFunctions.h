@@ -7,6 +7,7 @@
 #include "VoxelMaterial.h"
 #include "VoxelRange.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
+#include "VoxelMathUtilities.h"
 
 namespace FVoxelNodeFunctions
 {
@@ -14,7 +15,7 @@ namespace FVoxelNodeFunctions
 	{
 		OutA = Material.GetIndexA();
 		OutB = Material.GetIndexB();
-		OutBlend = Material.GetBlend() / 255.999f;
+		OutBlend = FVoxelUtilities::UINT8ToFloat(Material.GetBlend());
 	}
 	inline void GetDoubleIndex(const FVoxelMaterialRange& Material, TVoxelRange<int32>& OutA, TVoxelRange<int32>& OutB, TVoxelRange<float>& OutBlend)
 	{
@@ -97,16 +98,44 @@ namespace FVoxelNodeFunctions
 	inline void VectorRotateAngleAxis(
 		const TVoxelRange<float>& X,
 		const TVoxelRange<float>& Y,
-		const TVoxelRange<float>& Z, 
+		const TVoxelRange<float>& Z,
 		const TVoxelRange<float>& AxisX,
 		const TVoxelRange<float>& AxisY,
 		const TVoxelRange<float>& AxisZ,
 		const TVoxelRange<float>& Angle,
-		TVoxelRange<float>& OutX, 
-		TVoxelRange<float>& OutY, 
+		TVoxelRange<float>& OutX,
+		TVoxelRange<float>& OutY,
 		TVoxelRange<float>& OutZ)
 	{
-		FVoxelRangeFailStatus::Fail();
+		if (X.IsSingleValue() && 
+			Y.IsSingleValue() && 
+			Z.IsSingleValue() && 
+			AxisX.IsSingleValue() && 
+			AxisY.IsSingleValue() && 
+			AxisZ.IsSingleValue() &&
+			Angle.IsSingleValue())
+		{
+			float OutXF, OutYF, OutZF;
+			VectorRotateAngleAxis(
+				X.GetSingleValue(),
+				Y.GetSingleValue(),
+				Z.GetSingleValue(),
+				AxisX.GetSingleValue(),
+				AxisY.GetSingleValue(),
+				AxisZ.GetSingleValue(),
+				Angle.GetSingleValue(),
+				OutXF,
+				OutYF,
+				OutZF);
+
+			OutX = OutXF;
+			OutY = OutYF;
+			OutZ = OutZF;
+		}
+		else
+		{
+			FVoxelRangeFailStatus::Fail();
+		}
 	}
 
 	inline float GetPerlinWormsDistance(const FVoxelPlaceableItemHolder& ItemHolder, const FVector& Position)
@@ -141,6 +170,23 @@ namespace FVoxelNodeFunctions
 		return A + Alpha * (B - A);
 	}
 
+	inline float SafeLerp(float A, float B, float Alpha)
+	{
+		return FMath::Lerp(A, B, FMath::Clamp<float>(Alpha, 0, 1));
+	}
+	inline TVoxelRange<float> SafeLerp(const TVoxelRange<float>& A, const TVoxelRange<float>& B, const TVoxelRange<float>& Alpha)
+	{
+		if (Alpha.IsSingleValue())
+		{
+			return { SafeLerp(A.Min, B.Min, Alpha.GetSingleValue()), SafeLerp(A.Max, B.Max, Alpha.GetSingleValue()) };
+		}
+		return
+		{
+			FMath::Min(SafeLerp(A.Min, B.Min, Alpha.Min), SafeLerp(A.Min, B.Min, Alpha.Max)),
+			FMath::Max(SafeLerp(A.Max, B.Max, Alpha.Min), SafeLerp(A.Max, B.Max, Alpha.Max))
+		};
+	}
+
 	inline float Clamp(float Value, float Min, float Max)
 	{
 		return FMath::Clamp(Value, Min, Max);
@@ -173,7 +219,7 @@ namespace FVoxelNodeFunctions
 	{
 		if (B.IsSingleValue())
 		{
-			float Exp = B.Min;
+			float Exp = B.GetSingleValue();
 			int32 IntExp = FMath::RoundToInt(Exp);
 			if (Exp == IntExp) // If integer
 			{
@@ -309,6 +355,11 @@ namespace FVoxelNodeFunctions
 	}
 	inline TVoxelRange<float> InvSqrt(const TVoxelRange<float>& A)
 	{
+		if (A.IsSingleValue())
+		{
+			return InvSqrt(A.GetSingleValue());
+		}
+
 		if (A.Max <= 0)
 		{
 			return { 0, 0 };
@@ -337,6 +388,11 @@ namespace FVoxelNodeFunctions
 	}
 	inline TVoxelRange<float> Loge(const TVoxelRange<float>& A)
 	{
+		if (A.IsSingleValue())
+		{
+			return Loge(A.GetSingleValue());
+		}
+
 		if (A.Max <= 0)
 		{
 			return { 0, 0 };
@@ -378,7 +434,7 @@ namespace FVoxelNodeFunctions
 	{
 		if (A.IsSingleValue())
 		{
-			return { FMath::Sin(A.Min), FMath::Sin(A.Max) };
+			return Sin(A.GetSingleValue());
 		}
 		else
 		{
@@ -394,7 +450,7 @@ namespace FVoxelNodeFunctions
 	{
 		if (A.IsSingleValue())
 		{
-			return { FMath::Cos(A.Min), FMath::Cos(A.Max) };
+			return Cos(A.GetSingleValue());
 		}
 		else
 		{
@@ -410,7 +466,7 @@ namespace FVoxelNodeFunctions
 	{
 		if (A.IsSingleValue())
 		{
-			return { FMath::Asin(A.Min), FMath::Asin(A.Max) };
+			return Asin(A.GetSingleValue());
 		}
 		else
 		{
@@ -426,7 +482,7 @@ namespace FVoxelNodeFunctions
 	{
 		if (A.IsSingleValue())
 		{
-			return { FMath::Acos(A.Min), FMath::Acos(A.Max) };
+			return Acos(A.GetSingleValue());
 		}
 		else
 		{
@@ -442,7 +498,7 @@ namespace FVoxelNodeFunctions
 	{
 		if (A.IsSingleValue())
 		{
-			return { FMath::Tan(A.Min), FMath::Tan(A.Max) };
+			return Tan(A.GetSingleValue());
 		}
 		else
 		{

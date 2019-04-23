@@ -55,11 +55,14 @@ struct FVoxelRendererSettings
 	float VoxelSize;
 	int32 OctreeDepth;
 	FIntBox WorldBounds;
+	TSharedPtr<FIntVector> WorldOffset;
+
 	UClass* ProcMeshClass;
+	bool bCastFarShadow;
+
+	bool bIsPreviewing;
 
 	TSharedRef<TArray<FIntVector>> InvokersPositions = MakeShared<TArray<FIntVector>>();
-	
-	TSharedPtr<FIntVector> WorldOffset;
 	
 	TWeakObjectPtr<UWorld> World;
 	TWeakObjectPtr<AActor> ComponentsOwner;
@@ -85,9 +88,14 @@ struct FVoxelRendererSettings
 	bool bOptimizeIndices;
 
 public:
-	FVector GetChunkRelativePosition(const FIntVector& Position) const
+	inline FVector GetChunkRelativePosition(const FIntVector& Position) const
 	{
 		return FVector(Position + *WorldOffset) * VoxelSize;
+	}
+	inline float GetRealChunksDitheringDuration() const
+	{
+		// 2x: first dither in new chunk, then dither out old chunk
+		return 2 * ChunksDitheringDuration;
 	}
 	
 	UMaterialInterface* GetVoxelMaterial(const FVoxelBlendedMaterial& Index, bool bTessellation) const;

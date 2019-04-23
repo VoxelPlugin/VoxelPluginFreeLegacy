@@ -6,10 +6,10 @@
 #include "VoxelRender/Renderers/VoxelRenderChunk.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
+#include "VoxelBlueprintErrors.h"
 #include "VoxelWorld.h"
 
 #include "Engine/Engine.h"
-#include "Logging/MessageLog.h"
 #include "EngineUtils.h"
 #include "DrawDebugHelpers.h"
 
@@ -91,6 +91,23 @@ static TAutoConsoleVariable<int32> CVarLogToolsFailures(
 	TEXT("If true, will log each time a voxel tool fails"),
 	ECVF_Default);
 
+static TAutoConsoleVariable<int32> CVarShowVoxelSpawnerRays(
+	TEXT("voxel.ShowVoxelSpawnerRays"),
+	0,
+	TEXT("If true, will show the voxel spawner rays"),
+	ECVF_Default);
+
+static TAutoConsoleVariable<int32> CVarShowVoxelSpawnerHits(
+	TEXT("voxel.ShowVoxelSpawnerHits"),
+	0,
+	TEXT("If true, will show the voxel spawner rays hits"),
+	ECVF_Default);
+
+static TAutoConsoleVariable<int32> CVarShowVoxelSpawnerPositions(
+	TEXT("voxel.ShowVoxelSpawnerPositions"),
+	0,
+	TEXT("If true, will show the positions sent to spawners"),
+	ECVF_Default);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -314,6 +331,7 @@ void FVoxelDebugManager::Tick(float DeltaTime, AVoxelWorld* World)
 					Position,
 					100,
 					Invoker->IsLocalInvoker() ? FColor::Green : FColor::Silver,
+					false,
 					DebugDT);
 				UE_LOG(LogVoxel, Log, TEXT("Invoker %s (owner: %s): %s"), *Invoker->GetName(), Invoker->GetOwner() ? *Invoker->GetOwner()->GetName() : TEXT("invalid"), *Position.ToString());
 			}
@@ -395,12 +413,12 @@ void FVoxelDebugManager::ReportRenderOctreeBuild(const FString& Log, int32 Numbe
 
 	if (bTooManyChunks)
 	{
-		FMessageLog("PIE").Error(FText::Format(LOCTEXT("RenderOctreeStopped",
+		FVoxelBPErrors::Error(FText::Format(LOCTEXT("RenderOctreeStopped",
 			"Render octree update was stopped! Max render octree chunks count reached ({0}). This is likely caused by too demanding LOD settings. \n"
 			"You can try the following: \n"
 			"- reduce your world size\n"
 			"- reduce your LODToMinDistance values\n"
-			"- reduce your invokers collisions & navmesh distances\n"
+			"- reduce your invokers collisions, navmesh or generation distances\n"
 			"- increase your LOD Limit\n"
 			"- if you know what you're doing, you can increase the limit using voxel.MaxRenderOctreeChunks"),
 			FText::FromString(FString::FromInt(NumberOfLeaves))));
@@ -472,6 +490,21 @@ void FVoxelDebugManager::ReportToolFailure(const FString& ToolName, const FStrin
 	{
 		UE_LOG(LogVoxel, Log, TEXT("%s"), *(ToolName + " failed: " + Message));
 	}
+}
+
+bool FVoxelDebugManager::ShowSpawnerRays()
+{
+	return CVarShowVoxelSpawnerRays.GetValueOnAnyThread() != 0;
+}
+
+bool FVoxelDebugManager::ShowSpawnerHits()
+{
+	return CVarShowVoxelSpawnerHits.GetValueOnAnyThread() != 0;
+}
+
+bool FVoxelDebugManager::ShowSpawnerPositions()
+{
+	return CVarShowVoxelSpawnerPositions.GetValueOnAnyThread() != 0;
 }
 
 #undef LOCTEXT_NAMESPACE

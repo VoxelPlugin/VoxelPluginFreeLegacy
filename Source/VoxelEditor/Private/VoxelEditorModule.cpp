@@ -10,18 +10,21 @@
 #include "EditorModeRegistry.h"
 
 #include "VoxelWorld.h"
+#include "VoxelBlueprintErrors.h"
+#include "VoxelBlueprintErrorsEditor.h"
 
 #include "AssetTools/AssetTypeActions_VoxelWorldSaveObject.h"
 #include "AssetTools/AssetTypeActions_VoxelMaterialCollection.h"
 
 
 
-#include "Factories/VoxelWorldFactory.h"
+#include "ActorFactoryVoxelWorld.h"
 
 #include "Details/VoxelWorldDetails.h"
 #include "Details/VoxelWorldGeneratorPickerCustomization.h"
 #include "Details/VoxelMaterialCollectionDetails.h"
 #include "Details/VoxelMaterialCollectionHelpers.h"
+#include "Details/VoxelPaintMaterialCustomization.h"
 
 
 #define LOCTEXT_NAMESPACE "Voxel"
@@ -41,6 +44,10 @@ class FVoxelEditorModule : public IVoxelEditorModule
 public:
 	virtual void StartupModule() override
 	{
+		// Blueprint errors
+		FVoxelBPErrors::OnScriptException.AddStatic(&FVoxelBlueprintErrorsEditor::LogError);
+		check(FVoxelBPErrors::OnScriptException.IsBound());
+
 		// Voxel asset category
 		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 		VoxelAssetCategoryBit = AssetTools.RegisterAdvancedAssetCategory("Voxel", LOCTEXT("VoxelAssetCategory", "Voxel"));
@@ -110,7 +117,9 @@ private:
 		IPlacementModeModule& PlacementModeModule = IPlacementModeModule::Get();
 		PlacementModeModule.RegisterPlacementCategory(PlacementCategoryInfo);
 
-		RegisterPlacementModeExtension<AVoxelWorld       >(PlacementModeModule, GetMutableDefault<UVoxelWorldFactory       >());
+		RegisterPlacementModeExtension<AVoxelWorld       >(PlacementModeModule, GetMutableDefault<UActorFactoryVoxelWorld       >());
+
+		PlacementModeModule.RegenerateItemsForCategory(FBuiltInPlacementCategories::AllClasses());
 	}
 	void UnregisterPlacementModeExtensions()
 	{
@@ -143,6 +152,7 @@ private:
 
 		RegisterCustomPropertyLayout<FVoxelWorldGeneratorPickerCustomization      >(PropertyModule, "VoxelWorldGeneratorPicker");
 		RegisterCustomPropertyLayout<FVoxelMaterialCollectionElementCustomization >(PropertyModule, "VoxelMaterialCollectionElement");
+		RegisterCustomPropertyLayout<FVoxelPaintMaterialCustomization             >(PropertyModule, "VoxelPaintMaterial");
 
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}

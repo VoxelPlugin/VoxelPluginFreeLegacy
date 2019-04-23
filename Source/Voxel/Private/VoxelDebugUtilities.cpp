@@ -3,8 +3,9 @@
 #include "VoxelDebugUtilities.h"
 #include "IntBox.h"
 #include "VoxelWorld.h"
-#include "VoxelTools/VoxelToolsHelpers.h"
+#include "VoxelBlueprintErrors.h"
 #include "VoxelData/VoxelData.h"
+#include "VoxelTools/VoxelToolsHelpers.h"
 
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"

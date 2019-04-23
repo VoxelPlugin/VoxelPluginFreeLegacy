@@ -133,6 +133,7 @@ public:
 	void Unlock(FVoxelLockedOctrees& LockedOctrees);
 	 	
 public:	
+	// Requires ReadWrite lock on FIntBox::Infinite
 	void ClearData();
 
 	// Get the values and materials in this zone. Values and Materials can be null. Requires read lock

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelGlobals.h"
+#include "VoxelMathUtilities.h"
 #include "VoxelMaterial.generated.h"
 
 FORCEINLINE uint8 CastToUINT8(int32 Value)
@@ -47,19 +48,19 @@ public:
 	{
 		if (bPaintR)
 		{
-			static_cast<T*>(this)->SetR(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetR(), Color.R, Amount)), 0, 255));
+			static_cast<T*>(this)->SetR(FVoxelUtilities::LerpUINT8(static_cast<T*>(this)->GetR(), Color.R, Amount));
 		}
 		if (bPaintG)
 		{
-			static_cast<T*>(this)->SetG(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetG(), Color.G, Amount)), 0, 255));
+			static_cast<T*>(this)->SetG(FVoxelUtilities::LerpUINT8(static_cast<T*>(this)->GetG(), Color.G, Amount));
 		}
 		if (bPaintB)
 		{
-			static_cast<T*>(this)->SetB(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetB(), Color.B, Amount)), 0, 255));
+			static_cast<T*>(this)->SetB(FVoxelUtilities::LerpUINT8(static_cast<T*>(this)->GetB(), Color.B, Amount));
 		}
 		if (bPaintA)
 		{
-			static_cast<T*>(this)->SetA(FMath::Clamp<int32>(FMath::RoundToInt(FMath::Lerp<float>(static_cast<T*>(this)->GetA(), Color.A, Amount)), 0, 255));
+			static_cast<T*>(this)->SetA(FVoxelUtilities::LerpUINT8(static_cast<T*>(this)->GetA(), Color.A, Amount));
 		}
 	}
 	inline void SetColor(const FLinearColor& Color) { SetColor(Color.ToFColor(false)); }
@@ -81,10 +82,10 @@ public:
 	inline FLinearColor GetLinearColor() const
 	{
 		return FLinearColor(
-			static_cast<const T*>(this)->GetR() / 255.999f,
-			static_cast<const T*>(this)->GetG() / 255.999f,
-			static_cast<const T*>(this)->GetB() / 255.999f,
-			static_cast<const T*>(this)->GetA() / 255.999f);
+			FVoxelUtilities::UINT8ToFloat(static_cast<const T*>(this)->GetR()),
+			FVoxelUtilities::UINT8ToFloat(static_cast<const T*>(this)->GetG()),
+			FVoxelUtilities::UINT8ToFloat(static_cast<const T*>(this)->GetB()),
+			FVoxelUtilities::UINT8ToFloat(static_cast<const T*>(this)->GetA()));
 	}
 
 public:
@@ -123,6 +124,15 @@ public:
 	}
 };
 
+/**
+ * To add new fields to your material, you need to edit:
+ * - The constructors
+ * - operator==
+ * - operator!=
+ * - operator<<
+ * - SerializeCompat
+ * You can send those to your UE material through GetUVs: you'll need to use the CustomFVoxelMaterial UV Config
+ */
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelMaterial 
 #if CPP // Hide the template from UHT
@@ -161,6 +171,12 @@ public:
 	inline uint8 GetIndexB() const { return G; }
 	inline uint8 GetBlend() const { return B; }
 #endif
+
+	inline FVector2D GetUVs() const
+	{
+		// Use your custom fields here
+		return {};
+	}
 
 public:
 #if !DISABLE_VOXELINDEX
@@ -258,6 +274,9 @@ public:
 		return true;
 	}
 
+	/**
+	 * Serialize an old version material
+	 */
 	static inline FVoxelMaterial SerializeCompat(FArchive &Ar, uint32 ConfigFlags)
 	{
 		check(Ar.IsLoading());

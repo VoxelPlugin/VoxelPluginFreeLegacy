@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Misc/CoreMisc.h"
 #include "Misc/MessageDialog.h"
+#include "Misc/UObjectToken.h"
 #include "UnrealClient.h"
 #include "EditorViewportClient.h"
 #include "Editor.h"
@@ -20,5 +22,14 @@
 #include "AssetTypeActions_Base.h"
 #include "SCommonEditorViewportToolbarBase.h"
 #include "EngineUtils.h"
+#include "Logging/TokenizedMessage.h"
+#include "Logging/MessageLog.h"
+#include "UObject/Stack.h"
+#include "Engine/Blueprint.h"
+#include "Engine/BlueprintGeneratedClass.h"
+#include "EdGraph/EdGraph.h"
+#include "EdGraph/EdGraphNode.h"
+#include "Kismet2/KismetDebugUtilities.h"
+#include "Kismet2/KismetEditorUtilities.h"
 
 #include "AssetTools/AssetTypeActions_VoxelBase.h"

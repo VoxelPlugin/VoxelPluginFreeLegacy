@@ -38,7 +38,7 @@ public:
 		}
 		else
 		{
-			return WriteLocks.GetValue();
+			return WriteLocks.GetValue() != 0;
 		}
 	}
 	inline bool IsLockedForWrite() const

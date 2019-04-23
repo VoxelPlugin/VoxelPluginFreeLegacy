@@ -8,7 +8,6 @@
 
 #include "Engine/World.h"
 #include "TimerManager.h"
-#include "Logging/MessageLog.h"
 
 #define LOCTEXT_NAMESPACE "Voxel"
 

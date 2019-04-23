@@ -4,9 +4,9 @@
 #include "VoxelSerializationUtilities.h"
 #include "VoxelMathUtilities.h"
 #include "VoxelCustomVersion.h"
+#include "VoxelBlueprintErrors.h"
 
 #include "Serialization/BufferArchive.h"
-#include "Logging/MessageLog.h"
 
 bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 {
@@ -59,7 +59,7 @@ bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 		
 		if (Ar.IsLoading() && Ar.IsError())
 		{
-			FMessageLog("PIE").Error(NSLOCTEXT("Voxel", "VoxelSaveSerializationFailed", "VoxelSave: Serialization failed, data is corrupted"));
+			FVoxelBPErrors::Error(NSLOCTEXT("Voxel", "VoxelSaveSerializationFailed", "VoxelSave: Serialization failed, data is corrupted"));
 			Depth = -1;
 			Values.Reset();
 			Materials.Reset();

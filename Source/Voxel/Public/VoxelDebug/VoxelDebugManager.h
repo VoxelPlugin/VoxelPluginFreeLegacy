@@ -39,6 +39,11 @@ public:
 	void ClearChunksEmptyStates();
 	void ReportToolFailure(const FString& ToolName, const FString& Message);
 
+public:
+	static bool ShowSpawnerRays();
+	static bool ShowSpawnerHits();
+	static bool ShowSpawnerPositions();
+
 private:
 	FVoxelDebugManager() = default;
 

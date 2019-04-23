@@ -2,7 +2,7 @@
 
 #include "VoxelWorldGeneratorPicker.h"
 #include "VoxelWorldGenerators/EmptyWorldGenerator.h"
-#include "Logging/MessageLog.h"
+#include "VoxelBlueprintErrors.h"
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
@@ -24,7 +24,7 @@ TSharedRef<FVoxelWorldGeneratorInstance, ESPMode::ThreadSafe> FVoxelWorldGenerat
 		}
 		if (!InstancedWorldGenerator)
 		{
-			FMessageLog("PIE").Error(LOCTEXT("VoxelWorldGeneratorPickerInvalidClass", "VoxelWorldGeneratorPicker: Invalid world generator class"));
+			FVoxelBPErrors::Error(LOCTEXT("VoxelWorldGeneratorPickerInvalidClass", "VoxelWorldGeneratorPicker: Invalid world generator class"));
 			return MakeShared<FEmptyWorldGeneratorInstance, ESPMode::ThreadSafe>();
 		}
 		else
@@ -40,7 +40,7 @@ TSharedRef<FVoxelWorldGeneratorInstance, ESPMode::ThreadSafe> FVoxelWorldGenerat
 		}
 		else
 		{
-			FMessageLog("PIE").Error(LOCTEXT("VoxelWorldGeneratorPickerInvalidObject", "VoxelWorldGeneratorPicker: Invalid world generator object"));
+			FVoxelBPErrors::Error(LOCTEXT("VoxelWorldGeneratorPickerInvalidObject", "VoxelWorldGeneratorPicker: Invalid world generator object"));
 			return MakeShared<FEmptyWorldGeneratorInstance, ESPMode::ThreadSafe>();
 		}
 	}

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGlobals.h"
 
 class FVoxelQueuedThreadPool;
 class FQueuedThreadPool;
@@ -21,15 +22,26 @@ public:
 	virtual void QueueAsyncEditTask(IQueuedWork* Work) = 0;
 
 public:
-	inline static TSharedPtr<IVoxelPool> GetGlobalPool() { return Global; }
-	inline static void DestroyGlobalVoxelPool() { Global.Reset(); }
-	inline static bool IsGlobalVoxelPoolCreated() { return Global.IsValid(); }
+	inline static TSharedPtr<IVoxelPool> GetGlobalPool()
+	{
+		return Global;
+	}
+	inline static void DestroyGlobalVoxelPool()
+	{
+		Global.Reset();
+		UE_LOG(LogVoxel, Log, TEXT("Global pool destroyed"));
+	}
+	inline static bool IsGlobalVoxelPoolCreated()
+	{
+		return Global.IsValid();
+	}
 
 protected:
 	inline static void SetGlobalVoxelPool(const TSharedPtr<IVoxelPool>& InGlobal)
 	{
 		checkf(!Global.IsValid(), TEXT("Global voxel pool already created!"));
 		Global = InGlobal;
+		UE_LOG(LogVoxel, Log, TEXT("Global pool created"));
 	}
 
 private:

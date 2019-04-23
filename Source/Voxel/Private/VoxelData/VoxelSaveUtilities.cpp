@@ -2,8 +2,9 @@
 
 #include "VoxelData/VoxelSaveUtilities.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
-#include "VoxelTools/VoxelToolsHelpers.h"
+#include "VoxelBlueprintErrors.h"
 #include "VoxelSerializationUtilities.h"
+#include "VoxelCustomVersion.h"
 
 #include "Serialization/BufferArchive.h"
 #include "Serialization/MemoryReader.h"
@@ -135,7 +136,7 @@ bool UVoxelSaveUtilities::DecompressVoxelSave(const FVoxelCompressedWorldSave& C
 		TArray<uint8> UncompressedData;
 		if (!FVoxelSerializationUtilities::DecompressData(CompressedSave.CompressedData, UncompressedData))
 		{
-			VoxelLogBlueprintError(NSLOCTEXT("Voxel", "DecompressVoxelSaveFailed", "DecompressVoxelSave failed: Corrupted data"));
+			FVoxelBPErrors::Error(NSLOCTEXT("Voxel", "DecompressVoxelSaveFailed", "DecompressVoxelSave failed: Corrupted data"));
 			return false;
 		}
 

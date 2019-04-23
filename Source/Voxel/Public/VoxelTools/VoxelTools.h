@@ -7,7 +7,6 @@
 #include "VoxelMaterial.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "Logging/MessageLog.h"
 #include "VoxelTools.generated.h"
 
 class AVoxelWorld;

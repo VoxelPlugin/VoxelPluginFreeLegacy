@@ -3,11 +3,11 @@
 #include "VoxelWorldDetails.h"
 #include "VoxelWorld.h"
 #include "VoxelData/VoxelData.h"
+#include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelData/VoxelSaveUtilities.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelTools/VoxelDataTools.h"
 
-#include "VoxelWorldEditor.h"
 #include "PropertyEditorModule.h"
 #include "Modules/ModuleManager.h"
 
@@ -86,7 +86,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		{
 			FVoxelEditorDetailsUtils::AddButtonToCategory(
 				DetailLayout,
-				"Voxel",
+				"Voxel - Preview",
 				LOCTEXT("Toggle", "Toggle"),
 				LOCTEXT("ToggleWorldPreview", "Toggle World Preview"),
 				LOCTEXT("Toggle", "Toggle"),
@@ -100,10 +100,37 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 						}
 						else
 						{
-							World->CreateForPreview(AVoxelWorldEditor::StaticClass());
+							World->CreateForPreview();
 						}
 
 						GEditor->SelectActor(World.Get(), true, true, true, true);
+					}
+
+					return FReply::Handled();
+				}));
+			FVoxelEditorDetailsUtils::AddButtonToCategory(
+				DetailLayout,
+				"Voxel - Preview",
+				LOCTEXT("Clear", "Clear"),
+				LOCTEXT("ClearWorldData", "Clear World Data"),
+				LOCTEXT("Clear", "Clear"),
+				FOnClicked::CreateLambda([World = World]()
+				{
+					if (World.IsValid())
+					{
+						if (World->IsCreated())
+						{
+							if (FMessageDialog::Open(EAppMsgType::YesNoCancel, LOCTEXT("ClearDataWarning", "This will clear all the voxel world edits! Do you want to continue?"))
+								== EAppReturnType::Yes)
+							{
+								{
+									auto& Data = World->GetData();
+									FVoxelReadWriteScopeLock Lock(Data, FIntBox::Infinite, "ClearData");
+									Data.ClearData();
+								}
+								World->GetLODManager().UpdateBounds(FIntBox::Infinite);
+							}
+						}
 					}
 
 					return FReply::Handled();
@@ -112,7 +139,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 
 		FVoxelEditorDetailsUtils::AddButtonToCategory(
 			DetailLayout,
-			"Voxel",
+			"Voxel - Save",
 			LOCTEXT("Load", "Load"),
 			LOCTEXT("LoadFromSave", "Load from Save Object"),
 			LOCTEXT("Load", "Load"),
@@ -132,14 +159,14 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		DetailLayout.HideProperty(GET_MEMBER_NAME_CHECKED(AVoxelWorld, SaveObject));
 		FVoxelEditorDetailsUtils::AddPropertyToCategory(
 			DetailLayout,
-			"Voxel",
+			"Voxel - Save",
 			GET_MEMBER_NAME_CHECKED(AVoxelWorld, SaveObject));
 
 		auto IsWorldCreatedDelegate = TAttribute<bool>::Create([=]() { return World.IsValid() && World->IsCreated(); });
 
 		FVoxelEditorDetailsUtils::AddButtonToCategory(
 			DetailLayout,
-			"Voxel",
+			"Voxel - Save",
 			LOCTEXT("SaveFile", "Save File"),
 			LOCTEXT("SaveToFile", "Save to File"),
 			LOCTEXT("Save", "Save"),
@@ -175,7 +202,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 
 		FVoxelEditorDetailsUtils::AddButtonToCategory(
 			DetailLayout,
-			"Voxel",
+			"Voxel - Save",
 			LOCTEXT("LoadFile", "Load File"),
 			LOCTEXT("LoadFromFile", "Load from File"),
 			LOCTEXT("Load", "Load"),

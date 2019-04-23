@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "IntBox.h"
+#include "VoxelGlobals.h"
 #include "VoxelRender/VoxelProcMeshTangent.h"
 #include "Components/MeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Interfaces/Interface_CollisionDataProvider.h"
 #include "PhysicsEngine/ConvexElem.h"
 #include "VoxelProceduralMeshComponent.generated.h"
@@ -16,7 +18,7 @@ class FVoxelAsyncPhysicsCooker;
 class AVoxelWorld;
 class IVoxelPool;
 
-// TODO: memory stats
+DECLARE_MEMORY_STAT(TEXT("Voxel Proc Mesh Section Memory"), STAT_VoxelProcMeshSectionMemory, STATGROUP_VoxelMemory);
 
 USTRUCT()
 struct FVoxelProcMeshSection
@@ -40,8 +42,33 @@ struct FVoxelProcMeshSection
 	bool bSectionVisible = true;
 
 	FVoxelProcMeshSection() = default;
+	~FVoxelProcMeshSection()
+	{
+		DEC_DWORD_STAT_BY(STAT_VoxelProcMeshSectionMemory, LastAllocatedSize);
+	}
 
 	void Check();
+
+	inline int32 GetAllocatedSize() const
+	{
+		return Indices.GetAllocatedSize()
+			+ Positions.GetAllocatedSize()
+			+ Normals.GetAllocatedSize()
+			+ Tangents.GetAllocatedSize()
+			+ Colors.GetAllocatedSize()
+			+ TextureCoordinates.GetAllocatedSize()
+			+ AdjacencyIndices.GetAllocatedSize();
+	}
+
+	inline void UpdateStat()
+	{
+		DEC_DWORD_STAT_BY(STAT_VoxelProcMeshSectionMemory, LastAllocatedSize);
+		LastAllocatedSize = GetAllocatedSize();
+		INC_DWORD_STAT_BY(STAT_VoxelProcMeshSectionMemory, LastAllocatedSize);
+	}
+
+private:
+	int32 LastAllocatedSize = 0;
 };
 
 enum class EVoxelProcMeshSectionUpdate
@@ -71,7 +98,21 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Voxel")
 	void InitChunk(uint8 LOD, FIntBox ChunkBounds);
+
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Voxel|Collisions")
+	static bool AreVoxelCollisionsFrozen();
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions")
+	static void FreezeVoxelCollisions();
 	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions")
+	static void ResumeVoxelCollisions();
+
+private:
+	static bool bAreCollisionsFrozen;
+	static TSet<TWeakObjectPtr<UVoxelProceduralMeshComponent>> PendingCollisions;
+
 public:
 	inline void DisableCollisions()
 	{
@@ -137,4 +178,41 @@ private:
 	bool bEnableCollisions = true;
 
 	friend class FVoxelProceduralMeshSceneProxy;
+
+protected:
+#if WITH_EDITOR
+	/**
+	 * Horrible hack to make the foliage editor believe we are a static mesh.
+	 */
+	static void GetPrivateStaticClassBody(
+		const TCHAR* PackageName,
+		const TCHAR* Name,
+		UClass*& ReturnClass,
+		void(*RegisterNativeFunc)(),
+		uint32 InSize,
+		EClassFlags InClassFlags,
+		EClassCastFlags InClassCastFlags,
+		const TCHAR* InConfigName,
+		UClass::ClassConstructorType InClassConstructor,
+		UClass::ClassVTableHelperCtorCallerType InClassVTableHelperCtorCaller,
+		UClass::ClassAddReferencedObjectsType InClassAddReferencedObjects,
+		UClass::StaticClassFunctionType InSuperClassFn,
+		UClass::StaticClassFunctionType InWithinClassFn)
+	{
+		::GetPrivateStaticClassBody(
+			PackageName, 
+			Name, 
+			ReturnClass, 
+			RegisterNativeFunc, 
+			InSize, 
+			InClassFlags, 
+			InClassCastFlags, 
+			InConfigName, 
+			InClassConstructor, 
+			InClassVTableHelperCtorCaller, 
+			InClassAddReferencedObjects, 
+			FCString::Stristr(FCommandLine::Get(), TEXT("-voxelfoliageedmodehack")) ? &UStaticMeshComponent::StaticClass : InSuperClassFn,
+			InWithinClassFn);
+	}
+#endif
 };

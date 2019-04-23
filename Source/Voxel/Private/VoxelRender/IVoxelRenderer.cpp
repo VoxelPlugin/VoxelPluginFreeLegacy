@@ -3,6 +3,7 @@
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelIntermediateChunk.h"
 #include "VoxelMaterialCollection.h"
+#include "VoxelBlueprintErrors.h"
 
 #include "Logging/MessageLog.h"
 #include "Misc/UObjectToken.h"
@@ -13,7 +14,7 @@ UMaterialInterface* FVoxelRendererSettings::GetVoxelMaterial(const FVoxelBlended
 {
 	if (!MaterialCollection.IsValid())
 	{
-		FMessageLog("PIE").Error(LOCTEXT("InvalidMaterialCollection", "Invalid Material Collection"));
+		FVoxelBPErrors::Error(LOCTEXT("InvalidMaterialCollection", "Invalid Material Collection"), ComponentsOwner.Get());
 		return nullptr;
 	}
 	auto* Value = MaterialCollection->GetVoxelMaterial(BlendedIndex, bTessellation);
@@ -82,9 +83,10 @@ UMaterialInterface* FVoxelRendererSettings::GetVoxelMaterial(bool bTessellation)
 	const auto& Material = bTessellation ? VoxelMaterialWithTessellation : VoxelMaterialWithoutTessellation;
 	if (!Material.IsValid())
 	{
-		FMessageLog("PIE").Error(bTessellation ?
+		FVoxelBPErrors::Error(bTessellation ?
 			LOCTEXT("InvalidVoxelMaterialWithTessellation", "Invalid Tessellated Voxel Material") :
-			LOCTEXT("InvalidVoxelMaterial", "Invalid Voxel Material"));
+			LOCTEXT("InvalidVoxelMaterial", "Invalid Voxel Material"),
+			ComponentsOwner.Get());
 		return nullptr;
 	}
 	return Material.Get();

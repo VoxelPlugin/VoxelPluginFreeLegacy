@@ -47,6 +47,12 @@ public:
 			}
 		}
 	}
+
+	virtual UClass* GetVoxelWorldEditorClass() override
+	{
+		return AVoxelWorldEditor::StaticClass();
+	}
+
 };
 
 AVoxelWorldEditor::AVoxelWorldEditor()
@@ -70,18 +76,25 @@ void AVoxelWorldEditor::Tick(float DeltaTime)
 
 	if (GetWorld()->WorldType == EWorldType::Editor)
 	{
-		auto* Viewport = GEditor->GetActiveViewport();
+		FViewport* Viewport = GEditor->GetActiveViewport();
 		if (Viewport)
 		{
-			auto* Client = static_cast<FLevelEditorViewportClient*>(Viewport->GetClient());
+			FViewportClient* Client = Viewport->GetClient();
 			if (Client)
 			{
-				FVector CameraPosition = Client->GetViewLocation();
-				SetActorLocation(CameraPosition);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("Cannot find editor camera"));
+#if ENGINE_MINOR_VERSION < 22
+				for (FEditorViewportClient* EditorViewportClient : GEditor->AllViewportClients)
+#else
+				for (FEditorViewportClient* EditorViewportClient : GEditor->GetAllViewportClients())
+#endif
+				{
+					if (EditorViewportClient == Client)
+					{
+						FVector CameraPosition = EditorViewportClient->GetViewLocation();
+						SetActorLocation(CameraPosition);
+						break;
+					}
+				}
 			}
 		}
 	}

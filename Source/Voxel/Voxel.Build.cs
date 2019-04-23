@@ -40,15 +40,36 @@ public class Voxel : ModuleRules
             }
         );
 
-        AddEngineThirdPartyPrivateStaticDependencies(Target, "nvTessLib");
+        PrivateDependencyModuleNames.AddRange(
+            new string[]
+            {
+                "nvTessLib",
+                "Steamworks"
+            }
+        );
 
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
-            AddEngineThirdPartyPrivateStaticDependencies(Target, "ForsythTriOptimizer");
-            PrivateDependencyModuleNames.Add("ForsythTriOptimizer"); // line above doesn't work when not in monolithic build
+            PrivateDependencyModuleNames.Add("ForsythTriOptimizer");
         }
 
-        // EMBREE
+        if (Target.Configuration == UnrealTargetConfiguration.DebugGame)
+        {
+            PublicDefinitions.Add("VOXEL_DEBUG=1");
+        }
+
+        // Steam
+        {
+            //string SteamVersion = "v139";
+            //PublicDefinitions.Add("STEAM_SDK_VER=TEXT(\"1.39\")");
+            //PublicDefinitions.Add("STEAM_SDK_VER_PATH=TEXT(\"Steam" + SteamVersion + "\")");
+
+            //string SdkBase = Target.UEThirdPartySourceDirectory + "Steamworks/Steam" + SteamVersion + "/sdk";
+            //PublicDefinitions.Add("USE_STEAM=" + (Directory.Exists(SdkBase) ? "1" : "0"));
+            PublicDefinitions.Add("USE_STEAM=0");
+        }
+
+        // Embree
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
             string SDKDir = Target.UEThirdPartySourceDirectory + "IntelEmbree/Embree2140/Win64/";
@@ -75,11 +96,6 @@ public class Voxel : ModuleRules
         else
         {
             PublicDefinitions.Add("USE_EMBREE=0");
-        }
-
-        if (Target.Configuration == UnrealTargetConfiguration.DebugGame)
-        {
-            PublicDefinitions.Add("VOXEL_DEBUG=1");
         }
     }
 }
