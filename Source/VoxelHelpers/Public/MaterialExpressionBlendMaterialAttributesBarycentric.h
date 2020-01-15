@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -8,7 +8,8 @@
 #include "Materials/MaterialExpression.h"
 #include "MaterialExpressionBlendMaterialAttributesBarycentric.generated.h"
 
-UCLASS(collapsecategories, hidecategories = Object, MinimalAPI)
+// Returns A * AlphaA + B * AlphaB + C * (1 - AlphaA - AlphaB)
+UCLASS(CollapseCategories, HideCategories = Object, MinimalAPI)
 class UMaterialExpressionBlendMaterialAttributesBarycentric : public UMaterialExpression
 {
 	GENERATED_BODY()
@@ -26,10 +27,10 @@ public:
  	FMaterialAttributesInput C;
 
 	UPROPERTY()
-	FExpressionInput Alpha0;
+	FExpressionInput AlphaA;
 
 	UPROPERTY()
-	FExpressionInput Alpha1;
+	FExpressionInput AlphaB;
 
 	//~ Begin UMaterialExpression Interface
 #if WITH_EDITOR

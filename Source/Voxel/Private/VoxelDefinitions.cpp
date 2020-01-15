@@ -1,25 +1,20 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelGlobals.h"
 #include "IntBox.h"
-#include "VoxelValue.h"
-#include "IVoxelPool.h"
-#include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 #include "VoxelCustomVersion.h"
+#include "VoxelItemStack.h"
+#include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 
 #include "Logging/LogMacros.h"
 #include "Serialization/CustomVersion.h"
 
 DEFINE_LOG_CATEGORY(LogVoxel);
 
-// +/- 1000: prevents integers overflow
-FIntBox const FIntBox::Infinite = FIntBox(FIntVector(MIN_int32 + 1000, MIN_int32 + 1000, MIN_int32 + 1000), FIntVector(MAX_int32 - 1000, MAX_int32 - 1000, MAX_int32 - 1000));
+// +/- 1024: prevents integers overflow
+FIntBox const FIntBox::Infinite = FIntBox(FIntVector(MIN_int32 + 1024), FIntVector(MAX_int32 - 1024));
 
-FVoxelValue const FVoxelValue::Full = FVoxelValue(-1);
-FVoxelValue const FVoxelValue::Empty = FVoxelValue(1);
-
-TSharedPtr<IVoxelPool> IVoxelPool::Global = nullptr;
-TArray<FVoxelPlaceableItem*> FVoxelPlaceableItem::DefaultItems;
+FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(FVoxelPlaceableItemHolder::Empty);
 
 const FGuid FVoxelCustomVersion::GUID(0x07949d97, 0x082f2e4f, 0x0593de63, 0x1164cfc5);
 // Register the custom version with core

@@ -1,75 +1,142 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelWorldGeneratorPicker.h"
-#include "VoxelWorldGenerators/EmptyWorldGenerator.h"
-#include "VoxelBlueprintErrors.h"
+#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
+#include "VoxelMessages.h"
+#include "UObject/Package.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
+FVoxelWorldGeneratorPicker::FVoxelWorldGeneratorPicker(UClass* WorldGeneratorClass)
+	: Type(EVoxelWorldGeneratorPickerType::Class)
+	, WorldGeneratorClass(WorldGeneratorClass)
+{
+}
 
-FVoxelWorldGeneratorPicker::FVoxelWorldGeneratorPicker()
+FVoxelWorldGeneratorPicker::FVoxelWorldGeneratorPicker(UVoxelWorldGenerator* WorldGeneratorObject)
 	: Type(EVoxelWorldGeneratorPickerType::Object)
+	, WorldGeneratorObject(WorldGeneratorObject)
 {
-
 }
 
-TSharedRef<FVoxelWorldGeneratorInstance, ESPMode::ThreadSafe> FVoxelWorldGeneratorPicker::GetWorldGenerator() const
+FVoxelWorldGeneratorPicker::FVoxelWorldGeneratorPicker(TSoftClassPtr<UVoxelWorldGenerator> WorldGeneratorClass)
+	: Type(EVoxelWorldGeneratorPickerType::Class)
+	, WorldGeneratorClass(WorldGeneratorClass)
+{
+}
+
+FVoxelWorldGeneratorPicker::FVoxelWorldGeneratorPicker(TSoftObjectPtr<UVoxelWorldGenerator> WorldGeneratorObject)
+	: Type(EVoxelWorldGeneratorPickerType::Object)
+	, WorldGeneratorObject(WorldGeneratorObject)
+{
+}
+
+UVoxelWorldGenerator* FVoxelWorldGeneratorPicker::GetWorldGenerator() const
 {
 	if (Type == EVoxelWorldGeneratorPickerType::Class)
 	{
-		UVoxelWorldGenerator* InstancedWorldGenerator = nullptr;
-
-		if (WorldGeneratorClass)
+		if (WorldGeneratorClass.LoadSynchronous())
 		{
-			InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), WorldGeneratorClass);
-		}
-		if (!InstancedWorldGenerator)
-		{
-			FVoxelBPErrors::Error(LOCTEXT("VoxelWorldGeneratorPickerInvalidClass", "VoxelWorldGeneratorPicker: Invalid world generator class"));
-			return MakeShared<FEmptyWorldGeneratorInstance, ESPMode::ThreadSafe>();
+			return WorldGeneratorClass->GetDefaultObject<UVoxelWorldGenerator>();
 		}
 		else
 		{
-			return InstancedWorldGenerator->GetWorldGenerator();
+			return nullptr;
 		}
 	}
 	else
 	{
-		if (WorldGeneratorObject)
-		{
-			return WorldGeneratorObject->GetWorldGenerator();
-		}
-		else
-		{
-			FVoxelBPErrors::Error(LOCTEXT("VoxelWorldGeneratorPickerInvalidObject", "VoxelWorldGeneratorPicker: Invalid world generator object"));
-			return MakeShared<FEmptyWorldGeneratorInstance, ESPMode::ThreadSafe>();
-		}
+		return WorldGeneratorObject.LoadSynchronous();
 	}
 }
 
-FString FVoxelWorldGeneratorPicker::GetName() const
+UObject* FVoxelWorldGeneratorPicker::GetObject() const
 {
 	if (Type == EVoxelWorldGeneratorPickerType::Class)
 	{
-		if (WorldGeneratorClass)
+		return WorldGeneratorClass.LoadSynchronous();
+	}
+	else
+	{
+		return WorldGeneratorObject.LoadSynchronous();
+	}
+}
+
+TVoxelSharedRef<FVoxelWorldGeneratorInstance> FVoxelWorldGeneratorPicker::GetInstance(bool bSilent) const
+{
+	auto* WorldGenerator = GetWorldGenerator();
+	if (!WorldGenerator)
+	{
+		FVoxelMessages::CondError(!bSilent, FUNCTION_ERROR("Invalid World Generator"));
+		return MakeVoxelShared<FVoxelEmptyWorldGeneratorInstance>();
+	}
+	return WorldGenerator->GetInstance();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelTransformableWorldGeneratorPicker::FVoxelTransformableWorldGeneratorPicker(UClass* WorldGeneratorClass)
+	: Type(EVoxelWorldGeneratorPickerType::Class)
+	, WorldGeneratorClass(WorldGeneratorClass)
+{
+}
+
+FVoxelTransformableWorldGeneratorPicker::FVoxelTransformableWorldGeneratorPicker(UVoxelTransformableWorldGenerator* WorldGeneratorObject)
+	: Type(EVoxelWorldGeneratorPickerType::Object)
+	, WorldGeneratorObject(WorldGeneratorObject)
+{
+}
+
+FVoxelTransformableWorldGeneratorPicker::FVoxelTransformableWorldGeneratorPicker(TSoftClassPtr<UVoxelTransformableWorldGenerator> WorldGeneratorClass)
+	: Type(EVoxelWorldGeneratorPickerType::Class)
+	, WorldGeneratorClass(WorldGeneratorClass)
+{
+}
+
+FVoxelTransformableWorldGeneratorPicker::FVoxelTransformableWorldGeneratorPicker(TSoftObjectPtr<UVoxelTransformableWorldGenerator> WorldGeneratorObject)
+	: Type(EVoxelWorldGeneratorPickerType::Object)
+	, WorldGeneratorObject(WorldGeneratorObject)
+{
+}
+
+UVoxelTransformableWorldGenerator* FVoxelTransformableWorldGeneratorPicker::GetWorldGenerator() const
+{
+	if (Type == EVoxelWorldGeneratorPickerType::Class)
+	{
+		if (WorldGeneratorClass.LoadSynchronous())
 		{
-			return WorldGeneratorClass->GetName();
+			return WorldGeneratorClass->GetDefaultObject<UVoxelTransformableWorldGenerator>();
 		}
 		else
 		{
-			return "Invalid class";
+			return nullptr;
 		}
 	}
 	else
 	{
-		if (WorldGeneratorObject)
-		{
-			return WorldGeneratorObject->GetName();
-		}
-		else
-		{
-			return "Invalid object";
-		}
+		return WorldGeneratorObject.LoadSynchronous();
 	}
 }
 
-#undef LOCTEXT_NAMESPACE
+UObject* FVoxelTransformableWorldGeneratorPicker::GetObject() const
+{
+	if (Type == EVoxelWorldGeneratorPickerType::Class)
+	{
+		return WorldGeneratorClass.LoadSynchronous();
+	}
+	else
+	{
+		return WorldGeneratorObject.LoadSynchronous();
+	}
+}
+
+TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> FVoxelTransformableWorldGeneratorPicker::GetInstance(bool bSilent) const
+{
+	auto* WorldGenerator = GetWorldGenerator();
+	if (!WorldGenerator)
+	{
+		FVoxelMessages::CondError(!bSilent, FUNCTION_ERROR("Invalid World Generator"));
+		return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	}
+	return WorldGenerator->GetTransformableInstance();
+}

@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -14,4 +14,8 @@ class UEdGraphNode;
 class IVoxelGraphEditorModule : public IModuleInterface
 {
 public:
+	virtual TSharedRef<IVoxelGraphEditorToolkit> CreateVoxelGraphEditor(
+		const EToolkitMode::Type Mode, 
+		const TSharedPtr<IToolkitHost>& InitToolkitHost, 
+		UVoxelGraphGenerator* WorldGenerator) = 0;
 };

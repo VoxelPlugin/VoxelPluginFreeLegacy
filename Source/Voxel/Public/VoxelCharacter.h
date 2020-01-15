@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -12,6 +12,8 @@ class VOXEL_API AVoxelCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
+	AVoxelCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
 	/** Sets the component the Character is walking on, used by CharacterMovement walking movement to be able to follow dynamic objects. */
 	virtual void SetBase(UPrimitiveComponent* NewBase, FName BoneName, bool bNotifyActor) override;
 };

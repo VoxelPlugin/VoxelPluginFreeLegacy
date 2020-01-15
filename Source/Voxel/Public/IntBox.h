@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -6,10 +6,16 @@
 #include "VoxelIntVectorUtilities.h"
 #include "IntBox.generated.h"
 
+enum class EInverseTransform : uint8
+{
+	True,
+	False
+};
+
 /**
  * A Box with int32 coordinates
  */
-USTRUCT(BlueprintType)
+USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.IntBoxLibrary.MakeIntBox", HasNativeBreak="Voxel.IntBoxLibrary.BreakIntBox"))
 struct VOXEL_API FIntBox
 {
 	GENERATED_BODY()
@@ -30,85 +36,158 @@ struct VOXEL_API FIntBox
 	{
 	}
 
-	FIntBox(const FIntVector& Min, const FIntVector& Max)
-		: Min(Min)
-		, Max(Max)
+	FIntBox(const FIntVector& InMin, const FIntVector& InMax)
+		: Min(InMin)
+		, Max(InMax)
+	{
+		if (!ensureMsgf(Min.X <= Max.X, TEXT("%d <= %d"), Min.X, Max.X)) Max.X = Min.X;
+		if (!ensureMsgf(Min.Y <= Max.Y, TEXT("%d <= %d"), Min.Y, Max.Y)) Max.Y = Min.Y;
+		if (!ensureMsgf(Min.Z <= Max.Z, TEXT("%d <= %d"), Min.Z, Max.Z)) Max.Z = Min.Z;
+	}
+	explicit FIntBox(int32 Min, const FIntVector& Max)
+		: FIntBox(FIntVector(Min), Max)
+	{
+	}
+	explicit FIntBox(const FIntVector& Min, int32 Max)
+		: FIntBox(Min, FIntVector(Max))
+	{
+	}
+	explicit FIntBox(int32 Min, int32 Max)
+		: FIntBox(FIntVector(Min), FIntVector(Max))
+	{
+	}
+	explicit FIntBox(const FVector& Min, const FVector& Max)
+		: FIntBox(FVoxelUtilities::FloorToInt(Min), FVoxelUtilities::CeilToInt(Max) + 1)
 	{
 	}
 
-	FIntBox(const FIntVector& Position)
-		: Min(Position)
-		, Max(Position + FIntVector(1, 1, 1))
+	explicit FIntBox(const FVector& Position)
+		: FIntBox(Position, Position)
 	{
 	}
 
-	FIntBox(int32 X, int32 Y, int32 Z)
-		: Min(X, Y, Z)
-		, Max(X + 1, Y + 1, Z + 1)
+	explicit FIntBox(const FIntVector& Position)
+		: FIntBox(Position, Position + 1)
+	{
+	}
+	explicit FIntBox(const FBox& Box)
+		: FIntBox(Box.Min, Box.Max)
 	{
 	}
 
-	/**
-	 * Translate the box
-	 */
-	FIntBox TranslateBy(const FIntVector& Position) const
+	explicit FIntBox(int32 X, int32 Y, int32 Z)
+		: FIntBox(FIntVector(X, Y, Z), FIntVector(X + 1, Y + 1, Z + 1))
 	{
-		return FIntBox(Min + Position, Max + Position);
 	}
 
-	/**
-	 * Get the size of this box
-	 */
-	inline FIntVector Size() const
+	template<typename T>
+	explicit FIntBox(const TArray<T>& Data)
+	{
+		if (!ensure(Data.Num() > 0)) return;
+
+		*this = FIntBox(Data[0]);
+		for (int32 Index = 1; Index < Data.Num(); Index++)
+		{
+			*this = *this + Data[Index];
+		}
+	}
+
+	FORCEINLINE static FIntBox SafeConstruct(const FIntVector& A, const FIntVector& B)
+	{
+		FIntBox Box;
+		Box.Min = FVoxelUtilities::ComponentMin(A, B);
+		Box.Max = FVoxelUtilities::ComponentMax3(A, B, Box.Min + FIntVector(1, 1, 1));
+		return Box;
+	}
+
+	FORCEINLINE FIntVector Size() const
 	{
 		return Max - Min;
 	}
-
-	inline FVector GetCenter() const
+	FORCEINLINE FVector GetCenter() const
 	{
-		return (FVector)(Min + Max) / 2.f;
+		return FVector(Min + Max) / 2.f;
 	}
-
+	FORCEINLINE uint64 Count() const
+	{
+		return
+			uint64(Max.X - Min.X) *
+			uint64(Max.Y - Min.Y) *
+			uint64(Max.Z - Min.Z);
+	}
+	
 	/**
 	 * Get the corners that are inside the box (max - 1)
 	 */
-	inline TArray<FIntVector, TFixedAllocator<8>> GetCorners() const
+	TArray<FIntVector, TFixedAllocator<8>> GetCorners(int32 MaxBorderSize) const
 	{
 		return {
-			FIntVector(Min.X    , Min.Y    , Min.Z),
-			FIntVector(Max.X - 1, Min.Y    , Min.Z),
-			FIntVector(Min.X    , Max.Y - 1, Min.Z),
-			FIntVector(Max.X - 1, Max.Y - 1, Min.Z),
-			FIntVector(Min.X    , Min.Y    , Max.Z - 1),
-			FIntVector(Max.X - 1, Min.Y    , Max.Z - 1),
-			FIntVector(Min.X    , Max.Y - 1, Max.Z - 1),
-			FIntVector(Max.X - 1, Max.Y - 1, Max.Z - 1)
+			FIntVector(Min.X, Min.Y, Min.Z),
+			FIntVector(Max.X - MaxBorderSize, Min.Y, Min.Z),
+			FIntVector(Min.X, Max.Y - MaxBorderSize, Min.Z),
+			FIntVector(Max.X - MaxBorderSize, Max.Y - MaxBorderSize, Min.Z),
+			FIntVector(Min.X, Min.Y, Max.Z - MaxBorderSize),
+			FIntVector(Max.X - MaxBorderSize, Min.Y, Max.Z - MaxBorderSize),
+			FIntVector(Min.X, Max.Y - MaxBorderSize, Max.Z - MaxBorderSize),
+			FIntVector(Max.X - MaxBorderSize, Max.Y - MaxBorderSize, Max.Z - MaxBorderSize)
 		};
 	}
+	FString ToString() const
+	{
+		return FString::Printf(TEXT("(%d/%d, %d/%d, %d/%d)"), Min.X, Max.X, Min.Y, Max.Y, Min.Z, Max.Z);
+	}
 
-	inline bool IsValid() const
+	FORCEINLINE bool IsValid() const
 	{
 		return Min.X < Max.X && Min.Y < Max.Y && Min.Z < Max.Z;
 	}
-
-	/**
-	 * Checks whether the given location is inside this box.
-	 *
-	 * @param	V	The location to test for inside the bounding volume.
-	 * @return	true if location is inside this volume.
-	 */
-	template<typename TVector>
-	inline bool IsInside(const TVector& V) const
-	{
-		return IsInside(V.X, V.Y, V.Z);
-	}
 	
-	template<typename TNumeric>
-	inline bool IsInside(TNumeric X, TNumeric Y, TNumeric Z) const
+	template<typename T>
+	FORCEINLINE bool ContainsTemplate(T X, T Y, T Z) const
 	{
 		return ((X >= Min.X) && (X < Max.X) && (Y >= Min.Y) && (Y < Max.Y) && (Z >= Min.Z) && (Z < Max.Z));
 	}
+	template<typename T>
+	FORCEINLINE typename TEnableIf<TOr<TIsSame<T, FVector>, TIsSame<T, FIntVector>>::Value, bool>::Type ContainsTemplate(const T& V) const
+	{
+		return ContainsTemplate(V.X, V.Y, V.Z);
+	}
+	template<typename T>
+	FORCEINLINE typename TEnableIf<TOr<TIsSame<T, FBox>, TIsSame<T, FIntBox>>::Value, bool>::Type ContainsTemplate(const T& Other) const
+	{
+		return Min.X <= Other.Min.X && Min.Y <= Other.Min.Y && Min.Z <= Other.Min.Z &&
+			   Max.X >= Other.Max.X && Max.Y >= Other.Max.Y && Max.Z >= Other.Max.Z;
+	}
 
+	FORCEINLINE bool Contains(int32 X, int32 Y, int32 Z) const
+	{
+		return ContainsTemplate(X, Y, Z);
+	}
+	FORCEINLINE bool Contains(const FIntVector& V) const
+	{
+		return ContainsTemplate(V);
+	}
+	FORCEINLINE bool Contains(const FIntBox& Other) const
+	{
+		return ContainsTemplate(Other);
+	}
+
+	// Not an overload as the float behavior can be a bit tricky. Use ContainsTemplate if the input type is unkown
+	FORCEINLINE bool ContainsFloat(float X, float Y, float Z) const
+	{
+		return ContainsTemplate(X, Y, Z);
+	}
+	FORCEINLINE bool ContainsFloat(const FVector& V) const
+	{
+		return ContainsTemplate(V);
+	}
+	FORCEINLINE bool ContainsFloat(const FBox& Other) const
+	{
+		return ContainsTemplate(Other);
+	}
+	
+	template<typename T>
+	bool Contains(T X, T Y, T Z) const = delete;
 
 	/**
 	 * Checks whether the given bounding box intersects this bounding box.
@@ -116,7 +195,8 @@ struct VOXEL_API FIntBox
 	 * @param Other The bounding box to intersect with.
 	 * @return true if the boxes intersect, false otherwise.
 	 */
-	inline bool Intersect(const FIntBox& Other) const
+	template<typename TBox>
+	FORCEINLINE bool Intersect(const TBox& Other) const
 	{
 		if ((Min.X >= Other.Max.X) || (Other.Min.X >= Max.X))
 		{
@@ -135,20 +215,15 @@ struct VOXEL_API FIntBox
 
 		return true;
 	}
-
-	inline bool Contains(const FIntBox& Other) const
-	{
-		return Min.X <= Other.Min.X && Min.Y <= Other.Min.Y && Min.Z <= Other.Min.Z &&
-			   Max.X >= Other.Max.X && Max.Y >= Other.Max.Y && Max.Z >= Other.Max.Z;
-	}
-
 	/**
-	 * Returns the overlap FVoxelBox of two box
-	 *
-	 * @param Other The bounding box to test overlap
-	 * @return the overlap box. It can be 0 if they don't overlap
+	 * Useful for templates taking a box or coordinates
 	 */
-	inline FIntBox Overlap(const FIntBox& Other) const
+	template<typename TNumeric>
+	FORCEINLINE bool Intersect(TNumeric X, TNumeric Y, TNumeric Z) const
+	{
+		return ContainsTemplate(X, Y, Z);
+	}
+	FIntBox Overlap(const FIntBox& Other) const
 	{
 		if (!Intersect(Other))
 		{
@@ -171,62 +246,69 @@ struct VOXEL_API FIntBox
 		return FIntBox(MinVector, MaxVector);
 	}
 
-	static inline void GetRemainingBoxes(const FIntBox& Initial, const FIntBox& BoxToSubstract, TArray<FIntBox>& OutBoxes)
+	FORCEINLINE FIntVector Clamp(const FIntVector& P) const
 	{
-		if (!Initial.Intersect(BoxToSubstract))
+		return FVoxelUtilities::Clamp(P, Min, Max - 1);
+	}
+	// union(return value, Other) = this
+	TArray<FIntBox, TFixedAllocator<6>> Difference(const FIntBox& Other) const
+	{
+		if (!Intersect(Other))
 		{
-			OutBoxes.Add(Initial);
-			return;
+			return { *this };
 		}
+
+		TArray<FIntBox, TFixedAllocator<6>> OutBoxes;
 		
-		if (Initial.Min.Z < BoxToSubstract.Min.Z)
+		if (Min.Z < Other.Min.Z)
 		{
 			// Add bottom
-			OutBoxes.Emplace(Initial.Min, FIntVector(Initial.Max.X, Initial.Max.Y, BoxToSubstract.Min.Z));
+			OutBoxes.Emplace(Min, FIntVector(Max.X, Max.Y, Other.Min.Z));
 		}
-		if (BoxToSubstract.Max.Z < Initial.Max.Z)
+		if (Other.Max.Z < Max.Z)
 		{
 			// Add top
-			OutBoxes.Emplace(FIntVector(Initial.Min.X, Initial.Min.Y, BoxToSubstract.Max.Z), Initial.Max);
+			OutBoxes.Emplace(FIntVector(Min.X, Min.Y, Other.Max.Z), Max);
 		}
 
-		int32 ZMin = FMath::Max(Initial.Min.Z, BoxToSubstract.Min.Z);
-		int32 ZMax = FMath::Min(Initial.Max.Z, BoxToSubstract.Max.Z);
+		const int32 MinZ = FMath::Max(Min.Z, Other.Min.Z);
+		const int32 MaxZ = FMath::Min(Max.Z, Other.Max.Z);
 
-		if (Initial.Min.X < BoxToSubstract.Min.X)
+		if (Min.X < Other.Min.X)
 		{
 			// Add X min
-			OutBoxes.Emplace(FIntVector(Initial.Min.X, Initial.Min.Y, ZMin), FIntVector(BoxToSubstract.Min.X, Initial.Max.Y, ZMax));
+			OutBoxes.Emplace(FIntVector(Min.X, Min.Y, MinZ), FIntVector(Other.Min.X, Max.Y, MaxZ));
 		}
-		if (BoxToSubstract.Max.X < Initial.Max.X)
+		if (Other.Max.X < Max.X)
 		{
 			// Add X max
-			OutBoxes.Emplace(FIntVector(BoxToSubstract.Max.X, Initial.Min.Y, ZMin), FIntVector(Initial.Max.X, Initial.Max.Y, ZMax));
+			OutBoxes.Emplace(FIntVector(Other.Max.X, Min.Y, MinZ), FIntVector(Max.X, Max.Y, MaxZ));
 		}
 		
-		int32 XMin = FMath::Max(Initial.Min.X, BoxToSubstract.Min.X);
-		int32 XMax = FMath::Min(Initial.Max.X, BoxToSubstract.Max.X);
+		const int32 MinX = FMath::Max(Min.X, Other.Min.X);
+		const int32 MaxX = FMath::Min(Max.X, Other.Max.X);
 
-		if (Initial.Min.Y < BoxToSubstract.Min.Y)
+		if (Min.Y < Other.Min.Y)
 		{
 			// Add Y min
-			OutBoxes.Emplace(FIntVector(XMin, Initial.Min.Y, ZMin), FIntVector(XMax, BoxToSubstract.Min.Y, ZMax));
+			OutBoxes.Emplace(FIntVector(MinX, Min.Y, MinZ), FIntVector(MaxX, Other.Min.Y, MaxZ));
 		}
-		if (BoxToSubstract.Max.Y < Initial.Max.Y)
+		if (Other.Max.Y < Max.Y)
 		{
 			// Add Y max
-			OutBoxes.Emplace(FIntVector(XMin, BoxToSubstract.Max.Y, ZMin), FIntVector(XMax, Initial.Max.Y, ZMax));
+			OutBoxes.Emplace(FIntVector(MinX, Other.Max.Y, MinZ), FIntVector(MaxX, Max.Y, MaxZ));
 		}
+
+		return OutBoxes;
 	}
 
-	template<typename T = uint32>
-	inline T ComputeSquaredDistanceFromBoxToPoint(const FIntVector& Point) const
+	template<typename T>
+	FORCEINLINE T ComputeSquaredDistanceFromBoxToPoint(const FIntVector& Point) const
 	{
 		// Accumulates the distance as we iterate axis
 		T DistSquared = 0;
 
 		// Check each axis for min/max and add the distance accordingly
-		// NOTE: Loop manually unrolled for > 2x speed up
 		if (Point.X < Min.X)
 		{
 			DistSquared += FMath::Square<T>(Point.X - Min.X);
@@ -258,145 +340,276 @@ struct VOXEL_API FIntBox
 	}
 
 	template<typename T>
-	inline T ComputeSquaredDistanceFromBoxToBox(const FIntBox& Box) const
+	FORCEINLINE T ComputeSquaredDistanceFromBoxToBox(const FIntBox& Box) const
 	{
 		return FMath::Min<T>(ComputeSquaredDistanceFromBoxToPoint<T>(Box.Min), ComputeSquaredDistanceFromBoxToPoint<T>(Box.Max));
 	}
 
-	inline bool IsMultipleOf(int32 Step) const
+	FORCEINLINE bool IsMultipleOf(int32 Step) const
 	{
 		return Min.X % Step == 0 && Min.Y % Step == 0 && Min.Z % Step == 0 &&
 			   Max.X % Step == 0 && Max.Y % Step == 0 && Max.Z % Step == 0;
 	}
-
-	// NewBox included in OldBox, but OldBox not included in NewBox
-	inline void MakeMultipleOfExclusive(int32 Step)
-	{
-		Min.X = FMath::CeilToInt((float)Min.X / Step) * Step;
-		Min.Y = FMath::CeilToInt((float)Min.Y / Step) * Step;
-		Min.Z = FMath::CeilToInt((float)Min.Z / Step) * Step;
-		
-		Max.X = FMath::CeilToInt((float)Max.X / Step) * Step;
-		Max.Y = FMath::CeilToInt((float)Max.Y / Step) * Step;
-		Max.Z = FMath::CeilToInt((float)Max.Z / Step) * Step;
-	}
+	
 	// OldBox included in NewBox, but NewBox not included in OldBox
-	inline void MakeMultipleOfInclusive(int32 Step)
+	FORCEINLINE FIntBox MakeMultipleOfBigger(int32 Step) const
 	{
-		Min.X = FMath::FloorToInt((float)Min.X / Step) * Step;
-		Min.Y = FMath::FloorToInt((float)Min.Y / Step) * Step;
-		Min.Z = FMath::FloorToInt((float)Min.Z / Step) * Step;
-		
-		Max.X = FMath::CeilToInt((float)Max.X / Step) * Step;
-		Max.Y = FMath::CeilToInt((float)Max.Y / Step) * Step;
-		Max.Z = FMath::CeilToInt((float)Max.Z / Step) * Step;
+		FIntBox NewBox;
+		NewBox.Min = FVoxelUtilities::DivideFloor(Min, Step) * Step;
+		NewBox.Max = FVoxelUtilities::DivideCeil(Max, Step) * Step;
+		return NewBox;
+	}
+	// NewBox included in OldBox, but OldBox not included in NewBox
+	FORCEINLINE FIntBox MakeMultipleOfSmaller(int32 Step) const
+	{
+		FIntBox NewBox;
+		NewBox.Min = FVoxelUtilities::DivideCeil(Min, Step) * Step;		
+		NewBox.Max = FVoxelUtilities::DivideFloor(Max, Step) * Step;
+		return NewBox;
+	}
+	FORCEINLINE FIntBox MakeMultipleOfRoundUp(int32 Step) const
+	{
+		FIntBox NewBox;
+		NewBox.Min = FVoxelUtilities::DivideCeil(Min, Step) * Step;		
+		NewBox.Max = FVoxelUtilities::DivideCeil(Max, Step) * Step;
+		return NewBox;
 	}
 
-	// union(OutChilds).Contains(this)
-	inline void Subdivide(int32 ChildsSize, TArray<FIntBox>& OutChilds) const
+	// Guarantee: union(OutChilds).Contains(this)
+	template<typename T>
+	inline void Subdivide(int32 ChildrenSize, TArray<FIntBox, T>& OutChildren) const
 	{
-		FIntVector LowerBound = FVoxelUtilities::FloorToInt(FVector(Min) / ChildsSize) * ChildsSize;
-		FIntVector UpperBound = FVoxelUtilities::CeilToInt(FVector(Max) / ChildsSize) * ChildsSize;
-		for (int32 X = LowerBound.X; X < UpperBound.X; X += ChildsSize)
+		const FIntVector LowerBound = FVoxelUtilities::DivideFloor(Min, ChildrenSize) * ChildrenSize;
+		const FIntVector UpperBound = FVoxelUtilities::DivideCeil(Max, ChildrenSize) * ChildrenSize;
+		for (int32 X = LowerBound.X; X < UpperBound.X; X += ChildrenSize)
 		{
-			for (int32 Y = LowerBound.Y; Y < UpperBound.Y; Y += ChildsSize)
+			for (int32 Y = LowerBound.Y; Y < UpperBound.Y; Y += ChildrenSize)
 			{
-				for (int32 Z = LowerBound.Z; Z < UpperBound.Z; Z += ChildsSize)
+				for (int32 Z = LowerBound.Z; Z < UpperBound.Z; Z += ChildrenSize)
 				{
-					OutChilds.Emplace(FIntVector(X, Y, Z), FIntVector(X + ChildsSize, Y + ChildsSize, Z + ChildsSize));
+					OutChildren.Emplace(FIntVector(X, Y, Z), FIntVector(X + ChildrenSize, Y + ChildrenSize, Z + ChildrenSize));
 				}
 			}
 		}
 	}
+
+	FORCEINLINE FIntBox Scale(float S) const
+	{
+		return { FVoxelUtilities::FloorToInt(FVector(Min) * S), FVoxelUtilities::CeilToInt(FVector(Max) * S) };
+	}
 	
-	inline FIntBox Extend(const FIntVector& Amount) const
+	FORCEINLINE FIntBox Extend(const FIntVector& Amount) const
 	{
 		return { Min - Amount, Max + Amount };
 	}
-	inline FIntBox Extend(int32 Amount) const
+	FORCEINLINE FIntBox Extend(int32 Amount) const
 	{
 		return Extend(FIntVector(Amount));
 	}
-
-	inline FString ToString() const
+	FORCEINLINE FIntBox Translate(const FIntVector& Position) const
 	{
-		return FString::Printf(TEXT("(%d/%d, %d/%d, %d/%d)"), Min.X, Max.X, Min.Y, Max.Y, Min.Z, Max.Z);
+		return FIntBox(Min + Position, Max + Position);
+	}
+	
+	FORCEINLINE FIntBox RemoveTranslation() const
+	{
+		return FIntBox(0, Max - Min);
+	}
+	// Will move the box so that GetCenter = 0,0,0. Will extend it if its size is odd
+	FIntBox Center() const
+	{
+		FIntVector NewMin = Min;
+		FIntVector NewMax = Max;
+		if (FVector(FIntVector(GetCenter())) != GetCenter())
+		{
+			NewMax = NewMax + 1;
+		}
+		ensure(FVector(FIntVector(GetCenter())) == GetCenter());
+		const FIntVector Offset = FIntVector(GetCenter());
+		NewMin -= Offset;
+		NewMax -= Offset;
+		ensure(NewMin + NewMax == FIntVector(0));
+		return FIntBox(NewMin, NewMax);
 	}
 
-	/**
-	 * Scales this box
-	 */
-	inline FIntBox& operator*=(int32 Scale)
+	FORCEINLINE FIntBox& operator*=(int32 Scale)
 	{
 		Min *= Scale;
 		Max *= Scale;
 		return *this;
 	}
 
-	inline bool operator==(const FIntBox& Other) const
+	FORCEINLINE bool operator==(const FIntBox& Other) const
 	{
 		return Min == Other.Min && Max == Other.Max;
 	}
-
-	inline FIntBox& operator+=(const FIntBox& Other)
+	FORCEINLINE bool operator!=(const FIntBox& Other) const
 	{
-		Min.X = FMath::Min(Min.X, Other.Min.X);
-		Min.Y = FMath::Min(Min.Y, Other.Min.Y);
-		Min.Z = FMath::Min(Min.Z, Other.Min.Z);
-		
-		Max.X = FMath::Max(Max.X, Other.Max.X);
-		Max.Y = FMath::Max(Max.Y, Other.Max.Y);
-		Max.Z = FMath::Max(Max.Z, Other.Max.Z);
-		
-		return *this;
+		return Min != Other.Min || Max != Other.Max;
 	}
 
-	inline FIntBox& operator+=(const FIntVector& Point)
+	// More expensive, but should be more random
+	FORCEINLINE uint32 GetMurmurHash() const
 	{
-		Min.X = FMath::Min(Min.X, Point.X);
-		Min.Y = FMath::Min(Min.Y, Point.Y);
-		Min.Z = FMath::Min(Min.Z, Point.Z);
-		
-		Max.X = FMath::Max(Max.X, Point.X + 1);
-		Max.Y = FMath::Max(Max.Y, Point.Y + 1);
-		Max.Z = FMath::Max(Max.Z, Point.Z + 1);
-		
-		return *this;
+		return FVoxelUtilities::MurmurHash(Min) ^ FVoxelUtilities::MurmurHash(Max);
+	}
+
+	template<typename T>
+	void Iterate(T Lambda) const
+	{
+		for (int32 X = Min.X; X < Max.X; X++)
+		{
+			for (int32 Y = Min.Y; Y < Max.Y; Y++)
+			{
+				for (int32 Z = Min.Z; Z < Max.Z; Z++)
+				{
+					Lambda(X, Y, Z);
+				}
+			}
+		}
+	}
+
+	template<EInverseTransform Inverse = EInverseTransform::False>
+	FIntBox ApplyTransform(const FTransform& Transform, int32 MaxBorderSize = 0) const
+	{
+		const auto Corners = GetCorners(MaxBorderSize);
+
+		FIntVector NewMin(MAX_int32);
+		FIntVector NewMax(MIN_int32);
+		for (int32 Index = 0; Index < 8; Index++)
+		{
+			const FVector P = 
+				Inverse == EInverseTransform::True 
+				? Transform.InverseTransformPosition(FVector(Corners[Index])) 
+				: Transform.TransformPosition(FVector(Corners[Index]));
+			NewMin = FVoxelUtilities::ComponentMin(NewMin, FVoxelUtilities::FloorToInt(P));
+			NewMax = FVoxelUtilities::ComponentMax(NewMax, FVoxelUtilities::CeilToInt(P));
+		}
+		return FIntBox(NewMin, NewMax + MaxBorderSize);
 	}
 };
 
-inline uint32 GetTypeHash(const FIntBox& Box)
+FORCEINLINE uint32 GetTypeHash(const FIntBox& Box)
 {
+	static_assert(sizeof(FIntBox) == 6 * sizeof(int32), "Alignement error");
 	return FCrc::MemCrc32(&Box, sizeof(FIntBox));
 }
 
-inline FIntBox operator*(const FIntBox& Box, int32 Scale)
+FORCEINLINE FIntBox operator*(const FIntBox& Box, int32 Scale)
 {
 	FIntBox Copy = Box;
 	return Copy *= Scale;
 }
 
-inline FIntBox operator*(int32 Scale, const FIntBox& Box)
+FORCEINLINE FIntBox operator*(int32 Scale, const FIntBox& Box)
 {
 	FIntBox Copy = Box;
 	return Copy *= Scale;
 }
 
-inline FIntBox operator+(const FIntBox& Box, const FIntBox& Other)
+FORCEINLINE FIntBox operator+(const FIntBox& Box, const FIntBox& Other)
 {
 	FIntBox Copy = Box;
-	return Copy += Other;
+	Copy.Min = FVoxelUtilities::ComponentMin(Copy.Min, Other.Min);
+	Copy.Max = FVoxelUtilities::ComponentMax(Copy.Max, Other.Max);
+	return Copy;
 }
 
-inline FIntBox operator+(const FIntBox& Box, const FIntVector& Point)
+FORCEINLINE FIntBox operator+(const FIntBox& Box, const FIntVector& Point)
 {
-	FIntBox Copy = Box;
-	return Copy += Point;
+	return Box + FIntBox(Point);
 }
 
-inline FArchive& operator<<(FArchive& Ar, FIntBox& Box)
+FORCEINLINE FArchive& operator<<(FArchive& Ar, FIntBox& Box)
 {
 	Ar << Box.Min;
 	Ar << Box.Max;
 	return Ar;
+}
+
+struct FIntBoxWithValidity
+{
+	FIntBoxWithValidity() = default;
+	explicit FIntBoxWithValidity(const FIntBox& Box)
+		: Box(Box)
+		, bValid(true)
+	{
+	}
+
+	FORCEINLINE const FIntBox& GetBox() const
+	{
+		check(IsValid());
+		return Box;
+	}
+
+	FORCEINLINE bool IsValid() const
+	{
+		return bValid;
+	}
+	FORCEINLINE void Reset()
+	{
+		bValid = false;
+	}
+
+	FORCEINLINE FIntBoxWithValidity& operator=(const FIntBox& Other)
+	{
+		Box = Other;
+		bValid = true;
+		return *this;
+	}
+	
+	FORCEINLINE bool operator==(const FIntBoxWithValidity& Other) const
+	{
+		if (bValid != Other.bValid)
+		{
+			return false;
+		}
+		if (!bValid && !Other.bValid)
+		{
+			return true;
+		}
+		return Box == Other.Box;
+	}
+	FORCEINLINE bool operator!=(const FIntBoxWithValidity& Other) const
+	{
+		return !(*this == Other);
+	}
+
+	FORCEINLINE FIntBoxWithValidity& operator+=(const FIntBox& Other)
+	{
+		if (bValid)
+		{
+			Box = Box + Other;
+		}
+		else
+		{
+			Box = Other;
+			bValid = true;
+		}
+		return *this;
+	}
+	FORCEINLINE FIntBoxWithValidity& operator+=(const FIntBoxWithValidity& Other)
+	{
+		if (Other.bValid)
+		{
+			*this += Other.GetBox();
+		}
+		return *this;
+	}
+
+	FORCEINLINE FIntBoxWithValidity& operator+=(const FIntVector& Point)
+	{
+		return *this += FIntBox(Point);
+	}
+	
+private:
+	FIntBox Box;
+	bool bValid = false;
+};
+
+template<typename T>
+FORCEINLINE FIntBoxWithValidity operator+(const FIntBoxWithValidity& Box, const T& Other)
+{
+	FIntBoxWithValidity Copy = Box;
+	return Copy += Other;
 }

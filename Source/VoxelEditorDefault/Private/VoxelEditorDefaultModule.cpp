@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelEditorDefaultModule.h"
 #include "Modules/ModuleManager.h"

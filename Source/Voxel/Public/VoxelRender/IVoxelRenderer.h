@@ -1,134 +1,146 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PhysicsEngine/BodySetupEnums.h"
 #include "IntBox.h"
 #include "VoxelConfigEnums.h"
-#include "PhysicsEngine/BodyInstance.h"
+#include "VoxelGlobals.h"
+#include "VoxelRender/VoxelMeshConfig.h"
+#include "VoxelRender/VoxelBlendedMaterial.h"
 
+class FInvokerPositionsArray;
 class IVoxelPool;
 class FVoxelData;
 class FVoxelDebugManager;
+class FVoxelProcGenManager;
+class FVoxelToolRenderingManager;
 class UMaterialInterface;
-class UVoxelMaterialCollection;
-struct FVoxelBlendedMaterial;
+class UMaterialInstanceDynamic;
+class UVoxelMaterialCollectionBase;
+class AVoxelWorld;
+class AActor;
+struct FVoxelChunkUpdate;
 
 DECLARE_MULTICAST_DELEGATE(FVoxelRendererOnWorldLoaded);
-DECLARE_DELEGATE_OneParam(FVoxelOnUpdateFinished, FIntBox);
+// Fired once per chunk
+DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdateFinished, FIntBox);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FVoxelOnMaterialInstanceCreated, int32 /*ChunkLOD*/, const FIntBox& /*ChunkBounds*/, UMaterialInstanceDynamic* /*Instance*/);
 
-struct FVoxelRenderChunkSettings
+struct FVoxelRendererDynamicSettings
 {
-	bool bVisible : 1;
-	bool bEnableCollisions : 1;
-	bool bEnableNavmesh : 1;
-	bool bEnableTessellation : 1;
-	bool bForceRender : 1;
-
-	inline bool IsRendered() const { return bVisible || bEnableCollisions || bEnableNavmesh || bForceRender; }
-
-	inline bool operator!=(const FVoxelRenderChunkSettings& Other) const
-	{
-		return bVisible != Other.bVisible ||
-			bEnableCollisions != Other.bEnableCollisions ||
-			bEnableNavmesh != Other.bEnableNavmesh ||
-			bEnableTessellation != Other.bEnableTessellation ||
-			bForceRender != Other.bForceRender;
-	}
-	inline bool operator==(const FVoxelRenderChunkSettings& Other) const
-	{
-		return bVisible == Other.bVisible &&
-			bEnableCollisions == Other.bEnableCollisions &&
-			bEnableNavmesh == Other.bEnableNavmesh &&
-			bEnableTessellation == Other.bEnableTessellation &&
-			bForceRender == Other.bForceRender;
-	}
-
-	inline static FVoxelRenderChunkSettings Visible()
-	{
-		return { true, false, false, false, false };
-	}
-};
-
-struct FVoxelRendererSettings
-{
-	float VoxelSize;
-	int32 OctreeDepth;
-	FIntBox WorldBounds;
-	TSharedPtr<FIntVector> WorldOffset;
-
-	UClass* ProcMeshClass;
-	bool bCastFarShadow;
-
-	bool bIsPreviewing;
-
-	TSharedRef<TArray<FIntVector>> InvokersPositions = MakeShared<TArray<FIntVector>>();
+	// Need to lock this when writing to it (can only write on the game thread)
+	// Other threads will lock to read variables
+	FCriticalSection DynamicSettingsLock;
 	
-	TWeakObjectPtr<UWorld> World;
-	TWeakObjectPtr<AActor> ComponentsOwner;
-	TSharedPtr<FVoxelData, ESPMode::ThreadSafe> Data;
-	TSharedPtr<IVoxelPool> Pool;
-	TSharedPtr<FVoxelDebugManager, ESPMode::ThreadSafe> DebugManager;
-
-	EVoxelUVConfig UVConfig;
-	float UVScale;
-	EVoxelNormalConfig NormalConfig;
-	EVoxelMaterialConfig MaterialConfig;
 	TWeakObjectPtr<UMaterialInterface> VoxelMaterialWithoutTessellation;
 	TWeakObjectPtr<UMaterialInterface> VoxelMaterialWithTessellation;
-	TWeakObjectPtr<UVoxelMaterialCollection> MaterialCollection;
+	TWeakObjectPtr<UVoxelMaterialCollectionBase> MaterialCollection;
 
-	float TessellationBoundsExtension;
-	float WaitForOtherChunksToAvoidHolesTimeout;
+	bool bGenerateBlendings = false;
+	
+	// Ref: we don't want to copy it around
+	TVoxelSharedRef<const TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted>> MaterialCollectionMap = MakeVoxelShared<const TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted>>();
+};
 
-	FBodyInstance CollisionPresets;
+struct FVoxelRendererSettingsBase
+{
+	const float VoxelSize;
+	const int32 OctreeDepth;
+	const FIntBox WorldBounds;
+	const TVoxelSharedRef<FIntVector> WorldOffset;
 
-	EVoxelRenderType RenderType;
-	float ChunksDitheringDuration;
-	bool bOptimizeIndices;
+	// Always valid
+	UClass* const ProcMeshClass;
+	const bool bCastFarShadow;
+
+	const EVoxelPlayType PlayType;
+
+	const TWeakObjectPtr<UWorld> World;
+	const TWeakObjectPtr<UPrimitiveComponent> RootComponent;
+
+	const EVoxelUVConfig UVConfig;
+	const float UVScale;
+	const EVoxelNormalConfig NormalConfig;
+	const EVoxelMaterialConfig MaterialConfig;
+
+	const float TessellationBoundsExtension;
+
+	const ECollisionTraceFlag CollisionTraceFlag;
+	const int32 NumConvexHullsPerAxis;
+	const bool bCleanCollisionMeshes;
+
+	const EVoxelRenderType RenderType;
+	const bool bCreateMaterialInstances;
+	const bool bDitherChunks;
+	const float ChunksDitheringDuration;
+	const bool bOptimizeIndices;
+	const int32 MaxDistanceFieldLOD;
+	const bool bOneMaterialPerCubeSide;
+	const bool bHalfPrecisionCoordinates;
+	const bool bInterpolateColors;
+	const bool bInterpolateUVs;
+	const bool bRenderWorld;
+
+	const float MeshUpdatesBudget;
+
+	const TArray<uint8> HolesMaterials;
+	const TMap<uint8, FVoxelMeshConfig> MaterialsMeshConfigs;
+
+	const bool bMergeChunks;
+	const int32 ChunksClustersSize;
+	const bool bDoNotMergeCollisionsAndNavmesh;
+
+	const bool bStaticWorld;
+
+	const float PriorityDuration;
+
+	const TVoxelSharedRef<FVoxelRendererDynamicSettings> DynamicSettings;
+
+	// If Data isn't null, it's Depth and WorldBounds will be used, and WorldOffset will be set to 0
+	FVoxelRendererSettingsBase(
+		const AVoxelWorld* World, 
+		EVoxelPlayType PlayType,
+		UPrimitiveComponent* RootComponent,	
+		const FVoxelData* Data = nullptr);
 
 public:
 	inline FVector GetChunkRelativePosition(const FIntVector& Position) const
 	{
 		return FVector(Position + *WorldOffset) * VoxelSize;
 	}
-	inline float GetRealChunksDitheringDuration() const
+
+	UMaterialInterface* GetVoxelMaterial(FVoxelBlendedMaterialUnsorted Index, bool bTessellation) const;
+	UMaterialInterface* GetVoxelMaterial(bool bTessellation) const;
+
+	inline void OnMaterialsChanged() const
 	{
-		// 2x: first dither in new chunk, then dither out old chunk
-		return 2 * ChunksDitheringDuration;
+		// Needed to have errors display again
+		UniqueId = UniqueIdCounter++;
 	}
 	
-	UMaterialInterface* GetVoxelMaterial(const FVoxelBlendedMaterial& Index, bool bTessellation) const;
-	UMaterialInterface* GetVoxelMaterial(bool bTessellation) const;
+private:
+	mutable uint64 UniqueId = UniqueIdCounter++;
+	static uint64 UniqueIdCounter;
 };
 
-struct FVoxelChunkToAdd
+struct FVoxelRendererSettings : FVoxelRendererSettingsBase
 {
-	uint64 Id;
-	FIntBox Bounds;
-	int32 LOD;
-	FVoxelRenderChunkSettings Settings;
-	TArray<uint64> PreviousChunks; // Can be chunks to remove or visible chunks that become hidden
-};
+	const TVoxelSharedRef<const FVoxelData> Data;
+	const TVoxelSharedRef<IVoxelPool> Pool;
+	const TVoxelSharedPtr<FVoxelToolRenderingManager> ToolRenderingManager; // No tools in asset actors
+	const TVoxelSharedRef<FVoxelDebugManager> DebugManager;
 
-struct FVoxelChunkToUpdate
-{
-	uint64 Id;
-	FIntBox Bounds;
-	FVoxelRenderChunkSettings OldSettings;
-	FVoxelRenderChunkSettings NewSettings;
-	TArray<uint64> PreviousChunks; // If bVisible is now true
-};
-
-struct FVoxelChunkToRemove
-{
-	uint64 Id;
-};
-
-struct FVoxelTransitionsToUpdate
-{
-	uint64 Id;
-	uint8 TransitionsMask;
+	FVoxelRendererSettings(
+		const AVoxelWorld* World, 
+		EVoxelPlayType PlayType,
+		UPrimitiveComponent* RootComponent,
+		const TVoxelSharedRef<const FVoxelData>& Data,
+		const TVoxelSharedRef<IVoxelPool>& Pool,
+		const TVoxelSharedPtr<FVoxelToolRenderingManager>& ToolRenderingManager,
+		const TVoxelSharedRef<FVoxelDebugManager>& DebugManager,
+		bool bUseDataSettings);
 };
 
 class VOXEL_API IVoxelRenderer
@@ -136,20 +148,33 @@ class VOXEL_API IVoxelRenderer
 public:
 	const FVoxelRendererSettings Settings;
 	FVoxelRendererOnWorldLoaded OnWorldLoaded;
+	FVoxelOnMaterialInstanceCreated OnMaterialInstanceCreated;
 
-	IVoxelRenderer(const FVoxelRendererSettings& Settings)
-		: Settings(Settings)
-	{
-
-	}
+	explicit IVoxelRenderer(const FVoxelRendererSettings& Settings);
 	virtual ~IVoxelRenderer() = default;
 
-	virtual void UpdateChunks(const TArray<uint64>& ChunksToUpdate, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) = 0;
-	virtual void CancelDithering(const FIntBox& Bounds, const TArray<uint64>& Chunks) = 0;
-
+	//~ Begin IVoxelRenderer Interface
+	virtual int32 UpdateChunks(
+		const FIntBox& Bounds,
+		const TArray<uint64>& ChunksToUpdate, 
+		const FVoxelOnChunkUpdateFinished& FinishDelegate) = 0;
+	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) = 0;
 	virtual int32 GetTaskCount() const = 0;
-
 	virtual void RecomputeMeshPositions() = 0;
+	virtual void ApplyNewMaterials() = 0;
+	virtual void Destroy() = 0;
+	virtual void CreateGeometry_AnyThread(int32 LOD, const FIntVector& ChunkPosition, TArray<uint32>& OutIndices, TArray<FVector>& OutVertices) const = 0;
+	//~ End IVoxelRenderer Interface
+
+	// Called by LOD manager
+	void SetInvokersPositions(const TArray<FIntVector>& NewInvokersPositions);
 	
-	virtual void UpdateLODs(const TArray<FVoxelChunkToAdd>& ChunksToAdd, const TArray<FVoxelChunkToUpdate>& ChunksToUpdate, const TArray<FVoxelChunkToRemove>& ChunksToRemove, const TArray<FVoxelTransitionsToUpdate>& TransitionsToUpdate) = 0;
+	// Used by render chunks to compute the priorities
+	inline const TVoxelSharedRef<FInvokerPositionsArray>& GetInvokersPositions() const
+	{
+		return InvokersPositions;
+	}
+
+private:
+	TVoxelSharedRef<FInvokerPositionsArray> InvokersPositions;
 };

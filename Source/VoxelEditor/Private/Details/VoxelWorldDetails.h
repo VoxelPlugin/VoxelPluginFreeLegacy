@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -12,15 +12,18 @@ class SButton;
 class FVoxelWorldDetails : public IDetailCustomization
 {
 public:
-	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
 	static TSharedRef<IDetailCustomization> MakeInstance();
-
-	FVoxelWorldDetails() = default;
+	static TSharedRef<IDetailCustomization> MakeDataAssetEditorInstance();
+	
+	const bool bIsDataAssetEditor;
+	
+	explicit FVoxelWorldDetails(bool bIsDataAssetEditor)
+		: bIsDataAssetEditor(bIsDataAssetEditor)
+	{
+	}
 
 private:
-	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
-private:
-	TWeakObjectPtr<AVoxelWorld> World;
+	static FReply BakeWorld(AVoxelWorld& World);
 };

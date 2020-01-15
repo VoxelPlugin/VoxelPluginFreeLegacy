@@ -1,15 +1,13 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelMaterialCollectionDetails.h"
 #include "PropertyEditorModule.h"
 #include "Modules/ModuleManager.h"
 
-#include "VoxelEditorDetailsUtils.h"
-
-#include "VoxelMaterialCollection.h"
+#include "VoxelGlobals.h"
+#include "VoxelEditorDetailsUtilities.h"
+#include "VoxelRender/VoxelMaterialCollection.h"
 #include "Materials/Material.h"
-#include "Materials/MaterialExpression.h"
-#include "ObjectTools.h"
 #include "VoxelMaterialCollectionHelpers.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SSpacer.h"
@@ -43,25 +41,28 @@ void FVoxelMaterialCollectionDetails::CustomizeDetails(IDetailLayoutBuilder& Det
 	}
 	Collection = CastChecked<UVoxelMaterialCollection>(Objects[0].Get());;
 
-	FVoxelEditorDetailsUtils::AddButtonToCategory(DetailLayout,
+	FVoxelEditorUtilities::AddButtonToCategory(DetailLayout,
 		"Generate",
 		LOCTEXT("GenerateSingle", "Generate Single"),
 		LOCTEXT("GenerateSingleMaterials", "Generate Single Materials"),
 		LOCTEXT("GenerateSingle", "Generate Single"),
+		false,
 		FOnClicked::CreateSP(this, &FVoxelMaterialCollectionDetails::OnGenerateSingleMaterials));
 
-	FVoxelEditorDetailsUtils::AddButtonToCategory(DetailLayout,
+	FVoxelEditorUtilities::AddButtonToCategory(DetailLayout,
 		"Generate",
 		LOCTEXT("GenerateDouble", "Generate Double"),
 		LOCTEXT("GenerateDoubleMaterials", "Generate Double Materials"),
 		LOCTEXT("GenerateDouble", "Generate Double"),
+		false,
 		FOnClicked::CreateSP(this, &FVoxelMaterialCollectionDetails::OnGenerateDoubleMaterials));
 
-	FVoxelEditorDetailsUtils::AddButtonToCategory(DetailLayout,
+	FVoxelEditorUtilities::AddButtonToCategory(DetailLayout,
 		"Generate",
 		LOCTEXT("GenerateTriple", "Generate Triple"),
 		LOCTEXT("GenerateTripleMaterials", "Generate Triple Materials"),
 		LOCTEXT("GenerateTriple", "Generate Triple"),
+		false,
 		FOnClicked::CreateSP(this, &FVoxelMaterialCollectionDetails::OnGenerateTripleMaterials));
 }
 
@@ -137,10 +138,10 @@ void FVoxelMaterialCollectionElementCustomization::CustomizeHeader(TSharedRef<IP
 	PropertyHandle = InPropertyHandle;
 	PropertyHandle->GetOuterObjects(Outers);
 
-	IndexHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelMaterialCollectionElement, Index));
-	MaterialHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelMaterialCollectionElement, MaterialFunction));
-	PhysicalMaterialHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelMaterialCollectionElement, PhysicalMaterial));
-	ChildrenHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelMaterialCollectionElement, Children));
+	IndexHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelMaterialCollectionElement, Index));
+	MaterialHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelMaterialCollectionElement, MaterialFunction));
+	PhysicalMaterialHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelMaterialCollectionElement, PhysicalMaterial));
+	ChildrenHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelMaterialCollectionElement, Children));
 		   
 	auto IndexWidget = IndexHandle->CreatePropertyValueWidget();
 	IndexWidget->SetVisibility(TAttribute<EVisibility>(this, &FVoxelMaterialCollectionElementCustomization::NoChildrenOnlyVisibility));
@@ -202,7 +203,7 @@ void FVoxelMaterialCollectionElementCustomization::CustomizeHeader(TSharedRef<IP
 
 void FVoxelMaterialCollectionElementCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> InPropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-	ChildrenHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelMaterialCollectionElement, Children));
+	ChildrenHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelMaterialCollectionElement, Children));
 
 	TSharedRef<FDetailArrayBuilder> NodeArrayBuilder = MakeShareable(new FDetailArrayBuilder(ChildrenHandle.ToSharedRef()));
 	NodeArrayBuilder->OnGenerateArrayElementWidget(FOnGenerateArrayElementWidget::CreateSP(this, &FVoxelMaterialCollectionElementCustomization::GenerateArrayElementWidget));
@@ -234,9 +235,9 @@ bool FVoxelMaterialCollectionElementCustomization::HasChildren() const
 
 void FVoxelMaterialCollectionElementCustomization::GenerateArrayElementWidget(TSharedRef<IPropertyHandle> ChildHandle, int32 ArrayIndex, IDetailChildrenBuilder& ChildrenBuilder)
 {
-	auto ChildIndexHandle = ChildHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelMaterialCollectionElementIndex, InstanceIndex));
-	auto ChildInstanceHandle = ChildHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelMaterialCollectionElementIndex, MaterialInstance));
-	auto ChildPhysicalMaterialHandle = ChildHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelMaterialCollectionElementIndex, PhysicalMaterial));
+	auto ChildIndexHandle = ChildHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelMaterialCollectionElementIndex, InstanceIndex));
+	auto ChildInstanceHandle = ChildHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelMaterialCollectionElementIndex, MaterialInstance));
+	auto ChildPhysicalMaterialHandle = ChildHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelMaterialCollectionElementIndex, PhysicalMaterial));
 
 	ChildrenBuilder.AddCustomRow(FText())
 	.NameContent()

@@ -1,27 +1,35 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelVersionsFixup.h"
+#include "VoxelGlobals.h"
+#include "VoxelBaseUtilities.h"
 
 namespace FVoxelUtilities
 {
-	inline FIntVector RoundToInt(const FVector& Vector)
+	FORCEINLINE FVector Frac(const FVector& Vector)
+	{
+		return FVector(
+			FMath::Frac(Vector.X),
+			FMath::Frac(Vector.Y),
+			FMath::Frac(Vector.Z));
+	}
+	FORCEINLINE FIntVector RoundToInt(const FVector& Vector)
 	{
 		return FIntVector(
 			FMath::RoundToInt(Vector.X),
 			FMath::RoundToInt(Vector.Y),
 			FMath::RoundToInt(Vector.Z));
 	}
-	inline FIntVector FloorToInt(const FVector& Vector)
+	FORCEINLINE FIntVector FloorToInt(const FVector& Vector)
 	{
 		return FIntVector(
 			FMath::FloorToInt(Vector.X),
 			FMath::FloorToInt(Vector.Y),
 			FMath::FloorToInt(Vector.Z));
 	}
-	inline FIntVector CeilToInt(const FVector& Vector)
+	FORCEINLINE FIntVector CeilToInt(const FVector& Vector)
 	{
 		return FIntVector(
 			FMath::CeilToInt(Vector.X),
@@ -29,7 +37,7 @@ namespace FVoxelUtilities
 			FMath::CeilToInt(Vector.Z));
 	}
 
-	inline FIntVector Abs(const FIntVector& Vector)
+	FORCEINLINE FIntVector Abs(const FIntVector& Vector)
 	{
 		return FIntVector(
 			FMath::Abs(Vector.X),
@@ -37,14 +45,14 @@ namespace FVoxelUtilities
 			FMath::Abs(Vector.Z));
 	}
 
-	inline FIntVector Max(const FIntVector& A, const FIntVector& B)
+	FORCEINLINE FIntVector ComponentMax(const FIntVector& A, const FIntVector& B)
 	{
 		return FIntVector(
 			FMath::Max(A.X, B.X),
 			FMath::Max(A.Y, B.Y),
 			FMath::Max(A.Z, B.Z));
 	}
-	inline FIntVector Min(const FIntVector& A, const FIntVector& B)
+	FORCEINLINE FIntVector ComponentMin(const FIntVector& A, const FIntVector& B)
 	{
 		return FIntVector(
 			FMath::Min(A.X, B.X),
@@ -52,44 +60,94 @@ namespace FVoxelUtilities
 			FMath::Min(A.Z, B.Z));
 	}
 
-	inline FIntVector Clamp(const FIntVector& V, int32 Min, int32 Max)
+	FORCEINLINE FIntVector ComponentMin3(const FIntVector& A, const FIntVector& B, const FIntVector& C)
+	{
+		return ComponentMin(A, ComponentMin(B, C));
+	}
+	FORCEINLINE FIntVector ComponentMax3(const FIntVector& A, const FIntVector& B, const FIntVector& C)
+	{
+		return ComponentMax(A, ComponentMax(B, C));
+	}
+
+	FORCEINLINE FVector ComponentMin3(const FVector& A, const FVector& B, const FVector& C)
+	{
+		return A.ComponentMin(B.ComponentMin(C));
+	}
+	FORCEINLINE FVector ComponentMax3(const FVector& A, const FVector& B, const FVector& C)
+	{
+		return A.ComponentMax(B.ComponentMax(C));
+	}
+
+	// Defaults to the "lowest" axis if equal (will return X if X and Y are equal)
+	template<typename TVector>
+	FORCEINLINE int32 GetArgMin(const TVector& V)
+	{
+		if (V.X <= V.Y && V.X <= V.Z)
+		{
+			return 0;
+		}
+		else if (V.Y <= V.Z)
+		{
+			return 1;
+		}
+		else
+		{
+			return 2;
+		}
+	}
+	// Defaults to the "lowest" axis if equal (will return X if X and Y are equal)
+	template<typename TVector>
+	FORCEINLINE int32 GetArgMax(const TVector& V)
+	{
+		if (V.X >= V.Y && V.X >= V.Z)
+		{
+			return 0;
+		}
+		else if (V.Y >= V.Z)
+		{
+			return 1;
+		}
+		else
+		{
+			return 2;
+		}
+	}
+
+	FORCEINLINE FIntVector Clamp(const FIntVector& V, const FIntVector& Min, const FIntVector& Max)
 	{
 		return FIntVector(
-			FMath::Clamp(V.X, Min, Max),
-			FMath::Clamp(V.Y, Min, Max),
-			FMath::Clamp(V.Z, Min, Max));
+			FMath::Clamp(V.X, Min.X, Max.X),
+			FMath::Clamp(V.Y, Min.Y, Max.Y),
+			FMath::Clamp(V.Z, Min.Z, Max.Z));
 	}
-	inline int32 DivideFloor(int32 Dividend, int32 Divisor)
-	{
-		int32 Q = Dividend / Divisor;
-		int32 R = Dividend % Divisor;
-		if ((R != 0) && ((R < 0) != (Divisor < 0)))
-		{
-			Q--;
-		}
-		return Q;
-	}
-	inline FIntVector DivideFloor(const FIntVector& V, int32 Divisor)
+	FORCEINLINE FIntVector DivideFloor(const FIntVector& V, int32 Divisor)
 	{
 		return FIntVector(
 			DivideFloor(V.X, Divisor),
 			DivideFloor(V.Y, Divisor),
 			DivideFloor(V.Z, Divisor));
 	}
-	inline uint64 SquaredSize(const FIntVector& V)
+	FORCEINLINE FIntVector DivideCeil(const FIntVector& V, int32 Divisor)
 	{
-		return V.X * V.X + V.Y * V.Y + V.Z * V.Z;
+		return FIntVector(
+			DivideCeil(V.X, Divisor),
+			DivideCeil(V.Y, Divisor),
+			DivideCeil(V.Z, Divisor));
+	}
+	FORCEINLINE uint64 SquaredSize(const FIntVector& V)
+	{
+		return FMath::Square<uint64>(V.X) + FMath::Square<uint64>(V.Y) + FMath::Square<uint64>(V.Z);
 	}
 
 	inline TArray<FIntVector, TFixedAllocator<8>> GetNeighbors(const FVector& P)
 	{
-		int32 MinX = FMath::FloorToInt(P.X);
-		int32 MinY = FMath::FloorToInt(P.Y);
-		int32 MinZ = FMath::FloorToInt(P.Z);
+		const int32 MinX = FMath::FloorToInt(P.X);
+		const int32 MinY = FMath::FloorToInt(P.Y);
+		const int32 MinZ = FMath::FloorToInt(P.Z);
 
-		int32 MaxX = FMath::CeilToInt(P.X);
-		int32 MaxY = FMath::CeilToInt(P.Y);
-		int32 MaxZ = FMath::CeilToInt(P.Z);
+		const int32 MaxX = FMath::CeilToInt(P.X);
+		const int32 MaxY = FMath::CeilToInt(P.Y);
+		const int32 MaxZ = FMath::CeilToInt(P.Z);
 
 		return {
 		FIntVector(MinX, MinY, MinZ),
@@ -104,11 +162,11 @@ namespace FVoxelUtilities
 	}
 	inline TArray<FIntPoint, TFixedAllocator<4>> GetNeighbors(float X, float Y)
 	{
-		int32 MinX = FMath::FloorToInt(X);
-		int32 MinY = FMath::FloorToInt(Y);
+		const int32 MinX = FMath::FloorToInt(X);
+		const int32 MinY = FMath::FloorToInt(Y);
 
-		int32 MaxX = FMath::CeilToInt(X);
-		int32 MaxY = FMath::CeilToInt(Y);
+		const int32 MaxX = FMath::CeilToInt(X);
+		const int32 MaxY = FMath::CeilToInt(Y);
 
 		return {
 		FIntPoint(MinX, MinY),
@@ -118,13 +176,13 @@ namespace FVoxelUtilities
 		};
 	}
 
-	inline void AddNeighborsToArray(const FIntVector& V, TArray<FIntVector>& Array)
+	inline void AddImmediateNeighborsToArray(const FIntVector& V, TArray<FIntVector>& Array)
 	{
 		const int32& X = V.X;
 		const int32& Y = V.Y;
 		const int32& Z = V.Z;
 
-		uint32 Pos = Array.AddUninitialized(6);
+		const uint32 Pos = Array.AddUninitialized(6);
 		FIntVector* Ptr = Array.GetData() + Pos;
 
 		new (Ptr++) FIntVector(X - 1, Y, Z);
@@ -136,23 +194,83 @@ namespace FVoxelUtilities
 		new (Ptr++) FIntVector(X, Y, Z - 1);
 		new (Ptr++) FIntVector(X, Y, Z + 1);
 
-		check(Ptr == Array.GetData() + Array.Num());
+		checkVoxelSlow(Ptr == Array.GetData() + Array.Num());
+	}
+
+	FORCEINLINE uint32 MurmurHash(const FIntVector& V)
+	{
+		return
+			FVoxelUtilities::MurmurHash32(V.X) ^
+			FVoxelUtilities::MurmurHash32(V.Y) ^
+			FVoxelUtilities::MurmurHash32(V.Z);
 	}
 };
 
-inline FIntVector operator-(const FIntVector& V)
+FORCEINLINE FIntVector operator-(const FIntVector& V)
 {
 	return FIntVector(-V.X, -V.Y, -V.Z);
 }
-inline FIntVector operator*(int32 I, const FIntVector& V)
+
+FORCEINLINE FIntVector operator-(const FIntVector& V, int32 I)
+{
+	return FIntVector(V.X - I, V.Y - I, V.Z - I);
+}
+FORCEINLINE FIntVector operator-(const FIntVector& V, uint32 I)
+{
+	return FIntVector(V.X - I, V.Y - I, V.Z - I);
+}
+FORCEINLINE FIntVector operator-(int32 I, const FIntVector& V)
+{
+	return FIntVector(I - V.X, I - V.Y, I - V.Z);
+}
+FORCEINLINE FIntVector operator-(uint32 I, const FIntVector& V)
+{
+	return FIntVector(I - V.X, I - V.Y, I - V.Z);
+}
+
+FORCEINLINE FIntVector operator+(const FIntVector& V, int32 I)
+{
+	return FIntVector(V.X + I, V.Y + I, V.Z + I);
+}
+FORCEINLINE FIntVector operator+(const FIntVector& V, uint32 I)
+{
+	return FIntVector(V.X + I, V.Y + I, V.Z + I);
+}
+FORCEINLINE FIntVector operator+(int32 I, const FIntVector& V)
+{
+	return FIntVector(I + V.X, I + V.Y, I + V.Z);
+}
+FORCEINLINE FIntVector operator+(uint32 I, const FIntVector& V)
+{
+	return FIntVector(I + V.X, I + V.Y, I + V.Z);
+}
+
+FORCEINLINE FIntVector operator*(int32 I, const FIntVector& V)
 {
 	return FIntVector(I * V.X, I * V.Y, I * V.Z);
 }
-
-UE_DEPRECATED("0", "Don't use this operator as it casts to int32 the float operand")
-inline FIntVector operator*(const FIntVector& V, float A)
+FORCEINLINE FIntVector operator*(uint32 I, const FIntVector& V)
 {
-	check(false);
-	return V;
+	return FIntVector(I * V.X, I * V.Y, I * V.Z);
+}
+FORCEINLINE FIntVector operator*(const FIntVector& V, uint32 I)
+{
+	return FIntVector(I * V.X, I * V.Y, I * V.Z);
+}
+FORCEINLINE FIntVector operator*(const FIntVector& A, const FIntVector& B)
+{
+	return FIntVector(A.X * B.X, A.Y * B.Y, A.Z * B.Z);
 }
 
+template<typename T>
+FIntVector operator-(const FIntVector& V, T A) = delete;
+template<typename T>
+FIntVector operator-(T A, const FIntVector& V) = delete;
+template<typename T>
+FIntVector operator+(const FIntVector& V, T A) = delete;
+template<typename T>
+FIntVector operator+(T A, const FIntVector& V) = delete;
+template<typename T>
+FIntVector operator*(const FIntVector& V, T A) = delete;
+template<typename T>
+FIntVector operator*(T A, const FIntVector& V) = delete;

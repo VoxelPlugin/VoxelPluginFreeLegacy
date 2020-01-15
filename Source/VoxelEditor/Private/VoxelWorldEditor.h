@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -10,7 +10,7 @@
 class AVoxelWorld;
 class UVoxelInvokerEditorComponent;
 
-UCLASS(notplaceable)
+UCLASS(NotPlaceable)
 class VOXELEDITOR_API AVoxelWorldEditor : public AActor
 {
 	GENERATED_BODY()
@@ -21,17 +21,22 @@ public:
 	//~ Begin AActor interface
 	void Tick(float DeltaTime) override;
 #if WITH_EDITOR
-	bool ShouldTickIfViewportsOnly() const final { return true; }
-	virtual bool IsEditorOnly() const final { return true; }
+	virtual bool ShouldTickIfViewportsOnly() const override final { return true; }
+	virtual bool IsEditorOnly() const override final { return true; }
 #endif
 	//~ End AActor interface
+
+	UPROPERTY(Transient)
+	bool bOverrideLocation = false;
+	UPROPERTY(Transient)
+	FVector LocationOverride;
 
 private:
 	UPROPERTY()
 	UVoxelInvokerEditorComponent* Invoker;
 };
 
-UCLASS(notplaceable)
+UCLASS(NotPlaceable)
 class VOXELEDITOR_API UVoxelInvokerEditorComponent : public UVoxelInvokerComponent
 {
 	GENERATED_BODY()

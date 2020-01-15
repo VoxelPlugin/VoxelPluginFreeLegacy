@@ -1,0 +1,103 @@
+// Copyright 2020 Phyronnaz
+
+#include "ActorFactoryVoxelPlaceableItems.h"
+#include "VoxelPlaceableItems/VoxelPlaceableItemActor.h"
+#include "VoxelPlaceableItems/VoxelDisableEditsBox.h"
+#include "VoxelPlaceableItems/VoxelAssetActor.h"
+#include "VoxelWorldGenerator.h"
+#include "VoxelWorld.h"
+#include "EngineUtils.h"
+
+#define LOCTEXT_NAMESPACE "Voxel"
+
+UActorFactoryVoxelPlaceableItem::UActorFactoryVoxelPlaceableItem()
+{
+	DisplayName = LOCTEXT("VoxelPlaceableItemActorDisplayName", "Voxel Placeable Item Actor");
+	NewActorClass = AVoxelPlaceableItemActor::StaticClass();
+}
+
+void UActorFactoryVoxelPlaceableItem::PostSpawnActor(UObject* Asset, AActor* NewActor)
+{
+	Super::PostSpawnActor(Asset, NewActor);
+
+	AVoxelPlaceableItemActor* ItemActor = CastChecked<AVoxelPlaceableItemActor>(NewActor);
+	
+	for (TActorIterator<AVoxelWorld> ActorItr(ItemActor->GetWorld()); ActorItr; ++ActorItr)
+	{
+		ItemActor->PreviewWorld = *ActorItr;
+		break;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+UActorFactoryVoxelDisableEditsBox::UActorFactoryVoxelDisableEditsBox()
+{
+	DisplayName = LOCTEXT("VoxelDisableEditsBoxDisplayName", "Voxel Disable Edits Box");
+	NewActorClass = AVoxelDisableEditsBox::StaticClass();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+UActorFactoryVoxelAssetActor::UActorFactoryVoxelAssetActor()
+{
+	DisplayName = LOCTEXT("AssetActorDisplayName", "Voxel Asset Actor");
+	NewActorClass = AVoxelAssetActor::StaticClass();
+}
+
+void UActorFactoryVoxelAssetActor::PostSpawnActor(UObject* Asset, AActor* NewActor)
+{
+	Super::PostSpawnActor(Asset, NewActor);
+	InitActor(Asset, NewActor);
+}
+
+void UActorFactoryVoxelAssetActor::PostCreateBlueprint(UObject* Asset, AActor* CDO)
+{
+	Super::PostCreateBlueprint(Asset, CDO);
+	InitActor(Asset, CDO);
+}
+
+bool UActorFactoryVoxelAssetActor::CanCreateActorFrom(const FAssetData& AssetData, FText& OutErrorMsg)
+{
+	// We allow creating AVoxelAssetActor without an existing asset
+	if (UActorFactory::CanCreateActorFrom(AssetData, OutErrorMsg))
+	{
+		return true;
+	}
+	if (!ensure(AssetData.IsValid()))
+	{
+		return false;
+	}
+	auto* Class = AssetData.GetClass();
+	if(!Class)
+	{
+		return false;
+	}
+	if (Class->IsChildOf(UVoxelTransformableWorldGenerator::StaticClass()))
+	{
+		return true;
+	}
+	return false;
+}
+
+UObject* UActorFactoryVoxelAssetActor::GetAssetFromActorInstance(AActor* ActorInstance)
+{
+	check(ActorInstance->IsA(NewActorClass));
+	AVoxelAssetActor* AssetActor = CastChecked<AVoxelAssetActor>(ActorInstance);
+	return AssetActor->WorldGenerator.GetObject();
+}
+
+void UActorFactoryVoxelAssetActor::InitActor(UObject* Asset, AActor* NewActor)
+{
+	if (!Asset || !NewActor)
+	{
+		return;
+	}
+
+	AVoxelAssetActor* AssetActor = CastChecked<AVoxelAssetActor>(NewActor);
+	if (auto* Generator = Cast<UVoxelTransformableWorldGenerator>(Asset))
+	{
+		AssetActor->WorldGenerator = Generator;
+	}
+}
+#undef LOCTEXT_NAMESPACE

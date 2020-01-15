@@ -1,26 +1,26 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/EngineTypes.h"
 #include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelGlobals.h"
 
 class FVoxelFixedResolutionLODManager : public IVoxelLODManager
 {
 public:
-	static TSharedRef<FVoxelFixedResolutionLODManager> Create(const FVoxelLODSettings& LODSettings, int32 ChunkLOD);
+	static TVoxelSharedRef<FVoxelFixedResolutionLODManager> Create(
+		const FVoxelLODSettings& LODSettings,
+		int32 ChunkLOD);
 
-	virtual void UpdateBounds(const FIntBox& Bounds, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) final {}
-	virtual void UpdateBounds(const TArray<FIntBox>& Bounds, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) final {}
-	virtual void UpdatePosition(const FIntVector& Position, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) final {}
+	virtual int32 UpdateBounds(const FIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final { return 0; }
+	virtual int32 UpdateBounds(const TArray<FIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final { return 0; }
 
-	virtual void ForceLODsUpdate() final {}
-	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const final { return false; }
+	virtual void ForceLODsUpdate() override final {}
+	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const override final { return false; }
+
+	virtual void Destroy() override final {}
 
 private:
-	FVoxelFixedResolutionLODManager(const FVoxelLODSettings& LODSettings)
-		: IVoxelLODManager(LODSettings)
-	{
-	}
+	using IVoxelLODManager::IVoxelLODManager;
 };

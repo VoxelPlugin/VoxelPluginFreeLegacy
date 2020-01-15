@@ -1,60 +1,71 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelTools/VoxelBlueprintLibrary.h"
-#include "VoxelTools/VoxelToolsHelpers.h"
+#include "VoxelTools/VoxelToolHelpers.h"
 #include "IntBox.h"
 #include "VoxelWorld.h"
-#include "VoxelData/VoxelCacheManager.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelData/VoxelSaveUtilities.h"
 #include "VoxelData/VoxelDataUtilities.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
-#include "VoxelTools/VoxelPaintMaterial.h"
-#include "VoxelDebug/VoxelDebugManager.h"
+#include "VoxelRender/VoxelMaterialInterface.h"
+#include "VoxelProcGen/VoxelProcGenManager.h"
 #include "IVoxelPool.h"
-#include "VoxelDefaultPools.h"
+#include "VoxelDefaultPool.h"
+#include "VoxelMessages.h"
 
 #include "Async/Async.h"
-
-#define LOCTEXT_NAMESPACE "Voxel"
-
-#define VOXELINDEX_DISABLED(Name)  FVoxelBPErrors::Error(FText::FromString(FString(#Name) + TEXT(": Voxel index   is disabled (DISABLE_VOXELINDEX == ") + FString::FromInt(DISABLE_VOXELINDEX) + TEXT(")!")));
-#define VOXELCOLORS_DISABLED(Name) FVoxelBPErrors::Error(FText::FromString(FString(#Name) + TEXT(": Voxel colors are disabled (ENABLE_VOXELCOLORS == ") + FString::FromInt(ENABLE_VOXELCOLORS) + TEXT(")!")));
-
-#if DISABLE_VOXELINDEX
-#define CHECK_VOXELINDEX(Name) VOXELINDEX_DISABLED(Name)
-#else
-#define CHECK_VOXELINDEX(Name)
-#endif
-
-#if !ENABLE_VOXELCOLORS
-#define CHECK_VOXELCOLORS(Name) VOXELCOLORS_DISABLED(Name)
-#else
-#define CHECK_VOXELCOLORS(Name)
-#endif
-
+#include "Engine/StaticMesh.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelBlueprintLibrary::ClearCache(AVoxelWorld* World, const TArray<FIntBox>& BoundsToKeepCached)
+bool UVoxelBlueprintLibrary::IsVoxelPluginPro()
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetCacheManager().ClearCache(BoundsToKeepCached);
+	return false;
 }
 
-void UVoxelBlueprintLibrary::ClearAllCache(AVoxelWorld* World)
+void UVoxelBlueprintLibrary::RaiseInfo(FString Message, UObject* Object)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	ClearCache(World, {});
+	FVoxelMessages::Info(Message, Object);
 }
 
-void UVoxelBlueprintLibrary::Cache(AVoxelWorld* World, const TArray<FIntBox>& BoundsToCache, bool bCacheValues, bool bCacheMaterials)
+void UVoxelBlueprintLibrary::RaiseWarning(FString Message, UObject* Object)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetCacheManager().Cache(BoundsToCache, bCacheValues, bCacheMaterials);
+	FVoxelMessages::Warning(Message, Object);
+}
+
+void UVoxelBlueprintLibrary::RaiseError(FString Message, UObject* Object)
+{
+	FVoxelMessages::Error(Message, Object);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorsInArea(
+	TArray<AVoxelSpawnerActor*>& OutActors, 
+	AVoxelWorld* World,
+	FIntBox Bounds, 
+	EVoxelSpawnerActorSpawnType SpawnType)
+{
+	VOXEL_PRO_ONLY_VOID();
+}
+
+void UVoxelBlueprintLibrary::AddInstances(
+	AVoxelWorld* const World, 
+	UStaticMesh* const Mesh,
+	const TArray<FTransform>& Transforms,
+	const TArray<FLinearColor>& Colors,
+	FVoxelInstancedMeshSettings InstanceSettings,
+	const float StartCullDistance, 
+	const float EndCullDistance, 
+	const TSubclassOf<AVoxelSpawnerActor> ActorTemplate,
+	const FVector FloatingDetectionOffset)
+{
+	VOXEL_PRO_ONLY_VOID();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -63,18 +74,19 @@ void UVoxelBlueprintLibrary::Cache(AVoxelWorld* World, const TArray<FIntBox>& Bo
 
 void UVoxelBlueprintLibrary::Undo(AVoxelWorld* World)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	auto& Data = World->GetData();
 
 	if (!Data.bEnableUndoRedo)
 	{
-		FVoxelBPErrors::Error(LOCTEXT("UndobEnableUndoRedo", "Undo: Undo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		FVoxelMessages::Error(FUNCTION_ERROR("bEnableUndoRedo is false!"));
 		return;
 	}
 	if (!Data.IsCurrentFrameEmpty())
 	{
-		FVoxelBPErrors::Error(LOCTEXT("UndoSaveFrame", "Undo: Undo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
+		FVoxelMessages::Error("Undo: Undo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits");
 		return;
 	}
 
@@ -85,18 +97,19 @@ void UVoxelBlueprintLibrary::Undo(AVoxelWorld* World)
 
 void UVoxelBlueprintLibrary::Redo(AVoxelWorld* World)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
 	auto& Data = World->GetData();
 
 	if (!Data.bEnableUndoRedo)
 	{
-		FVoxelBPErrors::Error(LOCTEXT("RedobEnableUndoRedo", "Redo: Redo called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		FVoxelMessages::Error(FUNCTION_ERROR("bEnableUndoRedo is false!"));
 		return;
 	}
 	if (!Data.IsCurrentFrameEmpty())
 	{
-		FVoxelBPErrors::Error(LOCTEXT("RedoSaveFrame", "Redo: Redo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits"));
+		FVoxelMessages::Error("Redo: Redo called but edits have been made since last SaveFrame. Please call SaveFrame after every edits");
 		return;
 	}
 	
@@ -107,116 +120,230 @@ void UVoxelBlueprintLibrary::Redo(AVoxelWorld* World)
 
 void UVoxelBlueprintLibrary::SaveFrame(AVoxelWorld* World)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
 	auto& Data = World->GetData();
 
 	if (!Data.bEnableUndoRedo)
 	{
-		FVoxelBPErrors::Error(LOCTEXT("SaveFrame", "SaveFrame: SaveFrame called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		FVoxelMessages::Error(FUNCTION_ERROR("bEnableUndoRedo is false!"));
 		return;
 	}
-	Data.SaveFrame();
+	Data.SaveFrame(FIntBox::Infinite);
 }
 
 void UVoxelBlueprintLibrary::ClearFrames(AVoxelWorld* World)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
 	auto& Data = World->GetData();
 
 	if (!Data.bEnableUndoRedo)
 	{
-		FVoxelBPErrors::Error(LOCTEXT("ClearFrames", "ClearFrames: ClearFrames called but bEnableUndoRedo is false. Please enable it on your voxel world"));
+		FVoxelMessages::Error(FUNCTION_ERROR("bEnableUndoRedo is false!"));
 		return;
 	}
 	Data.ClearFrames();
 }
 
+int32 UVoxelBlueprintLibrary::GetHistoryPosition(AVoxelWorld* World)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED();
+	
+	auto& Data = World->GetData();
+
+	if (!Data.bEnableUndoRedo)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("bEnableUndoRedo is false!"));
+		return 0;
+	}
+	return Data.GetHistoryPosition();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
-FVector UVoxelBlueprintLibrary::GetNormal(AVoxelWorld* World, const FIntVector& Position)
+FVector UVoxelBlueprintLibrary::GetNormal(AVoxelWorld* World, FIntVector Position)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	auto& Data = World->GetData();
+	const auto& Data = World->GetData();
 	FVoxelReadScopeLock Lock(Data, FIntBox(Position - FIntVector(1), Position + FIntVector(2)), "GetNormal");
-	return FVoxelDataUtilities::GetGradient(Data, Position, 0);
+	return FVoxelDataUtilities::GetGradientFromGetValue<int32>(FVoxelDataUtilities::MakeFloatData(Data), Position.X, Position.Y, Position.Z, 0);
 }
 
-float UVoxelBlueprintLibrary::GetFloatOutput(AVoxelWorld* World, FName Name, int32 X, int32 Y, int32 Z)
+float UVoxelBlueprintLibrary::GetFloatOutput(AVoxelWorld* World, FName Name, float X, float Y, float Z, float DefaultValue)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
 	auto& Data = World->GetData();
 
-	const uint8* Index = Data.WorldGenerator->SingleFloatOutputsNames.Find(Name);
-	if (!Index)
+	if (!Data.WorldGenerator->FloatOutputsPtr.Contains(Name))
 	{
-		FVoxelBPErrors::Error(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " and with type float found!"));
+		FString Names;
+		for (auto& It : Data.WorldGenerator->FloatOutputsPtr)
+		{
+			if (!Names.IsEmpty())
+			{
+				Names += ", ";
+			}
+			Names += It.Key.ToString();
+		}
+		FVoxelMessages::Error(FString::Printf(TEXT("GetFloatOutput: No output named %s and with type float found! Valid names: %s"), *Name.ToString(), *Names));
 		return 0;
 	}
-	return Data.WorldGenerator->GetFloatOutput(X, Y, Z, *Index);
+
+	return Data.GetCustomOutput<v_flt>(DefaultValue, Name, X, Y, Z, 0);
 }
 
-int32 UVoxelBlueprintLibrary::GetIntOutput(AVoxelWorld* World, FName Name, int32 X, int32 Y, int32 Z)
+int32 UVoxelBlueprintLibrary::GetIntOutput(AVoxelWorld* World, FName Name, float X, float Y, float Z, int32 DefaultValue)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
 	auto& Data = World->GetData();
 
-	const uint8* Index = Data.WorldGenerator->SingleIntOutputsNames.Find(Name);
-	if (!Index)
+	if (!Data.WorldGenerator->Int32OutputsPtr.Contains(Name))
 	{
-		FVoxelBPErrors::Error(FText::FromString("GetFloatOutput: No output named " + Name.ToString() + " and with type int found!"));
+		FString Names;
+		for (auto& It : Data.WorldGenerator->Int32OutputsPtr)
+		{
+			if (!Names.IsEmpty())
+			{
+				Names += ", ";
+			}
+			Names += It.Key.ToString();
+		}
+		FVoxelMessages::Error(FString::Printf(TEXT("GetIntOutput: No output named %s and with type int found! Valid names: %s"), *Name.ToString(), *Names));
 		return 0;
 	}
-	return Data.WorldGenerator->GetIntOutput(X, Y, Z, *Index);
+
+	return Data.GetCustomOutput<int32>(DefaultValue, Name, X, Y, Z, 0);
 }
 
 FIntBox UVoxelBlueprintLibrary::GetBounds(AVoxelWorld* World)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	return World->GetData().WorldBounds;
 }
 
-void UVoxelBlueprintLibrary::BindDelegateToChunkGeneration(AVoxelWorld* World, FVoxelOnChunkGenerationDynamicDelegate Event)
+void UVoxelBlueprintLibrary::ClearAllData(AVoxelWorld* World, bool bUpdateRender)
 {
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	
+	World->GetData().ClearData();
+
+	if(bUpdateRender)
+	{
+		World->GetLODManager().UpdateBounds(FIntBox::Infinite);
+	}
+}
+
+void UVoxelBlueprintLibrary::ClearDirtyData(AVoxelWorld* World, bool bUpdateRender)
+{
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	auto& Data = World->GetData();
-	TWeakObjectPtr<AVoxelWorld> WorldPtr = World;
 
-	Data.LockDelegatesForWrite();
-	Data.PostGenerationDelegate.AddLambda([=](FVoxelStatsElement& Stats, FVoxelData& Data, const FIntBox& Bounds, const FVoxelChunk& Mesh)
+	TArray<FIntBox> OutBoundsToUpdate;
+
 	{
-		AsyncTask(ENamedThreads::GameThread, [=]()
+		FVoxelWriteScopeLock Lock(Data, FIntBox::Infinite, FUNCTION_FNAME);
+		Data.ClearOctreeData(OutBoundsToUpdate);
+	}
+
+	if (bUpdateRender)
+	{
+		World->GetLODManager().UpdateBounds(OutBoundsToUpdate);
+	}
+}
+
+void UVoxelBlueprintLibrary::SetBoxAsDirty(AVoxelWorld* World, const FIntBox& Bounds, bool bSetValuesAsDirty, bool bSetMaterialsAsDirty)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_BOUNDS_ARE_VALID_VOID();
+
+	FVoxelData& Data = World->GetData();
+	{
+		FVoxelWriteScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
+
+		if (bSetValuesAsDirty)
 		{
-			Event.ExecuteIfBound(WorldPtr.Get(), Bounds);
-		});
-	});
-	Data.UnlockDelegatesForWrite();
+			Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
+			{
+
+			});
+		}
+		if (bSetMaterialsAsDirty)
+		{
+			Data.Set<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
+			{
+
+			});
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelBlueprintLibrary::UpdatePosition(AVoxelWorld* World, const FIntVector& Position)
+void UVoxelBlueprintLibrary::UpdatePosition(AVoxelWorld* World, FIntVector Position)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetLODManager().UpdatePosition(Position);
+	World->GetLODManager().UpdateBounds(FIntBox(Position));
 }
 
-void UVoxelBlueprintLibrary::UpdateBounds(AVoxelWorld* World, const FIntBox& Bounds, bool bWaitForAllChunksToFinishUpdating)
+void UVoxelBlueprintLibrary::UpdateBounds(AVoxelWorld* World, FIntBox Bounds)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetLODManager().UpdateBounds(Bounds, bWaitForAllChunksToFinishUpdating);
+	CHECK_BOUNDS_ARE_VALID_VOID();
+	World->GetLODManager().UpdateBounds(Bounds);
 }
 
 void UVoxelBlueprintLibrary::UpdateAll(AVoxelWorld* World)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	World->GetLODManager().UpdateBounds(FIntBox::Infinite);
+}
+
+void UVoxelBlueprintLibrary::ApplyLODSettings(AVoxelWorld* World)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	World->UpdateDynamicLODSettings();
+	World->GetLODManager().ForceLODsUpdate();
+}
+
+bool UVoxelBlueprintLibrary::AreCollisionsEnabled(AVoxelWorld* World, FVector Position, int32& LOD, bool bConvertToVoxelSpace /*= true*/)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED();
+
+	LOD = 0;
+	Position = FVoxelToolHelpers::GetRealPosition(World, Position, bConvertToVoxelSpace);
+
+	auto& LODManager = World->GetLODManager();
+	if (!LODManager.Settings.WorldBounds.ContainsFloat(Position))
+	{
+		return false;
+	}
+
+	uint8 OutLOD;
+	const bool bResult = LODManager.AreCollisionsEnabled(FVoxelUtilities::RoundToInt(Position), OutLOD);
+	LOD = OutLOD;
+
+	return bResult;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -225,223 +352,245 @@ void UVoxelBlueprintLibrary::UpdateAll(AVoxelWorld* World)
 
 int32 UVoxelBlueprintLibrary::GetTaskCount(AVoxelWorld* World)
 {
-	return World->IsCreated() ? FMath::Max(World->GetRenderer().GetTaskCount(), 0) : 0;
+	return World && World->IsCreated() ? FMath::Max(World->GetRenderer().GetTaskCount(), 0) : 0;
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(int32 NumberOfThreads)
+void UVoxelBlueprintLibrary::ApplyNewMaterials(AVoxelWorld* World)
 {
-	if (IsGlobalVoxelPoolCreated())
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+
+	World->GetRenderer().ApplyNewMaterials();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelBlueprintLibrary::BindVoxelChunkEvents(
+	AVoxelWorld* World,
+	FChunkDynamicDelegate OnActivate,
+	FChunkDynamicDelegate OnDeactivate,
+	bool bFireExistingOnes,
+	int32 ChunkSize,
+	int32 ActivationDistanceInChunks)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+
+	auto OnActivateLambda = [OnActivate](const FIntBox& Bounds)
 	{
-		FVoxelBPErrors::Error(LOCTEXT("CreateGlobalVoxelPool", "CreateGlobalVoxelPool called but global pool already created!"));
+		OnActivate.ExecuteIfBound(Bounds);
+	};
+	auto OnDeactivateLambda = [OnDeactivate](const FIntBox& Bounds)
+	{
+		OnDeactivate.ExecuteIfBound(Bounds);
+	};
+
+	World->GetProcGenManager().BindEvent(
+		bFireExistingOnes,
+		FMath::Max(1, ChunkSize),
+		FMath::Max(0, ActivationDistanceInChunks),
+		FChunkDelegate::CreateLambda(OnActivateLambda),
+		FChunkDelegate::CreateLambda(OnDeactivateLambda));
+}
+
+void UVoxelBlueprintLibrary::BindVoxelGenerationEvent(
+	AVoxelWorld* World,
+	FChunkDynamicDelegate OnGenerate,
+	bool bFireExistingOnes,
+	int32 ChunkSize,
+	int32 GenerationDistanceInChunks)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+
+	auto OnGenerateLambda = [OnGenerate](const FIntBox& Bounds)
+	{
+		OnGenerate.ExecuteIfBound(Bounds);
+	};
+
+	World->GetProcGenManager().BindGenerationEvent(
+		bFireExistingOnes,
+		FMath::Max(1, ChunkSize),
+		FMath::Max(0, GenerationDistanceInChunks),
+		FChunkDelegate::CreateLambda(OnGenerateLambda));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+bool UVoxelBlueprintLibrary::IsValidRef(AVoxelWorld* World, FVoxelToolRenderingRef Ref)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED();
+	
+	return Ref.Id.IsValid() && World->GetToolRenderingManager().IsValidTool(Ref.Id);
+}
+
+FVoxelToolRenderingRef UVoxelBlueprintLibrary::CreateToolRendering(AVoxelWorld* World)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED();
+
+	return { World->GetToolRenderingManager().CreateTool() };
+}
+
+#define CHECK_TOOL_RENDERING_REF() \
+	if (!Ref.Id.IsValid()) { FVoxelMessages::Error(FUNCTION_ERROR("Unitilialized tool rendering reference")); return; } \
+	if (!World->GetToolRenderingManager().IsValidTool(Ref.Id))  { FVoxelMessages::Error(FUNCTION_ERROR("Outdated tool rendering reference")); return; }
+
+void UVoxelBlueprintLibrary::DestroyToolRendering(AVoxelWorld* World, FVoxelToolRenderingRef Ref)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_TOOL_RENDERING_REF();
+
+	World->GetToolRenderingManager().RemoveTool(Ref.Id);
+}
+
+void UVoxelBlueprintLibrary::SetToolRenderingMaterial(AVoxelWorld* World, FVoxelToolRenderingRef Ref, UMaterialInterface* Material)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_TOOL_RENDERING_REF();
+
+	World->GetToolRenderingManager().EditTool(Ref.Id, [&](auto& Tool) { Tool.Material = FVoxelMaterialInterface::Create(Material); });
+}
+
+void UVoxelBlueprintLibrary::SetToolRenderingBounds(AVoxelWorld* World, FVoxelToolRenderingRef Ref, FBox Bounds)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_TOOL_RENDERING_REF();
+
+	World->GetToolRenderingManager().EditTool(Ref.Id, [&](auto& Tool) { Tool.WorldBounds = Bounds; });
+}
+
+void UVoxelBlueprintLibrary::SetToolRenderingEnabled(AVoxelWorld* World, FVoxelToolRenderingRef Ref, bool bEnabled)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_TOOL_RENDERING_REF();
+
+	World->GetToolRenderingManager().EditTool(Ref.Id, [&](auto& Tool) { Tool.bEnabled = bEnabled; });
+}
+
+#undef CHECK_TOOL_RENDERING_REF
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(
+	UObject* WorldContextObject,
+	const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
+	const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides,
+	int32 NumberOfThreads,
+	bool bConstantPriorities)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (IsGlobalVoxelPoolCreated(WorldContextObject->GetWorld()))
+	{
+		FVoxelMessages::Error("CreateGlobalVoxelThreadPool called but global pool already created! Creator: " +
+			IVoxelPool::GetGlobalPoolCreator(WorldContextObject->GetWorld()));
 		return;
 	}
-	FVoxelDefaultPool::CreateGlobalPool(FMath::Max(1, NumberOfThreads), "CreateGlobalVoxelThreadPool");
+	const auto Pool = FVoxelDefaultPool::Create(
+		FMath::Max(1, NumberOfThreads),
+		bConstantPriorities,
+		PriorityCategoriesOverrides,
+		PriorityOffsetsOverrides);
+	IVoxelPool::SetGlobalVoxelPool(WorldContextObject->GetWorld(), Pool, "CreateGlobalVoxelThreadPool");
 }
 
-void UVoxelBlueprintLibrary::DestroyGlobalVoxelThreadPool()
+void UVoxelBlueprintLibrary::DestroyGlobalVoxelThreadPool(UObject* WorldContextObject)
 {
-	if (!IsGlobalVoxelPoolCreated())
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!IsGlobalVoxelPoolCreated(WorldContextObject->GetWorld()))
 	{
-		FVoxelBPErrors::Error(LOCTEXT("DestroyGlobalVoxelPool", "DestroyGlobalVoxelPool called but global pool isn't created!"));
+		FVoxelMessages::Error("DestroyGlobalVoxelThreadPool called but global pool isn't created!");
 		return;
 	}
-	IVoxelPool::DestroyGlobalVoxelPool();
+	IVoxelPool::DestroyGlobalVoxelPool(WorldContextObject->GetWorld());
 }
 
-bool UVoxelBlueprintLibrary::IsGlobalVoxelPoolCreated()
+bool UVoxelBlueprintLibrary::IsGlobalVoxelPoolCreated(UObject* WorldContextObject)
 {
-	return IVoxelPool::IsGlobalVoxelPoolCreated();
+	VOXEL_FUNCTION_COUNTER();
+	
+	return IVoxelPool::IsGlobalVoxelPoolCreated(WorldContextObject->GetWorld());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntBox UVoxelBlueprintLibrary::MakeBoxFromGlobalPositionAndRadius(AVoxelWorld* World, const FVector& GlobalPosition, float RadiusInVoxels)
+FIntBox UVoxelBlueprintLibrary::MakeIntBoxFromGlobalPositionAndRadius(AVoxelWorld* World, FVector GlobalPosition, float Radius)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
-	return FIntBox(FIntVector(FMath::FloorToInt(-RadiusInVoxels)), FIntVector(FMath::CeilToInt(RadiusInVoxels))).TranslateBy(World->GlobalToLocal(GlobalPosition));
+	return FIntBox::SafeConstruct(
+		World->GlobalToLocal(GlobalPosition - Radius, EVoxelWorldCoordinatesRounding::RoundDown),
+		World->GlobalToLocal(GlobalPosition + Radius, EVoxelWorldCoordinatesRounding::RoundUp)
+	);
+}
+
+FIntBox UVoxelBlueprintLibrary::GetRenderBoundsOverlappingDataBounds(AVoxelWorld* World, FIntBox Bounds, int32 LOD)
+{
+	CHECK_VOXELWORLD_IS_CREATED();
+	CHECK_BOUNDS_ARE_VALID();
+
+	LOD = FVoxelUtilities::ClampChunkDepth(LOD);
+
+	Bounds = Bounds.MakeMultipleOfBigger(RENDER_CHUNK_SIZE << LOD);
+
+	return Bounds.Extend(2 << LOD); // Account for the normals reads
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntVector UVoxelBlueprintLibrary::Add_IntVectorIntVector(const FIntVector& Left, const FIntVector& Right)
+void UVoxelBlueprintLibrary::AddNeighborsToSet(const TSet<FIntVector>& InSet, TSet<FIntVector>& OutSet)
 {
-	return Left + Right;
+	VOXEL_FUNCTION_COUNTER();
+	
+	OutSet.Reset();
+	for (auto& P : InSet)
+	{
+		OutSet.Add(FIntVector(P.X - 1, P.Y - 1, P.Z - 1));
+		OutSet.Add(FIntVector(P.X - 0, P.Y - 1, P.Z - 1));
+		OutSet.Add(FIntVector(P.X + 1, P.Y - 1, P.Z - 1));
+		OutSet.Add(FIntVector(P.X - 1, P.Y + 0, P.Z - 1));
+		OutSet.Add(FIntVector(P.X - 0, P.Y + 0, P.Z - 1));
+		OutSet.Add(FIntVector(P.X + 1, P.Y + 0, P.Z - 1));
+		OutSet.Add(FIntVector(P.X - 1, P.Y + 1, P.Z - 1));
+		OutSet.Add(FIntVector(P.X - 0, P.Y + 1, P.Z - 1));
+		OutSet.Add(FIntVector(P.X + 1, P.Y + 1, P.Z - 1));
+		
+		OutSet.Add(FIntVector(P.X - 1, P.Y - 1, P.Z + 0));
+		OutSet.Add(FIntVector(P.X - 0, P.Y - 1, P.Z + 0));
+		OutSet.Add(FIntVector(P.X + 1, P.Y - 1, P.Z + 0));
+		OutSet.Add(FIntVector(P.X - 1, P.Y + 0, P.Z + 0));
+		OutSet.Add(FIntVector(P.X - 0, P.Y + 0, P.Z + 0));
+		OutSet.Add(FIntVector(P.X + 1, P.Y + 0, P.Z + 0));
+		OutSet.Add(FIntVector(P.X - 1, P.Y + 1, P.Z + 0));
+		OutSet.Add(FIntVector(P.X - 0, P.Y + 1, P.Z + 0));
+		OutSet.Add(FIntVector(P.X + 1, P.Y + 1, P.Z + 0));
+		
+		OutSet.Add(FIntVector(P.X - 1, P.Y - 1, P.Z + 1));
+		OutSet.Add(FIntVector(P.X - 0, P.Y - 1, P.Z + 1));
+		OutSet.Add(FIntVector(P.X + 1, P.Y - 1, P.Z + 1));
+		OutSet.Add(FIntVector(P.X - 1, P.Y + 0, P.Z + 1));
+		OutSet.Add(FIntVector(P.X - 0, P.Y + 0, P.Z + 1));
+		OutSet.Add(FIntVector(P.X + 1, P.Y + 0, P.Z + 1));
+		OutSet.Add(FIntVector(P.X - 1, P.Y + 1, P.Z + 1));
+		OutSet.Add(FIntVector(P.X - 0, P.Y + 1, P.Z + 1));
+		OutSet.Add(FIntVector(P.X + 1, P.Y + 1, P.Z + 1));
+	}
 }
 
-FIntVector UVoxelBlueprintLibrary::Substract_IntVectorIntVector(const FIntVector& Left, const FIntVector& Right)
-{
-	return Left - Right;
-}
-
-FIntVector UVoxelBlueprintLibrary::Multiply_IntVectorIntVector(const FIntVector& Left, const FIntVector& Right)
-{
-	return FIntVector(Left.X * Right.X, Left.Y * Right.Y, Left.Z * Right.Z);
-}
-
-FIntVector UVoxelBlueprintLibrary::Divide_IntVectorInt(const FIntVector& Left, int32 Right)
-{
-	return Left / Right;
-}
-
-FIntVector UVoxelBlueprintLibrary::Multiply_IntVectorInt(const FIntVector& Left, int32 Right)
-{
-	return Left * Right;
-}
-
-FIntVector UVoxelBlueprintLibrary::Multiply_IntIntVector(int32 Left, const FIntVector& Right)
-{
-	return Right * Left;
-}
-
-int32 UVoxelBlueprintLibrary::GetMax_Intvector(const FIntVector& Vector)
-{
-	return Vector.GetMax();
-}
-
-int32 UVoxelBlueprintLibrary::GetMin_Intvector(const FIntVector& Vector)
-{
-	return Vector.GetMin();
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateRGBPaintMaterial(FLinearColor Color, float Amount, bool bPaintR, bool bPaintG, bool bPaintB, bool bPaintA)
-{
-	CHECK_VOXELCOLORS(CreateRGBPaintMaterial);
-	return FVoxelPaintMaterial::CreateRGB(Color, Amount, bPaintR, bPaintG, bPaintB, bPaintA);
-}
-
-FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateSingleIndexPaintMaterial(uint8 Index)
-{
-	CHECK_VOXELINDEX(CreateIndexPaintMaterial);
-	return FVoxelPaintMaterial::CreateSingleIndex(Index);
-}
-
-FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateDoubleIndexSetPaintMaterial(uint8 IndexA, uint8 IndexB, float Blend, bool bSetIndexA, bool bSetIndexB, bool bSetBlend)
-{
-	CHECK_VOXELINDEX(CreateIndexPaintMaterial);
-	return FVoxelPaintMaterial::CreateDoubleIndexSet(IndexA, IndexB, Blend, bSetIndexA, bSetIndexB, bSetBlend);
-}
-
-FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateDoubleIndexBlendPaintMaterial(uint8 Index, float Amount)
-{
-	CHECK_VOXELINDEX(CreateIndexPaintMaterial);
-	return FVoxelPaintMaterial::CreateDoubleIndexBlend(Index, Amount);
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::ApplyPaintMaterial(FVoxelMaterial Material, FVoxelPaintMaterial PaintMaterial)
-{
-	PaintMaterial.ApplyToMaterial(Material);
-	return Material;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-FLinearColor UVoxelBlueprintLibrary::GetColor(FVoxelMaterial Material)
-{
-	CHECK_VOXELCOLORS(GetColor);
-	return Material.GetLinearColor();
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::SetColor(FVoxelMaterial Material, FLinearColor Color)
-{
-	CHECK_VOXELCOLORS(SetColor);
-	Material.SetColor(Color);
-	return Material;
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::CreateMaterialFromColor(FLinearColor Color)
-{
-	CHECK_VOXELCOLORS(CreateMaterialFromColor);
-	FVoxelMaterial Material;
-	Material.SetColor(Color);
-	return Material;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-uint8 UVoxelBlueprintLibrary::GetIndex(FVoxelMaterial Material)
-{
-	CHECK_VOXELINDEX(GetIndex);
-	return Material.GetIndex();
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::SetIndex(FVoxelMaterial Material, uint8 Index)
-{
-	CHECK_VOXELINDEX(SetIndex);
-	Material.SetIndex(Index);
-	return Material;
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::CreateMaterialFromIndex(uint8 Index)
-{
-	CHECK_VOXELINDEX(CreateMaterialFromIndex);
-	FVoxelMaterial Material;
-	Material.SetIndex(Index);
-	return Material;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-uint8 UVoxelBlueprintLibrary::GetIndexA(FVoxelMaterial Material)
-{
-	CHECK_VOXELCOLORS(GetIndexA);
-	return Material.GetIndexA();
-}
-
-uint8 UVoxelBlueprintLibrary::GetIndexB(FVoxelMaterial Material)
-{
-	CHECK_VOXELCOLORS(GetIndexB);
-	return Material.GetIndexB();
-}
-
-uint8 UVoxelBlueprintLibrary::GetBlend(FVoxelMaterial Material)
-{
-	CHECK_VOXELCOLORS(GetBlend);
-	return Material.GetBlend();
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::SetIndexA(FVoxelMaterial Material, uint8 Index)
-{
-	CHECK_VOXELCOLORS(SetIndexA);
-	Material.SetIndexA(Index);
-	return Material;
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::SetIndexB(FVoxelMaterial Material, uint8 Index)
-{
-	CHECK_VOXELCOLORS(SetIndexB);
-	Material.SetIndexB(Index);
-	return Material;
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::SetBlend(FVoxelMaterial Material, float Blend)
-{
-	CHECK_VOXELCOLORS(SetBlend);
-	Material.SetBlend(FVoxelUtilities::FloatToUINT8(Blend));
-	return Material;
-}
-
-FVoxelMaterial UVoxelBlueprintLibrary::CreateMaterialFromDoubleIndex(uint8 IndexA, uint8 IndexB, float Blend)
-{
-	CHECK_VOXELCOLORS(CreateMaterialFromDoubleIndex);
-	FVoxelMaterial Material;
-	SetIndexA(Material, IndexA);
-	SetIndexB(Material, IndexB);
-	SetBlend(Material, Blend);
-	return Material;
-}
 #undef LOCTEXT_NAMESPACE

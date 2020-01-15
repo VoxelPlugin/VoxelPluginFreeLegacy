@@ -1,13 +1,13 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelWorldEditor.h"
 #include "VoxelWorld.h"
+#include "VoxelPlaceableItems/VoxelAssetActor.h"
 #include "VoxelData/VoxelSave.h"
 
-#include "Details/VoxelEditorDetailsUtils.h"
+#include "VoxelEditorDetailsUtilities.h"
 #include "Factories/VoxelWorldSaveObjectFactory.h"
 
-#include "EditorSupportDelegates.h"
 #include "LevelEditorViewport.h"
 #include "Editor.h"
 
@@ -18,34 +18,7 @@ public:
 
 	virtual UVoxelWorldSaveObject* CreateSaveObject() override
 	{
-		return Cast<UVoxelWorldSaveObject>(FVoxelEditorDetailsUtils::CreateAssetWithDialog(UVoxelWorldSaveObject::StaticClass(), NewObject<UVoxelWorldSaveObjectFactory>()));
-	}
-
-	virtual void BindEditorDelegates(UObject* Object) override
-	{
-		if (auto* World = Cast<AVoxelWorld>(Object))
-		{
-			if (!FEditorDelegates::PreSaveWorld.IsBoundToObject(World))
-			{
-				FEditorDelegates::PreSaveWorld.AddUObject(World, &AVoxelWorld::OnPreSaveWorld);
-			}
-			if (!FEditorDelegates::PreBeginPIE.IsBoundToObject(World))
-			{
-				FEditorDelegates::PreBeginPIE.AddUObject(World, &AVoxelWorld::OnPreBeginPIE);
-			}
-			if (!FEditorDelegates::EndPIE.IsBoundToObject(World))
-			{
-				FEditorDelegates::EndPIE.AddUObject(World, &AVoxelWorld::OnEndPIE);
-			}
-			if (!FEditorSupportDelegates::PrepareToCleanseEditorObject.IsBoundToObject(World))
-			{
-				FEditorSupportDelegates::PrepareToCleanseEditorObject.AddUObject(World, &AVoxelWorld::OnPrepareToCleanseEditorObject);
-			}
-			if (!FCoreDelegates::OnPreExit.IsBoundToObject(World))
-			{
-				FCoreDelegates::OnPreExit.AddUObject(World, &AVoxelWorld::OnPreExit);
-			}
-		}
+		return Cast<UVoxelWorldSaveObject>(FVoxelEditorUtilities::CreateAssetWithDialog(UVoxelWorldSaveObject::StaticClass(), NewObject<UVoxelWorldSaveObjectFactory>()));
 	}
 
 	virtual UClass* GetVoxelWorldEditorClass() override
@@ -74,25 +47,29 @@ void AVoxelWorldEditor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (GetWorld()->WorldType == EWorldType::Editor)
+	if (GetWorld()->WorldType == EWorldType::Editor ||
+		GetWorld()->WorldType == EWorldType::EditorPreview)
 	{
-		FViewport* Viewport = GEditor->GetActiveViewport();
-		if (Viewport)
+		if (bOverrideLocation)
 		{
-			FViewportClient* Client = Viewport->GetClient();
-			if (Client)
+			SetActorLocation(LocationOverride);
+		}
+		else
+		{
+			FViewport* Viewport = GEditor->GetActiveViewport();
+			if (Viewport)
 			{
-#if ENGINE_MINOR_VERSION < 22
-				for (FEditorViewportClient* EditorViewportClient : GEditor->AllViewportClients)
-#else
-				for (FEditorViewportClient* EditorViewportClient : GEditor->GetAllViewportClients())
-#endif
+				FViewportClient* Client = Viewport->GetClient();
+				if (Client)
 				{
-					if (EditorViewportClient == Client)
+					for (FEditorViewportClient* EditorViewportClient : GEditor->GetAllViewportClients())
 					{
-						FVector CameraPosition = EditorViewportClient->GetViewLocation();
-						SetActorLocation(CameraPosition);
-						break;
+						if (EditorViewportClient == Client)
+						{
+							const FVector CameraPosition = EditorViewportClient->GetViewLocation();
+							SetActorLocation(CameraPosition);
+							break;
+						}
 					}
 				}
 			}
@@ -107,7 +84,8 @@ void AVoxelWorldEditor::Tick(float DeltaTime)
 
 void UVoxelInvokerEditorComponent::OnRegister()
 {
-	if (GetWorld()->WorldType == EWorldType::Editor)
+	if (GetWorld()->WorldType == EWorldType::Editor ||
+		GetWorld()->WorldType == EWorldType::EditorPreview)
 	{
 		Super::OnRegister();
 	}

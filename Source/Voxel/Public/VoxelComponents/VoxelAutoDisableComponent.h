@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -22,7 +22,7 @@ public:
 
 	// Inclusive
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (ClampMin = "0", ClampMax = "24", UIMin = "0", UIMax = "24"), DisplayName = "Max LOD For Physics")
-	uint8 MaxVoxelChunksLODForPhysics = 0;
+	uint8 MaxVoxelChunksLODForPhysics = 2;
 
 	// Delay to allow the voxel chunks collisions to be updated. In seconds
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")

@@ -1,14 +1,15 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelMaterial.h"
 #include "VoxelValue.h"
+#include "VoxelMaterial.h"
+#include "VoxelFoliage.h"
 #include "VoxelSave.generated.h"
 
-DECLARE_MEMORY_STAT(TEXT("Voxel Uncompressed Saves Memory"), STAT_VoxelUncompressedSavesMemory, STATGROUP_VoxelMemory);
-DECLARE_MEMORY_STAT(TEXT("Voxel Compressed Saves Memory"), STAT_VoxelCompressedSavesMemory, STATGROUP_VoxelMemory);
+DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Uncompressed Saves Memory"), STAT_VoxelUncompressedSavesMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Compressed Saves Memory"), STAT_VoxelCompressedSavesMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
 /**
  *	Uncompressed save of the world
@@ -17,23 +18,6 @@ USTRUCT(BlueprintType, Category = Voxel)
 struct VOXEL_API FVoxelUncompressedWorldSave
 {
 	GENERATED_BODY()
-		
-public:
-	struct FVoxelChunkSave
-	{
-		FIntVector Position;
-		int32 ValuesIndex;
-		int32 MaterialsIndex;
-
-		friend inline FArchive& operator<<(FArchive &Ar, FVoxelChunkSave& Save)
-		{
-			Ar << Save.Position;
-			Ar << Save.ValuesIndex;
-			Ar << Save.MaterialsIndex;
-
-			return Ar;
-		}
-	};
 
 public:
 	FVoxelUncompressedWorldSave()
@@ -46,17 +30,21 @@ public:
 	}
 
 public:
-	inline int32 GetDepth() const
+	int32 GetDepth() const
 	{
 		return Depth;
 	}
-
-	inline int32 GetAllocatedSize() const
+	FGuid GetGuid() const
+	{
+		return Guid;
+	}
+	int32 GetAllocatedSize() const
 	{
 		return 
 			Chunks.GetAllocatedSize() +
-			Values.GetAllocatedSize() + 
-			Materials.GetAllocatedSize() +
+			ValueBuffers.GetAllocatedSize() + 
+			MaterialBuffers.GetAllocatedSize() +
+			FoliageBuffers.GetAllocatedSize() +
 			PlaceableItems.GetAllocatedSize();
 	}
 
@@ -64,33 +52,55 @@ public:
 	bool Serialize(FArchive& Ar);
 	TArray<uint8> GetSerializedData() const;
 
-	inline bool operator==(const FVoxelUncompressedWorldSave& Other) const
+	bool operator==(const FVoxelUncompressedWorldSave& Other) const
 	{
-		return 
-			Depth == Other.Depth && 
-			Chunks == Other.Chunks && 
-			Values == Other.Values && 
-			Materials == Other.Materials &&
-			PlaceableItems == Other.PlaceableItems;
+		return Guid == Other.Guid;
 	}
 
 private:
-	int32 Version;
+	struct FVoxelChunkSave
+	{
+		FIntVector Position;
+		// GSingleValueIndexFlag bit is set if it's an index to the single value buffers
+		int32 ValuesIndex = -1;
+		int32 MaterialsIndex = -1;
+		int32 FoliageIndex = -1;
+
+		friend FArchive& operator<<(FArchive& Ar, FVoxelChunkSave& Save)
+		{
+			Ar << Save.Position;
+			Ar << Save.ValuesIndex;
+			Ar << Save.MaterialsIndex;
+			Ar << Save.FoliageIndex;
+			return Ar;
+		}
+	};
+	
+	int32 Version = -1;
+	FGuid Guid;
 	int32 Depth = -1;
-	TArray<FVoxelValue> Values;
-	TArray<FVoxelMaterial> Materials;
+	
+	TArray<FVoxelValue> ValueBuffers;
+	TArray<FVoxelMaterial> MaterialBuffers;
+	TArray<FVoxelFoliage> FoliageBuffers;
+	
+	TArray<FVoxelValue> SingleValues;
+	TArray<FVoxelMaterial> SingleMaterials;
+	TArray<FVoxelFoliage> SingleFoliage;
+	
 	TArray<FVoxelChunkSave> Chunks;
 	TArray<uint8> PlaceableItems;
 
 	friend class FVoxelSaveBuilder;
 	friend class FVoxelSaveLoader;
-};	
-
-template <>
-struct TTypeTraits<FVoxelUncompressedWorldSave::FVoxelChunkSave> : public TTypeTraitsBase<FVoxelUncompressedWorldSave::FVoxelChunkSave>
-{
-	enum { IsBytewiseComparable = true };
+	friend struct FVoxelChunkSaveWithoutFoliage;
 };
+
+inline FArchive& operator<<(FArchive &Ar, FVoxelUncompressedWorldSave& Save)
+{
+	Save.Serialize(Ar);
+	return Ar;
+}
 
 template<>
 struct TStructOpsTypeTraits<FVoxelUncompressedWorldSave> : public TStructOpsTypeTraitsBase2<FVoxelUncompressedWorldSave>
@@ -128,24 +138,30 @@ struct VOXEL_API FVoxelCompressedWorldSave
 
 	bool Serialize(FArchive& Ar);
 
-	inline int32 GetAllocatedSize() const
+	int32 GetAllocatedSize() const
 	{
 		return CompressedData.GetAllocatedSize();
 	}
 
-	inline bool operator==(const FVoxelCompressedWorldSave& Other) const
+	bool operator==(const FVoxelCompressedWorldSave& Other) const
 	{
-		return Depth == Other.Depth && ConfigFlags == Other.ConfigFlags && CompressedData == Other.CompressedData;
+		return Guid == Other.Guid;
 	}
 	
 private:
 	int32 Version;
+	FGuid Guid;
 	int32 Depth = -1;
-	uint32 ConfigFlags;
 	TArray<uint8> CompressedData;
 
 	friend class UVoxelSaveUtilities;
 };
+
+inline FArchive& operator<<(FArchive &Ar, FVoxelCompressedWorldSave& Save)
+{
+	Save.Serialize(Ar);
+	return Ar;
+}
 
 template<>
 struct TStructOpsTypeTraits<FVoxelCompressedWorldSave> : public TStructOpsTypeTraitsBase2<FVoxelCompressedWorldSave>

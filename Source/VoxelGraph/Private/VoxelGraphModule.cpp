@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelGraphModule.h"
 #include "Modules/ModuleManager.h"

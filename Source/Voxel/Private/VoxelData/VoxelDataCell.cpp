@@ -1,25 +1,31 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelData/VoxelDataCell.h"
 
+DEFINE_STAT(STAT_VoxelUndoRedoMemory);
+DEFINE_STAT(STAT_VoxelMultiplayerMemory);
+
 void FVoxelDataCellUndoRedo::ClearFrames()
 {
-	CurrentFrame = MakeUnique<Frame>();
+	CurrentFrame = MakeUnique<FFrame>();
 	UndoFramesStack.Empty();
 	RedoFramesStack.Empty();
 }
 
 void FVoxelDataCellUndoRedo::SaveFrame(int32 HistoryPosition)
 {
+	VOXEL_SLOW_FUNCTION_COUNTER();
+	
 	if (!CurrentFrame->IsEmpty())
 	{
 		CurrentFrame->HistoryPosition = HistoryPosition;
 		AddFrameToStack<EStackType::Undo>(CurrentFrame);
 		check(!CurrentFrame);
 
-		CurrentFrame = MakeUnique<Frame>();
-		AlreadyModifiedValues.Empty();
-		AlreadyModifiedMaterials.Empty();
+		CurrentFrame = MakeUnique<FFrame>();
+		AlreadyModified.Values.Clear();
+		AlreadyModified.Materials.Clear();
+		AlreadyModified.Foliage.Clear();
 	}
 	if (RedoFramesStack.Num() > 0)
 	{
@@ -27,84 +33,81 @@ void FVoxelDataCellUndoRedo::SaveFrame(int32 HistoryPosition)
 	}
 }
 
-bool FVoxelDataCellUndoRedo::TryUndo(FVoxelDataCell* Cell, int32 HistoryPosition)
+void FVoxelDataCellUndoRedo::Undo(FVoxelValue* Values, FVoxelMaterial* Materials, FVoxelFoliage* Foliage, int32 HistoryPosition)
 {
 	check(CurrentFrame->IsEmpty());
+	if (!ensure(CanUndo(HistoryPosition))) return;
 
-	if (UndoFramesStack.Num() > 0 && UndoFramesStack.Last()->HistoryPosition == HistoryPosition)
+	const TUniquePtr<const FFrame> UndoFrame = UndoFramesStack.Pop(false);
+	TUniquePtr<FFrame> RedoFrame = MakeUnique<FFrame>();
+	RedoFrame->HistoryPosition = HistoryPosition + 1;
+
+	check(!UndoFrame->IsEmpty());
+
+	const auto Apply = [](const auto& UndoData, auto& RedoData, auto* RESTRICT Data)
 	{
-		auto* Values    = Cell->GetArray<FVoxelValue>();
-		auto* Materials = Cell->GetArray<FVoxelMaterial>();
-
-		TUniquePtr<Frame> UndoFrame = UndoFramesStack.Pop(false);
-		TUniquePtr<Frame> RedoFrame = MakeUnique<Frame>();
-		RedoFrame->HistoryPosition = HistoryPosition + 1;
-
-		check(!UndoFrame->IsEmpty());
-
-		RedoFrame->ModifiedValues.SetNumUninitialized(UndoFrame->ModifiedValues.Num());
-		for (int32 I = UndoFrame->ModifiedValues.Num() - 1; I >= 0; I--) // Reversed because we are modifying Values array
+		RedoData.SetNumUninitialized(UndoData.Num());
+		for (int32 I = UndoData.Num() - 1; I >= 0; I--) // Reversed because we are modifying Data array
 		{
-			auto& M = UndoFrame->ModifiedValues[I];
-			RedoFrame->ModifiedValues[I] = TModifiedValue<FVoxelValue>(M.Index, Values[M.Index]);
-			Values[M.Index] = M.Value;
+			checkVoxelSlow(Data);
+			checkVoxelSlow(UndoData.IsValidIndex(I));
+			checkVoxelSlow(RedoData.IsValidIndex(I));
+			const auto ModifiedValue = UndoData.GetData()[I];
+			RedoData.GetData()[I] = decltype(ModifiedValue)(ModifiedValue.Index, Data[ModifiedValue.Index]);
+			Data[ModifiedValue.Index] = ModifiedValue.Value;
 		}
+	};
 
-		RedoFrame->ModifiedMaterials.SetNumUninitialized(UndoFrame->ModifiedMaterials.Num());
-		for (int32 I = UndoFrame->ModifiedMaterials.Num() - 1; I >= 0; I--) // Reversed because we are modifying Materials array
-		{
-			auto& M = UndoFrame->ModifiedMaterials[I];
-			RedoFrame->ModifiedMaterials[I] = TModifiedValue<FVoxelMaterial>(M.Index, Materials[M.Index]);
-			Materials[M.Index] = M.Value;
-		}
+	Apply(UndoFrame->Values, RedoFrame->Values, Values);
+	Apply(UndoFrame->Materials, RedoFrame->Materials, Materials);
+	Apply(UndoFrame->Foliage, RedoFrame->Foliage, Foliage);
 
-		AddFrameToStack<EStackType::Redo>(RedoFrame);
-
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	AddFrameToStack<EStackType::Redo>(RedoFrame);
 }
 
-bool FVoxelDataCellUndoRedo::TryRedo(FVoxelDataCell* Cell, int32 HistoryPosition)
+void FVoxelDataCellUndoRedo::Redo(FVoxelValue* Values, FVoxelMaterial* Materials, FVoxelFoliage* Foliage, int32 HistoryPosition)
 {
 	check(CurrentFrame->IsEmpty());
+	if (!ensure(CanRedo(HistoryPosition))) return;
 
-	if (RedoFramesStack.Num() > 0 && RedoFramesStack.Last()->HistoryPosition == HistoryPosition)
+	const TUniquePtr<const FFrame> RedoFrame = RedoFramesStack.Pop(false);
+	TUniquePtr<FFrame> UndoFrame = MakeUnique<FFrame>();
+	UndoFrame->HistoryPosition = HistoryPosition - 1;
+
+	check(!RedoFrame->IsEmpty());
+
+	const auto Apply = [](auto& UndoData, const auto& RedoData, auto* RESTRICT Data)
 	{
-		auto* Values    = Cell->GetArray<FVoxelValue>();
-		auto* Materials = Cell->GetArray<FVoxelMaterial>();
-
-		TUniquePtr<Frame> RedoFrame = RedoFramesStack.Pop(false);
-		TUniquePtr<Frame> UndoFrame = MakeUnique<Frame>();
-		UndoFrame->HistoryPosition = HistoryPosition - 1;
-
-		check(!RedoFrame->IsEmpty());
-
-		UndoFrame->ModifiedValues.SetNumUninitialized(RedoFrame->ModifiedValues.Num());
-		for (int32 I = RedoFrame->ModifiedValues.Num() - 1; I >= 0; I--) // Reversed because we are modifying Values array
+		UndoData.SetNumUninitialized(RedoData.Num());
+		for (int32 I = RedoData.Num() - 1; I >= 0; I--) // Reversed because we are modifying Data array
 		{
-			auto& M = RedoFrame->ModifiedValues[I];
-			UndoFrame->ModifiedValues[I] = TModifiedValue<FVoxelValue>(M.Index, Values[M.Index]);
-			Values[M.Index] = M.Value;
+			checkVoxelSlow(Data);
+			checkVoxelSlow(UndoData.IsValidIndex(I));
+			checkVoxelSlow(RedoData.IsValidIndex(I));
+			const auto ModifiedValue = RedoData.GetData()[I];
+			UndoData.GetData()[I] = decltype(ModifiedValue)(ModifiedValue.Index, Data[ModifiedValue.Index]);
+			Data[ModifiedValue.Index] = ModifiedValue.Value;
 		}
+	};
 
-		UndoFrame->ModifiedMaterials.SetNumUninitialized(RedoFrame->ModifiedMaterials.Num());
-		for (int32 I = RedoFrame->ModifiedMaterials.Num() - 1; I >= 0; I--) // Reversed because we are modifying Materials array
-		{
-			auto& M = RedoFrame->ModifiedMaterials[I];
-			UndoFrame->ModifiedMaterials[I] = TModifiedValue<FVoxelMaterial>(M.Index, Materials[M.Index]);
-			Materials[M.Index] = M.Value;
-		}
+	Apply(UndoFrame->Values, RedoFrame->Values, Values);
+	Apply(UndoFrame->Materials, RedoFrame->Materials, Materials);
+	Apply(UndoFrame->Foliage, RedoFrame->Foliage, Foliage);
 
-		AddFrameToStack<EStackType::Undo>(UndoFrame);
+	AddFrameToStack<EStackType::Undo>(UndoFrame);
+}
 
-		return true;
-	}
-	else
+template<FVoxelDataCellUndoRedo::EStackType Type>
+void FVoxelDataCellUndoRedo::AddFrameToStack(TUniquePtr<FFrame>& Frame)
+{
 	{
-		return false;
+		VOXEL_SLOW_SCOPE_COUNTER("Shrink");
+		Frame->Values.Shrink();
+		Frame->Materials.Shrink();
+		Frame->Foliage.Shrink();
 	}
+	INC_MEMORY_STAT_BY(STAT_VoxelUndoRedoMemory, Frame->GetAllocatedSize());
+	auto& Stack = Type == EStackType::Undo ? UndoFramesStack : RedoFramesStack;
+	Stack.Add(MoveTemp(Frame));
+	check(!Frame);
 }

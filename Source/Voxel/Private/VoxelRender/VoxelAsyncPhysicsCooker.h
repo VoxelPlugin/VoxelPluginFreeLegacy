@@ -1,56 +1,65 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGlobals.h"
+#include "VoxelAsyncWork.h"
+#include "VoxelPriorityHandler.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "UObject/WeakObjectPtrTemplates.h"
-#include "VoxelThreadPool.h"
 
+struct FVoxelProcMeshBuffers;
+class IVoxelProceduralMeshComponent_PhysicsCallbackHandler;
 class IPhysXCooking;
 class UBodySetup;
 class UVoxelProceduralMeshComponent;
-
-namespace physx
-{
-	class PxCooking;
-	class PxTriangleMesh;
-	class PxConvexMesh;
-	class PxHeightField;
-	class PxFoundation;
-	struct PxCookingParams;
-}
 
 class FVoxelAsyncPhysicsCooker : public FVoxelAsyncWork
 {
 public:
 	const uint64 UniqueId;
+	const TWeakObjectPtr<UVoxelProceduralMeshComponent> Component;
+	const TVoxelWeakPtr<IVoxelProceduralMeshComponent_PhysicsCallbackHandler> PhysicsCallbackHandler;
+	
+	const int32 LOD;
+	const ECollisionTraceFlag CollisionTraceFlag;
+	const FVoxelPriorityHandler PriorityHandler;
+	const bool bCleanCollisionMesh;
+	const int32 NumConvexHullsPerAxis;
+	const TArray<TVoxelSharedPtr<const FVoxelProcMeshBuffers>> Buffers;
+	const FTransform LocalToRoot;
 
-	TArray<physx::PxConvexMesh*> OutNonMirroredConvexMeshes;
-	TArray<physx::PxConvexMesh*> OutMirroredConvexMeshes;
-	TArray<physx::PxTriangleMesh*> OutTriangleMeshes;
-	FBodySetupUVInfo OutUVInfo;
+	explicit FVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component);
 
-	FVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component, UBodySetup* BodySetup);
-
-	inline bool HasSomethingToCook() const
-	{
-		return CookInfo.bCookTriMesh || CookInfo.bCookNonMirroredConvex || CookInfo.bCookMirroredConvex;
-	}
 	inline bool IsSuccessful() const
 	{
-		return SuccessCounter.GetValue() > 0;
+		return ErrorCounter.GetValue() == 0;
 	}
 	
 protected:
+	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override;
-
+	virtual void PostDoWork() override;
+	virtual uint32 GetPriority() const override;
+	//~ End FVoxelAsyncWork Interface
+	
 private:
-	bool Cook();
-	void CreateConvexElements(const TArray<TArray<FVector>>& Elements, TArray<physx::PxConvexMesh*>& OutConvexMeshes, bool bFlipped);
+	void CreateTriMesh();
+	void CreateConvexMesh();
+	void DecomposeMeshToHulls();
+	EPhysXMeshCookFlags GetCookFlags() const;
 
 	IPhysXCooking* const PhysXCooking;
-	TWeakObjectPtr<UVoxelProceduralMeshComponent> const Component;
-	FCookBodySetupInfo CookInfo;
-	FThreadSafeCounter SuccessCounter;
+	FThreadSafeCounter ErrorCounter;
+
+public:
+	struct FCookResult
+	{
+		FBox ConvexBounds;
+		TArray<FKConvexElem> ConvexElems;
+		TArray<physx::PxConvexMesh*> ConvexMeshes;
+		TArray<physx::PxTriangleMesh*> TriangleMeshes;
+	};
+	FCookResult CookResult;
 };

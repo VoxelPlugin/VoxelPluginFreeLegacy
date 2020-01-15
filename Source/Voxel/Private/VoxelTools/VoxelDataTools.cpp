@@ -1,89 +1,116 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelTools/VoxelDataTools.h"
-#include "VoxelTools/VoxelToolsHelpers.h"
-#include "VoxelTools/VoxelLatentActionHelpers.h"
+#include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelData/VoxelSaveUtilities.h"
+#include "VoxelData/VoxelDataUtilities.h"
+#include "VoxelData/VoxelDataAccelerator.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
+#include "Misc/ScopedSlowTask.h"
 
-bool UVoxelDataTools::GetValue(float& Value, AVoxelWorld* World, const FIntVector& Position, bool bAllowFailure)
+#define VOXEL_DATA_TOOL_PREFIX const FIntBox Bounds(Position);
+
+void UVoxelDataTools::GetValue(float& Value, AVoxelWorld* World, FIntVector Position)
 {
-	CHECK_VOXELWORLD_IS_CREATED();
-	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::Read>(__FUNCTION__, World, FIntBox(Position), false, bAllowFailure, [&](FVoxelData& Data)
-	{
-		Value = Data.GetValue(Position, 0).ToFloat();
-	});
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, VOXEL_DATA_TOOL_PREFIX, Value = Data.GetValue(Position, 0).ToFloat());
 }
 
-bool UVoxelDataTools::SetValue(AVoxelWorld* World, const FIntVector& Position, float Value, bool bUpdateRender, bool bAllowFailure)
+void UVoxelDataTools::GetInterpolatedValue(float& Value, AVoxelWorld* World, FVector Position)
 {
-	CHECK_VOXELWORLD_IS_CREATED();
-	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::ReadWrite>(__FUNCTION__, World, FIntBox(Position), bUpdateRender, bAllowFailure, [&](FVoxelData& Data)
-	{
-		Data.SetValue(Position, Value);
-	});
+	const FIntBox Bounds = FIntBox(Position).Extend(2);
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, Value = FVoxelDataUtilities::MakeBilinearInterpolatedData(Data).GetValue(Position, 0));
 }
 
-bool UVoxelDataTools::GetMaterial(FVoxelMaterial& Material, AVoxelWorld* World, const FIntVector& Position, bool bAllowFailure)
+void UVoxelDataTools::SetValue(AVoxelWorld* World, FIntVector Position, float Value)
 {
-	CHECK_VOXELWORLD_IS_CREATED();
-	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::Read>(__FUNCTION__, World, FIntBox(Position), false, bAllowFailure, [&](FVoxelData& Data)
-	{
-		Material = Data.GetMaterial(Position, 0);
-	});
+	VOXEL_TOOL_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.SetValue(Position, FVoxelValue(Value)));
 }
 
-bool UVoxelDataTools::SetMaterial(AVoxelWorld* World, const FIntVector& Position, FVoxelMaterial Material, bool bUpdateRender, bool bAllowFailure)
+void UVoxelDataTools::GetMaterial(FVoxelMaterial& Material, AVoxelWorld* World, FIntVector Position)
 {
-	CHECK_VOXELWORLD_IS_CREATED();
-	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::ReadWrite>(__FUNCTION__, World, FIntBox(Position), bUpdateRender, bAllowFailure, [&](FVoxelData& Data)
-	{
-		Data.SetMaterial(Position, Material);
-	});
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, VOXEL_DATA_TOOL_PREFIX, Material = Data.GetMaterial(Position, 0));
+}
+
+void UVoxelDataTools::SetMaterial(AVoxelWorld* World, FIntVector Position, FVoxelMaterial Material)
+{
+	VOXEL_TOOL_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.SetMaterial(Position, Material));
+}
+
+void UVoxelDataTools::CacheValues(AVoxelWorld* World, FIntBox Bounds)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelValue>(Bounds));
+}
+
+void UVoxelDataTools::CacheMaterials(AVoxelWorld* World, FIntBox Bounds)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelMaterial>(Bounds));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelDataTools::GetValueAsync(UObject* WorldContextObject, FLatentActionInfo LatentInfo, float& Value, AVoxelWorld* World, const FIntVector& Position)
+void UVoxelDataTools::GetValueAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	float& Value,
+	AVoxelWorld* World,
+	FIntVector Position,
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelperWithValue(WorldContextObject, LatentInfo, __FUNCTION__, World, Value, [Position](FVoxelData& Data, float& Value)
-	{
-		FVoxelReadScopeLock Lock(Data, FIntBox(Position), __FUNCTION__);
-		Value = Data.GetValue(Position, 0).ToFloat();
-	});
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Value, Read, DoNotUpdateRender, VOXEL_DATA_TOOL_PREFIX, InValue = Data.GetValue(Position, 0).ToFloat());
 }
 
-void UVoxelDataTools::SetValueAsync(UObject* WorldContextObject, FLatentActionInfo LatentInfo, AVoxelWorld* World, const FIntVector& Position, float Value, bool bUpdateRender)
+void UVoxelDataTools::SetValueAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntVector Position,
+	float Value,
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelper(WorldContextObject, LatentInfo, __FUNCTION__, World, FIntBox(Position), bUpdateRender, [Position, Value](FVoxelData& Data)
-	{
-		FVoxelReadWriteScopeLock Lock(Data, FIntBox(Position), __FUNCTION__);
-		Data.SetValue(Position, Value);
-	});
+	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.SetValue(Position, FVoxelValue(Value)));
 }
 
-void UVoxelDataTools::GetMaterialAsync(UObject* WorldContextObject, FLatentActionInfo LatentInfo, FVoxelMaterial& Material, AVoxelWorld* World, const FIntVector& Position)
+void UVoxelDataTools::GetMaterialAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	FVoxelMaterial& Material,
+	AVoxelWorld* World,
+	FIntVector Position,
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelperWithValue(WorldContextObject, LatentInfo, __FUNCTION__, World, Material, [Position](FVoxelData& Data, FVoxelMaterial& Material)
-	{
-		FVoxelReadScopeLock Lock(Data, FIntBox(Position), __FUNCTION__);
-		Material = Data.GetMaterial(Position, 0);
-	});
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Material, Read, DoNotUpdateRender, VOXEL_DATA_TOOL_PREFIX, InMaterial = Data.GetMaterial(Position, 0));
 }
 
-void UVoxelDataTools::SetMaterialAsync(UObject* WorldContextObject, FLatentActionInfo LatentInfo, AVoxelWorld* World, const FIntVector& Position, FVoxelMaterial Material, bool bUpdateRender)
+void UVoxelDataTools::SetMaterialAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntVector Position,
+	FVoxelMaterial Material,
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelper(WorldContextObject, LatentInfo, __FUNCTION__, World, FIntBox(Position), bUpdateRender, [Position, Material](FVoxelData& Data)
-	{
-		FVoxelReadWriteScopeLock Lock(Data, FIntBox(Position), __FUNCTION__);
-		Data.SetMaterial(Position, Material);
-	});
+	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.SetMaterial(Position, Material));
+}
+
+void UVoxelDataTools::CacheValuesAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelValue>(Bounds));
+}
+
+void UVoxelDataTools::CacheMaterialsAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelMaterial>(Bounds));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -95,12 +122,12 @@ inline bool CheckSave(const FVoxelData& Data, const T& Save)
 {
 	if (Save.GetDepth() == -1)
 	{
-		FVoxelBPErrors::Error(LOCTEXT("LoadFromSaveInvalidDepth", "LoadFromSave: Invalid save (Depth == -1). You're trying to load a save object that wasn't initialized"));
+		FVoxelMessages::Error("LoadFromSave: Invalid save (Depth == -1). You're trying to load a save object that wasn't initialized");
 		return false;
 	}
 	if (Save.GetDepth() > Data.Depth)
 	{
-		FVoxelBPErrors::Warning(LOCTEXT("LoadFromSaveDepthBigger", "LoadFromSave: Save depth is bigger than world depth, the save data outside world bounds will be ignored"));
+		FVoxelMessages::Warning("LoadFromSave: Save depth is bigger than world depth, the save data outside world bounds will be ignored");
 	}
 	return true;
 }
@@ -108,7 +135,7 @@ inline bool CheckSave(const FVoxelData& Data, const T& Save)
 #define CHECK_SAVE() \
 if (!CheckSave(World->GetData(), Save)) \
 { \
-	return; \
+	return false; \
 }
 
 void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSave& OutSave)
@@ -125,23 +152,21 @@ void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorl
 	UVoxelSaveUtilities::CompressVoxelSave(Save, OutSave);
 }
 
-void UVoxelDataTools::LoadFromSave(AVoxelWorld* World, const FVoxelUncompressedWorldSave& Save, bool bUpdateRender)
+bool UVoxelDataTools::LoadFromSave(AVoxelWorld* World, const FVoxelUncompressedWorldSave& Save)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_VOXELWORLD_IS_CREATED();
 	CHECK_SAVE();
 
 	TArray<FIntBox> BoundsToUpdate;
 	auto& Data = World->GetData();
-	Data.LoadFromSave(Save, BoundsToUpdate);
-	if (bUpdateRender)
-	{
-		World->GetLODManager().UpdateBounds(BoundsToUpdate);
-	}
+	const bool bSuccess = Data.LoadFromSave(World, Save, BoundsToUpdate);
+	World->GetLODManager().UpdateBounds(BoundsToUpdate);
+	return bSuccess;
 }
 
-void UVoxelDataTools::LoadFromCompressedSave(AVoxelWorld* World, const FVoxelCompressedWorldSave& Save, bool bUpdateRender)
+bool UVoxelDataTools::LoadFromCompressedSave(AVoxelWorld* World, const FVoxelCompressedWorldSave& Save)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_VOXELWORLD_IS_CREATED();
 	CHECK_SAVE();
 	
 	FVoxelUncompressedWorldSave UncompressedSave;
@@ -149,100 +174,229 @@ void UVoxelDataTools::LoadFromCompressedSave(AVoxelWorld* World, const FVoxelCom
 
 	TArray<FIntBox> BoundsToUpdate;
 	auto& Data = World->GetData();
-	Data.LoadFromSave(UncompressedSave, BoundsToUpdate);
-	if (bUpdateRender)
-	{
-		World->GetLODManager().UpdateBounds(BoundsToUpdate);
-	}
+	const bool bSuccess = Data.LoadFromSave(World, UncompressedSave, BoundsToUpdate);
+	World->GetLODManager().UpdateBounds(BoundsToUpdate);
+	return bSuccess;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelDataTools::GetSaveAsync(
-	UObject* WorldContextObject,
-	FLatentActionInfo LatentInfo,
-	AVoxelWorld* World,
-	FVoxelUncompressedWorldSave& OutSave)
+void UVoxelDataTools::RoundVoxelsImpl(FVoxelData& Data, const FIntBox& Bounds)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelperWithValue(WorldContextObject, LatentInfo, __FUNCTION__, World, OutSave, [](FVoxelData& Data, FVoxelUncompressedWorldSave& Save)
+	VOXEL_FUNCTION_COUNTER();
+	
+	int32 NumDirtyLeaves = 0;
+	uint64 NumVoxels = 0;
 	{
-		Data.GetSave(Save);
-	});
-}
-
-void UVoxelDataTools::GetCompressedSaveAsync(
-	UObject* WorldContextObject,
-	FLatentActionInfo LatentInfo,
-	AVoxelWorld* World,
-	FVoxelCompressedWorldSave& OutSave)
-{
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelperWithValue(WorldContextObject, LatentInfo, __FUNCTION__, World, OutSave, [](FVoxelData& Data, FVoxelCompressedWorldSave& Save)
-	{
-		FVoxelUncompressedWorldSave UncompressedSave;
-		Data.GetSave(UncompressedSave);
-		UVoxelSaveUtilities::CompressVoxelSave(UncompressedSave, Save);
-	});
-}
-
-template<typename TLambda>
-bool LoadFromSaveAsyncHelper(
-		UObject* WorldContextObject, 
-		FLatentActionInfo LatentInfo,
-		const FString& Name, 
-		AVoxelWorld* World, 
-		bool bUpdateRender, 
-		TLambda Lambda)
-{
-	return FVoxelLatentActionHelpers::StartAction<FVoxelLatentActionAsyncWorkLambdaWithValue<TArray<FIntBox>>>(
-			WorldContextObject, 
-			LatentInfo, 
-			World, 
-			Name + ": Waiting for completion", 
-			[&]()
+		VOXEL_SCOPE_COUNTER("Record stats");
+		FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 		{
-			return MakeShared<FVoxelLatentActionAsyncWorkLambdaWithValue<TArray<FIntBox>>>(World, Lambda);
-		},
-			[bUpdateRender](FVoxelLatentActionAsyncWorkLambdaWithValue<TArray<FIntBox>>& Work)
-		{
-			if (bUpdateRender)
+			if (Leaf.GetData<FVoxelValue>().IsDirty() && Leaf.GetData<FVoxelValue>().GetDataPtr())
 			{
-				Work.World->GetLODManager().UpdateBounds(Work.Value);
+				NumDirtyLeaves++;
+				NumVoxels += VOXELS_PER_DATA_CHUNK;
 			}
 		});
-}
-
-void UVoxelDataTools::LoadFromSaveAsync(
-	UObject* WorldContextObject,
-	FLatentActionInfo LatentInfo,
-	AVoxelWorld* World,
-	const FVoxelUncompressedWorldSave& Save,
-	bool bUpdateRender)
-{
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	CHECK_SAVE();
-	LoadFromSaveAsyncHelper(WorldContextObject, LatentInfo, __FUNCTION__, World, bUpdateRender, [SaveCopy = Save](FVoxelData& Data, TArray<FIntBox>& BoundsToUpdate)
+	}
+	
+	FScopedSlowTask SlowTask(NumDirtyLeaves, NSLOCTEXT("Voxel", "Rounding", "Rounding voxels"));
+	FScopeToolsTimeLogger ToolsLogger(__FUNCTION__, NumVoxels);
+		
+	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds.Extend(2));
+	FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
-		Data.LoadFromSave(SaveCopy, BoundsToUpdate);
+		if (Leaf.GetData<FVoxelValue>().IsDirty() && Leaf.GetData<FVoxelValue>().GetDataPtr())
+		{
+			SlowTask.EnterProgressFrame();
+			
+			const FIntBox LeafBounds = Leaf.GetBounds();
+			LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+			{
+				const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
+				const FVoxelValue& Value = Leaf.GetData<FVoxelValue>().GetDataPtr()[Index];
+						
+				if (Value.IsTotallyEmpty() || Value.IsTotallyFull()) return;
+				
+				const bool bEmpty = Value.IsEmpty();
+				for (int32 OtherX = X - 2; OtherX <= X + 2; OtherX++)
+				{
+					for (int32 OtherY = Y - 2; OtherY <= Y + 2; OtherY++)
+					{
+						for (int32 OtherZ = Z - 2; OtherZ <= Z + 2; OtherZ++)
+						{
+							if (OtherX == X && OtherY == Y && OtherZ == Z) continue;
+							const auto OtherValue = OctreeAccelerator.GetValue(OtherX, OtherY, OtherZ, 0);
+							if (OtherValue.IsEmpty() != bEmpty) return;
+						}
+					}
+				}
+				// Not recorded in undo history, but not needed as RoundVoxels is lossless
+				OctreeAccelerator.SetValue(X, Y, Z, bEmpty ? FVoxelValue::Empty() : FVoxelValue::Full());
+			});
+		}
 	});
 }
 
-void UVoxelDataTools::LoadFromCompressedSaveAsync(
+void UVoxelDataTools::RoundVoxels(AVoxelWorld* World, FIntBox InBounds)
+{
+	const FIntBox Bounds = InBounds.Extend(2);
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, RoundVoxelsImpl(Data, InBounds));
+}
+
+void UVoxelDataTools::RoundVoxelsAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	const FVoxelCompressedWorldSave& Save,
-	bool bUpdateRender)
+	FIntBox InBounds,
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	CHECK_SAVE();
-	LoadFromSaveAsyncHelper(WorldContextObject, LatentInfo, __FUNCTION__, World, bUpdateRender, [SaveCopy = Save](FVoxelData& Data, TArray<FIntBox>& BoundsToUpdate)
+	const FIntBox Bounds = InBounds.Extend(2);
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, RoundVoxelsImpl(Data, InBounds));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelDataTools::ClearUnusedMaterialsImpl(FVoxelData& Data, const FIntBox& Bounds)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	int32 NumDirtyLeaves = 0;
+	uint64 NumVoxels = 0;
 	{
-		FVoxelUncompressedWorldSave UncompressedSave;
-		UVoxelSaveUtilities::DecompressVoxelSave(SaveCopy, UncompressedSave);
-		Data.LoadFromSave(UncompressedSave, BoundsToUpdate);
+		VOXEL_SCOPE_COUNTER("Record stats");
+		FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+		{
+			if (Leaf.GetData<FVoxelMaterial>().IsDirty() && Leaf.GetData<FVoxelMaterial>().GetDataPtr())
+			{
+				NumDirtyLeaves++;
+				NumVoxels += VOXELS_PER_DATA_CHUNK;
+			}
+		});
+	}
+	
+	FScopedSlowTask SlowTask(NumDirtyLeaves, NSLOCTEXT("Voxel", "Clearing", "Clearing unused materials"));
+	FScopeToolsTimeLogger ToolsLogger(__FUNCTION__, NumVoxels);
+		
+	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds.Extend(2));
+	FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+	{
+		if (Leaf.GetData<FVoxelMaterial>().IsDirty() && Leaf.GetData<FVoxelMaterial>().GetDataPtr())
+		{
+			SlowTask.EnterProgressFrame();
+			
+			const FIntBox LeafBounds = Leaf.GetBounds();
+			LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+			{
+				const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
+				const FVoxelMaterial& Material = Leaf.GetData<FVoxelMaterial>().GetDataPtr()[Index];
+
+				if (Material == FVoxelMaterial::Default()) return;
+				
+				const FVoxelValue Value = OctreeAccelerator.GetValue(X, Y, Z, 0);
+				if (!Value.IsEmpty()) // Only not empty voxels materials can affect the surface
+				{
+					for (int32 OtherX = X - 1; OtherX <= X + 1; OtherX++)
+					{
+						for (int32 OtherY = Y - 1; OtherY <= Y + 1; OtherY++)
+						{
+							for (int32 OtherZ = Z - 1; OtherZ <= Z + 1; OtherZ++)
+							{
+								if (OtherX == X && OtherY == Y && OtherZ == Z) continue;
+								const auto OtherValue = OctreeAccelerator.GetValue(OtherX, OtherY, OtherZ, 0);
+								if (OtherValue.IsEmpty()) return;
+							}
+						}
+					}
+				}
+				// Note: not recorded in undo history
+				OctreeAccelerator.SetMaterial(X, Y, Z, FVoxelMaterial::Default());
+			});
+		}
 	});
 }
 
-#undef LOCTEXT_NAMESPACE
+void UVoxelDataTools::ClearUnusedMaterials(AVoxelWorld* World, FIntBox InBounds)
+{
+	const FIntBox Bounds = InBounds.Extend(1);
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, ClearUnusedMaterialsImpl(Data, InBounds));
+}
+
+void UVoxelDataTools::ClearUnusedMaterialsAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntBox InBounds,
+	bool bHideLatentWarnings)
+{
+	const FIntBox Bounds = InBounds.Extend(1);
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, ClearUnusedMaterialsImpl(Data, InBounds));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelDataTools::GetVoxelsValueAndMaterialImpl(
+	FVoxelData& Data,
+	TArray<FVoxelValueMaterial>& Voxels,
+	const FIntBox& Bounds,
+	const TArray<FIntVector>& Positions)
+{
+	VOXEL_TOOL_FUNCTION_COUNTER(Positions.Num());
+	const FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds);
+	for (auto& Position : Positions)
+	{
+		if (Data.IsInWorld(Position))
+		{
+			FVoxelValueMaterial Voxel;
+			Voxel.Position = Position;
+			Voxel.Value = OctreeAccelerator.GetValue(Position, 0).ToFloat();
+			Voxel.Material = OctreeAccelerator.GetMaterial(Position, 0);
+			Voxels.Add(Voxel);
+		}
+	}
+}
+
+void UVoxelDataTools::GetVoxelsValueAndMaterial(
+	TArray<FVoxelValueMaterial>& Voxels,
+	AVoxelWorld* World,
+	const TArray<FIntVector>& Positions)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+
+	if (Positions.Num() == 0)
+	{
+		Voxels.Reset();
+		return;
+	}
+	
+	const FIntBox Bounds(Positions);
+	CHECK_BOUNDS_ARE_VALID_VOID();
+	VOXEL_TOOL_HELPER_BODY(Read, DoNotUpdateRender, GetVoxelsValueAndMaterialImpl(Data, Voxels, Bounds, Positions));
+}
+
+void UVoxelDataTools::GetVoxelsValueAndMaterialAsync(
+	UObject* WorldContextObject, 
+	FLatentActionInfo LatentInfo, 
+	TArray<FVoxelValueMaterial>& Voxels, 
+	AVoxelWorld* World, 
+	const TArray<FIntVector>& Positions, 
+	bool bHideLatentWarnings)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+
+	if (Positions.Num() == 0)
+	{
+		Voxels.Reset();
+		return;
+	}
+	
+	const FIntBox Bounds(Positions);
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Voxels, Read, DoNotUpdateRender, NO_PREFIX, GetVoxelsValueAndMaterialImpl(Data, InVoxels, Bounds, Positions));
+}

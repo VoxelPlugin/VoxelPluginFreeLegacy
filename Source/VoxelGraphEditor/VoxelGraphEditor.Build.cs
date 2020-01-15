@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 using System.IO;
 using UnrealBuildTool;
@@ -14,10 +14,6 @@ public class VoxelGraphEditor : ModuleRules
         if (!Target.bUseUnityBuild)
         {
             PrivatePCHHeaderFile = "Private/VoxelGraphEditorPCH.h";
-#if UE_4_22_OR_LATER
-#else
-            PrivateDependencyModuleNames.Add("LivePP");
-#endif
         }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
@@ -25,7 +21,6 @@ public class VoxelGraphEditor : ModuleRules
         
         DynamicallyLoadedModuleNames.AddRange(
             new string[] {
-                "PropertyEditor",
                 "AssetRegistry"
             });
 
@@ -49,16 +44,25 @@ public class VoxelGraphEditor : ModuleRules
                 "BlueprintGraph",
                 "DesktopPlatform",
                 "Json",
-                "GameProjectGeneration"
+                "GameProjectGeneration",
+                "MessageLog",
+                "AppFramework",
+                "PropertyEditor",
+#if UE_4_24_OR_LATER
+                "ToolMenus"
+#endif
             });
 
         PrivateIncludePathModuleNames.AddRange(
             new string[] {
+                "VoxelEditor"
             });
 
         if (Target.Configuration == UnrealTargetConfiguration.DebugGame)
         {
             PublicDefinitions.Add("VOXEL_DEBUG=1");
         }
+
+        PublicDefinitions.Add("VOXEL_PLUGIN_PRO=1");
     }
 }

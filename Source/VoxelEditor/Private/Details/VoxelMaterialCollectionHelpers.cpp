@@ -1,20 +1,23 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelMaterialCollectionHelpers.h"
+
 #include "Materials/MaterialFunction.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialInstanceConstant.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialExpressionTextureObjectParameter.h"
+#include "Materials/MaterialExpressionStaticSwitchParameter.h"
+
 #include "AssetRegistryModule.h"
 #include "EditorStyleSet.h"
 #include "PackageTools.h"
 #include "ObjectTools.h"
-#include "VoxelMaterialCollection.h"
-#include "Materials/MaterialInstanceConstant.h"
-#include "Materials/MaterialInterface.h"
 #include "Factories/MaterialInstanceConstantFactoryNew.h"
 #include "UObject/UObjectHash.h"
-#include "Materials/MaterialExpressionTextureObjectParameter.h"
-#include "Materials/MaterialExpressionStaticSwitchParameter.h"
 #include "FileHelpers.h"
+
+#include "VoxelRender/VoxelMaterialCollection.h"
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
@@ -27,7 +30,7 @@ inline UPackage* CreateOrRetrievePackage(UVoxelMaterialCollection* Collection, c
 
 	const FString PathName = FPackageName::GetLongPackagePath(OuterMost->GetPathName());
 	const FString BaseName = FPackageName::GetShortName(OuterMost->GetPathName());
-	const FString PackageName = FString::Printf(TEXT("%s/MCGM/%s_%s"), *PathName, *BaseName, *Suffix);
+	const FString PackageName = FString::Printf(TEXT("%s/%s_GeneratedMaterials/%s_%s"), *PathName, *BaseName, *BaseName, *Suffix);
 
 	Package = CreatePackage(NULL, *PackageName);
 	Package->FullyLoad();
@@ -80,21 +83,21 @@ inline UPackage* GetPackage(UVoxelMaterialCollection* Collection, const FString&
 	return Package;
 }
 
-inline bool ReplaceFunction(UMaterial* Material, const TMap<FString, UMaterialFunction*>& Functions, FString& OutError)
+inline bool ReplaceFunction(const FString& TemplateName, UMaterial* Material, const TMap<FString, UMaterialFunction*>& Functions, FString& OutError)
 {
 	for (auto& It : Functions)
 	{
 		FString Description = It.Key;
 		UMaterialFunction* Function = It.Value;
 
-		UMaterialExpression** Expression = Material->Expressions.FindByPredicate([&](UMaterialExpression* Expression)
+		UMaterialExpression** Expression = Material->Expressions.FindByPredicate([&](UMaterialExpression* Expr)
 		{
-			return Expression->IsA(UMaterialExpressionMaterialFunctionCall::StaticClass()) && Expression->Desc == Description;
+			return Expr->IsA(UMaterialExpressionMaterialFunctionCall::StaticClass()) && Expr->Desc == Description;
 		});
 
 		if (!Expression)
 		{
-			OutError = Material->GetName() + " is missing a material function call with description '" + Description + "'";
+			OutError = TemplateName + " is missing a material function call node with description '" + Description + "'";
 			return false;
 		}
 
@@ -102,53 +105,56 @@ inline bool ReplaceFunction(UMaterial* Material, const TMap<FString, UMaterialFu
 		FuncCall->Modify();
 		FuncCall->SetMaterialFunction(Function);
 	}
-	Material->ForceRecompileForRendering();
+	Material->RebuildExpressionTextureReferences();
 	return true;
 }
-
-inline FName GetIsTessellationEnabledName(const FString& Prefix)
+inline void AddPrefixToParameter(FName& Name, const FString& Suffix)
 {
-	return FName(*(Prefix + "IsTessellationEnabled"));
-}
-
-inline void AddSuffixToInfo(FMaterialParameterInfo& Info, const FString& Suffix)
-{
-	Info.Name = FName(*(Suffix + Info.Name.ToString()));
-}
-
-inline void CopyInstanceParameters(const TArray<UMaterialInstanceConstant*>& Froms, UMaterialInstanceConstant* To, const TArray<FString>& Suffixes, const TArray<FStaticSwitchParameter>& StaticSwitchParameters = TArray<FStaticSwitchParameter>())
-{
-	check(Froms.Num() == Suffixes.Num());
-
-	struct FTmpStruct
+	if (Name.ToString().StartsWith("VOXELPARAM_"))
 	{
-		UMaterialInstanceConstant* From;
-		FString Suffix;
-		FMaterialParameterInfo Info;
+		Name = FName(*(Suffix + Name.ToString()));
+	}
+}
+
+inline void AddPrefixToInfo(FMaterialParameterInfo& Info, const FString& Suffix)
+{
+	AddPrefixToParameter(Info.Name, Suffix);
+}
+
+struct FInstanceWithSuffix
+{
+	UMaterialInstanceConstant* Instance;
+	FString Suffix;
+};
+
+inline void CopyInstancesParameters(const TArray<FInstanceWithSuffix>& InstancesToCopyFrom, UMaterialInstanceConstant* To)
+{
+	struct FInstanceParameterInfo
+	{
+		FInstanceWithSuffix Instance;
+		FMaterialParameterInfo ParameterInfo;
 	};
 
 #define IMPL(Type, InName) \
 	{ \
-		TArray<FTmpStruct> Infos; \
-		for (int32 Index = 0; Index < Froms.Num(); Index++) \
+		TArray<FInstanceParameterInfo> InstancesParameterInfo; \
+		for (auto& Instance : InstancesToCopyFrom) \
 		{ \
-			auto* From = Froms[Index]; \
-			auto& Suffix = Suffixes[Index]; \
-			TArray<FMaterialParameterInfo> TmpInfos; \
+			TArray<FMaterialParameterInfo> ParametersInfo; \
 			TArray<FGuid> Ids; \
-			From->GetAll##InName##ParameterInfo(TmpInfos, Ids); \
-			for(auto& Info : TmpInfos) \
+			Instance.Instance->GetAll##InName##ParameterInfo(ParametersInfo, Ids); \
+			for(auto& ParameterInfo : ParametersInfo) \
 			{ \
-				Infos.Emplace(FTmpStruct{ From, Suffix, Info }); \
+				InstancesParameterInfo.Emplace(FInstanceParameterInfo{ Instance, ParameterInfo }); \
 			} \
 		} \
-		for (auto& Info : Infos) \
+		for (auto& InstanceParameterInfo : InstancesParameterInfo) \
 		{ \
 			Type Value{}; \
-			if (Info.From->Get##InName##ParameterValue(Info.Info, Value, true)) \
+			if (InstanceParameterInfo.Instance.Instance->Get##InName##ParameterValue(InstanceParameterInfo.ParameterInfo, Value, true)) \
 			{ \
-				AddSuffixToInfo(Info.Info, Info.Suffix); \
-				To->Set##InName##ParameterValueEditorOnly(Info.Info, Value); \
+				AddPrefixToInfo(InstanceParameterInfo.ParameterInfo, InstanceParameterInfo.Instance.Suffix); \
+				To->Set##InName##ParameterValueEditorOnly(InstanceParameterInfo.ParameterInfo, Value); \
 			} \
 		} \
 	}
@@ -159,41 +165,37 @@ inline void CopyInstanceParameters(const TArray<UMaterialInstanceConstant*>& Fro
 #undef IMPL
 
 	FStaticParameterSet Values;
-	for (int32 Index = 0; Index < Froms.Num(); Index++)
+	for (auto& Instance : InstancesToCopyFrom)
 	{
-		auto* From = Froms[Index];
-		auto& Suffix = Suffixes[Index];
-
 		FStaticParameterSet TmpValues;
-		From->GetStaticParameterValues(TmpValues);
+		Instance.Instance->GetStaticParameterValues(TmpValues);
 
 		for (auto& Parameter : TmpValues.StaticSwitchParameters)
 		{
-			AddSuffixToInfo(Parameter.ParameterInfo, Suffix);
+			AddPrefixToInfo(Parameter.ParameterInfo, Instance.Suffix);
 		}
 		Values.StaticSwitchParameters.Append(TmpValues.StaticSwitchParameters);
 
 		for (auto& Parameter : TmpValues.StaticComponentMaskParameters)
 		{
-			AddSuffixToInfo(Parameter.ParameterInfo, Suffix);
+			AddPrefixToInfo(Parameter.ParameterInfo, Instance.Suffix);
 		}
 		Values.StaticComponentMaskParameters.Append(TmpValues.StaticComponentMaskParameters);
 
 		for (auto& Parameter : TmpValues.TerrainLayerWeightParameters)
 		{
-			AddSuffixToInfo(Parameter.ParameterInfo, Suffix);
+			AddPrefixToInfo(Parameter.ParameterInfo, Instance.Suffix);
 		}
 		Values.TerrainLayerWeightParameters.Append(TmpValues.TerrainLayerWeightParameters);
 
 		for (auto& Parameter : TmpValues.MaterialLayersParameters)
 		{
-			AddSuffixToInfo(Parameter.ParameterInfo, Suffix);
+			AddPrefixToInfo(Parameter.ParameterInfo, Instance.Suffix);
 		}
 		Values.MaterialLayersParameters.Append(TmpValues.MaterialLayersParameters);
 	}
-	Values.StaticSwitchParameters.Append(StaticSwitchParameters);
+
 	To->UpdateStaticPermutation(Values);
-	To->ForceRecompileForRendering();
 }
 
 inline TArray<uint8> GetIndices(UVoxelMaterialCollection* Collection)
@@ -304,6 +306,14 @@ struct FDoubleMaterial
 	UMaterialFunction* A;
 	UMaterialFunction* B;
 
+	FDoubleMaterial(UMaterialFunction* X, UMaterialFunction* Y)
+	{
+		TArray<UMaterialFunction*, TFixedAllocator<2>> Array = { X, Y };
+		Array.Sort([](UMaterialFunction& U, UMaterialFunction& V) { return &U < &V; });
+		A = Array[0];
+		B = Array[1];
+	}
+	
 	inline bool operator==(const FDoubleMaterial& Other) const
 	{
 		return A == Other.A && B == Other.B;
@@ -316,6 +326,15 @@ struct FTripleMaterial
 	UMaterialFunction* B;
 	UMaterialFunction* C;
 
+	FTripleMaterial(UMaterialFunction* X, UMaterialFunction* Y, UMaterialFunction* Z)
+	{
+		TArray<UMaterialFunction*, TFixedAllocator<3>> Array = { X, Y, Z };
+		Array.Sort([](UMaterialFunction& U, UMaterialFunction& V) { return &U < &V; });
+		A = Array[0];
+		B = Array[1];
+		C = Array[2];
+	}
+	
 	inline bool operator==(const FTripleMaterial& Other) const
 	{
 		return A == Other.A && B == Other.B && C == Other.C;
@@ -338,6 +357,8 @@ struct FVoxelIntermediateMaterialsHolder
 	TMap<FTripleMaterial, UMaterial*> TripleMaterials;
 
 	TArray<FVoxelIntermediateMaterial> IntermediateMaterials;
+
+	TArray<UMaterial*> GeneratedMaterials;
 
 	UVoxelMaterialCollection* const Collection;
 	FString const Suffix;
@@ -369,6 +390,13 @@ struct FVoxelIntermediateMaterialsHolder
 	}
 	~FVoxelIntermediateMaterialsHolder()
 	{
+		FMaterialUpdateContext Context;
+		for (auto* Material : GeneratedMaterials)
+		{
+			Context.AddMaterial(Material);
+			Material->PostEditChange();
+			Material->ForceRecompileForRendering();
+		}
 		Package->SetDirtyFlag(true);
 		Collection->GetOutermost()->SetDirtyFlag(true);
 		UEditorLoadingAndSavingUtils::SavePackages({ Collection->GetOutermost(), Package }, false);
@@ -376,34 +404,37 @@ struct FVoxelIntermediateMaterialsHolder
 
 	bool GenerateSingleMaterials()
 	{
-		CreateGenerated(GetGenerated().GeneratedSingleMaterials);
+		GetGenerated().GeneratedSingleMaterials = CreateRefHolder<UVoxelMaterialCollectionSingleRefHolder>();
 
 		for (auto& Material : Collection->Materials)
 		{
 			// First duplicate the template
 			UMaterial* MaterialTemplate = DuplicateTemplate(Collection->SingleMaterialTemplate, Material.MaterialFunction->GetName());
 			check(MaterialTemplate);
+			GeneratedMaterials.Add(MaterialTemplate);
 
 			// Then replace the template function
-			if (!ReplaceFunction(MaterialTemplate, { {"INPUT", Material.MaterialFunction } }, OutError))
+			// Duplicate to keep all refs inside the generated materials (w/e)
+			UMaterialFunction* const Function = DuplicateFunction(Material.MaterialFunction, "");
+			if (!ReplaceFunction("Single Template", MaterialTemplate, { {"INPUT", Function } }, OutError))
 			{
 				return false;
 			}
 
 			if (Material.Children.Num() == 0)
 			{
-				MaterialTemplate->PhysMaterial = Material.PhysicalMaterial;
-				AddSingleMaterial(Material.Index, MaterialTemplate);
+				// Always create an instance to copy parameters
+				UMaterialInstanceConstant* Instance = CreateMaterialInstance("Single_" + Material.MaterialFunction->GetName(), MaterialTemplate);
+				Instance->PhysMaterial = Material.PhysicalMaterial;
+				AddSingleMaterial(Material.Index, Instance);
 			}
 			else
 			{
 				for (auto& Child : Material.Children)
 				{
 					UMaterialInstanceConstant* Instance = CreateMaterialInstance("Single_" + Child.MaterialInstance->GetName(), MaterialTemplate);
-					
-					TArray<FStaticSwitchParameter> StaticSwitchParameters;
-					StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo(GetIsTessellationEnabledName("")), bEnableTessellation, true, FGuid()));
-					CopyInstanceParameters({ Child.MaterialInstance }, Instance, { "" }, StaticSwitchParameters);
+
+					CopyInstancesParameters({ { Child.MaterialInstance, "" } }, Instance);
 
 					Instance->PhysMaterial = Child.PhysicalMaterial;
 					AddSingleMaterial(Child.InstanceIndex, Instance);
@@ -415,8 +446,9 @@ struct FVoxelIntermediateMaterialsHolder
 
 	bool GenerateDoubleMaterials()
 	{
-		CreateGenerated(GetGenerated().GeneratedDoubleMaterials);
+		GetGenerated().GeneratedDoubleMaterials = CreateRefHolder<UVoxelMaterialCollectionDoubleRefHolder>();
 
+		// Create the master materials
 		auto& Materials = Collection->Materials;
 		for (int32 IndexA = 0; IndexA < Materials.Num(); IndexA++)
 		{
@@ -432,16 +464,18 @@ struct FVoxelIntermediateMaterialsHolder
 				}
 
 				// First duplicate the template
-				UMaterial* MaterialTemplate = DuplicateTemplate(Collection->DoubleMaterialTemplate,
+				const FString TemplateSuffix = 
 					"_" + MaterialA.MaterialFunction->GetName() +
-					"_" + MaterialB.MaterialFunction->GetName());
+					"_" + MaterialB.MaterialFunction->GetName();
+				UMaterial* const MaterialTemplate = DuplicateTemplate(Collection->DoubleMaterialTemplate, TemplateSuffix);
 				check(MaterialTemplate);
+				GeneratedMaterials.Add(MaterialTemplate);
 
-				auto* FunctionA = DuplicateFunction(MaterialA.MaterialFunction, "INPUT0_");
-				auto* FunctionB = DuplicateFunction(MaterialB.MaterialFunction, "INPUT1_");
+				UMaterialFunction* const FunctionA = DuplicateFunction(MaterialA.MaterialFunction, "INPUT0_");
+				UMaterialFunction* const FunctionB = DuplicateFunction(MaterialB.MaterialFunction, "INPUT1_");
 
 				// Then replace the template functions
-				if (!ReplaceFunction(MaterialTemplate, { {"INPUT0", FunctionA } , {"INPUT1", FunctionB} }, OutError))
+				if (!ReplaceFunction("Double Template", MaterialTemplate, { {"INPUT0", FunctionA } , {"INPUT1", FunctionB } }, OutError))
 				{
 					return false;
 				}
@@ -451,56 +485,32 @@ struct FVoxelIntermediateMaterialsHolder
 			}
 		}
 
+		// Create instances
 		for (int32 IndexA = 0; IndexA < IntermediateMaterials.Num(); IndexA++)
 		{
 			for (int32 IndexB = 0; IndexB < IndexA; IndexB++)
 			{
-				auto* MaterialAPtr = &IntermediateMaterials[IndexA];
-				auto* MaterialBPtr = &IntermediateMaterials[IndexB];
+				const auto& MaterialA = IntermediateMaterials[IndexA];
+				const auto& MaterialB = IntermediateMaterials[IndexB];
+				UMaterialInterface* const Material = DoubleMaterials.FindChecked({ MaterialA.Parent, MaterialB.Parent });
 
-				auto** MaterialPtr = DoubleMaterials.Find({ MaterialAPtr->Parent, MaterialBPtr->Parent });
-				if (!MaterialPtr)
-				{
-					Swap(MaterialAPtr, MaterialBPtr);
-					MaterialPtr = DoubleMaterials.Find({ MaterialAPtr->Parent, MaterialBPtr->Parent });
-				}
+				const FString Name = "Double_" + MaterialA.GetName() + "_" + MaterialB.GetName();
+				UMaterialInstanceConstant* const Instance = CreateMaterialInstance(Name, Material);
 
-				auto* Material = *MaterialPtr;
-				check(Material);
-				auto& MaterialA = *MaterialAPtr;
-				auto& MaterialB = *MaterialBPtr;
-
-				int32 I = FMath::Min(MaterialA.Index, MaterialB.Index);
-				int32 J = FMath::Max(MaterialA.Index, MaterialB.Index);
-				auto DoubleIndex = FVoxelMaterialCollectionDoubleIndex(I, J);
-
-				UMaterialInstanceConstant* Instance = CreateMaterialInstance("Double_" + MaterialA.GetName() + "_" + MaterialB.GetName(), Material);
-
-				TArray<UMaterialInstanceConstant*> Instances;
-				TArray<FString> Suffixes;
+				TArray<FInstanceWithSuffix> Instances;
 				if (MaterialA.IsInstance())
 				{
-					Instances.Add(MaterialA.Instance);
-					Suffixes.Add("INPUT0_");
+					Instances.Add({ MaterialA.Instance, "INPUT0_" });
 				}
 				if (MaterialB.IsInstance())
 				{
-					Instances.Add(MaterialB.Instance);
-					Suffixes.Add("INPUT1_");
+					Instances.Add({ MaterialB.Instance, "INPUT1_" });
 				}
 
-				TArray<FStaticSwitchParameter> StaticSwitchParameters;
-				for (auto& ParamSuffix : Suffixes)
-				{
-					StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo(GetIsTessellationEnabledName(ParamSuffix)), bEnableTessellation, true, FGuid()));
-				}
-				StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo("INPUT0IsA"), MaterialA.Index == I, true, FGuid()));
-				StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo("INPUT0IsB"), MaterialA.Index == J, true, FGuid()));
-
-				CopyInstanceParameters(Instances, Instance, Suffixes, StaticSwitchParameters);
+				CopyInstancesParameters(Instances, Instance);
 
 				Instance->PhysMaterial = MaterialA.PhysicalMaterial;
-				AddDoubleMaterial(DoubleIndex, Instance);
+				AddDoubleMaterial({ MaterialA.Index, MaterialB.Index }, Instance);
 			}
 		}
 
@@ -509,8 +519,9 @@ struct FVoxelIntermediateMaterialsHolder
 
 	bool GenerateTripleMaterials()
 	{
-		CreateGenerated(GetGenerated().GeneratedTripleMaterials);
+		GetGenerated().GeneratedTripleMaterials = CreateRefHolder<UVoxelMaterialCollectionTripleRefHolder>();
 
+		// Create the master materials
 		auto& Materials = Collection->Materials;
 		for (int32 IndexA = 0; IndexA < Materials.Num(); IndexA++)
 		{
@@ -529,18 +540,27 @@ struct FVoxelIntermediateMaterialsHolder
 					}
 
 					// First duplicate the template
-					UMaterial* MaterialTemplate = DuplicateTemplate(Collection->TripleMaterialTemplate,
+					const FString TemplateSuffix  = 
 						"_" + MaterialA.MaterialFunction->GetName() +
 						"_" + MaterialB.MaterialFunction->GetName() +
-						"_" + MaterialC.MaterialFunction->GetName());
+						"_" + MaterialC.MaterialFunction->GetName();
+					UMaterial* MaterialTemplate = DuplicateTemplate(Collection->TripleMaterialTemplate, TemplateSuffix);
 					check(MaterialTemplate);
+					GeneratedMaterials.Add(MaterialTemplate);
 
 					auto* FunctionA = DuplicateFunction(MaterialA.MaterialFunction, "INPUT0_");
 					auto* FunctionB = DuplicateFunction(MaterialB.MaterialFunction, "INPUT1_");
 					auto* FunctionC = DuplicateFunction(MaterialC.MaterialFunction, "INPUT2_");
 
 					// Then replace the template functions
-					if (!ReplaceFunction(MaterialTemplate, { {"INPUT0", FunctionA } , {"INPUT1", FunctionB}, {"INPUT2", FunctionC} }, OutError))
+					if (!ReplaceFunction(
+						"Triple Template", 
+						MaterialTemplate, 
+						{
+							{"INPUT0", FunctionA },
+							{"INPUT1", FunctionB },
+							{"INPUT2", FunctionC }
+						}, OutError))
 					{
 						return false;
 					}
@@ -551,85 +571,41 @@ struct FVoxelIntermediateMaterialsHolder
 			}
 		}
 
+		// Create instances
 		for (int32 IndexA = 0; IndexA < IntermediateMaterials.Num(); IndexA++)
 		{
 			for (int32 IndexB = 0; IndexB < IndexA; IndexB++)
 			{
 				for (int32 IndexC = 0; IndexC < IndexB; IndexC++)
 				{
-					auto* APtr = &IntermediateMaterials[IndexA];
-					auto* BPtr = &IntermediateMaterials[IndexB];
-					auto* CPtr = &IntermediateMaterials[IndexC];
-
-					auto* AOPtr = APtr;
-					auto* BOPtr = BPtr;
-					auto* COPtr = CPtr;
-					UMaterial** MaterialPtr = nullptr;
-
-#define IMPL(X, Y, Z) \
-					if (!MaterialPtr) \
-					{ \
-						APtr = X##OPtr; \
-						BPtr = Y##OPtr; \
-						CPtr = Z##OPtr; \
-						MaterialPtr = TripleMaterials.Find({ APtr->Parent, BPtr->Parent, CPtr->Parent }); \
-					}
-					IMPL(A, B, C);
-					IMPL(A, C, B);
-					IMPL(B, A, C);
-					IMPL(B, C, A);
-					IMPL(C, A, B);
-					IMPL(C, B, A);
-#undef IMPL
-
-					auto* Material = *MaterialPtr;
+					auto& MaterialA = IntermediateMaterials[IndexA];
+					auto& MaterialB = IntermediateMaterials[IndexB];
+					auto& MaterialC = IntermediateMaterials[IndexC];
+					
+					UMaterial* Material = TripleMaterials.FindChecked({ MaterialA.Parent, MaterialB.Parent, MaterialC.Parent });
 					check(Material);
-					auto& MaterialA = *APtr;
-					auto& MaterialB = *BPtr;
-					auto& MaterialC = *CPtr;
 
-					int32 I = FMath::Min(MaterialA.Index, FMath::Min(MaterialB.Index, MaterialC.Index));
-					int32 K = FMath::Max(MaterialA.Index, FMath::Max(MaterialB.Index, MaterialC.Index));
-					int32 J = MaterialA.Index + MaterialB.Index + MaterialC.Index - I - K;
+					const FString Name = "Triple_" + MaterialA.GetName() + "_" + MaterialB.GetName() + "_" + MaterialC.GetName();
+					UMaterialInstanceConstant* Instance = CreateMaterialInstance(Name, Material);
 
-					auto TripleIndex = FVoxelMaterialCollectionTripleIndex(I, J, K);
-
-					UMaterialInstanceConstant* Instance = CreateMaterialInstance("Triple_" + MaterialA.GetName() + "_" + MaterialB.GetName() + "_" + MaterialC.GetName(), Material);
-
-					TArray<UMaterialInstanceConstant*> Instances;
-					TArray<FString> Suffixes;
+					TArray<FInstanceWithSuffix> Instances;
 					if (MaterialA.IsInstance())
 					{
-						Instances.Add(MaterialA.Instance);
-						Suffixes.Add("INPUT0_");
+						Instances.Add({ MaterialA.Instance, "INPUT0_" });
 					}
 					if (MaterialB.IsInstance())
 					{
-						Instances.Add(MaterialB.Instance);
-						Suffixes.Add("INPUT1_");
+						Instances.Add({ MaterialB.Instance, "INPUT1_" });
 					}
 					if (MaterialC.IsInstance())
 					{
-						Instances.Add(MaterialC.Instance);
-						Suffixes.Add("INPUT2_");
+						Instances.Add({ MaterialC.Instance, "INPUT2_" });
 					}
 
-					TArray<FStaticSwitchParameter> StaticSwitchParameters;
-					for (auto& ParamSuffix : Suffixes)
-					{
-						StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo(GetIsTessellationEnabledName(ParamSuffix)), bEnableTessellation, true, FGuid()));
-					}
-					StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo("INPUT0IsA"), MaterialA.Index == I, true, FGuid()));
-					StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo("INPUT0IsB"), MaterialA.Index == J, true, FGuid()));
-					StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo("INPUT0IsC"), MaterialA.Index == K, true, FGuid()));
-					StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo("INPUT1IsA"), MaterialB.Index == I, true, FGuid()));
-					StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo("INPUT1IsB"), MaterialB.Index == J, true, FGuid()));
-					StaticSwitchParameters.Add(FStaticSwitchParameter(FMaterialParameterInfo("INPUT1IsC"), MaterialB.Index == K, true, FGuid()));
-
-					CopyInstanceParameters(Instances, Instance, Suffixes, StaticSwitchParameters);
+					CopyInstancesParameters(Instances, Instance);
 
 					Instance->PhysMaterial = MaterialA.PhysicalMaterial;
-					AddTripleMaterial(TripleIndex, Instance);
+					AddTripleMaterial({ MaterialA.Index, MaterialB.Index, MaterialC.Index }, Instance);
 				}
 			}
 		}
@@ -638,46 +614,75 @@ struct FVoxelIntermediateMaterialsHolder
 	}
 
 private:
-	inline FVoxelMaterialCollectionGenerated& GetGenerated()
+	inline FVoxelMaterialCollectionGenerated& GetGenerated() const
 	{
 		return bEnableTessellation ? Collection->GeneratedMaterialsTess : Collection->GeneratedMaterials;
 	}
 
 	inline void AddSingleMaterial(uint8 Index, UMaterialInterface* Material)
 	{
+		FMaterialUpdateContext Context;
+		Context.AddMaterialInterface(Material);
+		Material->PostEditChange();
+		Material->ForceRecompileForRendering();
 		GetGenerated().GeneratedSingleMaterials->Map.Add(Index, Material);
 	}
 	inline void AddDoubleMaterial(FVoxelMaterialCollectionDoubleIndex Index, UMaterialInterface* Material)
 	{
+		FMaterialUpdateContext Context;
+		Context.AddMaterialInterface(Material);
+		Material->PostEditChange();
+		Material->ForceRecompileForRendering();
+
+		const int32 I = FMath::Min(Index.I, Index.J);
+		const int32 J = FMath::Max(Index.I, Index.J);
+
+		GetGenerated().GeneratedDoubleMaterials->SortedIndexMap.Add({ I, J }, Index);
 		GetGenerated().GeneratedDoubleMaterials->Map.Add(Index, Material);
 	}
 	inline void AddTripleMaterial(FVoxelMaterialCollectionTripleIndex Index, UMaterialInterface* Material)
 	{
+		FMaterialUpdateContext Context;
+		Context.AddMaterialInterface(Material);
+		Material->PostEditChange();
+		Material->ForceRecompileForRendering();
+
+		const int32 I = FMath::Min3(Index.I, Index.J, Index.K);
+		const int32 K = FMath::Max3(Index.I, Index.J, Index.K);
+		const int32 J = Index.I + Index.J + Index.K - I - K;
+
+		GetGenerated().GeneratedTripleMaterials->SortedIndexMap.Add({ I, J, K }, Index);
 		GetGenerated().GeneratedTripleMaterials->Map.Add(Index, Material);
 	}
 
 	inline FString GetTessellationSuffix() const { return bEnableTessellation ? "_TESS" : ""; }
 
 	template<typename T>
-	inline void CreateGenerated(T*& Generated)
+	inline T* CreateRefHolder()
 	{
-		check(!Generated);
-		Generated = NewObject<T>(Package, FName(*(Suffix + "RefHolder" + GetTessellationSuffix())), RF_Public | RF_Standalone);
+		auto* Generated = NewObject<T>(Package, FName(*(Suffix + "RefHolder" + GetTessellationSuffix())), RF_Public | RF_Standalone);
 		FAssetRegistryModule::AssetCreated(Generated);
+		return Generated;
 	}
 
-	inline UMaterialInstanceConstant* CreateMaterialInstance(FString AssetName, UMaterialInterface* Parent)
+	inline UMaterialInstanceConstant* CreateMaterialInstance(FString AssetName, UMaterialInterface* Parent) const
 	{
 		auto* Factory = NewObject<UMaterialInstanceConstantFactoryNew>(GetTransientPackage());
 		check(Factory);
 		Factory->InitialParent = Parent;
-		auto* Result = Factory->FactoryCreateNew(UMaterialInstanceConstant::StaticClass(), Package, FName(*(AssetName + GetTessellationSuffix())), RF_NoFlags, NULL, GWarn);
+		auto* Result = CastChecked<UMaterialInstanceConstant>(Factory->FactoryCreateNew(UMaterialInstanceConstant::StaticClass(), Package, FName(*(AssetName + GetTessellationSuffix())), RF_NoFlags, NULL, GWarn));
 		FAssetRegistryModule::AssetCreated(Result);
 
-		return CastChecked<UMaterialInstanceConstant>(Result);
+		// Copy template parameters
+		if (Collection->TemplateInstanceParameters)
+		{
+			CopyInstancesParameters({ { Collection->TemplateInstanceParameters, "" } }, Result);
+		}
+		
+		return Result;
 	}
 
-	inline UMaterial* DuplicateTemplate(UMaterial* Template, const FString& InSuffix)
+	inline UMaterial* DuplicateTemplate(UMaterial* Template, const FString& InSuffix) const
 	{
 		FObjectDuplicationParameters Parameters(Template, Package);
 		Parameters.DestName = FName(*(Template->GetName() + "_" + InSuffix + GetTessellationSuffix()));
@@ -688,11 +693,11 @@ private:
 		
 		FPlatformMisc::CreateGuid(NewTemplate->StateId); // Clears the shader map, can lead to crashes if we don't do that
 		NewTemplate->D3D11TessellationMode = bEnableTessellation ? EMaterialTessellationMode::MTM_PNTriangles : EMaterialTessellationMode::MTM_NoTessellation;
-
+		
 		return NewTemplate;
 	}
 
-	inline UMaterialFunction* DuplicateFunction(UMaterialFunction* MaterialFunctionToDuplicate, const FString& Prefix)
+	inline UMaterialFunction* DuplicateFunction(UMaterialFunction* MaterialFunctionToDuplicate, const FString& Prefix) const
 	{
 		FObjectDuplicationParameters Parameters(MaterialFunctionToDuplicate, Package);
 		Parameters.DestName = FName(*(Prefix + MaterialFunctionToDuplicate->GetName() + GetTessellationSuffix()));
@@ -705,15 +710,15 @@ private:
 		{
 			if (auto* ParameterA = Cast<UMaterialExpressionParameter>(Expression))
 			{
-				ParameterA->ParameterName = FName(*(Prefix + ParameterA->ParameterName.ToString()));
+				AddPrefixToParameter(ParameterA->ParameterName, Prefix);
 			}
 			else if (auto* ParameterB = Cast<UMaterialExpressionTextureSampleParameter>(Expression))
 			{
-				ParameterB->ParameterName = FName(*(Prefix + ParameterB->ParameterName.ToString()));
+				AddPrefixToParameter(ParameterB->ParameterName, Prefix);
 			}
 			else if (auto* ParameterC = Cast<UMaterialExpressionFontSampleParameter>(Expression))
 			{
-				ParameterC->ParameterName = FName(*(Prefix + ParameterC->ParameterName.ToString()));
+				AddPrefixToParameter(ParameterC->ParameterName, Prefix);
 			}
 		}
 

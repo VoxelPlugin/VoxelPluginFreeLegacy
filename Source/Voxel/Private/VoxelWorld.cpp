@@ -1,37 +1,49 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelWorld.h"
 #include "VoxelWorldGenerator.h"
 #include "IVoxelPool.h"
-#include "VoxelDefaultPools.h"
+#include "VoxelSettings.h"
+#include "VoxelDefaultPool.h"
+#include "VoxelWorldRootComponent.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelRender/VoxelToolRendering.h"
 #include "VoxelRender/LODManager/VoxelDefaultLODManager.h"
-#include "VoxelRender/VoxelRenderFactory.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
-#include "VoxelData/VoxelCacheManager.h"
+#include "VoxelRender/VoxelMaterialCollection.h"
+#include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelSaveUtilities.h"
+#include "VoxelMultiplayer/VoxelMultiplayerTcp.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelTools/VoxelDataTools.h"
-#include "VoxelBlueprintErrors.h"
+#include "VoxelMessages.h"
+#include "VoxelPlaceableItems/VoxelPlaceableItemActor.h"
+#include "VoxelPlaceableItems/VoxelAssetActor.h"
+#include "VoxelPlaceableItems/VoxelDisableEditsBox.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
 #include "VoxelDebug/VoxelDebugManager.h"
-#include "VoxelMaterialCollection.h"
+#include "VoxelProcGen/VoxelProcGenManager.h"
 
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
+#include "Engine/NetDriver.h"
+#include "Engine/NetConnection.h"
 
 #include "Misc/MessageDialog.h"
 #include "Misc/FileHelper.h"
 #include "Misc/UObjectToken.h"
+#include "Misc/ScopedSlowTask.h"
+#include "Misc/FeedbackContext.h"
 #include "Components/BillboardComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
-#include "Components/BoxComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "HAL/PlatformFilemanager.h"
 #include "TimerManager.h"
+
+#include "Materials/Material.h"
 
 #include "Framework/Notifications/NotificationManager.h"
 #include "Framework/Application/SlateApplication.h"
@@ -41,77 +53,29 @@
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::Tick"), STAT_VoxelWorld_Tick, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateWorldInternal"), STAT_AVoxelWorld_CreateWorldInternal, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::DestroyWorldInternal"), STAT_AVoxelWorld_DestroyWorldInternal, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::DestroyVoxelComponents"), STAT_AVoxelWorld_DestroyVoxelComponents, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::LoadFromSaveObject"), STAT_AVoxelWorld_LoadFromSaveObject, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::ApplyPlaceableItems"), STAT_AVoxelWorld_ApplyPlaceableItems, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateMultiplayerManager"), STAT_AVoxelWorld_CreateMultiplayerManager, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateSpawnerManager"), STAT_AVoxelWorld_CreateSpawnerManager, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateCacheManager"), STAT_AVoxelWorld_CreateCacheManager, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateLODManager"), STAT_AVoxelWorld_CreateLODManager, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateRenderer"), STAT_AVoxelWorld_CreateRenderer, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreatePool"), STAT_AVoxelWorld_CreatePool, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateData"), STAT_AVoxelWorld_CreateData, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("AVoxelWorld::CreateDebugManager"), STAT_AVoxelWorld_CreateDebugManager, STATGROUP_Voxel);
-
-#define CHECK_IS_CREATED_IMPL(Name, ReturnValue) if (!IsCreated()) { FVoxelBPErrors::Error(FText::Format(LOCTEXT("VoxelWorldIsntCreated", "{}: Voxel World isn't created!"), FText::FromString(FString(Name)))); return ReturnValue; }
-#define CHECK_ISNT_CREATED_IMPL(Name, ReturnValue) if (IsCreated()) { FVoxelBPErrors::Error(FText::Format(LOCTEXT("VoxelWorldIsCreated", "{}: Voxel World is created!"), FText::FromString(FString(Name)))); return ReturnValue; }
+#define CHECK_IS_CREATED_IMPL(Name, ReturnValue) if (!IsCreated()) { FVoxelMessages::Error(FString::Printf(TEXT("%s: Voxel World isn't created!"), *FString(Name))); return ReturnValue; }
+#define CHECK_IS_NOT_CREATED_IMPL(Name, ReturnValue) if (IsCreated()) { FVoxelMessages::Error(FString::Printf(TEXT("%s: Voxel World is created!"), *FString(Name))); return ReturnValue; }
 
 #define CHECK_IS_CREATED() CHECK_IS_CREATED_IMPL(__FUNCTION__, {});
-#define CHECK_ISNT_CREATED() CHECK_ISNT_CREATED_IMPL(__FUNCTION__, {});
+#define CHECK_IS_NOT_CREATED() CHECK_IS_NOT_CREATED_IMPL(__FUNCTION__, {});
 
 #define CHECK_IS_CREATED_VOID() CHECK_IS_CREATED_IMPL(__FUNCTION__,);
-#define CHECK_ISNT_CREATED_VOID() CHECK_ISNT_CREATED_IMPL(__FUNCTION__,);
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-inline void FixWorldBoundsMinMax(int32& Min, int32& Max)
-{
-	if (Min >= Max)
-	{
-		if (Max > 0)
-		{
-			Min = Max - CHUNK_SIZE;
-		}
-		else
-		{
-			Max = Min + CHUNK_SIZE;
-		}
-	}
-}
-
-inline void FixWorldBounds(FIntBox& WorldBounds, int32 Depth)
-{
-	FixWorldBoundsMinMax(WorldBounds.Min.X, WorldBounds.Max.X);
-	FixWorldBoundsMinMax(WorldBounds.Min.Y, WorldBounds.Max.Y);
-	FixWorldBoundsMinMax(WorldBounds.Min.Z, WorldBounds.Max.Z);
-	if (!WorldBounds.IsMultipleOf(CHUNK_SIZE))
-	{
-		WorldBounds.MakeMultipleOfInclusive(CHUNK_SIZE);
-	}
-	WorldBounds = FVoxelUtilities::GetBoundsFromDepth<CHUNK_SIZE>(Depth).Overlap(WorldBounds);
-	check(WorldBounds.IsMultipleOf(CHUNK_SIZE));
-}
+#define CHECK_IS_NOT_CREATED_VOID() CHECK_IS_NOT_CREATED_IMPL(__FUNCTION__,);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 AVoxelWorld::AVoxelWorld()
-	: LODDynamicSettings(MakeShared<FVoxelLODDynamicSettings>())
+	: LODDynamicSettings(MakeVoxelShared<FVoxelLODDynamicSettings>())
+	, RendererDynamicSettings(MakeVoxelShared<FVoxelRendererDynamicSettings>())
 {
+	MultiplayerInterface = UVoxelMultiplayerTcpInterface::StaticClass();
+	
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bHighPriority = true;
-	RootComponent = CreateDefaultSubobject<USceneComponent>("Root");
 
-	auto* Box = CreateDefaultSubobject<UBoxComponent>("VoxelWorldPrimitiveComponent");
-	Box->SetBoxExtent(FVector::ZeroVector, false);
-	Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	PrimitiveComponent = Box;
+	RootComponent = WorldRoot = CreateDefaultSubobject<UVoxelWorldRootComponent>("Root");
 
 #if WITH_EDITOR
 	auto* SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
@@ -119,11 +83,11 @@ AVoxelWorld::AVoxelWorld()
 	{
 		static ConstructorHelpers::FObjectFinder<UTexture2D> SpriteFinder(TEXT("/Engine/EditorResources/S_Terrain"));
 		SpriteComponent->Sprite = SpriteFinder.Object;
-		SpriteComponent->RelativeScale3D = FVector(0.5f, 0.5f, 0.5f);
+		SpriteComponent->SetRelativeScale3D(FVector(0.5f));
 		SpriteComponent->bHiddenInGame = true;
 		SpriteComponent->bIsScreenSizeScaled = true;
 		SpriteComponent->SpriteInfo.Category = TEXT("Voxel World");
-		SpriteComponent->SpriteInfo.DisplayName = LOCTEXT("VoxelWorld", "Voxel World");
+		SpriteComponent->SpriteInfo.DisplayName = FText::FromString("Voxel World");
 		SpriteComponent->SetupAttachment(RootComponent);
 		SpriteComponent->bReceivesDecals = false;
 	}
@@ -141,21 +105,35 @@ AVoxelWorld::~AVoxelWorld()
 
 void AVoxelWorld::CreateWorld()
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	if (IsCreated())
 	{
-		FVoxelBPErrors::Error(LOCTEXT("CantCreateWorld", "Can't create world: already created"));
+		FVoxelMessages::Error("Can't create world: already created");
 		return;
 	}
-	bIsPreviewing = false;
+
+#if WITH_EDITOR
+	if (GetWorld()->WorldType == EWorldType::Editor ||
+		GetWorld()->WorldType == EWorldType::EditorPreview)
+	{
+		// Called in editor - probably by a BP construction script
+		// Forward to CreateInEditor
+		CreateInEditor();
+		return;
+	}
+#endif
+	
+	PlayType = EVoxelPlayType::Game;
 	CreateWorldInternal();
 	if (bUseCameraIfNoInvokersFound && UVoxelInvokerComponent::GetInvokers(GetWorld()).Num() == 0)
 	{
-		auto NetMode = GetWorld()->GetNetMode();
+		const auto NetMode = GetWorld()->GetNetMode();
 		if (NetMode != ENetMode::NM_Standalone)
 		{
 			if (NetMode != ENetMode::NM_DedicatedServer) // Not spawned yet
 			{
-				FVoxelBPErrors::Warning(LOCTEXT("CantUseCameraAsInvokerInMultiplayer", "Voxel World: Can't use camera as invoker in multiplayer! You need to add a VoxelInvokerComponent to your character"));
+				FVoxelMessages::Warning("Voxel World: Can't use camera as invoker in multiplayer! You need to add a VoxelInvokerComponent to your character");
 			}
 		}
 		else
@@ -171,9 +149,11 @@ void AVoxelWorld::CreateWorld()
 
 void AVoxelWorld::DestroyWorld()
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	if (!IsCreated())
 	{
-		FVoxelBPErrors::Error(LOCTEXT("CantDestroyWorld", "Can't destroy world: not created"));
+		FVoxelMessages::Error("Can't destroy world: not created");
 		return;
 	}
 
@@ -188,7 +168,22 @@ void AVoxelWorld::DestroyWorld()
 
 FVoxelWorldGeneratorInit AVoxelWorld::GetInitStruct() const
 {
-	return FVoxelWorldGeneratorInit(Seeds, VoxelSize);
+	return FVoxelWorldGeneratorInit(Seeds, VoxelSize, FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(OctreeDepth), MaterialConfig, MaterialCollection, this);
+}
+
+FIntBox AVoxelWorld::GetWorldBounds() const
+{
+	if (bUseCustomWorldBounds)
+	{
+		return 
+			FVoxelUtilities::GetCustomBoundsForDepth<RENDER_CHUNK_SIZE>(
+				FIntBox::SafeConstruct(CustomWorldBounds.Min, CustomWorldBounds.Max), 
+				OctreeDepth);
+	}
+	else
+	{
+		return FVoxelUtilities::GetBoundsFromDepth<RENDER_CHUNK_SIZE>(OctreeDepth);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -197,69 +192,47 @@ FVoxelWorldGeneratorInit AVoxelWorld::GetInitStruct() const
 
 void AVoxelWorld::SetOctreeDepth(int32 NewDepth)
 {
-	CHECK_ISNT_CREATED_VOID();
+	CHECK_IS_NOT_CREATED_VOID();
 	OctreeDepth = FVoxelUtilities::ClampDataDepth(NewDepth);
-	WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(NewDepth);
+	WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(OctreeDepth);
 }
 
 void AVoxelWorld::SetWorldGeneratorObject(UVoxelWorldGenerator* NewGenerator)
 {
-	CHECK_ISNT_CREATED_VOID();
+	CHECK_IS_NOT_CREATED_VOID();
 	WorldGenerator.Type = EVoxelWorldGeneratorPickerType::Object;
 	WorldGenerator.WorldGeneratorObject = NewGenerator;
 }
 
 void AVoxelWorld::SetWorldGeneratorClass(TSubclassOf<UVoxelWorldGenerator> NewGeneratorClass)
 {
-	CHECK_ISNT_CREATED_VOID();
+	CHECK_IS_NOT_CREATED_VOID();
 	WorldGenerator.Type = EVoxelWorldGeneratorPickerType::Class;
 	WorldGenerator.WorldGeneratorClass = NewGeneratorClass;
 }
 
-void AVoxelWorld::AddSeeds(const TMap<FString, int32>& NewSeeds)
-{
-	CHECK_ISNT_CREATED_VOID();
-	Seeds.Append(NewSeeds);
-}
-
-void AVoxelWorld::AddSeed(FString Name, int32 Value)
-{
-	CHECK_ISNT_CREATED_VOID();
-	Seeds.Add(Name, Value);
-}
-
-void AVoxelWorld::ClearSeeds()
-{
-	CHECK_ISNT_CREATED_VOID();
-	Seeds.Reset();
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntVector AVoxelWorld::GlobalToLocal(const FVector& Position) const
+FIntVector AVoxelWorld::GlobalToLocal(const FVector& Position, EVoxelWorldCoordinatesRounding Rounding) const
 {
-	FVector P = GetTransform().InverseTransformPosition(Position) / VoxelSize;
-
-	FIntVector LocalPosition;
-
-	switch (RenderType)
+	if (RenderType == EVoxelRenderType::Cubic)
 	{
-	case EVoxelRenderType::Cubic:
-	{
-		LocalPosition = FIntVector(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z));
-		break;
-	}
-	case EVoxelRenderType::MarchingCubes:
-	default:
-	{
-		LocalPosition = FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
-		break;
-	}
+		Rounding = EVoxelWorldCoordinatesRounding::RoundDown;
 	}
 
-	return LocalPosition - *WorldOffset;
+	const FVector LocalPosition = GetTransform().InverseTransformPosition(Position) / VoxelSize;
+
+	FIntVector VoxelPosition;
+	switch (Rounding)
+	{
+	case EVoxelWorldCoordinatesRounding::RoundToNearest: VoxelPosition = FVoxelUtilities::RoundToInt(LocalPosition); break;
+	case EVoxelWorldCoordinatesRounding::RoundUp: VoxelPosition = FVoxelUtilities::CeilToInt(LocalPosition); break;
+	case EVoxelWorldCoordinatesRounding::RoundDown: VoxelPosition = FVoxelUtilities::FloorToInt(LocalPosition); break;
+	default: ensure(false);
+	}
+	return VoxelPosition - *WorldOffset;
 }
 
 FVector AVoxelWorld::GlobalToLocalFloat(const FVector& Position) const
@@ -279,33 +252,47 @@ FVector AVoxelWorld::LocalToGlobalFloat(const FVector& Position) const
 
 TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition) const
 {
-	FVector P = GlobalToLocalFloat(GlobalPosition);
-	return TArray<FIntVector>({
-		FIntVector(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z)),
-		FIntVector(FMath::CeilToInt(P.X) , FMath::FloorToInt(P.Y), FMath::FloorToInt(P.Z)),
-		FIntVector(FMath::FloorToInt(P.X), FMath::CeilToInt(P.Y) , FMath::FloorToInt(P.Z)),
-		FIntVector(FMath::CeilToInt(P.X) , FMath::CeilToInt(P.Y) , FMath::FloorToInt(P.Z)),
-		FIntVector(FMath::FloorToInt(P.X), FMath::FloorToInt(P.Y), FMath::CeilToInt(P.Z)),
-		FIntVector(FMath::CeilToInt(P.X) , FMath::FloorToInt(P.Y), FMath::CeilToInt(P.Z)),
-		FIntVector(FMath::FloorToInt(P.X), FMath::CeilToInt(P.Y) , FMath::CeilToInt(P.Z)),
-		FIntVector(FMath::CeilToInt(P.X) , FMath::CeilToInt(P.Y) , FMath::CeilToInt(P.Z))
-		});
+	return TArray<FIntVector>(FVoxelUtilities::GetNeighbors(GlobalToLocalFloat(GlobalPosition)));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+void AVoxelWorld::SetOffset(const FIntVector& OffsetInVoxels)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_IS_CREATED_VOID();
+
+	*WorldOffset = OffsetInVoxels;
+	Renderer->RecomputeMeshPositions();
+}
+
 void AVoxelWorld::AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_IS_CREATED_VOID();
 
 	if (bMoveActor)
 	{
 		SetActorLocation(GetTransform().TransformPosition(VoxelSize * FVector(OffsetInVoxels)));
 	}
-	*WorldOffset -= OffsetInVoxels;
-	Renderer->RecomputeMeshPositions();
+
+	SetOffset(*WorldOffset - OffsetInVoxels);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelMultiplayerInterface* AVoxelWorld::CreateMultiplayerInterfaceInstance()
+{
+	VOXEL_PRO_ONLY();
+}
+
+UVoxelMultiplayerInterface* AVoxelWorld::GetMultiplayerInterfaceInstance() const
+{
+	VOXEL_PRO_ONLY();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -314,6 +301,8 @@ void AVoxelWorld::AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor)
 
 void AVoxelWorld::BeginPlay()
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	Super::BeginPlay();
 
 	UpdateCollisionProfile();
@@ -328,38 +317,42 @@ void AVoxelWorld::BeginPlay()
 
 void AVoxelWorld::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	Super::EndPlay(EndPlayReason);
 
 	if (IsCreated())
 	{
 		DestroyWorld();
 	}
-
-	if (EndPlayReason == EEndPlayReason::EndPlayInEditor)
-	{
-		IVoxelPool::DestroyGlobalVoxelPool();
-	}
 }
 
 void AVoxelWorld::Tick(float DeltaTime)
 {
-	SCOPE_CYCLE_COUNTER(STAT_VoxelWorld_Tick);
+	VOXEL_FUNCTION_COUNTER();
 
-	Super::Tick(DeltaTime);
+	if (GetWorld()->WorldType != EWorldType::Editor && GetWorld()->WorldType != EWorldType::EditorPreview) // We don't want to tick the BP in preview
+	{
+		Super::Tick(DeltaTime);
+	}
 
 	if (IsCreated())
 	{
-		DebugManager->Tick(DeltaTime, this);
-		if (bIsPreviewing && Data->IsDirty())
+		WorldRoot->TickWorldRoot();
+#if WITH_EDITOR
+		if (PlayType == EVoxelPlayType::Preview && Data->IsDirty())
 		{
 			MarkPackageDirty();
 		}
+#endif
 	}
 }
 
 void AVoxelWorld::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
 {
-	if (!IsCreated() || !bEnableWorldRebasing)
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!IsCreated() || !bEnableCustomWorldRebasing)
 	{
 		Super::ApplyWorldOffset(InOffset, bWorldShift);
 	}
@@ -367,7 +360,7 @@ void AVoxelWorld::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
 	{
 		const FVector RelativeOffset = InOffset / VoxelSize;
 		const FIntVector IntegerOffset = FVoxelUtilities::RoundToInt(RelativeOffset);
-		const FVector GlobalIntegerOffset = (FVector)IntegerOffset * VoxelSize;
+		const FVector GlobalIntegerOffset = FVector(IntegerOffset) * VoxelSize;
 		const FVector Diff = InOffset - GlobalIntegerOffset;
 
 		Super::ApplyWorldOffset(Diff, bWorldShift);
@@ -381,11 +374,16 @@ void AVoxelWorld::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
 void AVoxelWorld::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	
+
 #if WITH_EDITOR
-	if (bAutomaticallyToggle && !IsCreated())
+	if (bIsToggled &&
+		!IsCreated() &&
+		!GetDefault<UVoxelSettings>()->bDisableAutoPreview &&
+		(GetWorld()->WorldType == EWorldType::EditorPreview ||
+			GetWorld()->WorldType == EWorldType::Editor ||
+			GetWorld()->WorldType == EWorldType::GamePreview))
 	{
-		CreateForPreview();
+		CreateInEditor();
 	}
 #endif
 }
@@ -411,12 +409,14 @@ bool AVoxelWorld::ShouldTickIfViewportsOnly() const
 
 void AVoxelWorld::BeginDestroy()
 {
-	Super::BeginDestroy();
-
 	if (IsCreated())
 	{
 		DestroyWorld();
 	}
+
+	// Forward to BeginDestroy AFTER destroying the world, else the components are invalid
+	// Note: when exiting the components are still invalid. This doesn't seem to be really useful, but might as well do it here still
+	Super::BeginDestroy();
 }
 
 void AVoxelWorld::Serialize(FArchive& Ar)
@@ -439,9 +439,16 @@ void AVoxelWorld::PostLoad()
 		ProcMeshClass = UVoxelProceduralMeshComponent::StaticClass();
 	}
 
+	FVoxelDefaultPool::FixPriorityCategories(PriorityCategories);
+	FVoxelDefaultPool::FixPriorityOffsets(PriorityOffsets);
+
 	OctreeDepth = FVoxelUtilities::ClampDataDepth(OctreeDepth);
-	WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(OctreeDepth);
-	MaxCacheSizeInMB = FVoxelDataCellUtilities::GetCacheSizeInMB(MaxCacheSize);
+	WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(OctreeDepth);
+
+	if (int32(UVConfig) >= int32(EVoxelUVConfig::Max))
+	{
+		UVConfig = EVoxelUVConfig::GlobalUVs;
+	}
 }
 
 #if WITH_EDITOR
@@ -455,8 +462,6 @@ void AVoxelWorld::PreEditChange(UProperty* PropertyThatWillChange)
 
 void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {	
-	MaxCacheSizeInMB = FVoxelDataCellUtilities::GetCacheSizeInMB(MaxCacheSize);
-	
 	if (!ProcMeshClass)
 	{
 		ProcMeshClass = UVoxelProceduralMeshComponent::StaticClass();
@@ -464,18 +469,18 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 
 	if (auto* Property = PropertyChangedEvent.MemberProperty)
 	{
-		FName Name = Property->GetFName();
-		if (Name == GET_MEMBER_NAME_CHECKED(AVoxelWorld, OctreeDepth))
+		const FName Name = Property->GetFName();
+		if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, OctreeDepth))
 		{
 			OctreeDepth = FVoxelUtilities::ClampDataDepth(OctreeDepth);
-			WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(OctreeDepth);
+			WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(OctreeDepth);
 		}
-		else if (Name == GET_MEMBER_NAME_CHECKED(AVoxelWorld, WorldSizeInVoxel))
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, WorldSizeInVoxel))
 		{
-			OctreeDepth = FVoxelUtilities::ClampDataDepth(FVoxelUtilities::GetDepthFromSize<CHUNK_SIZE>(WorldSizeInVoxel));
-			WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(OctreeDepth);
+			OctreeDepth = FVoxelUtilities::ClampDataDepth(FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(WorldSizeInVoxel));
+			WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(OctreeDepth);
 		}
-		else if (Name == GET_MEMBER_NAME_CHECKED(AVoxelWorld, LODToMinDistance))
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, LODToMinDistance))
 		{
 			if (!LODToMinDistance.Contains("0"))
 			{
@@ -498,50 +503,92 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 				LastValue = It.Value;
 			}
 		}
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialsHardness))
+		{
+			for (auto& It : MaterialsHardness)
+			{
+				if (!It.Key.IsEmpty())
+				{
+					It.Key = FString::FromInt(FMath::Clamp(TCString<TCHAR>::Atoi(*It.Key), 0, 255));
+				}
+				else if (It.Value == 0)
+				{
+					It.Value = 1;
+				}
+				It.Value = FMath::Max(It.Value, 0.f);
+			}
+			MaterialsHardness.KeySort([](const FString& A, const FString& B) { return TCString<TCHAR>::Atoi(*A) < TCString<TCHAR>::Atoi(*B); });
+		}
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, SpawnersCollisionDistanceInVoxel))
+		{
+			SpawnersCollisionDistanceInVoxel = FMath::CeilToInt(SpawnersCollisionDistanceInVoxel / 32.f) * 32;
+		}
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, ChunksClustersSize))
+		{
+			ChunksClustersSize = FMath::Max(ChunksClustersSize, RENDER_CHUNK_SIZE);
+			const int32 PowerOf2 = FMath::RoundToInt(FMath::Log2(ChunksClustersSize));
+			ChunksClustersSize = 1 << PowerOf2;
+			ChunksClustersSize = FMath::Max(ChunksClustersSize, RENDER_CHUNK_SIZE);
+		}
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, PriorityCategories))
+		{
+			FVoxelDefaultPool::FixPriorityCategories(PriorityCategories);
+		}
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, PriorityOffsets))
+		{
+			FVoxelDefaultPool::FixPriorityOffsets(PriorityOffsets);
+		}
 
+		OnPropertyChanged_Interactive.Broadcast();
+		
 		if (IsCreated() && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 		{
+			OnPropertyChanged.Broadcast();
+			
 			if (Property->HasMetaData("Recreate"))
 			{
 				DestroyWorldInternal();
 				CreateWorldInternal();
-
-				OnRecreate.Broadcast();
 			}
 			else if (Property->HasMetaData("RecreateRender"))
 			{
-				SyncRefs();
-				ensure(LODManager.GetSharedReferenceCount() == 1);
+				UpdateDynamicLODSettings();
+				UpdateDynamicRendererSettings();
+				
+				LODManager->Destroy();
 				LODManager.Reset();
-				ensure(Renderer.GetSharedReferenceCount() == 1);
+				
+				Renderer->Destroy();
 				Renderer.Reset();
 				
 				DestroyVoxelComponents();
 				
 				Renderer = CreateRenderer();
 				LODManager = CreateLODManager();
-
-				OnRecreateRender.Broadcast();
 			}
 			else if (Property->HasMetaData("UpdateAll"))
 			{
-				SyncRefs();
+				UpdateDynamicLODSettings();
 				GetLODManager().UpdateBounds(FIntBox::Infinite);
-
-				OnUpdateAll.Broadcast();
 			}
 			else if (Property->HasMetaData("UpdateLODs"))
 			{
-				SyncRefs();
+				UpdateDynamicLODSettings();
 				GetLODManager().ForceLODsUpdate();
-
-				OnUpdateLODs.Broadcast();
+			}
+			else if (Property->HasMetaData("UpdateRenderer"))
+			{
+				UpdateDynamicRendererSettings();
+				GetRenderer().ApplyNewMaterials();
 			}
 		}
 	}
 	
-	FixWorldBounds(CustomWorldBounds, OctreeDepth);
-	
+	if (bUseCustomWorldBounds)
+	{
+		CustomWorldBounds = GetWorldBounds();
+	}
+
 	bDisableComponentUnregister = true;
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	bDisableComponentUnregister = false;
@@ -560,217 +607,125 @@ void AVoxelWorld::UpdateCollisionProfile()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void AVoxelWorld::SyncRefs()
-{
-	LODDynamicSettings->LODLimit = FVoxelUtilities::ClampChunkDepth(LODLimit);
-	LODDynamicSettings->LODToMinDistance.Reset();
-	for (auto& It : LODToMinDistance)
-	{
-		LODDynamicSettings->LODToMinDistance.Add(TCString<TCHAR>::Atoi(*It.Key), It.Value);
-	}
-	
-	LODDynamicSettings->InvokerDistanceThreshold = InvokerDistanceThreshold;
-	
-	LODDynamicSettings->ChunksCullingLOD = FVoxelUtilities::ClampChunkDepth(ChunksCullingLOD);
-
-	LODDynamicSettings->bEnableRender = bRenderWorld;
-	
-	LODDynamicSettings->bEnableCollisions = bIsPreviewing ? true : bEnableCollisions;
-	LODDynamicSettings->bComputeVisibleChunksCollisions = bIsPreviewing ? true : bComputeVisibleChunksCollisions;
-	LODDynamicSettings->VisibleChunksCollisionsMaxLOD = bIsPreviewing ? 5 : FVoxelUtilities::ClampChunkDepth(VisibleChunksCollisionsMaxLOD);
-	
-	LODDynamicSettings->bEnableNavmesh = bEnableNavmesh;
-
-	LODDynamicSettings->bEnableTessellation = bEnableTessellation;
-	LODDynamicSettings->TessellationDistance = TessellationDistance;
-}
-
-FIntBox AVoxelWorld::GetWorldBounds() const
-{
-	FIntBox Bounds = FVoxelUtilities::GetBoundsFromDepth<CHUNK_SIZE>(OctreeDepth);
-	if (bUseCustomWorldBounds)
-	{
-		Bounds = CustomWorldBounds;
-	}
-	FixWorldBounds(Bounds, OctreeDepth);
-	return Bounds;
-}
-
-
 void AVoxelWorld::OnWorldLoadedCallback()
 {
 	UE_LOG(LogVoxel, Log, TEXT("%s took %fs to generate"), *GetName(), FPlatformTime::Seconds() - TimeOfCreation);
 	OnWorldLoaded.Broadcast();
 }
 
-TSharedRef<FVoxelDebugManager, ESPMode::ThreadSafe> AVoxelWorld::CreateDebugManager() const
+TVoxelSharedRef<FVoxelDebugManager> AVoxelWorld::CreateDebugManager() const
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_CreateDebugManager);
-	return FVoxelDebugManager::Create();
+	VOXEL_FUNCTION_COUNTER();
+	return FVoxelDebugManager::Create(FVoxelDebugManagerSettings(this, PlayType, Pool.ToSharedRef(), Data.ToSharedRef()));
 }
 
-TSharedRef<FVoxelData, ESPMode::ThreadSafe> AVoxelWorld::CreateData() const
+TVoxelSharedRef<FVoxelData> AVoxelWorld::CreateData() const
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_CreateData);
-
-	FVoxelDataSettings Settings;
-
-	Settings.Depth = FVoxelUtilities::ClampDataDepth(FVoxelUtilities::GetDataDepthFromChunkDepth(OctreeDepth));
-	Settings.WorldBounds = GetWorldBounds();
-
-	auto WorldGeneratorInstance = WorldGenerator.GetWorldGenerator();
-	WorldGeneratorInstance->Init(GetInitStruct());
-	Settings.WorldGenerator = WorldGeneratorInstance;
-	
-	Settings.bEnableMultiplayer = false;
-	
-	Settings.bEnableUndoRedo = bEnableUndoRedo || bIsPreviewing;
-	Settings.bCacheLOD0Chunks = bEnableAutomaticCache && bCacheLOD0Chunks;
-
-	return FVoxelData::Create(Settings);
+	VOXEL_FUNCTION_COUNTER();
+	return FVoxelData::Create(FVoxelDataSettings(this, PlayType), DataOctreeInitialSubdivisionDepth);
 }
 
-TSharedRef<IVoxelPool> AVoxelWorld::CreatePool() const
+TVoxelSharedRef<IVoxelPool> AVoxelWorld::CreatePool() const
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_CreatePool);
+	VOXEL_FUNCTION_COUNTER();
 
-	if (bIsPreviewing)
+	const auto CreateOwnPool = [&](int32 InNumberOfThreads, bool bInConstantPriorities)
 	{
-		IVoxelPool::DestroyGlobalVoxelPool();
-		FVoxelDefaultPool::CreateGlobalPool(FMath::Max(1, NumberOfThreadsForPreview), "Preview");
+		return FVoxelDefaultPool::Create(
+			FMath::Max(1, InNumberOfThreads),
+			bInConstantPriorities,
+			PriorityCategories,
+			PriorityOffsets);
+	};
+	
+	if (PlayType == EVoxelPlayType::Preview)
+	{
+		return CreateOwnPool(NumberOfThreadsForPreview, true);
 	}
 	else
 	{
 		if (bCreateGlobalPool)
 		{
-			if (!IVoxelPool::IsGlobalVoxelPoolCreated())
+			if (!IVoxelPool::IsGlobalVoxelPoolCreated(GetWorld()))
 			{
-				FVoxelDefaultPool::CreateGlobalPool(FMath::Max(1, NumberOfThreads), GetName());
+				const auto NewPool = CreateOwnPool(NumberOfThreads, bConstantPriorities);
+				IVoxelPool::SetGlobalVoxelPool(GetWorld(), NewPool, GetName());
+				return NewPool;
 			}
 			else
 			{
-				FVoxelBPErrors::Warning(
-					LOCTEXT("GlobalPoolCreated",
-						"CreateGlobalPool = true but global pool is already created! Using existing one, NumberOfThreads will be ignored. "
-						"Consider setting CreateGlobalPool to false and calling CreateGlobalVoxelThreadPool at BeginPlay (for instance in your level blueprint)."),
+				FVoxelMessages::Warning(FString::Printf(TEXT(
+					"CreateGlobalPool = true but global pool is already created! Using existing one, NumberOfThreads will be ignored. "
+					"Consider setting CreateGlobalPool to false and calling CreateGlobalVoxelThreadPool at BeginPlay (for instance in your level blueprint). "
+					"Creator: %s"), *IVoxelPool::GetGlobalPoolCreator(GetWorld())),
 					this);
+				return IVoxelPool::GetGlobalPool(GetWorld()).ToSharedRef();
 			}
 		}
 		else
 		{
-			if (!IVoxelPool::IsGlobalVoxelPoolCreated())
+			if (IVoxelPool::IsGlobalVoxelPoolCreated(GetWorld()))
+			{
+				return IVoxelPool::GetGlobalPool(GetWorld()).ToSharedRef();
+			}
+			else
 			{
 
-				FVoxelBPErrors::Warning(
-					LOCTEXT("GlobalPoolNotCreated",
+				FVoxelMessages::Warning(
 						"CreateGlobalPool = false but global pool isn't created! Creating it with default setting NumberOfThreads = 2. "
-						"You need to call CreateGlobalVoxelThreadPool at BeginPlay (for instance in your level blueprint)."),
+						"You need to call CreateGlobalVoxelThreadPool at BeginPlay (for instance in your level blueprint).",
 					this);
-
-				FVoxelDefaultPool::CreateGlobalPool(2, GetName());
+				
+				const auto NewPool = CreateOwnPool(NumberOfThreads, bConstantPriorities);
+				IVoxelPool::SetGlobalVoxelPool(GetWorld(), NewPool, GetName());
+				return NewPool;
 			}
 		}
 	}
-	check(IVoxelPool::IsGlobalVoxelPoolCreated());
-	return IVoxelPool::GetGlobalPool().ToSharedRef();
 }
 
-TSharedRef<IVoxelRenderer> AVoxelWorld::CreateRenderer() const
+TVoxelSharedRef<IVoxelRenderer> AVoxelWorld::CreateRenderer() const
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_CreateRenderer);
-
-	check(Data.IsValid());
-	check(Pool.IsValid());
-	check(DebugManager.IsValid());
-
-	FVoxelRendererSettings Settings{};
-	Settings.VoxelSize = VoxelSize;
-	Settings.OctreeDepth = FVoxelUtilities::ClampChunkDepth(OctreeDepth);
-	Settings.WorldBounds = GetWorldBounds();
-	Settings.WorldOffset = WorldOffset;
-
-	Settings.ProcMeshClass = (ProcMeshClass && !bIsPreviewing) ? (UClass*)ProcMeshClass : UVoxelProceduralMeshComponent::StaticClass();
-	Settings.bCastFarShadow = bCastFarShadow;
-
-	Settings.bIsPreviewing = bIsPreviewing;
-	
-	Settings.World = GetWorld();
-	Settings.ComponentsOwner = const_cast<AVoxelWorld*>(this);
-	Settings.Data = Data.ToSharedRef();
-	Settings.Pool = Pool.ToSharedRef();
-	Settings.DebugManager = DebugManager.ToSharedRef();
-
-	Settings.UVConfig = UVConfig;
-	Settings.UVScale = UVScale;
-	Settings.NormalConfig = NormalConfig;
-	Settings.MaterialConfig = MaterialConfig;
-	Settings.VoxelMaterialWithoutTessellation = VoxelMaterial;
-	Settings.VoxelMaterialWithTessellation = TessellatedVoxelMaterial;
-	Settings.MaterialCollection = MaterialCollection;
-
-	Settings.TessellationBoundsExtension = TessellationBoundsExtension;
-	Settings.WaitForOtherChunksToAvoidHolesTimeout = WaitForOtherChunksToAvoidHolesTimeout;
-
-	Settings.CollisionPresets = CollisionPresets;
-
-	Settings.RenderType = RenderType;
-	Settings.ChunksDitheringDuration = bIsPreviewing ? 0.1 : ChunksDitheringDuration;
-	Settings.bOptimizeIndices = bOptimizeIndices;
-
-	return FVoxelRenderFactory::GetVoxelRenderer(RenderType, Settings);
+	VOXEL_FUNCTION_COUNTER();
+	return FVoxelDefaultRenderer::Create(FVoxelRendererSettings(
+		this,
+		PlayType,
+		WorldRoot,
+		Data.ToSharedRef(),
+		Pool.ToSharedRef(),
+		ToolRenderingManager.ToSharedRef(),
+		DebugManager.ToSharedRef(),
+		false));
 }
 
-TSharedRef<IVoxelLODManager> AVoxelWorld::CreateLODManager() const
+TVoxelSharedRef<IVoxelLODManager> AVoxelWorld::CreateLODManager() const
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_CreateLODManager);
-
-	check(Renderer.IsValid());
-	check(Pool.IsValid());
-	check(DebugManager.IsValid());
-
-	FVoxelLODSettings Settings{};
-	Settings.VoxelSize = VoxelSize;
-	Settings.OctreeDepth = FVoxelUtilities::ClampChunkDepth(OctreeDepth);
-	Settings.WorldBounds = GetWorldBounds();
-	Settings.LODUpdateRate = LODUpdateRate;
-	
-	Settings.World = GetWorld();
-	Settings.Renderer = Renderer.ToSharedRef();
-	Settings.Pool = Pool.ToSharedRef();
-	Settings.DebugManager = DebugManager.ToSharedRef();
-
-	Settings.bWaitForOtherChunksToAvoidHoles = !bIsPreviewing && bWaitForOtherChunksToAvoidHoles;
-
-	return FVoxelDefaultLODManager::Create(Settings, this, LODDynamicSettings);
+	VOXEL_FUNCTION_COUNTER();
+	return FVoxelDefaultLODManager::Create(
+		FVoxelLODSettings(this,
+			PlayType,
+			Renderer.ToSharedRef(),
+			Pool.ToSharedRef()),
+		this,
+		LODDynamicSettings);
 }
 
-TSharedRef<FVoxelCacheManager> AVoxelWorld::CreateCacheManager() const
+TVoxelSharedPtr<FVoxelProcGenManager> AVoxelWorld::CreateProcGenManager() const
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_CreateCacheManager);
+	VOXEL_FUNCTION_COUNTER();
+	return FVoxelProcGenManager::Create(FVoxelProcGenSettings(this, PlayType));
+}
 
-	check(Data.IsValid());
-	check(DebugManager.IsValid());
-	check(Pool.IsValid());
-
-	FVoxelCacheSettings Settings{};
-	Settings.DataOctreeCompactDelayInSeconds = DataOctreeCompactDelayInSeconds;
-	Settings.bEnableAutomaticCache = bEnableAutomaticCache;
-	Settings.CacheUpdateDelayInSeconds = CacheUpdateDelayInSeconds;
-	Settings.CacheAccessThreshold = CacheAccessThreshold;
-	Settings.MaxCacheSize = MaxCacheSize;
-
-	Settings.Data = Data.ToSharedRef();
-	Settings.DebugManager = DebugManager.ToSharedRef();
-	Settings.Pool = Pool.ToSharedRef();
-	Settings.World = GetWorld();
-
-	return FVoxelCacheManager::Create(Settings);
+TVoxelSharedPtr<FVoxelToolRenderingManager> AVoxelWorld::CreateToolRenderingManager() const
+{
+	VOXEL_FUNCTION_COUNTER();
+	return MakeVoxelShared<FVoxelToolRenderingManager>();
 }
 
 
 void AVoxelWorld::CreateWorldInternal()
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_CreateWorldInternal);
+	VOXEL_FUNCTION_COUNTER();
 
 	check(!IsCreated());
 
@@ -779,64 +734,121 @@ void AVoxelWorld::CreateWorldInternal()
 	bIsCreated = true;
 	TimeOfCreation = FPlatformTime::Seconds();
 
+	if (!WorldGenerator.IsValid())
+	{
+		FVoxelMessages::Error("Invalid World Generator!", this);
+	}
+
+	// Setup root
+	{
+		WorldRoot->CollisionTraceFlag = CollisionTraceFlag;
+		WorldRoot->CanCharacterStepUpOn = CanCharacterStepUpOn;
+		WorldRoot->SetGenerateOverlapEvents(bGenerateOverlapEvents);
+		// Only copy collision data - we don't want to override the physics settings
+		WorldRoot->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&CollisionPresets);
+		WorldRoot->BodyInstance.SetPhysMaterialOverride(PhysMaterialOverride);
+		WorldRoot->BodyInstance.bNotifyRigidBodyCollision = bNotifyRigidBodyCollision;
+		WorldRoot->BodyInstance.bUseCCD = bUseCCD;
+		WorldRoot->RecreatePhysicsState();
+	}
+
+	if (PlayType == EVoxelPlayType::Game && WorldRoot->BodyInstance.bSimulatePhysics && CollisionTraceFlag == ECollisionTraceFlag::CTF_UseComplexAsSimple)
+	{
+		FVoxelMessages::Error("Simulate physics requires using Simple collisions (either 'Simple And Complex' or 'Use Simple Collision As Complex')", this);
+	}
+
 	*WorldOffset = FIntVector::ZeroValue;
-	SyncRefs();
-	
-	DebugManager = CreateDebugManager();
-	Data = CreateData();
+	UpdateDynamicLODSettings();
+	UpdateDynamicRendererSettings();
+
+	const bool bHasPendingData = PendingData.IsValid();
+	if (bHasPendingData)
+	{
+		Data = MoveTemp(PendingData);
+	}
+	else
+	{
+		Data = CreateData();
+	}
 	Pool = CreatePool();
+	DebugManager = CreateDebugManager();
+	ProcGenManager = CreateProcGenManager();
+	ToolRenderingManager = CreateToolRenderingManager();
 	Renderer = CreateRenderer();
 	Renderer->OnWorldLoaded.AddUObject(this, &AVoxelWorld::OnWorldLoadedCallback);
 	LODManager = CreateLODManager();
-	CacheManager = CreateCacheManager();
-
-	// Load if possible
-	if (SaveObject)
+	if (SpawnerConfig && (PlayType == EVoxelPlayType::Game || bEnableFoliageInEditor))
 	{
-		LoadFromSaveObject();
+		FVoxelMessages::ShowVoxelPluginProError("Spawners are only available in Voxel Plugin Pro", this);
 	}
-	
-	// Add placeable items AFTER loading
-	ApplyPlaceableItems();
-
-	if (bIsPreviewing && UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen())
+	if (PlayType == EVoxelPlayType::Game && bEnableMultiplayer)
 	{
-		UVoxelProceduralMeshComponent::ResumeVoxelCollisions();
+		FVoxelMessages::ShowVoxelPluginProError("Multiplayer is only available in Voxel Plugin Pro", this);
+	}
+
+	if (!bHasPendingData)
+	{
+		// Load if possible
+		if (SaveObject)
+		{
+			LoadFromSaveObject();
+			if (!IsCreated()) // if LoadFromSaveObject destroyed the world
+			{
+				return;
+			}
+		}
+
+		// Add placeable items AFTER loading
+		ApplyPlaceableItems();
+	}
+
+	if (PlayType == EVoxelPlayType::Preview)
+	{
+		UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(false);
 	}
 }
 
 void AVoxelWorld::DestroyWorldInternal()
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_DestroyWorldInternal);
+	VOXEL_FUNCTION_COUNTER();
 
 	check(IsCreated());
 
 #if WITH_EDITOR
-	if (bIsPreviewing)
+	if (PlayType == EVoxelPlayType::Preview)
 	{
 		SaveData();
-		IVoxelPool::DestroyGlobalVoxelPool();
 	}
 #endif
 
 	UE_LOG(LogVoxel, Log, TEXT("Unloading world"));
 
 	bIsCreated = false;
-	bIsPreviewing = false;
-
-	DebugManager.Reset();
+	
 	Data.Reset();
 	Pool.Reset();
+	
+	DebugManager->Destroy();
+	DebugManager.Reset();
+	
+	ProcGenManager->Destroy();
+	ProcGenManager.Reset();
+
+	Renderer->Destroy();
 	Renderer.Reset();
+	
+	LODManager->Destroy();
 	LODManager.Reset();
-	CacheManager.Reset();
+	
+
+	WorldOffset = MakeVoxelShared<FIntVector>(FIntVector::ZeroValue);
 
 	DestroyVoxelComponents();
 }
 
 void AVoxelWorld::DestroyVoxelComponents()
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_DestroyVoxelComponents);
+	VOXEL_FUNCTION_COUNTER();
 
 	auto Components = GetComponents(); // need a copy as we are modifying it when destroying comps
 	for (auto& Component : Components)
@@ -850,37 +862,147 @@ void AVoxelWorld::DestroyVoxelComponents()
 
 void AVoxelWorld::LoadFromSaveObject()
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_LoadFromSaveObject);
+	VOXEL_FUNCTION_COUNTER();
 
 	check(SaveObject);
+
+	if (SaveObject->Depth == -1)
+	{
+		// Not saved yet
+		return;
+	}
 	
 	FVoxelUncompressedWorldSave Save;
 	UVoxelSaveUtilities::DecompressVoxelSave(SaveObject->Save, Save);
 
 	if (Save.GetDepth() == -1)
 	{
-		FVoxelBPErrors::Error(LOCTEXT("LoadFromSaveObjectInvalidDepth", "Invalid Save Object!"));
+		FVoxelMessages::Error("Invalid Save Object!", this);
 		return;
 	}
 	if (Save.GetDepth() > Data->Depth)
 	{
-		FVoxelBPErrors::Info(LOCTEXT("LoadFromSaveObjectDepthBigger", "Save Object depth is bigger than world depth, the save data outside world bounds will be ignored"));
+		UE_LOG(LogVoxel, Warning, TEXT("Save Object depth is bigger than world depth, the save data outside world bounds will be ignored"));
 	}
 
 	TArray<FIntBox> BoundsToUpdate;
-	Data->LoadFromSave(Save, BoundsToUpdate);
+	if (!Data->LoadFromSave(this, Save, BoundsToUpdate))
+	{
+		const auto Result = FMessageDialog::Open(
+			EAppMsgType::YesNoCancel,
+			LOCTEXT("ErrorLoading",
+				"Some errors occured when loading from the save object. Do you want to continue? This might corrupt the save object\n"
+				"Note: always keep your voxel world toggled when renaming assets referenced by it, else the references won't be updated"));
+
+		if (Result != EAppReturnType::Yes)
+		{
+			Data->ClearData();
+			PlayType = EVoxelPlayType::Game; // Hack
+			DestroyWorldInternal();
+			return;
+		}
+	}
 	LODManager->UpdateBounds(BoundsToUpdate);
 }
 
 void AVoxelWorld::ApplyPlaceableItems()
 {
-	SCOPE_CYCLE_COUNTER(STAT_AVoxelWorld_ApplyPlaceableItems);
+}
 
+void AVoxelWorld::UpdateDynamicLODSettings() const
+{
+	LODDynamicSettings->MinLOD = FVoxelUtilities::ClampChunkDepth(MinLOD);
+	LODDynamicSettings->MaxLOD = FVoxelUtilities::ClampChunkDepth(MaxLOD);
+	LODDynamicSettings->LODToMinDistance.Reset();
+	for (auto& It : LODToMinDistance)
+	{
+		LODDynamicSettings->LODToMinDistance.Add(TCString<TCHAR>::Atoi(*It.Key), It.Value);
+	}
+	
+	LODDynamicSettings->InvokerDistanceThreshold = InvokerDistanceThreshold;
+	
+	LODDynamicSettings->ChunksCullingLOD = FVoxelUtilities::ClampChunkDepth(ChunksCullingLOD);
+
+	LODDynamicSettings->bEnableRender = bRenderWorld;
+	
+	LODDynamicSettings->bEnableCollisions = PlayType == EVoxelPlayType::Game ? bEnableCollisions : true; 
+	LODDynamicSettings->bComputeVisibleChunksCollisions = PlayType == EVoxelPlayType::Game ? bComputeVisibleChunksCollisions : true;
+	LODDynamicSettings->VisibleChunksCollisionsMaxLOD = PlayType == EVoxelPlayType::Game ? FVoxelUtilities::ClampChunkDepth(VisibleChunksCollisionsMaxLOD) : MAX_WORLD_DEPTH;
+	
+	LODDynamicSettings->bEnableNavmesh = bEnableNavmesh; // bEnableNavmesh is needed for path previews in editor
+	
+	LODDynamicSettings->bComputeVisibleChunksNavmesh = bComputeVisibleChunksNavmesh;
+	LODDynamicSettings->VisibleChunksNavmeshMaxLOD = FVoxelUtilities::ClampChunkDepth(VisibleChunksNavmeshMaxLOD);
+
+	LODDynamicSettings->bEnableTessellation = bEnableTessellation;
+	LODDynamicSettings->TessellationDistance = TessellationDistance;
+}
+
+void AVoxelWorld::UpdateDynamicRendererSettings() const
+{
+	FScopeLock Lock(&RendererDynamicSettings->DynamicSettingsLock);
+	
+	RendererDynamicSettings->MaterialCollection = MaterialCollection;
+	RendererDynamicSettings->VoxelMaterialWithoutTessellation = VoxelMaterial;
+	RendererDynamicSettings->VoxelMaterialWithTessellation = TessellatedVoxelMaterial;
+
+	if (MaterialCollection)
+	{
+		RendererDynamicSettings->bGenerateBlendings = MaterialCollection->bShouldGenerateBlendings;
+		RendererDynamicSettings->MaterialCollectionMap = MakeVoxelShared<TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted>>(MaterialCollection->GetBlendedMaterialsMap());
+	}
+	else
+	{
+		RendererDynamicSettings->bGenerateBlendings = false;
+		RendererDynamicSettings->MaterialCollectionMap = MakeVoxelShared<TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted>>();
+	}
+
+	const auto IsTessellated = [](auto* Material)
+	{
+		UMaterial* BaseMaterial = Material->GetMaterial();
+		if (!ensure(BaseMaterial)) return false;
+		return BaseMaterial->D3D11TessellationMode != EMaterialTessellationMode::MTM_NoTessellation;
+	};
+	if (VoxelMaterial && IsTessellated(VoxelMaterial))
+	{
+		FVoxelMessages::Error("Voxel Material must have tessellation disabled!", this);
+		RendererDynamicSettings->VoxelMaterialWithoutTessellation.Reset();
+	}
+	if (TessellatedVoxelMaterial && !IsTessellated(TessellatedVoxelMaterial))
+	{
+		FVoxelMessages::Error("Tessellated Voxel Material must have tessellation enabled!", this);
+		RendererDynamicSettings->VoxelMaterialWithTessellation.Reset();
+	}
 }
 
 #if WITH_EDITOR
-void AVoxelWorld::CreateForPreview()
+void AVoxelWorld::Toggle()
 {
+	MarkPackageDirty();
+	if (IsCreated())
+	{
+		ensure(bIsToggled);
+		bIsToggled = false;
+		DestroyWorldInternal();
+	}
+	else
+	{
+		ensure(!bIsToggled);
+		bIsToggled = true;
+		CreateInEditor();
+		if (!IsCreated()) // Load failed
+		{
+			bIsToggled = false;
+		}
+	}
+}
+
+void AVoxelWorld::CreateInEditor()
+{
+	if (!IVoxelWorldEditor::GetVoxelWorldEditor())
+	{
+		return;
+	}
 	if (!VoxelWorldEditor)
 	{
 		UClass* VoxelWorldEditorClass = IVoxelWorldEditor::GetVoxelWorldEditor()->GetVoxelWorldEditorClass();
@@ -902,20 +1024,24 @@ void AVoxelWorld::CreateForPreview()
 		}
 	}
 
-	IVoxelWorldEditor::GetVoxelWorldEditor()->BindEditorDelegates(this);
+	BindEditorDelegates(this);
 
 	if (IsCreated())
 	{
 		DestroyWorldInternal();
 	}
-	bIsPreviewing = true;
+	PlayType = EVoxelPlayType::Preview;
 	CreateWorldInternal();
 }
 
 void AVoxelWorld::SaveData()
 {
+	if (IsGarbageCollecting())
+	{
+		return;
+	}
 	check(IsCreated());
-	if (Data->IsDirty())
+	if (Data->IsDirty() && GetTransientPackage() != nullptr)
 	{
 		if (!SaveObject && ensure(IVoxelWorldEditor::GetVoxelWorldEditor()))
 		{
@@ -925,9 +1051,20 @@ void AVoxelWorld::SaveData()
 		}
 		if (SaveObject)
 		{
-			FVoxelUncompressedWorldSave Save;
-			Data->GetSave(Save);
-			UVoxelSaveUtilities::CompressVoxelSave(Save, SaveObject->Save);
+			{
+				FScopedSlowTask Progress(3);
+				Progress.EnterProgressFrame(1.f, LOCTEXT("Rounding", "Rounding voxels"));
+				if (GetDefault<UVoxelSettings>()->bRoundBeforeSaving)
+				{
+					UVoxelDataTools::RoundVoxels(this, FIntBox::Infinite);
+				}
+				Progress.EnterProgressFrame(1.f, LOCTEXT("Save", "Creating save"));
+				FVoxelUncompressedWorldSave Save;
+				Data->GetSave(Save);
+				Progress.EnterProgressFrame(1.f, LOCTEXT("Compressing", "Compressing save"));
+				UVoxelSaveUtilities::CompressVoxelSave(Save, SaveObject->Save);
+			}
+			
 			SaveObject->PostEditChange(); // Fixup depth
 			SaveObject->MarkPackageDirty();
 
@@ -955,11 +1092,11 @@ void AVoxelWorld::SaveData()
 	}
 }
 
-inline bool CanLoad(const TSharedPtr<FVoxelData, ESPMode::ThreadSafe>& Data)
+inline bool CanLoad(const TVoxelSharedPtr<FVoxelData>& Data)
 {
 	if (Data->IsDirty())
 	{
-		auto Result = FMessageDialog::Open(EAppMsgType::YesNoCancel, LOCTEXT("WorldDetailsUnsavedChanges", "There are unsaved changes. Loading will overwrite them. Confirm?"));
+		const auto Result = FMessageDialog::Open(EAppMsgType::YesNoCancel, LOCTEXT("WorldDetailsUnsavedChanges", "There are unsaved changes. Loading will overwrite them. Confirm?"));
 		if (Result != EAppReturnType::Yes)
 		{
 			return false;
@@ -975,11 +1112,14 @@ void AVoxelWorld::LoadFromSaveObjectEditor()
 	{
 		return;
 	}
-	
+
 	LoadFromSaveObject();
 
-	FNotificationInfo Info(LOCTEXT("SuccessfullyLoaded", "Loaded!"));
-	FSlateNotificationManager::Get().AddNotification(Info);
+	if (IsCreated())
+	{
+		const FNotificationInfo Info(LOCTEXT("SuccessfullyLoaded", "Loaded!"));
+		FSlateNotificationManager::Get().AddNotification(Info);
+	}
 }
 
 bool AVoxelWorld::SaveToFile(const FString& Path, FText& Error)
@@ -1000,14 +1140,14 @@ bool AVoxelWorld::SaveToFile(const FString& Path, FText& Error)
 
 	PlatformFile.CreateDirectoryTree(*FPaths::GetPath(Path));
 
-	FBufferArchive Archive;
+	FBufferArchive Archive(true);
 	FVoxelCompressedWorldSave CompressedSave;
 	UVoxelDataTools::GetCompressedSave(this, CompressedSave);
 	CompressedSave.Serialize(Archive);
 
 	if (FFileHelper::SaveArrayToFile(Archive, *Path))
 	{
-		FNotificationInfo Info(FText::Format(LOCTEXT("SuccessfullyCreated", "{0} was successfully created"), FText::FromString(Path)));
+		const FNotificationInfo Info(FText::Format(LOCTEXT("SuccessfullyCreated", "{0} was successfully created"), FText::FromString(Path)));
 		FSlateNotificationManager::Get().AddNotification(Info);
 		return true;
 	}
@@ -1026,7 +1166,6 @@ bool AVoxelWorld::LoadFromFile(const FString& Path, FText& Error)
 		return false;
 	}
 
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	TArray<uint8> Array;
 	if (!FFileHelper::LoadFileToArray(Array, *Path))
 	{
@@ -1039,7 +1178,7 @@ bool AVoxelWorld::LoadFromFile(const FString& Path, FText& Error)
 	CompressedSave.Serialize(Reader);
 	UVoxelDataTools::LoadFromCompressedSave(this, CompressedSave);
 
-	FNotificationInfo Info(FText::Format(LOCTEXT("SuccessfullyLoaded", "{0} was successfully loaded"), FText::FromString(Path)));
+	const FNotificationInfo Info(FText::Format(LOCTEXT("SuccessfullyLoaded", "{0} was successfully loaded"), FText::FromString(Path)));
 	FSlateNotificationManager::Get().AddNotification(Info);
 	return true;
 }
@@ -1052,10 +1191,10 @@ FString AVoxelWorld::GetDefaultFilePath() const
 		return Path;
 	}
 	Path.RemoveFromEnd(".voxelsave");
-	FString Sep = TEXT("_");
 	int32 Year = 0, Month = 0, DayOfWeek = 0, Day = 0, Hour = 0, Min = 0, Sec = 0, MSec = 0;
 	FPlatformTime::SystemTime(Year, Month, DayOfWeek, Day, Hour, Min, Sec, MSec);
-	FString Date = FString::FromInt(Year) +
+	const FString Sep = TEXT("_");
+	const FString Date = FString::FromInt(Year) +
 		Sep + FString::FromInt(Month) +
 		Sep + FString::FromInt(Day) +
 		Sep + FString::FromInt(Hour) +
@@ -1069,7 +1208,7 @@ FString AVoxelWorld::GetDefaultFilePath() const
 
 void AVoxelWorld::OnPreSaveWorld(uint32 SaveFlags, UWorld* World)
 {
-	if (IsCreated() && ensure(bIsPreviewing))
+	if (IsCreated() && PlayType == EVoxelPlayType::Preview)
 	{
 		SaveData();
 	}
@@ -1077,7 +1216,7 @@ void AVoxelWorld::OnPreSaveWorld(uint32 SaveFlags, UWorld* World)
 
 void AVoxelWorld::OnPreBeginPIE(bool bIsSimulating)
 {
-	if (IsCreated() && ensure(bIsPreviewing))
+	if (PlayType == EVoxelPlayType::Preview && IsCreated())
 	{
 		DestroyWorldInternal();
 	}
@@ -1085,15 +1224,15 @@ void AVoxelWorld::OnPreBeginPIE(bool bIsSimulating)
 
 void AVoxelWorld::OnEndPIE(bool bIsSimulating)
 {
-	if (ensure(!IsCreated()) && bIsPreviewing)
+	if (PlayType == EVoxelPlayType::Preview && ensure(!IsCreated()) && bIsToggled)
 	{
-		CreateWorldInternal();
+		CreateInEditor();
 	}
 }
 
 void AVoxelWorld::OnPrepareToCleanseEditorObject(UObject* Object)
 {
-	if (IsCreated() && ensure(bIsPreviewing))
+	if (PlayType == EVoxelPlayType::Preview && IsCreated())
 	{
 		DestroyWorldInternal();
 	}
@@ -1101,7 +1240,7 @@ void AVoxelWorld::OnPrepareToCleanseEditorObject(UObject* Object)
 
 void AVoxelWorld::OnPreExit()
 {
-	bIsPreviewing = false; // Disable saving data
+	bIsToggled = false; // Disable saving data
 }
 
 void IVoxelWorldEditor::SetVoxelWorldEditor(TSharedPtr<IVoxelWorldEditor> InVoxelWorldEditor)
@@ -1111,6 +1250,6 @@ void IVoxelWorldEditor::SetVoxelWorldEditor(TSharedPtr<IVoxelWorldEditor> InVoxe
 }
 
 TSharedPtr<IVoxelWorldEditor> IVoxelWorldEditor::VoxelWorldEditor;
+IVoxelEditorDelegatesInterface::FBindEditorDelegates IVoxelEditorDelegatesInterface::BindEditorDelegatesDelegate;
 #endif
-
 #undef LOCTEXT_NAMESPACE

@@ -1,46 +1,34 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGeneratorHelpers.h"
 #include "VoxelFlatWorldGenerator.generated.h"
 
-class VOXEL_API FVoxelFlatWorldGeneratorInstance : public FVoxelWorldGeneratorInstance
+class UVoxelFlatWorldGenerator;
+
+class VOXEL_API FVoxelFlatWorldGeneratorInstance : public TVoxelWorldGeneratorInstanceHelper<FVoxelFlatWorldGeneratorInstance, UVoxelFlatWorldGenerator>
 {
 public:
 	FVoxelFlatWorldGeneratorInstance() = default;
 
 	//~ Begin FVoxelWorldGeneratorInstance Interface
-	void GetValuesAndMaterials(FVoxelValue Values[], FVoxelMaterial Materials[], const FVoxelWorldGeneratorQueryZone& QueryZone, int32 QueryLOD, const FVoxelPlaceableItemHolder& ItemHolder) const final
+	inline v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		for (int32 Z : QueryZone.ZIt())
-		{
-			FVoxelValue Value = Z >= 0 ? FVoxelValue::Empty : FVoxelValue::Full;
-
-			for (int32 Y : QueryZone.YIt())
-			{
-				for (int32 X : QueryZone.XIt())
-				{
-					SetValueAndMaterial(Values, Materials, QueryZone, QueryLOD, ItemHolder, X, Y, Z, Value, FVoxelMaterial());
-				}
-			}
-		}
+		return Z + 0.001f; // Try to avoid having 0 as density, as it behaves weirdly
 	}
-	void GetValueAndMaterialInternal(int32 X, int32 Y, int32 Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int32 QueryLOD, const FVoxelPlaceableItemHolder& ItemHolder) const final
+	inline FVoxelMaterial GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		if (OutValue)
-		{
-			*OutValue = Z >= 0 ? FVoxelValue::Empty : FVoxelValue::Full;
-		}
-		if (OutMaterial)
-		{
-			*OutMaterial = FVoxelMaterial();
-		}
+		return FVoxelMaterial::Default();
 	}
-	EVoxelEmptyState IsEmpty(const FIntBox& Bounds, int32 LOD) const final
+	TVoxelRange<v_flt> GetValueRangeImpl(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		return (Bounds.Max.Z) <= 0 ? EVoxelEmptyState::AllFull : (0 <= Bounds.Min.Z) ? EVoxelEmptyState::AllEmpty : EVoxelEmptyState::Unknown;
+		return TVoxelRange<v_flt>(Bounds.Min.Z, Bounds.Max.Z);
+	}
+	FVector GetUpVector(v_flt X, v_flt Y, v_flt Z) const override final
+	{
+		return FVector::UpVector;
 	}
 	//~ End FVoxelWorldGeneratorInstance Interface
 };
@@ -55,9 +43,9 @@ class VOXEL_API UVoxelFlatWorldGenerator : public UVoxelWorldGenerator
 
 public:
 	//~ Begin UVoxelWorldGenerator Interface
-	TSharedRef<FVoxelWorldGeneratorInstance, ESPMode::ThreadSafe> GetWorldGenerator() override
+	TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override
 	{
-		return MakeShared<FVoxelFlatWorldGeneratorInstance, ESPMode::ThreadSafe>();
+		return MakeVoxelShared<FVoxelFlatWorldGeneratorInstance>();
 	}
 	//~ End UVoxelWorldGenerator Interface
 };

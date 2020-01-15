@@ -1,49 +1,69 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelGlobals.h"
+#include "IVoxelPool.generated.h"
+
+UENUM(BlueprintType)
+enum class EVoxelTaskType : uint8
+{
+	// Meshing of chunks that don't have collisions and are not visible
+	ChunksMeshing,
+	// Meshing of not visible chunks that have collisions
+	CollisionsChunksMeshing,
+	// Meshing of visible chunks that don't have collisions
+	VisibleChunksMeshing,
+	// Meshing of visible chunks that have collisions
+	VisibleCollisionsChunksMeshing,
+	// PhysX collision cooking, once the meshing task is done
+	CollisionCooking,
+	// Height spawners
+	FoliageBuild,
+	// Building of the instanced mesh components culling tree, used for spawners
+	// The meshes are not updated until the build is done
+	HISMBuild,
+	// Async edit functions such as AddSphereAsync
+	AsyncEditFunctions,
+	// Mesh merge tasks are used after meshing to create the render buffers
+	// Note: they are also used if bMergeChunks = false!
+	MeshMerge,
+	// The render octree is used to determine the LODs to display
+	// Should be done as fast as possible to start meshing tasks 
+	RenderOctree
+};
 
 class FVoxelQueuedThreadPool;
 class FQueuedThreadPool;
 class IVoxelQueuedWork;
-class IQueuedWork;
+class UWorld;
 
 class VOXEL_API IVoxelPool
 {
 public:
 	virtual ~IVoxelPool() {}
 
-	virtual void QueueMeshingTask(IVoxelQueuedWork* Work) = 0;
-	virtual void QueueCollisionTask(IVoxelQueuedWork* Work) = 0;
-	virtual void QueueCacheTask(IVoxelQueuedWork* Work) = 0;
-	virtual void QueueOctreeBuildTask(IQueuedWork* Work) = 0;
-	virtual void QueueAsyncEditTask(IQueuedWork* Work) = 0;
+	//~ Begin IVoxelPool Interface
+	virtual void QueueTask(EVoxelTaskType Type, IVoxelQueuedWork* Task) = 0;
+	virtual void QueueTasks(EVoxelTaskType Type, const TArray<IVoxelQueuedWork*>& Tasks) = 0;
+
+	virtual int32 GetNumTasks() const = 0;
+	//~ End IVoxelPool Interface
 
 public:
-	inline static TSharedPtr<IVoxelPool> GetGlobalPool()
-	{
-		return Global;
-	}
-	inline static void DestroyGlobalVoxelPool()
-	{
-		Global.Reset();
-		UE_LOG(LogVoxel, Log, TEXT("Global pool destroyed"));
-	}
-	inline static bool IsGlobalVoxelPoolCreated()
-	{
-		return Global.IsValid();
-	}
+	static TVoxelSharedPtr<IVoxelPool> GetGlobalPool(UWorld* World);
+	static const FString& GetGlobalPoolCreator(UWorld* World);
+	static void DestroyGlobalVoxelPool(UWorld* World);
+	static bool IsGlobalVoxelPoolCreated(UWorld* World);
 
-protected:
-	inline static void SetGlobalVoxelPool(const TSharedPtr<IVoxelPool>& InGlobal)
-	{
-		checkf(!Global.IsValid(), TEXT("Global voxel pool already created!"));
-		Global = InGlobal;
-		UE_LOG(LogVoxel, Log, TEXT("Global pool created"));
-	}
+	static void SetGlobalVoxelPool(UWorld* World, const TVoxelSharedPtr<IVoxelPool>& Pool, const FString& Creator);
 
 private:
-	static TSharedPtr<IVoxelPool> Global;
+	struct FPool
+	{
+		TVoxelSharedPtr<IVoxelPool> Pool;
+		FString Creator;
+	};
+	static TMap<TWeakObjectPtr<UWorld>, FPool> GlobalMap;
 };
