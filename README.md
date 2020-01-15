@@ -9,8 +9,6 @@ You can get a binary build here: https://gumroad.com/voxelplugin
 
 - Docs: http://wiki.voxelplugin.com
 - Issues: https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
-- Stable Releases: https://gitlab.com/Phyronnaz/VoxelPluginPro
-- Beta Releases: https://gitlab.com/Phyronnaz/VoxelPluginProBeta
 
 Support:
 - UE Forums: https://forums.unrealengine.com/community/released-projects/125045-voxel-plugin
