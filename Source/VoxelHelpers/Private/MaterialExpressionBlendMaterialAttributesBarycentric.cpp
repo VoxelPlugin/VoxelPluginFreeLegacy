@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "MaterialExpressionBlendMaterialAttributesBarycentric.h"
 #include "MaterialCompiler.h"
@@ -33,15 +33,15 @@ int32 UMaterialExpressionBlendMaterialAttributesBarycentric::Compile(class FMate
 	int32 ResultA = A.CompileWithDefault(Compiler, AttributeID);
 	int32 ResultB = B.CompileWithDefault(Compiler, AttributeID);
 	int32 ResultC = C.CompileWithDefault(Compiler, AttributeID);
-	int32 ResultAlpha0 = Alpha0.Compile(Compiler);
-	int32 ResultAlpha1 = Alpha1.Compile(Compiler);
+	int32 ResultAlphaA = AlphaA.Compile(Compiler);
+	int32 ResultAlphaB = AlphaB.Compile(Compiler);
 
 	return Compiler->Add
 	(
 		Compiler->Add
 		(
-			Compiler->Mul(ResultA, ResultAlpha0),
-			Compiler->Mul(ResultB, ResultAlpha1)
+			Compiler->Mul(ResultA, ResultAlphaA),
+			Compiler->Mul(ResultB, ResultAlphaB)
 		),
 		Compiler->Mul
 		(
@@ -49,7 +49,7 @@ int32 UMaterialExpressionBlendMaterialAttributesBarycentric::Compile(class FMate
 			Compiler->Sub
 			(
 				Compiler->Constant(1.0f),
-				Compiler->Add(ResultAlpha0, ResultAlpha1)
+				Compiler->Add(ResultAlphaA, ResultAlphaB)
 			)
 		)
 	);
@@ -66,8 +66,8 @@ const TArray<FExpressionInput*> UMaterialExpressionBlendMaterialAttributesBaryce
 	Result.Add(&A);
 	Result.Add(&B);
 	Result.Add(&C);
-	Result.Add(&Alpha0);
-	Result.Add(&Alpha1);
+	Result.Add(&AlphaA);
+	Result.Add(&AlphaB);
 	return Result;
 }
 
@@ -87,11 +87,11 @@ FExpressionInput* UMaterialExpressionBlendMaterialAttributesBarycentric::GetInpu
 	}
 	else if (InputIndex == 4)
 	{
-		return &Alpha0;
+		return &AlphaA;
 	}
 	else if (InputIndex == 4)
 	{
-		return &Alpha1;
+		return &AlphaB;
 	}
 
 	return nullptr;

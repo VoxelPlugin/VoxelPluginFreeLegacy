@@ -1,20 +1,31 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Misc/Compression.h"
+#include "VoxelValue.h"
 
 struct FVoxelMaterial;
 class FArchive;
 
 namespace FVoxelSerializationUtilities
 {
-	void AddMaterialsToArchive(TArray<FVoxelMaterial>& Materials, FArchive& Archive);
-	void GetMaterialsFromArchive(TArray<FVoxelMaterial>& Materials, FArchive& Archive, uint32 MaterialConfigFlag, int32 VoxelCustomVersion);
+	VOXEL_API void SerializeValues(FArchive& Archive, TArray<FVoxelValue>& Values, uint32 ValueConfigFlag, int32 VoxelCustomVersion);
+	VOXEL_API void SerializeMaterials(FArchive& Archive, TArray<FVoxelMaterial>& Materials, uint32 MaterialConfigFlag, int32 VoxelCustomVersion);
 
-	void SerializeMaterials(FArchive& Archive, TArray<FVoxelMaterial>& Materials, uint32 MaterialConfigFlag, int32 VoxelCustomVersion);
+	VOXEL_API void CompressData(
+		const uint8* UncompressedData, 
+		int32 UncompressedDataNum, 
+		TArray<uint8>& CompressedData, 
+		ECompressionFlags CompressionFlags = ECompressionFlags(COMPRESS_ZLIB | COMPRESS_BiasSpeed));
+	inline void CompressData(
+		const TArray<uint8>& UncompressedData, 
+		TArray<uint8>& CompressedData, 
+		ECompressionFlags CompressionFlags = ECompressionFlags(COMPRESS_ZLIB | COMPRESS_BiasSpeed))
+	{
+		CompressData(UncompressedData.GetData(), UncompressedData.Num(), CompressedData, CompressionFlags);
+	}
 
-	void CompressData(const TArray<uint8>& UncompressedData, TArray<uint8>& CompressedData, ECompressionFlags CompressionFlags = (ECompressionFlags)(COMPRESS_ZLIB | COMPRESS_BiasSpeed));
-	bool DecompressData(const TArray<uint8>& CompressedData, TArray<uint8>& UncompressedData);
+	VOXEL_API bool DecompressData(const TArray<uint8>& CompressedData, TArray<uint8>& UncompressedData);
 }

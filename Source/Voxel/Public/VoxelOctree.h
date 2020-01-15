@@ -1,376 +1,295 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGlobals.h"
 #include "IntBox.h"
-#include "VoxelId.h"
 
-template<class ElementType, uint32 ChunkSize>
-class TVoxelOctree
+struct FVoxelOctreeId
+{
+	FIntVector Position;
+	uint8 Height;
+
+	FORCEINLINE bool operator==(const FVoxelOctreeId& Other) const
+	{
+		return Position == Other.Position && Height == Other.Height;
+	}
+	FORCEINLINE bool operator!=(const FVoxelOctreeId& Other) const
+	{
+		return Position != Other.Position || Height != Other.Height;
+	}
+};
+
+template<uint32 ChunkSize>
+class TVoxelOctreeBase
 {
 public:
+	// Height of the octree (distance to smallest possible leaf)
+	const uint8 Height;
+
 	// Center of the octree
 	const FIntVector Position;
 
-	// Distance to the highest resolution
-	const uint8 LOD;
-
-	// Id of the Octree (position in the octree)
-	const FVoxelId Id;
-
-	const FIntBox OctreeBounds;
-
-	TVoxelOctree(uint8 LOD)
-		: Position(FIntVector::ZeroValue)
-		, LOD(LOD)
-		, Id(EForceInit::ForceInitToZero)
-		, OctreeBounds(GetCachedBounds())
+	TVoxelOctreeBase(uint8 Height, const FIntVector& Position)
+		: Height(Height)
+		, Position(Position)
 	{
-		checkVoxelSlow(LOD < MAX_WORLD_DEPTH);
+		check(Height < 32);
 	}
-	virtual ~TVoxelOctree()
+	~TVoxelOctreeBase() = default;
+
+public:
+	FORCEINLINE uint32 GetSize() const
 	{
-		if (!IsLeaf())
+		return ChunkSize << Height;
+	}
+	FORCEINLINE uint32 GetHalfSize() const
+	{
+		return (ChunkSize / 2) << Height;
+	}
+	FORCEINLINE FIntVector GetMin() const
+	{
+		return Position - GetHalfSize();
+	}
+	FORCEINLINE FIntVector GetMax() const
+	{
+		return Position + GetHalfSize();
+	}
+	FORCEINLINE FIntBox GetBounds() const
+	{
+		return FIntBox(GetMin(), GetMax());
+	}
+	FORCEINLINE bool IsInOctree(int32 X, int32 Y, int32 Z) const
+	{
+		const int32 HalfSize = GetHalfSize();
+		return
+			Position.X - HalfSize <= X && X < Position.X + HalfSize &&
+			Position.Y - HalfSize <= Y && Y < Position.Y + HalfSize &&
+			Position.Z - HalfSize <= Z && Z < Position.Z + HalfSize;
+	}
+	FORCEINLINE bool IsInOctree(const FIntVector& P) const
+	{
+		return IsInOctree(P.X, P.Y, P.Z);
+	}
+	FORCEINLINE bool IsLeaf() const
+	{
+		return Height == 0;
+	}
+	FORCEINLINE FVoxelOctreeId GetId() const
+	{
+		return { Position, Height };
+	}
+
+protected:
+	FORCEINLINE static FIntVector GetChildPosition(const FIntVector& ParentPosition, uint32 ParentSize, uint8 ChildIndex)
+	{
+		return ParentPosition +
+			FIntVector(
+				ParentSize / 4 * ((ChildIndex & 0x1) ? 1 : -1),
+				ParentSize / 4 * ((ChildIndex & 0x2) ? 1 : -1),
+				ParentSize / 4 * ((ChildIndex & 0x4) ? 1 : -1));
+	}
+};
+
+template<typename BaseType>
+class TVoxelOctreeLeaf : public BaseType
+{
+protected:
+	TVoxelOctreeLeaf(const BaseType& Parent, uint8 ChildIndex)
+		: BaseType(Parent.Height - 1, this->GetChildPosition(Parent.Position, Parent.GetSize(), ChildIndex))
+	{
+		check(0 <= ChildIndex && ChildIndex < 8);
+	}
+};
+
+template<typename BaseType, typename LeafType, typename ParentType>
+class TVoxelOctreeParent : public BaseType
+{
+public:
+	template<typename T>
+	struct FChildrenIterator
+	{
+		void* const Children;
+		bool const bIsLeaf;
+
+		FChildrenIterator(void* Children, bool bIsLeaf)
+			: Children(Children)
+			, bIsLeaf(bIsLeaf)
+		{
+		}
+
+		struct FIterator
+		{
+			void* const VoidPtr;
+			bool const bIsLeaf;
+			uint32 Index = 0;
+
+			FIterator(void* Ptr, bool bIsLeaf)
+				: VoidPtr(Ptr)
+				, bIsLeaf(bIsLeaf)
+			{
+			}
+
+			inline T& operator*() const
+			{
+				if (bIsLeaf)
+				{
+					LeafType* Ptr = reinterpret_cast<LeafType*>(VoidPtr);
+					return static_cast<T&>(Ptr[Index]);
+				}
+				else
+				{
+					ParentType* Ptr = reinterpret_cast<ParentType*>(VoidPtr);
+					return static_cast<T&>(Ptr[Index]);
+				}
+			}
+			inline void operator++()
+			{
+				Index++;
+			}
+			inline bool operator!=(const FIterator&) const
+			{
+				return Index != 8;
+			}
+		};
+		
+		FIterator begin() { return FIterator(Children, bIsLeaf); }
+		FIterator end() { return FIterator(nullptr, false); }
+	};
+
+public:
+	TVoxelOctreeParent(uint8 Height)
+		: BaseType(Height, FIntVector(0, 0, 0))
+	{
+	}
+	~TVoxelOctreeParent()
+	{
+		if (HasChildren())
 		{
 			DestroyChildren();
 		}
 	}
 
 public:
-	/**
-	 * Get the width at this level
-	 * @return	Width of this chunk
-	 */
-	inline int32 Size() const
+	inline bool HasChildren() const
 	{
-		return ChunkSize << LOD;
+		return Children != nullptr;
 	}
 
-	inline const FIntBox& GetBounds() const
+public:
+	inline const BaseType& GetChild(int32 X, int32 Y, int32 Z) const
 	{
-		return OctreeBounds;
+		return GetChild(GetChildIndex(X, Y, Z));
 	}
-
-	/**
-	 * Is Leaf?
-	 * @return IsLeaf
-	 */
-	inline bool IsLeaf() const
+	inline BaseType& GetChild(int32 X, int32 Y, int32 Z)
 	{
-		return !Children;
-	}
-
-	/**
-	 * Is the given Id a child of this octree?
-	 */
-	inline bool IsIdChild(const FVoxelId& ChildId) const
-	{
-		return FVoxelId::IsChild(Id, ChildId);
-	}
-
-	template<typename TNumeric>
-	inline bool IsInOctree(TNumeric X, TNumeric Y, TNumeric Z) const
-	{
-		return GetBounds().IsInside(X, Y, Z);
-	}
-	template<typename TVector>
-	inline bool IsInOctree(const TVector& P) const
-	{
-		return IsInOctree(P.X, P.Y, P.Z);
-	}
-
-	/**
-	 * Convert from chunk space to voxel space
-	 * @param	LocalPosition	Position in chunk space
-	 * @return	Position in voxel space
-	 */
-	template<typename TNumeric>
-	inline void LocalToGlobal(TNumeric X, TNumeric Y, TNumeric Z, TNumeric& OutX, TNumeric& OutY, TNumeric& OutZ) const
-	{
-		OutX = X + OctreeBounds.Min.X;
-		OutY = Y + OctreeBounds.Min.Y;
-		OutZ = Z + OctreeBounds.Min.Z;
-	}
-
-	/**
-	 * Convert from voxel space to chunk space
-	 * @param	GlobalPosition	Position in voxel space
-	 * @return	Position in chunk space
-	 */
-	template<typename TNumeric>
-	inline void GlobalToLocal(TNumeric X, TNumeric Y, TNumeric Z, TNumeric& OutX, TNumeric& OutY, TNumeric& OutZ) const
-	{
-		OutX = X - OctreeBounds.Min.X;
-		OutY = Y - OctreeBounds.Min.Y;
-		OutZ = Z - OctreeBounds.Min.Z;
+		return GetChild(GetChildIndex(X, Y, Z));
 	}
 	
-public:
-	template<typename TNumeric>
-	inline const ElementType& GetChild(TNumeric X, TNumeric Y, TNumeric Z) const
-	{
-		return GetChild(GetChildIndex(X, Y, Z));
-	}
-	template<typename TNumeric>
-	inline ElementType& GetChild(TNumeric X, TNumeric Y, TNumeric Z)
-	{
-		return GetChild(GetChildIndex(X, Y, Z));
-	}
-
-	template<typename TVector>
-	inline const ElementType& GetChild(const TVector& P) const
+	inline const BaseType& GetChild(const FIntVector& P) const
 	{
 		return GetChild(P.X, P.Y, P.Z);
 	}
-	template<typename TVector>
-	inline ElementType& GetChild(const TVector& P)
+	inline BaseType& GetChild(const FIntVector& P)
 	{
 		return GetChild(P.X, P.Y, P.Z);
 	}
 
-	inline const ElementType& GetChild(int32 Index) const
+	inline const BaseType& GetChild(int32 Index) const
 	{
-		checkVoxelSlow((Children != nullptr) & (0 <= Index) & (Index < 8));
-		return Children[Index];
-	}
-	inline ElementType& GetChild(int32 Index)
-	{
-		checkVoxelSlow((Children != nullptr) & (0 <= Index) & (Index < 8));
-		return Children[Index];
-	}
-
-	using FChildrenArray = ElementType[8];
-
-	inline const FChildrenArray& GetChildren() const
-	{
-		checkVoxelSlow(Children);
-		return reinterpret_cast<const FChildrenArray&>(*Children);
-	}
-	inline FChildrenArray& GetChildren()
-	{
-		checkVoxelSlow(Children);
-		return reinterpret_cast<FChildrenArray&>(*Children);
-	}
-
-public:
-	/**
-	 * Get the octree leaf at global position
-	 * @param	X,Y,Z	Global Position
-	 */
-	template<typename TNumeric>
-	inline ElementType* GetLeaf(TNumeric X, TNumeric Y, TNumeric Z) const
-	{
-		checkVoxelSlow(IsInOctree(X, Y, Z));
-
-		const ElementType* Ptr = static_cast<const ElementType*>(this);
-
-		while (!Ptr->IsLeaf())
+		check((Children != nullptr) & (0 <= Index) & (Index < 8));
+		if (this->Height == 1)
 		{
-			Ptr = &Ptr->GetChild(X, Y, Z);
-		}
-
-		checkVoxelSlow(Ptr->IsInOctree(X, Y, Z));
-
-		return const_cast<ElementType*>(Ptr);
-	}
-	inline ElementType* GetLeaf(const FIntVector& P) const
-	{
-		return GetLeaf(P.X, P.Y, P.Z);
-	}
-	
-	void GetLeavesOverlappingBox(const FIntBox& Box, TArray<ElementType*>& OutOctrees)
-	{
-		if (GetBounds().Intersect(Box))
-		{
-			if (IsLeaf())
-			{
-				OutOctrees.Add(static_cast<ElementType*>(this));
-			}
-			else
-			{
-				for (auto& Child : GetChildren())
-				{
-					Child.GetLeavesOverlappingBox(Box, OutOctrees);
-				}
-			}
-		}
-	}
-
-	template<typename F>
-	void ApplyLambda(F Lambda)
-	{
-		Lambda(static_cast<ElementType*>(this));
-
-		if (!IsLeaf())
-		{
-			for (auto& Child : GetChildren())
-			{
-				Child.ApplyLambda(Lambda);
-			}
-		}
-	}
-
-	template<typename TContainer>
-	void GetLeavesBounds(TContainer& OutBounds, int32 LeafMaxLOD = MAX_WORLD_DEPTH) const
-	{
-		if (IsLeaf())
-		{
-			if (LOD <= LeafMaxLOD)
-			{
-				OutBounds.Add(GetBounds());
-			}
+			const LeafType* Ptr = reinterpret_cast<const LeafType*>(Children);
+			return static_cast<const BaseType&>(Ptr[Index]);
 		}
 		else
 		{
-			for (auto& Child : GetChildren())
-			{
-				Child.template GetLeavesBounds<TContainer>(OutBounds, LeafMaxLOD);
-			}
+			const ParentType* Ptr = reinterpret_cast<const ParentType*>(Children);
+			return static_cast<const BaseType&>(Ptr[Index]);
 		}
 	}
-
-	template<template <typename...> class TContainer, typename... TArgs>
-	void GetLeaves(TContainer<ElementType*, TArgs...>& OutOctrees, int32 LeafMaxLOD = MAX_WORLD_DEPTH)
+	inline BaseType& GetChild(int32 Index)
 	{
-		if (IsLeaf())
+		check((Children != nullptr) & (0 <= Index) & (Index < 8));
+		if (this->Height == 1)
 		{
-			if (LOD <= LeafMaxLOD)
-			{
-				OutOctrees.Add(static_cast<ElementType*>(this));
-			}
+			LeafType* Ptr = reinterpret_cast<LeafType*>(Children);
+			return static_cast<BaseType&>(Ptr[Index]);
 		}
 		else
 		{
-			for (auto& Child : GetChildren())
-			{
-				Child.template GetLeaves<TContainer>(OutOctrees, LeafMaxLOD);
-			}
+			ParentType* Ptr = reinterpret_cast<ParentType*>(Children);
+			return static_cast<BaseType&>(Ptr[Index]);
 		}
 	}
 
-	// Warning: OutOctrees is reversed
-	void GetLeavesWithIds(TArray<FVoxelId>& Ids, TArray<ElementType*>& OutOctrees)
+	inline FChildrenIterator<const BaseType> GetChildren() const
 	{
-		if (Ids.Num() == 0)
-		{
-			return;
-		}
-
-		if (LOD == 0)
-		{
-			while (Ids.Num() > 0 && Ids.Last() == Id)
-			{
-				OutOctrees.Add(static_cast<ElementType*>(this));
-				Ids.Pop(false);
-			}
-		}
-		else
-		{
-			if (IsIdChild(Ids.Last()))
-			{
-				if (IsLeaf())
-				{
-					while (Ids.Num() > 0 && IsIdChild(Ids.Last()))
-					{
-						OutOctrees.Add(static_cast<ElementType*>(this));
-						Ids.Pop(false);
-					}
-				}
-				else
-				{
-					for (auto& Child : GetChildren())
-					{
-						Child.GetLeavesWithIds(Ids, OutOctrees);
-					}
-				}
-			}
-		}
+		check(Children);
+		return { Children, this->Height == 1 };
 	}
-
-	inline ElementType* CreateLeafAt(const FIntVector& InPosition)
+	inline FChildrenIterator<BaseType> GetChildren()
 	{
-		auto* Octree = this;
-		while (Octree->LOD != 0)
-		{
-			if (Octree->IsLeaf())
-			{
-				static_cast<ElementType*>(Octree)->CreateChildren();
-			}
-			Octree = &Octree->GetChild(InPosition);
-		}
-		return static_cast<ElementType*>(Octree);
+		check(Children);
+		return { Children, this->Height == 1 };
 	}
 
 protected:
-	TVoxelOctree(ElementType* Parent, uint8 ChildIndex)
-		: Position(Parent->Position +
-			FIntVector(
-				Parent->Size() / 4 * ((ChildIndex & 1) ? 1 : -1),
-				Parent->Size() / 4 * ((ChildIndex & 2) ? 1 : -1),
-				Parent->Size() / 4 * ((ChildIndex & 4) ? 1 : -1)
-			)
-		)
-		, LOD(Parent->LOD - 1)
-		, Id(FVoxelId::FromParent(Parent->Id, Parent->LOD - 1, ChildIndex + 1))
-		, OctreeBounds(GetCachedBounds())
+	TVoxelOctreeParent(const TVoxelOctreeParent& Parent, uint8 ChildIndex)
+		: BaseType(Parent.Height - 1, this->GetChildPosition(Parent.Position, Parent.GetSize(), ChildIndex))
 	{
-		checkVoxelSlow(0 <= ChildIndex && ChildIndex < 8);
+		check(0 <= ChildIndex && ChildIndex < 8);
 	}
 
-	/**
-	 * Create childs of this octree
-	 */
 	template<typename... TArgs>
 	inline void CreateChildren(TArgs&&... Args)
 	{		
-		checkVoxelSlow(IsLeaf());
-		checkVoxelSlow(!Children);
-		checkVoxelSlow(LOD != 0);
+		check(!HasChildren() && this->Height > 0);
 
-		Children = (ElementType*)FMemory::Malloc(8 * sizeof(ElementType));
+		// TODO PERF: Specialized malloc call
+		Children = FMemory::Malloc(8 * (this->Height == 1 ? sizeof(LeafType) : sizeof(ParentType)));
 
 		for (int32 Index = 0; Index < 8 ; Index++)
 		{
-			new (&Children[Index]) ElementType(static_cast<ElementType*>(this), Index, Forward<TArgs>(Args)...);
+			if (this->Height == 1)
+			{
+				LeafType* Ptr = static_cast<LeafType*>(Children);
+				new (&Ptr[Index]) LeafType  (static_cast<const ParentType&>(*this), Index, Forward<TArgs>(Args)...);
+			}
+			else
+			{
+				ParentType* Ptr = static_cast<ParentType*>(Children);
+				new (&Ptr[Index]) ParentType(static_cast<const ParentType&>(*this), Index, Forward<TArgs>(Args)...);
+			}
 		}
 	}
-
 	inline void DestroyChildren()
 	{
-		checkVoxelSlow(!IsLeaf());
+		check(HasChildren());
 
 		for (auto& Child : GetChildren())
 		{
-			Child.~ElementType();
+			if (this->Height == 1)
+			{
+				static_cast<LeafType&>(Child).~LeafType();
+			}
+			else
+			{
+				static_cast<ParentType&>(Child).~ParentType();
+			}
 		}
 
 		FMemory::Free(Children);
 		Children = nullptr;
 	}
 
-
 private:
-	/*
-	Children of this octree in the following order:
+	void* Children = nullptr;
 
-	bottom      top
-	-----> y
-	| 0 | 2    4 | 6
-	v 1 | 3    5 | 7
-	x
-	*/
-	ElementType* Children = nullptr;
-
-	inline FIntBox GetCachedBounds() const
+	inline uint32 GetChildIndex(int32 X, int32 Y, int32 Z) const
 	{
-		return FIntBox(Position - FIntVector(Size() / 2), Position + FIntVector(Size() / 2));
-	}
-
-	template<typename TNumeric>
-	inline int32 GetChildIndex(TNumeric X, TNumeric Y, TNumeric Z) const
-	{
-		// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-		return (X >= Position.X) + 2 * (Y >= Position.Y) + 4 * (Z >= Position.Z);
+		return (X >= this->Position.X) + 2 * (Y >= this->Position.Y) + 4 * (Z >= this->Position.Z);
 	}
 };

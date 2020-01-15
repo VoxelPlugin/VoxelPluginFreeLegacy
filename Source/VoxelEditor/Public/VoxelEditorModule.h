@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -17,4 +17,6 @@ public:
 	virtual bool GenerateSingleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) = 0;
 	virtual bool GenerateDoubleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) = 0;
 	virtual bool GenerateTripleMaterials(UVoxelMaterialCollection* Collection, FString& OutError) = 0;
+
+	virtual void RefreshVoxelWorlds(UObject* MatchingGenerator = nullptr) = 0;
 };

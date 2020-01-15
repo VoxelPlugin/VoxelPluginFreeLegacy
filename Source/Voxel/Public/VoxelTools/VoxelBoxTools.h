@@ -1,14 +1,16 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "VoxelValue.h"
 #include "VoxelPaintMaterial.h"
 #include "IntBox.h"
 #include "VoxelBoxTools.generated.h"
 
+class FVoxelData;
 class AVoxelWorld;
 struct FIntBox;
 
@@ -18,69 +20,47 @@ class VOXEL_API UVoxelBoxTools : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 
 public:
+	static void SetValueBoxImpl(FVoxelData& Data, const FIntBox& Bounds, FVoxelValue Value);
+
+	template<bool bAdd>
+	static void BoxEditImpl(FVoxelData& Data, const FIntBox& Bounds);
+
+	static void SetMaterialBoxImpl(FVoxelData& Data, const FIntBox& Bounds, const FVoxelPaintMaterial& PaintMaterial);
+
+public:
 	/**
 	 * Set the density in a box shape
 	 * @param	World			The voxel world
 	 * @param	Bounds			The bounds of the box
 	 * @param	Value			The value to set
-	 * @param	bUpdateRender	Should the render be updated?
-	 * @param   bAllowFailure	If the data is locked by another thread, fail instead of waiting
-	 * @return	If the edit was successful
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (AdvancedDisplay = "bUpdateRender, bAllowFailure"))
-	static bool SetValueBox(
-		AVoxelWorld* World,
-		const FIntBox& Bounds,
-		float Value,
-		bool bUpdateRender = true,
-		bool bAllowFailure = false);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World"))
+	static void SetValueBox(AVoxelWorld* World,	FIntBox Bounds,	float Value);
 
 	/**
 	 * Add a box shape
 	 * @param	World			The voxel world
 	 * @param	Bounds			The bounds of the box
-	 * @param	bUpdateRender	Should the render be updated?
-	 * @param   bAllowFailure	If the data is locked by another thread, fail instead of waiting
-	 * @return	If the edit was successful
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (AdvancedDisplay = "bUpdateRender, bAllowFailure"))
-	static bool AddBox(
-		AVoxelWorld* World,
-		const FIntBox& Bounds,
-		bool bUpdateRender = true,
-		bool bAllowFailure = false);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World"))
+	static void AddBox(AVoxelWorld* World, FIntBox Bounds);
 
 	/**
 	 * Remove a box shape
 	 * @param	World			The voxel world
 	 * @param	Bounds			The bounds of the box
-	 * @param	bUpdateRender	Should the render be updated?
-	 * @param   bAllowFailure	If the data is locked by another thread, fail instead of waiting
-	 * @return	If the edit was successful
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (AdvancedDisplay = "bUpdateRender, bAllowFailure"))
-	static bool RemoveBox(
-		AVoxelWorld* World,
-		const FIntBox& Bounds,
-		bool bUpdateRender = true,
-		bool bAllowFailure = false);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World"))
+	static void RemoveBox(AVoxelWorld* World, FIntBox Bounds);
 
 	/**
 	 * Paint a box shape
 	 * @param	World			The voxel world
 	 * @param	Bounds			The bounds of the box
 	 * @param	PaintMaterial	The material to set
-	 * @param	bUpdateRender	Should the render be updated?
-	 * @param   bAllowFailure	If the data is locked by another thread, fail instead of waiting
-	 * @return	If the edit was successful
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (AdvancedDisplay = "bUpdateRender, bAllowFailure"))
-	static bool SetMaterialBox(
-		AVoxelWorld* World,
-		const FIntBox& Bounds,
-		FVoxelPaintMaterial PaintMaterial,
-		bool bUpdateRender = true,
-		bool bAllowFailure = false);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World"))
+	static void SetMaterialBox(AVoxelWorld* World, FIntBox Bounds, FVoxelPaintMaterial PaintMaterial);
 
 public:
 	/**
@@ -88,58 +68,54 @@ public:
 	 * @param	World			The voxel world
 	 * @param	Bounds			The bounds of the box
 	 * @param	Value			The value to set
-	 * @param	bUpdateRender	Should the render be updated?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bUpdateRender"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void SetValueBoxAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		const FIntBox& Bounds,
+		FIntBox Bounds,
 		float Value,
-		bool bUpdateRender = true);
+		bool bHideLatentWarnings = false);
 
 	/**
 	 * Add a box shape async
 	 * @param	World			The voxel world
 	 * @param	Bounds			The bounds of the box
-	 * @param	bUpdateRender	Should the render be updated?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bUpdateRender"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void AddBoxAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		const FIntBox& Bounds,
-		bool bUpdateRender = true);
+		FIntBox Bounds,
+		bool bHideLatentWarnings = false);
 
 	/**
 	 * Remove a box shape async
 	 * @param	World			The voxel world
 	 * @param	Bounds			The bounds of the box
-	 * @param	bUpdateRender	Should the render be updated?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bUpdateRender"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void RemoveBoxAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		const FIntBox& Bounds,
-		bool bUpdateRender = true);
+		FIntBox Bounds,
+		bool bHideLatentWarnings = false);
 
 	/**
 	 * Paint a box shape async
 	 * @param	World			The voxel world
 	 * @param	Bounds			The bounds of the box
 	 * @param	PaintMaterial	The material to set
-	 * @param	bUpdateRender	Should the render be updated?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bUpdateRender"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void SetMaterialBoxAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		const FIntBox& Bounds,
+		FIntBox Bounds,
 		FVoxelPaintMaterial PaintMaterial,
-		bool bUpdateRender = true);
+		bool bHideLatentWarnings = false);
 };

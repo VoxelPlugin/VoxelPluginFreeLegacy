@@ -1,156 +1,120 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelTools/VoxelBoxTools.h"
-#include "VoxelTools/VoxelToolsHelpers.h"
-#include "VoxelTools/VoxelLatentActionHelpers.h"
-#include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelTools/VoxelToolHelpers.h"
+#include "VoxelData/VoxelData.h"
 
-DECLARE_CYCLE_STAT(TEXT("UVoxelBoxTools::SetValueBox"),    STAT_UVoxelBoxTools_SetValueBox, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelBoxTools::AddBox"),         STAT_UVoxelBoxTools_AddBox, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelBoxTools::RemoveBox"),      STAT_UVoxelBoxTools_RemoveBox, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelBoxTools::SetMaterialBox"), STAT_UVoxelBoxTools_SetMaterialBox, STATGROUP_Voxel);
-
-void SetValueBoxImpl(FVoxelData& Data, const FIntBox& Bounds, float Value)
+void UVoxelBoxTools::SetValueBoxImpl(FVoxelData& Data, const FIntBox& Bounds, FVoxelValue Value)
 {
-	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& OldValue)
+	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
+	
+	Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& OldValue)
 	{
 		OldValue = Value;
 	});
 }
 
 template<bool bAdd>
-void BoxEditImpl(FVoxelData& Data, const FIntBox& Bounds)
+void UVoxelBoxTools::BoxEditImpl(FVoxelData& Data, const FIntBox& Bounds)
 {
-	Data.SetValueOrMaterialLambda<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
+	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
+	
+	Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
 	{
 		if (X == Bounds.Min.X || X == Bounds.Max.X - 1 || Y == Bounds.Min.Y || Y == Bounds.Max.Y - 1 || Z == Bounds.Min.Z || Z == Bounds.Max.Z - 1)
 		{
 			if ((bAdd && Value.IsEmpty()) || (!bAdd && !Value.IsEmpty()))
 			{
-				Value = 0;
+				Value = FVoxelValue(0.f);
 			}
 		}
 		else
 		{
-			Value = bAdd ? FVoxelValue::Full : FVoxelValue::Empty;
+			Value = bAdd ? FVoxelValue::Full() : FVoxelValue::Empty();
 		}
 	});
 }
 
-void SetMaterialBoxImpl(FVoxelData& Data, const FIntBox& Bounds, const FVoxelPaintMaterial& PaintMaterial)
+template VOXEL_API void UVoxelBoxTools::BoxEditImpl<false>(FVoxelData& Data, const FIntBox& Bounds);
+template VOXEL_API void UVoxelBoxTools::BoxEditImpl<true>(FVoxelData& Data, const FIntBox& Bounds);
+
+void UVoxelBoxTools::SetMaterialBoxImpl(FVoxelData& Data, const FIntBox& Bounds, const FVoxelPaintMaterial& PaintMaterial)
 {
-	Data.SetValueOrMaterialLambda<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
+	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
+	
+	Data.Set<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
 	{
-		PaintMaterial.ApplyToMaterial(Material);
+		const float Strength = 1.f;
+		PaintMaterial.ApplyToMaterial(Material, Strength);
 	});
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-bool UVoxelBoxTools::SetValueBox(AVoxelWorld* World, const FIntBox& Bounds, float Value, bool bUpdateRender, bool bAllowFailure)
+void UVoxelBoxTools::SetValueBox(AVoxelWorld* World, FIntBox Bounds, float Value)
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelBoxTools_SetValueBox);
-	CHECK_VOXELWORLD_IS_CREATED();
-
-	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::ReadWrite>(__FUNCTION__, World, Bounds, bUpdateRender, bAllowFailure, [&](FVoxelData& Data)
-	{
-		SetValueBoxImpl(Data, Bounds, Value);
-	});
+	VOXEL_TOOL_HELPER(Write, UpdateRender, NO_PREFIX, SetValueBoxImpl(Data, Bounds, FVoxelValue(Value)));
 }
 
-bool UVoxelBoxTools::AddBox(AVoxelWorld* World, const FIntBox& Bounds, bool bUpdateRender, bool bAllowFailure)
+void UVoxelBoxTools::AddBox(AVoxelWorld* World, FIntBox Bounds)
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelBoxTools_AddBox);
-	CHECK_VOXELWORLD_IS_CREATED();
-	
-	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::ReadWrite>(__FUNCTION__, World, Bounds, bUpdateRender, bAllowFailure, [&](FVoxelData& Data)
-	{
-		BoxEditImpl<true>(Data, Bounds);
-	});
+	VOXEL_TOOL_HELPER(Write, UpdateRender, NO_PREFIX, BoxEditImpl<true>(Data, Bounds));
 }
 
-bool UVoxelBoxTools::RemoveBox(AVoxelWorld* World, const FIntBox& Bounds, bool bUpdateRender, bool bAllowFailure)
+void UVoxelBoxTools::RemoveBox(AVoxelWorld* World, FIntBox Bounds)
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelBoxTools_RemoveBox);
-	CHECK_VOXELWORLD_IS_CREATED();
-	
-	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::ReadWrite>(__FUNCTION__, World, Bounds, bUpdateRender, bAllowFailure, [&](FVoxelData& Data)
-	{
-		BoxEditImpl<false>(Data, Bounds);
-	});
+	VOXEL_TOOL_HELPER(Write, UpdateRender, NO_PREFIX, BoxEditImpl<false>(Data, Bounds));
 }
 
-bool UVoxelBoxTools::SetMaterialBox(AVoxelWorld* World, const FIntBox& Bounds, FVoxelPaintMaterial PaintMaterial, bool bUpdateRender, bool bAllowFailure)
+void UVoxelBoxTools::SetMaterialBox(AVoxelWorld* World, FIntBox Bounds, FVoxelPaintMaterial PaintMaterial)
 {	
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelBoxTools_SetMaterialBox);
-	CHECK_VOXELWORLD_IS_CREATED();
-	
-	return FVoxelToolsHelpers::EditToolsHelper<EVoxelLockType::ReadWrite>(__FUNCTION__, World, Bounds, bUpdateRender, bAllowFailure, [&](FVoxelData& Data)
-	{
-		SetMaterialBoxImpl(Data, Bounds, PaintMaterial);
-	});
+	VOXEL_TOOL_HELPER(Write, UpdateRender, NO_PREFIX, SetMaterialBoxImpl(Data, Bounds, PaintMaterial));
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelBoxTools::SetValueBoxAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	const FIntBox& Bounds,
+	FIntBox Bounds,
 	float Value,
-	bool bUpdateRender)
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelper(WorldContextObject, LatentInfo, __FUNCTION__, World, Bounds, bUpdateRender, [Bounds, Value](FVoxelData& Data)
-	{
-		FVoxelReadWriteScopeLock Lock(Data, Bounds, __FUNCTION__);
-		SetValueBoxImpl(Data, Bounds, Value);
-	});
+	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, NO_PREFIX, SetValueBoxImpl(Data, Bounds, FVoxelValue(Value)));
 }
 
 void UVoxelBoxTools::AddBoxAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	const FIntBox& Bounds,
-	bool bUpdateRender)
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelper(WorldContextObject, LatentInfo, __FUNCTION__, World, Bounds, bUpdateRender, [Bounds](FVoxelData& Data)
-	{
-		FVoxelReadWriteScopeLock Lock(Data, Bounds, __FUNCTION__);
-		BoxEditImpl<true>(Data, Bounds);
-	});
+	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, NO_PREFIX, BoxEditImpl<true>(Data, Bounds));
 }
 
 void UVoxelBoxTools::RemoveBoxAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	const FIntBox& Bounds,
-	bool bUpdateRender)
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelper(WorldContextObject, LatentInfo, __FUNCTION__, World, Bounds, bUpdateRender, [Bounds](FVoxelData& Data)
-	{
-		FVoxelReadWriteScopeLock Lock(Data, Bounds, __FUNCTION__);
-		BoxEditImpl<false>(Data, Bounds);
-	});
+	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, NO_PREFIX, BoxEditImpl<false>(Data, Bounds));
 }
 
 void UVoxelBoxTools::SetMaterialBoxAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	const FIntBox& Bounds,
+	FIntBox Bounds,
 	FVoxelPaintMaterial PaintMaterial,
-	bool bUpdateRender)
+	bool bHideLatentWarnings)
 {
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelLatentActionHelpers::AsyncHelper(WorldContextObject, LatentInfo, __FUNCTION__, World, Bounds, bUpdateRender, [Bounds, PaintMaterial](FVoxelData& Data)
-	{
-		FVoxelReadWriteScopeLock Lock(Data, Bounds, __FUNCTION__);
-		SetMaterialBoxImpl(Data, Bounds, PaintMaterial);
-	});
+	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, NO_PREFIX, SetMaterialBoxImpl(Data, Bounds, PaintMaterial));
 }

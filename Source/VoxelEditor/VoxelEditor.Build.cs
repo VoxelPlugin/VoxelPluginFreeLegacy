@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 using System.IO;
 using UnrealBuildTool;
@@ -14,10 +14,6 @@ public class VoxelEditor : ModuleRules
         if (!Target.bUseUnityBuild)
         {
             PrivatePCHHeaderFile = "Private/VoxelEditorPCH.h";
-#if UE_4_22_OR_LATER
-#else
-            PrivateDependencyModuleNames.Add("LivePP");
-#endif
         }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
@@ -45,11 +41,16 @@ public class VoxelEditor : ModuleRules
                 "DesktopPlatform",
                 "UnrealEd",
                 "InputCore",
+                "ImageWrapper",
                 "Slate",
                 "SlateCore",
                 "PropertyEditor",
                 "EditorStyle",
-                "Projects"
+                "Projects",
+                "RHI",
+                "MessageLog",
+                "RawMesh",
+                "DetailCustomizations"
             });
 
         PrivateIncludePathModuleNames.AddRange(
@@ -61,5 +62,7 @@ public class VoxelEditor : ModuleRules
         {
             PublicDefinitions.Add("VOXEL_DEBUG=1");
         }
+
+        PublicDefinitions.Add("VOXEL_PLUGIN_PRO=1");
     }
 }

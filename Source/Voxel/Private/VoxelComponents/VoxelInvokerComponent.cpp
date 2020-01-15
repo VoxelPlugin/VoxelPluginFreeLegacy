@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelComponents/VoxelInvokerComponent.h"
 #include "VoxelWorld.h"
@@ -8,10 +8,10 @@
 
 TMap<UWorld*, TArray<TWeakObjectPtr<UVoxelInvokerComponent>>> UVoxelInvokerComponent::Components;
 
-bool UVoxelInvokerComponent::IsLocalInvoker()
+bool UVoxelInvokerComponent::IsLocalInvoker() const
 {
 	auto* Owner = Cast<APawn>(GetOwner());
-	return !Owner || Owner->IsLocallyControlled() || Owner->GetWorld()->IsServer();
+	return !Owner || Owner->IsLocallyControlled();
 }
 
 FVector UVoxelInvokerComponent::GetPosition() const
@@ -29,7 +29,7 @@ const TArray<TWeakObjectPtr<UVoxelInvokerComponent>>& UVoxelInvokerComponent::Ge
 	auto* Result = Components.Find(World);
 	if (Result)
 	{
-		Result->RemoveAll([](auto& X) { return !X.IsValid(); });
+		Result->RemoveAllSwap([](auto& X) { return !X.IsValid(); });
 		return *Result;
 	}
 	else
@@ -67,7 +67,7 @@ void UVoxelInvokerComponent::RegisterInvoker()
 {
 	auto& Array = Components.FindOrAdd(GetWorld());
 	Array.AddUnique(TWeakObjectPtr<UVoxelInvokerComponent>(this));
-	Array.RemoveAll([](auto& X) { return !X.IsValid(); });
+	Array.RemoveAllSwap([](auto& X) { return !X.IsValid(); });
 
 	UE_LOG(LogVoxel, Log, TEXT("Voxel Invoker registered. Owner: %s"), *GetOwner()->GetName());
 }
@@ -75,7 +75,7 @@ void UVoxelInvokerComponent::RegisterInvoker()
 void UVoxelInvokerComponent::UnregisterInvoker()
 {
 	auto& Array = Components.FindOrAdd(GetWorld());
-	Array.RemoveAll([this](auto& X) { return !X.IsValid() || X == this; });
+	Array.RemoveAllSwap([this](auto& X) { return !X.IsValid() || X == this; });
 
 	UE_LOG(LogVoxel, Log, TEXT("Voxel Invoker unregistered"));
 }

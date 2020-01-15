@@ -1,29 +1,105 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelDebugUtilities.h"
 #include "IntBox.h"
 #include "VoxelWorld.h"
-#include "VoxelBlueprintErrors.h"
+#include "VoxelMessages.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelTools/VoxelToolsHelpers.h"
+#include "VoxelTools/VoxelToolHelpers.h"
 
-#include "Engine/World.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/Engine.h"
+#include "Components/LineBatchComponent.h"
 
 #define LOCTEXT_NAMESPACE "Voxel"
 
-void UVoxelDebugUtilities::DrawDebugIntBox(AVoxelWorld* World, const FIntBox& Box, float Lifetime, float Thickness, FLinearColor Color)
+void UVoxelDebugUtilities::DrawDebugIntBox(
+	AVoxelWorld* World,
+	FIntBox Bounds,
+	FTransform Transform,
+	float Lifetime,
+	float Thickness,
+	FLinearColor Color)
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_BOUNDS_ARE_VALID_VOID();
 
-	FVector Min = World->LocalToGlobal(Box.Min);
-	FVector Max = World->LocalToGlobal(Box.Max);
+	// Put it in local voxel world space
+	const FVector Min = World->GetTransform().InverseTransformPosition(World->LocalToGlobal(Bounds.Min));
+	const FVector Max = World->GetTransform().InverseTransformPosition(World->LocalToGlobal(Bounds.Max));
 
-	float BorderOffset = Thickness / 2;
+	const float BorderOffset = Thickness / 2;
 
-	FBox DebugBox(Min + BorderOffset, Max - BorderOffset);
+	const FBox DebugBox(Min + BorderOffset, Max - BorderOffset);
+	const FVector Extent = DebugBox.GetExtent();
+	const FVector Center = DebugBox.GetCenter();
+	const uint8 DepthPriority = 0;
 
-	DrawDebugBox(World->GetWorld(), DebugBox.GetCenter(), DebugBox.GetExtent(), Color.ToFColor(true), false, Lifetime, 0, Thickness);
+	UWorld* const SceneWorld = World->GetWorld();
+
+	Transform = World->GetTransform() * Transform;
+
+	// no debug line drawing on dedicated server
+	if (GEngine->GetNetMode(SceneWorld) != NM_DedicatedServer)
+	{
+		// this means foreground lines can't be persistent 
+		ULineBatchComponent* const LineBatcher = (Lifetime > 0.f) ? SceneWorld->PersistentLineBatcher : SceneWorld->LineBatcher;
+		if (LineBatcher)
+		{
+			float const LineLifeTime = (Lifetime > 0.f) ? Lifetime : LineBatcher->DefaultLifeTime;
+			TArray<struct FBatchedLine> Lines;
+
+			FVector Start = Transform.TransformPosition(Center + FVector(Extent.X, Extent.Y, Extent.Z));
+			FVector End = Transform.TransformPosition(Center + FVector(Extent.X, -Extent.Y, Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(Extent.X, -Extent.Y, Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(-Extent.X, -Extent.Y, Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(-Extent.X, -Extent.Y, Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(-Extent.X, Extent.Y, Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(-Extent.X, Extent.Y, Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(Extent.X, Extent.Y, Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(Extent.X, Extent.Y, -Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(Extent.X, -Extent.Y, -Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(Extent.X, -Extent.Y, -Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(-Extent.X, -Extent.Y, -Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(-Extent.X, -Extent.Y, -Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(-Extent.X, Extent.Y, -Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(-Extent.X, Extent.Y, -Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(Extent.X, Extent.Y, -Extent.Z));
+			new(Lines)FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(Extent.X, Extent.Y, Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(Extent.X, Extent.Y, -Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(Extent.X, -Extent.Y, Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(Extent.X, -Extent.Y, -Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(-Extent.X, -Extent.Y, Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(-Extent.X, -Extent.Y, -Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			Start = Transform.TransformPosition(Center + FVector(-Extent.X, Extent.Y, Extent.Z));
+			End = Transform.TransformPosition(Center + FVector(-Extent.X, Extent.Y, -Extent.Z));
+			new(Lines) FBatchedLine(Start, End, Color, LineLifeTime, Thickness, DepthPriority);
+
+			LineBatcher->DrawLines(Lines);
+		}
+	}
 }
 
 void UVoxelDebugUtilities::DebugVoxelsInsideBounds(
@@ -36,6 +112,7 @@ void UVoxelDebugUtilities::DebugVoxelsInsideBounds(
 	FLinearColor TextColor)
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	CHECK_BOUNDS_ARE_VALID_VOID();
 
 	for (int32 X = Bounds.Min.X; X < Bounds.Max.X; X++)
 	{
@@ -49,8 +126,8 @@ void UVoxelDebugUtilities::DebugVoxelsInsideBounds(
 				{
 					auto& Data = World->GetData();
 					FVoxelReadScopeLock Lock(Data, FIntBox(X, Y, Z), "DebugVoxelsInsideBox");
-					FVoxelValue Value = Data.GetValue(X, Y, Z, 0);
-					DrawDebugString(World->GetWorld(), World->LocalToGlobal(FIntVector(X, Y, Z)), Value.ToString(), nullptr, TextColor.ToFColor(false), Lifetime);
+					float Value = Data.GetValue(X, Y, Z, 0).ToFloat();
+					DrawDebugString(World->GetWorld(), World->LocalToGlobal(FIntVector(X, Y, Z)), LexToString(Value), nullptr, TextColor.ToFColor(false), Lifetime);
 				}
 			}
 		}

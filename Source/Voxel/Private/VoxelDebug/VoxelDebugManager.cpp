@@ -1,58 +1,55 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelDebugUtilities.h"
-#include "VoxelRender/Renderers/VoxelRenderChunk.h"
 #include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelRender/IVoxelRenderer.h"
+#include "VoxelData/VoxelDataUtilities.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
-#include "VoxelBlueprintErrors.h"
+#include "VoxelTools/VoxelDataTools.h"
+#include "VoxelMessages.h"
 #include "VoxelWorld.h"
+#include "IVoxelPool.h"
 
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
 #include "DrawDebugHelpers.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
-DECLARE_CYCLE_STAT(TEXT("FVoxelDebugManager::Tick"), STAT_VoxelDebugManager_Tick, STATGROUP_Voxel);
-
-///////////////////////////////////////////////////////////////////////////////
-
 static TAutoConsoleVariable<int32> CVarShowUpdatedChunks(
-	TEXT("voxel.ShowUpdatedChunks"),
+	TEXT("voxel.renderer.ShowUpdatedChunks"),
 	0,
 	TEXT("If true, will show the chunks recently updated"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<int32> CVarShowRenderChunks(
-	TEXT("voxel.ShowRenderChunks"),
+	TEXT("voxel.renderer.ShowRenderChunks"),
 	0,
 	TEXT("If true, will show the render chunks"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarShowDataChunks(
-	TEXT("voxel.ShowDataChunks"),
+static TAutoConsoleVariable<int32> CVarShowMultiplayerSyncedChunks(
+	TEXT("voxel.multiplayer.ShowSyncedChunks"),
 	0,
-	TEXT("If true, will show the data chunks and their status (cached/created...)"),
+	TEXT("If true, will show the synced chunks"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarLogCacheStats(
-	TEXT("voxel.LogCacheStats"),
+static TAutoConsoleVariable<int32> CVarShowValuesState(
+	TEXT("voxel.data.ShowValuesState"),
 	0,
-	TEXT("If true, will log all the voxel cache stats"),
+	TEXT("If true, will show the values data chunks and their status (cached/created...)"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarShowTaskCount(
-	TEXT("voxel.ShowTaskCount"),
-	1,
-	TEXT("If true, will log the remaining tasks count"),
+static TAutoConsoleVariable<int32> CVarShowMaterialsState(
+	TEXT("voxel.data.ShowMaterialsState"),
+	0,
+	TEXT("If true, will show the materials data chunks and their status (cached/created...)"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarShowMultiplayerSyncedBounds(
-	TEXT("voxel.ShowMultiplayerSyncedBounds"),
+static TAutoConsoleVariable<int32> CVarShowFoliageState(
+	TEXT("voxel.data.ShowFoliageState"),
 	0,
-	TEXT("If true, will show synced areas"),
+	TEXT("If true, will show the foliage data chunks and their status (cached/created...)"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<int32> CVarFreezeDebug(
@@ -62,7 +59,7 @@ static TAutoConsoleVariable<int32> CVarFreezeDebug(
 	ECVF_Default);
 
 static TAutoConsoleVariable<int32> CVarShowChunksEmptyStates(
-	TEXT("voxel.ShowChunksEmptyStates"),
+	TEXT("voxel.renderer.ShowChunksEmptyStates"),
 	0,
 	TEXT("If true, will show updated chunks empty state"),
 	ECVF_Default);
@@ -79,76 +76,139 @@ static TAutoConsoleVariable<int32> CVarShowInvokers(
 	TEXT("If true, will show the voxel invokers"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarLogRenderOctreeBuildTime(
-	TEXT("voxel.LogRenderOctreeBuildTime"),
+static TAutoConsoleVariable<int32> CVarShowCollisionAndNavmeshDebug(
+	TEXT("voxel.renderer.ShowCollisionAndNavmeshDebug"),
 	0,
-	TEXT("If true, will log the render octree build times"),
+	TEXT("If true, will show chunks used for collisions/navmesh and will color all chunks according to their usage"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarLogToolsFailures(
-	TEXT("voxel.LogToolsFailures"),
-	1,
-	TEXT("If true, will log each time a voxel tool fails"),
-	ECVF_Default);
-
-static TAutoConsoleVariable<int32> CVarShowVoxelSpawnerRays(
-	TEXT("voxel.ShowVoxelSpawnerRays"),
+static TAutoConsoleVariable<int32> CVarShowDirtyVoxels(
+	TEXT("voxel.data.ShowDirtyVoxels"),
 	0,
-	TEXT("If true, will show the voxel spawner rays"),
-	ECVF_Default);
-
-static TAutoConsoleVariable<int32> CVarShowVoxelSpawnerHits(
-	TEXT("voxel.ShowVoxelSpawnerHits"),
-	0,
-	TEXT("If true, will show the voxel spawner rays hits"),
-	ECVF_Default);
-
-static TAutoConsoleVariable<int32> CVarShowVoxelSpawnerPositions(
-	TEXT("voxel.ShowVoxelSpawnerPositions"),
-	0,
-	TEXT("If true, will show the positions sent to spawners"),
+	TEXT("If true, will show every dirty voxel in the scene"),
 	ECVF_Default);
 
 ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-static void	ClearChunksEmptyStates(const TArray<FString>& Args, UWorld* World)
+template<typename T>
+inline FConsoleCommandWithWorldAndArgsDelegate CreateCommandWithVoxelWorldDelegate(T Lambda)
 {
-	for (TActorIterator<AVoxelWorld> It(World); It; ++It)
+	return FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([=](const TArray<FString>& Args, UWorld* World)
 	{
-		It->GetDebugManager().ClearChunksEmptyStates();
-	}
+		for (TActorIterator<AVoxelWorld> It(World); It; ++It)
+		{
+			if (It->IsCreated())
+			{
+				Lambda(**It);
+			}
+		}
+	});
 }
 
-FAutoConsoleCommandWithWorldAndArgs ClearChunksEmptyStatesCmd(
-	TEXT("voxel.ClearChunksEmptyStates"),
+static FAutoConsoleCommandWithWorldAndArgs ClearChunksEmptyStatesCmd(
+	TEXT("voxel.renderer.ClearChunksEmptyStates"),
 	TEXT("Clear the empty states debug"),
-	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(ClearChunksEmptyStates));
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World) { World.GetDebugManager().ClearChunksEmptyStates(); }));
 
-static void	UpdateAll(const TArray<FString>& Args, UWorld* World)
-{
-	for (TActorIterator<AVoxelWorld> It(World); It; ++It)
-	{
-		It->GetLODManager().UpdateBounds(FIntBox::Infinite);
-	}
-}
-
-FAutoConsoleCommandWithWorldAndArgs UpdateAllCmd(
-	TEXT("voxel.UpdateAll"),
+static FAutoConsoleCommandWithWorldAndArgs UpdateAllCmd(
+	TEXT("voxel.renderer.UpdateAll"),
 	TEXT("Update all the chunks in all the voxel world in the scene"),
-	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(UpdateAll));
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World) { World.GetLODManager().UpdateBounds(FIntBox::Infinite); }));
+
+static FAutoConsoleCommandWithWorldAndArgs RecomputeMeshPositionsCmd(
+	TEXT("voxel.renderer.RecomputeMeshPositions"),
+	TEXT("Recompute the positions of all the meshes in all the voxel world in the scene"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World) { World.GetRenderer().RecomputeMeshPositions(); }));
+
+static FAutoConsoleCommandWithWorldAndArgs ForceLODsUpdateCmd(
+	TEXT("voxel.renderer.ForceLODUpdate"),
+	TEXT("Update the LODs"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World) { World.GetLODManager().ForceLODsUpdate(); }));
+
+static FAutoConsoleCommandWithWorldAndArgs CacheAllValuesCmd(
+	TEXT("voxel.data.CacheAllValues"),
+	TEXT("Cache all values"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World)
+		{
+			FVoxelWriteScopeLock Lock(World.GetData(), FIntBox::Infinite, "");
+			World.GetData().CacheBounds<FVoxelValue>(FIntBox::Infinite);
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs CacheAllMaterialsCmd(
+	TEXT("voxel.data.CacheAllMaterials"),
+	TEXT("Cache all materials"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World)
+		{
+			FVoxelWriteScopeLock Lock(World.GetData(), FIntBox::Infinite, "");
+			World.GetData().CacheBounds<FVoxelMaterial>(FIntBox::Infinite);
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs ClearAllCachedValuesCmd(
+	TEXT("voxel.data.ClearAllCachedValues"),
+	TEXT("Clear all cached values"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World)
+		{
+			FVoxelWriteScopeLock Lock(World.GetData(), FIntBox::Infinite, "");
+			World.GetData().ClearCacheInBounds<FVoxelValue>(FIntBox::Infinite);
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs ClearAllCachedMaterialsCmd(
+	TEXT("voxel.data.ClearAllCachedMaterials"),
+	TEXT("Clear all cached materials"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World)
+		{
+			FVoxelWriteScopeLock Lock(World.GetData(), FIntBox::Infinite, "");
+			World.GetData().ClearCacheInBounds<FVoxelMaterial>(FIntBox::Infinite);
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs CheckForSingleValuesCmd(
+	TEXT("voxel.data.CheckForSingleValues"),
+	TEXT("Check if values in a chunk are all the same, and if so only store one"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World)
+		{
+			FVoxelWriteScopeLock Lock(World.GetData(), FIntBox::Infinite, "");
+			World.GetData().CheckIsSingle<FVoxelValue>(FIntBox::Infinite);
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs RoundVoxelsCmd(
+	TEXT("voxel.data.RoundVoxels"),
+	TEXT("Round all voxels that do not impact the surface nor the normals"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World)
+		{
+			UVoxelDataTools::RoundVoxels(&World, FIntBox::Infinite);
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs ClearUnusedMaterialsCmd(
+	TEXT("voxel.data.ClearUnusedMaterials"),
+	TEXT("Will clear all materials that do not affect the surface to improve compression"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World)
+		{
+			UVoxelDataTools::ClearUnusedMaterials(&World, FIntBox::Infinite);
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs CheckForSingleMaterialsCmd(
+	TEXT("voxel.data.CheckForSingleMaterials"),
+	TEXT("Check if materials in a chunk are all the same, and if so only store one"),
+	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World)
+		{
+			FVoxelWriteScopeLock Lock(World.GetData(), FIntBox::Infinite, "");
+			World.GetData().CheckIsSingle<FVoxelMaterial>(FIntBox::Infinite);
+		}));
 
 static void LogSecondsPerCycles()
 {
-	double SecondsPerCycles = FPlatformTime::GetSecondsPerCycle();
-    UE_LOG(LogVoxel, Log, TEXT("SECONDS PER CYCLES: %e"), SecondsPerCycles);
+    UE_LOG(LogVoxel, Log, TEXT("SECONDS PER CYCLES: %e"), FPlatformTime::GetSecondsPerCycle());
 }
 
-FAutoConsoleCommand CmdLogSecondsPerCycles(
-    TEXT("voxel.LogSecondsPerCycles"),
+static FAutoConsoleCommand CmdLogSecondsPerCycles(
+    TEXT("voxel.debug.LogSecondsPerCycles"),
     TEXT(""),
-    FConsoleCommandDelegate::CreateStatic(&LogSecondsPerCycles)
-    );
+    FConsoleCommandDelegate::CreateStatic(&LogSecondsPerCycles));
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 inline float GetBoundsThickness(const FIntBox& Bounds)
@@ -157,139 +217,203 @@ inline float GetBoundsThickness(const FIntBox& Bounds)
 }
 
 #define DRAW_BOUNDS(Bounds, Color, bThick) UVoxelDebugUtilities::DrawDebugIntBox(World, Bounds, DebugDT, bThick ? GetBoundsThickness(Bounds) : 0, FLinearColor(Color));
-
 #define DRAW_BOUNDS_ARRAY(BoundsArray, Color, bThick) for (auto& Bounds : BoundsArray) { DRAW_BOUNDS(Bounds, FColorList::Color, bThick) }
 
-#define DEBUG_MESSAGE_INDEX() ((uint64)this + __LINE__)
-
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-const FColor CreatedDirtyValuesColor = FColor(255, 0, 0, 255);
-const FColor CreatedDirtyMaterialsColor = FColor(255, 127, 0, 255);
-const FColor CreatedDirtyValuesMaterialsColor = FColor(255, 255, 0, 255);
+static const FColor SingleColor = FColorList::Green;
+static const FColor SingleDirtyColor = FColorList::Blue;
+static const FColor CachedColor = FColorList::Yellow;
+static const FColor DirtyColor = FColorList::Red;
 
-const FColor CreatedManualCachedValuesColor = FColor(127, 0, 255, 255);
-const FColor CreatedManualCachedMaterialsColor = FColor(255, 0, 127, 255);
-const FColor CreatedManualCachedValuesMaterialsColor = FColor(255, 0, 255, 255);
-
-const FColor CreatedAutoCachedValuesColor = FColor(0, 127, 255, 255);
-const FColor CreatedAutoCachedMaterialsColor = FColor(0, 255, 127, 255);
-const FColor CreatedAutoCachedValuesMaterialsColor = FColor(0, 255, 255, 255);
-
-bool GetDataOctreeColor(FColor& OutColor, AVoxelWorld* World, float DebugDT, FVoxelDataOctree& Octree, bool bForcePrint = false)
+template<typename T>
+inline void DrawDataOctree(FVoxelDataOctreeBase& Octree, AVoxelWorld* World, float DebugDT)
 {
 	if (Octree.IsLeaf())
 	{
-		if (Octree.LOD == 0)
+		auto& Data = Octree.AsLeaf().GetData<T>();
+		const auto Draw = [&](FColor Color)
 		{
-			if (Octree.IsCreated())
+			DRAW_BOUNDS(Octree.GetBounds(), Color, false);
+		};
+		if (Data.IsSingleValue())
+		{
+			if (Data.IsDirty())
 			{
-				if (Octree.IsCacheOnly())
-				{
-					if (Octree.IsManuallyCached())
-					{
-						OutColor =
-							Octree.AreValuesCreated() && Octree.AreMaterialsCreated()
-							? CreatedManualCachedValuesMaterialsColor
-							: Octree.AreValuesCreated()
-							? CreatedManualCachedValuesColor
-							: Octree.AreMaterialsCreated()
-							? CreatedManualCachedMaterialsColor
-							: FColor::White;
-						return true;
-					}
-					else
-					{
-						OutColor =
-							Octree.AreValuesCreated() && Octree.AreMaterialsCreated()
-							? CreatedAutoCachedValuesMaterialsColor
-							: Octree.AreValuesCreated()
-							? CreatedAutoCachedValuesColor
-							: Octree.AreMaterialsCreated()
-							? CreatedAutoCachedMaterialsColor
-							: FColor::White;
-						return true;
-					}
-				}
-				else
-				{
-					OutColor =
-						Octree.AreValuesCreated() && Octree.AreMaterialsCreated()
-						? CreatedDirtyValuesMaterialsColor
-						: Octree.AreValuesCreated()
-						? CreatedDirtyValuesColor
-						: Octree.AreMaterialsCreated()
-						? CreatedDirtyMaterialsColor
-						: FColor::White;
-					return true;
-				}
+				Draw(SingleDirtyColor);
 			}
 			else
 			{
-				return false;
+				Draw(SingleColor);
 			}
 		}
-		else
+		else if (Data.GetDataPtr())
 		{
-			return false;
+			if (Data.IsDirty())
+			{
+				Draw(DirtyColor);
+			}
+			else
+			{
+				Draw(CachedColor);
+			}
 		}
 	}
 	else
 	{
-		FColor Color;
-		bool bFirst = true;
-		bool bMerge = true;
-		TArray<FVoxelDataOctree*> ChildToPrint;
-		TArray<FColor> ChildColors;
-		for (auto& Child : Octree.GetChildren())
+		auto& Parent = Octree.AsParent();
+		if (Parent.HasChildren())
 		{
-			FColor ChildColor;
-			if (GetDataOctreeColor(ChildColor, World, DebugDT, Child))
+			for (auto& Child : Parent.GetChildren())
 			{
-				ChildToPrint.Add(&Child);
-				ChildColors.Add(ChildColor);
+				DrawDataOctree<T>(Child, World, DebugDT);
 			}
-			else
-			{
-				bMerge = false;
-			}
-			if (bFirst)
-			{
-				bFirst = false;
-				Color = ChildColor;
-			}
-			else if (Color != ChildColor)
-			{
-				bMerge = false;
-			}
-		}
-
-		if (bMerge && !bForcePrint && false)
-		{
-			OutColor = Color;
-			return true;
-		}
-		else
-		{
-			for (int32 Index = 0; Index < ChildToPrint.Num() ; Index++)
-			{
-				DRAW_BOUNDS(ChildToPrint[Index]->GetBounds(), ChildColors[Index], false);
-			}
-			return false;
 		}
 	}
 }
 
-void DebugDataOctreee(AVoxelWorld* World, float DebugDT, FVoxelDataOctree& Octree)
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelDebugManagerSettings::FVoxelDebugManagerSettings(
+	const AVoxelWorld* World,
+	EVoxelPlayType PlayType,
+	const TVoxelSharedRef<IVoxelPool>& Pool,
+	const TVoxelSharedRef<FVoxelData>& Data,
+	bool bDisabled)
+	: VoxelWorld(const_cast<AVoxelWorld*>(World))
+	, Pool(Pool)
+	, Data(Data)
+	, bDisabled(bDisabled)
 {
-	FColor Dummy;
-	GetDataOctreeColor(Dummy, World, DebugDT, Octree, true);
 }
 
-
-void FVoxelDebugManager::Tick(float DeltaTime, AVoxelWorld* World)
+TVoxelSharedRef<FVoxelDebugManager> FVoxelDebugManager::Create(const FVoxelDebugManagerSettings& Settings)
 {
-	SCOPE_CYCLE_COUNTER(STAT_VoxelDebugManager_Tick);
+	return MakeShareable(new FVoxelDebugManager(Settings));
+}
+
+void FVoxelDebugManager::Destroy()
+{
+	StopTicking();
+}
+
+FVoxelDebugManager::FVoxelDebugManager(const FVoxelDebugManagerSettings& Settings)
+	: Settings(Settings)
+{
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelDebugManager::ReportUpdatedChunks(TFunction<TArray<FIntBox>()> InUpdatedChunks)
+{
+	if (CVarShowUpdatedChunks.GetValueOnGameThread())
+	{
+		VOXEL_FUNCTION_COUNTER();
+		UpdatedChunks = InUpdatedChunks();
+	
+		FString Log = "Updated chunks: ";
+		for (auto& Bounds : UpdatedChunks)
+		{
+			Log += Bounds.ToString() + "; ";
+		}
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), 1, FColor::Blue, Log);
+		UE_LOG(LogVoxel, Log, TEXT("%s"), *Log);
+	}
+}
+
+void FVoxelDebugManager::ReportRenderChunks(TFunction<TArray<FIntBox>()> InRenderChunks)
+{
+	if (CVarShowRenderChunks.GetValueOnGameThread())
+	{
+		VOXEL_FUNCTION_COUNTER();
+		RenderChunks = InRenderChunks();
+	}
+}
+
+void FVoxelDebugManager::ReportMultiplayerSyncedChunks(TFunction<TArray<FIntBox>()> InMultiplayerSyncedChunks)
+{
+	if (CVarShowMultiplayerSyncedChunks.GetValueOnGameThread())
+	{
+		VOXEL_FUNCTION_COUNTER();
+		MultiplayerSyncedChunks = InMultiplayerSyncedChunks();
+	}
+}
+
+void FVoxelDebugManager::ReportMeshTaskCount(int32 InTaskCount)
+{
+	MeshTaskCount = InTaskCount;
+}
+
+void FVoxelDebugManager::ReportMeshTasksCallbacksQueueNum(int32 Num)
+{
+	MeshTasksCallbacksQueueNum = Num;
+}
+
+void FVoxelDebugManager::ReportMeshActionQueueNum(int32 Num)
+{
+	MeshActionQueueNum = Num;
+}
+
+void FVoxelDebugManager::ReportFoliageTaskCount(int32 TaskCount)
+{
+	FoliageTaskCount.Set(TaskCount);
+}
+				
+void FVoxelDebugManager::ReportChunkEmptyState(const FIntBox& Bounds, bool bIsEmpty)
+{
+	ChunksEmptyStates.Emplace(FChunkEmptyState{ Bounds, bIsEmpty });
+}
+
+void FVoxelDebugManager::ClearChunksEmptyStates()
+{
+	ChunksEmptyStates.Reset();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+bool FVoxelDebugManager::ShowCollisionAndNavmeshDebug()
+{
+	return CVarShowCollisionAndNavmeshDebug.GetValueOnAnyThread() != 0;
+}
+
+FColor FVoxelDebugManager::GetCollisionAndNavmeshDebugColor(bool bEnableCollisions, bool bEnableNavmesh)
+{
+	if (bEnableCollisions && bEnableNavmesh)
+	{
+		return FColor::Yellow;
+	}
+	if (bEnableCollisions)
+	{
+		return FColor::Blue;
+	}
+	if (bEnableNavmesh)
+	{
+		return FColor::Green;
+	}
+	return FColor::White;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelDebugManager::Tick(float DeltaTime)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	if (Settings.bDisabled) return;
+
+	auto* World = Settings.VoxelWorld.Get();
+	if (!World) return;
+	if (World->bDisableDebugManager) return;
 
 	const float DebugDT = DeltaTime * 1.5f;
 
@@ -301,17 +425,37 @@ void FVoxelDebugManager::Tick(float DeltaTime, AVoxelWorld* World)
 	{
 		DRAW_BOUNDS_ARRAY(UpdatedChunks, Blue, true);
 	}
-	if (CVarShowMultiplayerSyncedBounds.GetValueOnGameThread())
+	if (CVarShowMultiplayerSyncedChunks.GetValueOnGameThread())
 	{
-		DRAW_BOUNDS_ARRAY(MultiplayerSyncedChunks, DarkPurple, true);
+		DRAW_BOUNDS_ARRAY(MultiplayerSyncedChunks, Blue, true);
 	}
 	if (CVarShowWorldBounds.GetValueOnGameThread())
 	{
-		DRAW_BOUNDS(World->GetData().WorldBounds, FColorList::Red, true);
+		DRAW_BOUNDS(Settings.Data->WorldBounds, FColorList::Red, true);
 	}
-	if (CVarShowTaskCount.GetValueOnGameThread() && TaskCount > 0)
+	if (!World->bDisableOnScreenMessages)
 	{
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, FColor::White, FString::Printf(TEXT("Tasks remaining: %d"), TaskCount));
+		const int32 PoolTaskCount = Settings.Pool->GetNumTasks();
+		if (PoolTaskCount > 0)
+		{
+			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Total tasks remaining: %d"), PoolTaskCount));
+		}
+		if (MeshTaskCount > 0)
+		{
+			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Mesh tasks remaining: %d"), MeshTaskCount));
+		}
+		if (MeshTasksCallbacksQueueNum > 0)
+		{
+			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Mesh tasks callbacks queued: %d"), MeshTasksCallbacksQueueNum));
+		}
+		if (MeshActionQueueNum > 0)
+		{
+			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Mesh actions queued: %d"), MeshActionQueueNum));
+		}
+		if (FoliageTaskCount.GetValue() > 0)
+		{
+			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Foliage tasks remaining: %d"), FoliageTaskCount.GetValue()));
+		}
 	}
 	if (!CVarFreezeDebug.GetValueOnGameThread())
 	{
@@ -343,8 +487,8 @@ void FVoxelDebugManager::Tick(float DeltaTime, AVoxelWorld* World)
 		const static FColor Empty = FColorList::Green;
 		const static FColor NotEmpty = FColorList::Brown;
 
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, Empty, TEXT("Empty chunks (range analysis successful)"));
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, NotEmpty, TEXT("Not empty chunks (range analysis failed)"));
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, Empty, TEXT("Empty chunks (range analysis successful)"));
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, NotEmpty, TEXT("Not empty chunks (range analysis failed)"));
 
 		for (auto& EmptyState : ChunksEmptyStates)
 		{
@@ -358,153 +502,59 @@ void FVoxelDebugManager::Tick(float DeltaTime, AVoxelWorld* World)
 			}
 		}
 	}
-	if (CVarShowDataChunks.GetValueOnGameThread())
+	if (CVarShowValuesState.GetValueOnGameThread())
 	{
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedDirtyValuesColor, "Dirty values");
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedDirtyMaterialsColor, "Dirty materials");
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedDirtyValuesMaterialsColor, "Dirty values and materials");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, "Values state:");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, DirtyColor, "Dirty");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, CachedColor, "Cached");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, SingleColor, "Single Item Stored");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, SingleDirtyColor, "Single Item Stored - Dirty");
 
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedManualCachedValuesColor, "Manually cached values");
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedManualCachedMaterialsColor, "Manually cached materials");
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedManualCachedValuesMaterialsColor, "Manually cached values and materials");
+		FVoxelReadScopeLock Lock(*Settings.Data, FIntBox::Infinite, FUNCTION_FNAME);
+		DrawDataOctree<FVoxelValue>(Settings.Data->GetOctree(), World, DebugDT);
+	}
+	if (CVarShowMaterialsState.GetValueOnGameThread())
+	{
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, "Materials state:");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, DirtyColor, "Dirty");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, CachedColor, "Cached");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, SingleColor, "Single Item Stored");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, SingleDirtyColor, "Single Item Stored - Dirty");
 
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedAutoCachedValuesColor, "Automatically cached values");
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedAutoCachedMaterialsColor, "Automatically cached materials");
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), DebugDT, CreatedAutoCachedValuesMaterialsColor, "Automatically cached values and materials");
+		FVoxelReadScopeLock Lock(*Settings.Data, FIntBox::Infinite, FUNCTION_FNAME);
+		DrawDataOctree<FVoxelMaterial>(Settings.Data->GetOctree(), World, DebugDT);
+	}
+	if (CVarShowFoliageState.GetValueOnGameThread())
+	{
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, "Foliage state:");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, DirtyColor, "Dirty");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, CachedColor, "Cached");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, SingleColor, "Single Item Stored");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, SingleDirtyColor, "Single Item Stored - Dirty");
 
-		auto& Data = World->GetData();
-		FVoxelReadScopeLock Lock(Data, FIntBox::Infinite, "DebugCache");
-		DebugDataOctreee(World, DebugDT, *Data.GetOctree());
+		FVoxelReadScopeLock Lock(*Settings.Data, FIntBox::Infinite, FUNCTION_FNAME);
+		DrawDataOctree<FVoxelFoliage>(Settings.Data->GetOctree(), World, DebugDT);
+	}
+	if (CVarShowCollisionAndNavmeshDebug.GetValueOnGameThread())
+	{
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, GetCollisionAndNavmeshDebugColor(true, false), "Chunks with collisions");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, GetCollisionAndNavmeshDebugColor(false, true), "Chunks with navmesh");
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, GetCollisionAndNavmeshDebugColor(true, true), "Chunks with navmesh and collision");
+	}
+	if (CVarShowDirtyVoxels.GetValueOnGameThread())
+	{
+		FVoxelDataUtilities::IterateDirtyDataInBounds<FVoxelValue>(
+			*Settings.Data,
+			FIntBox::Infinite,
+			[&](int32 X, int32 Y, int32 Z, const FVoxelValue& Value)
+			{
+				DrawDebugPoint(
+					World->GetWorld(),
+					World->LocalToGlobal(FIntVector(X, Y, Z)),
+					2,
+					Value.IsEmpty() ? FColor::Blue : FColor::Red,
+					false,
+					DebugDT);
+			});
 	}
 }
-
-void FVoxelDebugManager::ReportUpdatedChunks(const TArray<FIntBox>& InUpdatedChunks)
-{
-	UpdatedChunks = InUpdatedChunks;
-	
-	if (CVarShowUpdatedChunks.GetValueOnGameThread())
-	{
-		FString Log = "Updated chunks: ";
-		for (auto& Bounds : UpdatedChunks)
-		{
-			Log += Bounds.ToString() + "; ";
-		}
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), 1, FColor::Blue, Log);
-		UE_LOG(LogVoxel, Log, TEXT("%s"), *Log);
-	}
-}
-
-void FVoxelDebugManager::ReportRenderChunks(const TMap<uint64, TSharedPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>>& InRenderChunks)
-{
-	RenderChunks.Reset();
-	for (auto& It : InRenderChunks)
-	{
-		auto& Bounds = It.Value->GetBounds();
-		RenderChunks.Add(Bounds);
-	}
-}
-
-void FVoxelDebugManager::ReportRenderOctreeBuild(const FString& Log, int32 NumberOfLeaves, bool bTooManyChunks)
-{
-	if (CVarLogRenderOctreeBuildTime.GetValueOnGameThread())
-	{
-		UE_LOG(LogVoxel, Log, TEXT("%s"), *Log);
-	}
-
-	if (bTooManyChunks)
-	{
-		FVoxelBPErrors::Error(FText::Format(LOCTEXT("RenderOctreeStopped",
-			"Render octree update was stopped! Max render octree chunks count reached ({0}). This is likely caused by too demanding LOD settings. \n"
-			"You can try the following: \n"
-			"- reduce your world size\n"
-			"- reduce your LODToMinDistance values\n"
-			"- reduce your invokers collisions, navmesh or generation distances\n"
-			"- increase your LOD Limit\n"
-			"- if you know what you're doing, you can increase the limit using voxel.MaxRenderOctreeChunks"),
-			FText::FromString(FString::FromInt(NumberOfLeaves))));
-	}
-}
-
-void FVoxelDebugManager::ReportOctreeCompact(float Duration, uint32 NumDeleted)
-{
-	FString String = FString::Printf(TEXT("Octree compacted. Time: %.3fms; Octrees deleted: %d"), Duration * 1000, NumDeleted);
-	GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), 1, FColor::White, String);
-	UE_LOG(LogVoxel, Log, TEXT("%s"), *String);
-}
-
-void FVoxelDebugManager::ReportCacheUpdate(
-	uint32 NumChunksSubdivided,
-	uint32 NumChunksCached,
-	uint32 NumRemovedFromCache,
-	uint32 TotalNumCachedChunks,
-	uint32 MaxCacheSize,
-	float Duration)
-{
-	if (CVarLogCacheStats.GetValueOnGameThread())
-	{
-		FString String = FString::Printf(
-			TEXT("Cache stats: %d data chunks subdivided; %d cached; %d removed from cache; Cache usage: %d/%d (%d/%dMB, %.2f%%); Time: %.3fms"),
-			NumChunksSubdivided,
-			NumChunksCached,
-			NumRemovedFromCache,
-			TotalNumCachedChunks,
-			MaxCacheSize,
-			FVoxelDataCellUtilities::GetCacheSizeInMB(TotalNumCachedChunks),
-			FVoxelDataCellUtilities::GetCacheSizeInMB(MaxCacheSize),
-			100 * double(TotalNumCachedChunks) / MaxCacheSize,
-			Duration * 1000.f);
-
-		GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), 1, FColor::White, String);
-		UE_LOG(LogVoxel, Log, TEXT("%s"), *String);
-	}
-}
-
-void FVoxelDebugManager::ReportManualCacheProgress(int32 Current, int32 Total)
-{
-	GEngine->AddOnScreenDebugMessage(DEBUG_MESSAGE_INDEX(), 0.1, FColor::White, FString::Printf(TEXT("Building cache: %d/%d"), Current, Total));
-}
-
-void FVoxelDebugManager::ReportTasksCount(int32 InTaskCount)
-{
-	TaskCount = InTaskCount;
-}
-
-void FVoxelDebugManager::ReportMultiplayerSyncedChunks(const TArray<FIntBox>& InMultiplayerSyncedChunks)
-{
-	MultiplayerSyncedChunks = InMultiplayerSyncedChunks;
-}
-				
-void FVoxelDebugManager::ReportChunkEmptyState(const FIntBox& Bounds, bool bIsEmpty)
-{
-	ChunksEmptyStates.Emplace(FChunkEmptyState{ Bounds, bIsEmpty });
-}
-
-void FVoxelDebugManager::ClearChunksEmptyStates()
-{
-	ChunksEmptyStates.Reset();
-}
-
-void FVoxelDebugManager::ReportToolFailure(const FString& ToolName, const FString& Message)
-{
-	if (CVarLogToolsFailures.GetValueOnGameThread())
-	{
-		UE_LOG(LogVoxel, Log, TEXT("%s"), *(ToolName + " failed: " + Message));
-	}
-}
-
-bool FVoxelDebugManager::ShowSpawnerRays()
-{
-	return CVarShowVoxelSpawnerRays.GetValueOnAnyThread() != 0;
-}
-
-bool FVoxelDebugManager::ShowSpawnerHits()
-{
-	return CVarShowVoxelSpawnerHits.GetValueOnAnyThread() != 0;
-}
-
-bool FVoxelDebugManager::ShowSpawnerPositions()
-{
-	return CVarShowVoxelSpawnerPositions.GetValueOnAnyThread() != 0;
-}
-
-#undef LOCTEXT_NAMESPACE

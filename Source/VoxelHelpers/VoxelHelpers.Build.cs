@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 using System.IO;
 using UnrealBuildTool;
@@ -14,10 +14,6 @@ public class VoxelHelpers : ModuleRules
         if (!Target.bUseUnityBuild)
         {
             PrivatePCHHeaderFile = "Private/VoxelHelpersPCH.h";
-#if UE_4_22_OR_LATER
-#else
-            PrivateDependencyModuleNames.Add("LivePP");
-#endif
         }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
@@ -31,7 +27,8 @@ public class VoxelHelpers : ModuleRules
                 "Engine",
                 "UMG",
                 "Slate",
-                "SlateCore"
+                "SlateCore",
+                "ProceduralMeshComponent"
             }
         );
     }

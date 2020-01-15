@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -7,14 +7,19 @@
 
 struct FVoxelCustomVersion
 {
-	enum Type
+	enum Type : int32
 	{
 		BeforeCustomVersionWasAdded,
 		PlaceableItemsInSave,
 		AssetItemsImportValueMaterials,
 		DataAssetScale,
 		RemoveVoxelGrass,
-
+		DataAssetTransform,
+		RemoveEnableVoxelSpawnedActorsEnableVoxelGrass,
+		FoliagePaint,
+		ValueConfigFlagAndSaveGUIDs,
+		SingleValues,
+		
 		// -----<new versions can be added above this line>-------------------------------------------------
 		VoxelVersionPlusOne,
 		LatestVersion = VoxelVersionPlusOne - 1

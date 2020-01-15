@@ -1,12 +1,41 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelWorldGenerator.h"
+#include "VoxelWorldGeneratorInstance.h"
+#include "VoxelMessages.h"
 
-void FVoxelWorldGeneratorInstance::GetValueAndMaterialInternal(int32 X, int32 Y, int32 Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int32 QueryLOD, const FVoxelPlaceableItemHolder& ItemHolder) const
+TMap<FName, int32> UVoxelWorldGenerator::GetDefaultSeeds() const
 {
-	GetValuesAndMaterials(OutValue, OutMaterial, FVoxelWorldGeneratorQueryZone(X, Y, Z), QueryLOD, ItemHolder);
+	FVoxelMessages::Info("This generator does not support GetDefaultSeeds", this);
+	return {};
 }
 
-void FVoxelWorldGeneratorInstance::ApplyVoxelPlaceableItems(const FVoxelPlaceableItemHolder& ItemHolder, const int32 X, const int32 Y, const int32 Z, FVoxelValue& Value, FVoxelMaterial& Material)
+TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelWorldGenerator::GetInstance()
 {
+	unimplemented();
+	return TVoxelSharedPtr<FVoxelWorldGeneratorInstance>().ToSharedRef();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelTransformableWorldGenerator::GetTransformableInstance()
+{
+	unimplemented();
+	return TVoxelSharedPtr<FVoxelTransformableWorldGeneratorInstance>().ToSharedRef();
+}
+
+void UVoxelTransformableWorldGenerator::SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const
+{
+	unimplemented();
+}
+
+TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelTransformableWorldGenerator::LoadInstance(FArchive& Ar) const
+{
+	unimplemented();
+	return TVoxelSharedPtr<FVoxelTransformableWorldGeneratorInstance>().ToSharedRef();
+}
+
+TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelTransformableWorldGenerator::GetInstance()
+{
+	return GetTransformableInstance();
 }

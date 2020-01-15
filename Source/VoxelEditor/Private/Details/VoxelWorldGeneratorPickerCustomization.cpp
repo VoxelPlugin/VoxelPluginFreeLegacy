@@ -1,13 +1,13 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelWorldGeneratorPickerCustomization.h"
 
 #include "Widgets/DeclarativeSyntaxSupport.h"
+#include "Widgets/Input/SComboBox.h"
 #include "PropertyHandle.h"
 #include "IDetailChildrenBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "PropertyCustomizationHelpers.h"
-#include "Components/ComboBox.h"
 
 #include "PropertyEditorModule.h"
 #include "Modules/ModuleManager.h"
@@ -19,9 +19,9 @@ void FVoxelWorldGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IProper
 {
 	PropertyHandle = InPropertyHandle;
 
-	ClassHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelWorldGeneratorPicker, WorldGeneratorClass));
-	ObjectHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelWorldGeneratorPicker, WorldGeneratorObject));
-	TypeHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FVoxelWorldGeneratorPicker, Type));
+	ClassHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelWorldGeneratorPicker, WorldGeneratorClass));
+	ObjectHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelWorldGeneratorPicker, WorldGeneratorObject));
+	TypeHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelWorldGeneratorPicker, Type));
 
 	ClassOrObjectArray.Reset();
 	ClassOrObjectArray.Add(MakeShareable(new FClassOrObject{ LOCTEXT("Class", "Class") }));

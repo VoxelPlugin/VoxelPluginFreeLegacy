@@ -1,9 +1,16 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/VoxelProceduralMeshSceneProxy.h"
 #include "VoxelRender/VoxelAsyncPhysicsCooker.h"
-#include "VoxelBlueprintErrors.h"
+#include "VoxelRender/VoxelProcMeshBuffers.h"
+#include "VoxelRender/VoxelMaterialInterface.h"
+#include "VoxelRender/VoxelToolRendering.h"
+#include "VoxelRender/IVoxelRenderer.h"
+#include "VoxelRender/IVoxelProceduralMeshComponent_PhysicsCallbackHandler.h"
+#include "VoxelDebug/VoxelDebugManager.h"
+#include "VoxelWorldRootComponent.h"
+#include "VoxelMessages.h"
 #include "VoxelGlobals.h"
 #include "IVoxelPool.h"
 
@@ -13,47 +20,82 @@
 #include "AI/NavigationSystemBase.h"
 #include "Async/Async.h"
 #include "DrawDebugHelpers.h"
-
-#define LOCTEXT_NAMESPACE "Voxel"
-
-DECLARE_CYCLE_STAT(TEXT("UVoxelProceduralMeshComponent::CreateSceneProxy")               , STAT_UVoxelProceduralMeshComponent_CreateSceneProxy               , STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProceduralMeshComponent::UpdateCollision")                , STAT_UVoxelProceduralMeshComponent_UpdateCollision                , STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProceduralMeshComponent::UpdateNavigation")               , STAT_UVoxelProceduralMeshComponent_UpdateNavigation               , STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProceduralMeshComponent::AsyncPhysicsCookerCallback")     , STAT_UVoxelProceduralMeshComponent_AsyncPhysicsCookerCallback     , STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProceduralMeshComponent::DoCustomNavigableGeometryExport"), STAT_UVoxelProceduralMeshComponent_DoCustomNavigableGeometryExport, STATGROUP_Voxel);
+#include "Materials/Material.h"
 
 static TAutoConsoleVariable<int32> CVarShowCollisionsUpdates(
-	TEXT("voxel.ShowCollisionsUpdates"),
+	TEXT("voxel.renderer.ShowCollisionsUpdates"),
 	0,
 	TEXT("If true, will show the chunks that finished updating collisions"),
 	ECVF_Default);
 
-void FVoxelProcMeshSection::Check()
-{
-#if DO_CHECK
-	for (int32 Index : Indices)
-	{
-		check(0 <= Index && Index < Positions.Num());
-	}
-	for (int32 Index : AdjacencyIndices)
-	{
-		check(0 <= Index && Index < Positions.Num());
-	}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-	check(Positions.Num() == Normals.Num() &&
-		Positions.Num() == Tangents.Num() &&
-		Positions.Num() == Colors.Num() &&
-		Positions.Num() == TextureCoordinates.Num());
-#endif
+void IVoxelProceduralMeshComponent_PhysicsCallbackHandler::TickHandler()
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+
+	FCallback Callback;
+	while (Queue.Dequeue(Callback))
+	{
+		if (Callback.Component.IsValid())
+		{
+			Callback.Component->PhysicsCookerCallback(Callback.CookerId);
+		}
+	}
+}
+
+void IVoxelProceduralMeshComponent_PhysicsCallbackHandler::CookerCallback(uint64 CookerId, TWeakObjectPtr<UVoxelProceduralMeshComponent> Component)
+{
+	Queue.Enqueue({ CookerId, Component });
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+void UVoxelProceduralMeshComponent::Init(
+	int32 InDebugLOD,
+	uint32 InDebugChunkId,
+	const FVoxelPriorityHandler& InPriorityHandler,
+	const TVoxelWeakPtr<IVoxelProceduralMeshComponent_PhysicsCallbackHandler>& InPhysicsCallbackHandler,
+	const FVoxelRendererSettings& RendererSettings)
+{
+	ensure(InPhysicsCallbackHandler.IsValid());
+
+	if (UniqueId != 0)
+	{
+		// Make sure we don't have any convex collision left
+		UpdateConvexMeshes({}, {}, {});
+	}
+	
+	bInit = true;
+	UniqueId = UNIQUE_ID();
+	LOD = InDebugLOD;
+	DebugChunkId = InDebugChunkId;
+	PriorityHandler = InPriorityHandler;
+	PhysicsCallbackHandler = InPhysicsCallbackHandler;
+	Pool = RendererSettings.Pool;
+	ToolRenderingManager = RendererSettings.ToolRenderingManager;
+	PriorityDuration = RendererSettings.PriorityDuration;
+	CollisionTraceFlag = RendererSettings.CollisionTraceFlag;
+	NumConvexHullsPerAxis = RendererSettings.NumConvexHullsPerAxis;
+	bCleanCollisionMesh = RendererSettings.bCleanCollisionMeshes;
+	bClearProcMeshBuffersOnFinishUpdate = RendererSettings.bStaticWorld && !RendererSettings.bRenderWorld; // We still need the buffers if we are rendering!
+	bNewInit = true;
+}
+
+void UVoxelProceduralMeshComponent::ClearInit()
+{
+	ensure(ProcMeshSections.Num() == 0);
+	bInit = false;
+}
+
 UVoxelProceduralMeshComponent::UVoxelProceduralMeshComponent()
 {
-	bAllowReregistration = false; // Slows down the editor
+	bAllowReregistration = false; // Slows down the editor when editing properties
 	bCastShadowAsTwoSided = true;
 	bHasCustomNavigableGeometry = EHasCustomNavigableGeometry::EvenIfNotCollidable;
 
@@ -79,33 +121,29 @@ bool UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen()
 	return bAreCollisionsFrozen;
 }
 
-void UVoxelProceduralMeshComponent::FreezeVoxelCollisions()
+void UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(bool bFrozen)
 {
-	if (bAreCollisionsFrozen)
+	VOXEL_FUNCTION_COUNTER();
+	if (bFrozen != bAreCollisionsFrozen)
 	{
-		FVoxelBPErrors::Warning(LOCTEXT("CollisionsAlreadyFrozen", "FreezeVoxelCollisions: Collisions are already frozen!"));
-		return;
-	}
-	bAreCollisionsFrozen = true;
-}
-
-void UVoxelProceduralMeshComponent::ResumeVoxelCollisions()
-{
-	if (!bAreCollisionsFrozen)
-	{
-		FVoxelBPErrors::Warning(LOCTEXT("CollisionsNotFrozen", "ResumeVoxelCollisions: Collisions aren't frozen!"));
-		return;
-	}
-	bAreCollisionsFrozen = false;
-
-	for (auto& Component : PendingCollisions)
-	{
-		if (Component.IsValid())
+		if (bFrozen)
 		{
-			Component->UpdateCollision();
+			bAreCollisionsFrozen = true;
+		}
+		else
+		{
+			bAreCollisionsFrozen = false;
+
+			for (auto& Component : PendingCollisions)
+			{
+				if (Component.IsValid())
+				{
+					Component->UpdateCollision();
+				}
+			}
+			PendingCollisions.Reset();
 		}
 	}
-	PendingCollisions.Reset();
 }
 
 bool UVoxelProceduralMeshComponent::bAreCollisionsFrozen = false;
@@ -115,23 +153,34 @@ TSet<TWeakObjectPtr<UVoxelProceduralMeshComponent>> UVoxelProceduralMeshComponen
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-
-void UVoxelProceduralMeshComponent::SetCollisionConvexMeshes(TArray<FKConvexElem>&& InCollisionConvexElems)
+void UVoxelProceduralMeshComponent::SetDistanceFieldData(const TVoxelSharedPtr<const FDistanceFieldVolumeData>& InDistanceFieldData)
 {
-	CollisionConvexElems = InCollisionConvexElems;
-	UpdateCollision();
-}
-
-void UVoxelProceduralMeshComponent::SetProcMeshSection(int32 SectionIndex, FVoxelProcMeshSection&& Section, EVoxelProcMeshSectionUpdate Update)
-{
-	// Ensure sections array is long enough
-	if (SectionIndex >= ProcMeshSections.Num())
+	if (DistanceFieldData == InDistanceFieldData)
 	{
-		ProcMeshSections.SetNum(SectionIndex + 1);
+		return;
 	}
 
-	ProcMeshSections[SectionIndex] = MoveTemp(Section);
-	ProcMeshSections[SectionIndex].UpdateStat();
+	DistanceFieldData = InDistanceFieldData;
+
+	GetScene()->UpdatePrimitiveDistanceFieldSceneData_GameThread(this);
+	MarkRenderStateDirty();
+}
+
+void UVoxelProceduralMeshComponent::SetProcMeshSection(int32 Index, FVoxelProcMeshSectionSettings Settings, TUniquePtr<FVoxelProcMeshBuffers> Buffers, EVoxelProcMeshSectionUpdate Update)
+{
+	VOXEL_FUNCTION_COUNTER();
+	if (!ensure(ProcMeshSections.IsValidIndex(Index)))
+	{
+		return;
+	}
+
+	Buffers->UpdateStats();
+
+	ProcMeshSections[Index].Settings = Settings;
+
+	// Due to InitResources etc, we must make sure we are the only component using this buffers, hence the TUniquePtr
+	// However the buffer is shared between the component and the proxy
+	ProcMeshSections[Index].Buffers = MakeShareable(Buffers.Release());
 
 	if (Update == EVoxelProcMeshSectionUpdate::UpdateNow)
 	{
@@ -139,8 +188,49 @@ void UVoxelProceduralMeshComponent::SetProcMeshSection(int32 SectionIndex, FVoxe
 	}
 }
 
+int32 UVoxelProceduralMeshComponent::AddProcMeshSection(FVoxelProcMeshSectionSettings Settings, TUniquePtr<FVoxelProcMeshBuffers> Buffers, EVoxelProcMeshSectionUpdate Update)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(Buffers.IsValid());
+	
+	if (Buffers->GetNumIndices() == 0)
+	{
+		return -1;
+	}
+
+	const int32 Index = ProcMeshSections.Emplace();
+	SetProcMeshSection(Index, Settings, MoveTemp(Buffers), Update);
+
+	return Index;
+}
+
+void UVoxelProceduralMeshComponent::ReplaceProcMeshSection(FVoxelProcMeshSectionSettings Settings, TUniquePtr<FVoxelProcMeshBuffers> Buffers, EVoxelProcMeshSectionUpdate Update)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(Buffers.IsValid());
+	
+	int32 SectionIndex = -1;
+	for (int32 Index = 0; Index < ProcMeshSections.Num(); Index++)
+	{
+		if (ProcMeshSections[Index].Settings == Settings)
+		{
+			ensure(SectionIndex == -1);
+			SectionIndex = Index;
+		}
+	}
+	if (SectionIndex == -1)
+	{
+		AddProcMeshSection(Settings, MoveTemp(Buffers), Update);
+	}
+	else
+	{
+		SetProcMeshSection(SectionIndex, Settings, MoveTemp(Buffers), Update);
+	}
+}
+
 void UVoxelProceduralMeshComponent::ClearSections(EVoxelProcMeshSectionUpdate Update)
 {
+	VOXEL_FUNCTION_COUNTER();
 	ProcMeshSections.Empty();
 
 	if (Update == EVoxelProcMeshSectionUpdate::UpdateNow)
@@ -151,76 +241,72 @@ void UVoxelProceduralMeshComponent::ClearSections(EVoxelProcMeshSectionUpdate Up
 
 void UVoxelProceduralMeshComponent::FinishSectionsUpdates()
 {
-	UpdateLocalBounds(); // Update overall bounds
-	UpdateNavigation(); // Update navigation
-	UpdateCollision(); // Mark collision as dirty
-	MarkRenderStateDirty(); // New section requires recreating scene proxy
-}
-
-void UVoxelProceduralMeshComponent::UpdatePhysicalMaterials()
-{
-	FBodyInstance* BodyInst = GetBodyInstance();
-	if (BodyInst && BodyInst->IsValidBodyInstance())
+	VOXEL_FUNCTION_COUNTER();
+	
+	bool bNeedToComputeCollisions = false;
+	bool bNeedToComputeNavigation = false;
 	{
-		BodyInst->UpdatePhysicalMaterials();
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-bool UVoxelProceduralMeshComponent::GetPhysicsTriMeshData(struct FTriMeshCollisionData* CollisionData, bool InUseAllTriData)
-{
-	int32 VertexBase = 0; // Base vertex index for current section
-
-	// For each section..
-	for (int32 SectionIdx = 0; SectionIdx < ProcMeshSections.Num(); SectionIdx++)
-	{
-		FVoxelProcMeshSection& Section = ProcMeshSections[SectionIdx];
-		// Do we have collision enabled?
-		if (Section.bEnableCollision)
+		TArray<FGuid> NewGuids;
+		TMap<FGuid, FVoxelProcMeshSectionSettings> NewGuidToSettings;
 		{
-			// Copy vertices
-			CollisionData->Vertices.Append(Section.Positions);
-
-			// Copy triangle data
-			for (int32 Index = 0; Index < Section.Indices.Num(); Index += 3)
+			int32 NumGuids = 0;
+			for (auto& Section : ProcMeshSections)
 			{
-				// Need to add base offset for indices
-				FTriIndices Indices;
-				Indices.v0 = Section.Indices[Index + 0] + VertexBase;
-				Indices.v1 = Section.Indices[Index + 1] + VertexBase;
-				Indices.v2 = Section.Indices[Index + 2] + VertexBase;
-				CollisionData->Indices.Emplace(Indices);
-
-				// Also store material info
-				CollisionData->MaterialIndices.Add(SectionIdx);
+				NumGuids += Section.Buffers->Guids.Num();
 			}
-
-			// Remember the base index that new verts will be added from in next section
-			VertexBase = CollisionData->Vertices.Num();
+			NewGuids.Reserve(NumGuids);
+			NewGuidToSettings.Reserve(NumGuids);
 		}
-	}
-
-	CollisionData->bFlipNormals = true;
-	CollisionData->bDeformableMesh = true;
-	CollisionData->bFastCook = true;
-
-	return true;
-}
-
-bool UVoxelProceduralMeshComponent::ContainsPhysicsTriMeshData(bool InUseAllTriData) const
-{
-	for (const FVoxelProcMeshSection& Section : ProcMeshSections)
-	{
-		if (Section.Indices.Num() >= 3 && Section.bEnableCollision)
+		for (auto& Section : ProcMeshSections)
 		{
-			return true;
+			for (auto& Guid : Section.Buffers->Guids)
+			{
+				NewGuids.Add(Guid);
+				ensure(!NewGuidToSettings.Contains(Guid));
+				NewGuidToSettings.Add(Guid, Section.Settings);
+			}
 		}
+		NewGuids.Sort();
+
+		if (ProcMeshSectionsSortedGuids != NewGuids)
+		{
+			bNeedToComputeCollisions = true;
+			bNeedToComputeNavigation = true;
+		}
+		else
+		{
+			for (auto& Guid : NewGuids)
+			{
+				const auto& Old = ProcMeshSectionsGuidToSettings[Guid];
+				const auto& New = NewGuidToSettings[Guid];
+				bNeedToComputeCollisions |= Old.bEnableCollisions != New.bEnableCollisions;
+				bNeedToComputeNavigation |= Old.bEnableNavmesh != New.bEnableNavmesh;
+			}
+		}
+
+		ProcMeshSectionsSortedGuids = MoveTemp(NewGuids);
+		ProcMeshSectionsGuidToSettings = MoveTemp(NewGuidToSettings);
 	}
 
-	return false;
+	UpdatePhysicalMaterials();
+	UpdateLocalBounds();
+	MarkRenderStateDirty();
+
+	if (bNeedToComputeCollisions)
+	{
+		UpdateCollision();
+	}
+	if (bNeedToComputeNavigation)
+	{
+		UpdateNavigation();
+	}
+
+	if (bClearProcMeshBuffersOnFinishUpdate)
+	{
+		ProcMeshSections.Reset();
+	}
+
+	LastFinishSectionsUpdatesTime = FPlatformTime::Seconds();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -229,23 +315,32 @@ bool UVoxelProceduralMeshComponent::ContainsPhysicsTriMeshData(bool InUseAllTriD
 
 FPrimitiveSceneProxy* UVoxelProceduralMeshComponent::CreateSceneProxy()
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProceduralMeshComponent_CreateSceneProxy);
+	VOXEL_FUNCTION_COUNTER();
 
 	for (auto& Section : ProcMeshSections)
 	{
-		if (Section.bSectionVisible)
+		if (Section.Settings.bSectionVisible || FVoxelDebugManager::ShowCollisionAndNavmeshDebug())
 		{
 			return new FVoxelProceduralMeshSceneProxy(this);
 		}
 	}
+
+	if (DistanceFieldData.IsValid())
+	{
+		return new FVoxelProceduralMeshSceneProxy(this);
+	}
+	
 	return nullptr;
 }
 
 UBodySetup* UVoxelProceduralMeshComponent::GetBodySetup()
 {
-	CreateProcMeshBodySetup();
-	return ProcMeshBodySetup;
+	return BodySetup;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 UMaterialInterface* UVoxelProceduralMeshComponent::GetMaterialFromCollisionFaceIndex(int32 FaceIndex, int32& OutSectionIndex) const
 {
@@ -254,7 +349,7 @@ UMaterialInterface* UVoxelProceduralMeshComponent::GetMaterialFromCollisionFaceI
 	for (int32 SectionIndex = 0; SectionIndex < ProcMeshSections.Num(); SectionIndex++)
 	{
 		const FVoxelProcMeshSection& Section = ProcMeshSections[SectionIndex];
-		int32 NumFaces = Section.Indices.Num() / 3;
+		const int32 NumFaces = Section.Buffers->GetNumIndices() / 3;
 		TotalFaceCount += NumFaces;
 
 		if (FaceIndex < TotalFaceCount)
@@ -267,25 +362,27 @@ UMaterialInterface* UVoxelProceduralMeshComponent::GetMaterialFromCollisionFaceI
 	return nullptr;
 }
 
-void UVoxelProceduralMeshComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
+int32 UVoxelProceduralMeshComponent::GetNumMaterials() const
 {
-	for (int32 SectionIndex = 0; SectionIndex < ProcMeshSections.Num(); SectionIndex++)
+	int32 Num = ProcMeshSections.Num();
+	const auto ToolRenderingManagerPinned = ToolRenderingManager.Pin();
+	if (ToolRenderingManagerPinned.IsValid())
 	{
-		if (UMaterialInterface* Material = GetMaterial(SectionIndex))
-		{
-			OutMaterials.Add(Material);
-		}
+		Num += ToolRenderingManagerPinned->GetToolsMaterials().Num();
 	}
+	return Num;
 }
 
 UMaterialInterface* UVoxelProceduralMeshComponent::GetMaterial(int32 Index) const
 {
-	if (ProcMeshSections.IsValidIndex(Index))
+	if (!ensure(Index >= 0)) return nullptr;
+
+	if (Index < ProcMeshSections.Num())
 	{
-		UMaterialInterface* Material = ProcMeshSections[Index].Material;
-		if (Material)
+		auto& MaterialPtr = ProcMeshSections[Index].Settings.Material;
+		if (MaterialPtr.IsValid())
 		{
-			return Material;
+			return MaterialPtr->GetMaterial();
 		}
 		else
 		{
@@ -294,26 +391,111 @@ UMaterialInterface* UVoxelProceduralMeshComponent::GetMaterial(int32 Index) cons
 	}
 	else
 	{
+		Index -= ProcMeshSections.Num();
+		const auto ToolRenderingManagerPinned = ToolRenderingManager.Pin();
+		if (ToolRenderingManagerPinned.IsValid())
+		{
+			const auto& Materials = ToolRenderingManagerPinned->GetToolsMaterials();
+			if (Materials.IsValidIndex(Index) && ensure(Materials[Index].IsValid()))
+			{
+				return Materials[Index]->GetMaterial();
+			}
+		}
 		return nullptr;
 	}
 }
 
+void UVoxelProceduralMeshComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
+{
+	for (auto& Section : ProcMeshSections)
+	{
+		if (Section.Settings.Material.IsValid())
+		{
+			OutMaterials.Add(Section.Settings.Material->GetMaterial());
+		}
+	}
+
+	const auto ToolRenderingManagerPinned = ToolRenderingManager.Pin();
+	if (ToolRenderingManagerPinned.IsValid())
+	{
+		const auto& Materials = ToolRenderingManagerPinned->GetToolsMaterials();
+		for (auto& Material : Materials)
+		{
+			if (ensure(Material.IsValid()))
+			{
+				OutMaterials.Add(Material->GetMaterial());
+			}
+		}
+	}
+}
+
+FMaterialRelevance UVoxelProceduralMeshComponent::GetMaterialRelevance_VoxelProcMesh(ERHIFeatureLevel::Type InFeatureLevel) const
+{
+	// MeshComponent one calls GetNumMaterial on every loop :(
+
+	FMaterialRelevance Result;
+	const auto Apply = [&](auto* MaterialInterface) { Result |= MaterialInterface->GetRelevance_Concurrent(InFeatureLevel); };
+	for (auto& Section : ProcMeshSections)
+	{
+		if (Section.Settings.Material.IsValid())
+		{
+			Apply(Section.Settings.Material->GetMaterial());
+		}
+		else
+		{
+			Apply(UMaterial::GetDefaultMaterial(MD_Surface));
+		}
+	}
+
+	const auto ToolRenderingManagerPinned = ToolRenderingManager.Pin();
+	if (ToolRenderingManagerPinned.IsValid())
+	{
+		const auto& Materials = ToolRenderingManagerPinned->GetToolsMaterials();
+		for (auto& Material : Materials)
+		{
+			if (ensure(Material.IsValid()))
+			{
+				Apply(Material->GetMaterial());
+			}
+		}
+	}
+
+	return Result;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 bool UVoxelProceduralMeshComponent::DoCustomNavigableGeometryExport(FNavigableGeometryExport& GeomExport) const
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProceduralMeshComponent_DoCustomNavigableGeometryExport);
+	VOXEL_FUNCTION_COUNTER();
 
 	for (auto& Section : ProcMeshSections)
 	{
-		if (Section.bEnableNavmesh)
+		if (Section.Settings.bEnableNavmesh)
 		{
-			TArray<int32> Indices;
-			// int32 vs uint32 so we must iterate
-			Indices.SetNumUninitialized(Section.Indices.Num());
-			for (int32 Index = 0; Index < Indices.Num(); Index++)
+			TArray<FVector> Vertices;
+			// TODO is that copy needed
 			{
-				Indices[Index] = Section.Indices[Index];
+				auto& PositionBuffer = Section.Buffers->VertexBuffers.PositionVertexBuffer;
+				Vertices.SetNumUninitialized(PositionBuffer.GetNumVertices());
+				for (int32 Index = 0; Index < Vertices.Num(); Index++)
+				{
+					Vertices[Index] = PositionBuffer.VertexPosition(Index);
+				}
 			}
-			GeomExport.ExportCustomMesh(Section.Positions.GetData(), Section.Positions.Num(), Indices.GetData(), Indices.Num(), GetComponentTransform());
+			TArray<int32> Indices;
+			// Copy needed because int32 vs uint32
+			{
+				auto& IndexBuffer = Section.Buffers->IndexBuffer;
+				Indices.SetNumUninitialized(IndexBuffer.GetNumIndices());
+				for (int32 Index = 0; Index < Indices.Num(); Index++)
+				{
+					Indices[Index] = IndexBuffer.GetIndex(Index);
+				}
+			}
+			GeomExport.ExportCustomMesh(Vertices.GetData(), Vertices.Num(), Indices.GetData(), Indices.Num(), GetComponentTransform());
 		}
 	}
 	return false;
@@ -321,38 +503,50 @@ bool UVoxelProceduralMeshComponent::DoCustomNavigableGeometryExport(FNavigableGe
 
 FBoxSphereBounds UVoxelProceduralMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
-	FBoxSphereBounds Ret(LocalBounds.TransformBy(LocalToWorld));
-
-	Ret.BoxExtent *= BoundsScale;
-	Ret.SphereRadius *= BoundsScale;
-
-	return Ret;
+	return FBoxSphereBounds(LocalBounds.TransformBy(LocalToWorld));
 }
 
-void UVoxelProceduralMeshComponent::PostLoad()
+void UVoxelProceduralMeshComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 {
-	Super::PostLoad();
+	Super::OnComponentDestroyed(bDestroyingHierarchy);
 
-	if (ProcMeshBodySetup && IsTemplate())
+	if (bInit)
 	{
-		ProcMeshBodySetup->SetFlags(RF_Public);
+		// Clear convex collisions
+		UpdateConvexMeshes({}, {}, {}, true);
+	}
+	
+	// Clear memory
+	ProcMeshSections.Reset();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelProceduralMeshComponent::UpdatePhysicalMaterials()
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	FBodyInstance* BodyInst = GetBodyInstance();
+	if (BodyInst && BodyInst->IsValidBodyInstance())
+	{
+		BodyInst->UpdatePhysicalMaterials();
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
 void UVoxelProceduralMeshComponent::UpdateLocalBounds()
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	FBox LocalBox(ForceInit);
 
 	for (auto& Section : ProcMeshSections)
 	{
-		LocalBox += Section.SectionLocalBox;
+		LocalBox += Section.Buffers->LocalBounds;
 	}
 
-	LocalBounds = LocalBox.IsValid ? FBoxSphereBounds(LocalBox) : FBoxSphereBounds(FVector(0, 0, 0), FVector(0, 0, 0), 0); // fallback to reset box sphere bounds
+	LocalBounds = LocalBox.IsValid ? FBoxSphereBounds(LocalBox) : FBoxSphereBounds(ForceInit); // fallback to reset box sphere bounds
 
 	// Update global bounds
 	UpdateBounds();
@@ -362,7 +556,7 @@ void UVoxelProceduralMeshComponent::UpdateLocalBounds()
 
 void UVoxelProceduralMeshComponent::UpdateNavigation()
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProceduralMeshComponent_UpdateNavigation);
+	VOXEL_FUNCTION_COUNTER();
 
 	if (CanEverAffectNavigation() && IsRegistered() && GetWorld() && GetWorld()->GetNavigationSystem() && FNavigationSystem::WantsComponentChangeNotifies())
 	{
@@ -373,9 +567,9 @@ void UVoxelProceduralMeshComponent::UpdateNavigation()
 
 void UVoxelProceduralMeshComponent::UpdateCollision()
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProceduralMeshComponent_UpdateCollision);
+	VOXEL_FUNCTION_COUNTER();
 
-	if (!bEnableCollisions || !ensure(GetWorld()))
+	if (!ensure(GetWorld()))
 	{
 		return;
 	}
@@ -386,107 +580,143 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 		return;
 	}
 
-	// Cancel exiting task
+	// Cancel existing task
 	if (AsyncCooker)
 	{
 		AsyncCooker->CancelAndAutodelete();
 		AsyncCooker = nullptr;
 		ensure(BodySetupBeingCooked);
-		BodySetupBeingCooked = nullptr;
 	}
 
-	ensure(!BodySetupBeingCooked);
-
-	BodySetupBeingCooked = CreateBodySetupHelper();
-
-	// Fill in simple collision convex elements
-	BodySetupBeingCooked ->AggGeom.ConvexElems = CollisionConvexElems;
-
-	// Set trace flag
-	BodySetupBeingCooked ->CollisionTraceFlag = bUseComplexAsSimpleCollision ? CTF_UseComplexAsSimple : CTF_UseDefault;
-
-	AsyncCooker = new FVoxelAsyncPhysicsCooker(this, BodySetupBeingCooked);
-	if (AsyncCooker->HasSomethingToCook())
+	if (!BodySetupBeingCooked)
 	{
-		if (ensure(Pool.IsValid()))
+		BodySetupBeingCooked = NewObject<UBodySetup>(this);
+	}
+	BodySetupBeingCooked->ClearPhysicsMeshes();
+
+	if (ProcMeshSections.FindByPredicate([](auto& Section) { return Section.Settings.bEnableCollisions; }))
+	{
+		auto PoolPtr = Pool.Pin();
+		if (ensure(PoolPtr.IsValid()))
 		{
-			Pool->QueueCollisionTask(AsyncCooker);
+			AsyncCooker = new FVoxelAsyncPhysicsCooker(this);
+			PoolPtr->QueueTask(EVoxelTaskType::CollisionCooking, AsyncCooker);
 		}
 	}
 	else
 	{
+		UpdateConvexMeshes({}, {}, {});
 		FinishCollisionUpdate();
 	}
 }
 
 void UVoxelProceduralMeshComponent::FinishCollisionUpdate()
 {
-	check(AsyncCooker);
-	check(BodySetupBeingCooked);
+	VOXEL_FUNCTION_COUNTER();
+	
+	ensure(BodySetupBeingCooked);
 
-	ProcMeshBodySetup = BodySetupBeingCooked;
+	Swap(BodySetup, BodySetupBeingCooked);
 	RecreatePhysicsState();
 
-	AsyncCooker->CancelAndAutodelete();
-	AsyncCooker = nullptr;
-	BodySetupBeingCooked = nullptr;
-
-	if (CVarShowCollisionsUpdates.GetValueOnGameThread())
+	if (BodySetupBeingCooked)
 	{
-		auto Box = Bounds.GetBox();
+		BodySetupBeingCooked->ClearPhysicsMeshes();
+	}
+
+	if (CVarShowCollisionsUpdates.GetValueOnGameThread() &&
+		ProcMeshSections.FindByPredicate([](auto& Section) { return Section.Settings.bEnableCollisions; }))
+	{
+		const auto Box = Bounds.GetBox();
 		DrawDebugBox(GetWorld(), Box.GetCenter(), Box.GetExtent(), FColor::Red, false, 0.1);
 	}
+}
+
+void UVoxelProceduralMeshComponent::UpdateConvexMeshes(
+	const FBox& ConvexBounds,
+	TArray<FKConvexElem>&& ConvexElements,
+	TArray<physx::PxConvexMesh*>&& ConvexMeshes,
+	bool bCanFail)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	ensure(UniqueId != 0);
+	ensure(ConvexElements.Num() == ConvexMeshes.Num());
+	
+	if (CollisionTraceFlag == ECollisionTraceFlag::CTF_UseComplexAsSimple)
+	{
+		ensure(ConvexElements.Num() == 0);
+		return;
+	}
+
+	auto* Owner = GetOwner();
+	ensure(Owner || bCanFail);
+	if (!Owner) return;
+	
+	auto* Root = Cast<UVoxelWorldRootComponent>(Owner->GetRootComponent());
+	ensure(Root || bCanFail);
+	if (!Root) return;
+
+	ensure(Root->CollisionTraceFlag == CollisionTraceFlag);
+
+	Root->UpdateConvexCollision(UniqueId, ConvexBounds, MoveTemp(ConvexElements), MoveTemp(ConvexMeshes));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelProceduralMeshComponent::AsyncPhysicsCookerCallback(uint64 CookerId)
+#if ENGINE_MINOR_VERSION >= 24
+class UMRMeshComponent
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProceduralMeshComponent_AsyncPhysicsCookerCallback);
+public:
+	static void FinishCreatingPhysicsMeshes(UBodySetup* Body, const TArray<physx::PxConvexMesh*>& ConvexMeshes, const TArray<physx::PxConvexMesh*>& ConvexMeshesNegX, const TArray<physx::PxTriangleMesh*>& TriMeshes)
+	{
+		Body->FinishCreatingPhysicsMeshes_PhysX(ConvexMeshes, ConvexMeshesNegX, TriMeshes);
+	}
+};
+#endif
 
+void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
+{
+	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
-
+	
 	if (!AsyncCooker || CookerId != AsyncCooker->UniqueId)
 	{
 		UE_LOG(LogVoxel, VeryVerbose, TEXT("Late async cooker callback, ignoring it"));
 		return;
 	}
+
+	if (!ensure(AsyncCooker->IsDone())) return;
 	
 	if (!AsyncCooker->IsSuccessful())
 	{
-		UE_LOG(LogVoxel, Warning, TEXT("Async cooker wasn't successful, ignoring it"));
+		//UE_LOG(LogVoxel, Warning, TEXT("Async cooker wasn't successful, ignoring it"));
 		return;
 	}
 
-	if (!ensure(BodySetupBeingCooked))
+	if (!ensure(BodySetupBeingCooked)) return;
+
+	auto& CookResult = AsyncCooker->CookResult;
+	BodySetupBeingCooked->bGenerateMirroredCollision = false;
+	BodySetupBeingCooked->CollisionTraceFlag = CollisionTraceFlag;
 	{
-		UE_LOG(LogVoxel, Error, TEXT("Invalid BodySetupBeingCooked!"));
-		return;
+		VOXEL_SCOPE_COUNTER("ClearPhysicsMeshes");
+		BodySetupBeingCooked->ClearPhysicsMeshes();
 	}
+	{
+		VOXEL_SCOPE_COUNTER("FinishCreatingPhysicsMeshes");
+#if ENGINE_MINOR_VERSION < 24
+		BodySetupBeingCooked->FinishCreatingPhysicsMeshes({}, {}, CookResult.TriangleMeshes);
+#else
+		UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetupBeingCooked, {}, {}, CookResult.TriangleMeshes);
+#endif
+	}
+	UpdateConvexMeshes(CookResult.ConvexBounds, MoveTemp(CookResult.ConvexElems), MoveTemp(CookResult.ConvexMeshes));
 
-	BodySetupBeingCooked->FinishCreatingPhysicsMeshes(AsyncCooker->OutNonMirroredConvexMeshes, AsyncCooker->OutMirroredConvexMeshes, AsyncCooker->OutTriangleMeshes);
+	AsyncCooker->CancelAndAutodelete();
+	AsyncCooker = nullptr;
+
 	FinishCollisionUpdate();
 }
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-void UVoxelProceduralMeshComponent::CreateProcMeshBodySetup()
-{
-	if (!ProcMeshBodySetup)
-	{
-		ProcMeshBodySetup = CreateBodySetupHelper();
-	}
-}
-
-UBodySetup* UVoxelProceduralMeshComponent::CreateBodySetupHelper()
-{
-	UBodySetup* NewBodySetup = NewObject<UBodySetup>(this);
-	NewBodySetup->bGenerateMirroredCollision = false;
-	return NewBodySetup;
-}
-
-#undef LOCTEXT_NAMESPACE

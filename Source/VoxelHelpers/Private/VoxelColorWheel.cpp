@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelColorWheel.h"
 #include "Widgets/Colors/SColorWheel.h"

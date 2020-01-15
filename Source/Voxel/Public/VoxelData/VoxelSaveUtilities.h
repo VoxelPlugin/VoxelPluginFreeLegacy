@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -7,56 +7,80 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelSaveUtilities.generated.h"
 
+struct FVoxelFoliage;
 class FVoxelPlaceableItem;
+class AVoxelWorld;
+template<typename T>
+class TVoxelDataOctreeLeafData;
 
 class FVoxelSaveBuilder
 {
 public:
-	FVoxelSaveBuilder(int32 Depth)
+	explicit FVoxelSaveBuilder(int32 Depth)
 		: Depth(Depth)
 	{
 	}
-	void AddChunk(const FIntVector& InPosition, FVoxelValue* InValues, FVoxelMaterial* InMaterials);
-	void AddPlaceableItem(const TSharedPtr<FVoxelPlaceableItem>& PlaceableItem);
+	void AddChunk(
+		const FIntVector& InPosition,
+		const TVoxelDataOctreeLeafData<FVoxelValue>& InValues,
+		const TVoxelDataOctreeLeafData<FVoxelMaterial>& InMaterials,
+		const TVoxelDataOctreeLeafData<FVoxelFoliage>& InFoliage);
+	void AddPlaceableItem(const TVoxelSharedPtr<FVoxelPlaceableItem>& PlaceableItem);
 	void Save(FVoxelUncompressedWorldSave& OutSave);
 
 private:
-	struct FVoxelChunkSaveTmp
+	struct FChunkToSave
 	{
+		template<typename T>
+		struct TData
+		{
+			T* RESTRICT DataPtr = nullptr;
+			bool bIsSingleValue = false;
+			T SingleValue;
+		};
+		
 		FIntVector Position;
-		FVoxelValue* Values;
-		FVoxelMaterial* Materials;
+		TData<FVoxelValue> Values;
+		TData<FVoxelMaterial> Materials;
+		TData<FVoxelFoliage> Foliage;
 	};
 	const int32 Depth;
-	uint32 ChunksWithValuesCount = 0;
-	uint32 ChunksWithMaterialsCount = 0;
-	TArray<FVoxelChunkSaveTmp> TmpChunks;
-	TArray<TSharedPtr<FVoxelPlaceableItem>> PlaceableItems;
+	TArray<FChunkToSave> ChunksToSave;
+	TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> PlaceableItems;
 };
 
 class FVoxelSaveLoader
 {
 public:
-	FVoxelSaveLoader(const FVoxelUncompressedWorldSave& Save)
+	explicit FVoxelSaveLoader(const FVoxelUncompressedWorldSave& Save)
 		: Save(Save)
 	{
 	}
-	
-	void CopyChunkToBuffers(int32 Index, FVoxelValue* DestValues, FVoxelMaterial* DestMaterials, bool& bOutValuesAreSet, bool& bOutMaterialsAreSet) const;
-	TArray<TSharedPtr<FVoxelPlaceableItem>> GetPlaceableItems();
+
+	void ExtractChunk(
+		int32 ChunkIndex,
+		TVoxelDataOctreeLeafData<FVoxelValue>& OutValues,
+		TVoxelDataOctreeLeafData<FVoxelMaterial>& OutMaterials,
+		TVoxelDataOctreeLeafData<FVoxelFoliage>& OutFoliage) const;
+	TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> GetPlaceableItems(const AVoxelWorld * VoxelWorld);
 
 public:
-	inline int32 NumChunks() const
+	int32 NumChunks() const
 	{
 		return Save.Chunks.Num();
 	}
-	inline FIntVector GetChunkPosition(int32 Index) const
+	FIntVector GetChunkPosition(int32 ChunkIndex) const
 	{
-		return Save.Chunks[Index].Position;
+		return Save.Chunks[ChunkIndex].Position;
+	}
+	bool GetError() const
+	{
+		return bError;
 	}
 
 private:
 	const FVoxelUncompressedWorldSave& Save;
+	bool bError = false;
 };
 
 UCLASS()
@@ -65,9 +89,9 @@ class VOXEL_API UVoxelSaveUtilities : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 public:
 
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Save")
 	static void CompressVoxelSave(const FVoxelUncompressedWorldSave& UncompressedSave, FVoxelCompressedWorldSave& OutCompressedSave);
 
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Save")
 	static bool DecompressVoxelSave(const FVoxelCompressedWorldSave& CompressedSave, FVoxelUncompressedWorldSave& OutUncompressedSave);
 };

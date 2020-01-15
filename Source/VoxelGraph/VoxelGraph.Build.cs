@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 using System.IO;
 using UnrealBuildTool;
@@ -14,10 +14,6 @@ public class VoxelGraph : ModuleRules
         if (!Target.bUseUnityBuild)
         {
             PrivatePCHHeaderFile = "Private/VoxelGraphPCH.h";
-#if UE_4_22_OR_LATER
-#else
-            PrivateDependencyModuleNames.Add("LivePP");
-#endif
         }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
@@ -36,5 +32,7 @@ public class VoxelGraph : ModuleRules
         {
             PublicDefinitions.Add("VOXEL_DEBUG=1");
         }
+
+        PublicDefinitions.Add("VOXEL_PLUGIN_PRO=1");
     }
 }

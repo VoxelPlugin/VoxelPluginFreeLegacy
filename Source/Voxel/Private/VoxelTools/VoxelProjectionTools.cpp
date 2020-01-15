@@ -1,587 +1,414 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelTools/VoxelProjectionTools.h"
+#include "VoxelTools/VoxelToolHelpers.h"
+
 #include "DrawDebugHelpers.h"
-#include "VoxelTools/VoxelTools.h"
-#include "VoxelData/VoxelData.h"
-#include "VoxelData/VoxelDataUtilities.h"
-#include "VoxelRender/IVoxelLODManager.h"
-
 #include "Engine/Engine.h"
-#include "Curves/CurveFloat.h"
-#include "VoxelToolsHelpers.h"
 
-DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::SetValueProjection"), STAT_UVoxelProjectionTools_SetValueProjection, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::SetMaterialProjection"), STAT_UVoxelProjectionTools_SetMaterialProjection, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::TraceDone"), STAT_UVoxelProjectionTools_TraceDone, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::FindHitVoxelsForRaycasts"), STAT_UVoxelProjectionTools_FindHitVoxelsForRaycasts, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::FindHitVoxelsForRaycasts::StartAsyncTrace"), STAT_UVoxelProjectionTools_FindHitVoxelsForRaycasts_StartAsyncTrace, STATGROUP_Voxel);
-DECLARE_CYCLE_STAT(TEXT("UVoxelProjectionTools::FindHitVoxelsForRaycasts::StartTrace"), STAT_UVoxelProjectionTools_FindHitVoxelsForRaycasts_StartTrace, STATGROUP_Voxel);
-
-TMap<FTraceHandle, UVoxelProjectionTools::FTraceDetails> UVoxelProjectionTools::TraceMap;
-FTraceDelegate UVoxelProjectionTools::TraceDelegate;
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-inline void ProcessTraceResult(FVoxelProjectionEditWork& Work, const FHitResult& Hit, float Distance)
+struct FHitsBuilder
 {
-	if (Work.bShowRaycasts)
+	struct FPlanePosition
 	{
-		DrawDebugLine(Work.World->GetWorld(), Hit.TraceStart, Hit.TraceEnd, FColor::Magenta, false, 1);
-	}
+		FVector2D PlanePosition;
+		float DistanceSquared;
+		FHitResult Hit;
+	};
+	TMap<FIntVector, FPlanePosition> PlanePositions;
 
-	TArray<FIntVector> Points;
-	if(Work.World->RenderType == EVoxelRenderType::Cubic)
+	TArray<FVoxelProjectionHit> GetHits() const
 	{
-		// Make sure we're inside the cube
-		FVector HitPoint = Hit.ImpactPoint + Hit.Normal * Work.World->VoxelSize / 2 * (Work.bAdd ? 1 : -1);
-		Points.Add(Work.World->GlobalToLocal(HitPoint));
-	}
-	else
-	{
-		Points = Work.World->GetNeighboringPositions(Hit.ImpactPoint);
-	}
-
-	for (auto& Point : Points)
-	{
-		if (!Work.AddedPoints.Contains(Point) && Work.World->GetData().IsInWorld(Point))
+		TArray<FVoxelProjectionHit> Result;
+		Result.Reserve(PlanePositions.Num());
+		for (auto& It : PlanePositions)
 		{
-			Work.AddedPoints.Add(Point);
-			Work.HitVoxels.Emplace(Point, Distance);
-			if (Work.Bounds.Size().GetMax() == 0)
+			Result.Add(FVoxelProjectionHit{ It.Key, It.Value.PlanePosition, It.Value.Hit });
+		}
+		return Result;
+	}
+
+	inline void Add(AVoxelWorld* World, const FHitResult& Hit, const FVector2D& PlanePosition)
+	{
+		const FVector LocalPosition = World->GlobalToLocalFloat(Hit.ImpactPoint);
+		for (auto& Point : FVoxelUtilities::GetNeighbors(LocalPosition))
+		{
+			const float DistanceSquared = (FVector(Point) - LocalPosition).SizeSquared();
+			auto* const Existing = PlanePositions.Find(Point);
+			if (Existing)
 			{
-				Work.Bounds = FIntBox(Point);
+				if (Existing->DistanceSquared > DistanceSquared)
+				{
+					Existing->PlanePosition = PlanePosition;
+					Existing->DistanceSquared = DistanceSquared;
+					Existing->Hit = Hit;
+				}
 			}
 			else
 			{
-				Work.Bounds += Point;
+				PlanePositions.Add(Point, { PlanePosition, DistanceSquared, Hit });
 			}
 		}
 	}
-}
+};
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-void UVoxelProjectionTools::TraceDone(const FTraceHandle& TraceHandle, FTraceDatum& TraceDatum)
+class FAsyncLinetracesLatentAction : public FPendingLatentAction
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_TraceDone);
+public:
+	const FName ExecutionFunction;
+	const int32 OutputLink;
+	const FWeakObjectPtr CallbackTarget;
+	TArray<FVoxelProjectionHit>* const OutHits;
+	const TWeakObjectPtr<AVoxelWorld> VoxelWorld;
+	const TWeakObjectPtr<UWorld> World;
+	const FVoxelLineTraceParameters Parameters;
+	
+	FHitsBuilder Builder;
+	uint32 NumTraces = 0;
+	uint32 NumCompletedTraces = 0;
 
-	FTraceDetails TraceDetails;
-	if (!TraceMap.RemoveAndCopyValue(TraceHandle, TraceDetails)) { return; }
-
-	auto& Work = *TraceDetails.Work;
-	Work.TracesCompleted++;
-
-	AVoxelWorld* World = Work.World.Get();
-	if (!World) { return; }
-
-	FHitResult Hit;
+	struct FLocalTraceData
 	{
-		bool bHitIsSet = false;
-		for (auto& OutHit : TraceDatum.OutHits)
+		FVector Start;
+		FVector End;
+		FVector2D PlanePosition;
+	};
+	TMap<FTraceHandle, FLocalTraceData> TracesLocalData;
+
+	struct FManualWeakRef
+	{
+		FAsyncLinetracesLatentAction& Ptr;
+		
+		void TraceDone(const FTraceHandle& TraceHandle, FTraceDatum& TraceData)
 		{
-			if (OutHit.Actor == World)
+			Ptr.TraceDone(TraceHandle, TraceData);
+		}
+	};
+	const TSharedRef<FManualWeakRef> WeakRef = MakeShareable(new FManualWeakRef{ *this });
+
+	template<typename T>
+	FAsyncLinetracesLatentAction(
+		const FLatentActionInfo& LatentInfo,
+		TArray<FVoxelProjectionHit>* OutHits,
+		AVoxelWorld* VoxelWorld, 
+		FVoxelLineTraceParameters Parameters,
+		T GenerateRaysLambda)
+		: ExecutionFunction(LatentInfo.ExecutionFunction)
+		, OutputLink(LatentInfo.Linkage)
+		, CallbackTarget(LatentInfo.CallbackTarget)
+		, OutHits(OutHits)
+		, VoxelWorld(VoxelWorld)
+		, World(VoxelWorld->GetWorld())
+		, Parameters(Parameters)
+	{
+		check(VoxelWorld);
+
+		const FCollisionQueryParams Params = Parameters.GetParams();
+		const FCollisionResponseContainer ResponseContainer = Parameters.GetResponseContainer();
+
+		FTraceDelegate TraceDelegate;
+		TraceDelegate.BindSP(WeakRef, &FManualWeakRef::TraceDone);
+
+		GenerateRaysLambda([&](const FVector& Start, const FVector& End, const FVector2D& Position)
 			{
-				Hit = OutHit;
-				bHitIsSet = true;
+				VOXEL_SCOPE_COUNTER("Start Async Linetrace");
+				const FTraceHandle Handle = World->AsyncLineTraceByChannel(
+					EAsyncTraceType::Single, 
+					Start, 
+					End, 
+					Parameters.CollisionChannel, 
+					Params, 
+					ResponseContainer, 
+					&TraceDelegate);
+				TracesLocalData.Add(Handle, { Start, End, Position });
+				NumTraces++;
+			});
+	}
+
+	virtual void UpdateOperation(FLatentResponse& Response) override
+	{
+		const bool bFinished = NumCompletedTraces == NumTraces || !VoxelWorld.IsValid();
+		if (bFinished)
+		{
+			*OutHits = Builder.GetHits();
+		}
+		Response.FinishAndTriggerIf(bFinished, ExecutionFunction, OutputLink, CallbackTarget);
+	}
+
+#if WITH_EDITOR
+	// Returns a human readable description of the latent operation's current state
+	virtual FString GetDescription() const override
+	{
+		return FString::Printf(TEXT("Trace %d/%d"), NumCompletedTraces, NumTraces);
+	}
+#endif
+
+	void TraceDone(const FTraceHandle& TraceHandle, FTraceDatum & TraceData)
+	{
+		VOXEL_SCOPE_COUNTER("Trace Done");
+
+		NumCompletedTraces++;
+
+		ensure(TraceData.OutHits.Num() <= 1);
+
+		if (!VoxelWorld.IsValid())
+		{
+			return;
+		}
+
+		const auto LocalData = TracesLocalData.FindChecked(TraceHandle);
+
+		bool bHit = false;
+		FHitResult OutHit;
+		for (auto& Hit : TraceData.OutHits)
+		{
+			if (Hit.Actor == VoxelWorld)
+			{
+				bHit = true;
+				OutHit = Hit;
+				Builder.Add(VoxelWorld.Get(), Hit, LocalData.PlanePosition);
 				break;
 			}
 		}
-		if (!bHitIsSet) { return; }
+
+		if (ensure(World.IsValid()))
+		{
+			Parameters.DrawDebug(World.Get(), LocalData.Start, LocalData.End, bHit, OutHit);
+		}
 	}
-	ProcessTraceResult(Work, Hit, TraceDetails.Distance);
+};
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FCollisionQueryParams FVoxelLineTraceParameters::GetParams() const
+{
+	FCollisionQueryParams Params(STATIC_FNAME("FindProjectionVoxels"), SCENE_QUERY_STAT_ONLY(FindProjectionVoxels), true);
+	Params.AddIgnoredActors(ActorsToIgnore);
+	return Params;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-template<bool bAsync>
-void UVoxelProjectionTools::FindHitVoxelsForRaycasts(FVoxelProjectionEditWork& Work, FVector Position, FVector Normal, float Radius, float ToolHeight, float EditDistance, float StepInVoxel)
+FCollisionResponseContainer FVoxelLineTraceParameters::GetResponseContainer() const
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_FindHitVoxelsForRaycasts);
-
-	auto World = Work.World;
-	const FVector ToolPosition = Position + Normal * ToolHeight;
-
-	/**
-	* Create a 2D basis from (Tangent, Bitangent)
-	*/
-	FVector Tangent;
-	FVector Bitangent;
+	FCollisionResponseContainer ResponseContainer;
+	for (auto& CollisionChannelToIgnore : CollisionChannelsToIgnore)
 	{
-		// Compute tangent
-		// N dot T = 0
-		// <=> N.X * T.X + N.Y * T.Y + N.Z * T.Z = 0
-		// <=> T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y) if N.Z != 0
-		if (Normal.Z != 0)
+		ResponseContainer.SetResponse(CollisionChannelToIgnore, ECollisionResponse::ECR_Ignore);
+	}
+	return ResponseContainer;
+}
+
+void FVoxelLineTraceParameters::DrawDebug(const UWorld* World, const FVector& Start, const FVector& End, bool bHit, const FHitResult& OutHit) const
+{
+#if ENABLE_DRAW_DEBUG
+	if (DrawDebugType != EDrawDebugTrace::None)
+	{
+		bool bPersistent = DrawDebugType == EDrawDebugTrace::Persistent;
+		float LifeTime = (DrawDebugType == EDrawDebugTrace::ForDuration) ? DrawTime : 0.f;
+
+		// @fixme, draw line with thickness = 2.f?
+		if (bHit && OutHit.bBlockingHit)
 		{
-			Tangent.X = 1;
-			Tangent.Y = 1;
-			Tangent.Z = -1 / Normal.Z * (Normal.X + Normal.Y);
-			Tangent.Normalize();
+			// Red up to the blocking hit, green thereafter
+			DrawDebugLine(World, Start, OutHit.ImpactPoint, TraceColor.ToFColor(true), bPersistent, LifeTime);
+			DrawDebugLine(World, OutHit.ImpactPoint, End, TraceHitColor.ToFColor(true), bPersistent, LifeTime);
+			static const float KISMET_TRACE_DEBUG_IMPACTPOINT_SIZE = 16.f;
+			DrawDebugPoint(World, OutHit.ImpactPoint, KISMET_TRACE_DEBUG_IMPACTPOINT_SIZE, TraceColor.ToFColor(true), bPersistent, LifeTime);
 		}
 		else
 		{
-			Tangent = FVector(0, 0, 1);
-		}
-
-		// Compute bitangent
-		Bitangent = FVector::CrossProduct(Tangent, Normal).GetSafeNormal();
-	}
-
-	const float Step = StepInVoxel * World->VoxelSize;
-	const int32 Count = FMath::CeilToInt(Radius / Step);
-	const ECollisionChannel CollisionChannel = World->CollisionPresets.GetObjectType();
-
-	for (int32 I = -Count; I <= Count; I++)
-	{
-		for (int32 J = -Count; J <= Count; J++)
-		{
-			float X = I * Step;
-			float Y = J * Step;
-			float Distance = FVector2D(X, Y).Size();
-
-			if (Distance >= Radius)
-			{
-				continue;
-			}
-
-			//DrawDebugPoint(World->GetWorld(), Position + (Tangent * X + Bitangent * Y), 10, FColor::Red, false, World->GetWorld()->GetDeltaSeconds() * 2);
-
-			// Use 2D basis
-			FVector Start = ToolPosition + (Tangent * X + Bitangent * Y);
-			FVector End = Start - Normal * EditDistance;
-			if (bAsync)
-			{
-				FTraceHandle Handle;
-				{
-					SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_FindHitVoxelsForRaycasts_StartAsyncTrace);
-					Handle = World->GetWorld()->AsyncLineTraceByChannel(EAsyncTraceType::Single, Start, End, CollisionChannel, FCollisionQueryParams::DefaultQueryParam, FCollisionResponseParams::DefaultResponseParam, &TraceDelegate);
-				}
-				FTraceDetails TraceDetails{ &Work, Distance };
-				TraceMap.Add(Handle, TraceDetails);
-				Work.TotalTraces++;
-			}
-			else
-			{
-				FHitResult Hit;
-				{
-					SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_FindHitVoxelsForRaycasts_StartTrace);
-					World->GetWorld()->LineTraceSingleByChannel(Hit, Start, End, CollisionChannel);
-				}
-				if (Hit.Actor == World)
-				{
-					ProcessTraceResult(Work, Hit, Distance);
-				}
-			}
+			// no hit means all red
+			DrawDebugLine(World, Start, End, TraceColor.ToFColor(true), bPersistent, LifeTime);
 		}
 	}
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-inline void SetValueProjectionHelper(
-	FVoxelProjectionEditWork& Work,
-	float Radius,
-	float LockTimeoutInSeconds,
-	float Strength, 
-	UCurveFloat* StrengthCurve, 
-	TArray<FModifiedVoxelValue>& ModifiedVoxels,
-	EBlueprintSuccess& Branches, 
-	EFailReason& FailReason,
-	FString& LockerName)
+FVoxelLineTraceParameters UVoxelProjectionTools::MakeVoxelLineTraceParameters(
+	TArray<TEnumAsByte<ECollisionChannel>> CollisionChannelsToIgnore, 
+	TArray<AActor*> ActorsToIgnore, 
+	TEnumAsByte<ECollisionChannel> CollisionChannel, 
+	TEnumAsByte<EDrawDebugTrace::Type> DrawDebugType, 
+	FLinearColor TraceColor, 
+	FLinearColor TraceHitColor, 
+	float DrawTime)
 {
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_SetValueProjection);
-	
-	Branches = EBlueprintSuccess::Failed;
-	FailReason = EFailReason::OtherError;
-
-	if (Work.HitVoxels.Num() == 0) { return; }
-
-	AVoxelWorld* World = Work.World.Get();
-	if (!World) { return; }
-
-	FVoxelData& Data = World->GetData();
+	return
 	{
-		FVoxelReadWriteScopeTryLock Lock(Data, Work.Bounds, LockTimeoutInSeconds, "SetValueProjection");
-		if (!Lock.Success())
-		{
-			LockerName = Lock.GetLockerName();
-			FailReason = EFailReason::VoxelDataLocked;
-			return;
-		}
-
-		FVoxelDataUtilities::LastOctreeAccelerator OctreeAccelerator(Data);
-		for (auto& Hit : Work.HitVoxels)
-		{
-			if (LIKELY(Data.IsInWorld(Hit.Position)))
-			{
-				float OldValue = OctreeAccelerator.GetValue(Hit.Position, 0).ToFloat();
-				float NewValue;
-				if (World->RenderType == EVoxelRenderType::MarchingCubes)
-				{
-					float CurrentStrength = Strength * (StrengthCurve ? StrengthCurve->FloatCurve.Eval(Hit.Distance / Radius) : 1.f);
-					NewValue = FMath::Clamp<float>(OldValue + CurrentStrength, -1, 1);
-				}
-				else
-				{
-					NewValue = Work.bAdd ? -1 : 1;
-				}
-				OctreeAccelerator.SetValue(Hit.Position, NewValue);
-
-				FModifiedVoxelValue Voxel;
-				Voxel.Position = Hit.Position;
-				Voxel.OldValue = OldValue;
-				Voxel.NewValue = NewValue;
-				ModifiedVoxels.Add(Voxel);
-			}
-		}
-	}
-
-	World->GetLODManager().UpdateBounds(Work.Bounds, true);
-
-	Branches = EBlueprintSuccess::Success;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-inline void SetMaterialProjectionHelper(
-	FVoxelProjectionEditWork& Work,
-	float Radius,
-	float LockTimeoutInSeconds,
-	FVoxelPaintMaterial PaintMaterial,
-	UCurveFloat* StrengthCurve,
-	TArray<FModifiedVoxelMaterial>& ModifiedVoxels, 
-	EBlueprintSuccess& Branches,
-	EFailReason& FailReason,
-	FString& LockerName)
-{
-	SCOPE_CYCLE_COUNTER(STAT_UVoxelProjectionTools_SetMaterialProjection);
-	
-	Branches = EBlueprintSuccess::Failed;
-	FailReason = EFailReason::OtherError;
-
-	if (Work.HitVoxels.Num() == 0) { return; }
-
-	AVoxelWorld* World = Work.World.Get();
-	if (!World) { return; }
-
-	FVoxelData& Data = World->GetData();
-	{
-		FVoxelReadWriteScopeTryLock Lock(Data, Work.Bounds, LockTimeoutInSeconds, "SetMaterialProjection");
-		if (!Lock.Success())
-		{
-			LockerName = Lock.GetLockerName();
-			FailReason = EFailReason::VoxelDataLocked;
-			return;
-		}
-
-		FVoxelDataUtilities::LastOctreeAccelerator OctreeAccelerator(Data);
-		for (auto& Hit : Work.HitVoxels)
-		{
-			if (LIKELY(Data.IsInWorld(Hit.Position)))
-			{
-				FModifiedVoxelMaterial Voxel;
-				Voxel.Position = Hit.Position;
-
-				FVoxelMaterial Material = OctreeAccelerator.GetMaterial(Hit.Position, 0);
-
-				Voxel.OldMaterial = Material;
-				PaintMaterial.ApplyToMaterial(Material, StrengthCurve ? StrengthCurve->FloatCurve.Eval(Hit.Distance / Radius) : 1);
-				Voxel.NewMaterial = Material;
-
-				OctreeAccelerator.SetMaterial(Hit.Position, Material);
-
-				ModifiedVoxels.Add(Voxel);
-			}
-		}
-	}
-
-	World->GetLODManager().UpdateBounds(Work.Bounds, true);
-
-	Branches = EBlueprintSuccess::Success;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void GetVoxelsProjectionHelper(
-	FVoxelProjectionEditWork& Work,
-	TArray<FGetVoxelProjectionVoxel>& OutVoxels,
-	EBlueprintSuccess& Branches)
-{
-	Branches = EBlueprintSuccess::Failed;
-
-	if (Work.HitVoxels.Num() == 0) { return; }
-
-	AVoxelWorld* World = Work.World.Get();
-	if (!World) { return; }
-
-	FVoxelData& Data = World->GetData();
-	{
-		FVoxelReadScopeLock Lock(Data, Work.Bounds, "GetVoxelsProjection");
-
-		FVoxelDataUtilities::LastOctreeAccelerator OctreeAccelerator(Data);
-		for (auto& Hit : Work.HitVoxels)
-		{
-			if (LIKELY(Data.IsInWorld(Hit.Position)))
-			{
-				FGetVoxelProjectionVoxel Voxel;
-				Voxel.Position = Hit.Position;
-				FVoxelValue Value;
-				OctreeAccelerator.GetValueAndMaterial(Hit.Position, Value, Voxel.Material, 0);
-				Voxel.Value = Value.ToFloat();
-
-				OutVoxels.Add(Voxel);
-			}
-		}
-	}
-
-	Branches = EBlueprintSuccess::Success;
+		CollisionChannel,
+		CollisionChannelsToIgnore,
+		ActorsToIgnore,
+		DrawDebugType,
+		TraceColor,
+		TraceHitColor,
+		DrawTime
+	};
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-UVoxelProjectionTools::UVoxelProjectionTools()
-{
-	if (!TraceDelegate.IsBound())
-	{
-		TraceDelegate.BindStatic(&TraceDone);
-	}
-}
-
-void UVoxelProjectionTools::SetValueProjectionAsync(
-	UObject* WorldContextObject,
-	FLatentActionInfo LatentInfo,
-	EBlueprintSuccess& Branches,
-	EFailReason& FailReason,
-	FString& LockerName,
-	TArray<FModifiedVoxelValue>& ModifiedVoxels, 
+int32 UVoxelProjectionTools::FindProjectionVoxels(
+	TArray<FVoxelProjectionHit>& Hits, 
 	AVoxelWorld* World, 
-	FVector Position,
-	FVector Normal,
-	float Radius, 
-	float Strength,
-	UCurveFloat* StrengthCurve,
-	float ToolHeight, 
-	float EditDistance, 
-	float StepInVoxel, 
-	float LockTimeoutInSeconds, 
-	bool bShowRaycasts)
+	FVoxelLineTraceParameters Parameters, 
+	FVector Position, 
+	FVector Direction, 
+	float Radius,
+	EVoxelProjectionShape Shape,
+	float NumRays, 
+	float MaxDistance)
 {
-	Branches = EBlueprintSuccess::Failed;
-	FailReason = EFailReason::OtherError;
-	LockerName = "";
+	VOXEL_FUNCTION_COUNTER();
+	
+	Hits.Reset();
+	
+	CHECK_VOXELWORLD_IS_CREATED();
 
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-
-	auto* ModifiedVoxelsPtr = &ModifiedVoxels;
-	auto* BranchesPtr = &Branches;
-	auto* FailReasonPtr = &FailReason;
-	auto* LockerNamePtr = &LockerName;
-
-	if (UWorld* ObjectWorld = GEngine->GetWorldFromContextObjectChecked(WorldContextObject))
+	if (!Direction.Normalize())
 	{
-		FLatentActionManager& LatentActionManager = ObjectWorld->GetLatentActionManager();
-		if (!LatentActionManager.FindExistingAction<FVoxelProjectionEditLatentAction>(LatentInfo.CallbackTarget, LatentInfo.UUID))
-		{
-			auto Work = MakeShared<FVoxelProjectionEditWork>(World, bShowRaycasts, Strength <= 0);
-			FindHitVoxelsForRaycasts<true>(*Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-
-			LatentActionManager.AddNewAction(LatentInfo.CallbackTarget, LatentInfo.UUID, new FVoxelProjectionEditLatentAction(Work, LatentInfo,
-				[=](FVoxelProjectionEditWork& Work)
-				{
-					SetValueProjectionHelper(Work, Radius, LockTimeoutInSeconds, Strength, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr, *LockerNamePtr);
-				}
-			));
-		}
-		else
-		{
-			FailReason = EFailReason::LinetracesPending;
-		}
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid Direction!"));
+		return 0;
 	}
+
+	UWorld* const WorldPtr = World->GetWorld();
+	const FCollisionQueryParams Params = Parameters.GetParams();
+	const FCollisionResponseContainer ResponseContainer = Parameters.GetResponseContainer();
+	FHitsBuilder Builder;
+
+	const auto Lambda = [&](const FVector& Start, const FVector& End, const FVector2D& PlanePosition)
+	{
+		VOXEL_SCOPE_COUNTER("Linetrace");
+		FHitResult OutHit;
+		const bool bHit = WorldPtr->LineTraceSingleByChannel(
+			OutHit,
+			Start,
+			End,
+			Parameters.CollisionChannel,
+			Params,
+			ResponseContainer);
+		Parameters.DrawDebug(WorldPtr, Start, End, bHit, OutHit);
+		if (bHit)
+		{
+			Builder.Add(World, OutHit, PlanePosition);
+		}
+	};
+	
+	const int32 NumTraced = GenerateRays(Position, Direction, Radius, Shape, NumRays, MaxDistance, Lambda);
+	
+	Hits = Builder.GetHits();
+
+	return NumTraced;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
-void UVoxelProjectionTools::SetMaterialProjectionAsync(
+int32 UVoxelProjectionTools::FindProjectionVoxelsAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
-	EBlueprintSuccess& Branches, 
-	EFailReason& FailReason,
-	FString& LockerName,
-	TArray<FModifiedVoxelMaterial>& ModifiedVoxels, 
+	TArray<FVoxelProjectionHit>& Hits,
 	AVoxelWorld* World,
+	FVoxelLineTraceParameters Parameters, 
 	FVector Position, 
-	FVector Normal,
-	FVoxelPaintMaterial PaintMaterial,
-	UCurveFloat* StrengthCurve,
+	FVector Direction, 
 	float Radius,
-	float ToolHeight,
-	float EditDistance,
-	float StepInVoxel,
-	float LockTimeoutInSeconds, 
-	bool bShowRaycasts)
+	EVoxelProjectionShape Shape,
+	float NumRays, 
+	float MaxDistance,
+	bool bHideLatentWarnings)
 {
-	Branches = EBlueprintSuccess::Failed;
-	FailReason = EFailReason::OtherError;
-	LockerName = "";
-	
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED();
 
-	auto* ModifiedVoxelsPtr = &ModifiedVoxels;
-	auto* BranchesPtr = &Branches;
-	auto* FailReasonPtr = &FailReason;
-	auto* LockerNamePtr = &LockerName;
-
-	if (UWorld* ObjectWorld = GEngine->GetWorldFromContextObjectChecked(WorldContextObject))
+	if (!Direction.Normalize())
 	{
-		FLatentActionManager& LatentActionManager = ObjectWorld->GetLatentActionManager();
-		if (!LatentActionManager.FindExistingAction<FVoxelProjectionEditLatentAction>(LatentInfo.CallbackTarget, LatentInfo.UUID))
-		{
-			auto Work = MakeShared<FVoxelProjectionEditWork>(World, bShowRaycasts, false);
-			FindHitVoxelsForRaycasts<true>(*Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-
-			LatentActionManager.AddNewAction(LatentInfo.CallbackTarget, LatentInfo.UUID, new FVoxelProjectionEditLatentAction(Work, LatentInfo,
-				[=](FVoxelProjectionEditWork& Work)
-				{
-					SetMaterialProjectionHelper(Work, Radius, LockTimeoutInSeconds, PaintMaterial, StrengthCurve, *ModifiedVoxelsPtr, *BranchesPtr, *FailReasonPtr, *LockerNamePtr);
-				}
-			));
-		}
-		else
-		{
-			FailReason = EFailReason::LinetracesPending;
-		}
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid Direction!"));
+		return 0;
 	}
-}
 
-void UVoxelProjectionTools::GetVoxelsProjectionAsync(
-	UObject* WorldContextObject, 
-	struct FLatentActionInfo LatentInfo, 
-	EBlueprintSuccess& Branches, 
-	TArray<FGetVoxelProjectionVoxel>& OutVoxels,
-	AVoxelWorld* World,
-	FVector Position, 
-	FVector Normal, 
-	float Radius, 
-	float ToolHeight,
-	float EditDistance,
-	float StepInVoxel,
-	bool bShowRaycasts)
-{
-	Branches = EBlueprintSuccess::Failed;
-	
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-
-	auto* OutVoxelsPtr = &OutVoxels;
-	auto* BranchesPtr = &Branches;
-
-	if (UWorld* ObjectWorld = GEngine->GetWorldFromContextObjectChecked(WorldContextObject))
+	int32 NumTraced = 0;
+	const auto Lambda = [&]()
 	{
-		FLatentActionManager& LatentActionManager = ObjectWorld->GetLatentActionManager();
-		if (!LatentActionManager.FindExistingAction<FVoxelProjectionEditLatentAction>(LatentInfo.CallbackTarget, LatentInfo.UUID))
-		{
-			auto Work = MakeShared<FVoxelProjectionEditWork>(World, bShowRaycasts, false);
-			FindHitVoxelsForRaycasts<true>(*Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
+		return new FAsyncLinetracesLatentAction(LatentInfo, &Hits, World, Parameters, [&](auto In)
+			{
+				NumTraced = GenerateRays(Position, Direction, Radius, Shape, NumRays, MaxDistance, In);
+			});
+	};
+	FVoxelToolHelpers::StartLatentAction(
+		WorldContextObject,
+		LatentInfo,
+		FUNCTION_FNAME,
+		bHideLatentWarnings,
+		Lambda);
 
-			LatentActionManager.AddNewAction(LatentInfo.CallbackTarget, LatentInfo.UUID, new FVoxelProjectionEditLatentAction(Work, LatentInfo,
-				[=](FVoxelProjectionEditWork& Work)
-				{
-					GetVoxelsProjectionHelper(Work, *OutVoxelsPtr, *BranchesPtr);
-				}
-			));
-		}
+	return NumTraced;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+TArray<FIntVector> UVoxelProjectionTools::GetHitsPositions(const TArray<FVoxelProjectionHit>& Hits)
+{
+	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+	TArray<FIntVector> Voxels;
+	Voxels.Reserve(Hits.Num());
+	for (auto& Hit : Hits)
+	{
+		Voxels.Add(Hit.VoxelPosition);
 	}
+	return Voxels;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-void UVoxelProjectionTools::SetValueProjectionNew(
-	EBlueprintSuccess& Branches,
-	EFailReason& FailReason,
-	FString& LockerName,
-	TArray<FModifiedVoxelValue>& ModifiedVoxels,
-	AVoxelWorld* World,
-	FVector Position,
-	FVector Normal,
-	float Radius,
-	float Strength,
-	UCurveFloat* StrengthCurve,
-	float ToolHeight,
-	float EditDistance,
-	float StepInVoxel,
-	float LockTimeoutInSeconds,
-	bool bShowRaycasts)
+FVector UVoxelProjectionTools::GetHitsAverageNormal(const TArray<FVoxelProjectionHit>& Hits)
 {
-	Branches = EBlueprintSuccess::Failed;
-	FailReason = EFailReason::OtherError;
-	LockerName = "";
-
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-
-	FVoxelProjectionEditWork Work(World, bShowRaycasts, Strength <= 0);
-	FindHitVoxelsForRaycasts<false>(Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-	SetValueProjectionHelper(Work, Radius, LockTimeoutInSeconds, Strength, StrengthCurve, ModifiedVoxels, Branches, FailReason, LockerName);
+	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+	if (Hits.Num() == 0)
+	{
+		return FVector::UpVector;
+	}
+	FVector N = Hits[0].Hit.ImpactNormal;
+	for (int32 Index = 1; Index < Hits.Num(); ++Index)
+	{
+		N += Hits[Index].Hit.ImpactNormal;
+	}
+	if (!ensure(!FMath::IsNaN(N.X + N.Y + N.Z)))
+	{
+		return FVector::UpVector;
+	}
+	return N.GetSafeNormal();
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
-void UVoxelProjectionTools::SetMaterialProjectionNew(
-	EBlueprintSuccess& Branches,
-	EFailReason& FailReason,
-	FString& LockerName,
-	TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
-	AVoxelWorld* World,
-	FVector Position,
-	FVector Normal,
-	FVoxelPaintMaterial PaintMaterial,
-	UCurveFloat* StrengthCurve,
-	float Radius,
-	float ToolHeight,
-	float EditDistance,
-	float StepInVoxel,
-	float LockTimeoutInSeconds,
-	bool bShowRaycasts)
+FVector UVoxelProjectionTools::GetHitsAveragePosition(const TArray<FVoxelProjectionHit>& Hits)
 {
-	Branches = EBlueprintSuccess::Failed;
-	FailReason = EFailReason::OtherError;
-	LockerName = "";
-
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-
-	FVoxelProjectionEditWork Work(World, bShowRaycasts, false);
-	FindHitVoxelsForRaycasts<false>(Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-	SetMaterialProjectionHelper(Work, Radius, LockTimeoutInSeconds, PaintMaterial, StrengthCurve, ModifiedVoxels, Branches, FailReason, LockerName);
+	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+	if (Hits.Num() == 0)
+	{
+		return {};
+	}
+	FVector Position = Hits[0].Hit.ImpactPoint;
+	for (int32 Index = 1; Index < Hits.Num(); ++Index)
+	{
+		Position += Hits[Index].Hit.ImpactPoint;
+	}
+	if (!ensure(!FMath::IsNaN(Position.X + Position.Y + Position.Z)))
+	{
+		return FVector::UpVector;
+	}
+	return Position / Hits.Num();
 }
 
-void UVoxelProjectionTools::GetVoxelsProjection(
-	EBlueprintSuccess& Branches,
-	TArray<FGetVoxelProjectionVoxel>& OutVoxels,
-	AVoxelWorld* World,
-	FVector Position, 
-	FVector Normal, 
-	float Radius,
-	float ToolHeight, 
-	float EditDistance,
-	float StepInVoxel,
-	bool bShowRaycasts)
+TArray<FSurfaceVoxel> UVoxelProjectionTools::CreateSurfaceVoxelsFromHits(const TArray<FVoxelProjectionHit>& Hits)
 {
-	Branches = EBlueprintSuccess::Failed;
-
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-
-	FVoxelProjectionEditWork Work(World, bShowRaycasts, false);
-	FindHitVoxelsForRaycasts<false>(Work, Position, Normal, Radius, ToolHeight, EditDistance, StepInVoxel);
-	GetVoxelsProjectionHelper(Work, OutVoxels, Branches);
+	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+	TArray<FSurfaceVoxel> Voxels;
+	Voxels.Reserve(Hits.Num());
+	for (auto& Hit : Hits)
+	{
+		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, 1.f);
+	}
+	return Voxels;
 }

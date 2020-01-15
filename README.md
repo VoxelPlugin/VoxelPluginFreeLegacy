@@ -1,18 +1,26 @@
 # voxel plugin
 
 **voxel plugin** allows to create fully volumetric, entirely destructible, infinite worlds in **Unreal Engine**.
-It is compatible with 4.21 and 4.22.
+It is compatible with 4.22, 4.23 and 4.24.
 
-For more info, check the website: https://voxelplugin.com
-
-Join the discord for all the latest news! https://discord.gg/58ZqEbg
+## Links
 
 You can get a binary build here: https://gumroad.com/voxelplugin
 
-To report an issue: https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
+- Docs: http://wiki.voxelplugin.com
+- Issues: https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
+- Stable Releases: https://gitlab.com/Phyronnaz/VoxelPluginPro
+- Beta Releases: https://gitlab.com/Phyronnaz/VoxelPluginProBeta
+
+Support:
+- UE Forums: https://forums.unrealengine.com/community/released-projects/125045-voxel-plugin
+- Discord: https://discord.voxelplugin.com
+
+For more info, check the website: https://voxelplugin.com
 
 ## Installation
-* In your game’s root directory, create a folder named Plugins
+
+* In your project's directory, create a folder named Plugins
 * Copy the Voxel folder into it. You should have something like
 ```
     MyProject
@@ -25,13 +33,11 @@ To report an issue: https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
 ```
     PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Voxel" });
 ```
-## Quick start
-Follow [this video](https://www.youtube.com/watch?v=EpXu9kqFoSM)
 
-Basically:
-* Add a **Voxel Invoker Component** to your character
+## Quick start
+
 * Add a **VoxelWorld** to your scene
-* Set your player controller to the **BP_VoxelPlayerController** (need to toggle *Show Plugin Content*)
+* Set your player controller to the **VoxelComplexController** (need to toggle *Show Plugin Content*)
 * Hit play
 
 ## Pricing & Licensing
@@ -41,43 +47,37 @@ There are two editions of the plugin available:
 * a free version (this one), with limited features
 * a pro version with more features, which you can check out [on the website](https://voxelplugin.com)
 
-Both versions can be used commercially.
+Both versions can be used commercially. The API of the two versions is the same, so files created in one can be used in another.
 
 ## Features
 
 ### Free version
 * Fully volumetric and entirely destructible terrain
 * Infinite worlds with seamless LODs
-* Ultra smooth edits: up to 50 times per second on a single chunk
+* Ultra smooth edits, with hundreds of edits per seconds
 * VR Ready: everything is done in background threads, allowing for a constant 90fps
 * Up to 256 materials, with smooth transitions and texture support
 * Complete Blueprint interface
 * C++ World Generators to create your own worlds
+* Basic Multiplayer
+* Powerful editor tools
 
 ### Pro version
 * Easy to use custom graph system to create your own worlds
-* Multiplayer
+* TCP Multiplayer
 * Importers: import from meshes, heightmaps, landscapes, MagicaVox, 3D Coat and splines
 * Voxel Physics: enable physics on floating voxel blocks
-* Grass and Voxel Actors
+* Powerful procedural spawning system
+* Mesh tool: use meshes as stamps to sculpt
 * Pro Support
-
-## Docs & Support
-The docs of the plugin are hosted at http://wiki.voxelplugin.com
-
-To get support, you can either:
-* join the discord: https://discord.gg/58ZqEbg
-* leave a message on the UE forums: https://forums.unrealengine.com/community/released-projects/125045-voxel-plugin
-
-For issues, please use https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
 
 ## Screenshots
 ![Materials](https://i.imgur.com/du0V5i6.png)
-![50Hz Edits](https://i.imgur.com/4ouIrX9.png)
-![Grass & Voxel Actors (Pro only)](https://i.imgur.com/0Ic3o6h.png)
+![Fast Edits](https://i.imgur.com/4ouIrX9.png)
+![Procedural Spawning (Pro only)](https://i.imgur.com/0Ic3o6h.png)
 ![Infinite World](https://i.imgur.com/hvfXNob.png)
-![Multiplayer (Pro only)](https://i.imgur.com/wEMPfYm.png)
+![Multiplayer](https://i.imgur.com/wEMPfYm.png)
 ![Entirely Destructible](https://i.imgur.com/v3zjXQj.png)
-![Import Meshes, Heightmaps, Landscape, Splines, MagicaVox assets, 3D Coat assets (Pro only)](https://i.imgur.com/YiX8afI.png)
+![Import Meshes, Heightmaps, Landscape, MagicaVox assets, 3D Coat assets (Pro only)](https://i.imgur.com/YiX8afI.png)
 ![Fully Volumetric](https://i.imgur.com/9tH7yVv.png)
 ![Voxel Physics (Pro only)](https://i.imgur.com/c6Zc4oD.png)

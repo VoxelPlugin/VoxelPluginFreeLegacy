@@ -1,4 +1,5 @@
-﻿Docs: https://voxel-plugin.readthedocs.io/en/latest/
+﻿Docs: http://wiki.voxelplugin.com
+Issues: https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
 
 Support:
 - UE Forums: https://forums.unrealengine.com/community/released-projects/125045-voxel-plugin
@@ -24,10 +25,6 @@ For more info, check the website: https://voxelplugin.com
 
 ## Quick start
 
-Video: https://www.youtube.com/watch?v=EpXu9kqFoSM
-
-Basically:
-* Add a **Voxel Invoker Component** to your character
 * Add a **VoxelWorld** to your scene
-* Set your player controller to the **BP_VoxelPlayerController** (need to toggle *Show Plugin Content*)
+* Set your player controller to the **VoxelComplexController** (need to toggle *Show Plugin Content*)
 * Hit play

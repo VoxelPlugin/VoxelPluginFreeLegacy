@@ -1,18 +1,21 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelRender/LODManager/VoxelFixedResolutionLODManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
+#include "VoxelRender/VoxelChunkToUpdate.h"
 #include "VoxelMathUtilities.h"
 
-TSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager::Create(const FVoxelLODSettings& LODSettings, int32 ChunkLOD)
+TVoxelSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager::Create(
+	const FVoxelLODSettings& LODSettings,
+	int32 ChunkLOD)
 {
-	TArray<FVoxelChunkToAdd> ChunksToAdd;
+	TArray<FVoxelChunkUpdate> ChunkUpdates;
 	
-	const int32 ChunkSize = FVoxelUtilities::GetSizeFromDepth<CHUNK_SIZE>(ChunkLOD);
+	const int32 ChunkSize = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(ChunkLOD);
 	const FIntBox& WorldBounds = LODSettings.WorldBounds;
 
-	FIntVector Min = FVoxelUtilities::FloorToInt(FVector(WorldBounds.Min) / ChunkSize) * ChunkSize;
-	FIntVector Max = FVoxelUtilities::CeilToInt(FVector(WorldBounds.Max) / ChunkSize) * ChunkSize;
+	const FIntVector Min = FVoxelUtilities::FloorToInt(FVector(WorldBounds.Min) / ChunkSize) * ChunkSize;
+	const FIntVector Max = FVoxelUtilities::CeilToInt(FVector(WorldBounds.Max) / ChunkSize) * ChunkSize;
 	
 	uint64 Id = 0;
 	for (int32 X = Min.X; X < Max.X; X += ChunkSize)
@@ -22,21 +25,25 @@ TSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager::Cre
 			for (int32 Z = Min.Z; Z < Max.Z; Z += ChunkSize)
 			{
 				const FIntVector Position = FIntVector(X, Y, Z);
-				const FIntBox ChunkBounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<CHUNK_SIZE>(Position, ChunkLOD);
+				const FIntBox ChunkBounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, ChunkLOD);
 				if (WorldBounds.Intersect(ChunkBounds))
 				{
-					ChunksToAdd.Emplace(FVoxelChunkToAdd{
-						Id++,
-						ChunkBounds,
-						ChunkLOD,
-						FVoxelRenderChunkSettings::Visible(),
-						{} });
+					ChunkUpdates.Emplace(
+						FVoxelChunkUpdate
+						{
+							Id++,
+							ChunkLOD,
+							ChunkBounds,
+							{},
+							FVoxelChunkSettings::VisibleWithCollisions(false),
+							{}
+						});
 				}
 			}
 		}
 	}
 
-	LODSettings.Renderer->UpdateLODs(ChunksToAdd, {}, {}, {});
+	LODSettings.Renderer->UpdateLODs(1, ChunkUpdates);
 	
 	return MakeShareable(new FVoxelFixedResolutionLODManager(LODSettings));
 }

@@ -1,15 +1,31 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "VoxelPaintMaterial.h"
 #include "VoxelData/VoxelSave.h"
 #include "VoxelDataTools.generated.h"
 
+class FVoxelData;
 class AVoxelWorld;
+class UVoxelWorldGenerator;
+
+USTRUCT(BlueprintType)
+struct FVoxelValueMaterial
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	FIntVector Position = FIntVector(ForceInit);
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	float Value = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	FVoxelMaterial Material = FVoxelMaterial(ForceInit);
+};
 
 UCLASS()
 class VOXEL_API UVoxelDataTools : public UBlueprintFunctionLibrary
@@ -20,119 +36,137 @@ public:
 	/**
 	 * Get the density at Position
 	 * @param	World			The voxel world
-	 * @param	Position		The voxel position (use GlobalToLocal function of the VoxelWorld to get it)
-	 * @param   bAllowFailure	If the data is locked by another thread, fail instead of waiting
-	 * @return	If the edit was successful
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Keywords = "density", AdvancedDisplay = "bAllowFailure"))
-	static bool GetValue(
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Keywords = "density"))
+	static void GetValue(
 		float& Value,
 		AVoxelWorld* World, 
-		const FIntVector& Position,
-		bool bAllowFailure = false);
+		FIntVector Position);
+	/**
+	 * Get the density at Position
+	 * @param	World			The voxel world
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Keywords = "density"))
+	static void GetInterpolatedValue(
+		float& Value,
+		AVoxelWorld* World, 
+		FVector Position);
 	/**
 	 * Set the density at Position
 	 * @param	World			The voxel world
-	 * @param	Position		The voxel position (use GlobalToLocal function of the VoxelWorld to get it)
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 * @param	Value			Density to set
-	 * @param	bUpdateRender	Should the render be updated?
-	 * @param   bAllowFailure	If the data is locked by another thread, fail instead of waiting
-	 * @return	If the edit was successful
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Keywords = "density", AdvancedDisplay = "bUpdateRender, bAllowFailure"))
-	static bool SetValue(
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Keywords = "density"))
+	static void SetValue(
 		AVoxelWorld* World, 
-		const FIntVector& Position, 
-		float Value, 
-		bool bUpdateRender = true,
-		bool bAllowFailure = false);
+		FIntVector Position, 
+		float Value);
 	
 	/**
 	 * Get the material at Position
 	 * @param	World			The voxel world
-	 * @param	Position		The voxel position (use GlobalToLocal function of the VoxelWorld to get it)
-	 * @param   bAllowFailure	If the data is locked by another thread, fail instead of waiting
-	 * @return	If the edit was successful
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (AdvancedDisplay = "bAllowFailure"))
-	static bool GetMaterial(
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World"))
+	static void GetMaterial(
 		FVoxelMaterial& Material,
 		AVoxelWorld* World, 
-		const FIntVector& Position,
-		bool bAllowFailure = false);
+		FIntVector Position);
 	/**
 	 * Set the material at Position
 	 * @param	World			The voxel world
-	 * @param	Position		The voxel position (use GlobalToLocal function of the VoxelWorld to get it)
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 * @param	Material		Material to set
-	 * @param	bUpdateRender	Should the render be updated?
-	 * @param   bAllowFailure	If the data is locked by another thread, fail instead of waiting
-	 * @return	If the edit was successful
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (AdvancedDisplay = "bUpdateRender, bAllowFailure"))
-	static bool SetMaterial(
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World"))
+	static void SetMaterial(
 		AVoxelWorld* World, 
-		const FIntVector& Position, 
-		FVoxelMaterial Material, 
-		bool bUpdateRender = true,
-		bool bAllowFailure = false);
+		FIntVector Position, 
+		FVoxelMaterial Material);
+
+	// Cache the values in the bounds
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World"))
+	static void CacheValues(AVoxelWorld* World, FIntBox Bounds);
+	// Cache the materials in the bounds
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World"))
+	static void CacheMaterials(AVoxelWorld* World, FIntBox Bounds);
 
 public:
 	/**
 	 * Get the density at Position
 	 * @param	World			The voxel world
-	 * @param	Position		The voxel position (use GlobalToLocal function of the VoxelWorld to get it)
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", Keywords = "density"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", Keywords = "density", AdvancedDisplay = "bHideLatentWarnings"))
 	static void GetValueAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		float& Value,
 		AVoxelWorld* World, 
-		const FIntVector& Position);
+		FIntVector Position,
+		bool bHideLatentWarnings = false);
 	/**
 	 * Set the density at Position
 	 * @param	World			The voxel world
-	 * @param	Position		The voxel position (use GlobalToLocal function of the VoxelWorld to get it)
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 * @param	Value			Density to set
-	 * @param	bUpdateRender	Should the render be updated?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", Keywords = "density", AdvancedDisplay = "bUpdateRender"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", Keywords = "density", AdvancedDisplay = "bHideLatentWarnings"))
 	static void SetValueAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		const FIntVector& Position, 
-		float Value, 
-		bool bUpdateRender = true);
+		FIntVector Position, 
+		float Value,
+		bool bHideLatentWarnings = false);
 	
 	/**
 	 * Get the material at Position
 	 * @param	World			The voxel world
-	 * @param	Position		The voxel position (use GlobalToLocal function of the VoxelWorld to get it)
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void GetMaterialAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		FVoxelMaterial& Material,
 		AVoxelWorld* World, 
-		const FIntVector& Position);
+		FIntVector Position,
+		bool bHideLatentWarnings = false);
 	/**
 	 * Set the material at Position
 	 * @param	World			The voxel world
-	 * @param	Position		The voxel position (use GlobalToLocal function of the VoxelWorld to get it)
+	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 * @param	Material		Material to set
-	 * @param	bUpdateRender	Should the render be updated?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bUpdateRender"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void SetMaterialAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		const FIntVector& Position, 
+		FIntVector Position, 
 		FVoxelMaterial Material, 
-		bool bUpdateRender = true);
+		bool bHideLatentWarnings = false);
+
+	// Cache the values in the bounds
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
+	static void CacheValuesAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		AVoxelWorld* World,
+		FIntBox Bounds,
+		bool bHideLatentWarnings = false);
+	// Cache the materials in the bounds
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
+	static void CacheMaterialsAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		AVoxelWorld* World,
+		FIntBox Bounds,
+		bool bHideLatentWarnings = false);
 
 public:
 	/**
@@ -140,7 +174,7 @@ public:
 	 * @param	World		The voxel world
 	 * @param	OutSave		The save	
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World"))
 	static void GetSave(
 		AVoxelWorld* World, 
 		FVoxelUncompressedWorldSave& OutSave);
@@ -149,7 +183,7 @@ public:
 	 * @param	World		The voxel world
 	 * @param	OutSave		The compressed save	
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World"))
 	static void GetCompressedSave(
 		AVoxelWorld* World, 
 		FVoxelCompressedWorldSave& OutSave);
@@ -158,73 +192,82 @@ public:
 	 * Load from a save
 	 * @param	World			The voxel world
 	 * @param	Save			The save to load from
-	 * @param	bUpdateRender	Should the render be updated?
+	 * @return	If the load was successful
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (AdvancedDisplay = "bUpdateRender"))
-	static void LoadFromSave(
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World"))
+	static bool LoadFromSave(
 		AVoxelWorld* World, 
-		const FVoxelUncompressedWorldSave& Save, 
-		bool bUpdateRender = true);
+		const FVoxelUncompressedWorldSave& Save);
 	/**
 	 * Load from a compressed save
 	 * @param	World			The voxel world
 	 * @param	Save			The compressed save to load from
-	 * @param	bUpdateRender	Should the render be updated?
+	 * @return	If the load was successful
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (AdvancedDisplay = "bUpdateRender"))
-	static void LoadFromCompressedSave(
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World"))
+	static bool LoadFromCompressedSave(
 		AVoxelWorld* World, 
-		const FVoxelCompressedWorldSave& Save, 
-		bool bUpdateRender = true);
+		const FVoxelCompressedWorldSave& Save);
 
 public:
-	/**
-	 * Get a save of the world
-	 * @param	World		The voxel world
-	 * @param	OutSave		The save	
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject"))
-	static void GetSaveAsync(
-		UObject* WorldContextObject,
-		FLatentActionInfo LatentInfo,
-		AVoxelWorld* World, 
-		FVoxelUncompressedWorldSave& OutSave);
-	/**
-	 * Get a save of the world and compress it
-	 * @param	World		The voxel world
-	 * @param	OutSave		The compressed save	
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject"))
-	static void GetCompressedSaveAsync(
-		UObject* WorldContextObject,
-		FLatentActionInfo LatentInfo,
-		AVoxelWorld* World, 
-		FVoxelCompressedWorldSave& OutSave);
+	// Bounds.Extend(2) must be locked!
+	// Bounds can be FIntBox::Infinite
+	static void RoundVoxelsImpl(FVoxelData& Data, const FIntBox& Bounds);
 	
-	/**
-	 * Load from a save
-	 * @param	World			The voxel world
-	 * @param	Save			The save to load from
-	 * @param	bUpdateRender	Should the render be updated?
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bUpdateRender"))
-	static void LoadFromSaveAsync(
+	// Round voxels that don't have an impact on the surface. Same visual result but will lead to better compression
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data")
+	static void RoundVoxels(AVoxelWorld* World, FIntBox Bounds);
+	
+	// Round voxels that don't have an impact on the surface. Same visual result but will lead to better compression
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
+	static void RoundVoxelsAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		const FVoxelUncompressedWorldSave& Save, 
-		bool bUpdateRender = true);
-	/**
-	 * Load from a compressed save
-	 * @param	World			The voxel world
-	 * @param	Save			The compressed save to load from
-	 * @param	bUpdateRender	Should the render be updated?
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bUpdateRender"))
-	static void LoadFromCompressedSaveAsync(
+		FIntBox Bounds,
+		bool bHideLatentWarnings = false);
+
+public:
+	// Bounds.Extend(1) must be locked!
+	// Bounds can be FIntBox::Infinite
+	static void ClearUnusedMaterialsImpl(FVoxelData& Data, const FIntBox& Bounds);
+	
+	// Remove materials that do not affect the surface. Same visual result but will lead to better compression.
+	// Digging will look different.
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data")
+	static void ClearUnusedMaterials(AVoxelWorld* World, FIntBox Bounds);
+	
+	// Remove materials that do not affect the surface. Same visual result but will lead to better compression.
+	// Digging will look different.
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
+	static void ClearUnusedMaterialsAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		const FVoxelCompressedWorldSave& Save, 
-		bool bUpdateRender = true);
+		FIntBox Bounds,
+		bool bHideLatentWarnings = false);
+
+public:
+	static void GetVoxelsValueAndMaterialImpl(
+		FVoxelData& Data,
+		TArray<FVoxelValueMaterial>& Voxels,
+		const FIntBox& Bounds,
+		const TArray<FIntVector>& Positions);
+
+	// Read a large number of voxels at a time
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World"))
+	static void GetVoxelsValueAndMaterial(
+		TArray<FVoxelValueMaterial>& Voxels,
+		AVoxelWorld* World,
+		const TArray<FIntVector>& Positions);
+	
+	// Read a large number of voxels at a time, asynchronously
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
+	static void GetVoxelsValueAndMaterialAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		TArray<FVoxelValueMaterial>& Voxels,
+		AVoxelWorld* World,
+		const TArray<FIntVector>& Positions,
+		bool bHideLatentWarnings = false);
 };

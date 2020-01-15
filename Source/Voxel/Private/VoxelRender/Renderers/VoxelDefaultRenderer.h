@@ -1,174 +1,186 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "VoxelRender/IVoxelRenderer.h"
-#include "VoxelMathUtilities.h"
-#include "Engine/EngineTypes.h"
+#include "VoxelRender/VoxelMesherAsyncWork.h"
+#include "VoxelRender/VoxelChunkToUpdate.h"
+#include "VoxelRendererMeshHandler.h"
+#include "VoxelTickable.h"
+#include "QueueWithNum.h"
 
-class UHierarchicalInstancedStaticMeshComponent;
-class UVoxelProceduralMeshComponent;
-class FVoxelDefaultRenderer;
-class FVoxelChunkToDelete;
-class IVoxelPool;
-class IVoxelQueuedWork;
-class FVoxelRenderOctreeAsyncBuilder;
-class FVoxelRenderChunk;
+class IVoxelRendererMeshHandler;
+struct FVoxelChunkMesh;
 
-class FVoxelChunkToRemoveAfterDithering
+class FVoxelDefaultRenderer : public IVoxelRenderer, public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDefaultRenderer>
 {
 public:
-	FVoxelChunkToRemoveAfterDithering(
-		TWeakObjectPtr<UVoxelProceduralMeshComponent> Mesh,
-		const FIntBox& Bounds,
-		TSharedRef<FVoxelDefaultRenderer> Renderer,
-		float TimeUntilDeletion,
-		const TArray<TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>>& NewRenderChunks);
-
-	~FVoxelChunkToRemoveAfterDithering();
-
-	inline bool IsDone() const { return bIsDone; }
-	inline const FIntBox& GetBounds() const { return Bounds; }
-	void Remove();
-	void SetMeshRelativeLocation(const FVector& Location);
+	static TVoxelSharedRef<FVoxelDefaultRenderer> Create(const FVoxelRendererSettings& Settings);
+	virtual ~FVoxelDefaultRenderer() override;
 
 private:
-	const TWeakObjectPtr<UVoxelProceduralMeshComponent> Mesh;
-	const FIntBox Bounds;
-	const TWeakPtr<FVoxelDefaultRenderer> Renderer;
-	const TWeakObjectPtr<UWorld> World;
-	const TArray<TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>> NewRenderChunks;
-
-	FTimerHandle TimerHandle;
-	bool bIsDone = false;
-};
-
-class FVoxelChunkToDelete
-{
-public:
-	FVoxelChunkToDelete(FVoxelRenderChunk& OldChunk, bool bDontRemoveMeshAndNotifyChunkInstead);
-	~FVoxelChunkToDelete();
-
-	template<typename T>
-	inline void AddNewChunk(const T& NewChunk) { NewRenderChunks.Add(NewChunk); }
-
-private:
-	const TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> OldRenderChunk;
-	TArray<TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>> NewRenderChunks;
-
-	const bool bDontRemoveMeshAndNotifyChunkInstead;
-
-	const TWeakPtr<FVoxelDefaultRenderer> Render;
-	const FIntBox Bounds;
-	// For recursive deletion
-	const TArray<TSharedRef<FVoxelChunkToDelete>> OldChunksToDelete;
-	
-	UVoxelProceduralMeshComponent* const Mesh;
-};
-
-struct FVoxelTasksDependenciesHandler
-{
-public:
-	struct FLockedTask
-	{
-		TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> Chunk;
-		uint64 Id;
-
-		FLockedTask(TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe> Chunk, uint64 Id)
-			: Chunk(Chunk)
-			, Id(Id)
-		{
-		}
-	};
-	struct FGroup
-	{
-		const TArray<FLockedTask> Tasks;
-		TArray<uint64> PendingIds;
-		FTimerHandle Handle;
-
-		FGroup() = default;
-		FGroup(const TArray<FLockedTask>& Tasks);
-	};
-
-	FVoxelTasksDependenciesHandler(TWeakObjectPtr<UWorld> World, float WaitForOtherChunksToAvoidHolesTimeout);
-	~FVoxelTasksDependenciesHandler();
-
-	inline uint64 GetTaskId() { return ++TaskIdCounter; }
-
-	void AddGroup(const TArray<FLockedTask>& Tasks);
-
-	bool CanApplyTask(uint64 TaskId) const;
-	void ReportTaskFinished(uint64 TaskId);
-
-private:
-	const TWeakObjectPtr<UWorld> World;
-	const float WaitForOtherChunksToAvoidHolesTimeout;
-
-	TArray<TSharedPtr<FGroup>> TasksGroups;
-	TMap<uint64, TWeakPtr<FGroup>> TaskIdsToGroupsMap;
-	uint64 TaskIdCounter = 0;
-
-	void RemoveGroup(TWeakPtr<FGroup> Group, bool bTimeout);
-};
-
-class FVoxelDefaultRenderer : public IVoxelRenderer, public TSharedFromThis<FVoxelDefaultRenderer>
-{
-public:
-	FVoxelDefaultRenderer(const FVoxelRendererSettings& Settings);
-	~FVoxelDefaultRenderer() override;
+	explicit FVoxelDefaultRenderer(const FVoxelRendererSettings& Settings);
 
 public:
 	//~ Begin IVoxelRender Interface
-	virtual void UpdateChunks(const TArray<uint64>& ChunksToUpdate, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) override;
-	virtual void CancelDithering(const FIntBox& Bounds, const TArray<uint64>& Chunks) override;
-	virtual int32 GetTaskCount() const override { return bUpdatesStarted ? TaskCount : -1; }
+	virtual int32 UpdateChunks(const FIntBox& Bounds, const TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdateFinished& FinishDelegate) override;
+	virtual int32 GetTaskCount() const override;
 	virtual void RecomputeMeshPositions() override;
-	virtual void UpdateLODs(const TArray<FVoxelChunkToAdd>& ChunksToAdd, const TArray<FVoxelChunkToUpdate>& ChunksToUpdate, const TArray<FVoxelChunkToRemove>& ChunksToRemove, const TArray<FVoxelTransitionsToUpdate>& TransitionsToUpdate) override;
+	virtual void ApplyNewMaterials() override;
+	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) override;
+	virtual void Destroy() override;
+	virtual void CreateGeometry_AnyThread(
+		int32 LOD,
+		const FIntVector& ChunkPosition,
+		TArray<uint32>& OutIndices,
+		TArray<FVector>& OutVertices) const override;
 	//~ End IVoxelRender Interface
-	
-	//~ Begin FVoxelLODRenderer Interface
-	virtual TSharedRef<FVoxelRenderChunk, ESPMode::ThreadSafe> GetRenderChunk(uint8 LOD, const FIntBox& Bounds, const FVoxelRenderChunkSettings& Settings) = 0;
-	//~ End FVoxelLODRenderer Interface
 
-public:
-	void StartMeshDithering(UVoxelProceduralMeshComponent* Mesh, const FIntBox& Bounds, const TArray<TWeakPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>>& NewRenderChunks);
-	void SetMeshPosition(UVoxelProceduralMeshComponent* Mesh, const FIntVector& Position);
-	void RemoveMesh(UVoxelProceduralMeshComponent* Mesh);
-	UVoxelProceduralMeshComponent* GetNewMesh(const FIntVector& Position, uint8 LOD, bool bCollisions);
+	//~ Begin FVoxelTickable Interface
+	virtual void Tick(float DeltaTime) override;
+	virtual bool IsTickableInEditor() const override { return true; }
+	//~ End FVoxelTickable Interface
 
-public:
-	void IncreaseTaskCount();
-	void DecreaseTaskCount();
-	
-	inline bool CanApplyTask(uint64 TaskId) const
+private:
+	enum class EChunkState : uint8
 	{
-		return TaskId == 0 || DependenciesHandler.CanApplyTask(TaskId);
-	}
-	inline void ReportTaskFinished(uint64 TaskId)
+		NewChunk,
+		Hidden,
+		DitheringIn,
+		Showed,
+		WaitingForNewChunks,
+		DitheringOut
+	};
+	enum class EMainOrTransitions : uint8
 	{
-		if (TaskId != 0)
+		Main,
+		Transitions
+	};
+	struct FChunk
+	{
+		const uint64 Id;
+		const uint8 LOD;
+		const FIntBox Bounds;
+
+		FChunk(uint64 Id, uint8 LOD, const FIntBox& Bounds)
+			: Id(Id)
+			, LOD(LOD)
+			, Bounds(Bounds)
 		{
-			DependenciesHandler.ReportTaskFinished(TaskId);
 		}
-	}
 
-	uint64 GetSquaredDistanceToInvokers(const FIntVector& Position) const;
+		struct FChunkTasks
+		{
+			TUniquePtr<FVoxelMesherAsyncWork> MainTask;
+			TUniquePtr<FVoxelMesherAsyncWork> TransitionsTask;
+		};
+		FChunkTasks Tasks;
+
+		struct FChunkBuiltData
+		{
+			uint8 TransitionsMask = 0;
+			double MainChunkCreationTime = 0;
+			double TransitionsChunkCreationTime = 0;
+			TVoxelSharedPtr<const FVoxelChunkMesh> MainChunk;
+			TVoxelSharedPtr<const FVoxelChunkMesh> TransitionsChunk;
+		};
+		FChunkBuiltData BuiltData;
+
+		IVoxelRendererMeshHandler::FChunkId MeshId;
+
+		EChunkState State = EChunkState::NewChunk;
+
+		// Settings to be applied once eg new chunks are spawned
+		FVoxelChunkSettings PendingSettings{};
+		// Current settings
+		FVoxelChunkSettings Settings{};
+
+		struct FPendingUpdate
+		{
+			// We want the mesh to be from a task that was built >= at this time
+			double WantedUpdateTime = 0;
+			// Callback once we have a mesh recent enough
+			FVoxelOnChunkUpdateFinished OnUpdateFinished;
+		};
+		TArray<FPendingUpdate, TInlineAllocator<2>> PendingUpdates;
+
+		// Chunks that were shown at this position before this one was shown, and that need to be dithered out
+		// once this chunk is updated
+		TArray<uint64, TInlineAllocator<8>> PreviousChunks;
+		// Number of new chunks left to update
+		int32 NumNewChunksLeft = 0;
+
+		// Set when the chunk is being shown
+		// This is needed to track if chunks in PreviousChunks are still valid and haven't been switched back to Show
+		// Else we'd be decreasing a wrong NumNewChunksLeft
+		uint64 UpdateIndex = 0;
+	};
+	TMap<uint64, FChunk> ChunksMap;
+
+	struct FChunkToRemove
+	{
+		uint64 Id = 0;
+		double Time = 0; // Time at which to remove the chunk
+	};
+	TArray<FChunkToRemove> ChunksToRemove;
+	
+	struct FChunkToShow
+	{
+		uint64 Id = 0;
+		double Time = 0; // Time at which to stop dithering the chunk
+	};
+	TArray<FChunkToShow> ChunksToShow;
+
+	TArray<IVoxelQueuedWork*> QueuedTasks[2][2]; // [bVisible][bHasCollisions]
+
+	enum class EIfTaskExists : uint8
+	{
+		DoNothing,
+		Assert
+	};
+
+	template<EMainOrTransitions MainOrTransitions, EIfTaskExists IfTaskExists>
+	void StartTask(FChunk& Chunk);
+	void CancelTasks(FChunk& Chunk);
+	void ClearPreviousChunks(FChunk& Chunk);
+	void NewChunksFinished(FChunk& Chunk, const FChunk& NewChunk);
+	void RemoveOrHideChunk(FChunk& Chunk);
+	void DitherInChunk(FChunk& Chunk, const TArray<uint64, TInlineAllocator<8>>& PreviousChunks);
+	void ApplyPendingSettings(FChunk& Chunk);
+	void CheckPendingUpdates(FChunk& Chunk);
+	void ProcessChunksToRemoveOrShow();
+	void FlushQueuedTasks();
+	void DestroyChunk(FChunk& Chunk);
 	
 private:
-	TArray<UVoxelProceduralMeshComponent*> InactiveMeshesNoCollisions;
-	TArray<UVoxelProceduralMeshComponent*> InactiveMeshesCollisions;
+	// Need shared ptr for async callbacks
+	TVoxelSharedPtr<IVoxelRendererMeshHandler> MeshHandler;
+	
+	FThreadSafeCounter TaskCount;
+	uint64 UpdateIndex = 0;
+	bool OnWorldLoadedFired = false;
 
-	inline TArray<UVoxelProceduralMeshComponent*>& GetMeshPool(bool bCollisions)
+#if VOXEL_DEBUG
+	TMap<uint64, FVoxelChunkSettings> DebugChunks;
+#endif
+
+private:
+	uint32 AllocatedSize = 0;
+
+	void UpdateAllocatedSize();
+
+public:
+	void QueueChunkCallback_AnyThread(uint64 TaskId, uint64 ChunkId, bool bIsTransitionTask);
+
+private:
+	struct FVoxelTaskCallback
 	{
-		return bCollisions ? InactiveMeshesCollisions : InactiveMeshesNoCollisions;
-	}
+		uint64 TaskId;
+		uint64 ChunkId;
+		bool bIsTransitionTask;
+	};
+	TQueueWithNum<FVoxelTaskCallback, EQueueMode::Mpsc> TasksCallbacksQueue;
 
-	TMap<uint64, TSharedPtr<FVoxelRenderChunk, ESPMode::ThreadSafe>> ChunksMap;
-	TArray<TUniquePtr<FVoxelChunkToRemoveAfterDithering>> ChunksToRemoveAfterDithering;
-
-	int32 TaskCount = 0;
-	bool bUpdatesStarted = false;
-	bool bOnLoadedCallbackFired = false;
-
-	FVoxelTasksDependenciesHandler DependenciesHandler;
+	void CancelTask(TUniquePtr<FVoxelMesherAsyncWork>& Task);
 };

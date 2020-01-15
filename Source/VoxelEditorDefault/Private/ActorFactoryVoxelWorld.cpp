@@ -1,9 +1,9 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "ActorFactoryVoxelWorld.h"
 #include "VoxelWorld.h"
 #include "VoxelWorldGenerators/VoxelFlatWorldGenerator.h"
-#include "VoxelMaterialCollection.h"
+#include "VoxelRender/VoxelMaterialCollection.h"
 
 #include "Materials/MaterialInterface.h"
 
@@ -23,11 +23,12 @@ void UActorFactoryVoxelWorld::PostSpawnActor(UObject* Asset, AActor* NewActor)
 	VoxelWorld->bCreateWorldAutomatically = true;
 	VoxelWorld->bUseCameraIfNoInvokersFound = true;
 	VoxelWorld->SetWorldGeneratorClass(UVoxelFlatWorldGenerator::StaticClass());
-	VoxelWorld->bEnableTessellation = true;
+	VoxelWorld->bEnableTessellation = false;
 	VoxelWorld->MaterialConfig = EVoxelMaterialConfig::SingleIndex;
-	VoxelWorld->MaterialCollection = LoadObject<UVoxelMaterialCollection>(this, TEXT("/Voxel/Example/TriplanarExampleCollection/TriplanarExampleCollection"));
-	VoxelWorld->VoxelMaterial = LoadObject<UMaterialInterface>(this, TEXT("/Voxel/M_VoxelMaterial_Colors"));
-	VoxelWorld->TessellatedVoxelMaterial = LoadObject<UMaterialInterface>(this, TEXT("/Voxel/M_VoxelMaterial_Colors_Tess"));
+	VoxelWorld->MaterialCollection = LoadObject<UVoxelMaterialCollection>(this, TEXT("/Voxel/Examples/Materials/TriplanarExampleCollection/TriplanarExampleCollection"));
+	VoxelWorld->VoxelMaterial = LoadObject<UMaterialInterface>(this, TEXT("/Voxel/Examples/Materials/RGB/M_VoxelMaterial_Colors"));
+	VoxelWorld->TessellatedVoxelMaterial = LoadObject<UMaterialInterface>(this, TEXT("/Voxel/Examples/Materials/RGB/M_VoxelMaterial_Colors_Tess"));
+	VoxelWorld->Toggle();
 }
 
 #undef LOCTEXT_NAMESPACE

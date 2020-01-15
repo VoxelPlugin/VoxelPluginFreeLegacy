@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma warning( disable : 4701 )
 #pragma warning( disable : 4244 )
@@ -38,6 +38,506 @@
 
 #include <algorithm>
 #include <random>
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// While random generators are standardized, samplers aren't
+// To avoid issues, we use the microsoft std version on all platforms
+// License:
+
+/*
+ The Microsoft C++ Standard Library is under the Apache License v2.0 with LLVM Exception:
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+---- LLVM Exceptions to the Apache 2.0 License ----
+
+As an exception, if, as a result of your compiling your source code, portions
+of this Software are embedded into an Object form of such source code, you
+may redistribute such embedded portions in such Object form without complying
+with the conditions of Sections 4(a), 4(b) and 4(d) of the License.
+
+In addition, if you combine or link compiled forms of this Software with
+software that is licensed under the GPLv2 ("Combined Software") and if a
+court of competent jurisdiction determines that the patent provision (Section
+3), the indemnity provision (Section 9) or other Section of the License
+conflicts with the conditions of the GPLv2, you may retroactively and
+prospectively choose to deem waived or otherwise exclude such Section(s) of
+the License, but only in their entirety and only with respect to the Combined
+Software.
+*/
+
+namespace cross_platform_std
+{
+	// CLASS TEMPLATE _Rng_from_urng
+	template <class _Diff, class _Urng>
+	class _Rng_from_urng { // wrap a URNG as an RNG
+	public:
+		using _Ty0 = std::make_unsigned_t<_Diff>;
+		using _Ty1 = typename _Urng::result_type;
+
+		using _Udiff = std::conditional_t < sizeof(_Ty1) < sizeof(_Ty0), _Ty0, _Ty1 > ;
+
+		explicit _Rng_from_urng(_Urng& _Func) : _Ref(_Func), _Bits(8 * sizeof(_Udiff)), _Bmask(_Udiff(-1)) {
+			for (; (_Urng::max)() - (_Urng::min)() < _Bmask; _Bmask >>= 1) {
+				--_Bits;
+			}
+		}
+
+		_Diff operator()(_Diff _Index) { // adapt _Urng closed range to [0, _Index)
+			for (;;) { // try a sample random value
+				_Udiff _Ret = 0; // random bits
+				_Udiff _Mask = 0; // 2^N - 1, _Ret is within [0, _Mask]
+
+				while (_Mask < _Udiff(_Index - 1)) { // need more random bits
+					_Ret <<= _Bits - 1; // avoid full shift
+					_Ret <<= 1;
+					_Ret |= _Get_bits();
+					_Mask <<= _Bits - 1; // avoid full shift
+					_Mask <<= 1;
+					_Mask |= _Bmask;
+				}
+
+				// _Ret is [0, _Mask], _Index - 1 <= _Mask, return if unbiased
+				if (_Ret / _Index < _Mask / _Index || _Mask % _Index == _Udiff(_Index - 1)) {
+					return static_cast<_Diff>(_Ret % _Index);
+				}
+			}
+		}
+
+		_Udiff _Get_all_bits() { // return a random value
+			_Udiff _Ret = 0;
+
+			for (size_t _Num = 0; _Num < 8 * sizeof(_Udiff); _Num += _Bits) { // don't mask away any bits
+				_Ret <<= _Bits - 1; // avoid full shift
+				_Ret <<= 1;
+				_Ret |= _Get_bits();
+			}
+
+			return _Ret;
+		}
+
+		_Rng_from_urng(const _Rng_from_urng&) = delete;
+		_Rng_from_urng& operator=(const _Rng_from_urng&) = delete;
+
+	private:
+		_Udiff _Get_bits() { // return a random value within [0, _Bmask]
+			for (;;) { // repeat until random value is in range
+				_Udiff _Val = _Ref() - (_Urng::min)();
+
+				if (_Val <= _Bmask) {
+					return _Val;
+				}
+			}
+		}
+
+		_Urng& _Ref; // reference to URNG
+		size_t _Bits; // number of random bits generated by _Get_bits()
+		_Udiff _Bmask; // 2^_Bits - 1
+	};
+
+	// CLASS TEMPLATE uniform_int
+	template <class _Ty = int>
+	class uniform_int { // uniform integer distribution
+	public:
+		using result_type = _Ty;
+
+		struct param_type { // parameter package
+			using distribution_type = uniform_int;
+
+			explicit param_type(result_type _Min0 = 0, result_type _Max0 = 9) { // construct from parameters
+				_Init(_Min0, _Max0);
+			}
+
+			bool operator==(const param_type& _Right) const { // test for equality
+				return _Min == _Right._Min && _Max == _Right._Max;
+			}
+
+			bool operator!=(const param_type& _Right) const { // test for inequality
+				return !(*this == _Right);
+			}
+
+			result_type a() const { // return a value
+				return _Min;
+			}
+
+			result_type b() const { // return b value
+				return _Max;
+			}
+
+			void _Init(_Ty _Min0, _Ty _Max0) { // set internal state
+				_Min = _Min0;
+				_Max = _Max0;
+			}
+
+			result_type _Min;
+			result_type _Max;
+		};
+
+		explicit uniform_int(_Ty _Min0 = 0, _Ty _Max0 = 9) : _Par(_Min0, _Max0) { // construct from parameters
+		}
+
+		explicit uniform_int(const param_type& _Par0) : _Par(_Par0) { // construct from parameter package
+		}
+
+		result_type a() const { // return a value
+			return _Par.a();
+		}
+
+		result_type b() const { // return b value
+			return _Par.b();
+		}
+
+		param_type param() const { // return parameter package
+			return _Par;
+		}
+
+		void param(const param_type& _Par0) { // set parameter package
+			_Par = _Par0;
+		}
+
+		result_type(min)() const { // return minimum possible generated value
+			return _Par._Min;
+		}
+
+		result_type(max)() const { // return maximum possible generated value
+			return _Par._Max;
+		}
+
+		void reset() { // clear internal state
+		}
+
+		template <class _Engine>
+		result_type operator()(_Engine& _Eng) const { // return next value
+			return _Eval(_Eng, _Par._Min, _Par._Max);
+		}
+
+		template <class _Engine>
+		result_type operator()(
+			_Engine& _Eng, const param_type& _Par0) const { // return next value, given parameter package
+			return _Eval(_Eng, _Par0._Min, _Par0._Max);
+		}
+
+		template <class _Engine>
+		result_type operator()(_Engine& _Eng, result_type _Nx) const { // return next value
+			return _Eval(_Eng, 0, _Nx - 1);
+		}
+
+		template <class _Elem, class _Traits>
+		std::basic_istream<_Elem, _Traits>& _Read(std::basic_istream<_Elem, _Traits>& _Istr) { // read state from _Istr
+			_Ty _Min0;
+			_Ty _Max0;
+			_Istr >> _Min0 >> _Max0;
+			_Par._Init(_Min0, _Max0);
+			return _Istr;
+		}
+
+		template <class _Elem, class _Traits>
+		std::basic_ostream<_Elem, _Traits>& _Write(std::basic_ostream<_Elem, _Traits>& _Ostr) const { // write state to _Ostr
+			return _Ostr << _Par._Min << ' ' << _Par._Max;
+		}
+
+	private:
+		using _Uty = std::make_unsigned_t<_Ty>;
+
+		template <class _Engine>
+		result_type _Eval(_Engine& _Eng, _Ty _Min, _Ty _Max) const { // compute next value in range [_Min, _Max]
+			_Rng_from_urng<_Uty, _Engine> _Rng(_Eng);
+
+			const _Uty _Umin = _Adjust(_Uty(_Min));
+			const _Uty _Umax = _Adjust(_Uty(_Max));
+
+			_Uty _Uret;
+
+			if (_Umax - _Umin == _Uty(-1)) {
+				_Uret = static_cast<_Uty>(_Rng._Get_all_bits());
+			}
+			else {
+				_Uret = static_cast<_Uty>(_Rng(static_cast<_Uty>(_Umax - _Umin + 1)));
+			}
+
+			return _Ty(_Adjust(static_cast<_Uty>(_Uret + _Umin)));
+		}
+
+		static _Uty _Adjust(_Uty _Uval) { // convert signed ranges to unsigned ranges and vice versa
+			return _Adjust(_Uval, std::is_signed<_Ty>());
+		}
+
+		static _Uty _Adjust(_Uty _Uval, std::true_type) { // convert signed ranges to unsigned ranges and vice versa
+			const _Uty _Adjuster = (_Uty(-1) >> 1) + 1; // 2^(N-1)
+
+			if (_Uval < _Adjuster) {
+				return static_cast<_Uty>(_Uval + _Adjuster);
+			}
+			else {
+				return static_cast<_Uty>(_Uval - _Adjuster);
+			}
+		}
+
+		static _Uty _Adjust(_Uty _Uval, std::false_type) { // _Ty is already unsigned, do nothing
+			return _Uval;
+		}
+
+		param_type _Par;
+	};
+
+	template <class _Elem, class _Traits, class _Ty>
+	std::basic_istream<_Elem, _Traits>& operator>>(std::basic_istream<_Elem, _Traits>& _Istr,
+		uniform_int<_Ty>& _Dist) { // read state from _Istr
+		return _Dist._Read(_Istr);
+	}
+
+	template <class _Elem, class _Traits, class _Ty>
+	std::basic_ostream<_Elem, _Traits>& operator<<(std::basic_ostream<_Elem, _Traits>& _Ostr,
+		const uniform_int<_Ty>& _Dist) { // write state to _Ostr
+		return _Dist._Write(_Ostr);
+	}
+
+	// CLASS TEMPLATE uniform_int_distribution
+	template <class _Ty = int>
+	class uniform_int_distribution : public uniform_int<_Ty> { // uniform integer distribution
+	public:
+		using _Mybase     = uniform_int<_Ty>;
+		using _Mypbase    = typename _Mybase::param_type;
+		using result_type = typename _Mybase::result_type;
+
+		struct param_type : public _Mypbase { // parameter package
+			using distribution_type = uniform_int_distribution;
+
+			explicit param_type(result_type _Min0 = 0, result_type _Max0 = (std::numeric_limits<_Ty>::max)())
+				: _Mypbase(_Min0, _Max0) { // construct from parameters
+			}
+
+			param_type(const _Mypbase& _Right) : _Mypbase(_Right) { // construct from base
+			}
+		};
+
+		explicit uniform_int_distribution(_Ty _Min0 = 0, _Ty _Max0 = (std::numeric_limits<_Ty>::max)())
+			: _Mybase(_Min0, _Max0) { // construct from parameters
+		}
+
+		explicit uniform_int_distribution(const param_type& _Par0) : _Mybase(_Par0) { // construct from parameter package
+		}
+	};
+
+	template <class _Ty>
+	bool operator==(const uniform_int_distribution<_Ty>& _Left,
+		const uniform_int_distribution<_Ty>& _Right) { // test for equality
+		return _Left.param() == _Right.param();
+	}
+
+	template <class _Ty>
+	bool operator!=(const uniform_int_distribution<_Ty>& _Left,
+		const uniform_int_distribution<_Ty>& _Right) { // test for inequality
+		return !(_Left == _Right);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 const FN_DECIMAL GRAD_X[] =
 {
@@ -186,14 +686,17 @@ const FN_DECIMAL CELL_3D_Z[] =
 	FN_DECIMAL(0.615630723), FN_DECIMAL(0.3430367014), FN_DECIMAL(0.8193658136), FN_DECIMAL(-0.5829600957), FN_DECIMAL(0.07911697781), FN_DECIMAL(0.7854296063), FN_DECIMAL(-0.4107442306), FN_DECIMAL(0.4766964066), FN_DECIMAL(-0.9045999527), FN_DECIMAL(-0.1673856787), FN_DECIMAL(0.2828077348), FN_DECIMAL(-0.5902737632), FN_DECIMAL(-0.321506229), FN_DECIMAL(-0.5224513133), FN_DECIMAL(-0.4090169985), FN_DECIMAL(-0.3599685311),
 };
 
-static int FastFloor(FN_DECIMAL f) { return (f >= 0 ? (int)f : (int)f - 1); }
-static int FastRound(FN_DECIMAL f) { return (f >= 0) ? (int)(f + FN_DECIMAL(0.5)) : (int)(f - FN_DECIMAL(0.5)); }
-static int FastAbs(int i) { return abs(i); }
-static FN_DECIMAL FastAbs(FN_DECIMAL f) { return fabs(f); }
-static FN_DECIMAL Lerp(FN_DECIMAL a, FN_DECIMAL b, FN_DECIMAL t) { return a + t * (b - a); }
-static FN_DECIMAL InterpHermiteFunc(FN_DECIMAL t) { return t*t*(3 - 2 * t); }
-static FN_DECIMAL InterpQuinticFunc(FN_DECIMAL t) { return t*t*t*(t*(t * 6 - 15) + 10); }
-static FN_DECIMAL CubicLerp(FN_DECIMAL a, FN_DECIMAL b, FN_DECIMAL c, FN_DECIMAL d, FN_DECIMAL t)
+static FORCEINLINE int FastFloor(FN_DECIMAL f) { return (f >= 0 ? (int)f : (int)f - 1); }
+static FORCEINLINE int FastRound(FN_DECIMAL f) { return (f >= 0) ? (int)(f + FN_DECIMAL(0.5)) : (int)(f - FN_DECIMAL(0.5)); }
+static FORCEINLINE int FastAbs(int i) { return abs(i); }
+static FORCEINLINE FN_DECIMAL FastAbs(FN_DECIMAL f) { return fabs(f); }
+static FORCEINLINE FN_DECIMAL FastAbsDeriv(FN_DECIMAL x, FN_DECIMAL dx) { return dx * (x < 0 ? -1 : 1); }
+static FORCEINLINE FN_DECIMAL Lerp(FN_DECIMAL a, FN_DECIMAL b, FN_DECIMAL t) { return a + t * (b - a); }
+static FORCEINLINE FN_DECIMAL InterpHermiteFunc(FN_DECIMAL t) { return t*t*(3 - 2 * t); }
+static FORCEINLINE FN_DECIMAL InterpHermiteFuncDeriv(FN_DECIMAL t) { return -6 * t * (t - 1); }
+static FORCEINLINE FN_DECIMAL InterpQuinticFunc(FN_DECIMAL t) { return t*t*t*(t*(t * 6 - 15) + 10); }
+static FORCEINLINE FN_DECIMAL InterpQuinticFuncDeriv(FN_DECIMAL t) { return 30 * t * t * (t - 1) * (t - 1); }
+static FORCEINLINE FN_DECIMAL CubicLerp(FN_DECIMAL a, FN_DECIMAL b, FN_DECIMAL c, FN_DECIMAL d, FN_DECIMAL t)
 {
 	FN_DECIMAL p = (d - c) - (a - b);
 	return t * t * t * p + t * t * ((a - b) - p) + t * (c - a) + b;
@@ -210,7 +713,7 @@ void FastNoise::SetSeed(int seed)
 
 	for (int j = 0; j < 256; j++)
 	{
-		std::uniform_int_distribution<> dis(0, 256 - j);
+		cross_platform_std::uniform_int_distribution<> dis(0, 256 - j);
 		int k = dis(gen) + j;
 		int l = m_perm[j];
 		m_perm[j] = m_perm[j + 256] = m_perm[k];
@@ -219,11 +722,11 @@ void FastNoise::SetSeed(int seed)
 	}
 }
 
-void FastNoise::CalculateFractalBounding()
+void FastNoise::CalculateFractalBounding(int octaves)
 {
 	float amp = m_gain;
 	float ampFractal = 1.0f;
-	for (int i = 1; i < m_octaves; i++)
+	for (int i = 1; i < octaves; i++)
 	{
 		ampFractal += amp;
 		amp *= m_gain;
@@ -246,27 +749,27 @@ void FastNoise::GetCellularDistance2Indices(int& cellularDistanceIndex0, int& ce
 	cellularDistanceIndex1 = m_cellularDistanceIndex1;
 }
 
-unsigned char FastNoise::Index2D_12(unsigned char offset, int x, int y) const
+FORCEINLINE unsigned char FastNoise::Index2D_12(unsigned char offset, int x, int y) const
 {
 	return m_perm12[(x & 0xff) + m_perm[(y & 0xff) + offset]];
 }
-unsigned char FastNoise::Index3D_12(unsigned char offset, int x, int y, int z) const
+FORCEINLINE unsigned char FastNoise::Index3D_12(unsigned char offset, int x, int y, int z) const
 {
 	return m_perm12[(x & 0xff) + m_perm[(y & 0xff) + m_perm[(z & 0xff) + offset]]];
 }
-unsigned char FastNoise::Index4D_32(unsigned char offset, int x, int y, int z, int w) const
+FORCEINLINE unsigned char FastNoise::Index4D_32(unsigned char offset, int x, int y, int z, int w) const
 {
 	return m_perm[(x & 0xff) + m_perm[(y & 0xff) + m_perm[(z & 0xff) + m_perm[(w & 0xff) + offset]]]] & 31;
 }
-unsigned char FastNoise::Index2D_256(unsigned char offset, int x, int y) const
+FORCEINLINE unsigned char FastNoise::Index2D_256(unsigned char offset, int x, int y) const
 {
 	return m_perm[(x & 0xff) + m_perm[(y & 0xff) + offset]];
 }
-unsigned char FastNoise::Index3D_256(unsigned char offset, int x, int y, int z) const
+FORCEINLINE unsigned char FastNoise::Index3D_256(unsigned char offset, int x, int y, int z) const
 {
 	return m_perm[(x & 0xff) + m_perm[(y & 0xff) + m_perm[(z & 0xff) + offset]]];
 }
-unsigned char FastNoise::Index4D_256(unsigned char offset, int x, int y, int z, int w) const
+FORCEINLINE unsigned char FastNoise::Index4D_256(unsigned char offset, int x, int y, int z, int w) const
 {
 	return m_perm[(x & 0xff) + m_perm[(y & 0xff) + m_perm[(z & 0xff) + m_perm[(w & 0xff) + offset]]]];
 }
@@ -277,7 +780,7 @@ unsigned char FastNoise::Index4D_256(unsigned char offset, int x, int y, int z, 
 #define Z_PRIME 6971
 #define W_PRIME 1013
 
-static FN_DECIMAL ValCoord2D(int seed, int x, int y)
+FORCEINLINE static FN_DECIMAL ValCoord2D(int seed, int x, int y)
 {
 	int n = seed;
 	n ^= X_PRIME * x;
@@ -285,7 +788,7 @@ static FN_DECIMAL ValCoord2D(int seed, int x, int y)
 
 	return (n * n * n * 60493) / FN_DECIMAL(2147483648);
 }
-static FN_DECIMAL ValCoord3D(int seed, int x, int y, int z)
+FORCEINLINE static FN_DECIMAL ValCoord3D(int seed, int x, int y, int z)
 {
 	int n = seed;
 	n ^= X_PRIME * x;
@@ -294,7 +797,7 @@ static FN_DECIMAL ValCoord3D(int seed, int x, int y, int z)
 
 	return (n * n * n * 60493) / FN_DECIMAL(2147483648);
 }
-static FN_DECIMAL ValCoord4D(int seed, int x, int y, int z, int w)
+FORCEINLINE static FN_DECIMAL ValCoord4D(int seed, int x, int y, int z, int w)
 {
 	int n = seed;
 	n ^= X_PRIME * x;
@@ -305,186 +808,209 @@ static FN_DECIMAL ValCoord4D(int seed, int x, int y, int z, int w)
 	return (n * n * n * 60493) / FN_DECIMAL(2147483648);
 }
 
-FN_DECIMAL FastNoise::ValCoord2DFast(unsigned char offset, int x, int y) const
+FORCEINLINE FN_DECIMAL FastNoise::ValCoord2DFast(unsigned char offset, int x, int y) const
 {
 	return VAL_LUT[Index2D_256(offset, x, y)];
 }
-FN_DECIMAL FastNoise::ValCoord3DFast(unsigned char offset, int x, int y, int z) const
+FORCEINLINE FN_DECIMAL FastNoise::ValCoord3DFast(unsigned char offset, int x, int y, int z) const
 {
 	return VAL_LUT[Index3D_256(offset, x, y, z)];
 }
 
-FN_DECIMAL FastNoise::GradCoord2D(unsigned char offset, int x, int y, FN_DECIMAL xd, FN_DECIMAL yd) const
+FORCEINLINE FN_DECIMAL FastNoise::GradCoord2D(unsigned char offset, int x, int y, FN_DECIMAL xd, FN_DECIMAL yd) const
 {
 	unsigned char lutPos = Index2D_12(offset, x, y);
 
 	return xd*GRAD_X[lutPos] + yd*GRAD_Y[lutPos];
 }
+
+FORCEINLINE FN_DECIMAL FastNoise::GradCoord2D(unsigned char offset, int x, int y, FN_DECIMAL xd, FN_DECIMAL yd, FN_DECIMAL& outGradX, FN_DECIMAL& outGradY) const
+{
+	unsigned char lutPos = Index2D_12(offset, x, y);
+
+	outGradX = GRAD_X[lutPos];
+	outGradY = GRAD_Y[lutPos];
+
+	return xd*GRAD_X[lutPos] + yd*GRAD_Y[lutPos];
+}
+
 FN_DECIMAL FastNoise::GradCoord3D(unsigned char offset, int x, int y, int z, FN_DECIMAL xd, FN_DECIMAL yd, FN_DECIMAL zd) const
 {
 	unsigned char lutPos = Index3D_12(offset, x, y, z);
 
 	return xd*GRAD_X[lutPos] + yd*GRAD_Y[lutPos] + zd*GRAD_Z[lutPos];
 }
+
+FN_DECIMAL FastNoise::GradCoord3D(unsigned char offset, int x, int y, int z, FN_DECIMAL xd, FN_DECIMAL yd, FN_DECIMAL zd, FN_DECIMAL& outGradX, FN_DECIMAL& outGradY, FN_DECIMAL& outGradZ) const
+{
+	unsigned char lutPos = Index3D_12(offset, x, y, z);
+	
+	outGradX = GRAD_X[lutPos];
+	outGradY = GRAD_Y[lutPos];
+	outGradZ = GRAD_Z[lutPos];
+
+	return xd*GRAD_X[lutPos] + yd*GRAD_Y[lutPos] + zd*GRAD_Z[lutPos];
+}
+
 FN_DECIMAL FastNoise::GradCoord4D(unsigned char offset, int x, int y, int z, int w, FN_DECIMAL xd, FN_DECIMAL yd, FN_DECIMAL zd, FN_DECIMAL wd) const
 {
 	unsigned char lutPos = Index4D_32(offset, x, y, z, w) << 2;
 
 	return xd*GRAD_4D[lutPos] + yd*GRAD_4D[lutPos + 1] + zd*GRAD_4D[lutPos + 2] + wd*GRAD_4D[lutPos + 3];
 }
-
-FN_DECIMAL FastNoise::GetNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
-{
-	x *= m_frequency;
-	y *= m_frequency;
-	z *= m_frequency;
-
-	switch (m_noiseType)
-	{
-	case Value:
-		return SingleValue(0, x, y, z);
-	case ValueFractal:
-		switch (m_fractalType)
-		{
-		case FBM:
-			return SingleValueFractalFBM(x, y, z);
-		case Billow:
-			return SingleValueFractalBillow(x, y, z);
-		case RigidMulti:
-			return SingleValueFractalRigidMulti(x, y, z);
-		default:
-			return 0;
-		}
-	case Perlin:
-		return SinglePerlin(0, x, y, z);
-	case PerlinFractal:
-		switch (m_fractalType)
-		{
-		case FBM:
-			return SinglePerlinFractalFBM(x, y, z);
-		case Billow:
-			return SinglePerlinFractalBillow(x, y, z);
-		case RigidMulti:
-			return SinglePerlinFractalRigidMulti(x, y, z);
-		default:
-			return 0;
-		}
-	case Simplex:
-		return SingleSimplex(0, x, y, z);
-	case SimplexFractal:
-		switch (m_fractalType)
-		{
-		case FBM:
-			return SingleSimplexFractalFBM(x, y, z);
-		case Billow:
-			return SingleSimplexFractalBillow(x, y, z);
-		case RigidMulti:
-			return SingleSimplexFractalRigidMulti(x, y, z);
-		default:
-			return 0;
-		}
-	case Cellular:
-		switch (m_cellularReturnType)
-		{
-		case CellValue:
-		case NoiseLookup:
-		case Distance:
-			return SingleCellular(x, y, z);
-		default:
-			return SingleCellular2Edge(x, y, z);
-		}
-	case WhiteNoise:
-		return GetWhiteNoise(x, y, z);
-	case Cubic:
-		return SingleCubic(0, x, y, z);
-	case CubicFractal:
-		switch (m_fractalType)
-		{
-		case FBM:
-			return SingleCubicFractalFBM(x, y, z);
-		case Billow:
-			return SingleCubicFractalBillow(x, y, z);
-		case RigidMulti:
-			return SingleCubicFractalRigidMulti(x, y, z);
-		}
-	default:
-		return 0;
-	}
-}
-
-FN_DECIMAL FastNoise::GetNoise(FN_DECIMAL x, FN_DECIMAL y) const
-{
-	x *= m_frequency;
-	y *= m_frequency;
-
-	switch (m_noiseType)
-	{
-	case Value:
-		return SingleValue(0, x, y);
-	case ValueFractal:
-		switch (m_fractalType)
-		{
-		case FBM:
-			return SingleValueFractalFBM(x, y);
-		case Billow:
-			return SingleValueFractalBillow(x, y);
-		case RigidMulti:
-			return SingleValueFractalRigidMulti(x, y);
-		}
-	case Perlin:
-		return SinglePerlin(0, x, y);
-	case PerlinFractal:
-		switch (m_fractalType)
-		{
-		case FBM:
-			return SinglePerlinFractalFBM(x, y);
-		case Billow:
-			return SinglePerlinFractalBillow(x, y);
-		case RigidMulti:
-			return SinglePerlinFractalRigidMulti(x, y);
-		}
-	case Simplex:
-		return SingleSimplex(0, x, y);
-	case SimplexFractal:
-		switch (m_fractalType)
-		{
-		case FBM:
-			return SingleSimplexFractalFBM(x, y);
-		case Billow:
-			return SingleSimplexFractalBillow(x, y);
-		case RigidMulti:
-			return SingleSimplexFractalRigidMulti(x, y);
-		}
-	case Cellular:
-		switch (m_cellularReturnType)
-		{
-		case CellValue:
-		case NoiseLookup:
-		case Distance:
-			return SingleCellular(x, y);
-		default:
-			return SingleCellular2Edge(x, y);
-		}
-	case WhiteNoise:
-		return GetWhiteNoise(x, y);
-	case Cubic:
-		return SingleCubic(0, x, y);
-	case CubicFractal:
-		switch (m_fractalType)
-		{
-		case FBM:
-			return SingleCubicFractalFBM(x, y);
-		case Billow:
-			return SingleCubicFractalBillow(x, y);
-		case RigidMulti:
-			return SingleCubicFractalRigidMulti(x, y);
-		}
-	}
-	return 0;
-}
+//
+//FN_DECIMAL FastNoise::GetNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency) const
+//{
+//	x *= frequency;
+//	y *= frequency;
+//	z *= frequency;
+//
+//	switch (m_noiseType)
+//	{
+//	case Value:
+//		return SingleValue(0, x, y, z);
+//	case ValueFractal:
+//		switch (m_fractalType)
+//		{
+//		case FBM:
+//			return SingleValueFractalFBM(x, y, z);
+//		case Billow:
+//			return SingleValueFractalBillow(x, y, z);
+//		case RigidMulti:
+//			return SingleValueFractalRigidMulti(x, y, z);
+//		default:
+//			return 0;
+//		}
+//	case Perlin:
+//		return SinglePerlin(0, x, y, z);
+//	case PerlinFractal:
+//		switch (m_fractalType)
+//		{
+//		case FBM:
+//			return SinglePerlinFractalFBM(x, y, z);
+//		case Billow:
+//			return SinglePerlinFractalBillow(x, y, z);
+//		case RigidMulti:
+//			return SinglePerlinFractalRigidMulti(x, y, z);
+//		default:
+//			return 0;
+//		}
+//	case Simplex:
+//		return SingleSimplex(0, x, y, z);
+//	case SimplexFractal:
+//		switch (m_fractalType)
+//		{
+//		case FBM:
+//			return SingleSimplexFractalFBM(x, y, z);
+//		case Billow:
+//			return SingleSimplexFractalBillow(x, y, z);
+//		case RigidMulti:
+//			return SingleSimplexFractalRigidMulti(x, y, z);
+//		default:
+//			return 0;
+//		}
+//	case Cellular:
+//		switch (m_cellularReturnType)
+//		{
+//		case CellValue:
+//		case NoiseLookup:
+//		case Distance:
+//			return SingleCellular(x, y, z);
+//		default:
+//			return SingleCellular2Edge(x, y, z);
+//		}
+//	case WhiteNoise:
+//		return GetWhiteNoise(x, y, z);
+//	case Cubic:
+//		return SingleCubic(0, x, y, z);
+//	case CubicFractal:
+//		switch (m_fractalType)
+//		{
+//		case FBM:
+//			return SingleCubicFractalFBM(x, y, z);
+//		case Billow:
+//			return SingleCubicFractalBillow(x, y, z);
+//		case RigidMulti:
+//			return SingleCubicFractalRigidMulti(x, y, z);
+//		}
+//	default:
+//		return 0;
+//	}
+//}
+//
+//FN_DECIMAL FastNoise::GetNoise(FN_DECIMAL x, FN_DECIMAL y) const
+//{
+//	x *= frequency;
+//	y *= frequency;
+//
+//	switch (m_noiseType)
+//	{
+//	case Value:
+//		return SingleValue(0, x, y);
+//	case ValueFractal:
+//		switch (m_fractalType)
+//		{
+//		case FBM:
+//			return SingleValueFractalFBM(x, y);
+//		case Billow:
+//			return SingleValueFractalBillow(x, y);
+//		case RigidMulti:
+//			return SingleValueFractalRigidMulti(x, y);
+//		}
+//	case Perlin:
+//		return SinglePerlin(0, x, y);
+//	case PerlinFractal:
+//		switch (m_fractalType)
+//		{
+//		case FBM:
+//			return SinglePerlinFractalFBM(x, y);
+//		case Billow:
+//			return SinglePerlinFractalBillow(x, y);
+//		case RigidMulti:
+//			return SinglePerlinFractalRigidMulti(x, y);
+//		}
+//	case Simplex:
+//		return SingleSimplex(0, x, y);
+//	case SimplexFractal:
+//		switch (m_fractalType)
+//		{
+//		case FBM:
+//			return SingleSimplexFractalFBM(x, y);
+//		case Billow:
+//			return SingleSimplexFractalBillow(x, y);
+//		case RigidMulti:
+//			return SingleSimplexFractalRigidMulti(x, y);
+//		}
+//	case Cellular:
+//		switch (m_cellularReturnType)
+//		{
+//		case CellValue:
+//		case NoiseLookup:
+//		case Distance:
+//			return SingleCellular(x, y);
+//		default:
+//			return SingleCellular2Edge(x, y);
+//		}
+//	case WhiteNoise:
+//		return GetWhiteNoise(x, y);
+//	case Cubic:
+//		return SingleCubic(0, x, y);
+//	case CubicFractal:
+//		switch (m_fractalType)
+//		{
+//		case FBM:
+//			return SingleCubicFractalFBM(x, y);
+//		case Billow:
+//			return SingleCubicFractalBillow(x, y);
+//		case RigidMulti:
+//			return SingleCubicFractalRigidMulti(x, y);
+//		}
+//	}
+//	return 0;
+//}
 
 // White Noise
-FN_DECIMAL FastNoise::GetWhiteNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w) const
+FN_DECIMAL FastNoise::GetWhiteNoise_4D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w) const
 {
 	return ValCoord4D(m_seed,
 		*reinterpret_cast<int*>(&x) ^ (*reinterpret_cast<int*>(&x) >> 16),
@@ -493,7 +1019,7 @@ FN_DECIMAL FastNoise::GetWhiteNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN
 		*reinterpret_cast<int*>(&w) ^ (*reinterpret_cast<int*>(&w) >> 16));
 }
 
-FN_DECIMAL FastNoise::GetWhiteNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetWhiteNoise_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
 {
 	return ValCoord3D(m_seed,
 		*reinterpret_cast<int*>(&x) ^ (*reinterpret_cast<int*>(&x) >> 16),
@@ -501,111 +1027,285 @@ FN_DECIMAL FastNoise::GetWhiteNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) co
 		*reinterpret_cast<int*>(&z) ^ (*reinterpret_cast<int*>(&z) >> 16));
 }
 
-FN_DECIMAL FastNoise::GetWhiteNoise(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::GetWhiteNoise_2D(FN_DECIMAL x, FN_DECIMAL y) const
 {
 	return ValCoord2D(m_seed,
 		*reinterpret_cast<int*>(&x) ^ (*reinterpret_cast<int*>(&x) >> 16),
 		*reinterpret_cast<int*>(&y) ^ (*reinterpret_cast<int*>(&y) >> 16));
 }
 
-FN_DECIMAL FastNoise::GetWhiteNoiseInt(int x, int y, int z, int w) const
+FN_DECIMAL FastNoise::GetWhiteNoiseInt_4D(int x, int y, int z, int w) const
 {
 	return ValCoord4D(m_seed, x, y, z, w);
 }
 
-FN_DECIMAL FastNoise::GetWhiteNoiseInt(int x, int y, int z) const
+FN_DECIMAL FastNoise::GetWhiteNoiseInt_3D(int x, int y, int z) const
 {
 	return ValCoord3D(m_seed, x, y, z);
 }
 
-FN_DECIMAL FastNoise::GetWhiteNoiseInt(int x, int y) const
+FN_DECIMAL FastNoise::GetWhiteNoiseInt_2D(int x, int y) const
 {
 	return ValCoord2D(m_seed, x, y);
 }
 
 // Value Noise
-FN_DECIMAL FastNoise::GetValueFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetValueFractal_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, int octaves) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
-	z *= m_frequency;
+	x *= frequency;
+	y *= frequency;
+	z *= frequency;
 
 	switch (m_fractalType)
 	{
 	case FBM:
-		return SingleValueFractalFBM(x, y, z);
+		return SingleValueFractalFBM_3D(x, y, z, octaves);
 	case Billow:
-		return SingleValueFractalBillow(x, y, z);
+		return SingleValueFractalBillow_3D(x, y, z, octaves);
 	case RigidMulti:
-		return SingleValueFractalRigidMulti(x, y, z);
+		return SingleValueFractalRigidMulti_3D(x, y, z, octaves);
 	default:
 		return 0;
 	}
 }
 
-FN_DECIMAL FastNoise::SingleValueFractalFBM(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetValueFractalDeriv_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
 {
-	FN_DECIMAL sum = SingleValue(m_perm[0], x, y, z);
+	x *= frequency;
+	y *= frequency;
+	z *= frequency;
+
+	switch (m_fractalType)
+	{
+	case FBM:
+		return SingleValueFractalDerivFBM_3D(x, y, z, octaves, outDx, outDy, outDz);
+	case Billow:
+		return SingleValueFractalDerivBillow_3D(x, y, z, octaves, outDx, outDy, outDz);
+	case RigidMulti:
+		return SingleValueFractalDerivRigidMulti_3D(x, y, z, octaves, outDx, outDy, outDz);
+	default:
+		return 0;
+	}
+}
+
+FN_DECIMAL FastNoise::SingleValueFractalFBM_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
+{
+	FN_DECIMAL sum = SingleValue_3D(m_perm[0], x, y, z);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += SingleValue(m_perm[i], x, y, z) * amp;
+		sum += SingleValue_3D(m_perm[i], x, y, z) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleValueFractalBillow(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleValueFractalBillow_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = FastAbs(SingleValue(m_perm[0], x, y, z)) * 2 - 1;
+	FN_DECIMAL sum = FastAbs(SingleValue_3D(m_perm[0], x, y, z)) * 2 - 1;
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += (FastAbs(SingleValue(m_perm[i], x, y, z)) * 2 - 1) * amp;
+		sum += (FastAbs(SingleValue_3D(m_perm[i], x, y, z)) * 2 - 1) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleValueFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleValueFractalRigidMulti_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = 1 - FastAbs(SingleValue(m_perm[0], x, y, z));
+	FN_DECIMAL sum = 1 - FastAbs(SingleValue_3D(m_perm[0], x, y, z));
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum -= (1 - FastAbs(SingleValue(m_perm[i], x, y, z))) * amp;
+		sum -= (1 - FastAbs(SingleValue_3D(m_perm[i], x, y, z))) * amp;
 	}
 
 	return sum;
 }
 
-FN_DECIMAL FastNoise::GetValue(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleValueFractalDerivFBM_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
 {
-	return SingleValue(0, x * m_frequency, y * m_frequency, z * m_frequency);
+	FN_DECIMAL sum = SingleValueDeriv_3D(m_perm[0], x, y, z, outDx, outDy, outDz);
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		z *= m_lacunarity;
+
+		amp *= m_gain;
+
+		FN_DECIMAL dx, dy, dz;
+		sum += SingleValueDeriv_3D(m_perm[i], x, y, z, dx, dy, dz) * amp;
+		outDx += amp * dx;
+		outDy += amp * dy;
+		outDz += amp * dz;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	outDz *= m_fractalBounding;
+	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleValue(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleValueFractalDerivBillow_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
+{
+	FN_DECIMAL value, dx, dy, dz, sum;
+	value = SingleValueDeriv_3D(m_perm[0], x, y, z, dx, dy, dz);
+
+	sum = FastAbs(value) * 2 - 1;
+	outDx = FastAbsDeriv(value, dx) * 2;
+	outDy = FastAbsDeriv(value, dy) * 2;
+	outDz = FastAbsDeriv(value, dz) * 2;
+
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		z *= m_lacunarity;
+		amp *= m_gain;
+
+		value = SingleValueDeriv_3D(m_perm[i], x, y, z, dx, dy, dz);
+
+		sum += (FastAbs(value) * 2 - 1) * amp;
+		outDx += FastAbsDeriv(value, dx) * 2 * amp;
+		outDy += FastAbsDeriv(value, dy) * 2 * amp;
+		outDz += FastAbsDeriv(value, dz) * 2 * amp;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	outDz *= m_fractalBounding;
+	return sum * m_fractalBounding;
+}
+
+FN_DECIMAL FastNoise::SingleValueFractalDerivRigidMulti_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
+{
+	FN_DECIMAL value, dx, dy, dz, sum;
+	value = SingleValueDeriv_3D(m_perm[0], x, y, z, dx, dy, dz);
+
+	sum =  1 - FastAbs(value);
+	outDx = -FastAbsDeriv(value, dx);
+	outDy = -FastAbsDeriv(value, dy);
+	outDz = -FastAbsDeriv(value, dz);
+
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		z *= m_lacunarity;
+		amp *= m_gain;
+
+		value = SingleValueDeriv_3D(m_perm[i], x, y, z, dx, dy, dz);
+
+		sum -= (1 - FastAbs(value)) * amp;
+		outDx -= -FastAbsDeriv(value, dx) * amp;
+		outDy -= -FastAbsDeriv(value, dy) * amp;
+		outDz -= -FastAbsDeriv(value, dz) * amp;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	outDz *= m_fractalBounding;
+	return sum;
+}
+
+FN_DECIMAL FastNoise::IQNoise_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, int octaves) const
+{
+	FN_DECIMAL dx, dy, dz;
+	return IQNoiseDeriv_3D(x, y, z, frequency, octaves, dx, dy, dz);
+}
+
+FN_DECIMAL FastNoise::IQNoiseDeriv_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
+{
+	x *= frequency;
+	y *= frequency;
+	z *= frequency;
+
+	FN_DECIMAL sum = SingleValueDeriv_3D(m_perm[0], x, y, z, outDx, outDy, outDz);
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	FN_DECIMAL localDx = outDx;
+	FN_DECIMAL localDy = outDy;
+	FN_DECIMAL localDz = outDz;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		z *= m_lacunarity;
+		
+		FVector4 P = m_matrix3.TransformPosition({ float(x), float(y), float(z) });
+		x = P.X;
+		y = P.Y;
+		z = P.Z;
+
+		amp *= m_gain;
+
+		FN_DECIMAL value, dx, dy, dz;
+		value = SingleValueDeriv_3D(m_perm[i], x, y, z, dx, dy, dz);
+
+		localDx += dx;
+		localDy += dy;
+		localDz += dz;
+
+		FN_DECIMAL multiplier = amp / (1 + localDx * localDx + localDy * localDy + localDz * localDz);;
+		sum += value * multiplier;
+
+		// Not exact, but still gives good results
+		outDx += dx * multiplier;
+		outDy += dy * multiplier;
+		outDy += dz * multiplier;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	outDz *= m_fractalBounding;
+	return sum * m_fractalBounding;
+}
+
+FN_DECIMAL FastNoise::GetValue_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency) const
+{
+	return SingleValue_3D(0, x * frequency, y * frequency, z * frequency);
+}
+
+FN_DECIMAL FastNoise::GetValueDeriv_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
+{
+	return SingleValueDeriv_3D(0, x * frequency, y * frequency, z * frequency, outDx, outDy, outDz);
+}
+
+FN_DECIMAL FastNoise::SingleValue_3D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
 {
 	int x0 = FastFloor(x);
 	int y0 = FastFloor(y);
@@ -645,83 +1345,304 @@ FN_DECIMAL FastNoise::SingleValue(unsigned char offset, FN_DECIMAL x, FN_DECIMAL
 	return Lerp(yf0, yf1, zs);
 }
 
-FN_DECIMAL FastNoise::GetValueFractal(FN_DECIMAL x, FN_DECIMAL y) const
+FORCEINLINE FN_DECIMAL FastNoise::SingleValueDeriv_3D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
+	int x0 = FastFloor(x);
+	int y0 = FastFloor(y);
+	int z0 = FastFloor(z);
+	int x1 = x0 + 1;
+	int y1 = y0 + 1;
+	int z1 = z0 + 1;
+	FN_DECIMAL fx = x - x0;
+	FN_DECIMAL fy = y - y0;
+	FN_DECIMAL fz = z - z0;
+
+	FN_DECIMAL xs, ys, zs;
+	FN_DECIMAL dx, dy, dz;
+	switch (m_interp)
+	{
+	case Linear:
+		xs = fx;
+		ys = fy;
+		zs = fz;
+		dx = 1;
+		dy = 1;
+		dz = 1;
+		break;
+	case Hermite:
+		xs = InterpHermiteFunc(fx);
+		ys = InterpHermiteFunc(fy);
+		zs = InterpHermiteFunc(fz);
+		dx = InterpHermiteFuncDeriv(fx);
+		dy = InterpHermiteFuncDeriv(fy);
+		dz = InterpHermiteFuncDeriv(fz);
+		break;
+	case Quintic:
+		xs = InterpQuinticFunc(fx);
+		ys = InterpQuinticFunc(fy);
+		zs = InterpQuinticFunc(fz);
+		dx = InterpQuinticFuncDeriv(fx);
+		dy = InterpQuinticFuncDeriv(fy);
+		dz = InterpQuinticFuncDeriv(fz);
+		break;
+	}
+
+	FN_DECIMAL a = ValCoord3DFast(offset, x0, y0, z0);
+	FN_DECIMAL b = ValCoord3DFast(offset, x1, y0, z0);
+	FN_DECIMAL c = ValCoord3DFast(offset, x0, y1, z0);
+	FN_DECIMAL d = ValCoord3DFast(offset, x1, y1, z0);
+	FN_DECIMAL e = ValCoord3DFast(offset, x0, y0, z1);
+	FN_DECIMAL f = ValCoord3DFast(offset, x1, y0, z1);
+	FN_DECIMAL g = ValCoord3DFast(offset, x0, y1, z1);
+	FN_DECIMAL h = ValCoord3DFast(offset, x1, y1, z1);
+
+	FN_DECIMAL k0 = a;
+	FN_DECIMAL k1 = b - a;
+	FN_DECIMAL k2 = c - a;
+	FN_DECIMAL k3 = e - a;
+	FN_DECIMAL k4 = a - b - c + d;
+	FN_DECIMAL k5 = a - c - e + g;
+	FN_DECIMAL k6 = a - b - e + f;
+	FN_DECIMAL k7 = -a + b + c - d + e - f - g + h;
+
+	outDx = dx * (k1 + k4 * ys + k6 * zs + k7 * ys * zs);
+	outDy = dy * (k2 + k5 * zs + k4 * xs + k7 * zs * xs);
+	outDz = dz * (k3 + k6 * xs + k5 * ys + k7 * xs * ys);
+
+	return k0 + k1 * xs + k2 * ys + k3 * zs + k4 * xs * ys + k5 * ys * zs + k6 * zs * xs + k7 * xs * ys * zs;
+}
+
+FN_DECIMAL FastNoise::GetValueFractal_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, int octaves) const
+{
+	x *= frequency;
+	y *= frequency;
 
 	switch (m_fractalType)
 	{
 	case FBM:
-		return SingleValueFractalFBM(x, y);
+		return SingleValueFractalFBM_2D(x, y, octaves);
 	case Billow:
-		return SingleValueFractalBillow(x, y);
+		return SingleValueFractalBillow_2D(x, y, octaves);
 	case RigidMulti:
-		return SingleValueFractalRigidMulti(x, y);
+		return SingleValueFractalRigidMulti_2D(x, y, octaves);
 	default:
 		return 0;
 	}
 }
 
-FN_DECIMAL FastNoise::SingleValueFractalFBM(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::GetValueFractalDeriv_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
 {
-	FN_DECIMAL sum = SingleValue(m_perm[0], x, y);
+	x *= frequency;
+	y *= frequency;
+
+	switch (m_fractalType)
+	{
+	case FBM:
+		return SingleValueFractalDerivFBM_2D(x, y, octaves, outDx, outDy);
+	case Billow:
+		return SingleValueFractalDerivBillow_2D(x, y, octaves, outDx, outDy);
+	case RigidMulti:
+		return SingleValueFractalDerivRigidMulti_2D(x, y, octaves, outDx, outDy);
+	default:
+		return 0;
+	}
+}
+
+FN_DECIMAL FastNoise::SingleValueFractalFBM_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
+{
+	FN_DECIMAL sum = SingleValue_2D(m_perm[0], x, y);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += SingleValue(m_perm[i], x, y) * amp;
+		sum += SingleValue_2D(m_perm[i], x, y) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleValueFractalBillow(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleValueFractalBillow_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = FastAbs(SingleValue(m_perm[0], x, y)) * 2 - 1;
+	FN_DECIMAL sum = FastAbs(SingleValue_2D(m_perm[0], x, y)) * 2 - 1;
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		amp *= m_gain;
-		sum += (FastAbs(SingleValue(m_perm[i], x, y)) * 2 - 1) * amp;
+		sum += (FastAbs(SingleValue_2D(m_perm[i], x, y)) * 2 - 1) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleValueFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleValueFractalRigidMulti_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = 1 - FastAbs(SingleValue(m_perm[0], x, y));
+	FN_DECIMAL sum = 1 - FastAbs(SingleValue_2D(m_perm[0], x, y));
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum -= (1 - FastAbs(SingleValue(m_perm[i], x, y))) * amp;
+		sum -= (1 - FastAbs(SingleValue_2D(m_perm[i], x, y))) * amp;
 	}
 
 	return sum;
 }
 
-FN_DECIMAL FastNoise::GetValue(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleValueFractalDerivFBM_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
 {
-	return SingleValue(0, x * m_frequency, y * m_frequency);
+	FN_DECIMAL sum = SingleValueDeriv_2D(m_perm[0], x, y, outDx, outDy);
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+
+		amp *= m_gain;
+
+		FN_DECIMAL dx, dy;
+		sum += SingleValueDeriv_2D(m_perm[i], x, y, dx, dy) * amp;
+		outDx += amp * dx;
+		outDy += amp * dy;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleValue(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleValueFractalDerivBillow_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
+{
+	FN_DECIMAL value, dx, dy, sum;
+	value = SingleValueDeriv_2D(m_perm[0], x, y, dx, dy);
+
+	sum = FastAbs(value) * 2 - 1;
+	outDx = FastAbsDeriv(value, dx) * 2;
+	outDy = FastAbsDeriv(value, dy) * 2;
+
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		amp *= m_gain;
+
+		value = SingleValueDeriv_2D(m_perm[i], x, y, dx, dy);
+
+		sum += (FastAbs(value) * 2 - 1) * amp;
+		outDx += FastAbsDeriv(value, dx) * 2 * amp;
+		outDy += FastAbsDeriv(value, dy) * 2 * amp;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	return sum * m_fractalBounding;
+}
+
+FN_DECIMAL FastNoise::SingleValueFractalDerivRigidMulti_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
+{
+	FN_DECIMAL value, dx, dy, sum;
+	value = SingleValueDeriv_2D(m_perm[0], x, y, dx, dy);
+
+	sum =  1 - FastAbs(value);
+	outDx = -FastAbsDeriv(value, dx);
+	outDy = -FastAbsDeriv(value, dy);
+
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		amp *= m_gain;
+
+		value = SingleValueDeriv_2D(m_perm[i], x, y, dx, dy);
+
+		sum -= (1 - FastAbs(value)) * amp;
+		outDx -= -FastAbsDeriv(value, dx) * amp;
+		outDy -= -FastAbsDeriv(value, dy) * amp;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	return sum;
+}
+
+FN_DECIMAL FastNoise::IQNoise_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, int octaves) const
+{
+	FN_DECIMAL dx, dy;
+	return IQNoiseDeriv_2D(x, y, frequency, octaves, dx, dy);
+}
+
+FN_DECIMAL FastNoise::IQNoiseDeriv_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
+{
+	x *= frequency;
+	y *= frequency;
+
+	FN_DECIMAL sum = SingleValueDeriv_2D(m_perm[0], x, y, outDx, outDy);
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	FN_DECIMAL localDx = outDx;
+	FN_DECIMAL localDy = outDy;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		FVector2D P = m_matrix2.TransformPoint({ float(x), float(y) });
+		x = P.X;
+		y = P.Y;
+
+		amp *= m_gain;
+
+		FN_DECIMAL value, dx, dy;
+		value = SingleValueDeriv_2D(m_perm[i], x, y, dx, dy);
+
+		localDx += dx;
+		localDy += dy;
+
+		FN_DECIMAL multiplier = amp / (1 + localDx * localDx + localDy * localDy);;
+		sum += value * multiplier;
+
+		// Not exact, but still gives good results
+		outDx += dx * multiplier;
+		outDy += dy * multiplier;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	return sum * m_fractalBounding;
+}
+
+FN_DECIMAL FastNoise::GetValue_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency) const
+{
+	return SingleValue_2D(0, x * frequency, y * frequency);
+}
+
+FN_DECIMAL FastNoise::GetValueDeriv_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
+{
+	return SingleValueDeriv_2D(0, x * frequency, y * frequency, outDx, outDy);
+}
+
+FN_DECIMAL FastNoise::SingleValue_2D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const
 {
 	int x0 = FastFloor(x);
 	int y0 = FastFloor(y);
@@ -751,89 +1672,257 @@ FN_DECIMAL FastNoise::SingleValue(unsigned char offset, FN_DECIMAL x, FN_DECIMAL
 	return Lerp(xf0, xf1, ys);
 }
 
-// Perlin Noise
-FN_DECIMAL FastNoise::GetPerlinFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleValueDeriv_2D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
-	z *= m_frequency;
+	int x0 = FastFloor(x);
+	int y0 = FastFloor(y);
+	int x1 = x0 + 1;
+	int y1 = y0 + 1;
+	FN_DECIMAL fx = x - x0;
+	FN_DECIMAL fy = y - y0;
+
+	FN_DECIMAL xs, ys;
+	FN_DECIMAL dx, dy;
+	switch (m_interp)
+	{
+	case Linear:
+		xs = fx;
+		ys = fy;
+		dx = 1;
+		dy = 1;
+		break;
+	case Hermite:
+		xs = InterpHermiteFunc(fx);
+		ys = InterpHermiteFunc(fy);
+		dx = InterpHermiteFuncDeriv(fx);
+		dy = InterpHermiteFuncDeriv(fy);
+		break;
+	case Quintic:
+		xs = InterpQuinticFunc(fx);
+		ys = InterpQuinticFunc(fy);
+		dx = InterpQuinticFuncDeriv(fx);
+		dy = InterpQuinticFuncDeriv(fy);
+		break;
+	}
+
+	FN_DECIMAL a = ValCoord2DFast(offset, x0, y0);
+	FN_DECIMAL b = ValCoord2DFast(offset, x1, y0);
+	FN_DECIMAL c = ValCoord2DFast(offset, x0, y1);
+	FN_DECIMAL d = ValCoord2DFast(offset, x1, y1);
+
+    FN_DECIMAL k0 = a;
+    FN_DECIMAL k1 = b - a;
+    FN_DECIMAL k2 = c - a;
+    FN_DECIMAL k4 = a - b - c + d;
+	
+	outDx = dx * (ys * (a - b - c + d) + b - a);
+	outDy = dy * (xs * (a - b - c + d) + c - a);
+
+	return a + (b - a) * xs + (c - a) * ys + (a - b - c + d) * xs * ys;
+}
+
+// Perlin Noise
+FN_DECIMAL FastNoise::GetPerlinFractal_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, int octaves) const
+{
+	x *= frequency;
+	y *= frequency;
+	z *= frequency;
 
 	switch (m_fractalType)
 	{
 	case FBM:
-		return SinglePerlinFractalFBM(x, y, z);
+		return SinglePerlinFractalFBM_3D(x, y, z, octaves);
 	case Billow:
-		return SinglePerlinFractalBillow(x, y, z);
+		return SinglePerlinFractalBillow_3D(x, y, z, octaves);
 	case RigidMulti:
-		return SinglePerlinFractalRigidMulti(x, y, z);
+		return SinglePerlinFractalRigidMulti_3D(x, y, z, octaves);
 	default:
 		return 0;
 	}
 }
 
-FN_DECIMAL FastNoise::SinglePerlinFractalFBM(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetPerlinFractalDeriv_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
 {
-	FN_DECIMAL sum = SinglePerlin(m_perm[0], x, y, z);
+	x *= frequency;
+	y *= frequency;
+	z *= frequency;
+
+	switch (m_fractalType)
+	{
+	case FBM:
+		return SinglePerlinFractalDerivFBM_3D(x, y, z, octaves, outDx, outDy, outDz);
+	case Billow:
+		return SinglePerlinFractalDerivBillow_3D(x, y, z, octaves, outDx, outDy, outDz);
+	case RigidMulti:
+		return SinglePerlinFractalDerivRigidMulti_3D(x, y, z, octaves, outDx, outDy, outDz);
+	default:
+		return 0;
+	}
+}
+
+FN_DECIMAL FastNoise::SinglePerlinFractalFBM_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
+{
+	FN_DECIMAL sum = SinglePerlin_3D(m_perm[0], x, y, z);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += SinglePerlin(m_perm[i], x, y, z) * amp;
+		sum += SinglePerlin_3D(m_perm[i], x, y, z) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SinglePerlinFractalBillow(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SinglePerlinFractalBillow_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = FastAbs(SinglePerlin(m_perm[0], x, y, z)) * 2 - 1;
+	FN_DECIMAL sum = FastAbs(SinglePerlin_3D(m_perm[0], x, y, z)) * 2 - 1;
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += (FastAbs(SinglePerlin(m_perm[i], x, y, z)) * 2 - 1) * amp;
+		sum += (FastAbs(SinglePerlin_3D(m_perm[i], x, y, z)) * 2 - 1) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SinglePerlinFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SinglePerlinFractalRigidMulti_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = 1 - FastAbs(SinglePerlin(m_perm[0], x, y, z));
+	FN_DECIMAL sum = 1 - FastAbs(SinglePerlin_3D(m_perm[0], x, y, z));
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum -= (1 - FastAbs(SinglePerlin(m_perm[i], x, y, z))) * amp;
+		sum -= (1 - FastAbs(SinglePerlin_3D(m_perm[i], x, y, z))) * amp;
 	}
 
 	return sum;
 }
 
-FN_DECIMAL FastNoise::GetPerlin(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SinglePerlinFractalDerivFBM_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
 {
-	return SinglePerlin(0, x * m_frequency, y * m_frequency, z * m_frequency);
+	FN_DECIMAL sum = SinglePerlinDeriv_3D(m_perm[0], x, y, z, outDx, outDy, outDz);
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		z *= m_lacunarity;
+
+		amp *= m_gain;
+
+		FN_DECIMAL dx, dy, dz;
+		sum += SinglePerlinDeriv_3D(m_perm[i], x, y, z, dx, dy, dz) * amp;
+		outDx += amp * dx;
+		outDy += amp * dy;
+		outDz += amp * dz;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	outDz *= m_fractalBounding;
+	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SinglePerlin(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SinglePerlinFractalDerivBillow_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
+{
+	FN_DECIMAL value, dx, dy, dz, sum;
+	value = SinglePerlinDeriv_3D(m_perm[0], x, y, z, dx, dy, dz);
+
+	sum = FastAbs(value) * 2 - 1;
+	outDx = FastAbsDeriv(value, dx) * 2;
+	outDy = FastAbsDeriv(value, dy) * 2;
+	outDz = FastAbsDeriv(value, dz) * 2;
+
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		z *= m_lacunarity;
+		amp *= m_gain;
+
+		value = SinglePerlinDeriv_3D(m_perm[i], x, y, z, dx, dy, dz);
+
+		sum += (FastAbs(value) * 2 - 1) * amp;
+		outDx += FastAbsDeriv(value, dx) * 2 * amp;
+		outDy += FastAbsDeriv(value, dy) * 2 * amp;
+		outDz += FastAbsDeriv(value, dz) * 2 * amp;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	outDz *= m_fractalBounding;
+	return sum * m_fractalBounding;
+}
+
+FN_DECIMAL FastNoise::SinglePerlinFractalDerivRigidMulti_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
+{
+	FN_DECIMAL value, dx, dy, dz, sum;
+	value = SinglePerlinDeriv_3D(m_perm[0], x, y, z, dx, dy, dz);
+
+	sum =  1 - FastAbs(value);
+	outDx = -FastAbsDeriv(value, dx);
+	outDy = -FastAbsDeriv(value, dy);
+	outDz = -FastAbsDeriv(value, dz);
+
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		z *= m_lacunarity;
+		amp *= m_gain;
+
+		value = SinglePerlinDeriv_3D(m_perm[i], x, y, z, dx, dy, dz);
+
+		sum -= (1 - FastAbs(value)) * amp;
+		outDx -= -FastAbsDeriv(value, dx) * amp;
+		outDy -= -FastAbsDeriv(value, dy) * amp;
+		outDz -= -FastAbsDeriv(value, dz) * amp;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	outDz *= m_fractalBounding;
+	return sum;
+}
+
+FN_DECIMAL FastNoise::GetPerlin_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency) const
+{
+	return SinglePerlin_3D(0, x * frequency, y * frequency, z * frequency);
+}
+
+FN_DECIMAL FastNoise::GetPerlinDeriv_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
+{
+	return SinglePerlinDeriv_3D(0, x * frequency, y * frequency, z * frequency, outDx, outDy, outDz);
+}
+
+FN_DECIMAL FastNoise::SinglePerlin_3D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
 {
 	int x0 = FastFloor(x);
 	int y0 = FastFloor(y);
@@ -880,84 +1969,317 @@ FN_DECIMAL FastNoise::SinglePerlin(unsigned char offset, FN_DECIMAL x, FN_DECIMA
 	return Lerp(yf0, yf1, zs);
 }
 
-FN_DECIMAL FastNoise::GetPerlinFractal(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SinglePerlinDeriv_3D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL& outDx, FN_DECIMAL& outDy, FN_DECIMAL& outDz) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
+	int x0 = FastFloor(x);
+	int y0 = FastFloor(y);
+	int z0 = FastFloor(z);
+	int x1 = x0 + 1;
+	int y1 = y0 + 1;
+	int z1 = z0 + 1;
+	FN_DECIMAL fx = x - x0;
+	FN_DECIMAL fy = y - y0;
+	FN_DECIMAL fz = z - z0;
+	
+	FN_DECIMAL xs, ys, zs;
+	FN_DECIMAL dx, dy, dz;
+	switch (m_interp)
+	{
+	case Linear:
+		xs = fx;
+		ys = fy;
+		zs = fz;
+		dx = 1;
+		dy = 1;
+		dz = 1;
+		break;
+	case Hermite:
+		xs = InterpHermiteFunc(fx);
+		ys = InterpHermiteFunc(fy);
+		zs = InterpHermiteFunc(fz);
+		dx = InterpHermiteFuncDeriv(fx);
+		dy = InterpHermiteFuncDeriv(fy);
+		dz = InterpHermiteFuncDeriv(fz);
+		break;
+	case Quintic:
+		xs = InterpQuinticFunc(fx);
+		ys = InterpQuinticFunc(fy);
+		zs = InterpQuinticFunc(fz);
+		dx = InterpQuinticFuncDeriv(fx);
+		dy = InterpQuinticFuncDeriv(fy);
+		dz = InterpQuinticFuncDeriv(fz);
+		break;
+	}
+
+	FN_DECIMAL xd0 = fx;
+	FN_DECIMAL yd0 = fy;
+	FN_DECIMAL zd0 = fz;
+	FN_DECIMAL xd1 = xd0 - 1;
+	FN_DECIMAL yd1 = yd0 - 1;
+	FN_DECIMAL zd1 = zd0 - 1;
+	
+    FN_DECIMAL gax, gay, gaz;
+    FN_DECIMAL gbx, gby, gbz;
+    FN_DECIMAL gcx, gcy, gcz;
+    FN_DECIMAL gdx, gdy, gdz;
+    FN_DECIMAL gex, gey, gez;
+    FN_DECIMAL gfx, gfy, gfz;
+    FN_DECIMAL ggx, ggy, ggz;
+    FN_DECIMAL ghx, ghy, ghz;
+    
+    FN_DECIMAL va = GradCoord3D(offset, x0, y0, z0, xd0, yd0, zd0, gax, gay, gaz);
+    FN_DECIMAL vb = GradCoord3D(offset, x1, y0, z0, xd1, yd0, zd0, gbx, gby, gbz);
+    FN_DECIMAL vc = GradCoord3D(offset, x0, y1, z0, xd0, yd1, zd0, gcx, gcy, gcz);
+    FN_DECIMAL vd = GradCoord3D(offset, x1, y1, z0, xd1, yd1, zd0, gdx, gdy, gdz);
+    FN_DECIMAL ve = GradCoord3D(offset, x0, y0, z1, xd0, yd0, zd1, gex, gey, gez);
+    FN_DECIMAL vf = GradCoord3D(offset, x1, y0, z1, xd1, yd0, zd1, gfx, gfy, gfz);
+    FN_DECIMAL vg = GradCoord3D(offset, x0, y1, z1, xd0, yd1, zd1, ggx, ggy, ggz);
+	FN_DECIMAL vh = GradCoord3D(offset, x1, y1, z1, xd1, yd1, zd1, ghx, ghy, ghz);
+
+	outDx =
+		gax +
+		xs * (gbx - gax) +
+		ys * (gcx - gax) +
+		zs * (gex - gax) +
+		xs * ys * (gax - gbx - gcx + gdx) +
+		ys * zs * (gax - gcx - gex + ggx) +
+		zs * xs * (gax - gbx - gex + gfx) +
+		xs * ys * zs * (-gax + gbx + gcx - gdx + gex - gfx - ggx + ghx) +
+
+		dx * (
+			vb - va +
+			ys * (va - vb - vc + vd) +
+			zs * (va - vb - ve + vf) +
+			ys * zs * (-va + vb + vc - vd + ve - vf - vg + vh));
+
+	outDy =
+		gay +
+		xs * (gby - gay) +
+		ys * (gcy - gay) +
+		zs * (gey - gay) +
+		xs * ys * (gay - gby - gcy + gdy) +
+		ys * zs * (gay - gcy - gey + ggy) +
+		zs * xs * (gay - gby - gey + gfy) +
+		xs * ys * zs * (-gay + gby + gcy - gdy + gey - gfy - ggy + ghy) +
+
+		dy * (
+			vc - va +
+			zs * (va - vc - ve + vg) +
+			xs * (va - vb - vc + vd) +
+			zs * xs * (-va + vb + vc - vd + ve - vf - vg + vh));
+
+	outDz =
+		gaz +
+		xs * (gbz - gaz) +
+		ys * (gcz - gaz) +
+		zs * (gez - gaz) +
+		xs * ys * (gaz - gbz - gcz + gdz) +
+		ys * zs * (gaz - gcz - gez + ggz) +
+		zs * xs * (gaz - gbz - gez + gfz) +
+		xs * ys * zs * (-gaz + gbz + gcz - gdz + gez - gfz - ggz + ghz) +
+
+		dz * (
+			ve - va +
+			xs * (va - vb - ve + vf) +
+			ys * (va - vc - ve + vg) +
+			xs * ys * (-va + vb + vc - vd + ve - vf - vg + vh));
+
+	return 
+		va + 
+		xs * (vb - va) + 
+		ys * (vc - va) + 
+		zs * (ve - va) + 
+		xs * ys * (va - vb - vc + vd) + 
+		ys * zs * (va - vc - ve + vg) + 
+		zs * xs * (va - vb - ve + vf) + 
+		xs * ys * zs * (-va + vb + vc - vd + ve - vf - vg + vh);
+}
+
+FN_DECIMAL FastNoise::GetPerlinFractal_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, int octaves) const
+{
+	x *= frequency;
+	y *= frequency;
 
 	switch (m_fractalType)
 	{
 	case FBM:
-		return SinglePerlinFractalFBM(x, y);
+		return SinglePerlinFractalFBM_2D(x, y, octaves);
 	case Billow:
-		return SinglePerlinFractalBillow(x, y);
+		return SinglePerlinFractalBillow_2D(x, y, octaves);
 	case RigidMulti:
-		return SinglePerlinFractalRigidMulti(x, y);
+		return SinglePerlinFractalRigidMulti_2D(x, y, octaves);
 	default:
 		return 0;
 	}
 }
 
-FN_DECIMAL FastNoise::SinglePerlinFractalFBM(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::GetPerlinFractalDeriv_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
 {
-	FN_DECIMAL sum = SinglePerlin(m_perm[0], x, y);
+	x *= frequency;
+	y *= frequency;
+
+	switch (m_fractalType)
+	{
+	case FBM:
+		return SinglePerlinFractalDerivFBM_2D(x, y, octaves, outDx, outDy);
+	case Billow:
+		return SinglePerlinFractalDerivBillow_2D(x, y, octaves, outDx, outDy);
+	case RigidMulti:
+		return SinglePerlinFractalDerivRigidMulti_2D(x, y, octaves, outDx, outDy);
+	default:
+		return 0;
+	}
+}
+
+FN_DECIMAL FastNoise::SinglePerlinFractalFBM_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
+{
+	FN_DECIMAL sum = SinglePerlin_2D(m_perm[0], x, y);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += SinglePerlin(m_perm[i], x, y) * amp;
+		sum += SinglePerlin_2D(m_perm[i], x, y) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SinglePerlinFractalBillow(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SinglePerlinFractalBillow_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = FastAbs(SinglePerlin(m_perm[0], x, y)) * 2 - 1;
+	FN_DECIMAL sum = FastAbs(SinglePerlin_2D(m_perm[0], x, y)) * 2 - 1;
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += (FastAbs(SinglePerlin(m_perm[i], x, y)) * 2 - 1) * amp;
+		sum += (FastAbs(SinglePerlin_2D(m_perm[i], x, y)) * 2 - 1) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SinglePerlinFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SinglePerlinFractalRigidMulti_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = 1 - FastAbs(SinglePerlin(m_perm[0], x, y));
+	FN_DECIMAL sum = 1 - FastAbs(SinglePerlin_2D(m_perm[0], x, y));
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum -= (1 - FastAbs(SinglePerlin(m_perm[i], x, y))) * amp;
+		sum -= (1 - FastAbs(SinglePerlin_2D(m_perm[i], x, y))) * amp;
 	}
 
 	return sum;
 }
 
-FN_DECIMAL FastNoise::GetPerlin(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SinglePerlinFractalDerivFBM_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
 {
-	return SinglePerlin(0, x * m_frequency, y * m_frequency);
+	FN_DECIMAL sum = SinglePerlinDeriv_2D(m_perm[0], x, y, outDx, outDy);
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+
+		amp *= m_gain;
+
+		FN_DECIMAL dx, dy;
+		sum += SinglePerlinDeriv_2D(m_perm[i], x, y, dx, dy) * amp;
+		outDx += amp * dx;
+		outDy += amp * dy;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SinglePerlin(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SinglePerlinFractalDerivBillow_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
+{
+	FN_DECIMAL value, dx, dy, sum;
+	value = SinglePerlinDeriv_2D(m_perm[0], x, y, dx, dy);
+
+	sum = FastAbs(value) * 2 - 1;
+	outDx = FastAbsDeriv(value, dx) * 2;
+	outDy = FastAbsDeriv(value, dy) * 2;
+
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		amp *= m_gain;
+
+		value = SinglePerlinDeriv_2D(m_perm[i], x, y, dx, dy);
+
+		sum += (FastAbs(value) * 2 - 1) * amp;
+		outDx += FastAbsDeriv(value, dx) * 2 * amp;
+		outDy += FastAbsDeriv(value, dy) * 2 * amp;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	return sum * m_fractalBounding;
+}
+
+FN_DECIMAL FastNoise::SinglePerlinFractalDerivRigidMulti_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
+{
+	FN_DECIMAL value, dx, dy, sum;
+	value = SinglePerlinDeriv_2D(m_perm[0], x, y, dx, dy);
+
+	sum = 1 - FastAbs(value);
+	outDx = -FastAbsDeriv(value, dx);
+	outDy = -FastAbsDeriv(value, dy);
+
+	FN_DECIMAL amp = 1;
+	int i = 0;
+
+	while (++i < octaves)
+	{
+		x *= m_lacunarity;
+		y *= m_lacunarity;
+		amp *= m_gain;
+
+		value = SinglePerlinDeriv_2D(m_perm[i], x, y, dx, dy);
+
+		sum -= (1 - FastAbs(value)) * amp;
+		outDx -= -FastAbsDeriv(value, dx) * amp;
+		outDy -= -FastAbsDeriv(value, dy) * amp;
+	}
+
+	outDx *= m_fractalBounding;
+	outDy *= m_fractalBounding;
+	return sum;
+}
+
+FN_DECIMAL FastNoise::GetPerlin_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency) const
+{
+	return SinglePerlin_2D(0, x * frequency, y * frequency);
+}
+
+FN_DECIMAL FastNoise::GetPerlinDeriv_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
+{
+	return SinglePerlinDeriv_2D(0, x * frequency, y * frequency, outDx, outDy);
+}
+
+FN_DECIMAL FastNoise::SinglePerlin_2D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const
 {
 	int x0 = FastFloor(x);
 	int y0 = FastFloor(y);
@@ -992,93 +2314,147 @@ FN_DECIMAL FastNoise::SinglePerlin(unsigned char offset, FN_DECIMAL x, FN_DECIMA
 	return Lerp(xf0, xf1, ys);
 }
 
+FN_DECIMAL FastNoise::SinglePerlinDeriv_2D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL& outDx, FN_DECIMAL& outDy) const
+{
+	int x0 = FastFloor(x);
+	int y0 = FastFloor(y);
+	int x1 = x0 + 1;
+	int y1 = y0 + 1;
+	FN_DECIMAL fx = x - x0;
+	FN_DECIMAL fy = y - y0;
+	
+	FN_DECIMAL xs, ys;
+	FN_DECIMAL dx, dy;
+	switch (m_interp)
+	{
+	case Linear:
+		xs = fx;
+		ys = fy;
+		dx = 1;
+		dy = 1;
+		break;
+	case Hermite:
+		xs = InterpHermiteFunc(fx);
+		ys = InterpHermiteFunc(fy);
+		dx = InterpHermiteFuncDeriv(fx);
+		dy = InterpHermiteFuncDeriv(fy);
+		break;
+	case Quintic:
+		xs = InterpQuinticFunc(fx);
+		ys = InterpQuinticFunc(fy);
+		dx = InterpQuinticFuncDeriv(fx);
+		dy = InterpQuinticFuncDeriv(fy);
+		break;
+	}
+
+	FN_DECIMAL xd0 = fx;
+	FN_DECIMAL yd0 = fy;
+	FN_DECIMAL xd1 = xd0 - 1;
+	FN_DECIMAL yd1 = yd0 - 1;
+	
+    FN_DECIMAL gax, gay;
+    FN_DECIMAL gbx, gby;
+    FN_DECIMAL gcx, gcy;
+    FN_DECIMAL gdx, gdy;
+    
+    FN_DECIMAL va = GradCoord2D(offset, x0, y0, xd0, yd0, gax, gay);
+    FN_DECIMAL vb = GradCoord2D(offset, x1, y0, xd1, yd0, gbx, gby);
+    FN_DECIMAL vc = GradCoord2D(offset, x0, y1, xd0, yd1, gcx, gcy);
+    FN_DECIMAL vd = GradCoord2D(offset, x1, y1, xd1, yd1, gdx, gdy);
+
+	outDx = gax + xs * (gbx - gax) + ys * (gcx - gax) + xs * ys * (gax - gbx - gcx + gdx) + dx * (ys * (va - vb - vc + vd) + vb - va);
+	outDy = gay + xs * (gby - gay) + ys * (gcy - gay) + xs * ys * (gay - gby - gcy + gdy) + dy * (xs * (va - vb - vc + vd) + vc - va);
+
+	return va + xs * (vb - va) + ys * (vc - va) + xs * ys * (va - vb - vc + vd);
+}
+
 // Simplex Noise
 
-FN_DECIMAL FastNoise::GetSimplexFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetSimplexFractal_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, int octaves) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
-	z *= m_frequency;
+	x *= frequency;
+	y *= frequency;
+	z *= frequency;
 
 	switch (m_fractalType)
 	{
 	case FBM:
-		return SingleSimplexFractalFBM(x, y, z);
+		return SingleSimplexFractalFBM_3D(x, y, z, octaves);
 	case Billow:
-		return SingleSimplexFractalBillow(x, y, z);
+		return SingleSimplexFractalBillow_3D(x, y, z, octaves);
 	case RigidMulti:
-		return SingleSimplexFractalRigidMulti(x, y, z);
+		return SingleSimplexFractalRigidMulti_3D(x, y, z, octaves);
 	default:
 		return 0;
 	}
 }
 
-FN_DECIMAL FastNoise::SingleSimplexFractalFBM(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleSimplexFractalFBM_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = SingleSimplex(m_perm[0], x, y, z);
+	FN_DECIMAL sum = SingleSimplex_3D(m_perm[0], x, y, z);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += SingleSimplex(m_perm[i], x, y, z) * amp;
+		sum += SingleSimplex_3D(m_perm[i], x, y, z) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleSimplexFractalBillow(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleSimplexFractalBillow_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = FastAbs(SingleSimplex(m_perm[0], x, y, z)) * 2 - 1;
+	FN_DECIMAL sum = FastAbs(SingleSimplex_3D(m_perm[0], x, y, z)) * 2 - 1;
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += (FastAbs(SingleSimplex(m_perm[i], x, y, z)) * 2 - 1) * amp;
+		sum += (FastAbs(SingleSimplex_3D(m_perm[i], x, y, z)) * 2 - 1) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleSimplexFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleSimplexFractalRigidMulti_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = 1 - FastAbs(SingleSimplex(m_perm[0], x, y, z));
+	FN_DECIMAL sum = 1 - FastAbs(SingleSimplex_3D(m_perm[0], x, y, z));
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum -= (1 - FastAbs(SingleSimplex(m_perm[i], x, y, z))) * amp;
+		sum -= (1 - FastAbs(SingleSimplex_3D(m_perm[i], x, y, z))) * amp;
 	}
 
 	return sum;
 }
 
-FN_DECIMAL FastNoise::GetSimplex(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetSimplex_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency) const
 {
-	return SingleSimplex(0, x * m_frequency, y * m_frequency, z * m_frequency);
+	return SingleSimplex_3D(0, x * frequency, y * frequency, z * frequency);
 }
 
 static const FN_DECIMAL F3 = 1 / FN_DECIMAL(3);
 static const FN_DECIMAL G3 = 1 / FN_DECIMAL(6);
 
-FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleSimplex_3D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
 {
 	FN_DECIMAL t = (x + y + z) * F3;
 	int i = FastFloor(x + t);
@@ -1175,99 +2551,99 @@ FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIM
 	return 32 * (n0 + n1 + n2 + n3);
 }
 
-FN_DECIMAL FastNoise::GetSimplexFractal(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::GetSimplexFractal_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, int octaves) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
+	x *= frequency;
+	y *= frequency;
 
 	switch (m_fractalType)
 	{
 	case FBM:
-		return SingleSimplexFractalFBM(x, y);
+		return SingleSimplexFractalFBM_2D(x, y, octaves);
 	case Billow:
-		return SingleSimplexFractalBillow(x, y);
+		return SingleSimplexFractalBillow_2D(x, y, octaves);
 	case RigidMulti:
-		return SingleSimplexFractalRigidMulti(x, y);
+		return SingleSimplexFractalRigidMulti_2D(x, y, octaves);
 	default:
 		return 0;
 	}
 }
 
-FN_DECIMAL FastNoise::SingleSimplexFractalFBM(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleSimplexFractalFBM_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = SingleSimplex(m_perm[0], x, y);
+	FN_DECIMAL sum = SingleSimplex_2D(m_perm[0], x, y);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += SingleSimplex(m_perm[i], x, y) * amp;
+		sum += SingleSimplex_2D(m_perm[i], x, y) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleSimplexFractalBillow(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleSimplexFractalBillow_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = FastAbs(SingleSimplex(m_perm[0], x, y)) * 2 - 1;
+	FN_DECIMAL sum = FastAbs(SingleSimplex_2D(m_perm[0], x, y)) * 2 - 1;
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += (FastAbs(SingleSimplex(m_perm[i], x, y)) * 2 - 1) * amp;
+		sum += (FastAbs(SingleSimplex_2D(m_perm[i], x, y)) * 2 - 1) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleSimplexFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleSimplexFractalRigidMulti_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = 1 - FastAbs(SingleSimplex(m_perm[0], x, y));
+	FN_DECIMAL sum = 1 - FastAbs(SingleSimplex_2D(m_perm[0], x, y));
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum -= (1 - FastAbs(SingleSimplex(m_perm[i], x, y))) * amp;
+		sum -= (1 - FastAbs(SingleSimplex_2D(m_perm[i], x, y))) * amp;
 	}
 
 	return sum;
 }
 
-FN_DECIMAL FastNoise::SingleSimplexFractalBlend(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleSimplexFractalBlend_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = SingleSimplex(m_perm[0], x, y);
+	FN_DECIMAL sum = SingleSimplex_2D(m_perm[0], x, y);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum *= SingleSimplex(m_perm[i], x, y) * amp + 1;
+		sum *= SingleSimplex_2D(m_perm[i], x, y) * amp + 1;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::GetSimplex(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::GetSimplex_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency) const
 {
-	return SingleSimplex(0, x * m_frequency, y * m_frequency);
+	return SingleSimplex_2D(0, x * frequency, y * frequency);
 }
 
 //static const FN_DECIMAL F2 = 1 / FN_DECIMAL(2);
@@ -1277,7 +2653,7 @@ static const FN_DECIMAL SQRT3 = FN_DECIMAL(1.7320508075688772935274463415059);
 static const FN_DECIMAL F2 = FN_DECIMAL(0.5) * (SQRT3 - FN_DECIMAL(1.0));
 static const FN_DECIMAL G2 = (FN_DECIMAL(3.0) - SQRT3) / FN_DECIMAL(6.0);
 
-FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleSimplex_2D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const
 {
 	FN_DECIMAL t = (x + y) * F2;
 	int i = FastFloor(x + t);
@@ -1334,9 +2710,9 @@ FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIM
 	return 70 * (n0 + n1 + n2);
 }
 
-FN_DECIMAL FastNoise::GetSimplex(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w) const
+FN_DECIMAL FastNoise::GetSimplex_4D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w, float frequency) const
 {
-	return SingleSimplex(0, x * m_frequency, y * m_frequency, z * m_frequency, w * m_frequency);
+	return SingleSimplex_4D(0, x * frequency, y * frequency, z * frequency, w * frequency);
 }
 
 static const unsigned char SIMPLEX_4D[] =
@@ -1354,7 +2730,7 @@ static const unsigned char SIMPLEX_4D[] =
 static const FN_DECIMAL F4 = (sqrt(FN_DECIMAL(5)) - 1) / 4;
 static const FN_DECIMAL G4 = (5 - sqrt(FN_DECIMAL(5))) / 2;
 
-FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w) const
+FN_DECIMAL FastNoise::SingleSimplex_4D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w) const
 {
 	FN_DECIMAL n0, n1, n2, n3, n4;
 	FN_DECIMAL t = (x + y + z + w) * F4;
@@ -1450,90 +2826,90 @@ FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIM
 }
 
 // Cubic Noise
-FN_DECIMAL FastNoise::GetCubicFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetCubicFractal_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency, int octaves) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
-	z *= m_frequency;
+	x *= frequency;
+	y *= frequency;
+	z *= frequency;
 
 	switch (m_fractalType)
 	{
 	case FBM:
-		return SingleCubicFractalFBM(x, y, z);
+		return SingleCubicFractalFBM_3D(x, y, z, octaves);
 	case Billow:
-		return SingleCubicFractalBillow(x, y, z);
+		return SingleCubicFractalBillow_3D(x, y, z, octaves);
 	case RigidMulti:
-		return SingleCubicFractalRigidMulti(x, y, z);
+		return SingleCubicFractalRigidMulti_3D(x, y, z, octaves);
 	default:
 		return 0;
 	}
 }
 
-FN_DECIMAL FastNoise::SingleCubicFractalFBM(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleCubicFractalFBM_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = SingleCubic(m_perm[0], x, y, z);
+	FN_DECIMAL sum = SingleCubic_3D(m_perm[0], x, y, z);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += SingleCubic(m_perm[i], x, y, z) * amp;
+		sum += SingleCubic_3D(m_perm[i], x, y, z) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleCubicFractalBillow(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleCubicFractalBillow_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = FastAbs(SingleCubic(m_perm[0], x, y, z)) * 2 - 1;
+	FN_DECIMAL sum = FastAbs(SingleCubic_3D(m_perm[0], x, y, z)) * 2 - 1;
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += (FastAbs(SingleCubic(m_perm[i], x, y, z)) * 2 - 1) * amp;
+		sum += (FastAbs(SingleCubic_3D(m_perm[i], x, y, z)) * 2 - 1) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleCubicFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleCubicFractalRigidMulti_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, int octaves) const
 {
-	FN_DECIMAL sum = 1 - FastAbs(SingleCubic(m_perm[0], x, y, z));
+	FN_DECIMAL sum = 1 - FastAbs(SingleCubic_3D(m_perm[0], x, y, z));
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 		z *= m_lacunarity;
 
 		amp *= m_gain;
-		sum -= (1 - FastAbs(SingleCubic(m_perm[i], x, y, z))) * amp;
+		sum -= (1 - FastAbs(SingleCubic_3D(m_perm[i], x, y, z))) * amp;
 	}
 
 	return sum;
 }
 
-FN_DECIMAL FastNoise::GetCubic(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetCubic_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency) const
 {
-	return SingleCubic(0, x * m_frequency, y * m_frequency, z * m_frequency);
+	return SingleCubic_3D(0, x * frequency, y * frequency, z * frequency);
 }
 
 const FN_DECIMAL CUBIC_3D_BOUNDING = 1 / (FN_DECIMAL(1.5) * FN_DECIMAL(1.5) * FN_DECIMAL(1.5));
 
-FN_DECIMAL FastNoise::SingleCubic(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleCubic_3D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
 {
 	int x1 = FastFloor(x);
 	int y1 = FastFloor(y);
@@ -1582,89 +2958,89 @@ FN_DECIMAL FastNoise::SingleCubic(unsigned char offset, FN_DECIMAL x, FN_DECIMAL
 }
 
 
-FN_DECIMAL FastNoise::GetCubicFractal(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::GetCubicFractal_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency, int octaves) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
+	x *= frequency;
+	y *= frequency;
 
 	switch (m_fractalType)
 	{
 	case FBM:
-		return SingleCubicFractalFBM(x, y);
+		return SingleCubicFractalFBM_2D(x, y, octaves);
 	case Billow:
-		return SingleCubicFractalBillow(x, y);
+		return SingleCubicFractalBillow_2D(x, y, octaves);
 	case RigidMulti:
-		return SingleCubicFractalRigidMulti(x, y);
+		return SingleCubicFractalRigidMulti_2D(x, y, octaves);
 	default:
 		return 0;
 	}
 }
 
-FN_DECIMAL FastNoise::SingleCubicFractalFBM(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleCubicFractalFBM_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = SingleCubic(m_perm[0], x, y);
+	FN_DECIMAL sum = SingleCubic_2D(m_perm[0], x, y);
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += SingleCubic(m_perm[i], x, y) * amp;
+		sum += SingleCubic_2D(m_perm[i], x, y) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleCubicFractalBillow(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleCubicFractalBillow_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = FastAbs(SingleCubic(m_perm[0], x, y)) * 2 - 1;
+	FN_DECIMAL sum = FastAbs(SingleCubic_2D(m_perm[0], x, y)) * 2 - 1;
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum += (FastAbs(SingleCubic(m_perm[i], x, y)) * 2 - 1) * amp;
+		sum += (FastAbs(SingleCubic_2D(m_perm[i], x, y)) * 2 - 1) * amp;
 	}
 
 	return sum * m_fractalBounding;
 }
 
-FN_DECIMAL FastNoise::SingleCubicFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleCubicFractalRigidMulti_2D(FN_DECIMAL x, FN_DECIMAL y, int octaves) const
 {
-	FN_DECIMAL sum = 1 - FastAbs(SingleCubic(m_perm[0], x, y));
+	FN_DECIMAL sum = 1 - FastAbs(SingleCubic_2D(m_perm[0], x, y));
 	FN_DECIMAL amp = 1;
 	int i = 0;
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		x *= m_lacunarity;
 		y *= m_lacunarity;
 
 		amp *= m_gain;
-		sum -= (1 - FastAbs(SingleCubic(m_perm[i], x, y))) * amp;
+		sum -= (1 - FastAbs(SingleCubic_2D(m_perm[i], x, y))) * amp;
 	}
 
 	return sum;
 }
 
-FN_DECIMAL FastNoise::GetCubic(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::GetCubic_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
+	x *= frequency;
+	y *= frequency;
 
-	return SingleCubic(0, x, y);
+	return SingleCubic_2D(0, x, y);
 }
 
 const FN_DECIMAL CUBIC_2D_BOUNDING = 1 / (FN_DECIMAL(1.5) * FN_DECIMAL(1.5));
 
-FN_DECIMAL FastNoise::SingleCubic(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleCubic_2D(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const
 {
 	int x1 = FastFloor(x);
 	int y1 = FastFloor(y);
@@ -1688,24 +3064,24 @@ FN_DECIMAL FastNoise::SingleCubic(unsigned char offset, FN_DECIMAL x, FN_DECIMAL
 }
 
 // Cellular Noise
-FN_DECIMAL FastNoise::GetCellular(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::GetCellular_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, float frequency) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
-	z *= m_frequency;
+	x *= frequency;
+	y *= frequency;
+	z *= frequency;
 
 	switch (m_cellularReturnType)
 	{
 	case CellValue:
-	case NoiseLookup:
+	//case NoiseLookup:
 	case Distance:
-		return SingleCellular(x, y, z);
+		return SingleCellular_3D(x, y, z);
 	default:
-		return SingleCellular2Edge(x, y, z);
+		return SingleCellular2Edge_3D(x, y, z);
 	}
 }
 
-FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleCellular_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
 {
 	int xr = FastRound(x);
 	int yr = FastRound(y);
@@ -1798,18 +3174,18 @@ FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) c
 		break;
 	}
 
-	unsigned char lutPos;
+	//unsigned char lutPos;
 	switch (m_cellularReturnType)
 	{
 	case CellValue:
 		return ValCoord3D(m_seed, xc, yc, zc);
 
-	case NoiseLookup:
+	/*case NoiseLookup:
 		assert(m_cellularNoiseLookup);
 
 		lutPos = Index3D_256(0, xc, yc, zc);
 		return m_cellularNoiseLookup->GetNoise(xc + CELL_3D_X[lutPos] * m_cellularJitter, yc + CELL_3D_Y[lutPos] * m_cellularJitter, zc + CELL_3D_Z[lutPos] * m_cellularJitter);
-
+*/
 	case Distance:
 		return distance;
 	default:
@@ -1817,7 +3193,7 @@ FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) c
 	}
 }
 
-FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
+FN_DECIMAL FastNoise::SingleCellular2Edge_3D(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const
 {
 	int xr = FastRound(x);
 	int yr = FastRound(y);
@@ -1914,23 +3290,189 @@ FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL
 	}
 }
 
-FN_DECIMAL FastNoise::GetCellular(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::GetCellular_2D(FN_DECIMAL x, FN_DECIMAL y, float frequency) const
 {
-	x *= m_frequency;
-	y *= m_frequency;
+	x *= frequency;
+	y *= frequency;
 
 	switch (m_cellularReturnType)
 	{
 	case CellValue:
-	case NoiseLookup:
+	//case NoiseLookup:
 	case Distance:
-		return SingleCellular(x, y);
+		return SingleCellular_2D(x, y);
 	default:
-		return SingleCellular2Edge(x, y);
+		return SingleCellular2Edge_2D(x, y);
 	}
 }
 
-FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y) const
+void FastNoise::GetVoronoi_2D(FN_DECIMAL x, FN_DECIMAL y, float m_jitter, FN_DECIMAL& out_x, FN_DECIMAL& out_y) const
+{
+	int xr = FastRound(x);
+	int yr = FastRound(y);
+
+	FN_DECIMAL distance = MAX_flt;
+
+	switch (m_cellularDistanceFunction)
+	{
+	default:
+	case Euclidean:
+		for (int xi = xr - 1; xi <= xr + 1; xi++)
+		{
+			for (int yi = yr - 1; yi <= yr + 1; yi++)
+			{
+				unsigned char lutPos = Index2D_256(0, xi, yi);
+
+				FN_DECIMAL newX = xi + CELL_2D_X[lutPos] * m_jitter;
+				FN_DECIMAL newY = yi + CELL_2D_Y[lutPos] * m_jitter;
+				FN_DECIMAL vecX = x - newX;
+				FN_DECIMAL vecY = y - newY;
+
+				FN_DECIMAL newDistance = vecX * vecX + vecY * vecY;
+
+				if (newDistance < distance)
+				{
+					distance = newDistance;
+					out_x = newX;
+					out_y = newY;
+				}
+			}
+		}
+		break;
+	case Manhattan:
+		for (int xi = xr - 1; xi <= xr + 1; xi++)
+		{
+			for (int yi = yr - 1; yi <= yr + 1; yi++)
+			{
+				unsigned char lutPos = Index2D_256(0, xi, yi);
+				
+				FN_DECIMAL newX = xi + CELL_2D_X[lutPos] * m_jitter;
+				FN_DECIMAL newY = yi + CELL_2D_Y[lutPos] * m_jitter;
+				FN_DECIMAL vecX = x - newX;
+				FN_DECIMAL vecY = y - newY;
+
+				FN_DECIMAL newDistance = (FastAbs(vecX) + FastAbs(vecY));
+
+				if (newDistance < distance)
+				{
+					distance = newDistance;
+					out_x = newX;
+					out_y = newY;
+				}
+			}
+		}
+		break;
+	case Natural:
+		for (int xi = xr - 1; xi <= xr + 1; xi++)
+		{
+			for (int yi = yr - 1; yi <= yr + 1; yi++)
+			{
+				unsigned char lutPos = Index2D_256(0, xi, yi);
+				
+				FN_DECIMAL newX = xi + CELL_2D_X[lutPos] * m_jitter;
+				FN_DECIMAL newY = yi + CELL_2D_Y[lutPos] * m_jitter;
+				FN_DECIMAL vecX = x - newX;
+				FN_DECIMAL vecY = y - newY;
+
+				FN_DECIMAL newDistance = (FastAbs(vecX) + FastAbs(vecY)) + (vecX * vecX + vecY * vecY);
+
+				if (newDistance < distance)
+				{
+					distance = newDistance;
+					out_x = newX;
+					out_y = newY;
+				}
+			}
+		}
+		break;
+	}
+}
+
+void FastNoise::GetVoronoiNeighbors_2D(
+	FN_DECIMAL x, FN_DECIMAL y,
+	float m_jitter,
+	FN_DECIMAL& out_x0, FN_DECIMAL& out_y0,
+	FN_DECIMAL& out_x1, FN_DECIMAL& out_y1, FN_DECIMAL& out_distance1,
+	FN_DECIMAL& out_x2, FN_DECIMAL& out_y2, FN_DECIMAL& out_distance2,
+	FN_DECIMAL& out_x3, FN_DECIMAL& out_y3, FN_DECIMAL& out_distance3) const
+{
+	const int32 xr = FastRound(x);
+	const int32 yr = FastRound(y);
+	
+	const FVector2D Position(x, y);
+	
+	FVector2D BestCenter;
+	{
+		FN_DECIMAL BestDistance = MAX_flt;
+
+		for (int xi = xr - 1; xi <= xr + 1; xi++)
+		{
+			for (int yi = yr - 1; yi <= yr + 1; yi++)
+			{
+				const uint8 lutPos = Index2D_256(0, xi, yi);
+
+				const FN_DECIMAL NewX = xi + CELL_2D_X[lutPos] * m_jitter;
+				const FN_DECIMAL NewY = yi + CELL_2D_Y[lutPos] * m_jitter;
+				const FVector2D Center(NewX, NewY);
+
+				const FN_DECIMAL NewDistance = (Position - Center).SizeSquared();
+
+				if (BestDistance > NewDistance)
+				{
+					BestDistance = NewDistance;
+					BestCenter = Center;
+				}
+			}
+		}
+	}
+	
+	constexpr int32 num_dists = 4;
+	FN_DECIMAL distance[num_dists] = { MAX_flt, MAX_flt, MAX_flt, MAX_flt };
+	FN_DECIMAL xs[num_dists];
+	FN_DECIMAL ys[num_dists];
+
+	for (int xi = xr - 1; xi <= xr + 1; xi++)
+	{
+		for (int yi = yr - 1; yi <= yr + 1; yi++)
+		{
+			const uint8 lutPos = Index2D_256(0, xi, yi);
+
+			FN_DECIMAL NewX = xi + CELL_2D_X[lutPos] * m_jitter;
+			FN_DECIMAL NewY = yi + CELL_2D_Y[lutPos] * m_jitter;
+			const FVector2D Center(NewX, NewY);
+
+			FN_DECIMAL NewDistance = FMath::Abs(FVector2D::DotProduct(Position - (Center + BestCenter) / 2, (BestCenter - Center).GetSafeNormal()));
+
+			for (int32 i = 0; i < num_dists; ++i)
+			{
+				if (distance[i] > NewDistance)
+				{
+					std::swap(distance[i], NewDistance);
+					std::swap(xs[i], NewX);
+					std::swap(ys[i], NewY);
+				}
+			}
+		}
+	}
+
+	out_x0 = xs[0];
+	out_x1 = xs[1];
+	out_x2 = xs[2];
+	out_x3 = xs[3];
+
+	out_y0 = ys[0];
+	out_y1 = ys[1];
+	out_y2 = ys[2];
+	out_y3 = ys[3];
+
+	ensure(FMath::IsNearlyZero(distance[0]));
+	// distance0 is always 0 as it's the distance to the border but we're inside out_distance0 = distance[0];
+	out_distance1 = distance[1];
+	out_distance2 = distance[2];
+	out_distance3 = distance[3];
+}
+
+FN_DECIMAL FastNoise::SingleCellular_2D(FN_DECIMAL x, FN_DECIMAL y) const
 {
 	int xr = FastRound(x);
 	int yr = FastRound(y);
@@ -2006,17 +3548,17 @@ FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y) const
 		break;
 	}
 
-	unsigned char lutPos;
+	//unsigned char lutPos;
 	switch (m_cellularReturnType)
 	{
 	case CellValue:
 		return ValCoord2D(m_seed, xc, yc);
 
-	case NoiseLookup:
+	/*case NoiseLookup:
 		assert(m_cellularNoiseLookup);
 
 		lutPos = Index2D_256(0, xc, yc);
-		return m_cellularNoiseLookup->GetNoise(xc + CELL_2D_X[lutPos] * m_cellularJitter, yc + CELL_2D_Y[lutPos] * m_cellularJitter);
+		return m_cellularNoiseLookup->GetNoise(xc + CELL_2D_X[lutPos] * m_cellularJitter, yc + CELL_2D_Y[lutPos] * m_cellularJitter);*/
 
 	case Distance:
 		return distance;
@@ -2025,7 +3567,7 @@ FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y) const
 	}
 }
 
-FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y) const
+FN_DECIMAL FastNoise::SingleCellular2Edge_2D(FN_DECIMAL x, FN_DECIMAL y) const
 {
 	int xr = FastRound(x);
 	int yr = FastRound(y);
@@ -2108,28 +3650,28 @@ FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y) const
 	}
 }
 
-void FastNoise::GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z, float m_gradientPerturbAmp) const
+void FastNoise::GradientPerturb_3D(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z, float frequency, float m_gradientPerturbAmp) const
 {
-	SingleGradientPerturb(0, m_gradientPerturbAmp, m_frequency, x, y, z);
+	SingleGradientPerturb_3D(0, m_gradientPerturbAmp, frequency, x, y, z);
 }
 
-void FastNoise::GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z, float m_gradientPerturbAmp) const
+void FastNoise::GradientPerturbFractal_3D(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z, float frequency, int octaves, float m_gradientPerturbAmp) const
 {
 	FN_DECIMAL amp = m_gradientPerturbAmp * m_fractalBounding;
-	FN_DECIMAL freq = m_frequency;
+	FN_DECIMAL freq = frequency;
 	int i = 0;
 
-	SingleGradientPerturb(m_perm[0], amp, m_frequency, x, y, z);
+	SingleGradientPerturb_3D(m_perm[0], amp, frequency, x, y, z);
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		freq *= m_lacunarity;
 		amp *= m_gain;
-		SingleGradientPerturb(m_perm[i], amp, freq, x, y, z);
+		SingleGradientPerturb_3D(m_perm[i], amp, freq, x, y, z);
 	}
 }
 
-void FastNoise::SingleGradientPerturb(unsigned char offset, FN_DECIMAL warpAmp, FN_DECIMAL frequency, FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z) const
+void FastNoise::SingleGradientPerturb_3D(unsigned char offset, FN_DECIMAL warpAmp, FN_DECIMAL frequency, FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z) const
 {
 	FN_DECIMAL xf = x * frequency;
 	FN_DECIMAL yf = y * frequency;
@@ -2200,28 +3742,28 @@ void FastNoise::SingleGradientPerturb(unsigned char offset, FN_DECIMAL warpAmp, 
 	z += Lerp(lz0y, Lerp(lz0x, lz1x, ys), zs) * warpAmp;
 }
 
-void FastNoise::GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, float m_gradientPerturbAmp) const
+void FastNoise::GradientPerturb_2D(FN_DECIMAL& x, FN_DECIMAL& y, float frequency, float m_gradientPerturbAmp) const
 {
-	SingleGradientPerturb(0, m_gradientPerturbAmp, m_frequency, x, y);
+	SingleGradientPerturb_2D(0, m_gradientPerturbAmp, frequency, x, y);
 }
 
-void FastNoise::GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, float m_gradientPerturbAmp) const
+void FastNoise::GradientPerturbFractal_2D(FN_DECIMAL& x, FN_DECIMAL& y, float frequency, int octaves, float m_gradientPerturbAmp) const
 {
 	FN_DECIMAL amp = m_gradientPerturbAmp * m_fractalBounding;
-	FN_DECIMAL freq = m_frequency;
+	FN_DECIMAL freq = frequency;
 	int i = 0;
 
-	SingleGradientPerturb(m_perm[0], amp, m_frequency, x, y);
+	SingleGradientPerturb_2D(m_perm[0], amp, frequency, x, y);
 
-	while (++i < m_octaves)
+	while (++i < octaves)
 	{
 		freq *= m_lacunarity;
 		amp *= m_gain;
-		SingleGradientPerturb(m_perm[i], amp, freq, x, y);
+		SingleGradientPerturb_2D(m_perm[i], amp, freq, x, y);
 	}
 }
 
-void FastNoise::SingleGradientPerturb(unsigned char offset, FN_DECIMAL warpAmp, FN_DECIMAL frequency, FN_DECIMAL& x, FN_DECIMAL& y) const
+void FastNoise::SingleGradientPerturb_2D(unsigned char offset, FN_DECIMAL warpAmp, FN_DECIMAL frequency, FN_DECIMAL& x, FN_DECIMAL& y) const
 {
 	FN_DECIMAL xf = x * frequency;
 	FN_DECIMAL yf = y * frequency;

@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
@@ -7,143 +7,130 @@
 
 namespace FVoxelDataUtilities
 {
-	/**
-	 * Won't work if a setter is called in the map bounds after the map creation
-	 */
-	struct MapAccelerator
+	template<typename TData>
+	struct TBilinearInterpolatedData
 	{
-	private:
-		struct FLastMapQuery
+		const TData& Data;
+		
+		explicit TBilinearInterpolatedData(const TData& Data) : Data(Data) {}
+		
+		v_flt GetValue(v_flt X, v_flt Y, v_flt Z, int32 LOD) const
 		{
-			FIntVector Position;
-			const FVoxelDataOctree** Chunk = nullptr;
-			bool bValid = false;
-		};
+			const int32 MinX = FMath::FloorToInt(X);
+			const int32 MinY = FMath::FloorToInt(Y);
+			const int32 MinZ = FMath::FloorToInt(Z);
 
-		FVoxelMap Map;
-		FLastMapQuery LastQuery;
-		const FVoxelData& Data;
+			const int32 MaxX = FMath::CeilToInt(X);
+			const int32 MaxY = FMath::CeilToInt(Y);
+			const int32 MaxZ = FMath::CeilToInt(Z);
 
-	public:
-		MapAccelerator(const FIntBox& Bounds, const FVoxelData* InData)
-			: Data(*InData)
-		{
-			Data.GetOctree()->GetMap(Bounds, Map);
-			Map.Compact();
-		}
+			const v_flt AlphaX = X - MinX;
+			const v_flt AlphaY = Y - MinY;
+			const v_flt AlphaZ = Z - MinZ;
 
-		inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int32 QueryLOD)
-		{
-			FIntVector Position = FVoxelUtilities::DivideFloor(FIntVector(X, Y, Z), VOXEL_CELL_SIZE);
-			if (!LastQuery.bValid || LastQuery.Position != Position)
-			{
-				LastQuery.Position = Position;
-				LastQuery.Chunk = Map.Find(Position);
-				LastQuery.bValid = true;
-			}
-			if (LastQuery.Chunk)
-			{
-				(*LastQuery.Chunk)->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial, QueryLOD);
-			}
-			else
-			{
-				Data.GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial, QueryLOD);
-			}
-		}
-		inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int32 QueryLOD) { GetValueAndMaterial(X, Y, Z, &OutValue, &OutMaterial, QueryLOD); }
-
-		inline FVoxelValue GetValue(int32 X, int32 Y, int32 Z, int32 QueryLOD)
-		{
-			FVoxelValue Value;
-			GetValueAndMaterial(X, Y, Z, &Value, nullptr, QueryLOD);
-			return Value;
-		}
-		inline FVoxelValue GetValue(const FIntVector& P, int32 QueryLOD) { return GetValue(P.X, P.Y, P.Z, QueryLOD); }
-
-		inline FVoxelMaterial GetMaterial(int32 X, int32 Y, int32 Z, int32 QueryLOD)
-		{
-			FVoxelMaterial Material;
-			GetValueAndMaterial(X, Y, Z, nullptr, &Material, QueryLOD);
-			return Material;
-		}
-		inline FVoxelMaterial GetMaterial(const FIntVector& P, int32 QueryLOD) { return GetMaterial(P.X, P.Y, P.Z, QueryLOD); }
-	};
-
-	/**
-	 * Works with setters
-	 */
-	struct LastOctreeAccelerator
-	{
-	private:
-		FVoxelDataOctree* LastOctree = nullptr;
-		const FVoxelData& Data;
-
-	public:
-		LastOctreeAccelerator(const FVoxelData& Data)
-			: Data(Data)
-		{
-		}
-
-		inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue* OutValue, FVoxelMaterial* OutMaterial, int32 QueryLOD)
-		{
-			if (UNLIKELY(!Data.IsInWorld(X, Y, Z)))
-			{
-				Data.WorldGenerator->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial, QueryLOD, FVoxelPlaceableItemHolder());
-			}
-			else
-			{
-				if (UNLIKELY(!LastOctree || !LastOctree->IsInOctree(X, Y, Z) || !LastOctree->IsLeaf()))
-				{
-					LastOctree = Data.GetOctree()->GetLeaf(X, Y, Z);
-				}
-				LastOctree->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial, QueryLOD);
-			}
+			return FVoxelUtilities::TrilinearInterpolation<v_flt>(
+				Data.GetValue(MinX, MinY, MinZ, LOD).ToFloat(),
+				Data.GetValue(MaxX, MinY, MinZ, LOD).ToFloat(),
+				Data.GetValue(MinX, MaxY, MinZ, LOD).ToFloat(),
+				Data.GetValue(MaxX, MaxY, MinZ, LOD).ToFloat(),
+				Data.GetValue(MinX, MinY, MaxZ, LOD).ToFloat(),
+				Data.GetValue(MaxX, MinY, MaxZ, LOD).ToFloat(),
+				Data.GetValue(MinX, MaxY, MaxZ, LOD).ToFloat(),
+				Data.GetValue(MaxX, MaxY, MaxZ, LOD).ToFloat(),
+				AlphaX,
+				AlphaY,
+				AlphaZ);
 		}
 		template<typename T>
-		void SetValueOrMaterial(int32 X, int32 Y, int32 Z, const T& Value)
+		v_flt GetValue(const T& P, int32 LOD) const
 		{
-			if (UNLIKELY(!Data.IsInWorld(X, Y, Z)))
-			{
-				return;
-			}
-			if (UNLIKELY(!LastOctree || !LastOctree->IsInOctree(X, Y, Z) || !LastOctree->IsLeaf()))
-			{
-				LastOctree = Data.GetOctree()->GetLeaf(X, Y, Z);
-			}
-			LastOctree->SetValueOrMaterial<T>(X, Y, Z, Value);
+			return GetValue(P.X, P.Y, P.Z, LOD);
 		}
-
-		inline void GetValueAndMaterial(int32 X, int32 Y, int32 Z, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int32 QueryLOD) { GetValueAndMaterial(X, Y, Z, &OutValue, &OutMaterial, QueryLOD); }
-		inline void GetValueAndMaterial(const FIntVector& P, FVoxelValue& OutValue, FVoxelMaterial& OutMaterial, int32 QueryLOD) { GetValueAndMaterial(P.X, P.Y, P.Z, &OutValue, &OutMaterial, QueryLOD); }
-
-		inline FVoxelValue GetValue(int32 X, int32 Y, int32 Z, int32 QueryLOD) { FVoxelValue Value; GetValueAndMaterial(X, Y, Z, &Value, nullptr, QueryLOD); return Value; }
-		inline FVoxelValue GetValue(const FIntVector& P, int32 QueryLOD) { return GetValue(P.X, P.Y, P.Z, QueryLOD); }
-
-		inline FVoxelMaterial GetMaterial(int32 X, int32 Y, int32 Z, int32 QueryLOD) { FVoxelMaterial Material; GetValueAndMaterial(X, Y, Z, nullptr, &Material, QueryLOD); return Material; }
-		inline FVoxelMaterial GetMaterial(const FIntVector& P, int32 QueryLOD) { return GetMaterial(P.X, P.Y, P.Z, QueryLOD); }
-
-		inline void SetValue(int32 X, int32 Y, int32 Z, FVoxelValue Value) { SetValueOrMaterial<FVoxelValue>(X, Y, Z, Value); }
-		inline void SetValue(const FIntVector& P, FVoxelValue Value) { SetValueOrMaterial<FVoxelValue>(P.X, P.Y, P.Z, Value); }
-
-		inline void SetMaterial(int32 X, int32 Y, int32 Z, FVoxelMaterial Material) { SetValueOrMaterial<FVoxelMaterial>(X, Y, Z, Material); }
-		inline void SetMaterial(const FIntVector& P, FVoxelMaterial Material) { SetValueOrMaterial<FVoxelMaterial>(P.X, P.Y, P.Z, Material); }
 	};
+
+	template<typename TData>
+	inline TBilinearInterpolatedData<TData> MakeBilinearInterpolatedData(const TData& Data)
+	{
+		return TBilinearInterpolatedData<TData>(Data);
+	}
+
+	template<typename TData>
+	struct TFloatData
+	{
+		const TData& Data;
+		
+		explicit TFloatData(const TData& Data) : Data(Data) {}
+		
+		float GetValue(int32 X, int32 Y, int32 Z, int32 LOD) const
+		{
+			return Data.GetValue(X, Y, Z, LOD).ToFloat();
+		}
+		float GetValue(const FIntVector& P, int32 LOD) const
+		{
+			return GetValue(P.X, P.Y, P.Z, LOD);
+		}
+	};
+
+	template<typename TData>
+	inline TFloatData<TData> MakeFloatData(const TData& Data)
+	{
+		return TFloatData<TData>(Data);
+	}
 	
 	/**
 	 * Requires read lock in FIntBox(Position - Offset, Position + Offset + 1)
 	 */
-	template<typename T>
-	inline FVector GetGradient(T& Data, int32 X, int32 Y, int32 Z, int32 QueryLOD, int32 Offset = 1)
+	template<typename T, typename TData>
+	inline FVector GetGradientFromGetValue(const TData& Data, T X, T Y, T Z, int32 LOD, T Offset = 1)
 	{
-		FVector Gradient;
-		Gradient.X = Data.GetValue(X + Offset, Y, Z, QueryLOD).ToFloat() - Data.GetValue(X - Offset, Y, Z, QueryLOD).ToFloat();
-		Gradient.Y = Data.GetValue(X, Y + Offset, Z, QueryLOD).ToFloat() - Data.GetValue(X, Y - Offset, Z, QueryLOD).ToFloat();
-		Gradient.Z = Data.GetValue(X, Y, Z + Offset, QueryLOD).ToFloat() - Data.GetValue(X, Y, Z - Offset, QueryLOD).ToFloat();
-		return Gradient.GetSafeNormal();
+		const double MinX = Data.GetValue(X - Offset, Y, Z, LOD);
+		const double MaxX = Data.GetValue(X + Offset, Y, Z, LOD);
+		const double MinY = Data.GetValue(X, Y - Offset, Z, LOD);
+		const double MaxY = Data.GetValue(X, Y + Offset, Z, LOD);
+		const double MinZ = Data.GetValue(X, Y, Z - Offset, LOD);
+		const double MaxZ = Data.GetValue(X, Y, Z + Offset, LOD);
+		return FVector(MaxX - MinX, MaxY - MinY, MaxZ - MinZ).GetSafeNormal();
 	}
-	template<typename T>
-	inline FVector GetGradient(T& Data, const FIntVector& P, int32 QueryLOD)
+
+	template<typename T, typename TData>
+	inline FVector GetGradientFromGetFloatValue(TData& Data, T X, T Y, T Z, int32 LOD, T Offset = 1)
 	{
-		return GetGradient(Data, P.X, P.Y, P.Z, QueryLOD);
+		// Force offset to 1 as we don't have data any further outside of the generator
+		const auto Fallback = [&]() { return GetGradientFromGetValue<T>(MakeBilinearInterpolatedData(Data), X, Y, Z, LOD, 1); };
+		bool bIsGeneratorValue = true;
+		
+		const double MinX = Data.GetFloatValue(X - Offset, Y, Z, LOD, &bIsGeneratorValue);
+		if (!bIsGeneratorValue) return Fallback();
+		const double MaxX = Data.GetFloatValue(X + Offset, Y, Z, LOD, &bIsGeneratorValue);
+		if (!bIsGeneratorValue) return Fallback();
+		const double MinY = Data.GetFloatValue(X, Y - Offset, Z, LOD, &bIsGeneratorValue);
+		if (!bIsGeneratorValue) return Fallback();
+		const double MaxY = Data.GetFloatValue(X, Y + Offset, Z, LOD, &bIsGeneratorValue);
+		if (!bIsGeneratorValue) return Fallback();
+		const double MinZ = Data.GetFloatValue(X, Y, Z - Offset, LOD, &bIsGeneratorValue);
+		if (!bIsGeneratorValue) return Fallback();
+		const double MaxZ = Data.GetFloatValue(X, Y, Z + Offset, LOD, &bIsGeneratorValue);
+		if (!bIsGeneratorValue) return Fallback();
+		
+		return FVector(MaxX - MinX, MaxY - MinY, MaxZ - MinZ).GetSafeNormal();
+	}
+	
+	template<typename T, typename F>
+	inline void IterateDirtyDataInBounds(const FVoxelData& Data, const FIntBox& Bounds, F Lambda)
+	{
+		FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](const FVoxelDataOctreeLeaf& Leaf)
+		{
+			if (Leaf.GetData<T>().IsDirty())
+			{
+				const FIntBox LeafBounds = Leaf.GetBounds();
+				auto* RESTRICT DataPtr = Leaf.GetData<T>().GetDataPtr();
+				LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+				{
+					const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
+					const T& Value = DataPtr[Index];
+					Lambda(X, Y, Z, Value);
+				});
+			}
+		});
 	}
 }

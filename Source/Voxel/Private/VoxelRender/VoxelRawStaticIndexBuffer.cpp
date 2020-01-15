@@ -1,4 +1,4 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelRender/VoxelRawStaticIndexBuffer.h"
 
@@ -10,7 +10,7 @@ FVoxelRawStaticIndexBuffer::FVoxelRawStaticIndexBuffer(bool InNeedsCPUAccess)
 
 void FVoxelRawStaticIndexBuffer::SetIndices(const TArray<uint32>& InIndices, EIndexBufferStride::Type DesiredStride)
 {
-	int32 NumInIndices = InIndices.Num();
+	const int32 NumInIndices = InIndices.Num();
 	bool bShouldUse32Bit = false;
 
 	// Figure out if we should store the indices as 16 or 32 bit.
@@ -29,7 +29,7 @@ void FVoxelRawStaticIndexBuffer::SetIndices(const TArray<uint32>& InIndices, EIn
 	}
 
 	// Allocate storage for the indices.
-	int32 IndexStride = bShouldUse32Bit ? sizeof(uint32) : sizeof(uint16);
+	const int32 IndexStride = bShouldUse32Bit ? sizeof(uint32) : sizeof(uint16);
 	IndexStorage.Empty(IndexStride * NumInIndices);
 	IndexStorage.AddUninitialized(IndexStride * NumInIndices);
 
@@ -45,13 +45,27 @@ void FVoxelRawStaticIndexBuffer::SetIndices(const TArray<uint32>& InIndices, EIn
 	{
 		// Copy element by element demoting 32-bit integers to 16-bit.
 		check(IndexStorage.Num() == InIndices.Num() * sizeof(uint16));
-		uint16* DestIndices16Bit = (uint16*)IndexStorage.GetData();
+		uint16* DestIndices16Bit = reinterpret_cast<uint16*>(IndexStorage.GetData());
 		for (int32 i = 0; i < NumInIndices; ++i)
 		{
 			DestIndices16Bit[i] = InIndices[i];
 		}
 		b32Bit = false;
 	}
+
+	UpdateCachedNumIndices();
+}
+
+void FVoxelRawStaticIndexBuffer::AllocateData(int32 NumInIndices)
+{
+	const bool bShouldUse32Bit = NumInIndices > MAX_uint16;
+
+	// Allocate storage for the indices.
+	const int32 IndexStride = bShouldUse32Bit ? sizeof(uint32) : sizeof(uint16);
+	IndexStorage.Empty(IndexStride * NumInIndices);
+	IndexStorage.AddUninitialized(IndexStride * NumInIndices);
+
+	b32Bit = bShouldUse32Bit;
 
 	UpdateCachedNumIndices();
 }
@@ -75,7 +89,7 @@ void FVoxelRawStaticIndexBuffer::InsertIndices( const uint32 At, const uint32* I
 			else
 			{
 				// Copy element by element demoting 32-bit integers to 16-bit.
-				uint16* DestIndices16Bit = (uint16*)DestIndices;
+				uint16* DestIndices16Bit = reinterpret_cast<uint16*>(DestIndices);
 				for( uint32 Index = 0; Index < NumIndicesToAppend; ++Index )
 				{
 					DestIndices16Bit[ Index ] = IndicesToAppend[ Index ];
@@ -123,7 +137,7 @@ void FVoxelRawStaticIndexBuffer::GetCopy(TArray<uint32>& OutIndices) const
 	{
 		// Copy element by element promoting 16-bit integers to 32-bit.
 		check(IndexStorage.Num() == OutIndices.Num() * sizeof(uint16));
-		const uint16* SrcIndices16Bit = (const uint16*)IndexStorage.GetData();
+		const uint16* SrcIndices16Bit = reinterpret_cast<const uint16*>(IndexStorage.GetData());
 		for (uint32 i = 0; i < NumIndices; ++i)
 		{
 			OutIndices[i] = SrcIndices16Bit[i];
@@ -147,8 +161,9 @@ FIndexArrayView FVoxelRawStaticIndexBuffer::GetArrayView() const
 
 void FVoxelRawStaticIndexBuffer::InitRHI()
 {
-	uint32 IndexStride = b32Bit ? sizeof(uint32) : sizeof(uint16);
-	uint32 SizeInBytes = IndexStorage.Num();
+	const uint32 IndexStride = b32Bit ? sizeof(uint32) : sizeof(uint16);
+	const uint32 SizeInBytes = IndexStorage.Num();
+	check(NumIndices == (b32Bit ? (IndexStorage.Num() / 4) : (IndexStorage.Num() / 2)));
 
 	if (SizeInBytes > 0)
 	{
@@ -168,8 +183,8 @@ void FVoxelRawStaticIndexBuffer::Serialize(FArchive& Ar, bool bNeedsCPUAccess)
 
 		b32Bit = false;
 		LegacyIndices.BulkSerialize(Ar);
-		int32 NumLegacyIndices = LegacyIndices.Num();
-		int32 IndexStride = sizeof(uint16);
+		const int32 NumLegacyIndices = LegacyIndices.Num();
+		const int32 IndexStride = sizeof(uint16);
 		IndexStorage.Empty(NumLegacyIndices * IndexStride);
 		IndexStorage.AddUninitialized(NumLegacyIndices * IndexStride);
 		FMemory::Memcpy(IndexStorage.GetData(),LegacyIndices.GetData(),IndexStorage.Num());

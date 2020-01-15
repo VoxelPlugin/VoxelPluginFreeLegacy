@@ -1,14 +1,48 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
-#include "VoxelMaterialCollection.h"
-#include "VoxelRender/VoxelIntermediateChunk.h"
+#include "VoxelRender/VoxelMaterialCollection.h"
+#include "VoxelRender/VoxelBlendedMaterial.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInstanceConstant.h"
+#include "UObject/ConstructorHelpers.h"
 
-UMaterialInterface* FVoxelMaterialCollectionGenerated::GetVoxelMaterial(const FVoxelBlendedMaterial& Index)
+UMaterialInterface* UVoxelMaterialCollectionBase::GetVoxelMaterial(const FVoxelBlendedMaterialUnsorted& Index, bool bTessellation) const
+{
+	check(false);
+	return nullptr;
+}
+
+TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted> UVoxelMaterialCollectionBase::GetBlendedMaterialsMap() const
+{
+	return {};
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UMaterialInterface* UVoxelBasicMaterialCollection::GetVoxelMaterial(const FVoxelBlendedMaterialUnsorted& Index, bool bTessellation) const
+{
+	if (Index.Kind == FVoxelBlendedMaterialUnsorted::Single && Materials.IsValidIndex(Index.Index0))
+	{
+		auto& Element = Materials[Index.Index0];
+		return bTessellation ? Element.TessellatedMaterial : Element.Material;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UMaterialInterface* FVoxelMaterialCollectionGenerated::GetVoxelMaterial(const FVoxelBlendedMaterialUnsorted& Index) const
 {
 	switch (Index.Kind)
 	{
-	case FVoxelBlendedMaterial::Single:
+	case FVoxelBlendedMaterialUnsorted::Single:
 	{
 		if (!GeneratedSingleMaterials)
 		{
@@ -17,7 +51,7 @@ UMaterialInterface* FVoxelMaterialCollectionGenerated::GetVoxelMaterial(const FV
 		UMaterialInterface** Result = GeneratedSingleMaterials->Map.Find(Index.Index0);
 		return Result ? *Result : nullptr;
 	}
-	case FVoxelBlendedMaterial::Double:
+	case FVoxelBlendedMaterialUnsorted::Double:
 	{
 		if (!GeneratedDoubleMaterials)
 		{
@@ -26,7 +60,7 @@ UMaterialInterface* FVoxelMaterialCollectionGenerated::GetVoxelMaterial(const FV
 		UMaterialInterface** Result = GeneratedDoubleMaterials->Map.Find(FVoxelMaterialCollectionDoubleIndex(Index.Index0, Index.Index1));
 		return Result ? *Result : nullptr;
 	}
-	case FVoxelBlendedMaterial::Triple:
+	case FVoxelBlendedMaterialUnsorted::Triple:
 	{
 		if (!GeneratedTripleMaterials)
 		{
@@ -43,7 +77,20 @@ UMaterialInterface* FVoxelMaterialCollectionGenerated::GetVoxelMaterial(const FV
 	}
 }
 
-UMaterialInterface* UVoxelMaterialCollection::GetVoxelMaterial(const FVoxelBlendedMaterial& Index, bool bTessellation)
+UVoxelMaterialCollection::UVoxelMaterialCollection()
+{
+    static ConstructorHelpers::FObjectFinder<UMaterial> SingleHelper(TEXT("/Voxel/MaterialHelpers/MF_SingleMaterialTemplate"));
+    static ConstructorHelpers::FObjectFinder<UMaterial> DoubleHelper(TEXT("/Voxel/MaterialHelpers/MF_DoubleMaterialTemplate"));
+    static ConstructorHelpers::FObjectFinder<UMaterial> TripleHelper(TEXT("/Voxel/MaterialHelpers/MF_TripleMaterialTemplate"));
+
+	SingleMaterialTemplate = SingleHelper.Object;
+	DoubleMaterialTemplate = DoubleHelper.Object;
+	TripleMaterialTemplate = TripleHelper.Object;
+
+	bShouldGenerateBlendings = true;
+}
+
+UMaterialInterface* UVoxelMaterialCollection::GetVoxelMaterial(const FVoxelBlendedMaterialUnsorted& Index, bool bTessellation) const
 {
 	if (bTessellation)
 	{
@@ -55,53 +102,65 @@ UMaterialInterface* UVoxelMaterialCollection::GetVoxelMaterial(const FVoxelBlend
 	}
 }
 
-void UVoxelMaterialCollection::PostLoad()
+TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted> UVoxelMaterialCollection::GetBlendedMaterialsMap() const
 {
-	Super::PostLoad();
-
-	if (MaterialFunctions_DEPRECATED.Num() > 0)
+	TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted> Result;
+	if (GeneratedMaterials.GeneratedDoubleMaterials)
 	{
-		for (int32 Index = 0; Index < MaterialFunctions_DEPRECATED.Num(); Index++)
+		for (auto& It : GeneratedMaterials.GeneratedDoubleMaterials->SortedIndexMap)
 		{
-			int32 Last = Materials.Emplace();
-			auto& NewMaterial = Materials[Last];
-			NewMaterial.Index = Index;
-			NewMaterial.MaterialFunction = MaterialFunctions_DEPRECATED[Index];
-			if (PhysicalMaterials_DEPRECATED.IsValidIndex(Index))
+			Result.Add(FVoxelBlendedMaterialSorted(It.Key.I, It.Key.J), FVoxelBlendedMaterialUnsorted(It.Value.I, It.Value.J));
+		}
+	}
+	if (GeneratedMaterials.GeneratedTripleMaterials)
+	{
+		for (auto& It : GeneratedMaterials.GeneratedTripleMaterials->SortedIndexMap)
+		{
+			Result.Add(FVoxelBlendedMaterialSorted(It.Key.I, It.Key.J, It.Key.K), FVoxelBlendedMaterialUnsorted(It.Value.I, It.Value.J, It.Value.K));
+		}
+	}
+	return Result;
+}
+
+bool UVoxelMaterialCollection::IsValidIndex(uint8 Index) const
+{
+	return Materials.ContainsByPredicate([&](FVoxelMaterialCollectionElement& Element)
+	{
+		if (Element.Children.Num() == 0)
+		{
+			return Element.Index == Index;
+		}
+		else
+		{
+			return Element.Children.ContainsByPredicate([&](FVoxelMaterialCollectionElementIndex& Child)
 			{
-				NewMaterial.PhysicalMaterial = PhysicalMaterials_DEPRECATED[Index];
+				return Child.InstanceIndex == Index;
+			});
+		}
+	});
+}
+
+int32 UVoxelMaterialCollection::GetMaterialIndex(FName Name) const
+{
+	for (auto& Material : Materials)
+	{
+		if (Material.MaterialFunction)
+		{
+			if (Material.MaterialFunction->GetFName() == Name)
+			{
+				return Material.Index;
+			}
+			for (auto& Instance : Material.Children)
+			{
+				if (Instance.MaterialInstance)
+				{
+					if (Instance.MaterialInstance->GetFName() == Name)
+					{
+						return Instance.InstanceIndex;
+					}
+				}
 			}
 		}
 	}
-
-	InitVariables();
-}
-
-void UVoxelMaterialCollection::PostInitProperties()
-{
-	Super::PostInitProperties();
-
-	if (!HasAnyFlags(RF_ClassDefaultObject | RF_NeedLoad))
-	{
-		InitVariables();
-	}
-}
-
-void UVoxelMaterialCollection::InitVariables()
-{
-	if (!SingleMaterialTemplate)
-	{
-		Modify();
-		SingleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_SingleMaterialTemplate"));
-	}
-	if (!DoubleMaterialTemplate)
-	{
-		Modify();
-		DoubleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_DoubleMaterialTemplate"));
-	}
-	if (!TripleMaterialTemplate)
-	{
-		Modify();
-		TripleMaterialTemplate = LoadObject<UMaterial>(this, TEXT("/Voxel/MaterialHelpers/MF_TripleMaterialTemplate"));
-	}
+	return -1;
 }

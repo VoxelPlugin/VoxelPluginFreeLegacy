@@ -1,18 +1,42 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #include "VoxelData/VoxelSave.h"
 #include "VoxelSerializationUtilities.h"
 #include "VoxelMathUtilities.h"
 #include "VoxelCustomVersion.h"
-#include "VoxelBlueprintErrors.h"
+#include "VoxelMessages.h"
 
 #include "Serialization/BufferArchive.h"
+
+DEFINE_STAT(STAT_VoxelUncompressedSavesMemory);
+DEFINE_STAT(STAT_VoxelCompressedSavesMemory);
+
+struct FVoxelChunkSaveWithoutFoliage
+{
+	FIntVector Position;
+	int32 ValuesIndex;
+	int32 MaterialsIndex;
+
+	FORCEINLINE friend FArchive& operator<<(FArchive& Ar, FVoxelChunkSaveWithoutFoliage& Save)
+	{
+		Ar << Save.Position;
+		Ar << Save.ValuesIndex;
+		Ar << Save.MaterialsIndex;
+
+		return Ar;
+	}
+
+	FORCEINLINE operator FVoxelUncompressedWorldSave::FVoxelChunkSave() const
+	{
+		return { Position, ValuesIndex, MaterialsIndex, -1 };
+	}
+};
 
 bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 {
 	Ar.UsingCustomVersion(FVoxelCustomVersion::GUID);
 
-	if (Ar.IsLoading() || Ar.IsSaving())
+	if ((Ar.IsLoading() || Ar.IsSaving()) && !Ar.IsTransacting())
 	{
 		if (Ar.IsSaving())
 		{
@@ -21,37 +45,83 @@ bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 
 		DEC_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, GetAllocatedSize());
 
-		int32 Dummy = 42;
-		Ar << Dummy;
-		if (Dummy == 42) // Trick to know the version, as Depth is always smaller than 42
+		// Serialize version & depth
 		{
-			Ar << Version;
-			Ar << Depth;
+			int32 Dummy = 42;
+			Ar << Dummy;
+			if (Dummy == 42) // Trick to know the version, as Depth is always smaller than 42
+			{
+				Ar << Version;
+				Ar << Depth;
+			}
+			else
+			{
+				Version = FVoxelCustomVersion::BeforeCustomVersionWasAdded;
+				Depth = Dummy;
+			}
+		}
+
+		// Serialize GUID
+		if (Version >= FVoxelCustomVersion::ValueConfigFlagAndSaveGUIDs)
+		{
+			Ar << Guid;
 		}
 		else
 		{
-			Version = FVoxelCustomVersion::BeforeCustomVersionWasAdded;
-			Depth = Dummy;
+			Guid = FGuid::NewGuid();
 		}
-		uint32 ConfigFlags = GetVoxelMaterialConfigFlag();
-		Ar << ConfigFlags;
-		if (Version == FVoxelCustomVersion::BeforeCustomVersionWasAdded)
+		
+		// Serialize value config
+		uint32 ValueConfigFlag = GVoxelValueConfigFlag;
+		if (Version >= FVoxelCustomVersion::ValueConfigFlagAndSaveGUIDs)
 		{
-			Ar << Values;
+			Ar << ValueConfigFlag;
 		}
-		else
+
+		// Serialize material config
+		uint32 MaterialConfigFlag = GVoxelMaterialConfigFlag;
+		Ar << MaterialConfigFlag;
+
+		// Serialize value buffers
+		FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers, ValueConfigFlag, Version);
+
+		// Serialize material buffers
+		FVoxelSerializationUtilities::SerializeMaterials(Ar, MaterialBuffers, MaterialConfigFlag, Version);
+
+		// Serialize foliage buffers
+		if (Version >= FVoxelCustomVersion::FoliagePaint)
 		{
-			Values.BulkSerialize(Ar);
+			FoliageBuffers.BulkSerialize(Ar);
 		}
-		FVoxelSerializationUtilities::SerializeMaterials(Ar, Materials, ConfigFlags, Version);
-		if (Version == FVoxelCustomVersion::BeforeCustomVersionWasAdded)
+
+		// Serialize single values buffers
+		if (Version >= FVoxelCustomVersion::SingleValues)
 		{
-			Ar << Chunks;
+			FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues, ValueConfigFlag, Version);
+			FVoxelSerializationUtilities::SerializeMaterials(Ar, SingleMaterials, MaterialConfigFlag, Version);
+			SingleFoliage.BulkSerialize(Ar);
+		}
+
+		// Serialize chunks indices
+		if (Version < FVoxelCustomVersion::FoliagePaint)
+		{
+			TArray<FVoxelChunkSaveWithoutFoliage> OldChunks;
+			if (Version == FVoxelCustomVersion::BeforeCustomVersionWasAdded)
+			{
+				Ar << OldChunks;
+			}
+			else
+			{
+				OldChunks.BulkSerialize(Ar);
+			}
+			Chunks = TArray<FVoxelChunkSave>(OldChunks);
 		}
 		else
 		{
 			Chunks.BulkSerialize(Ar);
 		}
+
+		// Serialize placeable items
 		if (Version >= FVoxelCustomVersion::PlaceableItemsInSave)
 		{
 			Ar << PlaceableItems;
@@ -59,10 +129,10 @@ bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 		
 		if (Ar.IsLoading() && Ar.IsError())
 		{
-			FVoxelBPErrors::Error(NSLOCTEXT("Voxel", "VoxelSaveSerializationFailed", "VoxelSave: Serialization failed, data is corrupted"));
+			FVoxelMessages::Error(NSLOCTEXT("Voxel", "VoxelSaveSerializationFailed", "VoxelSave: Serialization failed, data is corrupted"));
 			Depth = -1;
-			Values.Reset();
-			Materials.Reset();
+			ValueBuffers.Reset();
+			MaterialBuffers.Reset();
 			Chunks.Reset();
 			PlaceableItems.Reset();
 		}
@@ -75,14 +145,19 @@ bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 
 TArray<uint8> FVoxelUncompressedWorldSave::GetSerializedData() const
 {
-	FBufferArchive Archive;
+	TArray<uint8> Array;
+	FMemoryWriter Archive(Array, true);
 	const_cast<FVoxelUncompressedWorldSave*>(this)->Serialize(Archive);
-	return MoveTemp(Archive);
+	return MoveTemp(Array);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 bool FVoxelCompressedWorldSave::Serialize(FArchive& Ar)
 {
-	if (Ar.IsLoading() || Ar.IsSaving())
+	if ((Ar.IsLoading() || Ar.IsSaving()) && !Ar.IsTransacting())
 	{
 		if (Ar.IsSaving())
 		{
@@ -93,7 +168,16 @@ bool FVoxelCompressedWorldSave::Serialize(FArchive& Ar)
 
 		Ar << Depth;
 		Ar << Version;
-		Ar << ConfigFlags;
+		if (Version < FVoxelCustomVersion::ValueConfigFlagAndSaveGUIDs)
+		{
+			uint32 ConfigFlags;
+			Ar << ConfigFlags;
+			Guid = FGuid::NewGuid();
+		}
+		else
+		{
+			Ar << Guid;
+		}
 		Ar << CompressedData;
 
 		INC_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, GetAllocatedSize());
@@ -101,6 +185,10 @@ bool FVoxelCompressedWorldSave::Serialize(FArchive& Ar)
 
 	return true;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelWorldSaveObject::PostLoad()
 {

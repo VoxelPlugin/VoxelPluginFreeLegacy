@@ -1,4 +1,6 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
+
+#define VOXEL_PLUGIN_PRO
 
 using System.IO;
 using UnrealBuildTool;
@@ -14,14 +16,13 @@ public class Voxel : ModuleRules
         if (!Target.bUseUnityBuild)
         {
             PrivatePCHHeaderFile = "Private/VoxelPCH.h";
-#if UE_4_22_OR_LATER
-#else
-            PrivateDependencyModuleNames.Add("LivePP");
-#endif
         }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
+
+        // For raytracing
+        PrivateIncludePaths.Add(EngineDirectory + "/Shaders/Shared");
 
         PublicDependencyModuleNames.AddRange(
             new string[]
@@ -32,11 +33,11 @@ public class Voxel : ModuleRules
                 "Networking",
                 "Sockets",
                 "RHI",
+#if UE_4_23_OR_LATER
+                "PhysicsCore",
+#endif
                 "RenderCore",
-                "Slate",
-                "SlateCore",
                 "Landscape",
-                "HTTP"
             }
         );
 
@@ -44,13 +45,31 @@ public class Voxel : ModuleRules
             new string[]
             {
                 "nvTessLib",
-                "Steamworks"
+                "HTTP",
+                "Projects",
+                "Slate",
+                "SlateCore",
+                //"VHACD", // Not used, too slow
             }
         );
+
+        SetupModulePhysicsSupport(Target);
 
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
             PrivateDependencyModuleNames.Add("ForsythTriOptimizer");
+        }
+
+        if (Target.Platform == UnrealTargetPlatform.Win64 ||
+            Target.Platform == UnrealTargetPlatform.Win32 ||
+            Target.Platform == UnrealTargetPlatform.Mac)
+        {
+            PrivateDependencyModuleNames.Add("OnlineSubsystemSteam");
+            PublicDefinitions.Add("VOXEL_USE_STEAM=1");
+        }
+        else
+        {
+            PublicDefinitions.Add("VOXEL_USE_STEAM=0");
         }
 
         if (Target.Configuration == UnrealTargetConfiguration.DebugGame)
@@ -58,44 +77,6 @@ public class Voxel : ModuleRules
             PublicDefinitions.Add("VOXEL_DEBUG=1");
         }
 
-        // Steam
-        {
-            //string SteamVersion = "v139";
-            //PublicDefinitions.Add("STEAM_SDK_VER=TEXT(\"1.39\")");
-            //PublicDefinitions.Add("STEAM_SDK_VER_PATH=TEXT(\"Steam" + SteamVersion + "\")");
-
-            //string SdkBase = Target.UEThirdPartySourceDirectory + "Steamworks/Steam" + SteamVersion + "/sdk";
-            //PublicDefinitions.Add("USE_STEAM=" + (Directory.Exists(SdkBase) ? "1" : "0"));
-            PublicDefinitions.Add("USE_STEAM=0");
-        }
-
-        // Embree
-        if (Target.Platform == UnrealTargetPlatform.Win64)
-        {
-            string SDKDir = Target.UEThirdPartySourceDirectory + "IntelEmbree/Embree2140/Win64/";
-
-            PublicIncludePaths.Add(SDKDir + "include");
-            PublicLibraryPaths.Add(SDKDir + "lib");
-            PublicAdditionalLibraries.Add("embree.2.14.0.lib");
-            RuntimeDependencies.Add("$(EngineDir)/Binaries/Win64/embree.2.14.0.dll");
-            PublicDelayLoadDLLs.Add("embree.2.14.0.dll");
-            RuntimeDependencies.Add("$(EngineDir)/Binaries/Win64/tbb.dll");
-            RuntimeDependencies.Add("$(EngineDir)/Binaries/Win64/tbbmalloc.dll");
-            PublicDefinitions.Add("USE_EMBREE=1");
-        }
-        else if (Target.Platform == UnrealTargetPlatform.Mac)
-        {
-            string SDKDir = Target.UEThirdPartySourceDirectory + "IntelEmbree/Embree2140/MacOSX/";
-
-            PublicIncludePaths.Add(SDKDir + "include");
-            PublicAdditionalLibraries.Add(SDKDir + "lib/libembree.2.14.0.dylib");
-            PublicAdditionalLibraries.Add(SDKDir + "lib/libtbb.dylib");
-            PublicAdditionalLibraries.Add(SDKDir + "lib/libtbbmalloc.dylib");
-            PublicDefinitions.Add("USE_EMBREE=1");
-        }
-        else
-        {
-            PublicDefinitions.Add("USE_EMBREE=0");
-        }
+        PublicDefinitions.Add("VOXEL_PLUGIN_PRO=1");
     }
 }

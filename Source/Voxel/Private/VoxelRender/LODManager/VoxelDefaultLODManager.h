@@ -1,10 +1,11 @@
-// Copyright 2019 Phyronnaz
+// Copyright 2020 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/EngineTypes.h"
+#include "VoxelTickable.h"
 #include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelGlobals.h"
 
 class FVoxelRenderOctreeAsyncBuilder;
 class FVoxelRenderOctree;
@@ -13,9 +14,11 @@ class AVoxelWorldInterface;
 
 struct FVoxelLODDynamicSettings
 {
-	int32 LODLimit;
+	int32 MinLOD;
+	int32 MaxLOD;
 	TMap<uint8, float> LODToMinDistance;
-	
+
+	// In world space
 	float InvokerDistanceThreshold;
 	
 	int32 ChunksCullingLOD;
@@ -27,64 +30,59 @@ struct FVoxelLODDynamicSettings
 	int32 VisibleChunksCollisionsMaxLOD;
 	
 	bool bEnableNavmesh;
+	bool bComputeVisibleChunksNavmesh;
+	int32 VisibleChunksNavmeshMaxLOD;
 
 	bool bEnableTessellation;
 	float TessellationDistance; // In cm
 };
 
-struct FVoxelInvoker
-{
-	FIntVector Position; 
-	bool bUseForLODs;
-
-	bool bUseForCollisions;
-	uint64 SquaredCollisionsRange;
-	
-	bool bUseForNavmesh;
-	uint64 SquaredNavmeshRange;
-
-	uint64 SquaredGenerationRange;
-};
-
-class FVoxelDefaultLODManager : public IVoxelLODManager, public TSharedFromThis<FVoxelDefaultLODManager>
+class FVoxelDefaultLODManager : public IVoxelLODManager, public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDefaultLODManager>
 {
 public:
-	static TSharedRef<FVoxelDefaultLODManager> Create(
+	static TVoxelSharedRef<FVoxelDefaultLODManager> Create(
 		const FVoxelLODSettings& LODSettings,
 		TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
-		const TSharedPtr<FVoxelLODDynamicSettings>& DynamicSettings);
+		const TVoxelSharedRef<FVoxelLODDynamicSettings>& DynamicSettings);
 	~FVoxelDefaultLODManager();
 
-	virtual void UpdateBounds(const FIntBox& Bounds, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) final;
-	virtual void UpdateBounds(const TArray<FIntBox>& Bounds, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) final;
-	virtual void UpdatePosition(const FIntVector& Position, bool bWaitForAllChunksToFinishUpdating, const FVoxelOnUpdateFinished& FinishDelegate) final;
+	//~ Begin IVoxelLODManager Interface
+	virtual int32 UpdateBounds(const FIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final;
+	virtual int32 UpdateBounds(const TArray<FIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final;
 
-	virtual void ForceLODsUpdate() final;
-	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const final;
+	virtual void ForceLODsUpdate() override final;
+	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const override final;
+
+	virtual void Destroy() override final;
+	//~ End IVoxelLODManager Interface
+
+	//~ Begin FVoxelTickable Interface
+	virtual void Tick(float DeltaTime) override;
+	virtual bool IsTickableInEditor() const override { return true; }
+	//~ End FVoxelTickable Interface
 
 private:
 	FVoxelDefaultLODManager(
 		const FVoxelLODSettings& LODSettings,
 		TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
-		const TSharedPtr<FVoxelLODDynamicSettings>& DynamicSettings);
+		const TVoxelSharedRef<FVoxelLODDynamicSettings>& DynamicSettings);
 
 	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
-	const TSharedPtr<FVoxelLODDynamicSettings> DynamicSettings;
-
+	const TVoxelSharedRef<FVoxelLODDynamicSettings> DynamicSettings;
+	
 	TUniquePtr<FVoxelRenderOctreeAsyncBuilder> Task;
-	TSharedPtr<FVoxelRenderOctree, ESPMode::ThreadSafe> Octree;
+	
+	TVoxelSharedPtr<FVoxelRenderOctree> Octree;
 
-	FTimerHandle UpdateHandle;
+	TMap<TWeakObjectPtr<UVoxelInvokerComponent>, FIntVector> InvokerComponentsLocalPositions;
+	TArray<TWeakObjectPtr<UVoxelInvokerComponent>> InvokerComponents;
 
-	TMap<TWeakObjectPtr<UVoxelInvokerComponent>, FVector> InvokersPreviousPositions;
-	TArray<TWeakObjectPtr<UVoxelInvokerComponent>> PreviousInvokers;
+	bool bAsyncTaskWorking = false;
+	bool bLODUpdateQueued = true;
+	double LastLODUpdateTime = 0;
+	double LastInvokersUpdateTime = 0;
 
-	TArray<FVoxelInvoker> Invokers;
-	TArray<uint64> SquaredLODsDistances;
-
+	void UpdateInvokers();
 	void UpdateLODs();
-	void OnTaskFinished();
-	void StartTimer();
-	bool UpdateInvokers();
 	uint64 GetSquaredDistance(float DistanceInCm) const;
 };
