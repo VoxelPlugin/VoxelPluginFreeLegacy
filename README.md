@@ -25,9 +25,14 @@ For more info, check the website: https://voxelplugin.com
     ├── Content
     └── Plugins
         └── Voxel
+            └── Binaries
+            └── Config
+            └── Content
+            └── Resources
+            └── Source
             └── Voxel.uplugin
 ```
-* If you want to use it in your C++ project: add **"Voxel"** as public dependency in **MyProject.Build.cs**. You should have
+* If you want to call voxel functions from C++: add **"Voxel"** as public dependency in **MyProject.Build.cs**. You should have
 ```
     PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Voxel" });
 ```
