@@ -43,6 +43,15 @@ For more info, check the website: https://voxelplugin.com
 * Set your player controller to the **VoxelComplexController** (need to toggle *Show Plugin Content*)
 * Hit play
 
+## Plugin Voxel failed to load
+
+If you are getting:
+> Plugin 'Voxel' failed to load because module 'Voxel' could not be loaded. There may be an operating system error or the module may not be properly set up.
+
+you are most likely missing **VCRUNTIME140_1.dll**; you can confirm that by looking at Saved/Logs/Log.txt and checking if it contains something like _Missing import: VCRUNTIME140_1.dll_.
+
+To fix this, head up to https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads and download & install **vc_redist.x64.exe**.
+
 ## Pricing & Licensing
 
 There are two editions of the plugin available:
