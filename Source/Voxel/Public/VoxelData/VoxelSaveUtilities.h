@@ -10,6 +10,7 @@
 struct FVoxelFoliage;
 class FVoxelPlaceableItem;
 class AVoxelWorld;
+class IVoxelDataOctreeMemory;
 template<typename T>
 class TVoxelDataOctreeLeafData;
 
@@ -26,7 +27,7 @@ public:
 		const TVoxelDataOctreeLeafData<FVoxelMaterial>& InMaterials,
 		const TVoxelDataOctreeLeafData<FVoxelFoliage>& InFoliage);
 	void AddPlaceableItem(const TVoxelSharedPtr<FVoxelPlaceableItem>& PlaceableItem);
-	void Save(FVoxelUncompressedWorldSave& OutSave);
+	void Save(FVoxelUncompressedWorldSaveImpl& OutSave);
 
 private:
 	struct FChunkToSave
@@ -52,17 +53,18 @@ private:
 class FVoxelSaveLoader
 {
 public:
-	explicit FVoxelSaveLoader(const FVoxelUncompressedWorldSave& Save)
+	explicit FVoxelSaveLoader(const FVoxelUncompressedWorldSaveImpl& Save)
 		: Save(Save)
 	{
 	}
 
 	void ExtractChunk(
 		int32 ChunkIndex,
+		const IVoxelDataOctreeMemory& Memory,
 		TVoxelDataOctreeLeafData<FVoxelValue>& OutValues,
 		TVoxelDataOctreeLeafData<FVoxelMaterial>& OutMaterials,
 		TVoxelDataOctreeLeafData<FVoxelFoliage>& OutFoliage) const;
-	TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> GetPlaceableItems(const AVoxelWorld * VoxelWorld);
+	TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> GetPlaceableItems(const AVoxelWorld* VoxelWorld);
 
 public:
 	int32 NumChunks() const
@@ -79,7 +81,7 @@ public:
 	}
 
 private:
-	const FVoxelUncompressedWorldSave& Save;
+	const FVoxelUncompressedWorldSaveImpl& Save;
 	bool bError = false;
 };
 
@@ -87,11 +89,13 @@ UCLASS()
 class VOXEL_API UVoxelSaveUtilities : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
+	
 public:
-
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Save")
 	static void CompressVoxelSave(const FVoxelUncompressedWorldSave& UncompressedSave, FVoxelCompressedWorldSave& OutCompressedSave);
+	static void CompressVoxelSave(const FVoxelUncompressedWorldSaveImpl& UncompressedSave, FVoxelCompressedWorldSaveImpl& OutCompressedSave);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Save")
 	static bool DecompressVoxelSave(const FVoxelCompressedWorldSave& CompressedSave, FVoxelUncompressedWorldSave& OutUncompressedSave);
+	static bool DecompressVoxelSave(const FVoxelCompressedWorldSaveImpl& CompressedSave, FVoxelUncompressedWorldSaveImpl& OutUncompressedSave);
 };

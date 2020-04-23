@@ -53,7 +53,11 @@ namespace FVoxelHeightmapImportersHelpers
 		FWeightmap() = default;
 	};
 
-	FVoxelMaterial ImportMaterialFromWeightmaps(EVoxelMaterialConfig MaterialConfig, const TArray<FWeightmap>& Weightmaps, uint32 Index);
+	template<typename T>
+	void ImportMaterialFromWeightmaps(
+		EVoxelMaterialConfig MaterialConfig, 
+		const TArray<FWeightmap>& Weightmaps, uint32 WeightmapIndex,
+		TVoxelHeightmapAssetData<T>& HeightmapAssetData, int32 HeightmapAssetDataIndex);
 }
 
 UCLASS(HideCategories=Object, CollapseCategories)

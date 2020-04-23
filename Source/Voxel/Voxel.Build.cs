@@ -13,10 +13,6 @@ public class Voxel : ModuleRules
         bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
 
-        if (!Target.bUseUnityBuild)
-        {
-            PrivatePCHHeaderFile = "Private/VoxelPCH.h";
-        }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
@@ -38,6 +34,7 @@ public class Voxel : ModuleRules
 #endif
                 "RenderCore",
                 "Landscape",
+                "PhysX",
             }
         );
 
@@ -58,18 +55,6 @@ public class Voxel : ModuleRules
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
             PrivateDependencyModuleNames.Add("ForsythTriOptimizer");
-        }
-
-        if (Target.Platform == UnrealTargetPlatform.Win64 ||
-            Target.Platform == UnrealTargetPlatform.Win32 ||
-            Target.Platform == UnrealTargetPlatform.Mac)
-        {
-            PrivateDependencyModuleNames.Add("OnlineSubsystemSteam");
-            PublicDefinitions.Add("VOXEL_USE_STEAM=1");
-        }
-        else
-        {
-            PublicDefinitions.Add("VOXEL_USE_STEAM=0");
         }
 
         if (Target.Configuration == UnrealTargetConfiguration.DebugGame)

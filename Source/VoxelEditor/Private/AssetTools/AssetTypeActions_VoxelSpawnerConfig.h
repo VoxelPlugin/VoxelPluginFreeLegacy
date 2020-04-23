@@ -11,7 +11,7 @@ class FAssetTypeActions_VoxelSpawnerConfig : public FAssetTypeActions_VoxelBase
 public:
 	using FAssetTypeActions_VoxelBase::FAssetTypeActions_VoxelBase;
 
-	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelSpawnerConfig", "Voxel Spawner Config"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Spawner Config"); }
 	virtual FColor GetTypeColor() const override { return FColor(128, 255, 128); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelSpawnerConfig::StaticClass(); }
 };

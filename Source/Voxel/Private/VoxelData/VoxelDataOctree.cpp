@@ -5,16 +5,47 @@
 #include "VoxelWorldGeneratorInstance.h"
 #include "VoxelWorldGeneratorInstance.inl"
 
-DEFINE_STAT(STAT_VoxelDataOctreesMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreesMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelUndoRedoMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelMultiplayerMemory);
 DEFINE_STAT(STAT_VoxelDataOctreesCount);
 
-DEFINE_STAT(STAT_VoxelDataOctreeValuesMemory);
-DEFINE_STAT(STAT_VoxelDataOctreeMaterialsMemory);
-DEFINE_STAT(STAT_VoxelDataOctreeFoliageMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeDirtyValuesMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeDirtyMaterialsMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeDirtyFoliageMemory);
+
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeCachedValuesMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeCachedMaterialsMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeCachedFoliageMemory);
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+IVoxelData::IVoxelData(
+	int32 Depth,
+	const FIntBox& WorldBounds,
+	bool bEnableMultiplayer,
+	bool bEnableUndoRedo,
+	const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& VoxelWorldGeneratorInstance)
+	: Depth(Depth)
+	, WorldBounds(WorldBounds)
+	, bEnableMultiplayer(bEnableMultiplayer)
+	, bEnableUndoRedo(bEnableUndoRedo)
+	, WorldGenerator(VoxelWorldGeneratorInstance)
+{
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 template<typename T, typename U>
 T FVoxelDataOctreeBase::GetFromGeneratorAndAssets(const FVoxelWorldGeneratorInstance& WorldGenerator, U X, U Y, U Z, int32 LOD) const
 {
+	ensureThreadSafe(IsLockedForRead());
+	check(IsLeafOrHasNoChildren());
+	
 	const auto Assets = ItemHolder->GetItems<FVoxelAssetItem>();
 	if (Assets.Num() > 0)
 	{
@@ -38,6 +69,9 @@ template VOXEL_API FVoxelMaterial FVoxelDataOctreeBase::GetFromGeneratorAndAsset
 template<typename T>
 void FVoxelDataOctreeBase::GetFromGeneratorAndAssets(const FVoxelWorldGeneratorInstance& WorldGenerator, TVoxelQueryZone<T>& QueryZone, int32 LOD) const
 {
+	ensureThreadSafe(IsLockedForRead());
+	check(IsLeafOrHasNoChildren());
+	
 	const auto Assets = ItemHolder->GetItems<FVoxelAssetItem>();
 
 	if (Assets.Num() == 0)
@@ -95,8 +129,9 @@ template VOXEL_API void FVoxelDataOctreeBase::GetFromGeneratorAndAssets<FVoxelMa
 template <typename T>
 T FVoxelDataOctreeBase::GetCustomOutput(const FVoxelWorldGeneratorInstance& WorldGenerator, T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const
 {
-	check(IsLeafOrHasNoChildren());
 	ensureThreadSafe(IsLockedForRead());
+	check(IsLeafOrHasNoChildren());
+	
 	const auto Assets = ItemHolder->GetItems<FVoxelAssetItem>();
 	if (Assets.Num() > 0)
 	{

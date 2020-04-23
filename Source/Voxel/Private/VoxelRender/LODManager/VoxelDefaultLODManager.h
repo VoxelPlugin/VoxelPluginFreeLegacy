@@ -6,17 +6,17 @@
 #include "VoxelTickable.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelGlobals.h"
+#include "VoxelAsyncWork.h"
 
 class FVoxelRenderOctreeAsyncBuilder;
 class FVoxelRenderOctree;
-class UVoxelInvokerComponent;
+class UVoxelInvokerComponentBase;
 class AVoxelWorldInterface;
 
 struct FVoxelLODDynamicSettings
 {
 	int32 MinLOD;
 	int32 MaxLOD;
-	TMap<uint8, float> LODToMinDistance;
 
 	// In world space
 	float InvokerDistanceThreshold;
@@ -34,7 +34,6 @@ struct FVoxelLODDynamicSettings
 	int32 VisibleChunksNavmeshMaxLOD;
 
 	bool bEnableTessellation;
-	float TessellationDistance; // In cm
 };
 
 class FVoxelDefaultLODManager : public IVoxelLODManager, public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDefaultLODManager>
@@ -70,12 +69,12 @@ private:
 	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
 	const TVoxelSharedRef<FVoxelLODDynamicSettings> DynamicSettings;
 	
-	TUniquePtr<FVoxelRenderOctreeAsyncBuilder> Task;
+	TUniquePtr<FVoxelRenderOctreeAsyncBuilder, TVoxelAsyncWorkDelete<FVoxelRenderOctreeAsyncBuilder>> Task;
 	
 	TVoxelSharedPtr<FVoxelRenderOctree> Octree;
 
-	TMap<TWeakObjectPtr<UVoxelInvokerComponent>, FIntVector> InvokerComponentsLocalPositions;
-	TArray<TWeakObjectPtr<UVoxelInvokerComponent>> InvokerComponents;
+	TMap<TWeakObjectPtr<UVoxelInvokerComponentBase>, FIntVector> InvokerComponentsLocalPositions;
+	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> InvokerComponents;
 
 	bool bAsyncTaskWorking = false;
 	bool bLODUpdateQueued = true;
@@ -84,5 +83,6 @@ private:
 
 	void UpdateInvokers();
 	void UpdateLODs();
-	uint64 GetSquaredDistance(float DistanceInCm) const;
+
+	void ClearInvokerComponents();
 };

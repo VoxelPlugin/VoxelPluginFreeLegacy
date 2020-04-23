@@ -25,8 +25,9 @@ FArchive& SerializeVoxelItem(FArchive& Ar, const AVoxelWorld* VoxelWorld, TVoxel
 	if (ItemId == 0)
 	{
 		ensureAlways(Ar.IsLoading());
-		FVoxelMessages::Error(NSLOCTEXT("Voxel", "InvalidItem", "Invalid ItemId: Save is corrupted"), (UObject*)VoxelWorld);
+		FVoxelMessages::Error("Invalid ItemId: Save is corrupted", (UObject*)VoxelWorld);
 		Ar.SetError();
+		return Ar;
 	}
 
 	if (Ar.IsLoading())

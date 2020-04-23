@@ -1,6 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelEditorDetailsUtilities.h"
+#include "VoxelGlobals.h"
+
 #include "Misc/MessageDialog.h"
 #include "UnrealClient.h"
 #include "Editor.h"
@@ -22,16 +24,14 @@
 #include "IContentBrowserSingleton.h"
 #include "AssetToolsModule.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 bool FVoxelEditorUtilities::ShowWarning(const FText& Text)
 {
-	return FMessageDialog::Open(EAppMsgType::YesNo, FText::Format(LOCTEXT("EditorUtilsWarning", "Warning: {0} \nContinue?"), Text)) == EAppReturnType::Yes;
+	return FMessageDialog::Open(EAppMsgType::YesNo, FText::Format(VOXEL_LOCTEXT("Warning: {0} \nContinue?"), Text)) == EAppReturnType::Yes;
 }
 
 void FVoxelEditorUtilities::ShowError(const FText& Text)
 {
-	FMessageDialog::Open(EAppMsgType::Ok, FText::Format(LOCTEXT("EditorUtilsError", "Error: {0}"), Text));
+	FMessageDialog::Open(EAppMsgType::Ok, FText::Format(VOXEL_LOCTEXT("Error: {0}"), Text));
 }
 
 void FVoxelEditorUtilities::EnableRealtime()
@@ -132,7 +132,7 @@ UObject* FVoxelEditorUtilities::CreateAssetWithDialog(
 	FName CallingContext)
 {
 	FSaveAssetDialogConfig SaveAssetDialogConfig;
-	SaveAssetDialogConfig.DialogTitleOverride = NSLOCTEXT("Voxel", "SaveAssetDialogTitle", "Save Voxel World Data As");
+	SaveAssetDialogConfig.DialogTitleOverride = VOXEL_LOCTEXT("Save As");
 	SaveAssetDialogConfig.DefaultPath = PackagePath;
 	SaveAssetDialogConfig.DefaultAssetName = AssetName;
 	SaveAssetDialogConfig.ExistingAssetPolicy = ESaveAssetDialogExistingAssetPolicy::Disallow;
@@ -182,5 +182,3 @@ UObject* FVoxelEditorUtilities::CreateAssetWithDialog(
 
 	return nullptr;
 }
-
-#undef LOCTEXT_NAMESPACE

@@ -54,8 +54,8 @@ void SVoxelGraphNode::UpdateGraphNode()
 void SVoxelGraphNode::CreateOutputSideAddButton(TSharedPtr<SVerticalBox> OutputBox)
 {
 	TSharedRef<SWidget> AddPinButton = AddPinButtonContent(
-		NSLOCTEXT("VoxelNode", "VoxelNodeAddPinButton", "Add input"),
-		NSLOCTEXT("VoxelNode", "VoxelNodeAddPinButton_Tooltip", "Adds an input to the Voxel node")
+		VOXEL_LOCTEXT("Add input"),
+		VOXEL_LOCTEXT("Adds an input to the Voxel node")
 	);
 
 	FMargin AddPinPadding = Settings->GetOutputPinPadding();
@@ -248,10 +248,10 @@ void SVoxelGraphNode::UpdateStandardNode()
 	if ((GraphNode->GetDesiredEnabledState() != ENodeEnabledState::Enabled) && !GraphNode->IsAutomaticallyPlacedGhostNode())
 	{
 		const bool bDevelopmentOnly = GraphNode->GetDesiredEnabledState() == ENodeEnabledState::DevelopmentOnly;
-		const FText StatusMessage = bDevelopmentOnly ? NSLOCTEXT("SGraphNode", "DevelopmentOnly", "Development Only") : NSLOCTEXT("SGraphNode", "DisabledNode", "Disabled");
+		const FText StatusMessage = bDevelopmentOnly ? VOXEL_LOCTEXT("Development Only") : VOXEL_LOCTEXT("Disabled");
 		const FText StatusMessageTooltip = bDevelopmentOnly ?
-			NSLOCTEXT("SGraphNode", "DevelopmentOnlyTooltip", "This node will only be executed in the editor and in Development builds in a packaged game (it will be treated as disabled in Shipping or Test builds cooked from a commandlet)") :
-			NSLOCTEXT("SGraphNode", "DisabledNodeTooltip", "This node is currently disabled and will not be executed");
+			VOXEL_LOCTEXT("This node will only be executed in the editor and in Development builds in a packaged game (it will be treated as disabled in Shipping or Test builds cooked from a commandlet)") :
+			VOXEL_LOCTEXT("This node is currently disabled and will not be executed");
 
 		InnerVerticalBox->AddSlot()
 			.AutoHeight()

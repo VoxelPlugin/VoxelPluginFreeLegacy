@@ -6,15 +6,13 @@
 #include "EditorStyleSet.h"
 #include "EditorReimportHandler.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 void FAssetTypeActions_VoxelHeightmapAsset::GetActions(const TArray<UObject*>& InObjects, FMenuBuilder& MenuBuilder)
 {
 	const auto Heightmaps = GetTypedWeakObjectPtrs<UVoxelHeightmapAsset>(InObjects);
 
 	MenuBuilder.AddMenuEntry(
-		LOCTEXT("ReimportHeightmapLabel", "Reimport"),
-		LOCTEXT("ReimportHeightmapTooltip", "Reimport the selected heightmaps(s)."),
+		VOXEL_LOCTEXT("Reimport"),
+		VOXEL_LOCTEXT("Reimport the selected heightmaps(s)."),
 		FSlateIcon(FEditorStyle::GetStyleSetName(), "ContentBrowser.AssetActions.ReimportAsset"),
 		FUIAction(
 			FExecuteAction::CreateSP(this, &FAssetTypeActions_VoxelHeightmapAsset::ExecuteReimport, Heightmaps),
@@ -45,4 +43,3 @@ void FAssetTypeActions_VoxelHeightmapAsset::ExecuteReimport(const TArray<TWeakOb
 		}
 	}
 }
-#undef LOCTEXT_NAMESPACE

@@ -11,10 +11,6 @@ public class VoxelHelpers : ModuleRules
         bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
 
-        if (!Target.bUseUnityBuild)
-        {
-            PrivatePCHHeaderFile = "Private/VoxelHelpersPCH.h";
-        }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));

@@ -16,13 +16,13 @@
 #include "VoxelData/VoxelSave.h"
 #include "VoxelData/VoxelDataOctree.h"
 
+#include "Async/ParallelFor.h"
+
 struct FVoxelChunkMesh;
 class FVoxelData;
 class AVoxelWorld;
 class FVoxelWorldGeneratorInstance;
 class FVoxelPlaceableItem;
-
-DECLARE_DWORD_COUNTER_STAT(TEXT("Edited Voxels"), STAT_EditedVoxels, STATGROUP_Voxel);
 
 class FVoxelDataLockInfo
 {
@@ -69,21 +69,15 @@ struct FVoxelDataSettings
 /**
  * Class that handle voxel data
  */
-class VOXEL_API FVoxelData : public TVoxelSharedFromThis<FVoxelData>
+class VOXEL_API FVoxelData : public IVoxelData, public TVoxelSharedFromThis<FVoxelData>
 {
 private:
 	explicit FVoxelData(const FVoxelDataSettings& Settings);
 
 public:
 	static TVoxelSharedRef<FVoxelData> Create(const FVoxelDataSettings& Settings, int32 DataOctreeInitialSubdivisionDepth = 0);
-
-	const int32 Depth;
-	const FIntBox WorldBounds;
-	const bool bEnableMultiplayer;
-	const bool bEnableUndoRedo;
-
-	TVoxelSharedRef<FVoxelWorldGeneratorInstance> const WorldGenerator;
-
+	~FVoxelData();
+	
 private:
 	TUniquePtr<FVoxelDataOctreeParent> Octree;
 	// Is locked as read when a lock is done
@@ -160,6 +154,35 @@ public:
 		return Result;
 	}
 
+	// Will always use 8 threads
+	template<typename T>
+	TArray<T> ParallelGet(const FIntBox& Bounds, bool bForceSingleThread = false) const
+	{
+		VOXEL_FUNCTION_COUNTER();
+		
+		TArray<T> Result;
+		Result.SetNumUninitialized(Bounds.Count());
+		TVoxelQueryZone<T> QueryZone(Bounds, Result);
+
+		const FIntVector Half = (Bounds.Min + Bounds.Max) / 2;
+		ParallelFor(8, [&](int32 Index)
+		{
+			const FIntBox LocalBounds(
+				FIntVector(
+					(Index & 0x1) ? Half.X : Bounds.Min.X,
+					(Index & 0x2) ? Half.Y : Bounds.Min.Y,
+					(Index & 0x4) ? Half.Z : Bounds.Min.Z),
+				FIntVector(
+					(Index & 0x1) ? Bounds.Max.X : Half.X,
+					(Index & 0x2) ? Bounds.Max.Y : Half.Y,
+					(Index & 0x4) ? Bounds.Max.Z : Half.Z));
+			auto LocalQueryZone = QueryZone.ShrinkTo(LocalBounds);
+			Get(LocalQueryZone, 0);
+		}, bForceSingleThread);
+		
+		return Result;
+	}
+
 	TArray<FVoxelValue> GetValues(const FIntBox& Bounds) const
 	{
 		return Get<FVoxelValue>(Bounds);
@@ -204,14 +227,13 @@ public:
 	void Set(const FIntBox& Bounds, F Apply)
 	{
 		if (!ensure(Bounds.IsValid())) return;
-		INC_DWORD_STAT_BY(STAT_EditedVoxels, Bounds.Count());
-		FVoxelOctreeUtilities::IterateTreeByPred(GetOctree(), [&](auto& Tree) { return Tree.GetBounds().Intersect(Bounds); }, [&](auto& Tree)
+		FVoxelOctreeUtilities::IterateTreeInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Tree)
 		{
 			if (Tree.IsLeaf())
 			{
 				auto& Leaf = Tree.AsLeaf();
 				ensureThreadSafe(Leaf.IsLockedForWrite());
-				FVoxelDataOctreeSetter::Set<TArgs...>(bEnableMultiplayer, bEnableUndoRedo, Leaf, *WorldGenerator, [&](auto Lambda)
+				FVoxelDataOctreeSetter::Set<TArgs...>(*this, Leaf, [&](auto Lambda)
 				{
 					Leaf.GetBounds().Overlap(Bounds).Iterate(Lambda);
 				}, Apply);
@@ -236,13 +258,12 @@ public:
 	template<typename T>
 	FORCEINLINE void Set(int32 X, int32 Y, int32 Z, const T& Value)
 	{
-		 INC_DWORD_STAT(STAT_EditedVoxels);
 		 if (IsInWorld(X, Y, Z))
 		 {
 			 auto Iterate = [&](auto Lambda) { Lambda(X, Y, Z); };
 			 auto Apply = [&](int32, int32, int32, T& InValue) { InValue = Value; };
 			 auto& Leaf = *FVoxelOctreeUtilities::GetLeaf<EVoxelOctreeLeafQuery::CreateIfNull>(GetOctree(), X, Y, Z);
-			 FVoxelDataOctreeSetter::Set<T>(bEnableMultiplayer, bEnableUndoRedo, Leaf, *WorldGenerator, Iterate, Apply);
+			 FVoxelDataOctreeSetter::Set<T>(*this, Leaf, Iterate, Apply);
 		 }
 	}
 	template<typename T>
@@ -290,7 +311,7 @@ public:
 	 */
 
 	// Get a save of this world. No lock required
-	void GetSave(FVoxelUncompressedWorldSave& OutSave);
+	void GetSave(FVoxelUncompressedWorldSaveImpl& OutSave);
 
 	/**
 	 * Load this world from save. No lock required
@@ -298,7 +319,7 @@ public:
 	 * @param	OutBoundsToUpdate			The modified bounds
 	 * @return true if loaded successfully, false if the world is corrupted and must not be saved again
 	 */
-	bool LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompressedWorldSave& Save, TArray<FIntBox>& OutBoundsToUpdate);
+	bool LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompressedWorldSaveImpl& Save, TArray<FIntBox>& OutBoundsToUpdate);
 
 
 public:
@@ -307,12 +328,12 @@ public:
 	 */
 
 	// Undo one frame and add it to the redo stack. Current frame must be empty. No lock required
-	void Undo(TArray<FIntBox>& OutBoundsToUpdate);
+	bool Undo(TArray<FIntBox>& OutBoundsToUpdate);
 	// Redo one frame and add it to the undo stack. Current frame must be empty. No lock required
-	void Redo(TArray<FIntBox>& OutBoundsToUpdate);
+	bool Redo(TArray<FIntBox>& OutBoundsToUpdate);
 	// Clear all the frames. No lock required
 	void ClearFrames();
-	// Add the current frame to the undo stack. Clear the redo stack. Requires a lock on Bounds. Bounds: must contain all the edits since last SaveFrame
+	// Add the current frame to the undo stack. Clear the redo stack. No lock required. Bounds: must contain all the edits since last SaveFrame
 	void SaveFrame(const FIntBox& Bounds);
 	// Check that the current frame is empty (safe to call Undo/Redo). No lock required
 	bool IsCurrentFrameEmpty();
@@ -321,18 +342,33 @@ public:
 	// Get the max history position, ie HistoryPosition + redo frames. No lock required
 	inline int32 GetMaxHistoryPosition() const { return MaxHistoryPosition; }
 
-	// Mark the world as dirty
+	// Dirty state: can use that to track if the data is dirty
+	// MarkAsDirty is called on Undo, Redo, SaveFrame and ClearData
 	FORCEINLINE void MarkAsDirty() { bIsDirty = true; }
-	// Mark the world as not dirty
 	FORCEINLINE void ClearDirtyFlag() { bIsDirty = false; }
-	// Is the world dirty?
 	FORCEINLINE bool IsDirty() const { return bIsDirty; }
 
+	// Each save frame call gets assigned a unique ID, can be used to track the state of the world
+	// Will always be != 0
+	FORCEINLINE uint64 GetCurrentFrameUniqueId() const { return CurrentFrameUniqueId; }
+	
 private:
 	int32 HistoryPosition = 0;
 	int32 MaxHistoryPosition = 0;
+	
 	TArray<FIntBox> UndoFramesBounds;
 	TArray<FIntBox> RedoFramesBounds;
+	
+	// Used to clear redo stacks on SaveFrame without iterating the entire octree
+	// Stack: added when undoing, poping when redoing
+	TArray<TArray<FVoxelDataOctreeLeaf*>> LeavesWithRedoStackStack;
+
+	// Each save frame is assigned a unique ID
+	uint64 FrameUniqueIdCounter = 2;
+	uint64 CurrentFrameUniqueId = 1;
+	TArray<uint64> UndoUniqueIds;
+	TArray<uint64> RedoUniqueIds;
+	
 	bool bIsDirty = false;
 
 public:
@@ -425,8 +461,14 @@ public:
 	{
 		if (LockInfo.IsValid())
 		{
-			Data.Unlock(MoveTemp(LockInfo));
+			Unlock();
 		}
+	}
+
+	void Unlock()
+	{
+		check(LockInfo.IsValid());
+		Data.Unlock(MoveTemp(LockInfo));
 	}
 
 private:
@@ -434,8 +476,14 @@ private:
 	TUniquePtr<FVoxelDataLockInfo> LockInfo;
 };
 
-using FVoxelReadScopeLock  = TVoxelScopeLock<EVoxelLockType::Read>;
-using FVoxelWriteScopeLock = TVoxelScopeLock<EVoxelLockType::Write>;
+class FVoxelReadScopeLock : public TVoxelScopeLock<EVoxelLockType::Read>
+{
+	using TVoxelScopeLock<EVoxelLockType::Read>::TVoxelScopeLock;
+};
+class FVoxelWriteScopeLock : public TVoxelScopeLock<EVoxelLockType::Write>
+{
+	using TVoxelScopeLock<EVoxelLockType::Write>::TVoxelScopeLock;
+};
 
 // Read lock that can be promoted to a write lock
 class FVoxelPromotableReadScopeLock

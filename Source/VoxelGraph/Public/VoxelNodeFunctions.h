@@ -607,7 +607,7 @@ namespace FVoxelNodeFunctions
 	template<typename T>
 	inline TVoxelRange<T> Min(const TVoxelRange<T>& A, const TVoxelRange<T>& B)
 	{
-		return { FMath::Min(A.Min, B.Min), FMath::Min(A.Max, B.Max) };
+		return FVoxelRangeUtilities::Min(A, B);
 	}
 
 	template<typename T>
@@ -618,7 +618,7 @@ namespace FVoxelNodeFunctions
 	template<typename T>
 	inline TVoxelRange<T> Max(const TVoxelRange<T>& A, const TVoxelRange<T>& B)
 	{
-		return { FMath::Max(A.Min, B.Min), FMath::Max(A.Max, B.Max) };
+		return FVoxelRangeUtilities::Max(A, B);
 	}
 
 	inline v_flt Union(v_flt A, v_flt B)
@@ -992,26 +992,52 @@ namespace FVoxelNodeFunctions
 		return {};
 	}
 
+	inline FVoxelMaterial MaterialFromSingleIndex(int32 Index, v_flt DataA, v_flt DataB, v_flt DataC)
+	{
+		return FVoxelMaterial::CreateFromSingleIndex(FMath::Clamp(Index, 0, 255), float(DataA), float(DataB), float(DataC));
+	}
+	inline FVoxelMaterialRange MaterialFromSingleIndex(TVoxelRange<int32> Index, TVoxelRange<v_flt> DataA, TVoxelRange<v_flt> DataB, TVoxelRange<v_flt> DataC)
+	{
+		return FVoxelMaterialRange();
+	}
+
+	inline void SingleIndexFromMaterial(const FVoxelMaterial& Material, int32& Index, v_flt& DataA, v_flt& DataB, v_flt& DataC)
+	{
+		Index = Material.GetSingleIndex_Index();
+		DataA = Material.GetSingleIndex_DataA_AsFloat();
+		DataB = Material.GetSingleIndex_DataB_AsFloat();
+		DataC = Material.GetSingleIndex_DataC_AsFloat();
+	}
+	inline void SingleIndexFromMaterial(const FVoxelMaterialRange& Material, TVoxelRange<int32>& Index, TVoxelRange<v_flt>& DataA, TVoxelRange<v_flt>& DataB, TVoxelRange<v_flt>& DataC)
+	{
+		Index = { 0, 255 };
+		DataA = { 0.f, 1.f };
+		DataB = { 0.f, 1.f };
+		DataC = { 0.f, 1.f };
+	}
+
+	OUTDATED_GRAPH_FUNCTION()
 	inline FVoxelMaterial MaterialFromSingleIndex(int32 Index, v_flt DataA, v_flt DataB)
 	{
-		return FVoxelMaterial::CreateFromSingleIndex(FMath::Clamp(Index, 0, 255), float(DataA), float(DataB));
+		return MaterialFromSingleIndex(Index, DataA, DataB, 0);
 	}
+	OUTDATED_GRAPH_FUNCTION()
 	inline FVoxelMaterialRange MaterialFromSingleIndex(TVoxelRange<int32> Index, TVoxelRange<v_flt> DataA, TVoxelRange<v_flt> DataB)
 	{
 		return FVoxelMaterialRange();
 	}
 
+	OUTDATED_GRAPH_FUNCTION()
 	inline void SingleIndexFromMaterial(const FVoxelMaterial& Material, int32& Index, v_flt& DataA, v_flt& DataB)
 	{
-		Index = Material.GetSingleIndex_Index();
-		DataA = Material.GetSingleIndex_DataA_AsFloat();
-		DataB = Material.GetSingleIndex_DataB_AsFloat();
+		v_flt DataC;
+		SingleIndexFromMaterial(Material, Index, DataA, DataB, DataC);
 	}
+	OUTDATED_GRAPH_FUNCTION()
 	inline void SingleIndexFromMaterial(const FVoxelMaterialRange& Material, TVoxelRange<int32>& Index, TVoxelRange<v_flt>& DataA, TVoxelRange<v_flt>& DataB)
 	{
-		Index = { 0, 255 };
-		DataA = { 0.f, 1.f };
-		DataB = { 0.f, 1.f };
+		TVoxelRange<v_flt> DataC;
+		SingleIndexFromMaterial(Material, Index, DataA, DataB, DataC);
 	}
 
 	inline FVoxelMaterial MaterialFromDoubleIndex(int32 IndexA, int32 IndexB, v_flt Blend, v_flt Data)
@@ -1262,6 +1288,36 @@ namespace FVoxelNodeFunctions
 		const TVoxelRange<v_flt>& A)
 	{
 		return {};
+	}
+	
+	inline void RGBToHSV(v_flt R, v_flt G, v_flt B, v_flt& OutH, v_flt& OutS, v_flt& OutV)
+	{
+		const auto HSVColor = FLinearColor(R, G, B, 0).LinearRGBToHSV();
+		OutH = HSVColor.R;
+		OutS = HSVColor.G;
+		OutV = HSVColor.B;
+	}
+	inline void RGBToHSV(
+		TVoxelRange<v_flt> R, TVoxelRange<v_flt> G, TVoxelRange<v_flt> B,
+		TVoxelRange<v_flt>& OutH, TVoxelRange<v_flt>& OutS, TVoxelRange<v_flt>& OutV)
+	{
+		OutH = { 0, 360 };
+		OutS = { 0, 1 };
+		OutV = TVoxelRange<v_flt>::Union(R, G, B);
+	}
+	
+	inline void HSVToRGB(v_flt H, v_flt S, v_flt V, v_flt& OutR, v_flt& OutG, v_flt& OutB)
+	{
+		const auto RGBColor = FLinearColor(H, S, V, 0).HSVToLinearRGB();
+		OutR = RGBColor.R;
+		OutG = RGBColor.G;
+		OutB = RGBColor.B;
+	}
+	inline void HSVToRGB(
+		TVoxelRange<v_flt> H, TVoxelRange<v_flt> S, TVoxelRange<v_flt> V,
+		TVoxelRange<v_flt>& OutR, TVoxelRange<v_flt>& OutG, TVoxelRange<v_flt>& OutB)
+	{
+		OutR = OutG = OutB = TVoxelRange<v_flt>::Union(0, V);
 	}
 
 	VOXELGRAPH_API TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>> CreateWorldGeneratorArray(const TArray<FVoxelWorldGeneratorPicker>& WorldGenerators);

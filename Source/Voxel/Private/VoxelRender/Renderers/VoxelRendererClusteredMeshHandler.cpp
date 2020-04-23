@@ -56,6 +56,7 @@ private:
 		, UpdateIndex(UpdateIndexPtr->GetValue())
 	{
 	}
+	~FVoxelClusteredMeshMergeWork() = default;
 
 	virtual uint32 GetPriority() const override
 	{
@@ -401,7 +402,7 @@ void FVoxelRendererClusteredMeshHandler::FlushActionQueue(double MaxTime)
 				ensure(Cluster.NumChunks >= 0);
 				if (Cluster.NumChunks == 0)
 				{
-					for (auto& Mesh : Cluster.Meshes)
+					for (auto& Mesh : CleanUp(Cluster.Meshes))
 					{
 						RemoveMesh(*Mesh);
 					}
@@ -421,7 +422,7 @@ void FVoxelRendererClusteredMeshHandler::FlushActionQueue(double MaxTime)
 
 		if (CVarLogActionQueue.GetValueOnGameThread() != 0)
 		{
-			UE_LOG(LogVoxel, Log, TEXT("ActionQueue: LOD: %d; %s; Position: %s"), ChunkInfo.LOD, *Action.ToString(), *ChunkInfo.Position.ToString());
+			LOG_VOXEL(Log, TEXT("ActionQueue: LOD: %d; %s; Position: %s"), ChunkInfo.LOD, *Action.ToString(), *ChunkInfo.Position.ToString());
 		}
 
 		ActionQueue.Pop();

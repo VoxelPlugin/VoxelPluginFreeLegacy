@@ -27,7 +27,7 @@ EVoxelPinCategory UVoxelNode_DataAssetSampler::GetInputPinCategory(int32 PinInde
 
 FText UVoxelNode_DataAssetSampler::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "Data Asset", "Data Asset: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("Data Asset: {0}"), Super::GetTitle());
 }
 
 void UVoxelNode_DataAssetSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)

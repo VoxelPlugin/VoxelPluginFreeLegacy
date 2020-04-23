@@ -8,13 +8,6 @@
 
 namespace FVoxelUtilities
 {
-	FORCEINLINE FVector Frac(const FVector& Vector)
-	{
-		return FVector(
-			FMath::Frac(Vector.X),
-			FMath::Frac(Vector.Y),
-			FMath::Frac(Vector.Z));
-	}
 	FORCEINLINE FIntVector RoundToInt(const FVector& Vector)
 	{
 		return FIntVector(
@@ -78,6 +71,11 @@ namespace FVoxelUtilities
 		return A.ComponentMax(B.ComponentMax(C));
 	}
 
+	FORCEINLINE bool CountIs32Bits(const FIntVector& Size)
+	{
+		return FMath::Abs(int64(Size.X) * int64(Size.Y) * int64(Size.Z)) < MAX_int32;
+	}
+
 	// Defaults to the "lowest" axis if equal (will return X if X and Y are equal)
 	template<typename TVector>
 	FORCEINLINE int32 GetArgMin(const TVector& V)
@@ -134,9 +132,16 @@ namespace FVoxelUtilities
 			DivideCeil(V.Y, Divisor),
 			DivideCeil(V.Z, Divisor));
 	}
+	FORCEINLINE FIntVector DivideRound(const FIntVector& V, int32 Divisor)
+	{
+		return FIntVector(
+			DivideRound(V.X, Divisor),
+			DivideRound(V.Y, Divisor),
+			DivideRound(V.Z, Divisor));
+	}
 	FORCEINLINE uint64 SquaredSize(const FIntVector& V)
 	{
-		return FMath::Square<uint64>(V.X) + FMath::Square<uint64>(V.Y) + FMath::Square<uint64>(V.Z);
+		return FMath::Square<int64>(V.X) + FMath::Square<int64>(V.Y) + FMath::Square<int64>(V.Z);
 	}
 
 	inline TArray<FIntVector, TFixedAllocator<8>> GetNeighbors(const FVector& P)
@@ -175,7 +180,18 @@ namespace FVoxelUtilities
 		FIntPoint(MaxX, MaxY)
 		};
 	}
-
+	
+	inline TArray<FIntVector, TFixedAllocator<6>> GetImmediateNeighbors(const FIntVector& V)
+	{
+		return {
+			FIntVector(V.X - 1, V.Y, V.Z),
+			FIntVector(V.X + 1, V.Y, V.Z),
+			FIntVector(V.X, V.Y - 1, V.Z),
+			FIntVector(V.X, V.Y + 1, V.Z),
+			FIntVector(V.X, V.Y, V.Z - 1),
+			FIntVector(V.X, V.Y, V.Z + 1)
+		};
+	}
 	inline void AddImmediateNeighborsToArray(const FIntVector& V, TArray<FIntVector>& Array)
 	{
 		const int32& X = V.X;
@@ -262,15 +278,33 @@ FORCEINLINE FIntVector operator*(const FIntVector& A, const FIntVector& B)
 	return FIntVector(A.X * B.X, A.Y * B.Y, A.Z * B.Z);
 }
 
+FORCEINLINE FIntVector operator%(const FIntVector& A, const FIntVector& B)
+{
+	return FIntVector(A.X % B.X, A.Y % B.Y, A.Z % B.Z);
+}
+FORCEINLINE FIntVector operator%(const FIntVector& V, int32 I)
+{
+	return V % FIntVector(I);
+}
+FORCEINLINE FIntVector operator%(const FIntVector& V, uint32 I)
+{
+	return V % FIntVector(I);
+}
+
 template<typename T>
 FIntVector operator-(const FIntVector& V, T A) = delete;
 template<typename T>
 FIntVector operator-(T A, const FIntVector& V) = delete;
+
 template<typename T>
 FIntVector operator+(const FIntVector& V, T A) = delete;
 template<typename T>
 FIntVector operator+(T A, const FIntVector& V) = delete;
+
 template<typename T>
 FIntVector operator*(const FIntVector& V, T A) = delete;
 template<typename T>
 FIntVector operator*(T A, const FIntVector& V) = delete;
+
+template<typename T>
+FIntVector operator%(const FIntVector& V, T A) = delete;

@@ -4,6 +4,7 @@ DerivedDataCache
 Intermediate
 Saved
 .vs
+.vscode
 *.VC.db
 *.opensdf
 *.opendb
@@ -13,4 +14,4 @@ Saved
 *.xcodeproj
 *.xcworkspace
 Documentation
-Parser/.idea
+.idea/

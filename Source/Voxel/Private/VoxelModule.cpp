@@ -12,6 +12,8 @@
 
 void FVoxelModule::StartupModule()
 {
+	LOG_VOXEL(Log, TEXT("VOXEL_DEBUG=%d"), VOXEL_DEBUG);
+	
 	{
 		FVoxelMaterial Material(ForceInit);
 		const auto CheckUV = [&](int32 Tex)
@@ -57,6 +59,12 @@ void FVoxelModule::StartupModule()
 		CheckUV(3);
 #endif
 	}
+	
+	const auto Plugin = IPluginManager::Get().FindPlugin("Voxel");
+	const FString PluginBaseDir = Plugin.IsValid() ? FPaths::ConvertRelativePathToFull(Plugin->GetBaseDir()) : "";
+
+    const FString PluginShaderDir = FPaths::Combine(PluginBaseDir, TEXT("Shaders"));
+    AddShaderSourceDirectoryMapping(TEXT("/Plugin/Voxel"), PluginShaderDir);
 	
 }
 

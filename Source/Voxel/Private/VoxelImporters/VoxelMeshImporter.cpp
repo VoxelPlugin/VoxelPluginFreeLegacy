@@ -3,6 +3,7 @@
 #include "VoxelImporters/VoxelMeshImporter.h"
 
 #include "VoxelAssets/VoxelDataAsset.h"
+#include "VoxelShaders/VoxelDistanceFieldShader.h"
 #include "VoxelMathUtilities.h"
 #include "VoxelMessages.h"
 
@@ -19,66 +20,128 @@ static void GetMergedSectionFromStaticMesh(
 	UStaticMesh* InMesh, 
 	int32 LODIndex, 
 	TArray<FVector>& Vertices, 
-	TArray<FIntVector>& Triangles, 
+	TArray<uint32>& Indices, 
 	TArray<FVector2D>& UVs)
 {
 	VOXEL_FUNCTION_COUNTER();
 
 	if (!ensure(InMesh->RenderData) || !ensure(InMesh->RenderData->LODResources.IsValidIndex(LODIndex))) return;
-	
-	const bool bAllowCPUAccess = InMesh->bAllowCPUAccess;
-	InMesh->bAllowCPUAccess = true;
 
 	const FStaticMeshLODResources& LODResources = InMesh->RenderData->LODResources[LODIndex];
-	const auto& IndexBuffer = LODResources.IndexBuffer;
-	const auto& PositionVertexBuffer = LODResources.VertexBuffers.PositionVertexBuffer;
-	const auto& StaticMeshVertexBuffer = LODResources.VertexBuffers.StaticMeshVertexBuffer;
+	const FRawStaticIndexBuffer& IndexBuffer = LODResources.IndexBuffer;
+	const FPositionVertexBuffer& PositionVertexBuffer = LODResources.VertexBuffers.PositionVertexBuffer;
+	const FStaticMeshVertexBuffer& StaticMeshVertexBuffer = LODResources.VertexBuffers.StaticMeshVertexBuffer;
 	const int32 NumTextureCoordinates = StaticMeshVertexBuffer.GetNumTexCoords();
 
-	Vertices.Reserve(PositionVertexBuffer.GetNumVertices());
-	if (NumTextureCoordinates > 0)
+	ensure(IndexBuffer.GetNumIndices() % 3 == 0);
+
+	const auto Get = [](auto& Array, auto Index) -> auto&
 	{
-		UVs.Reserve(StaticMeshVertexBuffer.GetNumVertices());
-	}
-	Triangles.Reserve(IndexBuffer.GetNumIndices());
+#if VOXEL_DEBUG
+		return Array[Index];
+#else
+		return Array.GetData()[Index];
+#endif
+	};
 	
-	TMap<int32, int32> MeshToNewVertices;
-	MeshToNewVertices.Reserve(IndexBuffer.GetNumIndices());
-	
-	for (auto& Section : LODResources.Sections)
+	if (!FPlatformProperties::RequiresCookedData() || InMesh->bAllowCPUAccess)
 	{
-		for (uint32 TriangleIndex = 0; TriangleIndex < Section.NumTriangles; TriangleIndex++)
 		{
-			FIntVector NewTriangle;
-			for (uint32 TriangleVertexIndex = 0; TriangleVertexIndex < 3; TriangleVertexIndex++)
+			VOXEL_SCOPE_COUNTER("Copy Vertices from CPU");
+			Vertices.SetNumUninitialized(PositionVertexBuffer.GetNumVertices());
+			for (uint32 Index = 0; Index < PositionVertexBuffer.GetNumVertices(); Index++)
 			{
-				int32 IndexInNewVertices;
-				{
-					const int32 Index = IndexBuffer.GetIndex(Section.FirstIndex + 3 * TriangleIndex + TriangleVertexIndex);
-					int32* NewIndexPtr = MeshToNewVertices.Find(Index);
-					if (NewIndexPtr)
-					{
-						IndexInNewVertices = *NewIndexPtr;
-					}
-					else
-					{
-						const FVector Vertex = PositionVertexBuffer.VertexPosition(Index);
-						IndexInNewVertices = Vertices.Add(Vertex);
-						if (NumTextureCoordinates > 0)
-						{
-							const FVector2D UV = StaticMeshVertexBuffer.GetVertexUV(Index, 0);
-							ensure(IndexInNewVertices == UVs.Add(UV));
-						}
-						MeshToNewVertices.Add(Index, IndexInNewVertices);
-					}
-				}
-				NewTriangle[TriangleVertexIndex] = IndexInNewVertices;
+				Get(Vertices, Index) = PositionVertexBuffer.VertexPosition(Index);
 			}
-			Triangles.Add(NewTriangle);
+		}
+		{
+			VOXEL_SCOPE_COUNTER("Copy Triangles from CPU");
+			Indices.SetNumUninitialized(IndexBuffer.GetNumIndices());
+			for (int32 Index = 0; Index < IndexBuffer.GetNumIndices(); Index++)
+			{
+				Get(Indices, Index) = IndexBuffer.GetIndex(Index);
+			}
+		}
+		if (NumTextureCoordinates > 0)
+		{
+			VOXEL_SCOPE_COUNTER("Copy UVs from CPU");
+			UVs.SetNumUninitialized(StaticMeshVertexBuffer.GetNumVertices());
+			for (uint32 Index = 0; Index < StaticMeshVertexBuffer.GetNumVertices(); Index++)
+			{
+				Get(UVs, Index) = StaticMeshVertexBuffer.GetVertexUV(Index, 0);
+			}
 		}
 	}
+	else
+	{
+		LOG_VOXEL(Log, TEXT("Extracting mesh data from GPU for %s"), *InMesh->GetName());
+		
+		ENQUEUE_RENDER_COMMAND(VoxelDistanceFieldCompute)([&](FRHICommandListImmediate& RHICmdList)
+		{
+			{
+				VOXEL_SCOPE_COUNTER("Copy Vertices from GPU");
+				Vertices.SetNumUninitialized(PositionVertexBuffer.GetNumVertices());
+				const int32 NumBytes = PositionVertexBuffer.GetNumVertices() * PositionVertexBuffer.GetStride();
+				
+				void* BufferData = RHICmdList.LockVertexBuffer(PositionVertexBuffer.VertexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
+				FMemory::Memcpy(Vertices.GetData(), BufferData, NumBytes);
+				RHICmdList.UnlockVertexBuffer(PositionVertexBuffer.VertexBufferRHI);
+			}
+			{
+				VOXEL_SCOPE_COUNTER("Copy Triangles from GPU");
+				Indices.SetNumUninitialized(IndexBuffer.GetNumIndices());
+				
+				const bool bIs32Bit = IndexBuffer.Is32Bit();
+				const int32 NumBytes = IndexBuffer.GetNumIndices() * (bIs32Bit ? sizeof(uint32) : sizeof(uint16));
+				
+				void* BufferData = RHICmdList.LockIndexBuffer(IndexBuffer.IndexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
+				if (bIs32Bit)
+				{
+					FMemory::Memcpy(Indices.GetData(), BufferData, NumBytes);
+				}
+				else
+				{
+					TArray<uint16> Indices16;
+					Indices16.SetNumUninitialized(IndexBuffer.GetNumIndices());
+					FMemory::Memcpy(Indices16.GetData(), BufferData, NumBytes);
+					for (int32 Index = 0; Index < Indices16.Num(); Index++)
+					{
+						Get(Indices, Index) = Get(Indices16, Index);
+					}
+				}
+				RHICmdList.UnlockIndexBuffer(IndexBuffer.IndexBufferRHI);
+			}
+			if (NumTextureCoordinates > 0)
+			{
+				VOXEL_SCOPE_COUNTER("Copy UVs from GPU");
+				UVs.SetNumUninitialized(StaticMeshVertexBuffer.GetNumVertices());
 
-	InMesh->bAllowCPUAccess = bAllowCPUAccess;
+				const bool bFullPrecision = StaticMeshVertexBuffer.GetUseFullPrecisionUVs();
+				const int32 NumBytes = StaticMeshVertexBuffer.GetNumVertices() * (bFullPrecision ? sizeof(FVector2D) : sizeof(FVector2DHalf));
+				
+				void* BufferData = RHICmdList.LockVertexBuffer(StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
+				if (bFullPrecision)
+				{
+					FMemory::Memcpy(UVs.GetData(), BufferData, NumBytes);
+				}
+				else
+				{
+					TArray<FVector2DHalf> UVsHalf;
+					UVsHalf.SetNumUninitialized(StaticMeshVertexBuffer.GetNumVertices());
+					FMemory::Memcpy(UVsHalf.GetData(), BufferData, NumBytes);
+					for (int32 Index = 0; Index < UVsHalf.Num(); Index++)
+					{
+						Get(UVs, Index) = Get(UVsHalf, Index);
+					}
+				}
+				RHICmdList.UnlockVertexBuffer(StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI);
+			}
+		});
+		
+		FRenderCommandFence Fence;
+		Fence.BeginFence();
+		Fence.Wait();
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -109,6 +172,20 @@ bool UVoxelMeshImporterLibrary::ConvertMeshToVoxels(
 	int32& OutNumLeaks)
 {
 	VOXEL_PRO_ONLY();
+}
+
+void UVoxelMeshImporterLibrary::ConvertMeshToDistanceField(
+	const FVoxelMeshImporterInputData& Mesh,
+	const FTransform& Transform,
+	const float VoxelSize,
+	float MaxDistance,
+	float BoxExtension,
+	TArray<float>& OutDistanceField,
+	FIntVector& OutSize,
+	FIntVector& OutOffset,
+	int32& OutNumLeaks)
+{
+	VOXEL_PRO_ONLY_VOID();
 }
 
 UVoxelMeshImporterInputData* UVoxelMeshImporterLibrary::CreateMeshDataFromStaticMesh(UStaticMesh* StaticMesh)
@@ -172,10 +249,10 @@ void AVoxelMeshImporter::Tick(float DeltaSeconds)
 		{
 			CachedStaticMesh = StaticMesh;
 
-			TArray<FIntVector> Triangles;
+			TArray<uint32> Indices;
 			TArray<FVector2D> UVs;
 			CachedVertices.Reset();
-			GetMergedSectionFromStaticMesh(StaticMesh, 0, CachedVertices, Triangles, UVs);
+			GetMergedSectionFromStaticMesh(StaticMesh, 0, CachedVertices, Indices, UVs);
 		}
 
 		// TODO: Use PostEditMove
@@ -217,7 +294,7 @@ void AVoxelMeshImporter::InitMaterialInstance()
 	{
 		return;
 	}
-	auto* Material = LoadObject<UMaterial>(GetTransientPackage(), TEXT("Material'/Voxel/MaterialHelpers/MeshImporterMaterial.MeshImporterMaterial'"));
+	auto* Material = LoadObject<UMaterial>(nullptr, TEXT("Material'/Voxel/MaterialHelpers/MeshImporterMaterial.MeshImporterMaterial'"));
 	MaterialInstance = UMaterialInstanceDynamic::Create(Material, GetTransientPackage());
 	MeshComponent->SetMaterial(0, MaterialInstance);
 	MaterialInstance->SetScalarParameterValue("VoxelSize", Settings.VoxelSize); // To have it on start

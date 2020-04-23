@@ -17,6 +17,7 @@
 #include "VoxelRender/VoxelMeshConfig.h"
 #include "VoxelWorld.generated.h"
 
+class UVoxelLineBatchComponent;
 class UVoxelSpawnerConfig;
 class UVoxelWorldSaveObject;
 class UVoxelWorldRootComponent;
@@ -28,8 +29,8 @@ class IVoxelRenderer;
 class IVoxelLODManager;
 class FVoxelData;
 class FVoxelDebugManager;
-class FVoxelProcGenManager;
-class FVoxelSpawnerManager;
+class FVoxelEventManager;
+class IVoxelSpawnerManager;
 class FVoxelMultiplayerManager;
 class FVoxelInstancedMeshManager;
 class FVoxelToolRenderingManager;
@@ -40,6 +41,7 @@ enum class EVoxelTaskType : uint8;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWorldLoaded);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWorldDestroyed);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMaxFoliageInstancesReached);
 
 /**
  * Voxel World actor class
@@ -57,17 +59,24 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnWorldDestroyed OnWorldDestroyed;
 
+	// Called when max foliage instances is reached
+	UPROPERTY(BlueprintAssignable)
+	FOnMaxFoliageInstancesReached OnMaxFoliageInstancesReached;
+
 public:
 	UPROPERTY(Category = "Voxel", VisibleAnywhere, BlueprintReadOnly)
 	UVoxelWorldRootComponent* WorldRoot;
+
+	UPROPERTY()
+	UVoxelLineBatchComponent* LineBatchComponent;
 
 public:
 	// Automatically loaded on creation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Save", meta = (Recreate))
 	UVoxelWorldSaveObject* SaveObject = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Save", meta = (FilePathFilter = "voxelsave"))
-	FFilePath SaveFilePath;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Save")
+	FString SaveFilePath;
 
 	// If true, will save the world to SaveFilePath each time it's saved to the save object
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Save")
@@ -112,7 +121,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
 	TMap<FName, int32> Seeds;
 		
-	UPROPERTY(EditDefaultsOnly, Category = "Voxel - General")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General")
 	bool bCreateWorldAutomatically = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General", meta = (DisplayName = "Use camera if no invokers found"))
@@ -144,13 +153,13 @@ public:
 
 	//////////////////////////////////////////////////////////////////////////////
 
-	// WorldSizeInVoxel = CHUNK_SIZE * 2^Depth.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, AdvancedDisplay, Category = "Voxel - World Size", meta = (Recreate, ClampMin = 1, ClampMax = 24, UIMin = 1, UIMax = 24))
-	int32 OctreeDepth = 10;
+	// WorldSizeInVoxel = RENDER_CHUNK_SIZE * 2^DataOctreeDepth.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, AdvancedDisplay, Category = "Voxel - World Size", meta = (Recreate, ClampMin = 1, ClampMax = 26, UIMin = 1, UIMax = 26))
+	int32 RenderOctreeDepth = 10;
 
 	// Size of an edge of the world
 	UPROPERTY(EditAnywhere, Category = "Voxel - World Size", meta = (Recreate, ClampMin = 1, DisplayName = "World Size (in voxel)"))
-	int32 WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(10);
+	uint32 WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(10);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - World Size", meta = (Recreate, InlineEditConditionToggle))
 	bool bUseCustomWorldBounds = false;
@@ -162,12 +171,7 @@ public:
 
 	// Chunks can't have a LOD strictly higher than this. Useful is background has a too low resolution.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - LOD Settings", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
-	int32 MaxLOD = MAX_WORLD_DEPTH - 1;
-
-	// In world space. Chunks under this distance from voxel invokers will have at least the given LOD.
-	// CANNOT be used to force a higher (= lower resolution) LOD
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - LOD Settings", meta = (UpdateLODs, DisplayName = "LODs Min Distances"))
-	TMap<FString, float> LODToMinDistance = { {"0", 10000.f } };
+	int32 MaxLOD = FVoxelUtilities::ClampMesherDepth(32);
 	
 	// Chunks can't have a LOD strictly lower than this. Useful when in space for instance, combined with a manual BP call to ApplyLODSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - LOD Settings", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
@@ -177,12 +181,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - LOD Settings", meta = (UpdateLODs))
 	float InvokerDistanceThreshold = 100;
 	
-	// Min delay between 2 LOD updates, in seconds
+	// Min delay between two LOD updates, in seconds
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - LOD Settings", meta = (RecreateRender, ClampMin = 0), DisplayName = "Min Delay Between LOD Updates")
 	float MinDelayBetweenLODUpdates = 0.1;
 
-	// If true, the LODs will be updated only once at start. Useful when used with a Max LOD of 0 for worlds that have the highest resolution LOD everywhere
-	// LODs can still be updated using ForceLODsUpdate
+	// If true, the LODs will be updated only once at start
+	// LODs can still be updated using ForceLODsUpdate or ApplyLODSettings
+	// For example, can be useful when used with a Max LOD of 0 for worlds that have the highest resolution LOD everywhere
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - LOD Settings", meta = (RecreateRender))
 	bool bConstantLOD = false;
 	
@@ -195,7 +200,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (UpdateRenderer))
 	UMaterialInterface* VoxelMaterial = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (UpdateRenderer))
+	// The material collection to use in Single Index or Double Index material config
+	// IMPL NOTE: RecreateRender on change as the max number of indices might be different
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender))
 	UVoxelMaterialCollectionBase* MaterialCollection;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|UVs", meta = (RecreateRender, DisplayName = "UV Config"))
@@ -214,16 +221,6 @@ public:
 	// Only used if Material Config = RGB
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Tessellation", meta = (UpdateRenderer, EditCondition ="bEnableTessellation"))
 	UMaterialInterface* TessellatedVoxelMaterial = nullptr;
-	
-	// Tessellation distance in world space.
-	// Chunks under this distance will have their adjacency indices computed.
-	// For a more precise control use the material tessellation multiplier
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Tessellation", meta = (UpdateLODs, ClampMin = 0, EditCondition ="bEnableTessellation"))
-	float TessellationDistance = 10000;
-
-	// Increases the chunks bounding boxes, useful when using tessellation
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Tessellation", meta = (RecreateRender, EditCondition ="bEnableTessellation"))
-	float TessellationBoundsExtension = 0;
 
 	// If true, will use the voxel material alpha as hardness if the material config is RGB
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Hardness")
@@ -251,7 +248,7 @@ public:
 	bool bHalfPrecisionCoordinates = false;
 
 	// If true, will interpolate the adjacent voxels colors to find the exact vertex color
-	// In SingleIndex, will interpolate DataA and DataB
+	// In SingleIndex, will interpolate DataA/B/C
 	// In DoubleIndex, will interpolate Blend and Data
 	// Twice as expensive, as requires to make twice as many material queries!
 	// Might not look as great if the material outside of the voxel surface isn't set to something nice
@@ -294,8 +291,8 @@ public:
 	TSubclassOf<UVoxelProceduralMeshComponent> ProcMeshClass;
 
 	// Chunks with a LOD strictly higher than this won't be rendered
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
-	int32 ChunksCullingLOD = MAX_WORLD_DEPTH - 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (UpdateLODs, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26))
+	int32 ChunksCullingLOD = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(32);
 
 	// Whether to render the world, or to just use it for collisions/navmesh
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (Recreate))
@@ -320,7 +317,7 @@ public:
 
 	// Chunks with LOD <= this will have distance fields
 	// Be careful when increasing because of the memory usage caused by distance fields
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25, EditCondition = "bGenerateDistanceFields"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, EditCondition = "bGenerateDistanceFields"))
 	int32 MaxDistanceFieldLOD = 1;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
@@ -342,23 +339,32 @@ public:
 	// Recommended, as cooking collision for merged chunks takes forever
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, EditCondition = "bMergeChunks"))
 	bool bDoNotMergeCollisionsAndNavmesh = true;
+
+	// Increases the chunks bounding boxes, useful when using tessellation
+	// Setting it to 0 can cause issues on flat worlds
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
+	float BoundsExtension = 100;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Spawners", meta = (Recreate))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Spawners", meta = (RecreateSpawners))
 	UVoxelSpawnerConfig* SpawnerConfig;
 
-	// The number of instances to put in each hierarchical instanced mesh before creating a new one
+	// The chunk size, in voxels, of a single HISM component
 	// Lower = higher draw calls/object count
 	// Higher = more delay when building the occlusion tree
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Spawners", meta = (Recreate))
-	int32 NumberOfInstancesPerHISM = 100000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Spawners", meta = (RecreateSpawners, DisplayName = "HISM Chunk Size"))
+	int32 HISMChunkSize = 2048;
 
 	// Only nearby instances have collisions
 	// Configure the distance using this
 	// In voxels!
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Spawners", meta = (Recreate, ClampMin = 0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Spawners", meta = (RecreateSpawners, ClampMin = 0))
 	int32 SpawnersCollisionDistanceInVoxel = 64;
+
+	// If more instances than this are spawned, they will not be displayed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Spawners", meta = (RecreateSpawners, ClampMin = 0))
+	int64 MaxNumberOfFoliageInstances = MAX_int32;
 
 	//////////////////////////////////////////////////////////////////////////////
 
@@ -402,7 +408,7 @@ public:
 	bool bComputeVisibleChunksCollisions = true;
 
 	// Max LOD to compute collisions on. Inclusive. If not 0 collisions won't be precise. Does not affect invokers
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions|Visible Chunks", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25, EditCondition = "bComputeVisibleChunksCollisions && bEnableCollisions"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions|Visible Chunks", meta = (UpdateLODs, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, EditCondition = "bComputeVisibleChunksCollisions && bEnableCollisions"))
 	int32 VisibleChunksCollisionsMaxLOD = 5;
 	
 	/**	Allows you to override the PhysicalMaterial to use for simple collision on this body. */
@@ -436,7 +442,7 @@ public:
 	bool bComputeVisibleChunksNavmesh = true;
 
 	// Max LOD to compute navmesh on. Inclusive. Does not affect invokers
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Navmesh", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25, EditCondition = "bEnableNavmesh && bComputeVisibleChunksNavmesh"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Navmesh", meta = (UpdateLODs, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, EditCondition = "bEnableNavmesh && bComputeVisibleChunksNavmesh"))
 	int32 VisibleChunksNavmeshMaxLOD = 0;
 	
 	//////////////////////////////////////////////////////////////////////////////
@@ -485,9 +491,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Performance", meta = (RecreateRender, ClampMin = 0.001))
 	float MeshUpdatesBudget = 1000;
 
-	// The rate at which generation events are fired (number of updates per seconds). Used for foliage spawning, foliage collision, multiplayer, binded BP events...
+	// The rate at which events are fired (number of updates per seconds). Used for foliage spawning, foliage collision, binded BP events...
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Performance", meta = (RecreateRender, UIMin = 1, UIMax = 60))
-	float GenerationEventsTickRate = 15;
+	float EventsTickRate = 15;
 	
 	// Depth to which to subdivide the data octree on start
 	// Will create 8^X nodes, so keep low!
@@ -521,6 +527,7 @@ public:
 
 public:
 	// Will use this data in CreateWorld if it's valid
+	// Note: PendingData pointer is cleared on CreateWorld
 	TVoxelSharedPtr<FVoxelData> PendingData;
 	
 public:
@@ -529,7 +536,7 @@ public:
 	IVoxelLODManager& GetLODManager() const { return *LODManager; }
 	IVoxelRenderer& GetRenderer() const { return *Renderer; }
 	FVoxelDebugManager& GetDebugManager() const { return *DebugManager; }
-	FVoxelProcGenManager& GetProcGenManager() const { return *ProcGenManager; }
+	FVoxelEventManager& GetEventManager() const { return *EventManager; }
 	FVoxelToolRenderingManager& GetToolRenderingManager() const { return *ToolRenderingManager; }
 
 	const TVoxelSharedPtr<FVoxelData>& GetDataSharedPtr() const { return Data; }
@@ -541,6 +548,7 @@ public:
 	
 	FVoxelWorldGeneratorInit GetInitStruct() const;
 	FIntBox GetWorldBounds() const;
+	FIntVector GetWorldOffset() const { return *WorldOffset; }
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
@@ -548,9 +556,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
 	void SetWorldGeneratorClass(TSubclassOf<UVoxelWorldGenerator> NewGeneratorClass);
 
-	// Set the octree depth: between 1 and 25
+	// Set the render octree depth
 	UFUNCTION(BlueprintCallable, Category = "Voxel|World Size")
-	void SetOctreeDepth(int32 NewDepth);
+	void SetRenderOctreeDepth(int32 NewDepth);
+	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|World Size")
+	void SetWorldSize(int32 NewWorldSizeInVoxels);
+	void SetWorldSize(uint32 NewWorldSizeInVoxels);
 
 public:
 	// Is this world created?
@@ -566,9 +578,10 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "World Position to Voxel", AdvancedDisplay = "Rounding"))
 	virtual FIntVector GlobalToLocal(const FVector& Position, EVoxelWorldCoordinatesRounding Rounding = EVoxelWorldCoordinatesRounding::RoundToNearest) const override final;
-	// Precision errors with large world offset
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "World Position to Voxel Float"))
-	virtual FVector GlobalToLocalFloat(const FVector& Position) const override final;
+	FVector GlobalToLocalFloatBP(const FVector& Position) const;
+	virtual FVoxelVector GlobalToLocalFloat(const FVector& Position) const override final;
 
 	/**
 	 * Convert position from voxel space to world space
@@ -577,9 +590,10 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "Voxel Position to World"))
 	virtual FVector LocalToGlobal(const FIntVector& Position) const override final;
-	// Precision errors with large world offset
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "Voxel Position to World Float"))
-	virtual FVector LocalToGlobalFloat(const FVector& Position) const override final;
+	FVector LocalToGlobalFloatBP(const FVector& Position) const;
+	virtual FVector LocalToGlobalFloat(const FVoxelVector& Position) const override final;
 
 	/**
 	 * Get the 8 neighbors in voxel space of GlobalPosition
@@ -660,7 +674,7 @@ private:
 	TVoxelSharedPtr<IVoxelPool> Pool;
 	TVoxelSharedPtr<IVoxelRenderer> Renderer;
 	TVoxelSharedPtr<IVoxelLODManager> LODManager;
-	TVoxelSharedPtr<FVoxelProcGenManager> ProcGenManager;
+	TVoxelSharedPtr<FVoxelEventManager> EventManager;
 	TVoxelSharedPtr<FVoxelToolRenderingManager> ToolRenderingManager;
 
 	TVoxelSharedRef<FIntVector> WorldOffset = MakeVoxelShared<FIntVector>(FIntVector::ZeroValue);
@@ -675,7 +689,7 @@ private:
 	TVoxelSharedRef<IVoxelPool> CreatePool() const;
 	TVoxelSharedRef<IVoxelRenderer> CreateRenderer() const;
 	TVoxelSharedRef<IVoxelLODManager> CreateLODManager() const;
-	TVoxelSharedPtr<FVoxelProcGenManager> CreateProcGenManager() const;
+	TVoxelSharedPtr<FVoxelEventManager> CreateEventManager() const;
 	TVoxelSharedPtr<FVoxelToolRenderingManager> CreateToolRenderingManager() const;
 
 	void CreateWorldInternal();
@@ -685,8 +699,13 @@ private:
 public:
 	void LoadFromSaveObject();
 	void ApplyPlaceableItems();
+
 	void UpdateDynamicLODSettings() const;
 	void UpdateDynamicRendererSettings() const;
+
+	void RecreateRender();
+	void RecreateSpawners();
+	void RecreateAll();
 
 #if WITH_EDITOR
 	FSimpleMulticastDelegate OnPropertyChanged;
@@ -706,11 +725,11 @@ public:
 	virtual void OnEndPIE(bool bIsSimulating) override;
 	virtual void OnPrepareToCleanseEditorObject(UObject* Object) override;
 	virtual void OnPreExit() override;
+	virtual void OnRefreshEditor() override;
 	//~ End IVoxelEditorDelegatesInterface Interface
 #endif
 };
 
-#if CPP // UHT is dumb
 #if WITH_EDITOR
 class VOXEL_API IVoxelWorldEditor
 {
@@ -729,5 +748,4 @@ private:
 	// Ptr to interface to voxel editor operations.
 	static TSharedPtr<IVoxelWorldEditor> VoxelWorldEditor;
 };
-#endif
 #endif

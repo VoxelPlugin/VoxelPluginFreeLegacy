@@ -70,7 +70,7 @@ void FVoxelGraphPreview::Update(bool bUpdateTextures, bool bAutomaticPreview)
 
 	if (!Settings->Mesh || !Settings->Material)
 	{
-		UE_LOG(LogVoxel, Error, TEXT("Invalid Mesh or Material in voxel graph preview settings (%s)"), *WorldGenerator->GetName());
+		LOG_VOXEL(Error, TEXT("Invalid Mesh or Material in voxel graph preview settings (%s)"), *WorldGenerator->GetName());
 		return;
 	}
 

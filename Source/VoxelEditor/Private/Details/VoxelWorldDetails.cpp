@@ -8,6 +8,7 @@
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
+#include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelMessages.h"
 
@@ -25,11 +26,38 @@
 #include "AssetRegistryModule.h"
 #include "Editor.h"
 #include "RawMesh.h"
+#include "PhysicsEngine/BodySetup.h"
 
 // The sort order is being silly, so force set it
 #include "Editor/PropertyEditor/Private/DetailCategoryBuilderImpl.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
+inline FString GetVoxelWorldSaveFilePath(AVoxelWorld& World, bool bIsLoad)
+{
+	if ((bIsLoad && FPaths::FileExists(World.SaveFilePath)) || (!bIsLoad && !World.SaveFilePath.IsEmpty()))
+	{
+		return World.SaveFilePath;
+	}
+	else
+	{
+		TArray<FString> OutFiles;
+		if (FDesktopPlatformModule::Get()->OpenFileDialog(
+			FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr),
+			TEXT("Choose File"),
+			FPaths::ProjectSavedDir(),
+			"",
+			TEXT("Voxel Save (*.voxelsave)|*.voxelsave"),
+			EFileDialogFlags::None,
+			OutFiles))
+		{
+			ensure(OutFiles.Num() == 1);
+			return OutFiles[0];
+		}
+		else
+		{
+			return "";
+		}
+	}
+}
 
 TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
 {
@@ -212,9 +240,9 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 	FVoxelEditorUtilities::AddButtonToCategory(
 		DetailLayout,
 		"Voxel - General",
-		LOCTEXT("FillSeed", "FillSeedFromGenerator"),
-		LOCTEXT("FillSeeds", "Fill Seeds From Generator"),
-		LOCTEXT("Fill", "Fill Seeds"),
+		VOXEL_LOCTEXT("FillSeedFromGenerator"),
+		VOXEL_LOCTEXT("Fill Seeds From Generator"),
+		VOXEL_LOCTEXT("Fill Seeds"),
 		false,
 		CreateWorldsDelegate([](AVoxelWorld& World)
 		{
@@ -249,9 +277,9 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			FVoxelEditorUtilities::AddButtonToCategory(
 				DetailLayout,
 				"Voxel - Preview",
-				LOCTEXT("Toggle", "Toggle"),
-				LOCTEXT("ToggleWorldPreview", "Toggle World Preview"),
-				LOCTEXT("Toggle", "Toggle"),
+				VOXEL_LOCTEXT("Toggle"),
+				VOXEL_LOCTEXT("Toggle World Preview"),
+				VOXEL_LOCTEXT("Toggle"),
 				false,
 				CreateWorldsDelegate([](AVoxelWorld& World)
 				{
@@ -261,9 +289,9 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			FVoxelEditorUtilities::AddButtonToCategory(
 				DetailLayout,
 				"Voxel - Preview",
-				LOCTEXT("Clear", "Clear"),
-				LOCTEXT("ClearWorldData", "Clear World Data"),
-				LOCTEXT("Clear", "Clear"),
+				VOXEL_LOCTEXT("Clear All"),
+				VOXEL_LOCTEXT("Clear World Data"),
+				VOXEL_LOCTEXT("Clear All"),
 				true,
 				CreateWorldsDelegate([](AVoxelWorld& World)
 				{
@@ -271,19 +299,58 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 					{
 						if (EAppReturnType::Yes == FMessageDialog::Open(
 							EAppMsgType::YesNoCancel, 
-							LOCTEXT("ClearDataWarning", "This will clear all the voxel world edits! Do you want to continue?")))
+							VOXEL_LOCTEXT("This will clear all the voxel world edits! Do you want to continue?")))
 						{
 							World.GetData().ClearData();
-							World.GetLODManager().UpdateBounds(FIntBox::Infinite);
+							World.Toggle();
+							World.Toggle();
+						}
+					}
+				}));
+			FVoxelEditorUtilities::AddButtonToCategory(
+				DetailLayout,
+				"Voxel - Preview",
+				VOXEL_LOCTEXT("Clear Values"),
+				VOXEL_LOCTEXT("Clear World Value Data"),
+				VOXEL_LOCTEXT("Clear Values"),
+				true,
+				CreateWorldsDelegate([](AVoxelWorld& World)
+				{
+					if (World.IsCreated())
+					{
+						if (EAppReturnType::Yes == FMessageDialog::Open(
+							EAppMsgType::YesNoCancel, 
+							VOXEL_LOCTEXT("This will clear all the voxel world value edits! Do you want to continue?")))
+						{
+							UVoxelBlueprintLibrary::ClearValueData(&World);
+						}
+					}
+				}));
+			FVoxelEditorUtilities::AddButtonToCategory(
+				DetailLayout,
+				"Voxel - Preview",
+				VOXEL_LOCTEXT("Clear Materials"),
+				VOXEL_LOCTEXT("Clear World Material Data"),
+				VOXEL_LOCTEXT("Clear Materials"),
+				true,
+				CreateWorldsDelegate([](AVoxelWorld& World)
+				{
+					if (World.IsCreated())
+					{
+						if (EAppReturnType::Yes == FMessageDialog::Open(
+							EAppMsgType::YesNoCancel, 
+							VOXEL_LOCTEXT("This will clear all the voxel world material edits! Do you want to continue?")))
+						{
+							UVoxelBlueprintLibrary::ClearMaterialData(&World);
 						}
 					}
 				}));
 			FVoxelEditorUtilities::AddButtonToCategory(
 				DetailLayout,
 				"Voxel - Bake",
-				LOCTEXT("Bake", "Bake"),
-				LOCTEXT("BakeToStaticMesh", "Bake World To Static Meshes"),
-				LOCTEXT("Bake", "Bake"),
+				VOXEL_LOCTEXT("Bake"),
+				VOXEL_LOCTEXT("Bake World To Static Meshes"),
+				VOXEL_LOCTEXT("Bake"),
 				false,
 				CreateWorldsDelegate([](AVoxelWorld& World)
 				{
@@ -301,9 +368,9 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		FVoxelEditorUtilities::AddButtonToCategory(
 			DetailLayout,
 			"Voxel - Save",
-			LOCTEXT("Load", "Load"),
-			LOCTEXT("LoadFromSave", "Load from Save Object"),
-			LOCTEXT("Load", "Load"),
+			VOXEL_LOCTEXT("Load"),
+			VOXEL_LOCTEXT("Load from Save Object"),
+			VOXEL_LOCTEXT("Load"),
 			false,
 			CreateWorldsDelegate([](AVoxelWorld& World)
 			{
@@ -327,32 +394,23 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		FVoxelEditorUtilities::AddButtonToCategory(
 			DetailLayout,
 			"Voxel - Save",
-			LOCTEXT("SaveFile", "Save File"),
-			LOCTEXT("SaveToFile", "Save to File"),
-			LOCTEXT("Save", "Save"),
+			VOXEL_LOCTEXT("Save File"),
+			VOXEL_LOCTEXT("Save to File"),
+			VOXEL_LOCTEXT("Save"),
 			true,
 			CreateWorldsDelegate([](AVoxelWorld& World)
 			{
 				if (!ensure(World.IsCreated())) return;
 
-				FString FilePath = World.GetDefaultFilePath();
-				if (FilePath.IsEmpty())
-				{
-					TArray<FString> OutFiles;
-					if (FDesktopPlatformModule::Get()->SaveFileDialog(
-						FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr),
-						TEXT("File to open"),
-						FPaths::ProjectSavedDir(),
-						"",
-						TEXT("Voxel Save (*.voxelsave)|*.voxelsave"),
-						EFileDialogFlags::None,
-						OutFiles))
-					{
-						FilePath = OutFiles[0];
-					}
-				}
+				const FString Path = GetVoxelWorldSaveFilePath(World, false);
+				if (Path.IsEmpty()) return;
+
 				FText Error;
-				if (!World.SaveToFile(FilePath, Error))
+				if (World.SaveToFile(Path, Error))
+				{
+					World.SaveFilePath = Path;
+				}
+				else
 				{
 					FMessageDialog::Open(EAppMsgType::Ok, Error);
 				}
@@ -365,31 +423,27 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		FVoxelEditorUtilities::AddButtonToCategory(
 			DetailLayout,
 			"Voxel - Save",
-			LOCTEXT("LoadFile", "Load File"),
-			LOCTEXT("LoadFromFile", "Load from File"),
-			LOCTEXT("Load", "Load"),
+			VOXEL_LOCTEXT("Load File"),
+			VOXEL_LOCTEXT("Load from File"),
+			VOXEL_LOCTEXT("Load"),
 			true,
 			CreateWorldsDelegate([](AVoxelWorld& World)
 			{
 				if (!ensure(World.IsCreated())) return;
 
-				TArray<FString> OutFiles;
-				if (FDesktopPlatformModule::Get()->OpenFileDialog(
-					FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr),
-					TEXT("File to open"),
-					FPaths::ProjectSavedDir(),
-					"",
-					TEXT("Voxel Save (*.voxelsave)|*.voxelsave"),
-					EFileDialogFlags::None,
-					OutFiles))
+				const FString Path = GetVoxelWorldSaveFilePath(World, true);
+				if (Path.IsEmpty()) return;
+
+				FText Error;
+				if (World.LoadFromFile(Path, Error))
 				{
-					check(OutFiles.Num() == 1);
-					FText Error;
-					if (!World.LoadFromFile(OutFiles[0], Error))
-					{
-						FMessageDialog::Open(EAppMsgType::Ok, Error);
-					}
+					World.SaveFilePath = Path;
 				}
+				else
+				{
+					FMessageDialog::Open(EAppMsgType::Ok, Error);
+				}
+
 			}),
 			CreateWorldsEnabledDelegate([](AVoxelWorld& World)
 			{
@@ -398,9 +452,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 }
 }
 
-FReply FVoxelWorldDetails::BakeWorld(AVoxelWorld& World)
+void FVoxelWorldDetails::BakeWorld(AVoxelWorld& World)
 {
 	FVoxelMessages::ShowVoxelPluginProError("Baking to static mesh requires Voxel Plugin Pro");
-	return FReply::Handled();
 }
-#undef LOCTEXT_NAMESPACE

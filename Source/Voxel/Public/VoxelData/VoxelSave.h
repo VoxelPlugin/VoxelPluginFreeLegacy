@@ -6,27 +6,21 @@
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
 #include "VoxelFoliage.h"
+#include "VoxelSaveStruct.h"
 #include "VoxelSave.generated.h"
 
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Uncompressed Saves Memory"), STAT_VoxelUncompressedSavesMemory, STATGROUP_VoxelMemory, VOXEL_API);
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Compressed Saves Memory"), STAT_VoxelCompressedSavesMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Uncompressed Saves Memory"), STAT_VoxelUncompressedSavesMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Compressed Saves Memory"), STAT_VoxelCompressedSavesMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
-/**
- *	Uncompressed save of the world
- */
-USTRUCT(BlueprintType, Category = Voxel)
-struct VOXEL_API FVoxelUncompressedWorldSave
+struct VOXEL_API FVoxelUncompressedWorldSaveImpl
 {
-	GENERATED_BODY()
-
 public:
-	FVoxelUncompressedWorldSave()
+	FVoxelUncompressedWorldSaveImpl()
 	{
-		INC_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, GetAllocatedSize());
 	}
-	~FVoxelUncompressedWorldSave()
+	~FVoxelUncompressedWorldSaveImpl()
 	{
-		DEC_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, GetAllocatedSize());
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, AllocatedSize);
 	}
 
 public:
@@ -38,21 +32,59 @@ public:
 	{
 		return Guid;
 	}
-	int32 GetAllocatedSize() const
+
+	bool HasValues() const
 	{
-		return 
-			Chunks.GetAllocatedSize() +
-			ValueBuffers.GetAllocatedSize() + 
-			MaterialBuffers.GetAllocatedSize() +
-			FoliageBuffers.GetAllocatedSize() +
-			PlaceableItems.GetAllocatedSize();
+		return ValueBuffers.Num() > 0;
+	}
+	bool HasMaterials() const
+	{
+		return MaterialBuffers.Num() > 0;
+	}
+	bool HasFoliage() const
+	{
+		return FoliageBuffers.Num() > 0;
+	}
+
+	/**
+	 * Use in combination with SetUserFlags to do custom fixes (note that the plugin handles loading values/materials saved with different defines on its own)
+	 * 
+	 * For example:
+	 * When loading:
+	 * Save.ApplyCustomFixes([&](uint64 Flags, TArray<FVoxelValue>& Values, TArray<FVoxelMaterial>& Materials)
+	 * {
+	 *		if (Flags & EMyFlags::InvertR) // Or Flags < EMyVersions::InvertR
+	 *		{
+	 *			for (auto& Material : Materials)
+	 *			{
+	 *				Material.SetR(255 - Material.GetR());
+	 *			}
+	 *		}
+	 * });
+	 *
+	 * When saving:
+	 * Save.SetUserFlags(EMyFlags::Current);
+	 */
+	template<typename T>
+	void ApplyCustomFixes(T Lambda)
+	{
+		Lambda(UserFlags, ValueBuffers, MaterialBuffers);
+	}
+	void SetUserFlags(uint64 InUserFlags)
+	{
+		UserFlags = InUserFlags;
+	}
+	uint64 GetUserFlags() const
+	{
+		return UserFlags;
 	}
 
 public:
+	void UpdateAllocatedSize() const;
 	bool Serialize(FArchive& Ar);
 	TArray<uint8> GetSerializedData() const;
 
-	bool operator==(const FVoxelUncompressedWorldSave& Other) const
+	bool operator==(const FVoxelUncompressedWorldSaveImpl& Other) const
 	{
 		return Guid == Other.Guid;
 	}
@@ -79,6 +111,7 @@ private:
 	int32 Version = -1;
 	FGuid Guid;
 	int32 Depth = -1;
+	uint64 UserFlags = 0;
 	
 	TArray<FVoxelValue> ValueBuffers;
 	TArray<FVoxelMaterial> MaterialBuffers;
@@ -91,62 +124,34 @@ private:
 	TArray<FVoxelChunkSave> Chunks;
 	TArray<uint8> PlaceableItems;
 
+	mutable uint32 AllocatedSize = 0;
+
 	friend class FVoxelSaveBuilder;
 	friend class FVoxelSaveLoader;
 	friend struct FVoxelChunkSaveWithoutFoliage;
 };
 
-inline FArchive& operator<<(FArchive &Ar, FVoxelUncompressedWorldSave& Save)
-{
-	Save.Serialize(Ar);
-	return Ar;
-}
-
-template<>
-struct TStructOpsTypeTraits<FVoxelUncompressedWorldSave> : public TStructOpsTypeTraitsBase2<FVoxelUncompressedWorldSave>
-{
-	enum 
-	{
-		WithSerializer = true,
-		WithIdenticalViaEquality = true
-	};
-};
-
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-/**
- * Compressed save of the world
- */
-USTRUCT(BlueprintType, Category = Voxel)
-struct VOXEL_API FVoxelCompressedWorldSave
-{	
-	GENERATED_BODY()
-		
-	FVoxelCompressedWorldSave()
-	{
-		INC_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, GetAllocatedSize());
-	}
-	~FVoxelCompressedWorldSave()
-	{
-		DEC_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, GetAllocatedSize());
-	}
+struct VOXEL_API FVoxelCompressedWorldSaveImpl
+{
+	FVoxelCompressedWorldSaveImpl() = default;
+	~FVoxelCompressedWorldSaveImpl();
 
-	inline int32 GetDepth() const
+	int32 GetDepth() const
 	{
 		return Depth;
 	}
 
-	bool Serialize(FArchive& Ar);
-
-	int32 GetAllocatedSize() const
-	{
-		return CompressedData.GetAllocatedSize();
-	}
-
-	bool operator==(const FVoxelCompressedWorldSave& Other) const
+	bool operator==(const FVoxelCompressedWorldSaveImpl& Other) const
 	{
 		return Guid == Other.Guid;
 	}
+
+	bool Serialize(FArchive& Ar);
+	void UpdateAllocatedSize() const;
 	
 private:
 	int32 Version;
@@ -154,25 +159,40 @@ private:
 	int32 Depth = -1;
 	TArray<uint8> CompressedData;
 
+	mutable uint32 AllocatedSize = 0;
+
 	friend class UVoxelSaveUtilities;
 };
 
-inline FArchive& operator<<(FArchive &Ar, FVoxelCompressedWorldSave& Save)
-{
-	Save.Serialize(Ar);
-	return Ar;
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-template<>
-struct TStructOpsTypeTraits<FVoxelCompressedWorldSave> : public TStructOpsTypeTraitsBase2<FVoxelCompressedWorldSave>
+// Blueprint wrapper that's cheap to copy around
+USTRUCT(BlueprintType, Category = Voxel)
+struct VOXEL_API FVoxelUncompressedWorldSave
+#if CPP
+	: public TVoxelSaveStruct<FVoxelUncompressedWorldSaveImpl>
+#endif
 {
-	enum 
-	{
-		WithSerializer = true,
-		WithIdenticalViaEquality = true
-	};
+	GENERATED_BODY()
 };
 
+// Blueprint wrapper that's cheap to copy around
+USTRUCT(BlueprintType, Category = Voxel)
+struct VOXEL_API FVoxelCompressedWorldSave
+#if CPP
+	: public TVoxelSaveStruct<FVoxelCompressedWorldSaveImpl>
+#endif
+{
+	GENERATED_BODY()
+};
+
+DEFINE_VOXEL_SAVE_STRUCT(FVoxelUncompressedWorldSave);
+DEFINE_VOXEL_SAVE_STRUCT(FVoxelCompressedWorldSave);
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 UCLASS(Blueprintable, Category = Voxel)
@@ -190,7 +210,5 @@ public:
 
 	virtual void PostLoad() override;
 
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
+	void CopyDepthFromSave();
 };

@@ -15,9 +15,9 @@ bool UVoxelMeshSpawnerThumbnailRenderer::CanVisualizeAsset(UObject* Object)
 	return Object->IsA(UVoxelMeshSpawner::StaticClass()) && CastChecked<UVoxelMeshSpawner>(Object)->Mesh;
 }
 
-void UVoxelMeshSpawnerThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas)
+void UVoxelMeshSpawnerThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily))
 {
-	UStaticMeshThumbnailRenderer::Draw(CastChecked<UVoxelMeshSpawner>(Object)->Mesh, X, Y, Width, Height, Target, Canvas);
+	UStaticMeshThumbnailRenderer::Draw(CastChecked<UVoxelMeshSpawner>(Object)->Mesh, X, Y, Width, Height, Target, Canvas ONLY_UE_25_AND_HIGHER(, bAdditionalViewFamily));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -27,7 +27,7 @@ bool UVoxelAssetSpawnerThumbnailRenderer::CanVisualizeAsset(UObject* Object)
 	return Object->IsA(UVoxelAssetSpawner::StaticClass()) && CastChecked<UVoxelAssetSpawner>(Object)->Generator.IsValid();
 }
 
-void UVoxelAssetSpawnerThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas)
+void UVoxelAssetSpawnerThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily))
 {
 	const auto& Generator = CastChecked<UVoxelAssetSpawner>(Object)->Generator;
 	auto* GeneratorObject = Generator.GetObject();
@@ -36,7 +36,7 @@ void UVoxelAssetSpawnerThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y
 		FThumbnailRenderingInfo* RenderInfo = GUnrealEd->GetThumbnailManager()->GetRenderingInfo(GeneratorObject);
 		if (RenderInfo && RenderInfo->Renderer)
 		{
-			RenderInfo->Renderer->Draw(GeneratorObject, X, Y, Width, Height, Target, Canvas);
+			RenderInfo->Renderer->Draw(GeneratorObject, X, Y, Width, Height, Target, Canvas ONLY_UE_25_AND_HIGHER(, bAdditionalViewFamily));
 		}
 	}
 }
@@ -127,7 +127,7 @@ bool UVoxelSpawnerGroupThumbnailRenderer::CanVisualizeAsset(UObject* Object)
 	return Object->IsA(UVoxelSpawnerGroup::StaticClass()) && CastChecked<UVoxelSpawnerGroup>(Object)->Children.Num() > 0;
 }
 
-void UVoxelSpawnerGroupThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas)
+void UVoxelSpawnerGroupThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily))
 {
 	auto* Group = CastChecked<UVoxelSpawnerGroup>(Object);
 	auto& Children = Group->Children;
@@ -141,7 +141,8 @@ void UVoxelSpawnerGroupThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y
 				FThumbnailRenderingInfo* RenderInfo = GUnrealEd->GetThumbnailManager()->GetRenderingInfo(Spawner);
 				if (RenderInfo && RenderInfo->Renderer)
 				{
-					RenderInfo->Renderer->Draw(Spawner, NewX, NewY, NewWidth, NewHeight, Target, Canvas);
+					// TODO proper bAdditionalViewFamily
+					RenderInfo->Renderer->Draw(Spawner, NewX, NewY, NewWidth, NewHeight, Target, Canvas ONLY_UE_25_AND_HIGHER(, bAdditionalViewFamily));
 				}
 			}
 		}
@@ -155,7 +156,7 @@ bool UVoxelMeshSpawnerGroupThumbnailRenderer::CanVisualizeAsset(UObject* Object)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelMeshSpawnerGroupThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas)
+void UVoxelMeshSpawnerGroupThumbnailRenderer::Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily))
 {
 	auto* Group = CastChecked<UVoxelMeshSpawnerGroup>(Object);
 	auto& Meshes = Group->Meshes;
@@ -166,7 +167,8 @@ void UVoxelMeshSpawnerGroupThumbnailRenderer::Draw(UObject* Object, int32 X, int
 			auto* Mesh = Meshes[Index];
 			if (Mesh)
 			{
-				UStaticMeshThumbnailRenderer::Draw(Mesh, NewX, NewY, NewWidth, NewHeight, Target, Canvas);
+				// TODO proper bAdditionalViewFamily
+				UStaticMeshThumbnailRenderer::Draw(Mesh, NewX, NewY, NewWidth, NewHeight, Target, Canvas ONLY_UE_25_AND_HIGHER(, bAdditionalViewFamily));
 			}
 		}
 	});

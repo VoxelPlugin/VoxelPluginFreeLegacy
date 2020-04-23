@@ -8,8 +8,6 @@
 #include "VoxelNodes/VoxelGraphMacro.h"
 #include "VoxelGraphEditorModule.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 UClass* FAssetTypeActions_VoxelGraphMacro::GetSupportedClass() const
 {
 	return UVoxelGraphMacro::StaticClass();
@@ -29,4 +27,3 @@ void FAssetTypeActions_VoxelGraphMacro::OpenAssetEditor(const TArray<UObject*>& 
 		}
 	}
 }
-#undef LOCTEXT_NAMESPACE

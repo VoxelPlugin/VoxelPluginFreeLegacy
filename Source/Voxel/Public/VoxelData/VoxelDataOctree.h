@@ -10,14 +10,32 @@
 #include "VoxelQueryZone.h"
 #include "VoxelSharedMutex.h"
 #include "VoxelMiscUtilities.h"
-#include "VoxelData/VoxelDataCell.h"
 #include "VoxelData/VoxelDataOctreeLeafData.h"
+#include "VoxelData/VoxelDataOctreeLeafUndoRedo.h"
+#include "VoxelData/VoxelDataOctreeLeafMultiplayer.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Data Octrees Memory"), STAT_VoxelDataOctreesMemory, STATGROUP_VoxelMemory, VOXEL_API);
-DECLARE_DWORD_ACCUMULATOR_STAT_EXTERN(TEXT("Voxel Data Octrees Count"), STAT_VoxelDataOctreesCount, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Data Octrees Memory"), STAT_VoxelDataOctreesMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_DWORD_ACCUMULATOR_STAT_EXTERN(TEXT("Voxel Data Octrees Count"), STAT_VoxelDataOctreesCount, STATGROUP_VoxelCounters, VOXEL_API);
 
 class FVoxelWorldGeneratorInstance;
+
+class VOXEL_API IVoxelData : public IVoxelDataOctreeMemory
+{
+public:
+	const int32 Depth;
+	const FIntBox WorldBounds;
+	const bool bEnableMultiplayer;
+	const bool bEnableUndoRedo;
+	const TVoxelSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator;
+
+	IVoxelData(
+		int32 Depth,
+		const FIntBox& WorldBounds,
+		bool bEnableMultiplayer,
+		bool bEnableUndoRedo,
+		const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& VoxelWorldGeneratorInstance);
+};
 
 namespace FVoxelDataOctreeUtilities
 {
@@ -109,23 +127,23 @@ public:
 	FVoxelDataOctreeLeaf(const FVoxelDataOctreeBase& Parent, uint8 ChildIndex)
 		: TVoxelOctreeLeaf(Parent, ChildIndex)
 	{
-		INC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeLeaf));
+		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeLeaf));
 	}
 	~FVoxelDataOctreeLeaf()
 	{
-		DEC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeLeaf));
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeLeaf));
 	}
 
 	TVoxelDataOctreeLeafData<FVoxelValue> Values;
 	TVoxelDataOctreeLeafData<FVoxelMaterial> Materials;
 	TVoxelDataOctreeLeafData<FVoxelFoliage> Foliage;
 
-	TUniquePtr<FVoxelDataCellUndoRedo> UndoRedo;
-	TUniquePtr<FVoxelDataCellMultiplayer> Multiplayer;
+	TUniquePtr<FVoxelDataOctreeLeafUndoRedo> UndoRedo;
+	TUniquePtr<FVoxelDataOctreeLeafMultiplayer> Multiplayer;
 
 public:
 	template<typename T>
-	FORCEINLINE void InitForEdit(const FVoxelWorldGeneratorInstance& WorldGenerator, bool bEnableMultiplayer, bool bEnableUndoRedo)
+	FORCEINLINE void InitForEdit(const IVoxelData& Data)
 	{
 		using TNotConst = typename TRemoveConst<T>::Type;
 		
@@ -134,28 +152,26 @@ public:
 		{
 			if (DataHolder.IsSingleValue())
 			{
-				DataHolder.ExpandSingleValue();
+				DataHolder.ExpandSingleValue(Data);
 			}
 			else
 			{
-				DataHolder.CreateDataPtr();
+				DataHolder.CreateDataPtr(Data);
 				{
 					TVoxelQueryZone<TNotConst> QueryZone(GetBounds(), DataHolder.GetDataPtr());
-					GetFromGeneratorAndAssets(WorldGenerator, QueryZone, 0);
+					GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
 				}
 			}
 		}
 		if (!TIsConst<T>::Value)
 		{
-			DataHolder.SetDirty();
-			
-			if (bEnableMultiplayer && !Multiplayer.IsValid())
+			if (Data.bEnableMultiplayer && !Multiplayer.IsValid())
 			{
-				Multiplayer = MakeUnique<FVoxelDataCellMultiplayer>();
+				Multiplayer = MakeUnique<FVoxelDataOctreeLeafMultiplayer>();
 			}
-			if (bEnableUndoRedo && !UndoRedo.IsValid())
+			if (Data.bEnableUndoRedo && !UndoRedo.IsValid())
 			{
-				UndoRedo = MakeUnique<FVoxelDataCellUndoRedo>();
+				UndoRedo = MakeUnique<FVoxelDataOctreeLeafUndoRedo>(*this);
 			}
 		}
 	}
@@ -175,16 +191,16 @@ public:
 	explicit FVoxelDataOctreeParent(uint8 Height)
 		: TVoxelOctreeParent(Height)
 	{
-		INC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeParent));
+		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeParent));
 	}
 	~FVoxelDataOctreeParent()
 	{
-		DEC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeParent));
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeParent));
 	}
 	FVoxelDataOctreeParent(const FVoxelDataOctreeParent& Parent, uint8 ChildIndex)
 		: TVoxelOctreeParent(Parent, ChildIndex)
 	{
-		INC_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeParent));
+		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreesMemory, sizeof(FVoxelDataOctreeParent));
 	}
 
 	void CreateChildren();
@@ -199,21 +215,19 @@ struct FVoxelDataOctreeSetter
 {
 	template<typename T, typename T1, typename T2>
 	static void Set(
-		bool bEnableMultiplayer, 
-		bool bEnableUndoRedo, 
-		FVoxelDataOctreeLeaf& Leaf, 
-		const FVoxelWorldGeneratorInstance& WorldGenerator, 
+		IVoxelData& Data,
+		FVoxelDataOctreeLeaf& Leaf,
 		T1 Iterate, T2 Apply)
 	{
 		VOXEL_SLOW_FUNCTION_COUNTER();
-		
+
 		ensureThreadSafe(Leaf.IsLockedForWrite());
-		
+
 		const auto& DisableEditsBoxes = Leaf.GetItemHolder().GetItems(EVoxelPlaceableItemId::DisableEditsBox);
-		
+			
 		const auto DoWork = [&](auto NeedToCheckCanEdit, auto EnableMultiplayer, auto EnableUndoRedo)
 		{
-			Leaf.InitForEdit<T>(WorldGenerator, EnableMultiplayer, EnableUndoRedo);
+			Leaf.InitForEdit<T>(Data);
 
 			const FIntVector Min = Leaf.GetMin();
 			T* RESTRICT DataPtr = Leaf.GetData<T>().GetDataPtr();
@@ -240,20 +254,19 @@ struct FVoxelDataOctreeSetter
 
 				if (OldValue != Ref)
 				{
+					Leaf.GetData<T>().SetDirty(Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<T>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValue);
 				}
 			});
 		};
 
-		FVoxelUtilities::StaticBranch(DisableEditsBoxes.Num() > 0, bEnableMultiplayer, bEnableUndoRedo, DoWork);
+		FVoxelUtilities::StaticBranch(DisableEditsBoxes.Num() > 0, Data.bEnableMultiplayer, Data.bEnableUndoRedo, DoWork);
 	}
 	template<typename TA, typename TB, typename T1, typename T2>
 	static void Set(
-		bool bEnableMultiplayer, 
-		bool bEnableUndoRedo, 
+		IVoxelData& Data,
 		FVoxelDataOctreeLeaf& Leaf, 
-		const FVoxelWorldGeneratorInstance& WorldGenerator, 
 		T1 Iterate, T2 Apply)
 	{
 		VOXEL_SLOW_FUNCTION_COUNTER();
@@ -264,8 +277,8 @@ struct FVoxelDataOctreeSetter
 		
 		const auto DoWork = [&](auto NeedToCheckCanEdit, auto EnableMultiplayer, auto EnableUndoRedo)
 		{
-			Leaf.InitForEdit<TA>(WorldGenerator, EnableMultiplayer, EnableUndoRedo);
-			Leaf.InitForEdit<TB>(WorldGenerator, EnableMultiplayer, EnableUndoRedo);
+			Leaf.InitForEdit<TA>(Data);
+			Leaf.InitForEdit<TB>(Data);
 
 			const FIntVector Min = Leaf.GetMin();
 			TA* RESTRICT DataPtrA = Leaf.GetData<TA>().GetDataPtr();
@@ -296,18 +309,20 @@ struct FVoxelDataOctreeSetter
 
 				if (OldValueA != RefA)
 				{
+					Leaf.GetData<TA>().SetDirty(Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<TA>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValueA);
 				}
 				if (OldValueB != RefB)
 				{
+					Leaf.GetData<TB>().SetDirty(Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<TB>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValueB);
 				}
 			});
 		};
 
-		FVoxelUtilities::StaticBranch(DisableEditsBoxes.Num() > 0, bEnableMultiplayer, bEnableUndoRedo, DoWork);
+		FVoxelUtilities::StaticBranch(DisableEditsBoxes.Num() > 0, Data.bEnableMultiplayer, Data.bEnableUndoRedo, DoWork);
 	}
 };
 

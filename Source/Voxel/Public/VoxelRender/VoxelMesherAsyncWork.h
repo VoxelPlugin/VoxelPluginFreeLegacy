@@ -35,7 +35,6 @@ public:
 		const FIntBox& Bounds,
 		bool bIsTransitionTask,
 		uint8 TransitionsMask);
-	virtual ~FVoxelMesherAsyncWork() override;
 
 	static void CreateGeometry_AnyThread(
 		const FVoxelDefaultRenderer& Renderer,
@@ -45,6 +44,9 @@ public:
 		TArray<FVector>& OutVertices);
 
 private:
+	// Important: do not allow public delete
+	virtual ~FVoxelMesherAsyncWork() override;
+	
 	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override final;
 	virtual void PostDoWork() override final;
@@ -61,4 +63,7 @@ private:
 	
 	const TVoxelWeakPtr<FVoxelDefaultRenderer> Renderer;
 	const FVoxelPriorityHandler PriorityHandler;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };

@@ -14,7 +14,7 @@
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelData/VoxelData.h"
 
-DECLARE_MEMORY_STAT(TEXT("Voxel Renderer"), STAT_VoxelRenderer, STATGROUP_VoxelMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelRenderer);
 
 static TAutoConsoleVariable<int32> CVarFreezeRenderer(
 	TEXT("voxel.renderer.FreezeRenderer"),
@@ -29,6 +29,7 @@ FVoxelDefaultRenderer::FVoxelDefaultRenderer(const FVoxelRendererSettings& Setti
 		: StaticCastVoxelSharedRef<IVoxelRendererMeshHandler>(MakeVoxelShared<FVoxelRendererClusteredMeshHandler>(*this))
 		: StaticCastVoxelSharedRef<IVoxelRendererMeshHandler>(MakeVoxelShared<FVoxelRendererBasicMeshHandler>(*this)))
 {
+	MeshHandler->Init();
 }
 
 TVoxelSharedRef<FVoxelDefaultRenderer> FVoxelDefaultRenderer::Create(const FVoxelRendererSettings& Settings)
@@ -43,9 +44,38 @@ FVoxelDefaultRenderer::~FVoxelDefaultRenderer()
 	check(IsInGameThread());
 	VOXEL_FUNCTION_COUNTER();
 
-	DEC_DWORD_STAT_BY(STAT_VoxelRenderer, AllocatedSize);
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderer, AllocatedSize);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelDefaultRenderer::Destroy()
+{
+	// This function is needed because the async tasks can keep the renderer alive while the voxel world is destroyed
+	
+	StopTicking();
+
+	// Destroy mesh handler & meshes
+	MeshHandler->StartDestroying();
+
+	for (auto& It : ChunksMap)
+	{
+		CancelTasks(It.Value);
+		if (It.Value.MeshId.IsValid())
+		{
+			// Not really needed, but useful for error checks
+			MeshHandler->RemoveChunk(It.Value.MeshId);
+		}
+	}
+
+	ChunksMap.Reset();
+	MeshHandler.Reset();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 int32 FVoxelDefaultRenderer::UpdateChunks(
@@ -134,46 +164,9 @@ int32 FVoxelDefaultRenderer::UpdateChunks(
 	return ChunksToUpdate.Num();
 }
 
-int32 FVoxelDefaultRenderer::GetTaskCount() const
-{
-	return UpdateIndex > 0 ? TaskCount.GetValue() : -1;
-}
-
-void FVoxelDefaultRenderer::RecomputeMeshPositions()
-{
-	VOXEL_FUNCTION_COUNTER();
-
-	MeshHandler->RecomputeMeshPositions();
-}
-
-void FVoxelDefaultRenderer::ApplyNewMaterials()
-{
-	VOXEL_FUNCTION_COUNTER();
-	
-	if (Settings.bStaticWorld)
-	{
-		FVoxelMessages::Error("Can't ApplyNewMaterials with bStaticWorld = true!");
-		return;
-	}
-
-	Settings.OnMaterialsChanged();
-
-	MeshHandler->ClearChunkMaterials();
-
-	for (auto& It : ChunksMap)
-	{
-		const auto& Chunk = It.Value;
-		if (Chunk.MeshId.IsValid() && ensure(Chunk.BuiltData.MainChunk.IsValid()))
-		{
-			MeshHandler->UpdateChunk(
-				Chunk.MeshId,
-				Chunk.Settings,
-				*Chunk.BuiltData.MainChunk,
-				Chunk.BuiltData.TransitionsChunk.Get(),
-				Chunk.BuiltData.TransitionsMask);
-		}
-	}
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates)
 {
@@ -252,41 +245,40 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 		// Can only have pending settings if dithering out (force visible = true) or waiting for new chunks (force visible = true, force collisions/navmesh)
 		ensure(
 			Chunk.Settings == Chunk.PendingSettings ||
-			Chunk.State == EChunkState::DitheringOut ||
-			Chunk.State == EChunkState::WaitingForNewChunks);
+			Chunk.GetState() == EChunkState::DitheringOut ||
+			Chunk.GetState() == EChunkState::WaitingForNewChunks);
 		ensure(Chunk.PendingSettings == OldSettings);
+
+		// Take a backup of the actual chunk settings
+		// These will be different than OldSettings if DitheringOut or WaitingForNewChunks
+		const auto OldChunksSettings = Chunk.Settings;
 		
 		// We set the chunk settings here so that we have the right priority when starting tasks below
 		Chunk.Settings = NewSettings;
 
-		const auto AddToPreviousChunks = [&]()
-		{
-			for (auto& PreviousChunkId : ChunkUpdate.PreviousChunks)
-			{
-				OldChunksToNewChunks.FindOrAdd(PreviousChunkId).Add(ChunkUpdate.Id);
-			}
-		};
+		// By default, apply the visibility & transitions change
+		bool bApplyNewVisibilityAndMask = true;
 
-		// First process visibility changes
+		// Check if visibility changed (most common case)
 		if (NewSettings.bVisible != OldSettings.bVisible)
 		{
 			const auto CancelDithering = [&]()
 			{
 				VOXEL_SCOPE_COUNTER("CancelDithering");
 				
-				ensure(Chunk.State == EChunkState::DitheringIn || Chunk.State == EChunkState::DitheringOut);
+				ensure(Chunk.GetState() == EChunkState::DitheringIn || Chunk.GetState() == EChunkState::DitheringOut);
 				ensure(Settings.bDitherChunks);
 				ensure(Chunk.NumNewChunksLeft == 0);
 				if (Chunk.MeshId.IsValid())
 				{
 					MeshHandler->ResetDithering(Chunk.MeshId);
 				}
-				if (Chunk.State == EChunkState::DitheringOut)
+				if (Chunk.GetState() == EChunkState::DitheringOut)
 				{
 					ensure(Chunk.PreviousChunks.Num() == 0);
 					ChunksToRemove.RemoveAllSwap([&](auto& X) { return X.Id == Chunk.Id; }, false);
 				}
-				if (Chunk.State == EChunkState::DitheringIn)
+				if (Chunk.GetState() == EChunkState::DitheringIn)
 				{
 					ensure(Settings.bDitherChunks);
 					// Note: will probably have previous chunks
@@ -296,7 +288,7 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 			
 			if (NewSettings.bVisible)
 			{
-				switch (Chunk.State)
+				switch (Chunk.GetState())
 				{
 				case EChunkState::Showed:
 				default:
@@ -308,7 +300,7 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 				{
 					ensure(Chunk.NumNewChunksLeft != 0);
 					Chunk.NumNewChunksLeft = 0;
-					ensure(!Chunk.Tasks.MainTask.IsValid() && !Chunk.Tasks.TransitionsTask.IsValid());
+					ensure(Chunk.Settings.HasRenderChunk() || (!Chunk.Tasks.MainTask.IsValid() && !Chunk.Tasks.TransitionsTask.IsValid()));
 					if (Chunk.BuiltData.MainChunk.IsValid())
 					{
 						// Do not clear previous chunks now as it's not safe to do so while in Update (as old chunks have not been processed now)
@@ -382,7 +374,7 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 				// Set UpdateIndex as we are being showed
 				Chunk.UpdateIndex = UpdateIndex;
 				
-				Chunk.State = Settings.bDitherChunks ? EChunkState::DitheringIn : EChunkState::Showed;
+				Chunk.SetState(Settings.bDitherChunks ? EChunkState::DitheringIn : EChunkState::Showed, STATIC_FNAME("Turned visible"));
 				if (!Chunk.MeshId.IsValid())
 				{
 					// If we don't have a mesh:
@@ -393,13 +385,17 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 						(Chunk.BuiltData.MainChunk.IsValid() && Chunk.BuiltData.MainChunk->IsEmpty()));
 				}
 
-				// Still need previous chunks with no dithering because we need to wait for task to be done
-				// Unneeded previous chunks will be cleared through ChunksPendingClearPreviousChunks
-				AddToPreviousChunks();
+				// When updating if we don't have a mesh yet we always need previous chunks, even with no dithering because we need to wait for task to be done
+				// If we did have a mesh then we added ourselves to ChunksPendingClearPreviousChunks in the switch above
+				// In both cases we can safely add the previous chunks
+				for (auto& PreviousChunkId : ChunkUpdate.PreviousChunks)
+				{
+					OldChunksToNewChunks.FindOrAdd(PreviousChunkId).Add(ChunkUpdate.Id);
+				}
 			}
-			else
+			else // !NewSettings.bVisible
 			{
-				switch (Chunk.State)
+				switch (Chunk.GetState())
 				{
 				case EChunkState::NewChunk:
 				case EChunkState::Hidden:
@@ -438,8 +434,8 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 				}
 
 				// We can't be in any of these states if we get here
-				ensureVoxelSlow(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
-				ensureVoxelSlow(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
+				ensureVoxelSlowNoSideEffects(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
+				ensureVoxelSlowNoSideEffects(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
 				
 				if (!NewSettings.HasRenderChunk())
 				{
@@ -459,45 +455,113 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 					else
 					{
 						// No mesh nor chunks to wait for: can just set the state to hidden
-						Chunk.State = EChunkState::Hidden;
+						Chunk.SetState(EChunkState::Hidden, STATIC_FNAME(""));
 					}
 				}
 				else
 				{
-					Chunk.State = EChunkState::WaitingForNewChunks;
+					Chunk.SetState(EChunkState::WaitingForNewChunks, STATIC_FNAME("Hiding chunk"));
 					ChunksToDitherOutOrRemoveOnceNewChunksAreUpdated.Add(Chunk.Id);
 				}
 			}
 			
 			// Can never happen after an update
 			// Might lead to some abrupt changes, but w/e it's pretty bad already if we get there
-			ensure(Chunk.State != EChunkState::DitheringOut);
-		}
-
-		if (Chunk.State == EChunkState::NewChunk)
-		{
-			// Hidden new chunks
-			ensure(!NewSettings.bVisible);
-			ensure(NewSettings.HasRenderChunk() && !OldSettings.HasRenderChunk());
-			StartTask<EMainOrTransitions::Main, EIfTaskExists::Assert>(Chunk);
-			Chunk.State = EChunkState::Hidden;
-		}
-		
-		// Settings were changed for priority, set them back
-		Chunk.Settings = OldSettings;
-		// Set new settings
-		Chunk.PendingSettings = NewSettings;
-
-		if (Chunk.State == EChunkState::WaitingForNewChunks)
-		{
-			// We don't want to hide it just yet if it's not visible anymore, as we need to dither it out/wait for new chunks to be updated
-			// Same for collisions/navmesh, we don't want things to fall through while new chunks are still loading
-			// So do nothing
+			ensure(Chunk.GetState() != EChunkState::DitheringOut);
 		}
 		else
 		{
-			ApplyPendingSettings(Chunk);
+			// Other case: visibility did not change. This is an update to the state of collisions/navmesh
+			// Much less frequent
+			switch (Chunk.GetState())
+			{
+			case EChunkState::NewChunk:
+			{
+				// Hidden new chunks
+				ensure(!NewSettings.bVisible);
+				ensure(NewSettings.HasRenderChunk() && !OldSettings.HasRenderChunk());
+				StartTask<EMainOrTransitions::Main, EIfTaskExists::Assert>(Chunk);
+				Chunk.SetState(EChunkState::Hidden, STATIC_FNAME("Hidden New Chunk"));
+				break;
+			}
+			case EChunkState::Hidden:
+			{
+				// If we were hidden and we still are, something else changed.
+				// Check that we are still rendered
+				if (!NewSettings.HasRenderChunk())
+				{
+					// If not remove the mesh if valid, and destroy
+					// Make sure to cancel any pending tasks first
+					CancelTasks(Chunk);
+					if (Chunk.MeshId.IsValid())
+					{
+						MeshHandler->RemoveChunk(Chunk.MeshId);
+						Chunk.MeshId.Reset();
+					}
+					DestroyChunk(Chunk);
+					continue;
+				}
+				// Else just stay hidden, ApplyPendingSettings below will do the job
+				break;
+			}
+			case EChunkState::DitheringIn:
+			{
+				// ApplyPendingSettings will do the job
+				ensure(NewSettings.bVisible);
+				break;
+			}
+			case EChunkState::Showed:
+			{
+				// ApplyPendingSettings will do the job
+				ensure(NewSettings.bVisible);
+				break;
+			}
+			case EChunkState::WaitingForNewChunks:
+			{
+				// ApplyPendingSettings will do the job
+				// Make sure we don't update visibility/transitions though
+				bApplyNewVisibilityAndMask = false;
+				// Should be invisible for the LOD tree, but visible here
+				ensure(!NewSettings.bVisible);
+				ensure(OldChunksSettings.bVisible);
+				break;
+			}
+			case EChunkState::DitheringOut:
+			{
+				// ApplyPendingSettings will do the job
+				// Make sure we don't update visibility/transitions though
+				bApplyNewVisibilityAndMask = false;
+				// Should be invisible for the LOD tree, but visible here
+				ensure(!NewSettings.bVisible);
+				ensure(OldChunksSettings.bVisible);
+				break;
+			}
+			default: ensure(false);
+			}
 		}
+		
+		// Settings were changed for priority, set them back
+		// Make sure to use OldChunksSettings and not OldSettings
+		Chunk.Settings = OldChunksSettings;
+		// Set new settings
+		Chunk.PendingSettings = NewSettings;
+
+		if (Chunk.GetState() == EChunkState::WaitingForNewChunks)
+		{
+			// We don't want to hide it just yet if it's not visible anymore, as we need to dither it out/wait for new chunks to be updated
+			// Same for collisions/navmesh, we don't want things to fall through while new chunks are still loading
+			// So skip ApplyPendingSettings
+			continue;
+		}
+
+		// Finally, apply all the new settings
+		// Only apply new visibility if it actually changed
+		// This is to keep a chunk that's dithering out or waiting for new chunks visible, even if for the LOD tree it's not
+		// They will correctly call ApplyPendingSettings once updated
+		ApplyPendingSettings(Chunk, bApplyNewVisibilityAndMask);
+
+		// Else stack is cleared when debugging
+		ensureVoxelSlowNoSideEffects(&Chunk);
 	}
 	
 	FlushQueuedTasks();
@@ -515,7 +579,7 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 			FChunk& OldChunk = ChunksMap.FindChecked(OldChunkId);
 			ensure(OldChunk.MeshId.IsValid() || OldChunk.PreviousChunks.Num() > 0); // We need to have a mesh or be waiting for previous ones
 			ensure(OldChunk.NumNewChunksLeft == 0);
-			ensure(OldChunk.State == EChunkState::WaitingForNewChunks);
+			ensure(OldChunk.GetState() == EChunkState::WaitingForNewChunks);
 
 			if (NewChunks)
 			{
@@ -561,28 +625,58 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 	FlushQueuedTasks();
 }
 
-void FVoxelDefaultRenderer::Destroy()
-{
-	// This function is needed because the async tasks can keep the renderer alive while the voxel world is destroyed
-	
-	StopTicking();
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-	// Destroy mesh handler & meshes
-	MeshHandler->StartDestroying();
+int32 FVoxelDefaultRenderer::GetTaskCount() const
+{
+	return UpdateIndex > 0 ? TaskCount.GetValue() : -1;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelDefaultRenderer::RecomputeMeshPositions()
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	MeshHandler->RecomputeMeshPositions();
+}
+
+void FVoxelDefaultRenderer::ApplyNewMaterials()
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (Settings.bStaticWorld)
+	{
+		FVoxelMessages::Error("Can't ApplyNewMaterials with bStaticWorld = true!");
+		return;
+	}
+
+	Settings.OnMaterialsChanged();
+
+	MeshHandler->ClearChunkMaterials();
 
 	for (auto& It : ChunksMap)
 	{
-		CancelTasks(It.Value);
-		if (It.Value.MeshId.IsValid())
+		const auto& Chunk = It.Value;
+		if (Chunk.MeshId.IsValid() && ensure(Chunk.BuiltData.MainChunk.IsValid()))
 		{
-			// Not really needed, but useful for error checks
-			MeshHandler->RemoveChunk(It.Value.MeshId);
+			MeshHandler->UpdateChunk(
+				Chunk.MeshId,
+				Chunk.Settings,
+				*Chunk.BuiltData.MainChunk,
+				Chunk.BuiltData.TransitionsChunk.Get(),
+				Chunk.BuiltData.TransitionsMask);
 		}
 	}
-
-	ChunksMap.Reset();
-	MeshHandler.Reset();
 }
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 void FVoxelDefaultRenderer::CreateGeometry_AnyThread(
 	int32 LOD,
@@ -594,8 +688,10 @@ void FVoxelDefaultRenderer::CreateGeometry_AnyThread(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDefaultRenderer::Tick(float DeltaTime)
+void FVoxelDefaultRenderer::Tick(float)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -606,123 +702,14 @@ void FVoxelDefaultRenderer::Tick(float DeltaTime)
 
 	const double Time = FPlatformTime::Seconds();
 	const double MaxTime = Time + Settings.MeshUpdatesBudget * 0.001f;
-
+	
 	{
 		VOXEL_SCOPE_COUNTER("MeshHandler Tick");
 		MeshHandler->Tick(MaxTime);
 	}
 	
 	ProcessChunksToRemoveOrShow();
-		
-	{
-		VOXEL_SCOPE_COUNTER("Processing mesh updates");
-		
-		FVoxelTaskCallback Callback;
-		while ( // First check the time, else dequeued elements aren't processed!
-			FPlatformTime::Seconds() < MaxTime &&
-			TasksCallbacksQueue.Dequeue(Callback))
-		{
-			FChunk* Chunk = ChunksMap.Find(Callback.ChunkId);
-			if (!Chunk) continue;
-
-			auto& Tasks = Chunk->Tasks;
-			auto& Task = Callback.bIsTransitionTask ? Tasks.TransitionsTask : Tasks.MainTask;
-			if (!Task.IsValid() || Task->TaskId != Callback.TaskId) continue; // If task was canceled
-			if (!ensure(Task->IsDone())) continue; // Must be done if we're in the callback
-
-			// Move built data
-			auto& BuiltData = Chunk->BuiltData;
-			const auto PreviousBuiltData = BuiltData;
-			if (Callback.bIsTransitionTask)
-			{
-				ensure(Task->TransitionsMask == Chunk->Settings.TransitionsMask); // Should have been canceled
-				BuiltData.TransitionsMask = Task->TransitionsMask;
-				BuiltData.TransitionsChunk = Task->Chunk;
-				BuiltData.TransitionsChunkCreationTime = Task->CreationTime;
-			}
-			else
-			{
-				BuiltData.MainChunk = Task->Chunk;
-				BuiltData.MainChunkCreationTime = Task->CreationTime;
-			}
-
-			// Finally, delete the task
-			Task.Reset();
-
-			// Do nothing while the main chunk isn't valid - we don't want to have unneeded updates for transitions then main
-			if (BuiltData.MainChunk.IsValid())
-			{
-				auto& MeshId = Chunk->MeshId;
-				const auto Update = [&]()
-				{
-					if (!MeshId.IsValid())
-					{
-						MeshId = MeshHandler->AddChunk(Chunk->LOD, Chunk->Bounds.Min);
-					}
-					MeshHandler->UpdateChunk(MeshId, Chunk->Settings, *BuiltData.MainChunk, BuiltData.TransitionsChunk.Get(), BuiltData.TransitionsMask);
-
-					if (Settings.bStaticWorld)
-					{
-						// Free up memory ASAP
-						BuiltData.MainChunk.Reset();
-						BuiltData.TransitionsChunk.Reset();
-					}
-				};
-
-				const bool bTransitionsChunkIsBuilt =
-					BuiltData.TransitionsChunk.IsValid() ||
-					Chunk->Settings.TransitionsMask == 0 ||
-					Settings.RenderType == EVoxelRenderType::SurfaceNets;
-
-				if (BuiltData.MainChunk->IsEmpty() && (!BuiltData.TransitionsChunk.IsValid() || BuiltData.TransitionsChunk->IsEmpty()))
-				{
-					// Both empty, remove mesh if existing
-					if (MeshId.IsValid())
-					{
-						MeshHandler->RemoveChunk(MeshId);
-						MeshId = {};
-					}
-				}
-				else
-				{
-					Update();
-					
-					ensure(MeshId.IsValid());
-
-					// Dither in if first update
-					// If first load and LOD 0, don't dither as it doesn't look nice to have the world dithering under the player
-					if (Settings.bDitherChunks &&
-						!PreviousBuiltData.MainChunk.IsValid() && 
-						!(UpdateIndex == 1 && Chunk->LOD == 0))
-					{
-						// Can be a first update if:
-						// - we are a showed new chunks that's dithering in
-						// - we are a hidden chunk that's updated for the first time. If so don't dither in
-						ensure(Chunk->State == EChunkState::Hidden || Chunk->State == EChunkState::DitheringIn);
-						if (Chunk->State == EChunkState::DitheringIn)
-						{
-							DitherInChunk(*Chunk, Chunk->PreviousChunks);
-						}
-					}
-				}
-
-				// Dither out/remove previous chunks only once transitions are built too
-				// Note: bTransitionsChunkIsBuilt is always true for surface nets
-				if (bTransitionsChunkIsBuilt)
-				{
-					ClearPreviousChunks(*Chunk);
-				}
-			}
-			else
-			{
-				ensure(!Chunk->MeshId.IsValid());
-			}
-
-			// Start new tasks as needed
-			CheckPendingUpdates(*Chunk);
-		}
-	}
-
+	ProcessMeshUpdates(MaxTime);
 	FlushQueuedTasks();
 
 	if (!OnWorldLoadedFired && UpdateIndex > 0 && TaskCount.GetValue() == 0 && TasksCallbacksQueue.IsEmpty())
@@ -737,6 +724,8 @@ void FVoxelDefaultRenderer::Tick(float DeltaTime)
 	Settings.DebugManager->ReportMeshTasksCallbacksQueueNum(TasksCallbacksQueue.Num());
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 template<FVoxelDefaultRenderer::EMainOrTransitions MainOrTransitions, FVoxelDefaultRenderer::EIfTaskExists IfTaskExists>
@@ -796,13 +785,13 @@ void FVoxelDefaultRenderer::StartTask(FChunk& Chunk)
 		}
 	}
 
-	Task = MakeUnique<FVoxelMesherAsyncWork>(
+	Task = TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>>(new FVoxelMesherAsyncWork(
 		*this,
 		Chunk.Id,
 		Chunk.LOD,
 		Chunk.Bounds,
 		MainOrTransitions == EMainOrTransitions::Transitions,
-		MainOrTransitions == EMainOrTransitions::Transitions ? Chunk.Settings.TransitionsMask : 0);
+		MainOrTransitions == EMainOrTransitions::Transitions ? Chunk.Settings.TransitionsMask : 0));
 	QueuedTasks[Chunk.Settings.bVisible][Chunk.Settings.bEnableCollisions].Emplace(Task.Get());
 }
 
@@ -832,10 +821,13 @@ void FVoxelDefaultRenderer::ClearPreviousChunks(FChunk& Chunk)
 	
 	for (uint64 PreviousChunkId : Chunk.PreviousChunks)
 	{
-		auto& PreviousChunk = ChunksMap.FindChecked(PreviousChunkId);
+		FChunk* PreviousChunkPtr = ChunksMap.Find(PreviousChunkId);
+		if (!ensure(PreviousChunkPtr)) continue; // This crashed on Prod
+		
+		FChunk& PreviousChunk = *PreviousChunkPtr;
 		if (PreviousChunk.UpdateIndex > Chunk.UpdateIndex) continue; // This previous chunk has been updated since it was added to our PreviousChunk list
 		
-		ensure(PreviousChunk.State == EChunkState::WaitingForNewChunks); // Should be true if the UpdateIndex is correct
+		ensure(PreviousChunk.GetState() == EChunkState::WaitingForNewChunks); // Should be true if the UpdateIndex is correct
 
 		PreviousChunk.NumNewChunksLeft--;
 		if (!ensure(PreviousChunk.NumNewChunksLeft >= 0)) continue;
@@ -856,44 +848,32 @@ void FVoxelDefaultRenderer::ClearPreviousChunks(FChunk& Chunk)
 void FVoxelDefaultRenderer::NewChunksFinished(FChunk& Chunk, const FChunk& NewChunk)
 {
 	VOXEL_FUNCTION_COUNTER();
+
+	// Only visible chunks need to wait
+	ensure(Chunk.Settings.bVisible);
 	
-	ensure(Chunk.State == EChunkState::WaitingForNewChunks);
+	ensure(Chunk.GetState() == EChunkState::WaitingForNewChunks);
 	ensure(Chunk.NumNewChunksLeft == 0);
-	ensureVoxelSlow(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
-	ensureVoxelSlow(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
+	ensureVoxelSlowNoSideEffects(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
+	ensureVoxelSlowNoSideEffects(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
 	
 	ClearPreviousChunks(Chunk); // Recursively delete previous chunks
 
 	if (Settings.bDitherChunks && Chunk.MeshId.IsValid()) // Could be 0 if we were waiting for previous chunks
 	{
-		const auto ApplyPendingSettings_KeepVisible = [&]()
-		{
-			// Trick to show the chunk when dithering out
-			ensure(Chunk.PendingSettings.bVisible == false);
-			Chunk.PendingSettings.bVisible = true;
-			ApplyPendingSettings(Chunk);
-			// NOTE: It might (I did not check!) be possible that the MeshId is not valid anymore!
-			// For instance if we start a transition task with an empty mask
-			Chunk.PendingSettings.bVisible = false;
-			ensure(Chunk.Settings.bVisible == true);
-		};
 		if (Settings.RenderType == EVoxelRenderType::SurfaceNets)
 		{
 			// For surface nets, the only chunk that can transition is the high res one
 			// So check if we're the high res one, and if not just delete self
 			if (NewChunk.LOD > Chunk.LOD)
 			{
-				ApplyPendingSettings_KeepVisible(); // Apply pending settings now that new chunks are loaded & that we know we still use the mesh
-				if (Chunk.MeshId.IsValid()) // See comment above for this check
-				{
-					Chunk.State = EChunkState::DitheringOut;
-					MeshHandler->DitherChunk(Chunk.MeshId, EDitheringType::SurfaceNets_HighResToLowRes);
-					ChunksToRemove.Add(FChunkToRemove{ Chunk.Id, FPlatformTime::Seconds() + Settings.ChunksDitheringDuration });
-				}
-				else
-				{
-					RemoveOrHideChunk(Chunk);
-				}
+				ApplyPendingSettings(Chunk, false);
+				ensure(Chunk.MeshId.IsValid());
+				ensure(Chunk.Settings.bVisible);
+				
+				Chunk.SetState(EChunkState::DitheringOut, STATIC_FNAME("NewChunksFinished"));
+				MeshHandler->DitherChunk(Chunk.MeshId, EDitheringType::SurfaceNets_HighResToLowRes);
+				ChunksToRemove.Add(FChunkToRemove{ Chunk.Id, FPlatformTime::Seconds() + Settings.ChunksDitheringDuration });
 			}
 			else
 			{
@@ -902,18 +882,14 @@ void FVoxelDefaultRenderer::NewChunksFinished(FChunk& Chunk, const FChunk& NewCh
 		}
 		else
 		{
-			ApplyPendingSettings_KeepVisible(); // Apply pending settings now that new chunks are loaded & that we know we still use the mesh
-			if (Chunk.MeshId.IsValid()) // See comment above for this check
-			{
-				Chunk.State = EChunkState::DitheringOut;
-				MeshHandler->DitherChunk(Chunk.MeshId, EDitheringType::Classic_DitherOut);
-				// 2x: First dithering in new chunk, then dither out old chunk
-				ChunksToRemove.Add(FChunkToRemove{ Chunk.Id, FPlatformTime::Seconds() + 2 * Settings.ChunksDitheringDuration });
-			}
-			else
-			{
-				RemoveOrHideChunk(Chunk);
-			}
+			ApplyPendingSettings(Chunk, false);
+			ensure(Chunk.MeshId.IsValid());
+			ensure(Chunk.Settings.bVisible);
+
+			Chunk.SetState(EChunkState::DitheringOut, STATIC_FNAME("NewChunksFinished"));
+			MeshHandler->DitherChunk(Chunk.MeshId, EDitheringType::Classic_DitherOut);
+			// 2x: First dithering in new chunk, then dither out old chunk
+			ChunksToRemove.Add(FChunkToRemove{ Chunk.Id, FPlatformTime::Seconds() + 2 * Settings.ChunksDitheringDuration });
 		}
 	}
 	else
@@ -930,14 +906,14 @@ void FVoxelDefaultRenderer::RemoveOrHideChunk(FChunk& Chunk)
 	ensure(Chunk.NumNewChunksLeft == 0);
 	
 	// DitheringOut if dithering enabled, else it's removed once WaitingForNewChunks is over
-	ensure(Chunk.State == EChunkState::DitheringOut || Chunk.State == EChunkState::WaitingForNewChunks);
+	ensure(Chunk.GetState() == EChunkState::DitheringOut || Chunk.GetState() == EChunkState::WaitingForNewChunks);
 	
-	ensureVoxelSlow(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
-	ensureVoxelSlow(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
+	ensureVoxelSlowNoSideEffects(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
+	ensureVoxelSlowNoSideEffects(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
 
 	// Note: MeshId might be 0 if we were waiting for other chunks
 	
-	if (Chunk.State == EChunkState::DitheringOut)
+	if (Chunk.GetState() == EChunkState::DitheringOut)
 	{
 		ensure(Chunk.MeshId.IsValid()); // If we were dithering out, we must have a mesh
 		// Reset the dithering to be safe when showing this mesh again
@@ -947,8 +923,9 @@ void FVoxelDefaultRenderer::RemoveOrHideChunk(FChunk& Chunk)
 	// Make sure to check PendingSettings and not Settings
 	if (Chunk.PendingSettings.HasRenderChunk())
 	{
-		ApplyPendingSettings(Chunk); // Can apply the real settings now
-		Chunk.State = EChunkState::Hidden;
+		ApplyPendingSettings(Chunk, true); // Can apply the real settings now
+		ensure(Chunk.Settings == Chunk.PendingSettings);
+		Chunk.SetState(EChunkState::Hidden, STATIC_FNAME("RemoveOrHideChunk"));
 	}
 	else
 	{
@@ -969,8 +946,8 @@ void FVoxelDefaultRenderer::DitherInChunk(FChunk& Chunk, const TArray<uint64, TI
 	
 	if (!ensure(Chunk.MeshId.IsValid())) return;
 	
-	ensureVoxelSlow(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
-	ensureVoxelSlow(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
+	ensureVoxelSlowNoSideEffects(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
+	ensureVoxelSlowNoSideEffects(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
 	
 	if (Settings.RenderType == EVoxelRenderType::SurfaceNets)
 	{
@@ -1006,12 +983,30 @@ void FVoxelDefaultRenderer::DitherInChunk(FChunk& Chunk, const TArray<uint64, TI
 	}
 }
 
-void FVoxelDefaultRenderer::ApplyPendingSettings(FChunk& Chunk)
+void FVoxelDefaultRenderer::ApplyPendingSettings(FChunk& Chunk, bool bApplyVisibility)
 {
 	VOXEL_FUNCTION_COUNTER();
+
+	const bool bInitialHasMesh_Debug = Chunk.MeshId.IsValid();
 	
 	const auto OldSettings = Chunk.Settings;
-	const auto NewSettings = Chunk.PendingSettings;
+	auto NewSettings = Chunk.PendingSettings;
+
+	if (!bApplyVisibility)
+	{
+		NewSettings.bVisible = OldSettings.bVisible;
+		// Make sure the TransitionsMask stays the same as we do not want to update transitions
+		NewSettings.TransitionsMask = OldSettings.TransitionsMask;
+	}
+
+	// Only these two states are allowed to have different settings
+	ensure(
+		Chunk.GetState() == EChunkState::DitheringOut ||
+		Chunk.GetState() == EChunkState::WaitingForNewChunks ||
+		NewSettings == Chunk.PendingSettings);
+
+	// ApplyPendingSettings does not handle removing a chunk
+	ensure(NewSettings.HasRenderChunk());
 	
 	Chunk.Settings = NewSettings;
 
@@ -1031,35 +1026,44 @@ void FVoxelDefaultRenderer::ApplyPendingSettings(FChunk& Chunk)
 		}
 	}
 
-	// Check transitions now
-	const uint8 WantedMask = NewSettings.TransitionsMask;
-	if (Chunk.Tasks.TransitionsTask.IsValid())
+	// Important: do not update transitions if bApplyVisibility = false
+	// Note: this might not be needed since we copying OldSettings.TransitionsMask to NewSettings.TransitionsMask, but do it anyways
+	// as it would be a waste of CPU time to compute new transitions for a chunk dithering out
+	if (bApplyVisibility)
 	{
-		if (Chunk.Tasks.TransitionsTask->TransitionsMask != WantedMask)
+		// Check transitions now
+		const uint8 WantedMask = NewSettings.TransitionsMask;
+		if (Chunk.Tasks.TransitionsTask.IsValid())
 		{
-			// Task already started and has different mask, cancel it
-			CancelTask(Chunk.Tasks.TransitionsTask);
+			if (Chunk.Tasks.TransitionsTask->TransitionsMask != WantedMask)
+			{
+				// Task already started and has different mask, cancel it
+				CancelTask(Chunk.Tasks.TransitionsTask);
+				if (Chunk.BuiltData.TransitionsMask != WantedMask)
+				{
+					// Start new task only if mask changed
+					StartTask<EMainOrTransitions::Transitions, EIfTaskExists::Assert>(Chunk);
+				}
+				else
+				{
+					// Could be that this task was triggered by an update
+					// If so we might need to start a new task even if the mask is the same
+					CheckPendingUpdates(Chunk);
+				}
+			}
+		}
+		else 
+		{
 			if (Chunk.BuiltData.TransitionsMask != WantedMask)
 			{
-				// Start new task only if mask changed
+				// Mask changed, start new task
 				StartTask<EMainOrTransitions::Transitions, EIfTaskExists::Assert>(Chunk);
 			}
-			else
-			{
-				// Could be that this task was triggered by an update
-				// If so we might need to start a new task even if the mask is the same
-				CheckPendingUpdates(Chunk);
-			}
 		}
 	}
-	else 
-	{
-		if (Chunk.BuiltData.TransitionsMask != WantedMask)
-		{
-			// Mask changed, start new task
-			StartTask<EMainOrTransitions::Transitions, EIfTaskExists::Assert>(Chunk);
-		}
-	}
+
+	// if bApplyVisibility = false, we must not change the MeshId
+	ensure(bApplyVisibility || bInitialHasMesh_Debug == Chunk.MeshId.IsValid());
 }
 
 void FVoxelDefaultRenderer::CheckPendingUpdates(FChunk& Chunk)
@@ -1103,10 +1107,10 @@ void FVoxelDefaultRenderer::ProcessChunksToRemoveOrShow()
 			if (ChunkToShow.Time < Time)
 			{
 				FChunk& Chunk = ChunksMap.FindChecked(ChunkToShow.Id);
-				if (Chunk.State != EChunkState::DitheringIn) continue; // Chunk is not dithering in anymore
+				if (Chunk.GetState() != EChunkState::DitheringIn) continue; // Chunk is not dithering in anymore
 
 				// ensure(Chunk.PreviousChunks.Num() == 0); Not always true: main chunk can have finished dithering but transitions still being computed
-				Chunk.State = EChunkState::Showed;
+				Chunk.SetState(EChunkState::Showed, STATIC_FNAME("ChunkToShow"));
 
 				if (Chunk.MeshId.IsValid())
 				{
@@ -1137,7 +1141,7 @@ void FVoxelDefaultRenderer::ProcessChunksToRemoveOrShow()
 			if (ChunkToRemove.Time < Time)
 			{
 				FChunk& Chunk = ChunksMap.FindChecked(ChunkToRemove.Id);
-				if (Chunk.State != EChunkState::DitheringOut) continue; // Chunk is not dithering out anymore
+				if (Chunk.GetState() != EChunkState::DitheringOut) continue; // Chunk is not dithering out anymore
 
 				ChunksToRemove.RemoveAtSwap(Index, 1, false);
 				Index--; // Go back to process the element we swapped
@@ -1147,6 +1151,116 @@ void FVoxelDefaultRenderer::ProcessChunksToRemoveOrShow()
 				RemoveOrHideChunk(Chunk);
 			}
 		}
+	}
+}
+
+void FVoxelDefaultRenderer::ProcessMeshUpdates(double MaxTime)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	FVoxelTaskCallback Callback;
+	while ( // First check the time, else dequeued elements aren't processed!
+		FPlatformTime::Seconds() < MaxTime &&
+		TasksCallbacksQueue.Dequeue(Callback))
+	{
+		FChunk* Chunk = ChunksMap.Find(Callback.ChunkId);
+		if (!Chunk) continue;
+
+		auto& Tasks = Chunk->Tasks;
+		auto& Task = Callback.bIsTransitionTask ? Tasks.TransitionsTask : Tasks.MainTask;
+		if (!Task.IsValid() || Task->TaskId != Callback.TaskId) continue; // If task was canceled
+		if (!ensure(Task->IsDone())) continue; // Must be done if we're in the callback
+
+		// Move built data
+		auto& BuiltData = Chunk->BuiltData;
+		const auto PreviousBuiltData = BuiltData;
+		if (Callback.bIsTransitionTask)
+		{
+			ensure(Task->TransitionsMask == Chunk->Settings.TransitionsMask); // Should have been canceled
+			BuiltData.TransitionsMask = Task->TransitionsMask;
+			BuiltData.TransitionsChunk = Task->Chunk;
+			BuiltData.TransitionsChunkCreationTime = Task->CreationTime;
+		}
+		else
+		{
+			BuiltData.MainChunk = Task->Chunk;
+			BuiltData.MainChunkCreationTime = Task->CreationTime;
+		}
+
+		// Finally, delete the task
+		Task.Reset();
+
+		// Do nothing while the main chunk isn't valid - we don't want to have unneeded updates for transitions then main
+		if (BuiltData.MainChunk.IsValid())
+		{
+			auto& MeshId = Chunk->MeshId;
+			const auto Update = [&]()
+			{
+				if (!MeshId.IsValid())
+				{
+					MeshId = MeshHandler->AddChunk(Chunk->LOD, Chunk->Bounds.Min);
+				}
+				MeshHandler->UpdateChunk(MeshId, Chunk->Settings, *BuiltData.MainChunk, BuiltData.TransitionsChunk.Get(), BuiltData.TransitionsMask);
+
+				if (Settings.bStaticWorld)
+				{
+					// Free up memory ASAP
+					BuiltData.MainChunk.Reset();
+					BuiltData.TransitionsChunk.Reset();
+				}
+			};
+
+			const bool bTransitionsChunkIsBuilt =
+				BuiltData.TransitionsChunk.IsValid() ||
+				Chunk->Settings.TransitionsMask == 0 ||
+				Settings.RenderType == EVoxelRenderType::SurfaceNets;
+
+			if (BuiltData.MainChunk->IsEmpty() && (!BuiltData.TransitionsChunk.IsValid() || BuiltData.TransitionsChunk->IsEmpty()))
+			{
+				// Both empty, remove mesh if existing
+				if (MeshId.IsValid())
+				{
+					MeshHandler->RemoveChunk(MeshId);
+					MeshId = {};
+				}
+			}
+			else
+			{
+				Update();
+				
+				ensure(MeshId.IsValid());
+
+				// Dither in if first update
+				// If first load and LOD 0, don't dither as it doesn't look nice to have the world dithering under the player
+				if (Settings.bDitherChunks &&
+					!PreviousBuiltData.MainChunk.IsValid() && 
+					!(UpdateIndex == 1 && Chunk->LOD == 0))
+				{
+					// Can be a first update if:
+					// - we are a showed new chunks that's dithering in
+					// - we are a hidden chunk that's updated for the first time. If so don't dither in
+					ensure(Chunk->GetState() == EChunkState::Hidden || Chunk->GetState() == EChunkState::DitheringIn);
+					if (Chunk->GetState() == EChunkState::DitheringIn)
+					{
+						DitherInChunk(*Chunk, Chunk->PreviousChunks);
+					}
+				}
+			}
+
+			// Dither out/remove previous chunks only once transitions are built too
+			// Note: bTransitionsChunkIsBuilt is always true for surface nets
+			if (bTransitionsChunkIsBuilt)
+			{
+				ClearPreviousChunks(*Chunk);
+			}
+		}
+		else
+		{
+			ensure(!Chunk->MeshId.IsValid());
+		}
+
+		// Start new tasks as needed
+		CheckPendingUpdates(*Chunk);
 	}
 }
 
@@ -1184,10 +1298,14 @@ void FVoxelDefaultRenderer::DestroyChunk(FChunk& Chunk)
 
 	ensure(!Chunk.MeshId.IsValid());
 	ensure(Chunk.PreviousChunks.Num() == 0);
-	ensure(!Chunk.Tasks.MainTask.IsValid());
-	ensure(!Chunk.Tasks.TransitionsTask.IsValid());
-	ensureVoxelSlow(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
-	ensureVoxelSlow(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
+	ensureVoxelSlowNoSideEffects(!ChunksToRemove.FindByPredicate([&](const FChunkToRemove& ChunkToRemove) { return ChunkToRemove.Id == Chunk.Id; }));
+	ensureVoxelSlowNoSideEffects(!ChunksToShow.FindByPredicate([&](const FChunkToShow& ChunkToShow) { return ChunkToShow.Id == Chunk.Id; }));
+
+	if (!ensure(!Chunk.Tasks.MainTask.IsValid()) || 
+		!ensure(!Chunk.Tasks.TransitionsTask.IsValid()))
+	{
+		CancelTasks(Chunk);
+	}
 	
 	for (auto& PendingUpdate : Chunk.PendingUpdates)
 	{
@@ -1199,17 +1317,17 @@ void FVoxelDefaultRenderer::DestroyChunk(FChunk& Chunk)
 
 void FVoxelDefaultRenderer::UpdateAllocatedSize()
 {
-	DEC_DWORD_STAT_BY(STAT_VoxelRenderer, AllocatedSize);
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderer, AllocatedSize);
 
 	AllocatedSize = 0;
 	AllocatedSize += ChunksMap.GetAllocatedSize();
 	AllocatedSize += ChunksToRemove.GetAllocatedSize();
 	AllocatedSize += ChunksToShow.GetAllocatedSize();
 	
-	INC_DWORD_STAT_BY(STAT_VoxelRenderer, AllocatedSize);
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderer, AllocatedSize);
 }
 
-void FVoxelDefaultRenderer::CancelTask(TUniquePtr<FVoxelMesherAsyncWork>& Task)
+void FVoxelDefaultRenderer::CancelTask(TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>>& Task)
 {
 	VOXEL_FUNCTION_COUNTER();
 	

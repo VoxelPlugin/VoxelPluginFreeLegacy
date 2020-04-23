@@ -22,13 +22,25 @@ static TAutoConsoleVariable<int32> CVarLogProcMeshDelays(
 	TEXT("If true, will log the time elapsed between the game thread update and the first render thread display"),
 	ECVF_Default);
 
-DECLARE_MEMORY_STAT(TEXT("Voxel Mesh Distance Field Memory"), STAT_VoxelMeshDistanceFieldMemory, STATGROUP_VoxelMemory);
+static TAutoConsoleVariable<int32> CVarShowToolRendering(
+	TEXT("voxel.renderer.ShowToolRendering"),
+	0,
+	TEXT("If true, will show the duplicated meshes for tool rendering in red"),
+	ECVF_Default);
 
-DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Draw Calls"), STAT_NumVoxelDrawCalls, STATGROUP_Voxel);
-DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Draw Calls For Tools"), STAT_NumVoxelDrawCallsForTools, STATGROUP_Voxel);
+static TAutoConsoleVariable<int32> CVarShowMeshSections(
+	TEXT("voxel.renderer.ShowMeshSections"),
+	0,
+	TEXT("If true, will assign a unique color to each mesh section"),
+	ECVF_Default);
 
-DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Triangles Drawn "), STAT_NumVoxelTrianglesDrawn, STATGROUP_Voxel);
-DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Triangles Drawn  For Tools"), STAT_NumVoxelTrianglesDrawnForTools, STATGROUP_Voxel);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelMeshDistanceFieldMemory);
+
+DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Draw Calls"), STAT_NumVoxelDrawCalls, STATGROUP_VoxelCounters);
+DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Draw Calls For Tools"), STAT_NumVoxelDrawCallsForTools, STATGROUP_VoxelCounters);
+
+DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Triangles Drawn "), STAT_NumVoxelTrianglesDrawn, STATGROUP_VoxelCounters);
+DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Triangles Drawn  For Tools"), STAT_NumVoxelTrianglesDrawnForTools, STATGROUP_VoxelCounters);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -149,7 +161,7 @@ inline bool IsCollisionView(const FEngineShowFlags& EngineShowFlags)
 FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralMeshComponent* Component)
 	: FPrimitiveSceneProxy(Component)
 	, Component(Component)
-	, MaterialRelevance(Component->GetMaterialRelevance_VoxelProcMesh(GetScene().GetFeatureLevel()))
+	, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 	, LOD(Component->LOD)
 	, DebugChunkId(Component->DebugChunkId)
 	, FrameToClearPreviousLocalToWorld(Component->bNewInit ? GFrameNumber : 0)
@@ -179,6 +191,8 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 		const auto& SrcSection = Component->ProcMeshSections[SectionIndex];
 		FVoxelProcMeshProxySection& NewSection = Sections[SectionIndex];
 
+		ensure(SrcSection.Settings.bSectionVisible || SrcSection.Settings.bEnableCollisions || SrcSection.Settings.bEnableNavmesh);
+
 		if (SrcSection.Buffers->GetNumVertices() == 0)
 		{
 			NewSection.bSectionVisible = false;
@@ -196,7 +210,7 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 		NewSection.Material = SrcSection.Settings.Material;
 		if (!NewSection.Material.IsValid())
 		{
-			NewSection.Material = IVoxelMaterialInterface::Default();
+			NewSection.Material = FVoxelMaterialInterfaceManager::Get().DefaultMaterial();
 		}
 		check(NewSection.Material.IsValid());
 
@@ -246,7 +260,7 @@ void FVoxelProceduralMeshSceneProxy::CreateRenderThreadResources()
 	{
 		check(!Section.RenderData.IsValid());
 		check(Section.Buffers.IsValid());
-		if (Section.bSectionVisible || !NOT_SHIPPING_NOR_TEST) // Need to init for debug
+		if (Section.bSectionVisible || NOT_SHIPPING_NOR_TEST) // Need to init for debug
 		{
 			Section.RenderData = FVoxelProcMeshBuffersRenderData::GetRenderData(Section.Buffers.ToSharedRef(), GetScene().GetFeatureLevel());
 		}
@@ -255,7 +269,7 @@ void FVoxelProceduralMeshSceneProxy::CreateRenderThreadResources()
 	if (DistanceFieldData.IsValid())
 	{
 		const_cast<FDistanceFieldVolumeTexture&>(DistanceFieldData->VolumeTexture).Initialize(reinterpret_cast<UStaticMesh*>(Component)); // Horrible hack, but w/e if it works :)
-		INC_DWORD_STAT_BY(STAT_VoxelMeshDistanceFieldMemory, DistanceFieldData->GetResourceSizeBytes());
+		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelMeshDistanceFieldMemory, DistanceFieldData->GetResourceSizeBytes());
 	}
 #endif
 }
@@ -273,7 +287,7 @@ void FVoxelProceduralMeshSceneProxy::DestroyRenderThreadResources()
 #if ENABLE_VOXEL_DISTANCE_FIELDS
 	if (DistanceFieldData.IsValid())
 	{
-		DEC_DWORD_STAT_BY(STAT_VoxelMeshDistanceFieldMemory, DistanceFieldData->GetResourceSizeBytes());
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelMeshDistanceFieldMemory, DistanceFieldData->GetResourceSizeBytes());
 		const_cast<FDistanceFieldVolumeTexture&>(DistanceFieldData->VolumeTexture).Release();
 	}
 #endif
@@ -293,7 +307,7 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 	if (!bLoggedTime && CVarLogProcMeshDelays.GetValueOnRenderThread() != 0 && FinishSectionsUpdatesTime > 0)
 	{
 		const double Time = FPlatformTime::Seconds();
-		UE_LOG(LogVoxel, Log, TEXT("Proc Mesh Delays: ChunkId: %u; CreateSceneProxy: %fms; GetDynamicMeshElements: %fms"),
+		LOG_VOXEL(Log, TEXT("Proc Mesh Delays: ChunkId: %u; CreateSceneProxy: %fms; GetDynamicMeshElements: %fms"),
 			DebugChunkId,
 			(CreateSceneProxyTime - FinishSectionsUpdatesTime) * 1000,
 			(Time - FinishSectionsUpdatesTime) * 1000);
@@ -335,6 +349,8 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 	{
 		for (auto& Section : Sections)
 		{
+			if (!Section.RenderData.IsValid()) continue;
+			
 			const auto* ParentMaterial =
 				EngineShowFlags.Wireframe
 				? GEngine->WireframeMaterial
@@ -342,6 +358,8 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 
 			const auto Color = FVoxelDebugManager::GetCollisionAndNavmeshDebugColor(Section.bEnableCollisions_Debug, Section.bEnableNavmesh_Debug);
 
+			if (!ensure(ParentMaterial)) return; // Happens in packaged games
+			
 			auto* MaterialProxy = new FColoredMaterialRenderProxy(ParentMaterial->GetRenderProxy(), Color);
 			Collector.RegisterOneFrameMaterialProxy(MaterialProxy);
 
@@ -365,6 +383,18 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 			if (!Section.bSectionVisible || !ensure(Section.Material->GetMaterial()->IsValidLowLevel())) continue;
 
 			auto* MaterialProxy = Section.Material->GetMaterial()->GetRenderProxy();
+
+			if (CVarShowMeshSections.GetValueOnRenderThread() != 0)
+			{
+				uint32 Hash = 0;
+				for (auto& Guid : Section.Buffers->Guids)
+				{
+					Hash = FVoxelUtilities::MurmurHash64((uint64(Hash) << 32) ^ Guid.A ^ Guid.B ^ Guid.C ^ Guid.D);
+				}
+				MaterialProxy = new FColoredMaterialRenderProxy(GEngine->LevelColorationLitMaterial->GetRenderProxy(), reinterpret_cast<FColor&>(Hash));
+				Collector.RegisterOneFrameMaterialProxy(MaterialProxy);
+			}
+			
 			for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 			{
 				if (!(VisibilityMap & (1 << ViewIndex))) continue;
@@ -399,13 +429,13 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 				const auto Material =
 					Tool.Material.IsValid() && ensure(Tool.Material->GetMaterial()->IsValidLowLevel())
 					? Tool.Material
-					: IVoxelMaterialInterface::Default();
+					: FVoxelMaterialInterfaceManager::Get().DefaultMaterial();
 				auto* MaterialProxy = Material->GetMaterial()->GetRenderProxy();
 
 				// Hack to fix translucent rendering when the tool material was changed but the mesh wasn't updated
 				const_cast<FMaterialRelevance&>(MaterialRelevance) |= Material->GetMaterial()->GetRelevance_Concurrent(GetScene().GetFeatureLevel());
 
-				if (EngineShowFlags.Wireframe)
+				if (CVarShowToolRendering.GetValueOnRenderThread() != 0)
 				{
 					MaterialProxy = new FColoredMaterialRenderProxy(GEngine->LevelColorationUnlitMaterial->GetRenderProxy(), FColor::Red);
 					Collector.RegisterOneFrameMaterialProxy(MaterialProxy);
@@ -419,7 +449,6 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 						if (!(VisibilityMap & (1 << ViewIndex))) continue;
 
 						FMeshBatch& Mesh = DrawSection(Collector, Section, MaterialProxy, !bForceDisableTessellation, EngineShowFlags.Wireframe);
-						Mesh.bCanApplyViewModeOverrides = !EngineShowFlags.Wireframe;
 						Collector.AddMesh(ViewIndex, Mesh);
 
 						INC_DWORD_STAT(STAT_NumVoxelDrawCallsForTools);
@@ -500,7 +529,7 @@ FPrimitiveViewRelevance FVoxelProceduralMeshSceneProxy::GetViewRelevance(const F
 	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
 	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 	MaterialRelevance.SetPrimitiveViewRelevance(Result);
-	Result.bVelocityRelevance = IsMovable() && Result.bOpaqueRelevance && Result.bRenderInMainPass;
+	Result.bVelocityRelevance = IsMovable() && Result.UE_25_SWITCH(bOpaqueRelevance, bOpaque) && Result.bRenderInMainPass;
 	return Result;
 }
 

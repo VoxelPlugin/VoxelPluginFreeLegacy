@@ -6,16 +6,28 @@
 #include "VoxelMathUtilities.h"
 
 TVoxelSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager::Create(
-	const FVoxelLODSettings& LODSettings,
-	int32 ChunkLOD)
+	const FVoxelLODSettings& LODSettings)
+{	
+	return MakeShareable(new FVoxelFixedResolutionLODManager(LODSettings));
+}
+
+bool FVoxelFixedResolutionLODManager::Initialize(int32 ChunkLOD, int32 MaxChunks)
 {
 	TArray<FVoxelChunkUpdate> ChunkUpdates;
 	
 	const int32 ChunkSize = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(ChunkLOD);
-	const FIntBox& WorldBounds = LODSettings.WorldBounds;
+	const FIntBox& WorldBounds = Settings.WorldBounds;
 
 	const FIntVector Min = FVoxelUtilities::FloorToInt(FVector(WorldBounds.Min) / ChunkSize) * ChunkSize;
 	const FIntVector Max = FVoxelUtilities::CeilToInt(FVector(WorldBounds.Max) / ChunkSize) * ChunkSize;
+
+	const FIntVector NumChunksPerAxis = (Max - Min) / ChunkSize;
+	const int64 TotalNumChunks = int64(NumChunksPerAxis.X) * int64(NumChunksPerAxis.Y) * int64(NumChunksPerAxis.Z);
+
+	if (TotalNumChunks > MaxChunks)
+	{
+		return false;
+	}
 	
 	uint64 Id = 0;
 	for (int32 X = Min.X; X < Max.X; X += ChunkSize)
@@ -43,7 +55,7 @@ TVoxelSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager
 		}
 	}
 
-	LODSettings.Renderer->UpdateLODs(1, ChunkUpdates);
-	
-	return MakeShareable(new FVoxelFixedResolutionLODManager(LODSettings));
+	Settings.Renderer->UpdateLODs(1, ChunkUpdates);
+
+	return true;
 }

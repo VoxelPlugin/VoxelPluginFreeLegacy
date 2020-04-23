@@ -114,7 +114,7 @@ struct FVoxelMesherStats
 
 			LODToMeans.KeySort(TLess<int32>());
 
-			UE_LOG(LogVoxel, Log, TEXT("\tLOD; Chunks (%%)     ; Total (%%)         ; Avg       ; Values (%%)        , Per Voxel ; Materials (%%)     , Per Voxel ; Normals (%%)       ; UVs (%%)           ; CreateChunk (%%)   ;"));
+			LOG_VOXEL(Log, TEXT("\tLOD; Chunks (%%)     ; Total (%%)         ; Avg       ; Values (%%)        , Per Voxel ; Materials (%%)     , Per Voxel ; Normals (%%)       ; UVs (%%)           ; CreateChunk (%%)   ;"));
 			for (auto& It : LODToMeans)
 			{
 				auto& V = It.Value;
@@ -124,7 +124,7 @@ struct FVoxelMesherStats
 				TotalValuesAccesses += V.ValuesAccesses;
 				TotalMaterialsAccesses += V.MaterialsAccesses;
 				
-				UE_LOG(LogVoxel, Log, TEXT("\t %2d: %6d (%5.2f%%); %8.3fs (%5.2f%%); %8.3fms; %8.3fs (%5.2f%%), %8.1fns; %8.3fs (%5.2f%%), %8.1fns; %8.3fs (%5.2f%%); %8.3fs (%5.2f%%); %8.3fs (%5.2f%%)"),
+				LOG_VOXEL(Log, TEXT("\t %2d: %6d (%5.2f%%); %8.3fs (%5.2f%%); %8.3fms; %8.3fs (%5.2f%%), %8.1fns; %8.3fs (%5.2f%%), %8.1fns; %8.3fs (%5.2f%%); %8.3fs (%5.2f%%); %8.3fs (%5.2f%%)"),
 					It.Key,
 					V.Count,
 					V.Count / double(Stats.Num()) * 100,
@@ -154,27 +154,27 @@ struct FVoxelMesherStats
 		};
 		
 		auto& LocalStats = Singleton.StatsMap.FindOrAdd(World);
-		UE_LOG(LogVoxel, Log, TEXT("###############################################################################"));
-		UE_LOG(LogVoxel, Log, TEXT("################################# Voxel Stats #################################"));
-		UE_LOG(LogVoxel, Log, TEXT("###############################################################################"));
-		UE_LOG(LogVoxel, Log, TEXT("World: %s"), *World->GetName());
-		UE_LOG(LogVoxel, Log, TEXT("Normal Chunks:"));
+		LOG_VOXEL(Log, TEXT("###############################################################################"));
+		LOG_VOXEL(Log, TEXT("################################# Voxel Stats #################################"));
+		LOG_VOXEL(Log, TEXT("###############################################################################"));
+		LOG_VOXEL(Log, TEXT("World: %s"), *World->GetName());
+		LOG_VOXEL(Log, TEXT("Normal Chunks:"));
 		const double NormalTime = Print(LocalStats.NormalStats);
-		UE_LOG(LogVoxel, Log, TEXT("Transitions Chunks:"));
+		LOG_VOXEL(Log, TEXT("Transitions Chunks:"));
 		const double TransitionsTime = Print(LocalStats.TransitionsStats);
-		UE_LOG(LogVoxel, Log, TEXT("Geometry Chunks (Spawners):"));
+		LOG_VOXEL(Log, TEXT("Geometry Chunks (Spawners):"));
 		const double GeometryTime = Print(LocalStats.GeometryStats);
-		UE_LOG(LogVoxel, Log, TEXT("###############################################################################"));
-		UE_LOG(LogVoxel, Log, TEXT("################################### Summary ###################################"));
-		UE_LOG(LogVoxel, Log, TEXT("###############################################################################"));
-		UE_LOG(LogVoxel, Log, TEXT("Main Time: %fs"), NormalTime);
-		UE_LOG(LogVoxel, Log, TEXT("Transitions Time: %fs"), TransitionsTime);
-		UE_LOG(LogVoxel, Log, TEXT("Geometry Time: %fs"), GeometryTime);
-		UE_LOG(LogVoxel, Log, TEXT("Total Time: %fs"), NormalTime + TransitionsTime + GeometryTime);
-		UE_LOG(LogVoxel, Log, TEXT("Values Time: %3.2f%% of total time"), 100 * TotalValuesTime / (NormalTime + TransitionsTime + GeometryTime));
-		UE_LOG(LogVoxel, Log, TEXT("Transitions Time: %3.2f%% of Main + Transitions"), 100 * TransitionsTime / (NormalTime + TransitionsTime));
-		UE_LOG(LogVoxel, Log, TEXT("Values: %llu reads in %fs, avg %.1fns/voxel"), TotalValuesAccesses, TotalValuesTime, TotalValuesTime / TotalValuesAccesses * 1e9);
-		UE_LOG(LogVoxel, Log, TEXT("Materials: %llu reads in %fs, avg %.1fns/voxel"), TotalMaterialsAccesses, TotalMaterialsTime, TotalMaterialsTime / TotalMaterialsAccesses * 1e9);
+		LOG_VOXEL(Log, TEXT("###############################################################################"));
+		LOG_VOXEL(Log, TEXT("################################### Summary ###################################"));
+		LOG_VOXEL(Log, TEXT("###############################################################################"));
+		LOG_VOXEL(Log, TEXT("Main Time: %fs"), NormalTime);
+		LOG_VOXEL(Log, TEXT("Transitions Time: %fs"), TransitionsTime);
+		LOG_VOXEL(Log, TEXT("Geometry Time: %fs"), GeometryTime);
+		LOG_VOXEL(Log, TEXT("Total Time: %fs"), NormalTime + TransitionsTime + GeometryTime);
+		LOG_VOXEL(Log, TEXT("Values Time: %3.2f%% of total time"), 100 * TotalValuesTime / (NormalTime + TransitionsTime + GeometryTime));
+		LOG_VOXEL(Log, TEXT("Transitions Time: %3.2f%% of Main + Transitions"), 100 * TransitionsTime / (NormalTime + TransitionsTime));
+		LOG_VOXEL(Log, TEXT("Values: %llu reads in %fs, avg %.1fns/voxel"), TotalValuesAccesses, TotalValuesTime, TotalValuesTime / TotalValuesAccesses * 1e9);
+		LOG_VOXEL(Log, TEXT("Materials: %llu reads in %fs, avg %.1fns/voxel"), TotalMaterialsAccesses, TotalMaterialsTime, TotalMaterialsTime / TotalMaterialsAccesses * 1e9);
 	}
 };
 
@@ -262,10 +262,9 @@ void FVoxelMesherBase::FinishCreatingChunk(FVoxelChunkMesh& Chunk) const
 	{
 		Chunk.IterateBuffers([](auto& Buffer) { Buffer.OptimizeIndices(); });
 	}
-	Chunk.IterateBuffers([](auto& Buffer) { Buffer.Shrink(); });
-
-	Chunk.ComputeBounds();
-	Chunk.ComputeGuid();
+	Chunk.IterateBuffers([](FVoxelChunkMeshBuffers& Buffer) { Buffer.Shrink(); });
+	Chunk.IterateBuffers([](FVoxelChunkMeshBuffers& Buffer) { Buffer.ComputeBounds(); });
+	Chunk.IterateBuffers([](FVoxelChunkMeshBuffers& Buffer) { Buffer.Guid = FGuid::NewGuid(); });
 }
 
 ///////////////////////////////////////////////////////////////////////////////

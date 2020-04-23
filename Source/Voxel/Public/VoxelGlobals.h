@@ -7,6 +7,7 @@
 #include "UObject/ObjectMacros.h"
 #include "Stats/Stats.h"
 #include "Launch/Resources/Version.h"
+#include "Misc/ScopedSlowTask.h"
 #include "VoxelSharedPtr.h" // As it's used pretty much everywhere, include it here
 #include "VoxelUserGlobals.h"
 
@@ -25,13 +26,15 @@
 #endif
 
 // Disable if the stats file is too big
+// Expensive
 #ifndef VOXEL_SLOW_STATS
-#define VOXEL_SLOW_STATS 1
+#define VOXEL_SLOW_STATS 0
 #endif
 
 // Will check that the data octree is locked for read/write
+// Expensive
 #ifndef DO_THREADSAFE_CHECKS
-#define DO_THREADSAFE_CHECKS (VOXEL_DEBUG || !UE_BUILD_SHIPPING)
+#define DO_THREADSAFE_CHECKS VOXEL_DEBUG
 #endif
 
 // Size of a render chunk
@@ -48,12 +51,6 @@
 #define DATA_CHUNK_SIZE 16
 #endif
 
-// Max depth of a world
-// Should leave it to default
-#ifndef MAX_WORLD_DEPTH
-#define MAX_WORLD_DEPTH 26
-#endif
-
 // Symbols not exported before 4.23
 // See https://github.com/EpicGames/UnrealEngine/pull/5590
 #ifndef ENABLE_VOXEL_DISTANCE_FIELDS
@@ -65,6 +62,7 @@
 #define ENABLE_TESSELLATION (!PLATFORM_ANDROID && !PLATFORM_SWITCH)
 #endif
 
+
 // Enables recording detailed mesher stats (eg profiles every GetValue call)
 // In my tests, adds a cost < 5% of the total generation time with a flat world generator,
 // which is the worst cast for this as no time is spent generating values with it.
@@ -75,6 +73,19 @@
 #define ENABLE_MESHER_STATS (!UE_BUILD_SHIPPING)
 #endif
 
+// Records memory stats about voxels in addition to UE's stat system
+// Unlike UE's stat system, it can be used in shipping builds
+// Use UVoxelBlueprintLibrary::GetMemoryUsageInMB to get the info
+#ifndef ENABLE_VOXEL_MEMORY_STATS
+#define ENABLE_VOXEL_MEMORY_STATS 1
+#endif
+
+// Record stats about voxel data accelerators
+// Minimal impact on performance
+#ifndef VOXEL_DATA_ACCELERATOR_STATS
+#define VOXEL_DATA_ACCELERATOR_STATS VOXEL_DEBUG
+#endif
+
 // No support for indices optimizations on some platforms
 // Note: I have yet to find any performance improvements due to this
 #ifndef ENABLE_OPTIMIZE_INDICES
@@ -83,6 +94,12 @@
 
 #ifndef EIGHT_BITS_VOXEL_VALUE
 #define EIGHT_BITS_VOXEL_VALUE 0
+#endif
+
+// If true, Voxel Materials will default to R = G = B = A = 255
+// else to R = G = B = A = 0
+#ifndef VOXEL_MATERIAL_DEFAULT_IS_WHITE
+#define VOXEL_MATERIAL_DEFAULT_IS_WHITE 0
 #endif
 
 /**
@@ -137,7 +154,6 @@ namespace VoxelGlobalsUtils
 
 static_assert(VoxelGlobalsUtils::IsPowerOfTwo(RENDER_CHUNK_SIZE), "RENDER_CHUNK_SIZE must be a power of 2");
 static_assert(VoxelGlobalsUtils::IsPowerOfTwo(DATA_CHUNK_SIZE), "DATA_CHUNK_SIZE must be a power of 2");
-static_assert(MAX_WORLD_DEPTH % 2 == 0, "MAX_WORLD_DEPTH must be a multiple of 2");
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -145,12 +161,15 @@ static_assert(MAX_WORLD_DEPTH % 2 == 0, "MAX_WORLD_DEPTH must be a multiple of 2
 
 #if VOXEL_DOUBLE_PRECISION
 using v_flt = double;
+
+#define MIN_vflt MIN_dbl
+#define MAX_vflt MAX_dbl
 #else
 using v_flt = float;
-#endif
 
-#define MIN_vflt TNumericLimits<v_flt>::Min()
-#define MAX_vflt TNumericLimits<v_flt>::Max()
+#define MIN_vflt MIN_flt
+#define MAX_vflt MAX_flt
+#endif
 
 #define VOXELS_PER_DATA_CHUNK (DATA_CHUNK_SIZE * DATA_CHUNK_SIZE * DATA_CHUNK_SIZE)
 
@@ -170,6 +189,7 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #define ENGINE_API
 #undef VOXEL_DEBUG
 #define VOXEL_DEBUG 1
+#error "Compiler defined as parser"
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -191,14 +211,16 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #define checkVoxelSlow(x) check(x)
 #define checkfVoxelSlow(x, ...) checkf(x, ##__VA_ARGS__)
 #define ensureVoxelSlow(x) ensure(x)
-#define ensureMsgfVoxelSlow(x, ...) ensureMsgf(x, ##__VA_ARGS__)
+#define ensureVoxelSlowNoSideEffects(x) ensure(x)
+#define ensureMsgfVoxelSlowNoSideEffects(x, ...) ensureMsgf(x, ##__VA_ARGS__)
 #undef FORCEINLINE
 #define FORCEINLINE FORCEINLINE_DEBUGGABLE_ACTUAL
 #else
 #define checkVoxelSlow(x)
 #define checkfVoxelSlow(x, ...)
-#define ensureVoxelSlow(x)
-#define ensureMsgfVoxelSlow(...)
+#define ensureVoxelSlow(x) x
+#define ensureVoxelSlowNoSideEffects(x)
+#define ensureMsgfVoxelSlowNoSideEffects(...)
 #endif
 
 #if DO_THREADSAFE_CHECKS
@@ -208,9 +230,12 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #endif
 
 DECLARE_STATS_GROUP(TEXT("Voxel"), STATGROUP_Voxel, STATCAT_Advanced);
+DECLARE_STATS_GROUP(TEXT("Voxel Counters"), STATGROUP_VoxelCounters, STATCAT_Advanced);
 DECLARE_STATS_GROUP(TEXT("Voxel Memory"), STATGROUP_VoxelMemory, STATCAT_Advanced);
 
-VOXEL_API DECLARE_LOG_CATEGORY_EXTERN(LogVoxel, Verbose, All);
+VOXEL_API DECLARE_LOG_CATEGORY_EXTERN(LogVoxel, Log, All);
+
+#define LOG_VOXEL(Verbosity, Format, ...) UE_LOG(LogVoxel, Verbosity, Format, ##__VA_ARGS__)
 
 // Inline static helper to avoid rehashing FNames
 #define STATIC_FNAME(Name) []() -> const FName& { static const FName StaticName = Name; return StaticName; }()
@@ -218,14 +243,15 @@ VOXEL_API DECLARE_LOG_CATEGORY_EXTERN(LogVoxel, Verbose, All);
 // Static string helper
 #define STATIC_FSTRING(String) []() -> const FString& { static const FString StaticString = String; return StaticString; }()
 
-#define UNIQUE_ID() []() { ensureVoxelSlow(IsInGameThread()); static uint64 Id = 0; return ++Id; }()
+#define UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 Id = 0; return ++Id; }()
 #define OBJECT_LINE_ID() ((uint64)this + __LINE__)
 #define GET_MEMBER_NAME_STATIC(ClassName, MemberName) STATIC_FNAME(GET_MEMBER_NAME_STRING_CHECKED(ClassName, MemberName))
 
 #define FUNCTION_FNAME FName(__FUNCTION__)
-#define FUNCTION_ERROR(Error) (FString(__FUNCTION__) + TEXT(": ") + Error)
+#define FUNCTION_ERROR_IMPL(FunctionName, Error) (FString(FunctionName) + TEXT(": ") + Error)
+#define FUNCTION_ERROR(Error) FUNCTION_ERROR_IMPL(__FUNCTION__, Error)
 
-#define PREPROCESSOR_EXPAND(X) X
+#define VOXEL_LOCTEXT(Text) NSLOCTEXT("Voxel", Text, Text)
 
 #if STATS
 struct FStat_Voxel_Base
@@ -296,17 +322,94 @@ struct TStat_Voxel_Initializer
 #define VOXEL_SLOW_SCOPE_COUNTER(Name)
 #endif
 
-namespace VoxelPrivateImpl
-{
-	template<typename TUnique>
-	inline const UEnum& GetStaticEnum(const TCHAR* Name, TUnique Unique)
-	{
-		static const UEnum* Enum = FindObjectChecked<UEnum>((UObject*)ANY_PACKAGE, Name);
-		return *Enum;
-	}
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-#define GET_STATIC_UENUM(Enum) VoxelPrivateImpl::GetStaticEnum(TEXT(#Enum), []() { sizeof(Enum); })
+#if ENABLE_VOXEL_MEMORY_STATS
+
+struct FVoxelMemoryCounterRef
+{
+	FThreadSafeCounter64* UsageCounterPtr = nullptr;
+	FThreadSafeCounter64* PeakCounterPtr = nullptr;
+};
+VOXEL_API TMap<const TCHAR*, FVoxelMemoryCounterRef>& GetVoxelMemoryCounters();
+
+struct FVoxelMemoryCounterStaticRef
+{
+	VOXEL_API FVoxelMemoryCounterStaticRef(const TCHAR* Name, const FVoxelMemoryCounterRef& Ref);
+};
+
+#define VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName) PREPROCESSOR_JOIN(StatName, _MemoryUsage)
+#define VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName) PREPROCESSOR_JOIN(StatName, _MemoryPeak)
+
+#define DECLARE_VOXEL_MEMORY_STAT(Name, StatName, Group, API) \
+	extern API FThreadSafeCounter64 VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName); \
+	extern API FThreadSafeCounter64 VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName); \
+	inline const TCHAR* Get ## StatName ## StaticName() { return Name; } \
+	DECLARE_MEMORY_STAT_EXTERN(Name, StatName ## _Stat, Group, API)
+
+#define DEFINE_VOXEL_MEMORY_STAT(StatName) \
+	FThreadSafeCounter64 VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName); \
+	FThreadSafeCounter64 VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName); \
+	static FVoxelMemoryCounterStaticRef StaticRef ## StatName(Get ## StatName ## StaticName(), FVoxelMemoryCounterRef{ &VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName), &VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName) }); \
+	DEFINE_STAT(StatName ## _Stat)
+
+#define INC_VOXEL_MEMORY_STAT_BY_IMPL(StatName, Amount) \
+	INC_MEMORY_STAT_BY(StatName ## _Stat, Amount) \
+	VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName).Set(FMath::Max<uint64>( \
+		VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName).GetValue(), \
+		Amount + VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName).Add(Amount))); // Max is not atomic, but w/e should be fine anyways
+
+#define DEC_VOXEL_MEMORY_STAT_BY_IMPL(StatName, Amount) \
+	DEC_MEMORY_STAT_BY(StatName ## _Stat, Amount); \
+	VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName).Subtract(Amount); \
+	ensureVoxelSlowNoSideEffects(VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName).GetValue() >= 0);
+
+///////////////////////////////////////////////////////////////////////////////
+
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Total Voxel Memory"), STAT_TotalVoxelMemory, STATGROUP_VoxelMemory, VOXEL_API);
+
+#define INC_VOXEL_MEMORY_STAT_BY(StatName, Amount) \
+	INC_VOXEL_MEMORY_STAT_BY_IMPL(StatName, Amount) \
+	INC_VOXEL_MEMORY_STAT_BY_IMPL(STAT_TotalVoxelMemory, Amount)
+
+#define DEC_VOXEL_MEMORY_STAT_BY(StatName, Amount) \
+	DEC_VOXEL_MEMORY_STAT_BY_IMPL(StatName, Amount) \
+	DEC_VOXEL_MEMORY_STAT_BY_IMPL(STAT_TotalVoxelMemory, Amount)
+
+#else
+#define DECLARE_VOXEL_MEMORY_STAT(Name, StatName, Group, API) DECLARE_MEMORY_STAT_EXTERN(Name, StatName ## _Stat, Group, API)
+#define DEFINE_VOXEL_MEMORY_STAT(StatName) DEFINE_STAT(StatName ## _Stat)
+
+#define INC_VOXEL_MEMORY_STAT_BY(StatName, Amount) INC_MEMORY_STAT_BY(StatName ## _Stat, Amount);
+#define DEC_VOXEL_MEMORY_STAT_BY(StatName, Amount) DEC_MEMORY_STAT_BY(StatName ## _Stat, Amount);
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// Use this to set the plugin to use a custom feedback context for progress bars/slow tasks
+VOXEL_API void SetVoxelFeedbackContext(FFeedbackContext& FeedbackContext);
+
+class VOXEL_API FVoxelScopedSlowTask : public FScopedSlowTask
+{
+public:
+	explicit FVoxelScopedSlowTask(float InAmountOfWork, const FText& InDefaultMessage = FText(), bool bInEnabled = true);
+};
+
+struct FVoxelScopedFeedbackContext
+{
+	explicit FVoxelScopedFeedbackContext(FFeedbackContext& FeedbackContext)
+	{
+		SetVoxelFeedbackContext(FeedbackContext);
+	}
+	~FVoxelScopedFeedbackContext()
+	{
+		SetVoxelFeedbackContext(*GWarn);
+	}
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -325,13 +428,13 @@ namespace VoxelPrivateImpl
 #endif
 
 #if ENGINE_MINOR_VERSION < 23
-#define ONLY_UE_23_AND_HIGHER(X)
+#define ONLY_UE_23_AND_HIGHER(...)
 #else
 #define ONLY_UE_23_AND_HIGHER(...) __VA_ARGS__
 #endif
 
 #if ENGINE_MINOR_VERSION > 23
-#define ONLY_UE_23_AND_LOWER(X)
+#define ONLY_UE_23_AND_LOWER(...)
 #else
 #define ONLY_UE_23_AND_LOWER(...) __VA_ARGS__
 #endif
@@ -343,9 +446,27 @@ namespace VoxelPrivateImpl
 #endif
 
 #if ENGINE_MINOR_VERSION > 24
-#define ONLY_UE_24_AND_LOWER(X)
+#define ONLY_UE_24_AND_LOWER(...)
 #else
 #define ONLY_UE_24_AND_LOWER(...) __VA_ARGS__
+#endif
+
+#if ENGINE_MINOR_VERSION < 25
+#define ONLY_UE_25_AND_HIGHER(...)
+#else
+#define ONLY_UE_25_AND_HIGHER(...) __VA_ARGS__
+#endif
+
+#if ENGINE_MINOR_VERSION > 25
+#define ONLY_UE_25_AND_LOWER(X)
+#else
+#define ONLY_UE_25_AND_LOWER(...) __VA_ARGS__
+#endif
+
+#if ENGINE_MINOR_VERSION >= 25
+#define UE_25_SWITCH(Before, AfterOrEqual) AfterOrEqual
+#else
+#define UE_25_SWITCH(Before, AfterOrEqual) Before
 #endif
 
 #if ENGINE_MINOR_VERSION < 23
@@ -365,4 +486,33 @@ struct TIsConst<const T>
 // Insight stuff
 #define CPUPROFILERTRACE_ENABLED 0
 #define TRACE_THREAD_GROUP_SCOPE(...)
+#endif
+
+#if ENGINE_MINOR_VERSION >= 25
+
+// Not updating the code to stay back compatible
+#undef UProperty
+#define UProperty FProperty
+
+#undef UStructProperty
+#define UStructProperty FStructProperty
+
+#undef USoftObjectProperty
+#define USoftObjectProperty FSoftObjectProperty
+
+#undef UIntProperty
+#define UIntProperty FIntProperty
+
+#undef UFloatProperty
+#define UFloatProperty FFloatProperty
+
+#undef UBoolProperty
+#define UBoolProperty FBoolProperty
+
+#undef UArrayProperty
+#define UArrayProperty FArrayProperty
+#else
+#define LAYOUT_FIELD(Type, Name) Type Name
+#define DECLARE_TYPE_LAYOUT(...)
+#define IMPLEMENT_TYPE_LAYOUT(...)
 #endif

@@ -9,8 +9,6 @@
 #include "Curves/CurveLinearColor.h"
 #include "Async/Async.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 /** Util to find float value on bezier defined by 4 control points */
 static TVoxelRange<v_flt> BezierInterp(v_flt P0, v_flt P1, v_flt P2, v_flt P3, const TVoxelRange<v_flt>& Alpha)
 {
@@ -290,7 +288,7 @@ v_flt FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	{
 		if (DefaultGenerator)
 		{
-			if (const auto Ptr = DefaultGenerator->FloatOutputsPtr.FindRef(Name))
+			if (const auto Ptr = DefaultGenerator->CustomPtrs.Float.FindRef(Name))
 			{
 				return (DefaultGenerator->*Ptr)(X, Y, Z, Context.LOD, Context.Items.WithCustomData(&CustomData));
 			}
@@ -325,7 +323,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	{
 		if (DefaultGenerator)
 		{
-			if (const auto Ptr = DefaultGenerator->FloatOutputsRangesPtr.FindRef(Name))
+			if (const auto Ptr = DefaultGenerator->CustomPtrs.FloatRange.FindRef(Name))
 			{
 				return TVoxelRange<v_flt>((DefaultGenerator->*Ptr)(Bounds, Context.LOD, Context.Items.WithCustomData(&CustomData)));
 			}
@@ -360,7 +358,7 @@ v_flt FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 	const FVoxelContext& Context,
 	const FVoxelGraphCustomData& CustomData)
 {
-	if (const auto Ptr = WorldGenerator.FloatOutputsPtr.FindRef(Name))
+	if (const auto Ptr = WorldGenerator.CustomPtrs.Float.FindRef(Name))
 	{
 		return (WorldGenerator.*Ptr)(X, Y, Z, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder).WithCustomData(&CustomData));
 	}
@@ -380,7 +378,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 	const FVoxelGraphCustomDataRange& CustomData)
 {
 	const FIntBox Bounds = BoundsFromRanges(X, Y, Z);
-	if (const auto Ptr = WorldGenerator.FloatOutputsRangesPtr.FindRef(Name))
+	if (const auto Ptr = WorldGenerator.CustomPtrs.FloatRange.FindRef(Name))
 	{
 		return TVoxelRange<v_flt>((WorldGenerator.*Ptr)(Bounds, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder).WithCustomData(&CustomData)));
 	}
@@ -398,9 +396,7 @@ inline void ShowWorldGeneratorMergeError()
 {
 	const auto Show = []()
 	{
-		FVoxelMessages::Error(LOCTEXT("RecursiveWorldGeneratorMerge",
-			"More than 4 recursive calls to World Generator Merge, exiting. "
-			"Make sure you don't have recursive World Generator Merge nodes."));
+		FVoxelMessages::Error("More than 4 recursive calls to World Generator Merge, exiting. Make sure you don't have recursive World Generator Merge nodes.");
 	};
 
 	if (IsInGameThread())
@@ -609,7 +605,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 		{
 			OutFloatOutputs[Index] = GetFloatOutput([&](const FVoxelWorldGeneratorInstance& Instance)
 			{
-				const auto Ptr = Instance.FloatOutputsPtr.FindRef(FloatOutputsNames[Index]);
+				const auto Ptr = Instance.CustomPtrs.Float.FindRef(FloatOutputsNames[Index]);
 				if (Ptr)
 				{
 					return (Instance.*Ptr)(X, Y, Z, Context.LOD, Items);
@@ -667,7 +663,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
 			if (ComputeFloatOutputs[OutputIndex]) 
 			{
 				TVoxelRange<v_flt> Result;
-				const auto Ptr = Instance.FloatOutputsRangesPtr.FindRef(FloatOutputsNames[OutputIndex]);
+				const auto Ptr = Instance.CustomPtrs.FloatRange.FindRef(FloatOutputsNames[OutputIndex]);
 				if (Ptr)
 				{
 					Result = (Instance.*Ptr)(Bounds, Context.LOD, Items);
@@ -722,4 +718,3 @@ FVoxelColorRichCurve::FVoxelColorRichCurve(const UCurveLinearColor* Curve)
 		Curves[3] = FVoxelRichCurve(Curve->FloatCurves[3]);
 	}
 }
-#undef LOCTEXT_NAMESPACE

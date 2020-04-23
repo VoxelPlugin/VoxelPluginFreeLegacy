@@ -106,7 +106,7 @@ public:
 
 public:
 	// Simulate querying a chunk at a specific LOD, eg to check fractal noise settings
-	UPROPERTY(EditAnywhere, Category = "Misc", meta = (ClampMin = 0, ClampMax = 24, UIMin = 0, UIMax = 24, DisplayName = "LOD to preview"))
+	UPROPERTY(EditAnywhere, Category = "Misc", meta = (ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, DisplayName = "LOD to preview"))
 	int32 LODToPreview = 0;
 	
 public:

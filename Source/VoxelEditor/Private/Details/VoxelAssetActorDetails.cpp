@@ -2,16 +2,13 @@
 
 #include "VoxelAssetActorDetails.h"
 #include "VoxelPlaceableItems/VoxelAssetActor.h"
-#include "VoxelData/VoxelData.h"
-#include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelWorld.h"
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelScopedTransaction.h"
 
 #include "DetailLayoutBuilder.h"
 #include "DetailCategoryBuilder.h"
-
-#define LOCTEXT_NAMESPACE "Voxel"
 
 TSharedRef<IDetailCustomization> FVoxelAssetActorDetails::MakeInstance()
 {
@@ -35,9 +32,9 @@ void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayou
 	FVoxelEditorUtilities::AddButtonToCategory(
 		DetailLayout,
 		"Preview Settings",
-		LOCTEXT("AssetUpdate", "Voxel Asset Update"),
-		LOCTEXT("UpdateRender", "Update Render"),
-		LOCTEXT("Update", "Update"),
+		VOXEL_LOCTEXT("Voxel Asset Update"),
+		VOXEL_LOCTEXT("Update Render"),
+		VOXEL_LOCTEXT("Update"),
 		false,
 		FOnClicked::CreateLambda([=]()
 		{
@@ -59,18 +56,18 @@ void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayou
 	FVoxelEditorUtilities::AddButtonToCategory(
 		DetailLayout,
 		"Editor Tools",
-		LOCTEXT("Stamp", "Stamp"),
-		LOCTEXT("Stamp", "Stamp"),
-		LOCTEXT("Stamp", "Stamp"),
+		VOXEL_LOCTEXT("Stamp"),
+		VOXEL_LOCTEXT("Stamp"),
+		VOXEL_LOCTEXT("Stamp"),
 		false,
 		FOnClicked::CreateLambda([=]()
 		{
 			FVoxelScopedTransaction Transaction(AssetActor->PreviewWorld, STATIC_FNAME("Stamp"));
 			const auto Bounds = AssetActor->AddItemToData(
-				AssetActor->PreviewWorld, 
+				AssetActor->PreviewWorld,
 				&AssetActor->PreviewWorld->GetData());
-			AssetActor->PreviewWorld->GetLODManager().UpdateBounds(Bounds);
-			AssetActor->PreviewWorld->GetData().SaveFrame(Bounds);
+			UVoxelBlueprintLibrary::UpdateBounds(AssetActor->PreviewWorld, Bounds);
+			UVoxelBlueprintLibrary::SaveFrame(AssetActor->PreviewWorld);
 			return FReply::Handled();
 		}),
 		TAttribute<bool>::Create([=]()
@@ -82,4 +79,3 @@ void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayou
 				&& AssetActor->PreviewWorld->IsCreated();
 		}));
 }
-#undef LOCTEXT_NAMESPACE

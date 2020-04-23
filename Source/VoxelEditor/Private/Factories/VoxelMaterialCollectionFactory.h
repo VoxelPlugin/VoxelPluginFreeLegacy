@@ -5,30 +5,9 @@
 #include "CoreMinimal.h"
 #include "UObject/ObjectMacros.h"
 #include "Factories/Factory.h"
-#include "VoxelRender/VoxelMaterialCollection.h"
+#include "VoxelRender/MaterialCollections/VoxelBasicMaterialCollection.h"
+#include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 #include "VoxelMaterialCollectionFactory.generated.h"
-
-UCLASS()
-class UVoxelMaterialCollectionFactory : public UFactory
-{
-	GENERATED_BODY()
-
-public:
-	UVoxelMaterialCollectionFactory()
-	{
-		bCreateNew = true;
-		bEditAfterNew = true;
-		SupportedClass = UVoxelMaterialCollection::StaticClass();
-	}
-
-	// UFactory interface
-	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
-	{
-		return NewObject<UVoxelMaterialCollection>(InParent, Class, Name, Flags | RF_Transactional);
-	}
-	// End of UFactory interface
-};
-
 
 UCLASS()
 class UVoxelBasicMaterialCollectionFactory : public UFactory
@@ -47,6 +26,27 @@ public:
 	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
 	{
 		return NewObject<UVoxelBasicMaterialCollection>(InParent, Class, Name, Flags | RF_Transactional);
+	}
+	// End of UFactory interface
+};
+
+UCLASS()
+class UVoxelInstancedMaterialCollectionFactory : public UFactory
+{
+	GENERATED_BODY()
+
+public:
+	UVoxelInstancedMaterialCollectionFactory()
+	{
+		bCreateNew = true;
+		bEditAfterNew = true;
+		SupportedClass = UVoxelInstancedMaterialCollection::StaticClass();
+	}
+
+	// UFactory interface
+	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
+	{
+		return NewObject<UVoxelInstancedMaterialCollection>(InParent, Class, Name, Flags | RF_Transactional);
 	}
 	// End of UFactory interface
 };

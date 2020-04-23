@@ -13,8 +13,10 @@
 
 class FVoxelToolRenderingManager;
 class UVoxelProceduralMeshComponent;
-class IVoxelMaterialInterface;
+class FVoxelMaterialInterface;
 struct FVoxelProcMeshBuffers;
+
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Mesh Distance Field Memory"), STAT_VoxelMeshDistanceFieldMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
 class FVoxelProcMeshBuffersRenderData : public TVoxelSharedFromThis<FVoxelProcMeshBuffersRenderData>
 {
@@ -39,7 +41,7 @@ private:
 
 struct FVoxelProcMeshProxySection
 {
-	TVoxelSharedPtr<IVoxelMaterialInterface> Material;
+	TVoxelSharedPtr<FVoxelMaterialInterface> Material;
 	TVoxelSharedPtr<const FVoxelProcMeshBuffers> Buffers;
 	TVoxelSharedPtr<FVoxelProcMeshBuffersRenderData> RenderData;
 	

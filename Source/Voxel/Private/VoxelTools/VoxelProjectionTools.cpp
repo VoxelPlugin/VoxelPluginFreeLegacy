@@ -2,6 +2,7 @@
 
 #include "VoxelTools/VoxelProjectionTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
+#include "VoxelData/VoxelDataAccelerator.h"
 
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
@@ -29,10 +30,10 @@ struct FHitsBuilder
 
 	inline void Add(AVoxelWorld* World, const FHitResult& Hit, const FVector2D& PlanePosition)
 	{
-		const FVector LocalPosition = World->GlobalToLocalFloat(Hit.ImpactPoint);
+		const FVoxelVector LocalPosition = World->GlobalToLocalFloat(Hit.ImpactPoint);
 		for (auto& Point : FVoxelUtilities::GetNeighbors(LocalPosition))
 		{
-			const float DistanceSquared = (FVector(Point) - LocalPosition).SizeSquared();
+			const float DistanceSquared = (Point - LocalPosition).SizeSquared();
 			auto* const Existing = PlanePositions.Find(Point);
 			if (Existing)
 			{
@@ -404,11 +405,44 @@ FVector UVoxelProjectionTools::GetHitsAveragePosition(const TArray<FVoxelProject
 TArray<FSurfaceVoxel> UVoxelProjectionTools::CreateSurfaceVoxelsFromHits(const TArray<FVoxelProjectionHit>& Hits)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+
 	TArray<FSurfaceVoxel> Voxels;
 	Voxels.Reserve(Hits.Num());
 	for (auto& Hit : Hits)
 	{
-		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, 1.f);
+		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, NAN);
 	}
+
+	return Voxels;
+}
+
+TArray<FSurfaceVoxel> UVoxelProjectionTools::CreateSurfaceVoxelsFromHitsWithExactValues(AVoxelWorld* World, const TArray<FVoxelProjectionHit>& Hits)
+{
+	CHECK_VOXELWORLD_IS_CREATED();
+	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+
+	if (Hits.Num() == 0)
+	{
+		return {};
+	}
+	
+	TArray<FSurfaceVoxel> Voxels;
+	Voxels.Reserve(Hits.Num());
+
+	FIntBox Bounds = FIntBox(Hits[0].VoxelPosition);
+	for (int32 Index = 1; Index < Hits.Num(); Index++)
+	{
+		Bounds = Bounds + Hits[Index].VoxelPosition;
+	}
+
+	auto& Data = World->GetData();
+	FVoxelReadScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
+	const FVoxelConstDataAccelerator Accelerator(Data, Bounds);
+
+	for (auto& Hit : Hits)
+	{
+		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, Accelerator.GetValue(Hit.VoxelPosition, 0).ToFloat());
+	}
+
 	return Voxels;
 }

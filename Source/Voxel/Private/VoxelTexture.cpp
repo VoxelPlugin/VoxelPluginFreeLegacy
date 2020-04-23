@@ -5,9 +5,7 @@
 #include "Engine/Texture2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 
-DEFINE_STAT(STAT_VoxelTextureMemory);
-
-#define LOCTEXT_NAMESPACE "Voxel"
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTextureMemory);
 
 template<typename T>
 inline auto& GetVoxelTextureCacheMap()
@@ -117,7 +115,7 @@ TVoxelTexture<FColor> FVoxelTextureUtilities::CreateFromTexture_Color(UTexture* 
 		FString Error;
 		if (!CanCreateFromTexture(Texture, Error))
 		{
-			FVoxelMessages::Error(FText::Format(LOCTEXT("CreateFromTextureError", "Can't create Voxel Texture: {0}"), FText::FromString(Error)), Texture);
+			FVoxelMessages::Error("Can't create Voxel Texture: " + Error, Texture);
 			return {};
 		}
 
@@ -139,27 +137,19 @@ TVoxelTexture<float> FVoxelTextureUtilities::CreateFromTexture_Float(UTexture* T
 		FString Error;
 		if (!CanCreateFromTexture(Texture, Error))
 		{
-			FVoxelMessages::Error(FText::Format(LOCTEXT("CreateFromTextureError", "Can't create Voxel Texture: {0}"), FText::FromString(Error)), Texture);
+			FVoxelMessages::Error("Can't create Voxel Texture: " + Error, Texture);
 			return {};
 		}
 
 		const auto ColorTexture = CreateFromTexture_Color(Texture);
 
 		Data = MakeVoxelShared<TVoxelTexture<float>::FTextureData>();
-		Data->SizeX = ColorTexture.GetSizeX();
-		Data->SizeY = ColorTexture.GetSizeY();
-		Data->TextureData.SetNumUninitialized(Data->SizeX * Data->SizeY);
+		Data->SetSize(ColorTexture.GetSizeX(), ColorTexture.GetSizeY());
 
-#if VOXEL_DEBUG
-		const auto& ColorTextureData = ColorTexture.GetTextureData();
-		auto& FloatTextureData = Data->TextureData;
-#else
-		const auto* RESTRICT ColorTextureData = ColorTexture.GetTextureData().GetData();
-		auto* RESTRICT FloatTextureData = Data->TextureData.GetData();
-#endif
-		for (int32 Index = 0; Index < Data->TextureData.Num(); Index++)
+		const int32 Num = ColorTexture.GetSizeX() * ColorTexture.GetSizeY();
+		for (int32 Index = 0; Index < Num; Index++)
 		{
-			const FColor Color = ColorTextureData[Index];
+			const FColor Color = ColorTexture.GetTextureData()[Index];
 			uint8 Result = 0;
 			switch (Channel)
 			{
@@ -177,9 +167,7 @@ TVoxelTexture<float> FVoxelTextureUtilities::CreateFromTexture_Float(UTexture* T
 				break;
 			}
 			const float Value = FVoxelUtilities::UINT8ToFloat(Result);
-			FloatTextureData[Index] = Value;
-			Data->Min = FMath::Min(Data->Min, Value);
-			Data->Max = FMath::Max(Data->Max, Value);
+			Data->SetValue(Index, Value);
 		}
 	}
 	return TVoxelTexture<float>(Data.ToSharedRef());
@@ -261,24 +249,24 @@ void FVoxelTextureUtilities::ClearCache(UTexture* Texture)
 	GetVoxelTextureCacheMap<float>().Remove(Texture);
 }
 
-void FVoxelFloatTexture::CreateOrUpdateTexture(UTexture2D*& InTexture) const
+void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<float>& Texture, UTexture2D*& InOutTexture)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	if (!InTexture || 
-		!InTexture->PlatformData || 
-		InTexture->PlatformData->Mips.Num() == 0 || 
-		InTexture->PlatformData->PixelFormat != EPixelFormat::PF_R32_FLOAT ||
-		InTexture->GetSizeX() != Texture.GetSizeX() || 
-		InTexture->GetSizeY() != Texture.GetSizeY())
+	if (!InOutTexture || 
+		!InOutTexture->PlatformData || 
+		InOutTexture->PlatformData->Mips.Num() == 0 || 
+		InOutTexture->PlatformData->PixelFormat != EPixelFormat::PF_R32_FLOAT ||
+		InOutTexture->GetSizeX() != Texture.GetSizeX() || 
+		InOutTexture->GetSizeY() != Texture.GetSizeY())
 	{
-		InTexture = UTexture2D::CreateTransient(Texture.GetSizeX(), Texture.GetSizeY(), EPixelFormat::PF_R32_FLOAT);
-		InTexture->CompressionSettings = TC_HDR;
-		InTexture->SRGB = false;
-		InTexture->Filter = TF_Bilinear;
+		InOutTexture = UTexture2D::CreateTransient(Texture.GetSizeX(), Texture.GetSizeY(), EPixelFormat::PF_R32_FLOAT);
+		InOutTexture->CompressionSettings = TC_HDR;
+		InOutTexture->SRGB = false;
+		InOutTexture->Filter = TF_Bilinear;
 	}
 	
-	FTexture2DMipMap& Mip = InTexture->PlatformData->Mips[0];
+	FTexture2DMipMap& Mip = InOutTexture->PlatformData->Mips[0];
 	float* Data = static_cast<float*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
 	if (!ensureAlways(Data)) return;
 
@@ -286,6 +274,99 @@ void FVoxelFloatTexture::CreateOrUpdateTexture(UTexture2D*& InTexture) const
 
 	Mip.BulkData.Unlock();
 	
-	InTexture->UpdateResource();
+	InOutTexture->UpdateResource();
 }
-#undef LOCTEXT_NAMESPACE
+
+void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<FColor>& Texture, UTexture2D*& InOutTexture)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!InOutTexture || 
+		!InOutTexture->PlatformData || 
+		InOutTexture->PlatformData->Mips.Num() == 0 || 
+		InOutTexture->PlatformData->PixelFormat != EPixelFormat::PF_B8G8R8A8 ||
+		InOutTexture->GetSizeX() != Texture.GetSizeX() || 
+		InOutTexture->GetSizeY() != Texture.GetSizeY())
+	{
+		InOutTexture = UTexture2D::CreateTransient(Texture.GetSizeX(), Texture.GetSizeY(), EPixelFormat::PF_B8G8R8A8);
+		InOutTexture->CompressionSettings = TC_VectorDisplacementmap;
+		InOutTexture->SRGB = false;
+		InOutTexture->Filter = TF_Bilinear;
+	}
+	
+	FTexture2DMipMap& Mip = InOutTexture->PlatformData->Mips[0];
+	FColor* Data = static_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
+	if (!ensureAlways(Data)) return;
+
+	FMemory::Memcpy(Data, Texture.GetTextureData().GetData(), Texture.GetSizeX() * Texture.GetSizeY() * sizeof(FColor));
+
+	Mip.BulkData.Unlock();
+	
+	InOutTexture->UpdateResource();
+}
+
+TVoxelTexture<FColor> FVoxelTextureUtilities::CreateColorTextureFromFloatTexture(const TVoxelTexture<float>& Texture, EVoxelRGBA Channel, bool bNormalize)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	auto Data = MakeVoxelShared<TVoxelTexture<FColor>::FTextureData>();
+	Data->SizeX = Texture.GetSizeX();
+	Data->SizeY = Texture.GetSizeY();
+	Data->TextureData.SetNumUninitialized(Data->SizeX * Data->SizeY);
+	Data->UpdateAllocatedSize();
+	
+	const int32 Num = Texture.GetSizeX() * Texture.GetSizeY();
+	for (int32 Index = 0; Index < Num; Index++)
+	{
+		float Value = Texture.GetTextureData()[Index];
+		if (bNormalize)
+		{
+			Value = (Value - Texture.GetMin()) / (Texture.GetMax() - Texture.GetMin());
+		}
+		const float ByteValue = FVoxelUtilities::FloatToUINT8(Value);
+		FColor Color(ForceInit);
+		switch (Channel)
+		{
+		case EVoxelRGBA::R:
+			Color.R = ByteValue;
+			break;
+		case EVoxelRGBA::G:
+			Color.G = ByteValue;
+			break;
+		case EVoxelRGBA::B:
+			Color.B = ByteValue;
+			break;
+		case EVoxelRGBA::A:
+			Color.A = ByteValue;
+			break;
+		}
+		Data->TextureData[Index] = Color;
+	}
+
+	return TVoxelTexture<FColor>(Data);
+}
+
+TVoxelTexture<float> FVoxelTextureUtilities::Normalize(const TVoxelTexture<float>& Texture)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	auto Data = MakeVoxelShared<TVoxelTexture<float>::FTextureData>();
+	Data->SizeX = Texture.GetSizeX();
+	Data->SizeY = Texture.GetSizeY();
+	Data->TextureData.SetNumUninitialized(Data->SizeX * Data->SizeY);
+	Data->UpdateAllocatedSize();
+
+	const float Min = Texture.GetMin();
+	const float Max = Texture.GetMax();
+	const int32 Num = Texture.GetSizeX() * Texture.GetSizeY();
+	for (int32 Index = 0; Index < Num; Index++)
+	{
+		const float Value = Texture.GetTextureData()[Index];
+		Data->TextureData[Index] = (Value - Min) / (Max - Min);
+	}
+
+	Data->Min = 0.f;
+	Data->Max = 1.f;
+
+	return TVoxelTexture<float>(Data);
+}

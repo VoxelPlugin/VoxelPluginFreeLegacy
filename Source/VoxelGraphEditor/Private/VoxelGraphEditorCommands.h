@@ -13,7 +13,7 @@ public:
 		: TCommands<FVoxelGraphEditorCommands>
 		(
 		"VoxelGraphEditor", // Context name for icons
-		NSLOCTEXT("Contexts", "VoxelGraphEditor", "Voxel Graph Editor"), // Localized context name for displaying
+		VOXEL_LOCTEXT("Voxel Graph Editor"), // Localized context name for displaying
 		NAME_None, // Parent
 		"VoxelGraphStyle" // Icon Style Set
 		)

@@ -10,6 +10,7 @@
 #include "VoxelPaintMaterial.h"
 #include "VoxelTexture.h"
 #include "VoxelSpawners/VoxelInstancedMeshSettings.h"
+#include "VoxelSpawners/VoxelSpawner.h"
 #include "VoxelRender/VoxelToolRendering.h"
 
 #include "VoxelBlueprintLibrary.generated.h"
@@ -33,6 +34,30 @@ struct FVoxelToolRenderingRef
 	FVoxelToolRenderingId Id;
 };
 
+UENUM(BlueprintType)
+enum class EVoxelMemoryUsageType : uint8
+{
+	Total,
+	VoxelsDirtyValuesData,
+	VoxelsDirtyMaterialsData,
+	VoxelsDirtyFoliageData,
+	VoxelsCachedValuesData,
+	VoxelsCachedMaterialsData,
+	VoxelsCachedFoliageData,
+	UndoRedo,
+	Multiplayer,
+	IntermediateBuffers,
+	MeshesIndices,
+	MeshesTessellationIndices,
+	MeshesVertices,
+	MeshesColors,
+	MeshesUVsAndTangents,
+	DataAssets,
+	HeightmapAssets,
+	UncompressedSaves,
+	CompressedSaves
+};
+
 UCLASS()
 class VOXEL_API UVoxelBlueprintLibrary : public UBlueprintFunctionLibrary
 {
@@ -50,6 +75,27 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (DefaultToSelf = "Object", AdvancedDisplay = "Object"))
 	static void RaiseError(FString Message, UObject* Object = nullptr);
+
+	// Returns the number of cores the CPU has. Ignores hyperthreading unless -usehyperthreading is passed as a command line argument.
+	UFUNCTION(BlueprintPure, Category = "Voxel")
+	static int32 NumberOfCores();
+	
+public:
+	// Get the current memory usage of different parts of the plugin
+	UFUNCTION(BlueprintPure, Category = "Voxel|Memory")
+	static float GetMemoryUsageInMB(EVoxelMemoryUsageType Type);
+	
+	// Get the peak memory usage of different parts of the plugin
+	UFUNCTION(BlueprintPure, Category = "Voxel|Memory")
+	static float GetPeakMemoryUsageInMB(EVoxelMemoryUsageType Type);
+	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Memory")
+	static void LogMemoryStats();
+	
+	// Returns the memory used by positions and indices buffers in this voxel world
+	// Should give a rough estimate of how much memory is used for physics
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Memory", meta = (DefaultToSelf = "World"))
+	static float GetEstimatedCollisionsMemoryUsageInMB(AVoxelWorld* World);
 	
 public:
 	/**
@@ -58,12 +104,18 @@ public:
 	
 public:
 	// Will replace instanced static mesh instances by actors
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Foliage", meta = (DefaultToSelf = "World"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
 	static void SpawnVoxelSpawnerActorsInArea(
 		TArray<AVoxelSpawnerActor*>& OutActors, 
 		AVoxelWorld* World,
 		FIntBox Bounds,
 		EVoxelSpawnerActorSpawnType SpawnType = EVoxelSpawnerActorSpawnType::OnlyFloating);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
+	static AVoxelSpawnerActor* SpawnVoxelSpawnerActorByInstanceIndex(
+		AVoxelWorld* World,
+		UVoxelHierarchicalInstancedStaticMeshComponent* Component,
+		int32 InstanceIndex);
 
 	/**
 	 * Add instances to a voxel world foliage system
@@ -71,22 +123,36 @@ public:
 	 * @param Mesh						The mesh to use
 	 * @param Transforms				The transforms, relative to the voxel world (but not in voxel space!)
 	 * @param Colors					The colors to send to the instance material (use GetVoxelMaterialFromPerInstanceRandom to get it)
-	 * @param StartCullDistance			Start cull distance of the instanced mesh
-	 * @param EndCullDistance			End cull distance of the instanced mesh
-	 * @param ActorTemplate				The voxel actor class to spawn when floating. Null will just remove the instance
 	 * @param FloatingDetectionOffset	Increase this if your foliage is enabling physics too soon
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Foliage", meta = (DefaultToSelf = "World", AdvancedDisplay = "FloatingDetectionOffset"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World", AdvancedDisplay = "FloatingDetectionOffset"))
 	static void AddInstances(
 		AVoxelWorld* World,
 		UStaticMesh* Mesh,
 		const TArray<FTransform>& Transforms,
 		const TArray<FLinearColor>& Colors,
 		FVoxelInstancedMeshSettings InstanceSettings,
-		float StartCullDistance = 100000,
-		float EndCullDistance = 200000,
-		TSubclassOf<AVoxelSpawnerActor> ActorTemplate = nullptr,
+		FVoxelSpawnerActorSettings ActorSettings,
 		FVector FloatingDetectionOffset = FVector(0, 0, -10));
+	
+public:
+	/**
+	 * IVoxelSpawnerManager helpers
+	 */
+
+	// Regenerate spawners in an aera
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
+	static void RegenerateSpawners(AVoxelWorld* World, FIntBox Bounds);
+
+	// Mark spawners as dirty so that they don't get trash if they go out of scope
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
+	static void MarkSpawnersDirty(AVoxelWorld* World, FIntBox Bounds);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
+	static FVoxelSpawnersSave GetSpawnersSave(AVoxelWorld* World);
+	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
+	static void LoadFromSpawnersSave(AVoxelWorld* World, const FVoxelSpawnersSave& Save);
 
 public:
 	/**
@@ -95,11 +161,15 @@ public:
 	
 public:
 	// Undo last frame. bEnableUndoRedo must be true, and SaveFrame must have been called after any edits
+	// @return Success
 	UFUNCTION(BlueprintCallable, Category = "Voxel|UndoRedo", meta = (DefaultToSelf = "World"))
-	static void Undo(AVoxelWorld* World);
+	static bool Undo(AVoxelWorld* World, TArray<FIntBox>& OutUpdatedBounds);
+	static bool Undo(AVoxelWorld* World);
 	// Redo last undone frame. bEnableUndoRedo must be true, and SaveFrame must have been called after any edits
+	// @return Success
 	UFUNCTION(BlueprintCallable, Category = "Voxel|UndoRedo", meta = (DefaultToSelf = "World"))
-	static void Redo(AVoxelWorld* World);
+	static bool Redo(AVoxelWorld* World, TArray<FIntBox>& OutUpdatedBounds);
+	static bool Redo(AVoxelWorld* World);
 	// Save the edits since the last call to SaveFrame/Undo/Redo and clear the redo stack. bEnableUndoRedo must be true
 	UFUNCTION(BlueprintCallable, Category = "Voxel|UndoRedo", meta = (DefaultToSelf = "World"))
 	static void SaveFrame(AVoxelWorld* World);
@@ -132,14 +202,25 @@ public:
 	// Clear all the data in the world, including items/assets
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bUpdateRender"))
 	static void ClearAllData(AVoxelWorld* World, bool bUpdateRender = true);
+
+	// Clear all the value data in the world
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bUpdateRender"))
+	static void ClearValueData(AVoxelWorld* World, bool bUpdateRender = true);
+
+	// Clear all the material data in the world
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bUpdateRender"))
+	static void ClearMaterialData(AVoxelWorld* World, bool bUpdateRender = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bUpdateRender"))
+	static bool HasValueData(AVoxelWorld* World);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bUpdateRender"))
+	static bool HasMaterialData(AVoxelWorld* World);
 	
 	// Clear all the edited data in the world, excluding items/assets
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bUpdateRender"))
 	static void ClearDirtyData(AVoxelWorld* World, bool bUpdateRender = true);
 	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Data")
-	static void SetBoxAsDirty(AVoxelWorld* World, const FIntBox& Bounds, bool bSetValuesAsDirty = true, bool bSetMaterialsAsDirty = true);
-
 public:
 	/**
 	 * IVoxelLODManager helpers
@@ -182,9 +263,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
 	static void ApplyNewMaterials(AVoxelWorld* World);
 
+	// Call this to recreate the voxel world rendering entirely, keeping data intact
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
+	static void RecreateRender(AVoxelWorld* World);
+
+	// Call this to recreate the voxel world spawners
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
+	static void RecreateSpawners(AVoxelWorld* World);
+
+	// Call this to recreate the voxel world entirely, optionally keeping data intact by saving it
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
+	static void Recreate(AVoxelWorld* World, bool bSaveData = true);
+	
 public:
 	/**
-	 * FVoxelProcGenManager helpers
+	 * FVoxelEventManager helpers
 	 */
 	
 public:
@@ -345,6 +438,19 @@ public:
 	{
 		return FVoxelPaintMaterial::CreateRGB(Color, bPaintR, bPaintG, bPaintB, bPaintA);
 	}
+	
+	/**
+	 * Create paint material for 5 way blend
+	 * @param	Channel		Between 0 and 4. 1,2,3,4 => R,G,B,A. 0 => material displayed by default
+	 */
+	UFUNCTION(BlueprintPure, Category = "Voxel|Materials", DisplayName = "Create RGB Paint Material")
+	static FVoxelPaintMaterial CreateFiveWayBlendPaintMaterial(
+		int32 Channel,
+		float TargetValue = 1.f,
+		bool bPaintR = true,
+		bool bPaintG = true,
+		bool bPaintB = true,
+		bool bPaintA = true);
 
 	// Create from index
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
@@ -410,16 +516,17 @@ public:
 	}
 
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static void GetSingleIndex(FVoxelMaterial Material, uint8& Index, float& DataA, float& DataB)
+	static void GetSingleIndex(FVoxelMaterial Material, uint8& Index, float& DataA, float& DataB, float& DataC)
 	{
 		Index = Material.GetSingleIndex_Index();
 		DataA = Material.GetSingleIndex_DataA_AsFloat();
 		DataB = Material.GetSingleIndex_DataB_AsFloat();
+		DataC = Material.GetSingleIndex_DataC_AsFloat();
 	}
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelMaterial CreateMaterialFromSingleIndex(uint8 Index, float DataA, float DataB)
+	static FVoxelMaterial CreateMaterialFromSingleIndex(uint8 Index, float DataA, float DataB, float DataC)
 	{
-		return FVoxelMaterial::CreateFromSingleIndex(Index, DataA, DataB);
+		return FVoxelMaterial::CreateFromSingleIndex(Index, DataA, DataB, DataC);
 	}
 
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
@@ -447,7 +554,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
 	static UTexture2D* CreateOrUpdateTextureFromVoxelTexture(FVoxelFloatTexture VoxelTexture, UPARAM(ref) UTexture2D*& Texture)
 	{
-		VoxelTexture.CreateOrUpdateTexture(Texture);
+		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
 		return Texture;
 	}
 	
@@ -455,7 +562,7 @@ public:
 	static UTexture2D* CreateTextureFromVoxelTexture(FVoxelFloatTexture VoxelTexture)
 	{
 		UTexture2D* Texture = nullptr;
-		VoxelTexture.CreateOrUpdateTexture(Texture);
+		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
 		return Texture;
 	}
 	

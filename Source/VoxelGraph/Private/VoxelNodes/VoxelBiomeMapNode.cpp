@@ -33,7 +33,7 @@ EVoxelPinCategory UVoxelNode_BiomeMapSampler::GetOutputPinCategory(int32 PinInde
 
 FText UVoxelNode_BiomeMapSampler::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "BiomeMap", "Biome Map: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("Biome Map: {0}"), Super::GetTitle());
 }
 
 

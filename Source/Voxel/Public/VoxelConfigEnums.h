@@ -73,3 +73,11 @@ enum class EVoxelPlayType
 	Game,
 	Preview
 };
+
+UENUM(BlueprintType)
+enum class EVoxelDataType : uint8
+{
+	Values,
+	Materials,
+	Foliage
+};

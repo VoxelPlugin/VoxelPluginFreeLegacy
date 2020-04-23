@@ -21,7 +21,7 @@ public:
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FBindEditorDelegates, IVoxelEditorDelegatesInterface*, UObject*);
 	static FBindEditorDelegates BindEditorDelegatesDelegate;
 
-	inline void BindEditorDelegates(UObject* Self)
+	void BindEditorDelegates(UObject* Self)
 	{
 		BindEditorDelegatesDelegate.Broadcast(this, Self);
 	}
@@ -31,5 +31,6 @@ public:
 	virtual void OnEndPIE(bool bIsSimulating) {}
 	virtual void OnPrepareToCleanseEditorObject(UObject* Object) {}
 	virtual void OnPreExit() {}
+	virtual void OnRefreshEditor() {}
 #endif
 };

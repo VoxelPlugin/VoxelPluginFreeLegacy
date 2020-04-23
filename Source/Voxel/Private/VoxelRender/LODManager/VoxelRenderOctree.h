@@ -17,17 +17,22 @@ struct FVoxelLODSettings;
 class FVoxelDebugManager;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdate, FIntBox);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Render Octrees Memory"), STAT_VoxelRenderOctreesMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
 struct FVoxelInvoker
 {
-	FIntVector Position; 
-	bool bUseForLODs;
+	bool bUseForLOD = false;
+	int32 LODToSet = 0;
+	FIntBox LODBounds;
 
-	bool bUseForCollisions;
-	uint64 SquaredCollisionsRange;
-	
-	bool bUseForNavmesh;
-	uint64 SquaredNavmeshRange;
+	bool bUseForCollisions = false;
+	FIntBox CollisionsBounds;
+
+	bool bUseForNavmesh = false;
+	FIntBox NavmeshBounds;
+
+	bool bUseForTessellation = false;
+	FIntBox TessellationBounds;
 };
 
 struct FVoxelRenderOctreeSettings
@@ -37,9 +42,6 @@ struct FVoxelRenderOctreeSettings
 	FIntBox WorldBounds;
 
 	TArray<FVoxelInvoker> Invokers;
-
-	// If SquaredDistance < SquaredLODsDistances[LOD], subdivide
-	TArray<uint64> SquaredLODsDistances;
 
 	int32 ChunksCullingLOD;
 
@@ -56,7 +58,6 @@ struct FVoxelRenderOctreeSettings
 	int32 VisibleChunksNavmeshMaxLOD;
 
 	bool bEnableTessellation;
-	uint64 SquaredTessellationDistance;
 };
 
 class FVoxelRenderOctreeAsyncBuilder : public FVoxelAsyncWork
@@ -71,6 +72,12 @@ public:
 	TVoxelSharedPtr<FVoxelRenderOctree> OctreeToDelete;
 
 	FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth, const FIntBox& WorldBounds);
+
+private:
+	~FVoxelRenderOctreeAsyncBuilder() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 
 public:
 	void Init(const FVoxelRenderOctreeSettings& OctreeSettings, TVoxelSharedPtr<FVoxelRenderOctree> Octree);
@@ -158,6 +165,9 @@ private:
 	bool ShouldSubdivideByOthers(const FVoxelRenderOctreeSettings& Settings) const;
 	
 	const FVoxelRenderOctree* GetVisibleAdjacentChunk(EVoxelDirection::Type Direction, int32 Index) const;
-	
+
+	template<typename T1, typename T2>
+	bool IsInvokerInRange(const TArray<FVoxelInvoker>& Invokers, T1 SelectInvoker, T2 GetInvokerBounds) const;
+
 	uint64 GetId();
 };

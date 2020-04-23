@@ -8,11 +8,9 @@
 #include "VoxelWorld.h"
 #include "EngineUtils.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 UActorFactoryVoxelPlaceableItem::UActorFactoryVoxelPlaceableItem()
 {
-	DisplayName = LOCTEXT("VoxelPlaceableItemActorDisplayName", "Voxel Placeable Item Actor");
+	DisplayName = VOXEL_LOCTEXT("Voxel Placeable Item Actor");
 	NewActorClass = AVoxelPlaceableItemActor::StaticClass();
 }
 
@@ -33,7 +31,7 @@ void UActorFactoryVoxelPlaceableItem::PostSpawnActor(UObject* Asset, AActor* New
 
 UActorFactoryVoxelDisableEditsBox::UActorFactoryVoxelDisableEditsBox()
 {
-	DisplayName = LOCTEXT("VoxelDisableEditsBoxDisplayName", "Voxel Disable Edits Box");
+	DisplayName = VOXEL_LOCTEXT("Voxel Disable Edits Box");
 	NewActorClass = AVoxelDisableEditsBox::StaticClass();
 }
 
@@ -41,7 +39,7 @@ UActorFactoryVoxelDisableEditsBox::UActorFactoryVoxelDisableEditsBox()
 
 UActorFactoryVoxelAssetActor::UActorFactoryVoxelAssetActor()
 {
-	DisplayName = LOCTEXT("AssetActorDisplayName", "Voxel Asset Actor");
+	DisplayName = VOXEL_LOCTEXT("Voxel Asset Actor");
 	NewActorClass = AVoxelAssetActor::StaticClass();
 }
 
@@ -98,6 +96,6 @@ void UActorFactoryVoxelAssetActor::InitActor(UObject* Asset, AActor* NewActor)
 	if (auto* Generator = Cast<UVoxelTransformableWorldGenerator>(Asset))
 	{
 		AssetActor->WorldGenerator = Generator;
+		AssetActor->bOverrideAssetBounds = !Asset->IsA<UVoxelTransformableWorldGeneratorWithBounds>();
 	}
 }
-#undef LOCTEXT_NAMESPACE

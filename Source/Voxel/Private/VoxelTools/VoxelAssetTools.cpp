@@ -12,6 +12,7 @@ void UVoxelAssetTools::ImportAssetAsReference(
 	FVoxelPlaceableItemReference& Reference,
 	AVoxelWorld* World,
 	UVoxelTransformableWorldGenerator* Asset,
+	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
 	FIntBox Bounds,
 	int32 Priority,
@@ -27,6 +28,7 @@ void UVoxelAssetTools::ImportAssetAsReferenceAsync(
 	FVoxelPlaceableItemReference& Reference,
 	AVoxelWorld* World,
 	UVoxelTransformableWorldGenerator* Asset,
+	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
 	FIntBox Bounds,
 	int32 Priority,
@@ -45,6 +47,7 @@ void UVoxelAssetTools::ImportAssetAsReferenceAsync(
 void UVoxelAssetTools::ImportModifierAsset(
 	AVoxelWorld* World,
 	UVoxelTransformableWorldGenerator* Asset,
+	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
 	FIntBox Bounds,
 	bool bModifyValues,
@@ -60,6 +63,7 @@ void UVoxelAssetTools::ImportModifierAssetAsync(
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
 	UVoxelTransformableWorldGenerator* Asset,
+	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
 	FIntBox Bounds,
 	bool bModifyValues,
@@ -79,6 +83,7 @@ void UVoxelAssetTools::ImportModifierAssetAsync(
 void UVoxelAssetTools::ImportAsset(
 	AVoxelWorld* World,
 	UVoxelTransformableWorldGenerator* Asset,
+	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
 	FIntBox Bounds,
 	bool bSubtractive,
@@ -93,6 +98,7 @@ void UVoxelAssetTools::ImportAssetAsync(
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
 	UVoxelTransformableWorldGenerator* Asset,
+	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
 	FIntBox Bounds,
 	bool bSubtractive,
@@ -110,7 +116,7 @@ void UVoxelAssetTools::ImportAssetAsync(
 void UVoxelAssetTools::ImportDataAssetFast(
 	AVoxelWorld* World, 
 	UVoxelDataAsset* Asset, 
-	FVector Position, 
+	FVector InPosition, 
 	EVoxelAssetMergeMode MergeMode, 
 	bool bConvertToVoxelSpace)
 {
@@ -122,7 +128,7 @@ void UVoxelAssetTools::ImportDataAssetFastAsync(
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World, 
 	UVoxelDataAsset* Asset, 
-	FVector Position, 
+	FVector InPosition, 
 	EVoxelAssetMergeMode MergeMode, 
 	bool bConvertToVoxelSpace,
 	bool bHideLatentWarnings)

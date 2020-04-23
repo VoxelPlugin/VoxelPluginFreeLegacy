@@ -10,7 +10,6 @@
 class IVoxelRenderer;
 class IVoxelPool;
 class FVoxelDebugManager;
-class FVoxelSpawnerManager;
 class AVoxelWorld;
 class FVoxelData;
 

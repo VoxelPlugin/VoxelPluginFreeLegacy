@@ -7,14 +7,16 @@
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelTools/VoxelHardnessHandler.h"
 #include "VoxelTools/VoxelAssetTools.h"
-#include "VoxelImporters/VoxelMeshImporter.h"
+#include "VoxelTools/VoxelDataTools.h"
+#include "VoxelTools/VoxelDataTools.inl"
+#include "VoxelTools/VoxelWorldGeneratorTools.h"
+#include "VoxelTools/VoxelToolManagerToolsHelpers.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelMessages.h"
 #include "VoxelThreadingUtilities.h"
-#include "VoxelDebugUtilities.h"
-#include "VoxelTexture.h"
+#include "VoxelDebug/VoxelDebugUtilities.h"
 #include "VoxelWorld.h"
 
 #include "VoxelData/VoxelData.h"
@@ -44,7 +46,7 @@ void FVoxelToolManagerTool::TriggerTick(AVoxelWorld& World, const FVoxelToolMana
 	if (&World != VoxelWorld) ClearVoxelWorld();
 	VoxelWorld = &World;
 
-	if (ToolSettings.bWaitForUpdates && NumPendingUpdates > 0)
+	if (ToolManager.bWaitForUpdates && NumPendingUpdates > 0)
 	{
 		if (ToolManager.bDebug)
 		{
@@ -59,23 +61,29 @@ void FVoxelToolManagerTool::TriggerTick(AVoxelWorld& World, const FVoxelToolMana
 
 	MouseMovementSize = (LastFrameTickData.MousePosition - TickData.MousePosition).Size();
 
+	// Update position/normal to the hit ones
+	if (Hit.bBlockingHit)
+	{
+		CurrentPosition = Hit.ImpactPoint;
+		CurrentNormal = Hit.ImpactNormal;
+	}
+
+	// Viewport-aligned movement
 	if (ToolSettings.bViewportSpaceMovement)
 	{
-		if (*ToolSettings.Alignment == EVoxelToolManagerAlignment::Surface)
+		bool bShowPlane = false;
+		if (*ToolSettings.Ptr_Alignment == EVoxelToolManagerAlignment::Surface)
 		{
 			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(TickData.bClick);
-			if (Hit.bBlockingHit)
-			{
-				CurrentPosition = Hit.ImpactPoint;
-				CurrentNormal = Hit.ImpactNormal;
-			}
+
+			// No need to override position/normal
 		}
 		else
 		{
 			if (!LastFrameTickData.bClick)
 			{
 				FVector Normal = FVector::UpVector;
-				switch (*ToolSettings.Alignment)
+				switch (*ToolSettings.Ptr_Alignment)
 				{
 				case EVoxelToolManagerAlignment::View:
 					Normal = -TickData.CameraViewDirection;
@@ -88,33 +96,67 @@ void FVoxelToolManagerTool::TriggerTick(AVoxelWorld& World, const FVoxelToolMana
 					Normal.Z = 0;
 					if (!Normal.Normalize())
 					{
-						ensure(TickData.CameraViewDirection.GetAbs() == FVector::UpVector);
+						ensure(TickData.CameraViewDirection.GetAbs().Equals(FVector::UpVector));
 						Normal = FVector::RightVector;
 					}
 					break;
 				default: ensure(false);
 				}
-				const bool bAirMode = !Hit.bBlockingHit || *ToolSettings.bAirMode;
+
+				const bool bAirMode = !Hit.bBlockingHit || *ToolSettings.Ptr_bAirMode;
 				const FVector Point = bAirMode
-					? TickData.RayOrigin + TickData.RayDirection * *ToolSettings.DistanceToCamera
+					? TickData.RayOrigin + TickData.RayDirection * *ToolSettings.Ptr_DistanceToCamera
 					: FVector(Hit.ImpactPoint);
-				LastClickPlane = FPlane(Point, Normal);
-				LastClickNormal = bAirMode ? FVector::UpVector : Hit.ImpactNormal;
+				ViewportSpaceMovement.LastClickPlane = FPlane(Point, Normal);
+				ViewportSpaceMovement.LastClickPoint = Point;
+				ViewportSpaceMovement.LastClickNormal = bAirMode ? FVector::UpVector : Hit.ImpactNormal;
 			}
-			CurrentPosition = FMath::RayPlaneIntersection(TickData.RayOrigin, TickData.RayDirection, LastClickPlane);
-			CurrentNormal = LastClickNormal;
+
+			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(false);
+			
+			// Override position/normal
+			CurrentPosition = FMath::RayPlaneIntersection(TickData.RayOrigin, TickData.RayDirection, ViewportSpaceMovement.LastClickPlane);
+			CurrentNormal = ViewportSpaceMovement.LastClickNormal;
+
+			if (TickData.bClick)
+			{
+				bShowPlane = true;
+			}
 		}
-	}
-	else
-	{
-		if (Hit.bBlockingHit)
+
+		static const FName PlaneMeshId = "ViewportMovementPlane";
+		if (bShowPlane && ToolSettings.Ptr_bShowPlanePreview && *ToolSettings.Ptr_bShowPlanePreview)
 		{
-			CurrentPosition = Hit.ImpactPoint;
-			CurrentNormal = Hit.ImpactNormal;
+			const FVector PlaneNormal = FVector(ViewportSpaceMovement.LastClickPlane);
+			const FTransform Transform(
+				FRotationMatrix::MakeFromZ(PlaneNormal).ToQuat(),
+				ViewportSpaceMovement.LastClickPoint + PlaneNormal * 0.5f, // Prevent Z fighting
+				FVector(10000.f));
+
+			if (!PlaneMeshMaterialInstance)
+			{
+				PlaneMeshMaterialInstance = UMaterialInstanceDynamic::Create(ToolManager.PlaneMaterial, GetTransientPackage());
+			}
+			if (!ensure(PlaneMeshMaterialInstance))
+			{
+				return;
+			}
+			PlaneMeshMaterialInstance->SetScalarParameterValue(STATIC_FNAME("VoxelSize"), World.VoxelSize);
+			
+			UpdateToolMesh(
+				TickData.World,
+				ToolManager.PlaneMesh,
+				PlaneMeshMaterialInstance,
+				Transform,
+				PlaneMeshId);
+		}
+		else
+		{
+			UpdateToolMesh(TickData.World, nullptr, nullptr, {}, PlaneMeshId);
 		}
 	}
 
-	if (ToolSettings.bSupportToolDirection)
+	// Movement direction
 	{
 		const FVector NewMovementTangent = (CurrentPosition - LastPositionUsedForTangent).GetSafeNormal();
 		MovementTangent = FMath::Lerp(
@@ -124,53 +166,73 @@ void FVoxelToolManagerTool::TriggerTick(AVoxelWorld& World, const FVoxelToolMana
 		LastPositionUsedForTangent = CurrentPosition;
 	}
 
-	if (ToolSettings.bSupportStride)
+	// Fixed normal
+	if (ToolSettings.Ptr_bFixedNormal && *ToolSettings.Ptr_bFixedNormal)
 	{
-		const double Time = FPlatformTime::Seconds();
-		if (Time > LastStridePositionUpdate + *ToolSettings.Stride)
-		{
-			StridePosition = CurrentPosition;
-			StrideNormal = CurrentNormal;
-			if (ToolSettings.bSupportToolDirection)
-			{
-				StrideDirection = MovementTangent;
-			}
-			LastStridePositionUpdate = Time;
-		}
+		CurrentNormal = ToolSettings.FixedNormal;
 	}
 
-	if (ToolSettings.bSaveFrameOnEndClick && !TickData.bClick && PendingFrameBounds.IsValid())
+	// Stride
+	if (!ToolSettings.Ptr_Stride ||
+		!LastFrameTickData.bClick || // If not clicking always keep the position under the cursor
+		FVector::Dist(CurrentPosition, StridePosition) >= *ToolSettings.Ptr_Stride * 2 * ToolManager.Radius) // 2x : we want the diameter
+	{
+		StridePosition = CurrentPosition;
+		StrideNormal = CurrentNormal;
+		StrideDirection = MovementTangent;
+		
+		bCanEdit = TickData.bClick;
+
+		if (!ToolSettings.bViewportSpaceMovement)
+		{
+			// When we can edit, we flush the collisions and freeze them again
+			// This is so that when we cannot edit, we do the raycasts on the old geometry
+			// and the tool travel distance isn't artificially done by the edits
+			// Without that, you can get a continuous stream of edits when keeping click pressed
+			// without moving the mouse, which is unexpected when using stride
+			// Not needed in viewport space movement
+			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(false);
+			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(true);
+		}
+	}
+	else
+	{
+		bCanEdit = false;
+	}
+
+	// End of click
+	if (!TickData.bClick && PendingFrameBounds.IsValid())
 	{
 		ToolManager.SaveFrame(World, PendingFrameBounds.GetBox(), ToolSettings.ToolName);
+
+
+		if (ToolManager.bCheckForSingleValues)
+		{
+			UVoxelDataTools::CheckForSingleValues(&World, PendingFrameBounds.GetBox());
+			UVoxelDataTools::CheckForSingleMaterials(&World, PendingFrameBounds.GetBox());
+		}
+
+		if (ToolManager.bDebug)
+		{
+			UVoxelDebugUtilities::DrawDebugIntBox(&World, PendingFrameBounds.GetBox(), 0.5f, 0, FColor::Purple);
+		}
+		
 		PendingFrameBounds.Reset();
 	}
 
+	// Debug
 	if (ToolManager.bDebug)
 	{
-		if (ToolSettings.bSupportToolDirection)
-		{
-			DrawDebugDirectionalArrow(
-				TickData.World,
-				GetToolPosition(),
-				GetToolPosition() + GetToolDirection() * World.VoxelSize * 5,
-				World.VoxelSize * 5,
-				FColor::Red,
-				false,
-				1.5f * TickData.DeltaTime,
-				0,
-				World.VoxelSize / 2);
-		}
-		if (ToolSettings.bViewportSpaceMovement && TickData.bClick && *ToolSettings.Alignment != EVoxelToolManagerAlignment::Surface)
-		{
-			DrawDebugSolidPlane(
-				TickData.World,
-				LastClickPlane,
-				CurrentPosition,
-				1000000,
-				FColor::Red,
-				false,
-				1.5f * TickData.DeltaTime);
-		}
+		DrawDebugDirectionalArrow(
+			TickData.World,
+			GetToolPosition(),
+			GetToolPosition() + GetToolDirection() * World.VoxelSize * 5,
+			World.VoxelSize * 5,
+			FColor::Red,
+			false,
+			1.5f * TickData.DeltaTime,
+			0,
+			World.VoxelSize / 2);
 		DrawDebugDirectionalArrow(
 			TickData.World,
 			GetToolPosition(),
@@ -182,8 +244,9 @@ void FVoxelToolManagerTool::TriggerTick(AVoxelWorld& World, const FVoxelToolMana
 			0,
 			World.VoxelSize / 2);
 	}
-	
-	if (ToolSettings.bNeedToolRendering)
+
+	// Tool material overlay on the voxel world
+	if (ToolSettings.Ptr_ToolMaterial)
 	{
 		auto& ToolRenderingManager = World.GetToolRenderingManager();
 		if (!ToolRenderingId.IsValid() || !ToolRenderingManager.IsValidTool(ToolRenderingId))
@@ -191,13 +254,13 @@ void FVoxelToolManagerTool::TriggerTick(AVoxelWorld& World, const FVoxelToolMana
 			ToolRenderingId = ToolRenderingManager.CreateTool(true);
 		}
 
-		auto* const ToolMaterial = *ToolSettings.ToolMaterial;
+		auto* const ToolMaterial = *ToolSettings.Ptr_ToolMaterial;
 		if (!ToolMaterial)
 		{
 			FVoxelMessages::Error("VoxelToolManager: " + ToolSettings.ToolName.ToString() + ": Invalid ToolMaterial!");
 			return;
 		}
-		if (!ToolMaterialInstance || ToolMaterialInstance->GetMaterial() != ToolMaterial)
+		if (!ToolMaterialInstance || ToolMaterialInstance->Parent != ToolMaterial)
 		{
 			ToolMaterialInstance = UMaterialInstanceDynamic::Create(ToolMaterial, GetTransientPackage());
 			if (!ensure(ToolMaterialInstance)) return;
@@ -208,27 +271,15 @@ void FVoxelToolManagerTool::TriggerTick(AVoxelWorld& World, const FVoxelToolMana
 		{
 			if (!Tool.Material.IsValid() || Tool.Material->GetMaterial() != ToolMaterialInstance) 
 			{
-				Tool.Material = FVoxelMaterialInterface::Create(ToolMaterialInstance);
+				Tool.Material = FVoxelMaterialInterfaceManager::Get().CreateMaterial(ToolMaterialInstance);
 			}
 		});
-	}
-
-	if (ToolSettings.bNeedToolMesh && StaticMeshActor.IsValid())
-	{
-		auto& MeshComponent = *StaticMeshActor->GetStaticMeshComponent();
-		if (MeshComponent.GetStaticMesh() != *ToolSettings.ToolMesh)
-		{
-			MeshComponent.SetStaticMesh(*ToolSettings.ToolMesh);
-			for (int32 Index = 0; Index < MeshComponent.GetNumMaterials(); Index++)
-			{
-				MeshComponent.SetMaterial(Index, *ToolSettings.ToolMeshMaterial);
-			}
-		}
 	}
 
 	Tick(World, TickData);
 
 	LastFrameTickData = TickData;
+	bLastFrameCanEdit = bCanEdit;
 }
 
 void FVoxelToolManagerTool::ClearVoxelWorld()
@@ -237,7 +288,7 @@ void FVoxelToolManagerTool::ClearVoxelWorld()
 	
 	if (VoxelWorld.IsValid() && VoxelWorld->IsCreated())
 	{
-		if (ToolSettings.bSaveFrameOnEndClick && PendingFrameBounds.IsValid())
+		if (PendingFrameBounds.IsValid())
 		{
 			ToolManager.SaveFrame(*VoxelWorld, PendingFrameBounds.GetBox(), ToolSettings.ToolName);
 			PendingFrameBounds.Reset();
@@ -254,42 +305,53 @@ void FVoxelToolManagerTool::ClearVoxelWorld()
 	VoxelWorld.Reset();
 	ToolRenderingId.Reset();
 
-	if (StaticMeshActor.IsValid())
+	for (auto& It : StaticMeshActors)
 	{
-		StaticMeshActor->Destroy();
+		auto& StaticMeshActor = It.Value;
+		if (StaticMeshActor.IsValid())
+		{
+			StaticMeshActor->Destroy();
+		}
 	}
+	StaticMeshActors.Empty();
 
 	UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(false);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-FVector FVoxelToolManagerTool::GetToolDirection() const
-{
-	ensure(ToolSettings.bSupportToolDirection);
-	if (!ToolSettings.bAlignToMovement || *ToolSettings.bAlignToMovement)
-	{
-		return ToolSettings.bSupportStride && *ToolSettings.bEnableStride ? StrideDirection : MovementTangent;
-	}
-	else
-	{
-		return ToolSettings.Direction->Vector();
-	}
-}
-
 FVector FVoxelToolManagerTool::GetToolPosition() const
 {
-	return ToolSettings.bSupportStride && *ToolSettings.bEnableStride ? StridePosition : CurrentPosition;
+	return StridePosition;
+}
+
+FVector FVoxelToolManagerTool::GetToolPreviewPosition() const
+{
+	// Ignore stride for preview
+	return CurrentPosition;
 }
 
 FVector FVoxelToolManagerTool::GetToolNormal() const
 {
-	return ToolSettings.bSupportStride && *ToolSettings.bEnableStride ? StrideNormal : CurrentNormal;
+	return StrideNormal;
+}
+
+FVector FVoxelToolManagerTool::GetToolDirection() const
+{
+	if (!ToolSettings.Ptr_bAlignToMovement || *ToolSettings.Ptr_bAlignToMovement)
+	{
+		return StrideDirection;
+	}
+	else
+	{
+		check(ToolSettings.Ptr_Direction);
+		return ToolSettings.Ptr_Direction->Vector();
+	}
 }
 
 UMaterialInstanceDynamic& FVoxelToolManagerTool::GetToolMaterialInstance() const
 {
-	check(ToolSettings.bNeedToolRendering);
+	check(ToolSettings.Ptr_ToolMaterial);
 	check(ToolMaterialInstance);
 	return *ToolMaterialInstance;
 }
@@ -311,7 +373,7 @@ void FVoxelToolManagerTool::UpdateWorld(AVoxelWorld& World, const FIntBox& Bound
 			}
 		}),
 		FVoxelUtilities::MakeVoxelWeakPtrDelegate<void, FIntBox>(this, 
-		[](FVoxelToolManagerTool& This, const FIntBox& ChunkBounds)
+		[](FVoxelToolManagerTool& This, const FIntBox& /*ChunkBounds*/)
 		{
 			ensure(This.NumPendingUpdates-- >= 0);
 		}));
@@ -319,7 +381,6 @@ void FVoxelToolManagerTool::UpdateWorld(AVoxelWorld& World, const FIntBox& Bound
 
 void FVoxelToolManagerTool::SaveFrameOnEndClick(const FIntBox& Bounds)
 {
-	ensure(ToolSettings.bSaveFrameOnEndClick);
 	PendingFrameBounds += Bounds;
 }
 
@@ -332,11 +393,16 @@ void FVoxelToolManagerTool::SetToolRenderingBounds(AVoxelWorld& World, const FBo
 	});
 }
 
-void FVoxelToolManagerTool::SetToolMeshTransform(UWorld* World, const FTransform& Transform)
+void FVoxelToolManagerTool::UpdateToolMesh(
+	UWorld* World, 
+	UStaticMesh* Mesh, 
+	UMaterialInterface* Material, 
+	const FTransform& Transform, 
+	FName Id)
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	ensure(ToolSettings.bNeedToolMesh);
+	auto& StaticMeshActor = StaticMeshActors.FindOrAdd(Id);
 	if (!StaticMeshActor.IsValid())
 	{
 		FActorSpawnParameters SpawnParameters;
@@ -347,16 +413,30 @@ void FVoxelToolManagerTool::SetToolMeshTransform(UWorld* World, const FTransform
 #if WITH_EDITOR
 		StaticMeshActor->SetActorLabel("VoxelToolMeshActor");
 #endif
-		auto& MeshComponent = *StaticMeshActor->GetStaticMeshComponent();
-		MeshComponent.SetStaticMesh(*ToolSettings.ToolMesh);
-		for (int32 Index = 0; Index < MeshComponent.GetNumMaterials(); Index++)
-		{
-			MeshComponent.SetMaterial(Index, *ToolSettings.ToolMeshMaterial);
-		}
 		StaticMeshActor->SetActorEnableCollision(false);
 		StaticMeshActor->FinishSpawning(Transform);
 	}
-	if (!ensure(StaticMeshActor.IsValid())) return;
+	
+	if (!ensure(StaticMeshActor.IsValid()))
+	{
+		return;
+	}
+	
+	UStaticMeshComponent* MeshComponent = StaticMeshActor->GetStaticMeshComponent();
+	if (!ensure(MeshComponent))
+	{
+		return;
+	}
+
+	if (MeshComponent->GetStaticMesh() != Mesh)
+	{
+		MeshComponent->SetStaticMesh(Mesh);
+		for (int32 Index = 0; Index < MeshComponent->GetNumMaterials(); Index++)
+		{
+			MeshComponent->SetMaterial(Index, Material);
+		}
+	}
+	
 	StaticMeshActor->SetActorTransform(Transform);
 }
 
@@ -369,7 +449,7 @@ FIntBox FVoxelToolManagerTool::GetAndDebugBoundsToCache(AVoxelWorld& World, cons
 		UVoxelDebugUtilities::DrawDebugIntBox(&World, Bounds, 1.5f * TickData.DeltaTime, 0, FColor::Green);
 		UVoxelDebugUtilities::DrawDebugIntBox(&World, BoundsToCache, 1.5f * TickData.DeltaTime, 0, FColor::Red);
 	}
-
+	
 	return BoundsToCache;
 }
 
@@ -378,6 +458,7 @@ FIntBox FVoxelToolManagerTool::GetAndDebugBoundsToCache(AVoxelWorld& World, cons
 void FVoxelToolManagerTool::AddReferencedObjects(FReferenceCollector& Collector)
 {
 	Collector.AddReferencedObject(ToolMaterialInstance);
+	Collector.AddReferencedObject(PlaneMeshMaterialInstance);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -390,19 +471,26 @@ inline FVoxelToolManagerTool::FToolSettings SurfaceToolSettings(const FVoxelTool
 
 	Settings.ToolName = STATIC_FNAME("Surface Tool");
 	
-	Settings.bSupportStride = true;
-	Settings.bEnableStride = &SurfaceSettings.bEnableStride;
-	Settings.Stride = &SurfaceSettings.Stride;
+	Settings.Ptr_Stride = &SurfaceSettings.Stride;
 	
-	Settings.bNeedToolRendering = true;
-	Settings.ToolMaterial = &SurfaceSettings.ToolMaterial;
+	Settings.Ptr_ToolMaterial = &SurfaceSettings.ToolMaterial;
 
-	Settings.bSupportToolDirection = true;
-	Settings.bAlignToMovement = &SurfaceSettings.bAlignToMovement;
-	Settings.Direction = &SurfaceSettings.FixedDirection;
+	Settings.Ptr_bAlignToMovement = &SurfaceSettings.bAlignToMovement;
+	Settings.Ptr_Direction = &SurfaceSettings.FixedDirection;
 
-	Settings.bWaitForUpdates = true;
-	Settings.bSaveFrameOnEndClick = true;
+	Settings.Ptr_bFixedNormal = &SurfaceSettings.b2DBrush;
+	Settings.FixedNormal = FVector::UpVector;
+	
+	return Settings;
+}
+
+inline FVoxelToolManagerTool::FToolSettings FlattenToolSettings(const FVoxelToolManager_FlattenSettings& FlattenSettings)
+{
+	FVoxelToolManagerTool::FToolSettings Settings;
+
+	Settings.ToolName = STATIC_FNAME("Flatten Tool");
+	
+	Settings.Ptr_ToolMaterial = &FlattenSettings.ToolMaterial;
 	
 	return Settings;
 }
@@ -413,12 +501,29 @@ inline FVoxelToolManagerTool::FToolSettings TrimToolSettings(const FVoxelToolMan
 
 	Settings.ToolName = STATIC_FNAME("Trim Tool");
 
-	Settings.bNeedToolRendering = true;
-	Settings.ToolMaterial = &TrimSettings.ToolMaterial;
+	Settings.Ptr_ToolMaterial = &TrimSettings.ToolMaterial;
 
-	Settings.bWaitForUpdates = true;
-	Settings.bSaveFrameOnEndClick = true;
+	return Settings;
+}
+
+inline FVoxelToolManagerTool::FToolSettings LevelToolSettings(const FVoxelToolManager_LevelSettings& LevelSettings)
+{
+	FVoxelToolManagerTool::FToolSettings Settings;
+
+	Settings.ToolName = STATIC_FNAME("Level Tool");
 	
+	Settings.Ptr_Stride = &LevelSettings.Stride;
+
+	Settings.bViewportSpaceMovement = true;
+
+	static EVoxelToolManagerAlignment Alignment = EVoxelToolManagerAlignment::Ground;
+	static bool bAirMode = false;
+	static float DistanceToCamera = 1e5;
+
+	Settings.Ptr_Alignment = &Alignment;
+	Settings.Ptr_bAirMode = &bAirMode;
+	Settings.Ptr_DistanceToCamera = &DistanceToCamera;
+
 	return Settings;
 }
 
@@ -428,12 +533,8 @@ inline FVoxelToolManagerTool::FToolSettings SmoothToolSettings(const FVoxelToolM
 
 	Settings.ToolName = STATIC_FNAME("Smooth Tool");
 
-	Settings.bNeedToolRendering = true;
-	Settings.ToolMaterial = &SmoothSettings.ToolMaterial;
+	Settings.Ptr_ToolMaterial = &SmoothSettings.ToolMaterial;
 
-	Settings.bWaitForUpdates = true;
-	Settings.bSaveFrameOnEndClick = true;
-	
 	return Settings;
 }
 
@@ -443,17 +544,11 @@ inline FVoxelToolManagerTool::FToolSettings SphereToolSettings(const FVoxelToolM
 
 	Settings.ToolName = STATIC_FNAME("Sphere Tool");
 
-	Settings.bNeedToolMesh = true;
-	Settings.ToolMesh = &SphereSettings.SphereMesh;
-	Settings.ToolMeshMaterial = &SphereSettings.ToolMaterial;
-	
 	Settings.bViewportSpaceMovement = true;
-	Settings.Alignment = &SphereSettings.Alignment;
-	Settings.bAirMode = &SphereSettings.bAirMode;
-	Settings.DistanceToCamera = &SphereSettings.DistanceToCamera;
-	
-	Settings.bWaitForUpdates = true;
-	Settings.bSaveFrameOnEndClick = true;
+	Settings.Ptr_bShowPlanePreview = &SphereSettings.bShowPlanePreview;
+	Settings.Ptr_Alignment = &SphereSettings.Alignment;
+	Settings.Ptr_bAirMode = &SphereSettings.bAirMode;
+	Settings.Ptr_DistanceToCamera = &SphereSettings.DistanceToCamera;
 	
 	return Settings;
 }
@@ -464,23 +559,28 @@ inline FVoxelToolManagerTool::FToolSettings MeshToolSettings(const FVoxelToolMan
 
 	Settings.ToolName = STATIC_FNAME("Mesh Tool");
 	
-	Settings.bSupportStride = true;
-	Settings.bEnableStride = &MeshSettings.bEnableStride;
-	Settings.Stride = &MeshSettings.Stride;
+	Settings.Ptr_Stride = &MeshSettings.Stride;
 
-	Settings.bNeedToolMesh = true;
-	Settings.ToolMesh = &MeshSettings.Mesh;
-	Settings.ToolMeshMaterial = &MeshSettings.ToolMaterial;
-
-	Settings.bSupportToolDirection = true;
-	
 	Settings.bViewportSpaceMovement = true;
-	Settings.Alignment = &MeshSettings.Alignment;
-	Settings.bAirMode = &MeshSettings.bAirMode;
-	Settings.DistanceToCamera = &MeshSettings.DistanceToCamera;
+	Settings.Ptr_bShowPlanePreview = &MeshSettings.bShowPlanePreview;
+	Settings.Ptr_Alignment = &MeshSettings.Alignment;
+	Settings.Ptr_bAirMode = &MeshSettings.bAirMode;
+	Settings.Ptr_DistanceToCamera = &MeshSettings.DistanceToCamera;
 	
-	Settings.bWaitForUpdates = true;
-	Settings.bSaveFrameOnEndClick = true;
+	return Settings;
+}
+
+inline FVoxelToolManagerTool::FToolSettings RevertToolSettings(const FVoxelToolManager_RevertSettings& RevertSettings)
+{
+	FVoxelToolManagerTool::FToolSettings Settings;
+
+	Settings.ToolName = STATIC_FNAME("Revert Tool");
+
+	Settings.bViewportSpaceMovement = true;
+	Settings.Ptr_bShowPlanePreview = &RevertSettings.bShowPlanePreview;
+	Settings.Ptr_Alignment = &RevertSettings.Alignment;
+	Settings.Ptr_bAirMode = &RevertSettings.bAirMode;
+	Settings.Ptr_DistanceToCamera = &RevertSettings.DistanceToCamera;
 	
 	return Settings;
 }
@@ -498,99 +598,153 @@ FVoxelToolManagerTool_Surface::FVoxelToolManagerTool_Surface(const UVoxelToolMan
 void FVoxelToolManagerTool_Surface::Tick(AVoxelWorld& World, const FVoxelToolManagerTickData& TickData)
 {
 	VOXEL_FUNCTION_COUNTER();
+	
+	auto& MaterialInstance = GetToolMaterialInstance();
 
 	struct FMaskData
 	{
 		TVoxelTexture<float> MaskTexture;
+		UTexture2D* MaskRenderTexture = nullptr;
 		float MaskScaleX = 0;
 		float MaskScaleY = 0;
 		FVector MaskPlaneX;
 		FVector MaskPlaneY;
+		EVoxelRGBA MaskChannel = EVoxelRGBA::R;
 	};
 	FMaskData MaskData;
 
-	const float RadiusWithFalloff = ToolManager.Radius * (1 + SurfaceSettings.Falloff);
+	const bool bUseMask = SurfaceSettings.bUseMask && (SurfaceSettings.MaskType == EVoxelToolManagerMaskType::Texture
+		? SurfaceSettings.MaskTexture != nullptr
+		: SurfaceSettings.MaskWorldGenerator.IsValid());
 
-	auto& MaterialInstance = GetToolMaterialInstance();
-	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Radius"), ToolManager.Radius);
-	MaterialInstance.SetVectorParameterValue(STATIC_FNAME("Position"), GetToolPosition());
-	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("FalloffType"), int32(SurfaceSettings.FalloffType));
-	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Falloff"), ToolManager.Radius * SurfaceSettings.Falloff);
-	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("UseMask"), false);
-
-	if (SurfaceSettings.bUseMask && SurfaceSettings.Mask)
+	// Mask
+	if (bUseMask)
 	{
 		FVoxelMessages::ShowVoxelPluginProError("Using masks requires the Pro version of Voxel Plugin");
 		return;
 	}
 
-	SetToolRenderingBounds(World, FBox(GetToolPosition() - RadiusWithFalloff, GetToolPosition() + RadiusWithFalloff));
+	const float MovementStrengthMultiplier = SurfaceSettings.bMovementAffectsStrength ? GetMouseMovementSize() / 100 : 1;
+	const float SculptStrength = SurfaceSettings.SculptStrength * MovementStrengthMultiplier * ToolManager.Radius / World.VoxelSize;
+	const float PaintStrength = SurfaceSettings.PaintStrength * MovementStrengthMultiplier;
 
-	if (!TickData.bClick)
+	const float SignedSculptStrength = SculptStrength * (TickData.bAlternativeMode ? -1 : 1);
+	const float SignedPaintStrength = PaintStrength * (TickData.bAlternativeMode ? -1 : 1);
+
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Radius"), ToolManager.Radius);
+	MaterialInstance.SetVectorParameterValue(STATIC_FNAME("Position"), GetToolPreviewPosition());
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Falloff"), SurfaceSettings.Falloff);
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("EnableFalloff"), SurfaceSettings.bEnableFalloff);
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("FalloffType"), int32(SurfaceSettings.FalloffType));
+
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("SculptHeight"),  SurfaceSettings.bSculpt ? SignedSculptStrength * World.VoxelSize : 0.f);
+
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("UseMask"), bUseMask);
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("2DBrush"), SurfaceSettings.b2DBrush);
+
+	SetToolRenderingBounds(World, FBox(GetToolPreviewPosition() - ToolManager.Radius, GetToolPreviewPosition() + ToolManager.Radius));
+
+	if (!CanEdit())
 	{
 		return;
 	}
 
-	const FIntBox Bounds = UVoxelBlueprintLibrary::MakeIntBoxFromGlobalPositionAndRadius(&World, GetToolPosition(), RadiusWithFalloff);
-	const auto BoundsToCache = GetAndDebugBoundsToCache(World, Bounds, TickData);
+	constexpr float DistanceDivisor = 4.f;
+
+	const FIntBox BoundsToDoEditsIn = UVoxelBlueprintLibrary::MakeIntBoxFromGlobalPositionAndRadius(&World, GetToolPosition(), ToolManager.Radius);
+	const FIntBox BoundsWhereEditsHappen =
+		SurfaceSettings.b2DBrush
+		? BoundsToDoEditsIn.Extend(FIntVector(0, 0, FMath::CeilToInt(SculptStrength + DistanceDivisor + 2)))
+		: BoundsToDoEditsIn;
+	
+	if (!BoundsToDoEditsIn.IsValid() || !BoundsWhereEditsHappen.IsValid())
+	{
+		FVoxelMessages::Error("Invalid tool bounds!", &ToolManager);
+		return;
+	}
+
+	// Don't cache the entire column
+	const auto BoundsToCache = GetAndDebugBoundsToCache(World, BoundsToDoEditsIn, TickData);
 
 	{
 		auto& Data = World.GetData();
 
-		FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
+		FVoxelWriteScopeLock Lock(Data, BoundsWhereEditsHappen.Union(BoundsToCache), FUNCTION_FNAME);
 
-		Data.CacheBounds<FVoxelValue>(BoundsToCache);
+		if (ToolManager.bCacheData) Data.CacheBounds<FVoxelValue>(BoundsToCache);
 		
 		TArray<FSurfaceVoxel> Voxels;
-		UVoxelSurfaceTools::FindSurfaceVoxelsImpl(Data, Bounds, Voxels);
+		if (SurfaceSettings.b2DBrush)
+		{
+			UVoxelSurfaceTools::FindSurfaceVoxels2DImpl<false>(Data, BoundsToDoEditsIn, Voxels);
+		}
+		else
+		{
+			if (SurfaceSettings.bSculpt)
+			{
+				UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, BoundsToDoEditsIn, SculptStrength + 3, true, Voxels);
+			}
+			else
+			{
+				// No need to compute the distance field for paint
+				// Only select voxels inside the surface
+				UVoxelSurfaceTools::FindSurfaceVoxelsImpl<false, true>(Data, BoundsToDoEditsIn, Voxels);
+			}
+		}
 		
 		TArray<FSurfaceVoxelWithStrength> Strengths;
 		{
 			Strengths = UVoxelSurfaceTools::AddStrengthToSurfaceVoxels(Voxels);
 		
-			const FVector ToolVoxelPosition = World.GlobalToLocalFloat(GetToolPosition());
-			const auto ApplyFalloff = [&](auto F)
-			{
-				UVoxelSurfaceTools::ApplyStrengthFunctionImpl(
-					Strengths,
-					ToolVoxelPosition,
-					F);
-			};
+			const FVoxelVector ToolVoxelPosition = World.GlobalToLocalFloat(GetToolPosition());
 
-			const float RadiusInVoxels = ToolManager.Radius / World.VoxelSize;
-			const float FalloffInVoxels = RadiusInVoxels * SurfaceSettings.Falloff;
-			switch (SurfaceSettings.FalloffType)
+			if (SurfaceSettings.bEnableFalloff)
 			{
-			case EVoxelToolManagerFalloff::Linear:
-				ApplyFalloff([=](float Distance) { return FVoxelUtilities::LinearFalloff(Distance, RadiusInVoxels, FalloffInVoxels); });
-				break;
-			case EVoxelToolManagerFalloff::Smooth:
-				ApplyFalloff([=](float Distance) { return FVoxelUtilities::SmoothFalloff(Distance, RadiusInVoxels, FalloffInVoxels); });
-				break;
-			case EVoxelToolManagerFalloff::Spherical:
-				ApplyFalloff([=](float Distance) { return FVoxelUtilities::SphericalFalloff(Distance, RadiusInVoxels, FalloffInVoxels); });
-				break;
-			case EVoxelToolManagerFalloff::Tip:
-				ApplyFalloff([=](float Distance) { return FVoxelUtilities::TipFalloff(Distance, RadiusInVoxels, FalloffInVoxels); });
-				break;
-			default: ensure(false);
+				const auto ApplyFalloff = [&](auto F)
+				{
+					if (SurfaceSettings.b2DBrush)
+					{
+						UVoxelSurfaceTools::ApplyStrengthFunctionImpl<true>(
+							Strengths,
+							ToolVoxelPosition,
+							F);
+					}
+					else
+					{
+						UVoxelSurfaceTools::ApplyStrengthFunctionImpl<false>(
+							Strengths,
+							ToolVoxelPosition,
+							F);
+					}
+				};
+
+				FVoxelToolManagerToolsHelpers::DispatchApplyFalloff(
+					SurfaceSettings.FalloffType,
+					ToolManager.Radius / World.VoxelSize,
+					SurfaceSettings.Falloff,
+					ApplyFalloff);
 			}
 
-			if (SurfaceSettings.bUseMask && SurfaceSettings.Mask)
+			if (bUseMask)
 			{
 			}
 		}
-
-		const float StrengthMultiplier = SurfaceSettings.bMovementAffectsStrength ? GetMouseMovementSize() / 100 : 1;
-		const float SculptStrength = SurfaceSettings.SculptStrength * StrengthMultiplier * (TickData.bAlternativeMode ? 1 : -1);
-		const float PaintStrength = SurfaceSettings.PaintStrength * StrengthMultiplier * (TickData.bAlternativeMode ? -1 : 1);
+		
 		if (SurfaceSettings.bSculpt && SurfaceSettings.bPaint)
 		{
 			auto SculptStrengths = Strengths;
-			UVoxelSurfaceTools::ApplyConstantStrengthImpl(SculptStrengths, SculptStrength);
+			UVoxelSurfaceTools::ApplyConstantStrengthImpl(SculptStrengths, -SignedSculptStrength);
 
 			TArray<FModifiedVoxelValue> ModifiedVoxels;
-			UVoxelSurfaceTools::EditVoxelValuesImpl(Data, ModifiedVoxels, Bounds, UVoxelSurfaceTools::CreateValueEditsFromSurfaceVoxels(SculptStrengths), FVoxelHardnessHandler(World));
+			const auto ValueEdits = UVoxelSurfaceTools::CreateValueEditsFromSurfaceVoxels(SculptStrengths);
+			if (SurfaceSettings.b2DBrush)
+			{
+				UVoxelSurfaceTools::EditVoxelValues2DImpl(Data, BoundsWhereEditsHappen, ValueEdits, FVoxelHardnessHandler(World), DistanceDivisor);
+			}
+			else
+			{
+				UVoxelSurfaceTools::EditVoxelValuesImpl(Data, BoundsWhereEditsHappen, ValueEdits, FVoxelHardnessHandler(World), DistanceDivisor);
+			}
 			
 			TArray<FVoxelMaterialEdit> Materials;
 			Materials.Reserve(ModifiedVoxels.Num());
@@ -601,38 +755,185 @@ void FVoxelToolManagerTool_Surface::Tick(AVoxelWorld& World, const FVoxelToolMan
 					Materials.Emplace(FVoxelEditBase(Voxel.Position, SurfaceSettings.PaintStrength), ToolManager.PaintMaterial);
 				}
 			}
-			UVoxelSurfaceTools::EditVoxelMaterialsImpl(Data, Bounds, Materials);
+			UVoxelSurfaceTools::EditVoxelMaterialsImpl(Data, BoundsWhereEditsHappen, Materials);
 		}
 		else if (SurfaceSettings.bSculpt)
 		{
 			auto SculptStrengths = Strengths;
-			UVoxelSurfaceTools::ApplyConstantStrengthImpl(SculptStrengths, SculptStrength);
-			UVoxelSurfaceTools::EditVoxelValuesImpl(Data, Bounds, UVoxelSurfaceTools::CreateValueEditsFromSurfaceVoxels(SculptStrengths), FVoxelHardnessHandler(World));
+			UVoxelSurfaceTools::ApplyConstantStrengthImpl(SculptStrengths, -SignedSculptStrength);
+			
+			const auto ValueEdits = UVoxelSurfaceTools::CreateValueEditsFromSurfaceVoxels(SculptStrengths);
+			
+			if (SurfaceSettings.b2DBrush)
+			{
+				UVoxelSurfaceTools::EditVoxelValues2DImpl(Data, BoundsWhereEditsHappen, ValueEdits, FVoxelHardnessHandler(World), DistanceDivisor);
+			}
+			else
+			{
+				UVoxelSurfaceTools::EditVoxelValuesImpl(Data, BoundsWhereEditsHappen, ValueEdits, FVoxelHardnessHandler(World), DistanceDivisor);
+			}
 		}
 		else if (SurfaceSettings.bPaint)
 		{
+			// Note: Painting behaves the same with 2D edit on/off
 			auto MaterialStrengths = Strengths;
-			UVoxelSurfaceTools::ApplyConstantStrengthImpl(MaterialStrengths, PaintStrength);
-			UVoxelSurfaceTools::EditVoxelMaterialsImpl(Data, Bounds, UVoxelSurfaceTools::CreateMaterialEditsFromSurfaceVoxels(MaterialStrengths, ToolManager.PaintMaterial));
+			UVoxelSurfaceTools::ApplyConstantStrengthImpl(MaterialStrengths, SignedPaintStrength);
+			const auto MaterialEdits = UVoxelSurfaceTools::CreateMaterialEditsFromSurfaceVoxels(MaterialStrengths, ToolManager.PaintMaterial);
+			UVoxelSurfaceTools::EditVoxelMaterialsImpl(Data, BoundsWhereEditsHappen, MaterialEdits);
 		}
 
 		if (ToolManager.bDebug)
 		{
-			for (auto& Strength : Strengths)
+			UVoxelSurfaceTools::DebugSurfaceVoxels(&World, Strengths, SurfaceSettings.Stride > 0 ? 1 : 2 * TickData.DeltaTime);
+		}
+	}
+
+	SaveFrameOnEndClick(BoundsWhereEditsHappen);
+	UpdateWorld(World, BoundsWhereEditsHappen);
+}
+
+void FVoxelToolManagerTool_Surface::AddReferencedObjects(FReferenceCollector& Collector)
+{
+	FVoxelToolManagerTool::AddReferencedObjects(Collector);
+	Collector.AddReferencedObject(MaskWorldGeneratorCache.RenderTexture);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelToolManagerTool_Flatten::FVoxelToolManagerTool_Flatten(const UVoxelToolManager& ToolManager)
+	: FVoxelToolManagerTool(ToolManager, FlattenToolSettings(ToolManager.FlattenSettings))
+	, FlattenSettings(ToolManager.FlattenSettings)
+{
+}
+
+void FVoxelToolManagerTool_Flatten::Tick(AVoxelWorld& World, const FVoxelToolManagerTickData& TickData)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	auto& MaterialInstance = GetToolMaterialInstance();
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Radius"), ToolManager.Radius);
+	MaterialInstance.SetVectorParameterValue(STATIC_FNAME("Position"), GetToolPreviewPosition());
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Falloff"), FlattenSettings.Falloff);
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("EnableFalloff"), FlattenSettings.bEnableFalloff);
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("FalloffType"), int32(FlattenSettings.FalloffType));
+
+	SetToolRenderingBounds(World, FBox(GetToolPreviewPosition() - ToolManager.Radius, GetToolPreviewPosition() + ToolManager.Radius));
+
+	if (!CanEdit())
+	{
+		return;
+	}
+
+	constexpr float DistanceDivisor = 4.f;
+
+	const FIntBox Bounds = UVoxelBlueprintLibrary::MakeIntBoxFromGlobalPositionAndRadius(&World, GetToolPosition(), ToolManager.Radius);
+	if (!Bounds.IsValid())
+	{
+		FVoxelMessages::Error("Invalid tool bounds!", &ToolManager);
+		return;
+	}
+	const auto BoundsToCache = GetAndDebugBoundsToCache(World, Bounds, TickData);
+
+	FVector FlattenPosition;
+	FVector FlattenNormal;
+	if (FlattenSettings.bUseAverage)
+	{
+		FVoxelLineTraceParameters Parameters;
+		Parameters.CollisionChannel = World.CollisionPresets.GetObjectType();
+		Parameters.DrawDebugType = ToolManager.bDebug ? EDrawDebugTrace::ForOneFrame : EDrawDebugTrace::None;
+
+		const float RaysRadius = FMath::Max(ToolManager.Radius, World.VoxelSize);
+
+		TArray<FVoxelProjectionHit> Hits;
+		UVoxelProjectionTools::FindProjectionVoxels(
+			Hits,
+			&World,
+			Parameters,
+			GetToolPosition() - TickData.RayDirection * ToolManager.Radius,
+			TickData.RayDirection,
+			RaysRadius,
+			EVoxelProjectionShape::Circle,
+			100.f,
+			2 * RaysRadius);
+
+		FlattenPosition = UVoxelProjectionTools::GetHitsAveragePosition(Hits);
+		FlattenNormal = UVoxelProjectionTools::GetHitsAverageNormal(Hits);
+	}
+	else
+	{
+		FlattenPosition = GetToolPosition();
+		FlattenNormal = GetToolNormal();
+	}
+
+	if (!GetLastFrameTickData().bClick)
+	{
+		LastClickFlattenPosition = FlattenPosition;
+		LastClickFlattenNormal = FlattenNormal;
+	}
+
+	{
+		auto& Data = World.GetData();
+
+		FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
+
+		if (ToolManager.bCacheData) Data.CacheBounds<FVoxelValue>(BoundsToCache);
+		
+		TArray<FSurfaceVoxel> Voxels;
+		UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, FlattenSettings.Strength + 3, true, Voxels);
+		
+		const FVoxelVector ToolVoxelPosition = World.GlobalToLocalFloat(GetToolPosition());
+
+		TArray<FSurfaceVoxelWithStrength> Strengths = UVoxelSurfaceTools::AddStrengthToSurfaceVoxels(Voxels);
+
+		if (FlattenSettings.bEnableFalloff)
+		{
+			const auto ApplyFalloff = [&](auto F)
 			{
-				const FVector Position = World.LocalToGlobal(Strength.Position);
-				const FLinearColor Color = FMath::Lerp(
-					FLinearColor::Black,
-					Strength.Strength > 0 ? FLinearColor::Red : FLinearColor::Green,
-					FMath::Clamp(FMath::Abs(Strength.Strength), 0.f, 1.f));
-				DrawDebugPoint(
-					TickData.World,
-					Position,
-					World.VoxelSize / 20,
-					Color.ToFColor(false),
-					false,
-					2 * TickData.DeltaTime);
-			}
+				UVoxelSurfaceTools::ApplyStrengthFunctionImpl<false>(
+					Strengths,
+					ToolVoxelPosition,
+					F);
+			};
+
+			FVoxelToolManagerToolsHelpers::DispatchApplyFalloff(
+				FlattenSettings.FalloffType,
+				ToolManager.Radius / World.VoxelSize,
+				FlattenSettings.Falloff,
+				ApplyFalloff);
+		}
+
+		UVoxelSurfaceTools::ApplyConstantStrengthImpl(Strengths, FlattenSettings.Strength);
+
+		const FVector PlanePosition = FlattenSettings.bFreezeOnClick ? LastClickFlattenPosition : FlattenPosition;
+		const FVector PlaneNormal = FlattenSettings.bFreezeOnClick ? LastClickFlattenNormal : FlattenNormal;
+
+		const FPlane Plane(
+			World.GlobalToLocalFloat(PlanePosition).ToFloat(),
+			World.GetActorTransform().InverseTransformVector(PlaneNormal).GetSafeNormal());
+		
+		UVoxelSurfaceTools::ApplyFlattenImpl(
+			Strengths,
+			Plane,
+			TickData.bAlternativeMode ? EVoxelSDFMergeMode::Intersection : EVoxelSDFMergeMode::Union,
+			true);
+
+		const auto ValueEdits = UVoxelSurfaceTools::CreateValueEditsFromSurfaceVoxels(Strengths);
+		UVoxelSurfaceTools::EditVoxelValuesImpl(Data, Bounds, ValueEdits, FVoxelHardnessHandler(World), DistanceDivisor);
+
+		if (ToolManager.bDebug)
+		{
+			UVoxelSurfaceTools::DebugSurfaceVoxels(&World, Strengths, 2 * TickData.DeltaTime);
+
+			DrawDebugSolidPlane(
+				TickData.World,
+				FPlane(PlanePosition, PlaneNormal),
+				PlanePosition,
+				1000000,
+				FColor::Red,
+				false,
+				1.5f * TickData.DeltaTime);
 		}
 	}
 
@@ -654,47 +955,49 @@ void FVoxelToolManagerTool_Trim::Tick(AVoxelWorld& World, const FVoxelToolManage
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	const float RadiusWithFalloff = ToolManager.Radius * (1 + TrimSettings.Falloff);
-
 	FVoxelLineTraceParameters Parameters;
 	Parameters.CollisionChannel = World.CollisionPresets.GetObjectType();
 	Parameters.DrawDebugType = ToolManager.bDebug ? EDrawDebugTrace::ForOneFrame : EDrawDebugTrace::None;
 
 	TArray<FVoxelProjectionHit> Hits;
-	const float RaysRadius = FMath::Max(RadiusWithFalloff * (1 - TrimSettings.Roughness), World.VoxelSize);
+	const float RaysRadius = FMath::Max(ToolManager.Radius * (1 - TrimSettings.Roughness), World.VoxelSize);
 	UVoxelProjectionTools::FindProjectionVoxels(
 		Hits,
 		&World,
 		Parameters,
-		GetToolPosition() - TickData.RayDirection * RadiusWithFalloff,
+		GetToolPosition() - TickData.RayDirection * ToolManager.Radius,
 		TickData.RayDirection,
 		RaysRadius,
 		EVoxelProjectionShape::Circle,
 		100.f,
-		WORLD_MAX);
+		2 * RaysRadius);
 
 	const FVector Position = UVoxelProjectionTools::GetHitsAveragePosition(Hits);
 
-	SetToolRenderingBounds(World, FBox(Position - RadiusWithFalloff, Position + RadiusWithFalloff));
+	SetToolRenderingBounds(World, FBox(Position - ToolManager.Radius, Position + ToolManager.Radius));
 
 	auto& MaterialInstance = GetToolMaterialInstance();
 	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Radius"), ToolManager.Radius);
-	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Falloff"), ToolManager.Radius * TrimSettings.Falloff);
 	MaterialInstance.SetVectorParameterValue(STATIC_FNAME("Position"), Position);
+	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Falloff"), TrimSettings.Falloff);
 	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Roughness"), TrimSettings.Roughness);
 
-	if (!TickData.bClick)
+	if (!CanEdit())
 	{
 		return;
 	}
 
 	const FVector Normal = UVoxelProjectionTools::GetHitsAverageNormal(Hits);
 	
-	const FVector VoxelPosition = World.GlobalToLocalFloat(Position);
+	const FVoxelVector VoxelPosition = World.GlobalToLocalFloat(Position);
 	const float VoxelRadius = ToolManager.Radius / World.VoxelSize;
-	const float VoxelRadiusWithFalloff = VoxelRadius * (1 + TrimSettings.Falloff);
 
-	const FIntBox Bounds = UVoxelSphereTools::GetSphereBounds(VoxelPosition, VoxelRadiusWithFalloff);
+	const FIntBox Bounds = UVoxelSphereTools::GetSphereBounds(VoxelPosition, VoxelRadius);
+	if (!Bounds.IsValid())
+	{
+		FVoxelMessages::Error("Invalid tool bounds!", &ToolManager);
+		return;
+	}
 	const auto BoundsToCache = GetAndDebugBoundsToCache(World, Bounds, TickData);
 
 	{
@@ -702,14 +1005,80 @@ void FVoxelToolManagerTool_Trim::Tick(AVoxelWorld& World, const FVoxelToolManage
 
 		FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
 
-		Data.CacheBounds<FVoxelValue>(BoundsToCache);
+		if (ToolManager.bCacheData) Data.CacheBounds<FVoxelValue>(BoundsToCache);
 
 		UVoxelSphereTools::TrimSphereImpl(
 			Data,
 			VoxelPosition,
 			Normal,
-			VoxelRadius,
+			VoxelRadius * (1 - TrimSettings.Falloff),
 			VoxelRadius * TrimSettings.Falloff,
+			!TickData.bAlternativeMode);
+	}
+
+	SaveFrameOnEndClick(Bounds);
+	UpdateWorld(World, Bounds);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelToolManagerTool_Level::FVoxelToolManagerTool_Level(const UVoxelToolManager& ToolManager)
+	: FVoxelToolManagerTool(ToolManager, LevelToolSettings(ToolManager.LevelSettings))
+	, LevelSettings(ToolManager.LevelSettings)
+{
+}
+
+void FVoxelToolManagerTool_Level::Tick(AVoxelWorld& World, const FVoxelToolManagerTickData& TickData)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	const FVector ToolOffset = FVector(0.f, 0.f,  LevelSettings.Offset * LevelSettings.Height * (TickData.bAlternativeMode ? -1 : 1));
+	
+	const float ScaleXY = ToolManager.Radius / 50.f;
+	const float ScaleZ = LevelSettings.Height / 100.f + 0.001f;
+	const FTransform PreviewTransform(
+		FQuat::Identity,
+		GetToolPreviewPosition() + ToolOffset + FVector(0, 0, (TickData.bAlternativeMode ? LevelSettings.Height : -LevelSettings.Height) / 2),
+		FVector(ScaleXY, ScaleXY, ScaleZ));
+
+	UpdateToolMesh(
+		TickData.World,
+		LevelSettings.CylinderMesh,
+		LevelSettings.ToolMaterial,
+		PreviewTransform);
+
+	if (!CanEdit())
+	{
+		return;
+	}
+
+	const FVoxelVector VoxelPosition = World.GlobalToLocalFloat(GetToolPosition() + ToolOffset);
+	const float VoxelRadius = ToolManager.Radius / World.VoxelSize;
+	const float VoxelHeight = LevelSettings.Height / World.VoxelSize;
+
+	const FIntBox Bounds = UVoxelDataTools::GetLevelToolBounds(VoxelPosition, VoxelRadius, VoxelHeight, !TickData.bAlternativeMode);
+	if (!Bounds.IsValid())
+	{
+		FVoxelMessages::Error("Invalid tool bounds!", &ToolManager);
+		return;
+	}
+	const auto BoundsToCache = GetAndDebugBoundsToCache(World, Bounds, TickData);
+
+	{
+		auto& Data = World.GetData();
+
+		FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
+
+		if (ToolManager.bCacheData) Data.CacheBounds<FVoxelValue>(BoundsToCache);
+
+		UVoxelDataTools::LevelImpl(
+			Data,
+			VoxelPosition,
+			VoxelRadius,
+			LevelSettings.Falloff,
+			VoxelHeight,
 			!TickData.bAlternativeMode);
 	}
 
@@ -731,21 +1100,26 @@ void FVoxelToolManagerTool_Smooth::Tick(AVoxelWorld& World, const FVoxelToolMana
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	SetToolRenderingBounds(World, FBox(GetToolPosition() - ToolManager.Radius, GetToolPosition() + ToolManager.Radius));
+	SetToolRenderingBounds(World, FBox(GetToolPreviewPosition() - ToolManager.Radius, GetToolPreviewPosition() + ToolManager.Radius));
 
 	auto& MaterialInstance = GetToolMaterialInstance();
 	MaterialInstance.SetScalarParameterValue(STATIC_FNAME("Radius"), ToolManager.Radius);
-	MaterialInstance.SetVectorParameterValue(STATIC_FNAME("Position"), GetToolPosition());
+	MaterialInstance.SetVectorParameterValue(STATIC_FNAME("Position"), GetToolPreviewPosition());
 
-	if (!TickData.bClick)
+	if (!CanEdit())
 	{
 		return;
 	}
 
-	const FVector VoxelPosition = World.GlobalToLocalFloat(GetToolPosition());
+	const FVoxelVector VoxelPosition = World.GlobalToLocalFloat(GetToolPosition());
 	const float VoxelRadius = ToolManager.Radius / World.VoxelSize;
 
 	const FIntBox Bounds = UVoxelSphereTools::GetSphereBounds(VoxelPosition, VoxelRadius);
+	if (!Bounds.IsValid())
+	{
+		FVoxelMessages::Error("Invalid tool bounds!", &ToolManager);
+		return;
+	}
 	const auto BoundsToCache = GetAndDebugBoundsToCache(World, Bounds, TickData);
 
 	{
@@ -753,7 +1127,7 @@ void FVoxelToolManagerTool_Smooth::Tick(AVoxelWorld& World, const FVoxelToolMana
 
 		FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
 
-		Data.CacheBounds<FVoxelValue>(BoundsToCache);
+		if (ToolManager.bCacheData) Data.CacheBounds<FVoxelValue>(BoundsToCache);
 
 		if (TickData.bAlternativeMode)
 		{
@@ -796,19 +1170,29 @@ void FVoxelToolManagerTool_Sphere::Tick(AVoxelWorld& World, const FVoxelToolMana
 		FVoxelMessages::Error("VoxelToolManager: Sphere Tool: Invalid SphereMesh!");
 	}
 
-	const FVector ToolPosition = GetToolPosition();
 	const float Scale = ToolManager.Radius / 50;
-	SetToolMeshTransform(TickData.World, FTransform(FQuat::Identity, ToolPosition, FVector(Scale)));
+	const FTransform PreviewTransform(FQuat::Identity, GetToolPreviewPosition(), FVector(Scale));
 
-	if (!TickData.bClick)
+	UpdateToolMesh(
+		TickData.World,
+		SphereSettings.SphereMesh,
+		SphereSettings.ToolMaterial,
+		PreviewTransform);
+
+	if (!CanEdit())
 	{
 		return;
 	}
 
-	const FVector VoxelPosition = World.GlobalToLocalFloat(ToolPosition);
+	const FVoxelVector VoxelPosition = World.GlobalToLocalFloat(GetToolPosition());
 	const float VoxelRadius = ToolManager.Radius / World.VoxelSize;
 
 	const FIntBox Bounds = UVoxelSphereTools::GetSphereBounds(VoxelPosition, VoxelRadius);
+	if (!Bounds.IsValid())
+	{
+		FVoxelMessages::Error("Invalid tool bounds!", &ToolManager);
+		return;
+	}
 	const auto BoundsToCache = GetAndDebugBoundsToCache(World, Bounds, TickData);
 
 	{
@@ -816,7 +1200,7 @@ void FVoxelToolManagerTool_Sphere::Tick(AVoxelWorld& World, const FVoxelToolMana
 
 		FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
 
-		Data.CacheBounds<FVoxelValue>(BoundsToCache);
+		if (ToolManager.bCacheData) Data.CacheBounds<FVoxelValue>(BoundsToCache);
 
 		if (TickData.bAlternativeMode)
 		{
@@ -866,3 +1250,82 @@ void FVoxelToolManagerTool_Sphere::Tick(AVoxelWorld& World, const FVoxelToolMana
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelToolManagerTool_Revert::FVoxelToolManagerTool_Revert(const UVoxelToolManager& ToolManager)
+	: FVoxelToolManagerTool(ToolManager, RevertToolSettings(ToolManager.RevertSettings))
+	, RevertSettings(ToolManager.RevertSettings)
+{
+}
+
+void FVoxelToolManagerTool_Revert::Tick(AVoxelWorld& World, const FVoxelToolManagerTickData& TickData)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	const_cast<FVoxelToolManager_RevertSettings&>(RevertSettings).CurrentHistoryPosition = World.GetData().GetHistoryPosition();
+	const_cast<FVoxelToolManager_RevertSettings&>(RevertSettings).HistoryPosition = FMath::Clamp(RevertSettings.HistoryPosition, 0, RevertSettings.CurrentHistoryPosition);
+	
+	if (!RevertSettings.SphereMesh)
+	{
+		FVoxelMessages::Error("VoxelToolManager: Revert Tool: Invalid SphereMesh!");
+	}
+
+	const float Scale = ToolManager.Radius / 50;
+	const FTransform PreviewTransform(FQuat::Identity, GetToolPreviewPosition(), FVector(Scale));
+
+	UpdateToolMesh(
+		TickData.World,
+		RevertSettings.SphereMesh,
+		RevertSettings.ToolMaterial,
+		PreviewTransform);
+
+	if (!CanEdit())
+	{
+		return;
+	}
+
+	const FVoxelVector VoxelPosition = World.GlobalToLocalFloat(GetToolPosition());
+	const float VoxelRadius = ToolManager.Radius / World.VoxelSize;
+
+	const FIntBox Bounds = UVoxelSphereTools::GetSphereBounds(VoxelPosition, VoxelRadius);
+	if (!Bounds.IsValid())
+	{
+		FVoxelMessages::Error("Invalid tool bounds!", &ToolManager);
+		return;
+	}
+	const auto BoundsToCache = GetAndDebugBoundsToCache(World, Bounds, TickData);
+
+	{
+		auto& Data = World.GetData();
+
+		FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
+
+		if (ToolManager.bCacheData) Data.CacheBounds<FVoxelValue>(BoundsToCache);
+
+		if (TickData.bAlternativeMode)
+		{
+			UVoxelSphereTools::RevertSphereToGeneratorImpl(
+				Data,
+				VoxelPosition,
+				VoxelRadius,
+				RevertSettings.bRevertValues,
+				RevertSettings.bRevertMaterials);
+		}
+		else
+		{
+			UVoxelSphereTools::RevertSphereImpl(
+				Data,
+				VoxelPosition,
+				VoxelRadius,
+				RevertSettings.HistoryPosition,
+				RevertSettings.bRevertValues,
+				RevertSettings.bRevertMaterials);
+		}
+	}
+
+	SaveFrameOnEndClick(Bounds);
+	UpdateWorld(World, Bounds);
+}

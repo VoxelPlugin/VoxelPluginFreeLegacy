@@ -30,7 +30,7 @@ public:
 	{
 		return FMath::Max(GetHardnessInternal(Material), KINDA_SMALL_NUMBER);
 	}
-	inline bool NeedsToCompute() const
+	FORCEINLINE bool NeedsToCompute() const
 	{
 		return !bDefaultValues;
 	}
@@ -55,7 +55,7 @@ private:
 				Hardness[Material.GetDoubleIndex_IndexB()],
 				Material.GetDoubleIndex_Blend_AsFloat());
 		default:
-			check(false);
+			checkVoxelSlow(false);
 			return 1;
 		}
 	}

@@ -686,7 +686,7 @@ public:
 			FColor Variable_14; // Make Color output 0
 			Variable_14 = FVoxelNodeFunctions::MakeColorFloat(Variable_3, Variable_4, Variable_5, Variable_6);
 			
-			Outputs.Material= FVoxelNodeFunctions::MaterialFromColor(Variable_14);
+			Outputs.Material.SetColor(Variable_14);
 		}
 		
 		void Function0_XYZWithoutCache_Compute(const FVoxelContext& Context, FOutputs& Outputs) const
@@ -757,7 +757,7 @@ public:
 			FColor Variable_14; // Make Color output 0
 			Variable_14 = FVoxelNodeFunctions::MakeColorFloat(Variable_3, Variable_4, Variable_5, Variable_6);
 			
-			Outputs.Material= FVoxelNodeFunctions::MaterialFromColor(Variable_14);
+			Outputs.Material.SetColor(Variable_14);
 		}
 		
 	};
@@ -789,12 +789,14 @@ public:
 		{
 			FBufferX() {}
 			
+			v_flt Variable_1; // Set Sphere Up Vector.X output 0
 		};
 		
 		struct FBufferXY
 		{
 			FBufferXY() {}
 			
+			v_flt Variable_2; // Set Sphere Up Vector.Y output 0
 		};
 		
 		FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ(const float& InFrequency, const float& InRadius, const FVoxelRichCurve& InPlanetCurve, const FVoxelColorRichCurve& InPlanetColorCurve, const float& InNoise_Strength)
@@ -887,22 +889,56 @@ public:
 		
 		void Function0_X_Compute(const FVoxelContext& Context, FBufferX& BufferX) const
 		{
+			// Set Sphere Up Vector.X
+			BufferX.Variable_1 = Context.GetLocalX();
+			
 		}
 		
 		void Function0_XYWithCache_Compute(const FVoxelContext& Context, FBufferX& BufferX, FBufferXY& BufferXY) const
 		{
+			// Set Sphere Up Vector.Y
+			BufferXY.Variable_2 = Context.GetLocalY();
+			
 		}
 		
 		void Function0_XYWithoutCache_Compute(const FVoxelContext& Context, FBufferX& BufferX, FBufferXY& BufferXY) const
 		{
+			// Set Sphere Up Vector.X
+			BufferX.Variable_1 = Context.GetLocalX();
+			
+			// Set Sphere Up Vector.Y
+			BufferXY.Variable_2 = Context.GetLocalY();
+			
 		}
 		
 		void Function0_XYZWithCache_Compute(const FVoxelContext& Context, const FBufferX& BufferX, const FBufferXY& BufferXY, FOutputs& Outputs) const
 		{
+			// Set Sphere Up Vector.Z
+			v_flt Variable_0; // Set Sphere Up Vector.Z output 0
+			Variable_0 = Context.GetLocalZ();
+			
+			Outputs.UpVectorX = BufferX.Variable_1;
+			Outputs.UpVectorY = BufferXY.Variable_2;
+			Outputs.UpVectorZ = Variable_0;
 		}
 		
 		void Function0_XYZWithoutCache_Compute(const FVoxelContext& Context, FOutputs& Outputs) const
 		{
+			// Set Sphere Up Vector.X
+			v_flt Variable_1; // Set Sphere Up Vector.X output 0
+			Variable_1 = Context.GetLocalX();
+			
+			// Set Sphere Up Vector.Y
+			v_flt Variable_2; // Set Sphere Up Vector.Y output 0
+			Variable_2 = Context.GetLocalY();
+			
+			// Set Sphere Up Vector.Z
+			v_flt Variable_0; // Set Sphere Up Vector.Z output 0
+			Variable_0 = Context.GetLocalZ();
+			
+			Outputs.UpVectorX = Variable_1;
+			Outputs.UpVectorY = Variable_2;
+			Outputs.UpVectorZ = Variable_0;
 		}
 		
 	};
@@ -1096,9 +1132,9 @@ public:
 			TVoxelRange<v_flt> Variable_13; // 3D Gradient Perturb output 0
 			TVoxelRange<v_flt> Variable_14; // 3D Gradient Perturb output 1
 			TVoxelRange<v_flt> Variable_15; // 3D Gradient Perturb output 2
-			Variable_13 = { BufferConstant.Variable_17.Min - 2 * TVoxelRange<v_flt>(0.01f).Max, BufferConstant.Variable_17.Max + 2 * TVoxelRange<v_flt>(0.01f).Max };
-			Variable_14 = { BufferConstant.Variable_17.Min - 2 * TVoxelRange<v_flt>(0.01f).Max, BufferConstant.Variable_17.Max + 2 * TVoxelRange<v_flt>(0.01f).Max };
-			Variable_15 = { BufferConstant.Variable_17.Min - 2 * TVoxelRange<v_flt>(0.01f).Max, BufferConstant.Variable_17.Max + 2 * TVoxelRange<v_flt>(0.01f).Max };
+			Variable_13 = TVoxelRange<v_flt>::FromList(BufferConstant.Variable_17.Min - 2 * TVoxelRange<v_flt>(0.01f).Max, BufferConstant.Variable_17.Max + 2 * TVoxelRange<v_flt>(0.01f).Max);
+			Variable_14 = TVoxelRange<v_flt>::FromList(BufferConstant.Variable_17.Min - 2 * TVoxelRange<v_flt>(0.01f).Max, BufferConstant.Variable_17.Max + 2 * TVoxelRange<v_flt>(0.01f).Max);
+			Variable_15 = TVoxelRange<v_flt>::FromList(BufferConstant.Variable_17.Min - 2 * TVoxelRange<v_flt>(0.01f).Max, BufferConstant.Variable_17.Max + 2 * TVoxelRange<v_flt>(0.01f).Max);
 			
 			// 3D IQ Noise
 			TVoxelRange<v_flt> Variable_6; // 3D IQ Noise output 0

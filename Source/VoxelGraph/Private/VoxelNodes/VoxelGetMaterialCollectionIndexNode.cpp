@@ -4,7 +4,7 @@
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelNodeFunctions.h"
 #include "VoxelWorldGeneratorInit.h"
-#include "VoxelRender/VoxelMaterialCollection.h"
+#include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 #include "VoxelGraphGenerator.h"
 
 #include "Logging/MessageLog.h"
@@ -21,12 +21,12 @@ UVoxelNode_GetMaterialCollectionIndex::UVoxelNode_GetMaterialCollectionIndex()
 
 FText UVoxelNode_GetMaterialCollectionIndex::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "GetMaterialCollectionIndexTitle", "Get Material Collection Index: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("Get Material Collection Index: {0}"), Super::GetTitle());
 }
 
 UObject* UVoxelNode_GetMaterialCollectionIndex::GetAsset() const
 {
-	return MaterialObject;
+	return Material;
 }
 
 UClass* UVoxelNode_GetMaterialCollectionIndex::GetAssetClass() const
@@ -36,7 +36,7 @@ UClass* UVoxelNode_GetMaterialCollectionIndex::GetAssetClass() const
 
 void UVoxelNode_GetMaterialCollectionIndex::SetAsset(UObject* Object)
 {
-	MaterialObject = Object;
+	Material = Cast<UMaterialInterface>(Object);
 }
 
 bool UVoxelNode_GetMaterialCollectionIndex::ShouldFilterAsset(const FAssetData& Asset) const

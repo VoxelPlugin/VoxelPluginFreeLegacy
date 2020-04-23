@@ -23,29 +23,31 @@ void FVoxelSaveBuilder::AddChunk(
 		const auto GetData = [](auto& InData)
 		{
 			FChunkToSave::TData<decltype(InData.GetSingleValue())> Result;
-			
-			if (InData.IsSingleValue())
+
+			if (InData.IsDirty())
 			{
-				Result.bIsSingleValue = true;
-				Result.SingleValue = InData.GetSingleValue();
+				if (InData.IsSingleValue())
+				{
+					Result.bIsSingleValue = true;
+					Result.SingleValue = InData.GetSingleValue();
+				}
+				else
+				{
+					check(InData.GetDataPtr());
+					Result.DataPtr = InData.GetDataPtr();
+				}
 			}
-			else
-			{
-				Result.DataPtr = InData.GetDataPtr();
-			}
-			
+
 			return Result;
 		};
 		ChunksToSave.Add({ InPosition, GetData(InValues), GetData(InMaterials), GetData(InFoliage) });
 	}
 }
 
-void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSave& OutSave)
+void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	DEC_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, OutSave.GetAllocatedSize());
-
 	check(Depth >= 0);
 	OutSave.Guid = FGuid::NewGuid();
 	OutSave.Depth = Depth;
@@ -82,7 +84,7 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSave& OutSave)
 
 	for (auto& Chunk : ChunksToSave)
 	{
-		FVoxelUncompressedWorldSave::FVoxelChunkSave NewChunk;
+		FVoxelUncompressedWorldSaveImpl::FVoxelChunkSave NewChunk;
 		NewChunk.Position = Chunk.Position;
 		if (Chunk.Values.DataPtr)
 		{
@@ -149,7 +151,7 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSave& OutSave)
 	}
 	OutSave.PlaceableItems.Shrink();
 
-	INC_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, OutSave.GetAllocatedSize());
+	OutSave.UpdateAllocatedSize();
 }
 
 void FVoxelSaveBuilder::AddPlaceableItem(const TVoxelSharedPtr<FVoxelPlaceableItem>& PlaceableItem)
@@ -162,14 +164,15 @@ void FVoxelSaveBuilder::AddPlaceableItem(const TVoxelSharedPtr<FVoxelPlaceableIt
 ///////////////////////////////////////////////////////////////////////////////
 
 void FVoxelSaveLoader::ExtractChunk(
-	int32 ChunkIndex, 
-	TVoxelDataOctreeLeafData<FVoxelValue>& OutValues, 
+	int32 ChunkIndex,
+	const IVoxelDataOctreeMemory& Memory,
+	TVoxelDataOctreeLeafData<FVoxelValue>& OutValues,
 	TVoxelDataOctreeLeafData<FVoxelMaterial>& OutMaterials,
 	TVoxelDataOctreeLeafData<FVoxelFoliage>& OutFoliage) const
 {
-	OutValues.ClearData();
-	OutMaterials.ClearData();
-	OutFoliage.ClearData();
+	OutValues.ClearData(Memory);
+	OutMaterials.ClearData(Memory);
+	OutFoliage.ClearData(Memory);
 	
 	auto& Chunk = Save.Chunks[ChunkIndex];
 	if (Chunk.ValuesIndex >= 0)
@@ -180,11 +183,11 @@ void FVoxelSaveLoader::ExtractChunk(
 		}
 		else
 		{
-			OutValues.CreateDataPtr();
+			OutValues.CreateDataPtr(Memory);
 			check(Save.ValueBuffers.Num() >= Chunk.ValuesIndex + VOXELS_PER_DATA_CHUNK);
 			FMemory::Memcpy(OutValues.GetDataPtr(), &Save.ValueBuffers[Chunk.ValuesIndex], sizeof(FVoxelValue) * VOXELS_PER_DATA_CHUNK);
 		}
-		OutValues.SetDirty();
+		OutValues.SetDirty(Memory);
 	}
 	if (Chunk.MaterialsIndex >= 0)
 	{
@@ -194,11 +197,11 @@ void FVoxelSaveLoader::ExtractChunk(
 		}
 		else
 		{
-			OutMaterials.CreateDataPtr();
+			OutMaterials.CreateDataPtr(Memory);
 			check(Save.MaterialBuffers.Num() >= Chunk.MaterialsIndex + VOXELS_PER_DATA_CHUNK);
 			FMemory::Memcpy(OutMaterials.GetDataPtr(), &Save.MaterialBuffers[Chunk.MaterialsIndex], sizeof(FVoxelMaterial) * VOXELS_PER_DATA_CHUNK);
 		}
-		OutMaterials.SetDirty();
+		OutMaterials.SetDirty(Memory);
 	}
 	if (Chunk.FoliageIndex >= 0)
 	{
@@ -208,11 +211,11 @@ void FVoxelSaveLoader::ExtractChunk(
 		}
 		else
 		{
-			OutFoliage.CreateDataPtr();
+			OutFoliage.CreateDataPtr(Memory);
 			check(Save.FoliageBuffers.Num() >= Chunk.FoliageIndex + VOXELS_PER_DATA_CHUNK);
 			FMemory::Memcpy(OutFoliage.GetDataPtr(), &Save.FoliageBuffers[Chunk.FoliageIndex], sizeof(FVoxelFoliage) * VOXELS_PER_DATA_CHUNK);
 		}
-		OutFoliage.SetDirty();
+		OutFoliage.SetDirty(Memory);
 	}
 }
 
@@ -227,8 +230,13 @@ TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> FVoxelSaveLoader::GetPlaceableItems
 	Reader << Num;
 	for (int32 Index = 0; Index < Num; Index++)
 	{
-		PlaceableItems.Emplace();
-		SerializeVoxelItem(Reader, VoxelWorld, PlaceableItems.Last());
+		TVoxelSharedPtr<FVoxelPlaceableItem> PlaceableItem;
+		SerializeVoxelItem(Reader, VoxelWorld, PlaceableItem);
+
+		if (PlaceableItem.IsValid())
+		{
+			PlaceableItems.Add(PlaceableItem);
+		}
 	}
 	bError |= Reader.GetError();
 	return PlaceableItems;
@@ -240,19 +248,27 @@ TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> FVoxelSaveLoader::GetPlaceableItems
 
 void UVoxelSaveUtilities::CompressVoxelSave(const FVoxelUncompressedWorldSave& UncompressedSave, FVoxelCompressedWorldSave& OutCompressedSave)
 {
+	CompressVoxelSave(UncompressedSave.Const(), OutCompressedSave.NewMutable());
+}
+
+void UVoxelSaveUtilities::CompressVoxelSave(const FVoxelUncompressedWorldSaveImpl& UncompressedSave, FVoxelCompressedWorldSaveImpl& OutCompressedSave)
+{
 	VOXEL_FUNCTION_COUNTER();
 	
-	DEC_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, OutCompressedSave.GetAllocatedSize());
-
 	OutCompressedSave.Depth = UncompressedSave.GetDepth();
 	OutCompressedSave.Guid = UncompressedSave.GetGuid();
 	FVoxelSerializationUtilities::CompressData(UncompressedSave.GetSerializedData(), OutCompressedSave.CompressedData);
 	OutCompressedSave.CompressedData.Shrink();
-
-	INC_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, OutCompressedSave.GetAllocatedSize());
+	
+	OutCompressedSave.UpdateAllocatedSize();
 }
 
 bool UVoxelSaveUtilities::DecompressVoxelSave(const FVoxelCompressedWorldSave& CompressedSave, FVoxelUncompressedWorldSave& OutUncompressedSave)
+{
+	return DecompressVoxelSave(CompressedSave.Const(), OutUncompressedSave.NewMutable());
+}
+
+bool UVoxelSaveUtilities::DecompressVoxelSave(const FVoxelCompressedWorldSaveImpl& CompressedSave, FVoxelUncompressedWorldSaveImpl& OutUncompressedSave)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -265,7 +281,7 @@ bool UVoxelSaveUtilities::DecompressVoxelSave(const FVoxelCompressedWorldSave& C
 		TArray<uint8> UncompressedData;
 		if (!FVoxelSerializationUtilities::DecompressData(CompressedSave.CompressedData, UncompressedData))
 		{
-			FVoxelMessages::Error(NSLOCTEXT("Voxel", "DecompressVoxelSaveFailed", "DecompressVoxelSave failed: Corrupted data"));
+			FVoxelMessages::Error("DecompressVoxelSave failed: Corrupted data");
 			return false;
 		}
 

@@ -11,10 +11,6 @@ public class VoxelNiagara : ModuleRules
         bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
 
-        if (!Target.bUseUnityBuild)
-        {
-            PrivatePCHHeaderFile = "Private/VoxelNiagaraPCH.h";
-        }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));

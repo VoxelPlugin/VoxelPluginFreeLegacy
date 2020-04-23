@@ -25,5 +25,5 @@ public:
 private:
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
-	static FReply BakeWorld(AVoxelWorld& World);
+	static void BakeWorld(AVoxelWorld& World);
 };

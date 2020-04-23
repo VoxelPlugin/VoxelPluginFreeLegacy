@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 
-class IVoxelMaterialInterface;
+class FVoxelMaterialInterface;
 
 struct FVoxelProcMeshSectionSettings
 {
-	TVoxelSharedPtr<IVoxelMaterialInterface> Material;
+	TVoxelSharedPtr<FVoxelMaterialInterface> Material;
 	bool bEnableCollisions = false;
 	bool bEnableNavmesh = false;
 	bool bEnableTessellation = false;
@@ -16,7 +16,7 @@ struct FVoxelProcMeshSectionSettings
 
 	FVoxelProcMeshSectionSettings() = default;
 	FVoxelProcMeshSectionSettings(
-		const TVoxelSharedPtr<IVoxelMaterialInterface>& MaterialInterface, 
+		const TVoxelSharedPtr<FVoxelMaterialInterface>& MaterialInterface, 
 		bool bEnableCollisions, 
 		bool bEnableNavmesh, 
 		bool bEnableTessellation, 

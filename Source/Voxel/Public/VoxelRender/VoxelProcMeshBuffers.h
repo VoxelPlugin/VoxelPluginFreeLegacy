@@ -10,12 +10,12 @@
 class FVoxelProcMeshBuffersRenderData;
 
 DECLARE_STATS_GROUP(TEXT("Voxel Proc Mesh Memory"), STATGROUP_VoxelProcMeshMemory, STATCAT_Advanced);
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Proc Mesh Memory"), STAT_VoxelProcMeshMemory, STATGROUP_VoxelMemory, VOXEL_API);
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Indices"), STAT_VoxelProcMeshMemory_Indices, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Positions"), STAT_VoxelProcMeshMemory_Positions, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Colors"), STAT_VoxelProcMeshMemory_Colors, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Adjacency"), STAT_VoxelProcMeshMemory_Adjacency, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
-DECLARE_MEMORY_STAT_EXTERN(TEXT("UVs & Tangents"), STAT_VoxelProcMeshMemory_UVs_Tangents, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Proc Mesh Memory"), STAT_VoxelProcMeshMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Indices"), STAT_VoxelProcMeshMemory_Indices, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Positions"), STAT_VoxelProcMeshMemory_Positions, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Colors"), STAT_VoxelProcMeshMemory_Colors, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Adjacency"), STAT_VoxelProcMeshMemory_Adjacency, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("UVs & Tangents"), STAT_VoxelProcMeshMemory_UVs_Tangents, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
 
 struct VOXEL_API FVoxelProcMeshBuffers
 {
@@ -43,7 +43,7 @@ struct VOXEL_API FVoxelProcMeshBuffers
 		return IndexBuffer.GetNumIndices();
 	}
 	
-	FVoxelProcMeshBuffers() = default;
+	FVoxelProcMeshBuffers();
 	~FVoxelProcMeshBuffers();
 
 	uint32 GetAllocatedSize() const;

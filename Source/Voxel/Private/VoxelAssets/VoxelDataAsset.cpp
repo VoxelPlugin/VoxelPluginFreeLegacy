@@ -4,6 +4,7 @@
 #include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
 #include "VoxelWorldGeneratorHelpers.h"
 #include "VoxelWorldGeneratorInstance.inl"
+#include "VoxelData/VoxelTransformableWorldGeneratorHelper.h"
 #include "VoxelCustomVersion.h"
 #include "VoxelMessages.h"
 #include "VoxelSerializationUtilities.h"
@@ -13,11 +14,9 @@
 #include "Serialization/BufferArchive.h"
 #include "Serialization/MemoryReader.h"
 
-DEFINE_STAT(STAT_VoxelDataAssetMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataAssetMemory);
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
-class FVoxelDataAssetInstance : public TVoxelTransformableWorldGeneratorInstanceHelper<FVoxelDataAssetInstance, UVoxelDataAsset>
+class FVoxelDataAssetInstance : public TVoxelWorldGeneratorInstanceHelper<FVoxelDataAssetInstance, UVoxelDataAsset>
 {
 public:
 	const TVoxelSharedPtr<FVoxelDataAssetData> Data;
@@ -36,93 +35,40 @@ public:
 	}
 
 	//~ Begin FVoxelWorldGeneratorInstance Interface
-	template<bool bCustomTransform>
-	inline float GetValueImpl(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+	v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		const FVector P = GetLocalPosition<bCustomTransform>(LocalToWorld, X, Y, Z);
-		const float Value = Data->GetInterpolatedValue(P.X, P.Y, P.Z, bSubtractiveAsset ? FVoxelValue::Full() : FVoxelValue::Empty());
-		if (Items.IsEmpty() || FVoxelValue(Value) == (bSubtractiveAsset ? FVoxelValue::Empty() : FVoxelValue::Full()))
-		{
-			// No need to merge as we are the best value possible
-			return Value;
-		}
-		else
-		{
-			const auto NextStack = Items.GetNextStack(X, Y, Z);
-			const auto NextValue = NextStack.Get<v_flt>(X, Y, Z, LOD);
-			return FVoxelUtilities::MergeAsset<v_flt>(Value, NextValue, bSubtractiveAsset);
-		}
-	}
-	
-	template<bool bCustomTransform>
-	inline FVoxelMaterial GetMaterialImpl(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
-	{
-		const FVector P = GetLocalPosition<bCustomTransform>(LocalToWorld, X, Y, Z);
+		X -= PositionOffset.X;
+		Y -= PositionOffset.Y;
+		Z -= PositionOffset.Z;
 		
-		const auto GetDataMaterial = [&]()
+		return Data->GetInterpolatedValue(X, Y, Z, bSubtractiveAsset ? FVoxelValue::Full() : FVoxelValue::Empty());
+	}
+	
+	FVoxelMaterial GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+	{
+		X -= PositionOffset.X;
+		Y -= PositionOffset.Y;
+		Z -= PositionOffset.Z;
+		
+		if (Data->HasMaterials())
 		{
-			if (Data->HasMaterials())
-			{
-				return Data->GetInterpolatedMaterial(P.X, P.Y, P.Z);
-			}
-			else
-			{
-				return FVoxelMaterial::Default();
-			}
-		};
-
-		if (Items.IsEmpty())
-		{
-			return GetDataMaterial();
-		}
-
-		const FVoxelValue Value = FVoxelValue(Data->GetInterpolatedValue(P.X, P.Y, P.Z, bSubtractiveAsset ? FVoxelValue::Full() : FVoxelValue::Empty()));
-		if ((bSubtractiveAsset && Value == FVoxelValue::Empty()) ||
-			(!bSubtractiveAsset && Value == FVoxelValue::Full()))
-		{
-			// No need to check further down
-			return GetDataMaterial();
-		}
-
-		const auto NextStack = Items.GetNextStack(X, Y, Z);
-		const auto NextValue = NextStack.Get<FVoxelValue>(X, Y, Z, LOD);
-		if (bSubtractiveAsset ? Value >= NextValue : Value <= NextValue)
-		{
-			// We have a better value
-			return GetDataMaterial();
+			return Data->GetInterpolatedMaterial(X, Y, Z);
 		}
 		else
 		{
-			return NextStack.Get<FVoxelMaterial>(X, Y, Z, LOD);
+			return FVoxelMaterial::Default();
 		}
 	}
 	
-	template<bool bCustomTransform>
-	TVoxelRange<v_flt> GetValueRangeImpl(const FTransform& LocalToWorld, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<v_flt> GetValueRangeImpl(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		// Will be raised if world bounds are overriden for a data asset
-		// Still useful to detect queries errors
-		ensureVoxelSlow(!bCustomTransform || GetLocalBounds().ApplyTransform(LocalToWorld).Contains(WorldBounds));
-
-		if (WorldBounds.Intersect(bCustomTransform ? GetLocalBounds().ApplyTransform(LocalToWorld) : GetLocalBounds()))
+		if (Bounds.Intersect(GetLocalBounds()))
 		{
 			return { -1, 1 };
 		}
-		else if (Items.IsEmpty())
-		{
-			return bSubtractiveAsset ? -1 : 1;
-		}
 		else
 		{
-			const auto NextStack = Items.GetNextStack(WorldBounds);
-			if (NextStack.IsValid())
-			{
-				return NextStack.GetValueRange(WorldBounds, LOD);
-			}
-			else
-			{
-				return TVoxelRange<v_flt>::Infinite();
-			}
+			return bSubtractiveAsset ? -1 : 1;
 		}
 	}
 	FVector GetUpVector(v_flt X, v_flt Y, v_flt Z) const override final
@@ -132,27 +78,12 @@ public:
 	//~ End FVoxelWorldGeneratorInstance Interface
 
 public:
-	inline UVoxelDataAsset* GetOwner() const
+	UVoxelDataAsset* GetOwner() const
 	{
 		return Data->Owner.Get();
 	}
 
 private:
-	template<bool bCustomTransform>
-	FORCEINLINE FVector GetLocalPosition(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z) const
-	{
-		if (bCustomTransform)
-		{
-			const auto LocalPosition = LocalToWorld.InverseTransformPosition(FVector(X, Y, Z));
-			X = LocalPosition.X;
-			Y = LocalPosition.Y;
-			Z = LocalPosition.Z;
-		}
-		X -= PositionOffset.X;
-		Y -= PositionOffset.Y;
-		Z -= PositionOffset.Z;
-		return FVector(X, Y, Z);
-	}
 	FORCEINLINE FIntBox GetLocalBounds() const
 	{
 		return FIntBox(PositionOffset, PositionOffset + Data->GetSize());
@@ -161,41 +92,66 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////
 
+void FVoxelDataAssetData::SetSize(const FIntVector& NewSize, bool bCreateMaterials)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(int64(NewSize.X) * int64(NewSize.Y) * int64(NewSize.Z) < MAX_int32);
+
+	// Somewhat thread safe
+	Values.SetNumUninitialized(NewSize.X * NewSize.Y * NewSize.Z);
+	Materials.SetNumUninitialized(bCreateMaterials ? NewSize.X * NewSize.Y * NewSize.Z : 0);
+	Size = NewSize;
+
+	ensure(Size.GetMin() > 0);
+	ensure(Size.GetMax() > 1); // Else it'll be considered empty
+	UpdateStats();
+}
+
 void FVoxelDataAssetData::Serialize(FArchive& Ar, uint32 ValueConfigFlag, uint32 MaterialConfigFlag, int32 VoxelCustomVersion)
 {
-	FScopedSlowTask Serializing(2.f);
+	FVoxelScopedSlowTask Serializing(2.f);
 	
 	Ar.UsingCustomVersion(FVoxelCustomVersion::GUID);
 	Ar << Size;
 
-	Serializing.EnterProgressFrame(1.f, LOCTEXT("SerializingValues", "Serializing values"));
+	Serializing.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Serializing values"));
 	FVoxelSerializationUtilities::SerializeValues(Ar, Values, ValueConfigFlag, VoxelCustomVersion);
 
-	Serializing.EnterProgressFrame(1.f, LOCTEXT("SerializingMaterials", "Serializing materials"));
+	Serializing.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Serializing materials"));
 	FVoxelSerializationUtilities::SerializeMaterials(Ar, Materials, MaterialConfigFlag, VoxelCustomVersion);
 
 	if (Size.X * Size.Y * Size.Z != Values.Num() || (Materials.Num() > 0 && Size.X * Size.Y * Size.Z != Materials.Num()))
 	{
 		Ar.SetError();
 	}
+
+	UpdateStats();
+}
+
+void FVoxelDataAssetData::UpdateStats() const
+{
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataAssetMemory, AllocatedSize);
+	AllocatedSize = Values.GetAllocatedSize() + Materials.GetAllocatedSize();
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataAssetMemory, AllocatedSize);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelDataAsset::GetInstance()
+{
+	return GetInstanceImpl();
+}
+
 TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelDataAsset::GetTransformableInstance()
 {
-	TryLoad();
-	return MakeVoxelShared<FVoxelDataAssetInstance>(
-		Data,
-		bSubtractiveAsset,
-		PositionOffset);
+	return MakeVoxelShared<TVoxelTransformableWorldGeneratorHelper<FVoxelDataAssetInstance>>(GetInstanceImpl(), bSubtractiveAsset);
 }
 
 void UVoxelDataAsset::SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const
 {
-	auto& DataInstance = static_cast<const FVoxelDataAssetInstance&>(Instance);
+	auto& DataInstance = *static_cast<const TVoxelTransformableWorldGeneratorHelper<FVoxelDataAssetInstance>&>(Instance).WorldGenerator;
 	FString Path;
 	auto* Owner = DataInstance.GetOwner();
 	if (Owner)
@@ -204,7 +160,7 @@ void UVoxelDataAsset::SaveInstance(const FVoxelTransformableWorldGeneratorInstan
 	}
 	else
 	{
-		FVoxelMessages::Error(LOCTEXT("InvalidOwner", "Invalid Data Asset Owner, saving an empty path"));
+		FVoxelMessages::Error("Invalid Data Asset Owner, saving an empty path");
 	}
 	Ar << Path;
 }
@@ -214,14 +170,14 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelDataAsset::Load
 	FString Path;
 	Ar << Path;
 
-	if (auto* Asset = LoadObject<UVoxelDataAsset>(GetTransientPackage(), *Path))
+	if (auto* Asset = LoadObject<UVoxelDataAsset>(nullptr, *Path))
 	{
 		return Asset->GetTransformableInstance();
 	}
 	else
 	{
 		Ar.SetError();
-		FVoxelMessages::Error(FText::Format(LOCTEXT("InvalidPath", "Invalid Data Asset Path: '{0}'"), FText::FromString(Path)));
+		FVoxelMessages::Error("Invalid Data Asset Path: " + Path);
 		return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
 	}
 }
@@ -248,25 +204,35 @@ void UVoxelDataAsset::SetData(const TVoxelSharedRef<FVoxelDataAssetData>& InData
 	Save();
 }
 
+TVoxelSharedRef<FVoxelDataAssetInstance> UVoxelDataAsset::GetInstanceImpl()
+{
+	TryLoad();
+	return MakeVoxelShared<FVoxelDataAssetInstance>(
+		Data,
+		bSubtractiveAsset,
+		PositionOffset);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelDataAsset::Save()
 {
-	FScopedSlowTask Saving(2.f);
+	FVoxelScopedSlowTask Saving(2.f);
 
 	Modify();
 
 	VoxelCustomVersion = FVoxelCustomVersion::LatestVersion;
+	ValueConfigFlag = GVoxelValueConfigFlag;
 	MaterialConfigFlag = GVoxelMaterialConfigFlag;
 
-	Saving.EnterProgressFrame(1.f, LOCTEXT("Serializing", "Serializing"));
+	Saving.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Serializing"));
 
 	FBufferArchive Archive(true);
 	Data->Serialize(Archive, ValueConfigFlag, MaterialConfigFlag, VoxelCustomVersion);
 
-	Saving.EnterProgressFrame(1.f, LOCTEXT("Compressing", "Compressing"));
+	Saving.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Compressing"));
 	FVoxelSerializationUtilities::CompressData(Archive, CompressedData);
 
 	SyncProperties();
@@ -284,7 +250,7 @@ void UVoxelDataAsset::Load()
 	TArray<uint8> UncompressedData;
 	if (!FVoxelSerializationUtilities::DecompressData(CompressedData, UncompressedData))
 	{
-		FVoxelMessages::Error(LOCTEXT("VoxelDataAssetDecompressionFailed", "Decompression failed, data is corrupted"), this);
+		FVoxelMessages::Error("Decompression failed, data is corrupted", this);
 		return;
 	}
 
@@ -292,7 +258,7 @@ void UVoxelDataAsset::Load()
 	Data->Serialize(Reader, ValueConfigFlag, MaterialConfigFlag, VoxelCustomVersion);
 	if (Reader.IsError())
 	{
-		FVoxelMessages::Error(LOCTEXT("VoxelDataAssetDecompressionReaderError", "Serialization failed, data is corrupted"), this);
+		FVoxelMessages::Error("Serialization failed, data is corrupted", this);
 	}
 
 	SyncProperties();
@@ -393,4 +359,3 @@ UTexture2D* UVoxelDataAsset::GetThumbnail()
 	return ThumbnailTexture;
 }
 #endif
-#undef LOCTEXT_NAMESPACE

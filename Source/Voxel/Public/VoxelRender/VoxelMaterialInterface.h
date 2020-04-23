@@ -4,65 +4,105 @@
 
 #include "CoreMinimal.h"
 #include "VoxelGlobals.h"
+#include "Containers/Queue.h"
+#include "UObject/GCObject.h"
 #include "UObject/WeakObjectPtr.h"
 
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
+class FVoxelMaterialInterface;
 
-class VOXEL_API IVoxelMaterialInterface
+class VOXEL_API FVoxelMaterialInterfaceManager : public FGCObject
 {
 public:
-	virtual ~IVoxelMaterialInterface();
-
-	FORCEINLINE UMaterialInterface* GetMaterial() const
+	static FVoxelMaterialInterfaceManager& Get()
 	{
-		// Happens if the material is recompiled
-		if (MaterialInterface.IsValid())
+		if (!Singleton)
 		{
-			return MaterialInterface.Get();
+			Singleton = new FVoxelMaterialInterfaceManager();
 		}
-		else
-		{
-			return DefaultMaterial();
-		}
+		return *Singleton;
 	}
+	
+private:
+	static FVoxelMaterialInterfaceManager* Singleton;
 
-	static TVoxelSharedRef<IVoxelMaterialInterface> Default();
+public:
+	FVoxelMaterialInterfaceManager();
+	
+	TVoxelSharedRef<FVoxelMaterialInterface> DefaultMaterial() const;
+	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterial(UMaterialInterface* MaterialInterface);
+	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterialInstance(UMaterialInterface* Parent);
+
+protected:
+	//~ Begin FGCObject Interface
+	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
+	//~ End FGCObject Interface
+	
+private:
+	TVoxelSharedPtr<FVoxelMaterialInterface> DefaultMaterialPtr;
 
 private:
-	explicit IVoxelMaterialInterface(UMaterialInterface* MaterialInterface);
+	// Need to preallocate chunks for thread safety without locks
+	static constexpr int32 ChunkSize = 1024;
+	static constexpr int32 MaxNumChunks = 1024;
+	
+	struct FMaterialReference
+	{
+		int32 Index = -1;
+		int32 ChunkIndex = -1;
+	};
+	struct FMaterialInfo
+	{
+		UMaterialInterface* Material = nullptr;
+		bool bIsInstance = false;
+		int32 ReferenceCount = 0;
+	};
+	struct FChunk
+	{
+		TArray<FMaterialInfo, TFixedAllocator<ChunkSize>> MaterialsInfos_AnyThread;
+		TArray<int32> FreeIndices_GameThread;
+	};
+	TArray<TVoxelSharedPtr<FChunk>, TFixedAllocator<MaxNumChunks>> Chunks;
 
-	static UMaterialInterface* DefaultMaterial();
+	TQueue<FMaterialReference, EQueueMode::Mpsc> ReferencesToDecrement;
 	
-	const TWeakObjectPtr<UMaterialInterface> MaterialInterface;
-	const FName MaterialName_Debug;
+	TMap<UMaterialInterface*, FMaterialReference> MaterialsMap;
 	
-	// Friend so that static functions can access the constructor
+	FMaterialInfo* GetMaterialInfo_AnyThread(FMaterialReference Reference);
+	FMaterialReference AllocateMaterialInfo_GameThread();
+	void DestroyMaterialInfo_GameThread(FMaterialInfo& MaterialInfo);
+
+	void ProcessReferencesToDecrement_GameThread();
+	
+	UMaterialInterface* GetMaterial_AnyThread(FMaterialReference Reference);
+	void RemoveReference_AnyThread(FMaterialReference Reference);
+
+	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterialImpl(UMaterialInterface* MaterialInterface, bool bIsInstance);
+
+private:
+	TArray<UMaterialInstanceDynamic*> InstancePool;
+	
+	UMaterialInstanceDynamic* GetInstanceFromPool();
+	void ReturnInstanceToPool(UMaterialInstanceDynamic* Instance);
+
+public:
+	void ClearInstancePool();
+	
 	friend class FVoxelMaterialInterface;
-	friend class FVoxelMaterialInstance;
 };
 
-class VOXEL_API FVoxelMaterialInterface : public IVoxelMaterialInterface
+class VOXEL_API FVoxelMaterialInterface
 {
 public:
-	static TVoxelSharedRef<IVoxelMaterialInterface> Create(UMaterialInterface* MaterialInterface);
-	virtual ~FVoxelMaterialInterface();
+	~FVoxelMaterialInterface();
+
+	UMaterialInterface* GetMaterial() const;
 
 private:
-	explicit FVoxelMaterialInterface(UMaterialInterface* MaterialInterface);
-	const bool bWasAlreadyRooted;
-};
+	const FVoxelMaterialInterfaceManager::FMaterialReference Reference;
 
-class VOXEL_API FVoxelMaterialInstance : public IVoxelMaterialInterface
-{
-public:
-	static TVoxelSharedRef<IVoxelMaterialInterface> Create(UMaterialInterface* Parent);
-	virtual ~FVoxelMaterialInstance();
+	explicit FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference);
 
-	static void ClearPool();
-	
-private:
-	explicit FVoxelMaterialInstance(UMaterialInstanceDynamic* MaterialInstance);
-
-	static TArray<TWeakObjectPtr<UMaterialInstanceDynamic>> InstancePool;
+	friend class FVoxelMaterialInterfaceManager;
 };

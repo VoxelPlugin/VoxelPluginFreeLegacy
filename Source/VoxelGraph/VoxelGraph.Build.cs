@@ -11,10 +11,6 @@ public class VoxelGraph : ModuleRules
         bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
 
-        if (!Target.bUseUnityBuild)
-        {
-            PrivatePCHHeaderFile = "Private/VoxelGraphPCH.h";
-        }
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
@@ -27,12 +23,5 @@ public class VoxelGraph : ModuleRules
                 "Engine",
                 "Voxel"
             });
-
-        if (Target.Configuration == UnrealTargetConfiguration.DebugGame)
-        {
-            PublicDefinitions.Add("VOXEL_DEBUG=1");
-        }
-
-        PublicDefinitions.Add("VOXEL_PLUGIN_PRO=1");
     }
 }

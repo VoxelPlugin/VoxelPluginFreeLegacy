@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGlobals.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelSpawnerConfig.generated.h"
 
@@ -10,15 +11,6 @@ class UVoxelSpawner;
 class FVoxelWorldGeneratorInstance;
 class UVoxelSpawnerConfig;
 class UVoxelSpawnerOutputsConfig;
-
-UENUM()
-enum class EVoxelSpawnerConfigElementRandomGenerator : uint8
-{
-	// Evenly distributed points
-	Sobol,
-	// More uneven points than Sobol. Unreal uses Halton to spawn grass in the default Landscape system
-	Halton
-};
 
 USTRUCT()
 struct FVoxelSpawnerOutputName
@@ -47,93 +39,269 @@ struct FVoxelSpawnerOutputName
 };
 
 UENUM()
-enum class EVoxelSpawnerChannel : uint8
+enum class EVoxelSpawnerDensityType : uint8
 {
-	R,
-	G,
-	B,
-	A,
-	None
+	// Use a constant as density
+	Constant,
+	// Use a generator output
+	GeneratorOutput,
+	// Use one of the material RGBA channels. Only for Ray Spawners.
+	MaterialRGBA,
+	// Use the material UV channels. Only for Ray Spawners.
+	MaterialUVs,
+	// Use a five way blend strength. Only for Ray Spawners.
+	MaterialFiveWayBlend,
+	// Use the voxel foliage channels. Only for Ray Spawners.
+	Foliage
 };
 
-inline EVoxelRGBA GetRGBALayerFromSpawnerChannel(EVoxelSpawnerChannel Channel)
+UENUM()
+enum class EVoxelSpawnerUVAxis
 {
-	ensure(Channel != EVoxelSpawnerChannel::None);
-	return EVoxelRGBA(Channel);
-}
+	U,
+	V
+};
+
+UENUM()
+enum class EVoxelSpawnerDensityTransform
+{
+	Identity UMETA(DisplayName = "None"),
+	OneMinus UMETA(DisplayName = "1 - X"),
+};
 
 USTRUCT()
-struct FVoxelSpawnerConfigElementAdvanced_Base
+struct FVoxelSpawnerDensity
 {
 	GENERATED_BODY()
 
-	// If you want to control your foliage seeds from your voxel world. Can be left to the default values
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	EVoxelSpawnerDensityType Type = EVoxelSpawnerDensityType::Constant;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	float Constant = 1.f;
+	
+	// Your world generator needs to have a float output named like this
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	FVoxelSpawnerOutputName GeneratorOutputName;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "RGBA Channel"))
+	EVoxelRGBA RGBAChannel;
+	
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "UV Channel", ClampMin = 0, ClampMax = 3))
+	int32 UVChannel;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "UV Axis"))
+	EVoxelSpawnerUVAxis UVAxis;
+	
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 4))
+	int32 FiveWayBlendChannel = 0;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	EVoxelRGBA FoliageChannel;
+
+	// Transform to apply to the density
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	EVoxelSpawnerDensityTransform Transform = EVoxelSpawnerDensityTransform::Identity;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UENUM()
+enum class EVoxelSpawnerConfigElementRandomGenerator : uint8
+{
+	// Evenly distributed points
+	Sobol,
+	// More uneven points than Sobol. Unreal uses Halton to spawn grass in the default Landscape system
+	Halton
+};
+
+UENUM()
+enum class EVoxelSpawnerType
+{
+	// Will line trace the voxel geometry to find spawning locations. Works with any kind of world/shapes
+	Ray,
+	// These spawners uses a height output from the world generator to spawn, allowing for large spawn distance.
+	Height
+};
+
+USTRUCT()
+struct FVoxelSpawnerConfigSpawnerSeed
+{
+	GENERATED_BODY()
+	
 	// Name referencing to the voxel world seed map
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	FName SeedName = "FoliageSeed";
 
-	// If you want to control your foliage seeds from your voxel world. Can be left to the default values
 	// Seed if SeedName is not found in the voxel world seed map
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	uint32 DefaultSeed = 1337;
-
-	// Controls the spawning pattern
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	EVoxelSpawnerConfigElementRandomGenerator RandomGenerator = EVoxelSpawnerConfigElementRandomGenerator::Halton;
 };
 
 USTRUCT()
-struct FVoxelSpawnerConfigElementAdvanced_Height : public FVoxelSpawnerConfigElementAdvanced_Base
+struct FVoxelSpawnerConfigSpawner
 {
 	GENERATED_BODY()
-		
-	// Controls whether to compute the density or the height first. Try both and see which is faster
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	bool bComputeDensityFirst = false;
-};
-
-USTRUCT()
-struct FVoxelSpawnerConfigElementAdvanced_Ray : public FVoxelSpawnerConfigElementAdvanced_Base
-{
-	GENERATED_BODY()
-	
-	// If the specific foliage channel is painted, its value will be used as density instead of the generator one
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	EVoxelSpawnerChannel Channel = EVoxelSpawnerChannel::None;
-};
-
-USTRUCT()
-struct FVoxelSpawnerConfigElement_Base
-{
-	GENERATED_BODY()
-
-	// Your world generator needs to have a float output named like this. If empty, will use a constant density of 0
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	FVoxelSpawnerOutputName DensityGraphOutputName;
 	
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	UVoxelSpawner* Spawner = nullptr;
 
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	EVoxelSpawnerType SpawnerType = EVoxelSpawnerType::Ray;
+	
 public:
-	float DistanceBetweenInstancesInVoxel = 0;
-	uint32 FinalSeed = 0;
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	FVoxelSpawnerDensity Density;
+
+	// Final Density = Density * DensityMultiplier. Use this to eg paint an Erase Foliage channel.
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Density Multiplier"))
+	FVoxelSpawnerDensity DensityMultiplier_RayOnly;
+
+	// The name of the custom graph output used to determine the height
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Height Graph Output Name"))
+	FVoxelSpawnerOutputName HeightGraphOutputName_HeightOnly = "Height";
+	
+public:
+	// Chunk size, affects the LOD if ray spawner
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Chunk Size"))
+	uint32 ChunkSize_EditorOnly = 32;
+
+	// The LOD of the mesh to trace rays against
+	// High LOD = faster but less precise
+	UPROPERTY(VisibleAnywhere, Category = "Voxel")
+	int32 LOD = 0;
+
+	// Generation distance in voxels
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Generation Distance"))
+	uint32 GenerationDistanceInVoxels_EditorOnly = 0;
+	
+	UPROPERTY(VisibleAnywhere, Category = "Voxel")
+	int32 GenerationDistanceInChunks = 2;
+
+public:
+	// Whether to save the instances that are removed
+	// If false will also respawn instances if they are out of range
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	bool bSave = true;
+
+	// If false, instances that are out of range will be despawned. If true, they will stay forever.
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	bool bDoNotDespawn = false;
+
+	// Seed for this spawner. Note that changing this is not required to get unique results per spawner.
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	FVoxelSpawnerConfigSpawnerSeed Seed;
+	
+public:
+	// Controls the spawning pattern
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	EVoxelSpawnerConfigElementRandomGenerator RandomGenerator = EVoxelSpawnerConfigElementRandomGenerator::Halton;
+
+	// Unique ID used when saving spawners to disk
+	UPROPERTY(VisibleAnywhere, Category = "Voxel")
+	FGuid Guid;
+		
+	// Controls whether to compute the density or the height first. Try both and see which is faster
+	// If false, the following are true when querying the density:
+	// - for flat worlds: Z = Height
+	// - for sphere worlds: Length(X, Y, Z) = Height
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Compute Density First"))
+	bool bComputeDensityFirst_HeightOnly = false;
 };
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 USTRUCT()
-struct FVoxelSpawnerConfigElement_Height : public FVoxelSpawnerConfigElement_Base
+struct FVoxelSpawnerConfigElementAdvanced_Height
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY()
+	bool bSave = true;
+
+	UPROPERTY()
+	bool bDoNotDespawn = false;
+	
+	UPROPERTY()
+	FName SeedName = "FoliageSeed";
+
+	UPROPERTY()
+	uint32 DefaultSeed = 1337;
+
+	UPROPERTY()
+	EVoxelSpawnerConfigElementRandomGenerator RandomGenerator = EVoxelSpawnerConfigElementRandomGenerator::Halton;
+		
+	UPROPERTY()
+	bool bComputeDensityFirst = false;
+
+	UPROPERTY()
+	FGuid Guid;
+};
+
+USTRUCT()
+struct FVoxelSpawnerConfigElementAdvanced_Ray
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	bool bSave = true;
+
+	UPROPERTY()
+	bool bDoNotDespawn = false;
+
+	UPROPERTY()
+	FName SeedName = "FoliageSeed";
+
+	UPROPERTY()
+	uint32 DefaultSeed = 1337;
+
+	UPROPERTY()
+	EVoxelSpawnerConfigElementRandomGenerator RandomGenerator = EVoxelSpawnerConfigElementRandomGenerator::Halton;
+
+	UPROPERTY()
+	FGuid Guid;
+};
+
+USTRUCT()
+struct FVoxelSpawnerConfigElement_Height
+{
+	GENERATED_BODY()
+	
+	UPROPERTY()
+	UVoxelSpawner* Spawner = nullptr;
+
+	UPROPERTY()
+	FVoxelSpawnerDensity Density;
+	
+	UPROPERTY()
+	FVoxelSpawnerOutputName DensityGraphOutputName_DEPRECATED;
+
+	UPROPERTY()
 	FVoxelSpawnerConfigElementAdvanced_Height Advanced;
 };
 
 USTRUCT()
-struct FVoxelSpawnerConfigElement_Ray : public FVoxelSpawnerConfigElement_Base
+struct FVoxelSpawnerConfigElement_Ray
 {
 	GENERATED_BODY()
+	
+	UPROPERTY()
+	UVoxelSpawner* Spawner = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY()
+	FVoxelSpawnerDensity Density;
+
+	UPROPERTY()
+	FVoxelSpawnerDensity DensityMultiplier;
+	
+	UPROPERTY()
+	FVoxelSpawnerOutputName DensityGraphOutputName_DEPRECATED;
+
+	UPROPERTY()
 	FVoxelSpawnerConfigElementAdvanced_Ray Advanced;
 };
 
@@ -142,23 +310,19 @@ struct FVoxelSpawnerConfigHeightGroup
 {
 	GENERATED_BODY()
 
-	// The name of the custom graph output used to determine the height
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (HideConstantOutputs))
+	UPROPERTY()
 	FVoxelSpawnerOutputName HeightGraphOutputName = "Height";
 
-	// Size of a foliage chunk, used to determine spawning distance.
-	// Keep ChunkSize as high as possible and GenerationDistanceInChunks as low as possible for better perf
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY()
 	uint32 ChunkSize = 32;
 
-	// Relative to ChunkSize. You can increase it if you want the spawning to be in more of a circle shape. Higher value might add a game thread cost
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMax = 16, UIMin = 1, UIMax = 16))
+	UPROPERTY()
 	uint32 GenerationDistanceInChunks = 2;
 
-	UPROPERTY(VisibleAnywhere, Category = "Voxel")
-	uint32 GenerationDistanceInVoxels = 0;
+	UPROPERTY()
+	uint32 GenerationDistanceInVoxels_EditorOnly = 0;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY()
 	TArray<FVoxelSpawnerConfigElement_Height> Spawners;
 };
 
@@ -167,30 +331,46 @@ struct FVoxelSpawnerConfigRayGroup
 {
 	GENERATED_BODY()
 
-	// The LOD of the mesh to trace rays against
-	// High LOD = faster but less precise
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 24, UIMin = 0, UIMax = 24))
+	UPROPERTY()
 	uint32 LOD = 0;
 
-	// Chunk size, set by the LOD
-	UPROPERTY(VisibleAnywhere, Category = "Voxel")
-	uint32 ChunkSize = 32;
+	UPROPERTY()
+	uint32 ChunkSize_EditorOnly = 32;
 	
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (UIMin = 1, UIMax = 16))
+	UPROPERTY()
 	uint32 GenerationDistanceInChunks = 2;
 
-	UPROPERTY(VisibleAnywhere, Category = "Voxel")
-	uint32 GenerationDistanceInVoxels = 0;
+	UPROPERTY()
+	uint32 GenerationDistanceInVoxels_EditorOnly = 0;
 	
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY()
 	TArray<FVoxelSpawnerConfigElement_Ray> Spawners;
 };
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 UENUM()
 enum class EVoxelSpawnerConfigRayWorldType : uint8
 {
 	Flat,
 	Sphere
+};
+
+USTRUCT(BlueprintType)
+struct FVoxelSpawnerConfigFiveWayBlendSetup
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	bool bUseR = true;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	bool bUseG = true;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	bool bUseB = true;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	bool bUseA = true;
 };
 
 UCLASS()
@@ -204,20 +384,29 @@ public:
 	
 	UPROPERTY(EditAnywhere, Category = "Config")
 	UVoxelSpawnerOutputsConfig* WorldGeneratorOutputs;
-
-	// Will linetrace the voxel geometry to find spawning locations. Works with any kind of world/shapes
-	UPROPERTY(EditAnywhere, Category = "Ray Spawners")
-	TArray<FVoxelSpawnerConfigRayGroup> RaySpawners;
 	
-	// These spawners uses a height output from the world generator to spawn, allowing for large spawn distance.
-	UPROPERTY(EditAnywhere, Category = "Height Spawners")
-	TArray<FVoxelSpawnerConfigHeightGroup> HeightSpawners;
+	UPROPERTY(EditAnywhere, Category = "Config", AdvancedDisplay)
+	FVoxelSpawnerConfigFiveWayBlendSetup FiveWayBlendSetup;
+
+public:
+	UPROPERTY(EditAnywhere, Category = "Spawners")
+	TArray<FVoxelSpawnerConfigSpawner> Spawners;
+
+public:
+	UPROPERTY()
+	TArray<FVoxelSpawnerConfigRayGroup> RaySpawners_DEPRECATED;
+	
+	UPROPERTY()
+	TArray<FVoxelSpawnerConfigHeightGroup> HeightSpawners_DEPRECATED;
 
 protected:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 	virtual void PostLoad() override;
 	
-	void UpdateReadOnlyProperties();
-#endif
+	void SetReadOnlyPropertiesFromEditorOnly();
+	void SetEditorOnlyPropertiesFromReadOnly();
+	void FixGuids();
+	void FixSpawnerDensityTypes();
 };

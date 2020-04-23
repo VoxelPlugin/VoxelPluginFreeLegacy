@@ -11,7 +11,7 @@ class FAssetTypeActions_VoxelDataAsset : public FAssetTypeActions_VoxelBase
 public:
 	using FAssetTypeActions_VoxelBase::FAssetTypeActions_VoxelBase;
 
-	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelDataAsset", "Voxel Data Asset"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Data Asset"); }
 	virtual FColor GetTypeColor() const override { return FColor(128, 0, 64); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelDataAsset::StaticClass(); }
 	virtual void OpenAssetEditor(const TArray<UObject *>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor) override;

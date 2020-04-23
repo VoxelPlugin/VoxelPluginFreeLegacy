@@ -8,8 +8,6 @@
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphEditorModule.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 UClass* FAssetTypeActions_VoxelGraphWorldGenerator::GetSupportedClass() const
 {
 	return UVoxelGraphGenerator::StaticClass();
@@ -29,4 +27,3 @@ void FAssetTypeActions_VoxelGraphWorldGenerator::OpenAssetEditor(const TArray<UO
 		}
 	}
 }
-#undef LOCTEXT_NAMESPACE

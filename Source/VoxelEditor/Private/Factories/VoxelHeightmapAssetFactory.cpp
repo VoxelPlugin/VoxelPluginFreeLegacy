@@ -23,8 +23,6 @@
 #include "LandscapeComponent.h"
 #include "LandscapeDataAccess.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -69,7 +67,7 @@ bool UVoxelHeightmapAssetUINT16Factory::ConfigureProperties()
 	WeightmapsInfos = GetDefault<UVoxelHeightmapAssetUINT16Factory>()->WeightmapsInfos;
 
 	TSharedRef<SWindow> PickerWindow = SNew(SWindow)
-		.Title(LOCTEXT("ImportHeightmap", "Import Heightmap"))
+		.Title(VOXEL_LOCTEXT("Import Heightmap"))
 		.SizingRule(ESizingRule::Autosized);
 
 	bool bSuccess = false;
@@ -166,7 +164,7 @@ bool UVoxelHeightmapAssetUINT16Factory::ConfigureProperties()
 					+ SUniformGridPanel::Slot(0, 0)
 					[
 						SNew(SButton)
-						.Text(LOCTEXT("Create", "Create"))
+						.Text(VOXEL_LOCTEXT("Create"))
 						.HAlign(HAlign_Center)
 						.Visibility(TAttribute<EVisibility>::Create(TAttribute<EVisibility>::FGetter::CreateLambda([&]()
 						{
@@ -191,7 +189,7 @@ bool UVoxelHeightmapAssetUINT16Factory::ConfigureProperties()
 					+SUniformGridPanel::Slot(1,0)
 					[
 						SNew(SButton)
-						.Text(LOCTEXT("Cancel", "Cancel"))
+						.Text(VOXEL_LOCTEXT("Cancel"))
 						.HAlign(HAlign_Center)
 						.ContentPadding(FEditorStyle::GetMargin("StandardDialog.ContentPadding"))
 						.OnClicked(OnCancelClicked)
@@ -302,5 +300,3 @@ bool UVoxelHeightmapAssetUINT16Factory::DoImport(UVoxelHeightmapAssetUINT16* Ass
 	FVoxelMessages::ShowVoxelPluginProError("Importing Heightmaps requires Voxel Plugin Pro");
 	return false;
 }
-
-#undef LOCTEXT_NAMESPACE

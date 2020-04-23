@@ -8,6 +8,11 @@
 
 namespace FVoxelUtilities
 {
+	FORCEINLINE constexpr int32 PositiveMod(int32 X, int32 Y)
+	{
+		return ((X % Y) + Y) % Y;
+	}
+	
 	FORCEINLINE constexpr int32 DivideFloor(int32 Dividend, int32 Divisor)
 	{
 		int32 Q = Dividend / Divisor;
@@ -22,10 +27,17 @@ namespace FVoxelUtilities
 	{
 		return (Dividend > 0) ? 1 + (Dividend - 1) / Divisor : (Dividend / Divisor);
 	}
-
-	FORCEINLINE constexpr int32 PositiveMod(int32 X, int32 Y)
+	FORCEINLINE constexpr int32 DivideRound(int32 Dividend, int32 Divisor)
 	{
-		return (X % Y + Y) % Y;
+		const int32 R = PositiveMod(Dividend, Divisor);
+		if (R < Divisor / 2)
+		{
+			return DivideFloor(Dividend, Divisor);
+		}
+		else
+		{
+			return DivideCeil(Dividend, Divisor);
+		}
 	}
 
 	FORCEINLINE constexpr int32 IntLog2(int32 X)
@@ -41,33 +53,70 @@ namespace FVoxelUtilities
 
 	FORCEINLINE uint8 CastToUINT8(int32 Value)
 	{
-		ensureMsgfVoxelSlow(0 <= Value && Value < 256, TEXT("Invalid uint8 value: %d"), Value);
+		ensureMsgfVoxelSlowNoSideEffects(0 <= Value && Value < 256, TEXT("Invalid uint8 value: %d"), Value);
 		return Value;
 	}
 
-	FORCEINLINE uint8 ClampToUINT8(int32 Value)
+	template<typename T>
+	FORCEINLINE constexpr T Clamp( const T X, const T Min, const T Max )
 	{
-		return FMath::Clamp(Value, 0, 255);
+		return X < Min ? Min : X < Max ? X : Max;
 	}
-	FORCEINLINE uint16 ClampToUINT16(int32 Value)
+
+	FORCEINLINE constexpr int8 ClampToINT8(int32 Value)
 	{
-		return FMath::Clamp(Value, 0, 65535);
+		return Clamp<int32>(Value, MIN_int8, MAX_int8);
+	}
+	FORCEINLINE constexpr uint8 ClampToUINT8(int32 Value)
+	{
+		return Clamp<int32>(Value, MIN_uint8, MAX_uint8);
+	}
+	FORCEINLINE constexpr int8 ClampToINT16(int32 Value)
+	{
+		return Clamp<int32>(Value, MIN_int16, MAX_int16);
+	}
+	FORCEINLINE constexpr uint16 ClampToUINT16(int32 Value)
+	{
+		return Clamp<int32>(Value, MIN_uint16, MAX_uint16);
 	}
 
 	FORCEINLINE uint8 FloatToUINT8(float Float)
 	{
 		return ClampToUINT8(FMath::FloorToInt(Float * 255.999f));
 	}
-	FORCEINLINE float UINT8ToFloat(uint8 Int)
+	FORCEINLINE constexpr float UINT8ToFloat(uint8 Int)
 	{
 		return Int / 255.f;
+	}
+
+	FORCEINLINE FColor FloatToUINT8(FVector4 Float)
+	{
+		return
+		FColor
+		{
+			FloatToUINT8(Float.X),
+			FloatToUINT8(Float.Y),
+			FloatToUINT8(Float.Z),
+			FloatToUINT8(Float.W)
+		};
+	}
+	FORCEINLINE FVector4 UINT8ToFloat(FColor Int)
+	{
+		return
+		FVector4
+		{
+			UINT8ToFloat(Int.R),
+			UINT8ToFloat(Int.G),
+			UINT8ToFloat(Int.B),
+			UINT8ToFloat(Int.A)
+		};
 	}
 	
 	FORCEINLINE uint16 FloatToUINT16(float Float)
 	{
 		return ClampToUINT16(FMath::FloorToInt(Float * 65535.999f));
 	}
-	FORCEINLINE float UINT16ToFloat(uint16 Int)
+	FORCEINLINE constexpr float UINT16ToFloat(uint16 Int)
 	{
 		return Int / 65535.f;
 	}
@@ -174,20 +223,6 @@ namespace FVoxelUtilities
 	}
 
 	template<typename T>
-	inline void ShuffleArray(T& Array, int32 Seed = 0)
-	{
-		const FRandomStream Stream(Seed);
-		for (int32 Index = 0; Index < 256; Index++)
-		{
-			int32 NewIndex = Stream.RandRange(Index, 255);
-			if (Index != NewIndex)
-			{
-				Array.Swap(Index, NewIndex);
-			}
-		}
-	}
-
-	template<typename T>
 	FORCEINLINE T&& VariadicMin(T&& Val)
 	{
 		return Forward<T>(Val);
@@ -250,5 +285,12 @@ namespace FVoxelUtilities
 		Value = Value - ((Value >> 1) & 0x55555555);
 		Value = (Value & 0x33333333) + ((Value >> 2) & 0x33333333);
 		return (((Value + (Value >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+	}
+
+	// Returns distance to voxel with Density
+	FORCEINLINE float GetAbsDistanceFromDensities(float Density, float OtherDensity)
+	{
+		ensureVoxelSlowNoSideEffects(Density > 0 != OtherDensity > 0);
+		return Density / (Density - OtherDensity);
 	}
 }

@@ -60,7 +60,7 @@ void FVoxelSpawnerOutputNameCustomization::CustomizeHeader(
 		.ValueContent()
 		.MaxDesiredWidth(250.f)
 		[
-			FVoxelEditorUtilities::CreateText(NSLOCTEXT("Voxel", "InvalidOutputs", "Invalid World Generator Outputs"), FSlateColor(FColor::Red))
+			FVoxelEditorUtilities::CreateText(VOXEL_LOCTEXT("Invalid World Generator Outputs"), FSlateColor(FColor::Red))
 		];
 		return;
 	}
@@ -78,12 +78,6 @@ void FVoxelSpawnerOutputNameCustomization::CustomizeHeader(
 	{
 		OptionsSource.Add(MakeShared<FName>(Name));
 	}
-
-	if (!PropertyHandle->HasMetaData(STATIC_FNAME("HideConstantOutputs")))
-	{
-		OptionsSource.Add(MakeShared<FName>(STATIC_FNAME("Constant 0")));
-		OptionsSource.Add(MakeShared<FName>(STATIC_FNAME("Constant 1")));
-	}
 		
 	const auto ValuePtrPtr = OptionsSource.FindByPredicate([&](auto& Ptr) { return *Ptr == Value; });
 	ensure(ValuePtrPtr || !ValidOutputNames.Contains(Value));
@@ -97,16 +91,20 @@ void FVoxelSpawnerOutputNameCustomization::CustomizeHeader(
 	]
 	.ValueContent()
 	[
-		SNew(SComboBox<TSharedPtr<FName>>)
-		.OptionsSource(&OptionsSource)
-		.OnSelectionChanged(this, &FVoxelSpawnerOutputNameCustomization::HandleComboBoxSelectionChanged)
-		.OnGenerateWidget_Lambda([&](TSharedPtr<FName> InValue)
-		{
-			return FVoxelEditorUtilities::CreateText(FText::FromName(*InValue));
-		})
-		.InitiallySelectedItem(ValuePtrPtr ? *ValuePtrPtr : TSharedPtr<FName>())
+		SNew(SBox)
+		.MinDesiredWidth(FDetailWidgetRow::DefaultValueMinWidth)
 		[
-			ComboBoxText.ToSharedRef()
+			SNew(SComboBox<TSharedPtr<FName>>)
+			.OptionsSource(&OptionsSource)
+			.OnSelectionChanged(this, &FVoxelSpawnerOutputNameCustomization::HandleComboBoxSelectionChanged)
+			.OnGenerateWidget_Lambda([&](TSharedPtr<FName> InValue)
+			{
+				return FVoxelEditorUtilities::CreateText(FText::FromName(*InValue));
+			})
+			.InitiallySelectedItem(ValuePtrPtr ? *ValuePtrPtr : TSharedPtr<FName>())
+			[
+				ComboBoxText.ToSharedRef()
+			]
 		]
 	];
 }

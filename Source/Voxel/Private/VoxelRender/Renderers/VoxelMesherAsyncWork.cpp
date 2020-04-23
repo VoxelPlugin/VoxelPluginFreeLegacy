@@ -25,7 +25,7 @@ FVoxelMesherAsyncWork::FVoxelMesherAsyncWork(
 	, bIsTransitionTask(bIsTransitionTask)
 	, TransitionsMask(TransitionsMask)
 	, Renderer(Renderer.AsShared())
-	, PriorityHandler(Bounds, Renderer.GetInvokersPositions())
+	, PriorityHandler(Bounds, Renderer.GetInvokersPositionsForPriorities())
 {
 	check(IsInGameThread());
 	ensure(!bIsTransitionTask || TransitionsMask != 0);
@@ -42,7 +42,7 @@ static void ShowWorldGeneratorError(TVoxelWeakPtr<const FVoxelData> Data)
 	{
 		const auto Result = FMessageDialog::Open(
 			EAppMsgType::YesNo,
-			NSLOCTEXT("Voxel", "WorldGeneratorError",
+			VOXEL_LOCTEXT(
 				"Error: The world generator is returning different values for the same position/LOD.\n"
 				"Please check your code.\n"
 				"If you're using a voxel graph, this is an internal error, please report it to the developer.\n"

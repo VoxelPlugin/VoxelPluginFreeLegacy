@@ -22,6 +22,8 @@
 #include "DrawDebugHelpers.h"
 #include "Materials/Material.h"
 
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelPhysXTriangleMeshesMemory);
+
 static TAutoConsoleVariable<int32> CVarShowCollisionsUpdates(
 	TEXT("voxel.renderer.ShowCollisionsUpdates"),
 	0,
@@ -93,8 +95,16 @@ void UVoxelProceduralMeshComponent::ClearInit()
 	bInit = false;
 }
 
+
 UVoxelProceduralMeshComponent::UVoxelProceduralMeshComponent()
 {
+
+	Mobility = EComponentMobility::Movable;
+	
+	CastShadow = true;
+	bUseAsOccluder = true;
+	bCanEverAffectNavigation = true;
+	
 	bAllowReregistration = false; // Slows down the editor when editing properties
 	bCastShadowAsTwoSided = true;
 	bHasCustomNavigableGeometry = EHasCustomNavigableGeometry::EvenIfNotCollidable;
@@ -110,6 +120,8 @@ UVoxelProceduralMeshComponent::~UVoxelProceduralMeshComponent()
 		AsyncCooker->CancelAndAutodelete();
 		AsyncCooker = nullptr;
 	}
+
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysXTriangleMeshesMemory, TriangleMeshesMemory);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -129,6 +141,8 @@ void UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(bool bFrozen)
 		if (bFrozen)
 		{
 			bAreCollisionsFrozen = true;
+
+			OnFreezeVoxelCollisionChanged.Broadcast(true);
 		}
 		else
 		{
@@ -142,12 +156,20 @@ void UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(bool bFrozen)
 				}
 			}
 			PendingCollisions.Reset();
+
+			OnFreezeVoxelCollisionChanged.Broadcast(false);
 		}
 	}
 }
 
+void UVoxelProceduralMeshComponent::AddOnFreezeVoxelCollisionChanged(const FOnFreezeVoxelCollisionChanged::FDelegate& NewDelegate)
+{
+	OnFreezeVoxelCollisionChanged.Add(NewDelegate);
+}
+
 bool UVoxelProceduralMeshComponent::bAreCollisionsFrozen = false;
 TSet<TWeakObjectPtr<UVoxelProceduralMeshComponent>> UVoxelProceduralMeshComponent::PendingCollisions;
+FOnFreezeVoxelCollisionChanged UVoxelProceduralMeshComponent::OnFreezeVoxelCollisionChanged;
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -192,6 +214,8 @@ int32 UVoxelProceduralMeshComponent::AddProcMeshSection(FVoxelProcMeshSectionSet
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(Buffers.IsValid());
+
+	ensure(Settings.bSectionVisible || Settings.bEnableCollisions || Settings.bEnableNavmesh);
 	
 	if (Buffers->GetNumIndices() == 0)
 	{
@@ -208,6 +232,8 @@ void UVoxelProceduralMeshComponent::ReplaceProcMeshSection(FVoxelProcMeshSection
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(Buffers.IsValid());
+
+	ensure(Settings.bSectionVisible || Settings.bEnableCollisions || Settings.bEnableNavmesh);
 	
 	int32 SectionIndex = -1;
 	for (int32 Index = 0; Index < ProcMeshSections.Num(); Index++)
@@ -386,7 +412,7 @@ UMaterialInterface* UVoxelProceduralMeshComponent::GetMaterial(int32 Index) cons
 		}
 		else
 		{
-			return Super::GetMaterial(Index);
+			return UPrimitiveComponent::GetMaterial(Index);
 		}
 	}
 	else
@@ -429,10 +455,8 @@ void UVoxelProceduralMeshComponent::GetUsedMaterials(TArray<UMaterialInterface*>
 	}
 }
 
-FMaterialRelevance UVoxelProceduralMeshComponent::GetMaterialRelevance_VoxelProcMesh(ERHIFeatureLevel::Type InFeatureLevel) const
+FMaterialRelevance UVoxelProceduralMeshComponent::GetMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const
 {
-	// MeshComponent one calls GetNumMaterial on every loop :(
-
 	FMaterialRelevance Result;
 	const auto Apply = [&](auto* MaterialInterface) { Result |= MaterialInterface->GetRelevance_Concurrent(InFeatureLevel); };
 	for (auto& Section : ProcMeshSections)
@@ -508,12 +532,19 @@ FBoxSphereBounds UVoxelProceduralMeshComponent::CalcBounds(const FTransform& Loc
 
 void UVoxelProceduralMeshComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 {
-	Super::OnComponentDestroyed(bDestroyingHierarchy);
+	UPrimitiveComponent::OnComponentDestroyed(bDestroyingHierarchy);
 
 	if (bInit)
 	{
 		// Clear convex collisions
 		UpdateConvexMeshes({}, {}, {}, true);
+	}
+	
+	// Destroy async cooker
+	if (AsyncCooker)
+	{
+		AsyncCooker->CancelAndAutodelete();
+		AsyncCooker = nullptr;
 	}
 	
 	// Clear memory
@@ -684,7 +715,7 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 	
 	if (!AsyncCooker || CookerId != AsyncCooker->UniqueId)
 	{
-		UE_LOG(LogVoxel, VeryVerbose, TEXT("Late async cooker callback, ignoring it"));
+		LOG_VOXEL(VeryVerbose, TEXT("Late async cooker callback, ignoring it"));
 		return;
 	}
 
@@ -692,13 +723,13 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 	
 	if (!AsyncCooker->IsSuccessful())
 	{
-		//UE_LOG(LogVoxel, Warning, TEXT("Async cooker wasn't successful, ignoring it"));
+		//LOG_VOXEL(Warning, TEXT("Async cooker wasn't successful, ignoring it"));
 		return;
 	}
 
 	if (!ensure(BodySetupBeingCooked)) return;
-
-	auto& CookResult = AsyncCooker->CookResult;
+	
+	FVoxelAsyncPhysicsCooker::FCookResult& CookResult = AsyncCooker->CookResult;
 	BodySetupBeingCooked->bGenerateMirroredCollision = false;
 	BodySetupBeingCooked->CollisionTraceFlag = CollisionTraceFlag;
 	{
@@ -715,8 +746,12 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 	}
 	UpdateConvexMeshes(CookResult.ConvexBounds, MoveTemp(CookResult.ConvexElems), MoveTemp(CookResult.ConvexMeshes));
 
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysXTriangleMeshesMemory, TriangleMeshesMemory);
+	TriangleMeshesMemory = CookResult.TriangleMeshesMemoryUsage;
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysXTriangleMeshesMemory, TriangleMeshesMemory);
+
 	AsyncCooker->CancelAndAutodelete();
 	AsyncCooker = nullptr;
-
+	
 	FinishCollisionUpdate();
 }

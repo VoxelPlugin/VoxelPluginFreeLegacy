@@ -7,8 +7,6 @@
 #include "VoxelGlobals.h"
 
 struct FVoxelRendererSettings;
-struct FVoxelBlendedMaterialUnsorted;
-struct FVoxelBlendedMaterialSorted;
 struct FVoxelChunkMesh;
 class FVoxelData;
 class FVoxelDataLockInfo;

@@ -5,6 +5,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/IVoxelProceduralMeshComponent_PhysicsCallbackHandler.h"
 #include "VoxelThreadingUtilities.h"
+#include "VoxelPhysXHelpers.h"
 #include "VoxelGlobals.h"
 
 #if ENGINE_MINOR_VERSION < 23
@@ -102,7 +103,7 @@ void FVoxelAsyncPhysicsCooker::DoWork()
 
 	if (CVarLogCollisionCookingTimes.GetValueOnAnyThread() != 0)
 	{
-		UE_LOG(LogVoxel, Log, TEXT("Collisions cooking took %fms"), (FPlatformTime::Seconds() - CookStartTime) * 1000);
+		LOG_VOXEL(Log, TEXT("Collisions cooking took %fms"), (FPlatformTime::Seconds() - CookStartTime) * 1000);
 	}
 }
 
@@ -237,8 +238,8 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 		return;
 	}
 
-	CookResult.TriangleMeshes.AddZeroed();
-	
+	physx::PxTriangleMesh* TriangleMesh = nullptr;
+
 	constexpr bool bFlipNormals = true; // Always true due to the order of the vertices (clock wise vs not)
 	const bool bSuccess = PhysXCooking->CreateTriMesh(
 		PhysXFormat,
@@ -247,12 +248,19 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 		Indices,
 		MaterialIndices,
 		bFlipNormals,
-		CookResult.TriangleMeshes.Last());
+		TriangleMesh);
+	
+	CookResult.TriangleMeshes.Add(TriangleMesh);
+
+	if (TriangleMesh)
+	{
+		CookResult.TriangleMeshesMemoryUsage += FVoxelPhysXHelpers::GetAllocatedSize(*TriangleMesh);
+	}
 	
 	if (!bSuccess)
 	{
 		// Happens sometimes
-		UE_LOG(LogVoxel, Warning, TEXT("Failed to cook TriMesh. Num vertices: %d; Num triangles: %d"), Vertices.Num(), Indices.Num());
+		LOG_VOXEL(Warning, TEXT("Failed to cook TriMesh. Num vertices: %d; Num triangles: %d"), Vertices.Num(), Indices.Num());
 		ErrorCounter.Increment();
 	}
 }
@@ -269,13 +277,13 @@ void FVoxelAsyncPhysicsCooker::CreateConvexMesh()
 		{
 		case EPhysXCookingResult::Failed:
 		{
-			UE_LOG(LogVoxel, Warning, TEXT("Failed to cook convex"));
+			LOG_VOXEL(Warning, TEXT("Failed to cook convex"));
 			ErrorCounter.Increment();
 			break;
 		}
 		case EPhysXCookingResult::SucceededWithInflation:
 		{
-			UE_LOG(LogVoxel, Warning, TEXT("Cook convex failed but succeeded with inflation"));
+			LOG_VOXEL(Warning, TEXT("Cook convex failed but succeeded with inflation"));
 			break;
 		}
 		case EPhysXCookingResult::Succeeded: break;
@@ -378,7 +386,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 	// If box is invalid, or the largest dimension is less than 1 unit, or smallest is less than 0.1, skip trying to generate collision (V-HACD often crashes...)
 	if (Box.IsValid == 0 || Box.GetSize().GetMax() < 1.f || Box.GetSize().GetMin() < 0.1f)
 	{
-		UE_LOG(LogVoxel, Warning, TEXT("Convex decomposition failed: mesh too small. Bounds: %s"), *Box.ToString());
+		LOG_VOXEL(Warning, TEXT("Convex decomposition failed: mesh too small. Bounds: %s"), *Box.ToString());
 		ErrorCounter.Increment();
 		return;
 	}
@@ -400,7 +408,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 		virtual ~VHACDLogger() = default;
 		virtual void Log(const char* const msg) override
 		{
-			UE_LOG(LogVoxel, Log, TEXT("VHACD: %s"), ANSI_TO_TCHAR(msg));
+			LOG_VOXEL(Log, TEXT("VHACD: %s"), ANSI_TO_TCHAR(msg));
 		}
 	};
 	VHACDLogger logger;
@@ -422,7 +430,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 
 	if (!bSuccess)
 	{
-		UE_LOG(LogVoxel, Warning, TEXT("Convex decomposition failed: VHACD failed"));
+		LOG_VOXEL(Warning, TEXT("Convex decomposition failed: VHACD failed"));
 		ErrorCounter.Increment();
 		return;
 	}
@@ -566,6 +574,7 @@ EPhysXMeshCookFlags FVoxelAsyncPhysicsCooker::GetCookFlags() const
 	{
 		CookFlags |= EPhysXMeshCookFlags::DeformableMesh;
 	}
+	// TODO try and bench CookFlags |= EPhysXMeshCookFlags::DisableActiveEdgePrecompute;
 	// TODO: option/check perf
 	CookFlags |= EPhysXMeshCookFlags::FastCook;
 	return CookFlags;

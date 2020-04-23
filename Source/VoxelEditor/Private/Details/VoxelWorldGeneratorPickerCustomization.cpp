@@ -13,23 +13,21 @@
 #include "Modules/ModuleManager.h"
 #include "VoxelWorldGeneratorPicker.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 void FVoxelWorldGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> InPropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
 	PropertyHandle = InPropertyHandle;
 
-	ClassHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelWorldGeneratorPicker, WorldGeneratorClass));
-	ObjectHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelWorldGeneratorPicker, WorldGeneratorObject));
+	ClassHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelWorldGeneratorPicker, Class));
+	ObjectHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelWorldGeneratorPicker, Object));
 	TypeHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelWorldGeneratorPicker, Type));
 
 	ClassOrObjectArray.Reset();
-	ClassOrObjectArray.Add(MakeShareable(new FClassOrObject{ LOCTEXT("Class", "Class") }));
-	ClassOrObjectArray.Add(MakeShareable(new FClassOrObject{ LOCTEXT("Object", "Object") }));
+	ClassOrObjectArray.Add(MakeShareable(new FClassOrObject{ VOXEL_LOCTEXT("Class") }));
+	ClassOrObjectArray.Add(MakeShareable(new FClassOrObject{ VOXEL_LOCTEXT("Object") }));
 
 	FString SelectedType;
 	TypeHandle->GetValueAsDisplayString(SelectedType);
-	bool bClassIsSelected = (SelectedType == TEXT("Class"));
+	const bool bClassIsSelected = (SelectedType == TEXT("Class"));
 
 	CurrentIndex = bClassIsSelected ? 0 : 1;
 
@@ -141,5 +139,3 @@ void FVoxelWorldGeneratorPickerCustomization::UpdateProperty()
 
 	CurrentText->SetText(Value->DisplayName);
 }
-
-#undef LOCTEXT_NAMESPACE

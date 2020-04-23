@@ -35,20 +35,21 @@ public:
 	using FVoxelWorldGeneratorInstance::TOutputFunctionPtr;
 	using FVoxelWorldGeneratorInstance::TRangeOutputFunctionPtr;
 
-	TVoxelWorldGeneratorInstanceHelper(
-		const TMap<FName, TOutputFunctionPtr<v_flt>>& FloatOutputsPtr = {},
-		const TMap<FName, TOutputFunctionPtr<int32>>& Int32OutputsPtr = {},
-		const TMap<FName, TRangeOutputFunctionPtr<v_flt>>& FloatOutputsRangesPtr = {})
+	using FVoxelWorldGeneratorInstance::FBaseFunctionPtrs;
+	using FVoxelWorldGeneratorInstance::FCustomFunctionPtrs;
+
+	using UStaticClass = UWorldObject; 
+
+	explicit TVoxelWorldGeneratorInstanceHelper(const FCustomFunctionPtrs& CustomFunctionPtrs = {})
 		: TParent(
 			UWorldObject::StaticClass(),
-
-			static_cast<TOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueImpl),
-			static_cast<TOutputFunctionPtr<FVoxelMaterial>>(&TWorldInstance::GetMaterialImpl),
-			static_cast<TRangeOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueRangeImpl),
-			
-			FloatOutputsPtr,
-			Int32OutputsPtr,
-			FloatOutputsRangesPtr)
+			FBaseFunctionPtrs
+			{
+			   static_cast<TOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueImpl),
+			   static_cast<TOutputFunctionPtr<FVoxelMaterial>>(&TWorldInstance::GetMaterialImpl),
+			   static_cast<TRangeOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueRangeImpl),
+			},
+			CustomFunctionPtrs)
 	{
 		// doesn't work with fwd decl static_assert(TIsDerivedFrom<UWorldObject, UVoxelWorldGenerator>::IsDerived, "UWorldObject needs to inherit from UVoxelWorldGenerator");
 		static_assert(THasMemberFunction_GetValueImpl   <TWorldInstance>::Value, "Missing 'v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const'");
@@ -120,34 +121,37 @@ public:
 	
 	using FVoxelWorldGeneratorInstance::TOutputFunctionPtr;
 	using FVoxelWorldGeneratorInstance::TRangeOutputFunctionPtr;
+	
 	using FVoxelTransformableWorldGeneratorInstance::TOutputFunctionPtr_Transform;
 	using FVoxelTransformableWorldGeneratorInstance::TRangeOutputFunctionPtr_Transform;
+	
+	using FVoxelWorldGeneratorInstance::FBaseFunctionPtrs;
+	using FVoxelWorldGeneratorInstance::FCustomFunctionPtrs;
+	
+	using FVoxelTransformableWorldGeneratorInstance::FBaseFunctionPtrs_Transform;
+	using FVoxelTransformableWorldGeneratorInstance::FCustomFunctionPtrs_Transform;
 
-	TVoxelTransformableWorldGeneratorInstanceHelper(
-		const TMap<FName, TOutputFunctionPtr<v_flt>>& FloatOutputsPtr = {},
-		const TMap<FName, TOutputFunctionPtr<int32>>& Int32OutputsPtr = {},
-		const TMap<FName, TRangeOutputFunctionPtr<v_flt>>& FloatOutputsRangesPtr = {},
+	using UStaticClass = UWorldObject;
 
-		const TMap<FName, TOutputFunctionPtr_Transform<v_flt>>& FloatOutputsPtr_Transform = {},
-		const TMap<FName, TOutputFunctionPtr_Transform<int32>>& Int32OutputsPtr_Transform = {},
-		const TMap<FName, TRangeOutputFunctionPtr_Transform<v_flt>>& FloatOutputsRangesPtr_Transform = {})
+	explicit TVoxelTransformableWorldGeneratorInstanceHelper(
+		const FCustomFunctionPtrs& CustomFunctionPtrs = {},
+		const FCustomFunctionPtrs_Transform& CustomFunctionPtrs_Transform = {})
 		: TParent(
 			UWorldObject::StaticClass(),
-			static_cast<TOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueNoTransformImpl),
-			static_cast<TOutputFunctionPtr<FVoxelMaterial>>(&TWorldInstance::GetMaterialNoTransformImpl),
-			static_cast<TRangeOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueRangeNoTransformImpl),
-
-			FloatOutputsPtr,
-			Int32OutputsPtr,
-			FloatOutputsRangesPtr,
-
-			static_cast<TOutputFunctionPtr_Transform<v_flt>>(&TWorldInstance::GetValueWithTransformImpl),
-			static_cast<TOutputFunctionPtr_Transform<FVoxelMaterial>>(&TWorldInstance::GetMaterialWithTransformImpl),
-			static_cast<TRangeOutputFunctionPtr_Transform<v_flt>>(&TWorldInstance::GetValueRangeWithTransformImpl),
-
-			FloatOutputsPtr_Transform,
-			Int32OutputsPtr_Transform,
-			FloatOutputsRangesPtr_Transform)
+			FBaseFunctionPtrs
+			{
+				static_cast<TOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueNoTransformImpl),
+				static_cast<TOutputFunctionPtr<FVoxelMaterial>>(&TWorldInstance::GetMaterialNoTransformImpl),
+				static_cast<TRangeOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueRangeNoTransformImpl),
+			},
+			CustomFunctionPtrs,
+			FBaseFunctionPtrs_Transform
+			{
+				static_cast<TOutputFunctionPtr_Transform<v_flt>>(&TWorldInstance::GetValueWithTransformImpl),
+				static_cast<TOutputFunctionPtr_Transform<FVoxelMaterial>>(&TWorldInstance::GetMaterialWithTransformImpl),
+				static_cast<TRangeOutputFunctionPtr_Transform<v_flt>>(&TWorldInstance::GetValueRangeWithTransformImpl),
+			},
+			CustomFunctionPtrs_Transform)
 	{
 	}
 

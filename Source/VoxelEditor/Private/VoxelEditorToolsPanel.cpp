@@ -4,12 +4,16 @@
 #include "VoxelTools/VoxelToolManager.h"
 #include "VoxelWorld.h"
 #include "VoxelScopedTransaction.h"
+#include "ActorFactoryVoxelWorld.h"
 
+#include "EngineUtils.h"
 #include "Editor.h"
 #include "EditorViewportClient.h"
 #include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Input/SButton.h"
 
 FVoxelEditorToolsPanel::FVoxelEditorToolsPanel()
 {
@@ -19,16 +23,16 @@ FVoxelEditorToolsPanel::~FVoxelEditorToolsPanel()
 {
 	if (ToolManager)
 	{
-		ToolManager->Destroy();
+		ToolManager->ClearToolInstance();
 	}
 }
 
 void FVoxelEditorToolsPanel::Init()
-{
+{	
 	FPropertyEditorModule& PropertyEditorModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	const FDetailsViewArgs DetailsViewArgs(false, false, false, FDetailsViewArgs::HideNameArea);
 
-	ToolManager = NewObject<UVoxelToolManager>(GetTransientPackage(), NAME_None, RF_Transient);
+	ToolManager = NewObject<UVoxelToolManager>(GetTransientPackage(), NAME_None, RF_Transient | RF_Transactional);
 	ToolManager->LoadConfig();
 	DetailsPanel = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 	DetailsPanel->SetIsPropertyVisibleDelegate(
@@ -60,7 +64,43 @@ void FVoxelEditorToolsPanel::Init()
 	[
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot()
+		.Padding(FMargin(3, 5))
+		.AutoHeight()
+		[
+			SNew(SBorder)
+			.Visibility(TAttribute<EVisibility>::Create(TAttribute<EVisibility>::FGetter::CreateSP(this, &FVoxelEditorToolsPanel::GetAddVoxelWorldVisibility)))
+			.BorderBackgroundColor(FLinearColor::Red)
+			.BorderImage(FCoreStyle::Get().GetBrush("ErrorReporting.Box"))
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Center)
+			.Padding(FMargin(3, 0))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				[
+					SNew(STextBlock)
+					.ColorAndOpacity(FLinearColor::White)
+					.Font(FCoreStyle::GetDefaultFontStyle("Regular",12))
+					.Text(VOXEL_LOCTEXT("No Voxel World in the scene!"))
+				]
+				+ SVerticalBox::Slot()
+				.Padding(FMargin(0, 5))
+				[
+					SNew(SButton)
+					.OnClicked(FOnClicked::CreateSP(this, &FVoxelEditorToolsPanel::AddVoxelWorld))
+					[
+						SNew(STextBlock)
+						.ColorAndOpacity(FLinearColor::Black)
+						.Font(FCoreStyle::GetDefaultFontStyle("Regular",12))
+						.Text(VOXEL_LOCTEXT("Add Voxel World"))
+						.Justification(ETextJustify::Center)
+					]
+				]
+			]
+		]
+		+ SVerticalBox::Slot()
 		.Padding(0)
+		.FillHeight(1)
 		[
 			DetailsPanel.ToSharedRef()
 		]
@@ -86,6 +126,33 @@ void FVoxelEditorToolsPanel::MouseMove(FEditorViewportClient* ViewportClient, FV
 
 void FVoxelEditorToolsPanel::Tick(FEditorViewportClient* ViewportClient, float DeltaTime)
 {
+	auto* World = ViewportClient->GetWorld();
+	if (!ensure(World)) return;
+	
+	if (!LastWorld.IsValid())
+	{
+		// Toggle voxel worlds if none are created on first tick
+		const auto ToggleVoxelWorld = [&]()
+		{
+			for (auto* VoxelWorld : TActorRange<AVoxelWorld>(World))
+			{
+				if (VoxelWorld->IsCreated())
+				{
+					return;
+				}
+			}
+			for (auto* VoxelWorld : TActorRange<AVoxelWorld>(World))
+			{
+				if (!VoxelWorld->IsCreated())
+				{
+					VoxelWorld->Toggle();
+				}
+			}
+		};
+		ToggleVoxelWorld();
+	}
+	LastWorld = ViewportClient->GetWorld();
+	
 	if (ToolManager)
 	{
 		FViewport* Viewport = ViewportClient->Viewport;
@@ -136,7 +203,7 @@ void FVoxelEditorToolsPanel::Tick(FEditorViewportClient* ViewportClient, float D
 	if (TimeUntilNextGC <= 0)
 	{
 		TimeUntilNextGC = 30;
-		UE_LOG(LogVoxel, Log, TEXT("Forcing GC"));
+		LOG_VOXEL(Log, TEXT("Forcing GC"));
 		GEngine->ForceGarbageCollection(true);
 	}
 }
@@ -190,4 +257,35 @@ bool FVoxelEditorToolsPanel::InputAxis(FEditorViewportClient* ViewportClient, FV
 	}
 
 	return false;
+}
+
+EVisibility FVoxelEditorToolsPanel::GetAddVoxelWorldVisibility() const
+{
+	if (!LastWorld.IsValid())
+	{
+		return EVisibility::Collapsed;
+	}
+	
+	for (auto* VoxelWorld : TActorRange<AVoxelWorld>(LastWorld.Get()))
+	{
+		return EVisibility::Collapsed;
+	}
+
+	return EVisibility::Visible;
+}
+
+FReply FVoxelEditorToolsPanel::AddVoxelWorld() const
+{
+	if (!LastWorld.IsValid())
+	{
+		return FReply::Handled();
+	}
+
+	auto* Factory = NewObject<UActorFactoryVoxelWorld>();
+	if (ensure(Factory))
+	{
+		Factory->CreateActor(nullptr, LastWorld->GetLevel(0), FTransform::Identity);
+	}
+
+	return FReply::Handled();
 }

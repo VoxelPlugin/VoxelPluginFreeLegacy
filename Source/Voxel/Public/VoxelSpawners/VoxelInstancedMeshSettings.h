@@ -16,23 +16,28 @@ class UStaticMesh;
 class AVoxelSpawnerActor;
 
 USTRUCT(BlueprintType)
+struct VOXEL_API FVoxelInt32Interval
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	int32 Min = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	int32 Max = 0;
+};
+
+USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelInstancedMeshSettings
 {
 	GENERATED_BODY()
 
 	FVoxelInstancedMeshSettings();
-
-public:
-	UPROPERTY()
-	TWeakObjectPtr<UStaticMesh> Mesh;
-	
-	UPROPERTY()
-	TSubclassOf<AVoxelSpawnerActor> ActorTemplate;
 	
 public:
 	// Distance from camera at which each instance begins/completely to fade out
-	UPROPERTY(EditAnywhere, Category = "Instance Settings")
-	FInt32Interval CullDistance = { 100000, 200000 };
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Instance Settings")
+	FVoxelInt32Interval CullDistance = { 100000, 200000 };
 
 	/** Controls whether the foliage should cast a shadow or not. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Instance Settings")
@@ -62,11 +67,11 @@ public:
 	bool bUseAsOccluder = false;
 
 	/** Custom collision for foliage */
-	UPROPERTY(EditAnywhere, Category = "Instance Settings", meta=(HideObjectType=true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Instance Settings", meta = (ShowOnlyInnerProperties))
 	FBodyInstance BodyInstance;
 
 	/** Force navmesh */
-	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Instance Settings", meta=(HideObjectType=true))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Instance Settings")
 	TEnumAsByte<EHasCustomNavigableGeometry::Type> CustomNavigableGeometry = {};
 
 	/**
@@ -88,7 +93,7 @@ public:
 	// This is useful to avoid spending lots of time building the tree for nothing.
 	// However, it can lead to delays in foliage spawning.
 	// To disable this feature entirely, set it to 0
-	UPROPERTY(EditAnywhere, AdvancedDisplay, BlueprintReadWrite, Category = "Instance Settings", meta = (ClampMin = 0))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, BlueprintReadWrite, Category = "Instance Settings", meta = (ClampMin = 0, DisplayName = "Culling Tree Build Delay"))
 	float BuildDelay = 0.1;
 
 	// If you want to edit the HISM properties create a BP inheriting from HierarchicalInstancedStaticMeshComponent and set it here
@@ -96,5 +101,45 @@ public:
 	TSubclassOf<UVoxelHierarchicalInstancedStaticMeshComponent> HISMTemplate;
 };
 
-VOXEL_API bool operator==(const FVoxelInstancedMeshSettings& A, const FVoxelInstancedMeshSettings& B);
-VOXEL_API uint32 GetTypeHash(const FVoxelInstancedMeshSettings& Settings);
+USTRUCT(BlueprintType)
+struct VOXEL_API FVoxelSpawnerActorSettings
+{
+	GENERATED_BODY()
+
+	FVoxelSpawnerActorSettings();
+
+public:
+	// Actor to spawn to replace the instanced mesh. After spawn, the SetStaticMesh event will be called on the actor with Mesh as argument
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Settings")
+	TSubclassOf<AVoxelSpawnerActor> ActorClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Settings", meta = (ShowOnlyInnerProperties))
+	FBodyInstance BodyInstance;
+	
+	// Set the lifespan of this actor. When it expires the object will be destroyed.
+	// Set to 0 to disable
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Settings", meta = (ClampMin = 0))
+	float Lifespan = 5.f;
+};
+
+struct FVoxelInstancedMeshAndActorSettings
+{
+	FVoxelInstancedMeshAndActorSettings() = default;
+	FVoxelInstancedMeshAndActorSettings(
+		TWeakObjectPtr<UStaticMesh> Mesh, 
+		const TMap<int32, UMaterialInterface*>& SectionMaterials, 
+		FVoxelInstancedMeshSettings MeshSettings, 
+		FVoxelSpawnerActorSettings ActorSettings);
+	
+	TWeakObjectPtr<UStaticMesh> Mesh;
+	// Index in the array = mesh section index
+	TArray<TWeakObjectPtr<UMaterialInterface>> MaterialsOverrides;
+	FVoxelInstancedMeshSettings MeshSettings;
+	FVoxelSpawnerActorSettings ActorSettings;
+
+	TMap<int32, UMaterialInterface*> GetSectionsMaterials() const;
+	void SetSectionsMaterials(const TMap<int32, UMaterialInterface*>& SectionMaterials);
+};
+
+VOXEL_API bool operator==(const FVoxelInstancedMeshAndActorSettings& A, const FVoxelInstancedMeshAndActorSettings& B);
+VOXEL_API uint32 GetTypeHash(const FVoxelInstancedMeshAndActorSettings& Settings);

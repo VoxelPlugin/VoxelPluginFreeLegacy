@@ -58,6 +58,7 @@ private:
 		, UpdateIndex(UpdateIndexPtr->GetValue())
 	{
 	}
+	~FVoxelBasicMeshMergeWork() = default;
 
 	virtual uint32 GetPriority() const override
 	{
@@ -291,6 +292,7 @@ void FVoxelRendererBasicMeshHandler::FlushActionQueue(double MaxTime)
 				Mesh.ClearSections(EVoxelProcMeshSectionUpdate::DelayUpdate);
 				for (auto& Section : BuiltMesh.Value)
 				{
+					if (!ensure(Section.Value.IsValid())) continue;
 					Mesh.AddProcMeshSection(Section.Key, MoveTemp(Section.Value), EVoxelProcMeshSectionUpdate::DelayUpdate);
 				}
 				Mesh.FinishSectionsUpdates();
@@ -380,7 +382,7 @@ void FVoxelRendererBasicMeshHandler::FlushActionQueue(double MaxTime)
 
 		if (CVarLogActionQueue.GetValueOnGameThread() != 0)
 		{
-			UE_LOG(LogVoxel, Log, TEXT("ActionQueue: LOD: %d; %s; Position: %s"), ChunkInfo.LOD, *Action.ToString(), *ChunkInfo.Position.ToString());
+			LOG_VOXEL(Log, TEXT("ActionQueue: LOD: %d; %s; Position: %s"), ChunkInfo.LOD, *Action.ToString(), *ChunkInfo.Position.ToString());
 		}
 
 		ActionQueue.Pop();

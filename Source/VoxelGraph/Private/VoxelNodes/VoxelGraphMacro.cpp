@@ -6,8 +6,6 @@
 #include "Compilation/VoxelCompilationEnums.h"
 #include "VoxelGraphErrorReporter.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 FLinearColor UVoxelGraphMacroInputOutputNode::GetColor() const
 {
 	return FVoxelNodeColors::ExecNode;
@@ -117,7 +115,7 @@ FText UVoxelGraphMacro::GetMacroName() const
 
 FText UVoxelGraphMacro::GetMacroCategory() const
 {
-	return CustomCategory.IsEmpty() ? LOCTEXT("VoxelMacroNodeAction", "Macro nodes") : FText::FromString(CustomCategory);
+	return CustomCategory.IsEmpty() ? VOXEL_LOCTEXT("Macro nodes") : FText::FromString(CustomCategory);
 }
 
 
@@ -229,5 +227,3 @@ void UVoxelGraphMacroNode::PostEditChangeProperty(FPropertyChangedEvent& Propert
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 #endif // WITH_EDITOR
-
-#undef LOCTEXT_NAMESPACE

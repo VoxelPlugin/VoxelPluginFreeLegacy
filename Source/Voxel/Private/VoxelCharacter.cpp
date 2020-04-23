@@ -28,7 +28,7 @@ void AVoxelCharacter::SetBase(UPrimitiveComponent* NewBase, const FName BoneName
 		}
 		else
 		{
-			UE_LOG(LogVoxel, Warning, TEXT("VoxelCharacter: Invalid Voxel Proc Mesh Component!"));
+			LOG_VOXEL(Warning, TEXT("VoxelCharacter: Invalid Voxel Proc Mesh Component!"));
 		}
 	}
 	else if (auto* InstancedComponent = Cast<UInstancedStaticMeshComponent>(NewBase))

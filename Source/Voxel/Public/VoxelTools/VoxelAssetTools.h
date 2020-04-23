@@ -50,20 +50,22 @@ public:
 	 * Will provide the PreviousWorldGenerator to voxel graphs
 	 * @param	World					The voxel world to edit
 	 * @param	Asset					The asset to import
+	 * @param	Seeds					By default, the asset uses the Voxel World seeds. You can override them here.
 	 * @param	Transform				The transform of the asset: in world space, unless ConvertToVoxelSpace is false
-	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a voxel data asset, they will be set automatically if not provided
+	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a VoxelTransformableWorldGeneratorWithBounds, they will be set automatically if not provided
 	 * @param	Priority				Priority of the asset: the higher priority ones will be on top of lower priority ones
 	 * @param	bConvertToVoxelSpace	If true, the transform is in world space. If false, it's in voxel space
 	 * @param	bUpdateRender			If the render should be updated. Not needed if done right after creating the world
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "bConvertToVoxelSpace, bUpdateRender"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (AutoCreateRefTerm = "Seeds", DefaultToSelf = "World", AdvancedDisplay = "bConvertToVoxelSpace, bUpdateRender"))
 	static void ImportAssetAsReference(
 		FVoxelPlaceableItemReference& Reference,
 		AVoxelWorld* World,
 		UVoxelTransformableWorldGenerator* Asset,
+		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
 		FIntBox Bounds,
-		int32 Priority = 0,
+		int32 Priority,
 		bool bConvertToVoxelSpace = true,
 		bool bUpdateRender = true);
 	
@@ -74,22 +76,24 @@ public:
 	 * Runs asynchronously
 	 * @param	World					The voxel world to edit
 	 * @param	Asset					The asset to import
+	 * @param	Seeds					By default, the asset uses the Voxel World seeds. You can override them here.
 	 * @param	Transform				The transform of the asset: in world space, unless ConvertToVoxelSpace is false
-	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a voxel data asset, they will be set automatically if not provided
+	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a VoxelTransformableWorldGeneratorWithBounds, they will be set automatically if not provided
 	 * @param	Priority				Priority of the asset: the higher priority ones will be on top of lower priority ones
 	 * @param	bConvertToVoxelSpace	If true, the transform is in world space. If false, it's in voxel space
 	 * @param	bUpdateRender			If the render should be updated. Not needed if done right after creating the world
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bConvertToVoxelSpace, bUpdateRender, bHideLatentWarnings"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (AutoCreateRefTerm = "Seeds", DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bConvertToVoxelSpace, bUpdateRender, bHideLatentWarnings"))
 	static void ImportAssetAsReferenceAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		FVoxelPlaceableItemReference& Reference,
 		AVoxelWorld* World,
 		UVoxelTransformableWorldGenerator* Asset,
+		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
 		FIntBox Bounds,
-		int32 Priority = 0,
+		int32 Priority,
 		bool bConvertToVoxelSpace = true,
 		bool bUpdateRender = true,
 		bool bHideLatentWarnings = false);
@@ -102,14 +106,16 @@ public:
 	 * Unlike ImportAssetAsReference, this one copies the asset data into the world. Can be expensive for large assets. Use this if your asset is relatively small
 	 * @param	World					The voxel world to edit
 	 * @param	Asset					The asset to import
+	 * @param	Seeds					By default, the asset uses the Voxel World seeds. You can override them here.
 	 * @param	Transform				The transform of the asset: in world space, unless ConvertToVoxelSpace is false
-	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a voxel data asset, they will be set automatically if not provided
+	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a VoxelTransformableWorldGeneratorWithBounds, they will be set automatically if not provided
 	 * @param	bConvertToVoxelSpace	If true, the transform is in world space. If false, it's in voxel space
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "bLockEntireWorld, bConvertToVoxelSpace"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (AutoCreateRefTerm = "Seeds", DefaultToSelf = "World", AdvancedDisplay = "bLockEntireWorld, bConvertToVoxelSpace"))
 	static void ImportModifierAsset(
 		AVoxelWorld* World,
 		UVoxelTransformableWorldGenerator* Asset,
+		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
 		FIntBox Bounds,
 		bool bModifyValues = true,
@@ -123,16 +129,18 @@ public:
 	 * Unlike ImportAssetAsReference, this one copies the asset data into the world. Can be expensive for large assets. Use this if your asset is relatively small
 	 * @param	World					The voxel world to edit
 	 * @param	Asset					The asset to import
+	 * @param	Seeds					By default, the asset uses the Voxel World seeds. You can override them here.
 	 * @param	Transform				The transform of the asset: in world space, unless ConvertToVoxelSpace is false
-	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a voxel data asset, they will be set automatically if not provided
+	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a VoxelTransformableWorldGeneratorWithBounds, they will be set automatically if not provided
 	 * @param	bConvertToVoxelSpace	If true, the transform is in world space. If false, it's in voxel space
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo = "LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bLockEntireWorld, bConvertToVoxelSpace, bHideLatentWarnings"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (AutoCreateRefTerm = "Seeds", DefaultToSelf = "World", Latent, LatentInfo = "LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bLockEntireWorld, bConvertToVoxelSpace, bHideLatentWarnings"))
 	static void ImportModifierAssetAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
 		UVoxelTransformableWorldGenerator* Asset,
+		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
 		FIntBox Bounds,
 		bool bModifyValues = true,
@@ -149,16 +157,18 @@ public:
 	 * Unlike ImportAssetAsReference, this one copies the asset data into the world. Can be expensive for large assets. Use this if your asset is relatively small
 	 * @param	World					The voxel world to edit
 	 * @param	Asset					The asset to import
+	 * @param	Seeds					By default, the asset uses the Voxel World seeds. You can override them here.
 	 * @param	Transform				The transform of the asset: in world space, unless ConvertToVoxelSpace is false
-	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a voxel data asset, they will be set automatically if not provided
+	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a VoxelTransformableWorldGeneratorWithBounds, they will be set automatically if not provided
 	 * @param	bSubtractive			If false, the inner values are the full ones. If true, the inner values are the empty ones.
 	 * @param	MergeMode				How the values and materials of the asset should be merged with existing ones
 	 * @param	bConvertToVoxelSpace	If true, the transform is in world space. If false, it's in voxel space
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "bSetAllMaterials, bConvertToVoxelSpace"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (AutoCreateRefTerm = "Seeds", DefaultToSelf = "World", AdvancedDisplay = "bSetAllMaterials, bConvertToVoxelSpace"))
 	static void ImportAsset(
 		AVoxelWorld* World,
 		UVoxelTransformableWorldGenerator* Asset,
+		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
 		FIntBox Bounds,
 		bool bSubtractive = false,
@@ -171,18 +181,20 @@ public:
 	 * Unlike ImportAssetAsReference, this one copies the asset data into the world. Can be expensive for large assets. Use this if your asset is relatively small
 	 * @param	World					The voxel world to edit
 	 * @param	Asset					The asset to import
+	 * @param	Seeds					By default, the asset uses the Voxel World seeds. You can override them here.
 	 * @param	Transform				The transform of the asset: in world space, unless ConvertToVoxelSpace is false
-	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a voxel data asset, they will be set automatically if not provided
+	 * @param	Bounds					The bounds of the asset in voxel space. If the asset is a VoxelTransformableWorldGeneratorWithBounds, they will be set automatically if not provided
 	 * @param	bSubtractive			If false, the inner values are the full ones. If true, the inner values are the empty ones.
 	 * @param	MergeMode				How the values and materials of the asset should be merged with existing ones
 	 * @param	bConvertToVoxelSpace	If true, the transform is in world space. If false, it's in voxel space
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo = "LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bSetAllMaterials, bConvertToVoxelSpace, bHideLatentWarnings"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (AutoCreateRefTerm = "Seeds", DefaultToSelf = "World", Latent, LatentInfo = "LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bSetAllMaterials, bConvertToVoxelSpace, bHideLatentWarnings"))
 	static void ImportAssetAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
 		UVoxelTransformableWorldGenerator* Asset,
+		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
 		FIntBox Bounds,
 		bool bSubtractive = false,

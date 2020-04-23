@@ -14,6 +14,7 @@
 #include "VoxelWorld.h"
 #include "VoxelDefaultPool.h"
 #include "VoxelMessages.h"
+#include "VoxelThreadingUtilities.h"
 
 #include "Components/BoxComponent.h"
 
@@ -117,8 +118,8 @@ void AVoxelAssetActor::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 		const auto Name = PropertyChangedEvent.MemberProperty->GetFName();
 		if (Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, WorldGenerator) ||
 			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableWorldGeneratorPicker, Type) ||
-			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableWorldGeneratorPicker, WorldGeneratorClass) ||
-			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableWorldGeneratorPicker, WorldGeneratorObject) ||
+			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableWorldGeneratorPicker, Class) ||
+			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableWorldGeneratorPicker, Object) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, bOverrideAssetBounds) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, AssetBounds) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, PreviewLOD) ||
@@ -174,6 +175,9 @@ void AVoxelAssetActor::CreatePreview()
 	if (!ensure(WorldGenerator.IsValid())) return;
 	if (!ensure(!IsPreviewCreated())) return;
 
+	// Do that now as sometimes this is called before AVoxelWorld::BeginPlay
+	PreviewWorld->UpdateDynamicRendererSettings();
+
 	if (!StaticPool.IsValid())
 	{
 		StaticPool = FVoxelDefaultPool::Create(8, true, {}, {});
@@ -220,8 +224,12 @@ void AVoxelAssetActor::CreatePreview()
 			EVoxelPlayType::Preview,
 			Renderer.ToSharedRef(),
 			StaticPool.ToSharedRef(),
-			Data.Get()),
-		FVoxelUtilities::ClampChunkDepth(PreviewLOD));
+			Data.Get()));
+
+	while (!LODManager->Initialize(FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD), 64) && ensure(PreviewLOD < 24))
+	{
+		PreviewLOD++;
+	}
 }
 
 void AVoxelAssetActor::DestroyPreview()
@@ -231,13 +239,13 @@ void AVoxelAssetActor::DestroyPreview()
 	Data.Reset();
 
 	DebugManager->Destroy();
-	DebugManager.Reset();
+	FVoxelUtilities::DeleteTickable(GetWorld(), DebugManager);
 
 	Renderer->Destroy();
-	Renderer.Reset();
+	FVoxelUtilities::DeleteTickable(GetWorld(), Renderer);
 
 	LODManager->Destroy();
-	LODManager.Reset();
+	FVoxelUtilities::DeleteTickable(GetWorld(), LODManager);
 
 	auto Components = GetComponents(); // need a copy as we are modifying it when destroying comps
 	for (auto& Component : Components)

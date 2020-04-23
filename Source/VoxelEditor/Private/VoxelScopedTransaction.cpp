@@ -19,13 +19,14 @@ TUniquePtr<FChange> FVoxelUndoRedoChange::Execute(UObject* Object)
 	// Check that the world wasn't recreated since
 	if (ensure(VoxelWorld) && VoxelWorld->GetDataSharedPtr() == DataWeakPtr.Pin())
 	{
+		TArray<FIntBox> UpdatedBounds;
 		if (bIsUndo)
 		{
-			UVoxelBlueprintLibrary::Undo(VoxelWorld);
+			ensure(UVoxelBlueprintLibrary::Undo(VoxelWorld, UpdatedBounds));
 		}
 		else
 		{
-			UVoxelBlueprintLibrary::Redo(VoxelWorld);
+			ensure(UVoxelBlueprintLibrary::Redo(VoxelWorld, UpdatedBounds));
 		}
 	}
 

@@ -77,34 +77,34 @@ FORCEINLINE TVoxelRange<T> FVoxelTransformableWorldGeneratorInstance::GetCustomO
 
 FORCEINLINE v_flt FVoxelWorldGeneratorInstance::GetValue(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 {
-	return (this->*GetValuePtr)(X, Y, Z, LOD, Items);
+	return (this->*BasePtrs.Value)(X, Y, Z, LOD, Items);
 }
 
 FORCEINLINE FVoxelMaterial FVoxelWorldGeneratorInstance::GetMaterial(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 {
-	return (this->*GetMaterialPtr)(X, Y, Z, LOD, Items);
+	return (this->*BasePtrs.Material)(X, Y, Z, LOD, Items);
 }
 
 FORCEINLINE TVoxelRange<v_flt> FVoxelWorldGeneratorInstance::GetValueRange(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 {
-	return (this->*GetValueRangePtr)(Bounds, LOD, Items);
+	return (this->*BasePtrs.ValueRange)(Bounds, LOD, Items);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 FORCEINLINE v_flt FVoxelTransformableWorldGeneratorInstance::GetValue_Transform(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 {
-	return (this->*GetValuePtr_Transform)(LocalToWorld, X, Y, Z, LOD, Items);
+	return (this->*BasePtrs_Transform.Value)(LocalToWorld, X, Y, Z, LOD, Items);
 }
 
 FORCEINLINE FVoxelMaterial FVoxelTransformableWorldGeneratorInstance::GetMaterial_Transform(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 {
-	return (this->*GetMaterialPtr_Transform)(LocalToWorld, X, Y, Z, LOD, Items);
+	return (this->*BasePtrs_Transform.Material)(LocalToWorld, X, Y, Z, LOD, Items);
 }
 
 FORCEINLINE TVoxelRange<v_flt> FVoxelTransformableWorldGeneratorInstance::GetValueRange_Transform(const FTransform& LocalToWorld, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 {
-	return (this->*GetValueRangePtr_Transform)(LocalToWorld, WorldBounds, LOD, Items);
+	return (this->*BasePtrs_Transform.ValueRange)(LocalToWorld, WorldBounds, LOD, Items);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -205,19 +205,25 @@ FORCEINLINE void FVoxelTransformableWorldGeneratorInstance::Get_Transform<FVoxel
 template<>
 FORCEINLINE const TMap<FName, FVoxelWorldGeneratorInstance::TOutputFunctionPtr<v_flt>>& FVoxelWorldGeneratorInstance::GetOutputsPtrMap<v_flt>() const
 {
-	return FloatOutputsPtr;
+	return CustomPtrs.Float;
 }
 
 template<>
 FORCEINLINE const TMap<FName, FVoxelWorldGeneratorInstance::TOutputFunctionPtr<int32>>& FVoxelWorldGeneratorInstance::GetOutputsPtrMap<int32>() const
 {
-	return Int32OutputsPtr;
+	return CustomPtrs.Int;
+}
+
+template<>
+FORCEINLINE const TMap<FName, FVoxelWorldGeneratorInstance::TOutputFunctionPtr<FColor>>& FVoxelWorldGeneratorInstance::GetOutputsPtrMap<FColor>() const
+{
+	return CustomPtrs.Color;
 }
 
 template<>
 FORCEINLINE const TMap<FName, FVoxelWorldGeneratorInstance::TRangeOutputFunctionPtr<v_flt>>& FVoxelWorldGeneratorInstance::GetOutputsRangesPtrMap<v_flt>() const
 {
-	return FloatOutputsRangesPtr;
+	return CustomPtrs.FloatRange;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -225,19 +231,25 @@ FORCEINLINE const TMap<FName, FVoxelWorldGeneratorInstance::TRangeOutputFunction
 template<>
 FORCEINLINE const TMap<FName, FVoxelTransformableWorldGeneratorInstance::TOutputFunctionPtr_Transform<v_flt>>& FVoxelTransformableWorldGeneratorInstance::GetOutputsPtrMap_Transform<v_flt>() const
 {
-	return FloatOutputsPtr_Transform;
+	return CustomPtrs_Transform.Float;
 }
 
 template<>
 FORCEINLINE const TMap<FName, FVoxelTransformableWorldGeneratorInstance::TOutputFunctionPtr_Transform<int32>>& FVoxelTransformableWorldGeneratorInstance::GetOutputsPtrMap_Transform<int32>() const
 {
-	return Int32OutputsPtr_Transform;
+	return CustomPtrs_Transform.Int;
+}
+
+template<>
+FORCEINLINE const TMap<FName, FVoxelTransformableWorldGeneratorInstance::TOutputFunctionPtr_Transform<FColor>>& FVoxelTransformableWorldGeneratorInstance::GetOutputsPtrMap_Transform<FColor>() const
+{
+	return CustomPtrs_Transform.Color;
 }
 
 template<>
 FORCEINLINE const TMap<FName, FVoxelTransformableWorldGeneratorInstance::TRangeOutputFunctionPtr_Transform<v_flt>>& FVoxelTransformableWorldGeneratorInstance::GetOutputsRangesPtrMap_Transform<v_flt>() const
 {
-	return FloatOutputsRangesPtr_Transform;
+	return CustomPtrs_Transform.FloatRange;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

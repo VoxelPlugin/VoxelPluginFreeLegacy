@@ -36,6 +36,12 @@ public:
 	{
 		return ErrorCounter.GetValue() == 0;
 	}
+
+private:
+	~FVoxelAsyncPhysicsCooker() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 	
 protected:
 	//~ Begin FVoxelAsyncWork Interface
@@ -60,6 +66,8 @@ public:
 		TArray<FKConvexElem> ConvexElems;
 		TArray<physx::PxConvexMesh*> ConvexMeshes;
 		TArray<physx::PxTriangleMesh*> TriangleMeshes;
+
+		uint64 TriangleMeshesMemoryUsage = 0;
 	};
 	FCookResult CookResult;
 };

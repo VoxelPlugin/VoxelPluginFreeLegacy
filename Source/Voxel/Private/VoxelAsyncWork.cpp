@@ -8,11 +8,18 @@
 FVoxelAsyncWork::~FVoxelAsyncWork()
 {
 	VOXEL_FUNCTION_COUNTER();
-	
-	// Can't delete while we're in a critical section, eg if delete is called async by PostDoWork
-	DoneSection.Lock();
-	DoneSection.Unlock();
-	checkf(IsDone(), TEXT("Name: %s"), *Name.ToString()); // Else it means we're still somewhere in a thread pool
+
+	// DO NOT call WaitForDoThreadedWorkToExit here, as the child class destructor has already be run
+	// It's too late to wait
+
+	if (!IsDone())
+	{
+		LOG_VOXEL(Fatal, TEXT("VoxelAsyncWork %s is being deleted while still in the thread pool!"), *Name.ToString());
+	}
+	if (DoneSection.IsLocked.GetValue() != 0)
+	{
+		LOG_VOXEL(Fatal, TEXT("VoxelAsyncWork %s is being deleted while still in DoThreadedWork!"), *Name.ToString());
+	}
 }
 
 void FVoxelAsyncWork::DoThreadedWork()
@@ -95,6 +102,14 @@ bool FVoxelAsyncWork::CancelAndAutodelete()
 	}
 }
 
+void FVoxelAsyncWork::WaitForDoThreadedWorkToExit()
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	DoneSection.Lock();
+	DoneSection.Unlock();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -124,5 +139,7 @@ void FVoxelAsyncWorkWithWait::PostDoWork()
 void FVoxelAsyncWorkWithWait::WaitForCompletion()
 {
 	DoneEvent->Wait();
+	// Else the thread that called WaitForCompletion might delete us before DoThreadedWork finishes
+	WaitForDoThreadedWorkToExit();
 	check(IsDone());
 }

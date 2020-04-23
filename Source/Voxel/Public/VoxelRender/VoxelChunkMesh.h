@@ -5,12 +5,12 @@
 #include "CoreMinimal.h"
 #include "VoxelGlobals.h"
 #include "VoxelRender/VoxelProcMeshTangent.h"
-#include "VoxelRender/VoxelBlendedMaterial.h"
+#include "VoxelRender/VoxelMaterialIndices.h"
 
 class FDistanceFieldVolumeData;
 class FVoxelData;
 
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Chunk Mesh Memory"), STAT_VoxelChunkMeshMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Chunk Mesh Memory"), STAT_VoxelChunkMeshMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
 struct VOXEL_API FVoxelChunkMeshBuffers
 {
@@ -19,70 +19,19 @@ struct VOXEL_API FVoxelChunkMeshBuffers
 	TArray<FVector> Normals;
 	TArray<FVoxelProcMeshTangent> Tangents;
 	TArray<FColor> Colors;
-	TArray<FVector2D> TextureCoordinates[NUM_VOXEL_TEXTURE_COORDINATES];
+	TArray<TArray<FVector2D>> TextureCoordinates;
 	FBox Bounds;
 	FGuid Guid; // Use to avoid rebuilding collisions when the mesh didn't change
 
+	FVoxelChunkMeshBuffers() = default;
 	~FVoxelChunkMeshBuffers()
 	{
-		DEC_DWORD_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
-	}
-
-	template<typename TAllocator>
-	inline void SetIndices(TArray<uint32, TAllocator>&& InIndices)
-	{
-		Indices = MoveTemp(InIndices);
-	}
-
-	void Reserve(int32 Num, bool bRenderWorld)
-	{
-		Positions.Reserve(Num);
-		if (bRenderWorld)
-		{
-			Normals.Reserve(Num);
-			Tangents.Reserve(Num);
-			Colors.Reserve(Num);
-			for (uint32 Tex = 0; Tex < NUM_VOXEL_TEXTURE_COORDINATES; Tex++)
-			{
-				TextureCoordinates[Tex].Reserve(Num);
-			}
-		}
-	}
-
-	template<typename TVertex>
-	FORCEINLINE uint32 AddVertex(const TVertex& Vertex, bool bRenderWorld)
-	{
-		const int32 Index = Positions.Emplace(Vertex.Position);
-		if (bRenderWorld)
-		{
-			Normals.Emplace(Vertex.Normal);
-			Tangents.Emplace(Vertex.Tangent);
-			Colors.Emplace(Vertex.Color);
-			for (uint32 Tex = 0; Tex < NUM_VOXEL_TEXTURE_COORDINATES; Tex++)
-			{
-				TextureCoordinates[Tex].Emplace(Vertex.TextureCoordinates[Tex]);
-			}
-		}
-		return Index;
-	}
-	FORCEINLINE void AddIndex(uint32 Index)
-	{
-		Indices.Emplace(Index);
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
 	}
 
 	inline int32 GetNumVertices() const
 	{
 		return Positions.Num();
-	}
-
-	inline int32 GetAllocatedSize() const
-	{
-		return Indices.GetAllocatedSize()
-			+ Positions.GetAllocatedSize()
-			+ Normals.GetAllocatedSize()
-			+ Tangents.GetAllocatedSize()
-			+ Colors.GetAllocatedSize()
-			+ [&]() { uint32 Count = 0; for (auto& T : TextureCoordinates) Count += T.GetAllocatedSize(); return Count; }();
 	}
 
 	void BuildAdjacency(TArray<uint32>& OutAdjacencyIndices) const;
@@ -93,12 +42,7 @@ struct VOXEL_API FVoxelChunkMeshBuffers
 private:
 	int32 LastAllocatedSize = 0;
 
-	void UpdateStat()
-	{
-		DEC_DWORD_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
-		LastAllocatedSize = GetAllocatedSize();
-		INC_DWORD_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
-	}
+	void UpdateStats();
 };
 
 struct FVoxelChunkMesh
@@ -113,11 +57,6 @@ public:
 		return bSingleBuffers ? SingleBuffers->Indices.Num() == 0 : Map.Num() == 0;
 	}
 
-	inline FBox GetBounds() const
-	{
-		return Bounds;
-	}
-	
 	inline TVoxelSharedPtr<const FVoxelChunkMeshBuffers> GetSingleBuffers() const
 	{
 		ensure(IsSingle());
@@ -128,10 +67,10 @@ public:
 	{
 		return DistanceFieldVolumeData;
 	}
-	inline TVoxelSharedPtr<const FVoxelChunkMeshBuffers> FindBuffer(FVoxelBlendedMaterialUnsorted Material) const
+	inline TVoxelSharedPtr<const FVoxelChunkMeshBuffers> FindBuffer(const FVoxelMaterialIndices& MaterialIndices) const
 	{
 		ensure(!IsSingle());
-		return Map.FindRef(Material);
+		return Map.FindRef(MaterialIndices);
 	}
 
 public:
@@ -146,21 +85,20 @@ public:
 		SingleBuffers = MakeVoxelShared<FVoxelChunkMeshBuffers>();
 		return *SingleBuffers;
 	}
-	inline FVoxelChunkMeshBuffers& FindOrAddBuffer(FVoxelBlendedMaterialUnsorted Material)
+	inline FVoxelChunkMeshBuffers& FindOrAddBuffer(FVoxelMaterialIndices MaterialIndices, bool& bOutAdded)
 	{
 		ensure(!IsSingle());
-		auto* BufferPtr = Map.Find(Material);
+		auto* BufferPtr = Map.Find(MaterialIndices);
+		bOutAdded = BufferPtr == nullptr;
 		if (!BufferPtr)
 		{
-			BufferPtr = &Map.Add(Material, MakeVoxelShared<FVoxelChunkMeshBuffers>());
+			BufferPtr = &Map.Add(MaterialIndices, MakeVoxelShared<FVoxelChunkMeshBuffers>());
 		}
 		return **BufferPtr;
 	}
 	
 public:
 	void BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data);
-	void ComputeBounds();
-	void ComputeGuid();
 	
 	template<typename T>
 	inline void IterateBuffers(T Lambda)
@@ -197,16 +135,16 @@ public:
 	inline void IterateMaterials(T Lambda) const
 	{
 		ensure(!IsSingle());
-		for(auto& It : Map)
+		for (auto& It : Map)
 		{
 			Lambda(It.Key);
 		}
 	}
 
 private:
-	FBox Bounds;
 	bool bSingleBuffers = false;
-	TMap<FVoxelBlendedMaterialUnsorted, TVoxelSharedPtr<FVoxelChunkMeshBuffers>> Map;
 	TVoxelSharedPtr<FVoxelChunkMeshBuffers> SingleBuffers;
+	TMap<FVoxelMaterialIndices, TVoxelSharedPtr<FVoxelChunkMeshBuffers>> Map;
+	
 	TVoxelSharedPtr<FDistanceFieldVolumeData> DistanceFieldVolumeData;
 };

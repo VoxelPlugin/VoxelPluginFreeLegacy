@@ -120,16 +120,215 @@ namespace FVoxelDataUtilities
 	{
 		FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](const FVoxelDataOctreeLeaf& Leaf)
 		{
-			if (Leaf.GetData<T>().IsDirty())
+			auto& DataHolder = Leaf.GetData<T>();
+			if (DataHolder.IsDirty())
 			{
 				const FIntBox LeafBounds = Leaf.GetBounds();
-				auto* RESTRICT DataPtr = Leaf.GetData<T>().GetDataPtr();
-				LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+				if (DataHolder.IsSingleValue())
 				{
-					const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
-					const T& Value = DataPtr[Index];
-					Lambda(X, Y, Z, Value);
-				});
+					const T Value = DataHolder.GetSingleValue();
+					LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+					{
+						Lambda(X, Y, Z, Value);
+					});
+				}
+				else
+				{
+					auto* RESTRICT DataPtr = DataHolder.GetDataPtr();
+					check(DataPtr);
+					LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+					{
+						const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
+						const T& Value = DataPtr[Index];
+						Lambda(X, Y, Z, Value);
+					});
+				}
+			}
+		});
+	}
+
+	template<typename T>
+	inline void ClearData(FVoxelData& Data)
+	{
+		FVoxelOctreeUtilities::IterateAllLeaves(Data.GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
+		{
+			ensureThreadSafe(Leaf.IsLockedForWrite());
+			Leaf.GetData<T>().ClearData(Data);
+		});
+	}
+	template<typename T>
+	inline bool HasData(FVoxelData& Data)
+	{
+		return !FVoxelOctreeUtilities::IterateLeavesInBoundsEarlyExit(Data.GetOctree(), FIntBox::Infinite, [](FVoxelDataOctreeLeaf& Leaf)
+		{
+			ensureThreadSafe(Leaf.IsLockedForRead());
+			return !Leaf.GetData<T>().GetDataPtr() && !Leaf.GetData<T>().IsSingleValue();
+		});
+	}
+	template<typename T>
+	inline bool CheckIfSameAsGenerator(const FVoxelData& Data, FVoxelDataOctreeLeaf& Leaf)
+	{
+		VOXEL_SLOW_FUNCTION_COUNTER();
+		
+		auto& DataHolder = Leaf.GetData<T>();
+
+		if (!ensure(DataHolder.IsDirty())) return false;
+		
+		const FIntVector Min = Leaf.GetMin();
+		if (DataHolder.IsSingleValue())
+		{
+			// Note: still check this case, as else we end up with the save file being big because of single values!
+			// 1024 x 1024 x 1024 world -> 32k possible single values! Ends up being a lot as you store 14 bytes per value
+			const T SingleValue = DataHolder.GetSingleValue();
+			for (int32 X = 0; X < DATA_CHUNK_SIZE; X++)
+			{
+				for (int32 Y = 0; Y < DATA_CHUNK_SIZE; Y++)
+				{
+					for (int32 Z = 0; Z < DATA_CHUNK_SIZE; Z++)
+					{
+						const T GeneratorValue = Leaf.GetFromGeneratorAndAssets<T>(*Data.WorldGenerator, Min.X + X, Min.Y + Y, Min.Z + Z, 0);
+						if (SingleValue != GeneratorValue)
+						{
+							return false;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			T* RESTRICT const DataPtr = DataHolder.GetDataPtr();
+			check(DataPtr);
+			for (int32 X = 0; X < DATA_CHUNK_SIZE; X++)
+			{
+				for (int32 Y = 0; Y < DATA_CHUNK_SIZE; Y++)
+				{
+					for (int32 Z = 0; Z < DATA_CHUNK_SIZE; Z++)
+					{
+						const T GeneratorValue = Leaf.GetFromGeneratorAndAssets<T>(*Data.WorldGenerator, Min.X + X, Min.Y + Y, Min.Z + Z, 0);
+						const T Value = DataPtr[FVoxelDataOctreeUtilities::IndexFromCoordinates(X, Y, Z)];
+						if (Value != GeneratorValue)
+						{
+							return false;
+						}
+					}
+				}
+			}
+		}
+
+		DataHolder.SetDirtyInternal(false, Data);
+		return true;
+	}
+
+	template<typename T>
+	inline void SetEntireDataAsDirtyAndCopyFrom(const FVoxelData& SourceData, FVoxelData& DestData)
+	{
+		FVoxelOctreeUtilities::IterateEntireTree(DestData.GetOctree(), [&](FVoxelDataOctreeBase& Tree)
+		{
+			if (Tree.IsLeaf())
+			{
+				FVoxelDataOctreeLeaf& Leaf = Tree.AsLeaf();
+				const FVoxelDataOctreeBase& SourceBottomNode = FVoxelOctreeUtilities::GetBottomNode(SourceData.GetOctree(), Leaf.Position.X, Leaf.Position.Y, Leaf.Position.Z);
+				const FVoxelDataOctreeLeaf* SourceLeaf = SourceBottomNode.IsLeaf() ? &SourceBottomNode.AsLeaf() : nullptr;
+			
+				TVoxelDataOctreeLeafData<T>& DataHolder = Leaf.GetData<T>();
+
+				const auto CopyFromGenerator = [&]()
+				{
+					DataHolder.CreateDataPtr(DestData);
+					TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataHolder.GetDataPtr());
+					SourceBottomNode.GetFromGeneratorAndAssets(*SourceData.WorldGenerator, QueryZone, 0); // Note: make sure to use the source world generator!
+					DataHolder.TryCompressToSingleValue(DestData); // To save memory
+				};
+				
+				if (SourceLeaf)
+				{
+					const TVoxelDataOctreeLeafData<T>& SourceDataHolder = SourceLeaf->GetData<T>();
+					if (SourceDataHolder.IsSingleValue())
+					{
+						DataHolder.SetSingleValue(SourceDataHolder.GetSingleValue());
+					}
+					else if (auto* SrcDataPtr = SourceDataHolder.GetDataPtr())
+					{
+						DataHolder.CreateDataPtr(DestData);
+						FMemory::Memcpy(DataHolder.GetDataPtr(), SrcDataPtr, VOXELS_PER_DATA_CHUNK * sizeof(T));
+					}
+					else
+					{
+						CopyFromGenerator();
+					}
+				}
+				else
+				{
+					CopyFromGenerator();
+				}
+				
+				DataHolder.SetDirty(DestData);
+			}
+			else
+			{
+				auto& Parent = Tree.AsParent();
+				if (!Parent.HasChildren())
+				{
+					Parent.CreateChildren();
+				}
+			}
+		});
+	}
+	template<typename T>
+	inline void CopyDirtyChunksFrom(const FVoxelData& SourceData, FVoxelData& DestData)
+	{
+		FVoxelOctreeUtilities::IterateAllLeaves(SourceData.GetOctree(), [&](FVoxelDataOctreeLeaf& SourceLeaf)
+		{
+			const TVoxelDataOctreeLeafData<T>& SourceDataHolder = SourceLeaf.GetData<T>();
+
+			if (!SourceDataHolder.IsDirty())
+			{
+				return;
+			}
+
+			FVoxelDataOctreeLeaf& DestLeaf = *FVoxelOctreeUtilities::GetLeaf<EVoxelOctreeLeafQuery::CreateIfNull>(DestData.GetOctree(), SourceLeaf.Position.X, SourceLeaf.Position.Y, SourceLeaf.Position.Z);
+			TVoxelDataOctreeLeafData<T>& DestDataHolder = DestLeaf.GetData<T>();
+
+			if (SourceDataHolder.IsSingleValue())
+			{
+				DestDataHolder.SetSingleValue(SourceDataHolder.GetSingleValue());
+			}
+			else if (auto* SrcDataPtr = SourceDataHolder.GetDataPtr())
+			{
+				DestDataHolder.CreateDataPtr(DestData);
+				FMemory::Memcpy(DestDataHolder.GetDataPtr(), SrcDataPtr, VOXELS_PER_DATA_CHUNK * sizeof(T));
+			}
+		});
+	}
+
+	// Note: will set the entire Data as dirty!
+	template<typename T>
+	inline void OverrideWorldGeneratorValue(FVoxelData& Data, T Value)
+	{
+		FVoxelOctreeUtilities::IterateEntireTree(Data.GetOctree(), [&](FVoxelDataOctreeBase& Tree)
+		{
+			if (Tree.IsLeaf())
+			{
+				ensureThreadSafe(Tree.IsLockedForWrite());
+			
+				FVoxelDataOctreeLeaf& Leaf = Tree.AsLeaf();
+				TVoxelDataOctreeLeafData<T>& DataHolder = Leaf.GetData<T>();
+
+				if (!DataHolder.IsDirty())
+				{
+					DataHolder.ClearData(Data);
+					DataHolder.SetSingleValue(Value);
+					DataHolder.SetDirty(Data);
+				}
+			}
+			else
+			{
+				auto& Parent = Tree.AsParent();
+				if (!Parent.HasChildren())
+				{
+					Parent.CreateChildren();
+				}
 			}
 		});
 	}

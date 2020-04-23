@@ -19,7 +19,7 @@ class FVoxelSharedMutex
 public:
 	void Lock(EVoxelLockType LockType)
 	{
-#if VOXEL_DEBUG
+#if DO_THREADSAFE_CHECKS
 		AddThreadId();
 #endif
 		if (LockType == EVoxelLockType::Read)
@@ -49,7 +49,7 @@ public:
 	}
 	void Unlock(EVoxelLockType LockType)
 	{
-#if VOXEL_DEBUG
+#if DO_THREADSAFE_CHECKS
 		RemoveThreadId();
 #endif
 		if (LockType == EVoxelLockType::Read)

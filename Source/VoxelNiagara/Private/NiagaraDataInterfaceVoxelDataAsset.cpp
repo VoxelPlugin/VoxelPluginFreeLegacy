@@ -4,8 +4,7 @@
 #include "NiagaraShader.h"
 #include "ShaderParameterUtils.h"
 #include "VoxelAssets/VoxelDataAsset.h"
-
-#define LOCTEXT_NAMESPACE "Voxel"
+#include "VoxelGlobals.h"
 
 bool FNDIVoxelDataAsset_InstanceData::Init(UNiagaraDataInterfaceVoxelDataAsset* Interface, FNiagaraSystemInstance* SystemInstance)
 {
@@ -94,7 +93,7 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetFunctions(TArray<FNiagaraFunctionSi
 		Sig.bRequiresContext = false;
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Asset")));
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("Position")));
-		Sig.SetDescription(LOCTEXT("GetVoxelAssetValueDesc", "Get a voxel data asset value"));
+		Sig.SetDescription(VOXEL_LOCTEXT("Get a voxel data asset value"));
 		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetFloatDef(), TEXT("Value")));
 
 		OutFunctions.Add(Sig);
@@ -106,8 +105,7 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetFunctions(TArray<FNiagaraFunctionSi
 		Sig.bRequiresContext = false;
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Asset")));
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("Position")));
-		Sig.SetDescription(LOCTEXT("GetVoxelAssetColorDesc", "Get a voxel data asset color"));
-		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec4Def(), TEXT("Color")));
+		Sig.SetDescription(VOXEL_LOCTEXT("Color"));
 
 		OutFunctions.Add(Sig);
 	}
@@ -118,8 +116,7 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetFunctions(TArray<FNiagaraFunctionSi
 		Sig.bRequiresContext = false;
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Asset")));
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetIntDef(), TEXT("Index")));
-		Sig.SetDescription(LOCTEXT("GetRandomPositionFromAssetName", "Get a voxel position from a voxel data asset"));
-		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("Position")));
+		Sig.SetDescription(VOXEL_LOCTEXT("Position"));
 
 		OutFunctions.Add(Sig);
 	}
@@ -129,7 +126,7 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetFunctions(TArray<FNiagaraFunctionSi
 		Sig.bMemberFunction = true;
 		Sig.bRequiresContext = false;
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Asset")));
-		Sig.SetDescription(LOCTEXT("GetRandomPositionFromAssetName", "Get a voxel position from a voxel data asset"));
+		Sig.SetDescription(VOXEL_LOCTEXT("Get a voxel position from a voxel data asset"));
 		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetIntDef(), TEXT("Num")));
 
 		OutFunctions.Add(Sig);
@@ -244,5 +241,3 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetNumVoxels(FVectorVMContext& Context
 		*OutNum.GetDestAndAdvance() = Num;
 	}
 }
-
-#undef LOCTEXT_NAMESPACE

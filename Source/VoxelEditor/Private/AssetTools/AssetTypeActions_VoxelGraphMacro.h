@@ -13,7 +13,7 @@ class FAssetTypeActions_VoxelGraphMacro : public FAssetTypeActions_VoxelBase
 public:
 	using FAssetTypeActions_VoxelBase::FAssetTypeActions_VoxelBase;
 
-	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelGraphMacro", "Voxel Graph Macro"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Graph Macro"); }
 	virtual FColor GetTypeColor() const override { return FColor(0, 175, 255); }
 	virtual UClass* GetSupportedClass() const override;
 	virtual void OpenAssetEditor( const TArray<UObject*>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor = TSharedPtr<IToolkitHost>() ) override;

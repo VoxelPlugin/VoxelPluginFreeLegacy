@@ -16,7 +16,7 @@ class UBoxComponent;
 class FVoxelData;
 class FVoxelDebugManager;
 class IVoxelRenderer;
-class IVoxelLODManager;
+class FVoxelFixedResolutionLODManager;
 class IVoxelPool;
 
 UENUM()
@@ -60,7 +60,7 @@ public:
 	FIntBox AssetBounds = FIntBox(-25, 25);
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Asset Actor Settings")
-	bool bImportAsReference = false;
+	bool bImportAsReference = true;
 
 	UPROPERTY(EditAnywhere, Category = "Asset Actor Settings", meta = (EditCondition = "!bImportAsReference"))
 	bool bSubtractiveAsset = false;
@@ -121,7 +121,7 @@ private:
 #if WITH_EDITOR
 	TVoxelSharedPtr<FVoxelData> Data;
 	TVoxelSharedPtr<IVoxelRenderer> Renderer;
-	TVoxelSharedPtr<IVoxelLODManager> LODManager;
+	TVoxelSharedPtr<FVoxelFixedResolutionLODManager> LODManager;
 	TVoxelSharedPtr<FVoxelDebugManager> DebugManager;
 
 	bool IsPreviewCreated() const;

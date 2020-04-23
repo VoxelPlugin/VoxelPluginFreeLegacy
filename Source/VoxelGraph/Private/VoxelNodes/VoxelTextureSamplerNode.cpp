@@ -26,7 +26,7 @@ EVoxelPinCategory UVoxelNode_TextureSampler::GetInputPinCategory(int32 PinIndex)
 
 FText UVoxelNode_TextureSampler::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "Texture", "Texture: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("Texture: {0}"), Super::GetTitle());
 }
 
 void UVoxelNode_TextureSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
@@ -81,7 +81,7 @@ EVoxelPinCategory UVoxelNode_VoxelTextureSampler::GetInputPinCategory(int32 PinI
 
 FText UVoxelNode_VoxelTextureSampler::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "Texture", "Voxel Texture: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("Voxel Texture: {0}"), Super::GetTitle());
 }
 
 #if WITH_EDITOR

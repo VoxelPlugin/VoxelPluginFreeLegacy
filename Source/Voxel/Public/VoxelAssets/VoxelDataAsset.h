@@ -8,25 +8,25 @@
 #include "VoxelWorldGeneratorInstance.h"
 #include "VoxelDataAsset.generated.h"
 
+class FVoxelDataAssetInstance;
 class UVoxelDataAsset;
 class UTexture2D;
 
 #define DATA_ASSET_THUMBNAIL_RES 128
 
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Data Assets Memory"), STAT_VoxelDataAssetMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Data Assets Memory"), STAT_VoxelDataAssetMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
-struct FVoxelDataAssetData
+struct VOXEL_API FVoxelDataAssetData
 {
 	TWeakObjectPtr<UVoxelDataAsset> const Owner;
 	
 	explicit FVoxelDataAssetData(UVoxelDataAsset* Owner)
 		: Owner(Owner)
 	{
-		INC_DWORD_STAT_BY(STAT_VoxelDataAssetMemory, GetAllocatedSize());
 	}
 	~FVoxelDataAssetData()
 	{
-		DEC_DWORD_STAT_BY(STAT_VoxelDataAssetMemory, GetAllocatedSize());
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataAssetMemory, AllocatedSize);
 	}
 
 public:
@@ -34,20 +34,9 @@ public:
 	{
 		return Size;
 	}
-	inline void SetSize(const FIntVector& NewSize, bool bCreateMaterials)
-	{
-		DEC_DWORD_STAT_BY(STAT_VoxelDataAssetMemory, GetAllocatedSize());
 
-		// Somewhat thread safe
-		Values.SetNumUninitialized(NewSize.X * NewSize.Y * NewSize.Z);
-		Materials.SetNumUninitialized(bCreateMaterials ? NewSize.X * NewSize.Y * NewSize.Z : 0);
-		Size = NewSize;
+	void SetSize(const FIntVector& NewSize, bool bCreateMaterials);
 
-		ensure(Size.GetMin() > 0);
-		ensure(Size.GetMax() > 1); // Else it'll be considered empty
-		
-		INC_DWORD_STAT_BY(STAT_VoxelDataAssetMemory, GetAllocatedSize());
-	}
 	FORCEINLINE bool HasMaterials() const
 	{
 		return Materials.Num() > 0;
@@ -55,10 +44,6 @@ public:
 	FORCEINLINE bool IsEmpty() const
 	{
 		return Values.Num() <= 1 && Materials.Num() <= 1;
-	}
-	FORCEINLINE int32 GetAllocatedSize() const
-	{
-		return Values.GetAllocatedSize() + Materials.GetAllocatedSize();
 	}
 	
 public:
@@ -70,14 +55,14 @@ public:
 	FORCEINLINE bool IsValidIndex(int32 X, int32 Y, int32 Z) const
 	{
 		return (0 <= X && X < Size.X) &&
-	     	   (0 <= Y && Y < Size.Y) &&
-			   (0 <= Z && Z < Size.Z);
+				(0 <= Y && Y < Size.Y) &&
+				(0 <= Z && Z < Size.Z);
 	}
 	FORCEINLINE bool IsValidIndex(float X, float Y, float Z) const
 	{
 		return (0 <= X && X <= Size.X - 1) &&
-	     	   (0 <= Y && Y <= Size.Y - 1) &&
-			   (0 <= Z && Z <= Size.Z - 1);
+				(0 <= Y && Y <= Size.Y - 1) &&
+				(0 <= Z && Z <= Size.Z - 1);
 	}
 
 	FORCEINLINE void SetValue(int32 X, int32 Y, int32 Z, const FVoxelValue& NewValue)
@@ -197,7 +182,7 @@ public:
 	}
 
 public:
-	VOXEL_API void Serialize(FArchive& Ar, uint32 ValueConfigFlag, uint32 MaterialConfigFlag, int32 VoxelCustomVersion);
+	void Serialize(FArchive& Ar, uint32 ValueConfigFlag, uint32 MaterialConfigFlag, int32 VoxelCustomVersion);
 
 public:
 	inline TArray<FVoxelValue>& GetRawValues()
@@ -222,6 +207,9 @@ private:
 	FIntVector Size = FIntVector(1, 1, 1);
 	TArray<FVoxelValue> Values = { FVoxelValue::Empty() };
 	TArray<FVoxelMaterial> Materials = { FVoxelMaterial::Default() };
+	mutable uint32 AllocatedSize = 0;
+
+	void UpdateStats() const;
 };
 
 UENUM()
@@ -237,7 +225,7 @@ enum class EVoxelDataAssetImportSource
  * A Data Asset stores the values of every voxel inside it
  */
 UCLASS(HideDropdown, BlueprintType)
-class VOXEL_API UVoxelDataAsset : public UVoxelTransformableWorldGenerator
+class VOXEL_API UVoxelDataAsset : public UVoxelTransformableWorldGeneratorWithBounds
 {
 	GENERATED_BODY()
 
@@ -267,18 +255,19 @@ public:
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data Asset")
-	inline FIntVector GetSize() const
+	FIntVector GetSize() const
 	{
 		return Size;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data Asset")
-	inline FIntBox GetBounds() const
+	virtual FIntBox GetBounds() const override
 	{
 		return FIntBox(PositionOffset, PositionOffset + Size);
 	}
 
 	//~ Begin UVoxelWorldGenerator Interface
+	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override final;
 	virtual void SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const override final;
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> LoadInstance(FArchive& Ar) const override final;
@@ -288,6 +277,8 @@ public:
 	TVoxelSharedRef<const FVoxelDataAssetData> GetData();
 	TVoxelSharedRef<FVoxelDataAssetData> MakeData();
 	void SetData(const TVoxelSharedRef<FVoxelDataAssetData>& InData);
+
+	TVoxelSharedRef<FVoxelDataAssetInstance> GetInstanceImpl();
 
 protected:
 	void Save();

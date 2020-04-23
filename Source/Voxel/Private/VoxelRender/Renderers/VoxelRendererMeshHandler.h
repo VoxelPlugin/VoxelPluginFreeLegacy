@@ -33,6 +33,8 @@ public:
 	explicit IVoxelRendererMeshHandler(IVoxelRenderer& Renderer);
 	virtual ~IVoxelRendererMeshHandler();
 	
+	void Init();
+	
 	FChunkId AddChunk(int32 LOD, const FIntVector& Position);
 	void UpdateChunk(
 		FChunkId ChunkId,
@@ -133,9 +135,13 @@ protected:
 
 private:
 	TArray<TWeakObjectPtr<UVoxelProceduralMeshComponent>> MeshPool;
+	// Mesh pool containing frozen meshes that can't be used until collisions aren't frozen anymore
+	TArray<TWeakObjectPtr<UVoxelProceduralMeshComponent>> FrozenMeshPool;
 	// Meshes are only moved once on creation (reusing from pool = creation too)
 	// We keep their voxel position here to recompute their position when rebasing
 	TMap<TWeakObjectPtr<UVoxelProceduralMeshComponent>, FIntVector> ActiveMeshes;
+	// Sanity check
+	bool bIsInit = false;
 	// Used to skip clearing mesh sections when the renderer is destroying
 	bool bIsDestroying = false;
 
@@ -144,4 +150,5 @@ private:
 #endif
 	
 	void SetMeshPosition(UVoxelProceduralMeshComponent& Mesh, const FIntVector& Position) const;
+	void OnFreezeVoxelCollisionChanged(bool bNewFreezeCollisions);
 };
