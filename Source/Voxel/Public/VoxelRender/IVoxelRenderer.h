@@ -8,13 +8,12 @@
 #include "VoxelConfigEnums.h"
 #include "VoxelGlobals.h"
 #include "VoxelRender/VoxelMeshConfig.h"
-#include "VoxelRender/VoxelBlendedMaterial.h"
 
+struct FVoxelMaterialIndices;
 class FInvokerPositionsArray;
 class IVoxelPool;
 class FVoxelData;
 class FVoxelDebugManager;
-class FVoxelProcGenManager;
 class FVoxelToolRenderingManager;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
@@ -30,25 +29,15 @@ DECLARE_MULTICAST_DELEGATE_ThreeParams(FVoxelOnMaterialInstanceCreated, int32 /*
 
 struct FVoxelRendererDynamicSettings
 {
-	// Need to lock this when writing to it (can only write on the game thread)
-	// Other threads will lock to read variables
-	FCriticalSection DynamicSettingsLock;
-	
 	TWeakObjectPtr<UMaterialInterface> VoxelMaterialWithoutTessellation;
 	TWeakObjectPtr<UMaterialInterface> VoxelMaterialWithTessellation;
 	TWeakObjectPtr<UVoxelMaterialCollectionBase> MaterialCollection;
-
-	bool bGenerateBlendings = false;
-	
-	// Ref: we don't want to copy it around
-	TVoxelSharedRef<const TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted>> MaterialCollectionMap = MakeVoxelShared<const TMap<FVoxelBlendedMaterialSorted, FVoxelBlendedMaterialUnsorted>>();
+	FThreadSafeCounter MaxMaterialIndices = 1;
 };
 
 struct FVoxelRendererSettingsBase
 {
 	const float VoxelSize;
-	const int32 OctreeDepth;
-	const FIntBox WorldBounds;
 	const TVoxelSharedRef<FIntVector> WorldOffset;
 
 	// Always valid
@@ -65,7 +54,7 @@ struct FVoxelRendererSettingsBase
 	const EVoxelNormalConfig NormalConfig;
 	const EVoxelMaterialConfig MaterialConfig;
 
-	const float TessellationBoundsExtension;
+	const float BoundsExtension;
 
 	const ECollisionTraceFlag CollisionTraceFlag;
 	const int32 NumConvexHullsPerAxis;
@@ -111,7 +100,7 @@ public:
 		return FVector(Position + *WorldOffset) * VoxelSize;
 	}
 
-	UMaterialInterface* GetVoxelMaterial(FVoxelBlendedMaterialUnsorted Index, bool bTessellation) const;
+	UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& MaterialIndices, bool bTessellation) const;
 	UMaterialInterface* GetVoxelMaterial(bool bTessellation) const;
 
 	inline void OnMaterialsChanged() const
@@ -154,27 +143,31 @@ public:
 	virtual ~IVoxelRenderer() = default;
 
 	//~ Begin IVoxelRenderer Interface
+	virtual void Destroy() = 0;
+
 	virtual int32 UpdateChunks(
 		const FIntBox& Bounds,
 		const TArray<uint64>& ChunksToUpdate, 
 		const FVoxelOnChunkUpdateFinished& FinishDelegate) = 0;
 	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) = 0;
+
 	virtual int32 GetTaskCount() const = 0;
+
 	virtual void RecomputeMeshPositions() = 0;
 	virtual void ApplyNewMaterials() = 0;
-	virtual void Destroy() = 0;
+	
 	virtual void CreateGeometry_AnyThread(int32 LOD, const FIntVector& ChunkPosition, TArray<uint32>& OutIndices, TArray<FVector>& OutVertices) const = 0;
 	//~ End IVoxelRenderer Interface
 
 	// Called by LOD manager
-	void SetInvokersPositions(const TArray<FIntVector>& NewInvokersPositions);
+	void SetInvokersPositionsForPriorities(const TArray<FIntVector>& NewInvokersPositionsForPriorities);
 	
 	// Used by render chunks to compute the priorities
-	inline const TVoxelSharedRef<FInvokerPositionsArray>& GetInvokersPositions() const
+	inline const TVoxelSharedRef<FInvokerPositionsArray>& GetInvokersPositionsForPriorities() const
 	{
-		return InvokersPositions;
+		return InvokersPositionsForPriorities;
 	}
 
 private:
-	TVoxelSharedRef<FInvokerPositionsArray> InvokersPositions;
+	TVoxelSharedRef<FInvokerPositionsArray> InvokersPositionsForPriorities;
 };

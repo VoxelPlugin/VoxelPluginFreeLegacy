@@ -11,7 +11,7 @@ class FAssetTypeActions_VoxelHeightmapAsset : public FAssetTypeActions_VoxelBase
 public:
 	using FAssetTypeActions_VoxelBase::FAssetTypeActions_VoxelBase;
 
-	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "FAssetTypeActions_VoxelHeightmapAsset", "Voxel Heightmap Asset"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Heightmap Asset"); }
 	virtual FColor GetTypeColor() const override { return FColor(200, 80, 80); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelHeightmapAsset::StaticClass(); }
 	virtual bool HasActions(const TArray<UObject*>& InObjects) const override { return true; }

@@ -69,7 +69,7 @@ enum class EVoxelBasicSpawnerRotation : uint8
 {
 	AlignToSurface,
 	AlignToWorldUp,
-	DoNotAlign
+	RandomAlign
 };
 
 UCLASS(Abstract)
@@ -81,6 +81,18 @@ public:
 	// Min/max angle between object up vector and world generator up vector in degrees
 	UPROPERTY(EditAnywhere, Category = "Placement", meta = (UIMin = 0, ClampMin = 0, UIMax = 180, ClampMax = 180))
 	FFloatInterval GroundSlopeAngle = { 0, 90 };
+
+	UPROPERTY(EditAnywhere, Category = "Placement", meta = (InlineEditConditionToggle))
+	bool bEnableHeightRestriction = false;
+	
+	// In voxels. Only spawn instances if the instance voxel Z position is in this interval.
+	// TODO: optimize to not generate chunks that do not match this restriction
+	UPROPERTY(EditAnywhere, Category = "Placement", meta = (EditCondition = "bEnableHeightRestriction"))
+	FFloatInterval HeightRestriction = { -100.f, 100.f };
+
+	// In voxels, the size of the fade on the edges of HeightRestriction
+	UPROPERTY(EditAnywhere, Category = "Placement", meta = (EditCondition = "bEnableHeightRestriction", UIMin = 0, ClampMin = 0))
+	float HeightRestrictionFalloff = 0.f;
 	
 	// Specifies instance scaling type
 	UPROPERTY(EditAnywhere, Category = "Placement - Scale")
@@ -98,12 +110,16 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Placement - Rotation", meta = (UIMin = 0, ClampMin = 0, UIMax = 180, ClampMax = 180))
 	float RandomPitchAngle = 6;
 
-	// Apply an offset to the instance position. Applied before the rotation offset
+	// Apply an offset to the instance position. Applied before the rotation. In cm
 	UPROPERTY(EditAnywhere, Category = "Placement - Offset")
-	FVector PositionOffset = FVector::ZeroVector;
+	FVector LocalPositionOffset = FVector::ZeroVector;
 	
-	// Apply an offset to the instance rotation. Applied after the position offset
+	// Apply an offset to the instance rotation. Applied after the local position offset, and before the rotation
 	UPROPERTY(EditAnywhere, Category = "Placement - Offset")
-	FRotator RotationOffset = FRotator::ZeroRotator;
+	FRotator LocalRotationOffset = FRotator::ZeroRotator;
+	
+	// Apply an offset to the instance position. Applied after the rotation. In cm
+	UPROPERTY(EditAnywhere, Category = "Placement - Offset")
+	FVector GlobalPositionOffset = FVector::ZeroVector;
 };
 

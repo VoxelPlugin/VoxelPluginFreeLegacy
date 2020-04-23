@@ -43,14 +43,12 @@
 #include "ToolMenuSection.h"
 #endif
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
 	check(VoxelNodeClass);
 	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
 
-	const FScopedTransaction Transaction(LOCTEXT("VoxelEditorNewNode", "New voxel node"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New voxel node"));
 
 	UVoxelNode* NewNode = WorldGenerator->ConstructNewNode(VoxelNodeClass, Location, bSelectNewNode);
 	NewNode->GraphNode->ReconstructNode();
@@ -69,7 +67,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewMacroNode::PerformAction(UEdGraph* Pare
 	check(Macro);
 	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
 
-	const FScopedTransaction Transaction(LOCTEXT("VoxelEditorNewNode", "New macro node"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New macro node"));
 
 	UVoxelGraphMacroNode* NewNode = WorldGenerator->ConstructNewNode<UVoxelGraphMacroNode>(Location, bSelectNewNode);
 	NewNode->Macro = Macro;
@@ -88,7 +86,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableDeclaration::PerformAction
 {
 	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
 
-	const FScopedTransaction Transaction(LOCTEXT("VoxelEditorNewNode", "New local variable declaration"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New local variable declaration"));
 
 	UVoxelLocalVariableDeclaration* Declaration = WorldGenerator->ConstructNewNode<UVoxelLocalVariableDeclaration>(Location, bSelectNewNode);
 	Declaration->SetCategory(PinCategory);
@@ -109,7 +107,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableUsage::PerformAction(UEdGr
 	check(Declaration);
 	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
 
-	const FScopedTransaction Transaction(LOCTEXT("VoxelEditorNewNode", "New local variable usage"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New local variable usage"));
 
 	UVoxelLocalVariableUsage* Usage = WorldGenerator->ConstructNewNode<UVoxelLocalVariableUsage>(Location, bSelectNewNode);
 	Usage->Declaration = Declaration;
@@ -130,7 +128,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewSetterNode::PerformAction(UEdGraph* Par
 {
 	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
 
-	const FScopedTransaction Transaction(LOCTEXT("VoxelEditorNewNode", "New setter node"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New setter node"));
 
 	UVoxelNode_SetNode* NewNode = WorldGenerator->ConstructNewNode<UVoxelNode_SetNode>(Location, bSelectNewNode);
 	NewNode->SetIndex(Index);
@@ -147,7 +145,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewSetterNode::PerformAction(UEdGraph* Par
 
 UEdGraphNode* FVoxelGraphSchemaAction_NewKnotNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
-	const FScopedTransaction Transaction(LOCTEXT("VoxelEditorNewKnotNode", "New reroute node"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New reroute node"));
 	ParentGraph->Modify();
 
 	FGraphNodeCreator<UVoxelGraphNode_Knot> KnotNodeCreator(*ParentGraph);
@@ -271,7 +269,7 @@ void UVoxelGraphSchema::GetGraphContextActions(FGraphContextMenuBuilder& Context
 
 	if (!ContextMenuBuilder.FromPin && FVoxelGraphEditorUtilities::CanPasteNodes(ContextMenuBuilder.CurrentGraph))
 	{
-		TSharedPtr<FVoxelGraphSchemaAction_Paste> NewAction(new FVoxelGraphSchemaAction_Paste(FText::GetEmpty(), LOCTEXT("PasteHereAction", "Paste here"), FText::GetEmpty(), 0));
+		TSharedPtr<FVoxelGraphSchemaAction_Paste> NewAction(new FVoxelGraphSchemaAction_Paste(FText::GetEmpty(), VOXEL_LOCTEXT("Paste here"), FText::GetEmpty(), 0));
 		ContextMenuBuilder.AddAction(NewAction);
 	}
 }
@@ -472,7 +470,7 @@ void UVoxelGraphSchema::GetContextMenuActions(const UEdGraph* CurrentGraph, cons
 {	
 	if (InGraphPin != NULL)
 	{
-		MenuBuilder->BeginSection("EdGraphSchemaPinActions", LOCTEXT("PinActionsMenuHeader", "Pin Actions"));
+		MenuBuilder->BeginSection("EdGraphSchemaPinActions", VOXEL_LOCTEXT("Pin Actions"));
 		{
 			if (!bIsDebugging)
 			{
@@ -497,7 +495,7 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 
 	if (InGraphPin)
 	{
-		FToolMenuSection& Section = Menu->AddSection("MaterialGraphSchemaPinActions", LOCTEXT("PinActionsMenuHeader", "Pin Actions"));
+		FToolMenuSection& Section = Menu->AddSection("MaterialGraphSchemaPinActions", VOXEL_LOCTEXT("Pin Actions"));
 		if (InGraphPin->LinkedTo.Num() > 0)
 		{
 			Section.AddMenuEntry(FGraphEditorCommands::Get().BreakPinLinks);
@@ -573,9 +571,9 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 
 		{
 			FToolMenuSection& Section = Menu->AddSection("VoxelGraphNodeAligment");
-			Section.AddSubMenu("Alignment", LOCTEXT("AlignmentHeader", "Alignment"), FText(), FNewMenuDelegate::CreateLambda([](FMenuBuilder& InMenuBuilder) {
+			Section.AddSubMenu("Alignment", VOXEL_LOCTEXT("Alignment"), FText(), FNewMenuDelegate::CreateLambda([](FMenuBuilder& InMenuBuilder) {
 
-				InMenuBuilder.BeginSection("EdGraphSchemaAlignment", LOCTEXT("AlignHeader", "Align"));
+				InMenuBuilder.BeginSection("EdGraphSchemaAlignment", VOXEL_LOCTEXT("Align"));
 				InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesTop);
 				InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesMiddle);
 				InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesBottom);
@@ -585,7 +583,7 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 				InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().StraightenConnections);
 				InMenuBuilder.EndSection();
 
-				InMenuBuilder.BeginSection("EdGraphSchemaDistribution", LOCTEXT("DistributionHeader", "Distribution"));
+				InMenuBuilder.BeginSection("EdGraphSchemaDistribution", VOXEL_LOCTEXT("Distribution"));
 				InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().DistributeNodesHorizontally);
 				InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().DistributeNodesVertically);
 				InMenuBuilder.EndSection();
@@ -724,7 +722,7 @@ void UVoxelGraphSchema::BreakNodeLinks(UEdGraphNode& TargetNode) const
 
 void UVoxelGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotifcation) const
 {
-	const FScopedTransaction Transaction(NSLOCTEXT("UnrealEd", "GraphEd_BreakPinLinks", "Break Pin Links"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Break Pin Links"));
 
 	auto OldLinkedTo = TargetPin.LinkedTo;
 	Super::BreakPinLinks(TargetPin, bSendsNodeNotifcation);
@@ -752,7 +750,7 @@ void UVoxelGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNot
 
 void UVoxelGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2D& GraphPosition) const
 {
-	const FScopedTransaction Transaction(LOCTEXT("CreateRerouteNodeOnWire", "Create Reroute Node"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Create Reroute Node"));
 
 	const FVector2D NodeSpacerSize(42.0f, 24.0f);
 	const FVector2D KnotTopLeft = GraphPosition - (NodeSpacerSize * 0.5f);
@@ -778,7 +776,7 @@ const FPinConnectionResponse UVoxelGraphSchema::CanCreateConnection(const UEdGra
 	// Make sure the pins are not on the same node
 	if (PinA->GetOwningNode() == PinB->GetOwningNode())
 	{
-		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, LOCTEXT("ConnectionSameNode", "Both are on the same node"));
+		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, VOXEL_LOCTEXT("Both are on the same node"));
 	}
 
 	// Compare the directions
@@ -787,7 +785,7 @@ const FPinConnectionResponse UVoxelGraphSchema::CanCreateConnection(const UEdGra
 
 	if (!CategorizePinsByDirection(PinA, PinB, /*out*/ InputPin, /*out*/ OutputPin))
 	{
-		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, LOCTEXT("ConnectionIncompatible", "Directions are not compatible"));
+		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, VOXEL_LOCTEXT("Directions are not compatible"));
 	}
 
 	check(InputPin);
@@ -799,21 +797,21 @@ const FPinConnectionResponse UVoxelGraphSchema::CanCreateConnection(const UEdGra
 	{
 		if (InputCategory == EVoxelPinCategory::Float && OutputCategory == EVoxelPinCategory::Int)
 		{
-			return FPinConnectionResponse(CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE, LOCTEXT("CastToFloat", "Cast to float"));
+			return FPinConnectionResponse(CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE, VOXEL_LOCTEXT("Cast to float"));
 		}
 		else if (InputCategory == EVoxelPinCategory::Int && OutputCategory == EVoxelPinCategory::Float)
 		{
-			return FPinConnectionResponse(CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE, LOCTEXT("RoundToInt", "Round to int"));
+			return FPinConnectionResponse(CONNECT_RESPONSE_MAKE_WITH_CONVERSION_NODE, VOXEL_LOCTEXT("Round to int"));
 		}
 		else
 		{
-			return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, LOCTEXT("TypesIncompatible", "Types are not compatible"));
+			return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, VOXEL_LOCTEXT("Types are not compatible"));
 		}
 	}
 
 	if (ConnectionCausesLoop(InputPin, OutputPin))
 	{
-		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, LOCTEXT("ConnectionLoop", "Connection would cause loop"));
+		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, VOXEL_LOCTEXT("Connection would cause loop"));
 	}
 
 	// Break existing connections on inputs only except for exec - multiple output connections are acceptable
@@ -828,7 +826,7 @@ const FPinConnectionResponse UVoxelGraphSchema::CanCreateConnection(const UEdGra
 		{
 			ReplyBreakOutputs = CONNECT_RESPONSE_BREAK_OTHERS_B;
 		}
-		return FPinConnectionResponse(ReplyBreakOutputs, LOCTEXT("ConnectionReplace", "Replace existing connections"));
+		return FPinConnectionResponse(ReplyBreakOutputs, VOXEL_LOCTEXT("Replace existing connections"));
 	}
 	
 	if (OutputCategory == EVoxelPinCategory::Exec && OutputPin->LinkedTo.Num() > 0)
@@ -842,7 +840,7 @@ const FPinConnectionResponse UVoxelGraphSchema::CanCreateConnection(const UEdGra
 		{
 			ReplyBreakOutputs = CONNECT_RESPONSE_BREAK_OTHERS_B;
 		}
-		return FPinConnectionResponse(ReplyBreakOutputs, LOCTEXT("ConnectionReplace", "Replace existing connections"));
+		return FPinConnectionResponse(ReplyBreakOutputs, VOXEL_LOCTEXT("Replace existing connections"));
 	}
 
 	return FPinConnectionResponse(CONNECT_RESPONSE_MAKE, TEXT(""));
@@ -908,9 +906,9 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 	{
 		TSharedPtr<FVoxelGraphSchemaAction_NewLocalVariableDeclaration> NewNodeAction(
 			new FVoxelGraphSchemaAction_NewLocalVariableDeclaration(
-				LOCTEXT("VoxelLocalVariablesNodeAction", "Local variables"),
-				LOCTEXT("CreateLocalVariable", "Create local variable"),
-				LOCTEXT("NewLocalVariableTooltip", "Create a new local variable here"),
+				VOXEL_LOCTEXT("Local variables"),
+				VOXEL_LOCTEXT("Create local variable"),
+				VOXEL_LOCTEXT("Create a new local variable here"),
 				LocalVariablesPriority));
 		NewNodeAction->PinCategory = EVoxelPinCategory::Float;
 		bool bAdd = false;
@@ -950,11 +948,11 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 				if (Declaration && (!FromPin || Declaration->GetCategory() == Category))
 				{
 					const FText Name = FText::FromName(Declaration->Name);
-					const FText AddToolTip = FText::Format(LOCTEXT("NewVoxelPortalNodeTooltip", "Use {0} here"), Name);
+					const FText AddToolTip = FText::Format(VOXEL_LOCTEXT("Use {0} here"), Name);
 
 					TSharedPtr<FVoxelGraphSchemaAction_NewLocalVariableUsage> NewNodeAction(
 						new FVoxelGraphSchemaAction_NewLocalVariableUsage(
-							LOCTEXT("VoxelLocalVariablesNodeAction", "Local variables"),
+							VOXEL_LOCTEXT("Local variables"),
 							Name,
 							AddToolTip,
 							LocalVariablesPriority));
@@ -978,11 +976,11 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 				if (!FromPin || Category == EVoxelPinCategory::Exec || Category == FVoxelPinCategory::DataPinToPin(Output.Category))
 				{
 					const FText Name = FText::FromString("Set " + Output.Name.ToString());
-					const FText AddToolTip = FText::Format(LOCTEXT("NewVoxelSetterNodeTooltip", "Adds {0} node here"), Name);
+					const FText AddToolTip = FText::Format(VOXEL_LOCTEXT("Adds {0} node here"), Name);
 
 					TSharedPtr<FVoxelGraphSchemaAction_NewSetterNode> NewNodeAction(
 						new FVoxelGraphSchemaAction_NewSetterNode(
-							LOCTEXT("VoxelSetterNodeAction", "Setter nodes"),
+							VOXEL_LOCTEXT("Setter nodes"),
 							Name,
 							AddToolTip,
 							SetterNodesPriority));
@@ -1045,8 +1043,8 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 
 	if (FromPin)
 	{
-		const FText MenuDescription = LOCTEXT("AddKnotNoteAction", "Add reroute node");
-		const FText ToolTip = LOCTEXT("CreateKnotNodeToolTip", "Create a reroute node.");
+		const FText MenuDescription = VOXEL_LOCTEXT("Add reroute node");
+		const FText ToolTip = VOXEL_LOCTEXT("Create a reroute node.");
 		TSharedPtr<FVoxelGraphSchemaAction_NewKnotNode> NewNodeAction(new FVoxelGraphSchemaAction_NewKnotNode(FText::GetEmpty(), MenuDescription, ToolTip, RerouteNodePriority));
 		ActionMenuBuilder.AddAction(NewNodeAction);
 	}
@@ -1057,8 +1055,8 @@ void UVoxelGraphSchema::GetCommentAction(FGraphActionMenuBuilder& ActionMenuBuil
 	if (!ActionMenuBuilder.FromPin)
 	{
 		const bool bIsManyNodesSelected = CurrentGraph ? (FVoxelGraphEditorUtilities::GetNumberOfSelectedNodes(CurrentGraph) > 0) : false;
-		const FText MenuDescription = bIsManyNodesSelected ? LOCTEXT("CreateCommentAction", "Create Comment from Selection") : LOCTEXT("AddCommentAction", "Add Comment");
-		const FText ToolTip = LOCTEXT("CreateCommentToolTip", "Creates a comment.");
+		const FText MenuDescription = bIsManyNodesSelected ? VOXEL_LOCTEXT("Create Comment from Selection") : VOXEL_LOCTEXT("Add Comment");
+		const FText ToolTip = VOXEL_LOCTEXT("Creates a comment.");
 
 		TSharedPtr<FVoxelGraphSchemaAction_NewComment> NewAction(new FVoxelGraphSchemaAction_NewComment(FText::GetEmpty(), MenuDescription, ToolTip, 0));
 		ActionMenuBuilder.AddAction(NewAction);
@@ -1087,5 +1085,3 @@ void UVoxelGraphSchema::InitVoxelNodeClasses()
 
 	bVoxelNodeClassesInitialized = true;
 }
-
-#undef LOCTEXT_NAMESPACE

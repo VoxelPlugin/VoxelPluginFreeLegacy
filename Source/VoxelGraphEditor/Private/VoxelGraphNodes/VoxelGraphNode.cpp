@@ -24,8 +24,6 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Launch/Resources/Version.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 void UVoxelGraphNode::SetVoxelNode(UVoxelNode* InNode)
 {
 	check(InNode);
@@ -75,7 +73,7 @@ void UVoxelGraphNode::CreateOutputPin()
 
 void UVoxelGraphNode::AddInputPin()
 {
-	const FScopedTransaction Transaction(NSLOCTEXT("UnrealEd", "VoxelEditorAddInput", "Add Input Pin"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Add Input Pin"));
 	Modify();
 	const int32 Increment = VoxelNode->GetInputPinsIncrement();
 	VoxelNode->InputPinCount += Increment;
@@ -96,7 +94,7 @@ void UVoxelGraphNode::AddInputPin()
 
 void UVoxelGraphNode::RemoveInputPin(UEdGraphPin* InGraphPin)
 {
-	const FScopedTransaction Transaction(NSLOCTEXT("UnrealEd", "VoxelEditorAddInput", "Delete Input Pin"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Delete Input Pin"));
 	Modify();
 
 	TArray<UEdGraphPin*> InputPins;
@@ -369,9 +367,9 @@ void UVoxelGraphNode::GetContextMenuActions(const FGraphNodeContextMenuBuilder& 
 		}
 		Context.MenuBuilder->EndSection();
 
-		Context.MenuBuilder->AddSubMenu(LOCTEXT("AlignmentHeader", "Alignment"), FText(), FNewMenuDelegate::CreateLambda([](FMenuBuilder& InMenuBuilder) {
+		Context.MenuBuilder->AddSubMenu(VOXEL_LOCTEXT("Alignment"), FText(), FNewMenuDelegate::CreateLambda([](FMenuBuilder& InMenuBuilder) {
 
-			InMenuBuilder.BeginSection("EdGraphSchemaAlignment", LOCTEXT("AlignHeader", "Align"));
+			InMenuBuilder.BeginSection("EdGraphSchemaAlignment", VOXEL_LOCTEXT("Align"));
 			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesTop);
 			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesMiddle);
 			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesBottom);
@@ -381,7 +379,7 @@ void UVoxelGraphNode::GetContextMenuActions(const FGraphNodeContextMenuBuilder& 
 			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().StraightenConnections);
 			InMenuBuilder.EndSection();
 
-			InMenuBuilder.BeginSection("EdGraphSchemaDistribution", LOCTEXT("DistributionHeader", "Distribution"));
+			InMenuBuilder.BeginSection("EdGraphSchemaDistribution", VOXEL_LOCTEXT("Distribution"));
 			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().DistributeNodesHorizontally);
 			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().DistributeNodesVertically);
 			InMenuBuilder.EndSection();
@@ -537,5 +535,3 @@ void UVoxelGraphNode::ResetVoxelNodeOwner()
 		VoxelNode->GraphNode = this;
 	}
 }
-
-#undef LOCTEXT_NAMESPACE

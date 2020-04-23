@@ -8,8 +8,6 @@
 #include "DetailLayoutBuilder.h"
 #include "Widgets/Text/STextBlock.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 #define GET_CHILD_PROPERTY(PropertyHandle, Class, Property) PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(Class, Property)).ToSharedRef()
 
 void FBoolVectorCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
@@ -24,8 +22,8 @@ void FBoolVectorCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> Prope
 	.NameContent()
 	[
 		SNew(STextBlock)
-		.Text(LOCTEXT("LockPositionLabel", "Lock Position"))
-		.ToolTipText(LOCTEXT("LockPositionTooltip", "Locks movement along the specified axis"))
+		.Text(VOXEL_LOCTEXT("Lock Position"))
+		.ToolTipText(VOXEL_LOCTEXT("Locks movement along the specified axis"))
 		.Font(IDetailLayoutBuilder::GetDetailFont())
 	]
 	.ValueContent()
@@ -90,4 +88,3 @@ void FBoolVectorCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Pro
 }
 
 #undef GET_CHILD_PROPERTY
-#undef LOCTEXT_NAMESPACE

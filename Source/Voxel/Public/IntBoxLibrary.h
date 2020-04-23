@@ -34,6 +34,12 @@ public:
 		Min = Box.Min;
 		Max = Box.Max;
 	}
+
+	UFUNCTION(BlueprintPure, Category = "Math|IntBox")
+	static FIntBox InfiniteBox()
+	{
+		return FIntBox::Infinite;
+	}
 	
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox")
 	static FIntBox TranslateBox(FIntBox Box, FIntVector Position)
@@ -86,7 +92,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox")
 	static FVector GetCenter(FIntBox Box)
 	{
-		return Box.GetCenter();
+		return Box.GetCenter().ToFloat();
 	}
 	
 	UFUNCTION(BlueprintPure, Category = "Math|IntBox")

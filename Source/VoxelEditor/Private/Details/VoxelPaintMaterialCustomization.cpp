@@ -11,8 +11,6 @@
 #include "IDetailGroup.h"
 #include "Widgets/Input/SComboBox.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 void FVoxelPaintMaterialCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
 }
@@ -21,19 +19,12 @@ void FVoxelPaintMaterialCustomization::CustomizeHeader(TSharedRef<IPropertyHandl
 
 void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
+	const auto& PaintMaterialEnum = *StaticEnum<EVoxelPaintMaterialType>();
+	const auto& MaterialConfigEnum = *StaticEnum<EVoxelMaterialConfig>();
+	
 	TypeHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, Type);
 	const auto RestrictTypeHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, bRestrictType);
 	const auto MaterialConfigToRestrictToHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, MaterialConfigToRestrictTo);
-
-	const FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([&CustomizationUtils]()
-	{
-		auto Utilities = CustomizationUtils.GetPropertyUtilities();
-		if (Utilities.IsValid())
-		{
-			Utilities->ForceRefresh();
-		}
-	});
-	TypeHandle->SetOnPropertyValueChanged(RefreshDelegate);
 
 	FString TypeString;
 	FString MaterialConfigToRestrictToString;
@@ -47,11 +38,11 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 		if (!ensure(RestrictTypeHandle->GetValue(bRestrictType) == FPropertyAccess::Success)) return;
 		if (!ensure(MaterialConfigToRestrictToHandle->GetValueAsFormattedString(MaterialConfigToRestrictToString) == FPropertyAccess::Success)) return;
 
-		const int64 TypeValue = GET_STATIC_UENUM(EVoxelPaintMaterialType).GetValueByNameString(TypeString);
+		const int64 TypeValue = PaintMaterialEnum.GetValueByNameString(TypeString);
 		if (!ensure(TypeValue != -1)) return;
 		Type = EVoxelPaintMaterialType(TypeValue);
 
-		const int64 MaterialConfigValue = GET_STATIC_UENUM(EVoxelMaterialConfig).GetValueByNameString(MaterialConfigToRestrictToString);
+		const int64 MaterialConfigValue = MaterialConfigEnum.GetValueByNameString(MaterialConfigToRestrictToString);
 		if (!ensure(MaterialConfigValue != -1)) return;
 		MaterialConfigToRestrictTo = EVoxelMaterialConfig(MaterialConfigValue);
 	}
@@ -64,6 +55,7 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 		if (MaterialConfigToRestrictTo == EVoxelMaterialConfig::RGB)
 		{
 			OptionsSource.Add(MakeShared<EVoxelPaintMaterialType>(EVoxelPaintMaterialType::RGB));
+			OptionsSource.Add(MakeShared<EVoxelPaintMaterialType>(EVoxelPaintMaterialType::FiveWayBlend));
 		}
 		else if (MaterialConfigToRestrictTo == EVoxelMaterialConfig::SingleIndex)
 		{
@@ -76,10 +68,25 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 			OptionsSource.Add(MakeShared<EVoxelPaintMaterialType>(EVoxelPaintMaterialType::DoubleIndexBlend));
 		}
 
-		const auto TypePtrPtr = OptionsSource.FindByPredicate([&](auto& Ptr) { return *Ptr == Type; });
+		const auto SearchTypePredicate = [&](auto& Ptr) { return *Ptr == Type; };
+		
+		if (!OptionsSource.ContainsByPredicate(SearchTypePredicate))
+		{
+			switch (MaterialConfigToRestrictTo)
+			{
+			case EVoxelMaterialConfig::RGB: Type = EVoxelPaintMaterialType::RGB; break;
+			case EVoxelMaterialConfig::SingleIndex: Type = EVoxelPaintMaterialType::SingleIndex; break;
+			case EVoxelMaterialConfig::DoubleIndex: Type = EVoxelPaintMaterialType::DoubleIndexBlend; break;
+			default: ensure(false);
+			}
+			
+			TypeHandle->SetValueFromFormattedString(PaintMaterialEnum.GetNameStringByValue(int64(Type)));
+		}
+		
+		auto* TypeOptionSourcePtr = OptionsSource.FindByPredicate(SearchTypePredicate);
+		check(TypeOptionSourcePtr);
 
-		const auto TypeText = GET_STATIC_UENUM(EVoxelPaintMaterialType).GetDisplayNameTextByValue(int64(Type));
-		ComboBoxText = FVoxelEditorUtilities::CreateText(TypeText, FSlateColor(TypePtrPtr ? FColor::Black : FColor::Red));
+		ComboBoxText = FVoxelEditorUtilities::CreateText(PaintMaterialEnum.GetDisplayNameTextByValue(int64(Type)));
 		
 		TypeWidget = SNew(SComboBox<TSharedPtr<EVoxelPaintMaterialType>>)
 		.IsEnabled_Lambda([TypeHandle = TWeakPtr<IPropertyHandle>(TypeHandle)](){ return TypeHandle.IsValid() && !TypeHandle.Pin()->IsEditConst(); })
@@ -87,9 +94,9 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 		.OnSelectionChanged(this, &FVoxelPaintMaterialCustomization::HandleComboBoxSelectionChanged)
 		.OnGenerateWidget_Lambda([&](TSharedPtr<EVoxelPaintMaterialType> InValue)
 		{
-			return FVoxelEditorUtilities::CreateText(GET_STATIC_UENUM(EVoxelPaintMaterialType).GetDisplayNameTextByValue(int64(*InValue)));
+			return FVoxelEditorUtilities::CreateText(PaintMaterialEnum.GetDisplayNameTextByValue(int64(*InValue)));
 		})
-		.InitiallySelectedItem(TypePtrPtr ? *TypePtrPtr : TSharedPtr<EVoxelPaintMaterialType>())
+		.InitiallySelectedItem(*TypeOptionSourcePtr)
 		[
 			ComboBoxText.ToSharedRef()
 		];
@@ -99,12 +106,23 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 		TypeWidget = TypeHandle->CreatePropertyValueWidget();
 	}
 
+	// Make sure to do that after possibly editing the type
+	const FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([&CustomizationUtils]()
+	{
+		auto Utilities = CustomizationUtils.GetPropertyUtilities();
+		if (Utilities.IsValid())
+		{
+			Utilities->ForceRefresh();
+		}
+	});
+	TypeHandle->SetOnPropertyValueChanged(RefreshDelegate);
+
 	const bool bShowOnlyInnerProperties = PropertyHandle->HasMetaData(STATIC_FNAME("ShowOnlyInnerProperties"));
 
 	IDetailGroup* Group = nullptr;
 	if (bShowOnlyInnerProperties)
 	{
-		ChildBuilder.AddCustomRow(LOCTEXT("Type", "Type"))
+		ChildBuilder.AddCustomRow(VOXEL_LOCTEXT("Type"))
 		.NameContent()
 		[
 			TypeHandle->CreatePropertyNameWidget()
@@ -149,6 +167,16 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 		AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, bPaintB));
 		AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, bPaintA));
 	}
+	else if (Type == EVoxelPaintMaterialType::FiveWayBlend)
+	{
+		const auto FiveWayBlendHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, FiveWayBlend);
+		AddProperty(GET_CHILD_PROPERTY(FiveWayBlendHandle, FVoxelPaintMaterialFiveWayBlend, Channel));
+		AddProperty(GET_CHILD_PROPERTY(FiveWayBlendHandle, FVoxelPaintMaterialFiveWayBlend, TargetValue));
+		AddProperty(GET_CHILD_PROPERTY(FiveWayBlendHandle, FVoxelPaintMaterialFiveWayBlend, bPaintR));
+		AddProperty(GET_CHILD_PROPERTY(FiveWayBlendHandle, FVoxelPaintMaterialFiveWayBlend, bPaintG));
+		AddProperty(GET_CHILD_PROPERTY(FiveWayBlendHandle, FVoxelPaintMaterialFiveWayBlend, bPaintB));
+		AddProperty(GET_CHILD_PROPERTY(FiveWayBlendHandle, FVoxelPaintMaterialFiveWayBlend, bPaintA));
+	}
 	else if (Type == EVoxelPaintMaterialType::SingleIndex)
 	{
 		AddProperty(GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, Index));
@@ -187,11 +215,9 @@ void FVoxelPaintMaterialCustomization::HandleComboBoxSelectionChanged(TSharedPtr
 {
 	if (ensure(NewSelection.IsValid()) && ensure(TypeHandle.IsValid()) && ensure(ComboBoxText.IsValid()))
 	{
-		const auto& Enum = GET_STATIC_UENUM(EVoxelPaintMaterialType);
+		const auto& Enum = *StaticEnum<EVoxelPaintMaterialType>();
 		const int64 Value = int64(*NewSelection);
 		TypeHandle->SetValueFromFormattedString(Enum.GetNameStringByValue(Value));
 		ComboBoxText->SetText(Enum.GetDisplayNameTextByValue(Value));
 	}
 }
-
-#undef LOCTEXT_NAMESPACE

@@ -640,6 +640,41 @@ class VOXELGRAPH_API UVoxelNode_MakeColorFloat : public UVoxelPureNode
 	UVoxelNode_MakeColorFloat();
 };
 
+// Convert a color in RGB space to HSV
+UCLASS(DisplayName = "RGB to HSV", Category = "Math|Color")
+class VOXELGRAPH_API UVoxelNode_RGBToHSV : public UVoxelPureNode
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+
+	UVoxelNode_RGBToHSV();
+};
+
+// Convert a color in HSV space to RGB
+UCLASS(DisplayName = "HSV to RGB", Category = "Math|Color")
+class VOXELGRAPH_API UVoxelNode_HSVToRGB : public UVoxelPureNode
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+
+	UVoxelNode_HSVToRGB();
+};
+
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// Pi = 3.1415926535897932384626433832795
+UCLASS(DisplayName = "Pi", Category = "Math|Constants")
+class VOXELGRAPH_API UVoxelNode_Pi : public UVoxelPureNode
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+	COMPACT_VOXELNODE("PI");
+
+	UVoxelNode_Pi();
+};
+
 //////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////

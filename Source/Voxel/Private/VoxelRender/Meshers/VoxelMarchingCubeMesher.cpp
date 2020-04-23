@@ -10,6 +10,18 @@
 
 #define checkError(x) if(!(x)) { return false; }
 
+static TAutoConsoleVariable<int32> CVarEnableUniqueUVs(
+	TEXT("voxel.mesher.UniqueUVs"),
+	0,
+	TEXT("If true, will duplicate the vertices to assign to each triangle in a chunk a unique part of the UV space"),
+	ECVF_Default);
+
+static TAutoConsoleVariable<int32> CVarRandomizeTangents(
+	TEXT("voxel.mesher.RandomizeTangents"),
+	0,
+	TEXT("If true, will randomize voxel tangents to help debug materials that should not be using them"),
+	ECVF_Default);
+
 class FMarchingCubeHelpers
 {
 public:
@@ -55,12 +67,12 @@ public:
 				const auto MaterialA = GetMaterial(PositionA);
 				const auto MaterialB = GetMaterial(PositionB);
 				
-				ensureVoxelSlow(Vertex.MaterialPosition == PositionA || Vertex.MaterialPosition == PositionB);
+				ensureVoxelSlowNoSideEffects(Vertex.MaterialPosition == PositionA || Vertex.MaterialPosition == PositionB);
 				MesherVertex.Material = Vertex.MaterialPosition == PositionA ? MaterialA : MaterialB;
 				
 				const FVector Difference = MesherVertex.Position - FVector(PositionA);
 				const float Alpha = Difference.X + Difference.Y + Difference.Z;
-				ensureVoxelSlow(0 <= Alpha && Alpha <= 1);
+				ensureVoxelSlowNoSideEffects(0 <= Alpha && Alpha <= 1);
 
 				if (Mesher.Settings.bInterpolateUVs)
 				{
@@ -84,6 +96,7 @@ public:
 					{
 						MesherVertex.Material.SetSingleIndex_DataA_AsFloat(FMath::Lerp(MaterialA.GetSingleIndex_DataA_AsFloat(), MaterialB.GetSingleIndex_DataA_AsFloat(), Alpha));
 						MesherVertex.Material.SetSingleIndex_DataB_AsFloat(FMath::Lerp(MaterialA.GetSingleIndex_DataB_AsFloat(), MaterialB.GetSingleIndex_DataB_AsFloat(), Alpha));
+						MesherVertex.Material.SetSingleIndex_DataC_AsFloat(FMath::Lerp(MaterialA.GetSingleIndex_DataC_AsFloat(), MaterialB.GetSingleIndex_DataC_AsFloat(), Alpha));
 					}
 					else
 					{
@@ -102,6 +115,17 @@ public:
 				auto& MesherVertex = MesherVertices[Index];
 
 				MesherVertex.Material = GetMaterial(Vertex.MaterialPosition);
+			}
+		}
+	}
+
+	static void FixupTangents(TArray<FVoxelMesherVertex>& MesherVertices)
+	{
+		if (CVarRandomizeTangents.GetValueOnAnyThread() != 0)
+		{
+			for (auto& Vertex : MesherVertices)
+			{
+				Vertex.Tangent.TangentX = FVector(FMath::FRandRange(-1, 1), FMath::FRandRange(-1, 1), FMath::FRandRange(-1, 1)).GetSafeNormal();
 			}
 		}
 	}
@@ -191,6 +215,8 @@ public:
 				Vertex.Tangent = FVoxelProcMeshTangent();
 			}
 		}
+
+		FixupTangents(MesherVertices);
 	}
 	static void ComputeNormals(FVoxelMarchingCubeTransitionsMesher& Mesher, TArray<FVoxelMesherVertex>& MesherVertices)
 	{
@@ -219,6 +245,8 @@ public:
 				Vertex.Tangent = FVoxelProcMeshTangent();
 			}
 		}
+
+		FixupTangents(MesherVertices);
 	}
 	
 	template<typename TMesher>
@@ -247,12 +275,6 @@ FIntBox FVoxelMarchingCubeMesher::GetBoundsToLock() const
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-
-static TAutoConsoleVariable<int32> CVarEnableUniqueUVs(
-	TEXT("voxel.mesher.UniqueUVs"),
-	0,
-	TEXT("If true, will duplicate the vertices to assign to each triangle in a chunk a unique part of the UV space"),
-	ECVF_Default);
 	
 TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(FVoxelMesherTimes& Times)
 {
@@ -504,7 +526,7 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 								bool ZIsDifferent = !!(CacheDirection & 0x04);
 								
 								VertexIndex = (ZIsDifferent ? OldCache : CurrentCache)[GetCacheIndex(EdgeIndex, LX - XIsDifferent, LY - YIsDifferent)];
-								ensureVoxelSlow(-1 <= VertexIndex && VertexIndex < Vertices.Num()); // Can happen if the generator is returning different values
+								ensureVoxelSlowNoSideEffects(-1 <= VertexIndex && VertexIndex < Vertices.Num()); // Can happen if the generator is returning different values
 							}
 
 							if (!bIsVertexCached || VertexIndex == -1)

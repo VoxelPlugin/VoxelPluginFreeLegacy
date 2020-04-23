@@ -7,7 +7,7 @@
 
 void UVoxelSphereTools::SetValueSphereImpl(
 	FVoxelData& Data, 
-	const FVector& Position, 
+	const FVoxelVector& Position, 
 	float Radius, 
 	FVoxelValue Value)
 {
@@ -27,14 +27,14 @@ void UVoxelSphereTools::SetValueSphereImpl(
 template<bool bAdd, bool bComputeModifiedVoxels>
 void UVoxelSphereTools::SphereEditImpl(
 	FVoxelData& Data, 
-	const FVector& Position,
+	const FVoxelVector& Position,
 	float Radius,
 	TArray<FModifiedVoxelValue>& ModifiedVoxels)
 {
 	const FIntBox Bounds = GetSphereBounds(Position, Radius);
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 	const float SquaredRadiusPlus2 = FMath::Square(Radius + 2);
-	const float SquaredRadiusMinus2 = FMath::Square(Radius - 2);
+	const float SquaredRadiusMinus2 = FMath::Square(FMath::Max(Radius - 2, 0.f));
 	Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
 	{
 		const float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
@@ -65,14 +65,14 @@ void UVoxelSphereTools::SphereEditImpl(
 	});
 }
 
-template VOXEL_API void UVoxelSphereTools::SphereEditImpl<false, false>(FVoxelData& Data, const FVector& Position, float Radius, TArray<FModifiedVoxelValue>& ModifiedVoxels);
-template VOXEL_API void UVoxelSphereTools::SphereEditImpl<true, false>(FVoxelData& Data, const FVector& Position, float Radius, TArray<FModifiedVoxelValue>& ModifiedVoxels);
-template VOXEL_API void UVoxelSphereTools::SphereEditImpl<false, true>(FVoxelData& Data, const FVector& Position, float Radius, TArray<FModifiedVoxelValue>& ModifiedVoxels);
-template VOXEL_API void UVoxelSphereTools::SphereEditImpl<true, true>(FVoxelData& Data, const FVector& Position, float Radius, TArray<FModifiedVoxelValue>& ModifiedVoxels);
+template VOXEL_API void UVoxelSphereTools::SphereEditImpl<false, false>(FVoxelData& Data, const FVoxelVector& Position, float Radius, TArray<FModifiedVoxelValue>& ModifiedVoxels);
+template VOXEL_API void UVoxelSphereTools::SphereEditImpl<true, false>(FVoxelData& Data, const FVoxelVector& Position, float Radius, TArray<FModifiedVoxelValue>& ModifiedVoxels);
+template VOXEL_API void UVoxelSphereTools::SphereEditImpl<false, true>(FVoxelData& Data, const FVoxelVector& Position, float Radius, TArray<FModifiedVoxelValue>& ModifiedVoxels);
+template VOXEL_API void UVoxelSphereTools::SphereEditImpl<true, true>(FVoxelData& Data, const FVoxelVector& Position, float Radius, TArray<FModifiedVoxelValue>& ModifiedVoxels);
 
 void UVoxelSphereTools::SetMaterialSphereImpl(
 	FVoxelData& Data,
-	const FVector& Position,
+	const FVoxelVector& Position,
 	float Radius,
 	const FVoxelPaintMaterial& PaintMaterial)
 {
@@ -93,7 +93,7 @@ void UVoxelSphereTools::SetMaterialSphereImpl(
 
 void UVoxelSphereTools::ApplyKernelSphereImpl(
 	FVoxelData& Data, 
-	const FVector& Position, 
+	const FVoxelVector& Position, 
 	const float Radius, 
 	const float Center,
 	const float FirstDegreeNeighbor, 
@@ -105,7 +105,6 @@ void UVoxelSphereTools::ApplyKernelSphereImpl(
 	const float SquaredRadius = FMath::Square(Radius);
 	const FIntVector Size = Bounds.Size();
 	
-	Data.CacheBounds<FVoxelValue>(Bounds);
 	const TArray<FVoxelValue> Values = Data.GetValues(Bounds);
 
 	const auto GetValue = [&](int32 X, int32 Y, int32 Z)
@@ -177,7 +176,7 @@ void UVoxelSphereTools::ApplyKernelSphereImpl(
 
 void UVoxelSphereTools::SmoothSphereImpl(
 	FVoxelData& Data,
-	const FVector& Position,
+	const FVoxelVector& Position,
 	float Radius,
 	float Strength)
 {
@@ -201,7 +200,7 @@ void UVoxelSphereTools::SmoothSphereImpl(
 
 void UVoxelSphereTools::SharpenSphereImpl(
 	FVoxelData& Data,
-	const FVector& Position,
+	const FVoxelVector& Position,
 	float Radius,
 	float Strength)
 {
@@ -220,7 +219,7 @@ void UVoxelSphereTools::SharpenSphereImpl(
 
 void UVoxelSphereTools::TrimSphereImpl(
 	FVoxelData& Data,
-	const FVector& Position,
+	const FVoxelVector& Position,
 	const FVector& Normal,
 	float Radius,
 	float Falloff,
@@ -228,8 +227,8 @@ void UVoxelSphereTools::TrimSphereImpl(
 {
 	const FIntBox Bounds = GetSphereBounds(Position, Radius + Falloff);
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
-	const FPlane Plane(Position, Normal);
-	const float SquaredRadiusFalloff = FMath::Square(Radius + Falloff);
+	const FPlane Plane(Position.ToFloat(), Normal);
+	const float SquaredRadiusFalloff = FMath::Square(Radius + Falloff + 2);
 	Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
 	{
 		const float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
@@ -254,7 +253,7 @@ void UVoxelSphereTools::TrimSphereImpl(
 
 void UVoxelSphereTools::RevertSphereImpl(
 	FVoxelData& Data, 
-	const FVector& Position, 
+	const FVoxelVector& Position, 
 	const float Radius,
 	const int32 HistoryPosition,
 	const bool bRevertValues,
@@ -300,7 +299,7 @@ void UVoxelSphereTools::RevertSphereImpl(
 				}
 			}
 
-			const auto& Stack = Leaf.UndoRedo->GetUndoFramesStack();
+			const auto& Stack = Leaf.UndoRedo->GetFramesStack<EVoxelUndoRedo::Undo>();
 			for (int32 Index = Stack.Num() - 1; Index >= 0; --Index)
 			{
 				if (Stack[Index]->HistoryPosition < HistoryPosition) break;
@@ -314,8 +313,7 @@ void UVoxelSphereTools::RevertSphereImpl(
 
 			const FIntVector Min = Leaf.GetMin();
 
-			INC_DWORD_STAT_BY(STAT_EditedVoxels, Leaf.GetBounds().Count());
-			FVoxelDataOctreeSetter::Set<Type>(Data.bEnableMultiplayer, Data.bEnableUndoRedo, Leaf, *Data.WorldGenerator, [&](auto Lambda)
+			FVoxelDataOctreeSetter::Set<Type>(Data, Leaf, [&](auto Lambda)
 			{
 				Leaf.GetBounds().Iterate(Lambda);
 			},
@@ -352,25 +350,103 @@ void UVoxelSphereTools::RevertSphereImpl(
 	});
 }
 
+void UVoxelSphereTools::RevertSphereToGeneratorImpl(
+	FVoxelData& Data,
+	const FVoxelVector& Position,
+	float Radius,
+	bool bRevertValues,
+	bool bRevertMaterials)
+{
+	const FIntBox Bounds = GetSphereBounds(Position, Radius);
+	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
+	const float RadiusSquared = FMath::Square(Radius);
+
+	FVoxelOctreeUtilities::IterateTreeInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Chunk)
+	{
+		if (!Chunk.IsLeaf())
+		{
+			return;
+		}
+
+		ensureThreadSafe(Chunk.IsLockedForWrite());
+		auto& Leaf = Chunk.AsLeaf();
+
+		const auto ApplyForType = [&](auto TypeInst)
+		{
+			using Type = decltype(TypeInst);
+
+			auto& DataHolder = Leaf.GetData<Type>();
+			if (!DataHolder.IsDirty())
+			{
+				return;
+			}
+			if (!DataHolder.GetDataPtr())
+			{
+				DataHolder.ExpandSingleValue(Data);
+			}
+
+			TStackArray<Type, VOXELS_PER_DATA_CHUNK> Values;
+			TVoxelQueryZone<Type> QueryZone(Leaf.GetBounds(), Values);
+			Leaf.GetFromGeneratorAndAssets<Type>(*Data.WorldGenerator, QueryZone, 0);
+
+			const FIntVector Min = Leaf.GetMin();
+
+			bool bAllGeneratorValues = true;
+			
+			FVoxelDataOctreeSetter::Set<Type>(Data, Leaf, [&](auto Lambda)
+			{
+				Leaf.GetBounds().Iterate(Lambda);
+			},
+			[&](int32 X, int32 Y, int32 Z, Type& Value)
+			{
+				const float DistanceSquared = (FVector(X, Y, Z) - Position).SizeSquared();
+				const int32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
+				if (DistanceSquared < RadiusSquared)
+				{
+					Value = Values[Index];
+				}
+				else
+				{
+					bAllGeneratorValues &= (Value == Values[Index]);
+				}
+			});
+
+			if (bAllGeneratorValues)
+			{
+				DataHolder.ClearData(Data);
+			}
+		};
+
+		if (bRevertValues)
+		{
+			ApplyForType(FVoxelValue());
+		}
+		if (bRevertMaterials)
+		{
+			ApplyForType(FVoxelMaterial());
+		}
+	});
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 #define SPHERE_TOOL_PREFIX \
-	Radius = FVoxelToolHelpers::GetRealDistance(World, Radius, bConvertToVoxelSpace); \
-	Position = FVoxelToolHelpers::GetRealPosition(World, Position, bConvertToVoxelSpace); \
+	const float Radius = FVoxelToolHelpers::GetRealDistance(World, InRadius, bConvertToVoxelSpace); \
+	const FVoxelVector Position = FVoxelToolHelpers::GetRealPosition(World, InPosition, bConvertToVoxelSpace); \
 	const auto Bounds = UVoxelSphereTools::GetSphereBounds(Position, Radius);
 
 #define SPHERE_TOOL_WITH_FALLOFF_PREFIX \
-	Radius = FVoxelToolHelpers::GetRealDistance(World, Radius, bConvertToVoxelSpace); \
-	Falloff = FVoxelToolHelpers::GetRealDistance(World, Falloff, bConvertToVoxelSpace); \
-	Position = FVoxelToolHelpers::GetRealPosition(World, Position, bConvertToVoxelSpace); \
+	const float Radius = FVoxelToolHelpers::GetRealDistance(World, InRadius, bConvertToVoxelSpace); \
+	const float Falloff = FVoxelToolHelpers::GetRealDistance(World, InFalloff, bConvertToVoxelSpace); \
+	const FVoxelVector Position = FVoxelToolHelpers::GetRealPosition(World, InPosition, bConvertToVoxelSpace); \
 	const auto Bounds = UVoxelSphereTools::GetSphereBounds(Position, Radius + Falloff);
 
 void UVoxelSphereTools::SetValueSphere(
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	float Value, 
 	bool bConvertToVoxelSpace)
 {
@@ -379,8 +455,8 @@ void UVoxelSphereTools::SetValueSphere(
 
 void UVoxelSphereTools::AddSphere(
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	bool bConvertToVoxelSpace)
 {
 	VOXEL_TOOL_HELPER(Write, UpdateRender, SPHERE_TOOL_PREFIX, AddSphereImpl(Data, Position, Radius));
@@ -388,8 +464,8 @@ void UVoxelSphereTools::AddSphere(
 
 void UVoxelSphereTools::RemoveSphere(
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	bool bConvertToVoxelSpace)
 {
 	VOXEL_TOOL_HELPER(Write, UpdateRender, SPHERE_TOOL_PREFIX, RemoveSphereImpl(Data, Position, Radius));
@@ -397,8 +473,8 @@ void UVoxelSphereTools::RemoveSphere(
 
 void UVoxelSphereTools::SetMaterialSphere(
 	AVoxelWorld* World,
-	FVector Position,
-	float Radius,
+	FVector InPosition,
+	float InRadius,
 	FVoxelPaintMaterial PaintMaterial,
 	bool bConvertToVoxelSpace)
 {
@@ -407,8 +483,8 @@ void UVoxelSphereTools::SetMaterialSphere(
 
 void UVoxelSphereTools::ApplyKernelSphere(
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius,
+	FVector InPosition, 
+	float InRadius,
 	float CenterMultiplier,
 	float FirstDegreeNeighborMultiplier,
 	float SecondDegreeNeighborMultiplier,
@@ -427,8 +503,8 @@ void UVoxelSphereTools::ApplyKernelSphere(
 
 void UVoxelSphereTools::SmoothSphere(
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	float Strength, 
 	bool bConvertToVoxelSpace)
 {
@@ -437,8 +513,8 @@ void UVoxelSphereTools::SmoothSphere(
 
 void UVoxelSphereTools::SharpenSphere(
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	float Strength, 
 	bool bConvertToVoxelSpace)
 {
@@ -447,10 +523,10 @@ void UVoxelSphereTools::SharpenSphere(
 
 void UVoxelSphereTools::TrimSphere(
 	AVoxelWorld* World,
-	FVector Position,
+	FVector InPosition,
 	FVector Normal,
-	float Radius,
-	float Falloff,
+	float InRadius,
+	float InFalloff,
 	bool bAdditive,
 	bool bConvertToVoxelSpace)
 {
@@ -460,14 +536,25 @@ void UVoxelSphereTools::TrimSphere(
 
 void UVoxelSphereTools::RevertSphere(
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	int32 HistoryPosition,
 	bool bRevertValues,
 	bool bRevertMaterials,
 	bool bConvertToVoxelSpace)
 {	
 	VOXEL_TOOL_HELPER(Write, UpdateRender, SPHERE_TOOL_PREFIX, RevertSphereImpl(Data, Position, Radius, HistoryPosition, bRevertValues, bRevertMaterials));
+}
+
+void UVoxelSphereTools::RevertSphereToGenerator(
+	AVoxelWorld* World, 
+	FVector InPosition, 
+	float InRadius, 
+	bool bRevertValues, 
+	bool bRevertMaterials, 
+	bool bConvertToVoxelSpace)
+{
+	VOXEL_TOOL_HELPER(Write, UpdateRender, SPHERE_TOOL_PREFIX, RevertSphereToGeneratorImpl(Data, Position, Radius, bRevertValues, bRevertMaterials));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -478,8 +565,8 @@ void UVoxelSphereTools::SetValueSphereAsync(
 	UObject* WorldContextObject, 
 	FLatentActionInfo LatentInfo, 
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	float Value, 
 	bool bConvertToVoxelSpace, 
 	bool bHideLatentWarnings)
@@ -491,8 +578,8 @@ void UVoxelSphereTools::AddSphereAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	FVector Position,
-	float Radius,
+	FVector InPosition,
+	float InRadius,
 	bool bConvertToVoxelSpace,
 	bool bHideLatentWarnings)
 {
@@ -503,8 +590,8 @@ void UVoxelSphereTools::RemoveSphereAsync(
 	UObject* WorldContextObject, 
 	FLatentActionInfo LatentInfo, 
 	AVoxelWorld* World, 
-	FVector Position,
-	float Radius,
+	FVector InPosition,
+	float InRadius,
 	bool bConvertToVoxelSpace,
 	bool bHideLatentWarnings)
 {
@@ -515,8 +602,8 @@ void UVoxelSphereTools::SetMaterialSphereAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	FVector Position,
-	float Radius,
+	FVector InPosition,
+	float InRadius,
 	FVoxelPaintMaterial PaintMaterial,
 	bool bConvertToVoxelSpace, 
 	bool bHideLatentWarnings)
@@ -528,8 +615,8 @@ void UVoxelSphereTools::ApplyKernelSphereAsync(
 	UObject* WorldContextObject, 
 	FLatentActionInfo LatentInfo, 
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	float CenterMultiplier, 
 	float FirstDegreeNeighborMultiplier, 
 	float SecondDegreeNeighborMultiplier,
@@ -551,8 +638,8 @@ void UVoxelSphereTools::SmoothSphereAsync(
 	UObject* WorldContextObject, 
 	FLatentActionInfo LatentInfo, 
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	float Strength, 
 	bool bConvertToVoxelSpace, 
 	bool bHideLatentWarnings)
@@ -564,15 +651,12 @@ void UVoxelSphereTools::SharpenSphereAsync(
 	UObject* WorldContextObject, 
 	FLatentActionInfo LatentInfo, 
 	AVoxelWorld* World, 
-	FVector Position, 
-	float Radius, 
+	FVector InPosition, 
+	float InRadius, 
 	float Strength, 
 	bool bConvertToVoxelSpace, 
 	bool bHideLatentWarnings)
 {
-	VOXEL_FUNCTION_COUNTER();
-	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	
 	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, SPHERE_TOOL_PREFIX, SharpenSphereImpl(Data, Position, Radius, Strength));
 }
 
@@ -580,10 +664,10 @@ void UVoxelSphereTools::TrimSphereAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	FVector Position,
+	FVector InPosition,
 	FVector Normal,
-	float Radius,
-	float Falloff,
+	float InRadius,
+	float InFalloff,
 	bool bAdditive,
 	bool bConvertToVoxelSpace,
 	bool bHideLatentWarnings)
@@ -596,8 +680,8 @@ void UVoxelSphereTools::RevertSphereAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	FVector Position,
-	float Radius,
+	FVector InPosition,
+	float InRadius,
 	int32 HistoryPosition,
 	bool bRevertValues,
 	bool bRevertMaterials,
@@ -605,4 +689,18 @@ void UVoxelSphereTools::RevertSphereAsync(
 	bool bHideLatentWarnings)
 {
 	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, SPHERE_TOOL_PREFIX, RevertSphereImpl(Data, Position, Radius, HistoryPosition, bRevertValues, bRevertMaterials));
+}
+
+void UVoxelSphereTools::RevertSphereToGeneratorAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FVector InPosition,
+	float InRadius,
+	bool bRevertValues,
+	bool bRevertMaterials,
+	bool bConvertToVoxelSpace,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, SPHERE_TOOL_PREFIX, RevertSphereToGeneratorImpl(Data, Position, Radius, bRevertValues, bRevertMaterials));
 }

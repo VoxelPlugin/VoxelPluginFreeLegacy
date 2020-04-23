@@ -5,12 +5,14 @@
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
 #include "VoxelConfigEnums.h"
+#include "Containers/StaticArray.h"
 #include "VoxelPaintMaterial.generated.h"
 
 UENUM(BlueprintType)
 enum class EVoxelPaintMaterialType : uint8
 {
 	RGB,
+	FiveWayBlend,
 	SingleIndex,
 	DoubleIndexSet,
 	DoubleIndexBlend,
@@ -36,6 +38,27 @@ struct FVoxelPaintMaterialColor
 };
 
 USTRUCT(BlueprintType)
+struct FVoxelPaintMaterialFiveWayBlend
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 4, ClampMin = 0, ClampMax = 4))
+	int32 Channel = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1, ClampMin = 0, ClampMax = 1))
+	float TargetValue = 1.f;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	bool bPaintR = true;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	bool bPaintG = true;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	bool bPaintB = true;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	bool bPaintA = true;
+};
+
+USTRUCT(BlueprintType)
 struct FVoxelPaintMaterialDoubleIndexSet
 {
 	GENERATED_BODY()
@@ -44,7 +67,7 @@ struct FVoxelPaintMaterialDoubleIndexSet
 	uint8 IndexA = 0;
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
 	uint8 IndexB = 0;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1))
 	float Blend = 0;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
@@ -81,6 +104,7 @@ public:
 	FVoxelPaintMaterial() = default;
 
 	static FVoxelPaintMaterial CreateRGB(FLinearColor Color, bool bPaintR, bool bPaintG, bool bPaintB, bool bPaintA);
+	static FVoxelPaintMaterial CreateFiveWayBlend(int32 Channel, float TargetValue, bool bPaintR, bool bPaintG, bool bPaintB, bool bPaintA);
 	static FVoxelPaintMaterial CreateSingleIndex(uint8 Index);
 	static FVoxelPaintMaterial CreateDoubleIndexSet(uint8 IndexA, uint8 IndexB, float Blend, bool bSetIndexA, bool bSetIndexB, bool bSetBlend);
 	static FVoxelPaintMaterial CreateDoubleIndexBlend(uint8 Index);
@@ -118,4 +142,8 @@ public:
 	// UVs to paint
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
 	FVoxelPaintMaterialUV UV;
+
+	// For 5 way blends
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterialFiveWayBlend FiveWayBlend;
 };

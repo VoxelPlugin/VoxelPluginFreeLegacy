@@ -367,7 +367,7 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 						}
 					}
 
-					ensureVoxelSlow(CrossingCount > 0);
+					ensureVoxelSlowNoSideEffects(CrossingCount > 0);
 					const FVector Offset = CrossingTotal / CrossingCount;
 
 					const FVector ParentOffset = ParentCrossingCount == 0 ? FVector::ZeroVector : ParentCrossingTotal / ParentCrossingCount;

@@ -1,0 +1,103 @@
+// Copyright 2020 Phyronnaz
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Generated/GeneratedUniformBuffers.ush"
+
+#if __INTELLISENSE__
+struct FConstants
+{
+    uint SizeX;
+    uint SizeY;
+    uint SizeZ;
+};
+FConstants VoxelDistanceFieldParameters;
+#endif
+
+RWBuffer<half> RWSrc;
+RWBuffer<half> RWDst;
+
+uint GetIndex(uint3 Position)
+{
+	return Position.x + VoxelDistanceFieldParameters.SizeX * Position.y + VoxelDistanceFieldParameters.SizeX * VoxelDistanceFieldParameters.SizeY * Position.z;
+}
+
+[numthreads(NUM_THREADS_CS, NUM_THREADS_CS, NUM_THREADS_CS)]
+void ExpandDistanceField(uint3 ThreadId : SV_DispatchThreadID)
+{
+    const uint3 Position = ThreadId.xyz;
+
+	const uint3 Size = uint3(
+		VoxelDistanceFieldParameters.SizeX,
+		VoxelDistanceFieldParameters.SizeY,
+		VoxelDistanceFieldParameters.SizeZ);
+
+    if (Position.x >= Size.x || 
+        Position.y >= Size.y || 
+        Position.z >= Size.z)
+    {
+        return;
+	}
+	
+	float Distance = RWSrc[GetIndex(Position)];
+
+#define CHECK_NEIGHBOR(dx, dy, dz) \
+	{ \
+		const int3 NeighborPosition = Position + uint3(dx, dy, dz); \
+		const float NeighborDistance = RWSrc[GetIndex(uint3(clamp(NeighborPosition, int3(0, 0, 0), int3(Size) - 1)))]; \
+		Distance = min(Distance, NeighborDistance + 1.f); \
+	}
+
+	CHECK_NEIGHBOR(-1, 0, 0);
+	CHECK_NEIGHBOR(+1, 0, 0);
+	CHECK_NEIGHBOR(0, -1, 0);
+	CHECK_NEIGHBOR(0, +1, 0);
+	CHECK_NEIGHBOR(0, 0, -1);
+	CHECK_NEIGHBOR(0, 0, +1);
+
+#undef CHECK_NEIGHBOR
+
+	RWDst[GetIndex(Position)] = Distance;
+}
+
+[numthreads(NUM_THREADS_CS, NUM_THREADS_CS, NUM_THREADS_CS)]
+void ComputeDistanceFieldFromValues(uint3 ThreadId : SV_DispatchThreadID)
+{
+    const uint3 Position = ThreadId.xyz;
+
+	const uint3 Size = uint3(
+		VoxelDistanceFieldParameters.SizeX,
+		VoxelDistanceFieldParameters.SizeY,
+		VoxelDistanceFieldParameters.SizeZ);
+
+    if (Position.x >= Size.x || 
+        Position.y >= Size.y || 
+        Position.z >= Size.z)
+    {
+        return;
+	}
+	
+	float Value = RWSrc[GetIndex(Position)];
+	float Distance = 1e99;
+
+#define CHECK_NEIGHBOR(dx, dy, dz) \
+	{ \
+		const int3 NeighborPosition = Position + uint3(dx, dy, dz); \
+		const float NeighborValue = RWSrc[GetIndex(uint3(clamp(NeighborPosition, int3(0, 0, 0), int3(Size) - 1)))]; \
+		if (Value > 0 != NeighborValue > 0) \
+		{ \
+			const float SurfaceDistance = Value / (Value - NeighborValue); \
+			Distance = min(Distance, SurfaceDistance); \
+		} \
+	}
+
+	CHECK_NEIGHBOR(-1, 0, 0);
+	CHECK_NEIGHBOR(+1, 0, 0);
+	CHECK_NEIGHBOR(0, -1, 0);
+	CHECK_NEIGHBOR(0, +1, 0);
+	CHECK_NEIGHBOR(0, 0, -1);
+	CHECK_NEIGHBOR(0, 0, +1);
+
+#undef CHECK_NEIGHBOR
+
+	RWDst[GetIndex(Position)] = Distance;
+}

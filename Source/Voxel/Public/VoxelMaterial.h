@@ -84,10 +84,17 @@ struct TVoxelMaterialImpl
 	
 	FORCEINLINE explicit TVoxelMaterialImpl(EForceInit)
 	{
+#if VOXEL_MATERIAL_DEFAULT_IS_WHITE
+		SetR(255);
+		SetG(255);
+		SetB(255);
+		SetA(255);
+#else
 		SetR(0);
 		SetG(0);
 		SetB(0);
 		SetA(0);
+#endif
 		
 		SetU0(0);
 		SetU1(0);
@@ -183,6 +190,7 @@ public:
 	DEFINE_FORWARD(SingleIndex_Index, A)
 	DEFINE_FORWARD(SingleIndex_DataA, R)
 	DEFINE_FORWARD(SingleIndex_DataB, G)
+	DEFINE_FORWARD(SingleIndex_DataC, B)
 
 	DEFINE_FORWARD(DoubleIndex_IndexA, R)
 	DEFINE_FORWARD(DoubleIndex_IndexB, G)
@@ -215,6 +223,15 @@ public:
 			GetG(),
 			GetB(),
 			GetA());
+	}
+	
+	FORCEINLINE FVector4 GetColorVector() const
+	{
+		return FVector4(
+			GetR_AsFloat(),
+			GetG_AsFloat(),
+			GetB_AsFloat(),
+			GetA_AsFloat());
 	}
 	
 	FORCEINLINE void SetColor(const FLinearColor& Color)
@@ -257,12 +274,13 @@ public:
 		Material.SetColor(Color);
 		return Material;
 	}
-	FORCEINLINE static T CreateFromSingleIndex(uint8 Index, float DataA = 0.f, float DataB = 0.f)
+	FORCEINLINE static T CreateFromSingleIndex(uint8 Index, float DataA = 0.f, float DataB = 0.f, float DataC = 0.f)
 	{
 		T Material(ForceInit);
 		Material.SetSingleIndex_Index(Index);
 		Material.SetSingleIndex_DataA_AsFloat(DataA);
 		Material.SetSingleIndex_DataB_AsFloat(DataB);
+		Material.SetSingleIndex_DataC_AsFloat(DataC);
 		return Material;
 	}
 	FORCEINLINE static T CreateFromDoubleIndex(uint8 IndexA, uint8 IndexB, float Blend, float Data = 0.f)
@@ -333,10 +351,10 @@ public:
 	{
 		check(Ar.IsLoading());
 
-		uint8 A = 0;
 		uint8 R = 0;
 		uint8 G = 0;
 		uint8 B = 0;
+		uint8 A = 0;
 		
 		uint8 U0 = 0;
 		uint8 V0 = 0;
@@ -347,11 +365,6 @@ public:
 		uint8 U3 = 0;
 		uint8 V3 = 0;
 
-		if (ConfigFlags & EVoxelMaterialConfigFlag::EnableA)
-		{
-			// Serialize A first for legacy reasons
-			Ar << A;
-		}
 		if (ConfigFlags & EVoxelMaterialConfigFlag::EnableR)
 		{
 			Ar << R;
@@ -363,6 +376,10 @@ public:
 		if (ConfigFlags & EVoxelMaterialConfigFlag::EnableB)
 		{
 			Ar << B;
+		}
+		if (ConfigFlags & EVoxelMaterialConfigFlag::EnableA)
+		{
+			Ar << A;
 		}
 		if (ConfigFlags & EVoxelMaterialConfigFlag::EnableUV0)
 		{

@@ -17,7 +17,7 @@ UVoxelNode_Curve::UVoxelNode_Curve()
 
 FText UVoxelNode_Curve::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "Curve", "Float Curve: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("Float Curve: {0}"), Super::GetTitle());
 }
 
 void UVoxelNode_Curve::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
@@ -53,7 +53,7 @@ UVoxelNode_CurveColor::UVoxelNode_CurveColor()
 
 FText UVoxelNode_CurveColor::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "ColorCurve", "Color Curve: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("Color Curve: {0}"), Super::GetTitle());
 }
 
 void UVoxelNode_CurveColor::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)

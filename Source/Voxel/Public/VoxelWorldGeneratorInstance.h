@@ -26,45 +26,42 @@ public:
 	
 	template<typename T>
 	using TRangeOutputFunctionPtr = TVoxelRange<T>(FVoxelWorldGeneratorInstance::*)(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const;
+	
+	struct FBaseFunctionPtrs
+	{
+		TOutputFunctionPtr<v_flt> Value;
+		TOutputFunctionPtr<FVoxelMaterial> Material;
+		TRangeOutputFunctionPtr<v_flt> ValueRange;
+	};
+	struct FCustomFunctionPtrs
+	{
+		TMap<FName, TOutputFunctionPtr<v_flt>> Float;
+		TMap<FName, TOutputFunctionPtr<int32>> Int;
+		TMap<FName, TOutputFunctionPtr<FColor>> Color;
+		
+		TMap<FName, TRangeOutputFunctionPtr<v_flt>> FloatRange;
+	};
 
 public:
 	FVoxelWorldGeneratorInstance(
 		TSubclassOf<UVoxelWorldGenerator> Class,
-		
-		TOutputFunctionPtr<v_flt> GetValuePtr,
-		TOutputFunctionPtr<FVoxelMaterial> GetMaterialPtr,
-		TRangeOutputFunctionPtr<v_flt> GetValueRangePtr,
-
-		const TMap<FName, TOutputFunctionPtr<v_flt>>& FloatOutputsPtr,
-		const TMap<FName, TOutputFunctionPtr<int32>>& Int32OutputsPtr,
-		const TMap<FName, TRangeOutputFunctionPtr<v_flt>>& FloatOutputsRangesPtr)
+		const FBaseFunctionPtrs& BasePtrs,
+		const FCustomFunctionPtrs& CustomPtrs)
 		: Class(Class)
-
-		, GetValuePtr(GetValuePtr)
-		, GetMaterialPtr(GetMaterialPtr)
-		, GetValueRangePtr(GetValueRangePtr)
-
-		, FloatOutputsPtr(FloatOutputsPtr)
-		, Int32OutputsPtr(Int32OutputsPtr)
-		, FloatOutputsRangesPtr(FloatOutputsRangesPtr)
+		, BasePtrs(BasePtrs)
+		, CustomPtrs(CustomPtrs)
 	{
 		check(Class);
-		check(GetValuePtr);
-		check(GetMaterialPtr);
-		check(GetValueRangePtr);
+		check(BasePtrs.Value);
+		check(BasePtrs.Material);
+		check(BasePtrs.ValueRange);
 	}
 	virtual ~FVoxelWorldGeneratorInstance() = default;
 
 public:
 	const TSubclassOf<UVoxelWorldGenerator> Class;
-
-	const TOutputFunctionPtr<v_flt> GetValuePtr;
-	const TOutputFunctionPtr<FVoxelMaterial> GetMaterialPtr;
-	const TRangeOutputFunctionPtr<v_flt> GetValueRangePtr;
-	
-	const TMap<FName, TOutputFunctionPtr<v_flt>> FloatOutputsPtr;
-	const TMap<FName, TOutputFunctionPtr<int32>> Int32OutputsPtr;
-	const TMap<FName, TRangeOutputFunctionPtr<v_flt>> FloatOutputsRangesPtr;
+	const FBaseFunctionPtrs BasePtrs;
+	const FCustomFunctionPtrs CustomPtrs;
 
 	template<typename T>
 	const TMap<FName, TOutputFunctionPtr<T>>& GetOutputsPtrMap() const;
@@ -124,50 +121,41 @@ public:
 	
 	template<typename T>
 	using TRangeOutputFunctionPtr_Transform = TVoxelRange<T>(FVoxelTransformableWorldGeneratorInstance::*)(const FTransform& LocalToWorld, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const;
-
+	
+	struct FBaseFunctionPtrs_Transform
+	{
+		TOutputFunctionPtr_Transform<v_flt> Value;
+		TOutputFunctionPtr_Transform<FVoxelMaterial> Material;
+		TRangeOutputFunctionPtr_Transform<v_flt> ValueRange;
+	};
+	struct FCustomFunctionPtrs_Transform
+	{
+		TMap<FName, TOutputFunctionPtr_Transform<v_flt>> Float;
+		TMap<FName, TOutputFunctionPtr_Transform<int32>> Int;
+		TMap<FName, TOutputFunctionPtr_Transform<FColor>> Color;
+		
+		TMap<FName, TRangeOutputFunctionPtr_Transform<v_flt>> FloatRange;
+	};
+	
 public:
 	FVoxelTransformableWorldGeneratorInstance(
 		TSubclassOf<UVoxelWorldGenerator> Class,
-		
-		TOutputFunctionPtr<v_flt> GetValuePtr,
-		TOutputFunctionPtr<FVoxelMaterial> GetMaterialPtr,
-		TRangeOutputFunctionPtr<v_flt> GetValueRangePtr,
-
-		const TMap<FName, TOutputFunctionPtr<v_flt>>& FloatOutputsPtr,
-		const TMap<FName, TOutputFunctionPtr<int32>>& Int32OutputsPtr,
-		const TMap<FName, TRangeOutputFunctionPtr<v_flt>>& FloatOutputsRangesPtr,
-		
-		TOutputFunctionPtr_Transform<v_flt> GetValuePtr_Transform,
-		TOutputFunctionPtr_Transform<FVoxelMaterial> GetMaterialPtr_Transform,
-		TRangeOutputFunctionPtr_Transform<v_flt> GetValueRangePtr_Transform,
-		
-		const TMap<FName, TOutputFunctionPtr_Transform<v_flt>>& FloatOutputsPtr_Transform,
-		const TMap<FName, TOutputFunctionPtr_Transform<int32>>& Int32OutputsPtr_Transform,
-		const TMap<FName, TRangeOutputFunctionPtr_Transform<v_flt>>& FloatOutputsRangesPtr_Transform)
-
-		: FVoxelWorldGeneratorInstance(Class, GetValuePtr, GetMaterialPtr, GetValueRangePtr, FloatOutputsPtr, Int32OutputsPtr, FloatOutputsRangesPtr)
-
-		, GetValuePtr_Transform(GetValuePtr_Transform)
-		, GetMaterialPtr_Transform(GetMaterialPtr_Transform)
-		, GetValueRangePtr_Transform(GetValueRangePtr_Transform)
-
-		, FloatOutputsPtr_Transform(FloatOutputsPtr_Transform)
-		, Int32OutputsPtr_Transform(Int32OutputsPtr_Transform)
-		, FloatOutputsRangesPtr_Transform(FloatOutputsRangesPtr_Transform)
+		const FBaseFunctionPtrs& BasePtrs,
+		const FCustomFunctionPtrs& CustomPtrs,
+		const FBaseFunctionPtrs_Transform& BasePtrs_Transform,
+		const FCustomFunctionPtrs_Transform& CustomPtrs_Transform)
+		: FVoxelWorldGeneratorInstance(Class, BasePtrs, CustomPtrs)
+		, BasePtrs_Transform(BasePtrs_Transform)
+		, CustomPtrs_Transform(CustomPtrs_Transform)
 	{
-		check(GetValuePtr_Transform);
-		check(GetMaterialPtr_Transform);
-		check(GetValueRangePtr_Transform);
+		check(BasePtrs_Transform.Value);
+		check(BasePtrs_Transform.Material);
+		check(BasePtrs_Transform.ValueRange);
 	}
 	
 public:
-	const TOutputFunctionPtr_Transform<v_flt> GetValuePtr_Transform;
-	const TOutputFunctionPtr_Transform<FVoxelMaterial> GetMaterialPtr_Transform;
-	const TRangeOutputFunctionPtr_Transform<v_flt> GetValueRangePtr_Transform;
-	
-	const TMap<FName, TOutputFunctionPtr_Transform<v_flt>> FloatOutputsPtr_Transform;
-	const TMap<FName, TOutputFunctionPtr_Transform<int32>> Int32OutputsPtr_Transform;
-	const TMap<FName, TRangeOutputFunctionPtr_Transform<v_flt>> FloatOutputsRangesPtr_Transform;
+	const FBaseFunctionPtrs_Transform BasePtrs_Transform;
+	const FCustomFunctionPtrs_Transform CustomPtrs_Transform;
 	
 	template<typename T>
 	const TMap<FName, TOutputFunctionPtr_Transform<T>>& GetOutputsPtrMap_Transform() const;

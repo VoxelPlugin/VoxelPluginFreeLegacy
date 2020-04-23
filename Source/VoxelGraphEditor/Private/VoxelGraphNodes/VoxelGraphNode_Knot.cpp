@@ -4,8 +4,6 @@
 #include "EdGraph/EdGraphPin.h"
 #include "VoxelPinCategory.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 const static FName Wildcard(FVoxelPinCategory::GetName(EVoxelPinCategory::Wildcard));
 
 void UVoxelGraphNode_Knot::AllocateDefaultPins()
@@ -28,7 +26,7 @@ void UVoxelGraphNode_Knot::ReconstructNode()
 
 FText UVoxelGraphNode_Knot::GetTooltipText() const
 {
-	return LOCTEXT("KnotTooltip", "Reroute Node (reroutes wires)");
+	return VOXEL_LOCTEXT("Reroute Node (reroutes wires)");
 }
 
 FText UVoxelGraphNode_Knot::GetNodeTitle(ENodeTitleType::Type TitleType) const
@@ -39,11 +37,11 @@ FText UVoxelGraphNode_Knot::GetNodeTitle(ENodeTitleType::Type TitleType) const
 	}
 	else if (TitleType == ENodeTitleType::MenuTitle)
 	{
-		return LOCTEXT("KnotListTitle", "Add Reroute Node...");
+		return VOXEL_LOCTEXT("Add Reroute Node...");
 	}
 	else
 	{
-		return LOCTEXT("KnotTitle", "Reroute Node");
+		return VOXEL_LOCTEXT("Reroute Node");
 	}
 }
 
@@ -239,5 +237,3 @@ UEdGraphPin* UVoxelGraphNode_Knot::GetPassThroughPin(const UEdGraphPin* FromPin)
 
 	return nullptr;
 }
-
-#undef LOCTEXT_NAMESPACE

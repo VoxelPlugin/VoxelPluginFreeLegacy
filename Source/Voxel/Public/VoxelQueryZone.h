@@ -96,6 +96,7 @@ private:
 		, LOD(LOD)
 	{
 		check(Bounds.IsMultipleOf(Step));
+		check(FVoxelUtilities::CountIs32Bits(ArraySize));
 	}
 };
 

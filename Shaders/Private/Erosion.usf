@@ -1,0 +1,288 @@
+// Copyright 2020 Phyronnaz
+
+// From https://hal.inria.fr/file/index/docid/402079/filename/FastErosion_PG07.pdf
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Generated/GeneratedUniformBuffers.ush"
+
+RWTexture2D<float> RainMap;
+RWTexture2D<float> TerrainHeight;
+RWTexture2D<float> WaterHeight;
+RWTexture2D<float> Sediment;
+RWTexture2D<float> Outflow;
+RWTexture2D<float> Velocity;
+
+RWTexture2D<float> WaterHeight1;
+RWTexture2D<float> WaterHeight2;
+
+RWTexture2D<float> Sediment1;
+
+// Required for tilt angle
+RWTexture2D<float> TerrainHeight1;
+
+#if __INTELLISENSE__
+struct FConstants
+{
+    uint size;
+    float dt;
+
+    // Size of a pipe
+    float l;
+    // Gravity
+    float g;
+
+    // Sediment capacity
+    float Kc;
+    // Sediment dissolving
+    float Ks;
+    // Sediment deposition
+    float Kd;
+    
+    // Rain strength
+    float Kr;
+    // Evaporation
+    float Ke;
+};
+FConstants VoxelErosionParameters;
+#endif
+
+/**
+ * Getter/Setters helpers as UAV must have a single component
+ */
+inline bool IsIn(int2 Pos) { return Pos.x >= 0 && Pos.y >= 0 && Pos.x < VoxelErosionParameters.size && Pos.y < VoxelErosionParameters.size; }
+inline float GetLeft  (int2 Pos) { return IsIn(Pos) ? Outflow[uint2(Pos.x * 4 + 0, Pos.y)] : 0; }
+inline float GetRight (int2 Pos) { return IsIn(Pos) ? Outflow[uint2(Pos.x * 4 + 1, Pos.y)] : 0; }
+inline float GetBottom(int2 Pos) { return IsIn(Pos) ? Outflow[uint2(Pos.x * 4 + 2, Pos.y)] : 0; }
+inline float GetTop   (int2 Pos) { return IsIn(Pos) ? Outflow[uint2(Pos.x * 4 + 3, Pos.y)] : 0; }
+inline void  SetLeft  (int2 Pos, float Value) { Outflow[uint2(Pos.x * 4 + 0, Pos.y)] = Value; }
+inline void  SetRight (int2 Pos, float Value) { Outflow[uint2(Pos.x * 4 + 1, Pos.y)] = Value; }
+inline void  SetBottom(int2 Pos, float Value) { Outflow[uint2(Pos.x * 4 + 2, Pos.y)] = Value; }
+inline void  SetTop   (int2 Pos, float Value) { Outflow[uint2(Pos.x * 4 + 3, Pos.y)] = Value; }
+
+inline float2 GetVelocity(uint2 Pos)
+{
+    return float2(
+        Velocity[uint2(Pos.x * 2 + 0, Pos.y)], 
+        Velocity[uint2(Pos.x * 2 + 1, Pos.y)]);
+}
+inline void SetVelocity(uint2 Pos, float2 Value)
+{
+    Velocity[uint2(Pos.x * 2 + 0, Pos.y)] = Value.x;
+    Velocity[uint2(Pos.x * 2 + 1, Pos.y)] = Value.y;
+}
+
+/**
+ * WaterIncrement
+ */
+ 
+[numthreads(NUM_THREADS_CS, NUM_THREADS_CS, 1)]
+void WaterIncrement(uint3 ThreadId : SV_DispatchThreadID)
+{
+    const uint2 Pos = ThreadId.xy;
+    WaterHeight1[Pos] = WaterHeight[Pos] + VoxelErosionParameters.dt * VoxelErosionParameters.Kr * RainMap[Pos];
+}
+
+/**
+ * FlowSimulation
+ */
+
+inline float HeightDifference(uint2 a, uint2 b)
+{
+    return TerrainHeight[a] + WaterHeight1[a] - TerrainHeight[b] - WaterHeight1[b];
+}
+[numthreads(NUM_THREADS_CS, NUM_THREADS_CS, 1)]
+ void FlowSimulation(uint3 ThreadId : SV_DispatchThreadID)
+{
+    const int2 Pos    = ThreadId.xy;
+    const int2 Left   = Pos + int2(-1, 0);
+    const int2 Right  = Pos + int2(+1, 0);
+    const int2 Bottom = Pos + int2(0, -1);
+    const int2 Top    = Pos + int2(0, +1);
+    
+    float4 OutflowValue = float4(GetLeft(Pos), GetRight(Pos), GetBottom(Pos), GetTop(Pos));
+
+    // Flow update
+    {
+        // Compute the flow from height differences
+        OutflowValue += VoxelErosionParameters.dt * VoxelErosionParameters.g / VoxelErosionParameters.l *
+                        float4(
+                            HeightDifference(Pos, Left  ),
+                            HeightDifference(Pos, Right ),
+                            HeightDifference(Pos, Bottom),
+                            HeightDifference(Pos, Top   ));
+        OutflowValue = max(OutflowValue, 0);
+
+        // Scale the flow down if needed
+        const float OutflowSum = OutflowValue.x + OutflowValue.y + OutflowValue.z + OutflowValue.w;
+        if (OutflowSum != 0)
+        {
+            const float K = WaterHeight1[Pos] * VoxelErosionParameters.l * VoxelErosionParameters.l / (VoxelErosionParameters.dt * OutflowSum);
+            OutflowValue *= min(K, 1);
+        }
+
+        SetLeft  (Pos, OutflowValue.x);
+        SetRight (Pos, OutflowValue.y);
+        SetBottom(Pos, OutflowValue.z);
+        SetTop   (Pos, OutflowValue.w);
+    }
+
+    // Update water height
+    {
+        const float DeltaVolume = VoxelErosionParameters.dt * (
+                                   GetRight(Left) +
+                                   GetLeft(Right) +
+                                   GetTop(Bottom) +
+                                   GetBottom(Top) +
+                                   -OutflowValue.x +
+                                   -OutflowValue.y +
+                                   -OutflowValue.z +
+                                   -OutflowValue.w);
+        WaterHeight2[Pos] = WaterHeight1[Pos] + DeltaVolume / (VoxelErosionParameters.l * VoxelErosionParameters.l);
+    }
+
+    // Boundaries
+    if(Pos.x == 0)
+    {
+        SetLeft(Pos, 0);
+    }
+    else if (Pos.x == VoxelErosionParameters.size - 1)
+    {
+        SetRight(Pos, 0);
+    }
+    if (Pos.y == 0)
+    {
+        SetBottom(Pos, 0);
+    }
+    else if (Pos.y == VoxelErosionParameters.size - 1)
+    {
+        SetTop(Pos, 0);
+    }
+
+    // Update velocity
+    {
+        float2 DeltaWaterA;
+        float2 DeltaWaterB;
+        DeltaWaterA.x = GetRight(Left) - GetLeft(Pos);
+        DeltaWaterB.x = GetRight(Pos)  - GetLeft(Right);
+        DeltaWaterA.y = GetTop(Bottom) - GetBottom(Pos);
+        DeltaWaterB.y = GetTop(Pos) - GetBottom(Top);
+
+        float2 DeltaWater;
+        // Avoid spikes
+        if (abs(DeltaWaterA.x + DeltaWaterB.x) < 0.001)
+        {
+            DeltaWater.x = DeltaWaterA.x;
+        }
+        else
+        {
+            DeltaWater.x = (DeltaWaterA.x + DeltaWaterB.x) / 2;
+        }
+        if (abs(DeltaWaterA.y + DeltaWaterB.y) < 0.001)
+        {
+            DeltaWater.y = DeltaWaterA.y;
+        }
+        else
+        {
+            DeltaWater.y = (DeltaWaterA.y + DeltaWaterB.y) / 2;
+        }
+
+        const float MeanWater = (WaterHeight1[Pos] + WaterHeight2[Pos]) / 2;
+        const float Divisor = VoxelErosionParameters.l * MeanWater;
+        if (Divisor == 0)
+        {
+            SetVelocity(Pos, DeltaWater);
+        }
+        else
+        {
+            SetVelocity(Pos, DeltaWater / Divisor);
+        }
+    }
+}
+
+/**
+ * ErosionDeposition
+ */
+
+// Return sin(tilt angle)
+inline float TiltAngle(int2 Pos)
+{
+    // https://math.stackexchange.com/questions/1044044/local-tilt-angle-based-on-height-field
+
+    const int2 Left   = Pos + int2(-1, 0);
+    const int2 Right  = Pos + int2(+1, 0);
+    const int2 Bottom = Pos + int2(0, -1);
+    const int2 Top    = Pos + int2(0, +1);
+
+    if (!IsIn(Left)   ||
+        !IsIn(Right)  ||
+        !IsIn(Bottom) ||
+        !IsIn(Top))
+    {
+        // We don't want the sediments to be stuck there
+        return 0.5;
+    }
+
+    const float DeltaXL = (TerrainHeight[Left  ] - TerrainHeight[Pos]) / 2;
+    const float DeltaXR = (TerrainHeight[Right ] - TerrainHeight[Pos]) / 2;
+    const float DeltaYB = (TerrainHeight[Bottom] - TerrainHeight[Pos]) / 2;
+    const float DeltaYT = (TerrainHeight[Top   ] - TerrainHeight[Pos]) / 2;
+
+    const float Sum = max(DeltaXL * DeltaXL, DeltaXR * DeltaXR) + max(DeltaYB * DeltaYB, DeltaYT * DeltaYT);
+    
+    return sqrt(Sum / (1 + Sum));
+}
+
+[numthreads(NUM_THREADS_CS, NUM_THREADS_CS, 1)]
+ void ErosionDeposition(uint3 ThreadId : SV_DispatchThreadID)
+{
+    const uint2 Pos = ThreadId.xy;
+
+    float C = VoxelErosionParameters.Kc * TiltAngle(Pos) * length(GetVelocity(Pos));
+    const float S = Sediment[Pos];
+
+    const float K = C > S ? VoxelErosionParameters.Ks : VoxelErosionParameters.Kd;
+    float Diff = K * (C - S);
+    if (Diff > 0)
+    {
+        Diff = min(Diff, TerrainHeight[Pos]);
+    }
+    else
+    {
+        Diff = -min(-Diff, Sediment[Pos]);
+    }
+
+    TerrainHeight1[Pos] = TerrainHeight[Pos] - Diff;
+    Sediment1[Pos] = Sediment[Pos] + Diff;
+}
+
+/**
+ * SedimentTransportation
+ */
+
+[numthreads(NUM_THREADS_CS, NUM_THREADS_CS, 1)]
+ void SedimentTransportation(uint3 ThreadId : SV_DispatchThreadID)
+{
+    const uint2 Pos = ThreadId.xy;
+    const float2 SamplePos = Pos - GetVelocity(Pos) * VoxelErosionParameters.dt;
+    const uint2 Floor = floor(SamplePos);
+    const uint2 Ceil = ceil(SamplePos);
+    const float2 Frac = SamplePos - Floor;
+    Sediment[Pos] = lerp(
+                        lerp(Sediment1[uint2(Floor.x, Floor.y)], Sediment1[uint2(Ceil.x, Floor.y)], Frac.x),
+                        lerp(Sediment1[uint2(Floor.x, Ceil .y)], Sediment1[uint2(Ceil.x, Ceil .y)], Frac.x),
+                        Frac.y);
+}
+
+/**
+ * Evaporation
+ */
+
+[numthreads(NUM_THREADS_CS, NUM_THREADS_CS, 1)]
+ void Evaporation(uint3 ThreadId : SV_DispatchThreadID)
+{
+    const uint2 Pos = ThreadId.xy;
+    WaterHeight[Pos] = WaterHeight2[Pos] * (1 - VoxelErosionParameters.Ke * VoxelErosionParameters.dt);
+
+    // Also copy the height data
+    TerrainHeight[Pos] = TerrainHeight1[Pos];
+}

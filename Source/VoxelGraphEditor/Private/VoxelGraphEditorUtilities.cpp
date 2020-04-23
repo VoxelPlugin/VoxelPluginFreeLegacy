@@ -60,7 +60,7 @@ TSet<UObject*> FVoxelGraphEditorUtilities::GetSelectedNodes(const UEdGraph* Grap
 
 TSharedPtr<IVoxelGraphEditorToolkit> FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(const UObject* ObjectToFocusOn)
 {
-	check(ObjectToFocusOn);
+	if (!ensure(ObjectToFocusOn)) return {};
 
 	// Find the associated VoxelGraphGenerator
 	UVoxelGraphGenerator* VoxelGraphGenerator = Cast<const UVoxelEdGraph>(ObjectToFocusOn)->GetWorldGenerator();

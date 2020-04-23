@@ -149,9 +149,13 @@ public:
 	static FVector GetHitsAveragePosition(
 		const TArray<FVoxelProjectionHit>& Hits);
 
-	// Note: will use a constant voxel value of 1
+	// Will use a constant voxel value of NaN. For some surface tools you'll need to use CreateSurfaceVoxelsFromHitsWithExactValues instead
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Projection Tools")
 	static TArray<FSurfaceVoxel> CreateSurfaceVoxelsFromHits(const TArray<FVoxelProjectionHit>& Hits);
+
+	// Will store the voxel values
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Projection Tools", meta = (DefaultToSelf = "World"))
+	static TArray<FSurfaceVoxel> CreateSurfaceVoxelsFromHitsWithExactValues(AVoxelWorld* World, const TArray<FVoxelProjectionHit>& Hits);
 	
 public:
 	// NumRays might be slightly lower than the actual number of traced rays

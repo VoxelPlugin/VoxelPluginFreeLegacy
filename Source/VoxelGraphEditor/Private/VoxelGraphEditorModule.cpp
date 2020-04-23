@@ -14,8 +14,6 @@
 #include "Styling/SlateStyleRegistry.h"
 #include "Modules/ModuleManager.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 const FVector2D Icon14x14(14.0f, 14.0f);
 const FVector2D Icon16x16(16.0f, 16.0f);
 const FVector2D Icon20x20(20.0f, 20.0f);
@@ -123,5 +121,4 @@ private:
 
 IMPLEMENT_MODULE(FVoxelGraphEditorModule, VoxelGraphEditor);
 
-#undef LOCTEXT_NAMESPACE
 #undef IMAGE_PLUGIN_BRUSH

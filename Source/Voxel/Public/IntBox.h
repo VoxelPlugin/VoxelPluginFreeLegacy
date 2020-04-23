@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelVectorUtilities.h"
 #include "VoxelIntVectorUtilities.h"
 #include "IntBox.generated.h"
 
@@ -60,8 +61,16 @@ struct VOXEL_API FIntBox
 		: FIntBox(FVoxelUtilities::FloorToInt(Min), FVoxelUtilities::CeilToInt(Max) + 1)
 	{
 	}
+	explicit FIntBox(const FVoxelVector& Min, const FVoxelVector& Max)
+		: FIntBox(FVoxelUtilities::FloorToInt(Min), FVoxelUtilities::CeilToInt(Max) + 1)
+	{
+	}
 
 	explicit FIntBox(const FVector& Position)
+		: FIntBox(Position, Position)
+	{
+	}
+	explicit FIntBox(const FVoxelVector& Position)
 		: FIntBox(Position, Position)
 	{
 	}
@@ -83,7 +92,11 @@ struct VOXEL_API FIntBox
 	template<typename T>
 	explicit FIntBox(const TArray<T>& Data)
 	{
-		if (!ensure(Data.Num() > 0)) return;
+		if (!ensure(Data.Num() > 0))
+		{
+			Min = Max = FIntVector::ZeroValue;
+			return;
+		}
 
 		*this = FIntBox(Data[0]);
 		for (int32 Index = 1; Index < Data.Num(); Index++)
@@ -102,11 +115,12 @@ struct VOXEL_API FIntBox
 
 	FORCEINLINE FIntVector Size() const
 	{
+		ensure(SizeIs32Bit());
 		return Max - Min;
 	}
-	FORCEINLINE FVector GetCenter() const
+	FORCEINLINE FVoxelVector GetCenter() const
 	{
-		return FVector(Min + Max) / 2.f;
+		return FVoxelVector(Min + Max) / 2.f;
 	}
 	FORCEINLINE uint64 Count() const
 	{
@@ -114,6 +128,14 @@ struct VOXEL_API FIntBox
 			uint64(Max.X - Min.X) *
 			uint64(Max.Y - Min.Y) *
 			uint64(Max.Z - Min.Z);
+	}
+
+	FORCEINLINE bool SizeIs32Bit() const
+	{
+		return
+			int64(Max.X) - int64(Min.X) < MAX_int32 &&
+			int64(Max.Y) - int64(Min.Y) < MAX_int32 &&
+			int64(Max.Z) - int64(Min.Z) < MAX_int32;
 	}
 	
 	/**
@@ -148,7 +170,7 @@ struct VOXEL_API FIntBox
 		return ((X >= Min.X) && (X < Max.X) && (Y >= Min.Y) && (Y < Max.Y) && (Z >= Min.Z) && (Z < Max.Z));
 	}
 	template<typename T>
-	FORCEINLINE typename TEnableIf<TOr<TIsSame<T, FVector>, TIsSame<T, FIntVector>>::Value, bool>::Type ContainsTemplate(const T& V) const
+	FORCEINLINE typename TEnableIf<TOr<TIsSame<T, FVector>, TIsSame<T, FVoxelVector>, TIsSame<T, FIntVector>>::Value, bool>::Type ContainsTemplate(const T& V) const
 	{
 		return ContainsTemplate(V.X, V.Y, V.Z);
 	}
@@ -178,6 +200,10 @@ struct VOXEL_API FIntBox
 		return ContainsTemplate(X, Y, Z);
 	}
 	FORCEINLINE bool ContainsFloat(const FVector& V) const
+	{
+		return ContainsTemplate(V);
+	}
+	FORCEINLINE bool ContainsFloat(const FVoxelVector& V) const
 	{
 		return ContainsTemplate(V);
 	}
@@ -245,6 +271,21 @@ struct VOXEL_API FIntBox
 
 		return FIntBox(MinVector, MaxVector);
 	}
+	FIntBox Union(const FIntBox& Other) const
+	{
+		FIntVector MinVector, MaxVector;
+
+		MinVector.X = FMath::Min(Min.X, Other.Min.X);
+		MaxVector.X = FMath::Max(Max.X, Other.Max.X);
+
+		MinVector.Y = FMath::Min(Min.Y, Other.Min.Y);
+		MaxVector.Y = FMath::Max(Max.Y, Other.Max.Y);
+
+		MinVector.Z = FMath::Min(Min.Z, Other.Min.Z);
+		MaxVector.Z = FMath::Max(Max.Z, Other.Max.Z);
+
+		return FIntBox(MinVector, MaxVector);
+	}
 
 	FORCEINLINE FIntVector Clamp(const FIntVector& P) const
 	{
@@ -302,47 +343,40 @@ struct VOXEL_API FIntBox
 		return OutBoxes;
 	}
 
-	template<typename T>
-	FORCEINLINE T ComputeSquaredDistanceFromBoxToPoint(const FIntVector& Point) const
+	FORCEINLINE uint64 ComputeSquaredDistanceFromBoxToPoint(const FIntVector& Point) const
 	{
 		// Accumulates the distance as we iterate axis
-		T DistSquared = 0;
+		uint64 DistSquared = 0;
 
 		// Check each axis for min/max and add the distance accordingly
 		if (Point.X < Min.X)
 		{
-			DistSquared += FMath::Square<T>(Point.X - Min.X);
+			DistSquared += FMath::Square<uint64>(Min.X - Point.X);
 		}
 		else if (Point.X > Max.X)
 		{
-			DistSquared += FMath::Square<T>(Point.X - Max.X);
+			DistSquared += FMath::Square<uint64>(Point.X - Max.X);
 		}
 
 		if (Point.Y < Min.Y)
 		{
-			DistSquared += FMath::Square<T>(Point.Y - Min.Y);
+			DistSquared += FMath::Square<uint64>(Min.Y - Point.Y);
 		}
 		else if (Point.Y > Max.Y)
 		{
-			DistSquared += FMath::Square<T>(Point.Y - Max.Y);
+			DistSquared += FMath::Square<uint64>(Point.Y - Max.Y);
 		}
 
 		if (Point.Z < Min.Z)
 		{
-			DistSquared += FMath::Square<T>(Point.Z - Min.Z);
+			DistSquared += FMath::Square<uint64>(Min.Z - Point.Z);
 		}
 		else if (Point.Z > Max.Z)
 		{
-			DistSquared += FMath::Square<T>(Point.Z - Max.Z);
+			DistSquared += FMath::Square<uint64>(Point.Z - Max.Z);
 		}
 
 		return DistSquared;
-	}
-
-	template<typename T>
-	FORCEINLINE T ComputeSquaredDistanceFromBoxToBox(const FIntBox& Box) const
-	{
-		return FMath::Min<T>(ComputeSquaredDistanceFromBoxToPoint<T>(Box.Min), ComputeSquaredDistanceFromBoxToPoint<T>(Box.Max));
 	}
 
 	FORCEINLINE bool IsMultipleOf(int32 Step) const
@@ -393,9 +427,9 @@ struct VOXEL_API FIntBox
 		}
 	}
 
-	FORCEINLINE FIntBox Scale(float S) const
+	FORCEINLINE FIntBox Scale(v_flt S) const
 	{
-		return { FVoxelUtilities::FloorToInt(FVector(Min) * S), FVoxelUtilities::CeilToInt(FVector(Max) * S) };
+		return { FVoxelUtilities::FloorToInt(FVoxelVector(Min) * S), FVoxelUtilities::CeilToInt(FVoxelVector(Max) * S) };
 	}
 	
 	FORCEINLINE FIntBox Extend(const FIntVector& Amount) const
@@ -420,12 +454,12 @@ struct VOXEL_API FIntBox
 	{
 		FIntVector NewMin = Min;
 		FIntVector NewMax = Max;
-		if (FVector(FIntVector(GetCenter())) != GetCenter())
+		if (FVoxelVector(GetCenter().ToInt()) != GetCenter())
 		{
 			NewMax = NewMax + 1;
 		}
-		ensure(FVector(FIntVector(GetCenter())) == GetCenter());
-		const FIntVector Offset = FIntVector(GetCenter());
+		ensure(FVoxelVector(GetCenter().ToInt()) == GetCenter());
+		const FIntVector Offset = GetCenter().ToInt();
 		NewMin -= Offset;
 		NewMax -= Offset;
 		ensure(NewMin + NewMax == FIntVector(0));
@@ -462,6 +496,20 @@ struct VOXEL_API FIntBox
 			for (int32 Y = Min.Y; Y < Max.Y; Y++)
 			{
 				for (int32 Z = Min.Z; Z < Max.Z; Z++)
+				{
+					Lambda(X, Y, Z);
+				}
+			}
+		}
+	}
+	template<typename T>
+	void Iterate(int32 Step, T Lambda) const
+	{
+		for (int32 X = Min.X; X < Max.X; X += Step)
+		{
+			for (int32 Y = Min.Y; Y < Max.Y; Y += Step)
+			{
+				for (int32 Z = Min.Z; Z < Max.Z; Z += Step)
 				{
 					Lambda(X, Y, Z);
 				}

@@ -9,8 +9,6 @@
 #include "VoxelEditorDetailsUtilities.h"
 #include "DetailLayoutBuilder.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 TSharedRef<IDetailCustomization> FVoxelMeshImporterDetails::MakeInstance()
 {
 	return MakeShareable(new FVoxelMeshImporterDetails());
@@ -29,9 +27,9 @@ void FVoxelMeshImporterDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLay
 
 	FVoxelEditorUtilities::AddButtonToCategory(DetailLayout,
 		"Create VoxelDataAsset from Mesh",
-		LOCTEXT("Create", "Create"),
-		LOCTEXT("CreateFromMesh", "Create From Mesh"),
-		LOCTEXT("Create", "Create"),
+		VOXEL_LOCTEXT("Create"),
+		VOXEL_LOCTEXT("Create From Mesh"),
+		VOXEL_LOCTEXT("Create"),
 		false,
 		FOnClicked::CreateSP(this, &FVoxelMeshImporterDetails::OnCreateFromMesh),
 		TAttribute<bool>::Create(TAttribute<bool>::FGetter::CreateLambda([Importer = MeshImporter]() { return Importer.IsValid() && Importer->StaticMesh; })));
@@ -46,5 +44,3 @@ FReply FVoxelMeshImporterDetails::OnCreateFromMesh()
 
 	return FReply::Handled();
 }
-
-#undef LOCTEXT_NAMESPACE

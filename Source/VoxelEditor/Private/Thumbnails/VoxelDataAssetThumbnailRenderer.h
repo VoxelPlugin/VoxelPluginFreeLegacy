@@ -22,8 +22,8 @@ public:
 	{
 		UTextureThumbnailRenderer::GetThumbnailSize(CastChecked<UVoxelDataAsset>(Object)->GetThumbnail(), Zoom, OutWidth, OutHeight);
 	}
-	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas) override
+	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily)) override
 	{
-		UTextureThumbnailRenderer::Draw(CastChecked<UVoxelDataAsset>(Object)->GetThumbnail(), X, Y, Width, Height, Target, Canvas);
+		UTextureThumbnailRenderer::Draw(CastChecked<UVoxelDataAsset>(Object)->GetThumbnail(), X, Y, Width, Height, Target, Canvas ONLY_UE_25_AND_HIGHER(, bAdditionalViewFamily));
 	}
 };

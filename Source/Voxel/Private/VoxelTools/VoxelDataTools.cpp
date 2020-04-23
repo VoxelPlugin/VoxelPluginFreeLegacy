@@ -6,6 +6,7 @@
 #include "VoxelData/VoxelSaveUtilities.h"
 #include "VoxelData/VoxelDataUtilities.h"
 #include "VoxelData/VoxelDataAccelerator.h"
+#include "VoxelAssets/VoxelHeightmapAsset.h"
 
 #include "Misc/ScopedSlowTask.h"
 
@@ -140,19 +141,84 @@ if (!CheckSave(World->GetData(), Save)) \
 
 void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSave& OutSave)
 {
+	GetSave(World, OutSave.NewMutable());
+}
+
+void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSaveImpl& OutSave)
+{
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	World->GetData().GetSave(OutSave);
 }
 
 void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorldSave& OutSave)
 {
+	GetCompressedSave(World, OutSave.NewMutable());
+}
+
+void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorldSaveImpl& OutSave)
+{
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	FVoxelUncompressedWorldSave Save;
+	FVoxelUncompressedWorldSaveImpl Save;
 	World->GetData().GetSave(Save);
 	UVoxelSaveUtilities::CompressVoxelSave(Save, OutSave);
 }
 
+void UVoxelDataTools::GetSaveAsync(
+	UObject* WorldContextObject, 
+	FLatentActionInfo LatentInfo, 
+	AVoxelWorld* World,
+	FVoxelUncompressedWorldSave& OutSave, 
+	bool bHideLatentWarnings)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	FVoxelToolHelpers::StartAsyncLatentAction_WithWorld_WithValue(
+		WorldContextObject,
+		LatentInfo,
+		World,
+		FUNCTION_FNAME,
+		bHideLatentWarnings,
+		OutSave,
+		[](FVoxelData& Data, FVoxelUncompressedWorldSave& Save)
+		{
+			Data.GetSave(Save.NewMutable());
+		},
+		EVoxelUpdateRender::DoNotUpdateRender,
+		{});
+}
+
+void UVoxelDataTools::GetCompressedSaveAsync(
+	UObject* WorldContextObject, 
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World, 
+	FVoxelCompressedWorldSave& OutSave, 
+	bool bHideLatentWarnings)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	FVoxelToolHelpers::StartAsyncLatentAction_WithWorld_WithValue(
+		WorldContextObject,
+		LatentInfo,
+		World,
+		FUNCTION_FNAME,
+		bHideLatentWarnings,
+		OutSave,
+		[](FVoxelData& Data, FVoxelCompressedWorldSave& CompressedSave)
+		{
+			FVoxelUncompressedWorldSaveImpl Save;
+			Data.GetSave(Save);
+			UVoxelSaveUtilities::CompressVoxelSave(Save, CompressedSave.NewMutable());
+		},
+		EVoxelUpdateRender::DoNotUpdateRender,
+		{});
+}
+
 bool UVoxelDataTools::LoadFromSave(AVoxelWorld* World, const FVoxelUncompressedWorldSave& Save)
+{
+	return LoadFromSave(World, Save.Const());
+}
+
+bool UVoxelDataTools::LoadFromSave(AVoxelWorld* World, const FVoxelUncompressedWorldSaveImpl& Save)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
 	CHECK_SAVE();
@@ -166,10 +232,15 @@ bool UVoxelDataTools::LoadFromSave(AVoxelWorld* World, const FVoxelUncompressedW
 
 bool UVoxelDataTools::LoadFromCompressedSave(AVoxelWorld* World, const FVoxelCompressedWorldSave& Save)
 {
+	return LoadFromCompressedSave(World, Save.Const());
+}
+
+bool UVoxelDataTools::LoadFromCompressedSave(AVoxelWorld* World, const FVoxelCompressedWorldSaveImpl& Save)
+{
 	CHECK_VOXELWORLD_IS_CREATED();
 	CHECK_SAVE();
 	
-	FVoxelUncompressedWorldSave UncompressedSave;
+	FVoxelUncompressedWorldSaveImpl UncompressedSave;
 	UVoxelSaveUtilities::DecompressVoxelSave(Save, UncompressedSave);
 
 	TArray<FIntBox> BoundsToUpdate;
@@ -201,7 +272,7 @@ void UVoxelDataTools::RoundVoxelsImpl(FVoxelData& Data, const FIntBox& Bounds)
 		});
 	}
 	
-	FScopedSlowTask SlowTask(NumDirtyLeaves, NSLOCTEXT("Voxel", "Rounding", "Rounding voxels"));
+	FVoxelScopedSlowTask SlowTask(NumDirtyLeaves, VOXEL_LOCTEXT("Rounding voxels"));
 	FScopeToolsTimeLogger ToolsLogger(__FUNCTION__, NumVoxels);
 		
 	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds.Extend(2));
@@ -232,7 +303,6 @@ void UVoxelDataTools::RoundVoxelsImpl(FVoxelData& Data, const FIntBox& Bounds)
 						}
 					}
 				}
-				// Not recorded in undo history, but not needed as RoundVoxels is lossless
 				OctreeAccelerator.SetValue(X, Y, Z, bEmpty ? FVoxelValue::Empty() : FVoxelValue::Full());
 			});
 		}
@@ -278,7 +348,7 @@ void UVoxelDataTools::ClearUnusedMaterialsImpl(FVoxelData& Data, const FIntBox& 
 		});
 	}
 	
-	FScopedSlowTask SlowTask(NumDirtyLeaves, NSLOCTEXT("Voxel", "Clearing", "Clearing unused materials"));
+	FVoxelScopedSlowTask SlowTask(NumDirtyLeaves, VOXEL_LOCTEXT("Clearing unused materials"));
 	FScopeToolsTimeLogger ToolsLogger(__FUNCTION__, NumVoxels);
 		
 	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds.Extend(2));
@@ -312,7 +382,6 @@ void UVoxelDataTools::ClearUnusedMaterialsImpl(FVoxelData& Data, const FIntBox& 
 						}
 					}
 				}
-				// Note: not recorded in undo history
 				OctreeAccelerator.SetMaterial(X, Y, Z, FVoxelMaterial::Default());
 			});
 		}
@@ -399,4 +468,742 @@ void UVoxelDataTools::GetVoxelsValueAndMaterialAsync(
 	
 	const FIntBox Bounds(Positions);
 	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Voxels, Read, DoNotUpdateRender, NO_PREFIX, GetVoxelsValueAndMaterialImpl(Data, InVoxels, Bounds, Positions));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelDataMemoryUsageInMB UVoxelDataTools::GetDataMemoryUsageInMB(AVoxelWorld* World)
+{
+	CHECK_VOXELWORLD_IS_CREATED();
+	VOXEL_FUNCTION_COUNTER();
+
+	constexpr double OneMB = double(1 << 20);
+
+	auto& Data = World->GetData();
+
+	FVoxelDataMemoryUsageInMB MemoryUsage;
+
+	MemoryUsage.DirtyValues = Data.GetDirtyMemory().Values.GetValue() / OneMB;
+	MemoryUsage.DirtyMaterials = Data.GetDirtyMemory().Foliage.GetValue() / OneMB;
+	MemoryUsage.DirtyFoliage = Data.GetDirtyMemory().Materials.GetValue() / OneMB;
+
+	MemoryUsage.CachedValues = Data.GetCachedMemory().Values.GetValue() / OneMB;
+	MemoryUsage.CachedMaterials = Data.GetCachedMemory().Foliage.GetValue() / OneMB;
+	MemoryUsage.CachedFoliage = Data.GetCachedMemory().Materials.GetValue() / OneMB;
+
+	return MemoryUsage;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelDataTools::ClearCachedValues(
+	AVoxelWorld* World,
+	FIntBox Bounds)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.ClearCacheInBounds<FVoxelValue>(Bounds));
+}
+
+void UVoxelDataTools::ClearCachedValuesAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.ClearCacheInBounds<FVoxelValue>(Bounds));
+}
+
+void UVoxelDataTools::ClearCachedMaterials(
+	AVoxelWorld* World,
+	FIntBox Bounds)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.ClearCacheInBounds<FVoxelMaterial>(Bounds));
+}
+
+void UVoxelDataTools::ClearCachedMaterialsAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.ClearCacheInBounds<FVoxelMaterial>(Bounds));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelDataTools::CheckForSingleValues(
+	AVoxelWorld* World,
+	FIntBox Bounds)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CheckIsSingle<FVoxelValue>(Bounds));
+}
+
+void UVoxelDataTools::CheckForSingleValuesAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CheckIsSingle<FVoxelValue>(Bounds));
+}
+
+void UVoxelDataTools::CheckForSingleMaterials(
+	AVoxelWorld* World,
+	FIntBox Bounds)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CheckIsSingle<FVoxelMaterial>(Bounds));
+}
+
+void UVoxelDataTools::CheckForSingleMaterialsAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	AVoxelWorld* World,
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CheckIsSingle<FVoxelMaterial>(Bounds));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+void UVoxelDataTools::CompressIntoHeightmapImpl(FVoxelData& Data, TVoxelHeightmapAssetSamplerWrapper<T>& Wrapper, const bool bCheckAllLeaves)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	ensure(Wrapper.Scale == 1.f);
+	
+	FVoxelScopedSlowTask SlowTask(2, VOXEL_LOCTEXT("Compressing into heightmap"));
+	SlowTask.EnterProgressFrame();
+
+	TMap<FIntPoint, TMap<int32, FVoxelDataOctreeLeaf*>> LeavesColumns;
+	{
+		if (bCheckAllLeaves)
+		{
+			// Need to subdivide
+			FVoxelOctreeUtilities::IterateEntireTree(Data.GetOctree(), [&](FVoxelDataOctreeBase& Tree)
+			{
+				if (!Tree.IsLeaf())
+				{
+					auto& Parent = Tree.AsParent();
+					if (!Parent.HasChildren())
+					{
+						ensureThreadSafe(Parent.IsLockedForWrite());
+						Parent.CreateChildren();
+					}
+				}
+			});
+		}
+		
+		int32 NumLeaves = 0;
+		FVoxelOctreeUtilities::IterateAllLeaves(Data.GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
+		{
+			if (Leaf.GetData<FVoxelValue>().IsDirty() || bCheckAllLeaves)
+			{
+				NumLeaves++;
+			}
+		});
+
+		FVoxelScopedSlowTask LocalSlowTask(NumLeaves, VOXEL_LOCTEXT("Caching data"));
+
+		FVoxelOctreeUtilities::IterateAllLeaves(Data.GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
+		{
+			ensureThreadSafe(Leaf.IsLockedForWrite());
+
+			auto& DataHolder = Leaf.GetData<FVoxelValue>();
+			if (bCheckAllLeaves)
+			{
+				if (!DataHolder.GetDataPtr() && !DataHolder.IsSingleValue())
+				{
+					DataHolder.CreateDataPtr(Data);
+					TVoxelQueryZone<FVoxelValue> QueryZone(Leaf.GetBounds(), DataHolder.GetDataPtr());
+					Leaf.GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+					// Reduce memory usage
+					DataHolder.TryCompressToSingleValue(Data);
+				}
+			}
+			else
+			{
+				if (!DataHolder.IsDirty())
+				{
+					// Flush cache
+					DataHolder.ClearData(Data);
+					return;
+				}
+			}
+
+			LocalSlowTask.EnterProgressFrame();
+
+			const FIntVector Min = Leaf.GetMin();
+			
+			auto& Column = LeavesColumns.FindOrAdd(FIntPoint(Min.X, Min.Y));
+			check(!Column.Contains(Min.Z));
+			Column.Add(Min.Z, &Leaf);
+		});
+	}
+	
+	SlowTask.EnterProgressFrame();
+	FVoxelScopedSlowTask LocalSlowTask(LeavesColumns.Num(), VOXEL_LOCTEXT("Finding heights"));
+
+	FVoxelMutableDataAccelerator Accelerator(Data, FIntBox::Infinite);
+	for (auto& ColumnsIt : LeavesColumns)
+	{
+		LocalSlowTask.EnterProgressFrame();
+		
+		const FIntPoint LeafMinXY = ColumnsIt.Key;
+		auto& Leaves = ColumnsIt.Value;
+
+		int32 MinLeafMinZ = MAX_int32;
+		int32 MaxLeafMinZ = MIN_int32;
+		for (auto& LeavesIt : Leaves)
+		{
+			MinLeafMinZ = FMath::Min(LeavesIt.Key, MinLeafMinZ);
+			MaxLeafMinZ = FMath::Max(LeavesIt.Key, MaxLeafMinZ);
+		}
+		check(MinLeafMinZ != MAX_int32);
+		check(MaxLeafMinZ != MIN_int32);
+
+		const auto GetHeightmapPosition = [&](int32 X, int32 Y)
+		{
+			// Note: HeightmapAssets are offset by (-Wrapper.GetWidth() / 2, -Wrapper.GetHeight() / 2)
+			return FIntPoint(LeafMinXY.X + X + Wrapper.GetWidth() / 2, LeafMinXY.Y + Y + Wrapper.GetHeight() / 2);
+		};
+		const auto IsInBounds = [&](const FIntPoint& HeightmapPosition)
+		{
+			return
+				HeightmapPosition.X >= 0 &&
+				HeightmapPosition.Y >= 0 &&
+				HeightmapPosition.X < Wrapper.GetWidth() &&
+				HeightmapPosition.Y < Wrapper.GetHeight();
+		};
+
+		TStaticArray<float, DATA_CHUNK_SIZE * DATA_CHUNK_SIZE> NewHeights;
+		for (int32 X = 0; X < DATA_CHUNK_SIZE; X++)
+		{
+			for (int32 Y = 0; Y < DATA_CHUNK_SIZE; Y++)
+			{
+				const FIntPoint HeightmapPosition = GetHeightmapPosition(X, Y);
+				if (!IsInBounds(HeightmapPosition)) continue;
+
+				const auto GetNewHeight = [&]()
+				{
+					const float HeightmapHeight = Wrapper.GetHeight(HeightmapPosition.X, HeightmapPosition.Y, EVoxelSamplerMode::Clamp);
+					if (HeightmapHeight >= MaxLeafMinZ + DATA_CHUNK_SIZE)
+					{
+						// Heightmap is above all leaves, can't do anything
+						return HeightmapHeight;
+					}
+					
+					// Go down chunk by chunk until we find the height
+					for (int32 LeafMinZ = MaxLeafMinZ; LeafMinZ >= MinLeafMinZ; LeafMinZ -= DATA_CHUNK_SIZE)
+					{
+						auto* Leaf = Leaves.FindRef(LeafMinZ);
+						if (!Leaf)
+						{
+							checkVoxelSlow(HeightmapHeight <= LeafMinZ + DATA_CHUNK_SIZE);
+							if (LeafMinZ < HeightmapHeight)
+							{
+								// HeightmapHeight above all remaining leaves, can't do anything
+								return HeightmapHeight;
+							}
+						}
+						else
+						{
+							// Go down until we find the height
+
+							TStackArray<FVoxelValue, VOXELS_PER_DATA_CHUNK> SingleValueBuffer; 
+							const FVoxelValue* RESTRICT DataPtr;
+							{
+								auto& DataHolder = Leaf->GetData<FVoxelValue>();
+								if (DataHolder.IsSingleValue())
+								{
+									if (!DataHolder.GetSingleValue().IsEmpty())
+									{
+										// Fast path
+										continue;
+									}
+									// Easier that way
+									for (auto& Value : SingleValueBuffer)
+									{
+										Value = DataHolder.GetSingleValue();
+									}
+									DataPtr = SingleValueBuffer.GetData();
+								}
+								else
+								{
+									DataPtr = DataHolder.GetDataPtr();
+								}
+							}
+							check(DataPtr);
+
+							for (int32 Z = DATA_CHUNK_SIZE - 1; Z >= 0; Z--)
+							{
+								const FVoxelValue Value = DataPtr[FVoxelDataOctreeUtilities::IndexFromCoordinates(X, Y, Z)];
+								if (!Value.IsEmpty())
+								{
+									FVoxelValue ValueAbove;
+									if (Z + 1 < DATA_CHUNK_SIZE)
+									{
+										ValueAbove = DataPtr[FVoxelDataOctreeUtilities::IndexFromCoordinates(X, Y, Z + 1)];
+									}
+									else
+									{
+										ValueAbove = Accelerator.GetValue(Leaf->GetMin() + FIntVector(X, Y, Z + 1), 0);
+									}
+									// Note: not true on world upper bound
+									ensure(ValueAbove.IsEmpty());
+
+									const float NewHeight = LeafMinZ + Z + FVoxelUtilities::GetAbsDistanceFromDensities(Value.ToFloat(), ValueAbove.ToFloat());
+									const float OldHeight = HeightmapHeight;
+
+									// Mark leaves that will have their value changed by the new height as dirty so that they don't change
+									const int32 StartLeafMinZ = FMath::FloorToInt(FMath::Min(NewHeight, OldHeight) / DATA_CHUNK_SIZE) * DATA_CHUNK_SIZE;
+									const int32 EndLeafMinZ = FMath::CeilToInt(FMath::Max(NewHeight, OldHeight) / DATA_CHUNK_SIZE) * DATA_CHUNK_SIZE;
+									for (int32 ItLeafMinZ = StartLeafMinZ; ItLeafMinZ <= EndLeafMinZ; ItLeafMinZ += DATA_CHUNK_SIZE)
+									{
+										if (Leaves.Contains(ItLeafMinZ)) continue; // Values already correctly stored
+
+										// Leaf is defaulting to generator value, but this value is going to change
+										// Mark the leaf as dirty
+
+										const FIntVector LeafPosition = FIntVector(LeafMinXY.X, LeafMinXY.Y, ItLeafMinZ) + DATA_CHUNK_SIZE / 2;
+										if (!Data.IsInWorld(LeafPosition)) continue;
+										
+										auto* ItLeaf = FVoxelOctreeUtilities::GetLeaf<EVoxelOctreeLeafQuery::CreateIfNull>(Data.GetOctree(), LeafPosition);
+										check(ItLeaf);
+										check(!ItLeaf->GetData<FVoxelValue>().GetDataPtr());
+										check(!ItLeaf->GetData<FVoxelValue>().IsSingleValue());
+
+										ItLeaf->InitForEdit<FVoxelValue>(Data);
+										ItLeaf->GetData<FVoxelValue>().SetDirty(Data);
+
+										// & Add it to the map
+										Leaves.Add(ItLeafMinZ, ItLeaf);
+
+										// Update min/max as well
+										MinLeafMinZ = FMath::Min(ItLeafMinZ, MinLeafMinZ);
+										MaxLeafMinZ = FMath::Max(ItLeafMinZ, MaxLeafMinZ);
+									}
+									return NewHeight;
+								}
+							}
+						}
+					}
+					// Not found anything, default to old height
+					return HeightmapHeight;
+				};
+				NewHeights[X + DATA_CHUNK_SIZE * Y] = GetNewHeight();
+			}
+		}
+
+		// Write the heights
+		for (int32 X = 0; X < DATA_CHUNK_SIZE; X++)
+		{
+			for (int32 Y = 0; Y < DATA_CHUNK_SIZE; Y++)
+			{
+				const FIntPoint HeightmapPosition = GetHeightmapPosition(X, Y);
+				if (!IsInBounds(HeightmapPosition)) continue;
+
+				Wrapper.SetHeight(HeightmapPosition.X, HeightmapPosition.Y, NewHeights[X + DATA_CHUNK_SIZE * Y]);
+			}
+		}
+	}
+}
+
+template VOXEL_API void UVoxelDataTools::CompressIntoHeightmapImpl<uint16>(FVoxelData& Data, TVoxelHeightmapAssetSamplerWrapper<uint16>& Wrapper, bool bCheckAllLeaves);
+template VOXEL_API void UVoxelDataTools::CompressIntoHeightmapImpl<float>(FVoxelData& Data, TVoxelHeightmapAssetSamplerWrapper<float>& Wrapper, bool bCheckAllLeaves);
+
+void UVoxelDataTools::CompressIntoHeightmap(
+	AVoxelWorld* World, 
+	UVoxelHeightmapAsset* HeightmapAsset,
+	bool bHeightmapAssetMatchesWorld)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+
+	auto& Data = World->GetData();
+	FVoxelWriteScopeLock Lock(Data, FIntBox::Infinite, "");
+
+	bool bCheckAllLeaves = false;
+	if (!HeightmapAsset)
+	{
+		if (World->WorldGenerator.IsObject()) // We don't want to edit the default object otherwise
+		{
+			HeightmapAsset = Cast<UVoxelHeightmapAsset>(World->WorldGenerator.Object);
+		}
+	}
+	else 
+	{
+		if (!bHeightmapAssetMatchesWorld)
+		{
+			bCheckAllLeaves = true;
+
+			const int32 Size = FVoxelUtilities::GetSizeFromDepth<DATA_CHUNK_SIZE>(Data.Depth);
+			if (Size > 20000)
+			{
+				FVoxelMessages::Error(FUNCTION_ERROR("Heightmap size would be too large!"));
+				return;
+			}
+			if (auto* Heightmap = Cast<UVoxelHeightmapAssetUINT16>(HeightmapAsset))
+			{
+				HeightmapAsset->HeightOffset = -Size / 2; // Height = 0 should be bottom of the world since all heights are positive
+				HeightmapAsset->HeightScale = float(Size) / MAX_uint16; // Distribute the heights
+				HeightmapAsset->AdditionalThickness = Size; // Just to be safe
+
+				// Init the heightmap data
+				Heightmap->GetData().SetSize(Size, Size, false, {});
+				Heightmap->GetData().SetAllHeightsTo(0);
+			}
+			if (auto* Heightmap = Cast<UVoxelHeightmapAssetFloat>(HeightmapAsset))
+			{
+				HeightmapAsset->HeightOffset = 0; // Heights can be negative too here
+				HeightmapAsset->HeightScale = 1.f; // No need to distribute
+				HeightmapAsset->AdditionalThickness = Size; // Fill below
+
+				// Init the heightmap data
+				Heightmap->GetData().SetSize(Size, Size, false, {});
+				Heightmap->GetData().SetAllHeightsTo(0);
+			}
+		}
+	}
+	
+	if (auto* UINT16Heightmap = Cast<UVoxelHeightmapAssetUINT16>(HeightmapAsset))
+	{
+		TVoxelHeightmapAssetSamplerWrapper<uint16> Wrapper(UINT16Heightmap);
+		CompressIntoHeightmapImpl(Data, Wrapper, bCheckAllLeaves);
+		UINT16Heightmap->Save();
+	}
+	else if (auto* FloatHeightmap = Cast<UVoxelHeightmapAssetFloat>(HeightmapAsset))
+	{
+		TVoxelHeightmapAssetSamplerWrapper<float> Wrapper(FloatHeightmap);
+		CompressIntoHeightmapImpl(Data, Wrapper, bCheckAllLeaves);
+		FloatHeightmap->Save();
+	}
+	else
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("World Generator is not an heightmap!"));
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelDataTools::RoundToGeneratorImpl(FVoxelData& Data, const FIntBox& Bounds, bool bPreserveNormals)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	int32 NumDirtyLeaves = 0;
+	FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+	{
+		if (Leaf.GetData<FVoxelValue>().IsDirty())
+		{
+			NumDirtyLeaves++;
+		}
+	});
+	
+	FVoxelScopedSlowTask SlowTask(NumDirtyLeaves, VOXEL_LOCTEXT("Round To Generator"));
+		
+	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds.Extend(2));
+	FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+	{
+		if (!Leaf.GetData<FVoxelValue>().IsDirty())
+		{
+			return;
+		}
+
+		SlowTask.EnterProgressFrame();
+
+		// Do not try to round if single value
+		if (!Leaf.GetData<FVoxelValue>().IsSingleValue())
+		{
+			const FIntBox LeafBounds = Leaf.GetBounds();
+			LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+			{
+				const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
+				const FVoxelValue Value = Leaf.GetData<FVoxelValue>().GetDataPtr()[Index];
+				const FVoxelValue GeneratorValue = Data.WorldGenerator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
+
+				if (Value == GeneratorValue) return;
+				if (Value.IsEmpty() != GeneratorValue.IsEmpty()) return;
+
+				const auto CheckNeighbor = [&](int32 DX, int32 DY, int32 DZ)
+				{
+					const FVoxelValue OtherValue = OctreeAccelerator.GetValue(X + DX, Y + DY, Z + DZ, 0);
+					const FVoxelValue OtherGeneratorValue = Data.WorldGenerator->Get<FVoxelValue>(X + DX, Y + DY, Z + DZ, 0, FVoxelItemStack::Empty);
+					return OtherValue.IsEmpty() == OtherGeneratorValue.IsEmpty();
+				};
+
+				if (bPreserveNormals)
+				{
+					for (int32 DX = -1; DX <= 1; DX++)
+					{
+						for (int32 DY = -1; DY <= 1; DY++)
+						{
+							for (int32 DZ = -1; DZ <= 1; DZ++)
+							{
+								if (DX == 0 && DY == 0 && DZ == 0) continue;
+								if (!CheckNeighbor(DX, DY, DZ)) return;
+							}
+						}
+					}
+				}
+				else
+				{
+					if (!CheckNeighbor(-1, 0, 0)) return;
+					if (!CheckNeighbor(+1, 0, 0)) return;
+					if (!CheckNeighbor(0, -1, 0)) return;
+					if (!CheckNeighbor(0, +1, 0)) return;
+					if (!CheckNeighbor(0, 0, -1)) return;
+					if (!CheckNeighbor(0, 0, +1)) return;
+				}
+
+				OctreeAccelerator.SetValue(X, Y, Z, GeneratorValue);
+			});
+		}
+
+		// But always check this, as else we get a lot of space used by single values!
+		FVoxelDataUtilities::CheckIfSameAsGenerator<FVoxelValue>(Data, Leaf);
+	});
+}
+
+void UVoxelDataTools::RoundToGenerator(AVoxelWorld* World, FIntBox Bounds, bool bPreserveNormals)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, RoundToGeneratorImpl(Data, Bounds, bPreserveNormals));
+}
+
+void UVoxelDataTools::RoundToGeneratorAsync(
+	UObject* WorldContextObject, 
+	FLatentActionInfo LatentInfo, 
+	AVoxelWorld* World, 
+	FIntBox Bounds,
+	bool bPreserveNormals,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, RoundToGeneratorImpl(Data, Bounds, bPreserveNormals));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelDataTools::CheckIfSameAsGeneratorImpl(FVoxelData& Data, const FIntBox& Bounds)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	int32 NumLeaves = 0;
+	FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+	{
+		NumLeaves++;
+	});
+
+	FVoxelScopedSlowTask SlowTask(NumLeaves, VOXEL_LOCTEXT("Check If Same As Generator"));
+	FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+	{
+		SlowTask.EnterProgressFrame();
+		ensureThreadSafe(Leaf.IsLockedForWrite());
+		if (Leaf.GetData<FVoxelValue>().IsDirty())
+		{
+			FVoxelDataUtilities::CheckIfSameAsGenerator<FVoxelValue>(Data, Leaf);
+		}
+		if (Leaf.GetData<FVoxelMaterial>().IsDirty())
+		{
+			FVoxelDataUtilities::CheckIfSameAsGenerator<FVoxelMaterial>(Data, Leaf);
+		}
+		if (Leaf.GetData<FVoxelFoliage>().IsDirty())
+		{
+			FVoxelDataUtilities::CheckIfSameAsGenerator<FVoxelFoliage>(Data, Leaf);
+		}
+	});
+}
+
+void UVoxelDataTools::CheckIfSameAsGenerator(AVoxelWorld* World, FIntBox Bounds)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, CheckIfSameAsGeneratorImpl(Data, Bounds));
+}
+
+void UVoxelDataTools::CheckIfSameAsGeneratorAsync(
+	UObject* WorldContextObject, 
+	FLatentActionInfo LatentInfo, 
+	AVoxelWorld* World, 
+	FIntBox Bounds,
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, CheckIfSameAsGeneratorImpl(Data, Bounds));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+void UVoxelDataTools::SetBoxAsDirtyImpl(FVoxelData& Data, const FIntBox& Bounds, bool bTryCompressToSingleValue)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	const int32 Count = Bounds.Overlap(Data.WorldBounds).MakeMultipleOfRoundUp(DATA_CHUNK_SIZE).Count() / int64(VOXELS_PER_DATA_CHUNK);
+	FVoxelScopedSlowTask SlowTask(Count, VOXEL_LOCTEXT("Set Box as Dirty"));
+	FVoxelOctreeUtilities::IterateTreeInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Tree)
+	{
+		if (Tree.IsLeaf())
+		{
+			SlowTask.EnterProgressFrame();
+			
+			auto& Leaf = Tree.AsLeaf();
+			ensureThreadSafe(Leaf.IsLockedForWrite());
+			
+			Leaf.InitForEdit<T>(Data);
+			if (bTryCompressToSingleValue)
+			{
+				// Else memory usage explodes
+				Leaf.GetData<T>().TryCompressToSingleValue(Data);
+			}
+			Leaf.GetData<T>().SetDirty(Data);
+		}
+		else
+		{
+			auto& Parent = Tree.AsParent();
+			if (!Parent.HasChildren())
+			{
+				ensureThreadSafe(Parent.IsLockedForWrite());
+				Parent.CreateChildren();
+			}
+		}
+	});
+}
+
+template VOXEL_API void UVoxelDataTools::SetBoxAsDirtyImpl<FVoxelValue>(FVoxelData&, const FIntBox&, bool);
+template VOXEL_API void UVoxelDataTools::SetBoxAsDirtyImpl<FVoxelMaterial>(FVoxelData&, const FIntBox&, bool);
+template VOXEL_API void UVoxelDataTools::SetBoxAsDirtyImpl<FVoxelFoliage>(FVoxelData&, const FIntBox&, bool);
+
+void UVoxelDataTools::SetBoxAsDirty(
+	AVoxelWorld* World, 
+	FIntBox Bounds, 
+	bool bDirtyValues, 
+	bool bDirtyMaterials)
+{
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, 
+		if (bDirtyValues) 
+		{
+			SetBoxAsDirtyImpl<FVoxelValue>(Data, Bounds, true);
+		}
+		if (bDirtyMaterials) 
+		{
+			SetBoxAsDirtyImpl<FVoxelMaterial>(Data, Bounds, true);
+		});
+}
+
+void UVoxelDataTools::SetBoxAsDirtyAsync(
+	UObject* WorldContextObject, 
+	FLatentActionInfo LatentInfo, 
+	AVoxelWorld* World,
+	FIntBox Bounds, 
+	bool bDirtyValues, 
+	bool bDirtyMaterials, 
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, 
+		if (bDirtyValues) 
+		{
+			SetBoxAsDirtyImpl<FVoxelValue>(Data, Bounds, true);
+		}
+		if (bDirtyMaterials) 
+		{
+			SetBoxAsDirtyImpl<FVoxelMaterial>(Data, Bounds, true);
+		});
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FIntBox UVoxelDataTools::GetLevelToolBounds(const FVoxelVector& Position, float Radius, float Height, bool bAdditive)
+{
+	const float R = Radius + 2;
+	if (bAdditive)
+	{
+		// Below
+		return FIntBox(Position - FVector(R, R, Height + 1.f), Position + FVector(R, R, 1.f));
+	}
+	else
+	{
+		// Above
+		return FIntBox(Position - FVector(R, R, 1.f), Position + FVector(R, R, Height + 1.f));
+	}
+}
+
+void UVoxelDataTools::LevelImpl(
+	FVoxelData& Data, 
+	const FVoxelVector& Position, 
+	float Radius,
+	float Falloff,
+	float Height,
+	bool bAdditive)
+{
+	const FIntBox Bounds = GetLevelToolBounds(Position, Radius, Height, bAdditive);
+	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
+
+	// Center the height
+	const FVoxelVector CylinderPosition = Position + FVoxelVector(0, 0, (bAdditive ? -Height : Height) / 2);
+	
+	const float SquaredRadius = FMath::Square(Radius + 2);
+	Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
+	{
+		const float SquaredDistance = FVector2D(X - Position.X, Y - Position.Y).SizeSquared();
+		if (SquaredDistance <= SquaredRadius)
+		{
+			const float SDF = FVoxelUtilities::RoundCylinder(FVoxelVector(X, Y, Z) - CylinderPosition, Radius, Height, Falloff);
+			if (bAdditive)
+			{
+				Value = FMath::Min(Value, FVoxelValue(SDF));
+			}
+			else
+			{
+				Value = FMath::Max(Value, FVoxelValue(-SDF));
+			}
+		}
+	});
+}
+
+#define LEVEL_PREFIX \
+	const FVoxelVector Position = FVoxelToolHelpers::GetRealTemplate(World, InPosition, bConvertToVoxelSpace); \
+	const float Radius = FVoxelToolHelpers::GetRealTemplate(World, InRadius, bConvertToVoxelSpace); \
+	const float Height = FVoxelToolHelpers::GetRealTemplate(World, InHeight, bConvertToVoxelSpace); \
+	const FIntBox Bounds = GetLevelToolBounds(Position, Radius, Height, bAdditive);
+
+void UVoxelDataTools::Level(
+	AVoxelWorld* World, 
+	FVector InPosition, 
+	float InRadius, 
+	float InHeight, 
+	float Falloff, 
+	bool bAdditive, 
+	bool bConvertToVoxelSpace)
+{
+	VOXEL_TOOL_HELPER(Write, UpdateRender, LEVEL_PREFIX, LevelImpl(Data, Position, Radius, Falloff, Height, bAdditive));
+}
+
+void UVoxelDataTools::LevelAsync(
+	UObject* WorldContextObject, 
+	FLatentActionInfo LatentInfo, 
+	AVoxelWorld* World, 
+	FVector InPosition, 
+	float InRadius, 
+	float InHeight, 
+	float Falloff, 
+	bool bAdditive, 
+	bool bConvertToVoxelSpace, 
+	bool bHideLatentWarnings)
+{
+	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, LEVEL_PREFIX, LevelImpl(Data, Position, Radius, Falloff, Height, bAdditive));
 }

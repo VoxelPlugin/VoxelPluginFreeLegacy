@@ -5,8 +5,8 @@
 #include "VoxelCustomVersion.h"
 #include "VoxelGlobals.h"
 
-template<typename T, T MAX_VOXELVALUE>
-FORCEINLINE FArchive& operator<<(FArchive& Ar, TVoxelValueImpl<T, MAX_VOXELVALUE>& Value)
+template<typename T>
+FORCEINLINE FArchive& operator<<(FArchive& Ar, TVoxelValueImpl<T>& Value)
 {
 	Ar << Value.GetStorage();
 	return Ar;
@@ -22,6 +22,16 @@ void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, TArray<FVo
 		{
 			TArray<FVoxelValue16> CompatValues;
 			Archive << CompatValues;
+			Values = FVoxelValueConverter::ConvertValues(MoveTemp(CompatValues));
+		}
+		else if (VoxelCustomVersion < FVoxelCustomVersion::RemoveEnableVoxelSpawnedActorsEnableVoxelGrass)
+		{
+			TArray<FVoxelValue16> CompatValues;
+			CompatValues.BulkSerialize(Archive);
+			for (auto& Value : CompatValues)
+			{
+				Value.GetStorage() = FVoxelValue16::ClampToStorage(2 * Value.GetStorage());
+			}
 			Values = FVoxelValueConverter::ConvertValues(MoveTemp(CompatValues));
 		}
 		else if (VoxelCustomVersion < FVoxelCustomVersion::ValueConfigFlagAndSaveGUIDs)
@@ -133,22 +143,12 @@ void FVoxelSerializationUtilities::SerializeMaterials(FArchive& Archive, TArray<
 		}
 		else if (VoxelCustomVersion < FVoxelCustomVersion::RemoveEnableVoxelSpawnedActorsEnableVoxelGrass)
 		{
-			if (MaterialConfigFlag == LegacyVoxelMaterialConfigFlag)
+			int32 MaterialsSize;
+			Archive << MaterialsSize;
+			Materials.SetNumUninitialized(MaterialsSize);
+			for (int32 I = 0; I < MaterialsSize; I++)
 			{
-				int32 MaterialsSize;
-				Archive << MaterialsSize;
-				Materials.SetNumUninitialized(MaterialsSize);
-				Archive.Serialize(Materials.GetData(), MaterialsSize * sizeof(FVoxelMaterial));
-			}
-			else
-			{
-				int32 MaterialsSize;
-				Archive << MaterialsSize;
-				Materials.SetNumUninitialized(MaterialsSize);
-				for (int32 I = 0; I < MaterialsSize; I++)
-				{
-					Materials[I] = LegacySerializeCompat(Archive, MaterialConfigFlag);
-				}
+				Materials[I] = LegacySerializeCompat(Archive, MaterialConfigFlag);
 			}
 		}
 		else

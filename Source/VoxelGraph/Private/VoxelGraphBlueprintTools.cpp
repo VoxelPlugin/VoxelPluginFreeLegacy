@@ -6,49 +6,46 @@
 #include "VoxelGraphGenerator.h"
 #include "VoxelMessages.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 #define CHECK_WORLDGENERATOR() \
 	if (!WorldGenerator) \
 	{ \
 		FVoxelMessages::Error(FUNCTION_ERROR("Invalid WorldGenerator!")); \
-		return; \
+		return false; \
 	}
 
 #define CANNOT_FIND_PROPERTY() \
 			FVoxelMessages::Error( \
-				FText::Format(LOCTEXT("CouldNotFindProperty", "{0}: Could not find property {1}!"), \
+				FText::Format(VOXEL_LOCTEXT("{0}: Could not find property {1}!"), \
 					FText::FromString(__FUNCTION__), \
-					FText::FromName(UniqueName)));
+					FText::FromName(UniqueName))); \
+			return false;
 
-void UVoxelGraphBlueprintTools::SetVoxelGraphFloatParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, float Value)
+bool UVoxelGraphBlueprintTools::SetVoxelGraphFloatParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, float Value)
 {
-	VOXEL_PRO_ONLY_VOID();
+	VOXEL_PRO_ONLY();
 }
 
-void UVoxelGraphBlueprintTools::SetVoxelGraphIntParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, int32 Value)
+bool UVoxelGraphBlueprintTools::SetVoxelGraphIntParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, int32 Value)
 {
-	VOXEL_PRO_ONLY_VOID();
+	VOXEL_PRO_ONLY();
 }
 
-void UVoxelGraphBlueprintTools::SetVoxelGraphBoolParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, bool Value)
+bool UVoxelGraphBlueprintTools::SetVoxelGraphBoolParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, bool Value)
 {
-	VOXEL_PRO_ONLY_VOID();
+	VOXEL_PRO_ONLY();
 }
 
-void UVoxelGraphBlueprintTools::SetVoxelGraphColorParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, FLinearColor Value)
+bool UVoxelGraphBlueprintTools::SetVoxelGraphColorParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, FLinearColor Value)
 {
-	VOXEL_PRO_ONLY_VOID();
+	VOXEL_PRO_ONLY();
 }
 
-void UVoxelGraphBlueprintTools::SetVoxelGraphVoxelTextureParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, FVoxelFloatTexture Value)
+bool UVoxelGraphBlueprintTools::SetVoxelGraphVoxelTextureParameter(UVoxelWorldGenerator* WorldGenerator, FName UniqueName, FVoxelFloatTexture Value)
 {
-	VOXEL_PRO_ONLY_VOID();
+	VOXEL_PRO_ONLY();
 }
 
 void UVoxelGraphBlueprintTools::ClearVoxelGraphParametersOverrides(UVoxelWorldGenerator* WorldGenerator)
 {
 	VOXEL_PRO_ONLY_VOID();
 }
-
-#undef LOCTEXT_NAMESPACE

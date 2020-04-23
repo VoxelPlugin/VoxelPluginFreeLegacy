@@ -9,9 +9,9 @@
 class FVoxelFixedResolutionLODManager : public IVoxelLODManager
 {
 public:
-	static TVoxelSharedRef<FVoxelFixedResolutionLODManager> Create(
-		const FVoxelLODSettings& LODSettings,
-		int32 ChunkLOD);
+	static TVoxelSharedRef<FVoxelFixedResolutionLODManager> Create(const FVoxelLODSettings& LODSettings);
+
+	bool Initialize(int32 ChunkLOD, int32 MaxChunks);
 
 	virtual int32 UpdateBounds(const FIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final { return 0; }
 	virtual int32 UpdateBounds(const TArray<FIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final { return 0; }

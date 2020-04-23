@@ -21,7 +21,7 @@ class FAssetTypeActions_VoxelMeshSpawner : public FAssetTypeActions_VoxelSpawner
 public:
 	using FAssetTypeActions_VoxelSpawnerBase::FAssetTypeActions_VoxelSpawnerBase;
 
-	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelMeshSpawner", "Voxel Mesh Spawner"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Mesh Spawner"); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelMeshSpawner::StaticClass(); }
 };
 
@@ -30,7 +30,7 @@ class FAssetTypeActions_VoxelMeshSpawnerGroup : public FAssetTypeActions_VoxelSp
 public:
 	using FAssetTypeActions_VoxelSpawnerBase::FAssetTypeActions_VoxelSpawnerBase;
 
-	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelMeshSpawnerGroup", "Voxel Mesh Spawner Group"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Mesh Spawner Group"); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelMeshSpawnerGroup::StaticClass(); }
 };
 
@@ -39,7 +39,7 @@ class FAssetTypeActions_VoxelAssetSpawner : public FAssetTypeActions_VoxelSpawne
 public:
 	using FAssetTypeActions_VoxelSpawnerBase::FAssetTypeActions_VoxelSpawnerBase;
 
-	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelAssetSpawner", "Voxel Asset Spawner"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Asset Spawner"); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelAssetSpawner::StaticClass(); }
 };
 
@@ -48,6 +48,6 @@ class FAssetTypeActions_VoxelSpawnerGroup : public FAssetTypeActions_VoxelSpawne
 public:
 	using FAssetTypeActions_VoxelSpawnerBase::FAssetTypeActions_VoxelSpawnerBase;
 
-	virtual FText GetName() const override { return NSLOCTEXT("AssetTypeActions", "AssetTypeActions_VoxelSpawnerGroup", "Voxel Spawner Group"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Spawner Group"); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelSpawnerGroup::StaticClass(); }
 };

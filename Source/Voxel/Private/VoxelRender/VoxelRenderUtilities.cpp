@@ -15,7 +15,7 @@
 
 static TAutoConsoleVariable<int32> CVarMaxSectionsPerChunk(
 	TEXT("voxel.renderer.MaxSectionsPerChunk"),
-	32,
+	128,
 	TEXT("If a voxel chunk has more sections that this (eg due to single/double index), it won't be drawn. 1 section = 1 draw call"),
 	ECVF_Default);
 
@@ -187,6 +187,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	int32 NumVertices = 0;
 	int32 NumIndices = 0;
 	int32 NumAdjacencyIndices = 0;
+	int32 NumTextureCoordinates = -1;
 	for (auto& Section : Sections)
 	{
 		CHECK_CANCEL();
@@ -194,12 +195,26 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		const auto BufferIterator = [&](const FVoxelChunkMeshBuffers& ChunkBuffers)
 		{
 			ProcMeshBuffers.Guids.Add(ChunkBuffers.Guid);
+
+			// Else wrong NumTextureCoordinates gets assigned
+			// Only part of the buffers can be empty; having all of them empty is invalid
+			if (ChunkBuffers.GetNumVertices() == 0) return;
+			
 			NumVertices += ChunkBuffers.GetNumVertices();
 			NumIndices += ChunkBuffers.Indices.Num();
 			if (Section.bEnableTessellation)
 			{
 				// 4x as much adjacency indices
 				NumAdjacencyIndices += 4 * ChunkBuffers.Indices.Num();
+			}
+
+			if (NumTextureCoordinates == -1)
+			{
+				NumTextureCoordinates = ChunkBuffers.TextureCoordinates.Num();
+			}
+			else if (!ensure(NumTextureCoordinates == ChunkBuffers.TextureCoordinates.Num()))
+			{
+				NumTextureCoordinates = -2;
 			}
 		};
 
@@ -213,7 +228,9 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		}
 	}
 	ensure(NumAdjacencyIndices == 4 * NumIndices || NumAdjacencyIndices == 0); // If false, then some chunks have tessellation enabled and some others don't
-
+	if (!ensure(NumVertices > 0)) return {};
+	if (!ensure(NumTextureCoordinates >= 0)) return {};
+	
 	auto& PositionBuffer = ProcMeshBuffers.VertexBuffers.PositionVertexBuffer;
 	auto& StaticMeshBuffer = ProcMeshBuffers.VertexBuffers.StaticMeshVertexBuffer;
 	auto& ColorBuffer = ProcMeshBuffers.VertexBuffers.ColorVertexBuffer;
@@ -226,7 +243,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	if (RendererSettings.bRenderWorld)
 	{
 		StaticMeshBuffer.SetUseFullPrecisionUVs(!RendererSettings.bHalfPrecisionCoordinates);
-		StaticMeshBuffer.Init(NumVertices, NUM_VOXEL_TEXTURE_COORDINATES, FVoxelProcMeshBuffers::bNeedsCPUAccess);
+		StaticMeshBuffer.Init(NumVertices, NumTextureCoordinates, FVoxelProcMeshBuffers::bNeedsCPUAccess);
 		CHECK_CANCEL();
 		ColorBuffer.Init(NumVertices, FVoxelProcMeshBuffers::bNeedsCPUAccess);
 	}
@@ -249,7 +266,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 #endif
 	};
 
-	const auto CopyPositions = [&](auto& Chunk, auto Offset)
+	const auto CopyPositions = [&](const FVoxelChunkMeshBuffers& Chunk, const FVector& Offset)
 	{
 		VOXEL_SCOPE_COUNTER("CopyPositions");
 		const int32 ChunkNumVertices = Chunk.GetNumVertices();
@@ -258,7 +275,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 			PositionBuffer.VertexPosition(VerticesOffset + Index) = Get(Chunk.Positions, Index) + Offset;
 		}
 	};
-	const auto CopyColors = [&](auto& Chunk)
+	const auto CopyColors = [&](const FVoxelChunkMeshBuffers& Chunk)
 	{
 		if (!RendererSettings.bRenderWorld)
 		{
@@ -273,13 +290,13 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 			ColorBuffer.VertexColor(VerticesOffset + Index) = Get(Chunk.Colors, Index);
 		}
 	};
-	const auto CopyStaticMesh = [&](auto& Chunk)
+	const auto CopyStaticMesh = [&](const FVoxelChunkMeshBuffers& Chunk)
 	{
 		if (!RendererSettings.bRenderWorld)
 		{
 			ensure(Chunk.Tangents.Num() == 0);
 			ensure(Chunk.Normals.Num() == 0);
-			for (uint32 Tex = 0; Tex < NUM_VOXEL_TEXTURE_COORDINATES; Tex++) ensure(Chunk.TextureCoordinates[Tex].Num() == 0);
+			for (auto& T : Chunk.TextureCoordinates) ensure(T.Num() == 0);
 			return;
 		}
 
@@ -292,14 +309,15 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 				auto& Normal = Get(Chunk.Normals, Index);
 				StaticMeshBuffer.SetVertexTangents(VerticesOffset + Index, Tangent.TangentX, Tangent.GetY(Normal), Normal);
 			}
-			for (uint32 Tex = 0; Tex < NUM_VOXEL_TEXTURE_COORDINATES; Tex++)
+			check(Chunk.TextureCoordinates.Num() == NumTextureCoordinates);
+			for (int32 Tex = 0; Tex < NumTextureCoordinates; Tex++)
 			{
 				auto& TextureCoordinate = Get(Chunk.TextureCoordinates[Tex], Index);
 				StaticMeshBuffer.SetVertexUV(VerticesOffset + Index, Tex, TextureCoordinate);
 			}
 		}
 	};
-	const auto CopyIndices = [&](auto& Chunk)
+	const auto CopyIndices = [&](const FVoxelChunkMeshBuffers& Chunk)
 	{
 		VOXEL_SCOPE_COUNTER("CopyIndices");
 		for (int32 Index = 0; Index < Chunk.Indices.Num(); Index++)
@@ -307,7 +325,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 			IndexBuffer.SetIndex(IndicesOffset + Index, VerticesOffset + Get(Chunk.Indices, Index));
 		}
 	};
-	const auto CopyAdjacencyIndices = [&](auto& Chunk)
+	const auto CopyAdjacencyIndices = [&](const FVoxelChunkMeshBuffers& Chunk)
 	{
 		TArray<uint32> AdjacencyIndices;
 		Chunk.BuildAdjacency(AdjacencyIndices);
@@ -321,7 +339,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		return AdjacencyIndices.Num();
 	};
 	
-	for (auto& Chunk : Sections)
+	for (const FVoxelChunkMeshSection& Chunk : Sections)
 	{
 		CHECK_CANCEL();
 		
@@ -403,11 +421,8 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	
 	CHECK_CANCEL();
 
-	if (NumAdjacencyIndices > 0) // Tessellation enabled
-	{
-		// Bounds extension is in world space, and we're in local (voxel) space
-		ProcMeshBuffers.LocalBounds = ProcMeshBuffers.LocalBounds.ExpandBy(RendererSettings.TessellationBoundsExtension / RendererSettings.VoxelSize);
-	}
+	// Bounds extension is in world space, and we're in local (voxel) space
+	ProcMeshBuffers.LocalBounds = ProcMeshBuffers.LocalBounds.ExpandBy(RendererSettings.BoundsExtension / RendererSettings.VoxelSize);
 
 #if VOXEL_DEBUG
 	{
@@ -446,7 +461,8 @@ TUniquePtr<FVoxelBuiltChunkMeshes> FVoxelRenderUtilities::BuildMeshes_AnyThread(
 		CHECK_CANCEL();
 		for (auto& Section : MeshToBuild.Value)
 		{
-			const auto& SectionSettings = Section.Key;
+			const FVoxelProcMeshSectionSettings& SectionSettings = Section.Key;
+			ensure(SectionSettings.bSectionVisible || SectionSettings.bEnableCollisions || SectionSettings.bEnableNavmesh);
 			auto BuiltSection = MergeSections_AnyThread(RendererSettings, Section.Value, Position, CancelCounter, CancelThreshold);
 			CHECK_CANCEL();
 			BuiltSections.Emplace(SectionSettings, MoveTemp(BuiltSection));
@@ -483,15 +499,15 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 			ChunkSettings.TransitionsMask);
 	const auto DefaultMeshConfig = FVoxelMeshConfig().CopyFrom(*RendererSettings.ProcMeshClass->GetDefaultObject<UVoxelProceduralMeshComponent>());
 
-	const auto CreateMaterialInstance = [&](UMaterialInterface* Interface) -> TVoxelSharedRef<IVoxelMaterialInterface>
+	const auto CreateMaterialInstance = [&](UMaterialInterface* Interface) -> TVoxelSharedRef<FVoxelMaterialInterface>
 	{
 		if (!RendererSettings.bCreateMaterialInstances)
 		{
-			return FVoxelMaterialInterface::Create(Interface);
+			return FVoxelMaterialInterfaceManager::Get().CreateMaterial(Interface);
 		}
 
 		auto* ParentInstance = Cast<UMaterialInstanceDynamic>(Interface);
-		const auto MaterialInstance = FVoxelMaterialInstance::Create(ParentInstance ? ParentInstance->Parent : Interface);
+		const auto MaterialInstance = FVoxelMaterialInterfaceManager::Get().CreateMaterialInstance(ParentInstance ? ParentInstance->Parent : Interface);
 		auto* MaterialInstanceObject = Cast<UMaterialInstanceDynamic>(MaterialInstance->GetMaterial());
 		if (ensure(MaterialInstanceObject))
 		{
@@ -542,7 +558,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 	}
 	else
 	{
-		TSet<FVoxelBlendedMaterialUnsorted> MaterialsSet;
+		TSet<FVoxelMaterialIndices> MaterialsSet;
 		{
 			MainChunk.IterateMaterials([&](auto& Material) { MaterialsSet.Add(Material); });
 			if (TransitionChunk)
@@ -553,23 +569,26 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 			if (MaterialsSet.Num() > CVarMaxSectionsPerChunk.GetValueOnGameThread())
 			{
 				FVoxelMessages::Error(
-					NSLOCTEXT(
-						"Voxel",
-						"MaxSections",
 						"Voxel chunk with more than voxel.renderer.MaxSectionsPerChunk mesh sections.\n"
 						"Not rendering it to avoid performance drop (1 draw call per section).\n"
-						"This is because you are changing your single index or double index too frequently"));
+						"This is because you are changing your single index or double index too frequently\n"
+						"You most likely painted RGB data with a Single or Double Index material config, or painted too many double index materials on a single chunk\n"
+						"Decreasing your material collection Max Materials To Blend At Once might help\n"
+						"You can use voxel.renderer.ShowMeshSections 1 to debug");
 				return {};
 			}
 		}
 
-		const auto ShouldSkip = [&](const auto& Elements)
+		const auto ShouldSkip = [&](const FVoxelMaterialIndices& Indices)
 		{
-			for (uint8 Index : RendererSettings.HolesMaterials)
+			for (uint8 HoleMaterial : RendererSettings.HolesMaterials)
 			{
-				if (Elements.Contains(Index))
+				for (int32 Index = 0; Index < Indices.NumIndices; Index++)
 				{
-					return true;
+					if (Indices.SortedIndices[Index] == HoleMaterial)
+					{
+						return true;
+					}
 				}
 			}
 			return false;
@@ -577,7 +596,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 		
 		for (auto& Material : MaterialsSet)
 		{
-			if (ShouldSkip(Material.GetElements()))
+			if (ShouldSkip(Material))
 			{
 				continue;
 			}
@@ -590,7 +609,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 
 			// Note: we only use the first index to determine the mesh settings to use
 			// This might lead to unwanted behavior in blendings
-			auto* MaterialMeshConfig = RendererSettings.MaterialsMeshConfigs.Find(Material.Index0);
+			auto* MaterialMeshConfig = RendererSettings.MaterialsMeshConfigs.Find(Material.SortedIndices[0]);
 			auto& MeshConfig = MaterialMeshConfig ? *MaterialMeshConfig : DefaultMeshConfig;
 			auto& SectionMap = Meshes.FindOrAdd(MeshConfig);
 			

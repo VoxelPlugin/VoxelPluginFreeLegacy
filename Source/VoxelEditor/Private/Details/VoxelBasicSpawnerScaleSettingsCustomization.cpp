@@ -9,8 +9,6 @@
 #include "IDetailPropertyRow.h"
 #include "IPropertyUtilities.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 void FVoxelBasicSpawnerScaleSettingsCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
 }
@@ -40,7 +38,7 @@ void FVoxelBasicSpawnerScaleSettingsCustomization::CustomizeChildren(TSharedRef<
 	TypeHandle->GetValueAsFormattedString(Type);
 	if (Type == "Uniform")
 	{
-		ChildBuilder.AddProperty(ScaleXHandle).DisplayName(LOCTEXT("Scale", "Scale"));
+		ChildBuilder.AddProperty(ScaleXHandle).DisplayName(VOXEL_LOCTEXT("Scale"));
 	}
 	else if (Type == "Free")
 	{
@@ -50,13 +48,11 @@ void FVoxelBasicSpawnerScaleSettingsCustomization::CustomizeChildren(TSharedRef<
 	}
 	else if (Type == "LockXY")
 	{
-		ChildBuilder.AddProperty(ScaleXHandle).DisplayName(LOCTEXT("Scale XY", "Scale XY"));
-		ChildBuilder.AddProperty(ScaleZHandle).DisplayName(LOCTEXT("Scale Z", "Scale Z"));
+		ChildBuilder.AddProperty(ScaleXHandle).DisplayName(VOXEL_LOCTEXT("Scale XY"));
+		ChildBuilder.AddProperty(ScaleZHandle).DisplayName(VOXEL_LOCTEXT("Scale Z"));
 	}
 	else
 	{
 		ensure(false);
 	}
 }
-
-#undef LOCTEXT_NAMESPACE

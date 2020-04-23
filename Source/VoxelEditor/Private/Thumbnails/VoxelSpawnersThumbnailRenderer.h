@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGlobals.h"
 #include "ThumbnailRendering/StaticMeshThumbnailRenderer.h"
 #include "VoxelSpawnersThumbnailRenderer.generated.h"
 
@@ -13,7 +14,7 @@ class VOXELEDITOR_API UVoxelMeshSpawnerThumbnailRenderer : public UStaticMeshThu
 
 public:
 	virtual bool CanVisualizeAsset(UObject* Object) override;
-	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas) override;
+	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily)) override;
 };
 
 UCLASS()
@@ -23,7 +24,7 @@ class VOXELEDITOR_API UVoxelAssetSpawnerThumbnailRenderer : public UDefaultSized
 
 public:
 	virtual bool CanVisualizeAsset(UObject* Object) override;
-	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas) override;
+	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily)) override;
 };
 
 UCLASS()
@@ -33,7 +34,7 @@ class VOXELEDITOR_API UVoxelSpawnerGroupThumbnailRenderer : public UDefaultSized
 
 public:
 	virtual bool CanVisualizeAsset(UObject* Object) override;
-	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas) override;
+	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily)) override;
 };
 
 UCLASS()
@@ -43,5 +44,5 @@ class VOXELEDITOR_API UVoxelMeshSpawnerGroupThumbnailRenderer : public UStaticMe
 
 public:
 	virtual bool CanVisualizeAsset(UObject* Object) override;
-	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas) override;
+	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily)) override;
 };

@@ -15,24 +15,60 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
+static bool GToolManagerIsFrozen = false;
+
+static void FreezeToolManager()
+{
+	if (!GToolManagerIsFrozen)
+	{
+		GToolManagerIsFrozen = true;
+		LOG_VOXEL(Log, TEXT("Freezing tool manager"));
+	}
+	else
+	{
+		GToolManagerIsFrozen = false;
+		LOG_VOXEL(Log, TEXT("Unfreezing tool manager"));
+	}
+}
+
+static FAutoConsoleCommand CmdFreeze(
+    TEXT("voxel.ToolManager.Freeze"),
+    TEXT(""),
+    FConsoleCommandDelegate::CreateStatic(&FreezeToolManager));
+
 FVoxelToolManager_SurfaceSettings::FVoxelToolManager_SurfaceSettings()
 {
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ToolMaterialFinder(TEXT("/Voxel/ToolMaterials/ToolRenderingMaterial_Surface"));
-	static ConstructorHelpers::FObjectFinder<UTexture2D> MaskFinder(TEXT("/Voxel/Examples/VoxelDefaultBrushMask"));
 	ToolMaterial = ToolMaterialFinder.Object;
-	Mask = MaskFinder.Object;
+	MaskTexture = LoadObject<UTexture2D>(nullptr, TEXT("/Voxel/Examples/VoxelDefaultBrushMask"));
 }
+
+FVoxelToolManager_FlattenSettings::FVoxelToolManager_FlattenSettings()
+{
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ToolMaterialFinder(TEXT("/Voxel/ToolMaterials/ToolRenderingMaterial_Flatten"));
+	ToolMaterial = ToolMaterialFinder.Object;
+}
+
 FVoxelToolManager_TrimSettings::FVoxelToolManager_TrimSettings()
 {
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ToolMaterialFinder(TEXT("/Voxel/ToolMaterials/ToolRenderingMaterial_Trim"));
 	ToolMaterial = ToolMaterialFinder.Object;
 }
+
+FVoxelToolManager_LevelSettings::FVoxelToolManager_LevelSettings()
+{
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ToolMaterialFinder(TEXT("/Voxel/ToolMaterials/ToolMeshMaterial_Level"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMeshFinder(TEXT("/Engine/BasicShapes/Cylinder"));
+	ToolMaterial = ToolMaterialFinder.Object;
+	CylinderMesh = CylinderMeshFinder.Object;
+}
+
 FVoxelToolManager_SmoothSettings::FVoxelToolManager_SmoothSettings()
 {
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ToolMaterialFinder(TEXT("/Voxel/ToolMaterials/ToolRenderingMaterial_Smooth"));
 	ToolMaterial = ToolMaterialFinder.Object;
 }
-FVoxelToolManager_SphereSettings::FVoxelToolManager_SphereSettings()
+FVoxelToolManager_SphereSettingsBase::FVoxelToolManager_SphereSettingsBase()
 {
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ToolMaterialFinder(TEXT("/Voxel/ToolMaterials/ToolMeshMaterial_Sphere"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshFinder(TEXT("/Engine/BasicShapes/Sphere"));
@@ -42,18 +78,24 @@ FVoxelToolManager_SphereSettings::FVoxelToolManager_SphereSettings()
 FVoxelToolManager_MeshSettings::FVoxelToolManager_MeshSettings()
 {
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ToolMaterialFinder(TEXT("/Voxel/ToolMaterials/ToolMeshMaterial_Mesh"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ColorMaterialFinder(TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_M_Chair_Emissive_Color"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> UVsMaterialFinder(TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_M_Chair_Emissive_UVs"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshFinder(TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_SM_Chair"));
 	ToolMaterial = ToolMaterialFinder.Object;
-	ColorsMaterial = ColorMaterialFinder.Object;
-	UVsMaterial = UVsMaterialFinder.Object;
-	Mesh = MeshFinder.Object;
+	ColorsMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_M_Chair_Emissive_Color"));
+	UVsMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_M_Chair_Emissive_UVs"));
+	Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_SM_Chair"));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
+UVoxelToolManager::UVoxelToolManager()
+{
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMeshFinder(TEXT("/Engine/BasicShapes/Plane"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> PlaneMaterialFinder(TEXT("/Voxel/ToolMaterials/ViewportPlaneMaterial"));
+
+	PlaneMesh = PlaneMeshFinder.Object;
+	PlaneMaterial = PlaneMaterialFinder.Object;
+}
 
 void UVoxelToolManager::SaveConfig()
 {
@@ -81,6 +123,12 @@ void UVoxelToolManager::SaveConfig()
 
 void UVoxelToolManager::LoadConfig()
 {
+	if (!SurfaceSettings.MaskWorldGenerator.IsValid())
+	{
+		// Hack needed as voxel graph module is not yet loaded when the constructor is called
+		SurfaceSettings.MaskWorldGenerator.Type = EVoxelWorldGeneratorPickerType::Object;
+		SurfaceSettings.MaskWorldGenerator.Object = LoadObject<UVoxelWorldGenerator>(nullptr, TEXT("/Voxel/Examples/VoxelGraphs/VoxelGraph_Mask_Cellular"));
+	}
 	for (TFieldIterator<UProperty> It(UVoxelToolManager::StaticClass(), EFieldIteratorFlags::ExcludeSuper); It; ++It)
 	{
 		auto& Property = **It;
@@ -105,6 +153,16 @@ void UVoxelToolManager::Tick(FVoxelToolManagerTickData TickData)
 {
 	VOXEL_FUNCTION_COUNTER();
 
+	static FVoxelToolManagerTickData FrozenTickData;
+	if (GToolManagerIsFrozen)
+	{
+		TickData = FrozenTickData;
+	}
+	else
+	{
+		FrozenTickData = TickData;
+	}
+
 	if (!TickData.World)
 	{
 		FVoxelMessages::Error(FUNCTION_ERROR("Invalid TickData.World!"));
@@ -123,13 +181,18 @@ void UVoxelToolManager::Tick(FVoxelToolManagerTickData TickData)
 	
 	Radius = FMath::Max(0.f, Radius + TickData.MouseWheelDelta * RadiusChangeSpeed);
 
+	const auto CanEditWorld = [&](AVoxelWorld* InWorld)
+	{
+		return InWorld && InWorld->IsCreated() && (WorldsToEdit.Num() == 0 || WorldsToEdit.Contains(InWorld));
+	};
+
 	const FVector Start = TickData.RayOrigin;
-	const FVector End = TickData.RayOrigin + WORLD_MAX * TickData.RayDirection;
+	const FVector End = TickData.RayOrigin + float(WORLD_MAX) * TickData.RayDirection;
 
 	FHitResult HitResult;
 	TickData.World->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility);
 	AVoxelWorld* const NewVoxelWorld = Cast<AVoxelWorld>(HitResult.Actor);
-	if (NewVoxelWorld && NewVoxelWorld->IsCreated())
+	if (CanEditWorld(NewVoxelWorld))
 	{
 		VoxelWorld = NewVoxelWorld;
 	}
@@ -144,7 +207,7 @@ void UVoxelToolManager::Tick(FVoxelToolManagerTickData TickData)
 	}
 	if (!ToolInstance.IsValid()) return;
 
-	if (!VoxelWorld || !VoxelWorld->IsCreated())
+	if (!CanEditWorld(VoxelWorld))
 	{
 		ToolInstance->ClearVoxelWorld();
 		return;
@@ -187,10 +250,14 @@ void UVoxelToolManager::SimpleTick(APlayerController* PlayerController, bool bCl
 	}
 
 	FVector2D ScreenPosition;
-	if (!ViewportClient->GetMousePosition(ScreenPosition))
+	if (ViewportClient->GetMousePosition(ScreenPosition))
 	{
-		// Too spammy FVoxelMessages::Warning(FUNCTION_ERROR("No mouse!"));
-		return;
+		SimpleTick_LastKnownMousePosition = ScreenPosition;
+	}
+	else
+	{
+		ScreenPosition = SimpleTick_LastKnownMousePosition;
+		bClick = false; // Make sure to do nothing when clicking on the UI
 	}
 	
 	FVector WorldPosition;
@@ -222,7 +289,7 @@ void UVoxelToolManager::SimpleTick(APlayerController* PlayerController, bool bCl
 	Tick(TickData);
 }
 
-void UVoxelToolManager::Destroy()
+void UVoxelToolManager::ClearToolInstance()
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -239,10 +306,14 @@ void UVoxelToolManager::RecreateToolInstance()
 	switch (Tool)
 	{
 	case EVoxelToolManagerTool::Surface: ToolInstance = MakeVoxelShared<FVoxelToolManagerTool_Surface>(*this); break;
+	case EVoxelToolManagerTool::Flatten: ToolInstance = MakeVoxelShared<FVoxelToolManagerTool_Flatten>(*this); break;
 	case EVoxelToolManagerTool::Trim: ToolInstance = MakeVoxelShared<FVoxelToolManagerTool_Trim>(*this); break;
+	case EVoxelToolManagerTool::Level: ToolInstance = MakeVoxelShared<FVoxelToolManagerTool_Level>(*this); break;
 	case EVoxelToolManagerTool::Smooth: ToolInstance = MakeVoxelShared<FVoxelToolManagerTool_Smooth>(*this); break;
 	case EVoxelToolManagerTool::Sphere: ToolInstance = MakeVoxelShared<FVoxelToolManagerTool_Sphere>(*this); break;
 	case EVoxelToolManagerTool::Mesh: FVoxelMessages::ShowVoxelPluginProError("Mesh Stamps are only available in the Pro version of Voxel Plugin"); break;
+	case EVoxelToolManagerTool::Revert: ToolInstance = MakeVoxelShared<FVoxelToolManagerTool_Revert>(*this); break;
+	case EVoxelToolManagerTool::Custom: break; 
 	default: ensure(false);
 	}
 	ToolInstanceType = Tool;
@@ -268,13 +339,34 @@ bool UVoxelToolManager::IsPropertyVisible(const UProperty& Property, const UProp
 	{
 		return false;
 	}
-	
+
+	if (Property.HasMetaData(STATIC_FNAME("ShowForTools")))
+	{
+		// If we have a ShowForTools meta and it matches the tool, we're visible
+		const FString& ShowForTools = Property.GetMetaData(STATIC_FNAME("ShowForTools"));
+		if (ShowForTools.Contains(STATIC_FSTRING("All")) ||
+			ShowForTools.Contains(StaticEnum<EVoxelToolManagerTool>()->GetNameStringByValue(int64(Tool))))
+		{
+			return true;
+		}
+	}
+
+	// Else check the parent
+	if (!ParentProperty)
+	{
+		return false;
+	}
+	if (!IsPropertyVisible(*ParentProperty, nullptr))
+	{
+		return false;
+	}
+
 	if (Property.HasMetaData(STATIC_FNAME("ShowForMaterialConfigs")))
 	{
 		const FString& ShowForMaterialConfigs = Property.GetMetaData(STATIC_FNAME("ShowForMaterialConfigs"));
 		if (VoxelWorld)
 		{
-			const FString MaterialConfig = GET_STATIC_UENUM(EVoxelMaterialConfig).GetNameStringByValue(int64(VoxelWorld->MaterialConfig));
+			const FString MaterialConfig = StaticEnum<EVoxelMaterialConfig>()->GetNameStringByValue(int64(VoxelWorld->MaterialConfig));
 			if (!ShowForMaterialConfigs.Contains(MaterialConfig))
 			{
 				return false;
@@ -282,41 +374,39 @@ bool UVoxelToolManager::IsPropertyVisible(const UProperty& Property, const UProp
 		}
 	}
 
-	const FString& ShowForTools = Property.GetMetaData(STATIC_FNAME("ShowForTools"));
-	if (ShowForTools.Contains(STATIC_FSTRING("All")) ||
-		ShowForTools.Contains(GET_STATIC_UENUM(EVoxelToolManagerTool).GetNameStringByValue(int64(Tool))))
+	if (Property.HasMetaData(STATIC_FNAME("OnlyIfNotSurfaceAlignment")))
 	{
-		return true;
+		const auto GetAlignment = [&]()
+		{
+			switch (Tool)
+			{
+			default: ensure(false);
+			case EVoxelToolManagerTool::Sphere:
+				return SphereSettings.Alignment;
+			case EVoxelToolManagerTool::Mesh:
+				return MeshSettings.Alignment;
+			case EVoxelToolManagerTool::Revert:
+				return RevertSettings.Alignment;
+			}
+		};
+		return GetAlignment() != EVoxelToolManagerAlignment::Surface;
 	}
-	if (ParentProperty)
+	
+	if (Property.HasMetaData(STATIC_FNAME("OnlyIfMaskType")))
 	{
-		if (IsPropertyVisible(*ParentProperty, nullptr))
+		const FString& OnlyIfMaskType = Property.GetMetaData(STATIC_FNAME("OnlyIfMaskType"));
+		if (OnlyIfMaskType == STATIC_FSTRING("Texture"))
 		{
-			if (Property.HasMetaData(STATIC_FNAME("OnlyIfNotSurfaceAlignment")))
-			{
-				const FString& OnlyIfNotSurfaceAlignment = Property.GetMetaData(STATIC_FNAME("OnlyIfNotSurfaceAlignment"));
-				if (OnlyIfNotSurfaceAlignment == STATIC_FSTRING("Sphere"))
-				{
-					return SphereSettings.Alignment != EVoxelToolManagerAlignment::Surface;
-				}
-				if (OnlyIfNotSurfaceAlignment == STATIC_FSTRING("Mesh"))
-				{
-					return MeshSettings.Alignment != EVoxelToolManagerAlignment::Surface;
-				}
-				ensure(false);
-				return true;
-			}
-			else
-			{
-				return true;
-			}
+			return SurfaceSettings.MaskType == EVoxelToolManagerMaskType::Texture;
 		}
-		else
+		if (OnlyIfMaskType == STATIC_FSTRING("WorldGenerator"))
 		{
-			return false;
+			return SurfaceSettings.MaskType == EVoxelToolManagerMaskType::WorldGenerator;
 		}
+		ensure(false);
 	}
-	return false;
+
+	return true;
 }
 
 void UVoxelToolManager::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -328,10 +418,18 @@ void UVoxelToolManager::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 		// Recreate to avoid having to keep track of properties
 		RecreateToolInstance();
 	}
-	
-	const auto Name = PropertyChangedEvent.Property->GetFName();
-	if (Name == GET_MEMBER_NAME_STATIC(UVoxelToolManager, Tool) ||
-		Name == GET_MEMBER_NAME_STATIC(FVoxelToolManager_SphereSettings, Alignment))
+
+	if (PropertyChangedEvent.Property)
+	{
+		const auto Name = PropertyChangedEvent.Property->GetFName();
+		if (Name == GET_MEMBER_NAME_STATIC(UVoxelToolManager, Tool) ||
+			Name == GET_MEMBER_NAME_STATIC(FVoxelToolManager_SurfaceSettings, MaskType) ||
+			Name == GET_MEMBER_NAME_STATIC(FVoxelToolManager_SphereSettings, Alignment))
+		{
+			RefreshDetails.Broadcast();
+		}
+	}
+	else
 	{
 		RefreshDetails.Broadcast();
 	}
@@ -346,26 +444,22 @@ bool UVoxelToolManager::CanEditChange(const UProperty* InProperty) const
 	{
 		switch (Tool)
 		{
-		case EVoxelToolManagerTool::Surface: return SurfaceSettings.bPaint;
-		case EVoxelToolManagerTool::Sphere: return SphereSettings.bPaint;
-		case EVoxelToolManagerTool::Mesh:
-		case EVoxelToolManagerTool::Trim:
-		case EVoxelToolManagerTool::Smooth:
-		default: ensure(false);
+		case EVoxelToolManagerTool::Surface:
+			return SurfaceSettings.bPaint;
+		case EVoxelToolManagerTool::Sphere:
+			return SphereSettings.bPaint;
+		default:
+			return true;
 		}
 	}
 	if (Name == GET_MEMBER_NAME_STATIC(UVoxelToolManager, Radius))
 	{
 		switch (Tool)
 		{
-		case EVoxelToolManagerTool::Surface:
-		case EVoxelToolManagerTool::Sphere:
-		case EVoxelToolManagerTool::Trim:
-		case EVoxelToolManagerTool::Smooth:
-			return true;
 		case EVoxelToolManagerTool::Mesh:
 			return !MeshSettings.bUseMeshScale;
-		default: ensure(false);
+		default:
+			return true;
 		}
 	}
 

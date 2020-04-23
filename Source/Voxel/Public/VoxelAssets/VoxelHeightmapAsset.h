@@ -13,21 +13,23 @@
 class UVoxelHeightmapAsset;
 class UTexture2D;
 
-DECLARE_MEMORY_STAT_EXTERN(TEXT("Voxel Heightmap Assets Memory"), STAT_VoxelHeightmapAssetMemory, STATGROUP_VoxelMemory, VOXEL_API);
+template<typename>
+class TVoxelHeightmapAssetInstance;
+
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Heightmap Assets Memory"), STAT_VoxelHeightmapAssetMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
 template<typename T>
 struct TVoxelHeightmapAssetData
 {	
 	TWeakObjectPtr<UVoxelHeightmapAsset> const Owner;
-	
-	TVoxelHeightmapAssetData(UVoxelHeightmapAsset* Owner)
+
+	explicit TVoxelHeightmapAssetData(UVoxelHeightmapAsset* Owner)
 		: Owner(Owner)
 	{
-		INC_DWORD_STAT_BY(STAT_VoxelHeightmapAssetMemory, GetAllocatedSize());
 	}
 	~TVoxelHeightmapAssetData()
 	{
-		DEC_DWORD_STAT_BY(STAT_VoxelHeightmapAssetMemory, GetAllocatedSize());
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelHeightmapAssetMemory, AllocatedSize);
 	}
 
 public:
@@ -47,19 +49,41 @@ public:
 	{
 		return MaxHeight;
 	}
-	inline void SetSize(int32 NewWidth, int32 NewHeight, bool bCreateMaterials)
+	inline void SetSize(int32 NewWidth, int32 NewHeight, bool bCreateMaterials, EVoxelMaterialConfig InMaterialConfig)
 	{
-		DEC_DWORD_STAT_BY(STAT_VoxelHeightmapAssetMemory, GetAllocatedSize());
-
 		// Somewhat thread safe
 		Heights.SetNumUninitialized(NewWidth * NewHeight);
-		Materials.SetNumUninitialized(bCreateMaterials ? NewWidth * NewHeight : 0);
+
+		if (bCreateMaterials)
+		{
+			Materials.SetNumUninitialized(NewWidth * NewHeight * (
+				InMaterialConfig == EVoxelMaterialConfig::RGB
+				? 4
+				: InMaterialConfig == EVoxelMaterialConfig::SingleIndex
+				? 1
+				: 3));
+		}
+		else
+		{
+			Materials.Empty();
+		}
+		
 		Width = NewWidth;
 		Height = NewHeight;
 		MinHeight = TNumericLimits<T>::Max();
-		MaxHeight = TNumericLimits<T>::Min();
+		MaxHeight = TNumericLimits<T>::Lowest();
 
-		INC_DWORD_STAT_BY(STAT_VoxelHeightmapAssetMemory, GetAllocatedSize());
+		MaterialConfig = InMaterialConfig;
+
+		UpdateStats();
+	}
+	inline void SetAllHeightsTo(T NewHeight)
+	{
+		for (auto& HeightIt : Heights)
+		{
+			HeightIt = NewHeight;
+		}
+		MinHeight = MaxHeight = NewHeight;
 	}
 	
 	inline bool HasMaterials() const
@@ -89,28 +113,53 @@ public:
 	{
 		SetHeight(GetIndex(X, Y), NewHeight);
 	}
-	inline void SetMaterial(int32 X, int32 Y, const FVoxelMaterial& NewMaterial)
+	inline void SetMaterial_RGB(int32 X, int32 Y, FColor Color)
 	{
-		Materials[GetIndex(X, Y)] = NewMaterial;
+		SetMaterial_RGB(GetIndex(X, Y), Color);
 	}
+	inline void SetMaterial_SingleIndex(int32 X, int32 Y, uint8 SingleIndex)
+	{
+		SetMaterial_SingleIndex(GetIndex(X, Y), SingleIndex);
+	}
+	inline void SetMaterial_DoubleIndex(int32 X, int32 Y, uint8 IndexA, uint8 IndexB, uint8 Alpha)
+	{
+		SetMaterial_DoubleIndex(GetIndex(X, Y), IndexA, IndexB, Alpha);
+	}
+	
 	inline void SetHeight(int32 Index, T NewHeight)
 	{
 		MaxHeight = FMath::Max(MaxHeight, NewHeight);
 		MinHeight = FMath::Min(MinHeight, NewHeight);
 		Heights[Index] = NewHeight;
 	}
-	inline void SetMaterial(int32 Index, const FVoxelMaterial& NewMaterial)
+	inline void SetMaterial_RGB(int32 Index, FColor Color)
 	{
-		Materials[Index] = NewMaterial;
+		checkVoxelSlow(MaterialConfig == EVoxelMaterialConfig::RGB);
+		Materials[4 * Index + 0] = Color.R;
+		Materials[4 * Index + 1] = Color.G;
+		Materials[4 * Index + 2] = Color.B;
+		Materials[4 * Index + 3] = Color.A;
+	}
+	inline void SetMaterial_SingleIndex(int32 Index, uint8 SingleIndex)
+	{
+		checkVoxelSlow(MaterialConfig == EVoxelMaterialConfig::SingleIndex);
+		Materials[Index] = SingleIndex;
+	}
+	inline void SetMaterial_DoubleIndex(int32 Index, uint8 IndexA, uint8 IndexB, uint8 Alpha)
+	{
+		checkVoxelSlow(MaterialConfig == EVoxelMaterialConfig::DoubleIndex);
+		Materials[3 * Index + 0] = IndexA;
+		Materials[3 * Index + 1] = IndexB;
+		Materials[3 * Index + 2] = Alpha;
 	}
 
 	inline T GetHeightUnsafe(int32 X, int32 Y) const
 	{
-		return Heights[GetIndex(X, Y)];
+		return GetHeightUnsafe(GetIndex(X, Y));
 	}
 	inline FVoxelMaterial GetMaterialUnsafe(int32 X, int32 Y) const
 	{
-		return Materials[GetIndex(X, Y)];
+		return GetMaterialUnsafe(GetIndex(X, Y));
 	}
 	inline T GetHeightUnsafe(int32 Index) const
 	{
@@ -118,7 +167,26 @@ public:
 	}
 	inline FVoxelMaterial GetMaterialUnsafe(int32 Index) const
 	{
-		return Materials[Index];
+		FVoxelMaterial Material(ForceInit);
+		switch (MaterialConfig)
+		{
+		case EVoxelMaterialConfig::RGB:
+			Material.SetR(Materials[4 * Index + 0]);
+			Material.SetG(Materials[4 * Index + 1]);
+			Material.SetB(Materials[4 * Index + 2]);
+			Material.SetA(Materials[4 * Index + 3]);
+			break;
+		case EVoxelMaterialConfig::SingleIndex:
+			Material.SetSingleIndex_Index(Materials[Index]);
+			break;
+		case EVoxelMaterialConfig::DoubleIndex:
+		default:
+			Material.SetDoubleIndex_IndexA(Materials[3 * Index + 0]);
+			Material.SetDoubleIndex_IndexB(Materials[3 * Index + 1]);
+			Material.SetDoubleIndex_Blend(Materials[3 * Index + 2]);
+			break;
+		}
+		return Material;
 	}
 
 public:
@@ -127,6 +195,11 @@ public:
 		X = FVoxelUtilities::PositiveMod(X, GetWidth());
 		Y = FVoxelUtilities::PositiveMod(Y, GetHeight());
 	}
+	inline void ClampCoordinates(int32& X, int32& Y) const
+	{
+		X = FMath::Clamp(X, 0, GetWidth() - 1);
+		Y = FMath::Clamp(Y, 0, GetHeight() - 1);
+	}
 	inline T GetHeight(int32 X, int32 Y, EVoxelSamplerMode Mode, T DefaultHeight) const
 	{
 		if (!IsValidIndex(X, Y))
@@ -134,12 +207,12 @@ public:
 			if (Mode == EVoxelSamplerMode::Tile)
 			{
 				TileCoordinates(X, Y);
-				if (!ensureMsgf(IsValidIndex(X, Y), TEXT("X: %d, Y: %d"), X, Y))
-				{
-					return DefaultHeight;
-				}
 			}
 			else
+			{
+				ClampCoordinates(X, Y);
+			}
+			if (!ensureMsgf(IsValidIndex(X, Y), TEXT("X: %d, Y: %d"), X, Y))
 			{
 				return DefaultHeight;
 			}
@@ -153,12 +226,12 @@ public:
 			if (Mode == EVoxelSamplerMode::Tile)
 			{
 				TileCoordinates(X, Y);
-				if (!ensureMsgf(IsValidIndex(X, Y), TEXT("X: %d, Y: %d"), X, Y))
-				{
-					return FVoxelMaterial::Default();
-				}
 			}
 			else
+			{
+				ClampCoordinates(X, Y);
+			}
+			if (!ensureMsgf(IsValidIndex(X, Y), TEXT("X: %d, Y: %d"), X, Y))
 			{
 				return FVoxelMaterial::Default();
 			}
@@ -198,26 +271,45 @@ public:
 	}
 
 public:
-	void SerializeAsset(FArchive& Ar, uint32 MaterialConfigFlag, int32 VoxelCustomVersion);
+	inline const TArray<T>& GetRawHeights() const
+	{
+		return Heights;
+	}
+
+public:
+	void Serialize(FArchive& Ar, uint32 MaterialConfigFlag, int32 VoxelCustomVersion);
 	
 private:
 	TArray<T> Heights = { 0, 0, 0, 0 };
-	TArray<FVoxelMaterial> Materials;
+	TArray<uint8> Materials;
+	
 	int32 Width = 2;
 	int32 Height = 2;
 	T MinHeight = 0;
 	T MaxHeight = 0;
+
+	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
+	
+private:
+	uint32 AllocatedSize = 0;
+
+	void UpdateStats()
+	{
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelHeightmapAssetMemory, AllocatedSize);
+		AllocatedSize = Heights.GetAllocatedSize() + Materials.GetAllocatedSize();
+		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelHeightmapAssetMemory, AllocatedSize);
+	}
 };
 
 template<typename T>
-struct VOXEL_API TVoxelHeightmapAssetSamplerWrapper
+struct TVoxelHeightmapAssetSamplerWrapper
 {
 	const float Scale;
 	const float HeightScale;
 	const float HeightOffset;
-	const TVoxelSharedRef<const TVoxelHeightmapAssetData<T>> Data;
+	const TVoxelSharedRef<TVoxelHeightmapAssetData<T>> Data;
 
-	TVoxelHeightmapAssetSamplerWrapper(UVoxelHeightmapAsset* Asset);
+	explicit TVoxelHeightmapAssetSamplerWrapper(UVoxelHeightmapAsset* Asset);
 
 	inline float GetHeight(v_flt X, v_flt Y, EVoxelSamplerMode SamplerMode) const
 	{
@@ -227,6 +319,23 @@ struct VOXEL_API TVoxelHeightmapAssetSamplerWrapper
 	{
 		return Data->GetMaterial(float(X / Scale), float(Y / Scale), SamplerMode);
 	}
+
+	inline void SetHeight(int32 X, int32 Y, float Height)
+	{
+		ensureVoxelSlowNoSideEffects(Scale == 1.f);
+		Height -= HeightOffset;
+		Height /= HeightScale;
+		Height = FMath::Clamp<float>(Height, TNumericLimits<T>::Lowest(), TNumericLimits<T>::Max());
+		if (TIsSame<T, float>::Value)
+		{
+			Data->SetHeight(X, Y, Height);
+		}
+		else
+		{
+			Data->SetHeight(X, Y, FMath::RoundToInt(Height));
+		}
+	}
+
 	inline float GetMinHeight() const
 	{
 		return HeightOffset + HeightScale * Data->GetMinHeight();
@@ -235,6 +344,7 @@ struct VOXEL_API TVoxelHeightmapAssetSamplerWrapper
 	{
 		return HeightOffset + HeightScale * Data->GetMaxHeight();
 	}
+	
 	inline float GetWidth() const
 	{
 		return Scale * Data->GetWidth();
@@ -249,7 +359,7 @@ struct VOXEL_API TVoxelHeightmapAssetSamplerWrapper
  * Asset that holds 2D information.
  */
 UCLASS(Abstract, BlueprintType)
-class VOXEL_API UVoxelHeightmapAsset : public UVoxelWorldGenerator 
+class VOXEL_API UVoxelHeightmapAsset : public UVoxelTransformableWorldGeneratorWithBounds 
 {
 	GENERATED_BODY()
 
@@ -266,8 +376,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap Asset Settings")
 	float HeightOffset = 0;
 
-	// Additional thickness in voxels below the heightmap
+	// If false, will have meshes on the sides. If true, will extend infinitely.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap World Generator Settings")
+	bool bInfiniteExtent = false;
+
+	// Additional thickness in voxels below the heightmap
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap World Generator Settings", meta = (EditCondition = "!bInfiniteExtent"))
 	float AdditionalThickness = 0;
 
 	// Higher precision can improve render quality, but voxel values are lower (hardness not constant)
@@ -299,14 +413,17 @@ protected:
 
 	template<typename T>
 	void SyncProperties(const TVoxelSharedRef<TVoxelHeightmapAssetData<T>>& Data);
+
+	template<typename T>
+	FIntBox GetBoundsImpl() const;
 	
 protected:
 	virtual void Serialize(FArchive& Ar) override;
 
 private:
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category = "Heightmap Info")
 	int32 Width;
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category = "Heightmap Info")
 	int32 Height;
 	
 	UPROPERTY()
@@ -345,11 +462,15 @@ public:
 	UVoxelHeightmapAssetFloat();
 
 	TVoxelHeightmapAssetData<float>& GetData();
-	TVoxelSharedRef<const TVoxelHeightmapAssetData<float>> GetDataSharedPtr();
+	TVoxelSharedRef<TVoxelHeightmapAssetData<float>> GetDataSharedPtr();
 	void Save();
+
+	TVoxelSharedRef<TVoxelHeightmapAssetInstance<float>> GetInstanceImpl();
 	
 	//~ Begin UVoxelWorldGenerator Interface
-	TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
+	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual FIntBox GetBounds() const override;
 	//~ End UVoxelWorldGenerator Interface
 
 private:
@@ -394,11 +515,15 @@ public:
 	UVoxelHeightmapAssetUINT16();
 	
 	TVoxelHeightmapAssetData<uint16>& GetData();
-	TVoxelSharedRef<const TVoxelHeightmapAssetData<uint16>> GetDataSharedPtr();
+	TVoxelSharedRef<TVoxelHeightmapAssetData<uint16>> GetDataSharedPtr();
 	void Save();
 
+	TVoxelSharedRef<TVoxelHeightmapAssetInstance<uint16>> GetInstanceImpl();
+	
 	//~ Begin UVoxelWorldGenerator Interface
-	TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
+	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual FIntBox GetBounds() const override;
 	//~ End UVoxelWorldGenerator Interface
 
 private:

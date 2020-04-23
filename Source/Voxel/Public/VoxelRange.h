@@ -468,8 +468,8 @@ public:
 		{
 			if (Other.IsInfinity())
 			{
-				ensureVoxelSlow(Other.IsSingleSign()); // Does not contain 0
-				ensureVoxelSlow(Other.GetSign() != 0); // Else wouldn't be infinity, and does not contain 0
+				ensureVoxelSlowNoSideEffects(Other.IsSingleSign()); // Does not contain 0
+				ensureVoxelSlowNoSideEffects(Other.GetSign() != 0); // Else wouldn't be infinity, and does not contain 0
 				const auto Inf = ExtendToInfinity();
 				return TVoxelRange::FromList(Inf.Min / Other.GetSign(), Inf.Max / Other.GetSign());
 			}
@@ -479,7 +479,7 @@ public:
 		{
 			if (Other.IsSingleSign())
 			{
-				ensureVoxelSlow(Other.GetSign() != 0); // Else would be a single value
+				ensureVoxelSlowNoSideEffects(Other.GetSign() != 0); // Else would be a single value
 				const auto Inf = ExtendToInfinity();
 				return TVoxelRange::FromList(Inf.Min / Other.GetSign(), Inf.Max / Other.GetSign());
 			}
@@ -567,6 +567,20 @@ public:
 		return *this;
 	}
 };
+
+namespace FVoxelRangeUtilities
+{
+	template<typename T>
+	inline TVoxelRange<T> Min(const TVoxelRange<T>& A, const TVoxelRange<T>& B)
+	{
+		return { FMath::Min(A.Min, B.Min), FMath::Min(A.Max, B.Max) };
+	}
+	template<typename T>
+	inline TVoxelRange<T> Max(const TVoxelRange<T>& A, const TVoxelRange<T>& B)
+	{
+		return { FMath::Max(A.Min, B.Min), FMath::Max(A.Max, B.Max) };
+	}
+}
 
 struct FVoxelMaterialRange
 {

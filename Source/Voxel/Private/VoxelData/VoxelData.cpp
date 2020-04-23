@@ -16,6 +16,12 @@ TAutoConsoleVariable<int32> CVarMaxPlaceableItemsPerOctree(
 		TEXT("Max number of placeable items per data octree node. If more placeable items are added, the node is split"),
 		ECVF_Default);
 
+TAutoConsoleVariable<int32> CVarStoreSpecialValueForGeneratorValuesInSaves(
+		TEXT("voxel.data.StoreSpecialValueForGeneratorValuesInSaves"),
+		1,
+		TEXT("If true, will store FVoxelValue::Special() instead of the value if it's equal to the generator value when saving."),
+		ECVF_Default);
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -27,8 +33,13 @@ inline auto CreateWorldGenerator(const AVoxelWorld* World)
 	return WorldGeneratorInstance;
 }
 
+inline int32 ClampDataDepth(int32 Depth)
+{
+	return FMath::Max(1, FVoxelUtilities::ClampDepth<DATA_CHUNK_SIZE>(Depth));
+}
+
 FVoxelDataSettings::FVoxelDataSettings(const AVoxelWorld* World, EVoxelPlayType PlayType)
-	: Depth(FVoxelUtilities::ClampDataDepth(FVoxelUtilities::GetDataDepthFromChunkDepth(World->OctreeDepth)))
+	: Depth(ClampDataDepth(FVoxelUtilities::ConvertDepth<RENDER_CHUNK_SIZE, DATA_CHUNK_SIZE>(World->RenderOctreeDepth)))
 	, WorldBounds(World->GetWorldBounds())
 	, WorldGenerator(CreateWorldGenerator(World))
 	, bEnableMultiplayer(false)
@@ -41,7 +52,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 	const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& WorldGenerator,
 	bool bEnableMultiplayer,
 	bool bEnableUndoRedo)
-	: Depth(Depth)
+	: Depth(ClampDataDepth(Depth))
 	, WorldBounds(FVoxelUtilities::GetBoundsFromDepth<DATA_CHUNK_SIZE>(Depth))
 	, WorldGenerator(WorldGenerator)
 	, bEnableMultiplayer(bEnableMultiplayer)
@@ -55,7 +66,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 	const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& WorldGenerator, 
 	bool bEnableMultiplayer, 
 	bool bEnableUndoRedo)
-	: Depth(FVoxelUtilities::GetOctreeDepthContainingBounds<DATA_CHUNK_SIZE>(WorldBounds))
+	: Depth(ClampDataDepth(FVoxelUtilities::GetOctreeDepthContainingBounds<DATA_CHUNK_SIZE>(WorldBounds)))
 	, WorldBounds(WorldBounds)
 	, WorldGenerator(WorldGenerator)
 	, bEnableMultiplayer(bEnableMultiplayer)
@@ -69,11 +80,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 ///////////////////////////////////////////////////////////////////////////////
 
 FVoxelData::FVoxelData(const FVoxelDataSettings& Settings)
-	: Depth(Settings.Depth)
-	, WorldBounds(Settings.WorldBounds)
-	, bEnableMultiplayer(Settings.bEnableMultiplayer)
-	, bEnableUndoRedo(Settings.bEnableUndoRedo)
-	, WorldGenerator(Settings.WorldGenerator)
+	: IVoxelData(Settings.Depth, Settings.WorldBounds, Settings.bEnableMultiplayer, Settings.bEnableUndoRedo, Settings.WorldGenerator)
 	, Octree(MakeUnique<FVoxelDataOctreeParent>(Depth))
 {
 	check(Depth > 0);
@@ -96,6 +103,11 @@ TVoxelSharedRef<FVoxelData> FVoxelData::Create(const FVoxelDataSettings& Setting
 		});
 	}
 	return MakeShareable(Data);
+}
+
+FVoxelData::~FVoxelData()
+{
+	ClearData();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -263,16 +275,34 @@ void FVoxelData::Unlock(TUniquePtr<FVoxelDataLockInfo> LockInfo) const
 void FVoxelData::ClearData()
 {
 	VOXEL_FUNCTION_COUNTER();
-	
+
 	MainLock.Lock(EVoxelLockType::Write);
-	Octree = MakeUnique<FVoxelDataOctreeParent>(Depth);
+	{
+		// Clear the data to have clean memory reports
+		FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
+		{
+			Leaf.GetData<FVoxelValue>().ClearData(*this);
+			Leaf.GetData<FVoxelMaterial>().ClearData(*this);
+			Leaf.GetData<FVoxelFoliage>().ClearData(*this);
+		});
+
+		ensure(GetDirtyMemory().Values.GetValue() == 0);
+		ensure(GetDirtyMemory().Materials.GetValue() == 0);
+		ensure(GetDirtyMemory().Foliage.GetValue() == 0);
+
+		ensure(GetCachedMemory().Values.GetValue() == 0);
+		ensure(GetCachedMemory().Materials.GetValue() == 0);
+		ensure(GetCachedMemory().Foliage.GetValue() == 0);
+
+		Octree = MakeUnique<FVoxelDataOctreeParent>(Depth);
+	}
 	MainLock.Unlock(EVoxelLockType::Write);
 
 	HistoryPosition = 0;
 	MaxHistoryPosition = 0;
 	UndoFramesBounds.Reset();
 	RedoFramesBounds.Reset();
-	bIsDirty = true;
+	MarkAsDirty();
 	
 	FScopeLock Lock(&ItemsSection);
 	FreeItems.Empty();
@@ -280,33 +310,35 @@ void FVoxelData::ClearData()
 	ItemFrame = MakeUnique<FItemFrame>();
 	ItemUndoFrames.Empty();
 	ItemRedoFrames.Empty();
+	LeavesWithRedoStackStack.Empty();
 }
 
 void FVoxelData::ClearOctreeData(TArray<FIntBox>& OutBoundsToUpdate)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	FVoxelOctreeUtilities::IterateEntireTree(GetOctree(), [&](FVoxelDataOctreeBase& Chunk)
+	FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
 	{
-		if (Chunk.IsLeaf())
+		ensureThreadSafe(Leaf.IsLockedForWrite());
+		bool bUpdate = false;
+		if (Leaf.GetData<FVoxelValue>().IsDirty())
 		{
-			ensureThreadSafe(Chunk.IsLockedForWrite());
-			auto& Leaf = Chunk.AsLeaf();
-			bool bUpdate = false;
-			if (Leaf.GetData<FVoxelValue>().IsDirty())
-			{
-				bUpdate = true;
-				Leaf.GetData<FVoxelValue>().ClearData();
-			}
-			if (Leaf.GetData<FVoxelMaterial>().IsDirty())
-			{
-				bUpdate = true;
-				Leaf.GetData<FVoxelMaterial>().ClearData();
-			}
-			if (bUpdate)
-			{
-				OutBoundsToUpdate.Add(Leaf.GetBounds());
-			}
+			bUpdate = true;
+			Leaf.GetData<FVoxelValue>().ClearData(*this);
+		}
+		if (Leaf.GetData<FVoxelMaterial>().IsDirty())
+		{
+			bUpdate = true;
+			Leaf.GetData<FVoxelMaterial>().ClearData(*this);
+		}
+		if (Leaf.GetData<FVoxelFoliage>().IsDirty())
+		{
+			bUpdate = true;
+			Leaf.GetData<FVoxelFoliage>().ClearData(*this);
+		}
+		if (bUpdate)
+		{
+			OutBoundsToUpdate.Add(Leaf.GetBounds());
 		}
 	});
 }
@@ -326,7 +358,7 @@ void FVoxelData::CacheBounds(const FIntBox& Bounds)
 			auto& DataHolder = Leaf.GetData<T>();
 			if (!DataHolder.GetDataPtr() && !DataHolder.IsSingleValue())
 			{
-				DataHolder.CreateDataPtr();
+				DataHolder.CreateDataPtr(*this);
 				TVoxelQueryZone<T> QueryZone(Chunk.GetBounds(), DataHolder.GetDataPtr());
 				Leaf.GetFromGeneratorAndAssets(*WorldGenerator, QueryZone, 0);
 			}
@@ -351,26 +383,14 @@ void FVoxelData::ClearCacheInBounds(const FIntBox& Bounds)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	FVoxelOctreeUtilities::IterateTreeInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Chunk)
+	FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
-		if (Chunk.IsLeaf())
-		{
-			ensureThreadSafe(Chunk.IsLockedForWrite());
+		ensureThreadSafe(Leaf.IsLockedForWrite());
 
-			auto& DataHolder = Chunk.AsLeaf().GetData<T>();
-			if (DataHolder.GetDataPtr() && !DataHolder.IsDirty())
-			{
-				DataHolder.ClearData();
-			}
-		}
-		else
+		auto& DataHolder = Leaf.GetData<T>();
+		if (DataHolder.GetDataPtr() && !DataHolder.IsDirty())
 		{
-			auto& Parent = Chunk.AsParent();
-			if (!Parent.HasChildren())
-			{
-				ensureThreadSafe(Chunk.IsLockedForWrite());
-				Parent.CreateChildren();
-			}
+			DataHolder.ClearData(*this);
 		}
 	});
 }
@@ -387,7 +407,10 @@ void FVoxelData::CheckIsSingle(const FIntBox& Bounds)
 	{
 		ensureThreadSafe(Leaf.IsLockedForWrite());
 
-		Leaf.GetData<T>().TryCompressToSingleValue();
+		if (!Leaf.GetData<T>().IsSingleValue())
+		{
+			Leaf.GetData<T>().TryCompressToSingleValue(*this);
+		}
 	});
 }
 
@@ -466,13 +489,15 @@ void FVoxelData::Get(TVoxelQueryZone<T>& GlobalQueryZone, int32 LOD) const
 template VOXEL_API void FVoxelData::Get<FVoxelValue   >(TVoxelQueryZone<FVoxelValue   >&, int32) const;
 template VOXEL_API void FVoxelData::Get<FVoxelMaterial>(TVoxelQueryZone<FVoxelMaterial>&, int32) const;
 
-TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FIntBox& Bounds, int32 LOD) const
+TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FIntBox& InBounds, int32 LOD) const
 {
 	VOXEL_FUNCTION_COUNTER();
-	ensure(Bounds.IsValid());
+	ensure(InBounds.IsValid());
 	
 	const auto Apply = [&](FVoxelDataOctreeBase& Tree)
 	{
+		const auto QueryBounds = InBounds.Overlap(Tree.GetBounds());
+		
 		if (Tree.IsLeaf())
 		{
 			auto& Data = Tree.AsLeaf().GetData<FVoxelValue>();
@@ -493,16 +518,15 @@ TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FIntBox& Bounds, int32 
 		TOptional<TVoxelRange<FVoxelValue>> Range;
 		if (Assets.Num() > 0)
 		{
-			const auto QueryBounds = Bounds.Overlap(Tree.GetBounds());
 			for (int32 Index = Assets.Num() - 1; Index >= 0; Index--)
 			{
 				auto& Asset = *Assets[Index];
 
-				if (!Asset.Bounds.Intersect(Bounds)) continue;
+				if (!Asset.Bounds.Intersect(QueryBounds)) continue;
 
 				const auto AssetRangeFlt = Asset.WorldGenerator->GetValueRange_Transform(
 					Asset.LocalToWorld,
-					Asset.Bounds.Overlap(Bounds),
+					Asset.Bounds.Overlap(QueryBounds),
 					LOD,
 					FVoxelItemStack(ItemHolder, *WorldGenerator, Index));
 				const auto AssetRange = TVoxelRange<FVoxelValue>(AssetRangeFlt);
@@ -524,7 +548,8 @@ TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FIntBox& Bounds, int32 
 			}
 		}
 		
-		const auto GeneratorRangeFlt = WorldGenerator->GetValueRange(Bounds, LOD, FVoxelItemStack(ItemHolder));
+		// Note: need to query individual bounds as ItemHolder might be different
+		const auto GeneratorRangeFlt = WorldGenerator->GetValueRange(QueryBounds, LOD, FVoxelItemStack(ItemHolder));
 		const auto GeneratorRange = TVoxelRange<FVoxelValue>(GeneratorRangeFlt);
 		if (!Range.IsSet())
 		{
@@ -541,11 +566,11 @@ TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FIntBox& Bounds, int32 
 	};
 	
 	const FIntBox OctreeBounds = Octree->GetBounds();
-	auto Result = FVoxelOctreeUtilities::ReduceInBounds<TVoxelRange<FVoxelValue>>(GetOctree(), Bounds.Overlap(OctreeBounds), Apply, Reduction);
+	auto Result = FVoxelOctreeUtilities::ReduceInBounds<TVoxelRange<FVoxelValue>>(GetOctree(), InBounds.Overlap(OctreeBounds), Apply, Reduction);
 	
-	if (!OctreeBounds.Contains(Bounds))
+	if (!OctreeBounds.Contains(InBounds))
 	{
-		for (auto& LocalBounds : Bounds.Difference(OctreeBounds))
+		for (auto& LocalBounds : InBounds.Difference(OctreeBounds))
 		{
 			const auto LocalRange = TVoxelRange<FVoxelValue>(WorldGenerator->GetValueRange(LocalBounds, LOD, FVoxelItemStack::Empty));
 			Result = Result.IsSet() ? TVoxelRange<FVoxelValue>::Union(Result.GetValue(), LocalRange) : LocalRange;
@@ -556,30 +581,32 @@ TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FIntBox& Bounds, int32 
 	return Result.Get(FVoxelValue::Empty());
 }
 
-TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultValue, FName Name, const FIntBox& Bounds, int32 LOD) const
+TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultValue, FName Name, const FIntBox& InBounds, int32 LOD) const
 {
 	VOXEL_FUNCTION_COUNTER();
+	ensure(InBounds.IsValid());
 	
 	const auto Apply = [&](FVoxelDataOctreeBase& Tree)
 	{
+		const auto QueryBounds = InBounds.Overlap(Tree.GetBounds());
+		
 		auto& ItemHolder = Tree.GetItemHolder();
 		const auto Assets = ItemHolder.GetItems<FVoxelAssetItem>();
 
 		TOptional<TVoxelRange<v_flt>> Range;
 		if (Assets.Num() > 0)
 		{
-			const auto QueryBounds = Bounds.Overlap(Tree.GetBounds());
 			for (int32 Index = Assets.Num() - 1; Index >= 0; Index--)
 			{
 				auto& Asset = *Assets[Index];
 
-				if (!Asset.Bounds.Intersect(Bounds)) continue;
+				if (!Asset.Bounds.Intersect(InBounds)) continue;
 
 				const auto AssetRange = Asset.WorldGenerator->GetCustomOutputRange_Transform(
 					Asset.LocalToWorld,
 					DefaultValue,
 					Name,
-					Bounds,
+					InBounds,
 					LOD,
 					FVoxelItemStack(ItemHolder, *WorldGenerator, Index));
 
@@ -600,7 +627,8 @@ TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultVa
 			}
 		}
 		
-		const auto GeneratorRange = WorldGenerator->GetValueRange(Bounds, LOD, FVoxelItemStack(ItemHolder));
+		// Note: need to query individual bounds as ItemHolder might be different
+		const auto GeneratorRange = WorldGenerator->GetCustomOutputRange(DefaultValue, Name, QueryBounds, LOD, FVoxelItemStack(ItemHolder));
 		if (!Range.IsSet())
 		{
 			return GeneratorRange;
@@ -615,7 +643,8 @@ TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultVa
 		return TVoxelRange<v_flt>::Union(RangeA, RangeB);
 	};
 	
-	const auto Result = FVoxelOctreeUtilities::ReduceInBounds<TVoxelRange<v_flt>>(GetOctree(), Bounds, Apply, Reduction);
+	const auto Result = FVoxelOctreeUtilities::ReduceInBounds<TVoxelRange<v_flt>>(GetOctree(), InBounds, Apply, Reduction);
+	// TODO: check outside of octree as well?
 	return Result.Get(DefaultValue);
 }
 
@@ -623,19 +652,57 @@ TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultVa
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelData::GetSave(FVoxelUncompressedWorldSave& OutSave)
+void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	check(IsInGameThread());
-
 	FVoxelReadScopeLock Lock(*this, FIntBox::Infinite, "GetSave");
 
 	FVoxelSaveBuilder Builder(Depth);
 
+	TArray<TUniquePtr<TVoxelDataOctreeLeafData<FVoxelValue>>> BuffersToDelete;
+
 	FVoxelOctreeUtilities::IterateAllLeaves(*Octree, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
-		Builder.AddChunk(Leaf.Position, Leaf.Values, Leaf.Materials, Leaf.Foliage);
+		TVoxelDataOctreeLeafData<FVoxelValue>* ValuesPtr = &Leaf.Values;
+		
+		if (CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread() != 0)
+		{
+			// Only if dirty and not compressed to a single value
+			if (Leaf.Values.IsDirty() && Leaf.Values.GetDataPtr())
+			{
+				auto UniquePtr = MakeUnique<TVoxelDataOctreeLeafData<FVoxelValue>>();
+				UniquePtr->CreateDataPtr(*this);
+				UniquePtr->SetDirty(*this);
+
+				const FVoxelValue* RESTRICT const ExistingDataPtr = Leaf.Values.GetDataPtr();
+				FVoxelValue* RESTRICT const NewDataPtr = UniquePtr->GetDataPtr();
+
+				const FIntBox LeafBounds = Leaf.GetBounds();
+				LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+				{
+					const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
+					const FVoxelValue Value = ExistingDataPtr[Index];
+					// Empty stack: items not loaded when loading in LoadFromSave
+					const FVoxelValue GeneratorValue = WorldGenerator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
+
+					if (GeneratorValue == Value)
+					{
+						NewDataPtr[Index] = FVoxelValue::Special();
+					}
+					else
+					{
+						NewDataPtr[Index] = Value;
+					}
+				});
+
+				UniquePtr->TryCompressToSingleValue(*this);
+				ValuesPtr = UniquePtr.Get();
+				BuffersToDelete.Emplace(MoveTemp(UniquePtr));
+			}
+		}
+		
+		Builder.AddChunk(Leaf.Position, *ValuesPtr, Leaf.Materials, Leaf.Foliage);
 	});
 
 	{
@@ -650,9 +717,15 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSave& OutSave)
 	}
 
 	Builder.Save(OutSave);
+
+	for (auto& Buffer : BuffersToDelete)
+	{
+		// For correct memory reports
+		Buffer->ClearData(*this);
+	}
 }
 
-bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompressedWorldSave& Save, TArray<FIntBox>& OutBoundsToUpdate)
+bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompressedWorldSaveImpl& Save, TArray<FIntBox>& OutBoundsToUpdate)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -671,30 +744,58 @@ bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompr
 
 	// Will replace the octree
 	ClearData();
-	bIsDirty = false; // Set by ClearData
+	ClearDirtyFlag(); // Set by ClearData
 	
 	FVoxelWriteScopeLock Lock(*this, FIntBox::Infinite, FUNCTION_FNAME);
 
 	FVoxelSaveLoader Loader(Save);
 
-	int32 Index = 0;
+	int32 ChunkIndex = 0;
 	FVoxelOctreeUtilities::IterateEntireTree(*Octree, [&](FVoxelDataOctreeBase& Tree)
 	{
-		if (Index == Loader.NumChunks())
+		if (ChunkIndex == Loader.NumChunks())
 		{
 			return;
 		}
 
 		const FIntBox OctreeBounds = Tree.GetBounds();
-		const FIntVector CurrentPosition = Loader.GetChunkPosition(Index);
+		const FIntVector CurrentPosition = Loader.GetChunkPosition(ChunkIndex);
 		if (Tree.IsLeaf())
 		{
 			auto& Leaf = Tree.AsLeaf();
 			if (CurrentPosition == Tree.Position)
 			{
-				Loader.ExtractChunk(Index, Leaf.Values, Leaf.Materials, Leaf.Foliage);
+				Loader.ExtractChunk(ChunkIndex, *this, Leaf.Values, Leaf.Materials, Leaf.Foliage);
+				
+				if (CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread() != 0)
+				{
+					// If we are dirty and we are not a single value, or if we are a single special value
+					if (Leaf.Values.IsDirty() && (!Leaf.Values.IsSingleValue() || Leaf.Values.GetSingleValue() == FVoxelValue::Special()))
+					{
+						if (Leaf.Values.IsSingleValue())
+						{
+							Leaf.Values.ExpandSingleValue(*this);
+						}
 
-				Index++;
+						auto* RESTRICT DataPtr = Leaf.Values.GetDataPtr();
+						OctreeBounds.Iterate([&](int32 X, int32 Y, int32 Z)
+						{
+							const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(OctreeBounds.Min, X, Y, Z);
+							FVoxelValue& Value = DataPtr[Index];
+
+							if (Value == FVoxelValue::Special())
+							{
+								// Use the generator value, ignoring all assets and items as they are not loaded
+								// The same is done when checking on save
+								Value = WorldGenerator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
+							}
+						});
+
+						Leaf.Values.TryCompressToSingleValue(*this);
+					}
+				}
+
+				ChunkIndex++;
 				OutBoundsToUpdate.Add(OctreeBounds);
 			}
 		}
@@ -707,7 +808,7 @@ bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompr
 			}
 		}
 	});
-	check(Index == Loader.NumChunks() || Save.GetDepth() > Depth);
+	check(ChunkIndex == Loader.NumChunks() || Save.GetDepth() > Depth);
 
 	for (auto& Item : Loader.GetPlaceableItems(VoxelWorld))
 	{
@@ -726,10 +827,9 @@ bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompr
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#define CHECK_UNDO_REDO_IMPL(r) check(IsInGameThread()); if(!ensure(bEnableUndoRedo)) { return r; }
-#define NO_ARG
-#define CHECK_UNDO_REDO() CHECK_UNDO_REDO_IMPL(NO_ARG)
-#define CHECK_UNDO_REDO_BOOL() CHECK_UNDO_REDO_IMPL(false)
+#define CHECK_UNDO_REDO_IMPL(Return, Dummy) check(IsInGameThread()); if(!ensure(bEnableUndoRedo)) { return Return; }
+#define CHECK_UNDO_REDO() CHECK_UNDO_REDO_IMPL({},)
+#define CHECK_UNDO_REDO_VOID() CHECK_UNDO_REDO_IMPL(,)
 
 static TAutoConsoleVariable<int32> CVarResetDataChunksWhenUndoingAddItem(
 	TEXT("voxel.data.ResetDataChunksWhenUndoingAddItem"),
@@ -737,139 +837,166 @@ static TAutoConsoleVariable<int32> CVarResetDataChunksWhenUndoingAddItem(
 	TEXT("If true, will reset all data chunks affected by AddItem when undoing it. If false, these chunks will be left untouched. In both cases, undo is imperfect"),
 	ECVF_Default);
 
-void FVoxelData::Undo(TArray<FIntBox>& OutBoundsToUpdate)
+bool FVoxelData::Undo(TArray<FIntBox>& OutBoundsToUpdate)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_UNDO_REDO();
 
-	if (HistoryPosition > 0)
+	if (HistoryPosition <= 0)
 	{
-		MarkAsDirty();
-		HistoryPosition--;
-
-		{
-			FScopeLock ItemLock(&ItemsSection);
-			ensure(ItemFrame->IsEmpty());
-			if (ItemUndoFrames.Num() > 0 && ItemUndoFrames.Last()->HistoryPosition == HistoryPosition)
-			{
-				auto UndoFrame = ItemUndoFrames.Pop(false);
-
-				for (auto& Item : UndoFrame->AddedItems)
-				{
-					FVoxelWriteScopeLock Lock(*this, Item->Bounds, FUNCTION_FNAME);
-					FString Error;
-					ensureAlwaysMsgf(RemoveItem(
-						Item.Get(),
-						ERecordInHistory::Yes,
-						CVarResetDataChunksWhenUndoingAddItem.GetValueOnGameThread() == 1,
-						Error),
-						TEXT("Failed to undo add item: %s"), *Error);
-					OutBoundsToUpdate.Add(Item->Bounds);
-				}
-				for (auto& Item : UndoFrame->RemovedItems)
-				{
-					FVoxelWriteScopeLock Lock(*this, Item->Bounds, FUNCTION_FNAME);
-					AddItem(Item.ToSharedRef(), ERecordInHistory::Yes);
-					OutBoundsToUpdate.Add(Item->Bounds);
-				}
-
-				UndoFrame->HistoryPosition = HistoryPosition + 1;
-				ItemRedoFrames.Add(MoveTemp(UndoFrame));
-				ItemFrame = MakeUnique<FItemFrame>();
-			}
-		}
-		
-		const auto Bounds = UndoFramesBounds.Pop();
-		RedoFramesBounds.Add(Bounds);
-		FVoxelWriteScopeLock Lock(*this, Bounds, FUNCTION_FNAME);
-		FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
-		{
-			if (Leaf.UndoRedo.IsValid() && Leaf.UndoRedo->CanUndo(HistoryPosition))
-			{
-				if (Leaf.Values.IsSingleValue()) Leaf.Values.ExpandSingleValue();
-				if (Leaf.Materials.IsSingleValue()) Leaf.Materials.ExpandSingleValue();
-				if (Leaf.Foliage.IsSingleValue()) Leaf.Foliage.ExpandSingleValue();
-
-				// Note: some data ptrs might be null if we haven't edited them yet
-				
-				Leaf.UndoRedo->Undo(Leaf.Values.GetDataPtr(), Leaf.Materials.GetDataPtr(), Leaf.Foliage.GetDataPtr(), HistoryPosition);
-				OutBoundsToUpdate.Add(Leaf.GetBounds());
-			}
-		});
+		return false;
 	}
+
+	MarkAsDirty();
+	HistoryPosition--;
+
+	RedoUniqueIds.Add(CurrentFrameUniqueId);
+	CurrentFrameUniqueId = UndoUniqueIds.Pop(false);
+	
+	{
+		FScopeLock ItemLock(&ItemsSection);
+		ensure(ItemFrame->IsEmpty());
+		if (ItemUndoFrames.Num() > 0 && ItemUndoFrames.Last()->HistoryPosition == HistoryPosition)
+		{
+			auto UndoFrame = ItemUndoFrames.Pop(false);
+
+			for (auto& Item : UndoFrame->AddedItems)
+			{
+				FVoxelWriteScopeLock Lock(*this, Item->Bounds, FUNCTION_FNAME);
+				FString Error;
+				ensureAlwaysMsgf(RemoveItem(
+					Item.Get(),
+					ERecordInHistory::Yes,
+					CVarResetDataChunksWhenUndoingAddItem.GetValueOnGameThread() == 1,
+					Error),
+					TEXT("Failed to undo add item: %s"), *Error);
+				OutBoundsToUpdate.Add(Item->Bounds);
+			}
+			for (auto& Item : UndoFrame->RemovedItems)
+			{
+				FVoxelWriteScopeLock Lock(*this, Item->Bounds, FUNCTION_FNAME);
+				AddItem(Item.ToSharedRef(), ERecordInHistory::Yes);
+				OutBoundsToUpdate.Add(Item->Bounds);
+			}
+
+			UndoFrame->HistoryPosition = HistoryPosition + 1;
+			ItemRedoFrames.Add(MoveTemp(UndoFrame));
+			ItemFrame = MakeUnique<FItemFrame>();
+		}
+	}
+	
+	const auto Bounds = UndoFramesBounds.Pop();
+	RedoFramesBounds.Add(Bounds);
+
+	LeavesWithRedoStackStack.Emplace();
+	auto& LeavesWithRedoStack = LeavesWithRedoStackStack.Last();
+	
+	FVoxelWriteScopeLock Lock(*this, Bounds, FUNCTION_FNAME);
+	FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+	{
+		if (Leaf.UndoRedo.IsValid() && Leaf.UndoRedo->CanUndoRedo<EVoxelUndoRedo::Undo>(HistoryPosition))
+		{
+			if (Leaf.UndoRedo->GetFramesStack<EVoxelUndoRedo::Redo>().Num() == 0)
+			{
+				// Only add if this is the first redo to avoid duplicates
+#if VOXEL_DEBUG
+				for (auto& It : LeavesWithRedoStackStack)
+				{
+					ensure(!It.Contains(&Leaf));
+				}
+#endif
+				LeavesWithRedoStack.Add(&Leaf);
+			}
+			Leaf.UndoRedo->UndoRedo<EVoxelUndoRedo::Undo>(*this, Leaf, HistoryPosition);
+			OutBoundsToUpdate.Add(Leaf.GetBounds());
+		}
+	});
+
+	return true;
 }
 
-void FVoxelData::Redo(TArray<FIntBox>& OutBoundsToUpdate)
+bool FVoxelData::Redo(TArray<FIntBox>& OutBoundsToUpdate)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_UNDO_REDO();
 
-	if (HistoryPosition < MaxHistoryPosition)
+	if (HistoryPosition >= MaxHistoryPosition)
 	{
-		MarkAsDirty();
-		HistoryPosition++;
-
-		{
-			FScopeLock ItemLock(&ItemsSection);
-			check(ItemFrame->IsEmpty());
-			if (ItemRedoFrames.Num() > 0 && ItemRedoFrames.Last()->HistoryPosition == HistoryPosition)
-			{
-				auto RedoFrame = ItemRedoFrames.Pop(false);
-
-				for (auto& Item : RedoFrame->AddedItems)
-				{
-					FVoxelWriteScopeLock Lock(*this, Item->Bounds, FUNCTION_FNAME);
-					AddItem(Item.ToSharedRef(), ERecordInHistory::Yes);
-					OutBoundsToUpdate.Add(Item->Bounds);
-				}
-				for (auto& Item : RedoFrame->RemovedItems)
-				{
-					FVoxelWriteScopeLock Lock(*this, Item->Bounds, FUNCTION_FNAME);
-					FString Error;
-					ensureAlwaysMsgf(RemoveItem(
-						Item.Get(),
-						ERecordInHistory::Yes,
-						CVarResetDataChunksWhenUndoingAddItem.GetValueOnGameThread() == 1,
-						Error),
-						TEXT("Failed to redo remove item: %s"), *Error);
-					OutBoundsToUpdate.Add(Item->Bounds);
-				}
-
-				RedoFrame->HistoryPosition = HistoryPosition - 1;
-				ItemUndoFrames.Add(MoveTemp(RedoFrame));
-				ItemFrame = MakeUnique<FItemFrame>();
-			}
-		}
-		
-		const auto Bounds = RedoFramesBounds.Pop();
-		UndoFramesBounds.Add(Bounds);
-		FVoxelWriteScopeLock Lock(*this, Bounds, FUNCTION_FNAME);
-		FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
-		{
-			if (Leaf.UndoRedo.IsValid() && Leaf.UndoRedo->CanRedo(HistoryPosition))
-			{
-				if (Leaf.Values.IsSingleValue()) Leaf.Values.ExpandSingleValue();
-				if (Leaf.Materials.IsSingleValue()) Leaf.Materials.ExpandSingleValue();
-				if (Leaf.Foliage.IsSingleValue()) Leaf.Foliage.ExpandSingleValue();
-
-				// Note: some data ptrs might be null if we haven't edited them yet
-				
-				Leaf.UndoRedo->Redo(Leaf.Values.GetDataPtr(), Leaf.Materials.GetDataPtr(), Leaf.Foliage.GetDataPtr(), HistoryPosition);
-				OutBoundsToUpdate.Add(Leaf.GetBounds());
-			}
-		});
+		return false;
 	}
+
+	MarkAsDirty();
+	HistoryPosition++;
+
+	UndoUniqueIds.Add(CurrentFrameUniqueId);
+	CurrentFrameUniqueId = RedoUniqueIds.Pop(false);
+
+	{
+		FScopeLock ItemLock(&ItemsSection);
+		check(ItemFrame->IsEmpty());
+		if (ItemRedoFrames.Num() > 0 && ItemRedoFrames.Last()->HistoryPosition == HistoryPosition)
+		{
+			auto RedoFrame = ItemRedoFrames.Pop(false);
+
+			for (auto& Item : RedoFrame->AddedItems)
+			{
+				FVoxelWriteScopeLock Lock(*this, Item->Bounds, FUNCTION_FNAME);
+				AddItem(Item.ToSharedRef(), ERecordInHistory::Yes);
+				OutBoundsToUpdate.Add(Item->Bounds);
+			}
+			for (auto& Item : RedoFrame->RemovedItems)
+			{
+				FVoxelWriteScopeLock Lock(*this, Item->Bounds, FUNCTION_FNAME);
+				FString Error;
+				ensureAlwaysMsgf(RemoveItem(
+					Item.Get(),
+					ERecordInHistory::Yes,
+					CVarResetDataChunksWhenUndoingAddItem.GetValueOnGameThread() == 1,
+					Error),
+					TEXT("Failed to redo remove item: %s"), *Error);
+				OutBoundsToUpdate.Add(Item->Bounds);
+			}
+
+			RedoFrame->HistoryPosition = HistoryPosition - 1;
+			ItemUndoFrames.Add(MoveTemp(RedoFrame));
+			ItemFrame = MakeUnique<FItemFrame>();
+		}
+	}
+	
+	const auto Bounds = RedoFramesBounds.Pop();
+	UndoFramesBounds.Add(Bounds);
+
+	// We are redoing: pop redo stacks added by the last undo
+	if (ensure(LeavesWithRedoStackStack.Num() > 0)) LeavesWithRedoStackStack.Pop(false);
+	
+	FVoxelWriteScopeLock Lock(*this, Bounds, FUNCTION_FNAME);
+	FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+	{
+		if (Leaf.UndoRedo.IsValid() && Leaf.UndoRedo->CanUndoRedo<EVoxelUndoRedo::Redo>(HistoryPosition))
+		{
+			Leaf.UndoRedo->UndoRedo<EVoxelUndoRedo::Redo>(*this, Leaf, HistoryPosition);
+			OutBoundsToUpdate.Add(Leaf.GetBounds());
+		}
+	});
+
+	return true;
 }
 
 void FVoxelData::ClearFrames()
 {
 	VOXEL_FUNCTION_COUNTER();
-	CHECK_UNDO_REDO();
+	CHECK_UNDO_REDO_VOID();
 
 	HistoryPosition = 0;
 	MaxHistoryPosition = 0;
-	UndoFramesBounds.Reset();
-	RedoFramesBounds.Reset();
+	
+	UndoFramesBounds.Empty();
+	RedoFramesBounds.Empty();
+
+	CurrentFrameUniqueId = 0;
+
+	UndoUniqueIds.Empty();
+	RedoUniqueIds.Empty();
 
 	{
 		FScopeLock Lock(&ItemsSection);
@@ -879,11 +1006,11 @@ void FVoxelData::ClearFrames()
 	}
 
 	FVoxelWriteScopeLock Lock(*this, FIntBox::Infinite, FUNCTION_FNAME);
-	FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](auto& Leaf)
+	FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
 	{
 		if (Leaf.UndoRedo.IsValid())
 		{
-			Leaf.UndoRedo->ClearFrames();
+			Leaf.UndoRedo->ClearFrames(Leaf);
 		}
 	});
 }
@@ -891,9 +1018,62 @@ void FVoxelData::ClearFrames()
 void FVoxelData::SaveFrame(const FIntBox& Bounds)
 {
 	VOXEL_FUNCTION_COUNTER();
-	CHECK_UNDO_REDO();
+	CHECK_UNDO_REDO_VOID();
 
-	MarkAsDirty();
+	{
+#if VOXEL_DEBUG
+		// Not thread safe, but for debug only so should be ok
+		FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
+		{
+			if (Leaf.UndoRedo.IsValid() && !Leaf.UndoRedo->IsCurrentFrameEmpty() && !Leaf.GetBounds().Intersect(Bounds))
+			{
+				ensureMsgf(false, TEXT("Save Frame called on too small bounds! Input Bounds: %s; Leaf Bounds: %s"), *Bounds.ToString(), *Leaf.GetBounds().ToString());
+			}
+		});
+#endif
+
+		// Call SaveFrame on the leaves
+		{
+			FVoxelReadScopeLock Lock(*this, Bounds, FUNCTION_FNAME);
+			FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
+			{
+				ensureThreadSafe(Leaf.IsLockedForRead());
+				if (Leaf.UndoRedo.IsValid())
+				{
+					Leaf.UndoRedo->SaveFrame(Leaf, HistoryPosition);
+				}
+			});
+		}
+
+		// Clear redo histories
+		for (auto& LeavesWithRedoStack : LeavesWithRedoStackStack)
+		{
+			for (auto* Leaf : LeavesWithRedoStack)
+			{
+				if (ensure(Leaf->UndoRedo.IsValid()))
+				{
+					// Note: might be empty if we called Redo already
+					// Note: no need to lock, frame stacks are game thread only and a leaf cannot be destroyed without a global lock
+					Leaf->UndoRedo->GetFramesStack<EVoxelUndoRedo::Redo>().Reset();
+				}
+			}
+		}
+		LeavesWithRedoStackStack.Reset();
+
+#if VOXEL_DEBUG
+		// Not thread safe, but for debug only so should be ok
+		FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
+		{
+			if (Leaf.UndoRedo.IsValid())
+			{
+				ensure(Leaf.UndoRedo->GetFramesStack<EVoxelUndoRedo::Redo>().Num() == 0);
+				ensure(Leaf.UndoRedo->IsCurrentFrameEmpty());
+			}
+		});
+#endif
+	}
+
+	// Save items
 	{
 		FScopeLock Lock(&ItemsSection);
 		if (!ItemFrame->IsEmpty())
@@ -904,24 +1084,10 @@ void FVoxelData::SaveFrame(const FIntBox& Bounds)
 		}
 		ItemRedoFrames.Reset();
 	}
-	FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](auto& Leaf)
-	{
-		if (Leaf.UndoRedo.IsValid())
-		{
-			Leaf.UndoRedo->SaveFrame(HistoryPosition);
-		}
-	});
 
-#if VOXEL_DEBUG
-	// Not thread safe, but for debug only so should be ok
-	FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](auto& Leaf)
-	{
-		if (Leaf.UndoRedo.IsValid())
-		{
-			ensure(Leaf.UndoRedo->IsCurrentFrameEmpty());
-		}
-	});
-#endif
+	// Important: do all that at the end as HistoryPosition is used above
+	
+	MarkAsDirty();
 
 	HistoryPosition++;
 	MaxHistoryPosition = HistoryPosition;
@@ -929,13 +1095,20 @@ void FVoxelData::SaveFrame(const FIntBox& Bounds)
 	UndoFramesBounds.Add(Bounds);
 	RedoFramesBounds.Reset();
 
+	UndoUniqueIds.Add(CurrentFrameUniqueId);
+	RedoUniqueIds.Reset();
+	// Assign new unique id to this frame
+	CurrentFrameUniqueId = FrameUniqueIdCounter++;
+
 	ensure(UndoFramesBounds.Num() == HistoryPosition);
+	ensure(UndoUniqueIds.Num() == HistoryPosition);
+	
 }
 
 bool FVoxelData::IsCurrentFrameEmpty()
 {
 	VOXEL_FUNCTION_COUNTER();
-	CHECK_UNDO_REDO_BOOL();
+	CHECK_UNDO_REDO();
 
 	{
 		FScopeLock Lock(&ItemsSection);
@@ -992,11 +1165,11 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 {
 	if (bModifyValues)
 	{
-		Leaf.InitForEdit<FVoxelValue>(*Data.WorldGenerator, Data.bEnableMultiplayer, Data.bEnableUndoRedo);
+		Leaf.InitForEdit<FVoxelValue>(Data);
 	}
 	if (bModifyMaterials)
 	{
-		Leaf.InitForEdit<FVoxelMaterial>(*Data.WorldGenerator, Data.bEnableMultiplayer, Data.bEnableUndoRedo);
+		Leaf.InitForEdit<FVoxelMaterial>(Data);
 	}
 	
 	const FVoxelDataWorldGeneratorInstance_AddAssetItem PtrWorldGenerator(Data);
@@ -1008,6 +1181,8 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 	const auto WriteAssetDataToBuffer = [&](auto& Buffer)
 	{
 		using T = typename std::decay<decltype(Buffer)>::type::ElementType;
+
+		Leaf.GetData<T>().SetDirty(Data);
 		
 		auto* RESTRICT DataPtr = Leaf.GetData<T>().GetDataPtr();
 		check(DataPtr);
@@ -1064,11 +1239,11 @@ void FVoxelData::AddItem(
 			// Flush cache if possible
 			if (!Leaf.Values.IsDirty())
 			{
-				Leaf.Values.ClearData();
+				Leaf.Values.ClearData(*this);
 			}
 			if (!Leaf.Materials.IsDirty())
 			{
-				Leaf.Materials.ClearData();
+				Leaf.Materials.ClearData(*this);
 			}
 
 			if (!bDoNotModifyExistingDataChunks && Item->IsA<FVoxelAssetItem>() && (Leaf.Values.IsDirty() || Leaf.Materials.IsDirty()))
@@ -1153,7 +1328,7 @@ bool FVoxelData::RemoveItem(FVoxelPlaceableItem* Item, ERecordInHistory RecordIn
 				{
 					if (!Leaf.Values.IsDirty())
 					{
-						Leaf.Values.ClearData();
+						Leaf.Values.ClearData(*this);
 					}
 					else
 					{
@@ -1162,7 +1337,7 @@ bool FVoxelData::RemoveItem(FVoxelPlaceableItem* Item, ERecordInHistory RecordIn
 						// Note: might be possible to do something smarter if UndoRedo is enabled, eg replaying all the edits excluding the AddItem
 						if (bResetOverlappingChunksData)
 						{
-							Leaf.Values.ClearData();
+							Leaf.Values.ClearData(*this);
 						}
 					}
 				}
@@ -1170,13 +1345,13 @@ bool FVoxelData::RemoveItem(FVoxelPlaceableItem* Item, ERecordInHistory RecordIn
 				{
 					if (!Leaf.Materials.IsDirty())
 					{
-						Leaf.Materials.ClearData();
+						Leaf.Materials.ClearData(*this);
 					}
 					else
 					{
 						if (bResetOverlappingChunksData)
 						{
-							Leaf.Materials.ClearData();
+							Leaf.Materials.ClearData(*this);
 						}
 					}
 				}

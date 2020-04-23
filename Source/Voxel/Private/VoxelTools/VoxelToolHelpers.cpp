@@ -88,14 +88,15 @@ void FVoxelToolHelpers::UpdateWorld(AVoxelWorld* World, const FIntBox& Bounds)
 	World->GetLODManager().UpdateBounds(Bounds);
 }
 
-void FVoxelToolHelpers::StartAsyncEditTask(AVoxelWorld* World, const TVoxelSharedRef<IVoxelQueuedWork>& Work)
+void FVoxelToolHelpers::StartAsyncEditTask(AVoxelWorld* World, IVoxelQueuedWork* Work)
 {
 	if (World)
 	{
-		World->GetPool().QueueTask(EVoxelTaskType::AsyncEditFunctions, &Work.Get());
+		World->GetPool().QueueTask(EVoxelTaskType::AsyncEditFunctions, Work);
 	}
 	else
 	{
+		// Should be safe as async tasks should be flushed on close
 		AsyncTask(ENamedThreads::AnyThread, [Work]() { Work->DoThreadedWork(); });
 	}
 }
@@ -112,7 +113,7 @@ float FVoxelToolHelpers::GetRealDistance(AVoxelWorld* World, float Distance, boo
 	}
 }
 
-FVector FVoxelToolHelpers::GetRealPosition(AVoxelWorld* World, const FVector& Position, bool bConvertToVoxelSpace)
+FVoxelVector FVoxelToolHelpers::GetRealPosition(AVoxelWorld* World, const FVector& Position, bool bConvertToVoxelSpace)
 {
 	if (bConvertToVoxelSpace)
 	{
@@ -190,7 +191,7 @@ bool FVoxelToolHelpers::StartAsyncLatentAction_WithWorld(
 		World,
 		Name,
 		bHideLatentWarnings,
-		[&]() { return MakeVoxelShared<FVoxelLatentActionAsyncWork_WithWorld>(Name, World, DoWork); },
+		[&]() { return new FVoxelLatentActionAsyncWork_WithWorld(Name, World, DoWork); },
 		[=](FVoxelLatentActionAsyncWork_WithWorld& Work)
 		{
 			if (UpdateRender == EVoxelUpdateRender::UpdateRender && Work.World.IsValid())
@@ -214,7 +215,7 @@ bool FVoxelToolHelpers::StartAsyncLatentAction_WithoutWorld(
 		nullptr,
 		Name,
 		bHideLatentWarnings,
-		[&]() { return MakeVoxelShared<FVoxelLatentActionAsyncWork_WithoutWorld>(Name, DoWork, MoveTemp(IsValid)); },
+		[&]() { return new FVoxelLatentActionAsyncWork_WithoutWorld(Name, DoWork, MoveTemp(IsValid)); },
 		[=](auto&) {});
 }
 
@@ -231,11 +232,11 @@ FScopeToolsTimeLogger::~FScopeToolsTimeLogger()
 		const double ElapsedInMilliseconds = ElapsedInSeconds * 1000;
 		if (NumVoxels < 0)
 		{
-			UE_LOG(LogVoxel, Log, TEXT("%s took %fms"), *FString(Name), ElapsedInMilliseconds);
+			LOG_VOXEL(Log, TEXT("%s took %fms"), *FString(Name), ElapsedInMilliseconds);
 		}
 		else
 		{
-			UE_LOG(LogVoxel, Log, TEXT("%s took %fms for %lld voxels (%f G/s)"), *FString(Name), ElapsedInMilliseconds, NumVoxels, NumVoxels / ElapsedInSeconds / 1e9);
+			LOG_VOXEL(Log, TEXT("%s took %fms for %lld voxels (%f G/s)"), *FString(Name), ElapsedInMilliseconds, NumVoxels, NumVoxels / ElapsedInSeconds / 1e9);
 		}
 	}
 }

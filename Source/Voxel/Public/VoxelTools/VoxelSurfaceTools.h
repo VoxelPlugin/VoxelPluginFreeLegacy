@@ -82,7 +82,16 @@ struct FVoxelValueEdit : public FVoxelEditBase
 {
 	GENERATED_BODY()
 
-	using FVoxelEditBase::FVoxelEditBase;
+	// Current value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	float Value = 0.f;
+	
+	FVoxelValueEdit() = default;
+	FVoxelValueEdit(const FVoxelEditBase& EditStrength, float Value)
+		: FVoxelEditBase(EditStrength)
+		, Value(Value)
+	{
+	}
 };
 	
 USTRUCT(BlueprintType)
@@ -117,10 +126,14 @@ struct FVoxelFoliageEdit : public FVoxelEditBase
 	}
 };
 
-enum class ESDFMergeMode
+UENUM(BlueprintType)
+enum class EVoxelSDFMergeMode : uint8
 {
+	// Additive mode: will only grow the surface
 	Union,
+	// Destructive mode: will only shrink the surface
 	Intersection,
+	// Will add and remove at the same time
 	Override
 };
 
@@ -130,14 +143,28 @@ class VOXEL_API UVoxelSurfaceTools : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 	
 public:
-	template<bool bComputeNormals = true>
+	// DirectionMask: if not 0, will only add full voxels with an empty voxel in a direction that's in DirectionMask
+	template<bool bComputeNormals, bool bOnlyInside = false, uint8 DirectionMask = 0>
 	static void FindSurfaceVoxelsImpl(
+		FVoxelData& Data,
+		const FIntBox& Bounds,
+		TArray<FSurfaceVoxel>& OutVoxels);
+
+	static void FindSurfaceVoxelsFromDistanceFieldImpl(
+		FVoxelData& Data,
+		const FIntBox& Bounds,
+		float MaxDistance,
+		bool bMultiThreaded,
+		TArray<FSurfaceVoxel>& OutVoxels);
+
+	template<bool bComputeNormals>
+	static void FindSurfaceVoxels2DImpl(
 		FVoxelData& Data,
 		const FIntBox& Bounds,
 		TArray<FSurfaceVoxel>& OutVoxels);
 	
 	/**
-	 * Find voxels that are on the surface
+	 * Find voxels that are on the surface. Faster than FindSurfaceVoxelsFromDistanceField, but the values won't be exact distances
 	 * @param	World					The voxel world
 	 * @param	Bounds					Bounds to look in
 	 */
@@ -148,12 +175,72 @@ public:
 		FIntBox Bounds);
 	
 	/**
-	 * Find voxels that are on the surface
+	 * Find voxels that are on the surface. Faster than FindSurfaceVoxelsFromDistanceField, but the values won't be exact distances
 	 * @param	World					The voxel world
 	 * @param	Bounds					Bounds to look in
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void FindSurfaceVoxelsAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		TArray<FSurfaceVoxel>& Voxels,
+		AVoxelWorld* World,
+		FIntBox Bounds,
+		bool bHideLatentWarnings = false);
+	
+	/**
+	 * Find voxels that are on the surface using an exact computation of the distance field using the GPU
+	 * @param	World			The voxel world
+	 * @param	Bounds			Bounds to look in
+	 * @param	MaxDistance		How far from the surface the distance field needs to be exact. Keep low for better performance. Approximation: MaxDistance = Edit Strength + 3
+	 * @param	bMultiThreaded	If true will multithread the CPU loops
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "bMultiThreaded"))
+	static void FindSurfaceVoxelsFromDistanceField(
+		TArray<FSurfaceVoxel>& Voxels,
+		AVoxelWorld* World,
+		FIntBox Bounds,
+		float MaxDistance = 2,
+		bool bMultiThreaded = false);
+
+#if 0 // Not safe since we are firing up a shader
+	/**
+	 * Find voxels that are on the surface using an exact computation of the distance field using the GPU
+	 * @param	World			The voxel world
+	 * @param	Bounds			Bounds to look in
+	 * @param	MaxDistance		How far from the surface the distance field needs to be exact. Keep low for better performance. Approximation: MaxDistance = Edit Strength + 3
+	 * @param	bMultiThreaded	If true will multithread the CPU loops
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bMultiThreaded, bHideLatentWarnings"))
+	static void FindSurfaceVoxelsFromDistanceFieldAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		TArray<FSurfaceVoxel>& Voxels,
+		AVoxelWorld* World,
+		FIntBox Bounds,
+		float MaxDistance = 2,
+		bool bMultiThreaded = false,
+		bool bHideLatentWarnings = false);
+#endif
+	
+	/**
+	 * Find voxels that are on the surface. Only keep the one with the surface right above them that are facing up. If 2 surface voxels have the same X Y, will only keep the one with the higher Z
+	 * @param	World					The voxel world
+	 * @param	Bounds					Bounds to look in
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World"))
+	static void FindSurfaceVoxels2D(
+		TArray<FSurfaceVoxel>& Voxels,
+		AVoxelWorld* World,
+		FIntBox Bounds);
+	
+	/**
+	 * Find voxels that are on the surface. Only keep the one with the surface right above them that are facing up. If 2 surface voxels have the same X Y, will only keep the one with the higher Z
+	 * @param	World					The voxel world
+	 * @param	Bounds					Bounds to look in
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
+	static void FindSurfaceVoxels2DAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		TArray<FSurfaceVoxel>& Voxels,
@@ -179,17 +266,19 @@ public:
 			Voxel.Strength *= Strength;
 		}
 	}
-	template<typename T>
+	template<bool b2D = false, typename T>
 	static void ApplyStrengthFunctionImpl(
 		TArray<FSurfaceVoxelWithStrength>& Voxels,
-		const FVector& Center,
+		const FVoxelVector& Center,
 		T GetStrength)
 	{
 		VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
 		int32 Num = 0;
 		for (const auto& Voxel : Voxels)
 		{
-			const float Distance = FVector::Distance(Center, FVector(Voxel.Position));
+			const float Distance = b2D
+				? FVector2D::Distance(FVector2D(Center.X, Center.Y), FVector2D(Voxel.Position.X, Voxel.Position.Y))
+				: FVoxelVector::Distance(Center, FVoxelVector(Voxel.Position));
 			const float Strength = GetStrength(Distance);
 			if (Strength != 0)
 			{
@@ -201,45 +290,48 @@ public:
 		check(Num <= Voxels.Num());
 		Voxels.SetNum(Num);
 	}
-	template<ESDFMergeMode MergeMode, typename T>
+
+	// Should always be called last if bExactDistanceField = true
+	template<typename T>
 	static void ApplySDFImpl(
 		TArray<FSurfaceVoxelWithStrength>& Voxels,
+		EVoxelSDFMergeMode MergeMode,
+		bool bExactDistanceField,
 		T GetDistance)
 	{
 		VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
 		for (auto& Voxel : Voxels)
 		{
-			const float Distance = GetDistance(FVector(Voxel.Position));
-			const float Target =
-				MergeMode == ESDFMergeMode::Union
-				? FMath::Min(Distance, Voxel.Value)
-				: MergeMode == ESDFMergeMode::Intersection
-				? FMath::Max(Distance, Voxel.Value)
-				: Distance; // Override
-			const float Difference = Target - Voxel.Value;
-			Voxel.Strength *= FMath::Clamp(Difference, -1.f, 1.f);
+			const float CurrentDistance = Voxel.Value;
+			const float OtherDistance = GetDistance(FVector(Voxel.Position));
+			const float WantedDistance =
+				MergeMode == EVoxelSDFMergeMode::Union
+				? FMath::Min(CurrentDistance, OtherDistance)
+				: MergeMode == EVoxelSDFMergeMode::Intersection
+				? FMath::Max(OtherDistance, CurrentDistance)
+				: OtherDistance; // Override
+
+			if (bExactDistanceField)
+			{
+				// No strength should be applied after ApplySDFImpl if we want a good result
+				const float IntermediateDistance = FMath::Lerp(CurrentDistance, WantedDistance, Voxel.Strength);
+				Voxel.Strength = IntermediateDistance - CurrentDistance;
+			}
+			else
+			{
+				const float Difference = WantedDistance - Voxel.Value;
+				// We cannot go too fast if we didn't compute the exact distance field
+				Voxel.Strength *= FMath::Clamp(Difference, -1.f, 1.f);
+			}
 		}
 	}
 	static void ApplyFlattenImpl(
 		TArray<FSurfaceVoxelWithStrength>& Voxels,
-		const FPlane& Plane)
+		const FPlane& Plane,
+		EVoxelSDFMergeMode MergeMode,
+		bool bExactDistanceField)
 	{
-		ApplySDFImpl<ESDFMergeMode::Override>(Voxels, [&](const FVector& Position) { return Plane.PlaneDot(Position); });
-	}
-	static void ApplySphereImpl(
-		TArray<FSurfaceVoxelWithStrength>& Voxels,
-		const FVector& Center,
-		const float Radius,
-		const bool bAdd)
-	{
-		if (bAdd)
-		{
-			ApplySDFImpl<ESDFMergeMode::Union>(Voxels, [&](const FVector& Position) { return FVector::Distance(Position, Center) - Radius; });
-		}
-		else
-		{
-			ApplySDFImpl<ESDFMergeMode::Intersection>(Voxels, [&](const FVector& Position) { return Radius - FVector::Distance(Position, Center); });
-		}
+		ApplySDFImpl(Voxels, MergeMode, bExactDistanceField, [&](const FVector& Position) { return Plane.PlaneDot(Position); });
 	}
 
 public:
@@ -422,10 +514,14 @@ public:
 	
 	/**
 	 * Make surface voxels go towards a plane
+	 * Important: if bExactDistanceField = true, this node should be called last! Modifying strengths after it will result
+	 * in glitchy behavior
 	 * @param	Voxels					The surface voxels
 	 * @param	World					The voxel world, required if bConvertToVoxelSpace = true
 	 * @param	PlanePoint				A point in the flatten plane, in world space if bConvertToVoxelSpace = true
 	 * @param	PlaneNormal				The normal of the plane
+	 * @param	MergeMode				How to merge the plane SDF
+	 * @param	bExactDistanceField		Set to true if you used FindSurfaceVoxelsFromDistanceField
 	 * @param	bConvertToVoxelSpace	If true, converts PlanePoint from world space to voxel space. Requires World to be non null
 	 * @return	
 	 */
@@ -435,25 +531,8 @@ public:
 		AVoxelWorld* World,
 		FVector PlanePoint,
 		FVector PlaneNormal = FVector(0, 0, 1),
-		bool bConvertToVoxelSpace = true);
-	
-	/**
-	 * Make surface voxels go towards a sphere shape
-	 * @param	Voxels					The surface voxels
-	 * @param	World					The voxel world, required if bConvertToVoxelSpace = true
-	 * @param	Center					The sphere center, in world space if bConvertToVoxelSpace = true
-	 * @param	Radius					The sphere radius, in cm if bConvertToVoxelSpace = true
-	 * @param	bAdd					Whether to add or remove the sphere
-	 * @param	bConvertToVoxelSpace	If true, converts Center and Radius from world space to voxel space. Requires World to be non null
-	 * @return	
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (AdvancedDisplay = "bConvertToVoxelSpace", DefaultToSelf = "World"))
-	static TArray<FSurfaceVoxelWithStrength> ApplySphere(
-		const TArray<FSurfaceVoxelWithStrength>& Voxels,
-		AVoxelWorld* World,
-		FVector Center,
-		float Radius,
-		bool bAdd = true,
+		EVoxelSDFMergeMode MergeMode = EVoxelSDFMergeMode::Override,
+		bool bExactDistanceField = false,
 		bool bConvertToVoxelSpace = true);
 
 public:
@@ -478,30 +557,42 @@ public:
 		TArray<FModifiedVoxelValue>& OutModifiedVoxels,
 		const FIntBox& Bounds,
 		const TArray<FVoxelValueEdit>& Voxels,
-		const FVoxelHardnessHandler& HardnessHandler);
+		const FVoxelHardnessHandler& HardnessHandler,
+		float DistanceDivisor);
 	static void EditVoxelValuesImpl(
 		FVoxelData& Data,
 		const FIntBox& Bounds,
 		const TArray<FVoxelValueEdit>& Voxels,
-		const FVoxelHardnessHandler& HardnessHandler)
+		const FVoxelHardnessHandler& HardnessHandler,
+		float DistanceDivisor)
 	{
 		TArray<FModifiedVoxelValue> ModifiedVoxels;
-		EditVoxelValuesImpl<false>(Data, ModifiedVoxels, Bounds, Voxels, HardnessHandler);
+		EditVoxelValuesImpl<false>(Data, ModifiedVoxels, Bounds, Voxels, HardnessHandler, DistanceDivisor);
 	}
+
+	// Bounds need to encompass Bounds(Voxels).Extend(0, 0, MaxStrength + DistanceDivisor + 2)!
+	static void EditVoxelValues2DImpl(
+		FVoxelData& Data,
+		const FIntBox& Bounds,
+		const TArray<FVoxelValueEdit>& Voxels,
+		const FVoxelHardnessHandler& HardnessHandler,
+		float DistanceDivisor);
 	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "DistanceDivisor"))
 	static void EditVoxelValues(
 		TArray<FModifiedVoxelValue>& ModifiedVoxels,
 		AVoxelWorld* World,
-		const TArray<FVoxelValueEdit>& Voxels);
+		const TArray<FVoxelValueEdit>& Voxels,
+		float DistanceDivisor = 1.f);
 	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "DistanceDivisor, bHideLatentWarnings"))
 	static void EditVoxelValuesAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		TArray<FModifiedVoxelValue>& ModifiedVoxels,
 		AVoxelWorld* World,
 		const TArray<FVoxelValueEdit>& Voxels,
+		float DistanceDivisor = 1.f,
 		bool bHideLatentWarnings = false);
 
 public:
@@ -519,7 +610,7 @@ public:
 		TArray<FModifiedVoxelMaterial> ModifiedVoxels;
 		EditVoxelMaterialsImpl<false>(Data, ModifiedVoxels, Bounds, Voxels);
 	}
-	
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World"))
 	static void EditVoxelMaterials(
 		TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
@@ -565,4 +656,11 @@ public:
 		AVoxelWorld* World,
 		const TArray<FVoxelFoliageEdit>& Voxels,
 		bool bHideLatentWarnings = false);
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World"))
+	static void DebugSurfaceVoxels(
+		AVoxelWorld* World,
+		const TArray<FSurfaceVoxelWithStrength>& Voxels,
+		float Lifetime = 1);
 };

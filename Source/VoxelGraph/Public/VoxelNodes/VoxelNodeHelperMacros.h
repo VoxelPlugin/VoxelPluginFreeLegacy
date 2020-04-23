@@ -37,10 +37,10 @@ GENERATED_COMPUTENODE\
 
 #define COMPACT_VOXELNODE(Text) \
 bool IsCompact() const override { return true; } \
-FText GetTitle() const override { return NSLOCTEXT("Voxel", Text, Text); }
+FText GetTitle() const override { return VOXEL_LOCTEXT(Text); }
 
 #define SET_VOXELNODE_TITLE(Text) \
-FText GetTitle() const override { return NSLOCTEXT("Voxel", Text, Text); }
+FText GetTitle() const override { return VOXEL_LOCTEXT(Text); }
 
 #define DEPRECATED_VOXELNODE(Message) \
 void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) \

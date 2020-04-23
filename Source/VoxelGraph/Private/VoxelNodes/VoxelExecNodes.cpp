@@ -15,8 +15,6 @@
 #include "UObject/UObjectGlobals.h"
 #include "UObject/Package.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 
 int32 UVoxelNode_MaterialSetter::GetOutputIndex() const
 {
@@ -46,7 +44,8 @@ UVoxelNode_SetSingleIndex::UVoxelNode_SetSingleIndex()
 		EC::Exec,
 		{ "Index", EC::Int, "Index between 0 and 255", "", {0, 255} },
 		{ "Data A", EC::Float, "Data sent to the material shader", "", {0, 1} },
-		{ "Data B", EC::Float, "Data sent to the material shader", "", {0, 1} });
+		{ "Data B", EC::Float, "Data sent to the material shader", "", {0, 1} },
+		{ "Data C", EC::Float, "Data sent to the material shader", "", {0, 1} });
 	SetOutputs(EC::Exec);
 }
 
@@ -325,4 +324,3 @@ void UVoxelNode_FlowMerge::PostEditChangeProperty(FPropertyChangedEvent& Propert
 	}
 }
 #endif
-#undef LOCTEXT_NAMESPACE

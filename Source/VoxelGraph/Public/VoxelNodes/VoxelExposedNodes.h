@@ -53,7 +53,7 @@ protected:
 	template<typename T>
 	static bool TryImportObject(UProperty* Property, UObject* Object, T*& NodeAsset)
 	{
-		if (auto* ObjectProp = Cast<USoftObjectProperty>(Property))
+		if (auto* ObjectProp = UE_25_SWITCH(Cast, CastField)<USoftObjectProperty>(Property))
 		{
 			auto* AssetPtr = ObjectProp->ContainerPtrToValuePtr<const TSoftObjectPtr<UObject>>(Object);
 			if (AssetPtr)
@@ -83,6 +83,8 @@ class VOXELGRAPH_API UVoxelOptionallyExposedNode : public UVoxelExposedNode
 	GENERATED_BODY()
 
 public:
+	// If false, this node is a constant
+	// If true, you can change it to configure your graph
 	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
 	bool bExposeToBP;
 	

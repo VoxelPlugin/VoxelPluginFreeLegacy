@@ -11,8 +11,6 @@
 #include "DetailLayoutBuilder.h"
 #include "Misc/MessageDialog.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 TSharedRef<IDetailCustomization> FVoxelLandscapeImporterDetails::MakeInstance()
 {
 	return MakeShareable(new FVoxelLandscapeImporterDetails());
@@ -38,7 +36,7 @@ void FVoxelLandscapeImporterDetails::CustomizeDetails(IDetailLayoutBuilder& Deta
 		{
 		case EVoxelMaterialConfig::RGB:
 			DetailLayout.HideProperty(Handle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelLandscapeImporterLayerInfo, Index)));
-				break;
+			break;
 		case EVoxelMaterialConfig::SingleIndex:
 		case EVoxelMaterialConfig::DoubleIndex:
 			DetailLayout.HideProperty(Handle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelLandscapeImporterLayerInfo, Layer)));
@@ -54,12 +52,13 @@ void FVoxelLandscapeImporterDetails::CustomizeDetails(IDetailLayoutBuilder& Deta
 		DetailLayout.ForceRefreshDetails();
 	});
 	DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelLandscapeImporter, MaterialConfig))->SetOnPropertyValueChanged(RefreshDelegate);
+	DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelLandscapeImporter, LayerInfos))->SetOnPropertyValueChanged(RefreshDelegate);
 
 	FVoxelEditorUtilities::AddButtonToCategory(DetailLayout,
 		"Create VoxelLandscapeAsset from Landscape",
-		LOCTEXT("Create", "Create"),
-		LOCTEXT("CreateFromLandscape", "Create From Landscape"),
-		LOCTEXT("Create", "Create"),
+		VOXEL_LOCTEXT("Create"),
+		VOXEL_LOCTEXT("Create From Landscape"),
+		VOXEL_LOCTEXT("Create"),
 		false,
 		FOnClicked::CreateSP(this, &FVoxelLandscapeImporterDetails::OnCreateFromLandscape),
 		TAttribute<bool>::Create(TAttribute<bool>::FGetter::CreateLambda([Importer = Importer]() { return Importer.IsValid() && Importer->Landscape; })));
@@ -78,5 +77,3 @@ FReply FVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 
 	return FReply::Handled();
 }
-
-#undef LOCTEXT_NAMESPACE

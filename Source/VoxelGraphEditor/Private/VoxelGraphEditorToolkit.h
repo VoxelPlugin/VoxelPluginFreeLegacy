@@ -10,6 +10,7 @@
 #include "Launch/Resources/Version.h"
 #include "VoxelGraphErrorReporter.h"
 #include "IVoxelGraphEditorToolkit.h"
+#include "VoxelGlobals.h"
 
 class IDetailsView;
 class SVoxelGraphPreview;
@@ -69,7 +70,7 @@ public:
 
 	//~ Begin IToolkit interface
 	virtual FName GetToolkitFName() const override { return "VoxelGraphEditor"; }
-	virtual FText GetBaseToolkitName() const override { return NSLOCTEXT("Voxel", "VoxelGraphEditor", "Voxel Graph Editor"); }
+	virtual FText GetBaseToolkitName() const override { return VOXEL_LOCTEXT("Voxel Graph Editor"); }
 	virtual FString GetWorldCentricTabPrefix() const override { return "VoxelGraphEditor"; }
 	virtual FLinearColor GetWorldCentricTabColorScale() const override { return FLinearColor(0.3f, 0.2f, 0.5f, 0.5f); }
 	virtual void SaveAsset_Execute() override;

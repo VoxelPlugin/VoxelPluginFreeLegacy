@@ -20,26 +20,26 @@ class VOXEL_API UVoxelSphereTools : public UBlueprintFunctionLibrary
 
 public:
 	// Bounds to lock
-	inline static FIntBox GetSphereBounds(const FVector& Position, float Radius)
+	inline static FIntBox GetSphereBounds(const FVoxelVector& Position, float Radius)
 	{
 		return FIntBox(Position - Radius - 3, Position + Radius + 3);
 	}
 
 	static void SetValueSphereImpl(
 		FVoxelData& Data,
-		const FVector& Position,
+		const FVoxelVector& Position,
 		float Radius,
 		FVoxelValue Value);
 
 	template<bool bAdd, bool bComputeModifiedVoxels>
 	static void SphereEditImpl(
 		FVoxelData& Data, 
-		const FVector& Position, 
+		const FVoxelVector& Position, 
 		float Radius,
 		TArray<FModifiedVoxelValue>& ModifiedVoxels);
 	static void RemoveSphereImpl(
 		FVoxelData& Data, 
-		const FVector& Position, 
+		const FVoxelVector& Position, 
 		float Radius,
 		TArray<FModifiedVoxelValue>& ModifiedVoxels)
 	{
@@ -47,7 +47,7 @@ public:
 	}
 	static void RemoveSphereImpl(
 		FVoxelData& Data, 
-		const FVector& Position, 
+		const FVoxelVector& Position, 
 		float Radius)
 	{
 		TArray<FModifiedVoxelValue> ModifiedVoxels;
@@ -55,7 +55,7 @@ public:
 	}
 	static void AddSphereImpl(
 		FVoxelData& Data, 
-		const FVector& Position, 
+		const FVoxelVector& Position, 
 		float Radius,
 		TArray<FModifiedVoxelValue>& ModifiedVoxels)
 	{
@@ -63,7 +63,7 @@ public:
 	}
 	static void AddSphereImpl(
 		FVoxelData& Data, 
-		const FVector& Position, 
+		const FVoxelVector& Position, 
 		float Radius)
 	{
 		TArray<FModifiedVoxelValue> ModifiedVoxels;
@@ -72,13 +72,13 @@ public:
 
 	static void SetMaterialSphereImpl(
 		FVoxelData& Data,
-		const FVector& Position, 
+		const FVoxelVector& Position, 
 		float Radius, 
 		const FVoxelPaintMaterial& PaintMaterial);
 	
 	static void ApplyKernelSphereImpl(
 		FVoxelData& Data,
-		const FVector& Position,
+		const FVoxelVector& Position,
 		float Radius,
 		float Center,
 		float FirstDegreeNeighbor,
@@ -87,21 +87,21 @@ public:
 	
 	static void SmoothSphereImpl(
 		FVoxelData& Data,
-		const FVector& Position,
+		const FVoxelVector& Position,
 		float Radius,
 		float Strength);
 
 	// "Sharpen" by lerping the voxels to -1 or +1 depending on their sign
 	static void SharpenSphereImpl(
 		FVoxelData& Data,
-		const FVector& Position,
+		const FVoxelVector& Position,
 		float Radius,
 		float Strength);
 
 	// Radius + Falloff must be locked
 	static void TrimSphereImpl(
 		FVoxelData& Data,
-		const FVector& Position,
+		const FVoxelVector& Position,
 		const FVector& Normal,
 		float Radius,
 		float Falloff,
@@ -109,9 +109,16 @@ public:
 
 	static void RevertSphereImpl(
 		FVoxelData& Data,
-		const FVector& Position,
+		const FVoxelVector& Position,
 		float Radius,
 		int32 HistoryPosition,
+		bool bRevertValues,
+		bool bRevertMaterials);
+
+	static void RevertSphereToGeneratorImpl(
+		FVoxelData& Data,
+		const FVoxelVector& Position,
+		float Radius,
 		bool bRevertValues,
 		bool bRevertMaterials);
 
@@ -272,6 +279,24 @@ public:
 		FVector Position,
 		float Radius,
 		int32 HistoryPosition,
+		bool bRevertValues = true,
+		bool bRevertMaterials = true,
+		bool bConvertToVoxelSpace = true);
+	
+	/**
+	 * Reverts the voxels inside a sphere shape to their generator value
+	 * @param	World					The voxel world		
+	 * @param	Position				The position of the center, in world space if ConvertToVoxelSpace is true
+	 * @param	Radius					The radius, in cm if ConvertToVoxelSpace is true
+	 * @param	bRevertValues			Whether to revert values
+	 * @param	bRevertMaterials		Whether to revert materials
+	 * @param	bConvertToVoxelSpace	If true, the position and radius will be converted to voxel space. Else they will be used directly
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Sphere Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "bConvertToVoxelSpace"))
+	static void RevertSphereToGenerator(
+		AVoxelWorld* World,
+		FVector Position,
+		float Radius,
 		bool bRevertValues = true,
 		bool bRevertMaterials = true,
 		bool bConvertToVoxelSpace = true);
@@ -459,6 +484,27 @@ public:
 		FVector Position,
 		float Radius,
 		int32 HistoryPosition,
+		bool bRevertValues = true,
+		bool bRevertMaterials = true,
+		bool bConvertToVoxelSpace = true,
+		bool bHideLatentWarnings = false);
+	
+	/**
+	 * Reverts the voxels inside a sphere shape to their generator value
+	 * @param	World					The voxel world		
+	 * @param	Position				The position of the center, in world space if ConvertToVoxelSpace is true
+	 * @param	Radius					The radius, in cm if ConvertToVoxelSpace is true
+	 * @param	bRevertValues			Whether to revert values
+	 * @param	bRevertMaterials		Whether to revert materials
+	 * @param	bConvertToVoxelSpace	If true, the position and radius will be converted to voxel space. Else they will be used directly
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Sphere Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bConvertToVoxelSpace, bHideLatentWarnings"))
+	static void RevertSphereToGeneratorAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		AVoxelWorld* World,
+		FVector Position,
+		float Radius,
 		bool bRevertValues = true,
 		bool bRevertMaterials = true,
 		bool bConvertToVoxelSpace = true,

@@ -15,6 +15,21 @@ FVoxelPaintMaterial FVoxelPaintMaterial::CreateRGB(FLinearColor Color, bool bPai
 	return Material;
 }
 
+FVoxelPaintMaterial FVoxelPaintMaterial::CreateFiveWayBlend(int32 Channel, float TargetValue, bool bPaintR, bool bPaintG, bool bPaintB, bool bPaintA)
+{
+	ensure(0 <= Channel && Channel < 5);
+	
+	FVoxelPaintMaterial Material;
+	Material.Type = EVoxelPaintMaterialType::FiveWayBlend;
+	Material.FiveWayBlend.Channel = Channel;
+	Material.FiveWayBlend.TargetValue = TargetValue;
+	Material.FiveWayBlend.bPaintR = bPaintR;
+	Material.FiveWayBlend.bPaintG = bPaintG;
+	Material.FiveWayBlend.bPaintB = bPaintB;
+	Material.FiveWayBlend.bPaintA = bPaintA;
+	return Material;
+}
+
 FVoxelPaintMaterial FVoxelPaintMaterial::CreateSingleIndex(uint8 Index)
 {
 	FVoxelPaintMaterial Material;
@@ -73,7 +88,7 @@ void FVoxelPaintMaterial::ApplyToMaterial(FVoxelMaterial& Material, float Streng
 		if (Strength < 0)
 		{
 			Strength = -Strength;
-			IntColor = FColor::Black;
+			IntColor = FColor(0, 0, 0, 0);
 		}
 		if (Color.bPaintR)
 		{
@@ -91,6 +106,42 @@ void FVoxelPaintMaterial::ApplyToMaterial(FVoxelMaterial& Material, float Streng
 		{
 			Material.SetA(LerpUINT8_CustomRounding(Material.GetA(), IntColor.A, Strength));
 		}
+		break;
+	}
+	case EVoxelPaintMaterialType::FiveWayBlend:
+	{
+		if (!ensure(0 <= FiveWayBlend.Channel && FiveWayBlend.Channel < 5))
+		{
+			return;
+		}
+
+		const float TargetValue = Strength > 0 ? FiveWayBlend.TargetValue : 1.f - FiveWayBlend.TargetValue;
+		Strength = FMath::Abs(Strength);
+		
+		const float R = FiveWayBlend.bPaintR ? Material.GetR_AsFloat() : 0.f;
+		const float G = FiveWayBlend.bPaintG ? Material.GetG_AsFloat() : 0.f;
+		const float B = FiveWayBlend.bPaintB ? Material.GetB_AsFloat() : 0.f;
+		const float A = FiveWayBlend.bPaintA ? Material.GetA_AsFloat() : 0.f;
+
+		TStaticArray<float, 5> Strengths = FVoxelUtilities::ConvertRGBAToFiveWayBlendStrengths(FVector4(R, G, B, A));
+		
+		Strengths[FiveWayBlend.Channel] = FMath::Clamp(FMath::Lerp(Strengths[FiveWayBlend.Channel], TargetValue, Strength), 0.f, 1.f);
+
+		const FVector4 NewColor = FVoxelUtilities::ConvertFiveWayBlendStrengthsToRGBA(Strengths);
+		
+		const auto CustomFloatToUINT8 = [](float NewValue, float OldValue)
+		{
+			// Round up if the new value is higher than the previous one, to avoid being stuck
+			return FVoxelUtilities::ClampToUINT8(NewValue > OldValue
+				? FMath::CeilToInt(NewValue * 255.999f)
+				: FMath::FloorToInt(NewValue * 255.999f));
+		};
+
+		if (FiveWayBlend.bPaintR) Material.SetR(CustomFloatToUINT8(NewColor.X, R));
+		if (FiveWayBlend.bPaintG) Material.SetG(CustomFloatToUINT8(NewColor.Y, G));
+		if (FiveWayBlend.bPaintB) Material.SetB(CustomFloatToUINT8(NewColor.Z, B));
+		if (FiveWayBlend.bPaintA) Material.SetA(CustomFloatToUINT8(NewColor.W, A));
+		
 		break;
 	}
 	case EVoxelPaintMaterialType::SingleIndex:
@@ -116,29 +167,33 @@ void FVoxelPaintMaterial::ApplyToMaterial(FVoxelMaterial& Material, float Streng
 	}
 	case EVoxelPaintMaterialType::DoubleIndexBlend:
 	{
-		if (Index != Material.GetDoubleIndex_IndexA() && Index != Material.GetDoubleIndex_IndexB())
-		{
-			if (Strength <= 0) return;
-			if (Material.GetDoubleIndex_Blend() < 128)
-			{
-				Material.SetDoubleIndex_IndexB(Index);
-				Material.SetDoubleIndex_Blend(0);
-			}
-			else
-			{
-				Material.SetDoubleIndex_IndexA(Index);
-				Material.SetDoubleIndex_Blend(255);
-			}
-		}
-
+		int32 SlotIndex;
 		if (Index == Material.GetDoubleIndex_IndexA())
 		{
-			Material.SetDoubleIndex_Blend(FVoxelUtilities::ClampToUINT8(Material.GetDoubleIndex_Blend() - 255 * Strength));
+			SlotIndex = 0;
 		}
 		else if (Index == Material.GetDoubleIndex_IndexB())
 		{
-			Material.SetDoubleIndex_Blend(FVoxelUtilities::ClampToUINT8(Material.GetDoubleIndex_Blend() + 255 * Strength));
+			SlotIndex = 1;
 		}
+		else if (Material.GetDoubleIndex_Blend() == 255)
+		{
+			Material.SetDoubleIndex_IndexA(Index);
+			SlotIndex = 0;
+		}
+		else if (Material.GetDoubleIndex_Blend() == 0)
+		{
+			Material.SetDoubleIndex_IndexB(Index);
+			SlotIndex = 1;
+		}
+		else
+		{
+			// Fill as fast as we can
+			SlotIndex = Material.GetDoubleIndex_Blend() < 128 ? 0 : 1;
+		}
+
+		Material.SetDoubleIndex_Blend(FVoxelUtilities::ClampToUINT8(Material.GetDoubleIndex_Blend() + 255 * Strength * (SlotIndex == 0 ? -1 : +1)));
+
 		break;
 	}
 	case EVoxelPaintMaterialType::UVs:

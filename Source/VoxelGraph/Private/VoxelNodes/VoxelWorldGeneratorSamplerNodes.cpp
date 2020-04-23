@@ -88,7 +88,7 @@ UVoxelNode_SingleWorldGeneratorSamplerBase::UVoxelNode_SingleWorldGeneratorSampl
 FText UVoxelNode_SingleWorldGeneratorSamplerBase::GetTitle() const
 {
 	return FText::Format(
-		NSLOCTEXT("Voxel", "World Generator", "World Generator: {0}"),
+		VOXEL_LOCTEXT("World Generator: {0}"),
 		FText::FromString(UniqueName.ToString()));
 }
 
@@ -105,7 +105,7 @@ void UVoxelNode_SingleWorldGeneratorSamplerBase::LogErrors(FVoxelGraphErrorRepor
 #if WITH_EDITOR
 bool UVoxelNode_SingleWorldGeneratorSamplerBase::TryImportFromProperty(UProperty* Property, UObject* Object)
 {
-	if (auto* Prop = Cast<UStructProperty>(Property))
+	if (auto* Prop = UE_25_SWITCH(Cast, CastField)<UStructProperty>(Property))
 	{
 		if (Prop->GetCPPType(nullptr, 0) == "FVoxelWorldGeneratorPicker")
 		{

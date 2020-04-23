@@ -22,7 +22,7 @@ void IVoxelPool::DestroyGlobalVoxelPool(UWorld* World)
 {
 	GlobalMap.Remove(nullptr);
 	GlobalMap.Remove(World);
-	UE_LOG(LogVoxel, Log, TEXT("Global pool destroyed for %s"), *World->GetName());
+	LOG_VOXEL(Log, TEXT("Global pool destroyed for %s"), *World->GetName());
 }
 
 bool IVoxelPool::IsGlobalVoxelPoolCreated(UWorld* World)
@@ -42,5 +42,5 @@ void IVoxelPool::SetGlobalVoxelPool(UWorld* World, const TVoxelSharedPtr<IVoxelP
 	NewPool.Creator = Creator;
 	NewPool.Pool = Pool;
 
-	UE_LOG(LogVoxel, Log, TEXT("Global pool created by %s for %s"), *Creator, *World->GetName());
+	LOG_VOXEL(Log, TEXT("Global pool created by %s for %s"), *Creator, *World->GetName());
 }

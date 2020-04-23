@@ -26,27 +26,20 @@ public:
 	using FVoxelWorldGeneratorInstance::TRangeOutputFunctionPtr;
 	using FVoxelTransformableWorldGeneratorInstance::TOutputFunctionPtr_Transform;
 	using FVoxelTransformableWorldGeneratorInstance::TRangeOutputFunctionPtr_Transform;
+	
+	using FVoxelWorldGeneratorInstance::FCustomFunctionPtrs;
+	using FVoxelTransformableWorldGeneratorInstance::FCustomFunctionPtrs_Transform;
 
 	TVoxelGraphGeneratorInstanceHelper(
 		const TMap<FName, uint32>& FloatOutputs,
 		const TMap<FName, uint32>& Int32Outputs,
+		const TMap<FName, uint32>& ColorOutputs,
 
-		const TMap<FName, TOutputFunctionPtr<v_flt>>& FloatOutputsPtr,
-		const TMap<FName, TOutputFunctionPtr<int32>>& Int32OutputsPtr,
-		const TMap<FName, TRangeOutputFunctionPtr<v_flt>>& FloatOutputsRangesPtr,
-
-		const TMap<FName, TOutputFunctionPtr_Transform<v_flt>>& FloatOutputsPtr_Transform,
-		const TMap<FName, TOutputFunctionPtr_Transform<int32>>& Int32OutputsPtr_Transform,
-		const TMap<FName, TRangeOutputFunctionPtr_Transform<v_flt>>& FloatOutputsRangesPtr_Transform,
-
+		const FCustomFunctionPtrs& CustomFunctionPtrs,
+		const FCustomFunctionPtrs_Transform& CustomFunctionPtrs_Transform,
+		
 		bool bEnableRangeAnalysis)
-		: TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>(
-			FloatOutputsPtr,
-			Int32OutputsPtr,
-			FloatOutputsRangesPtr,
-			FloatOutputsPtr_Transform,
-			Int32OutputsPtr_Transform,
-			FloatOutputsRangesPtr_Transform)
+		: TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>(CustomFunctionPtrs, CustomFunctionPtrs_Transform)
 		, bEnableRangeAnalysis(bEnableRangeAnalysis)
 		, CustomOutputsNames(FName())
 	{
@@ -61,7 +54,49 @@ public:
 			ensure(Array[It.Value] == FName());
 			Array[It.Value] = It.Key;
 		}
+		for (auto& It : ColorOutputs)
+		{
+			ensure(Array[It.Value] == FName());
+			Array[It.Value] = It.Key;
+		}
 	}
+
+#if 1 // These constructors are for back compatibility with existing compiled generators
+	TVoxelGraphGeneratorInstanceHelper(
+		const TMap<FName, uint32>& FloatOutputs,
+		const TMap<FName, uint32>& Int32Outputs,
+
+		const TMap<FName, TOutputFunctionPtr<v_flt>>& FloatOutputsPtr,
+		const TMap<FName, TOutputFunctionPtr<int32>>& Int32OutputsPtr,
+		const TMap<FName, TRangeOutputFunctionPtr<v_flt>>& FloatOutputsRangesPtr,
+
+		const TMap<FName, TOutputFunctionPtr_Transform<v_flt>>& FloatOutputsPtr_Transform,
+		const TMap<FName, TOutputFunctionPtr_Transform<int32>>& Int32OutputsPtr_Transform,
+		const TMap<FName, TRangeOutputFunctionPtr_Transform<v_flt>>& FloatOutputsRangesPtr_Transform,
+
+		bool bEnableRangeAnalysis)
+		: TVoxelGraphGeneratorInstanceHelper(
+			FloatOutputs,
+			Int32Outputs,
+			{},
+
+			{
+				FloatOutputsPtr,
+				Int32OutputsPtr,
+				{},
+				FloatOutputsRangesPtr
+			},
+			{
+				FloatOutputsPtr_Transform,
+				Int32OutputsPtr_Transform,
+				{},
+				FloatOutputsRangesPtr_Transform
+			},
+
+			bEnableRangeAnalysis)
+	{
+	}
+#endif
 
 public:
 	template<bool bCustomTransform, typename T, uint32 Index, typename F>
@@ -143,7 +178,7 @@ public:
 
 						auto Outputs = Target.GetOutputs();
 						Outputs.template GetRef<T, Index>() = DefaultValue;
-						Target.ComputeXYZWithCache(Context, (const decltype(BufferX)&)BufferX, (const decltype(BufferXY)&)BufferXY, Outputs);
+						Target.ComputeXYZWithCache(Context, static_cast<const decltype(BufferX)&>(BufferX), static_cast<const decltype(BufferXY)&>(BufferXY), Outputs);
 						QueryZone.Set(X, Y, Z, QueryZoneType(Outputs.template GetRef<T, Index>()));
 					}
 				}
@@ -194,9 +229,9 @@ public:
 	T GetCustomOutputImpl(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		static_assert(Index < MAX_VOXELGRAPH_OUTPUTS, "");
-		return GetOutput<bCustomTransform, T, Index>(LocalToWorld, 0, X, Y, Z, LOD, Items, [&](auto& NextStack)
+		return GetOutput<bCustomTransform, T, Index>(LocalToWorld, T{}, X, Y, Z, LOD, Items, [&](auto& NextStack)
 		{
-			return NextStack.MSVC_TEMPLATE GetCustomOutput<T>(0, CustomOutputsNames[Index], X, Y, Z, LOD);
+			return NextStack.MSVC_TEMPLATE GetCustomOutput<T>(T{}, CustomOutputsNames[Index], X, Y, Z, LOD);
 		});
 	}
 
@@ -204,7 +239,7 @@ public:
 	inline TVoxelRange<T> GetCustomOutputRangeImpl(const FTransform& LocalToWorld, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		static_assert(Index < MAX_VOXELGRAPH_OUTPUTS, "");
-		return GetOutputRange<bCustomTransform, T, Index>(LocalToWorld, 0, WorldBounds, LOD, Items);
+		return GetOutputRange<bCustomTransform, T, Index>(LocalToWorld, T{}, WorldBounds, LOD, Items);
 	}
 	
 	template<typename T, uint32 Index>
@@ -329,6 +364,7 @@ protected:
 
 private:
 	const bool bEnableRangeAnalysis;
+	// Used to forward the custom output calls to the generator in the stack
 	const TStaticArray<FName, MAX_VOXELGRAPH_OUTPUTS> CustomOutputsNames;
 
 	inline const TChild& This() const

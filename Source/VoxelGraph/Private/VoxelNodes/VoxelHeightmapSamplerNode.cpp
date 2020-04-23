@@ -23,7 +23,7 @@ UVoxelNode_HeightmapSampler::UVoxelNode_HeightmapSampler()
 
 FText UVoxelNode_HeightmapSampler::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "Heightmap", "Heightmap: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("Heightmap: {0}"), Super::GetTitle());
 }
 
 void UVoxelNode_HeightmapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)

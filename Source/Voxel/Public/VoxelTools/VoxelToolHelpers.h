@@ -39,6 +39,12 @@ public:
 	// Called on the game thread
 	virtual bool IsValid() const = 0;
 	//~ End FVoxelLatentActionAsyncWork Interface
+
+protected:
+	~FVoxelLatentActionAsyncWork() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 class VOXEL_API FVoxelLatentActionAsyncWork_WithWorld : public FVoxelLatentActionAsyncWork
@@ -54,6 +60,12 @@ public:
 	virtual void DoWork() override;
 	virtual bool IsValid() const override;
 	//~ End FVoxelLatentActionAsyncWork Interface
+
+protected:
+	~FVoxelLatentActionAsyncWork_WithWorld() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 class VOXEL_API FVoxelLatentActionAsyncWork_WithoutWorld : public FVoxelLatentActionAsyncWork
@@ -69,6 +81,12 @@ public:
 	virtual void DoWork() override;
 	virtual bool IsValid() const override;
 	//~ End FVoxelLatentActionAsyncWork Interface
+
+protected:
+	~FVoxelLatentActionAsyncWork_WithoutWorld() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 template<typename TValue>
@@ -81,6 +99,12 @@ public:
 		: FVoxelLatentActionAsyncWork_WithWorld(Name, World, [InFunction, this](FVoxelData& InData) { InFunction(InData, this->Value); })
 	{
 	}
+
+protected:
+	~TVoxelLatentActionAsyncWork_WithWorld_WithValue() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 template<typename TValue>
@@ -93,6 +117,12 @@ public:
 		: FVoxelLatentActionAsyncWork_WithoutWorld(Name, [InFunction, this]() { InFunction(this->Value); }, MoveTemp(IsValidLambda))
 	{
 	}
+
+protected:
+	~TVoxelLatentActionAsyncWork_WithoutWorld_WithValue() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 template<typename TWork>
@@ -103,13 +133,13 @@ public:
 	const int32 OutputLink;
 	const FWeakObjectPtr CallbackTarget;
 	
-	const TVoxelSharedRef<TWork> Work;
+	const TUniquePtr<TWork, TVoxelAsyncWorkDelete<TWork>> Work;
 	const TFunction<void(TWork&)> GameThreadCallback;
 	const FName Name;
 
 	TVoxelLatentAction(
 		const FLatentActionInfo& LatentInfo,
-		const TVoxelSharedRef<TWork>& Work,
+		TWork* Work,
 		FName Name,
 		TFunction<void(TWork&)> GameThreadCallback)
 		: ExecutionFunction(LatentInfo.ExecutionFunction)
@@ -120,18 +150,38 @@ public:
 		, GameThreadCallback(MoveTemp(GameThreadCallback))
 		, Name(Name)
 	{
+		check(Work);
 	}
 	virtual ~TVoxelLatentAction() override
 	{
-		Work->WaitForCompletion();
+		if (!Work->IsDone())
+		{
+			const double StartTime = FPlatformTime::Seconds();
+			Work->WaitForCompletion();
+			const double Elapsed = FPlatformTime::Seconds() - StartTime;
+			if (Elapsed > 0.001)
+			{
+				LOG_VOXEL(
+					Warning, 
+					TEXT("Voxel Latent Action: waited %fs for %s on game thread. This is likely because the object that triggered the latent call was destroyed."),
+					Elapsed,
+					*Name.ToString());
+			}
+		}
+		if (!bCallbackCalled && Work->IsValid() && !Work->WasAbandoned())
+		{
+			// Always call callback
+			GameThreadCallback(*Work);
+		}
 	}
 
 	//~ Begin FPendingLatentAction Interface
 	virtual void UpdateOperation(FLatentResponse& Response) override
 	{
 		const bool bFinished = Work->IsDone();
-		if (bFinished && Work->IsValid() && !Work->WasAbandoned())
+		if (bFinished && ensure(!bCallbackCalled) && Work->IsValid() && !Work->WasAbandoned())
 		{
+			bCallbackCalled = true;
 			GameThreadCallback(*Work);
 		}
 		Response.FinishAndTriggerIf(bFinished, ExecutionFunction, OutputLink, CallbackTarget);
@@ -143,6 +193,9 @@ public:
 	}
 #endif
 	//~ End FPendingLatentAction Interface
+
+private:
+	bool bCallbackCalled = false;
 };
 
 struct VOXEL_API FVoxelToolHelpers
@@ -152,14 +205,14 @@ struct VOXEL_API FVoxelToolHelpers
 	// Avoids having to include the LOD Manager header in every tool file
 	static void UpdateWorld(AVoxelWorld* World, const FIntBox& Bounds);
 	// If World is null, will start an async on AnyThread. Else will use the voxel world thread pool.
-	static void StartAsyncEditTask(AVoxelWorld* World, const TVoxelSharedRef<IVoxelQueuedWork>& Work);
+	static void StartAsyncEditTask(AVoxelWorld* World, IVoxelQueuedWork* Work);
 
 	static float GetRealDistance(AVoxelWorld* World, float Distance, bool bConvertToVoxelSpace);
-	static FVector GetRealPosition(AVoxelWorld* World, const FVector& Position, bool bConvertToVoxelSpace);
+	static FVoxelVector GetRealPosition(AVoxelWorld* World, const FVector& Position, bool bConvertToVoxelSpace);
 	static FTransform GetRealTransform(AVoxelWorld* World, FTransform Transform, bool bConvertToVoxelSpace);
 
 	template<typename T>
-	static T GetRealTemplate(AVoxelWorld* World, T Value, bool bConvertToVoxelSpace);
+	static auto GetRealTemplate(AVoxelWorld* World, T Value, bool bConvertToVoxelSpace);
 
 	static bool StartLatentAction(
 		UObject* WorldContextObject,
@@ -180,7 +233,7 @@ struct VOXEL_API FVoxelToolHelpers
 	{
 		return StartLatentAction(WorldContextObject, LatentInfo, Name, bHideLatentWarnings, [&]()
 		{
-			const TVoxelSharedRef<TWork> Work = CreateWork();
+			TWork* Work = CreateWork();
 			StartAsyncEditTask(World, Work);
 			return new TVoxelLatentAction<TWork>(LatentInfo, Work, Name, MoveTemp(GameThreadCallback));
 		});
@@ -222,7 +275,7 @@ struct VOXEL_API FVoxelToolHelpers
 			World,
 			Name,
 			bHideLatentWarnings,
-			[&]() { return MakeVoxelShared<FWork>(Name, World, DoWork); },
+			[&]() { return new FWork(Name, World, DoWork); },
 			[=, WeakWorldContextObject = MakeWeakObjectPtr(WorldContextObject), &Value](FWork& Work)
 			{
 				if (WeakWorldContextObject.IsValid())
@@ -252,7 +305,7 @@ struct VOXEL_API FVoxelToolHelpers
 			nullptr,
 			Name,
 			bHideLatentWarnings,
-			[&]() { return MakeVoxelShared<FWork>(Name, DoWork, MoveTemp(IsValid)); },
+			[&]() { return new FWork(Name, DoWork, MoveTemp(IsValid)); },
 			[=, WeakWorldContextObject = MakeWeakObjectPtr(WorldContextObject), &Value](FWork& Work)
 			{
 				if (WeakWorldContextObject.IsValid())
@@ -268,17 +321,17 @@ struct VOXEL_API FVoxelToolHelpers
 ///////////////////////////////////////////////////////////////////////////////
 
 template<>
-inline float FVoxelToolHelpers::GetRealTemplate<float>(AVoxelWorld* World, float Value, bool bConvertToVoxelSpace)
+inline auto FVoxelToolHelpers::GetRealTemplate<float>(AVoxelWorld* World, float Value, bool bConvertToVoxelSpace)
 {
 	return GetRealDistance(World, Value, bConvertToVoxelSpace);
 }
 template<>
-inline FVector FVoxelToolHelpers::GetRealTemplate<FVector>(AVoxelWorld* World, FVector Value, bool bConvertToVoxelSpace)
+inline auto FVoxelToolHelpers::GetRealTemplate<FVector>(AVoxelWorld* World, FVector Value, bool bConvertToVoxelSpace)
 {
 	return GetRealPosition(World, Value, bConvertToVoxelSpace);
 }
 template<>
-inline FTransform FVoxelToolHelpers::GetRealTemplate<FTransform>(AVoxelWorld* World, FTransform Value, bool bConvertToVoxelSpace)
+inline auto FVoxelToolHelpers::GetRealTemplate<FTransform>(AVoxelWorld* World, FTransform Value, bool bConvertToVoxelSpace)
 {
 	return GetRealTransform(World, Value, bConvertToVoxelSpace);
 }
@@ -289,7 +342,7 @@ inline FTransform FVoxelToolHelpers::GetRealTemplate<FTransform>(AVoxelWorld* Wo
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#define CHECK_VOXELWORLD_IS_CREATED_IMPL(ReturnValue) \
+#define CHECK_VOXELWORLD_IS_CREATED_IMPL(World, ReturnValue) \
 if (!World) \
 { \
 	FVoxelMessages::Error(FString::Printf(TEXT("%s: Voxel World is invalid!"), *FString(__FUNCTION__))); \
@@ -300,8 +353,8 @@ if (!World->IsCreated()) \
 	FVoxelMessages::Error(FString::Printf(TEXT("%s: Voxel World isn't created!"), *FString(__FUNCTION__))); \
 	return ReturnValue; \
 }
-#define CHECK_VOXELWORLD_IS_CREATED() CHECK_VOXELWORLD_IS_CREATED_IMPL({});
-#define CHECK_VOXELWORLD_IS_CREATED_VOID() CHECK_VOXELWORLD_IS_CREATED_IMPL(PREPROCESSOR_NOTHING);
+#define CHECK_VOXELWORLD_IS_CREATED() CHECK_VOXELWORLD_IS_CREATED_IMPL(World, {});
+#define CHECK_VOXELWORLD_IS_CREATED_VOID() CHECK_VOXELWORLD_IS_CREATED_IMPL(World, PREPROCESSOR_NOTHING);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

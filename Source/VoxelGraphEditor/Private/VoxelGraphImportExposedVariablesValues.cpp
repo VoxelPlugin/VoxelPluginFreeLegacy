@@ -15,8 +15,6 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "ScopedTransaction.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 void ReportNodeError(FVoxelGraphErrorReporter& Reporter, const TArray<UVoxelNode*>& Nodes, const FName& Name)
 {
 	for (auto* Node : Nodes)
@@ -73,7 +71,7 @@ void DoImport(UVoxelGraphGenerator* Graph, UClass* From)
 	FString ValidNames;
 	int32 Count = 0;
 
-	const FScopedTransaction Transaction(NSLOCTEXT("UnrealEd", "VoxelGraphEditorImportExposedVariables", "Import Exposed Variables"));
+	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Import Exposed Variables"));
 	for (TFieldIterator<UProperty> It(From); It; ++It)
 	{
 		auto* Property = *It;
@@ -99,13 +97,13 @@ void DoImport(UVoxelGraphGenerator* Graph, UClass* From)
 	}
 
 	FMessageDialog::Open(EAppMsgType::Ok, EAppReturnType::Ok, FText::Format(
-		LOCTEXT("ImportError", 
+		VOXEL_LOCTEXT(
 			"The following properties were imported successfully: \n{0}\n"
 			"The following properties could not be imported:\n {1}"),
 		FText::FromString(ValidNames),
 		FText::FromString(InvalidNames)));
 
-	FNotificationInfo Info = FNotificationInfo(FText::Format(LOCTEXT("ImportDone", "{0} properties imported!"), FText::AsNumber(Count)));
+	FNotificationInfo Info = FNotificationInfo(FText::Format(VOXEL_LOCTEXT("{0} properties imported!"), FText::AsNumber(Count)));
 	Info.CheckBoxState = ECheckBoxState::Checked;
 	Info.ExpireDuration = 10;
 	FSlateNotificationManager::Get().AddNotification(Info);
@@ -142,11 +140,9 @@ void FVoxelGraphImportExposedVariablesValues::Import(UVoxelGraphGenerator* Graph
 	Options.ClassFilter = MakeShared<FVoxelWorldGeneratorFilter>();
 
 	UClass* ChosenClass = nullptr;
-	const bool bPressedOk = SClassPickerDialog::PickClass(LOCTEXT("PickClassToImportFrom", "Pick Class To Import From"), Options, ChosenClass, UBlueprint::StaticClass());
+	const bool bPressedOk = SClassPickerDialog::PickClass(VOXEL_LOCTEXT("Pick Class To Import From"), Options, ChosenClass, UBlueprint::StaticClass());
 	if (bPressedOk)
 	{
 		DoImport(Graph, ChosenClass);
 	}
 }
-
-#undef LOCTEXT_NAMESPACE

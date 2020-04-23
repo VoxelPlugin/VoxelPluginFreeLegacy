@@ -10,8 +10,9 @@
 #include "VoxelTickable.h"
 #include "QueueWithNum.h"
 
-class IVoxelRendererMeshHandler;
 struct FVoxelChunkMesh;
+
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Renderer"), STAT_VoxelRenderer, STATGROUP_VoxelMemory, VOXEL_API);
 
 class FVoxelDefaultRenderer : public IVoxelRenderer, public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDefaultRenderer>
 {
@@ -24,12 +25,16 @@ private:
 
 public:
 	//~ Begin IVoxelRender Interface
+	virtual void Destroy() override;
+	
 	virtual int32 UpdateChunks(const FIntBox& Bounds, const TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdateFinished& FinishDelegate) override;
+	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) override;
+
 	virtual int32 GetTaskCount() const override;
+	
 	virtual void RecomputeMeshPositions() override;
 	virtual void ApplyNewMaterials() override;
-	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) override;
-	virtual void Destroy() override;
+	
 	virtual void CreateGeometry_AnyThread(
 		int32 LOD,
 		const FIntVector& ChunkPosition,
@@ -70,10 +75,37 @@ private:
 		{
 		}
 
+	private:
+		EChunkState State = EChunkState::NewChunk;
+
+#if VOXEL_DEBUG
+		struct FChunkStateDebug
+		{
+			EChunkState OldChunkState;
+			EChunkState NewChunkState;
+			FName DebugName;
+		};
+		TArray<FChunkStateDebug> StateHistory;
+#endif
+
+	public:
+		FORCEINLINE EChunkState GetState() const
+		{
+			return State;
+		}
+		FORCEINLINE void SetState(EChunkState NewState, FName DebugName)
+		{
+#if VOXEL_DEBUG
+			StateHistory.Add(FChunkStateDebug{ State, NewState, DebugName });
+#endif
+			State = NewState;
+		}
+
+	public:
 		struct FChunkTasks
 		{
-			TUniquePtr<FVoxelMesherAsyncWork> MainTask;
-			TUniquePtr<FVoxelMesherAsyncWork> TransitionsTask;
+			TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>> MainTask;
+			TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>> TransitionsTask;
 		};
 		FChunkTasks Tasks;
 
@@ -88,8 +120,6 @@ private:
 		FChunkBuiltData BuiltData;
 
 		IVoxelRendererMeshHandler::FChunkId MeshId;
-
-		EChunkState State = EChunkState::NewChunk;
 
 		// Settings to be applied once eg new chunks are spawned
 		FVoxelChunkSettings PendingSettings{};
@@ -147,10 +177,13 @@ private:
 	void NewChunksFinished(FChunk& Chunk, const FChunk& NewChunk);
 	void RemoveOrHideChunk(FChunk& Chunk);
 	void DitherInChunk(FChunk& Chunk, const TArray<uint64, TInlineAllocator<8>>& PreviousChunks);
-	void ApplyPendingSettings(FChunk& Chunk);
+	void ApplyPendingSettings(FChunk& Chunk, bool bApplyVisibility);
 	void CheckPendingUpdates(FChunk& Chunk);
+	
 	void ProcessChunksToRemoveOrShow();
+	void ProcessMeshUpdates(double MaxTime);
 	void FlushQueuedTasks();
+
 	void DestroyChunk(FChunk& Chunk);
 	
 private:
@@ -182,5 +215,5 @@ private:
 	};
 	TQueueWithNum<FVoxelTaskCallback, EQueueMode::Mpsc> TasksCallbacksQueue;
 
-	void CancelTask(TUniquePtr<FVoxelMesherAsyncWork>& Task);
+	void CancelTask(TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>>& Task);
 };

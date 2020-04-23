@@ -24,7 +24,7 @@ FLinearColor UVoxelNode_FloatParameter::GetNotExposedColor() const
 #if WITH_EDITOR
 bool UVoxelNode_FloatParameter::TryImportFromProperty(UProperty* Property, UObject* Object)
 {
-	if (auto* Prop = Cast<UFloatProperty>(Property))
+	if (auto* Prop = UE_25_SWITCH(Cast, CastField)<UFloatProperty>(Property))
 	{
 		Value = *Prop->ContainerPtrToValuePtr<float>(Object);
 		return true;
@@ -56,7 +56,7 @@ FLinearColor UVoxelNode_IntParameter::GetNotExposedColor() const
 #if WITH_EDITOR
 bool UVoxelNode_IntParameter::TryImportFromProperty(UProperty* Property, UObject* Object)
 {
-	if (auto* Prop = Cast<UIntProperty>(Property))
+	if (auto* Prop = UE_25_SWITCH(Cast, CastField)<UIntProperty>(Property))
 	{
 		Value = *Prop->ContainerPtrToValuePtr<int32>(Object);
 		return true;
@@ -88,7 +88,7 @@ FLinearColor UVoxelNode_ColorParameter::GetNotExposedColor() const
 #if WITH_EDITOR
 bool UVoxelNode_ColorParameter::TryImportFromProperty(UProperty* Property, UObject* Object)
 {
-	if (auto* Prop = Cast<UStructProperty>(Property))
+	if (auto* Prop = UE_25_SWITCH(Cast, CastField)<UStructProperty>(Property))
 	{
 		if (Prop->GetCPPType(nullptr, 0) == "FLinearColor")
 		{
@@ -123,7 +123,7 @@ FLinearColor UVoxelNode_BoolParameter::GetNotExposedColor() const
 #if WITH_EDITOR
 bool UVoxelNode_BoolParameter::TryImportFromProperty(UProperty* Property, UObject* Object)
 {
-	if (auto* Prop = Cast<UBoolProperty>(Property))
+	if (auto* Prop = UE_25_SWITCH(Cast, CastField)<UBoolProperty>(Property))
 	{
 		auto* Data = Prop->ContainerPtrToValuePtr<bool>(Object);
 		Value = Prop->GetPropertyValue(Data);

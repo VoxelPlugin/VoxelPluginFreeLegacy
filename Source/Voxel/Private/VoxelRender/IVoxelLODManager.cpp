@@ -14,9 +14,9 @@ FVoxelLODSettings::FVoxelLODSettings(
 	: Renderer(Renderer)
 	, Pool(Pool)
 	, VoxelSize(InWorld->VoxelSize)
-	, OctreeDepth(Data
-		? FVoxelUtilities::GetChunkDepthFromDataDepth(Data->Depth)
-		: FVoxelUtilities::ClampChunkDepth(InWorld->OctreeDepth))
+	, OctreeDepth(FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(FMath::Max(1, Data
+		? FVoxelUtilities::ConvertDepth<DATA_CHUNK_SIZE, RENDER_CHUNK_SIZE>(Data->Depth)
+		: InWorld->RenderOctreeDepth)))
 	, WorldBounds(Data
 		? Data->WorldBounds
 		: InWorld->GetWorldBounds())

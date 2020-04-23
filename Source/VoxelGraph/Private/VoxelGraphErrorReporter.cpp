@@ -170,7 +170,7 @@ void FVoxelGraphErrorReporter::Apply(bool bSelectNodes)
 		{
 			if (Message.Type == EVoxelGraphNodeMessageType::FatalError)
 			{
-				UE_LOG(LogVoxel, Warning, TEXT("%s failed to compile: %s"), VoxelGraphGenerator ? *VoxelGraphGenerator->GetName() : TEXT(""), *Message.Message);
+				LOG_VOXEL(Warning, TEXT("%s failed to compile: %s"), VoxelGraphGenerator ? *VoxelGraphGenerator->GetName() : TEXT(""), *Message.Message);
 			}
 		}
 	}

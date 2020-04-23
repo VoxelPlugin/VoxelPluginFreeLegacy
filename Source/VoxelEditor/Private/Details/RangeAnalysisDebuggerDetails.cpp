@@ -9,8 +9,6 @@
 #include "DetailCategoryBuilder.h"
 #include "DetailWidgetRow.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 TSharedRef<IDetailCustomization> FRangeAnalysisDebuggerDetails::MakeInstance()
 {
 	return MakeShareable(new FRangeAnalysisDebuggerDetails());
@@ -42,7 +40,7 @@ void FRangeAnalysisDebuggerDetails::CustomizeDetails(IDetailLayoutBuilder& Detai
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-			.Text(LOCTEXT("Reset", "Reset"))
+			.Text(VOXEL_LOCTEXT("Reset"))
 		];
 
 	SAssignNew(UpdateButton, SButton)
@@ -53,16 +51,16 @@ void FRangeAnalysisDebuggerDetails::CustomizeDetails(IDetailLayoutBuilder& Detai
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
-			.Text(LOCTEXT("Update", "Update"))
+			.Text(VOXEL_LOCTEXT("Update"))
 		];
 	
 	DetailLayout.EditCategory("Bounds")
-	.AddCustomRow(LOCTEXT("Reset", "Reset"))
+	.AddCustomRow(VOXEL_LOCTEXT("Reset"))
 	.NameContent()
 	[
 		SNew(STextBlock)
 		.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(LOCTEXT("ResetBounds", "Reset bounds"))
+		.Text(VOXEL_LOCTEXT("Reset bounds"))
 	]
 	.ValueContent()
 	[
@@ -70,17 +68,15 @@ void FRangeAnalysisDebuggerDetails::CustomizeDetails(IDetailLayoutBuilder& Detai
 	];
 
 	DetailLayout.EditCategory("Graph")
-	.AddCustomRow(LOCTEXT("Update", "Update"))
+	.AddCustomRow(VOXEL_LOCTEXT("Update"))
 	.NameContent()
 	[
 		SNew(STextBlock)
 		.Font(IDetailLayoutBuilder::GetDetailFont())
-		.Text(LOCTEXT("UpdateGraph", "Update Graph"))
+		.Text(VOXEL_LOCTEXT("Update Graph"))
 	]
 	.ValueContent()
 	[
 		UpdateButton.ToSharedRef()
 	];
 }
-
-#undef LOCTEXT_NAMESPACE

@@ -10,7 +10,7 @@
 #include "VoxelMultiplayerInterface.generated.h"
 
 struct FVoxelMaterial;
-struct FVoxelCompressedWorldSave;
+struct FVoxelCompressedWorldSaveImpl;
 class IVoxelMultiplayerClient;
 class IVoxelMultiplayerServer;
 

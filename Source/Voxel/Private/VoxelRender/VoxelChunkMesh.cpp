@@ -15,7 +15,7 @@
 #include "ThirdParty/ForsythTriOO/Src/forsythtriangleorderoptimizer.h"
 #endif
 
-DEFINE_STAT(STAT_VoxelChunkMeshMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelChunkMeshMemory);
 
 #if ENABLE_TESSELLATION
 /**
@@ -105,24 +105,33 @@ void FVoxelChunkMeshBuffers::Shrink()
 	Normals.Shrink();
 	Tangents.Shrink();
 	Colors.Shrink();
-	for (uint32 Tex = 0; Tex < NUM_VOXEL_TEXTURE_COORDINATES; Tex++)
-	{
-		TextureCoordinates[Tex].Shrink();
-	}
+	for (auto& T : TextureCoordinates) T.Shrink();
 
-	UpdateStat();
+	UpdateStats();
 }
 
 void FVoxelChunkMeshBuffers::ComputeBounds()
 {
 	Bounds = FBox(ForceInit);
-	for(auto& Vertex : Positions)
+	for (auto& Vertex : Positions)
 	{
 		Bounds += Vertex;
 	}
 }
 
-void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data)
+void FVoxelChunkMeshBuffers::UpdateStats()
+{
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
+	LastAllocatedSize = Indices.GetAllocatedSize();
+	LastAllocatedSize += Positions.GetAllocatedSize();
+	LastAllocatedSize += Normals.GetAllocatedSize();
+	LastAllocatedSize += Tangents.GetAllocatedSize();
+	LastAllocatedSize += Colors.GetAllocatedSize();
+	for (auto& T : TextureCoordinates) LastAllocatedSize += T.GetAllocatedSize();
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
+}
+
+void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector & Position, const FVoxelData & Data)
 {
 #if ENABLE_VOXEL_DISTANCE_FIELDS
 	VOXEL_FUNCTION_COUNTER();
@@ -243,25 +252,4 @@ void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, 
 		CompressedDistanceFieldVolume = QuantizedDistanceFieldVolume;
 	}
 #endif
-}
-
-void FVoxelChunkMesh::ComputeBounds()
-{
-	VOXEL_FUNCTION_COUNTER();
-	Bounds = FBox(ForceInit);
-	IterateBuffers([&](auto& Buffer)
-	{
-		Buffer.ComputeBounds();
-		Bounds += Buffer.Bounds;
-	});
-}
-
-void FVoxelChunkMesh::ComputeGuid()
-{
-	VOXEL_FUNCTION_COUNTER();
-	IterateBuffers([&](auto& Buffer)
-	{
-		ensure(!Buffer.Guid.IsValid());
-		Buffer.Guid = FGuid::NewGuid();
-	});
 }

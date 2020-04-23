@@ -15,3 +15,5 @@
 #else
 #define checkVoxelGraph(...)
 #endif
+
+#define OUTDATED_GRAPH_FUNCTION() UE_DEPRECATED(0, "Outdated C++ graph, should compile to C++ again")

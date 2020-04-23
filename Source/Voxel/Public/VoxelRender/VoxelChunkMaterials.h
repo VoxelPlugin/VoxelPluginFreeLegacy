@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Containers/StaticArray.h"
-#include "VoxelRender/VoxelBlendedMaterial.h"
+#include "VoxelRender/VoxelMaterialIndices.h"
 
-class IVoxelMaterialInterface;
+class FVoxelMaterialInterface;
 
 struct FVoxelChunkMaterials
 {
@@ -14,7 +14,7 @@ public:
 	FVoxelChunkMaterials() = default;
 
 	template<typename T>
-	inline TVoxelSharedPtr<IVoxelMaterialInterface> GetSingleMaterial(bool bEnableTessellation, T Create)
+	inline TVoxelSharedPtr<FVoxelMaterialInterface> GetSingleMaterial(bool bEnableTessellation, T Create)
 	{
 		if (!SingleMaterial[bEnableTessellation].IsValid())
 		{
@@ -23,10 +23,10 @@ public:
 		return SingleMaterial[bEnableTessellation];
 	}
 	template<typename T>
-	inline TVoxelSharedPtr<IVoxelMaterialInterface> GetMultipleMaterial(const FVoxelBlendedMaterialUnsorted& Key, bool bEnableTessellation, T Create)
+	inline TVoxelSharedPtr<FVoxelMaterialInterface> GetMultipleMaterial(const FVoxelMaterialIndices& Key, bool bEnableTessellation, T Create)
 	{
 		auto* Result = Materials[bEnableTessellation].Find(Key);
-		if(!Result)
+		if (!Result)
 		{
 			auto New = Create();
 			Result = &Materials[bEnableTessellation].Add(Key, New);
@@ -43,6 +43,6 @@ public:
 	}
 
 private:
-	TStaticArray<TVoxelSharedPtr<IVoxelMaterialInterface>, 2> SingleMaterial;
-	TStaticArray<TMap<FVoxelBlendedMaterialUnsorted, TVoxelSharedPtr<IVoxelMaterialInterface>>, 2> Materials;
+	TStaticArray<TVoxelSharedPtr<FVoxelMaterialInterface>, 2> SingleMaterial;
+	TStaticArray<TMap<FVoxelMaterialIndices, TVoxelSharedPtr<FVoxelMaterialInterface>>, 2> Materials;
 };

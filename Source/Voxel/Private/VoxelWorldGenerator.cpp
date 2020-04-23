@@ -39,3 +39,11 @@ TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelTransformableWorldGenerator:
 {
 	return GetTransformableInstance();
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+FIntBox UVoxelTransformableWorldGeneratorWithBounds::GetBounds() const
+{
+	unimplemented();
+	return {};
+}

@@ -6,8 +6,9 @@
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
 
-DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Pool"), STAT_VoxelProcMeshPool, STATGROUP_VoxelMemory);
-DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Used"), STAT_VoxelProcMeshUsed, STATGROUP_VoxelMemory);
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Pool"), STAT_VoxelProcMeshPool, STATGROUP_VoxelCounters);
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Frozen Pool"), STAT_VoxelProcMeshFrozenPool, STATGROUP_VoxelCounters);
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Used"), STAT_VoxelProcMeshUsed, STATGROUP_VoxelCounters);
 
 TAutoConsoleVariable<int32> CVarLogActionQueue(
 	TEXT("voxel.renderer.LogMeshActionQueue"),
@@ -29,6 +30,7 @@ IVoxelRendererMeshHandler::IVoxelRendererMeshHandler(IVoxelRenderer& Renderer)
 IVoxelRendererMeshHandler::~IVoxelRendererMeshHandler()
 {
 	VOXEL_FUNCTION_COUNTER();
+	check(bIsInit);
 	ensure(bIsDestroying);
 	
 	// Avoid crashes
@@ -40,6 +42,7 @@ IVoxelRendererMeshHandler::~IVoxelRendererMeshHandler()
 	
 	DEC_DWORD_STAT_BY(STAT_VoxelProcMeshUsed, ActiveMeshes.Num());
 	DEC_DWORD_STAT_BY(STAT_VoxelProcMeshPool, MeshPool.Num());
+	DEC_DWORD_STAT_BY(STAT_VoxelProcMeshFrozenPool, FrozenMeshPool.Num());
 
 #if VOXEL_DEBUG
 	{
@@ -55,15 +58,22 @@ IVoxelRendererMeshHandler::~IVoxelRendererMeshHandler()
 		}
 		
 		// Meshes are invalid when closing the editor
-		// Is raised when recompiling a voxel world BP, so ensureVoxelSlow and not ensure
-		// ensureVoxelSlow(NumInvalid == 0 || GExitPurge);
-		ensureVoxelSlow(ActiveMeshes.Num() == 0);
+		// Is raised when recompiling a voxel world BP, so ensureVoxelSlowNoSideEffects and not ensure
+		// ensureVoxelSlowNoSideEffects(NumInvalid == 0 || GExitPurge);
+		ensureVoxelSlowNoSideEffects(ActiveMeshes.Num() == 0);
 	}
 #endif
 
 	VOXEL_SCOPE_COUNTER("Destroy proc mesh components");
 	// Destroy all mesh components we are owning
 	for (auto& Mesh : MeshPool)
+	{
+		if (Mesh.IsValid())
+		{
+			Mesh->DestroyComponent();
+		}
+	}
+	for (auto& Mesh : FrozenMeshPool)
 	{
 		if (Mesh.IsValid())
 		{
@@ -101,6 +111,8 @@ void IVoxelRendererMeshHandler::UpdateChunk(
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_CHUNK_ID();
+
+	ensure(ChunkSettings.bVisible || ChunkSettings.bEnableCollisions || ChunkSettings.bEnableNavmesh);
 	
 	FAction Action;
 	Action.Action = EAction::UpdateChunk;
@@ -246,6 +258,8 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 			if (ensure(Root))
 			{
 				NewMesh->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&Root->BodyInstance);
+				NewMesh->BodyInstance.SetObjectType(Root->BodyInstance.GetObjectType());
+				NewMesh->SetGenerateOverlapEvents(Root->GetGenerateOverlapEvents());
 			}
 			NewMesh->RegisterComponent();
 			NewMesh->SetRelativeScale3D(FVector::OneVector * Settings.VoxelSize);
@@ -260,7 +274,7 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 	SetMeshPosition(*NewMesh, Position);
 	
 	const FIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD);
-	const FVoxelPriorityHandler PriorityHandler(Bounds, Renderer.GetInvokersPositions());
+	const FVoxelPriorityHandler PriorityHandler(Bounds, Renderer.GetInvokersPositionsForPriorities());
 
 	// Set mesh variables
 	NewMesh->Init(
@@ -308,17 +322,25 @@ void IVoxelRendererMeshHandler::RemoveMesh(UVoxelProceduralMeshComponent& Mesh)
 #endif
 	}
 
-	MeshPool.Add(&Mesh);
+	if (UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen())
+	{
+		FrozenMeshPool.Add(&Mesh);
+		INC_DWORD_STAT(STAT_VoxelProcMeshFrozenPool);
+	}
+	else
+	{
+		MeshPool.Add(&Mesh);
+		INC_DWORD_STAT(STAT_VoxelProcMeshPool);
+	}
 
 	DEC_DWORD_STAT(STAT_VoxelProcMeshUsed);
-	INC_DWORD_STAT(STAT_VoxelProcMeshPool);
 }
 
 TArray<TWeakObjectPtr<UVoxelProceduralMeshComponent>>& IVoxelRendererMeshHandler::CleanUp(TArray<TWeakObjectPtr<UVoxelProceduralMeshComponent>>& Meshes) const
 {
 	const int32 NumInvalid = Meshes.RemoveAll([](auto& Mesh) { return !Mesh.IsValid(); });
 	// Meshes are invalid when closing the editor
-	// ensureVoxelSlow(NumInvalid == 0 || GExitPurge);
+	// ensureVoxelSlowNoSideEffects(NumInvalid == 0 || GExitPurge);
 	return Meshes;
 }
 
@@ -375,6 +397,16 @@ FString IVoxelRendererMeshHandler::FAction::ToString() const
 	return String;
 }
 
+void IVoxelRendererMeshHandler::Init()
+{
+	check(!bIsInit);
+	bIsInit = true;
+
+	UVoxelProceduralMeshComponent::AddOnFreezeVoxelCollisionChanged(FOnFreezeVoxelCollisionChanged::FDelegate::CreateThreadSafeSP(
+		this,
+		&IVoxelRendererMeshHandler::OnFreezeVoxelCollisionChanged));
+}
+
 void IVoxelRendererMeshHandler::SetMeshPosition(UVoxelProceduralMeshComponent& Mesh, const FIntVector& Position) const
 {
 	VOXEL_FUNCTION_COUNTER();
@@ -402,8 +434,22 @@ void IVoxelRendererMeshHandler::SetMeshPosition(UVoxelProceduralMeshComponent& M
 		const float Error = FVector::Distance(A, B);
 		if (Error > 0)
 		{
-			UE_LOG(LogVoxel, Log, TEXT("Distance between theorical and actual mesh position: %6.6f voxels"), Error);
+			LOG_VOXEL(Log, TEXT("Distance between theorical and actual mesh position: %6.6f voxels"), Error);
 			ensure(Error < 1);
 		}
+	}
+}
+
+void IVoxelRendererMeshHandler::OnFreezeVoxelCollisionChanged(bool bNewFreezeCollisions)
+{
+	if (!bNewFreezeCollisions)
+	{
+		// We can reuse all the frozen meshes
+		// No need to do anything on them: their collisions will be unfrozen automatically by the proc mesh comp
+		
+		DEC_DWORD_STAT_BY(STAT_VoxelProcMeshFrozenPool, FrozenMeshPool.Num());
+		INC_DWORD_STAT_BY(STAT_VoxelProcMeshPool, FrozenMeshPool.Num());
+
+		MeshPool.Append(MoveTemp(FrozenMeshPool));
 	}
 }

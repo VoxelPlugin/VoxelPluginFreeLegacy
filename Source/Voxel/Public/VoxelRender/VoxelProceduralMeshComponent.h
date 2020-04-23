@@ -7,13 +7,14 @@
 #include "VoxelGlobals.h"
 #include "VoxelPriorityHandler.h"
 #include "VoxelRender/VoxelProcMeshSectionSettings.h"
-#include "Components/MeshComponent.h"
-#include "Components/StaticMeshComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "Components/ModelComponent.h"
 #include "VoxelProceduralMeshComponent.generated.h"
 
 struct FKConvexElem;
 struct FVoxelProcMeshBuffers;
 struct FVoxelRendererSettings;
+struct FMaterialRelevance;
 class FVoxelToolRenderingManager;
 class FDistanceFieldVolumeData;
 class FVoxelAsyncPhysicsCooker;
@@ -24,14 +25,19 @@ class AVoxelWorld;
 class IVoxelPool;
 class IVoxelProceduralMeshComponent_PhysicsCallbackHandler;
 
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel PhysX Triangle Meshes Memory"), STAT_VoxelPhysXTriangleMeshesMemory, STATGROUP_VoxelMemory, VOXEL_API);
+
 enum class EVoxelProcMeshSectionUpdate : uint8
 {
 	UpdateNow,
 	DelayUpdate
 };
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnFreezeVoxelCollisionChanged, bool);
+
 UCLASS(BlueprintType, Blueprintable, ClassGroup = (Voxel), meta = (BlueprintSpawnableComponent))
-class VOXEL_API UVoxelProceduralMeshComponent : public UMeshComponent
+class VOXEL_API UVoxelProceduralMeshComponent
+	: public UPrimitiveComponent
 {
 	GENERATED_BODY()
 	
@@ -88,9 +94,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions")
 	static void SetVoxelCollisionsFrozen(bool bFrozen);
 
+	static void AddOnFreezeVoxelCollisionChanged(const FOnFreezeVoxelCollisionChanged::FDelegate& NewDelegate);
+	
 private:
 	static bool bAreCollisionsFrozen;
 	static TSet<TWeakObjectPtr<UVoxelProceduralMeshComponent>> PendingCollisions;
+	static FOnFreezeVoxelCollisionChanged OnFreezeVoxelCollisionChanged;
 
 public:
 	void SetDistanceFieldData(const TVoxelSharedPtr<const FDistanceFieldVolumeData>& InDistanceFieldData);
@@ -130,7 +139,7 @@ public:
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 	//~ End UPrimitiveComponent Interface.
 
-	FMaterialRelevance GetMaterialRelevance_VoxelProcMesh(ERHIFeatureLevel::Type InFeatureLevel) const;
+	FMaterialRelevance GetMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const;	
 	
 private:
 	void UpdatePhysicalMaterials();
@@ -157,7 +166,8 @@ private:
 	UBodySetup* BodySetupBeingCooked;
 	
 	FVoxelAsyncPhysicsCooker* AsyncCooker = nullptr;
-
+	uint64 TriangleMeshesMemory = 0;
+	
 	struct FVoxelProcMeshSection
 	{
 		FVoxelProcMeshSectionSettings Settings;
@@ -178,46 +188,4 @@ private:
 
 	friend class FVoxelProceduralMeshSceneProxy;
 
-protected:
-#if WITH_EDITOR
-	/**
-	 * Horrible hack to make the foliage editor believe we are a static mesh.
-	 */
-	static void GetPrivateStaticClassBody(
-		const TCHAR* PackageName,
-		const TCHAR* Name,
-		UClass*& ReturnClass,
-		void(*RegisterNativeFunc)(),
-		uint32 InSize,
-#if ENGINE_MINOR_VERSION >= 23
-		uint32 InAlignment,
-#endif
-		EClassFlags InClassFlags,
-		EClassCastFlags InClassCastFlags,
-		const TCHAR* InConfigName,
-		UClass::ClassConstructorType InClassConstructor,
-		UClass::ClassVTableHelperCtorCallerType InClassVTableHelperCtorCaller,
-		UClass::ClassAddReferencedObjectsType InClassAddReferencedObjects,
-		UClass::StaticClassFunctionType InSuperClassFn,
-		UClass::StaticClassFunctionType InWithinClassFn)
-	{
-		::GetPrivateStaticClassBody(
-			PackageName, 
-			Name,
-			ReturnClass,
-			RegisterNativeFunc,
-			InSize,
-#if ENGINE_MINOR_VERSION >= 23
-			InAlignment,
-#endif
-			InClassFlags,
-			InClassCastFlags,
-			InConfigName,
-			InClassConstructor,
-			InClassVTableHelperCtorCaller,
-			InClassAddReferencedObjects,
-			FCString::Stristr(FCommandLine::Get(), TEXT("-voxelfoliageedmodehack")) ? &UStaticMeshComponent::StaticClass : InSuperClassFn,
-			InWithinClassFn);
-	}
-#endif
 };

@@ -19,6 +19,10 @@ struct FVoxelCustomVersion
 		FoliagePaint,
 		ValueConfigFlagAndSaveGUIDs,
 		SingleValues,
+		NoVoxelMaterialInHeightmapAssets,
+		FixMissingMaterialsInHeightmapAssets,
+		AddUserFlagsToSaves,
+		StoreSpawnerMatricesRelativeToComponent,
 		
 		// -----<new versions can be added above this line>-------------------------------------------------
 		VoxelVersionPlusOne,

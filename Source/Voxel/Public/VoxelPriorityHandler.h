@@ -43,14 +43,14 @@ public:
 	}
 	FORCEINLINE FIntVector Get(int32 Index) const
 	{
-		ensure(Index < Num);
+		checkVoxelSlow(Index < Num);
 		return Data[Index];
 	}
 
 private:
 	int32 Num = 0;
 	const int32 Max = 0;
-	FIntVector* const Data = nullptr;
+	FIntVector* RESTRICT const Data = nullptr;
 };
 
 struct FVoxelPriorityHandler
@@ -71,7 +71,7 @@ struct FVoxelPriorityHandler
 		for (int32 Index = 0; Index < InvokersPositions->GetNum(); Index++)
 		{
 			const FIntVector Position = InvokersPositions->Get(Index);
-			Distance = FMath::Min<uint64>(Distance, Bounds.ComputeSquaredDistanceFromBoxToPoint<uint64>(Position));
+			Distance = FMath::Min(Distance, Bounds.ComputeSquaredDistanceFromBoxToPoint(Position));
 		}
 		return MAX_uint32 - uint32(FMath::Sqrt(Distance));
 	}

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelGlobals.h"
+#include "VoxelBaseUtilities.h"
 
 namespace ConstExprUtils
 {
@@ -43,9 +44,14 @@ namespace EVoxelValueConfigFlag
 }
 constexpr uint32 GVoxelValueConfigFlag = EIGHT_BITS_VOXEL_VALUE ? EVoxelValueConfigFlag::EightBitsValue : EVoxelValueConfigFlag::SixteenBitsValue;
 
-template<typename T, T MAX_VOXELVALUE>
+template<typename T>
 struct TVoxelValueImpl
 {
+	static constexpr T MAX_VOXELVALUE = TNumericLimits<T>::Max();
+	static constexpr T MIN_VOXELVALUE = -TNumericLimits<T>::Max();
+	static constexpr T INVALID_VOXELVALUE = TNumericLimits<T>::Min();
+
+	static_assert(int64(INVALID_VOXELVALUE) == int64(MIN_VOXELVALUE) - 1, "");
 public:
 	// Full voxel
 	FORCEINLINE constexpr static TVoxelValueImpl Full()
@@ -56,6 +62,11 @@ public:
 	FORCEINLINE constexpr static TVoxelValueImpl Empty()
 	{
 		return InternalConstructor(MAX_VOXELVALUE);
+	}
+	// Special voxel value, never reached using the normal constructor
+	FORCEINLINE constexpr static TVoxelValueImpl Special()
+	{
+		return InternalConstructor(INVALID_VOXELVALUE);
 	}
 	// Precision of FVoxelValue used for comparisons
 	FORCEINLINE constexpr static TVoxelValueImpl Precision()
@@ -82,14 +93,13 @@ public:
 	{
 	}
 
-	template<typename X>
-	TVoxelValueImpl(X) = delete;
-
 public:
 	FORCEINLINE constexpr bool IsNull() const { return GetStorage() == 0; }
 	FORCEINLINE constexpr bool IsEmpty() const { return GetStorage() > 0; }
 	FORCEINLINE constexpr bool IsTotallyEmpty() const { return GetStorage() == MAX_VOXELVALUE; }
 	FORCEINLINE constexpr bool IsTotallyFull() const { return GetStorage() == -MAX_VOXELVALUE; }
+
+	FORCEINLINE constexpr int32 Sign() const { return GetStorage() > 0 ? 1 : GetStorage() == 0 ? 0 : -1; }
 
 	FORCEINLINE constexpr float ToFloat() const { return float(GetStorage()) / float(MAX_VOXELVALUE); }
 	FORCEINLINE constexpr TVoxelValueImpl GetInverse() const { return InternalConstructor(-GetStorage()); }
@@ -119,7 +129,7 @@ public:
 		return F;
 	}
 
-private:
+public:
 	FORCEINLINE static constexpr TVoxelValueImpl InternalConstructor(T F)
 	{
 		TVoxelValueImpl Value(ForceInit);
@@ -133,12 +143,10 @@ private:
 
 private:
 	T F;
-
-	friend struct FVoxelValueConverter;
 };
 
-using FVoxelValue8 = TVoxelValueImpl<int8, 127>;
-using FVoxelValue16 = TVoxelValueImpl<int16, 0x7fff>;
+using FVoxelValue8 = TVoxelValueImpl<int8>;
+using FVoxelValue16 = TVoxelValueImpl<int16>;
 
 #if EIGHT_BITS_VOXEL_VALUE
 using FVoxelValue = FVoxelValue8;
@@ -165,19 +173,60 @@ struct TTypeTraits<FVoxelValue> : TTypeTraitsBase<FVoxelValue>
 struct FVoxelValueConverter
 {
 	template<typename T, typename TEnableIf<!TIsSame<FVoxelValue, T>::Value && TIsSame<FVoxelValue8, T>::Value, int>::Type = 0>
-	FORCEINLINE static FVoxelValue ConvertValue(T Value)
+	FORCEINLINE static constexpr FVoxelValue ConvertValue(T Value)
 	{
 		// Need to make FVoxelValue16 a dependent type
-		return TEnableIf<sizeof(T) != 0, FVoxelValue16>::Type::InternalConstructor(int16(Value.GetStorage()) << 8);
+		typename TEnableIf<sizeof(T) != 0, FVoxelValue16>::Type Result(ForceInit);
+		// Make sure special cases are handled correctly
+		// eg FVoxelValue16::Empty() >> 8 == FVoxelValue16::Special() >> 8
+		if (Value == FVoxelValue8::Full())
+		{
+			Result = FVoxelValue16::Full();
+		}
+		else if (Value == FVoxelValue8::Empty())
+		{
+			Result = FVoxelValue16::Empty();
+		}
+		else if (Value == FVoxelValue8::Special())
+		{
+			Result = FVoxelValue16::Special();
+		}
+		else
+		{
+			Result = FVoxelValue16::InternalConstructor(int16(Value.GetStorage()) << 8);
+		}
+		ensureVoxelSlowNoSideEffects(Result.IsEmpty() == Value.IsEmpty());
+		return Result;
 	}
 	template<typename T, typename TEnableIf<!TIsSame<FVoxelValue, T>::Value && TIsSame<FVoxelValue16, T>::Value, int>::Type = 0>
-	FORCEINLINE static FVoxelValue ConvertValue(T Value)
+	FORCEINLINE static constexpr FVoxelValue ConvertValue(T Value)
 	{
 		// Need to make FVoxelValue8 a dependent type
-		return TEnableIf<sizeof(T) != 0, FVoxelValue8>::Type::InternalConstructor(int8(Value.GetStorage() >> 8));
+		typename TEnableIf<sizeof(T) != 0, FVoxelValue8>::Type Result(ForceInit);
+		// Make sure special cases are handled correctly
+		// eg FVoxelValue16::Empty() >> 8 == FVoxelValue16::Special() >> 8
+		if (Value == FVoxelValue16::Full())
+		{
+			Result = FVoxelValue8::Full();
+		}
+		else if (Value == FVoxelValue16::Empty())
+		{
+			Result = FVoxelValue8::Empty();
+		}
+		else if (Value == FVoxelValue16::Special())
+		{
+			Result = FVoxelValue8::Special();
+		}
+		else
+		{
+			// DivideCeil: so that data between 0 and 255 is mapped to 1 and not 0 which would have a different sign
+			Result = FVoxelValue8::InternalConstructor(FVoxelUtilities::ClampToINT8(FVoxelUtilities::DivideCeil(Value.GetStorage(), 256)));
+		}
+		ensureVoxelSlowNoSideEffects(Result.IsEmpty() == Value.IsEmpty());
+		return Result;
 	}
 	template<typename T, typename TEnableIf<TIsSame<FVoxelValue, T>::Value, int>::Type = 0>
-	FORCEINLINE static FVoxelValue ConvertValue(T Value)
+	FORCEINLINE static constexpr FVoxelValue ConvertValue(T Value)
 	{
 		return Value;
 	}
@@ -200,3 +249,10 @@ struct FVoxelValueConverter
 		return Result;
 	}
 };
+
+static_assert(FVoxelValueConverter::ConvertValue(FVoxelValue8::Full()) == FVoxelValueConverter::ConvertValue(FVoxelValue16::Full()), "FVoxelValue error");
+static_assert(FVoxelValueConverter::ConvertValue(FVoxelValue8::Empty()) == FVoxelValueConverter::ConvertValue(FVoxelValue16::Empty()), "FVoxelValue error");
+static_assert(FVoxelValueConverter::ConvertValue(FVoxelValue8::Special()) == FVoxelValueConverter::ConvertValue(FVoxelValue16::Special()), "FVoxelValue error");
+static_assert(FVoxelValueConverter::ConvertValue(FVoxelValue8::InternalConstructor(0)) == FVoxelValueConverter::ConvertValue(FVoxelValue16::InternalConstructor(0)), "FVoxelValue error");
+static_assert(FVoxelValueConverter::ConvertValue(FVoxelValue16::InternalConstructor(+1)).IsEmpty(), "FVoxelValue error");
+static_assert(!FVoxelValueConverter::ConvertValue(FVoxelValue16::InternalConstructor(-1)).IsEmpty(), "FVoxelValue error");

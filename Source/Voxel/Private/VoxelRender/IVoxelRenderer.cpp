@@ -2,45 +2,16 @@
 
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
-#include "VoxelRender/VoxelMaterialCollection.h"
-#include "VoxelRender/VoxelBlendedMaterial.h"
+#include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
+#include "VoxelRender/VoxelMaterialIndices.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelMessages.h"
 #include "VoxelPriorityHandler.h"
 #include "VoxelWorld.h"
+#include "VoxelUniqueError.h"
+#include "VoxelMaterialUtilities.h"
 
 #include "Logging/MessageLog.h"
-#include "Materials/Material.h"
-
-#define LOCTEXT_NAMESPACE "Voxel"
-
-template<typename TValue = bool, typename TKey = uint64>
-class TVoxelUniqueWarning
-{
-public:
-	TVoxelUniqueWarning() = default;
-
-	bool NeedToRaiseWarning(TKey Key, TValue Value)
-	{
-		auto& Set = Map.FindOrAdd(Key);
-		if (!Set.Contains(Value))
-		{
-			Set.Add(Value);
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	bool operator()(TKey Key, TValue Value)
-	{
-		return NeedToRaiseWarning(Key, Value);
-	}
-
-private:
-	TMap<TKey, TSet<TValue>> Map;
-};
 
 FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	const AVoxelWorld* InWorld,
@@ -48,12 +19,6 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	UPrimitiveComponent* RootComponent,	
 	const FVoxelData* Data)
 	: VoxelSize(InWorld->VoxelSize)
-	, OctreeDepth(Data
-		? FVoxelUtilities::GetChunkDepthFromDataDepth(Data->Depth)
-		: FVoxelUtilities::ClampChunkDepth(InWorld->OctreeDepth))
-	, WorldBounds(Data
-		? Data->WorldBounds
-		: InWorld->GetWorldBounds())
 	, WorldOffset(Data
 		? MakeVoxelShared<FIntVector>(0)
 		: InWorld->GetWorldOffsetPtr())
@@ -72,7 +37,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, NormalConfig(InWorld->NormalConfig)
 	, MaterialConfig(InWorld->MaterialConfig)
 
-	, TessellationBoundsExtension(InWorld->TessellationBoundsExtension)
+	, BoundsExtension(InWorld->BoundsExtension)
 
 	, CollisionTraceFlag(InWorld->CollisionTraceFlag)
 	, NumConvexHullsPerAxis(InWorld->NumConvexHullsPerAxis)
@@ -134,140 +99,96 @@ FVoxelRendererSettings::FVoxelRendererSettings(
 
 IVoxelRenderer::IVoxelRenderer(const FVoxelRendererSettings& Settings)
 	: Settings(Settings)
-	, InvokersPositions(MakeVoxelShared<FInvokerPositionsArray>(32))
+	, InvokersPositionsForPriorities(MakeVoxelShared<FInvokerPositionsArray>(32))
 {
 }
 
-void IVoxelRenderer::SetInvokersPositions(const TArray<FIntVector>& NewInvokersPositions)
+void IVoxelRenderer::SetInvokersPositionsForPriorities(const TArray<FIntVector>& NewInvokersPositionsForPriorities)
 {
-	while (InvokersPositions->GetMax() < NewInvokersPositions.Num())
+	while (InvokersPositionsForPriorities->GetMax() < NewInvokersPositionsForPriorities.Num())
 	{
-		InvokersPositions = MakeVoxelShared<FInvokerPositionsArray>(2 * InvokersPositions->GetMax());
+		InvokersPositionsForPriorities = MakeVoxelShared<FInvokerPositionsArray>(2 * InvokersPositionsForPriorities->GetMax());
 	}
-	InvokersPositions->Set(NewInvokersPositions);
+	InvokersPositionsForPriorities->Set(NewInvokersPositionsForPriorities);
 }
 
-UMaterialInterface* FVoxelRendererSettingsBase::GetVoxelMaterial(FVoxelBlendedMaterialUnsorted BlendedIndex, bool bTessellation) const
+inline UObject* GetRootOwner(const TWeakObjectPtr<UPrimitiveComponent>& RootComponent)
 {
-	const auto DefaultMaterial = []()
-	{
-		return UMaterial::GetDefaultMaterial(EMaterialDomain::MD_Surface);
-	};
-	
+	return RootComponent.IsValid() ? RootComponent->GetOwner() : nullptr;
+}
+
+UMaterialInterface* FVoxelRendererSettingsBase::GetVoxelMaterial(const FVoxelMaterialIndices& MaterialIndices, bool bTessellation) const
+{
 	const auto MaterialCollection = DynamicSettings->MaterialCollection;
 	if (!MaterialCollection.IsValid())
 	{
-		static TVoxelUniqueWarning<> InvalidCollection;
+		static TVoxelUniqueError<> UniqueError;
 		FVoxelMessages::CondError<EVoxelShowNotification::Hide>(
-			InvalidCollection(UniqueId, {}), 
-			LOCTEXT("InvalidMaterialCollection", "Invalid Material Collection"), RootComponent->GetOwner());
-		return DefaultMaterial();
+			UniqueError(UniqueId, {}),
+			"Invalid Material Collection",
+			GetRootOwner(RootComponent));
+		return FVoxelUtilities::GetDefaultMaterial(bTessellation, MaterialIndices.NumIndices);
 	}
-	UMaterialInterface* Value = MaterialCollection->GetVoxelMaterial(BlendedIndex, bTessellation);
-	if (Value)
+	
+	UMaterialInterface* MaterialInterface = MaterialCollection->GetVoxelMaterial(MaterialIndices, bTessellation, UniqueId);
+	if (MaterialInterface && FVoxelUtilities::IsMaterialTessellated(MaterialInterface) == bTessellation)
 	{
-		return Value;
+		return MaterialInterface;
 	}
 	else
 	{
-		if (auto* Collection = Cast<UVoxelMaterialCollection>(MaterialCollection))
-		{
-			if (bTessellation && !Collection->bEnableTessellation)
-			{
-				static TVoxelUniqueWarning<> MissingTessellation;
-				FVoxelMessages::CondError<EVoxelShowNotification::Hide>(MissingTessellation(UniqueId, {}), LOCTEXT("Tessellation", "You need to tick EnableTessellation"), Collection);
-				return DefaultMaterial();
-			}
-
-			for (uint8 Index : BlendedIndex.GetElements())
-			{
-				if (!Collection->IsValidIndex(Index))
-				{
-					static TVoxelUniqueWarning<uint8> InvalidIndex;
-					FVoxelMessages::CondError<EVoxelShowNotification::Hide>(InvalidIndex(UniqueId, Index),
-						FText::Format(
-							LOCTEXT(
-								"MaterialCollectionInvalidIndex",
-								"Missing index {0}. You need to add it to your material collection, or make sure you don't paint/generate it."),
-							FText::AsNumber(Index)),
-						Collection);
-					return DefaultMaterial();
-				}
-			}
-
-			static TVoxelUniqueWarning<FVoxelBlendedMaterialUnsorted> InvalidBlendedIndex;
-			FVoxelMessages::CondError<EVoxelShowNotification::Hide>(InvalidBlendedIndex(UniqueId, BlendedIndex),
-				FText::Format(
-					LOCTEXT(
-						"MaterialCollectionMissingGenerated",
-						"Missing the following generated material: {0} {1}. You need to open the asset and click the Generate {2} button."),
-					FText::FromString(bTessellation ? "Tessellation" : ""),
-					FText::FromString(BlendedIndex.ToString()),
-					FText::FromString(BlendedIndex.KindToString())),
-				Collection);
-			return DefaultMaterial();
-		}
-		else
-		{
-			ensure(MaterialCollection->IsA<UVoxelBasicMaterialCollection>());
-			if (BlendedIndex.Kind != FVoxelBlendedMaterialUnsorted::Single)
-			{
-				static TVoxelUniqueWarning<> MustBeSingle;
-				FVoxelMessages::CondError<EVoxelShowNotification::Hide>(
-					MustBeSingle(UniqueId, {}),
-					LOCTEXT(
-						"VoxelBasicMaterialCollectionMustBeSingle",
-						"Basic material collections only support Single Index material configs! Check your voxel world material config"),
-					Collection);
-				return DefaultMaterial();
-			}
-			if (bTessellation)
-			{
-				static TVoxelUniqueWarning<uint8> MissingIndex;
-				FVoxelMessages::CondError<EVoxelShowNotification::Hide>(
-					MissingIndex(UniqueId, BlendedIndex.Index0),
-					FText::Format(
-						LOCTEXT(
-							"MissingIndex",
-							"Missing a tessellated material for index {0}"),
-						FText::AsNumber(BlendedIndex.Index0)),
-					Collection);
-				return DefaultMaterial();
-			}
-			else
-			{
-				static TVoxelUniqueWarning<uint8> MissingIndex;
-				FVoxelMessages::CondError<EVoxelShowNotification::Hide>(
-					MissingIndex(UniqueId, BlendedIndex.Index0),
-					FText::Format(
-						LOCTEXT(
-							"MissingIndex",
-							"Missing a material for index {0}"),
-						FText::AsNumber(BlendedIndex.Index0)),
-					Collection);
-				return DefaultMaterial();
-			}
-		}
+		return FVoxelUtilities::GetDefaultMaterial(bTessellation, MaterialIndices.NumIndices);
 	}
 }
 
 UMaterialInterface* FVoxelRendererSettingsBase::GetVoxelMaterial(bool bTessellation) const
 {
-	const auto& Material = bTessellation ? DynamicSettings->VoxelMaterialWithTessellation : DynamicSettings->VoxelMaterialWithoutTessellation;
-	if (!Material.IsValid())
+	const auto Material = bTessellation ? DynamicSettings->VoxelMaterialWithTessellation : DynamicSettings->VoxelMaterialWithoutTessellation;
+	if (Material.IsValid() && FVoxelUtilities::IsMaterialTessellated(Material.Get()) == bTessellation)
 	{
-		static TVoxelUniqueWarning<> InvalidVoxelMaterial;
-		FVoxelMessages::CondError(
-			InvalidVoxelMaterial(UniqueId, {}),
-			bTessellation ?
-			LOCTEXT("InvalidVoxelMaterialWithTessellation", "Invalid Tessellated Voxel Material") :
-			LOCTEXT("InvalidVoxelMaterial", "Invalid Voxel Material"),
-			RootComponent->GetOwner());
-		return nullptr;
+		return Material.Get();
 	}
-	return Material.Get();
+
+	if (bTessellation)
+	{
+		if (DynamicSettings->VoxelMaterialWithTessellation.IsValid())
+		{
+			static TVoxelUniqueError<> UniqueError;
+			FVoxelMessages::CondError(
+				UniqueError(UniqueId, {}),
+				"TessellatedVoxelMaterial must have tessellation enabled! If you don't need tessellation, set EnableTessellation to false and use VoxelMaterial",
+				GetRootOwner(RootComponent));
+		}
+		else
+		{
+			static TVoxelUniqueError<> UniqueError;
+			FVoxelMessages::CondError(
+				UniqueError(UniqueId, {}),
+				"Invalid TessellatedVoxelMaterial! EnableTessellation = true requires TessellatedVoxelMaterial to be set",
+				GetRootOwner(RootComponent));
+		}
+	}
+	else
+	{
+		if (DynamicSettings->VoxelMaterialWithoutTessellation.IsValid())
+		{
+			static TVoxelUniqueError<> UniqueError;
+			FVoxelMessages::CondError(
+				UniqueError(UniqueId, {}),
+				"VoxelMaterial must have tessellation disabled! If you need tessellation, set EnableTessellation to true and use TessellatedVoxelMaterial",
+				GetRootOwner(RootComponent));
+		}
+		else
+		{
+			static TVoxelUniqueError<> UniqueError;
+			FVoxelMessages::CondError(
+				UniqueError(UniqueId, {}),
+				"Invalid VoxelMaterial",
+				GetRootOwner(RootComponent));
+		}
+	}
+	
+	return FVoxelUtilities::GetDefaultMaterial(bTessellation, 0);
 }
 
 uint64 FVoxelRendererSettingsBase::UniqueIdCounter = 0;
-
-#undef LOCTEXT_NAMESPACE

@@ -5,8 +5,8 @@
 #include "VoxelMessages.h"
 #include "Async/Async.h"
 
-DECLARE_MEMORY_STAT(TEXT("Voxel Render Octrees Memory"), STAT_VoxelRenderOctreesMemory, STATGROUP_VoxelMemory);
-DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Render Octrees Count"), STAT_VoxelRenderOctreesCount, STATGROUP_VoxelMemory);
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Render Octrees Count"), STAT_VoxelRenderOctreesCount, STATGROUP_VoxelCounters);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelRenderOctreesMemory);
 
 static TAutoConsoleVariable<int32> CVarMaxRenderOctreeChunks(
 	TEXT("voxel.renderer.MaxRenderOctreeChunks"),
@@ -34,6 +34,8 @@ FVoxelRenderOctreeAsyncBuilder::FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth
 
 void FVoxelRenderOctreeAsyncBuilder::Init(const FVoxelRenderOctreeSettings& InOctreeSettings, TVoxelSharedPtr<FVoxelRenderOctree> InOctree)
 {
+	VOXEL_FUNCTION_COUNTER();
+
 	OctreeSettings = InOctreeSettings;
 	OldOctree = InOctree;
 
@@ -53,21 +55,19 @@ void FVoxelRenderOctreeAsyncBuilder::ReportBuildTime()
 	
 	if (CVarLogRenderOctreeBuildTime.GetValueOnGameThread())
 	{
-		UE_LOG(LogVoxel, Log, TEXT("%s"), *Log);
+		LOG_VOXEL(Log, TEXT("%s"), *Log);
 	}
 
 	if (bTooManyChunks)
 	{
 		FVoxelMessages::Error(FString::Printf(TEXT(
 			"Render octree update was stopped!\n" 
-			"Max render octree chunks count reached (%d).\n"
-			"This is likely caused by too demanding LOD settings.\n"
+			"Max render octree chunks count reached: voxel.renderer.MaxRenderOctreeChunks < %d.\n"
+			"This is caused by too demanding LOD settings.\n"
 			"You can try the following: \n"
-			"- reduce LODs Min Distance\n"
-			"- increase Max LOD\n"
 			"- reduce World Size\n"
-			"- reduce invokers distances\n"
-			"- increase voxel.renderer.MaxRenderOctreeChunks"), NumberOfChunks));
+			"- increase Max LOD\n"
+			"- reduce invokers distances"), NumberOfChunks));
 	}
 }
 
@@ -166,7 +166,7 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 	
 	{
 		VOXEL_SCOPE_COUNTER("Deleting old octree");
-		OldOctree = NewOctree;
+		OldOctree.Reset();
 		LOG_TIME("Deleting old octree");
 	}
 
@@ -207,7 +207,7 @@ FVoxelRenderOctree::FVoxelRenderOctree(uint8 LOD)
 	Root->CurrentChunksCount++;
 
 	INC_DWORD_STAT_BY(STAT_VoxelRenderOctreesCount, 1);
-	INC_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
 }
 
 FVoxelRenderOctree::FVoxelRenderOctree(const FVoxelRenderOctree* Source)
@@ -227,7 +227,7 @@ FVoxelRenderOctree::FVoxelRenderOctree(const FVoxelRenderOctree* Source)
 	}
 
 	INC_DWORD_STAT_BY(STAT_VoxelRenderOctreesCount, 1);
-	INC_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
 }
 
 
@@ -242,7 +242,7 @@ FVoxelRenderOctree::FVoxelRenderOctree(const FVoxelRenderOctree& Parent, uint8 C
 	Root->CurrentChunksCount++;
 
 	INC_DWORD_STAT_BY(STAT_VoxelRenderOctreesCount, 1);
-	INC_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
 }
 
 
@@ -263,14 +263,14 @@ FVoxelRenderOctree::FVoxelRenderOctree(const FVoxelRenderOctree& Parent, uint8 C
 	}
 
 	INC_DWORD_STAT_BY(STAT_VoxelRenderOctreesCount, 1);
-	INC_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
 }
 
 FVoxelRenderOctree::~FVoxelRenderOctree()
 {
 	Root->CurrentChunksCount--;
 	DEC_DWORD_STAT_BY(STAT_VoxelRenderOctreesCount, 1);
-	DEC_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -400,7 +400,7 @@ void FVoxelRenderOctree::DeleteChunks(TArray<FVoxelChunkUpdate>& ChunkUpdates)
 				
 				if (Child.ChunkSettings.Settings.HasRenderChunk())
 				{
-					ensureVoxelSlow(!ChunkUpdates.FindByPredicate([&](const FVoxelChunkUpdate& ChunkUpdate) { return ChunkUpdate.Id == Child.ChunkId; }));
+					ensureVoxelSlowNoSideEffects(!ChunkUpdates.FindByPredicate([&](const FVoxelChunkUpdate& ChunkUpdate) { return ChunkUpdate.Id == Child.ChunkId; }));
 					ChunkUpdates.Emplace(
 						FVoxelChunkUpdate
 						{
@@ -427,23 +427,6 @@ void FVoxelRenderOctree::DeleteChunks(TArray<FVoxelChunkUpdate>& ChunkUpdates)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-template<typename T1, typename T2>
-inline bool IsInRange(const FVoxelRenderOctree* This, const TArray<FVoxelInvoker>& Invokers, T1 SelectInvoker, T2 SelectRange)
-{
-	for (auto& Invoker : Invokers)
-	{
-		if (SelectInvoker(Invoker))
-		{
-			uint64 SquaredDistance = This->OctreeBounds.ComputeSquaredDistanceFromBoxToPoint<uint64>(Invoker.Position);
-			if (SquaredDistance < SelectRange(Invoker))
-			{
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
 void FVoxelRenderOctree::GetUpdates(
 	uint32 InUpdateIndex,
 	bool bRecomputeTransitionMasks,
@@ -463,9 +446,8 @@ void FVoxelRenderOctree::GetUpdates(
 
 	FVoxelChunkSettings NewSettings{};
 	
-	// We don't want bEnableRender = false to disable VisibleChunks settings
-	bool bVisibleForCollisionsAndNavmesh = Height <= Settings.ChunksCullingLOD && bInVisible;
-	NewSettings.bVisible = Settings.bEnableRender && bVisibleForCollisionsAndNavmesh;
+	// NOTE: we DO want bEnableRender = false to disable VisibleChunks settings
+	NewSettings.bVisible = Settings.bEnableRender && Height <= Settings.ChunksCullingLOD && bInVisible;
 
 	if (!HasChildren())
 	{
@@ -478,7 +460,6 @@ void FVoxelRenderOctree::GetUpdates(
 		if (ChunkSettings.DivisionType == EDivisionType::ByDistance || ChunkSettings.DivisionType == EDivisionType::ByNeighbors)
 		{
 			// There are visible children
-			bVisibleForCollisionsAndNavmesh = false;
 			NewSettings.bVisible = false;
 			bChildrenVisible = true;
 		}
@@ -497,31 +478,31 @@ void FVoxelRenderOctree::GetUpdates(
 	NewSettings.bEnableCollisions =
 		Settings.bEnableCollisions &&
 		((Height == 0 &&
-			IsInRange(this, Settings.Invokers,
-				[](auto& X) { return X.bUseForCollisions; },
-				[](auto& X) { return X.SquaredCollisionsRange; })
+			IsInvokerInRange(Settings.Invokers,
+				[](const FVoxelInvoker& Invoker) { return Invoker.bUseForCollisions; },
+				[](const FVoxelInvoker& Invoker) { return Invoker.CollisionsBounds; })
 		 )
 		 ||
-		 (bVisibleForCollisionsAndNavmesh && Settings.bComputeVisibleChunksCollisions && Height <= Settings.VisibleChunksCollisionsMaxLOD)
+		 (NewSettings.bVisible && Settings.bComputeVisibleChunksCollisions && Height <= Settings.VisibleChunksCollisionsMaxLOD)
 	    );
 		
 	NewSettings.bEnableNavmesh = 
 		Settings.bEnableNavmesh &&
 		((Height == 0 &&
-			IsInRange(this, Settings.Invokers,
-				[](auto& X) { return X.bUseForNavmesh; },
-				[](auto& X) { return X.SquaredNavmeshRange; })
+			IsInvokerInRange(Settings.Invokers,
+				[](const FVoxelInvoker& Invoker) { return Invoker.bUseForNavmesh; },
+				[](const FVoxelInvoker& Invoker) { return Invoker.NavmeshBounds; })
 		)
 		||
-		(bVisibleForCollisionsAndNavmesh && Settings.bComputeVisibleChunksNavmesh && Height <= Settings.VisibleChunksNavmeshMaxLOD)
+		(NewSettings.bVisible && Settings.bComputeVisibleChunksNavmesh && Height <= Settings.VisibleChunksNavmeshMaxLOD)
 		);
 
 	NewSettings.bEnableTessellation = 
 		Settings.bEnableTessellation && 
 		NewSettings.bVisible && 
-		IsInRange(this, Settings.Invokers, 
-			[](auto& X) { return X.bUseForLODs; }, 
-			[&](auto&) { return Settings.SquaredTessellationDistance; });
+		IsInvokerInRange(Settings.Invokers,
+			[](const FVoxelInvoker& Invoker) { return Invoker.bUseForTessellation; },
+			[&](const FVoxelInvoker& Invoker) { return Invoker.TessellationBounds; });
 
 	check(NewSettings.TransitionsMask == 0);
 	if (NewSettings.HasRenderChunk())
@@ -557,7 +538,7 @@ void FVoxelRenderOctree::GetUpdates(
 	
 	if (ChunkSettings.Settings != NewSettings && (ChunkSettings.Settings.HasRenderChunk() || NewSettings.HasRenderChunk()))
 	{
-		ensureVoxelSlow(!ChunkUpdates.FindByPredicate([&](const FVoxelChunkUpdate& ChunkUpdate) { return ChunkUpdate.Id == ChunkId; }));
+		// Too slow ensureVoxelSlowNoSideEffects(!ChunkUpdates.FindByPredicate([&](const FVoxelChunkUpdate& ChunkUpdate) { return ChunkUpdate.Id == ChunkId; }));
 		ChunkUpdates.Emplace(
 			FVoxelChunkUpdate
 			{
@@ -649,17 +630,10 @@ bool FVoxelRenderOctree::ShouldSubdivideByDistance(const FVoxelRenderOctreeSetti
 
 	for (auto& Invoker : Settings.Invokers)
 	{
-		if (Invoker.bUseForLODs && OctreeBounds.Contains(Invoker.Position))
+		if (Invoker.bUseForLOD && OctreeBounds.Intersect(Invoker.LODBounds) && Height > Invoker.LODToSet)
 		{
 			return true;
 		}
-	}
-
-	if (IsInRange(this, Settings.Invokers,
-		[](auto& X) { return X.bUseForLODs; },
-		[&](auto&) { return Settings.SquaredLODsDistances[Height]; }))
-	{
-		return true;
 	}
 
 	return false;
@@ -717,13 +691,15 @@ bool FVoxelRenderOctree::ShouldSubdivideByOthers(const FVoxelRenderOctreeSetting
 		return false;
 	}
 
-	if ((Settings.bEnableCollisions && IsInRange(this, Settings.Invokers,
-		[](auto& X) { return X.bUseForCollisions; },
-		[](auto& X) { return X.SquaredCollisionsRange; }))
-		||
-		(Settings.bEnableNavmesh &&	IsInRange(this, Settings.Invokers,
-			[](auto& X) { return X.bUseForNavmesh; },
-			[](auto& X) { return X.SquaredNavmeshRange; })))
+	if (Settings.bEnableCollisions && IsInvokerInRange(Settings.Invokers,
+		[](const FVoxelInvoker& Invoker) { return Invoker.bUseForCollisions; },
+		[](const FVoxelInvoker& Invoker) { return Invoker.CollisionsBounds; }))
+	{
+		return true;
+	}
+	if (Settings.bEnableNavmesh && IsInvokerInRange(Settings.Invokers,
+		[](const FVoxelInvoker& Invoker) { return Invoker.bUseForNavmesh; },
+		[](const FVoxelInvoker& Invoker) { return Invoker.NavmeshBounds; }))
 	{
 		return true;
 	}
@@ -805,6 +781,22 @@ const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDire
 	{
 		return nullptr;
 	}
+}
+
+template<typename T1, typename T2>
+bool FVoxelRenderOctree::IsInvokerInRange(const TArray<FVoxelInvoker>& Invokers, T1 SelectInvoker, T2 GetInvokerBounds) const
+{
+	for (auto& Invoker : Invokers)
+	{
+		if (SelectInvoker(Invoker))
+		{
+			if (OctreeBounds.Intersect(GetInvokerBounds(Invoker)))
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

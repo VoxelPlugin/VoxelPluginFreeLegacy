@@ -7,13 +7,13 @@
 #include "SafeSparseArray.h"
 #include "Misc/ScopeLock.h"
 
-class IVoxelMaterialInterface;
+class FVoxelMaterialInterface;
 
 struct FVoxelToolRendering
 {
 	bool bEnabled = false;
 	FBox WorldBounds;
-	TVoxelSharedPtr<IVoxelMaterialInterface> Material;
+	TVoxelSharedPtr<FVoxelMaterialInterface> Material;
 };
 
 DEFINE_TYPED_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
@@ -58,7 +58,7 @@ public:
 			Lambda(Tool);
 		}
 	}
-	inline const TArray<TVoxelSharedPtr<const IVoxelMaterialInterface>>& GetToolsMaterials() const
+	inline const TArray<TVoxelSharedPtr<const FVoxelMaterialInterface>>& GetToolsMaterials() const
 	{
 		check(IsInGameThread());
 		return ToolsMaterials;
@@ -67,7 +67,7 @@ public:
 private:
 	mutable FCriticalSection Section;
 	TSafeTypedSparseArray<FVoxelToolRenderingId, FVoxelToolRendering> Tools;
-	TArray<TVoxelSharedPtr<const IVoxelMaterialInterface>> ToolsMaterials;
+	TArray<TVoxelSharedPtr<const FVoxelMaterialInterface>> ToolsMaterials;
 
 	inline void RecomputeToolsMaterials()
 	{

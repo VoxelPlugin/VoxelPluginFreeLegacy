@@ -13,9 +13,11 @@ class SWidget;
 class FViewport;
 class FEditorViewportClient;
 class IDetailsView;
+class FReply;
 struct FTransactionContext;
 struct FViewportClick;
 struct FKey;
+struct EVisibility;
 
 class FVoxelEditorToolsPanel : public TSharedFromThis<FVoxelEditorToolsPanel>, public FGCObject
 {	
@@ -43,10 +45,15 @@ public:
 	bool InputKey(FEditorViewportClient* ViewportClient, FViewport* Viewport, FKey Key, EInputEvent Event);
 	bool InputAxis(FEditorViewportClient* ViewportClient, FViewport* Viewport, FKey Key, float Delta, float DeltaTime);
 
+public:
+	EVisibility GetAddVoxelWorldVisibility() const;
+	FReply AddVoxelWorld() const;
+
 private:
 	UVoxelToolManager* ToolManager = nullptr;
 	TSharedPtr<IDetailsView> DetailsPanel;
 	TSharedPtr<SWidget> Widget;
+	TWeakObjectPtr<UWorld> LastWorld;
 	
 	float TimeUntilNextGC = 0;
 

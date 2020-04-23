@@ -8,8 +8,6 @@
 #include "EditorStyleSet.h"
 #include "EditorReimportHandler.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 void FAssetTypeActions_VoxelDataAsset::OpenAssetEditor(const TArray<UObject *>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor)
 {
 	FVoxelMessages::ShowVoxelPluginProError("The Voxel Data Asset Editor is only available in Voxel Plugin Pro");
@@ -20,8 +18,8 @@ void FAssetTypeActions_VoxelDataAsset::GetActions(const TArray<UObject*>& InObje
 	const auto Assets = GetTypedWeakObjectPtrs<UVoxelDataAsset>(InObjects);
 
 	MenuBuilder.AddMenuEntry(
-		LOCTEXT("ReimportVoxelAssetLabel", "Reimport"),
-		LOCTEXT("ReimportVoxelAssetTooltip", "Reimport the selected asset(s)."),
+		VOXEL_LOCTEXT("Reimport"),
+		VOXEL_LOCTEXT("Reimport the selected asset(s)."),
 		FSlateIcon(FEditorStyle::GetStyleSetName(), "ContentBrowser.AssetActions.ReimportAsset"),
 		FUIAction(
 			FExecuteAction::CreateSP(this, &FAssetTypeActions_VoxelDataAsset::ExecuteReimport, Assets),
@@ -52,4 +50,3 @@ void FAssetTypeActions_VoxelDataAsset::ExecuteReimport(const TArray<TWeakObjectP
 		}
 	}
 }
-#undef LOCTEXT_NAMESPACE

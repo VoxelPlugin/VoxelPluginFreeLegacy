@@ -15,6 +15,13 @@ public:
 	TStackArray()
 	{
 	}
+	explicit TStackArray(EForceInit)
+	{
+		for (auto& Element : *this)
+		{
+			new (&Element) T{};
+		}
+	}
 
 	FORCEINLINE static constexpr uint32 Num()
 	{
@@ -55,11 +62,11 @@ public:
 		return TArray<T>(GetData(), Num());
 	}
 
-	inline T* begin() { return GetData(); }
-	inline T* end()   { return GetData() + Size; }
+	FORCEINLINE T* begin() { return GetData(); }
+	FORCEINLINE T* end()   { return GetData() + Size; }
 	
-	inline const T* begin() const { return GetData(); }
-	inline const T* end()   const { return GetData() + Size; }
+	FORCEINLINE const T* begin() const { return GetData(); }
+	FORCEINLINE const T* end()   const { return GetData() + Size; }
 
 private:
 	uint8 Data[Size * sizeof(T)];

@@ -54,7 +54,7 @@ TVoxelSharedRef<FVoxelPlaceableItem> FVoxelAssetItemLoader::Load(FArchive& Ar, c
 	Ar << Priority;
 
 	TVoxelSharedPtr<FVoxelTransformableWorldGeneratorInstance> WorldGenerator;
-	if (UClass* Class = LoadClass<UVoxelTransformableWorldGenerator>(GetTransientPackage(), *ClassPath))
+	if (UClass* Class = LoadClass<UVoxelTransformableWorldGenerator>(nullptr, *ClassPath))
 	{
 		if (auto* WorldGeneratorObject = Cast<UVoxelTransformableWorldGenerator>(Class->GetDefaultObject()))
 		{

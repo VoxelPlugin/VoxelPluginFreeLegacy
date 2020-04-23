@@ -127,6 +127,7 @@ class VOXEL_API UVoxelMeshImporterLibrary : public UBlueprintFunctionLibrary
 
 public:
 	static void CreateMeshDataFromStaticMesh(UStaticMesh* StaticMesh, FVoxelMeshImporterInputData& Data);
+	
 	static bool ConvertMeshToVoxels(
 		UObject* WorldContextObject,
 		const FVoxelMeshImporterInputData& Mesh,
@@ -134,6 +135,18 @@ public:
 		const FVoxelMeshImporterSettings& Settings,
 		FVoxelMeshImporterRenderTargetCache& RenderTargetCache,
 		FVoxelDataAssetData& OutAsset,
+		FIntVector& OutOffset,
+		int32& OutNumLeaks);
+
+	static void ConvertMeshToDistanceField(
+		const FVoxelMeshImporterInputData& Mesh,
+		const FTransform& Transform,
+		float VoxelSize,
+		float MaxDistance,
+		// Needed if we want a smooth import
+		float BoxExtension,
+		TArray<float>& OutDistanceField,
+		FIntVector& OutSize,
 		FIntVector& OutOffset,
 		int32& OutNumLeaks);
 	

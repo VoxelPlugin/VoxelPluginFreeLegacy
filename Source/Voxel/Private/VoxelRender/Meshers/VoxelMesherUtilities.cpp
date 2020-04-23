@@ -4,177 +4,116 @@
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelChunkMesh.h"
 
-struct FDoubleIndex
+FORCEINLINE int32 AddVertexToBuffer(
+	const FVoxelMesherVertex& Vertex, 
+	FVoxelChunkMeshBuffers& Buffer, 
+	bool bRenderWorld, 
+	const FVector2D* AdditionalUV0 = nullptr,
+	const FVector2D* AdditionalUV1 = nullptr,
+	const FVector2D* AdditionalUV2 = nullptr)
 {
-	uint8 IndexA;
-	uint8 IndexB;
+	const int32 Index = Buffer.Positions.Emplace(Vertex.Position);
+	if (bRenderWorld)
+	{
+		ensure(Index == Buffer.Normals.Emplace(Vertex.Normal));
+		ensure(Index == Buffer.Tangents.Emplace(Vertex.Tangent));
+		ensure(Index == Buffer.Colors.Emplace(Vertex.Material.GetColor()));
+		ensure(Index == Buffer.TextureCoordinates[0].Emplace(Vertex.TextureCoordinate));
+		for (int32 Tex = 0; Tex < NUM_VOXEL_TEXTURE_COORDINATES - 1; Tex++)
+		{
+			ensure(Index == Buffer.TextureCoordinates[Tex + 1].Emplace(Vertex.Material.GetUV_AsFloat(Tex)));
+		}
 
-	FDoubleIndex() = default;
-	FDoubleIndex(uint8 IndexA, uint8 IndexB)
-		: IndexA(IndexA)
-		, IndexB(IndexB)
-	{
+		if (AdditionalUV0) ensure(Index == Buffer.TextureCoordinates[NUM_VOXEL_TEXTURE_COORDINATES + 0].Emplace(*AdditionalUV0));
+		if (AdditionalUV1) ensure(Index == Buffer.TextureCoordinates[NUM_VOXEL_TEXTURE_COORDINATES + 1].Emplace(*AdditionalUV1));
+		if (AdditionalUV2) ensure(Index == Buffer.TextureCoordinates[NUM_VOXEL_TEXTURE_COORDINATES + 2].Emplace(*AdditionalUV2));
 	}
-	explicit FDoubleIndex(const FVoxelMaterial& Material)
-		: IndexA(Material.GetDoubleIndex_IndexA())
-		, IndexB(Material.GetDoubleIndex_IndexB())
-	{
-	}
+	return Index;
+}
 
-	FORCEINLINE bool Equals(uint8 InIndexA, uint8 InIndexB) const
-	{
-		return IndexA == InIndexA && IndexB == InIndexB;
-	}
-};
-struct FDoubleIndexBlend : FDoubleIndex
+inline void ReserveBuffer(
+	FVoxelChunkMeshBuffers& Buffer,
+	int32 Num,
+	bool bRenderWorld,
+	bool bAdditionalUV0 = false,
+	bool bAdditionalUV1 = false,
+	bool bAdditionalUV2 = false)
 {
-	uint8 Blend;
-
-	FDoubleIndexBlend() = default;
-	FDoubleIndexBlend(uint8 IndexA, uint8 IndexB, uint8 Blend)
-		: FDoubleIndex(IndexA, IndexB)
-		, Blend(Blend)
+	VOXEL_FUNCTION_COUNTER();
+	
+	Buffer.Positions.Reserve(Num);
+	if (bRenderWorld)
 	{
+		Buffer.Normals.Reserve(Num);
+		Buffer.Tangents.Reserve(Num);
+		Buffer.Colors.Reserve(Num);
+		
+		Buffer.TextureCoordinates.SetNum(NUM_VOXEL_TEXTURE_COORDINATES + bAdditionalUV0 + bAdditionalUV1 + bAdditionalUV2);
+		for (uint32 Tex = 0; Tex < NUM_VOXEL_TEXTURE_COORDINATES; Tex++)
+		{
+			Buffer.TextureCoordinates[Tex].Reserve(Num);
+		}
+		if (bAdditionalUV0) Buffer.TextureCoordinates[NUM_VOXEL_TEXTURE_COORDINATES + 0].Reserve(Num);
+		if (bAdditionalUV1) Buffer.TextureCoordinates[NUM_VOXEL_TEXTURE_COORDINATES + 1].Reserve(Num);
+		if (bAdditionalUV2) Buffer.TextureCoordinates[NUM_VOXEL_TEXTURE_COORDINATES + 2].Reserve(Num);
 	}
-	explicit FDoubleIndexBlend(const FVoxelMaterial& Material)
-		: FDoubleIndex(Material)
-		, Blend(Material.GetDoubleIndex_Blend())
-	{
-	}
+}
 
-	static FDoubleIndexBlend GetBest(const FDoubleIndexBlend& A, const FDoubleIndexBlend& B, const FDoubleIndexBlend& C)
-	{
-		uint8 Strengths[256];
-		TArray<uint8, TFixedAllocator<6>> UsedIds;
+inline FVoxelMaterialIndices GetMaterialIndices_DoubleIndex(
+	const FVoxelMaterial& MaterialA,
+	const FVoxelMaterial& MaterialB,
+	const FVoxelMaterial& MaterialC,
+	int32 MaxIndices)
+{
+	TStackArray<uint8, 256> MaxStrengths;
+	TArray<uint8, TFixedAllocator<6>> UsedIds;
 
+	const auto AddMaterial = [&](const FVoxelMaterial& Material)
+	{
 		const auto AddIndex = [&](uint8 Index, uint8 Strength)
 		{
+			// Do not consider indices that are totally hidden
+			if (Strength == 0) return;
+
 			if (!UsedIds.Contains(Index))
 			{
 				UsedIds.Add(Index);
-				Strengths[Index] = 0;
+				MaxStrengths[Index] = 0;
 			}
-			Strengths[Index] = FMath::Max(Strengths[Index], Strength);
+			
+			MaxStrengths[Index] = FMath::Max(MaxStrengths[Index], Strength);
 		};
-		const auto AddDoubleIndexBlend = [&](const FDoubleIndexBlend& DoubleIndex)
-		{
-			AddIndex(DoubleIndex.IndexA, 255 - DoubleIndex.Blend);
-			AddIndex(DoubleIndex.IndexB, DoubleIndex.Blend);
-		};
+		
+		AddIndex(Material.GetDoubleIndex_IndexA(), 255 - Material.GetDoubleIndex_Blend());
+		AddIndex(Material.GetDoubleIndex_IndexB(), Material.GetDoubleIndex_Blend());
+	};
 
-		AddDoubleIndexBlend(A);
-		AddDoubleIndexBlend(B);
-		AddDoubleIndexBlend(C);
+	AddMaterial(MaterialA);
+	AddMaterial(MaterialB);
+	AddMaterial(MaterialC);
+	
+	check(UsedIds.Num() > 0);
 
-		uint8 MaxIndexA = 0;
-		int32 MaxIndexAStrength = -1;
-		uint8 MaxIndexB = 0;
-		int32 MaxIndexBStrength = -1;
-		for (uint8 Id : UsedIds)
-		{
-			const uint8 Strength = Strengths[Id];
-			if (Strength >= MaxIndexAStrength)
-			{
-				MaxIndexB = MaxIndexA;
-				MaxIndexBStrength = MaxIndexAStrength;
-				MaxIndexA = Id;
-				MaxIndexAStrength = Strength;
-			}
-			else if (Strength > MaxIndexBStrength)
-			{
-				MaxIndexB = Id;
-				MaxIndexBStrength = Strength;
-			}
-		}
-		checkVoxelSlow(MaxIndexAStrength >= 0);
-		if (MaxIndexBStrength < 0)
-		{
-			MaxIndexB = MaxIndexA;
-			MaxIndexBStrength = 0;
-		}
-
-		const int32 Strength = ((255 - MaxIndexAStrength) + MaxIndexBStrength) / 2;
-		checkVoxelSlow(0 <= Strength && Strength < 256);
-		return FDoubleIndexBlend(MaxIndexA, MaxIndexB, Strength);
-	}
-
-	FORCEINLINE uint8 GetBlendFor(const FDoubleIndexBlend& Other) const
+	if (UsedIds.Num() > MaxIndices)
 	{
-		// Check if we're equal
-		if (Other.Equals(IndexA, IndexB))
-		{
-			return Blend;
-		}
-		// Check if we're equal, but with reversed indices
-		if (Other.Equals(IndexB, IndexA))
-		{
-			return 255 - Blend;
-		}
-		// Check if we have 2 same indices: in that case check if our single index is in Other
-		if (IndexA == IndexB)
-		{
-			if (IndexA == Other.IndexA)
-			{
-				return 0;
-			}
-			if (IndexA == Other.IndexB)
-			{
-				return 255;
-			}
-		}
-		else
-		{
-			// If we have different indices, check if our blend is maximal/minimal and if so if the corresponding index is in Other
-			if (Blend == 0)
-			{
-				if (IndexA == Other.IndexA)
-				{
-					return 0;
-				}
-				if (IndexA == Other.IndexB)
-				{
-					return 255;
-				}
-			}
-			if (Blend == 255)
-			{
-				if (IndexB == Other.IndexA)
-				{
-					return 0;
-				}
-				if (IndexB == Other.IndexB)
-				{
-					return 255;
-				}
-			}
-		}
-		// We don't have any info on the other index blend, so return Other
-		return Other.Blend;
+		// Sort reverse by strength
+		UsedIds.Sort([&](uint8 A, uint8 B) { return MaxStrengths[A] > MaxStrengths[B]; });
+		// Pop lower ones
+		UsedIds.SetNum(MaxIndices);
 	}
-};
+	UsedIds.Sort();
 
-struct FVoxelFinalMesherVertex
-{
-	FVector Position;
-	FVector Normal;
-	FVoxelProcMeshTangent Tangent;
-	FColor Color;
-	FVector2D TextureCoordinates[NUM_VOXEL_TEXTURE_COORDINATES];
-
-	FVoxelFinalMesherVertex() = default;
-	FORCEINLINE explicit FVoxelFinalMesherVertex(const FVoxelMesherVertex& Vertex)
-		: Position(Vertex.Position)
-		, Normal(Vertex.Normal)
-		, Tangent(Vertex.Tangent)
-		, Color(Vertex.Material.GetColor())
+	FVoxelMaterialIndices MaterialIndices;
+	MaterialIndices.NumIndices = UsedIds.Num();
+	for (int32 Index = 0; Index < UsedIds.Num(); Index++)
 	{
-		TextureCoordinates[0] = Vertex.TextureCoordinate;
-		for (int32 Index = 0; Index < NUM_VOXEL_TEXTURE_COORDINATES - 1; Index++)
-		{
-			TextureCoordinates[Index + 1] = Vertex.Material.GetUV_AsFloat(Index);
-		}
+		MaterialIndices.SortedIndices[Index] = UsedIds[Index];
 	}
-};
+	
+	check(MaterialIndices.NumIndices > 0);
+
+	return MaterialIndices;
+}
 
 TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	const FVoxelRendererSettings& Settings, 
@@ -185,236 +124,170 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 
 	auto Chunk = MakeVoxelShared<FVoxelChunkMesh>();
 	
-	Settings.DynamicSettings->DynamicSettingsLock.Lock();
-	const auto MaterialCollectionMap = Settings.DynamicSettings->MaterialCollectionMap; // Copy shared ptr to be safe if the voxel world changes it
-	const bool bGenerateBlendings = Settings.DynamicSettings->bGenerateBlendings;
-	Settings.DynamicSettings->DynamicSettingsLock.Unlock();
-	
-	const auto GetMaterialKeyDouble = [&](uint8 IndexA, uint8 IndexB)
-	{
-		FVoxelBlendedMaterialSorted Sorted;
-		if (IndexA < IndexB)
-		{
-			Sorted = { IndexA, IndexB };
-		}
-		else
-		{
-			Sorted = { IndexB, IndexA };
-		}
-		auto* Unsorted = MaterialCollectionMap->Find(Sorted);
-		if (!Unsorted)
-		{
-			return FVoxelBlendedMaterialUnsorted(Sorted.Index0, Sorted.Index1);
-		}
-		else
-		{
-			return *Unsorted;
-		}
-	};
-	const auto GetMaterialKeyTriple = [&](uint8 IndexA, uint8 IndexB, uint8 IndexC)
-	{
-		const int32 Min = FMath::Min3(IndexA, IndexB, IndexC);
-		const int32 Max = FMath::Max3(IndexA, IndexB, IndexC);
-		const int32 Med = IndexA + IndexB + IndexC - Min - Max;
-		const FVoxelBlendedMaterialSorted Sorted(Min, Med, Max);
-		auto* Unsorted = MaterialCollectionMap->Find(Sorted);
-		if (!Unsorted)
-		{
-			return FVoxelBlendedMaterialUnsorted(Sorted.Index0, Sorted.Index1, Sorted.Index2);
-		}
-		else
-		{
-			return *Unsorted;
-		}
-	};
+	const int32 MaxMaterialIndices = Settings.DynamicSettings->MaxMaterialIndices.GetValue();
+	check(MaxMaterialIndices > 0);
 	
 	if (Settings.MaterialConfig == EVoxelMaterialConfig::RGB)
 	{
 		Chunk->SetIsSingle(true);
 		FVoxelChunkMeshBuffers& Buffers = Chunk->CreateSingleBuffers();
-		Buffers.SetIndices(MoveTemp(Indices));
-		Buffers.Reserve(Vertices.Num(), Settings.bRenderWorld);
+		
+		Buffers.Indices = MoveTemp(Indices);
+
+		ReserveBuffer(Buffers, Vertices.Num(), Settings.bRenderWorld);
 		for (auto& Vertex : Vertices)
 		{
-			Buffers.AddVertex(FVoxelFinalMesherVertex(Vertex), Settings.bRenderWorld);
+			AddVertexToBuffer(Vertex, Buffers, Settings.bRenderWorld);
 		}
 	}
-	else if (Settings.MaterialConfig == EVoxelMaterialConfig::DoubleIndex)
+	else if (Settings.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
 	{
 		Chunk->SetIsSingle(false);
-		TMap<FVoxelBlendedMaterialUnsorted, TMap<int32, int32>> IndicesMaps;
-		for (int32 I = 0; I < Indices.Num(); I += 3)
-		{
-			int32 IndexA = Indices[I];
-			int32 IndexB = Indices[I + 1];
-			int32 IndexC = Indices[I + 2];
-			const FVoxelMesherVertex& VertexA = Vertices[IndexA];
-			const FVoxelMesherVertex& VertexB = Vertices[IndexB];
-			const FVoxelMesherVertex& VertexC = Vertices[IndexC];
-			
-			// Same indices on the whole triangle, only blends change
-			FDoubleIndex DoubleIndex;
-			uint8 BlendA;
-			uint8 BlendB;
-			uint8 BlendC;
-			{
-				FDoubleIndexBlend MaterialA(VertexA.Material);
-				FDoubleIndexBlend MaterialB(VertexB.Material);
-				FDoubleIndexBlend MaterialC(VertexC.Material);
-				FDoubleIndexBlend MaxBlend = FDoubleIndexBlend::GetBest(MaterialA, MaterialB, MaterialC);
-				DoubleIndex = FDoubleIndex(MaxBlend);
-				BlendA = MaterialA.GetBlendFor(MaxBlend);
-				BlendB = MaterialB.GetBlendFor(MaxBlend);
-				BlendC = MaterialC.GetBlendFor(MaxBlend);
-			}
-			
-			FVoxelBlendedMaterialUnsorted Material;
-			if (DoubleIndex.IndexA == DoubleIndex.IndexB)
-			{
-				Material = FVoxelBlendedMaterialUnsorted(DoubleIndex.IndexA);
-			}
-			else if (BlendA == 0 && BlendB == 0 && BlendC == 0)
-			{
-				Material = FVoxelBlendedMaterialUnsorted(DoubleIndex.IndexA);
-			}
-			else if (BlendA == 255 && BlendB == 255 && BlendC == 255)
-			{
-				Material = FVoxelBlendedMaterialUnsorted(DoubleIndex.IndexB);
-			}
-			else
-			{
-				Material = GetMaterialKeyDouble(DoubleIndex.IndexA, DoubleIndex.IndexB);
-				if (Material.Index0 != DoubleIndex.IndexA)
-				{
-					// They were swapped, change the blends accordingly
-					BlendA = 255 - BlendA;
-					BlendB = 255 - BlendB;
-					BlendC = 255 - BlendC;
-				}
-			}
 
-			FVoxelChunkMeshBuffers& Buffer = Chunk->FindOrAddBuffer(Material);
-			TMap<int32, int32>& IndicesMap = IndicesMaps.FindOrAdd(Material);
-			
-			const auto AddVertex = [&](const int32 Index, const uint8 Blend, const FVoxelMesherVertex& Vertex)
-			{
-				FVoxelFinalMesherVertex FinalVertex{ Vertex };
-				// We want to have G being the IndexA, B the IndexB and A the custom data
-				FinalVertex.Color.B = FinalVertex.Color.G; // Index B
-				FinalVertex.Color.G = FinalVertex.Color.R; // Index A
-				FinalVertex.Color.R = Blend;
-				
-				int32 FinalIndex;
-				int32* FinalIndexPtr = IndicesMap.Find(Index);
-				if (FinalIndexPtr && Buffer.Colors[*FinalIndexPtr] == FinalVertex.Color) // As it's per triangle, can have different result
-				{
-					FinalIndex = *FinalIndexPtr;
-				}
-				else
-				{
-					FinalIndex = Buffer.AddVertex(FinalVertex, Settings.bRenderWorld);
-					IndicesMap.Add(Index, FinalIndex);
-				}
-				Buffer.AddIndex(FinalIndex);
-			};
-			
-			AddVertex(IndexA, BlendA, VertexA);
-			AddVertex(IndexB, BlendB, VertexB);
-			AddVertex(IndexC, BlendC, VertexC);
-		}
-	}
-	else
-	{
-		check(Settings.MaterialConfig == EVoxelMaterialConfig::SingleIndex);
-		Chunk->SetIsSingle(false);
-		
-		TMap<FVoxelBlendedMaterialUnsorted, TMap<int32, int32>> IndicesMaps;
+		TStackArray<TMap<int32, int32>, 256> IndicesMaps{ ForceInit };
 		for (int32 I = 0; I < Indices.Num(); I += 3)
 		{
 			const int32 IndexA = Indices[I + 0];
 			const int32 IndexB = Indices[I + 1];
 			const int32 IndexC = Indices[I + 2];
+			
 			const FVoxelMesherVertex& VertexA = Vertices[IndexA];
 			const FVoxelMesherVertex& VertexB = Vertices[IndexB];
 			const FVoxelMesherVertex& VertexC = Vertices[IndexC];
+			
 			const uint8 MaterialIndexA = VertexA.Material.GetSingleIndex_Index();
 			const uint8 MaterialIndexB = VertexB.Material.GetSingleIndex_Index();
 			const uint8 MaterialIndexC = VertexC.Material.GetSingleIndex_Index();
 
-			// Send Material.R and Material.G through Vertex.B and Vertex.A, as Material.A is useless (index)
-			const auto FixColor = [](FColor& Color)
+			const uint8 MaterialIndexToUse = FMath::Min3(MaterialIndexA, MaterialIndexB, MaterialIndexC);
+			
+			FVoxelMaterialIndices MaterialIndices;
+			MaterialIndices.NumIndices = 1;
+			MaterialIndices.SortedIndices[0] = MaterialIndexToUse;
+
+			bool bAdded;
+			FVoxelChunkMeshBuffers& Buffer = Chunk->FindOrAddBuffer(MaterialIndices, bAdded);
+			if (bAdded)
 			{
-				Color.B = Color.R;
-				Color.A = Color.G;
-			};
-			const auto AddVertex = [&Settings](FVoxelChunkMeshBuffers& Buffer, TMap<int32, int32>& IndicesMap, int32 Index, const FVoxelFinalMesherVertex& Vertex)
+				ReserveBuffer(Buffer, Vertices.Num(), Settings.bRenderWorld);
+			}
+			
+			TMap<int32, int32>& IndicesMap = IndicesMaps[MaterialIndexToUse];
+
+			const auto AddVertex = [&](int32 Index, const FVoxelMesherVertex& Vertex)
 			{
 				int32 FinalIndex;
 				if (int32* FinalIndexPtr = IndicesMap.Find(Index))
 				{
 					FinalIndex = *FinalIndexPtr;
-					ensureVoxelSlow(!Settings.bRenderWorld || Buffer.Colors[FinalIndex] == Vertex.Color);
 				}
 				else
 				{
-					FinalIndex = Buffer.AddVertex(Vertex, Settings.bRenderWorld);
+					FinalIndex = AddVertexToBuffer(Vertex, Buffer, Settings.bRenderWorld);
 					IndicesMap.Add(Index, FinalIndex);
 				}
-				Buffer.AddIndex(FinalIndex);
+				Buffer.Indices.Emplace(FinalIndex);
 			};
 			
-			if ((MaterialIndexA == MaterialIndexB && MaterialIndexA == MaterialIndexC) || !bGenerateBlendings)
+			AddVertex(IndexA, VertexA);
+			AddVertex(IndexB, VertexB);
+			AddVertex(IndexC, VertexC);
+		}
+	}
+	else
+	{
+		check(Settings.MaterialConfig == EVoxelMaterialConfig::DoubleIndex);
+		Chunk->SetIsSingle(false);
+		
+		TMap<FVoxelMaterialIndices, TMap<int32, int32>> IndicesMaps;
+		for (int32 I = 0; I < Indices.Num(); I += 3)
+		{
+			const int32 IndexA = Indices[I + 0];
+			const int32 IndexB = Indices[I + 1];
+			const int32 IndexC = Indices[I + 2];
+			
+			const FVoxelMesherVertex& VertexA = Vertices[IndexA];
+			const FVoxelMesherVertex& VertexB = Vertices[IndexB];
+			const FVoxelMesherVertex& VertexC = Vertices[IndexC];
+			
+			const FVoxelMaterial& MaterialA = VertexA.Material;
+			const FVoxelMaterial& MaterialB = VertexB.Material;
+			const FVoxelMaterial& MaterialC = VertexC.Material;
+			
+			const FVoxelMaterialIndices MaterialIndices = GetMaterialIndices_DoubleIndex(
+				MaterialA,
+				MaterialB,
+				MaterialC,
+				MaxMaterialIndices);
+
+			// ForceInit to send valid values through UVs
+			TStackArray<uint8, 6> StrengthsA{ ForceInit };
+			TStackArray<uint8, 6> StrengthsB{ ForceInit };
+			TStackArray<uint8, 6> StrengthsC{ ForceInit };
+
+			for (int32 Index = 0; Index < MaterialIndices.NumIndices; Index++)
 			{
-				const FVoxelBlendedMaterialUnsorted Material(MaterialIndexA);
-				auto& Buffer = Chunk->FindOrAddBuffer(Material);
-				auto& IndicesMap = IndicesMaps.FindOrAdd(Material);
-				const auto AddVertexSingle = [&](int32 Index, const FVoxelMesherVertex& Vertex)
+				const uint8 MaterialIndex = MaterialIndices.SortedIndices[Index];
+
+				const auto ComputeStrength = [&](auto& Strengths, auto& Material)
 				{
-					FVoxelFinalMesherVertex FinalVertex{ Vertex };
-					FixColor(FinalVertex.Color);
-					AddVertex(Buffer, IndicesMap, Index, FinalVertex);
+					Strengths[Index] =
+						Material.GetDoubleIndex_IndexA() == MaterialIndex
+						? 255 - Material.GetDoubleIndex_Blend()
+						: Material.GetDoubleIndex_IndexB() == MaterialIndex
+						? Material.GetDoubleIndex_Blend()
+						: 0;
 				};
-				AddVertexSingle(IndexA, VertexA);
-				AddVertexSingle(IndexB, VertexB);
-				AddVertexSingle(IndexC, VertexC);
+				ComputeStrength(StrengthsA, MaterialA);
+				ComputeStrength(StrengthsB, MaterialB);
+				ComputeStrength(StrengthsC, MaterialC);
 			}
-			else
+
+			const bool bNeedAdditionalUV0 = MaterialIndices.NumIndices > 1;
+			const bool bNeedAdditionalUV1 = MaterialIndices.NumIndices > 2;
+			const bool bNeedAdditionalUV2 = MaterialIndices.NumIndices > 4;
+			
+			bool bAdded;
+			FVoxelChunkMeshBuffers& Buffer = Chunk->FindOrAddBuffer(MaterialIndices, bAdded);
+			if (bAdded)
 			{
-				FVoxelBlendedMaterialUnsorted Material;
-				FVoxelFinalMesherVertex NewVertexA{ VertexA };
-				FVoxelFinalMesherVertex NewVertexB{ VertexB };
-				FVoxelFinalMesherVertex NewVertexC{ VertexC };
-				FColor& ColorA = NewVertexA.Color;
-				FColor& ColorB = NewVertexB.Color;
-				FColor& ColorC = NewVertexC.Color;
-				FixColor(ColorA);
-				FixColor(ColorB);
-				FixColor(ColorC);
-				if (MaterialIndexA != MaterialIndexB && MaterialIndexA != MaterialIndexC && MaterialIndexB != MaterialIndexC)
+				ReserveBuffer(Buffer, Vertices.Num(), Settings.bRenderWorld,
+					bNeedAdditionalUV0,
+					bNeedAdditionalUV1,
+					bNeedAdditionalUV2);
+			}
+			
+			TMap<int32, int32>& IndicesMap = IndicesMaps.FindOrAdd(MaterialIndices);
+			
+			const auto AddVertex = [&](const int32 VertexIndex, const auto& Strengths, const FVoxelMesherVertex& Vertex)
+			{
+				int32 FinalIndex;
+				int32* FinalIndexPtr = IndicesMap.Find(VertexIndex);
+				if (FinalIndexPtr)
 				{
-					Material = GetMaterialKeyTriple(MaterialIndexA, MaterialIndexB, MaterialIndexC);
-					ColorA.R = MaterialIndexA == Material.Index0 ? 255 : 0;
-					ColorB.R = MaterialIndexB == Material.Index0 ? 255 : 0;
-					ColorC.R = MaterialIndexC == Material.Index0 ? 255 : 0;
-					ColorA.G = MaterialIndexA == Material.Index1 ? 255 : 0;
-					ColorB.G = MaterialIndexB == Material.Index1 ? 255 : 0;
-					ColorC.G = MaterialIndexC == Material.Index1 ? 255 : 0;
+					FinalIndex = *FinalIndexPtr;
 				}
 				else
 				{
-					Material = GetMaterialKeyDouble(
-						FMath::Min3(MaterialIndexA, MaterialIndexB, MaterialIndexC),
-						FMath::Max3(MaterialIndexA, MaterialIndexB, MaterialIndexC));
-					ColorA.R = MaterialIndexA == Material.Index1 ? 255 : 0;
-					ColorB.R = MaterialIndexB == Material.Index1 ? 255 : 0;
-					ColorC.R = MaterialIndexC == Material.Index1 ? 255 : 0;
+					const FVector2D UV0 = { FVoxelUtilities::UINT8ToFloat(Strengths[0]),FVoxelUtilities::UINT8ToFloat(Strengths[1]) };
+					const FVector2D UV1 = { FVoxelUtilities::UINT8ToFloat(Strengths[2]),FVoxelUtilities::UINT8ToFloat(Strengths[3]) };
+					const FVector2D UV2 = { FVoxelUtilities::UINT8ToFloat(Strengths[4]),FVoxelUtilities::UINT8ToFloat(Strengths[5]) };
+
+					FinalIndex = AddVertexToBuffer(
+						Vertex,
+						Buffer,
+						Settings.bRenderWorld,
+						bNeedAdditionalUV0 ? &UV0 : nullptr,
+						bNeedAdditionalUV1 ? &UV1 : nullptr,
+						bNeedAdditionalUV2 ? &UV2 : nullptr);
+					IndicesMap.Add(VertexIndex, FinalIndex);
 				}
-				FVoxelChunkMeshBuffers& Buffer = Chunk->FindOrAddBuffer(Material);
-				auto& IndicesMap = IndicesMaps.FindOrAdd(Material);
-				AddVertex(Buffer, IndicesMap, IndexA, NewVertexA);
-				AddVertex(Buffer, IndicesMap, IndexB, NewVertexB);
-				AddVertex(Buffer, IndicesMap, IndexC, NewVertexC);
-			}
+				Buffer.Indices.Emplace(FinalIndex);
+			};
+			
+			AddVertex(IndexA, StrengthsA, VertexA);
+			AddVertex(IndexB, StrengthsB, VertexB);
+			AddVertex(IndexC, StrengthsC, VertexC);
 		}
 	}
 

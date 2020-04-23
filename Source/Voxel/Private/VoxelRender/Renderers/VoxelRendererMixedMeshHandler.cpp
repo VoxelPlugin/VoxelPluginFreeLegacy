@@ -10,6 +10,8 @@ FVoxelRendererMixedMeshHandler::FVoxelRendererMixedMeshHandler(IVoxelRenderer& R
 	, BasicMeshHandler(MakeVoxelShared<FVoxelRendererBasicMeshHandler>(Renderer))
 	, ClusteredMeshHandler(MakeVoxelShared<FVoxelRendererClusteredMeshHandler>(Renderer))
 {
+	BasicMeshHandler->Init();
+	ClusteredMeshHandler->Init();
 }
 
 FVoxelRendererMixedMeshHandler::~FVoxelRendererMixedMeshHandler()

@@ -2,6 +2,7 @@
 
 #include "VoxelMessagesEditor.h"
 #include "VoxelSettings.h"
+#include "VoxelGlobals.h"
 
 #include "Logging/MessageLog.h"
 #include "Misc/CoreMisc.h"
@@ -17,7 +18,31 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "Editor.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
+inline void AddButton(
+	FNotificationInfo& Info,
+	const FSimpleDelegate& OnClick,
+	const FText& Text,
+	const FText& Tooltip,
+	const TSharedRef<TWeakPtr<SNotificationItem>>& PtrToPtr)
+{
+	const auto Callback = FSimpleDelegate::CreateLambda([=]()
+	{
+		OnClick.ExecuteIfBound();
+		auto Ptr = PtrToPtr->Pin();
+		if (Ptr.IsValid())
+		{
+			Ptr->SetFadeOutDuration(0);
+			Ptr->Fadeout();
+		}
+	});
+	
+	Info.ButtonDetails.Add(FNotificationButtonInfo(
+		Text,
+		Tooltip,
+		Callback,
+		SNotificationItem::CS_None));
+}
+
 void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Message, EVoxelShowNotification ShouldShow)
 {
 	struct Local
@@ -49,13 +74,13 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 			ReversedTokens.Add(FUObjectToken::Create(BlueprintObj, FText::FromString(BlueprintObj->GetName()))
 				->OnMessageTokenActivated(FOnMessageTokenActivated::CreateStatic(&Local::OnMessageLogLinkActivated))
 			);
-			ReversedTokens.Add(FTextToken::Create(LOCTEXT("RuntimeErrorBlueprintObjectLabel", "Blueprint: ")));
+			ReversedTokens.Add(FTextToken::Create(VOXEL_LOCTEXT("Blueprint: ")));
 
 			// NOTE: StackFrame.Node is not a blueprint node like you may think ("Node" has some legacy meaning)
 			ReversedTokens.Add(FUObjectToken::Create(StackFrame.Node, StackFrame.Node->GetDisplayNameText())
 				->OnMessageTokenActivated(FOnMessageTokenActivated::CreateStatic(&Local::OnMessageLogLinkActivated))
 			);
-			ReversedTokens.Add(FTextToken::Create(LOCTEXT("RuntimeErrorBlueprintFunctionLabel", "Function: ")));
+			ReversedTokens.Add(FTextToken::Create(VOXEL_LOCTEXT("Function: ")));
 
 #if WITH_EDITORONLY_DATA // to protect access to GeneratedClass->DebugData
 			UBlueprintGeneratedClass* GeneratedClass = Cast<UBlueprintGeneratedClass>(ClassContainingCode);
@@ -68,12 +93,12 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 					ReversedTokens.Add(FUObjectToken::Create(BlueprintNode->GetGraph(), FText::FromString(GetNameSafe(BlueprintNode->GetGraph())))
 						->OnMessageTokenActivated(FOnMessageTokenActivated::CreateStatic(&Local::OnMessageLogLinkActivated))
 					);
-					ReversedTokens.Add(FTextToken::Create(LOCTEXT("RuntimeErrorBlueprintGraphLabel", "Graph: ")));
+					ReversedTokens.Add(FTextToken::Create(VOXEL_LOCTEXT("Graph: ")));
 
 					ReversedTokens.Add(FUObjectToken::Create(BlueprintNode, BlueprintNode->GetNodeTitle(ENodeTitleType::ListView))
 						->OnMessageTokenActivated(FOnMessageTokenActivated::CreateStatic(&Local::OnMessageLogLinkActivated))
 					);
-					ReversedTokens.Add(FTextToken::Create(LOCTEXT("RuntimeErrorBlueprintNodeLabel", "Node: ")));
+					ReversedTokens.Add(FTextToken::Create(VOXEL_LOCTEXT("Node: ")));
 				}
 			}
 #endif // WITH_EDITORONLY_DATA
@@ -112,7 +137,7 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 					LastNotification.Text = Text;
 					LastNotification.Count++;
 
-					LastNotificationPtr->SetText(FText::Format(LOCTEXT("Number", "{0} (x{1})"), Text, FText::AsNumber(LastNotification.Count)));
+					LastNotificationPtr->SetText(FText::Format(VOXEL_LOCTEXT("{0} (x{1})"), Text, FText::AsNumber(LastNotification.Count)));
 					LastNotificationPtr->ExpireAndFadeout();
 
 					return;
@@ -122,7 +147,12 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 			FNotificationInfo Info = FNotificationInfo(Text);
 			Info.CheckBoxState = ECheckBoxState::Unchecked;
 			Info.ExpireDuration = 10;
+	
+			const TSharedRef<TWeakPtr<SNotificationItem>> PtrToPtr = MakeShared<TWeakPtr<SNotificationItem>>();
+			AddButton(Info, {}, VOXEL_LOCTEXT("Close"), VOXEL_LOCTEXT("Close"), PtrToPtr);
 			const auto Ptr = FSlateNotificationManager::Get().AddNotification(Info);
+			*PtrToPtr = Ptr;
+
 			LastNotifications.Emplace(FLastNotification{ Ptr, Text, 1 });
 		}
 	}
@@ -133,8 +163,7 @@ void FVoxelMessagesEditor::ShowNotification(
 	const FText& Message,
 	const FText& ButtonText,
 	const FText& ButtonTooltip,
-	const FSimpleDelegate& OnClick,
-	bool bCloseButton)
+	const FSimpleDelegate& OnClick)
 {
 	struct FLastNotification
 	{
@@ -152,36 +181,12 @@ void FVoxelMessagesEditor::ShowNotification(
 	FNotificationInfo Info(Message);
 	Info.CheckBoxState = ECheckBoxState::Unchecked;
 	Info.ExpireDuration = 10;
+	
 	const TSharedRef<TWeakPtr<SNotificationItem>> PtrToPtr = MakeShared<TWeakPtr<SNotificationItem>>();
-	if (OnClick.IsBound())
-	{
-		const auto Callback = FSimpleDelegate::CreateLambda([=]()
-			{
-				OnClick.Execute();
-				auto Ptr = PtrToPtr->Pin();
-				if (Ptr.IsValid())
-				{
-					Ptr->SetFadeOutDuration(0);
-					Ptr->Fadeout();
-				}
-			});
-		Info.ButtonDetails.Add(FNotificationButtonInfo(ButtonText, ButtonTooltip, Callback, SNotificationItem::CS_None));
-	}
-	if (bCloseButton)
-	{
-		const auto Callback = FSimpleDelegate::CreateLambda([=]()
-		{
-			auto Ptr = PtrToPtr->Pin();
-			if (Ptr.IsValid())
-			{
-				Ptr->SetFadeOutDuration(0);
-				Ptr->Fadeout();
-			}
-		});
-		Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("Close", "Close"), LOCTEXT("Close", "Close"), Callback, SNotificationItem::CS_None));
-	}
+	AddButton(Info, OnClick, ButtonText, ButtonTooltip, PtrToPtr);
+	AddButton(Info, {}, VOXEL_LOCTEXT("Close"), VOXEL_LOCTEXT("Close"), PtrToPtr);
 	const auto Ptr = FSlateNotificationManager::Get().AddNotification(Info);
 	*PtrToPtr = Ptr;
+
 	LastNotifications.Add({ Ptr, UniqueId });
 }
-#undef LOCTEXT_NAMESPACE

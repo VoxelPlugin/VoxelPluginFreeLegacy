@@ -2,6 +2,7 @@
 
 #include "VoxelNodes/VoxelNoiseNodes.h"
 #include "VoxelGraphGenerator.h"
+#include "VoxelMathUtilities.h"
 
 #define NOISE_SAMPLE_RANGE 10
 
@@ -220,7 +221,7 @@ void UVoxelNode_NoiseNodeFractal::PostEditChangeProperty(FPropertyChangedEvent& 
 		{
 			if (!It.Key.IsEmpty())
 			{
-				const int32 Int = FMath::Clamp(TCString<TCHAR>::Atoi(*It.Key), 0, MAX_WORLD_DEPTH);
+				const int32 Int = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(TCString<TCHAR>::Atoi(*It.Key));
 				MaxInt = FMath::Max(MaxInt, Int);
 				It.Key = FString::FromInt(Int);
 			}

@@ -13,6 +13,5 @@ namespace FVoxelMessagesEditor
 		const FText& Message,
 		const FText& ButtonText,
 		const FText& ButtonTooltip,
-		const FSimpleDelegate& OnClick,
-		bool bCloseButton);
+		const FSimpleDelegate& OnClick);
 }

@@ -13,7 +13,6 @@ public:
 		, bAutodelete(bAutoDelete)
 	{
 	}
-	~FVoxelAsyncWork() override;
 
 	//~ Begin IVoxelQueuedWork Interface
 	virtual void DoThreadedWork() override final;
@@ -38,6 +37,9 @@ public:
 	}
 
 protected:
+	// Important: do not allow public delete
+	~FVoxelAsyncWork() override;
+	
 	bool IsCanceled() const
 	{
 		return CanceledCounter.GetValue() > 0;
@@ -48,9 +50,28 @@ protected:
 		IsDoneCounter.Set(bIsDone ? 1 : 0);
 	}
 
+	void WaitForDoThreadedWorkToExit();
+
 private:
+	struct FSafeCriticalSection
+	{
+		FCriticalSection Section;
+		FThreadSafeCounter IsLocked;
+
+		FORCEINLINE void Lock()
+		{
+			Section.Lock();
+			ensure(IsLocked.Set(1) == 0);
+		}
+		FORCEINLINE void Unlock()
+		{
+			ensure(IsLocked.Set(0) == 1);
+			Section.Unlock();
+		}
+	};
+	
 	FThreadSafeCounter IsDoneCounter;
-	FCriticalSection DoneSection;
+	FSafeCriticalSection DoneSection;
 	
 	FThreadSafeCounter CanceledCounter;
 	bool bAutodelete = false;
@@ -58,11 +79,23 @@ private:
 	FThreadSafeCounter WasAbandonedCounter;
 };
 
+template<typename T>
+struct TVoxelAsyncWorkDelete
+{
+	void operator()(T* Ptr) const
+	{
+		if (Ptr)
+		{
+			Ptr->WaitForDoThreadedWorkToExit();
+		}
+		delete Ptr;
+	}
+};
+
 class VOXEL_API FVoxelAsyncWorkWithWait : public FVoxelAsyncWork
 {
 public:
 	FVoxelAsyncWorkWithWait(FName Name, double PriorityDuration, bool bAutoDelete = false);
-	virtual ~FVoxelAsyncWorkWithWait() override;
 
 	//~ Begin IVoxelQueuedWork Interface
 	virtual void PostDoWork() override final;
@@ -73,6 +106,10 @@ public:
 	//~ End FVoxelAsyncWorkWithWait Interface
 
 	void WaitForCompletion();
+
+protected:
+	// Important: do not allow public delete
+	virtual ~FVoxelAsyncWorkWithWait() override;
 
 private:
 	FEvent* DoneEvent;

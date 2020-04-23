@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelGlobals.h"
+#include "IntBox.h"
 #include "VoxelWorldGenerator.generated.h"
 
 class FVoxelWorldGeneratorInstance;
@@ -31,13 +32,26 @@ class VOXEL_API UVoxelTransformableWorldGenerator : public UVoxelWorldGenerator
 	GENERATED_BODY()
 
 public:
-	//~ Begin UVoxelWorldGeneratorWithTransform Interface
+	//~ Begin UVoxelTransformableWorldGenerator Interface
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance();
 	// Will be only called on the CDO. Must not save the transform
 	virtual void SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const;
 	// Will be only called on the CDO
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> LoadInstance(FArchive& Ar) const;
-	//~ End UVoxelWorldGeneratorWithTransform Interface
+	//~ End UVoxelTransformableWorldGenerator Interface
 	
-	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override final;
+	//~ Begin UVoxelWorldGenerator Interface
+	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
+	//~ End UVoxelWorldGenerator Interface
+};
+
+UCLASS(Blueprintable, Abstract)
+class VOXEL_API UVoxelTransformableWorldGeneratorWithBounds : public UVoxelTransformableWorldGenerator
+{
+	GENERATED_BODY()
+
+public:
+	//~ Begin UVoxelTransformableWorldGeneratorWithBounds Interface
+	virtual FIntBox GetBounds() const;
+	//~ End UVoxelTransformableWorldGeneratorWithBounds Interface
 };

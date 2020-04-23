@@ -22,7 +22,7 @@ class VOXELGRAPH_API UVoxelNode_GetColor : public UVoxelMaterialNode
 
 	UVoxelNode_GetColor();
 
-	// Note: Materials aren't suppported by pure nodes
+	// Note: Materials aren't supported by pure nodes
 };
 
 // Make a material from a color
@@ -46,8 +46,8 @@ class VOXELGRAPH_API UVoxelNode_GetIndex : public UVoxelMaterialNode
 };
 
 // Make a material from a single index
-// DataA and DataB can be used in the material using the GetSingleIndexData material function
-// DataA and DataB are between 0 and 1
+// DataA/B/C can be used in the material using the GetSingleIndexData material function
+// DataA/B/C are between 0 and 1
 UCLASS(DisplayName = "Make Material From Single Index")
 class VOXELGRAPH_API UVoxelNode_MakeMaterialFromSingleIndex : public UVoxelMaterialNode
 {

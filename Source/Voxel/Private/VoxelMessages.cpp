@@ -10,6 +10,8 @@ FVoxelMessages::FShowNotificationDelegate FVoxelMessages::ShowNotificationDelega
 
 void FVoxelMessages::LogMessage(const TSharedRef<FTokenizedMessage>& Message, EVoxelShowNotification ShouldShow)
 {
+	if (!ensure(IsInGameThread())) return;
+	
 	if (LogMessageDelegate.IsBound())
 	{
 		LogMessageDelegate.Broadcast(Message, ShouldShow);
@@ -22,6 +24,8 @@ void FVoxelMessages::LogMessage(const TSharedRef<FTokenizedMessage>& Message, EV
 
 void FVoxelMessages::LogMessage(const FText& Message, EMessageSeverity::Type Severity, EVoxelShowNotification ShouldShow, const UObject* Object)
 {
+	if (!ensure(IsInGameThread())) return;
+	
 	TSharedRef<FTokenizedMessage> NewMessage = FTokenizedMessage::Create(Severity);
 	if (Object)
 	{
@@ -37,17 +41,22 @@ void FVoxelMessages::ShowNotification(
 	const FText& Message,
 	const FText& ButtonText,
 	const FText& ButtonTooltip,
-	const FSimpleDelegate& OnClick,
-	bool bShowCloseButton)
+	const FSimpleDelegate& OnClick)
 {
+	if (!ensure(IsInGameThread())) return;
+	
 	if (ShowNotificationDelegate.IsBound())
 	{
-		ShowNotificationDelegate.Broadcast(UniqueId, Message, ButtonText, ButtonTooltip, OnClick, bShowCloseButton);
+		ShowNotificationDelegate.Broadcast(UniqueId, Message, ButtonText, ButtonTooltip, OnClick);
 	}
 }
 
 void FVoxelMessages::ShowVoxelPluginProError(const FString& Message, const UObject* Object)
 {
+	if (!ensure(IsInGameThread())) return;
+	
+	// This URL is to record click statistics
+	// It will always redirect to https://buy.voxelplugin.com
 	const FString URL = "http://bit.ly/voxelpluginpro_popup";
 	const auto Popup = [=]()
 	{
@@ -58,6 +67,6 @@ void FVoxelMessages::ShowVoxelPluginProError(const FString& Message, const UObje
 			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to open " + URL + "\n:" + Error));
 		}
 	};
-	ShowNotification(GetTypeHash(Message), Message, "Get Voxel Plugin Pro", "https://buy.voxelplugin.com", FSimpleDelegate::CreateLambda(Popup), true);
+	ShowNotification(GetTypeHash(Message), Message, "Get Voxel Plugin Pro", "https://buy.voxelplugin.com", FSimpleDelegate::CreateLambda(Popup));
 	LogMessage(FText::FromString(Message), EMessageSeverity::Error, EVoxelShowNotification::Hide, Object);
 }

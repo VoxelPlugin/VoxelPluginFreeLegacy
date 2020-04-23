@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGlobals.h"
 #include "ActorFactories/ActorFactory.h"
 #include "VoxelImporters/VoxelMeshImporter.h"
 #include "ActorFactoryVoxelMeshImporter.generated.h"
@@ -15,7 +16,7 @@ class VOXELEDITORDEFAULT_API UActorFactoryVoxelMeshImporter : public UActorFacto
 public:
 	UActorFactoryVoxelMeshImporter()
 	{
-		DisplayName = NSLOCTEXT("Voxel", "MeshImporterDisplayName", "Voxel Mesh Importer");
+		DisplayName = VOXEL_LOCTEXT("Voxel Mesh Importer");
 		NewActorClass = AVoxelMeshImporter::StaticClass();
 	}
 };

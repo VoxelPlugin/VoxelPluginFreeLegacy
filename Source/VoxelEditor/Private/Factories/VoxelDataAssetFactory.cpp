@@ -18,8 +18,6 @@
 #include "Widgets/Layout/SUniformGridPanel.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 UVoxelDataAssetFactory::UVoxelDataAssetFactory()
 {
 	bCreateNew = true;
@@ -82,7 +80,7 @@ bool UVoxelDataAssetFromMagicaVoxFactory::ConfigureProperties()
 	Palette = GetDefault<UVoxelDataAssetFromMagicaVoxFactory>()->Palette;
 
 	TSharedRef<SWindow> PickerWindow = SNew(SWindow)
-		.Title(LOCTEXT("ImportMagicaVox", "Import Magica Vox"))
+		.Title(VOXEL_LOCTEXT("Import Magica Vox"))
 		.SizingRule(ESizingRule::Autosized);
 
 	bool bSuccess = false;
@@ -132,7 +130,7 @@ bool UVoxelDataAssetFromMagicaVoxFactory::ConfigureProperties()
 					+ SUniformGridPanel::Slot(0, 0)
 					[
 						SNew(SButton)
-						.Text(LOCTEXT("Create", "Create"))
+						.Text(VOXEL_LOCTEXT("Create"))
 						.HAlign(HAlign_Center)
 						.Visibility(TAttribute<EVisibility>::Create(TAttribute<EVisibility>::FGetter::CreateLambda([&]()
 						{
@@ -150,7 +148,7 @@ bool UVoxelDataAssetFromMagicaVoxFactory::ConfigureProperties()
 					+SUniformGridPanel::Slot(1,0)
 					[
 						SNew(SButton)
-						.Text(LOCTEXT("Cancel", "Cancel"))
+						.Text(VOXEL_LOCTEXT("Cancel"))
 						.HAlign(HAlign_Center)
 						.ContentPadding(FEditorStyle::GetMargin("StandardDialog.ContentPadding"))
 						.OnClicked(OnCancelClicked)
@@ -274,5 +272,3 @@ int32 UVoxelDataAssetFromRawVoxFactory::GetPriority() const
 {
 	return ImportPriority;
 }
-
-#undef LOCTEXT_NAMESPACE

@@ -30,8 +30,8 @@ class VOXELGRAPH_API UVoxelNode_SetColor : public UVoxelNode_MaterialSetter
 };
 
 // Set the material index at that position. Input clamped between 0 and 255.
-// DataA and DataB can be used in the material using the GetSingleIndexData material function
-// DataA and DataB are between 0 and 1
+// DataA/B/C can be used in the material using the GetSingleIndexData material function
+// DataA/B/C are between 0 and 1
 UCLASS(DisplayName = "Set Single Index")
 class VOXELGRAPH_API UVoxelNode_SetSingleIndex : public UVoxelNode_MaterialSetter
 {

@@ -45,7 +45,7 @@ UVoxelNode_WorldGeneratorMerge::UVoxelNode_WorldGeneratorMerge()
 
 FText UVoxelNode_WorldGeneratorMerge::GetTitle() const
 {
-	return FText::Format(NSLOCTEXT("Voxel", "WorldGeneratorMerge", "World Generator Merge: {0}"), Super::GetTitle());
+	return FText::Format(VOXEL_LOCTEXT("World Generator Merge: {0}"), Super::GetTitle());
 }
 
 int32 UVoxelNode_WorldGeneratorMerge::GetOutputPinsCount() const
@@ -108,7 +108,7 @@ void UVoxelNode_WorldGeneratorMerge::LogErrors(FVoxelGraphErrorReporter& ErrorRe
 #if WITH_EDITOR
 bool UVoxelNode_WorldGeneratorMerge::TryImportFromProperty(UProperty* Property, UObject* Object)
 {
-	if(auto* ArrayProperty = Cast<UArrayProperty>(Property))
+	if(auto* ArrayProperty = UE_25_SWITCH(Cast, CastField)<UArrayProperty>(Property))
 	{
 		if (ArrayProperty->Inner->GetCPPType(nullptr, 0) == "FVoxelWorldGeneratorPicker")
 		{

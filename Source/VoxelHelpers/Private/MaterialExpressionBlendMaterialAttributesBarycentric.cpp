@@ -3,8 +3,6 @@
 #include "MaterialExpressionBlendMaterialAttributesBarycentric.h"
 #include "MaterialCompiler.h"
 
-#define LOCTEXT_NAMESPACE "Voxel"
-
 UMaterialExpressionBlendMaterialAttributesBarycentric::UMaterialExpressionBlendMaterialAttributesBarycentric()
 {
 	// Structure to hold one-time initialization
@@ -12,7 +10,7 @@ UMaterialExpressionBlendMaterialAttributesBarycentric::UMaterialExpressionBlendM
 	{
 		FText NAME_MaterialAttributes;
 		FConstructorStatics()
-			: NAME_MaterialAttributes(LOCTEXT( "MaterialAttributes", "Material Attributes" ))
+			: NAME_MaterialAttributes(NSLOCTEXT("Voxel", "Material Attributes", "Material Attributes"))
 		{
 		}
 	};
@@ -113,5 +111,3 @@ FName UMaterialExpressionBlendMaterialAttributesBarycentric::GetInputName(int32 
 	return Name;
 }
 #endif // WITH_EDITOR
-
-#undef LOCTEXT_NAMESPACE

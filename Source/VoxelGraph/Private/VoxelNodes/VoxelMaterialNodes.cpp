@@ -39,15 +39,16 @@ UVoxelNode_GetIndex::UVoxelNode_GetIndex()
 	SetOutputs(
 		{ "Index", EC::Int, "Index between 0 and 255" },
 		{ "Data A", EC::Float, "Data sent to material shader" },
-		{ "Data B", EC::Float, "Data sent to material shader" });
+		{ "Data B", EC::Float, "Data sent to material shader" },
+		{ "Data C", EC::Float, "Data sent to material shader" });
 }
 
 GENERATED_VOXELNODE_IMPL
 (
 	UVoxelNode_GetIndex,
 	DEFINE_INPUTS(FVoxelMaterial),
-	DEFINE_OUTPUTS(int32, v_flt, v_flt),
-	FVoxelNodeFunctions::SingleIndexFromMaterial(_I0, _O0, _O1, _O2);
+	DEFINE_OUTPUTS(int32, v_flt, v_flt, v_flt),
+	FVoxelNodeFunctions::SingleIndexFromMaterial(_I0, _O0, _O1, _O2, _O3);
 )
 
 UVoxelNode_MakeMaterialFromSingleIndex::UVoxelNode_MakeMaterialFromSingleIndex()
@@ -55,16 +56,17 @@ UVoxelNode_MakeMaterialFromSingleIndex::UVoxelNode_MakeMaterialFromSingleIndex()
 	SetInputs(
 		{ "Index", EC::Int, "Index between 0 and 255", "", {0, 255} },
 		{ "Data A", EC::Float, "Data to send to the material shader", "", {0, 1} },
-		{ "Data B", EC::Float, "Data to send to the material shader", "", {0, 1} });
+		{ "Data B", EC::Float, "Data to send to the material shader", "", {0, 1} },
+		{ "Data C", EC::Float, "Data to send to the material shader", "", {0, 1} });
 	SetOutputs(EC::Material);
 }
 
 GENERATED_VOXELNODE_IMPL
 (
 	UVoxelNode_MakeMaterialFromSingleIndex,
-	DEFINE_INPUTS(int32, v_flt, v_flt),
+	DEFINE_INPUTS(int32, v_flt, v_flt, v_flt),
 	DEFINE_OUTPUTS(FVoxelMaterial),
-	_O0 = FVoxelNodeFunctions::MaterialFromSingleIndex(_I0, _I1, _I2);
+	_O0 = FVoxelNodeFunctions::MaterialFromSingleIndex(_I0, _I1, _I2, _I3);
 )
 
 UVoxelNode_GetDoubleIndex::UVoxelNode_GetDoubleIndex()

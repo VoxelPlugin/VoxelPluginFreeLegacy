@@ -706,7 +706,6 @@ UVoxelNode_MakeColorInt::UVoxelNode_MakeColorInt()
 		{ "A",EC::Int , "Alpha between 0 and 255", "", {0, 255} });
 	SetOutputs({ "Color", EC::Color, "Color" });
 }
-
 GENERATED_VOXELNODE_IMPL
 (
 	UVoxelNode_MakeColorInt,
@@ -724,13 +723,65 @@ UVoxelNode_MakeColorFloat::UVoxelNode_MakeColorFloat()
 		{ "A",EC::Float , "Alpha between 0 and 1", "", {0, 1} });
 	SetOutputs({ "Color", EC::Color, "Color" });
 }
-
 GENERATED_VOXELNODE_IMPL
 (
 	UVoxelNode_MakeColorFloat,
 	DEFINE_INPUTS(v_flt, v_flt, v_flt, v_flt),
 	DEFINE_OUTPUTS(FColor),
 	_O0 = FVoxelNodeFunctions::MakeColorFloat(_I0, _I1, _I2, _I3);
+)
+
+UVoxelNode_RGBToHSV::UVoxelNode_RGBToHSV()
+{
+	SetInputs(
+		{ "R", EC::Float , "Red" },
+		{ "G", EC::Float , "Green" },
+		{ "B", EC::Float , "Blue" });
+	SetOutputs(
+		{ "H", EC::Float , "Hue" },
+		{ "S", EC::Float , "Saturation" },
+		{ "V", EC::Float , "Value" });
+}
+GENERATED_VOXELNODE_IMPL
+(
+	UVoxelNode_RGBToHSV,
+	DEFINE_INPUTS(v_flt, v_flt, v_flt),
+	DEFINE_OUTPUTS(v_flt, v_flt, v_flt),
+	FVoxelNodeFunctions::RGBToHSV(_I0, _I1, _I2, _O0, _O1, _O2);
+)
+
+UVoxelNode_HSVToRGB::UVoxelNode_HSVToRGB()
+{
+	SetInputs(
+		{ "H", EC::Float , "Hue between 0 and 360", "0", { 0, 360 } },
+		{ "S", EC::Float , "Saturation between 0 and 1", "1", { 0, 1 } },
+		{ "V", EC::Float , "Value", "1" });
+	SetOutputs(
+		{ "R", EC::Float , "Red" },
+		{ "G", EC::Float , "Green" },
+		{ "B", EC::Float , "Blue" });
+}
+GENERATED_VOXELNODE_IMPL
+(
+	UVoxelNode_HSVToRGB,
+	DEFINE_INPUTS(v_flt, v_flt, v_flt),
+	DEFINE_OUTPUTS(v_flt, v_flt, v_flt),
+	FVoxelNodeFunctions::HSVToRGB(_I0, _I1, _I2, _O0, _O1, _O2);
+)
+
+//////////////////////////////////////////////////////////////////////////////////////
+
+UVoxelNode_Pi::UVoxelNode_Pi()
+{
+	SetOutputs(EC::Float);
+}
+
+GENERATED_VOXELNODE_IMPL
+(
+	UVoxelNode_Pi,
+	NO_INPUTS,
+	DEFINE_OUTPUTS(v_flt),
+	_O0 = v_flt(3.1415926535897932384626433832795);
 )
 
 //////////////////////////////////////////////////////////////////////////////////////

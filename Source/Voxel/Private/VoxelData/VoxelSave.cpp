@@ -8,8 +8,8 @@
 
 #include "Serialization/BufferArchive.h"
 
-DEFINE_STAT(STAT_VoxelUncompressedSavesMemory);
-DEFINE_STAT(STAT_VoxelCompressedSavesMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelUncompressedSavesMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelCompressedSavesMemory);
 
 struct FVoxelChunkSaveWithoutFoliage
 {
@@ -26,13 +26,25 @@ struct FVoxelChunkSaveWithoutFoliage
 		return Ar;
 	}
 
-	FORCEINLINE operator FVoxelUncompressedWorldSave::FVoxelChunkSave() const
+	FORCEINLINE operator FVoxelUncompressedWorldSaveImpl::FVoxelChunkSave() const
 	{
 		return { Position, ValuesIndex, MaterialsIndex, -1 };
 	}
 };
 
-bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
+void FVoxelUncompressedWorldSaveImpl::UpdateAllocatedSize() const
+{
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, AllocatedSize);
+	AllocatedSize =
+		Chunks.GetAllocatedSize() +
+		ValueBuffers.GetAllocatedSize() +
+		MaterialBuffers.GetAllocatedSize() +
+		FoliageBuffers.GetAllocatedSize() +
+		PlaceableItems.GetAllocatedSize();
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, AllocatedSize);
+}
+
+bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 {
 	Ar.UsingCustomVersion(FVoxelCustomVersion::GUID);
 
@@ -42,8 +54,6 @@ bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 		{
 			Version = FVoxelCustomVersion::LatestVersion;
 		}
-
-		DEC_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, GetAllocatedSize());
 
 		// Serialize version & depth
 		{
@@ -69,6 +79,16 @@ bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 		else
 		{
 			Guid = FGuid::NewGuid();
+		}
+
+		// Serialize UserFlags
+		if (Version >= FVoxelCustomVersion::AddUserFlagsToSaves)
+		{
+			Ar << UserFlags;
+		}
+		else
+		{
+			UserFlags = 0;
 		}
 		
 		// Serialize value config
@@ -129,25 +149,25 @@ bool FVoxelUncompressedWorldSave::Serialize(FArchive& Ar)
 		
 		if (Ar.IsLoading() && Ar.IsError())
 		{
-			FVoxelMessages::Error(NSLOCTEXT("Voxel", "VoxelSaveSerializationFailed", "VoxelSave: Serialization failed, data is corrupted"));
+			FVoxelMessages::Error("VoxelSave: Serialization failed, data is corrupted");
 			Depth = -1;
 			ValueBuffers.Reset();
 			MaterialBuffers.Reset();
 			Chunks.Reset();
 			PlaceableItems.Reset();
 		}
-
-		INC_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, GetAllocatedSize());
+		
+		UpdateAllocatedSize();
 	}
 
 	return true;
 }
 
-TArray<uint8> FVoxelUncompressedWorldSave::GetSerializedData() const
+TArray<uint8> FVoxelUncompressedWorldSaveImpl::GetSerializedData() const
 {
 	TArray<uint8> Array;
 	FMemoryWriter Archive(Array, true);
-	const_cast<FVoxelUncompressedWorldSave*>(this)->Serialize(Archive);
+	const_cast<FVoxelUncompressedWorldSaveImpl*>(this)->Serialize(Archive);
 	return MoveTemp(Array);
 }
 
@@ -155,7 +175,12 @@ TArray<uint8> FVoxelUncompressedWorldSave::GetSerializedData() const
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-bool FVoxelCompressedWorldSave::Serialize(FArchive& Ar)
+FVoxelCompressedWorldSaveImpl::~FVoxelCompressedWorldSaveImpl()
+{
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, AllocatedSize);
+}
+
+bool FVoxelCompressedWorldSaveImpl::Serialize(FArchive& Ar)
 {
 	if ((Ar.IsLoading() || Ar.IsSaving()) && !Ar.IsTransacting())
 	{
@@ -163,8 +188,6 @@ bool FVoxelCompressedWorldSave::Serialize(FArchive& Ar)
 		{
 			Version = FVoxelCustomVersion::LatestVersion;
 		}
-
-		DEC_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, GetAllocatedSize());
 
 		Ar << Depth;
 		Ar << Version;
@@ -180,10 +203,17 @@ bool FVoxelCompressedWorldSave::Serialize(FArchive& Ar)
 		}
 		Ar << CompressedData;
 
-		INC_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, GetAllocatedSize());
+		UpdateAllocatedSize();
 	}
 
 	return true;
+}
+
+void FVoxelCompressedWorldSaveImpl::UpdateAllocatedSize() const
+{
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, AllocatedSize);
+	AllocatedSize = CompressedData.GetAllocatedSize();
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelCompressedSavesMemory, AllocatedSize);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -193,13 +223,10 @@ bool FVoxelCompressedWorldSave::Serialize(FArchive& Ar)
 void UVoxelWorldSaveObject::PostLoad()
 {
 	Super::PostLoad();
-	Depth = FVoxelUtilities::GetChunkDepthFromDataDepth(Save.GetDepth());
+	CopyDepthFromSave();
 }
 
-#if WITH_EDITOR
-void UVoxelWorldSaveObject::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
+void UVoxelWorldSaveObject::CopyDepthFromSave()
 {
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-	Depth = FVoxelUtilities::GetChunkDepthFromDataDepth(Save.GetDepth());
+	Depth = Save.Const().GetDepth();
 }
-#endif
