@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelGraphImportExposedVariablesValues.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelNodes/VoxelExposedNodes.h"
 #include "VoxelNodes/VoxelGraphMacro.h"

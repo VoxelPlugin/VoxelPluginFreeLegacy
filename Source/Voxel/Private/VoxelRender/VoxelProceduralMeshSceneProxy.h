@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "StaticMeshResources.h"
 #include "PrimitiveSceneProxy.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #if RHI_RAYTRACING
 #include "RayTracingDefinitions.h"
 #include "RayTracingInstance.h"
@@ -75,7 +75,6 @@ public:
 	virtual SIZE_T GetTypeHash() const override;
 	uint32 GetAllocatedSize() const;
 	
-#if ENABLE_VOXEL_DISTANCE_FIELDS
 	virtual void GetDistancefieldAtlasData(
 		FBox& LocalVolumeBounds,
 		FVector2D& OutDistanceMinMax,
@@ -84,15 +83,11 @@ public:
 		bool& bOutBuiltAsIfTwoSided,
 		bool& bMeshWasPlane,
 		float& SelfShadowBias,
-		TArray<FMatrix>& ObjectLocalToWorldTransforms
-#if ENGINE_MINOR_VERSION >= 23
-		, bool& bOutThrottled
-#endif
-	) const override;
+		TArray<FMatrix>& ObjectLocalToWorldTransforms,
+		bool& bOutThrottled) const override;
 	virtual void GetDistanceFieldInstanceInfo(int32& NumInstances, float& BoundsSurfaceArea) const override;
 	virtual bool HasDistanceFieldRepresentation() const override;
 	virtual bool HasDynamicIndirectShadowCasterRepresentation() const override;
-#endif
 	//~ End FPrimitiveSceneProxy Interface
 
 private:
@@ -100,8 +95,6 @@ private:
 	const FMaterialRelevance MaterialRelevance;
 	const int32 LOD;
 	const uint32 DebugChunkId;
-	// Used to clear PreviousLocalToWorld when reusing a proc mesh
-	const uint32 FrameToClearPreviousLocalToWorld;
 	const TVoxelWeakPtr<const FVoxelToolRenderingManager> WeakToolRenderingManager;
 	
 	const FCollisionResponseContainer CollisionResponse;
@@ -121,6 +114,5 @@ private:
 		bool bEnableTessellation,
 		bool bWireframe) const;
 	
-	void InitDynamicPrimitiveUniformBuffer(FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer) const;
 	bool ShouldDrawComplexCollisions(const FEngineShowFlags& EngineShowFlags) const;
 };

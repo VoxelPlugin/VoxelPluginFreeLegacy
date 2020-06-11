@@ -2,12 +2,13 @@
 
 #include "VoxelTools/VoxelWorldGeneratorTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
-#include "VoxelWorldGenerator.h"
-#include "VoxelWorldGeneratorInstance.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
 #include "VoxelMessages.h"
-#include "VoxelWorldGeneratorUtilities.h"
+#include "VoxelUtilities/VoxelWorldGeneratorUtilities.h"
 
-TVoxelTexture<float> UVoxelWorldGeneratorTools::CreateTextureFromWorldGeneratorImpl(
+template<typename T>
+TVoxelTexture<T> UVoxelWorldGeneratorTools::CreateTextureFromWorldGeneratorImpl(
 	const FVoxelWorldGeneratorInstance& WorldGenerator, 
 	FName OutputName, 
 	const FIntPoint& Start, 
@@ -16,24 +17,45 @@ TVoxelTexture<float> UVoxelWorldGeneratorTools::CreateTextureFromWorldGeneratorI
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Size.X * Size.Y);
 	check(Size.X > 0 && Size.Y > 0);
+
+	using TWorldGeneratorType = typename TChooseClass<TIsSame<T, float>::Value, v_flt, T>::Result;
 	
-	const auto FunctionPtr = WorldGenerator.GetOutputsPtrMap<v_flt>().FindRef(OutputName);
+	const auto FunctionPtr = WorldGenerator.GetOutputsPtrMap<TWorldGeneratorType>().FindRef(OutputName);
 	if (!ensure(FunctionPtr)) return {};
 	
-	auto Texture = MakeVoxelShared<TVoxelTexture<float>::FTextureData>();
+	const auto Texture = MakeVoxelShared<typename TVoxelTexture<T>::FTextureData>();
 	Texture->SetSize(Size.X, Size.Y);
 	for (int32 X = 0; X < Size.X; X++)
 	{
 		for (int32 Y = 0; Y < Size.Y; Y++)
 		{
-			const float Value = (WorldGenerator.*FunctionPtr)(Scale * (Start.X + X), Scale * (Start.Y + Y), 0, 0, FVoxelItemStack::Empty);
-			Texture->SetValue(X, Y, Value);
+			const auto Value = (WorldGenerator.*FunctionPtr)(Scale * (Start.X + X), Scale * (Start.Y + Y), 0, 0, FVoxelItemStack::Empty);
+			Texture->SetValue(X, Y, T(Value));
 		}
 	}
-	return TVoxelTexture<float>(Texture);
+	return TVoxelTexture<T>(Texture);
 }
 
-inline TVoxelSharedPtr<FVoxelWorldGeneratorInstance> SetupWorldGenerator(
+template VOXEL_API TVoxelTexture<float> UVoxelWorldGeneratorTools::CreateTextureFromWorldGeneratorImpl<float>(
+	const FVoxelWorldGeneratorInstance& WorldGenerator,
+	FName OutputName,
+	const FIntPoint& Start,
+	const FIntPoint& Size,
+	float Scale);
+
+template VOXEL_API TVoxelTexture<FColor> UVoxelWorldGeneratorTools::CreateTextureFromWorldGeneratorImpl<FColor>(
+	const FVoxelWorldGeneratorInstance& WorldGenerator,
+	FName OutputName,
+	const FIntPoint& Start,
+	const FIntPoint& Size,
+	float Scale);
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+TVoxelSharedPtr<FVoxelWorldGeneratorInstance> SetupWorldGenerator(
 	const FString& FunctionName,
 	UVoxelWorldGenerator* WorldGenerator,
 	const TMap<FName, int32>& Seeds,
@@ -55,10 +77,12 @@ inline TVoxelSharedPtr<FVoxelWorldGeneratorInstance> SetupWorldGenerator(
 		return {};
 	}
 
+	using TWorldGeneratorType = typename TChooseClass<TIsSame<T, float>::Value, v_flt, T>::Result;
+
 	auto Instance = WorldGenerator->GetInstance();
-	if (!Instance->GetOutputsPtrMap<v_flt>().Contains(OutputName))
+	if (!Instance->GetOutputsPtrMap<TWorldGeneratorType>().Contains(OutputName))
 	{
-		FVoxelMessages::Error(FUNCTION_ERROR_IMPL(FunctionName, FVoxelUtilities::GetMissingWorldGeneratorOutputErrorString<v_flt>(OutputName, *Instance)));
+		FVoxelMessages::Error(FUNCTION_ERROR_IMPL(FunctionName, FVoxelUtilities::GetMissingWorldGeneratorOutputErrorString<TWorldGeneratorType>(OutputName, *Instance)));
 		return {};
 	}
 
@@ -68,7 +92,11 @@ inline TVoxelSharedPtr<FVoxelWorldGeneratorInstance> SetupWorldGenerator(
 	return Instance;
 }
 
-void UVoxelWorldGeneratorTools::CreateTextureFromWorldGenerator(
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelWorldGeneratorTools::CreateFloatTextureFromWorldGenerator(
 	FVoxelFloatTexture& OutTexture, 
 	UVoxelWorldGenerator* WorldGenerator, 
 	const TMap<FName, int32>& Seeds, 
@@ -82,13 +110,13 @@ void UVoxelWorldGeneratorTools::CreateTextureFromWorldGenerator(
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	const auto Instance = SetupWorldGenerator(__FUNCTION__, WorldGenerator, Seeds, OutputName, VoxelSize, SizeX, SizeY);
+	const auto Instance = SetupWorldGenerator<float>(__FUNCTION__, WorldGenerator, Seeds, OutputName, VoxelSize, SizeX, SizeY);
 	if (!Instance) return;
 
-	OutTexture.Texture = CreateTextureFromWorldGeneratorImpl(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+	OutTexture.Texture = CreateTextureFromWorldGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 }
 
-void UVoxelWorldGeneratorTools::CreateTextureFromWorldGeneratorAsync(
+void UVoxelWorldGeneratorTools::CreateFloatTextureFromWorldGeneratorAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	FVoxelFloatTexture& OutTexture,
@@ -105,7 +133,7 @@ void UVoxelWorldGeneratorTools::CreateTextureFromWorldGeneratorAsync(
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	const auto Instance = SetupWorldGenerator(__FUNCTION__, WorldGenerator, Seeds, OutputName, VoxelSize, SizeX, SizeY);
+	const auto Instance = SetupWorldGenerator<float>(__FUNCTION__, WorldGenerator, Seeds, OutputName, VoxelSize, SizeX, SizeY);
 	if (!Instance) return;
 
 	FVoxelToolHelpers::StartAsyncLatentAction_WithoutWorld_WithValue(
@@ -116,6 +144,62 @@ void UVoxelWorldGeneratorTools::CreateTextureFromWorldGeneratorAsync(
 		OutTexture,
 		[=](FVoxelFloatTexture& Texture)
 		{
-			Texture.Texture = CreateTextureFromWorldGeneratorImpl(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+			Texture.Texture = CreateTextureFromWorldGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+		});
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelWorldGeneratorTools::CreateColorTextureFromWorldGenerator(
+	FVoxelColorTexture& OutTexture, 
+	UVoxelWorldGenerator* WorldGenerator, 
+	const TMap<FName, int32>& Seeds, 
+	FName OutputName,
+	int32 SizeX, 
+	int32 SizeY,
+	float Scale,
+	int32 StartX,
+	int32 StartY,
+	float VoxelSize)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	const auto Instance = SetupWorldGenerator<FColor>(__FUNCTION__, WorldGenerator, Seeds, OutputName, VoxelSize, SizeX, SizeY);
+	if (!Instance) return;
+
+	OutTexture.Texture = CreateTextureFromWorldGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+}
+
+void UVoxelWorldGeneratorTools::CreateColorTextureFromWorldGeneratorAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	FVoxelColorTexture& OutTexture,
+	UVoxelWorldGenerator* WorldGenerator,
+	const TMap<FName, int32>& Seeds,
+	FName OutputName,
+	int32 SizeX,
+	int32 SizeY,
+	float Scale,
+	int32 StartX,
+	int32 StartY,
+	float VoxelSize,
+	bool bHideLatentWarnings)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	const auto Instance = SetupWorldGenerator<FColor>(__FUNCTION__, WorldGenerator, Seeds, OutputName, VoxelSize, SizeX, SizeY);
+	if (!Instance) return;
+
+	FVoxelToolHelpers::StartAsyncLatentAction_WithoutWorld_WithValue(
+		WorldContextObject,
+		LatentInfo,
+		__FUNCTION__,
+		bHideLatentWarnings,
+		OutTexture,
+		[=](FVoxelColorTexture& Texture)
+		{
+			Texture.Texture = CreateTextureFromWorldGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 		});
 }

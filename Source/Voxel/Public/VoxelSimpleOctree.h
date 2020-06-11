@@ -36,9 +36,9 @@ public:
 	{
 		return ChunkSize << Height;
 	}
-	inline FIntBox GetBounds() const
+	inline FVoxelIntBox GetBounds() const
 	{
-		return FIntBox(Position - Size() / 2, Position + Size() / 2);
+		return FVoxelIntBox(Position - Size() / 2, Position + Size() / 2);
 	}
 	inline bool HasChildren() const
 	{

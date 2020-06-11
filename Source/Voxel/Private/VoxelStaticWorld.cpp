@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelStaticWorld.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "Components/StaticMeshComponent.h"
 
 AVoxelStaticWorld::AVoxelStaticWorld()

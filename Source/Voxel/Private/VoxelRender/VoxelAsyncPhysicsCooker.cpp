@@ -4,9 +4,9 @@
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/IVoxelProceduralMeshComponent_PhysicsCallbackHandler.h"
-#include "VoxelThreadingUtilities.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 #include "VoxelPhysXHelpers.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 #if ENGINE_MINOR_VERSION < 23
 #include "Physics/IPhysXCooking.h"
@@ -52,7 +52,7 @@ static const FName PhysXFormat = FPlatformProperties::GetPhysicsFormat();
 ///////////////////////////////////////////////////////////////////////////////
 
 FVoxelAsyncPhysicsCooker::FVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component)
-	: FVoxelAsyncWork("AsyncPhysicsCooker", Component->PriorityDuration)
+	: FVoxelAsyncWork(STATIC_FNAME("AsyncPhysicsCooker"), Component->PriorityDuration)
 	, UniqueId(UNIQUE_ID())
 	, Component(Component)
 	, PhysicsCallbackHandler(Component->PhysicsCallbackHandler)
@@ -87,7 +87,7 @@ FVoxelAsyncPhysicsCooker::FVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent
 
 void FVoxelAsyncPhysicsCooker::DoWork()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	const double CookStartTime = FPlatformTime::Seconds();
 	
@@ -128,7 +128,7 @@ uint32 FVoxelAsyncPhysicsCooker::GetPriority() const
 
 void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	TArray<FVector> Vertices;
 	TArray<FTriIndices> Indices;
@@ -136,7 +136,7 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 
 	// Copy data from buffers
 	{
-		VOXEL_SCOPE_COUNTER("Copy data from buffers");
+		VOXEL_ASYNC_SCOPE_COUNTER("Copy data from buffers");
 
 		{
 			int32 NumIndices = 0;
@@ -146,7 +146,7 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 				NumIndices += Buffer->GetNumIndices();
 				NumVertices += Buffer->GetNumVertices();
 			}
-			VOXEL_SCOPE_COUNTER("Reserve");
+			VOXEL_ASYNC_SCOPE_COUNTER("Reserve");
 			Vertices.Reserve(NumVertices);
 			Indices.Reserve(NumIndices);
 			MaterialIndices.Reserve(NumIndices);
@@ -173,7 +173,7 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 				check(PositionBuffer.GetNumVertices() <= uint32(Vertices.GetSlack()));
 				Vertices.AddUninitialized(PositionBuffer.GetNumVertices());
 
-				VOXEL_SCOPE_COUNTER("Copy vertices");
+				VOXEL_ASYNC_SCOPE_COUNTER("Copy vertices");
 				for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
 				{
 					Get(Vertices, Offset + Index) = PositionBuffer.VertexPosition(Index);
@@ -195,7 +195,7 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 				MaterialIndices.AddUninitialized(NumTriangles);
 
 				{
-					VOXEL_SCOPE_COUNTER("Copy triangles");
+					VOXEL_ASYNC_SCOPE_COUNTER("Copy triangles");
 					const auto Lambda = [&](const auto* RESTRICT Data)
 					{
 						for (int32 Index = 0; Index < NumTriangles; Index++)
@@ -220,7 +220,7 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 				}
 				// Also store material info
 				{
-					VOXEL_SCOPE_COUNTER("Copy material info");
+					VOXEL_ASYNC_SCOPE_COUNTER("Copy material info");
 					for (int32 Index = 0; Index < NumTriangles; Index++)
 					{
 						Get(MaterialIndices, Offset + Index) = SectionIndex;
@@ -267,7 +267,7 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 
 void FVoxelAsyncPhysicsCooker::CreateConvexMesh()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	for (auto& Element : CookResult.ConvexElems)
 	{
@@ -294,7 +294,7 @@ void FVoxelAsyncPhysicsCooker::CreateConvexMesh()
 
 void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 #if 0 // This is way too slow :(
 	TArray<FVector> Vertices;
@@ -302,7 +302,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 	
 	// Copy data from buffers
 	{
-		VOXEL_SCOPE_COUNTER("Copy data from buffers");
+		VOXEL_ASYNC_SCOPE_COUNTER("Copy data from buffers");
 
 		{
 			int32 NumIndices = 0;
@@ -312,7 +312,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 				NumIndices += Buffer->GetNumIndices();
 				NumVertices += Buffer->GetNumVertices();
 			}
-			VOXEL_SCOPE_COUNTER("Reserve");
+			VOXEL_ASYNC_SCOPE_COUNTER("Reserve");
 			Vertices.Reserve(NumVertices);
 			Indices.Reserve(NumIndices);
 		}
@@ -337,7 +337,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 				const int32 Offset = Vertices.Num();
 				Vertices.AddUninitialized(PositionBuffer.GetNumVertices());
 
-				VOXEL_SCOPE_COUNTER("Copy vertices");
+				VOXEL_ASYNC_SCOPE_COUNTER("Copy vertices");
 				for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
 				{
 					Get(Vertices, Offset + Index) = PositionBuffer.VertexPosition(Index);
@@ -352,7 +352,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 				Indices.AddUninitialized(IndexBuffer.GetNumIndices());
 
 				{
-					VOXEL_SCOPE_COUNTER("Copy triangles");
+					VOXEL_ASYNC_SCOPE_COUNTER("Copy triangles");
 					const auto Lambda = [&](const auto* RESTRICT Data)
 					{
 						for (int32 Index = 0; Index < IndexBuffer.GetNumIndices(); Index++)
@@ -424,7 +424,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 
 	bool bSuccess;
 	{
-		VOXEL_SCOPE_COUNTER("Compute");
+		VOXEL_ASYNC_SCOPE_COUNTER("Compute");
 		bSuccess = InterfaceVHACD->Compute(Verts, NumVerts, Tris, NumTris, VHACD_Params);
 	}
 
@@ -436,7 +436,7 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 	}
 
 	{
-		VOXEL_SCOPE_COUNTER("Copy hulls");
+		VOXEL_ASYNC_SCOPE_COUNTER("Copy hulls");
 		
 		const int32 NumHulls = InterfaceVHACD->GetNConvexHulls();
 		ensure(CookResult.ConvexElems.Num() == 0);

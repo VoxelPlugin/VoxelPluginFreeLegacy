@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelDebug/VoxelLineBatchComponent.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 #include "PrimitiveViewRelevance.h"
 #include "PrimitiveSceneProxy.h"
@@ -125,6 +125,13 @@ void UVoxelLineBatchComponent::ApplyWorldOffset(const FVector& InOffset, bool bW
 
 FPrimitiveSceneProxy* UVoxelLineBatchComponent::CreateSceneProxy()
 {
+	if (BatchedLines.Num() == 0 &&
+		BatchedPoints.Num() == 0 &&
+		BatchedMeshes.Num() == 0)
+	{
+		return nullptr;
+	}
+	
 	return new FVoxelLineBatcherSceneProxy(this);
 }
 
@@ -204,7 +211,7 @@ SIZE_T FVoxelLineBatcherSceneProxy::GetTypeHash() const
 
 void FVoxelLineBatcherSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_RENDER_FUNCTION_COUNTER();
 
 	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 	{

@@ -16,7 +16,14 @@ struct VOXEL_API FVoxelMessages
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FLogMessageDelegate, const TSharedRef<FTokenizedMessage>&, EVoxelShowNotification);
 	static FLogMessageDelegate LogMessageDelegate;
 
-	DECLARE_MULTICAST_DELEGATE_FiveParams(FShowNotificationDelegate, uint64, const FText&, const FText&, const FText&, const FSimpleDelegate&);
+	DECLARE_MULTICAST_DELEGATE_SevenParams(FShowNotificationDelegate, 
+		uint64, 
+		const FText&, 
+		const FText&, 
+		const FText&, 
+		const FSimpleDelegate&,
+		bool,
+		const FSimpleDelegate&);
 	static FShowNotificationDelegate ShowNotificationDelegate;
 	
 public:
@@ -27,7 +34,9 @@ public:
 		const FText& Message, 
 		const FText& ButtonText, 
 		const FText& ButtonTooltip, 
-		const FSimpleDelegate& OnClick);
+		const FSimpleDelegate& OnClick,
+		bool bWithIgnore = false,
+		const FSimpleDelegate& OnIgnore = {});
 	static void ShowVoxelPluginProError(const FString& Message, const UObject* Object = nullptr);
 	
 public:
@@ -36,14 +45,18 @@ public:
 		const FString& Message,
 		const FString& ButtonText,
 		const FString& ButtonTooltip,
-		const FSimpleDelegate& OnClick)
+		const FSimpleDelegate& OnClick,
+		bool bWithIgnore = false,
+		const FSimpleDelegate& OnIgnore = {})
 	{
 		ShowNotification(
 			UniqueId,
 			FText::FromString(Message),
 			FText::FromString(ButtonText),
 			FText::FromString(ButtonTooltip),
-			OnClick);
+			OnClick,
+			bWithIgnore,
+			OnIgnore);
 	}
 
 	static void ShowNotification(uint64 UniqueId, const FString& Message)

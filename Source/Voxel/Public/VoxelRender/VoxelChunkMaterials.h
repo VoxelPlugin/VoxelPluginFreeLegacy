@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Containers/StaticArray.h"
 #include "VoxelRender/VoxelMaterialIndices.h"
 
 class FVoxelMaterialInterface;
@@ -14,35 +13,34 @@ public:
 	FVoxelChunkMaterials() = default;
 
 	template<typename T>
-	inline TVoxelSharedPtr<FVoxelMaterialInterface> GetSingleMaterial(bool bEnableTessellation, T Create)
+	TVoxelSharedRef<FVoxelMaterialInterface> FindOrAddSingle(T Create)
 	{
-		if (!SingleMaterial[bEnableTessellation].IsValid())
+		if (!SingleMaterial.IsValid())
 		{
-			SingleMaterial[bEnableTessellation] = Create();
+			const TVoxelSharedRef<FVoxelMaterialInterface> NewMaterial = Create();
+			SingleMaterial = NewMaterial;
 		}
-		return SingleMaterial[bEnableTessellation];
+		return SingleMaterial.ToSharedRef();
 	}
 	template<typename T>
-	inline TVoxelSharedPtr<FVoxelMaterialInterface> GetMultipleMaterial(const FVoxelMaterialIndices& Key, bool bEnableTessellation, T Create)
+	TVoxelSharedRef<FVoxelMaterialInterface> FindOrAddMultiple(const FVoxelMaterialIndices& Key, T Create)
 	{
-		auto* Result = Materials[bEnableTessellation].Find(Key);
+		auto* Result = Materials.Find(Key);
 		if (!Result)
 		{
-			auto New = Create();
-			Result = &Materials[bEnableTessellation].Add(Key, New);
+			const TVoxelSharedRef<FVoxelMaterialInterface> NewMaterial = Create();
+			Result = &Materials.Add(Key, NewMaterial);
 		}
-		return *Result;
+		return Result->ToSharedRef();
 	}
 
-	inline void Reset()
+	void Reset()
 	{
-		SingleMaterial[0].Reset();
-		SingleMaterial[1].Reset();
-		Materials[0].Empty();
-		Materials[1].Empty();
+		SingleMaterial.Reset();
+		Materials.Empty();
 	}
 
 private:
-	TStaticArray<TVoxelSharedPtr<FVoxelMaterialInterface>, 2> SingleMaterial;
-	TStaticArray<TMap<FVoxelMaterialIndices, TVoxelSharedPtr<FVoxelMaterialInterface>>, 2> Materials;
+	TVoxelSharedPtr<FVoxelMaterialInterface> SingleMaterial;
+	TMap<FVoxelMaterialIndices, TVoxelSharedPtr<FVoxelMaterialInterface>> Materials;
 };

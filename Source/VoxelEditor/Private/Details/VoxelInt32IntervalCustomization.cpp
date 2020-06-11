@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "Details/VoxelInt32IntervalCustomization.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 void FVoxelInt32IntervalCustomization::GetSortedChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, TArray<TSharedRef<IPropertyHandle>>& OutChildren)
 {

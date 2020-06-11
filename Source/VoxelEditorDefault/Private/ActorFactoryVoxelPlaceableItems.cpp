@@ -4,7 +4,7 @@
 #include "VoxelPlaceableItems/VoxelPlaceableItemActor.h"
 #include "VoxelPlaceableItems/VoxelDisableEditsBox.h"
 #include "VoxelPlaceableItems/VoxelAssetActor.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "VoxelWorld.h"
 #include "EngineUtils.h"
 

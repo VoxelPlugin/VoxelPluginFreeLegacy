@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Engine/EngineTypes.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelGraphOutputs.h"
 #include "VoxelAxisDependencies.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "VoxelTexture.h"
 #include "EdGraph/EdGraphPin.h"
 #include "VoxelEditorDelegatesInterface.h"
@@ -64,7 +64,8 @@ public:
 public:
 	UPROPERTY(EditAnywhere, Category = "Automatic compilation", meta= (DisplayName = "Compile to C++ on Save"))
 	bool bCompileToCppOnSave = false;
-	
+
+	// Relative to project directory
 	UPROPERTY(EditAnywhere, Category = "Automatic compilation", meta = (FilePathFilter = "h", EditCondition = bCompileToCppOnSave))
 	FFilePath SaveLocation;
 

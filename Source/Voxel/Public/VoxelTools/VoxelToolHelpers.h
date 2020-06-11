@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelWorld.h"
 #include "VoxelAsyncWork.h"
 #include "VoxelMessages.h"
@@ -203,7 +203,7 @@ struct VOXEL_API FVoxelToolHelpers
 	static bool GetLogEditToolsTimes();
 
 	// Avoids having to include the LOD Manager header in every tool file
-	static void UpdateWorld(AVoxelWorld* World, const FIntBox& Bounds);
+	static void UpdateWorld(AVoxelWorld* World, const FVoxelIntBox& Bounds);
 	// If World is null, will start an async on AnyThread. Else will use the voxel world thread pool.
 	static void StartAsyncEditTask(AVoxelWorld* World, IVoxelQueuedWork* Work);
 
@@ -247,7 +247,7 @@ struct VOXEL_API FVoxelToolHelpers
 		bool bHideLatentWarnings,
 		TFunction<void(FVoxelData&)> DoWork,
 		EVoxelUpdateRender UpdateRender,
-		const FIntBox& BoundsToUpdate);
+		const FVoxelIntBox& BoundsToUpdate);
 	static bool StartAsyncLatentAction_WithoutWorld(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
@@ -266,7 +266,7 @@ struct VOXEL_API FVoxelToolHelpers
 		T& Value,
 		TDoWork DoWork,
 		EVoxelUpdateRender UpdateRender,
-		const FIntBox& BoundsToUpdate)
+		const FVoxelIntBox& BoundsToUpdate)
 	{
 		using FWork = TVoxelLatentActionAsyncWork_WithWorld_WithValue<T>;
 		return StartAsyncLatentActionImpl<FWork>(
@@ -382,6 +382,15 @@ if (!Bounds.IsValid()) \
 #define CHECK_BOUNDS_ARE_VALID() CHECK_BOUNDS_ARE_VALID_IMPL({});
 #define CHECK_BOUNDS_ARE_VALID_VOID() CHECK_BOUNDS_ARE_VALID_IMPL(PREPROCESSOR_NOTHING);
 
+#define CHECK_BOUNDS_ARE_32BITS_IMPL(ReturnValue) \
+if (!FVoxelUtilities::CountIs32Bits(Bounds.Size())) \
+{ \
+	FVoxelMessages::Error(FString::Printf(TEXT("%s: Bounds size is too big! %s"), *FString(__FUNCTION__), *Bounds.ToString())); \
+	return ReturnValue; \
+}
+#define CHECK_BOUNDS_ARE_32BITS() CHECK_BOUNDS_ARE_32BITS_IMPL({});
+#define CHECK_BOUNDS_ARE_32BITS_VOID() CHECK_BOUNDS_ARE_32BITS_IMPL(PREPROCESSOR_NOTHING);
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -471,5 +480,5 @@ struct VOXEL_API FScopeToolsTimeLogger
 	~FScopeToolsTimeLogger();
 };
 
-#define VOXEL_TOOL_FUNCTION_COUNTER(Num) FScopeToolsTimeLogger PREPROCESSOR_JOIN(EditCounter, __LINE__)(__FUNCTION__, Num); VOXEL_FUNCTION_COUNTER()
-#define VOXEL_TOOL_SCOPE_COUNTER(Name, Num) FScopeToolsTimeLogger PREPROCESSOR_JOIN(EditCounter, __LINE__)(Name, Num); VOXEL_SCOPE_COUNTER(Name)
+#define VOXEL_TOOL_FUNCTION_COUNTER(Num) FScopeToolsTimeLogger PREPROCESSOR_JOIN(EditCounter, __LINE__)(__FUNCTION__, Num); VOXEL_ASYNC_FUNCTION_COUNTER()
+#define VOXEL_TOOL_SCOPE_COUNTER(Name, Num) FScopeToolsTimeLogger PREPROCESSOR_JOIN(EditCounter, __LINE__)(Name, Num); VOXEL_ASYNC_SCOPE_COUNTER(Name)

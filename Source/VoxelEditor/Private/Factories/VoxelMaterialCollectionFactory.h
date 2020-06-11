@@ -31,6 +31,27 @@ public:
 };
 
 UCLASS()
+class UVoxelInstancedMaterialCollectionTemplatesFactory : public UFactory
+{
+	GENERATED_BODY()
+
+public:
+	UVoxelInstancedMaterialCollectionTemplatesFactory()
+	{
+		bCreateNew = true;
+		bEditAfterNew = true;
+		SupportedClass = UVoxelInstancedMaterialCollectionTemplates::StaticClass();
+	}
+
+	// UFactory interface
+	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
+	{
+		return NewObject<UVoxelInstancedMaterialCollectionTemplates>(InParent, Class, Name, Flags | RF_Transactional);
+	}
+	// End of UFactory interface
+};
+
+UCLASS()
 class UVoxelInstancedMaterialCollectionFactory : public UFactory
 {
 	GENERATED_BODY()
@@ -47,6 +68,27 @@ public:
 	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
 	{
 		return NewObject<UVoxelInstancedMaterialCollection>(InParent, Class, Name, Flags | RF_Transactional);
+	}
+	// End of UFactory interface
+};
+
+UCLASS()
+class UVoxelInstancedMaterialCollectionInstanceFactory : public UFactory
+{
+	GENERATED_BODY()
+
+public:
+	UVoxelInstancedMaterialCollectionInstanceFactory()
+	{
+		bCreateNew = true;
+		bEditAfterNew = true;
+		SupportedClass = UVoxelInstancedMaterialCollectionInstance::StaticClass();
+	}
+
+	// UFactory interface
+	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
+	{
+		return NewObject<UVoxelInstancedMaterialCollectionInstance>(InParent, Class, Name, Flags | RF_Transactional);
 	}
 	// End of UFactory interface
 };

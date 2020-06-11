@@ -593,6 +593,20 @@ GENERATED_VOXELNODE_IMPL
 	_O0 = FVoxelNodeFunctions::Acos(_I0);
 )
 
+UVoxelNode_SinCos::UVoxelNode_SinCos()
+{
+	SetInputs(EC::Float);
+	AddOutput("Sin", "Sinus");
+	AddOutput("Cos", "Cosinus");
+}
+GENERATED_VOXELNODE_IMPL
+(
+	UVoxelNode_SinCos,
+	DEFINE_INPUTS(v_flt),
+	DEFINE_OUTPUTS(v_flt, v_flt),
+	FVoxelNodeFunctions::SinCos(_I0, _O0, _O1);
+)
+
 UVoxelNode_Tan::UVoxelNode_Tan()
 {
 	SetInputs(EC::Float);

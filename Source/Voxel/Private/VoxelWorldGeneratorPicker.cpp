@@ -1,6 +1,6 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelMessages.h"
 #include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
 

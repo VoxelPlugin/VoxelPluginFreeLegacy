@@ -2,18 +2,17 @@
 
 #pragma once
 
-#include <cmath>
-
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelMaterial.h"
 #include "VoxelContext.h"
 #include "VoxelRange.h"
 #include "VoxelTexture.h"
-#include "VoxelMathUtilities.h"
-#include "VoxelIntVectorUtilities.h"
-#include "VoxelRichCurveUtilities.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelRangeUtilities.h"
+#include "VoxelUtilities/VoxelIntVectorUtilities.h"
+#include "VoxelUtilities/VoxelRichCurveUtilities.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 #include "Curves/RichCurve.h"
 #include "VoxelGraphGlobals.h"
@@ -53,18 +52,11 @@ namespace FVoxelNodeFunctions
 {
 	inline v_flt Sqrt(v_flt F)
 	{
-		if (F <= 0)
-		{
-			return 0;
-		}
-		else
-		{
-			return std::sqrt(F);
-		}
+		return FVoxelRangeUtilities::Sqrt(F);
 	}
 	inline TVoxelRange<v_flt> Sqrt(const TVoxelRange<v_flt>& F)
 	{
-		return { Sqrt(FMath::Max<v_flt>(0., F.Min)), Sqrt(FMath::Max<v_flt>(0., F.Max)) };
+		return FVoxelRangeUtilities::Sqrt(F);
 	}
 
 	inline v_flt VectorLength(v_flt X, v_flt Y, v_flt Z)
@@ -139,7 +131,7 @@ namespace FVoxelNodeFunctions
 		}
 		else
 		{
-			FVoxelRangeFailStatus::Get().Warning("VectorRotateAngleAxis doesn't support range analysis");
+			FVoxelRangeFailStatus::Get().Warning(TEXT("VectorRotateAngleAxis doesn't support range analysis"));
 			OutX = TVoxelRange<v_flt>::Infinite();
 			OutY = TVoxelRange<v_flt>::Infinite();
 			OutZ = TVoxelRange<v_flt>::Infinite();
@@ -173,18 +165,7 @@ namespace FVoxelNodeFunctions
 	}
 	inline TVoxelRange<v_flt> Lerp(const TVoxelRange<v_flt>& A, const TVoxelRange<v_flt>& B, const TVoxelRange<v_flt>& Alpha)
 	{
-		if (Alpha.IsSingleValue() && 0 <= Alpha.GetSingleValue() && Alpha.GetSingleValue() <= 1)
-		{
-			return 
-			{
-				Lerp(A.Min, B.Min, Alpha.GetSingleValue()),
-				Lerp(A.Max, B.Max, Alpha.GetSingleValue())
-			};
-		}
-		else
-		{
-			return A + Alpha * (B - A);
-		}
+		return FVoxelRangeUtilities::Lerp(A, B, Alpha);
 	}
 
 	inline v_flt SafeLerp(v_flt A, v_flt B, v_flt Alpha)
@@ -212,30 +193,7 @@ namespace FVoxelNodeFunctions
 	template<typename T>
 	inline TVoxelRange<T> Clamp(const TVoxelRange<T>& Value, const TVoxelRange<T>& Min, const TVoxelRange<T>& Max)
 	{
-		if (Min.IsSingleValue() && Max.IsSingleValue())
-		{
-			return
-			{
-				FMath::Clamp(Value.Min, Min.GetSingleValue(), Max.GetSingleValue()),
-				FMath::Clamp(Value.Max, Min.GetSingleValue(), Max.GetSingleValue())
-			};
-		}
-		if (Min.Max <= Value.Min && Value.Max <= Max.Min) // If already clamped
-		{
-			return Value;
-		}
-		else if (Max.Max <= Value.Min)
-		{
-			return Max.Max;
-		}
-		else if (Value.Max <= Min.Min)
-		{
-			return Min.Min;
-		}
-		else
-		{
-			return { Min.Min, Max.Max };
-		}
+		return FVoxelRangeUtilities::Clamp(Value, Min, Max);
 	}
 
 	inline int32 RightShift(int32 A, int32 B)
@@ -317,7 +275,7 @@ namespace FVoxelNodeFunctions
 		}
 		else
 		{
-			FVoxelRangeFailStatus::Get().Warning("pow only supports range analysis with a constant exponent");
+			FVoxelRangeFailStatus::Get().Warning(TEXT("pow only supports range analysis with a constant exponent"));
 			return TVoxelRange<v_flt>::Infinite();
 		}
 	}
@@ -330,7 +288,7 @@ namespace FVoxelNodeFunctions
 	template<typename T>
 	inline TVoxelRange<T> Abs(const TVoxelRange<T>& A)
 	{
-		return { A.Contains(0) ? 0 : FMath::Min(FMath::Abs(A.Min), FMath::Abs(A.Max)), FMath::Max(FMath::Abs(A.Min), FMath::Abs(A.Max)) };
+		return FVoxelRangeUtilities::Abs(A);
 	}
 
 	inline int32 CeilToInt(v_flt A)
@@ -386,22 +344,7 @@ namespace FVoxelNodeFunctions
 	template<typename T>
 	inline TVoxelRange<T> Sign(const TVoxelRange<T>& A)
 	{
-		if (0 < A.Min)
-		{
-			return { 1, 1 };
-		}
-		else if (A.Max < 0)
-		{
-			return { -1, -1 };
-		}
-		else if (A.Min == 0 && A.Max == 0)
-		{
-			return { 0, 0 };
-		}
-		else
-		{
-			return { -1, 1 };
-		}
+		return FVoxelRangeUtilities::Sign(A);
 	}
 
 	inline v_flt InvSqrt(v_flt A)
@@ -440,7 +383,7 @@ namespace FVoxelNodeFunctions
 		}
 		else
 		{
-			FVoxelRangeFailStatus::Get().Warning("inv sqrt does not support range analysis with ranges containing 0");
+			FVoxelRangeFailStatus::Get().Warning(TEXT("inv sqrt does not support range analysis with ranges containing 0"));
 			return TVoxelRange<v_flt>::Infinite();
 		}
 	}
@@ -473,7 +416,7 @@ namespace FVoxelNodeFunctions
 		}
 		else
 		{
-			FVoxelRangeFailStatus::Get().Warning("loge does not support range analysis with ranges containing 0");
+			FVoxelRangeFailStatus::Get().Warning(TEXT("loge does not support range analysis with ranges containing 0"));
 			return TVoxelRange<v_flt>::Infinite();
 		}
 	}
@@ -560,6 +503,21 @@ namespace FVoxelNodeFunctions
 		}
 	}
 
+	inline void SinCos(v_flt A, v_flt& OutSin, v_flt& OutCos)
+	{
+#if VOXEL_DOUBLE_PRECISION
+		OutSin = std::sin(A);
+		OutCos = std::cos(A);
+#else
+		FMath::SinCos(&OutSin, &OutCos, A);
+#endif
+	}
+	inline void SinCos(const TVoxelRange<v_flt>& A, TVoxelRange<v_flt>& OutSin, TVoxelRange<v_flt>& OutCos)
+	{
+		OutSin = Sin(A);
+		OutCos = Cos(A);
+	}
+
 	inline v_flt Tan(v_flt A)
 	{
 		return std::tan(A);
@@ -576,7 +534,7 @@ namespace FVoxelNodeFunctions
 		}
 		else
 		{
-			FVoxelRangeFailStatus::Get().Warning("tan does not support range analysis for values outside [-pi/2, pi/2]");
+			FVoxelRangeFailStatus::Get().Warning(TEXT("tan does not support range analysis for values outside [-pi/2, pi/2]"));
 			return TVoxelRange<v_flt>::Infinite();
 		}
 	}
@@ -974,15 +932,6 @@ namespace FVoxelNodeFunctions
 		}
 	}
 
-	inline FVoxelMaterial MaterialFromColor(const FColor& Color)
-	{
-		return FVoxelMaterial::CreateFromColor(Color);
-	}
-	inline FVoxelMaterialRange MaterialFromColor(const FVoxelColorRange& Color)
-	{
-		return FVoxelMaterialRange();
-	}
-
 	inline FColor ColorFromMaterial(const FVoxelMaterial& Material)
 	{
 		return Material.GetColor();
@@ -992,61 +941,13 @@ namespace FVoxelNodeFunctions
 		return {};
 	}
 
-	inline FVoxelMaterial MaterialFromSingleIndex(int32 Index, v_flt DataA, v_flt DataB, v_flt DataC)
+	inline int32 SingleIndexFromMaterial(const FVoxelMaterial& Material)
 	{
-		return FVoxelMaterial::CreateFromSingleIndex(FMath::Clamp(Index, 0, 255), float(DataA), float(DataB), float(DataC));
+		return Material.GetSingleIndex();
 	}
-	inline FVoxelMaterialRange MaterialFromSingleIndex(TVoxelRange<int32> Index, TVoxelRange<v_flt> DataA, TVoxelRange<v_flt> DataB, TVoxelRange<v_flt> DataC)
+	inline TVoxelRange<int32> SingleIndexFromMaterial(const FVoxelMaterialRange& Material)
 	{
-		return FVoxelMaterialRange();
-	}
-
-	inline void SingleIndexFromMaterial(const FVoxelMaterial& Material, int32& Index, v_flt& DataA, v_flt& DataB, v_flt& DataC)
-	{
-		Index = Material.GetSingleIndex_Index();
-		DataA = Material.GetSingleIndex_DataA_AsFloat();
-		DataB = Material.GetSingleIndex_DataB_AsFloat();
-		DataC = Material.GetSingleIndex_DataC_AsFloat();
-	}
-	inline void SingleIndexFromMaterial(const FVoxelMaterialRange& Material, TVoxelRange<int32>& Index, TVoxelRange<v_flt>& DataA, TVoxelRange<v_flt>& DataB, TVoxelRange<v_flt>& DataC)
-	{
-		Index = { 0, 255 };
-		DataA = { 0.f, 1.f };
-		DataB = { 0.f, 1.f };
-		DataC = { 0.f, 1.f };
-	}
-
-	OUTDATED_GRAPH_FUNCTION()
-	inline FVoxelMaterial MaterialFromSingleIndex(int32 Index, v_flt DataA, v_flt DataB)
-	{
-		return MaterialFromSingleIndex(Index, DataA, DataB, 0);
-	}
-	OUTDATED_GRAPH_FUNCTION()
-	inline FVoxelMaterialRange MaterialFromSingleIndex(TVoxelRange<int32> Index, TVoxelRange<v_flt> DataA, TVoxelRange<v_flt> DataB)
-	{
-		return FVoxelMaterialRange();
-	}
-
-	OUTDATED_GRAPH_FUNCTION()
-	inline void SingleIndexFromMaterial(const FVoxelMaterial& Material, int32& Index, v_flt& DataA, v_flt& DataB)
-	{
-		v_flt DataC;
-		SingleIndexFromMaterial(Material, Index, DataA, DataB, DataC);
-	}
-	OUTDATED_GRAPH_FUNCTION()
-	inline void SingleIndexFromMaterial(const FVoxelMaterialRange& Material, TVoxelRange<int32>& Index, TVoxelRange<v_flt>& DataA, TVoxelRange<v_flt>& DataB)
-	{
-		TVoxelRange<v_flt> DataC;
-		SingleIndexFromMaterial(Material, Index, DataA, DataB, DataC);
-	}
-
-	inline FVoxelMaterial MaterialFromDoubleIndex(int32 IndexA, int32 IndexB, v_flt Blend, v_flt Data)
-	{
-		return FVoxelMaterial::CreateFromDoubleIndex(FMath::Clamp(IndexA, 0, 255), FMath::Clamp(IndexB, 0, 255), float(Blend), float(Data));
-	}
-	inline FVoxelMaterialRange MaterialFromDoubleIndex(TVoxelRange<int32> IndexA, TVoxelRange<int32> IndexB, TVoxelRange<v_flt> Blend, TVoxelRange<v_flt> Data)
-	{
-		return FVoxelMaterialRange();
+		return { 0, 255 };
 	}
 
 	inline void GetUVChannelFromMaterial(FVoxelMaterial Material, int32 Channel, v_flt& U, v_flt& V)
@@ -1060,24 +961,9 @@ namespace FVoxelNodeFunctions
 		V = { 0.f, 1.f };
 	}
 
-	inline void DoubleIndexFromMaterial(const FVoxelMaterial& Material, int32& IndexA, int32& IndexB, v_flt& Blend, v_flt& Data)
+	inline FVoxelIntBox BoundsFromRanges(TVoxelRange<v_flt> X, TVoxelRange<v_flt> Y, TVoxelRange<v_flt> Z)
 	{
-		IndexA = Material.GetDoubleIndex_IndexA();
-		IndexB = Material.GetDoubleIndex_IndexB();
-		Blend = Material.GetDoubleIndex_Blend_AsFloat();
-		Data = Material.GetDoubleIndex_Data_AsFloat();
-	}
-	inline void DoubleIndexFromMaterial(const FVoxelMaterialRange& Material, TVoxelRange<int32>& IndexA, TVoxelRange<int32>& IndexB, TVoxelRange<v_flt>& Blend, TVoxelRange<v_flt>& Data)
-	{
-		IndexA = { 0, 255 };
-		IndexB = { 0, 255 };
-		Blend = { 0.f, 1.f };
-		Data = { 0.f, 1.f };
-	}
-
-	inline FIntBox BoundsFromRanges(TVoxelRange<v_flt> X, TVoxelRange<v_flt> Y, TVoxelRange<v_flt> Z)
-	{
-		return FIntBox(
+		return FVoxelIntBox(
 			FIntVector(
 				FMath::FloorToInt(X.Min),
 				FMath::FloorToInt(Y.Min),
@@ -1393,35 +1279,6 @@ namespace FVoxelNodeFunctions
 		}
 		auto& CustomData = *reinterpret_cast<FVoxelGraphCustomDataRange*>(CustomDataPtr);
 		return CustomData.Contains(Name);
-	}
-	
-	template<typename T, typename FloatType>
-	inline FVoxelMaterial CreateDoubleIndexMaterial(const TArray<int32, T>& Indices, const TArray<FloatType, T>& Alphas, FloatType Data)
-	{
-		check(Alphas.Num() == Indices.Num());
-		int32 FirstBestIndex = 0;
-		int32 SecondBestIndex = 0;
-		FloatType FirstBestAlpha = 0;
-		FloatType SecondBestAlpha = 0;
-		for (int32 Index = 0; Index < Alphas.Num(); Index++)
-		{
-			if (Alphas[Index] > FirstBestAlpha)
-			{
-				SecondBestIndex = FirstBestIndex;
-				SecondBestAlpha = FirstBestAlpha;
-				FirstBestIndex = Indices[Index];
-				FirstBestAlpha = Alphas[Index];
-			}
-			else if (Alphas[Index] > SecondBestAlpha)
-			{
-				SecondBestIndex = Indices[Index];
-				SecondBestAlpha = Alphas[Index];
-			}
-		}
-		const FloatType Alpha = 1 - FirstBestAlpha / (FirstBestAlpha + SecondBestAlpha);
-		return FVoxelMaterial::CreateFromDoubleIndex(
-			FVoxelUtilities::CastToUINT8(FMath::Clamp(FirstBestIndex, 0, 255)),
-			FVoxelUtilities::CastToUINT8(FMath::Clamp(SecondBestIndex, 0, 255)), float(Alpha), float(Data));
 	}
 
 	template<typename T>

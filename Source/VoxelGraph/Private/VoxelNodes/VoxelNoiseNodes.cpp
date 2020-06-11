@@ -2,7 +2,7 @@
 
 #include "VoxelNodes/VoxelNoiseNodes.h"
 #include "VoxelGraphGenerator.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 
 #define NOISE_SAMPLE_RANGE 10
 

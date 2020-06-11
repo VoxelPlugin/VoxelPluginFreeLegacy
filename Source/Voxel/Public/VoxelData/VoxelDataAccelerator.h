@@ -24,12 +24,12 @@ class TVoxelDataAccelerator
 {
 public:
 	TData& Data;
-	const FIntBox Bounds;
+	const FVoxelIntBox Bounds;
 	const int32 CacheSize;
 
 	static constexpr bool bIsConst = TIsConst<TData>::Value;
 
-	TVoxelDataAccelerator(TData& Data, const FIntBox& Bounds, int32 CacheSize = FVoxelDataAcceleratorParameters::GetDefaultCacheSize())
+	TVoxelDataAccelerator(TData& Data, const FVoxelIntBox& Bounds, int32 CacheSize = FVoxelDataAcceleratorParameters::GetDefaultCacheSize())
 		: Data(Data)
 		, Bounds(Bounds)
 		, CacheSize(CacheSize)
@@ -65,20 +65,22 @@ public:
 	template<typename T>
 	FORCEINLINE T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const
 	{
+		// Clamp to world, to avoid un-editable border
+		Data.ClampToWorld(X, Y, Z);
+		
 		return GetImpl(X, Y, Z,
 			[&](const FVoxelDataOctreeBase& Octree)
 			{
 				return Octree.GetCustomOutput<T>(*Data.WorldGenerator, DefaultValue, Name, X, Y, Z, LOD);
-			},
-			[&](const FVoxelWorldGeneratorInstance& WorldGenerator)
-			{
-				return WorldGenerator.GetCustomOutput<T>(DefaultValue, Name, X, Y, Z, LOD, FVoxelItemStack::Empty);
 			});
 	}
 
 public:
 	FORCEINLINE v_flt GetFloatValue(v_flt X, v_flt Y, v_flt Z, int32 LOD, bool* bIsGeneratorValue = nullptr) const
 	{
+		// Clamp to world, to avoid un-editable border
+		Data.ClampToWorld(X, Y, Z);
+		
 		return GetImpl(int32(X), int32(Y), int32(Z),
 			[&](const FVoxelDataOctreeBase& Octree)
 			{
@@ -94,11 +96,6 @@ public:
 					if (bIsGeneratorValue) *bIsGeneratorValue = true;
 					return Octree.GetFromGeneratorAndAssets<v_flt, v_flt>(*Data.WorldGenerator, X, Y, Z, LOD);
 				}
-			},
-			[&](const FVoxelWorldGeneratorInstance& WorldGenerator)
-			{
-				if (bIsGeneratorValue) *bIsGeneratorValue = true;
-				return WorldGenerator.GetValue(X, Y, Z, LOD, FVoxelItemStack::Empty);
 			});
 	}
 	FORCEINLINE v_flt GetFloatValue(const FVector& P, int32 LOD, bool* bIsGeneratorValue = nullptr) const
@@ -110,14 +107,13 @@ public:
 	template<typename T>
 	FORCEINLINE T Get(int32 X, int32 Y, int32 Z, int32 LOD) const
 	{
+		// Clamp to world, to avoid un-editable border
+		Data.ClampToWorld(X, Y, Z);
+		
 		return GetImpl(X, Y, Z,
 			[&](const FVoxelDataOctreeBase& Octree)
 			{
 				return Octree.Get<T>(*Data.WorldGenerator, X, Y, Z, LOD);
-			},
-			[&](const FVoxelWorldGeneratorInstance& WorldGenerator)
-			{
-				return WorldGenerator.Get<T>(X, Y, Z, LOD, FVoxelItemStack::Empty);
 			});
 	}
 	template<typename T>
@@ -206,10 +202,13 @@ private:
 
 	const bool bUseAcceleratorMap = FVoxelDataAcceleratorParameters::GetUseAcceleratorMap();
 
-	template<typename T1, typename T2>
-	auto GetImpl(int32 X, int32 Y, int32 Z, T1 UseOctree, T2 UseWorldGenerator) const
+	template<typename T>
+	auto GetImpl(int32 X, int32 Y, int32 Z, T UseOctree) const
 	{
 		ACCELERATOR_STAT(NumGet++);
+
+		// Each caller should clamp the coordinates
+		ensureVoxelSlow(Data.IsInWorld(X, Y, Z));
 
 		ensureMsgfVoxelSlowNoSideEffects(Bounds.Contains(X, Y, Z), TEXT("(%d, %d, %d) is not in %s!"), X, Y, Z, *Bounds.ToString());
 		
@@ -228,14 +227,6 @@ private:
 		{
 			// Cache hit
 			return UseOctree(*Octree);
-		}
-		
-		// No need to check IsInWorld if we get a hit, so check now instead
-		if (!Data.IsInWorld(X, Y, Z))
-		{
-			// Outside the world
-			ACCELERATOR_STAT(NumOutOfWorld++);
-			return UseWorldGenerator(*Data.WorldGenerator);
 		}
 
 		Octree = GetOctreeFromMap(X, Y, Z);
@@ -335,7 +326,7 @@ private:
 	}
 	FVoxelDataOctreeBase* GetOctreeFromCache_CheckAll(int32 X, int32 Y, int32 Z) const
 	{
-		checkVoxelSlow(!GetOctreeFromCache_CheckTopOnly(X, Y, Z));
+		checkVoxelSlow(!GetOctreeFromCache_CheckTopOnly(X, Y, Z) || !GetOctreeFromCache_CheckTopOnly(X, Y, Z)->IsLeaf());
 		ACCELERATOR_STAT(NumCacheAllAccess++);
 		for (int32 Index = 1; Index < CacheEntries.Num(); Index++)
 		{
@@ -387,9 +378,9 @@ private:
 		CacheEntries.Insert(CacheEntry, 0);
 	}
 
-	static TMap<FIntVector, FVoxelDataOctreeLeaf*> GetAcceleratorMap(const FVoxelData& Data, const FIntBox& Bounds)
+	static TMap<FIntVector, FVoxelDataOctreeLeaf*> GetAcceleratorMap(const FVoxelData& Data, const FVoxelIntBox& Bounds)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 		
 		TMap<FIntVector, FVoxelDataOctreeLeaf*> AcceleratorMap;
 		FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](auto& Leaf)

@@ -2,7 +2,7 @@
 
 #include "Details/VoxelGraphOutputCustomization.h"
 #include "VoxelGraphOutputs.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 #include "PropertyHandle.h"
 #include "DetailWidgetRow.h"

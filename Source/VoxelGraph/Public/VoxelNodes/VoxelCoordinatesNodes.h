@@ -54,38 +54,6 @@ class VOXELGRAPH_API UVoxelNode_ZF : public UVoxelCoordinateNode
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-UCLASS(DisplayName = "X (int)", NotPlaceable)
-class VOXELGRAPH_API UVoxelNode_XI : public UVoxelNodeHelper
-{
-	GENERATED_BODY()
-	SET_VOXELNODE_TITLE("X")
-	DEPRECATED_VOXELNODE("please use the float version instead")
-	
-	UVoxelNode_XI() { SetOutputs(EC::Int); }
-};
-
-UCLASS(DisplayName = "Y (int)", NotPlaceable)
-class VOXELGRAPH_API UVoxelNode_YI : public UVoxelNodeHelper
-{
-	GENERATED_BODY()
-	SET_VOXELNODE_TITLE("Y")
-	DEPRECATED_VOXELNODE("please use the float version instead")
-
-	UVoxelNode_YI() { SetOutputs(EC::Int); }
-};
-
-UCLASS(DisplayName = "Z (int)", NotPlaceable)
-class VOXELGRAPH_API UVoxelNode_ZI : public UVoxelNodeHelper
-{
-	GENERATED_BODY()
-	SET_VOXELNODE_TITLE("Z")
-	DEPRECATED_VOXELNODE("please use the float version instead")
-	
-	UVoxelNode_ZI() { SetOutputs(EC::Int); }
-};
-
-//////////////////////////////////////////////////////////////////////////////////////
-
 // Return the current X in global space, before the transform is applied to it. Same as X if not a graph asset
 UCLASS(DisplayName = "Global X", Category = "Coordinates")
 class VOXELGRAPH_API UVoxelNode_GlobalX : public UVoxelCoordinateNode

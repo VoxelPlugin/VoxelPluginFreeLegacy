@@ -1,20 +1,11 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelNodes/VoxelExecNodes.h"
+
 #include "VoxelNodes/VoxelNodeColors.h"
 #include "VoxelGraphConstants.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
-#include "VoxelNodeFunctions.h"
-#include "VoxelWorldGeneratorInit.h"
-
-#include "EdGraph/EdGraphNode.h"
-#include "Async/Async.h"
-#include "Logging/MessageLog.h"
-#include "Misc/UObjectToken.h"
-#include "UObject/UObjectGlobals.h"
-#include "UObject/Package.h"
-
 
 int32 UVoxelNode_MaterialSetter::GetOutputIndex() const
 {
@@ -42,10 +33,7 @@ UVoxelNode_SetSingleIndex::UVoxelNode_SetSingleIndex()
 {
 	SetInputs(
 		EC::Exec,
-		{ "Index", EC::Int, "Index between 0 and 255", "", {0, 255} },
-		{ "Data A", EC::Float, "Data sent to the material shader", "", {0, 1} },
-		{ "Data B", EC::Float, "Data sent to the material shader", "", {0, 1} },
-		{ "Data C", EC::Float, "Data sent to the material shader", "", {0, 1} });
+		{ "Index", EC::Int, "Index between 0 and 255", "", {0, 255} });
 	SetOutputs(EC::Exec);
 }
 
@@ -54,14 +42,26 @@ UVoxelNode_SetSingleIndex::UVoxelNode_SetSingleIndex()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-UVoxelNode_SetDoubleIndex::UVoxelNode_SetDoubleIndex()
+UVoxelNode_SetMultiIndexWetness::UVoxelNode_SetMultiIndexWetness()
 {
 	SetInputs(
 		EC::Exec,
-		{ "Index A", EC::Int, "Index A between 0 and 255", "", {0, 255} },
-		{ "Index B", EC::Int, "Index B between 0 and 255", "", {0, 255} },
-		{ "Blend", EC::Float, "Blend between 0 and 1", "", {0, 1} },
-		{ "Data", EC::Float, "Data sent to material shader", "", {0, 1} });
+		{ "Wetness", EC::Float, "Wetness between 0 and 1", "", {0, 1 } });
+	SetOutputs(EC::Exec);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelNode_AddMultiIndex::UVoxelNode_AddMultiIndex()
+{
+	SetInputs(
+		EC::Exec,
+		{ "Index", EC::Int, "Material index between 0 and 255", "", {0, 255 } },
+		{ "Strength", EC::Float, "Strength, usually between 0 and 1" },
+		{ "Lock Strength", EC::Boolean, "If true, the strength won't be normalized. For example, if you want small rocks with the same density everywhere." });
 	SetOutputs(EC::Exec);
 }
 

@@ -7,12 +7,38 @@
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTextureMemory);
 
+struct FVoxelTextureCacheKey
+{
+	TWeakObjectPtr<UTexture> Texture;
+	// Channel, in case it's a color texture converted to float
+	EVoxelRGBA Channel = EVoxelRGBA(-1);
+
+	FVoxelTextureCacheKey() = default;
+	explicit FVoxelTextureCacheKey(TWeakObjectPtr<UTexture> Texture)
+		: Texture(Texture)
+	{
+	}
+	explicit FVoxelTextureCacheKey(TWeakObjectPtr<UTexture> Texture, EVoxelRGBA Channel)
+		: Texture(Texture)
+		, Channel(Channel)
+	{
+	}
+
+	bool operator==(const FVoxelTextureCacheKey& Other) const
+	{
+		return Texture == Other.Texture && Channel == Other.Channel;
+	}
+	friend uint32 GetTypeHash(const FVoxelTextureCacheKey& Key)
+	{
+		return HashCombine(GetTypeHash(Key.Texture), GetTypeHash(Key.Channel));
+	}
+};
+
 template<typename T>
 inline auto& GetVoxelTextureCacheMap()
 {
 	check(IsInGameThread());
-	static TMap<TWeakObjectPtr<UTexture>, TVoxelSharedPtr<typename TVoxelTexture<T>::FTextureData>> Map;
-	Map.Remove(nullptr);
+	static TMap<FVoxelTextureCacheKey, TVoxelSharedPtr<typename TVoxelTexture<T>::FTextureData>> Map;
 	return Map;
 }
 
@@ -109,7 +135,7 @@ TVoxelTexture<FColor> FVoxelTextureUtilities::CreateFromTexture_Color(UTexture* 
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	auto& Data = GetVoxelTextureCacheMap<FColor>().FindOrAdd(Texture);
+	auto& Data = GetVoxelTextureCacheMap<FColor>().FindOrAdd(FVoxelTextureCacheKey(Texture));
 	if (!Data.IsValid())
 	{
 		FString Error;
@@ -131,7 +157,7 @@ TVoxelTexture<float> FVoxelTextureUtilities::CreateFromTexture_Float(UTexture* T
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	auto& Data = GetVoxelTextureCacheMap<float>().FindOrAdd(Texture);
+	auto& Data = GetVoxelTextureCacheMap<float>().FindOrAdd(FVoxelTextureCacheKey(Texture, Channel));
 	if (!Data.IsValid())
 	{
 		FString Error;
@@ -189,9 +215,10 @@ bool FVoxelTextureUtilities::CanCreateFromTexture(UTexture* Texture, FString& Ou
 			return false;
 		}
 #endif
-		if (Texture2D->CompressionSettings != TextureCompressionSettings::TC_VectorDisplacementmap)
+		if (Texture2D->CompressionSettings != TextureCompressionSettings::TC_VectorDisplacementmap &&
+			Texture2D->CompressionSettings != TextureCompressionSettings::TC_EditorIcon)
 		{
-			OutError = "Texture CompressionSettings must be VectorDisplacementmap";
+			OutError = "Texture CompressionSettings must be VectorDisplacementmap or UserInterface2D";
 			return false;
 		}
 		return true;
@@ -245,8 +272,12 @@ void FVoxelTextureUtilities::ClearCache(UTexture* Texture)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	GetVoxelTextureCacheMap<FColor>().Remove(Texture);
-	GetVoxelTextureCacheMap<float>().Remove(Texture);
+	GetVoxelTextureCacheMap<FColor>().Remove(FVoxelTextureCacheKey(Texture));
+	GetVoxelTextureCacheMap<float>().Remove(FVoxelTextureCacheKey(Texture));
+	GetVoxelTextureCacheMap<float>().Remove(FVoxelTextureCacheKey(Texture, EVoxelRGBA::R));
+	GetVoxelTextureCacheMap<float>().Remove(FVoxelTextureCacheKey(Texture, EVoxelRGBA::G));
+	GetVoxelTextureCacheMap<float>().Remove(FVoxelTextureCacheKey(Texture, EVoxelRGBA::B));
+	GetVoxelTextureCacheMap<float>().Remove(FVoxelTextureCacheKey(Texture, EVoxelRGBA::A));
 }
 
 void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<float>& Texture, UTexture2D*& InOutTexture)
@@ -267,7 +298,7 @@ void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<float>
 	}
 	
 	FTexture2DMipMap& Mip = InOutTexture->PlatformData->Mips[0];
-	float* Data = static_cast<float*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
+	float* Data = reinterpret_cast<float*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
 	if (!ensureAlways(Data)) return;
 
 	FMemory::Memcpy(Data, Texture.GetTextureData().GetData(), Texture.GetSizeX() * Texture.GetSizeY() * sizeof(float));
@@ -295,7 +326,7 @@ void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<FColor
 	}
 	
 	FTexture2DMipMap& Mip = InOutTexture->PlatformData->Mips[0];
-	FColor* Data = static_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
+	FColor* Data = reinterpret_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE));
 	if (!ensureAlways(Data)) return;
 
 	FMemory::Memcpy(Data, Texture.GetTextureData().GetData(), Texture.GetSizeX() * Texture.GetSizeY() * sizeof(FColor));
@@ -348,7 +379,7 @@ TVoxelTexture<FColor> FVoxelTextureUtilities::CreateColorTextureFromFloatTexture
 
 TVoxelTexture<float> FVoxelTextureUtilities::Normalize(const TVoxelTexture<float>& Texture)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	auto Data = MakeVoxelShared<TVoxelTexture<float>::FTextureData>();
 	Data->SizeX = Texture.GetSizeX();

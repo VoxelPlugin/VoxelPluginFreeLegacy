@@ -8,7 +8,7 @@
 #include "VoxelRender/VoxelChunkToUpdate.h"
 #include "VoxelRendererMeshHandler.h"
 #include "VoxelTickable.h"
-#include "QueueWithNum.h"
+#include "VoxelQueueWithNum.h"
 
 struct FVoxelChunkMesh;
 
@@ -27,7 +27,7 @@ public:
 	//~ Begin IVoxelRender Interface
 	virtual void Destroy() override;
 	
-	virtual int32 UpdateChunks(const FIntBox& Bounds, const TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdateFinished& FinishDelegate) override;
+	virtual int32 UpdateChunks(const FVoxelIntBox& Bounds, const TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdateFinished& FinishDelegate) override;
 	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) override;
 
 	virtual int32 GetTaskCount() const override;
@@ -66,9 +66,9 @@ private:
 	{
 		const uint64 Id;
 		const uint8 LOD;
-		const FIntBox Bounds;
+		const FVoxelIntBox Bounds;
 
-		FChunk(uint64 Id, uint8 LOD, const FIntBox& Bounds)
+		FChunk(uint64 Id, uint8 LOD, const FVoxelIntBox& Bounds)
 			: Id(Id)
 			, LOD(LOD)
 			, Bounds(Bounds)
@@ -213,7 +213,7 @@ private:
 		uint64 ChunkId;
 		bool bIsTransitionTask;
 	};
-	TQueueWithNum<FVoxelTaskCallback, EQueueMode::Mpsc> TasksCallbacksQueue;
+	TVoxelQueueWithNum<FVoxelTaskCallback, EQueueMode::Mpsc> TasksCallbacksQueue;
 
 	void CancelTask(TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>>& Task);
 };

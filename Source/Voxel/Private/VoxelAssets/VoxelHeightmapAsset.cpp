@@ -1,12 +1,13 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelAssets/VoxelHeightmapAsset.h"
-#include "IntBox.h"
-#include "VoxelSerializationUtilities.h"
+#include "VoxelIntBox.h"
+#include "VoxelUtilities/VoxelSerializationUtilities.h"
 #include "VoxelCustomVersion.h"
 #include "VoxelMessages.h"
+#include "VoxelFeedbackContext.h"
 #include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
-#include "VoxelData/VoxelTransformableWorldGeneratorHelper.h"
+#include "VoxelWorldGenerators/VoxelTransformableWorldGeneratorHelper.h"
 
 #include "Serialization/BufferArchive.h"
 #include "Serialization/MemoryReader.h"
@@ -40,14 +41,14 @@ public:
 	const TVoxelHeightmapAssetSamplerWrapper<T> Wrapper;
 	const float Precision;
 	const bool bInfiniteExtent;
-	const FIntBox WorldBounds;
+	const FVoxelIntBox WorldBounds;
 
 public:
 	TVoxelHeightmapAssetInstance(
 		const TVoxelHeightmapAssetSamplerWrapper<T>& Wrapper,
 		float Precision,
 		bool bInfiniteExtent,
-		const FIntBox& WorldBounds)
+		const FVoxelIntBox& WorldBounds)
 		: Wrapper(Wrapper)
 		, Precision(Precision)
 		, bInfiniteExtent(bInfiniteExtent)
@@ -56,7 +57,7 @@ public:
 	}
 
 	//~ Begin FVoxelWorldGeneratorInstance Interface
-	inline v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+	FORCEINLINE v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		if (bInfiniteExtent || WorldBounds.ContainsFloat(X, Y, Z)) // Note: it's safe to access outside the bounds
 		{
@@ -69,30 +70,40 @@ public:
 			return 1;
 		}
 	}
-	inline FVoxelMaterial GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+	FORCEINLINE FVoxelMaterial GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return Wrapper.GetMaterial(X + Wrapper.GetWidth() / 2, Y + Wrapper.GetHeight() / 2, EVoxelSamplerMode::Clamp);
 	}
-	inline TVoxelRange<v_flt> GetValueRangeImpl(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<v_flt> GetValueRangeImpl(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		if (bInfiniteExtent || Bounds.Intersect(WorldBounds))
-		{
-			const auto ZRange = TVoxelRange<v_flt>(Bounds.Min.Z, Bounds.Max.Z);
-			const auto HeightRange = TVoxelRange<v_flt>(Wrapper.GetMinHeight(), Wrapper.GetMaxHeight());
-			const auto Range = (ZRange - HeightRange) / Precision;
-			if (bInfiniteExtent || WorldBounds.Contains(Bounds))
-			{
-				return Range;
-			}
-			else
-			{
-				return TVoxelRange<v_flt>::Union(1.f, Range); // Intersects with the boundary
-			}
-		}
-		else
+		if (!bInfiniteExtent && !Bounds.Intersect(WorldBounds))
 		{
 			return 1;
 		}
+
+		const bool bEntirelyContained = WorldBounds.Contains(Bounds);
+
+		const auto XRange = TVoxelRange<v_flt>(Bounds.Min.X, Bounds.Max.X) + Wrapper.GetWidth() / 2;
+		const auto YRange = TVoxelRange<v_flt>(Bounds.Min.Y, Bounds.Max.Y) + Wrapper.GetHeight() / 2;
+		const auto ZRange = TVoxelRange<v_flt>(Bounds.Min.Z, Bounds.Max.Z);
+
+		auto HeightRange = TVoxelRange<v_flt>(Wrapper.GetHeightRange(XRange, YRange, EVoxelSamplerMode::Clamp));
+
+		if (!bEntirelyContained && bInfiniteExtent)
+		{
+			// Height will be 0 outside the boundaries if bInfiniteExtent = true
+			HeightRange = TVoxelRange<v_flt>::Union(HeightRange, 0.f);
+		}
+
+		auto Range = (ZRange - HeightRange) / Precision;
+
+		if (!bEntirelyContained && !bInfiniteExtent)
+		{
+			// Intersects with the boundary
+			Range = TVoxelRange<v_flt>::Union(1.f, Range);
+		}
+
+		return Range;
 	}
 	virtual void GetValues(TVoxelQueryZone<FVoxelValue>& QueryZone, int32 LOD, const FVoxelItemStack& Items) const override final
 	{
@@ -133,7 +144,9 @@ public:
 template<typename T>
 void TVoxelHeightmapAssetData<T>::Serialize(FArchive& Ar, uint32 MaterialConfigFlag, int32 VoxelCustomVersion)
 {
-	FVoxelScopedSlowTask Serializing(2.f);
+	VOXEL_FUNCTION_COUNTER();
+	
+	FVoxelScopedSlowTask Serializing(3.f);
 	
 	Serializing.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Serializing heights"));
 	if (VoxelCustomVersion == FVoxelCustomVersion::BeforeCustomVersionWasAdded)
@@ -197,8 +210,14 @@ void TVoxelHeightmapAssetData<T>::Serialize(FArchive& Ar, uint32 MaterialConfigF
 		case EVoxelMaterialConfig::SingleIndex:
 			MaterialSize = 1;
 			break;
-		case EVoxelMaterialConfig::DoubleIndex:
-			MaterialSize = 3;
+		case EVoxelMaterialConfig::DoubleIndex_DEPRECATED:
+			MaterialSize = 0;
+			MaterialConfig = EVoxelMaterialConfig::RGB;
+			Materials.Empty();
+			FVoxelMessages::Error("Cannot load double index heightmap materials, removing them. You'll need to reimport your weightmaps", Owner.Get());
+			break;
+		case EVoxelMaterialConfig::MultiIndex:
+			MaterialSize = 7;
 			break;
 		default:
 			Ar.SetError();
@@ -207,6 +226,31 @@ void TVoxelHeightmapAssetData<T>::Serialize(FArchive& Ar, uint32 MaterialConfigF
 		if (MaterialSize * Width * Height != Materials.Num())
 		{
 			Ar.SetError();
+		}
+	}
+
+	Serializing.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Recomputing height range mips"));
+	if (Ar.IsLoading())
+	{
+		VOXEL_SCOPE_COUNTER("Recomputing height range mips");
+
+		InitializeHeightRangeMips();
+		for (int32 X = 0; X < Width; X++)
+		{
+			for (int32 Y = 0; Y < Height; Y++)
+			{
+				const T LocalHeight = GetHeightUnsafe(X, Y);
+				for (int32 Mip = 0; Mip < GetNumHeightRangeMips(); Mip++)
+				{
+					int32 LocalX;
+					int32 LocalY;
+					GetHeightRangeLocalCoordinates(Mip, X, Y, LocalX, LocalY);
+
+					auto& Range = GetHeightRangeLocal(Mip, LocalX, LocalY);
+					Range.Min = FMath::Min(Range.Min, LocalHeight);
+					Range.Max = FMath::Max(Range.Max, LocalHeight);
+				}
+			}
 		}
 	}
 
@@ -310,12 +354,12 @@ void UVoxelHeightmapAsset::SyncProperties(const TVoxelSharedRef<TVoxelHeightmapA
 }
 
 template<typename T>
-FIntBox UVoxelHeightmapAsset::GetBoundsImpl() const
+FVoxelIntBox UVoxelHeightmapAsset::GetBoundsImpl() const
 {
 	// const cast to load
 	auto Wrapper = TVoxelHeightmapAssetSamplerWrapper<T>(const_cast<UVoxelHeightmapAsset*>(this));
 
-	return FIntBox(
+	return FVoxelIntBox(
 		FIntVector(
 			0,
 			0,
@@ -363,8 +407,7 @@ UTexture2D* UVoxelHeightmapAsset::GetThumbnailInternal()
 				const float HeightValue = Data.GetHeight(
 					float(X) / LANDSCAPE_ASSET_THUMBNAIL_RES * Data.GetWidth(),
 					float(Y) / LANDSCAPE_ASSET_THUMBNAIL_RES * Data.GetHeight(),
-					EVoxelSamplerMode::Clamp, 
-					Data.GetMinHeight());
+					EVoxelSamplerMode::Clamp);
 				const float Value = (HeightValue - Data.GetMinHeight()) / float(Data.GetMaxHeight() - Data.GetMinHeight());
 				const uint8 Byte = FVoxelUtilities::FloatToUINT8(Value);
 				ThumbnailSave[X + LANDSCAPE_ASSET_THUMBNAIL_RES * Y] = FColor(Byte, Byte, Byte, 255);
@@ -453,7 +496,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelHeightmapAssetF
 	return MakeVoxelShared<TVoxelTransformableWorldGeneratorHelper<TVoxelHeightmapAssetInstance<float>>>(GetInstanceImpl(), false);
 }
 
-FIntBox UVoxelHeightmapAssetFloat::GetBounds() const
+FVoxelIntBox UVoxelHeightmapAssetFloat::GetBounds() const
 {
 	return GetBoundsImpl<float>();
 }
@@ -504,7 +547,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelHeightmapAssetU
 	return MakeVoxelShared<TVoxelTransformableWorldGeneratorHelper<TVoxelHeightmapAssetInstance<uint16>>>(GetInstanceImpl(), false);
 }
 
-FIntBox UVoxelHeightmapAssetUINT16::GetBounds() const
+FVoxelIntBox UVoxelHeightmapAssetUINT16::GetBounds() const
 {
 	return GetBoundsImpl<uint16>();
 }

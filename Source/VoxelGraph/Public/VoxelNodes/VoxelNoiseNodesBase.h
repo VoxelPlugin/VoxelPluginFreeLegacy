@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Containers/StaticArray.h"
-#include "FastNoise.h"
+#include "VoxelFastNoise.h"
 #include "VoxelRange.h"
 #include "VoxelNode.h"
 #include "VoxelNodeHelper.h"

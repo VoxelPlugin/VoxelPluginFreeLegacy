@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "UObject/Interface.h"
 #include "VoxelPhysicsPartSpawnerInterface.generated.h"
 
@@ -28,6 +28,19 @@ struct FVoxelPositionValueMaterial
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	FVoxelMaterial Material = FVoxelMaterial(ForceInit);
 };
+
+// Represents the result for a single part
+UINTERFACE(BlueprintType)
+class VOXEL_API UVoxelPhysicsPartSpawnerResult : public UInterface
+{
+	GENERATED_BODY()
+};
+
+class VOXEL_API IVoxelPhysicsPartSpawnerResult : public IInterface
+{
+	GENERATED_BODY()
+};
+
 
 UINTERFACE(BlueprintType)
 class VOXEL_API UVoxelPhysicsPartSpawner : public UInterface

@@ -6,8 +6,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
-#include "VoxelGlobals.h"
-#include "VoxelBaseUtilities.h"
+#include "VoxelMinimal.h"
+#include "VoxelUtilities/VoxelBaseUtilities.h"
 #include "VoxelRange.generated.h"
 
 struct FVoxelRangeFailStatus : TThreadSingleton<FVoxelRangeFailStatus>
@@ -20,32 +20,47 @@ struct FVoxelRangeFailStatus : TThreadSingleton<FVoxelRangeFailStatus>
 	{
 		return bHasWarning;
 	}
-	
-	void Fail(const char* InError)
+
+	void Fail(const TCHAR* InError)
 	{
-		ensure(!HasFailed() && !HasWarning());
-		bHasFailed = true;
-		bNeedReport = true;
-		Message = "error: " + FString(InError);
+		// Note: bHasFailed might be true already if the generated graph has scoped ifs that failed
+		if (!HasFailed())
+		{
+			bHasFailed = true;
+			bNeedReport = true;
+			Message = InError;
+			MessageType = EMessageType::Error;
+		}
 	}
-	void Warning(const char* InError)
+	void Warning(const TCHAR* InError)
 	{
-		if (ensure(!HasFailed() && !HasWarning())) 
+		if (!HasFailed() && !HasWarning())
 		{
 			bHasWarning = true;
 			bNeedReport = true;
-			Message = "warning: " + FString(InError);
+			Message = InError;
+			MessageType = EMessageType::Warning;
 		}
 	}
 	void Reset()
 	{
 		bHasFailed = false;
 		bHasWarning = false;
-		Message = "";
+		Message = nullptr;
 	}
-	const FString& GetError() const
+	FString GetError() const
 	{
-		return Message;
+		if (!ensure(Message)) return {};
+		
+		if (MessageType == EMessageType::Warning)
+		{
+			return FString::Printf(TEXT("warning: %s"), Message);
+		}
+		else
+		{
+			check(MessageType == EMessageType::Error);
+			return FString::Printf(TEXT("error: %s"), Message);
+		}
 	}
 
 	bool NeedReport() const
@@ -61,7 +76,15 @@ private:
 	bool bHasFailed = false;
 	bool bHasWarning = false;
 	bool bNeedReport = false;
-	FString Message = "";
+
+	enum class EMessageType
+	{
+		Warning,
+		Error
+	};
+	
+	const TCHAR* Message = nullptr;
+	EMessageType MessageType = EMessageType::Warning;
 };
 
 struct FVoxelBoolRange
@@ -143,7 +166,7 @@ struct FVoxelBoolRange
 		else
 		{
 			checkVoxelSlow(bCanBeTrue && bCanBeFalse);
-			FVoxelRangeFailStatus::Get().Fail("range analysis: condition can be true or false");
+			FVoxelRangeFailStatus::Get().Fail(TEXT("range analysis: condition can be true or false"));
 			return false;
 		}
 	}
@@ -208,6 +231,17 @@ template<>
 inline constexpr int32 PositiveInfinity<int32>()
 {
 	return MAX_int32;
+}
+
+template<>
+inline constexpr uint16 NegativeInfinity<uint16>()
+{
+	return MIN_uint16;
+}
+template<>
+inline constexpr uint16 PositiveInfinity<uint16>()
+{
+	return MAX_uint16;
 }
 
 template<>
@@ -451,6 +485,10 @@ public:
 	{
 		return { Min - Other.Max, Max - Other.Min };
 	}
+	TVoxelRange<T> operator-() const
+	{
+		return { -Max, -Min };
+	}
 	template<typename TOther>
 	TVoxelRange<T> operator*(const TVoxelRange<TOther>& Other) const
 	{
@@ -567,20 +605,6 @@ public:
 		return *this;
 	}
 };
-
-namespace FVoxelRangeUtilities
-{
-	template<typename T>
-	inline TVoxelRange<T> Min(const TVoxelRange<T>& A, const TVoxelRange<T>& B)
-	{
-		return { FMath::Min(A.Min, B.Min), FMath::Min(A.Max, B.Max) };
-	}
-	template<typename T>
-	inline TVoxelRange<T> Max(const TVoxelRange<T>& A, const TVoxelRange<T>& B)
-	{
-		return { FMath::Max(A.Min, B.Min), FMath::Max(A.Max, B.Max) };
-	}
-}
 
 struct FVoxelMaterialRange
 {

@@ -13,7 +13,7 @@ public class VoxelHelpers : ModuleRules
 
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
+        PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
 
         PublicDependencyModuleNames.AddRange(
             new string[]

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "RenderResource.h"
 #include "RawIndexBuffer.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 /**
  * Constructor isn't exported in the engine definition

@@ -46,7 +46,6 @@ void FVoxelRendererMixedMeshHandler::ApplyAction(const FAction& Action)
 			}
 			auto BasicChunkSettings = ChunkSettings;
 			BasicChunkSettings.bVisible = false;
-			BasicChunkSettings.bEnableTessellation = false;
 			BasicMeshHandler->UpdateChunk(
 				ChunkInfo.BasicChunkId,
 				BasicChunkSettings,

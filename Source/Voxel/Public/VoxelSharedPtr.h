@@ -53,82 +53,24 @@ inline TWeakPtr<T> MakeWeakPtr(T* Ptr)
 	return TWeakPtr<T>(StaticCastSharedRef<T>(Ptr->AsShared()));
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-template<class Lambda>
-struct TLambdaConditionalForward : TLambdaConditionalForward<decltype(&Lambda::operator())>
+template<typename T>
+inline TSharedRef<T> MakeSharedCopy(T&& Data)
 {
-};
-
-template<typename TReturnType, typename TClass, typename... TArgs>
-struct TLambdaConditionalForward<TReturnType(TClass::*)(TArgs...) const> : TLambdaConditionalForward<TReturnType(TClass::*)(TArgs...)>
+	return MakeShared<T>(MoveTemp(Data));
+}
+template<typename T>
+inline TVoxelSharedRef<T> MakeVoxelSharedCopy(T&& Data)
 {
-
-};
-
-template<typename TReturnType, typename TClass, typename... TArgs>
-struct TLambdaConditionalForward<TReturnType(TClass::*)(TArgs...)>
-{
-	template<typename TLambda, typename TGetCondition, typename TCheckCondition>
-	static auto Create(TLambda Lambda, TGetCondition GetCondition, TCheckCondition CheckCondition)
-	{
-		return [=](TArgs... Args)
-		{
-			// Could be a shared pointer, or a bool
-			auto&& Condition = GetCondition();
-			if (CheckCondition(Condition))
-			{
-				Lambda(Forward<TArgs>(Args)...);
-			}
-		};
-	}
-};
-
-template<typename T, typename TLambda>
-inline auto MakeWeakPtrLambda(const T& Ptr, TLambda Lambda)
-{
-	return TLambdaConditionalForward<TLambda>::Create(Lambda, [WeakPtr = MakeWeakPtr(Ptr)]() { return WeakPtr.Pin(); }, [](const auto& Ptr) { return Ptr.IsValid(); });
+	return MakeVoxelShared<T>(MoveTemp(Data));
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-template<class Lambda>
-struct TDelegateFromLambda : TDelegateFromLambda<decltype(&Lambda::operator())>
+template<typename T>
+inline TSharedRef<T> MakeSharedCopy(const T& Data)
 {
-};
-
-template<typename TReturnType, typename TClass, typename... TArgs>
-struct TDelegateFromLambda<TReturnType(TClass::*)(TArgs...) const> : TDelegateFromLambda<TReturnType(TClass::*)(TArgs...)>
-{
-
-};
-
-template<typename TReturnType, typename TClass, typename... TArgs>
-struct TDelegateFromLambda<TReturnType(TClass::*)(TArgs...)>
-{
-	template<typename TLambda>
-	static auto Create(TLambda Lambda)
-	{
-		return TBaseDelegate<TReturnType, TArgs...>::CreateLambda(Lambda);
-	}
-};
-
-template<typename TLambda>
-inline auto MakeLambdaDelegate(TLambda Lambda)
-{
-	return TDelegateFromLambda<TLambda>::Create(Lambda);
+	return MakeShared<T>(Data);
 }
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-template<typename T, typename TLambda>
-inline auto MakeWeakPtrDelegate(const T& Ptr, TLambda Lambda)
+template<typename T>
+inline TVoxelSharedRef<T> MakeVoxelSharedCopy(const T& Data)
 {
-	return MakeLambdaDelegate(MakeWeakPtrLambda(Ptr, Lambda));
+	return MakeVoxelShared<T>(Data);
 }

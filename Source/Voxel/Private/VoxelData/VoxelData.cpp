@@ -3,23 +3,23 @@
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelSaveUtilities.h"
 #include "VoxelData/VoxelDataUtilities.h"
-#include "VoxelWorldGeneratorHelpers.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
 #include "VoxelWorld.h"
-#include "StackArray.h"
 
 #include "Misc/ScopeLock.h"
 #include "Async/Async.h"
 
-TAutoConsoleVariable<int32> CVarMaxPlaceableItemsPerOctree(
+VOXEL_API TAutoConsoleVariable<int32> CVarMaxPlaceableItemsPerOctree(
 		TEXT("voxel.data.MaxPlaceableItemsPerOctree"),
 		32,
 		TEXT("Max number of placeable items per data octree node. If more placeable items are added, the node is split"),
 		ECVF_Default);
 
-TAutoConsoleVariable<int32> CVarStoreSpecialValueForGeneratorValuesInSaves(
+VOXEL_API TAutoConsoleVariable<int32> CVarStoreSpecialValueForGeneratorValuesInSaves(
 		TEXT("voxel.data.StoreSpecialValueForGeneratorValuesInSaves"),
 		1,
-		TEXT("If true, will store FVoxelValue::Special() instead of the value if it's equal to the generator value when saving."),
+		TEXT("If true, will store FVoxelValue::Special() instead of the value if it's equal to the generator value when saving. Reduces save size a lot, but increases save time a lot too.\n")
+		TEXT("Important: must be the same when saving & loading!"),
 		ECVF_Default);
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -62,7 +62,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 }
 
 FVoxelDataSettings::FVoxelDataSettings(
-	const FIntBox& WorldBounds, 
+	const FVoxelIntBox& WorldBounds, 
 	const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& WorldGenerator, 
 	bool bEnableMultiplayer, 
 	bool bEnableUndoRedo)
@@ -92,7 +92,7 @@ TVoxelSharedRef<FVoxelData> FVoxelData::Create(const FVoxelDataSettings& Setting
 	auto* Data = new FVoxelData(Settings);
 
 	{
-		VOXEL_SCOPE_COUNTER("Subdivide Data");
+		VOXEL_ASYNC_SCOPE_COUNTER("Subdivide Data");
 		// Subdivide tree a few levels on start to avoid having update tasks locking the entire octree
 		FVoxelOctreeUtilities::IterateEntireTree(Data->GetOctree(), [&](FVoxelDataOctreeBase& Chunk)
 		{
@@ -118,10 +118,10 @@ class FVoxelDataOctreeLocker
 {
 public:
 	const EVoxelLockType LockType;
-	const FIntBox Bounds;
+	const FVoxelIntBox Bounds;
 	const FName Name;
 
-	FVoxelDataOctreeLocker(EVoxelLockType LockType, const FIntBox& Bounds, FName Name)
+	FVoxelDataOctreeLocker(EVoxelLockType LockType, const FVoxelIntBox& Bounds, FName Name)
 		: LockType(LockType)
 		, Bounds(Bounds)
 		, Name(Name)
@@ -130,7 +130,7 @@ public:
 
 	TArray<FVoxelOctreeId> Lock(FVoxelDataOctreeBase& Octree)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 		
 		if (!Octree.GetBounds().Intersect(Bounds))
 		{
@@ -202,7 +202,7 @@ public:
 
 	void Unlock(FVoxelDataOctreeBase& Octree)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 		
 		UnlockImpl(Octree);
 		check(LockedOctreesIndex == LockedOctrees.Num());
@@ -241,9 +241,9 @@ private:
 	}
 };
 
-TUniquePtr<FVoxelDataLockInfo> FVoxelData::Lock(EVoxelLockType LockType, const FIntBox& Bounds, FName Name) const
+TUniquePtr<FVoxelDataLockInfo> FVoxelData::Lock(EVoxelLockType LockType, const FVoxelIntBox& Bounds, FName Name) const
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	ensure(Bounds.IsValid());
 
 	MainLock.Lock(EVoxelLockType::Read);
@@ -257,7 +257,7 @@ TUniquePtr<FVoxelDataLockInfo> FVoxelData::Lock(EVoxelLockType LockType, const F
 
 void FVoxelData::Unlock(TUniquePtr<FVoxelDataLockInfo> LockInfo) const
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	check(LockInfo.IsValid());
 
@@ -274,7 +274,7 @@ void FVoxelData::Unlock(TUniquePtr<FVoxelDataLockInfo> LockInfo) const
 
 void FVoxelData::ClearData()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	MainLock.Lock(EVoxelLockType::Write);
 	{
@@ -313,9 +313,9 @@ void FVoxelData::ClearData()
 	LeavesWithRedoStackStack.Empty();
 }
 
-void FVoxelData::ClearOctreeData(TArray<FIntBox>& OutBoundsToUpdate)
+void FVoxelData::ClearOctreeData(TArray<FVoxelIntBox>& OutBoundsToUpdate)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
 	{
@@ -344,9 +344,9 @@ void FVoxelData::ClearOctreeData(TArray<FIntBox>& OutBoundsToUpdate)
 }
 
 template<typename T>
-void FVoxelData::CacheBounds(const FIntBox& Bounds)
+void FVoxelData::CacheBounds(const FVoxelIntBox& Bounds)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	FVoxelOctreeUtilities::IterateTreeInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Chunk)
 	{
@@ -375,13 +375,13 @@ void FVoxelData::CacheBounds(const FIntBox& Bounds)
 	});
 }
 
-template VOXEL_API void FVoxelData::CacheBounds<FVoxelValue   >(const FIntBox&);
-template VOXEL_API void FVoxelData::CacheBounds<FVoxelMaterial>(const FIntBox&);
+template VOXEL_API void FVoxelData::CacheBounds<FVoxelValue   >(const FVoxelIntBox&);
+template VOXEL_API void FVoxelData::CacheBounds<FVoxelMaterial>(const FVoxelIntBox&);
 
 template<typename T>
-void FVoxelData::ClearCacheInBounds(const FIntBox& Bounds)
+void FVoxelData::ClearCacheInBounds(const FVoxelIntBox& Bounds)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
@@ -395,13 +395,13 @@ void FVoxelData::ClearCacheInBounds(const FIntBox& Bounds)
 	});
 }
 
-template VOXEL_API void FVoxelData::ClearCacheInBounds<FVoxelValue   >(const FIntBox&);
-template VOXEL_API void FVoxelData::ClearCacheInBounds<FVoxelMaterial>(const FIntBox&);
+template VOXEL_API void FVoxelData::ClearCacheInBounds<FVoxelValue   >(const FVoxelIntBox&);
+template VOXEL_API void FVoxelData::ClearCacheInBounds<FVoxelMaterial>(const FVoxelIntBox&);
 
 template<typename T>
-void FVoxelData::CheckIsSingle(const FIntBox& Bounds)
+void FVoxelData::CheckIsSingle(const FVoxelIntBox& Bounds)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
@@ -414,14 +414,16 @@ void FVoxelData::CheckIsSingle(const FIntBox& Bounds)
 	});
 }
 
-template VOXEL_API void FVoxelData::CheckIsSingle<FVoxelValue   >(const FIntBox&);
-template VOXEL_API void FVoxelData::CheckIsSingle<FVoxelMaterial>(const FIntBox&);
+template VOXEL_API void FVoxelData::CheckIsSingle<FVoxelValue   >(const FVoxelIntBox&);
+template VOXEL_API void FVoxelData::CheckIsSingle<FVoxelMaterial>(const FVoxelIntBox&);
 
 template<typename T>
 void FVoxelData::Get(TVoxelQueryZone<T>& GlobalQueryZone, int32 LOD) const
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
+	// TODO this is very inefficient for high LODs as we don't early exit when we already know we won't be reading any data in the chunk
+	// TODO BUG: this is also querying data multiple times if we have edited data!
 	FVoxelOctreeUtilities::IterateTreeInBounds(GetOctree(), GlobalQueryZone.Bounds, [&](FVoxelDataOctreeBase& InOctree)
 	{
 		if (!InOctree.IsLeafOrHasNoChildren()) return;
@@ -472,8 +474,10 @@ void FVoxelData::Get(TVoxelQueryZone<T>& GlobalQueryZone, int32 LOD) const
 		InOctree.GetFromGeneratorAndAssets<T>(*WorldGenerator, QueryZone, LOD);
 	});
 
-	// Handle data outside of the octree bounds (happens on edges with marching cubes, as it's querying N + 1 voxels with N a power of 2)
-	const FIntBox OctreeBounds = Octree->GetBounds();
+	// Handle data outside of the world bounds
+	// Can happen on edges with marching cubes, as it's querying N + 1 voxels with N a power of 2
+	// Note that we should probably use WorldBounds here, but doing so with a correct handling of Step is quite complex
+	const FVoxelIntBox OctreeBounds = Octree->GetBounds();
 	check(OctreeBounds.IsMultipleOf(GlobalQueryZone.Step));
 	if (!OctreeBounds.Contains(GlobalQueryZone.Bounds))
 	{
@@ -481,7 +485,17 @@ void FVoxelData::Get(TVoxelQueryZone<T>& GlobalQueryZone, int32 LOD) const
 		{
 			check(LocalBounds.IsMultipleOf(GlobalQueryZone.Step));
 			auto LocalQueryZone = GlobalQueryZone.ShrinkTo(LocalBounds);
-			WorldGenerator->Get(LocalQueryZone, LOD, FVoxelItemStack::Empty);
+			for (VOXEL_QUERY_ZONE_ITERATE(LocalQueryZone, X))
+			{
+				for (VOXEL_QUERY_ZONE_ITERATE(LocalQueryZone, Y))
+				{
+					for (VOXEL_QUERY_ZONE_ITERATE(LocalQueryZone, Z))
+					{
+						// Get will handle clamping to the world bounds
+						LocalQueryZone.Set(X, Y, Z, Get<T>(X, Y, Z, LOD));
+					}
+				}
+			}
 		}
 	}
 }
@@ -489,14 +503,18 @@ void FVoxelData::Get(TVoxelQueryZone<T>& GlobalQueryZone, int32 LOD) const
 template VOXEL_API void FVoxelData::Get<FVoxelValue   >(TVoxelQueryZone<FVoxelValue   >&, int32) const;
 template VOXEL_API void FVoxelData::Get<FVoxelMaterial>(TVoxelQueryZone<FVoxelMaterial>&, int32) const;
 
-TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FIntBox& InBounds, int32 LOD) const
+TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FVoxelIntBox& InBounds, int32 LOD) const
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	ensure(InBounds.IsValid());
 	
 	const auto Apply = [&](FVoxelDataOctreeBase& Tree)
 	{
-		const auto QueryBounds = InBounds.Overlap(Tree.GetBounds());
+		const auto TreeBounds = Tree.GetBounds();
+		ensureVoxelSlowNoSideEffects(InBounds.Intersect(TreeBounds));
+		
+		const auto QueryBounds = InBounds.Overlap(TreeBounds);
+		ensureVoxelSlowNoSideEffects(QueryBounds.IsValid());
 		
 		if (Tree.IsLeaf())
 		{
@@ -565,25 +583,16 @@ TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FIntBox& InBounds, int3
 		return TVoxelRange<FVoxelValue>::Union(RangeA, RangeB);
 	};
 	
-	const FIntBox OctreeBounds = Octree->GetBounds();
-	auto Result = FVoxelOctreeUtilities::ReduceInBounds<TVoxelRange<FVoxelValue>>(GetOctree(), InBounds.Overlap(OctreeBounds), Apply, Reduction);
+	// Note: even if WorldBounds doesn't contain InBounds, we don't need to check other values are the queries are always clamped to world bounds
+	const auto Result = FVoxelOctreeUtilities::ReduceInBounds<TVoxelRange<FVoxelValue>>(GetOctree(), WorldBounds.Clamp(InBounds), Apply, Reduction);
 	
-	if (!OctreeBounds.Contains(InBounds))
-	{
-		for (auto& LocalBounds : InBounds.Difference(OctreeBounds))
-		{
-			const auto LocalRange = TVoxelRange<FVoxelValue>(WorldGenerator->GetValueRange(LocalBounds, LOD, FVoxelItemStack::Empty));
-			Result = Result.IsSet() ? TVoxelRange<FVoxelValue>::Union(Result.GetValue(), LocalRange) : LocalRange;
-		}
-	}
-
 	ensure(Result.IsSet());
 	return Result.Get(FVoxelValue::Empty());
 }
 
-TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultValue, FName Name, const FIntBox& InBounds, int32 LOD) const
+TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultValue, FName Name, const FVoxelIntBox& InBounds, int32 LOD) const
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	ensure(InBounds.IsValid());
 	
 	const auto Apply = [&](FVoxelDataOctreeBase& Tree)
@@ -654,9 +663,9 @@ TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultVa
 
 void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
-	FVoxelReadScopeLock Lock(*this, FIntBox::Infinite, "GetSave");
+	FVoxelReadScopeLock Lock(*this, FVoxelIntBox::Infinite, "GetSave");
 
 	FVoxelSaveBuilder Builder(Depth);
 
@@ -668,6 +677,8 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave)
 		
 		if (CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread() != 0)
 		{
+			VOXEL_ASYNC_SCOPE_COUNTER("Diffing with generator");
+			
 			// Only if dirty and not compressed to a single value
 			if (Leaf.Values.IsDirty() && Leaf.Values.GetDataPtr())
 			{
@@ -678,7 +689,7 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave)
 				const FVoxelValue* RESTRICT const ExistingDataPtr = Leaf.Values.GetDataPtr();
 				FVoxelValue* RESTRICT const NewDataPtr = UniquePtr->GetDataPtr();
 
-				const FIntBox LeafBounds = Leaf.GetBounds();
+				const FVoxelIntBox LeafBounds = Leaf.GetBounds();
 				LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
 				{
 					const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
@@ -706,6 +717,8 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave)
 	});
 
 	{
+		VOXEL_ASYNC_SCOPE_COUNTER("Items");
+		
 		FScopeLock ItemLock(&ItemsSection);
 		for (auto& Item : Items)
 		{
@@ -717,7 +730,8 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave)
 	}
 
 	Builder.Save(OutSave);
-
+	
+	VOXEL_ASYNC_SCOPE_COUNTER("ClearData");
 	for (auto& Buffer : BuffersToDelete)
 	{
 		// For correct memory reports
@@ -725,14 +739,14 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave)
 	}
 }
 
-bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompressedWorldSaveImpl& Save, TArray<FIntBox>& OutBoundsToUpdate)
+bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompressedWorldSaveImpl& Save, TArray<FVoxelIntBox>& OutBoundsToUpdate)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	check(VoxelWorld && IsInGameThread());
 
 	{
-		FVoxelWriteScopeLock Lock(*this, FIntBox::Infinite, FUNCTION_FNAME);
+		FVoxelWriteScopeLock Lock(*this, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 		FVoxelOctreeUtilities::IterateEntireTree(*Octree, [&](auto& Tree)
 		{
 			if (Tree.IsLeafOrHasNoChildren())
@@ -746,7 +760,7 @@ bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompr
 	ClearData();
 	ClearDirtyFlag(); // Set by ClearData
 	
-	FVoxelWriteScopeLock Lock(*this, FIntBox::Infinite, FUNCTION_FNAME);
+	FVoxelWriteScopeLock Lock(*this, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 
 	FVoxelSaveLoader Loader(Save);
 
@@ -758,7 +772,7 @@ bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompr
 			return;
 		}
 
-		const FIntBox OctreeBounds = Tree.GetBounds();
+		const FVoxelIntBox OctreeBounds = Tree.GetBounds();
 		const FIntVector CurrentPosition = Loader.GetChunkPosition(ChunkIndex);
 		if (Tree.IsLeaf())
 		{
@@ -769,6 +783,8 @@ bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompr
 				
 				if (CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread() != 0)
 				{
+					VOXEL_ASYNC_SCOPE_COUNTER("Loading generator values");
+					
 					// If we are dirty and we are not a single value, or if we are a single special value
 					if (Leaf.Values.IsDirty() && (!Leaf.Values.IsSingleValue() || Leaf.Values.GetSingleValue() == FVoxelValue::Special()))
 					{
@@ -810,9 +826,12 @@ bool FVoxelData::LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompr
 	});
 	check(ChunkIndex == Loader.NumChunks() || Save.GetDepth() > Depth);
 
-	for (auto& Item : Loader.GetPlaceableItems(VoxelWorld))
 	{
-		AddItem(Item.ToSharedRef(), ERecordInHistory::No, true);
+		VOXEL_ASYNC_SCOPE_COUNTER("Load items");
+		for (auto& Item : Loader.GetPlaceableItems(VoxelWorld))
+		{
+			AddItem(Item.ToSharedRef(), ERecordInHistory::No, true);
+		}
 	}
 	
 	return !Loader.GetError();
@@ -837,7 +856,7 @@ static TAutoConsoleVariable<int32> CVarResetDataChunksWhenUndoingAddItem(
 	TEXT("If true, will reset all data chunks affected by AddItem when undoing it. If false, these chunks will be left untouched. In both cases, undo is imperfect"),
 	ECVF_Default);
 
-bool FVoxelData::Undo(TArray<FIntBox>& OutBoundsToUpdate)
+bool FVoxelData::Undo(TArray<FVoxelIntBox>& OutBoundsToUpdate)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_UNDO_REDO();
@@ -915,7 +934,7 @@ bool FVoxelData::Undo(TArray<FIntBox>& OutBoundsToUpdate)
 	return true;
 }
 
-bool FVoxelData::Redo(TArray<FIntBox>& OutBoundsToUpdate)
+bool FVoxelData::Redo(TArray<FVoxelIntBox>& OutBoundsToUpdate)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_UNDO_REDO();
@@ -1005,7 +1024,7 @@ void FVoxelData::ClearFrames()
 		ItemRedoFrames.Empty();
 	}
 
-	FVoxelWriteScopeLock Lock(*this, FIntBox::Infinite, FUNCTION_FNAME);
+	FVoxelWriteScopeLock Lock(*this, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 	FVoxelOctreeUtilities::IterateAllLeaves(GetOctree(), [&](FVoxelDataOctreeLeaf& Leaf)
 	{
 		if (Leaf.UndoRedo.IsValid())
@@ -1015,7 +1034,7 @@ void FVoxelData::ClearFrames()
 	});
 }
 
-void FVoxelData::SaveFrame(const FIntBox& Bounds)
+void FVoxelData::SaveFrame(const FVoxelIntBox& Bounds)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_UNDO_REDO_VOID();
@@ -1118,7 +1137,7 @@ bool FVoxelData::IsCurrentFrameEmpty()
 		}
 	}
 
-	FVoxelReadScopeLock Lock(*this, FIntBox::Infinite, "IsCurrentFrameEmpty");
+	FVoxelReadScopeLock Lock(*this, FVoxelIntBox::Infinite, "IsCurrentFrameEmpty");
 	bool bValue = true;
 	FVoxelOctreeUtilities::IterateLeavesByPred(GetOctree(), [&](auto&) { return bValue; }, [&](auto& Leaf)
 	{
@@ -1149,7 +1168,7 @@ public:
 	{
 		return Data.GetMaterial(FMath::RoundToInt(X), FMath::RoundToInt(Y), FMath::RoundToInt(Z), LOD);
 	}
-	FORCEINLINE TVoxelRange<v_flt> GetValueRangeImpl(const FIntBox&, int32, const FVoxelItemStack&) const
+	FORCEINLINE TVoxelRange<v_flt> GetValueRangeImpl(const FVoxelIntBox&, int32, const FVoxelItemStack&) const
 	{
 		return TVoxelRange<v_flt>::Infinite();
 	}
@@ -1175,8 +1194,8 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 	const FVoxelDataWorldGeneratorInstance_AddAssetItem PtrWorldGenerator(Data);
 	const FVoxelItemStack ItemStack(Leaf.GetItemHolder(), PtrWorldGenerator, 0);
 
-	TStackArray<FVoxelValue, VOXELS_PER_DATA_CHUNK> ValuesBuffer;
-	TStackArray<FVoxelMaterial, VOXELS_PER_DATA_CHUNK> MaterialsBuffer;
+	TVoxelStaticArray<FVoxelValue, VOXELS_PER_DATA_CHUNK> ValuesBuffer;
+	TVoxelStaticArray<FVoxelMaterial, VOXELS_PER_DATA_CHUNK> MaterialsBuffer;
 
 	const auto WriteAssetDataToBuffer = [&](auto& Buffer)
 	{
@@ -1223,7 +1242,7 @@ void FVoxelData::AddItem(
 	ERecordInHistory RecordInHistory, 
 	bool bDoNotModifyExistingDataChunks)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	const int32 MaxPlaceableItemsPerOctree = CVarMaxPlaceableItemsPerOctree.GetValueOnAnyThread();
 	FVoxelOctreeUtilities::IterateTreeInBounds(GetOctree(), Item->Bounds, [&](FVoxelDataOctreeBase& Tree) 
@@ -1296,7 +1315,7 @@ void FVoxelData::AddItem(
 
 bool FVoxelData::RemoveItem(FVoxelPlaceableItem* Item, ERecordInHistory RecordInHistory, bool bResetOverlappingChunksData, FString& OutError)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	check(Item);
 
 	{

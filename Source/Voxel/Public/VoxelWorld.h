@@ -8,13 +8,14 @@
 #include "PhysicsEngine/BodyInstance.h"
 #include "Components/PrimitiveComponent.h"
 
-#include "IntBox.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelIntBox.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelConfigEnums.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelWorldInterface.h"
 #include "VoxelEditorDelegatesInterface.h"
 #include "VoxelRender/VoxelMeshConfig.h"
+#include "VoxelRender/VoxelLODMaterials.h"
 #include "VoxelWorld.generated.h"
 
 class UVoxelLineBatchComponent;
@@ -108,6 +109,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Preview", meta = (Recreate))
 	bool bEnableFoliageInEditor = true;
 
+	// Turns this off if there's a significant lag when changing material properties
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Preview")
+	bool bAutomaticallyRefreshMaterials = true;
+
 	//////////////////////////////////////////////////////////////////////////////
 
 	// Size of a voxel in cm
@@ -165,7 +170,7 @@ public:
 	bool bUseCustomWorldBounds = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - World Size", meta = (Recreate, EditCondition = "bUseCustomWorldBounds"))
-	FIntBox CustomWorldBounds;
+	FVoxelIntBox CustomWorldBounds;
 	
 	//////////////////////////////////////////////////////////////////////////////
 
@@ -201,9 +206,16 @@ public:
 	UMaterialInterface* VoxelMaterial = nullptr;
 
 	// The material collection to use in Single Index or Double Index material config
-	// IMPL NOTE: RecreateRender on change as the max number of indices might be different
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (UpdateRenderer))
 	UVoxelMaterialCollectionBase* MaterialCollection;
+
+	// Per LOD material overrides
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|LOD", meta = (UpdateRenderer, DisplayName = "LOD Materials"))
+	TArray<FVoxelLODMaterials> LODMaterials; 
+
+	// Per LOD material collections overrides
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|LOD", meta = (UpdateRenderer, DisplayName = "LOD Material Collections"))
+	TArray<FVoxelLODMaterialCollections> LODMaterialCollections; 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|UVs", meta = (RecreateRender, DisplayName = "UV Config"))
 	EVoxelUVConfig UVConfig = EVoxelUVConfig::GlobalUVs;
@@ -215,18 +227,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Normals", meta = (RecreateRender))
 	EVoxelNormalConfig NormalConfig = EVoxelNormalConfig::GradientNormal;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Tessellation", meta = (RecreateRender))
-	bool bEnableTessellation = false;
+	// Hardness settings for RGB
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Hardness", meta = (DisplayName = "RGB Hardness"))
+	EVoxelRGBHardness RGBHardness = EVoxelRGBHardness::FiveWayBlend;
 
-	// Only used if Material Config = RGB
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Tessellation", meta = (UpdateRenderer, EditCondition ="bEnableTessellation"))
-	UMaterialInterface* TessellatedVoxelMaterial = nullptr;
-
-	// If true, will use the voxel material alpha as hardness if the material config is RGB
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Hardness")
-	bool bUseAlphaAsHardness = false;
-
-	// Material Index -> Hardness, for Single/Double index
+	// Material Index -> Hardness, for Single/Multi index, or RGB if Four/Five Way Blend
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Hardness")
 	TMap<FString, float> MaterialsHardness;
 
@@ -249,7 +254,7 @@ public:
 
 	// If true, will interpolate the adjacent voxels colors to find the exact vertex color
 	// In SingleIndex, will interpolate DataA/B/C
-	// In DoubleIndex, will interpolate Blend and Data
+	// In MultiIndex, will interpolate Blend and Wetness
 	// Twice as expensive, as requires to make twice as many material queries!
 	// Might not look as great if the material outside of the voxel surface isn't set to something nice
 	// Only works with marching cubes for now
@@ -266,6 +271,13 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Rendering", meta = (RecreateRender))
 	EVoxelRenderType RenderType = EVoxelRenderType::MarchingCubes;
+
+	// For marching cubes only
+	// If 0, will do nothing
+	// If above zero, will round the vertices positions to the nearest multiple of (1 / RenderSharpness)
+	// Visually, it will give a more "sharp" look, 1 being the sharpest, 2 3 etc being less and less sharp
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, UIMin = 0, UIMax = 10, ClampMin = 0))
+	int32 RenderSharpness = 0;
 	
 	// If true, a dynamic instance will be created for each chunk. Else, the material will be used directly
 	// Disable this if you want to use dynamic material instances as voxel world materials
@@ -318,7 +330,30 @@ public:
 	// Chunks with LOD <= this will have distance fields
 	// Be careful when increasing because of the memory usage caused by distance fields
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, EditCondition = "bGenerateDistanceFields"))
-	int32 MaxDistanceFieldLOD = 1;
+	int32 MaxDistanceFieldLOD = 4;
+
+	// By how many voxels to extend the chunks distance fields (on every side)
+	// This is needed so that distance fields nicely overlap
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 8, EditCondition = "bGenerateDistanceFields"))
+	int32 DistanceFieldBoundsExtension = 4;
+
+	// By how much to divide the distance field resolution
+	// By default it'll be 32x32x32: if the divisor is 2, it'll be 16x16x16, if 4 8x8x8...
+	// Increasing this decreases quality of the distance field, but saves huge amount of VRAM
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 1, ClampMax = 32, UIMin = 1, UIMax = 8, EditCondition = "bGenerateDistanceFields"))
+	int32 DistanceFieldResolutionDivisor = 1;
+	
+	/** Useful for reducing self shadowing from distance field methods when using world position offset to animate the mesh's vertices. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, EditCondition = "bGenerateDistanceFields"))
+	float DistanceFieldSelfShadowBias = 0.f;
+
+	// How far, in voxels, does the distance field need to be exact
+	// Be careful: the mesh processing time will scale linearly with this!
+	// Set as low as possible
+	// Increase if you are seeing artifacts
+	// The raytracing performance might also be better with a higher value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32, EditCondition = "bGenerateDistanceFields"))
+	int32 DistanceFieldQuality = 1;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bEnableTransitions = true;
@@ -547,7 +582,7 @@ public:
 	EVoxelPlayType GetPlayType() const { return PlayType; }
 	
 	FVoxelWorldGeneratorInit GetInitStruct() const;
-	FIntBox GetWorldBounds() const;
+	FVoxelIntBox GetWorldBounds() const;
 	FIntVector GetWorldOffset() const { return *WorldOffset; }
 	
 public:
@@ -568,6 +603,10 @@ public:
 	// Is this world created?
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
 	inline bool IsCreated() const { return bIsCreated; }
+
+	// Has the VoxelRenderer finished loading?
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
+	inline bool IsLoaded() const { return bIsLoaded; }
 
 public:
 	/**
@@ -662,6 +701,7 @@ private:
 	bool bIsToggled = false;
 
 	bool bIsCreated = false;
+	bool bIsLoaded = false;
 	EVoxelPlayType PlayType = EVoxelPlayType::Game;
 	double TimeOfCreation = 0;
 
@@ -725,7 +765,7 @@ public:
 	virtual void OnEndPIE(bool bIsSimulating) override;
 	virtual void OnPrepareToCleanseEditorObject(UObject* Object) override;
 	virtual void OnPreExit() override;
-	virtual void OnRefreshEditor() override;
+	virtual void OnApplyObjectToActor(UObject* Object, AActor* Actor) override;
 	//~ End IVoxelEditorDelegatesInterface Interface
 #endif
 };

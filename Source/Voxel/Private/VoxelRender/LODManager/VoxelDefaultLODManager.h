@@ -5,7 +5,8 @@
 #include "CoreMinimal.h"
 #include "VoxelTickable.h"
 #include "VoxelRender/IVoxelLODManager.h"
-#include "VoxelGlobals.h"
+#include "VoxelInvokerSettings.h"
+#include "VoxelMinimal.h"
 #include "VoxelAsyncWork.h"
 
 class FVoxelRenderOctreeAsyncBuilder;
@@ -32,8 +33,6 @@ struct FVoxelLODDynamicSettings
 	bool bEnableNavmesh;
 	bool bComputeVisibleChunksNavmesh;
 	int32 VisibleChunksNavmeshMaxLOD;
-
-	bool bEnableTessellation;
 };
 
 class FVoxelDefaultLODManager : public IVoxelLODManager, public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDefaultLODManager>
@@ -46,8 +45,8 @@ public:
 	~FVoxelDefaultLODManager();
 
 	//~ Begin IVoxelLODManager Interface
-	virtual int32 UpdateBounds(const FIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final;
-	virtual int32 UpdateBounds(const TArray<FIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final;
+	virtual int32 UpdateBounds(const FVoxelIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final;
+	virtual int32 UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final;
 
 	virtual void ForceLODsUpdate() override final;
 	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const override final;
@@ -73,8 +72,13 @@ private:
 	
 	TVoxelSharedPtr<FVoxelRenderOctree> Octree;
 
-	TMap<TWeakObjectPtr<UVoxelInvokerComponentBase>, FIntVector> InvokerComponentsLocalPositions;
-	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> InvokerComponents;
+	struct FVoxelInvokerInfo
+	{
+		FIntVector LocalPosition{ForceInit};
+		FVoxelInvokerSettings Settings;
+	};
+	TMap<TWeakObjectPtr<UVoxelInvokerComponentBase>, FVoxelInvokerInfo> InvokerComponentsInfos;
+	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> SortedInvokerComponents;
 
 	bool bAsyncTaskWorking = false;
 	bool bLODUpdateQueued = true;

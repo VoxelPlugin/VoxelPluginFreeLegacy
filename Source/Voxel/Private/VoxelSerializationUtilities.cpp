@@ -1,9 +1,9 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelSerializationUtilities.h"
+#include "VoxelUtilities/VoxelSerializationUtilities.h"
 #include "VoxelMaterial.h"
 #include "VoxelCustomVersion.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 template<typename T>
 FORCEINLINE FArchive& operator<<(FArchive& Ar, TVoxelValueImpl<T>& Value)
@@ -14,7 +14,7 @@ FORCEINLINE FArchive& operator<<(FArchive& Ar, TVoxelValueImpl<T>& Value)
 
 void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, TArray<FVoxelValue>& Values, uint32 ValueConfigFlag, int32 VoxelCustomVersion)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	if (Archive.IsLoading())
 	{
@@ -74,7 +74,7 @@ void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, TArray<FVo
 
 void FVoxelSerializationUtilities::SerializeMaterials(FArchive& Archive, TArray<FVoxelMaterial>& Materials, uint32 MaterialConfigFlag, int32 VoxelCustomVersion)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	if (Archive.IsLoading())
 	{
@@ -182,7 +182,7 @@ void FVoxelSerializationUtilities::SerializeMaterials(FArchive& Archive, TArray<
 
 void FVoxelSerializationUtilities::CompressData(const uint8* const UncompressedData, const int32 UncompressedDataNum, TArray<uint8>& CompressedData, ECompressionFlags CompressionFlags /*= (ECompressionFlags)(COMPRESS_ZLIB | COMPRESS_BiasSpeed)*/)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	int32 UncompressedSize = UncompressedDataNum;
 	int32 CompressedSize = 0;
@@ -229,7 +229,7 @@ void FVoxelSerializationUtilities::CompressData(const uint8* const UncompressedD
 
 bool FVoxelSerializationUtilities::DecompressData(const TArray<uint8>& CompressedData, TArray<uint8>& UncompressedData)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	if (CompressedData.Num() == 0)
 	{

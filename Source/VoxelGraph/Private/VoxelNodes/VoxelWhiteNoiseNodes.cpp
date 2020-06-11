@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelWhiteNoiseNodes.h"
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelGraphGenerator.h"
-#include "FastNoise.h"
+#include "VoxelFastNoise.h"
 
 
 UVoxelNode_2DWhiteNoise::UVoxelNode_2DWhiteNoise()

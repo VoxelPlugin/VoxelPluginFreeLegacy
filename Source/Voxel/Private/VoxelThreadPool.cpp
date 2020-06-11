@@ -2,7 +2,7 @@
 
 #include "VoxelThreadPool.h"
 #include "VoxelQueuedWork.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "IVoxelPool.h"
 
 #include "HAL/Event.h"
@@ -14,24 +14,60 @@
 DECLARE_DWORD_COUNTER_STAT(TEXT("VoxelThreadPoolDummyCounter"), STAT_VoxelThreadPoolDummyCounter, STATGROUP_ThreadPoolAsyncTasks);
 DECLARE_DWORD_COUNTER_STAT(TEXT("Recomputed Voxel Tasks Priorities"), STAT_RecomputedVoxelTasksPriorities, STATGROUP_VoxelCounters);
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelQueuedThreadPoolStats& FVoxelQueuedThreadPoolStats::Get()
+{
+	static FVoxelQueuedThreadPoolStats Stats;
+	return Stats;
+}
+
+void FVoxelQueuedThreadPoolStats::Report(FName Name, double Time)
+{
+	FScopeLock Lock(&Section);
+	Times.FindOrAdd(Name) += Time;
+}
+
+void FVoxelQueuedThreadPoolStats::LogTimes() const
+{
+	FScopeLock Lock(&Section);
+	LOG_VOXEL(Log, TEXT("#############################################"));
+	LOG_VOXEL(Log, TEXT("########## Voxel Thread Pool Stats ##########"));
+	LOG_VOXEL(Log, TEXT("#############################################"));
+	for (const auto& It : Times)
+	{
+		LOG_VOXEL(Log, TEXT("%s: %fs"), *It.Key.ToString(), It.Value);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 class FScopeLockWithStats
 {
 public:
 	FScopeLockWithStats(FCriticalSection& InSynchObject)
 		: SynchObject(InSynchObject)
 	{
-		VOXEL_SCOPE_COUNTER("Lock");
+		VOXEL_ASYNC_SCOPE_COUNTER("Lock");
 		SynchObject.Lock();
 	}
 	~FScopeLockWithStats()
 	{
-		VOXEL_SCOPE_COUNTER("Unlock");
+		VOXEL_ASYNC_SCOPE_COUNTER("Unlock");
 		SynchObject.Unlock();
 	}
 
 private:
 	FCriticalSection& SynchObject;
 };
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 class VOXEL_API FVoxelQueuedThread : public FRunnable
 {
@@ -56,6 +92,10 @@ private:
 
 	const TUniquePtr<FRunnableThread> Thread;
 };
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 FVoxelQueuedThread::FVoxelQueuedThread(FVoxelQueuedThreadPool* Pool, const FString& ThreadName, uint32 StackSize, EThreadPriority ThreadPriority)
 	: ThreadName(ThreadName)
@@ -92,7 +132,7 @@ uint32 FVoxelQueuedThread::Run()
 		bool bContinueWaiting = true;
 		while (bContinueWaiting)
 		{
-			VOXEL_SCOPE_COUNTER("FVoxelQueuedThread::Run.WaitForWork");
+			VOXEL_ASYNC_VERBOSE_SCOPE_COUNTER("FVoxelQueuedThread::Run.WaitForWork");
 			
 			// Wait for some work to do
 			bContinueWaiting = !DoWorkEvent->Wait(10);
@@ -104,7 +144,17 @@ uint32 FVoxelQueuedThread::Run()
 
 			while (LocalQueuedWork)
 			{
+				const FName Name = LocalQueuedWork->Name;
+				
+				const double StartTime = FPlatformTime::Seconds();
+				
 				LocalQueuedWork->DoThreadedWork();
+				// IMPORTANT: LocalQueuedWork should be considered as deleted after this line
+				
+				const double EndTime = FPlatformTime::Seconds();
+
+				FVoxelQueuedThreadPoolStats::Get().Report(Name, EndTime - StartTime);
+				
 				LocalQueuedWork = ThreadPool->ReturnToPoolOrGetNextJob(this);
 			}
 		}
@@ -305,7 +355,7 @@ void FVoxelQueuedThreadPool::AddQueuedWorks(const TArray<IVoxelQueuedWork*>& InQ
 
 IVoxelQueuedWork* FVoxelQueuedThreadPool::ReturnToPoolOrGetNextJob(FVoxelQueuedThread* InQueuedThread)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	check(InQueuedThread);
 
@@ -316,7 +366,7 @@ IVoxelQueuedWork* FVoxelQueuedThreadPool::ReturnToPoolOrGetNextJob(FVoxelQueuedT
 		check(!Settings.bConstantPriorities);
 		check(!TimeToDie);
 
-		VOXEL_SCOPE_COUNTER("Voxel Thread Pool Recompute Priorities");
+		VOXEL_ASYNC_SCOPE_COUNTER("Voxel Thread Pool Recompute Priorities");
 
 		// Find best work. We recompute every priorities as the priorities can change (eg, the camera might have moved)
 		int32 BestIndex = -1;
@@ -363,7 +413,7 @@ IVoxelQueuedWork* FVoxelQueuedThreadPool::ReturnToPoolOrGetNextJob(FVoxelQueuedT
 
 void FVoxelQueuedThreadPool::AbandonAllTasks()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	ensure(!TimeToDie);
 	

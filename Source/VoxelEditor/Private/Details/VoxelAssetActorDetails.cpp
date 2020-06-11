@@ -73,7 +73,6 @@ void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayou
 		TAttribute<bool>::Create([=]()
 		{
 			return AssetActor.IsValid()
-				&& AssetActor->GetWorld()->WorldType == EWorldType::Editor
 				&& AssetActor->WorldGenerator.IsValid()
 				&& AssetActor->PreviewWorld
 				&& AssetActor->PreviewWorld->IsCreated();

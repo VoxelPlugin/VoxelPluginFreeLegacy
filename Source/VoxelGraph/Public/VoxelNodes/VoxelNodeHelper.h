@@ -314,6 +314,27 @@ protected:
 		ensure(InIncrement > 0);
 		Increment = InIncrement;
 	}
+	
+	void AddVectorInput(const FString& Name, const FString& ToolTip, EVoxelPinCategory Category = EVoxelPinCategory::Float)
+	{
+		Pins.InputPins.Add({ *FString(Name + " X"), Category, ToolTip });
+		Pins.InputPins.Add({ *FString(Name + " Y"), Category, ToolTip });
+		Pins.InputPins.Add({ *FString(Name + " Z"), Category, ToolTip });
+	}
+	void AddVector2DInput(const FString& Name, const FString& ToolTip, EVoxelPinCategory Category = EVoxelPinCategory::Float)
+	{
+		Pins.InputPins.Add({ *FString(Name + " X"), Category, ToolTip });
+		Pins.InputPins.Add({ *FString(Name + " Y"), Category, ToolTip });
+	}
+	void AddInput(const FString& Name, const FString& ToolTip, EVoxelPinCategory Category = EVoxelPinCategory::Float)
+	{
+		Pins.InputPins.Add({ *Name, Category, ToolTip });
+	}
+	
+	void AddOutput(const FString& Name, const FString& ToolTip, EVoxelPinCategory Category = EVoxelPinCategory::Float)
+	{
+		Pins.OutputPins.Add({ *Name, Category, ToolTip });
+	}
 
 private:
 	FVoxelPinsHelper Pins;

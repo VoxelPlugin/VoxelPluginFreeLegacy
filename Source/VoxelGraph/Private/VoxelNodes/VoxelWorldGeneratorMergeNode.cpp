@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelWorldGeneratorMergeNode.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
-#include "VoxelWorldGeneratorInstance.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
 #include "VoxelGraphOutputsConfig.h"
 #include "VoxelNodeFunctions.h"
 

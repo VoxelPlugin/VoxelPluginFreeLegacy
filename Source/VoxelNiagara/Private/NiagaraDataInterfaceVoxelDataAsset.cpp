@@ -4,7 +4,7 @@
 #include "NiagaraShader.h"
 #include "ShaderParameterUtils.h"
 #include "VoxelAssets/VoxelDataAsset.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 bool FNDIVoxelDataAsset_InstanceData::Init(UNiagaraDataInterfaceVoxelDataAsset* Interface, FNiagaraSystemInstance* SystemInstance)
 {
@@ -105,6 +105,10 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetFunctions(TArray<FNiagaraFunctionSi
 		Sig.bRequiresContext = false;
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Asset")));
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("Position")));
+		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetFloatDef(), TEXT("R")));
+		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetFloatDef(), TEXT("G")));
+		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetFloatDef(), TEXT("B")));
+		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetFloatDef(), TEXT("A")));
 		Sig.SetDescription(VOXEL_LOCTEXT("Color"));
 
 		OutFunctions.Add(Sig);
@@ -116,6 +120,9 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetFunctions(TArray<FNiagaraFunctionSi
 		Sig.bRequiresContext = false;
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Asset")));
 		Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetIntDef(), TEXT("Index")));
+		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetFloatDef(), TEXT("X")));
+		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetFloatDef(), TEXT("Y")));
+		Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetFloatDef(), TEXT("Z")));
 		Sig.SetDescription(VOXEL_LOCTEXT("Position"));
 
 		OutFunctions.Add(Sig);

@@ -13,7 +13,7 @@ public class VoxelGraphEditor : ModuleRules
 
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
+        PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
         
         DynamicallyLoadedModuleNames.AddRange(
             new string[] {

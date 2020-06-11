@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelDiff.h"
 #include "UObject/Object.h"
 #include "VoxelMultiplayerInterface.generated.h"

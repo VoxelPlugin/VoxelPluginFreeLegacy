@@ -54,6 +54,21 @@ struct FVoxelDataMemoryUsageInMB
 	float CachedFoliage = 0;
 };
 
+USTRUCT(BlueprintType)
+struct FVoxelFindClosestNonEmptyVoxelResult
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	bool bSuccess = false;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	FIntVector Position = FIntVector(ForceInit);
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	float Value = 0;
+};
+
 UCLASS()
 class VOXEL_API UVoxelDataTools : public UBlueprintFunctionLibrary
 {
@@ -116,10 +131,10 @@ public:
 
 	// Cache the values in the bounds
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World"))
-	static void CacheValues(AVoxelWorld* World, FIntBox Bounds);
+	static void CacheValues(AVoxelWorld* World, FVoxelIntBox Bounds);
 	// Cache the materials in the bounds
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World"))
-	static void CacheMaterials(AVoxelWorld* World, FIntBox Bounds);
+	static void CacheMaterials(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 public:
 	/**
@@ -184,7 +199,7 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 	// Cache the materials in the bounds
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
@@ -192,7 +207,7 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 
 public:
@@ -275,12 +290,12 @@ public:
 
 public:
 	// Bounds.Extend(2) must be locked!
-	// Bounds can be FIntBox::Infinite
-	static void RoundVoxelsImpl(FVoxelData& Data, const FIntBox& Bounds);
+	// Bounds can be FVoxelIntBox::Infinite
+	static void RoundVoxelsImpl(FVoxelData& Data, const FVoxelIntBox& Bounds);
 	
 	// Round voxels that don't have an impact on the surface. Same visual result but will lead to better compression
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data")
-	static void RoundVoxels(AVoxelWorld* World, FIntBox Bounds);
+	static void RoundVoxels(AVoxelWorld* World, FVoxelIntBox Bounds);
 	
 	// Round voxels that don't have an impact on the surface. Same visual result but will lead to better compression
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
@@ -288,18 +303,18 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 
 public:
 	// Bounds.Extend(1) must be locked!
-	// Bounds can be FIntBox::Infinite
-	static void ClearUnusedMaterialsImpl(FVoxelData& Data, const FIntBox& Bounds);
+	// Bounds can be FVoxelIntBox::Infinite
+	static void ClearUnusedMaterialsImpl(FVoxelData& Data, const FVoxelIntBox& Bounds);
 	
 	// Remove materials that do not affect the surface. Same visual result but will lead to better compression.
 	// Digging will look different.
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data")
-	static void ClearUnusedMaterials(AVoxelWorld* World, FIntBox Bounds);
+	static void ClearUnusedMaterials(AVoxelWorld* World, FVoxelIntBox Bounds);
 	
 	// Remove materials that do not affect the surface. Same visual result but will lead to better compression.
 	// Digging will look different.
@@ -308,14 +323,14 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 
 public:
 	static void GetVoxelsValueAndMaterialImpl(
 		FVoxelData& Data,
 		TArray<FVoxelValueMaterial>& Voxels,
-		const FIntBox& Bounds,
+		const FVoxelIntBox& Bounds,
 		const TArray<FIntVector>& Positions);
 
 	// Read a large number of voxels at a time
@@ -341,48 +356,48 @@ public:
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World"))
-	static void ClearCachedValues(AVoxelWorld* World, FIntBox Bounds);
+	static void ClearCachedValues(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void ClearCachedValuesAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World"))
-	static void ClearCachedMaterials(AVoxelWorld* World, FIntBox Bounds);
+	static void ClearCachedMaterials(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void ClearCachedMaterialsAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World"))
-	static void CheckForSingleValues(AVoxelWorld* World, FIntBox Bounds);
+	static void CheckForSingleValues(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void CheckForSingleValuesAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World"))
-	static void CheckForSingleMaterials(AVoxelWorld* World, FIntBox Bounds);
+	static void CheckForSingleMaterials(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void CheckForSingleMaterialsAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 
 public:
@@ -405,7 +420,7 @@ public:
 	template<typename T1, typename T2>
 	static void MergeDistanceFieldImpl(
 		FVoxelData& Data,
-		const FIntBox& Bounds,
+		const FVoxelIntBox& Bounds,
 		T1 GetSDF,
 		T2 MergeSDF,
 		float MaxDistance,
@@ -413,12 +428,12 @@ public:
 
 public:
 	// Requires write lock.
-	static void RoundToGeneratorImpl(FVoxelData& Data, const FIntBox& Bounds, bool bPreserveNormals);
+	static void RoundToGeneratorImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, bool bPreserveNormals);
 	
 	// Will revert the values who don't have a voxel neighbor with a different sign from the generator value
 	// Will ignore items when computing generator values
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World"))
-	static void RoundToGenerator(AVoxelWorld* World, FIntBox Bounds, bool bPreserveNormals = true);
+	static void RoundToGenerator(AVoxelWorld* World, FVoxelIntBox Bounds, bool bPreserveNormals = true);
 	
 	// Will revert the values who don't have a voxel neighbor with a different sign from the generator value
 	// Will ignore items when computing generator values
@@ -427,17 +442,17 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		FIntBox Bounds, 
+		FVoxelIntBox Bounds, 
 		bool bPreserveNormals = true,
 		bool bHideLatentWarnings = false);
 	
 public:
 	// Requires write lock.
-	static void CheckIfSameAsGeneratorImpl(FVoxelData& Data, const FIntBox& Bounds);
+	static void CheckIfSameAsGeneratorImpl(FVoxelData& Data, const FVoxelIntBox& Bounds);
 	
 	// Will undirty the chunks identical to the generator
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World"))
-	static void CheckIfSameAsGenerator(AVoxelWorld* World, FIntBox Bounds);
+	static void CheckIfSameAsGenerator(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	// Will undirty the chunks identical to the generator
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
@@ -445,28 +460,28 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		FIntBox Bounds, 
+		FVoxelIntBox Bounds, 
 		bool bHideLatentWarnings = false);
 
 public:
 	template<typename T>
-	static void SetBoxAsDirtyImpl(FVoxelData& Data, const FIntBox& Bounds, bool bTryCompressToSingleValue);
+	static void SetBoxAsDirtyImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, bool bTryCompressToSingleValue);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World"))
-	static void SetBoxAsDirty(AVoxelWorld* World, FIntBox Bounds, bool bDirtyValues = true, bool bDirtyMaterials = true);
+	static void SetBoxAsDirty(AVoxelWorld* World, FVoxelIntBox Bounds, bool bDirtyValues = true, bool bDirtyMaterials = true);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
 	static void SetBoxAsDirtyAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World, 
-		FIntBox Bounds, 
+		FVoxelIntBox Bounds, 
 		bool bDirtyValues = true, 
 		bool bDirtyMaterials = true,
 		bool bHideLatentWarnings = false);
 
 public:
-	static FIntBox GetLevelToolBounds(const FVoxelVector& Position, float Radius, float Height, bool bAdditive); 
+	static FVoxelIntBox GetLevelToolBounds(const FVoxelVector& Position, float Radius, float Height, bool bAdditive); 
 
 public:
 	// Falloff: between 0 and 1
@@ -502,4 +517,44 @@ public:
 		bool bAdditive = false,
 		bool bConvertToVoxelSpace = true,
 		bool bHideLatentWarnings = false);
+
+public:
+	// All neighbors of Position need to be locked (ie, FVoxelIntBox(Position, Position + 1))
+	static FVoxelFindClosestNonEmptyVoxelResult FindClosestNonEmptyVoxelImpl(
+		FVoxelData& Data,
+		const FVoxelVector& Position);
+	
+	/**
+	 * Finds the closest voxel to Position that is not empty
+	 * This is useful to do edits, or to query the material at a position
+	 *
+	 * @param		World					The voxel world
+	 * @param		Position				The position, in world space if bConvertToVoxelSpace is true
+	 * @param		bConvertToVoxelSpace	If true, will convert Position to voxel space. If false, assumes it's already in voxels
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bConvertToVoxelSpace"))
+	static void FindClosestNonEmptyVoxel(
+		FVoxelFindClosestNonEmptyVoxelResult& Result,
+		AVoxelWorld* World,
+		FVector Position,
+		bool bConvertToVoxelSpace = true);
+	
+	/**
+	 * Finds the closest voxel to Position that is not empty
+	 * This is useful to do edits, or to query the material at a position
+	 *
+	 * @param		World					The voxel world
+	 * @param		Position				The position, in world space if bConvertToVoxelSpace is true
+	 * @param		bConvertToVoxelSpace	If true, will convert Position to voxel space. If false, assumes it's already in voxels
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Sphere Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bConvertToVoxelSpace, bHideLatentWarnings"))
+	static void FindClosestNonEmptyVoxelAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		FVoxelFindClosestNonEmptyVoxelResult& Result,
+		AVoxelWorld* World,
+		FVector Position,
+		bool bConvertToVoxelSpace = true,
+		bool bHideLatentWarnings = false);
+	
 };

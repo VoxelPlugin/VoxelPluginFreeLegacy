@@ -6,13 +6,17 @@
 #include "VoxelRender/VoxelMaterialInterface.h"
 #include "VoxelRender/VoxelToolRendering.h"
 #include "VoxelDebug/VoxelDebugManager.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 #include "Engine/Engine.h"
 #include "Materials/Material.h"
 #include "TessellationRendering.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "DistanceFieldAtlas.h"
+#include "PrimitiveSceneInfo.h"
+
+// Needed to cancel motion blur when reusing proxies
+#include "Renderer/Private/ScenePrivate.h"
 
 #define NOT_SHIPPING_NOR_TEST !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
@@ -52,7 +56,7 @@ FVoxelProcMeshBuffersRenderData::FVoxelProcMeshBuffersRenderData(
 	: Buffers(Buffers)
 	, VertexFactory(FeatureLevel, "FVoxelProcMeshBuffersRenderData")
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_RENDER_FUNCTION_COUNTER();
 	check(IsInRenderingThread());
 
 	{
@@ -126,7 +130,7 @@ TVoxelSharedRef<FVoxelProcMeshBuffersRenderData> FVoxelProcMeshBuffersRenderData
 }
 FVoxelProcMeshBuffersRenderData::~FVoxelProcMeshBuffersRenderData()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_RENDER_FUNCTION_COUNTER();
 	check(IsInRenderingThread());
 
 	auto& InitBuffers = const_cast<FVoxelProcMeshBuffers&>(*Buffers);
@@ -164,7 +168,6 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 	, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 	, LOD(Component->LOD)
 	, DebugChunkId(Component->DebugChunkId)
-	, FrameToClearPreviousLocalToWorld(Component->bNewInit ? GFrameNumber : 0)
 	, WeakToolRenderingManager(Component->ToolRenderingManager)
 	, CollisionResponse(Component->GetCollisionResponseToChannels())
 	, CollisionTraceFlag(Component->CollisionTraceFlag)
@@ -173,9 +176,8 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 	
 	// Proxy settings
 	bSupportsDistanceFieldRepresentation = true;
+	DistanceFieldSelfShadowBias = Component->DistanceFieldSelfShadowBias;
 	bVerifyUsedMaterials = false; // Fails with tool rendering
-
-	Component->bNewInit = false;
 
 	FinishSectionsUpdatesTime = Component->LastFinishSectionsUpdatesTime;
 	CreateSceneProxyTime = FPlatformTime::Seconds();
@@ -236,6 +238,17 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 		ensureMsgf(bTessellatedMaterial == bHasAdjacency, TEXT("Invalid tessellated material or non tessellated material is tessellated"));
 		NewSection.bRequiresAdjacencyInformation = bTessellatedMaterial && bHasAdjacency;
 	}
+
+	{
+		// Hack to cancel motion blur when mesh components are reused in the same frame
+		const FMatrix PreviousLocalToWorld = Component->GetRenderMatrix();
+		ENQUEUE_RENDER_COMMAND(UpdateTransformCommand)(
+			[this, PreviousLocalToWorld](FRHICommandListImmediate& RHICmdList)
+			{
+				FScene& Scene = static_cast<FScene&>(GetScene());
+				Scene.VelocityData.OverridePreviousTransform(GetPrimitiveComponentId(), PreviousLocalToWorld);
+			});
+	}
 }
 
 FVoxelProceduralMeshSceneProxy::~FVoxelProceduralMeshSceneProxy()
@@ -253,7 +266,7 @@ FVoxelProceduralMeshSceneProxy::~FVoxelProceduralMeshSceneProxy()
 
 void FVoxelProceduralMeshSceneProxy::CreateRenderThreadResources()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_RENDER_FUNCTION_COUNTER();
 	check(IsInRenderingThread());
 	
 	for (auto& Section : Sections)
@@ -265,32 +278,29 @@ void FVoxelProceduralMeshSceneProxy::CreateRenderThreadResources()
 			Section.RenderData = FVoxelProcMeshBuffersRenderData::GetRenderData(Section.Buffers.ToSharedRef(), GetScene().GetFeatureLevel());
 		}
 	}
-#if ENABLE_VOXEL_DISTANCE_FIELDS
+	
 	if (DistanceFieldData.IsValid())
 	{
 		const_cast<FDistanceFieldVolumeTexture&>(DistanceFieldData->VolumeTexture).Initialize(reinterpret_cast<UStaticMesh*>(Component)); // Horrible hack, but w/e if it works :)
 		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelMeshDistanceFieldMemory, DistanceFieldData->GetResourceSizeBytes());
 	}
-#endif
 }
 
 void FVoxelProceduralMeshSceneProxy::DestroyRenderThreadResources()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_RENDER_FUNCTION_COUNTER();
 	check(IsInRenderingThread());
 	
 	for (auto& Section : Sections)
 	{
 		Section.RenderData.Reset();
 	}
-	
-#if ENABLE_VOXEL_DISTANCE_FIELDS
+
 	if (DistanceFieldData.IsValid())
 	{
 		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelMeshDistanceFieldMemory, DistanceFieldData->GetResourceSizeBytes());
 		const_cast<FDistanceFieldVolumeTexture&>(DistanceFieldData->VolumeTexture).Release();
 	}
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -299,10 +309,11 @@ void FVoxelProceduralMeshSceneProxy::DestroyRenderThreadResources()
 
 void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_RENDER_FUNCTION_COUNTER();
 
 	const auto& EngineShowFlags = ViewFamily.EngineShowFlags;
-
+	
+#if NOT_SHIPPING_NOR_TEST
 	// Hack to see the delay between update call and actual mesh render update
 	if (!bLoggedTime && CVarLogProcMeshDelays.GetValueOnRenderThread() != 0 && FinishSectionsUpdatesTime > 0)
 	{
@@ -314,19 +325,23 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 		bLoggedTime = true;
 	}
 
-#if NOT_SHIPPING_NOR_TEST
 	// Render bounds
-	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 	{
-		if (VisibilityMap & (1 << ViewIndex))
+		VOXEL_SLOW_SCOPE_COUNTER("Render Bounds");
+		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 		{
-			RenderBounds(Collector.GetPDI(ViewIndex), EngineShowFlags, GetBounds(), IsSelected());
+			if (VisibilityMap & (1 << ViewIndex))
+			{
+				RenderBounds(Collector.GetPDI(ViewIndex), EngineShowFlags, GetBounds(), IsSelected());
+			}
 		}
 	}
+	
 	if (IsCollisionView(EngineShowFlags))
 	{
 		if (ShouldDrawComplexCollisions(EngineShowFlags))
 		{
+			VOXEL_SLOW_SCOPE_COUNTER("Complex Collisons");
 			for (auto& Section : Sections)
 			{
 				if (!Section.bEnableCollisions_Debug) continue;
@@ -347,6 +362,7 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 	}
 	else if (FVoxelDebugManager::ShowCollisionAndNavmeshDebug())
 	{
+		VOXEL_SLOW_SCOPE_COUNTER("Collision and Navmesh Debug");
 		for (auto& Section : Sections)
 		{
 			if (!Section.RenderData.IsValid()) continue;
@@ -377,12 +393,24 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 #endif
 	{
 		const bool bForceDisableTessellation = !(EngineShowFlags.Materials || EngineShowFlags.Wireframe); // else crash in eg lighting
-		
+
 		for (const auto& Section : Sections)
 		{
-			if (!Section.bSectionVisible || !ensure(Section.Material->GetMaterial()->IsValidLowLevel())) continue;
+			VOXEL_SLOW_SCOPE_COUNTER("Render Section");
+			
+			if (!Section.bSectionVisible)
+			{
+				continue;
+			}
 
-			auto* MaterialProxy = Section.Material->GetMaterial()->GetRenderProxy();
+			auto* Material = Section.Material->GetMaterial();
+			if (!Material)
+			{
+				// Will happen in force delete
+				continue;
+			}
+			
+			auto* MaterialProxy = Material->GetRenderProxy();
 
 			if (CVarShowMeshSections.GetValueOnRenderThread() != 0)
 			{
@@ -400,17 +428,21 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 				if (!(VisibilityMap & (1 << ViewIndex))) continue;
 
 				FMeshBatch& Mesh = DrawSection(Collector, Section, MaterialProxy, !bForceDisableTessellation, EngineShowFlags.Wireframe);
-				Collector.AddMesh(ViewIndex, Mesh);
+
+				{
+					VOXEL_SLOW_SCOPE_COUNTER("Collector.AddMesh");
+					Collector.AddMesh(ViewIndex, Mesh);
+				}
 
 				INC_DWORD_STAT(STAT_NumVoxelDrawCalls);
 				INC_DWORD_STAT_BY(STAT_NumVoxelTrianglesDrawn, Section.Buffers->GetNumIndices() / 3);
 			}
 		}
-
+		
 		const auto ToolRenderingManager = WeakToolRenderingManager.Pin();
 		if (ToolRenderingManager.IsValid())
 		{
-			VOXEL_SCOPE_COUNTER("Render Tools");
+			VOXEL_RENDER_SCOPE_COUNTER("Render Tools");
 
 			TArray<FVoxelToolRendering, TInlineAllocator<64>> Tools;
 
@@ -426,11 +458,20 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 
 			for (auto& Tool : Tools)
 			{
-				const auto Material =
-					Tool.Material.IsValid() && ensure(Tool.Material->GetMaterial()->IsValidLowLevel())
-					? Tool.Material
-					: FVoxelMaterialInterfaceManager::Get().DefaultMaterial();
-				auto* MaterialProxy = Material->GetMaterial()->GetRenderProxy();
+				UMaterialInterface* Material = nullptr;
+				if (Tool.Material.IsValid())
+				{
+					Material = Tool.Material->GetMaterial();
+				}
+				if (!Material)
+				{
+					Material = FVoxelMaterialInterfaceManager::Get().DefaultMaterial()->GetMaterial();
+				}
+				if (!ensure(Material))
+				{
+					continue;
+				}
+				auto* MaterialProxy = Material->GetRenderProxy();
 
 				// Hack to fix translucent rendering when the tool material was changed but the mesh wasn't updated
 				const_cast<FMaterialRelevance&>(MaterialRelevance) |= Material->GetMaterial()->GetRelevance_Concurrent(GetScene().GetFeatureLevel());
@@ -467,8 +508,8 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 #if RHI_RAYTRACING
 void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext& Context, TArray<FRayTracingInstance>& OutRayTracingInstances)
 {
-	VOXEL_FUNCTION_COUNTER();
-	
+	VOXEL_RENDER_FUNCTION_COUNTER();
+
 	for (const auto& Section : Sections)
 	{
 		if (Section.bSectionVisible && ensure(Section.Material->GetMaterial()->IsValidLowLevel()))
@@ -492,13 +533,9 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingMa
 				MeshBatch.DepthPriorityGroup = SDPG_World;
 				MeshBatch.bCanApplyViewModeOverrides = false;
 
-				FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Context.RayTracingMeshResourceCollector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-				InitDynamicPrimitiveUniformBuffer(DynamicPrimitiveUniformBuffer);
-
 				FMeshBatchElement& BatchElement = MeshBatch.Elements[0];
 				BatchElement.IndexBuffer = &Section.Buffers->IndexBuffer;
-				BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
-
+				
 				BatchElement.FirstIndex = 0;
 				BatchElement.NumPrimitives = Section.Buffers->IndexBuffer.GetNumIndices() / 3;
 				BatchElement.MinVertexIndex = 0;
@@ -558,7 +595,6 @@ uint32 FVoxelProceduralMeshSceneProxy::GetAllocatedSize() const
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#if ENABLE_VOXEL_DISTANCE_FIELDS
 void FVoxelProceduralMeshSceneProxy::GetDistancefieldAtlasData(
 	FBox& LocalVolumeBounds, 
 	FVector2D& OutDistanceMinMax, 
@@ -567,11 +603,8 @@ void FVoxelProceduralMeshSceneProxy::GetDistancefieldAtlasData(
 	bool& bOutBuiltAsIfTwoSided, 
 	bool& bMeshWasPlane, 
 	float& SelfShadowBias,
-	TArray<FMatrix>& ObjectLocalToWorldTransforms
-#if ENGINE_MINOR_VERSION >= 23
-	, bool& bOutThrottled
-#endif
-) const
+	TArray<FMatrix>& ObjectLocalToWorldTransforms,
+	bool& bOutThrottled) const
 {
 	if (DistanceFieldData.IsValid())
 	{
@@ -583,9 +616,7 @@ void FVoxelProceduralMeshSceneProxy::GetDistancefieldAtlasData(
 		bMeshWasPlane = DistanceFieldData->bMeshWasPlane;
 		ObjectLocalToWorldTransforms.Add(GetLocalToWorld());
 		SelfShadowBias = DistanceFieldSelfShadowBias;
-#if ENGINE_MINOR_VERSION >= 23
 		bOutThrottled = DistanceFieldData->VolumeTexture.Throttled();
-#endif
 	}
 	else
 	{
@@ -596,9 +627,7 @@ void FVoxelProceduralMeshSceneProxy::GetDistancefieldAtlasData(
 		bOutBuiltAsIfTwoSided = false;
 		bMeshWasPlane = false;
 		SelfShadowBias = 0;
-#if ENGINE_MINOR_VERSION >= 23
 		bOutThrottled = false;
-#endif
 	}
 }
 
@@ -623,7 +652,6 @@ bool FVoxelProceduralMeshSceneProxy::HasDynamicIndirectShadowCasterRepresentatio
 {
 	return bCastsDynamicIndirectShadow && FVoxelProceduralMeshSceneProxy::HasDistanceFieldRepresentation();
 }
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -636,6 +664,8 @@ FMeshBatch& FVoxelProceduralMeshSceneProxy::DrawSection(
 	bool bEnableTessellation,
 	bool bWireframe) const
 {
+	VOXEL_RENDER_FUNCTION_COUNTER();
+	
 	check(MaterialRenderProxy);
 	check(Section.RenderData.IsValid());
 
@@ -651,13 +681,9 @@ FMeshBatch& FVoxelProceduralMeshSceneProxy::DrawSection(
 #if NOT_SHIPPING_NOR_TEST
 	Mesh.VisualizeLODIndex = LOD % GEngine->LODColorationColors.Num();
 #endif
-	
-	FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-	InitDynamicPrimitiveUniformBuffer(DynamicPrimitiveUniformBuffer);
 
 	FMeshBatchElement& BatchElement = Mesh.Elements[0];
 	BatchElement.IndexBuffer = &Section.Buffers->IndexBuffer;
-	BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
 	BatchElement.FirstIndex = 0;
 	BatchElement.NumPrimitives = Section.Buffers->IndexBuffer.GetNumIndices() / 3;
 	BatchElement.MinVertexIndex = 0;
@@ -684,45 +710,6 @@ FMeshBatch& FVoxelProceduralMeshSceneProxy::DrawSection(
 #endif
 
 	return Mesh;
-}
-
-void FVoxelProceduralMeshSceneProxy::InitDynamicPrimitiveUniformBuffer(FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer) const
-{
-	bool bHasPrecomputedVolumetricLightmap;
-	FMatrix PreviousLocalToWorld;
-	int32 SingleCaptureIndex;
-#if ENGINE_MINOR_VERSION >= 23
-	bool bOutputVelocity;
-#endif
-	GetScene().GetPrimitiveUniformShaderParameters_RenderThread(
-		GetPrimitiveSceneInfo(),
-		bHasPrecomputedVolumetricLightmap,
-		PreviousLocalToWorld,
-		SingleCaptureIndex
-#if ENGINE_MINOR_VERSION >= 23
-		, bOutputVelocity
-#endif
-	);
-
-	if (GFrameNumber == FrameToClearPreviousLocalToWorld)
-	{
-		// Cancel motion blur
-		PreviousLocalToWorld = GetLocalToWorld();
-	}
-
-	DynamicPrimitiveUniformBuffer.Set(
-		GetLocalToWorld(),
-		PreviousLocalToWorld,
-		GetBounds(),
-		GetLocalBounds(),
-		true,
-		bHasPrecomputedVolumetricLightmap,
-#if ENGINE_MINOR_VERSION < 23
-		UseEditorDepthTest()
-#else
-		DrawsVelocity(), bOutputVelocity
-#endif
-	);
 }
 
 bool FVoxelProceduralMeshSceneProxy::ShouldDrawComplexCollisions(const FEngineShowFlags& EngineShowFlags) const

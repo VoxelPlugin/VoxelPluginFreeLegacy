@@ -10,7 +10,7 @@
 #include "Launch/Resources/Version.h"
 #include "VoxelGraphErrorReporter.h"
 #include "IVoxelGraphEditorToolkit.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 class IDetailsView;
 class SVoxelGraphPreview;

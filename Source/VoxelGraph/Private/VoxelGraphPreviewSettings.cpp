@@ -13,12 +13,35 @@ UVoxelGraphPreviewSettings::UVoxelGraphPreviewSettings()
 
 	Mesh = MeshObject.Get();
 	Material = MaterialObject.Get();
+
+	IndexColors.Add(FColorList::Red);
+	IndexColors.Add(FColorList::Green);
+	IndexColors.Add(FColorList::Blue);
+	IndexColors.Add(FColorList::Yellow);
+	IndexColors.Add(FColorList::Magenta);
+	IndexColors.Add(FColorList::Cyan);
+	IndexColors.Add(FColorList::Orange);
+	IndexColors.Add(FColorList::Aquamarine);
 }
 
 #if WITH_EDITOR
 void UVoxelGraphPreviewSettings::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	if (LeftToRight == BottomToTop)
+	{
+		// Else crash
+		if (PropertyChangedEvent.MemberProperty && 
+			PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphPreviewSettings, BottomToTop))
+		{
+			LeftToRight = EVoxelGraphPreviewAxes((int32(BottomToTop) + 1) % 3);
+		}
+		else
+		{
+			BottomToTop = EVoxelGraphPreviewAxes((int32(LeftToRight) + 1) % 3);
+		}
+	}
 
 	Resolution = FMath::Clamp(1 << FMath::FloorLog2(Resolution), 32, 4096);
 

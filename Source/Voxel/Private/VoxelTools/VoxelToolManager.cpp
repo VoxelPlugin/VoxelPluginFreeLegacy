@@ -1,8 +1,17 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelTools/VoxelToolManager.h"
-#include "VoxelTools/VoxelToolManagerTools.h"
+
+#include "VoxelTools/VoxelToolManagerTools/VoxelToolManagerTool_Surface.h"
+#include "VoxelTools/VoxelToolManagerTools/VoxelToolManagerTool_Flatten.h"
+#include "VoxelTools/VoxelToolManagerTools/VoxelToolManagerTool_Trim.h"
+#include "VoxelTools/VoxelToolManagerTools/VoxelToolManagerTool_Level.h"
+#include "VoxelTools/VoxelToolManagerTools/VoxelToolManagerTool_Smooth.h"
+#include "VoxelTools/VoxelToolManagerTools/VoxelToolManagerTool_Sphere.h"
+#include "VoxelTools/VoxelToolManagerTools/VoxelToolManagerTool_Revert.h"
+
 #include "VoxelData/VoxelData.h"
+
 #include "VoxelMessages.h"
 #include "VoxelWorld.h"
 
@@ -220,6 +229,11 @@ void UVoxelToolManager::Tick(FVoxelToolManagerTickData TickData)
 		PaintMaterial.MaterialConfigToRestrictTo = VoxelWorld->MaterialConfig;
 		RefreshDetails.Broadcast();
 	}
+	if (PaintMaterial.PreviewMaterialCollection != VoxelWorld->MaterialCollection)
+	{
+		PaintMaterial.PreviewMaterialCollection = VoxelWorld->MaterialCollection;
+		RefreshDetails.Broadcast();
+	}
 #endif
 
 	ToolInstance->TriggerTick(*VoxelWorld, TickData, HitResult);
@@ -277,7 +291,6 @@ void UVoxelToolManager::SimpleTick(APlayerController* PlayerController, bool bCl
 
 	FVoxelToolManagerTickData TickData;
 	TickData.World = PlayerController->GetWorld();
-	TickData.DeltaTime = TickData.World->GetDeltaSeconds();
 	TickData.MousePosition = ScreenPosition;
 	TickData.CameraViewDirection = PlayerCameraManager->GetCameraRotation().Vector();
 	TickData.RayOrigin = WorldPosition;
@@ -319,7 +332,7 @@ void UVoxelToolManager::RecreateToolInstance()
 	ToolInstanceType = Tool;
 }
 
-void UVoxelToolManager::SaveFrame(AVoxelWorld& World, const FIntBox& Bounds, FName Name) const
+void UVoxelToolManager::SaveFrame(AVoxelWorld& World, const FVoxelIntBox& Bounds, FName Name) const
 {
 	auto& Data = World.GetData();
 	if (Data.bEnableUndoRedo)

@@ -8,7 +8,7 @@
 class VOXEL_API FVoxelAsyncWork : public IVoxelQueuedWork
 {
 public:
-	inline FVoxelAsyncWork(FName Name, double PriorityDuration, bool bAutoDelete = false)
+	FORCEINLINE FVoxelAsyncWork(FName Name, double PriorityDuration, bool bAutoDelete = false)
 		: IVoxelQueuedWork(Name, PriorityDuration)
 		, bAutodelete(bAutoDelete)
 	{

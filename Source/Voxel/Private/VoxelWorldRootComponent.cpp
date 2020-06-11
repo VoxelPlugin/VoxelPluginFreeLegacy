@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelWorldRootComponent.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "PhysXIncludes.h"
 #include "PrimitiveSceneProxy.h"
 #include "Engine/Engine.h"
@@ -218,7 +218,7 @@ public:
 		uint32 VisibilityMap,
 		FMeshElementCollector& Collector) const override
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_RENDER_FUNCTION_COUNTER();
 
 		// Render bounds
 		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)

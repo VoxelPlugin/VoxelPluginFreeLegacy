@@ -3,6 +3,7 @@
 #include "Factories/VoxelDataAssetFactory.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelImporters/VoxelMeshImporter.h"
+#include "VoxelFeedbackContext.h"
 #include "VoxelMessages.h"
 
 #include "Editor.h"
@@ -10,7 +11,6 @@
 #include "Modules/ModuleManager.h"
 #include "Engine/StaticMesh.h"
 #include "Framework/Notifications/NotificationManager.h"
-#include "Misc/ScopedSlowTask.h"
 
 #include "Widgets/SWindow.h"
 #include "Widgets/Input/SButton.h"

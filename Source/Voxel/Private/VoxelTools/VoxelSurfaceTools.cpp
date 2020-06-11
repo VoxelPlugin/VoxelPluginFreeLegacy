@@ -3,20 +3,80 @@
 #include "VoxelTools/VoxelSurfaceTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelTools/VoxelHardnessHandler.h"
+#include "VoxelTools/VoxelSurfaceToolsImpl.h"
 #include "VoxelData/VoxelDataAccelerator.h"
-#include "VoxelShaders/VoxelDistanceFieldShader.h"
-#include "VoxelRichCurveUtilities.h"
+#include "VoxelUtilities/VoxelRichCurveUtilities.h"
+#include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
+#include "VoxelUtilities/VoxelMiscUtilities.h"
 #include "VoxelDirection.h"
 
 #include "Curves/CurveFloat.h"
 #include "Async/ParallelFor.h"
 #include "DrawDebugHelpers.h"
 
-template<bool bComputeNormals, bool bOnlyInside, uint8 DirectionMask>
-void UVoxelSurfaceTools::FindSurfaceVoxelsImpl(
-	FVoxelData& Data,
-	const FIntBox& Bounds,
-	TArray<FSurfaceVoxel>& OutVoxels)
+bool FVoxelSurfaceEditsStack::HasErrors(const FVoxelSurfaceEditsVoxels& Voxels, FString& OutErrors) const
+{
+	OutErrors.Reset();
+	
+	for (const auto& Element : Stack)
+	{
+		if ((Element.Flags & EVoxelSurfaceEditsStackElementFlags::NeedValues) && !Voxels.Info.bHasValues)
+		{
+			OutErrors += FString::Printf(TEXT("%s needs values to be computed!\n"), *Element.Name);
+		}
+		
+		if ((Element.Flags & EVoxelSurfaceEditsStackElementFlags::NeedNormals) && !Voxels.Info.bHasNormals)
+		{
+			OutErrors += FString::Printf(TEXT("%s needs normals to be computed!\n"), *Element.Name);
+		}
+		
+		if ((Element.Flags & EVoxelSurfaceEditsStackElementFlags::ShouldBeLast) && &Element != &Stack.Last())
+		{
+			OutErrors += FString::Printf(TEXT("%s needs to be the last element of the stack!\n"), *Element.Name);
+		}
+	}
+
+	return !OutErrors.IsEmpty();
+}
+
+FVoxelSurfaceEditsProcessedVoxels FVoxelSurfaceEditsStack::Execute(const FVoxelSurfaceEditsVoxels& Voxels, bool bComputeBounds) const
+{
+	VOXEL_ASYNC_FUNCTION_COUNTER();
+	
+	auto ProcessedVoxels = TArray<FVoxelSurfaceEditsVoxel>(*Voxels.Voxels);
+	for (const auto& Element : Stack)
+	{
+		Element.Apply(Voxels.Info, ProcessedVoxels);
+	}
+	
+	FVoxelSurfaceEditsProcessedVoxels Result;
+
+	if (ProcessedVoxels.Num() > 0 && bComputeBounds)
+	{
+		VOXEL_ASYNC_SCOPE_COUNTER("ComputeBounds");
+
+		Result.Bounds = FVoxelIntBox(ProcessedVoxels[0].Position);
+		for (auto& Voxel : ProcessedVoxels)
+		{
+			Result.Bounds = Result.Bounds + Voxel.Position;
+		}
+	}
+	
+	Result.Info = Voxels.Info;
+	Result.Voxels = MakeVoxelSharedCopy(MoveTemp(ProcessedVoxels));
+	return Result;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<uint8 DirectionMask>
+FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxelsImpl(
+		FVoxelData& Data,
+		const FVoxelIntBox& Bounds,
+		bool bComputeNormals_Dynamic, 
+		bool bOnlyOutputNonEmptyVoxels_Dynamic)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 	
@@ -33,68 +93,79 @@ void UVoxelSurfaceTools::FindSurfaceVoxelsImpl(
 		return Values.GetData()[Index];
 	};
 
+	TArray<FVoxelSurfaceEditsVoxelBase> OutVoxels;
 	OutVoxels.Reserve(Bounds.Count());
-	for (int32 X = 1; X < Size.X - 1; X++)
-	{
-		for (int32 Y = 1; Y < Size.Y - 1; Y++)
-		{
-			for (int32 Z = 1; Z < Size.Z - 1; Z++)
-			{
-				const FVoxelValue Value = GetValue(X, Y, Z);
-				if (bOnlyInside && Value.IsEmpty())
-				{
-					continue;
-				}
-				
-				bool bAdd = false;
-				const auto GetOtherValue = [&](uint8 Direction, int32 DX, int32 DY, int32 DZ)
-				{
-					const FVoxelValue OtherValue = GetValue(X + DX, Y + DY, Z + DZ);
-					if (!DirectionMask || (!Value.IsEmpty() && (Direction & DirectionMask)))
-					{
-						bAdd |= Value.IsEmpty() != OtherValue.IsEmpty();
-					}
-					return OtherValue.ToFloat();
-				};
-				
-				// Note: if bComputeNormals = false, could be faster by not computing other values once bAdd = true
-				const float GradientX = GetOtherValue(EVoxelDirection::XMax, 1, 0, 0) - GetOtherValue(EVoxelDirection::XMin, -1, 0, 0);
-				const float GradientY = GetOtherValue(EVoxelDirection::YMax, 0, 1, 0) - GetOtherValue(EVoxelDirection::YMin, 0, -1, 0);
-				const float GradientZ = GetOtherValue(EVoxelDirection::ZMax, 0, 0, 1) - GetOtherValue(EVoxelDirection::ZMin, 0, 0, -1);
 
-				if (bAdd)
+	FVoxelUtilities::StaticBranch(bComputeNormals_Dynamic, bOnlyOutputNonEmptyVoxels_Dynamic, [&](auto bComputeNormals_Static, auto bOnlyOutputNonEmptyVoxels_Static)
+	{
+		for (int32 X = 1; X < Size.X - 1; X++)
+		{
+			for (int32 Y = 1; Y < Size.Y - 1; Y++)
+			{
+				for (int32 Z = 1; Z < Size.Z - 1; Z++)
 				{
-					FVector Normal;
-					if (bComputeNormals)
+					const FVoxelValue Value = GetValue(X, Y, Z);
+					if (bOnlyOutputNonEmptyVoxels_Static && Value.IsEmpty())
 					{
-						Normal = FVector(GradientX, GradientY, GradientZ).GetSafeNormal();
+						continue;
 					}
-					else
+					
+					bool bAdd = false;
+					const auto GetOtherValue = [&](uint8 Direction, int32 DX, int32 DY, int32 DZ)
 					{
-						Normal = FVector(ForceInit);
+						const FVoxelValue OtherValue = GetValue(X + DX, Y + DY, Z + DZ);
+						if (!DirectionMask || (!Value.IsEmpty() && (Direction & DirectionMask)))
+						{
+							bAdd |= Value.IsEmpty() != OtherValue.IsEmpty();
+						}
+						return OtherValue.ToFloat();
+					};
+					
+					// Note: if bComputeNormals = false, could be faster by not computing other values once bAdd = true
+					const float GradientX = GetOtherValue(EVoxelDirection::XMax, 1, 0, 0) - GetOtherValue(EVoxelDirection::XMin, -1, 0, 0);
+					const float GradientY = GetOtherValue(EVoxelDirection::YMax, 0, 1, 0) - GetOtherValue(EVoxelDirection::YMin, 0, -1, 0);
+					const float GradientZ = GetOtherValue(EVoxelDirection::ZMax, 0, 0, 1) - GetOtherValue(EVoxelDirection::ZMin, 0, 0, -1);
+
+					if (bAdd)
+					{
+						FVector Normal;
+						if (bComputeNormals_Static)
+						{
+							Normal = FVector(GradientX, GradientY, GradientZ).GetSafeNormal();
+						}
+						else
+						{
+							Normal = FVector(ForceInit);
+						}
+						OutVoxels.Add({ Bounds.Min + FIntVector(X, Y, Z), Normal, Value.ToFloat() });
 					}
-					OutVoxels.Add({ Bounds.Min + FIntVector(X, Y, Z), Normal, Value.ToFloat() });
 				}
 			}
 		}
-	}
+	});
+
+	FVoxelSurfaceEditsVoxels EditsVoxels;
+	EditsVoxels.Info.bHasValues = true;
+	EditsVoxels.Info.bHasExactDistanceField = false;
+	EditsVoxels.Info.bHasNormals = bComputeNormals_Dynamic;
+	EditsVoxels.Info.bIs2D = false;
+
+	EditsVoxels.Voxels = MakeVoxelSharedCopy(MoveTemp(OutVoxels));
+	
+	return EditsVoxels;
 }
 
-template VOXEL_API void UVoxelSurfaceTools::FindSurfaceVoxelsImpl<false, false, 0>(FVoxelData& Data, const FIntBox& Bounds, TArray<FSurfaceVoxel>& OutVoxels);
-template VOXEL_API void UVoxelSurfaceTools::FindSurfaceVoxelsImpl<true , false, 0>(FVoxelData& Data, const FIntBox& Bounds, TArray<FSurfaceVoxel>& OutVoxels);
-template VOXEL_API void UVoxelSurfaceTools::FindSurfaceVoxelsImpl<false, true , 0>(FVoxelData& Data, const FIntBox& Bounds, TArray<FSurfaceVoxel>& OutVoxels);
-template VOXEL_API void UVoxelSurfaceTools::FindSurfaceVoxelsImpl<true , true , 0>(FVoxelData& Data, const FIntBox& Bounds, TArray<FSurfaceVoxel>& OutVoxels);
+template VOXEL_API FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxelsImpl<0>(FVoxelData&, const FVoxelIntBox&, bool, bool);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(
+FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(
 	FVoxelData& Data,
-	const FIntBox& Bounds,
+	const FVoxelIntBox& Bounds,
 	const float MaxDistance,
-	const bool bMultiThreaded,
-	TArray<FSurfaceVoxel>& OutVoxels)
+	const bool bMultiThreaded)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 
@@ -110,32 +181,26 @@ void UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(
 	const FIntVector Size = Bounds.Size();
 
 	// Else ParallelFor might crash
-	if (Size.X < 3 || Size.Y < 3 || Size.Z < 3) return;
+	if (Size.X < 3 || Size.Y < 3 || Size.Z < 3) return {};
 
 	TArray<FFloat16> DistanceField;
 	DistanceField.SetNumUninitialized(Bounds.Count());
 	const TArray<FVoxelValue> Values = Data.ParallelGet<FVoxelValue>(Bounds, !bMultiThreaded);
 
 	{
-		VOXEL_SCOPE_COUNTER("Expand values to floats");
+		VOXEL_ASYNC_SCOPE_COUNTER("Expand values to floats");
 		ParallelFor(DistanceField.Num(), [&](int32 Index)
 			{
 				Get(DistanceField, Index) = Get(Values, Index).ToFloat();
 			}, !bMultiThreaded);
 	}
 
-	{
-		VOXEL_SCOPE_COUNTER("Compute distance field");
-		auto DataPtr = MakeVoxelShared<TArray<FFloat16>>(MoveTemp(DistanceField));
-		DataPtr->SetNum(Size.X * Size.Y * Size.Z);
-		auto Helper = MakeVoxelShared<FVoxelDistanceFieldShaderHelper>();
-		Helper->StartCompute(Size, DataPtr, FMath::CeilToInt(MaxDistance), true);
-		Helper->WaitForCompletion();
-		DistanceField = MoveTemp(*DataPtr);
-	}
+	FVoxelDistanceFieldUtilities::ComputeDistanceField_GPU(Size, DistanceField, EVoxelDistanceFieldInputType::Densities, FMath::CeilToInt(MaxDistance));
 
-	VOXEL_SCOPE_COUNTER("Create OutVoxels");
+	VOXEL_ASYNC_SCOPE_COUNTER("Create OutVoxels");
+	TArray<FVoxelSurfaceEditsVoxelBase> OutVoxels;
 	OutVoxels.SetNumUninitialized(Bounds.Count());
+	
 	FThreadSafeCounter Count;
 	// Distance on boundaries is invalid, don't consider these
 	ParallelFor(Size.X - 2, [&](int32 XIndex)
@@ -155,28 +220,40 @@ void UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(
 				Distance *= Value.Sign();
 				const FIntVector Position(X, Y, Z);
 				const int32 OutVoxelsIndex = Count.Increment() - 1;
-				Get(OutVoxels, OutVoxelsIndex) = FSurfaceVoxel{ Bounds.Min + Position, FVector(0), Distance };
+				Get(OutVoxels, OutVoxelsIndex) = FVoxelSurfaceEditsVoxelBase{ Bounds.Min + Position, FVector(0), Distance };
 			}
 		}
 	}, !bMultiThreaded);
 	OutVoxels.SetNum(Count.GetValue(), false);
+	
+	FVoxelSurfaceEditsVoxels EditsVoxels;
+	EditsVoxels.Info.bHasValues = true;
+	EditsVoxels.Info.bHasExactDistanceField = true;
+	EditsVoxels.Info.bHasNormals = false;
+	EditsVoxels.Info.bIs2D = false;
+
+	EditsVoxels.Voxels = MakeVoxelSharedCopy(MoveTemp(OutVoxels));
+	
+	return EditsVoxels;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-template<bool bComputeNormals>
-void UVoxelSurfaceTools::FindSurfaceVoxels2DImpl(FVoxelData& Data, const FIntBox& Bounds, TArray<FSurfaceVoxel>& OutVoxels)
+FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxels2DImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, bool bComputeNormals)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
+
+	FVoxelSurfaceEditsVoxels EditsVoxels = FindSurfaceVoxelsImpl<EVoxelDirection::ZMax>(Data, Bounds, bComputeNormals);
 	
-	FindSurfaceVoxelsImpl<bComputeNormals, false, EVoxelDirection::ZMax>(Data, Bounds, OutVoxels);
+	TMap<FIntPoint, FVoxelSurfaceEditsVoxelBase> Columns;
+	Columns.Reserve(Bounds.Size().X * Bounds.Size().Y);
 	
-	TMap<FIntPoint, FSurfaceVoxel> Columns;
-	for (auto& Voxel : OutVoxels)
+	for (const auto& Voxel : *EditsVoxels.Voxels)
 	{
-		if (auto* Existing = Columns.Find(FIntPoint(Voxel.Position.X, Voxel.Position.Y)))
+		const FIntPoint Point(Voxel.Position.X, Voxel.Position.Y);
+		if (auto* Existing = Columns.Find(Point))
 		{
 			if (Existing->Position.Z < Voxel.Position.Z)
 			{
@@ -185,38 +262,42 @@ void UVoxelSurfaceTools::FindSurfaceVoxels2DImpl(FVoxelData& Data, const FIntBox
 		}
 		else
 		{
-			Columns.Add(FIntPoint(Voxel.Position.X, Voxel.Position.Y), Voxel);
+			Columns.Add(Point, Voxel);
 		}
 	}
 
-	OutVoxels.Reset();
+	TArray<FVoxelSurfaceEditsVoxelBase> OutVoxels;
 	Columns.GenerateValueArray(OutVoxels);
+	
+	EditsVoxels.Voxels = MakeVoxelSharedCopy(MoveTemp(OutVoxels));
+	EditsVoxels.Info.bIs2D = true;
+	
+	return EditsVoxels;
 }
-
-template VOXEL_API void UVoxelSurfaceTools::FindSurfaceVoxels2DImpl<false>(FVoxelData& Data, const FIntBox& Bounds, TArray<FSurfaceVoxel>& OutVoxels);
-template VOXEL_API void UVoxelSurfaceTools::FindSurfaceVoxels2DImpl<true>(FVoxelData& Data, const FIntBox& Bounds, TArray<FSurfaceVoxel>& OutVoxels);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelSurfaceTools::FindSurfaceVoxels(
-	TArray<FSurfaceVoxel>& Voxels,
+	FVoxelSurfaceEditsVoxels& Voxels,
 	AVoxelWorld* World,
-	FIntBox Bounds)
+	FVoxelIntBox Bounds,
+	bool bComputeNormals)
 {
-	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, FindSurfaceVoxelsImpl<true>(Data, Bounds, Voxels));
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, Voxels = FindSurfaceVoxelsImpl(Data, Bounds, bComputeNormals));
 }
 
 void UVoxelSurfaceTools::FindSurfaceVoxelsAsync(
 	UObject* WorldContextObject, 
 	FLatentActionInfo LatentInfo, 
-	TArray<FSurfaceVoxel>& Voxels,
+	FVoxelSurfaceEditsVoxels& Voxels,
 	AVoxelWorld* World, 
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
+	bool bComputeNormals,
 	bool bHideLatentWarnings)
 {
-	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Voxels, Read, DoNotUpdateRender, NO_PREFIX, FindSurfaceVoxelsImpl<true>(Data, Bounds, InVoxels));
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Voxels, Read, DoNotUpdateRender, NO_PREFIX, InVoxels = FindSurfaceVoxelsImpl(Data, Bounds, bComputeNormals));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -224,92 +305,111 @@ void UVoxelSurfaceTools::FindSurfaceVoxelsAsync(
 ///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceField(
-	TArray<FSurfaceVoxel>& Voxels,
+	FVoxelSurfaceEditsVoxels& Voxels,
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	float MaxDistance,
 	bool bMultiThreaded)
 {
-	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, MaxDistance, bMultiThreaded, Voxels));
+	// TODO compute normals
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, Voxels = FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, MaxDistance, bMultiThreaded));
 }
-
-#if 0
-void UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldAsync(
-	UObject* WorldContextObject,
-	FLatentActionInfo LatentInfo,
-	TArray<FSurfaceVoxel>& Voxels,
-	AVoxelWorld* World,
-	FIntBox Bounds,
-	float MaxDistance,
-	bool bMultiThreaded,
-	bool bHideLatentWarnings)
-{
-	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Voxels, Read, DoNotUpdateRender, NO_PREFIX, FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, MaxDistance, bMultiThreaded, InVoxels));
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelSurfaceTools::FindSurfaceVoxels2D(
-	TArray<FSurfaceVoxel>& Voxels,
+	FVoxelSurfaceEditsVoxels& Voxels,
 	AVoxelWorld* World, 
-	FIntBox Bounds)
+	FVoxelIntBox Bounds,
+	bool bComputeNormals)
 {
-	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, FindSurfaceVoxels2DImpl<true>(Data, Bounds, Voxels));
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, Voxels = FindSurfaceVoxels2DImpl(Data, Bounds, bComputeNormals));
 }
 
 void UVoxelSurfaceTools::FindSurfaceVoxels2DAsync(
 	UObject* WorldContextObject, 
 	FLatentActionInfo LatentInfo, 
-	TArray<FSurfaceVoxel>& Voxels, 
+	FVoxelSurfaceEditsVoxels& Voxels, 
 	AVoxelWorld* World, 
-	FIntBox Bounds, 
+	FVoxelIntBox Bounds,
+	bool bComputeNormals, 
 	bool bHideLatentWarnings)
 {
-	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Voxels, Read, DoNotUpdateRender, NO_PREFIX, FindSurfaceVoxels2DImpl<true>(Data, Bounds, InVoxels));
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Voxels, Read, DoNotUpdateRender, NO_PREFIX, InVoxels = FindSurfaceVoxels2DImpl(Data, Bounds, bComputeNormals));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::AddStrengthToSurfaceVoxels(const TArray<FSurfaceVoxel>& Voxels, float Strength)
+FVoxelSurfaceEditsStack UVoxelSurfaceTools::AddToStack(FVoxelSurfaceEditsStack Stack, FVoxelSurfaceEditsStackElement Element)
 {
-	VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
-	TArray<FSurfaceVoxelWithStrength> NewVoxels;
-	NewVoxels.Reserve(Voxels.Num());
-	for (auto& Voxel : Voxels)
+	Stack.Add(Element);
+	return Stack;
+}
+
+FVoxelSurfaceEditsProcessedVoxels UVoxelSurfaceTools::ApplyStack(FVoxelSurfaceEditsVoxels Voxels, FVoxelSurfaceEditsStack Stack)
+{
+	FString Error;
+	if (Stack.HasErrors(Voxels, Error))
 	{
-		NewVoxels.Emplace(Voxel, Strength);
+		FVoxelMessages::Warning(FString::Printf(TEXT("ApplyStack: %s"), *Error));
 	}
-	return NewVoxels;
+	return Stack.Execute(Voxels);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyConstantStrength(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels, 
-	float Strength)
+void UVoxelSurfaceTools::ApplyStackAsync(
+	UObject* WorldContextObject, 
+	FLatentActionInfo LatentInfo, 
+	FVoxelSurfaceEditsProcessedVoxels& ProcessedVoxels,
+	FVoxelSurfaceEditsVoxels Voxels, 
+	FVoxelSurfaceEditsStack Stack, 
+	bool bHideLatentWarnings)
 {
-	VOXEL_FUNCTION_COUNTER();
-	TArray<FSurfaceVoxelWithStrength> NewVoxels = Voxels;
-	ApplyConstantStrengthImpl(NewVoxels, Strength);
-	return NewVoxels;
+	FString Error;
+	if (Stack.HasErrors(Voxels, Error))
+	{
+		FVoxelMessages::Warning(FString::Printf(TEXT("ApplyStackAsync: %s"), *Error));
+	}
+
+	FVoxelToolHelpers::StartAsyncLatentAction_WithoutWorld_WithValue(
+		WorldContextObject,
+		LatentInfo,
+		FUNCTION_FNAME,
+		bHideLatentWarnings,
+		ProcessedVoxels,
+		[=](FVoxelSurfaceEditsProcessedVoxels& InProcessedVoxels)
+		{
+			InProcessedVoxels = Stack.Execute(Voxels);
+		});
 }
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyStrengthCurve(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels,
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyConstantStrength(float Strength)
+{
+	return
+	{
+		"ApplyConstantStrength",
+		EVoxelSurfaceEditsStackElementFlags::None,
+		[=](auto& Info, auto& Voxels)
+		{
+			FVoxelSurfaceToolsImpl::ApplyConstantStrengthImpl(Voxels, Strength);
+		}
+	};
+}
+
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyStrengthCurve(
 	AVoxelWorld* World,
 	FVector InCenter,
 	float InRadius,
 	UCurveFloat* StrengthCurve,
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_FOR_CONVERT_TO_VOXEL_SPACE();
 	
 	if (!StrengthCurve)
@@ -320,94 +420,130 @@ TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyStrengthCurve(
 	
 	const FVoxelVector Center = GET_VOXEL_TOOL_REAL(InCenter);
 	const float Radius = GET_VOXEL_TOOL_REAL(InRadius);
-
-	TArray<FSurfaceVoxelWithStrength> NewVoxels = Voxels;
-	ApplyStrengthFunctionImpl(NewVoxels, Center, [=](float Distance) { return FVoxelRichCurveUtilities::Eval(StrengthCurve->FloatCurve, Distance / Radius); });
-	return NewVoxels;
+	
+	return
+	{
+		"ApplyStrengthCurve",
+		EVoxelSurfaceEditsStackElementFlags::None,
+		[=](auto& Info, auto& Voxels)
+		{
+			FVoxelSurfaceToolsImpl::ApplyDistanceStrengthFunctionImpl(Voxels, Center, Info.bIs2D, [=](float Distance)
+			{
+				return FVoxelRichCurveUtilities::Eval(StrengthCurve->FloatCurve, Distance / Radius);
+			});
+		}
+	};
 }
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyLinearFalloff(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels,
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyLinearFalloff(
 	AVoxelWorld* World,
 	FVector InCenter,
 	float InRadius,
 	float InFalloff,
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_FOR_CONVERT_TO_VOXEL_SPACE();
 	
 	const FVoxelVector Center = GET_VOXEL_TOOL_REAL(InCenter);
 	const float Radius = GET_VOXEL_TOOL_REAL(InRadius);
 	const float Falloff = GET_VOXEL_TOOL_REAL(InFalloff);
-	
-	TArray<FSurfaceVoxelWithStrength> NewVoxels = Voxels;
-	ApplyStrengthFunctionImpl(NewVoxels, Center, [=](float Distance) { return FVoxelUtilities::LinearFalloff(Distance, Radius, Falloff); });
-	return NewVoxels;
+
+	return
+	{
+		"ApplyLinearFalloff",
+		EVoxelSurfaceEditsStackElementFlags::None,
+		[=](auto& Info, auto& Voxels)
+		{
+			FVoxelSurfaceToolsImpl::ApplyDistanceStrengthFunctionImpl(Voxels, Center, Info.bIs2D, [=](float Distance)
+			{
+				return FVoxelUtilities::LinearFalloff(Distance, Radius, Falloff);
+			});
+		}
+	};
 }
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplySmoothFalloff(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels,
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplySmoothFalloff(
 	AVoxelWorld* World,
 	FVector InCenter,
 	float InRadius,
 	float InFalloff,
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_FOR_CONVERT_TO_VOXEL_SPACE();
 	
 	const FVoxelVector Center = GET_VOXEL_TOOL_REAL(InCenter);
 	const float Radius = GET_VOXEL_TOOL_REAL(InRadius);
 	const float Falloff = GET_VOXEL_TOOL_REAL(InFalloff);
 	
-	TArray<FSurfaceVoxelWithStrength> NewVoxels = Voxels;
-	ApplyStrengthFunctionImpl(NewVoxels, Center, [=](float Distance) { return FVoxelUtilities::SmoothFalloff(Distance, Radius, Falloff); });
-	return NewVoxels;
+	return
+	{
+		"ApplySmoothFalloff",
+		EVoxelSurfaceEditsStackElementFlags::None,
+		[=](auto& Info, auto& Voxels)
+		{
+			FVoxelSurfaceToolsImpl::ApplyDistanceStrengthFunctionImpl(Voxels, Center, Info.bIs2D, [=](float Distance)
+			{
+				return FVoxelUtilities::SmoothFalloff(Distance, Radius, Falloff);
+			});
+		}
+	};
 }
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplySphericalFalloff(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels,
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplySphericalFalloff(
 	AVoxelWorld* World,
 	FVector InCenter,
 	float InRadius,
 	float InFalloff,
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_FOR_CONVERT_TO_VOXEL_SPACE();
 	
 	const FVoxelVector Center = GET_VOXEL_TOOL_REAL(InCenter);
 	const float Radius = GET_VOXEL_TOOL_REAL(InRadius);
 	const float Falloff = GET_VOXEL_TOOL_REAL(InFalloff);
 	
-	TArray<FSurfaceVoxelWithStrength> NewVoxels = Voxels;
-	ApplyStrengthFunctionImpl(NewVoxels, Center, [=](float Distance) { return FVoxelUtilities::SphericalFalloff(Distance, Radius, Falloff); });
-	return NewVoxels;
+	return
+	{
+		"ApplySphericalFalloff",
+		EVoxelSurfaceEditsStackElementFlags::None,
+		[=](auto& Info, auto& Voxels)
+		{
+			FVoxelSurfaceToolsImpl::ApplyDistanceStrengthFunctionImpl(Voxels, Center, Info.bIs2D, [=](float Distance)
+			{
+				return FVoxelUtilities::SphericalFalloff(Distance, Radius, Falloff);
+			});
+		}
+	};
 }
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyTipFalloff(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels,
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyTipFalloff(
 	AVoxelWorld* World,
 	FVector InCenter,
 	float InRadius,
 	float InFalloff,
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_FOR_CONVERT_TO_VOXEL_SPACE();
 	
 	const FVoxelVector Center = GET_VOXEL_TOOL_REAL(InCenter);
 	const float Radius = GET_VOXEL_TOOL_REAL(InRadius);
 	const float Falloff = GET_VOXEL_TOOL_REAL(InFalloff);
 	
-	TArray<FSurfaceVoxelWithStrength> NewVoxels = Voxels;
-	ApplyStrengthFunctionImpl(NewVoxels, Center, [=](float Distance) { return FVoxelUtilities::TipFalloff(Distance, Radius, Falloff); });
-	return NewVoxels;
+	return
+	{
+		"ApplyTipFalloff",
+		EVoxelSurfaceEditsStackElementFlags::None,
+		[=](auto& Info, auto& Voxels)
+		{
+			FVoxelSurfaceToolsImpl::ApplyDistanceStrengthFunctionImpl(Voxels, Center, Info.bIs2D, [=](float Distance)
+			{
+				return FVoxelUtilities::TipFalloff(Distance, Radius, Falloff);
+			});
+		}
+	};
 }
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyStrengthMask(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels,
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyStrengthMask(
 	AVoxelWorld* World,
 	FVoxelFloatTexture Mask,
 	FVector InEditPosition,
@@ -433,8 +569,7 @@ void UVoxelSurfaceTools::GetStrengthMaskScale(
 	VOXEL_PRO_ONLY_VOID();
 }
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyTerrace(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels,
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyTerrace(
 	int32 TerraceHeightInVoxels,
 	float Angle,
 	int32 ImmutableVoxels)
@@ -442,98 +577,45 @@ TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyTerrace(
 	VOXEL_PRO_ONLY();
 }
 
-TArray<FSurfaceVoxelWithStrength> UVoxelSurfaceTools::ApplyFlatten(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels, 
+FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyFlatten(
 	AVoxelWorld* World,
 	FVector PlanePoint,
 	FVector PlaneNormal,
 	EVoxelSDFMergeMode MergeMode,
-	bool bExactDistanceField,
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_FOR_CONVERT_TO_VOXEL_SPACE();
 	
 	PlanePoint = GET_VOXEL_TOOL_REAL(PlanePoint).ToFloat();
 
-	TArray<FSurfaceVoxelWithStrength> NewVoxels = Voxels;
-	ApplyFlattenImpl(NewVoxels, FPlane(PlanePoint, PlaneNormal.GetSafeNormal()), MergeMode, bExactDistanceField);
-	return NewVoxels;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-TArray<FVoxelValueEdit> UVoxelSurfaceTools::CreateValueEditsFromSurfaceVoxels(
-	const TArray<FSurfaceVoxelWithStrength>& Voxels)
-{
-	VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
-	TArray<FVoxelValueEdit> Edits;
-	Edits.Reserve(Voxels.Num());
-	for (auto& Voxel : Voxels)
+	if (bConvertToVoxelSpace)
 	{
-		if (Voxel.Strength != 0)
+		PlaneNormal = World->GetActorTransform().InverseTransformVector(PlaneNormal).GetSafeNormal();
+	}
+	
+	return
+	{
+		"ApplyFlatten",
+		EVoxelSurfaceEditsStackElementFlags::NeedValues | EVoxelSurfaceEditsStackElementFlags::ShouldBeLast,
+		[=](auto& Info, auto& Voxels)
 		{
-			Edits.Emplace(FVoxelEditBase(Voxel.Position, Voxel.Strength), Voxel.Value);
+			FVoxelSurfaceToolsImpl::ApplyFlattenImpl(Info, Voxels, FPlane(PlanePoint, PlaneNormal.GetSafeNormal()), MergeMode);
 		}
-	}
-	return Edits;
-}
-
-TArray<FVoxelMaterialEdit> UVoxelSurfaceTools::CreateMaterialEditsFromSurfaceVoxels(const TArray<FSurfaceVoxelWithStrength>& Voxels, FVoxelPaintMaterial PaintMaterial)
-{
-	VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
-	TArray<FVoxelMaterialEdit> Edits;
-	Edits.Reserve(Voxels.Num());
-	for (auto& Voxel : Voxels)
-	{
-		if (Voxel.Strength != 0)
-		{
-			Edits.Emplace(FVoxelEditBase(Voxel.Position, Voxel.Strength), PaintMaterial);
-		}
-	}
-	return Edits;
-}
-
-TArray<FVoxelFoliageEdit> UVoxelSurfaceTools::CreateFoliageArrayFromStrengths(const TArray<FSurfaceVoxelWithStrength>& Voxels, EVoxelRGBA Layer)
-{
-	VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
-	TArray<FVoxelFoliageEdit> Edits;
-	Edits.Reserve(Voxels.Num());
-	for (auto& Voxel : Voxels)
-	{
-		if (Voxel.Strength != 0)
-		{
-			Edits.Emplace(FVoxelEditBase(Voxel.Position, Voxel.Strength), Layer);
-		}
-	}
-	return Edits;
+	};
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-template<typename T>
-inline FIntBox GetBoundsFromHits(const TArray<T>& Hits)
-{
-	FIntBox Bounds(Hits[0].Position);
-	for (auto& Hit : Hits)
-	{
-		Bounds = Bounds + Hit.Position;
-	}
-	return Bounds;
-}
-
-template<bool bComputeModifiedVoxels>
 void UVoxelSurfaceTools::EditVoxelValuesImpl(
 	FVoxelData& Data,
-	TArray<FModifiedVoxelValue>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelValueEdit>& Voxels, 
+	const FVoxelIntBox& Bounds,
+	const TArray<FVoxelSurfaceEditsVoxel>& Voxels,
 	const FVoxelHardnessHandler& HardnessHandler,
-	float DistanceDivisor)
+	float DistanceDivisor,
+	bool bHasValues,
+	TArray<FModifiedVoxelValue>* OutModifiedVoxels)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
 	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds);
@@ -541,9 +623,7 @@ void UVoxelSurfaceTools::EditVoxelValuesImpl(
 	{
 		OctreeAccelerator.EditValue(Voxel.Position, [&](FVoxelValue& Value)
 		{
-			// ProjectionHit will set the value to NAN
-			// Bit of a hack
-			const float OldValue = FMath::IsNaN(Voxel.Value) ? Value.ToFloat() : Voxel.Value;
+			const float OldValue = bHasValues ? Voxel.Value : Value.ToFloat();
 			float Strength = Voxel.Strength;
 			if (HardnessHandler.NeedsToCompute())
 			{
@@ -559,39 +639,25 @@ void UVoxelSurfaceTools::EditVoxelValuesImpl(
 				Value -= FVoxelValue::Precision();
 			}
 			
-			if (bComputeModifiedVoxels)
+			if (OutModifiedVoxels)
 			{
 				FModifiedVoxelValue ModifiedVoxel;
 				ModifiedVoxel.Position = Voxel.Position;
 				ModifiedVoxel.OldValue = OldValue;
 				ModifiedVoxel.NewValue = NewValue;
-				OutModifiedVoxels.Add(ModifiedVoxel);
+				OutModifiedVoxels->Add(ModifiedVoxel);
 			}
 		});
 	}
 }
 
-template VOXEL_API void UVoxelSurfaceTools::EditVoxelValuesImpl<false>(
-	FVoxelData& Data,
-	TArray<FModifiedVoxelValue>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelValueEdit>& Voxels,
-	const FVoxelHardnessHandler& HardnessHandler,
-	float DistanceDivisor);
-template VOXEL_API void UVoxelSurfaceTools::EditVoxelValuesImpl<true>(
-	FVoxelData& Data,
-	TArray<FModifiedVoxelValue>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelValueEdit>& Voxels,
-	const FVoxelHardnessHandler& HardnessHandler,
-	float DistanceDivisor);
-
 void UVoxelSurfaceTools::EditVoxelValues2DImpl(
 	FVoxelData& Data, 
-	const FIntBox& Bounds, 
-	const TArray<FVoxelValueEdit>& Voxels, 
+	const FVoxelIntBox& Bounds, 
+	const TArray<FVoxelSurfaceEditsVoxel>& Voxels, 
 	const FVoxelHardnessHandler& HardnessHandler, 
-	float DistanceDivisor)
+	float DistanceDivisor,
+	TArray<FModifiedVoxelValue>* OutModifiedVoxels)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
 	FVoxelMutableDataAccelerator Accelerator(Data, Bounds);
@@ -629,12 +695,17 @@ void UVoxelSurfaceTools::EditVoxelValues2DImpl(
 			{
 				const float FloatValue = CurrentValue.ToFloat();
 				const float WantedValue = (Z - Height) / DistanceDivisor;
-				if (bIsAdding && WantedValue < FloatValue)
+				if ((bIsAdding && WantedValue < FloatValue) ||
+					(!bIsAdding && WantedValue > FloatValue))
 				{
-					CurrentValue = FVoxelValue(WantedValue);
-				}
-				if (!bIsAdding && WantedValue > FloatValue)
-				{
+					if (OutModifiedVoxels)
+					{
+						FModifiedVoxelValue ModifiedVoxel;
+						ModifiedVoxel.Position = Voxel.Position;
+						ModifiedVoxel.OldValue = CurrentValue.ToFloat();
+						ModifiedVoxel.NewValue = WantedValue;
+						OutModifiedVoxels->Add(ModifiedVoxel);
+					}
 					CurrentValue = FVoxelValue(WantedValue);
 				}
 			});
@@ -642,26 +713,44 @@ void UVoxelSurfaceTools::EditVoxelValues2DImpl(
 	}
 }
 
+void UVoxelSurfaceTools::EditVoxelValuesImpl(
+	FVoxelData& Data, 
+	const FVoxelIntBox& Bounds,
+	const FVoxelSurfaceEditsProcessedVoxels& ProcessedVoxels, 
+	const FVoxelHardnessHandler& HardnessHandler, 
+	float DistanceDivisor, 
+	TArray<FModifiedVoxelValue>* OutModifiedVoxels)
+{
+	if (ProcessedVoxels.Info.bIs2D)
+	{
+		EditVoxelValues2DImpl(Data, Bounds, *ProcessedVoxels.Voxels, HardnessHandler, DistanceDivisor, OutModifiedVoxels);
+	}
+	else
+	{
+		EditVoxelValuesImpl(Data, Bounds, *ProcessedVoxels.Voxels, HardnessHandler, DistanceDivisor, ProcessedVoxels.Info.bHasValues, OutModifiedVoxels);
+	}
+}
+
 void UVoxelSurfaceTools::EditVoxelValues(
 	TArray<FModifiedVoxelValue>& ModifiedVoxels, 
 	AVoxelWorld* World,
-	const TArray<FVoxelValueEdit>& Voxels,
+	FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels,
 	float DistanceDivisor)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	if (Voxels.Num() == 0)
+	if (ProcessedVoxels.Voxels->Num() == 0)
 	{
 		ModifiedVoxels.Reset();
 		return;
 	}
 
-	const FIntBox Bounds = GetBoundsFromHits(Voxels);
+	const FVoxelIntBox Bounds = ProcessedVoxels.Bounds;
 	const FVoxelHardnessHandler HardnessHandler(*World);
 
 	CHECK_BOUNDS_ARE_VALID_VOID();
-	VOXEL_TOOL_HELPER_BODY(Write, UpdateRender, EditVoxelValuesImpl(Data, ModifiedVoxels, Bounds, Voxels, HardnessHandler, DistanceDivisor));
+	VOXEL_TOOL_HELPER_BODY(Write, UpdateRender, EditVoxelValuesImpl(Data, Bounds, ProcessedVoxels, HardnessHandler, DistanceDivisor, &ModifiedVoxels));
 }
 
 void UVoxelSurfaceTools::EditVoxelValuesAsync(
@@ -669,35 +758,36 @@ void UVoxelSurfaceTools::EditVoxelValuesAsync(
 	FLatentActionInfo LatentInfo,
 	TArray<FModifiedVoxelValue>& ModifiedVoxels,
 	AVoxelWorld* World,
-	const TArray<FVoxelValueEdit>& Voxels,
+	FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels,
 	float DistanceDivisor,
 	bool bHideLatentWarnings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	if (Voxels.Num() == 0)
+	if (ProcessedVoxels.Voxels->Num() == 0)
 	{
 		ModifiedVoxels.Reset();
 		return;
 	}
 
-	const FIntBox Bounds = GetBoundsFromHits(Voxels);
+	const FVoxelIntBox Bounds = ProcessedVoxels.Bounds;
 	const FVoxelHardnessHandler HardnessHandler(*World);
-
-	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(ModifiedVoxels, Write, UpdateRender, NO_PREFIX, EditVoxelValuesImpl(Data, InModifiedVoxels, Bounds, Voxels, HardnessHandler, DistanceDivisor));
+	
+	CHECK_BOUNDS_ARE_VALID_VOID();
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(ModifiedVoxels, Write, UpdateRender, NO_PREFIX, EditVoxelValuesImpl(Data, Bounds, ProcessedVoxels, HardnessHandler, DistanceDivisor, &InModifiedVoxels));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-template<bool bComputeModifiedVoxels>
 void UVoxelSurfaceTools::EditVoxelMaterialsImpl(
 	FVoxelData& Data,
-	TArray<FModifiedVoxelMaterial>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelMaterialEdit>& Voxels)
+	const FVoxelIntBox& Bounds,
+	const FVoxelPaintMaterial& PaintMaterial,
+	const TArray<FVoxelSurfaceEditsVoxel>& Voxels,
+	TArray<FModifiedVoxelMaterial>* OutModifiedVoxels)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
 	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds);
@@ -707,49 +797,40 @@ void UVoxelSurfaceTools::EditVoxelMaterialsImpl(
 		{
 			const FVoxelMaterial OldMaterial = OctreeAccelerator.GetMaterial(Voxel.Position, 0);
 			FVoxelMaterial NewMaterial = OldMaterial;
-			Voxel.PaintMaterial.ApplyToMaterial(NewMaterial, Voxel.Strength);
+			PaintMaterial.ApplyToMaterial(NewMaterial, Voxel.Strength);
 			OctreeAccelerator.SetMaterial(Voxel.Position, NewMaterial);
 
-			if (bComputeModifiedVoxels)
+			if (OutModifiedVoxels)
 			{
 				FModifiedVoxelMaterial ModifiedVoxel;
 				ModifiedVoxel.Position = Voxel.Position;
 				ModifiedVoxel.OldMaterial = OldMaterial;
 				ModifiedVoxel.NewMaterial = NewMaterial;
-				OutModifiedVoxels.Add(ModifiedVoxel);
+				OutModifiedVoxels->Add(ModifiedVoxel);
 			}
 		}
 	}
 }
 
-template VOXEL_API void UVoxelSurfaceTools::EditVoxelMaterialsImpl<false>(
-	FVoxelData& Data,
-	TArray<FModifiedVoxelMaterial>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelMaterialEdit>& Voxels);
-template VOXEL_API void UVoxelSurfaceTools::EditVoxelMaterialsImpl<true>(
-	FVoxelData& Data,
-	TArray<FModifiedVoxelMaterial>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelMaterialEdit>& Voxels);
-
 void UVoxelSurfaceTools::EditVoxelMaterials(
 	TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
 	AVoxelWorld* World,
-	const TArray<FVoxelMaterialEdit>& Voxels)
+	const FVoxelPaintMaterial& PaintMaterial,
+	FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	if (Voxels.Num() == 0)
+	if (ProcessedVoxels.Voxels->Num() == 0)
 	{
 		ModifiedVoxels.Reset();
 		return;
 	}
 
-	const FIntBox Bounds = GetBoundsFromHits(Voxels);
+	const FVoxelIntBox Bounds = ProcessedVoxels.Bounds;
+	
 	CHECK_BOUNDS_ARE_VALID_VOID();
-	VOXEL_TOOL_HELPER_BODY(Write, UpdateRender, EditVoxelMaterialsImpl(Data, ModifiedVoxels, Bounds, Voxels));
+	VOXEL_TOOL_HELPER_BODY(Write, UpdateRender, EditVoxelMaterialsImpl(Data, Bounds, PaintMaterial, *ProcessedVoxels.Voxels, &ModifiedVoxels));
 }
 
 void UVoxelSurfaceTools::EditVoxelMaterialsAsync(
@@ -757,33 +838,35 @@ void UVoxelSurfaceTools::EditVoxelMaterialsAsync(
 	FLatentActionInfo LatentInfo,
 	TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
 	AVoxelWorld* World,
-	const TArray<FVoxelMaterialEdit>& Voxels,
+	const FVoxelPaintMaterial& PaintMaterial,
+	FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels,
 	bool bHideLatentWarnings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	if (Voxels.Num() == 0)
+	if (ProcessedVoxels.Voxels->Num() == 0)
 	{
 		ModifiedVoxels.Reset();
 		return;
 	}
 
-	const FIntBox Bounds = GetBoundsFromHits(Voxels);
+	const FVoxelIntBox Bounds = ProcessedVoxels.Bounds;
 
-	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(ModifiedVoxels, Write, UpdateRender, NO_PREFIX, EditVoxelMaterialsImpl(Data, InModifiedVoxels, Bounds, Voxels));
+	CHECK_BOUNDS_ARE_VALID_VOID();
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(ModifiedVoxels, Write, UpdateRender, NO_PREFIX, EditVoxelMaterialsImpl(Data, Bounds, PaintMaterial, *ProcessedVoxels.Voxels, &InModifiedVoxels));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-template<bool bComputeModifiedVoxels >
 void UVoxelSurfaceTools::EditVoxelFoliageImpl(
 	FVoxelData& Data,
-	TArray<FModifiedVoxelFoliage>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelFoliageEdit>& Voxels)
+	const FVoxelIntBox& Bounds,
+	const EVoxelRGBA Layer,
+	const TArray<FVoxelSurfaceEditsVoxel>& Voxels,
+	TArray<FModifiedVoxelFoliage>* OutModifiedVoxels)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
 	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds);
@@ -792,51 +875,43 @@ void UVoxelSurfaceTools::EditVoxelFoliageImpl(
 		if (Data.IsInWorld(Voxel.Position))
 		{
 			const FVoxelFoliage OldFoliage = OctreeAccelerator.Get<FVoxelFoliage>(Voxel.Position, 0);
-			const float OldValue = OldFoliage.IsChannelSet(Voxel.Layer) ? OldFoliage.GetChannelValue(Voxel.Layer) : 0;
+			const float OldValue = OldFoliage.IsChannelSet(Layer) ? OldFoliage.GetChannelValue(Layer) : 0;
+			
 			FVoxelFoliage NewFoliage = OldFoliage;
-			NewFoliage.SetChannelValue(Voxel.Layer, FMath::Lerp(OldValue, 1.f, Voxel.Strength));
+			NewFoliage.SetChannelValue(Layer, FMath::Lerp(OldValue, 1.f, Voxel.Strength));
+
 			OctreeAccelerator.Set<FVoxelFoliage>(Voxel.Position, NewFoliage);
 
-			if (bComputeModifiedVoxels)
+			if (OutModifiedVoxels)
 			{
 				FModifiedVoxelFoliage ModifiedVoxel;
 				ModifiedVoxel.Position = Voxel.Position;
 				ModifiedVoxel.OldFoliage = OldFoliage;
 				ModifiedVoxel.NewFoliage = NewFoliage;
-				OutModifiedVoxels.Add(ModifiedVoxel);
+				OutModifiedVoxels->Add(ModifiedVoxel);
 			}
 		}
 	}
 }
 
-template VOXEL_API void UVoxelSurfaceTools::EditVoxelFoliageImpl<false>(
-	FVoxelData& Data,
-	TArray<FModifiedVoxelFoliage>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelFoliageEdit>& Voxels);
-template VOXEL_API void UVoxelSurfaceTools::EditVoxelFoliageImpl<true>(
-	FVoxelData& Data,
-	TArray<FModifiedVoxelFoliage>& OutModifiedVoxels,
-	const FIntBox& Bounds,
-	const TArray<FVoxelFoliageEdit>& Voxels);
-
 void UVoxelSurfaceTools::EditVoxelFoliage(
 	TArray<FModifiedVoxelFoliage>& ModifiedVoxels,
 	AVoxelWorld* World,
-	const TArray<FVoxelFoliageEdit>& Voxels)
+	EVoxelRGBA Layer,
+	FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	if (Voxels.Num() == 0)
+	if (ProcessedVoxels.Voxels->Num() == 0)
 	{
 		return;
 	}
 
-	const FIntBox Bounds = GetBoundsFromHits(Voxels);
-	// TODO: should it be UpdateRender here?
+	const FVoxelIntBox Bounds = ProcessedVoxels.Bounds;
+
 	CHECK_BOUNDS_ARE_VALID_VOID();
-	VOXEL_TOOL_HELPER_BODY(Write, UpdateRender, EditVoxelFoliageImpl(Data, ModifiedVoxels, Bounds, Voxels));
+	VOXEL_TOOL_HELPER_BODY(Write, DoNotUpdateRender, EditVoxelFoliageImpl(Data, Bounds, Layer, *ProcessedVoxels.Voxels, &ModifiedVoxels));
 }
 
 void UVoxelSurfaceTools::EditVoxelFoliageAsync(
@@ -844,21 +919,22 @@ void UVoxelSurfaceTools::EditVoxelFoliageAsync(
 	FLatentActionInfo LatentInfo,
 	TArray<FModifiedVoxelFoliage>& ModifiedVoxels,
 	AVoxelWorld* World,
-	const TArray<FVoxelFoliageEdit>& Voxels,
+	EVoxelRGBA Layer,
+	FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels,
 	bool bHideLatentWarnings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	if (Voxels.Num() == 0)
+	if (ProcessedVoxels.Voxels->Num() == 0)
 	{
 		return;
 	}
 
-	const FIntBox Bounds = GetBoundsFromHits(Voxels);
+	const FVoxelIntBox Bounds = ProcessedVoxels.Bounds;
 	
-	// TODO: should it be UpdateRender here?
-	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(ModifiedVoxels, Write, UpdateRender, NO_PREFIX, EditVoxelFoliageImpl(Data, InModifiedVoxels, Bounds, Voxels));
+	CHECK_BOUNDS_ARE_VALID_VOID();
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(ModifiedVoxels, Write, DoNotUpdateRender, NO_PREFIX, EditVoxelFoliageImpl(Data, Bounds, Layer, *ProcessedVoxels.Voxels, &InModifiedVoxels));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -867,12 +943,13 @@ void UVoxelSurfaceTools::EditVoxelFoliageAsync(
 
 void UVoxelSurfaceTools::DebugSurfaceVoxels(
 	AVoxelWorld* World, 
-	const TArray<FSurfaceVoxelWithStrength>& Voxels,
+	const FVoxelSurfaceEditsProcessedVoxels& ProcessedVoxels,
 	float Lifetime)
 {
+	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	for (auto& Voxel : Voxels)
+	for (auto& Voxel : *ProcessedVoxels.Voxels)
 	{
 		const FVector Position = World->LocalToGlobal(Voxel.Position);
 		const FLinearColor Color = FMath::Lerp(

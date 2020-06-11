@@ -3,7 +3,7 @@
 #include "VoxelSpawners/VoxelInstancedMeshSettings.h"
 #include "VoxelSpawners/VoxelHierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelSpawners/VoxelSpawnerActor.h"
-#include "VoxelBaseUtilities.h"
+#include "VoxelUtilities/VoxelBaseUtilities.h"
 
 FVoxelInstancedMeshSettings::FVoxelInstancedMeshSettings()
 {

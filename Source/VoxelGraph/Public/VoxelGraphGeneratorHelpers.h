@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Containers/StaticArray.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelContext.h"
 #include "VoxelGraphConstants.h"
-#include "VoxelWorldGeneratorHelpers.h"
-#include "VoxelWorldGeneratorInstance.inl"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
 #include "VoxelGraphGeneratorHelpers.generated.h"
 
 // See https://godbolt.org/z/4IzS-b
@@ -17,6 +17,11 @@
 #else
 #define MSVC_TEMPLATE template
 #endif
+
+struct FVoxelGraphOutputsInit
+{
+	EVoxelMaterialConfig MaterialConfig;
+};
 
 template<typename TChild, typename UWorldObject>
 class TVoxelGraphGeneratorInstanceHelper : public TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>
@@ -61,61 +66,29 @@ public:
 		}
 	}
 
-#if 1 // These constructors are for back compatibility with existing compiled generators
-	TVoxelGraphGeneratorInstanceHelper(
-		const TMap<FName, uint32>& FloatOutputs,
-		const TMap<FName, uint32>& Int32Outputs,
-
-		const TMap<FName, TOutputFunctionPtr<v_flt>>& FloatOutputsPtr,
-		const TMap<FName, TOutputFunctionPtr<int32>>& Int32OutputsPtr,
-		const TMap<FName, TRangeOutputFunctionPtr<v_flt>>& FloatOutputsRangesPtr,
-
-		const TMap<FName, TOutputFunctionPtr_Transform<v_flt>>& FloatOutputsPtr_Transform,
-		const TMap<FName, TOutputFunctionPtr_Transform<int32>>& Int32OutputsPtr_Transform,
-		const TMap<FName, TRangeOutputFunctionPtr_Transform<v_flt>>& FloatOutputsRangesPtr_Transform,
-
-		bool bEnableRangeAnalysis)
-		: TVoxelGraphGeneratorInstanceHelper(
-			FloatOutputs,
-			Int32Outputs,
-			{},
-
-			{
-				FloatOutputsPtr,
-				Int32OutputsPtr,
-				{},
-				FloatOutputsRangesPtr
-			},
-			{
-				FloatOutputsPtr_Transform,
-				Int32OutputsPtr_Transform,
-				{},
-				FloatOutputsRangesPtr_Transform
-			},
-
-			bEnableRangeAnalysis)
-	{
-	}
-#endif
-
 public:
 	template<bool bCustomTransform, typename T, uint32 Index, typename F>
 	inline T GetOutput(const FTransform& LocalToWorld, T DefaultValue, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items, F CallNextGenerator) const
 	{
+		ensure(bInit);
+		
 		auto&& Target = This().template GetTarget<Index>();
 		auto Outputs = Target.GetOutputs();
 
-		Outputs.template GetRef<T, Index>() = DefaultValue;
+		Outputs.Init(FVoxelGraphOutputsInit{ MaterialConfig });
+		Outputs.template Set<T, Index>(DefaultValue);
 
 		const FVoxelContext Context(LOD, Items, LocalToWorld, bCustomTransform, X, Y, Z);
 		Target.ComputeXYZWithoutCache(Context, Outputs);
 
-		return Outputs.template GetRef<T, Index>();
+		return Outputs.template Get<T, Index>();
 	}
 
 	template<bool bCustomTransform, typename T, uint32 Index>
-	inline TVoxelRange<T> GetOutputRange(const FTransform& LocalToWorld, TVoxelRange<T> DefaultValue, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	inline TVoxelRange<T> GetOutputRange(const FTransform& LocalToWorld, TVoxelRange<T> DefaultValue, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
+		ensure(bInit);
+		
 		if (!bEnableRangeAnalysis)
 		{
 			return TVoxelRange<T>::Infinite();
@@ -123,9 +96,9 @@ public:
 
 		auto&& Target = This().template GetRangeTarget<FVoxelGraphOutputsIndices::RangeAnalysisIndex, Index>();
 		auto Outputs = Target.GetOutputs();
-
-		TVoxelRange<T>& ValueRef = Outputs.template GetRef<T, Index>();
-		ValueRef = DefaultValue;
+		
+		Outputs.Init(FVoxelGraphOutputsInit{ MaterialConfig });
+		Outputs.template Set<T, Index>(DefaultValue);
 
 		auto& RangeFailStatus = FVoxelRangeFailStatus::Get();
 		
@@ -148,12 +121,14 @@ public:
 			return TVoxelRange<T>::Infinite();
 		}
 
-		return TVoxelRange<T>(ValueRef.Min, ValueRef.Max);
+		return Outputs.template Get<T, Index>();
 	}
 
 	template<bool bCustomTransform, typename T, typename QueryZoneType, uint32 Index, typename F>
 	inline void GetOutput(const FTransform& LocalToWorld, T DefaultValue, TVoxelQueryZone<QueryZoneType>& QueryZone, int32 LOD, const FVoxelItemStack& Items, F CallNextGenerator) const
 	{
+		ensure(bInit);
+		
 		auto&& Target = This().template GetTarget<Index>();
 		FVoxelContext Context(LOD, Items, LocalToWorld, bCustomTransform);
 		if (!bCustomTransform || LocalToWorld.GetRotation() == FQuat::Identity)
@@ -177,9 +152,10 @@ public:
 						Context.SetWorldZ(Z);
 
 						auto Outputs = Target.GetOutputs();
-						Outputs.template GetRef<T, Index>() = DefaultValue;
+						Outputs.Init(FVoxelGraphOutputsInit{ MaterialConfig });
+						Outputs.template Set<T, Index>(DefaultValue);
 						Target.ComputeXYZWithCache(Context, static_cast<const decltype(BufferX)&>(BufferX), static_cast<const decltype(BufferXY)&>(BufferXY), Outputs);
-						QueryZone.Set(X, Y, Z, QueryZoneType(Outputs.template GetRef<T, Index>()));
+						QueryZone.Set(X, Y, Z, QueryZoneType(Outputs.template Get<T, Index>()));
 					}
 				}
 			}
@@ -198,9 +174,10 @@ public:
 						Context.SetWorldZ(Z);
 
 						auto Outputs = Target.GetOutputs();
-						Outputs.template GetRef<T, Index>() = DefaultValue;
+						Outputs.Init(FVoxelGraphOutputsInit{ MaterialConfig });
+						Outputs.template Set<T, Index>(DefaultValue);
 						Target.ComputeXYZWithoutCache(Context, Outputs);
-						QueryZone.Set(X, Y, Z, QueryZoneType(Outputs.template GetRef<T, Index>()));
+						QueryZone.Set(X, Y, Z, QueryZoneType(Outputs.template Get<T, Index>()));
 					}
 				}
 			}
@@ -236,7 +213,7 @@ public:
 	}
 
 	template<bool bCustomTransform, typename T, uint32 Index>
-	inline TVoxelRange<T> GetCustomOutputRangeImpl(const FTransform& LocalToWorld, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	inline TVoxelRange<T> GetCustomOutputRangeImpl(const FTransform& LocalToWorld, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		static_assert(Index < MAX_VOXELGRAPH_OUTPUTS, "");
 		return GetOutputRange<bCustomTransform, T, Index>(LocalToWorld, T{}, WorldBounds, LOD, Items);
@@ -248,7 +225,7 @@ public:
 		return GetCustomOutputImpl<true, T, Index>(LocalToWorld, X, Y, Z, LOD, Items);
 	}
 	template<typename T, uint32 Index>
-	inline TVoxelRange<T> GetCustomOutputRangeWithTransform(const FTransform& LocalToWorld, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	inline TVoxelRange<T> GetCustomOutputRangeWithTransform(const FTransform& LocalToWorld, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return GetCustomOutputRangeImpl<true, T, Index>(LocalToWorld, WorldBounds, LOD, Items);
 	}
@@ -258,13 +235,20 @@ public:
 		return GetCustomOutputImpl<false, T, Index>(FTransform(), X, Y, Z, LOD, Items);
 	}
 	template<typename T, uint32 Index>
-	inline TVoxelRange<T> GetCustomOutputRangeNoTransform(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
+	inline TVoxelRange<T> GetCustomOutputRangeNoTransform(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return GetCustomOutputRangeImpl<false, T, Index>(FTransform(), Bounds, LOD, Items);
 	}
 
 public:
 	//~ Begin FVoxelWorldGeneratorInstance Interface
+	virtual void Init(const FVoxelWorldGeneratorInit& InitStruct) override final
+	{
+		bInit = true;
+		MaterialConfig = InitStruct.MaterialConfig;
+		InitGraph(InitStruct);
+	}
+	
 	template<bool bCustomTransform>
 	v_flt GetValueImpl(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
@@ -276,7 +260,7 @@ public:
 		return GetDataImpl<bCustomTransform, FVoxelMaterial, FVoxelGraphOutputsIndices::MaterialIndex>(LocalToWorld, FVoxelMaterial::Default(), X, Y, Z, LOD, Items);
 	}
 	template<bool bCustomTransform>
-	TVoxelRange<v_flt> GetValueRangeImpl(const FTransform& LocalToWorld, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<v_flt> GetValueRangeImpl(const FTransform& LocalToWorld, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return GetOutputRange<bCustomTransform, v_flt, FVoxelGraphOutputsIndices::ValueIndex>(LocalToWorld, 1, WorldBounds, LOD, Items);
 	}
@@ -307,22 +291,25 @@ public:
 			FVoxelGraphOutputsIndices::UpVectorZIndex>();
 
 		auto Outputs = Target.GetOutputs();
+		Outputs.Init(FVoxelGraphOutputsInit{ MaterialConfig });
 
-		v_flt& UpVectorXRef = Outputs.template GetRef<v_flt, FVoxelGraphOutputsIndices::UpVectorXIndex>();
-		v_flt& UpVectorYRef = Outputs.template GetRef<v_flt, FVoxelGraphOutputsIndices::UpVectorYIndex>();
-		v_flt& UpVectorZRef = Outputs.template GetRef<v_flt, FVoxelGraphOutputsIndices::UpVectorZIndex>();
-
-		UpVectorXRef = 0;
-		UpVectorYRef = 0;
-		UpVectorZRef = 1;
+		Outputs.template Set<v_flt, FVoxelGraphOutputsIndices::UpVectorXIndex>(0);
+		Outputs.template Set<v_flt, FVoxelGraphOutputsIndices::UpVectorYIndex>(0);
+		Outputs.template Set<v_flt, FVoxelGraphOutputsIndices::UpVectorZIndex>(1);
 
 		const FVoxelContext Context(0, FVoxelItemStack::Empty, FTransform::Identity, false, X, Y, Z);
 
 		Target.ComputeXYZWithoutCache(Context, Outputs);
 
-		return FVector(UpVectorXRef, UpVectorYRef, UpVectorZRef).GetSafeNormal();
+		return FVector(
+			Outputs.template Get<v_flt, FVoxelGraphOutputsIndices::UpVectorXIndex>(),
+			Outputs.template Get<v_flt, FVoxelGraphOutputsIndices::UpVectorYIndex>(),
+			Outputs.template Get<v_flt, FVoxelGraphOutputsIndices::UpVectorZIndex>()).GetSafeNormal();
 	}
 	//~ End FVoxelWorldGeneratorInstance Interface
+
+public:
+	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) = 0;
 
 protected:
 	template<typename T>
@@ -366,6 +353,9 @@ private:
 	const bool bEnableRangeAnalysis;
 	// Used to forward the custom output calls to the generator in the stack
 	const TStaticArray<FName, MAX_VOXELGRAPH_OUTPUTS> CustomOutputsNames;
+
+	bool bInit = false;
+	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig(-1);
 
 	inline const TChild& This() const
 	{

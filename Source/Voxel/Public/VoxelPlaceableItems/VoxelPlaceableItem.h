@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelValue.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 struct FVoxelMaterial;
 class FVoxelPlaceableItemHolder;
@@ -15,11 +15,11 @@ class VOXEL_API FVoxelPlaceableItem
 {
 public:
 	const uint8 ItemId; // Item class id
-	const FIntBox Bounds;
+	const FVoxelIntBox Bounds;
 	const int32 Priority;
 	int32 ItemIndex = -1; // Index in the VoxelData array
 
-	FVoxelPlaceableItem(uint8 ItemId, const FIntBox& InBounds, int32 Priority)
+	FVoxelPlaceableItem(uint8 ItemId, const FVoxelIntBox& InBounds, int32 Priority)
 		: ItemId(ItemId)
 		, Bounds(InBounds)
 		, Priority(Priority)

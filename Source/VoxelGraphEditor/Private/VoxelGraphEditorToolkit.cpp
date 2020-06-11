@@ -281,6 +281,9 @@ void FVoxelGraphEditorToolkit::CreateInternalWidgets()
 		WorldGenerator->PreviewSettings->Graph = WorldGenerator;
 	}
 
+	// Needed for undo/redo
+	WorldGenerator->PreviewSettings->SetFlags(RF_Transactional);
+
 	PreviewSettings = PropertyModule.CreateDetailView(Args);
 	PreviewSettings->SetObject(WorldGenerator->PreviewSettings);
 	
@@ -722,11 +725,13 @@ void FVoxelGraphEditorToolkit::ClearMessages(bool bClearAll, EVoxelGraphNodeMess
 
 void FVoxelGraphEditorToolkit::SaveAsset_Execute()
 {
-	FAssetEditorToolkit::SaveAsset_Execute();
 	if (WorldGenerator->bCompileToCppOnSave)
 	{
 		FVoxelMessages::ShowVoxelPluginProError("Compiling graphs to C++ requires Voxel Plugin Pro");
 	}
+
+	// Make sure to save AFTER compile to cpp to avoid dirtying it again
+	FAssetEditorToolkit::SaveAsset_Execute();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

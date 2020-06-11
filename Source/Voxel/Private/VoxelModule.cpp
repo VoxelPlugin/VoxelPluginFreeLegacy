@@ -1,12 +1,14 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelModule.h"
+
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
 
 #include "Interfaces/IPluginManager.h"
 #include "ShaderCore.h"
 #include "Misc/Paths.h"
+#include "Misc/PackageName.h"
 #include "Misc/MessageDialog.h"
 #include "Modules/ModuleManager.h"
 
@@ -60,7 +62,12 @@ void FVoxelModule::StartupModule()
 #endif
 	}
 	
-	const auto Plugin = IPluginManager::Get().FindPlugin("Voxel");
+	const auto Plugin = IPluginManager::Get().FindPlugin(VOXEL_PLUGIN_NAME);
+
+	// This is needed to correctly share content across Pro and Free
+	FPackageName::UnRegisterMountPoint(TEXT("/") VOXEL_PLUGIN_NAME TEXT("/"), Plugin->GetContentDir());
+	FPackageName::RegisterMountPoint("/Voxel/", Plugin->GetContentDir());
+
 	const FString PluginBaseDir = Plugin.IsValid() ? FPaths::ConvertRelativePathToFull(Plugin->GetBaseDir()) : "";
 
     const FString PluginShaderDir = FPaths::Combine(PluginBaseDir, TEXT("Shaders"));

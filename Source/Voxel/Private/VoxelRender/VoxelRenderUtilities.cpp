@@ -9,6 +9,7 @@
 #include "VoxelRender/VoxelChunkToUpdate.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
+#include "VoxelUtilities/VoxelMaterialUtilities.h"
 #include "VoxelMessages.h"
 
 #include "Materials/MaterialInstanceDynamic.h"
@@ -177,7 +178,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	const FThreadSafeCounter& CancelCounter, 
 	int32 CancelThreshold)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	const bool bShowMainChunks = CVarShowTransitions.GetValueOnAnyThread() == 0;
 
@@ -268,7 +269,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 
 	const auto CopyPositions = [&](const FVoxelChunkMeshBuffers& Chunk, const FVector& Offset)
 	{
-		VOXEL_SCOPE_COUNTER("CopyPositions");
+		VOXEL_ASYNC_SCOPE_COUNTER("CopyPositions");
 		const int32 ChunkNumVertices = Chunk.GetNumVertices();
 		for (int32 Index = 0; Index < ChunkNumVertices; Index++)
 		{
@@ -283,7 +284,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 			return;
 		}
 		
-		VOXEL_SCOPE_COUNTER("CopyColors");
+		VOXEL_ASYNC_SCOPE_COUNTER("CopyColors");
 		const int32 ChunkNumVertices = Chunk.GetNumVertices();
 		for (int32 Index = 0; Index < ChunkNumVertices; Index++)
 		{
@@ -300,7 +301,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 			return;
 		}
 
-		VOXEL_SCOPE_COUNTER("CopyStaticMesh");
+		VOXEL_ASYNC_SCOPE_COUNTER("CopyStaticMesh");
 		const int32 ChunkNumVertices = Chunk.GetNumVertices();
 		for (int32 Index = 0; Index < ChunkNumVertices; Index++)
 		{
@@ -319,7 +320,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	};
 	const auto CopyIndices = [&](const FVoxelChunkMeshBuffers& Chunk)
 	{
-		VOXEL_SCOPE_COUNTER("CopyIndices");
+		VOXEL_ASYNC_SCOPE_COUNTER("CopyIndices");
 		for (int32 Index = 0; Index < Chunk.Indices.Num(); Index++)
 		{
 			IndexBuffer.SetIndex(IndicesOffset + Index, VerticesOffset + Get(Chunk.Indices, Index));
@@ -331,7 +332,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		Chunk.BuildAdjacency(AdjacencyIndices);
 		ensure(AdjacencyIndices.Num() == 4 * Chunk.Indices.Num());
 		
-		VOXEL_SCOPE_COUNTER("CopyAdjacencyIndices");
+		VOXEL_ASYNC_SCOPE_COUNTER("CopyAdjacencyIndices");
 		for (int32 Index = 0; Index < AdjacencyIndices.Num(); Index++)
 		{
 			AdjacencyIndexBuffer.SetIndex(AdjacencyIndicesOffset + Index, VerticesOffset + Get(AdjacencyIndices, Index));
@@ -355,7 +356,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 
 			if (Chunk.bTranslateVertices && Chunk.TransitionsMask)
 			{
-				VOXEL_SCOPE_COUNTER("TranslateVertices");
+				VOXEL_ASYNC_SCOPE_COUNTER("TranslateVertices");
 				for (int32 Index = 0; Index < MainChunk.GetNumVertices(); Index++)
 				{
 					PositionBuffer.VertexPosition(VerticesOffset + Index) = FVoxelMesherUtilities::GetTranslatedTransvoxel(
@@ -426,7 +427,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 
 #if VOXEL_DEBUG
 	{
-		VOXEL_SCOPE_COUNTER("Check");
+		VOXEL_ASYNC_SCOPE_COUNTER("Check");
 		for (int32 Index = 0; Index < IndexBuffer.GetNumIndices(); Index++)
 		{
 			checkf(IndexBuffer.GetIndex(Index) < uint32(NumVertices), TEXT("Invalid index: %u < %u"), IndexBuffer.GetIndex(Index), uint32(NumVertices));
@@ -494,7 +495,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 		FVoxelChunkMeshSection(
 			LOD,
 			Position,
-			ChunkSettings.bEnableTessellation,
+			false, // Set below
 			RendererSettings.RenderType == EVoxelRenderType::MarchingCubes && TransitionChunk, // Don't translate if the transition chunk isn't built 
 			ChunkSettings.TransitionsMask);
 	const auto DefaultMeshConfig = FVoxelMeshConfig().CopyFrom(*RendererSettings.ProcMeshClass->GetDefaultObject<UVoxelProceduralMeshComponent>());
@@ -534,22 +535,25 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 	{
 		const auto CreateMaterial = [&]()
 		{
-			return CreateMaterialInstance(RendererSettings.GetVoxelMaterial(ChunkSettings.bEnableTessellation));
+			return CreateMaterialInstance(RendererSettings.GetVoxelMaterial(LOD));
 		};
-		const auto MaterialInstance = ChunkMaterials.GetSingleMaterial(ChunkSettings.bEnableTessellation, CreateMaterial);
+		const auto MaterialInstance = ChunkMaterials.FindOrAddSingle(CreateMaterial);
 
 		auto& SectionMap = Meshes.FindOrAdd(DefaultMeshConfig);
 
+		const bool bEnableTessellation = FVoxelUtilities::IsMaterialTessellated(MaterialInstance->GetMaterial());
+		
 		const FVoxelProcMeshSectionSettings SectionSettings(
 			MaterialInstance,
 			ChunkSettings.bEnableCollisions,
 			ChunkSettings.bEnableNavmesh,
-			ChunkSettings.bEnableTessellation,
+			bEnableTessellation,
 			ChunkSettings.bVisible);
 		auto& Sections = SectionMap.FindOrAdd(SectionSettings);
 
-		auto& NewSection = Sections[Sections.Emplace(DefaultSection)];
+		auto& NewSection = Sections.Emplace_GetRef(DefaultSection);
 
+		NewSection.bEnableTessellation = bEnableTessellation;
 		NewSection.MainChunk = MainChunk.GetSingleBuffers();
 		if (TransitionChunk)
 		{
@@ -603,25 +607,28 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 
 			const auto CreateMaterial = [&]()
 			{
-				return CreateMaterialInstance(RendererSettings.GetVoxelMaterial(Material, ChunkSettings.bEnableTessellation));
+				return CreateMaterialInstance(RendererSettings.GetVoxelMaterial(LOD, Material));
 			};
-			const auto MaterialInstance = ChunkMaterials.GetMultipleMaterial(Material, ChunkSettings.bEnableTessellation, CreateMaterial);
+			const auto MaterialInstance = ChunkMaterials.FindOrAddMultiple(Material, CreateMaterial);
 
 			// Note: we only use the first index to determine the mesh settings to use
 			// This might lead to unwanted behavior in blendings
 			auto* MaterialMeshConfig = RendererSettings.MaterialsMeshConfigs.Find(Material.SortedIndices[0]);
 			auto& MeshConfig = MaterialMeshConfig ? *MaterialMeshConfig : DefaultMeshConfig;
 			auto& SectionMap = Meshes.FindOrAdd(MeshConfig);
+
+			const bool bEnableTessellation = FVoxelUtilities::IsMaterialTessellated(MaterialInstance->GetMaterial());
 			
 			const FVoxelProcMeshSectionSettings SectionSettings(
 				MaterialInstance,
 				ChunkSettings.bEnableCollisions,
 				ChunkSettings.bEnableNavmesh,
-				ChunkSettings.bEnableTessellation,
+				bEnableTessellation,
 				ChunkSettings.bVisible);
 			auto& Sections = SectionMap.FindOrAdd(SectionSettings);
 
 			auto& NewSection = Sections[Sections.Emplace(DefaultSection)];
+			NewSection.bEnableTessellation = bEnableTessellation;
 
 			const auto MainBuffers = MainChunk.FindBuffer(Material);
 			if (MainBuffers.IsValid())

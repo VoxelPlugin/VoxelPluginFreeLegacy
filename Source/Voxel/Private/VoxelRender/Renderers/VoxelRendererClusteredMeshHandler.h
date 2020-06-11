@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "QueueWithNum.h"
-#include "VoxelGlobals.h"
+#include "VoxelQueueWithNum.h"
+#include "VoxelMinimal.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
 #include "VoxelRendererMeshHandler.h"
 
@@ -22,7 +22,7 @@ public:
 	//~ End IVoxelRendererMeshHandler Interface
 
 private:
-	DEFINE_TYPED_SPARSE_ARRAY_ID(FClusterId);
+	DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FClusterId);
 	
 	struct FClusterBuiltData
 	{
@@ -71,7 +71,7 @@ private:
 		{
 		}
 	};
-	TSafeTypedSparseArray<FClusterId, FCluster> Clusters;
+	TVoxelTypedSparseArray<FClusterId, FCluster> Clusters;
 
 	struct FClusterRef
 	{
@@ -123,7 +123,7 @@ private:
 		{
 		}
 	};
-	TSafeTypedSparseArray<FChunkId, FChunkInfo> ChunkInfos;
+	TVoxelTypedSparseArray<FChunkId, FChunkInfo> ChunkInfos;
 
 	struct FBuildCallback
 	{
@@ -134,7 +134,7 @@ private:
 
 	// Queue all actions
 	// This ensures they are processed sequentially even when using async tasks
-	TQueueWithNum<FAction, EQueueMode::Spsc> ActionQueue;
+	TVoxelQueueWithNum<FAction, EQueueMode::Spsc> ActionQueue;
 
 	void FlushBuiltDataQueue();
 	void FlushActionQueue(double MaxTime);

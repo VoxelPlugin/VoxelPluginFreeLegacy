@@ -138,24 +138,21 @@ public:
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Projection Tools")
-	static TArray<FIntVector> GetHitsPositions(
-		const TArray<FVoxelProjectionHit>& Hits);
+	static TArray<FIntVector> GetHitsPositions(const TArray<FVoxelProjectionHit>& Hits);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Projection Tools")
-	static FVector GetHitsAverageNormal(
-		const TArray<FVoxelProjectionHit>& Hits);
+	static FVector GetHitsAverageNormal(const TArray<FVoxelProjectionHit>& Hits);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Projection Tools")
-	static FVector GetHitsAveragePosition(
-		const TArray<FVoxelProjectionHit>& Hits);
+	static FVector GetHitsAveragePosition(const TArray<FVoxelProjectionHit>& Hits);
 
-	// Will use a constant voxel value of NaN. For some surface tools you'll need to use CreateSurfaceVoxelsFromHitsWithExactValues instead
+	// For some surface tools you'll need to use CreateSurfaceVoxelsFromHitsWithExactValues instead
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Projection Tools")
-	static TArray<FSurfaceVoxel> CreateSurfaceVoxelsFromHits(const TArray<FVoxelProjectionHit>& Hits);
+	static FVoxelSurfaceEditsVoxels CreateSurfaceVoxelsFromHits(const TArray<FVoxelProjectionHit>& Hits);
 
 	// Will store the voxel values
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Projection Tools", meta = (DefaultToSelf = "World"))
-	static TArray<FSurfaceVoxel> CreateSurfaceVoxelsFromHitsWithExactValues(AVoxelWorld* World, const TArray<FVoxelProjectionHit>& Hits);
+	static FVoxelSurfaceEditsVoxels CreateSurfaceVoxelsFromHitsWithExactValues(AVoxelWorld* World, const TArray<FVoxelProjectionHit>& Hits);
 	
 public:
 	// NumRays might be slightly lower than the actual number of traced rays

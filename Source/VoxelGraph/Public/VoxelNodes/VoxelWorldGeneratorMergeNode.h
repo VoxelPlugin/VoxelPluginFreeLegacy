@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelConfigEnums.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelWorldGeneratorSamplerNodes.h"
 #include "VoxelWorldGeneratorMergeNode.generated.h"
 

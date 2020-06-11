@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "Details/VoxelSpawnerConfigSpawnerCustomization.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
 
 #include "DetailWidgetRow.h"
@@ -78,11 +78,7 @@ void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IProp
 
 	Group.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Spawner));
 	Group.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Density));
-
-	if (Type == EVoxelSpawnerType::Ray)
-	{
-		Group.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, DensityMultiplier_RayOnly));
-	}
+	
 	if (Type == EVoxelSpawnerType::Height)
 	{
 		Group.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, HeightGraphOutputName_HeightOnly));
@@ -186,7 +182,11 @@ void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IProp
 
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, RandomGenerator));
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Guid));
-
+	
+	if (Type == EVoxelSpawnerType::Ray)
+	{
+		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, DensityMultiplier_RayOnly));
+	}
 	if (Type == EVoxelSpawnerType::Height)
 	{
 		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bComputeDensityFirst_HeightOnly));

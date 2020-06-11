@@ -1,8 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelShaders/VoxelDistanceFieldShader.h"
-#include "VoxelIntVectorUtilities.h"
-#include "VoxelThreadingUtilities.h"
+#include "VoxelUtilities/VoxelIntVectorUtilities.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 #include "ShaderParameterUtils.h"
 
@@ -62,6 +62,7 @@ void FVoxelDistanceFieldShaderHelper::StartCompute(
 	bool bInputIsDensities)
 {
 	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
 
 #if VOXEL_DEBUG
 	if (!bInputIsDensities)
@@ -87,6 +88,7 @@ void FVoxelDistanceFieldShaderHelper::StartCompute(
 void FVoxelDistanceFieldShaderHelper::WaitForCompletion() const
 {
 	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
 	Fence.Wait();
 }
 
@@ -97,7 +99,7 @@ void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 	int32 NumberOfPasses,
 	bool bInputIsDensities)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_RENDER_FUNCTION_COUNTER();
 	check(IsInRenderingThread());
 
 	check(Size.X > 0 && Size.Y > 0 && Size.Z > 0);
@@ -106,7 +108,7 @@ void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 	
 	if (AllocatedSize != Size)
 	{
-		VOXEL_SCOPE_COUNTER("Create Buffers");
+		VOXEL_RENDER_SCOPE_COUNTER("Create Buffers");
 		
 		AllocatedSize = Size;
 
@@ -118,7 +120,7 @@ void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 	}
 	
 	{
-		VOXEL_SCOPE_COUNTER("Copy Data To Buffers");
+		VOXEL_RENDER_SCOPE_COUNTER("Copy Data To Buffers");
 		void* BufferData = RHICmdList.LockVertexBuffer(SrcBuffer.Buffer, 0, SrcBuffer.NumBytes, EResourceLockMode::RLM_WriteOnly);
 		FMemory::Memcpy(BufferData, InOutData->GetData(), SrcBuffer.NumBytes);
 		RHICmdList.UnlockVertexBuffer(SrcBuffer.Buffer);
@@ -135,7 +137,7 @@ void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, DstBuffer.UAV);
 	
 	{
-		VOXEL_SCOPE_COUNTER("Copy Data From Buffers");
+		VOXEL_RENDER_SCOPE_COUNTER("Copy Data From Buffers");
 		void* BufferData = RHICmdList.LockVertexBuffer(DstBuffer.Buffer, 0, DstBuffer.NumBytes, EResourceLockMode::RLM_ReadOnly);
 		FMemory::Memcpy(InOutData->GetData(), BufferData, DstBuffer.NumBytes);
 		RHICmdList.UnlockVertexBuffer(DstBuffer.Buffer);

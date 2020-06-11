@@ -9,7 +9,7 @@
 #include "VoxelPriorityHandler.h"
 #include "VoxelWorld.h"
 #include "VoxelUniqueError.h"
-#include "VoxelMaterialUtilities.h"
+#include "VoxelUtilities/VoxelMaterialUtilities.h"
 
 #include "Logging/MessageLog.h"
 
@@ -44,6 +44,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, bCleanCollisionMeshes(InWorld->bCleanCollisionMeshes)
 
 	, RenderType(InWorld->RenderType)
+	, RenderSharpness(FMath::Max(0, InWorld->RenderSharpness))
 	, bCreateMaterialInstances(InPlayType == EVoxelPlayType::Game
 		? InWorld->bCreateMaterialInstances && !InWorld->bMergeChunks
 		: false /* we don't want to created dynamic material instances in editor */)
@@ -51,7 +52,13 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, ChunksDitheringDuration(InWorld->ChunksDitheringDuration)
 
 	, bOptimizeIndices(InWorld->bOptimizeIndices)
+
 	, MaxDistanceFieldLOD(InWorld->bGenerateDistanceFields ? InWorld->MaxDistanceFieldLOD : -1)
+	, DistanceFieldBoundsExtension(InWorld->DistanceFieldBoundsExtension)
+	, DistanceFieldResolutionDivisor(InWorld->DistanceFieldResolutionDivisor)
+	, DistanceFieldQuality(InWorld->DistanceFieldQuality)
+	, DistanceFieldSelfShadowBias(InWorld->DistanceFieldSelfShadowBias)
+
 	, bOneMaterialPerCubeSide(InWorld->MaterialConfig == EVoxelMaterialConfig::SingleIndex && InWorld->bOneMaterialPerCubeSide)
 	, bHalfPrecisionCoordinates(InWorld->bHalfPrecisionCoordinates)
 	, bInterpolateColors(InWorld->bInterpolateColors)
@@ -117,78 +124,37 @@ inline UObject* GetRootOwner(const TWeakObjectPtr<UPrimitiveComponent>& RootComp
 	return RootComponent.IsValid() ? RootComponent->GetOwner() : nullptr;
 }
 
-UMaterialInterface* FVoxelRendererSettingsBase::GetVoxelMaterial(const FVoxelMaterialIndices& MaterialIndices, bool bTessellation) const
+UMaterialInterface* FVoxelRendererSettingsBase::GetVoxelMaterial(int32 LOD, const FVoxelMaterialIndices& MaterialIndices) const
 {
-	const auto MaterialCollection = DynamicSettings->MaterialCollection;
-	if (!MaterialCollection.IsValid())
+	auto* MaterialCollection = DynamicSettings->LODData[LOD].MaterialCollection.Get();
+	if (!MaterialCollection)
 	{
 		static TVoxelUniqueError<> UniqueError;
 		FVoxelMessages::CondError<EVoxelShowNotification::Hide>(
 			UniqueError(UniqueId, {}),
 			"Invalid Material Collection",
 			GetRootOwner(RootComponent));
-		return FVoxelUtilities::GetDefaultMaterial(bTessellation, MaterialIndices.NumIndices);
+		return FVoxelUtilities::GetDefaultMaterial(MaterialIndices.NumIndices);
 	}
 	
-	UMaterialInterface* MaterialInterface = MaterialCollection->GetVoxelMaterial(MaterialIndices, bTessellation, UniqueId);
-	if (MaterialInterface && FVoxelUtilities::IsMaterialTessellated(MaterialInterface) == bTessellation)
-	{
-		return MaterialInterface;
-	}
-	else
-	{
-		return FVoxelUtilities::GetDefaultMaterial(bTessellation, MaterialIndices.NumIndices);
-	}
+	return MaterialCollection->GetVoxelMaterial(MaterialIndices, UniqueId);
 }
 
-UMaterialInterface* FVoxelRendererSettingsBase::GetVoxelMaterial(bool bTessellation) const
+UMaterialInterface* FVoxelRendererSettingsBase::GetVoxelMaterial(int32 LOD) const
 {
-	const auto Material = bTessellation ? DynamicSettings->VoxelMaterialWithTessellation : DynamicSettings->VoxelMaterialWithoutTessellation;
-	if (Material.IsValid() && FVoxelUtilities::IsMaterialTessellated(Material.Get()) == bTessellation)
+	if (auto* Material = DynamicSettings->LODData[LOD].Material.Get())
 	{
-		return Material.Get();
-	}
-
-	if (bTessellation)
-	{
-		if (DynamicSettings->VoxelMaterialWithTessellation.IsValid())
-		{
-			static TVoxelUniqueError<> UniqueError;
-			FVoxelMessages::CondError(
-				UniqueError(UniqueId, {}),
-				"TessellatedVoxelMaterial must have tessellation enabled! If you don't need tessellation, set EnableTessellation to false and use VoxelMaterial",
-				GetRootOwner(RootComponent));
-		}
-		else
-		{
-			static TVoxelUniqueError<> UniqueError;
-			FVoxelMessages::CondError(
-				UniqueError(UniqueId, {}),
-				"Invalid TessellatedVoxelMaterial! EnableTessellation = true requires TessellatedVoxelMaterial to be set",
-				GetRootOwner(RootComponent));
-		}
+		return Material;
 	}
 	else
 	{
-		if (DynamicSettings->VoxelMaterialWithoutTessellation.IsValid())
-		{
-			static TVoxelUniqueError<> UniqueError;
-			FVoxelMessages::CondError(
-				UniqueError(UniqueId, {}),
-				"VoxelMaterial must have tessellation disabled! If you need tessellation, set EnableTessellation to true and use TessellatedVoxelMaterial",
+		static TVoxelUniqueError<> UniqueError;
+		FVoxelMessages::CondError(
+			UniqueError(UniqueId, {}),
+			"Invalid VoxelMaterial",
 				GetRootOwner(RootComponent));
-		}
-		else
-		{
-			static TVoxelUniqueError<> UniqueError;
-			FVoxelMessages::CondError(
-				UniqueError(UniqueId, {}),
-				"Invalid VoxelMaterial",
-				GetRootOwner(RootComponent));
-		}
+		return FVoxelUtilities::GetDefaultMaterial(0);
 	}
-	
-	return FVoxelUtilities::GetDefaultMaterial(bTessellation, 0);
 }
 
 uint64 FVoxelRendererSettingsBase::UniqueIdCounter = 0;

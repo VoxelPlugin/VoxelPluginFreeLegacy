@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelGraphGlobals.h"
-#include "VoxelBaseUtilities.h"
+#include "VoxelUtilities/VoxelBaseUtilities.h"
 
 namespace FVoxelGraphOutputsIndices
 {

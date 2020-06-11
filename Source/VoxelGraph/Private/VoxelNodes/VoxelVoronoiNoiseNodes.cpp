@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelVoronoiNoiseNodes.h"
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelGraphGenerator.h"
-#include "FastNoise.h"
+#include "VoxelFastNoise.h"
 
 int32 UVoxelNode_VoronoiNoiseBase::GetMinInputPins() const
 {

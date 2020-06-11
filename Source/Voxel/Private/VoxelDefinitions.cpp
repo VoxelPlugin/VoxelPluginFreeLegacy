@@ -1,13 +1,29 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelGlobals.h"
-#include "IntBox.h"
+#include "VoxelDefinitions.h"
+#include "VoxelLog.h"
+#include "VoxelStats.h"
+#include "VoxelFeedbackContext.h"
+#include "VoxelIntBox.h"
 #include "VoxelCustomVersion.h"
 #include "VoxelItemStack.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 
 #include "Logging/LogMacros.h"
 #include "Serialization/CustomVersion.h"
+
+static_assert(FVoxelUtilities::IsPowerOfTwo(RENDER_CHUNK_SIZE), "RENDER_CHUNK_SIZE must be a power of 2");
+static_assert(FVoxelUtilities::IsPowerOfTwo(DATA_CHUNK_SIZE), "DATA_CHUNK_SIZE must be a power of 2");
+
+#if VOXEL_MATERIAL_ENABLE_UV1 && !VOXEL_MATERIAL_ENABLE_UV0
+#error "Error"
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV2 && !VOXEL_MATERIAL_ENABLE_UV1
+#error "Error"
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV3 && !VOXEL_MATERIAL_ENABLE_UV2
+#error "Error"
+#endif
 
 DEFINE_LOG_CATEGORY(LogVoxel);
 
@@ -40,7 +56,7 @@ FVoxelScopedSlowTask::FVoxelScopedSlowTask(float InAmountOfWork, const FText& In
 }
 
 // +/- 1024: prevents integers overflow
-FIntBox const FIntBox::Infinite = FIntBox(FIntVector(MIN_int32 + 1024), FIntVector(MAX_int32 - 1024));
+FVoxelIntBox const FVoxelIntBox::Infinite = FVoxelIntBox(FIntVector(MIN_int32 + 1024), FIntVector(MAX_int32 - 1024));
 
 FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(FVoxelPlaceableItemHolder::Empty);
 

@@ -78,7 +78,7 @@ namespace FVoxelDataUtilities
 	}
 	
 	/**
-	 * Requires read lock in FIntBox(Position - Offset, Position + Offset + 1)
+	 * Requires read lock in FVoxelIntBox(Position - Offset, Position + Offset + 1)
 	 */
 	template<typename T, typename TData>
 	inline FVector GetGradientFromGetValue(const TData& Data, T X, T Y, T Z, int32 LOD, T Offset = 1)
@@ -116,14 +116,14 @@ namespace FVoxelDataUtilities
 	}
 	
 	template<typename T, typename F>
-	inline void IterateDirtyDataInBounds(const FVoxelData& Data, const FIntBox& Bounds, F Lambda)
+	inline void IterateDirtyDataInBounds(const FVoxelData& Data, const FVoxelIntBox& Bounds, F Lambda)
 	{
 		FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](const FVoxelDataOctreeLeaf& Leaf)
 		{
 			auto& DataHolder = Leaf.GetData<T>();
 			if (DataHolder.IsDirty())
 			{
-				const FIntBox LeafBounds = Leaf.GetBounds();
+				const FVoxelIntBox LeafBounds = Leaf.GetBounds();
 				if (DataHolder.IsSingleValue())
 				{
 					const T Value = DataHolder.GetSingleValue();
@@ -159,7 +159,7 @@ namespace FVoxelDataUtilities
 	template<typename T>
 	inline bool HasData(FVoxelData& Data)
 	{
-		return !FVoxelOctreeUtilities::IterateLeavesInBoundsEarlyExit(Data.GetOctree(), FIntBox::Infinite, [](FVoxelDataOctreeLeaf& Leaf)
+		return !FVoxelOctreeUtilities::IterateLeavesInBoundsEarlyExit(Data.GetOctree(), FVoxelIntBox::Infinite, [](FVoxelDataOctreeLeaf& Leaf)
 		{
 			ensureThreadSafe(Leaf.IsLockedForRead());
 			return !Leaf.GetData<T>().GetDataPtr() && !Leaf.GetData<T>().IsSingleValue();

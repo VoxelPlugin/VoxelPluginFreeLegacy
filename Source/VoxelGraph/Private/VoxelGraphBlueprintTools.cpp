@@ -1,8 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelGraphBlueprintTools.h"
-#include "VoxelWorldGenerator.h"
-#include "VoxelWorldGeneratorInstance.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelMessages.h"
 

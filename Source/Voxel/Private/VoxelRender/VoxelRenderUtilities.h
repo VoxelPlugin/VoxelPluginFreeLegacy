@@ -3,11 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelRender/VoxelMeshConfig.h"
 #include "VoxelRender/VoxelProcMeshSectionSettings.h"
 
-struct FIntBox;
+struct FVoxelIntBox;
 struct FVoxelChunkMesh;
 struct FVoxelChunkMeshBuffers;
 struct FVoxelChunkMaterials;
@@ -17,7 +17,7 @@ struct FVoxelRendererSettingsBase;
 class UMaterialInstanceDynamic;
 class UVoxelProceduralMeshComponent;
 
-DECLARE_MULTICAST_DELEGATE_ThreeParams(FVoxelOnMaterialInstanceCreated, int32 /*ChunkLOD*/, const FIntBox& /*ChunkBounds*/, UMaterialInstanceDynamic* /*Instance*/);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FVoxelOnMaterialInstanceCreated, int32 /*ChunkLOD*/, const FVoxelIntBox& /*ChunkBounds*/, UMaterialInstanceDynamic* /*Instance*/);
 
 struct FVoxelChunkMeshSection
 {

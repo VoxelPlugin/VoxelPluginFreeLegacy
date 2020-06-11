@@ -60,11 +60,11 @@ class VOXEL_API UVoxelToolsBase : public UBlueprintFunctionLibrary
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Base")
-	static FIntBox GetModifiedVoxelValuesBounds(const TArray<FModifiedVoxelValue>& ModifiedVoxels);
+	static FVoxelIntBox GetModifiedVoxelValuesBounds(const TArray<FModifiedVoxelValue>& ModifiedVoxels);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Base")
-	static FIntBox GetModifiedVoxelMaterialsBounds(const TArray<FModifiedVoxelMaterial>& ModifiedVoxels);
+	static FVoxelIntBox GetModifiedVoxelMaterialsBounds(const TArray<FModifiedVoxelMaterial>& ModifiedVoxels);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Base")
-	static FIntBox GetModifiedVoxelFoliagesBounds(const TArray<FModifiedVoxelFoliage>& ModifiedVoxels);
+	static FVoxelIntBox GetModifiedVoxelFoliagesBounds(const TArray<FModifiedVoxelFoliage>& ModifiedVoxels);
 };

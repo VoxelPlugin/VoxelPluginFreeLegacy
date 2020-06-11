@@ -3,16 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
-#include "SafeSparseArray.h"
-#include "Containers/StaticArray.h"
+#include "VoxelMinimal.h"
+#include "VoxelSparseArray.h"
 #include "VoxelRender/VoxelChunkToUpdate.h"
 #include "VoxelRender/IVoxelProceduralMeshComponent_PhysicsCallbackHandler.h"
 
 enum class EDitheringType : uint8;
 struct FVoxelChunkSettings;
 struct FVoxelChunkMesh;
-struct FIntBox;
+struct FVoxelIntBox;
 class IVoxelRenderer;
 class FDistanceFieldVolumeData;
 class UVoxelProceduralMeshComponent;
@@ -26,7 +25,7 @@ extern TAutoConsoleVariable<int32> CVarLogActionQueue;
 class IVoxelRendererMeshHandler : public IVoxelProceduralMeshComponent_PhysicsCallbackHandler
 {
 public:
-	DEFINE_TYPED_SPARSE_ARRAY_ID(FChunkId);
+	DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FChunkId);
 	
 	IVoxelRenderer& Renderer;
 
@@ -55,7 +54,6 @@ public:
 	void ShowChunk(FChunkId ChunkId);
 
 	// Used for ApplyNewMaterials
-	// Not required for tessellation change
 	virtual void ClearChunkMaterials() = 0;
 
 	virtual void Tick(double MaxTime);

@@ -143,7 +143,7 @@ public:
 	}
 #endif
 
-	void TraceDone(const FTraceHandle& TraceHandle, FTraceDatum & TraceData)
+	void TraceDone(const FTraceHandle& TraceHandle, FTraceDatum& TraceData)
 	{
 		VOXEL_SCOPE_COUNTER("Trace Done");
 
@@ -388,7 +388,7 @@ FVector UVoxelProjectionTools::GetHitsAveragePosition(const TArray<FVoxelProject
 	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
 	if (Hits.Num() == 0)
 	{
-		return {};
+		return FVector::ZeroVector;
 	}
 	FVector Position = Hits[0].Hit.ImpactPoint;
 	for (int32 Index = 1; Index < Hits.Num(); ++Index)
@@ -402,21 +402,29 @@ FVector UVoxelProjectionTools::GetHitsAveragePosition(const TArray<FVoxelProject
 	return Position / Hits.Num();
 }
 
-TArray<FSurfaceVoxel> UVoxelProjectionTools::CreateSurfaceVoxelsFromHits(const TArray<FVoxelProjectionHit>& Hits)
+FVoxelSurfaceEditsVoxels UVoxelProjectionTools::CreateSurfaceVoxelsFromHits(const TArray<FVoxelProjectionHit>& Hits)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
 
-	TArray<FSurfaceVoxel> Voxels;
+	TArray<FVoxelSurfaceEditsVoxelBase> Voxels;
 	Voxels.Reserve(Hits.Num());
 	for (auto& Hit : Hits)
 	{
-		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, NAN);
+		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, 0.f);
 	}
 
-	return Voxels;
+	FVoxelSurfaceEditsVoxels EditsVoxels;
+	EditsVoxels.Info.bHasValues = false;
+	EditsVoxels.Info.bHasExactDistanceField = false;
+	EditsVoxels.Info.bHasNormals = true;
+	EditsVoxels.Info.bIs2D = false;
+	
+	EditsVoxels.Voxels = MakeVoxelSharedCopy(MoveTemp(Voxels));
+
+	return EditsVoxels;
 }
 
-TArray<FSurfaceVoxel> UVoxelProjectionTools::CreateSurfaceVoxelsFromHitsWithExactValues(AVoxelWorld* World, const TArray<FVoxelProjectionHit>& Hits)
+FVoxelSurfaceEditsVoxels UVoxelProjectionTools::CreateSurfaceVoxelsFromHitsWithExactValues(AVoxelWorld* World, const TArray<FVoxelProjectionHit>& Hits)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
 	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
@@ -426,10 +434,10 @@ TArray<FSurfaceVoxel> UVoxelProjectionTools::CreateSurfaceVoxelsFromHitsWithExac
 		return {};
 	}
 	
-	TArray<FSurfaceVoxel> Voxels;
+	TArray<FVoxelSurfaceEditsVoxelBase> Voxels;
 	Voxels.Reserve(Hits.Num());
 
-	FIntBox Bounds = FIntBox(Hits[0].VoxelPosition);
+	FVoxelIntBox Bounds = FVoxelIntBox(Hits[0].VoxelPosition);
 	for (int32 Index = 1; Index < Hits.Num(); Index++)
 	{
 		Bounds = Bounds + Hits[Index].VoxelPosition;
@@ -444,5 +452,13 @@ TArray<FSurfaceVoxel> UVoxelProjectionTools::CreateSurfaceVoxelsFromHitsWithExac
 		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, Accelerator.GetValue(Hit.VoxelPosition, 0).ToFloat());
 	}
 
-	return Voxels;
+	FVoxelSurfaceEditsVoxels EditsVoxels;
+	EditsVoxels.Info.bHasValues = true;
+	EditsVoxels.Info.bHasExactDistanceField = false;
+	EditsVoxels.Info.bHasNormals = true;
+	EditsVoxels.Info.bIs2D = false;
+	
+	EditsVoxels.Voxels = MakeVoxelSharedCopy(MoveTemp(Voxels));
+
+	return EditsVoxels;
 }

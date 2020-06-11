@@ -22,17 +22,27 @@ public:
 		unimplemented();
 		return 0;
 	}
-	virtual UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& Indices, bool bTessellation, uint64 UniqueIdForErrors) const
+	virtual UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const
 	{
 		unimplemented();
 		return nullptr;
+	}
+	virtual UMaterialInterface* GetVoxelMaterialForPreview(uint8 Index) const
+	{
+		return nullptr;
+	}
+	// Used by paint material customization. Some materials might be null.
+	virtual TMap<int32, UMaterialInterface*> GetVoxelMaterials() const
+	{
+		return {};
 	}
 	// Get the material index from a material name
 	virtual int32 GetMaterialIndex(FName Name) const
 	{
 		return -1;	
 	}
-	virtual void ClearCache()
+	// Called before the material collection is used (can be at runtime when dynamic renderer settings change)
+	virtual void InitializeCollection()
 	{
 	}
 	//~ End UVoxelMaterialCollectionBase Interface

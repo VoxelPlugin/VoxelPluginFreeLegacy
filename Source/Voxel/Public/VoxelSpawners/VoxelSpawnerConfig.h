@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelSpawnerConfig.generated.h"
 
@@ -51,6 +51,10 @@ enum class EVoxelSpawnerDensityType : uint8
 	MaterialUVs,
 	// Use a five way blend strength. Only for Ray Spawners.
 	MaterialFiveWayBlend,
+	// Use a single index channel. Only for Ray Spawners.
+	SingleIndex,
+	// Use a multi index channel. Only for Ray Spawners.
+	MultiIndex,
 	// Use the voxel foliage channels. Only for Ray Spawners.
 	Foliage
 };
@@ -95,7 +99,13 @@ struct FVoxelSpawnerDensity
 	
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 4))
 	int32 FiveWayBlendChannel = 0;
-
+	
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 255))
+	TArray<int32> SingleIndexChannels = { 0 };
+	
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 255))
+	TArray<int32> MultiIndexChannels = { 0 };
+	
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	EVoxelRGBA FoliageChannel;
 
@@ -363,14 +373,9 @@ struct FVoxelSpawnerConfigFiveWayBlendSetup
 {
 	GENERATED_BODY()
 
+	// If true, will ignore Alpha
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bUseR = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bUseG = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bUseB = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bUseA = true;
+	bool bFourWayBlend = false;
 };
 
 UCLASS()

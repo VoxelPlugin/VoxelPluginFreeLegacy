@@ -4,13 +4,13 @@
 #include "VoxelWorld.h"
 #include "VoxelStaticWorld.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelMessages.h"
+#include "VoxelFeedbackContext.h"
 
 #include "Modules/ModuleManager.h"
 
@@ -19,8 +19,6 @@
 #include "DesktopPlatformModule.h"
 #include "Misc/FileHelper.h"
 #include "Misc/MessageDialog.h"
-#include "Misc/ScopedSlowTask.h"
-#include "Serialization/MemoryReader.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailCategoryBuilder.h"
 #include "AssetRegistryModule.h"
@@ -88,13 +86,17 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		{
 		case EVoxelMaterialConfig::RGB:
 			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialCollection));
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialsHardness));
+			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, LODMaterialCollections));
+			if (World->RGBHardness != EVoxelRGBHardness::FourWayBlend && World->RGBHardness != EVoxelRGBHardness::FiveWayBlend)
+			{
+				DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialsHardness));
+			}
 			break;
 		case EVoxelMaterialConfig::SingleIndex:
-		case EVoxelMaterialConfig::DoubleIndex:
+		case EVoxelMaterialConfig::MultiIndex:
 			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, VoxelMaterial));
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, TessellatedVoxelMaterial));
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bUseAlphaAsHardness));
+			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, LODMaterials));
+			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, RGBHardness));
 			break;
 		default:
 			ensure(false);
@@ -120,6 +122,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		});
 		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialConfig))->SetOnPropertyValueChanged(RefreshDelegate);
 		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, UVConfig))->SetOnPropertyValueChanged(RefreshDelegate);
+		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, RGBHardness))->SetOnPropertyValueChanged(RefreshDelegate);
 	}
 
 	if (bIsDataAssetEditor)

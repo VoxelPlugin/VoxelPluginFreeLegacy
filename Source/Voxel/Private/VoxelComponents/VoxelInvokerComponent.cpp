@@ -13,6 +13,11 @@ FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition(const AVoxelWorld
 	return GetInvokerVoxelPosition(const_cast<AVoxelWorldInterface*>(VoxelWorld));
 }
 
+FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings(const AVoxelWorldInterface* VoxelWorld) const
+{
+	return GetInvokerSettings(const_cast<AVoxelWorldInterface*>(VoxelWorld));
+}
+
 bool UVoxelInvokerComponentBase::IsLocalInvoker_Implementation() const
 {
 	auto* Owner = Cast<APawn>(GetOwner());
@@ -24,22 +29,9 @@ FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition_Implementation(AV
 	return FIntVector(0);
 }
 
-void UVoxelInvokerComponentBase::GetInvokerSettings_Implementation(
-	AVoxelWorldInterface* VoxelWorld, 
-	bool& bUseForLOD, 
-	int32& LODToSet, 
-	FIntBox& LODBounds, 
-	bool& bUseForCollisions, 
-	FIntBox& CollisionsBounds, 
-	bool& bUseForNavmesh,
-	FIntBox& NavmeshBounds,
-	bool& bUseForTessellation,
-	FIntBox& TessellationBounds) const
+FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
-	bUseForLOD = false;
-	bUseForCollisions = false;
-	bUseForNavmesh = false;
-	bUseForTessellation = false;
+	return {};
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -102,14 +94,6 @@ void UVoxelInvokerComponentBase::OnUnregister()
 	}
 }
 
-#if WITH_EDITOR
-void UVoxelInvokerComponentBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-	RefreshAllVoxelInvokers();
-}
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -139,39 +123,30 @@ FIntVector UVoxelSimpleInvokerComponent::GetInvokerVoxelPosition_Implementation(
 	return VoxelWorld->GlobalToLocal(GetInvokerGlobalPosition());
 }
 
-void UVoxelSimpleInvokerComponent::GetInvokerSettings_Implementation(
-	AVoxelWorldInterface* VoxelWorld,
-	bool& OutbUseForLOD,
-	int32& OutLODToSet,
-	FIntBox& OutLODBounds,
-	bool& OutbUseForCollisions,
-	FIntBox& OutCollisionsBounds,
-	bool& OutbUseForNavmesh,
-	FIntBox& OutNavmeshBounds,
-	bool& OutbUseForTessellation,
-	FIntBox& OutTessellationBounds) const
+FVoxelInvokerSettings UVoxelSimpleInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
 	const FVector InvokerGlobalPosition = GetInvokerGlobalPosition();
 	const auto GetVoxelBounds = [&](float Distance)
 	{
-		return FIntBox::SafeConstruct(
+		return FVoxelIntBox::SafeConstruct(
 			VoxelWorld->GlobalToLocal(InvokerGlobalPosition - Distance, EVoxelWorldCoordinatesRounding::RoundDown),
 			VoxelWorld->GlobalToLocal(InvokerGlobalPosition + Distance, EVoxelWorldCoordinatesRounding::RoundUp)
 		);
 	};
+
+	FVoxelInvokerSettings Settings;
 	
-	OutbUseForLOD = bUseForLOD;
-	OutLODToSet = LODToSet;
-	OutLODBounds = GetVoxelBounds(LODRange);
+	Settings.bUseForLOD = bUseForLOD;
+	Settings.LODToSet = LODToSet;
+	Settings.LODBounds = GetVoxelBounds(LODRange);
 
-	OutbUseForCollisions = bUseForCollisions;
-	OutCollisionsBounds = GetVoxelBounds(CollisionsRange);
+	Settings.bUseForCollisions = bUseForCollisions;
+	Settings.CollisionsBounds = GetVoxelBounds(CollisionsRange);
 
-	OutbUseForNavmesh = bUseForNavmesh;
-	OutNavmeshBounds = GetVoxelBounds(NavmeshRange);
+	Settings.bUseForNavmesh = bUseForNavmesh;
+	Settings.NavmeshBounds = GetVoxelBounds(NavmeshRange);
 
-	OutbUseForTessellation = bUseForTessellation;
-	OutTessellationBounds = GetVoxelBounds(TessellationRange);
+	return Settings;
 }
 
 FVector UVoxelSimpleInvokerComponent::GetInvokerGlobalPosition_Implementation() const
@@ -231,37 +206,28 @@ FIntVector UVoxelLODVolumeInvokerComponent::GetInvokerVoxelPosition_Implementati
 	return VoxelWorld->GlobalToLocal(GetComponentLocation());
 }
 
-void UVoxelLODVolumeInvokerComponent::GetInvokerSettings_Implementation(
-	AVoxelWorldInterface* VoxelWorld,
-	bool& OutbUseForLOD,
-	int32& OutLODToSet,
-	FIntBox& OutLODBounds,
-	bool& OutbUseForCollisions,
-	FIntBox& OutCollisionsBounds,
-	bool& OutbUseForNavmesh,
-	FIntBox& OutNavmeshBounds,
-	bool& OutbUseForTessellation,
-	FIntBox& OutTessellationBounds) const
+FVoxelInvokerSettings UVoxelLODVolumeInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
 	auto* Volume = CastChecked<AVoxelLODVolume>(GetOwner());
 	const FBox VolumeWorldBounds = Volume->GetBounds().GetBox();
-	const FIntBox VolumeBounds = FIntBox::SafeConstruct(
+	const FVoxelIntBox VolumeBounds = FVoxelIntBox::SafeConstruct(
 		VoxelWorld->GlobalToLocal(VolumeWorldBounds.Min, EVoxelWorldCoordinatesRounding::RoundDown),
 		VoxelWorld->GlobalToLocal(VolumeWorldBounds.Max, EVoxelWorldCoordinatesRounding::RoundUp)
 	);
 
-	OutbUseForLOD = bUseForLOD;
-	OutLODToSet = LODToSet;
-	OutLODBounds = VolumeBounds;
+	FVoxelInvokerSettings Settings;
 
-	OutbUseForCollisions = bUseForCollisions;
-	OutCollisionsBounds = VolumeBounds;
+	Settings.bUseForLOD = bUseForLOD;
+	Settings.LODToSet = LODToSet;
+	Settings.LODBounds = VolumeBounds;
 
-	OutbUseForNavmesh = bUseForNavmesh;
-	OutNavmeshBounds = VolumeBounds;
+	Settings.bUseForCollisions = bUseForCollisions;
+	Settings.CollisionsBounds = VolumeBounds;
 
-	OutbUseForTessellation = bUseForTessellation;
-	OutTessellationBounds = VolumeBounds;
+	Settings.bUseForNavmesh = bUseForNavmesh;
+	Settings.NavmeshBounds = VolumeBounds;
+
+	return Settings;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

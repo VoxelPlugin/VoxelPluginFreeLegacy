@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "StackArray.h"
-#include "VoxelMiscUtilities.h"
+#include "VoxelStaticArray.h"
+#include "VoxelUtilities/VoxelMiscUtilities.h"
 
 class IVoxelData;
 class FVoxelDataOctreeLeaf;
@@ -113,9 +113,9 @@ private:
 	};
 	struct FAlreadyModified
 	{
-		TStackBitArray<VOXELS_PER_DATA_CHUNK> Values = ForceInit;
-		TStackBitArray<VOXELS_PER_DATA_CHUNK> Materials = ForceInit;
-		TStackBitArray<VOXELS_PER_DATA_CHUNK> Foliage = ForceInit;
+		TVoxelStaticBitArray<VOXELS_PER_DATA_CHUNK> Values = ForceInit;
+		TVoxelStaticBitArray<VOXELS_PER_DATA_CHUNK> Materials = ForceInit;
+		TVoxelStaticBitArray<VOXELS_PER_DATA_CHUNK> Foliage = ForceInit;
 	};
 
 	FAlreadyModified AlreadyModified;

@@ -1,13 +1,13 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelAsyncWork.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "HAL/Event.h"
-#include "VoxelStatsUtilities.h"
+#include "VoxelUtilities/VoxelStatsUtilities.h"
 
 FVoxelAsyncWork::~FVoxelAsyncWork()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	// DO NOT call WaitForDoThreadedWorkToExit here, as the child class destructor has already be run
 	// It's too late to wait
@@ -24,7 +24,7 @@ FVoxelAsyncWork::~FVoxelAsyncWork()
 
 void FVoxelAsyncWork::DoThreadedWork()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_VERBOSE_FUNCTION_COUNTER();
 	
 	check(!IsDone());
 
@@ -40,7 +40,7 @@ void FVoxelAsyncWork::DoThreadedWork()
 
 	if (!IsCanceled())
 	{
-		VOXEL_SCOPE_COUNTER("PostDoWork");
+		VOXEL_ASYNC_VERBOSE_SCOPE_COUNTER("PostDoWork");
 		check(IsDone());
 		PostDoWork();
 	}
@@ -58,7 +58,7 @@ void FVoxelAsyncWork::DoThreadedWork()
 
 void FVoxelAsyncWork::Abandon()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	check(!IsDone());
 
@@ -80,7 +80,7 @@ void FVoxelAsyncWork::Abandon()
 
 bool FVoxelAsyncWork::CancelAndAutodelete()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	DoneSection.Lock();
 	
@@ -104,7 +104,7 @@ bool FVoxelAsyncWork::CancelAndAutodelete()
 
 void FVoxelAsyncWork::WaitForDoThreadedWorkToExit()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	DoneSection.Lock();
 	DoneSection.Unlock();

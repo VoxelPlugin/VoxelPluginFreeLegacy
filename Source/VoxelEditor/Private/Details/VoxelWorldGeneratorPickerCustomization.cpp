@@ -11,7 +11,7 @@
 
 #include "PropertyEditorModule.h"
 #include "Modules/ModuleManager.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 
 void FVoxelWorldGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> InPropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {

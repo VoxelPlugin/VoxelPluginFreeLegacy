@@ -3,12 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGraphGeneratorHelpers.h"
-#include "VoxelNodeFunctions.h"
-#include "FastNoise.h"
-#include "Containers/StaticArray.h"
-#include "Curves/CurveFloat.h"
-#include "Curves/CurveLinearColor.h"
+#include "VoxelGeneratedWorldGeneratorsIncludes.h"
 #include "VoxelExample_Planet.generated.h"
 
 UCLASS(Blueprintable)

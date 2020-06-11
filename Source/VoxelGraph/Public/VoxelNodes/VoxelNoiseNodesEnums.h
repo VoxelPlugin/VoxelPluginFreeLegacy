@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FastNoise.h"
+#include "VoxelFastNoise.h"
 #include "VoxelNoiseNodesEnums.generated.h"
 
 UENUM(BlueprintType)
@@ -48,8 +48,8 @@ namespace FVoxelNoiseNodesEnums
 	FString GetFastNoiseName(EFractalType FractalType);
 	FString GetFastNoiseName(ECellularDistanceFunction DistanceFunction);
 	FString GetFastNoiseName(ECellularReturnType ReturnType);
-	FastNoise::Interp                   GetFastNoiseEnum(EInterp Interpolation);
-	FastNoise::FractalType              GetFastNoiseEnum(EFractalType FractalType);
-	FastNoise::CellularDistanceFunction GetFastNoiseEnum(ECellularDistanceFunction DistanceFunction);
-	FastNoise::CellularReturnType       GetFastNoiseEnum(ECellularReturnType ReturnType);
+	FVoxelFastNoise::Interp                   GetFastNoiseEnum(EInterp Interpolation);
+	FVoxelFastNoise::FractalType              GetFastNoiseEnum(EFractalType FractalType);
+	FVoxelFastNoise::CellularDistanceFunction GetFastNoiseEnum(ECellularDistanceFunction DistanceFunction);
+	FVoxelFastNoise::CellularReturnType       GetFastNoiseEnum(ECellularReturnType ReturnType);
 }

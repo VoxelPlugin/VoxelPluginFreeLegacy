@@ -10,6 +10,7 @@ enum class EVoxelRenderType : uint8
 {
 	MarchingCubes,
 	Cubic,
+	// Surface nets only work well at LOD 0. They will have holes between higher LODs, and the material won't be picked correctly.
 	SurfaceNets
 };
 
@@ -28,7 +29,8 @@ enum class EVoxelMaterialConfig : uint8
 {
 	RGB,
 	SingleIndex,
-	DoubleIndex
+	DoubleIndex_DEPRECATED UMETA(Hidden),
+	MultiIndex
 };
 
 UENUM(BlueprintType)
@@ -80,4 +82,29 @@ enum class EVoxelDataType : uint8
 	Values,
 	Materials,
 	Foliage
+};
+
+UENUM(BlueprintType)
+enum class EVoxelRGBHardness : uint8
+{
+	// Interpret the material as 4 way blend, and use MaterialsHardness
+	FourWayBlend,
+	// Interpret the material as 5 way blend, and use MaterialsHardness
+	FiveWayBlend,
+	// Use the Red channel as hardness
+	R,
+	// Use the Green channel as hardness
+	G,
+	// Use the Blue channel as hardness
+	B,
+	// Use the Alpha channel as hardness
+	A,
+	// Use the U0 channel as hardness
+	U0,
+	// Use the U1 channel as hardness
+	U1,
+	// Use the V0 channel as hardness
+	V0,
+	// Use the V1 channel as hardness
+	V1
 };

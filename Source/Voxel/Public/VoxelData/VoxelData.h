@@ -6,13 +6,13 @@
 #include "VoxelMaterial.h"
 #include "VoxelValue.h"
 #include "VoxelRange.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelDiff.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelQueryZone.h"
-#include "VoxelOctreeUtilities.h"
-#include "VoxelWorldGeneratorInstance.h"
-#include "VoxelWorldGeneratorInstance.inl"
+#include "VoxelUtilities/VoxelOctreeUtilities.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
 #include "VoxelData/VoxelSave.h"
 #include "VoxelData/VoxelDataOctree.h"
 
@@ -23,6 +23,25 @@ class FVoxelData;
 class AVoxelWorld;
 class FVoxelWorldGeneratorInstance;
 class FVoxelPlaceableItem;
+
+extern VOXEL_API TAutoConsoleVariable<int32> CVarMaxPlaceableItemsPerOctree;
+extern VOXEL_API TAutoConsoleVariable<int32> CVarStoreSpecialValueForGeneratorValuesInSaves;
+
+// Turns off some expensive compression settings that aren't needed if you just want to save, recreate world, load
+struct FVoxelScopedFastSaveLoad
+{
+	// No need to diff against generator as it's very slow
+	const int32 DiffGenerator = CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread();
+
+	FVoxelScopedFastSaveLoad()
+	{
+		CVarStoreSpecialValueForGeneratorValuesInSaves->Set(0);
+	}
+	~FVoxelScopedFastSaveLoad()
+	{
+		CVarStoreSpecialValueForGeneratorValuesInSaves->Set(DiffGenerator);
+	}
+};
 
 class FVoxelDataLockInfo
 {
@@ -48,7 +67,7 @@ private:
 struct FVoxelDataSettings
 {
 	const int32 Depth;
-	const FIntBox WorldBounds;
+	const FVoxelIntBox WorldBounds;
 	const TVoxelSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator;
 	const bool bEnableMultiplayer;
 	const bool bEnableUndoRedo;
@@ -60,7 +79,7 @@ struct FVoxelDataSettings
 		bool bEnableMultiplayer,
 		bool bEnableUndoRedo);
 	FVoxelDataSettings(
-		const FIntBox& WorldBounds,
+		const FVoxelIntBox& WorldBounds,
 		const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& WorldGenerator,
 		bool bEnableMultiplayer,
 		bool bEnableUndoRedo);
@@ -93,6 +112,7 @@ public:
 	{
 		return *Octree;
 	}
+	
 	// NOTE: what if we query between WorldBounds.Max - 1 and WorldBounds.Max?
 	template<typename T>
 	FORCEINLINE bool IsInWorld(T X, T Y, T Z) const
@@ -104,6 +124,18 @@ public:
 	{
 		return WorldBounds.ContainsTemplate(P);
 	}
+	
+	template<typename T>
+	FORCEINLINE void ClampToWorld(T& X, T& Y, T& Z) const
+	{
+		WorldBounds.Clamp(X, Y, Z);
+		ensureVoxelSlow(IsInWorld(X, Y, Z));
+	}
+	template<typename T>
+	FORCEINLINE T ClampToWorld(const T& P) const
+	{
+		return WorldBounds.Clamp(P);
+	}
 
 public:
 	/**
@@ -112,7 +144,7 @@ public:
 	 * @param	Bounds				Bounds to lock
 	 * @param	Name				The name of the task locking these bounds, for debug
 	 */
-	TUniquePtr<FVoxelDataLockInfo> Lock(EVoxelLockType LockType, const FIntBox& Bounds, FName Name) const;
+	TUniquePtr<FVoxelDataLockInfo> Lock(EVoxelLockType LockType, const FVoxelIntBox& Bounds, FName Name) const;
 
 	/**
 	 * Unlock previously locked bounds
@@ -126,26 +158,26 @@ public:
 
 	// Will clear all the edited data. Keeps items
 	// Requires write lock
-	void ClearOctreeData(TArray<FIntBox>& OutBoundsToUpdate);
+	void ClearOctreeData(TArray<FVoxelIntBox>& OutBoundsToUpdate);
 
 	// Requires write lock
 	template<typename T>
-	void CacheBounds(const FIntBox& Bounds);
+	void CacheBounds(const FVoxelIntBox& Bounds);
 	
 	// Requires write lock
 	template<typename T>
-	void ClearCacheInBounds(const FIntBox& Bounds);
+	void ClearCacheInBounds(const FVoxelIntBox& Bounds);
 	
 	// Requires write lock
 	template<typename T>
-	void CheckIsSingle(const FIntBox& Bounds);
+	void CheckIsSingle(const FVoxelIntBox& Bounds);
 
 	// Get the data in zone. Requires read lock
 	template<typename T>
 	void Get(TVoxelQueryZone<T>& QueryZone, int32 LOD) const;
 	
 	template<typename T>
-	TArray<T> Get(const FIntBox& Bounds) const
+	TArray<T> Get(const FVoxelIntBox& Bounds) const
 	{
 		TArray<T> Result;
 		Result.SetNumUninitialized(Bounds.Count());
@@ -156,9 +188,9 @@ public:
 
 	// Will always use 8 threads
 	template<typename T>
-	TArray<T> ParallelGet(const FIntBox& Bounds, bool bForceSingleThread = false) const
+	TArray<T> ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread = false) const
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 		
 		TArray<T> Result;
 		Result.SetNumUninitialized(Bounds.Count());
@@ -167,7 +199,7 @@ public:
 		const FIntVector Half = (Bounds.Min + Bounds.Max) / 2;
 		ParallelFor(8, [&](int32 Index)
 		{
-			const FIntBox LocalBounds(
+			const FVoxelIntBox LocalBounds(
 				FIntVector(
 					(Index & 0x1) ? Half.X : Bounds.Min.X,
 					(Index & 0x2) ? Half.Y : Bounds.Min.Y,
@@ -183,19 +215,19 @@ public:
 		return Result;
 	}
 
-	TArray<FVoxelValue> GetValues(const FIntBox& Bounds) const
+	TArray<FVoxelValue> GetValues(const FVoxelIntBox& Bounds) const
 	{
 		return Get<FVoxelValue>(Bounds);
 	}
-	TArray<FVoxelMaterial> GetMaterials(const FIntBox& Bounds) const
+	TArray<FVoxelMaterial> GetMaterials(const FVoxelIntBox& Bounds) const
 	{
 		return Get<FVoxelMaterial>(Bounds);
 	}
 
 	// Requires read lock
-	TVoxelRange<FVoxelValue> GetValueRange(const FIntBox& Bounds, int32 LOD) const;
+	TVoxelRange<FVoxelValue> GetValueRange(const FVoxelIntBox& Bounds, int32 LOD) const;
 
-	FORCEINLINE bool IsEmpty(const FIntBox& Bounds, int32 LOD) const
+	FORCEINLINE bool IsEmpty(const FVoxelIntBox& Bounds, int32 LOD) const
 	{
 		const auto Range = GetValueRange(Bounds, LOD);
 		return Range.Min.IsEmpty() == Range.Max.IsEmpty();
@@ -204,15 +236,11 @@ public:
 	template<typename T>
 	FORCEINLINE T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const
 	{
-		if (IsInWorld(X, Y, Z))
-		{
-			auto& Node = FVoxelOctreeUtilities::GetBottomNode(GetOctree(), int32(X), int32(Y), int32(Z));
-			return Node.GetCustomOutput<T>(*WorldGenerator, DefaultValue, Name, X, Y, Z, LOD);
-		}
-		else
-		{
-			return WorldGenerator->GetCustomOutput<T>(DefaultValue, Name, X, Y, Z, LOD, FVoxelItemStack::Empty);
-		}
+		// Clamp to world, to avoid un-editable border
+		ClampToWorld(X, Y, Z);
+
+		auto& Node = FVoxelOctreeUtilities::GetBottomNode(GetOctree(), int32(X), int32(Y), int32(Z));
+		return Node.GetCustomOutput<T>(*WorldGenerator, DefaultValue, Name, X, Y, Z, LOD);
 	}
 	template<typename T, typename U>
 	FORCEINLINE T GetCustomOutput(T DefaultValue, FName Name, const U& P, int32 LOD) const
@@ -220,11 +248,11 @@ public:
 		return GetCustomOutput<T>(DefaultValue, Name, P.X, P.Y, P.Z, LOD);
 	}
 	
-	TVoxelRange<v_flt> GetCustomOutputRange(TVoxelRange<v_flt> DefaultValue, FName Name, const FIntBox& Bounds, int32 LOD) const;
+	TVoxelRange<v_flt> GetCustomOutputRange(TVoxelRange<v_flt> DefaultValue, FName Name, const FVoxelIntBox& Bounds, int32 LOD) const;
 	
 public:
 	template<typename ...TArgs, typename F>
-	void Set(const FIntBox& Bounds, F Apply)
+	void Set(const FVoxelIntBox& Bounds, F Apply)
 	{
 		if (!ensure(Bounds.IsValid())) return;
 		FVoxelOctreeUtilities::IterateTreeInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Tree)
@@ -275,15 +303,11 @@ public:
 	template<typename T>
 	FORCEINLINE T Get(int32 X, int32 Y, int32 Z, int32 LOD) const
 	{
-		if (IsInWorld(X, Y, Z))
-		{
-			auto& Node = FVoxelOctreeUtilities::GetBottomNode(GetOctree(), int32(X), int32(Y), int32(Z));
-			return Node.Get<T>(*WorldGenerator, X, Y, Z, LOD);
-		}
-		else
-		{
-			return WorldGenerator->Get<T>(X, Y, Z, LOD, FVoxelItemStack::Empty);
-		}
+		// Clamp to world, to avoid un-editable border
+		ClampToWorld(X, Y, Z);
+
+		auto& Node = FVoxelOctreeUtilities::GetBottomNode(GetOctree(), int32(X), int32(Y), int32(Z));
+		return Node.Get<T>(*WorldGenerator, X, Y, Z, LOD);
 	}
 	template<typename T>
 	FORCEINLINE T Get(const FIntVector& P, int32 LOD) const
@@ -319,7 +343,7 @@ public:
 	 * @param	OutBoundsToUpdate			The modified bounds
 	 * @return true if loaded successfully, false if the world is corrupted and must not be saved again
 	 */
-	bool LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompressedWorldSaveImpl& Save, TArray<FIntBox>& OutBoundsToUpdate);
+	bool LoadFromSave(const AVoxelWorld* VoxelWorld, const FVoxelUncompressedWorldSaveImpl& Save, TArray<FVoxelIntBox>& OutBoundsToUpdate);
 
 
 public:
@@ -328,13 +352,13 @@ public:
 	 */
 
 	// Undo one frame and add it to the redo stack. Current frame must be empty. No lock required
-	bool Undo(TArray<FIntBox>& OutBoundsToUpdate);
+	bool Undo(TArray<FVoxelIntBox>& OutBoundsToUpdate);
 	// Redo one frame and add it to the undo stack. Current frame must be empty. No lock required
-	bool Redo(TArray<FIntBox>& OutBoundsToUpdate);
+	bool Redo(TArray<FVoxelIntBox>& OutBoundsToUpdate);
 	// Clear all the frames. No lock required
 	void ClearFrames();
 	// Add the current frame to the undo stack. Clear the redo stack. No lock required. Bounds: must contain all the edits since last SaveFrame
-	void SaveFrame(const FIntBox& Bounds);
+	void SaveFrame(const FVoxelIntBox& Bounds);
 	// Check that the current frame is empty (safe to call Undo/Redo). No lock required
 	bool IsCurrentFrameEmpty();
 	// Get the history position. No lock required
@@ -356,8 +380,8 @@ private:
 	int32 HistoryPosition = 0;
 	int32 MaxHistoryPosition = 0;
 	
-	TArray<FIntBox> UndoFramesBounds;
-	TArray<FIntBox> RedoFramesBounds;
+	TArray<FVoxelIntBox> UndoFramesBounds;
+	TArray<FVoxelIntBox> RedoFramesBounds;
 	
 	// Used to clear redo stacks on SaveFrame without iterating the entire octree
 	// Stack: added when undoing, poping when redoing
@@ -449,7 +473,7 @@ class TVoxelScopeLock
 public:
 	using TData = typename TChooseClass<LockType == EVoxelLockType::Read, const FVoxelData, FVoxelData>::Result;
 	
-	TVoxelScopeLock(TData& InData, const FIntBox& Bounds, const FName& Name, bool bCondition = true)
+	TVoxelScopeLock(TData& InData, const FVoxelIntBox& Bounds, const FName& Name, bool bCondition = true)
 		: Data(InData)
 	{
 		if (bCondition)
@@ -489,7 +513,7 @@ class FVoxelWriteScopeLock : public TVoxelScopeLock<EVoxelLockType::Write>
 class FVoxelPromotableReadScopeLock
 {
 public:
-	FVoxelPromotableReadScopeLock(FVoxelData& Data, const FIntBox& Bounds, const FName& Name)
+	FVoxelPromotableReadScopeLock(FVoxelData& Data, const FVoxelIntBox& Bounds, const FName& Name)
 		: Data(Data)
 		, Bounds(Bounds)
 		, Name(Name)
@@ -516,7 +540,7 @@ public:
 
 private:
 	const FVoxelData& Data;
-	const FIntBox Bounds;
+	const FVoxelIntBox Bounds;
 	const FName Name;
 
 	bool bPromoted = false;

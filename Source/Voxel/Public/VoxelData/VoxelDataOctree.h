@@ -3,13 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
 #include "VoxelOctree.h"
 #include "VoxelQueryZone.h"
 #include "VoxelSharedMutex.h"
-#include "VoxelMiscUtilities.h"
+#include "VoxelUtilities/VoxelMiscUtilities.h"
 #include "VoxelData/VoxelDataOctreeLeafData.h"
 #include "VoxelData/VoxelDataOctreeLeafUndoRedo.h"
 #include "VoxelData/VoxelDataOctreeLeafMultiplayer.h"
@@ -24,14 +24,14 @@ class VOXEL_API IVoxelData : public IVoxelDataOctreeMemory
 {
 public:
 	const int32 Depth;
-	const FIntBox WorldBounds;
+	const FVoxelIntBox WorldBounds;
 	const bool bEnableMultiplayer;
 	const bool bEnableUndoRedo;
 	const TVoxelSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator;
 
 	IVoxelData(
 		int32 Depth,
-		const FIntBox& WorldBounds,
+		const FVoxelIntBox& WorldBounds,
 		bool bEnableMultiplayer,
 		bool bEnableUndoRedo,
 		const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& VoxelWorldGeneratorInstance);

@@ -26,7 +26,7 @@ AVoxelDisableEditsBox::AVoxelDisableEditsBox()
 ///////////////////////////////////////////////////////////////////////////////
 
 
-FIntBox AVoxelDisableEditsBox::GetBox(AVoxelWorld* World) const
+FVoxelIntBox AVoxelDisableEditsBox::GetBox(AVoxelWorld* World) const
 {
 	check(World);
 
@@ -37,7 +37,7 @@ FIntBox AVoxelDisableEditsBox::GetBox(AVoxelWorld* World) const
 	const float Ratio = World->VoxelSize / 100.f;
 	const FIntVector S = FVoxelUtilities::RoundToInt(Scale / Ratio);
 
-	return FIntBox(Position - S, Position + S);
+	return FVoxelIntBox(Position - S, Position + S);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

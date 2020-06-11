@@ -15,7 +15,7 @@ public class Voxel : ModuleRules
 
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
+        PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
 
         // For raytracing
         PrivateIncludePaths.Add(EngineDirectory + "/Shaders/Shared");
@@ -57,11 +57,12 @@ public class Voxel : ModuleRules
             PrivateDependencyModuleNames.Add("ForsythTriOptimizer");
         }
 
-        if (Target.Configuration == UnrealTargetConfiguration.DebugGame)
+        if (Target.Configuration == UnrealTargetConfiguration.DebugGame ||
+			Target.Configuration == UnrealTargetConfiguration.Debug)
         {
             PublicDefinitions.Add("VOXEL_DEBUG=1");
         }
 
-        PublicDefinitions.Add("VOXEL_PLUGIN_PRO=1");
+        PublicDefinitions.Add("VOXEL_PLUGIN_NAME=TEXT(\"VoxelFree\")");
     }
 }

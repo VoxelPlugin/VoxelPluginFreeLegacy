@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Misc/Change.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 class FVoxelData;
 class AVoxelWorld;

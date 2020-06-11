@@ -5,18 +5,32 @@
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
 #include "VoxelConfigEnums.h"
-#include "Containers/StaticArray.h"
 #include "VoxelPaintMaterial.generated.h"
+
+class UMaterialInterface;
+class UVoxelMaterialCollectionBase;
+
+USTRUCT(BlueprintType)
+struct FVoxelPaintMaterial_MaterialCollectionChannel
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	uint8 Channel = 0;
+
+	operator uint8() const{ return Channel; }
+};
 
 UENUM(BlueprintType)
 enum class EVoxelPaintMaterialType : uint8
 {
-	RGB,
+	Color,
 	FiveWayBlend,
 	SingleIndex,
-	DoubleIndexSet,
-	DoubleIndexBlend,
-	UVs
+	MultiIndex,
+	MultiIndexWetness,
+	MultiIndexRaw,
+	UV
 };
 
 USTRUCT(BlueprintType)
@@ -24,16 +38,16 @@ struct FVoxelPaintMaterialColor
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	FLinearColor Color = FLinearColor::White;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FColor Color = FColor::Transparent;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	bool bPaintR = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	bool bPaintG = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	bool bPaintB = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	bool bPaintA = true;
 };
 
@@ -42,40 +56,86 @@ struct FVoxelPaintMaterialFiveWayBlend
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 4, ClampMin = 0, ClampMax = 4))
+	// Between 0 and 4. 1,2,3,4 => R,G,B,A. 0 => material displayed by default
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 4, ClampMin = 0, ClampMax = 4))
 	int32 Channel = 0;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1, ClampMin = 0, ClampMax = 1))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1, ClampMin = 0, ClampMax = 1))
 	float TargetValue = 1.f;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bPaintR = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bPaintG = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bPaintB = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bPaintA = true;
+
+	// These channels will have their strength locked, and will stay the same
+	// Useful eg to paint _under_ rocks: lock the rock channel, and paint the channel you want to put under them
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	TArray<uint8> LockedChannels;
+
+	// If true, will ignore Alpha
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, AdvancedDisplay, Category = "Voxel")
+	bool bFourWayBlend = false;
 };
 
 USTRUCT(BlueprintType)
-struct FVoxelPaintMaterialDoubleIndexSet
+struct FVoxelPaintMaterialSingleIndex
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	uint8 IndexA = 0;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	uint8 IndexB = 0;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1))
-	float Blend = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterial_MaterialCollectionChannel Channel;
+};
+	
+USTRUCT(BlueprintType)
+struct FVoxelPaintMaterialMultiIndex
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterial_MaterialCollectionChannel Channel;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bSetIndexA = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bSetIndexB = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	bool bSetBlend = true;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1, ClampMin = 0, ClampMax = 1))
+	float TargetValue = 1.f;
+
+	// These channels will have their strength locked, and will stay the same
+	// Useful eg to paint _under_ rocks: lock the rock channel, and paint the channel you want to put under them
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	TArray<FVoxelPaintMaterial_MaterialCollectionChannel> LockedChannels;
+};
+
+USTRUCT(BlueprintType)
+struct FVoxelPaintMaterialMultiIndexWetness
+{
+	GENERATED_BODY()
+		
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1, ClampMin = 0, ClampMax = 1))
+	float TargetValue = 1.f;
+};
+
+USTRUCT(BlueprintType)
+struct FVoxelPaintMaterialMultiIndexRaw
+{
+	GENERATED_BODY()
+		
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterial_MaterialCollectionChannel Channel0;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1))
+	float Strength0 = 0.f;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterial_MaterialCollectionChannel Channel1;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1))
+	float Strength1 = 0.f;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterial_MaterialCollectionChannel Channel2;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1))
+	float Strength2 = 0.f;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterial_MaterialCollectionChannel Channel3;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 1))
+	float Strength3 = 0.f;
 };
 
 USTRUCT(BlueprintType)
@@ -83,15 +143,15 @@ struct FVoxelPaintMaterialUV
 {
 	GENERATED_BODY()
 		
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	uint8 Channel = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel", meta = (UIMin = 0, UIMax = 4))
+	int32 Channel = 0;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	FVector2D UV = FVector2D::ZeroVector;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	bool bPaintU = true;
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	bool bPaintV = true;
 };
 
@@ -103,47 +163,43 @@ struct VOXEL_API FVoxelPaintMaterial
 public:
 	FVoxelPaintMaterial() = default;
 
-	static FVoxelPaintMaterial CreateRGB(FLinearColor Color, bool bPaintR, bool bPaintG, bool bPaintB, bool bPaintA);
-	static FVoxelPaintMaterial CreateFiveWayBlend(int32 Channel, float TargetValue, bool bPaintR, bool bPaintG, bool bPaintB, bool bPaintA);
-	static FVoxelPaintMaterial CreateSingleIndex(uint8 Index);
-	static FVoxelPaintMaterial CreateDoubleIndexSet(uint8 IndexA, uint8 IndexB, float Blend, bool bSetIndexA, bool bSetIndexB, bool bSetBlend);
-	static FVoxelPaintMaterial CreateDoubleIndexBlend(uint8 Index);
-	static FVoxelPaintMaterial CreateUV(uint8 Channel, FVector2D UV, bool bPaintU, bool bPaintV);
-
 	void ApplyToMaterial(FVoxelMaterial& Material, float Strength) const;
 
 public:
-	// NOTE: Don't edit those directly, use the functions above instead!
-	
 #if WITH_EDITORONLY_DATA
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
 	bool bRestrictType = false;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
 	EVoxelMaterialConfig MaterialConfigToRestrictTo = EVoxelMaterialConfig::RGB;
-#endif
-	
-	// The type of painting
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	EVoxelPaintMaterialType Type = EVoxelPaintMaterialType::RGB;
 
-	// Color to paint
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
+	UVoxelMaterialCollectionBase* PreviewMaterialCollection = nullptr;
+#endif
+
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	EVoxelPaintMaterialType Type = EVoxelPaintMaterialType::FiveWayBlend;
+
+public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	FVoxelPaintMaterialColor Color;
 
-	// Index to paint
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	uint8 Index = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterialSingleIndex SingleIndex;
 
-	// Double index to paint
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
-	FVoxelPaintMaterialDoubleIndexSet DoubleIndexSet;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterialMultiIndex MultiIndex;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterialMultiIndexWetness MultiIndexWetness;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FVoxelPaintMaterialMultiIndexRaw MultiIndexRaw;
 
-	// UVs to paint
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	FVoxelPaintMaterialUV UV;
 
-	// For 5 way blends
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Voxel")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	FVoxelPaintMaterialFiveWayBlend FiveWayBlend;
 };

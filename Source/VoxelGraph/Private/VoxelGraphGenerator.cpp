@@ -242,10 +242,6 @@ void UVoxelGraphGenerator::PostLoad()
 
 	CreateGraphs();
 	BindUpdateSetterNodes();
-	if (SaveLocation.FilePath.IsEmpty())
-	{
-		SaveLocation.FilePath = FPaths::GameSourceDir() + "GeneratedWorldGenerators/" + GetName() + ".h";
-	}
 }
 
 void UVoxelGraphGenerator::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
@@ -254,6 +250,14 @@ void UVoxelGraphGenerator::PostEditChangeProperty(struct FPropertyChangedEvent& 
 
 	if (PropertyChangedEvent.MemberProperty && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
+		if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphGenerator, SaveLocation))
+		{
+			if (!SaveLocation.FilePath.IsEmpty())
+			{
+				SaveLocation.FilePath = FPaths::ConvertRelativePathToFull(SaveLocation.FilePath);
+				FPaths::MakePathRelativeTo(SaveLocation.FilePath, *FPaths::ProjectDir());
+			}
+		}
 		if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphGenerator, Outputs))
 		{
 			BindUpdateSetterNodes();

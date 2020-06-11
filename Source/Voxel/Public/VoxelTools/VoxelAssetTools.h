@@ -34,7 +34,7 @@ struct FVoxelPlaceableItemReference
 {
 	GENERATED_BODY()
 
-	FIntBox Bounds;
+	FVoxelIntBox Bounds;
 	TVoxelWeakPtr<FVoxelPlaceableItem> Item;
 };
 
@@ -64,7 +64,7 @@ public:
 		UVoxelTransformableWorldGenerator* Asset,
 		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		int32 Priority,
 		bool bConvertToVoxelSpace = true,
 		bool bUpdateRender = true);
@@ -92,7 +92,7 @@ public:
 		UVoxelTransformableWorldGenerator* Asset,
 		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		int32 Priority,
 		bool bConvertToVoxelSpace = true,
 		bool bUpdateRender = true,
@@ -117,7 +117,7 @@ public:
 		UVoxelTransformableWorldGenerator* Asset,
 		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bModifyValues = true,
 		bool bModifyMaterials = true,
 		bool bLockEntireWorld = true,
@@ -142,7 +142,7 @@ public:
 		UVoxelTransformableWorldGenerator* Asset,
 		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bModifyValues = true,
 		bool bModifyMaterials = true,
 		bool bLockEntireWorld = true,
@@ -170,7 +170,7 @@ public:
 		UVoxelTransformableWorldGenerator* Asset,
 		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bSubtractive = false,
 		EVoxelAssetMergeMode MergeMode = EVoxelAssetMergeMode::InnerValuesAndInnerMaterials,
 		bool bConvertToVoxelSpace = true);
@@ -196,7 +196,7 @@ public:
 		UVoxelTransformableWorldGenerator* Asset,
 		const TMap<FName, int32>& Seeds,
 		FTransform Transform,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bSubtractive = false,
 		EVoxelAssetMergeMode MergeMode = EVoxelAssetMergeMode::InnerValuesAndInnerMaterials,
 		bool bConvertToVoxelSpace = true,
@@ -252,7 +252,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World"))
 	static UVoxelDataAsset* CreateDataAssetFromWorldSection(
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bCopyMaterials);
 
 public:
@@ -265,7 +265,7 @@ public:
 	static void AddDisableEditsBox(
 		FVoxelPlaceableItemReference& Reference,
 		AVoxelWorld* World,
-		FIntBox Bounds);
+		FVoxelIntBox Bounds);
 	
 	/**
 	 * Add a disable edits box to the world
@@ -279,7 +279,7 @@ public:
 		FLatentActionInfo LatentInfo,
 		FVoxelPlaceableItemReference& Reference,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 
 public:

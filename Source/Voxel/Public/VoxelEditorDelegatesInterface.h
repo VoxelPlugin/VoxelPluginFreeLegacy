@@ -31,6 +31,6 @@ public:
 	virtual void OnEndPIE(bool bIsSimulating) {}
 	virtual void OnPrepareToCleanseEditorObject(UObject* Object) {}
 	virtual void OnPreExit() {}
-	virtual void OnRefreshEditor() {}
+	virtual void OnApplyObjectToActor(UObject* Object, AActor* Actor) {}
 #endif
 };

@@ -1,20 +1,23 @@
 // Copyright 2020 Phyronnaz
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnull-dereference"
-#else
-#pragma warning(push)
-#pragma warning(disable : 4101 4701)
-#endif
-
 #include "VoxelExample_Ravines.h"
 
-using Seed = int32;
+PRAGMA_GENERATED_VOXEL_GRAPH_START
 
+using FVoxelGraphSeed = int32;
+
+#if VOXEL_GRAPH_GENERATED_VERSION == 1
 class FVoxelExample_RavinesInstance : public TVoxelGraphGeneratorInstanceHelper<FVoxelExample_RavinesInstance, UVoxelExample_Ravines>
 {
 public:
+	struct FParams
+	{
+		const float Bottom_Transition_Smoothness;
+		const float _3D_Noise_Frequency;
+		const float Height;
+		const float Top_Transition_Smoothness;
+	};
+	
 	class FLocalComputeStruct_LocalValue
 	{
 	public:
@@ -22,12 +25,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
 			
 			v_flt Value;
 		};
@@ -55,11 +60,8 @@ public:
 			v_flt Variable_1; // Y output 0
 		};
 		
-		FLocalComputeStruct_LocalValue(const float& InBottom_Transition_Smoothness, const float& In_3D_Noise_Frequency, const float& InHeight, const float& InTop_Transition_Smoothness)
-			: Bottom_Transition_Smoothness(InBottom_Transition_Smoothness)
-			, _3D_Noise_Frequency(In_3D_Noise_Frequency)
-			, Height(InHeight)
-			, Top_Transition_Smoothness(InTop_Transition_Smoothness)
+		FLocalComputeStruct_LocalValue(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -78,7 +80,7 @@ public:
 					/////////////////////////////////////////////////////////////////////////////////
 					
 					// Init of 3D Noise Seed
-					Seed Variable_12; // 3D Noise Seed output 0
+					FVoxelGraphSeed Variable_12; // 3D Noise Seed output 0
 					{
 						static FName StaticName = "3D Noise Seed";
 						Variable_12 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
@@ -102,16 +104,16 @@ public:
 			////////////////////////////////////////////////////
 			{
 				// Top Transition Smoothness = 5.0
-				BufferConstant.Variable_9 = Top_Transition_Smoothness;
+				BufferConstant.Variable_9 = Params.Top_Transition_Smoothness;
 				
 				// Bottom Transition Smoothness = 5.0
-				BufferConstant.Variable_10 = Bottom_Transition_Smoothness;
+				BufferConstant.Variable_10 = Params.Bottom_Transition_Smoothness;
 				
 				//  3D Noise Frequency = 0.02
-				BufferConstant.Variable_11 = _3D_Noise_Frequency;
+				BufferConstant.Variable_11 = Params._3D_Noise_Frequency;
 				
 				// Height = 50.0
-				BufferConstant.Variable_5 = Height;
+				BufferConstant.Variable_5 = Params.Height;
 				
 			}
 		}
@@ -142,13 +144,11 @@ public:
 		
 	private:
 		FBufferConstant BufferConstant;
-		FastNoise _3D_Perlin_Noise_Fractal_0_Noise;
-		TStaticArray<uint8, 32> _3D_Perlin_Noise_Fractal_0_LODToOctaves;
 		
-		const float& Bottom_Transition_Smoothness;
-		const float& _3D_Noise_Frequency;
-		const float& Height;
-		const float& Top_Transition_Smoothness;
+		const FParams& Params;
+		
+		FVoxelFastNoise _3D_Perlin_Noise_Fractal_0_Noise;
+		TStaticArray<uint8, 32> _3D_Perlin_Noise_Fractal_0_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -157,7 +157,7 @@ public:
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
 			// Init of 3D Noise Seed
-			Seed Variable_12; // 3D Noise Seed output 0
+			FVoxelGraphSeed Variable_12; // 3D Noise Seed output 0
 			{
 				static FName StaticName = "3D Noise Seed";
 				Variable_12 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
@@ -165,10 +165,10 @@ public:
 			
 			// Init of 3D Perlin Noise Fractal
 			_3D_Perlin_Noise_Fractal_0_Noise.SetSeed(Variable_12);
-			_3D_Perlin_Noise_Fractal_0_Noise.SetInterp(FastNoise::Quintic);
+			_3D_Perlin_Noise_Fractal_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalOctavesAndGain(1, 0.5);
 			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalLacunarity(2.0);
-			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FastNoise::FBM);
+			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[0] = 1;
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[1] = 1;
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[2] = 1;
@@ -450,14 +450,17 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
+				MaterialBuilder.SetMaterialConfig(Init.MaterialConfig);
 			}
 			
-			FVoxelMaterial Material;
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
+			
+			FVoxelMaterialBuilder MaterialBuilder;
 		};
 		struct FBufferConstant
 		{
@@ -477,11 +480,8 @@ public:
 			
 		};
 		
-		FLocalComputeStruct_LocalMaterial(const float& InBottom_Transition_Smoothness, const float& In_3D_Noise_Frequency, const float& InHeight, const float& InTop_Transition_Smoothness)
-			: Bottom_Transition_Smoothness(InBottom_Transition_Smoothness)
-			, _3D_Noise_Frequency(In_3D_Noise_Frequency)
-			, Height(InHeight)
-			, Top_Transition_Smoothness(InTop_Transition_Smoothness)
+		FLocalComputeStruct_LocalMaterial(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -546,10 +546,8 @@ public:
 	private:
 		FBufferConstant BufferConstant;
 		
-		const float& Bottom_Transition_Smoothness;
-		const float& _3D_Noise_Frequency;
-		const float& Height;
-		const float& Top_Transition_Smoothness;
+		const FParams& Params;
+		
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -591,12 +589,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
 			
 			v_flt UpVectorX;
 			v_flt UpVectorY;
@@ -620,11 +620,8 @@ public:
 			
 		};
 		
-		FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ(const float& InBottom_Transition_Smoothness, const float& In_3D_Noise_Frequency, const float& InHeight, const float& InTop_Transition_Smoothness)
-			: Bottom_Transition_Smoothness(InBottom_Transition_Smoothness)
-			, _3D_Noise_Frequency(In_3D_Noise_Frequency)
-			, Height(InHeight)
-			, Top_Transition_Smoothness(InTop_Transition_Smoothness)
+		FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -689,10 +686,8 @@ public:
 	private:
 		FBufferConstant BufferConstant;
 		
-		const float& Bottom_Transition_Smoothness;
-		const float& _3D_Noise_Frequency;
-		const float& Height;
-		const float& Top_Transition_Smoothness;
+		const FParams& Params;
+		
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -734,12 +729,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(TVoxelRange<T>*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			TVoxelRange<T> Get() const;
+			template<typename T, uint32 Index>
+			void Set(TVoxelRange<T> Value);
 			
 			TVoxelRange<v_flt> Value;
 		};
@@ -767,11 +764,8 @@ public:
 			TVoxelRange<v_flt> Variable_1; // Y output 0
 		};
 		
-		FLocalComputeStruct_LocalValueRangeAnalysis(const float& InBottom_Transition_Smoothness, const float& In_3D_Noise_Frequency, const float& InHeight, const float& InTop_Transition_Smoothness)
-			: Bottom_Transition_Smoothness(InBottom_Transition_Smoothness)
-			, _3D_Noise_Frequency(In_3D_Noise_Frequency)
-			, Height(InHeight)
-			, Top_Transition_Smoothness(InTop_Transition_Smoothness)
+		FLocalComputeStruct_LocalValueRangeAnalysis(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -807,16 +801,16 @@ public:
 			////////////////////////////////////////////////////
 			{
 				// Top Transition Smoothness = 5.0
-				BufferConstant.Variable_9 = Top_Transition_Smoothness;
+				BufferConstant.Variable_9 = Params.Top_Transition_Smoothness;
 				
 				// Bottom Transition Smoothness = 5.0
-				BufferConstant.Variable_10 = Bottom_Transition_Smoothness;
+				BufferConstant.Variable_10 = Params.Bottom_Transition_Smoothness;
 				
 				//  3D Noise Frequency = 0.02
-				BufferConstant.Variable_11 = _3D_Noise_Frequency;
+				BufferConstant.Variable_11 = Params._3D_Noise_Frequency;
 				
 				// Height = 50.0
-				BufferConstant.Variable_5 = Height;
+				BufferConstant.Variable_5 = Params.Height;
 				
 			}
 		}
@@ -831,13 +825,11 @@ public:
 		
 	private:
 		FBufferConstant BufferConstant;
-		FastNoise _3D_Perlin_Noise_Fractal_1_Noise;
-		TStaticArray<uint8, 32> _3D_Perlin_Noise_Fractal_1_LODToOctaves;
 		
-		const float& Bottom_Transition_Smoothness;
-		const float& _3D_Noise_Frequency;
-		const float& Height;
-		const float& Top_Transition_Smoothness;
+		const FParams& Params;
+		
+		FVoxelFastNoise _3D_Perlin_Noise_Fractal_1_Noise;
+		TStaticArray<uint8, 32> _3D_Perlin_Noise_Fractal_1_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -846,11 +838,11 @@ public:
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
 			// Init of 3D Perlin Noise Fractal
-			_3D_Perlin_Noise_Fractal_1_Noise.SetSeed(Seed(1337));
-			_3D_Perlin_Noise_Fractal_1_Noise.SetInterp(FastNoise::Quintic);
+			_3D_Perlin_Noise_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_3D_Perlin_Noise_Fractal_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(1, 0.5);
 			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(2.0);
-			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FastNoise::FBM);
+			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_3D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 1;
 			_3D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 1;
 			_3D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 1;
@@ -1001,42 +993,55 @@ public:
 		
 	};
 	
-	FVoxelExample_RavinesInstance(const float& InBottom_Transition_Smoothness, const float& In_3D_Noise_Frequency, const float& InHeight, const float& InTop_Transition_Smoothness, bool bEnableRangeAnalysis)
-		: TVoxelGraphGeneratorInstanceHelper(
+	FVoxelExample_RavinesInstance(const UVoxelExample_Ravines& Object)
+			: TVoxelGraphGeneratorInstanceHelper(
+			{
+				{ "Value", 1 },
+			},
+			{
+			},
+			{
+			},
+			{
+				{
+					{ "Value", NoTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr<v_flt>>() },
+				},
+				{
+				},
+				{
+				},
+				{
+					{ "Value", NoTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr<v_flt>>() },
+				}
+			},
+			{
+				{
+					{ "Value", WithTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr_Transform<v_flt>>() },
+				},
+				{
+				},
+				{
+				},
+				{
+					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
+				}
+			},
+			Object.bEnableRangeAnalysis)
+		, Params(FParams
 		{
-			{"Value", 1}
-		},
-		{
-		},
-		{
-			{"Value", NoTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr<v_flt>>()}
-		},
-		{
-		},
-		{
-			{"Value", NoTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr<v_flt>>()}
-		},
-		{
-			{"Value", WithTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr_Transform<v_flt>>()}
-		},
-		{
-		},
-		{
-			{"Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>()}
-		},
-		bEnableRangeAnalysis)
-		, Bottom_Transition_Smoothness(InBottom_Transition_Smoothness)
-		, _3D_Noise_Frequency(In_3D_Noise_Frequency)
-		, Height(InHeight)
-		, Top_Transition_Smoothness(InTop_Transition_Smoothness)
-		, LocalValue(Bottom_Transition_Smoothness, _3D_Noise_Frequency, Height, Top_Transition_Smoothness)
-		, LocalMaterial(Bottom_Transition_Smoothness, _3D_Noise_Frequency, Height, Top_Transition_Smoothness)
-		, LocalUpVectorXUpVectorYUpVectorZ(Bottom_Transition_Smoothness, _3D_Noise_Frequency, Height, Top_Transition_Smoothness)
-		, LocalValueRangeAnalysis(Bottom_Transition_Smoothness, _3D_Noise_Frequency, Height, Top_Transition_Smoothness)
+			Object.Bottom_Transition_Smoothness,
+			Object._3D_Noise_Frequency,
+			Object.Height,
+			Object.Top_Transition_Smoothness
+		})
+		, LocalValue(Params)
+		, LocalMaterial(Params)
+		, LocalUpVectorXUpVectorYUpVectorZ(Params)
+		, LocalValueRangeAnalysis(Params)
 	{
 	}
 	
-	virtual void Init(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1053,10 +1058,7 @@ public:
 	inline void ReportRangeAnalysisFailure() const {}
 	
 private:
-	const float Bottom_Transition_Smoothness;
-	const float _3D_Noise_Frequency;
-	const float Height;
-	const float Top_Transition_Smoothness;
+	FParams Params;
 	FLocalComputeStruct_LocalValue LocalValue;
 	FLocalComputeStruct_LocalMaterial LocalMaterial;
 	FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ LocalUpVectorXUpVectorYUpVectorZ;
@@ -1065,34 +1067,63 @@ private:
 };
 
 template<>
-inline auto& FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalValue::FOutputs::GetRef<v_flt, 1>()
+inline v_flt FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalValue::FOutputs::Get<v_flt, 1>() const
 {
 	return Value;
 }
 template<>
-inline auto& FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalMaterial::FOutputs::GetRef<FVoxelMaterial, 2>()
+inline void FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalValue::FOutputs::Set<v_flt, 1>(v_flt InValue)
 {
-	return Material;
+	Value = InValue;
 }
 template<>
-inline auto& FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 3>()
+inline FVoxelMaterial FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalMaterial::FOutputs::Get<FVoxelMaterial, 2>() const
+{
+	return MaterialBuilder.Build();
+}
+template<>
+inline void FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalMaterial::FOutputs::Set<FVoxelMaterial, 2>(FVoxelMaterial Material)
+{
+}
+template<>
+inline v_flt FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 3>() const
 {
 	return UpVectorX;
 }
 template<>
-inline auto& FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 4>()
+inline void FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 3>(v_flt InValue)
+{
+	UpVectorX = InValue;
+}
+template<>
+inline v_flt FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 4>() const
 {
 	return UpVectorY;
 }
 template<>
-inline auto& FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 5>()
+inline void FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 4>(v_flt InValue)
+{
+	UpVectorY = InValue;
+}
+template<>
+inline v_flt FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 5>() const
 {
 	return UpVectorZ;
 }
 template<>
-inline auto& FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::GetRef<v_flt, 1>()
+inline void FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 5>(v_flt InValue)
+{
+	UpVectorZ = InValue;
+}
+template<>
+inline TVoxelRange<v_flt> FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::Get<v_flt, 1>() const
 {
 	return Value;
+}
+template<>
+inline void FVoxelExample_RavinesInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::Set<v_flt, 1>(TVoxelRange<v_flt> InValue)
+{
+	Value = InValue;
 }
 template<>
 inline auto& FVoxelExample_RavinesInstance::GetTarget<1>() const
@@ -1114,6 +1145,7 @@ inline auto& FVoxelExample_RavinesInstance::GetTarget<3, 4, 5>() const
 {
 	return LocalUpVectorXUpVectorYUpVectorZ;
 }
+#endif
 
 ////////////////////////////////////////////////////////////
 ////////////////////////// UCLASS //////////////////////////
@@ -1133,17 +1165,18 @@ TMap<FName, int32> UVoxelExample_Ravines::GetDefaultSeeds() const
 
 TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Ravines::GetTransformableInstance()
 {
-	return MakeVoxelShared<FVoxelExample_RavinesInstance>(
-		Bottom_Transition_Smoothness,
-		_3D_Noise_Frequency,
-		Height,
-		Top_Transition_Smoothness,
-		bEnableRangeAnalysis);
+#if VOXEL_GRAPH_GENERATED_VERSION == 1
+	return MakeVoxelShared<FVoxelExample_RavinesInstance>(*this);
+#else
+#if VOXEL_GRAPH_GENERATED_VERSION > 1
+	EMIT_CUSTOM_WARNING("Outdated generated voxel graph: VoxelExample_Ravines. You need to regenerate it.");
+	FVoxelMessages::Warning("Outdated generated voxel graph: VoxelExample_Ravines. You need to regenerate it.");
+#else
+	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Ravines. You need to update the plugin.");
+	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Ravines. You need to update the plugin.");
+#endif
+	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+#endif
 }
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#else
-#pragma warning(pop)
-#endif
-
+PRAGMA_GENERATED_VOXEL_GRAPH_END

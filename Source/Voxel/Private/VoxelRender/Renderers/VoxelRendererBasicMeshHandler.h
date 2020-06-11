@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "QueueWithNum.h"
-#include "VoxelGlobals.h"
+#include "VoxelQueueWithNum.h"
+#include "VoxelMinimal.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
 #include "VoxelRendererMeshHandler.h"
 
@@ -66,7 +66,7 @@ private:
 		{
 		}
 	};
-	TSafeTypedSparseArray<FChunkId, FChunkInfo> ChunkInfos;
+	TVoxelTypedSparseArray<FChunkId, FChunkInfo> ChunkInfos;
 
 	struct FChunkInfoRef
 	{
@@ -96,7 +96,7 @@ private:
 
 	// Queue all actions
 	// This ensures they are processed sequentially even when using async tasks
-	TQueueWithNum<FAction, EQueueMode::Spsc> ActionQueue;
+	TVoxelQueueWithNum<FAction, EQueueMode::Spsc> ActionQueue;
 
 	void FlushBuiltDataQueue();
 	void FlushActionQueue(double MaxTime);

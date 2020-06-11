@@ -7,25 +7,6 @@
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 #include "VoxelCachedMaterialCollection.generated.h"
 
-USTRUCT()
-struct FVoxelCachedMaterialCollectionKey
-{
-	GENERATED_BODY()
-
-	FVoxelMaterialIndices Indices;
-	bool bTessellation = false;
-
-	inline bool operator==(const FVoxelCachedMaterialCollectionKey& Other) const
-	{
-		return Indices == Other.Indices && bTessellation == Other.bTessellation;
-	}
-};
-
-inline uint32 GetTypeHash(const FVoxelCachedMaterialCollectionKey& Key)
-{
-	return GetTypeHash(Key.Indices) * 2 + Key.bTessellation;
-}
-
 UCLASS(Abstract)
 class VOXEL_API UVoxelCachedMaterialCollection : public UVoxelMaterialCollectionBase
 {
@@ -33,12 +14,12 @@ class VOXEL_API UVoxelCachedMaterialCollection : public UVoxelMaterialCollection
 
 public:
 	//~ Begin UVoxelMaterialCollectionBase Interface
-	virtual UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& Indices, bool bTessellation, uint64 UniqueIdForErrors) const override final;
-	virtual void ClearCache() override final;
+	virtual UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const override final;
+	virtual void InitializeCollection() override;
 	//~ End UVoxelMaterialCollectionBase Interface
 	
 	//~ Begin UVoxelCachedMaterialCollection Interface
-	virtual UMaterialInterface* GetVoxelMaterial_NotCached(const FVoxelMaterialIndices& Indices, bool bTessellation, uint64 UniqueIdForErrors) const
+	virtual UMaterialInterface* GetVoxelMaterial_NotCached(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const
 	{
 		unimplemented();
 		return nullptr;
@@ -47,5 +28,5 @@ public:
 
 private:
 	UPROPERTY(Transient)
-	mutable TMap<FVoxelCachedMaterialCollectionKey, UMaterialInterface*> CachedMaterials;
+	mutable TMap<FVoxelMaterialIndices, UMaterialInterface*> CachedMaterials;
 };

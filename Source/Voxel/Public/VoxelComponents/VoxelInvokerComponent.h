@@ -3,14 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "Components/SceneComponent.h"
 #include "GameFramework/Volume.h"
+#include "VoxelInvokerSettings.h"
 #include "VoxelInvokerComponent.generated.h"
 
 class AVoxelWorldInterface;
 
-// Voxel Invokers are used to configure the voxel world LOD, collisions, navmesh and tessellation
+// Voxel Invokers are used to configure the voxel world LOD, collisions and navmesh
 UCLASS(Abstract, Blueprintable, ClassGroup = Voxel)
 class VOXEL_API UVoxelInvokerComponentBase : public USceneComponent
 {
@@ -52,33 +53,14 @@ public:
 	// Get the invoker settings
 	// All the bounds are in voxel space
 	UFUNCTION(BlueprintNativeEvent, Category = "Voxel|Invoker")
-	void GetInvokerSettings(
-		AVoxelWorldInterface* VoxelWorld,
-		bool& bUseForLOD,
-		int32& LODToSet,
-		FIntBox& LODBounds,
-		bool& bUseForCollisions,
-		FIntBox& CollisionsBounds,
-		bool& bUseForNavmesh,
-		FIntBox& NavmeshBounds,
-		bool& bUseForTessellation,
-		FIntBox& TessellationBounds) const;
+	FVoxelInvokerSettings GetInvokerSettings(AVoxelWorldInterface* VoxelWorld) const;
+	FVoxelInvokerSettings GetInvokerSettings(const AVoxelWorldInterface* VoxelWorld) const;
 
 public:
 	//~ Begin UVoxelInvokerComponentBase Interface
 	virtual bool IsLocalInvoker_Implementation() const;
 	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const;
-	virtual void GetInvokerSettings_Implementation(
-		AVoxelWorldInterface* VoxelWorld,
-		bool& bUseForLOD,
-		int32& LODToSet,
-		FIntBox& LODBounds,
-		bool& bUseForCollisions,
-		FIntBox& CollisionsBounds,
-		bool& bUseForNavmesh,
-		FIntBox& NavmeshBounds,
-		bool& bUseForTessellation,
-		FIntBox& TessellationBounds) const;
+	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const;
 	//~ End UVoxelInvokerComponentBase Interface
 
 public:
@@ -95,16 +77,12 @@ protected:
 	//~ Begin UActorComponent Interface
 	virtual void OnRegister() override;
 	virtual void OnUnregister() override;
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 	//~ End UActorComponent Interface
 
 private:
 	bool bIsInvokerEnabled = false;
 
 public:
-	// Call this if you changed an invoker settings
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Invoker")
 	static void RefreshAllVoxelInvokers();
 	
@@ -115,7 +93,7 @@ private:
 	static TMap<TWeakObjectPtr<UWorld>, TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>>> Components;
 };
 
-// Voxel Invokers are used to configure the voxel world LOD, collisions, navmesh and tessellation
+// Voxel Invokers are used to configure the voxel world LOD, collisions and navmesh
 // Simple position based invoker
 UCLASS(ClassGroup = Voxel, meta = (BlueprintSpawnableComponent))
 class VOXEL_API UVoxelSimpleInvokerComponent : public UVoxelInvokerComponentBase
@@ -150,15 +128,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker|Navmesh", meta = (EditCondition = bUseForNavmesh, ClampMin = 0))
 	float NavmeshRange = 1000;
 
-	// Will tessellate the voxel mesh around the player if tessellation is enabled on the voxel world
-	// For a more precise control use the material tessellation multiplier
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker|Tessellation")
-	bool bUseForTessellation = true;
-	
-	// In cm. Will enable tessellation on chunks under this distance from this invoker
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker|Tessellation", meta = (EditCondition = bUseForTessellation, ClampMin = 0))
-	float TessellationRange = 10000;
-
 public:
 	// VoxelSimpleInvokerComponent's GetInvokerVoxelPosition and GetInvokerSettings functions are calling GetInvokerGlobalPosition to find the global position of the invoker
 	// Defaults to GetComponentPosition
@@ -168,17 +137,7 @@ public:
 public:
 	//~ Begin UVoxelInvokerComponentBase Interface
 	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const override;
-	virtual void GetInvokerSettings_Implementation(
-		AVoxelWorldInterface* VoxelWorld,
-		bool& bUseForLOD,
-		int32& LODToSet,
-		FIntBox& LODBounds,
-		bool& bUseForCollisions,
-		FIntBox& CollisionsBounds,
-		bool& bUseForNavmesh,
-		FIntBox& NavmeshBounds,
-		bool& bUseForTessellation,
-		FIntBox& TessellationBounds) const override;
+	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const override;
 	//~ End UVoxelInvokerComponentBase Interface
 
 protected:
@@ -187,7 +146,7 @@ protected:
 	//~ End UVoxelSimpleInvokerComponent Interface
 };
 
-// Voxel Invokers are used to configure the voxel world LOD, collisions, navmesh and tessellation
+// Voxel Invokers are used to configure the voxel world LOD, collisions and navmesh
 // Same as simple invoker, but optionally use the velocity to predict the position
 UCLASS(ClassGroup = Voxel, meta = (BlueprintSpawnableComponent))
 class VOXEL_API UVoxelInvokerWithPredictionComponent : public UVoxelSimpleInvokerComponent
@@ -209,7 +168,7 @@ protected:
 	//~ End UVoxelSimpleInvokerComponent Interface
 };
 
-// Voxel Invokers are used to configure the voxel world LOD, collisions, navmesh and tessellation
+// Voxel Invokers are used to configure the voxel world LOD, collisions and navmesh
 // Will find the camera and use it to set its position
 UCLASS(ClassGroup = Voxel, meta = (BlueprintSpawnableComponent))
 class VOXEL_API UVoxelInvokerAutoCameraComponent : public UVoxelSimpleInvokerComponent
@@ -250,25 +209,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker|Volume")
 	bool bUseForNavmesh = false;
 
-	// Will enable tessellation in the volume
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker|Volume")
-	bool bUseForTessellation = false;
-
 protected:
 	//~ Begin UVoxelInvokerComponentBase Interface
 	virtual bool IsLocalInvoker_Implementation() const override;
 	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const override;
-	virtual void GetInvokerSettings_Implementation(
-		AVoxelWorldInterface* VoxelWorld,
-		bool& bUseForLOD,
-		int32& LODToSet,
-		FIntBox& LODBounds,
-		bool& bUseForCollisions,
-		FIntBox& OutCollisionsBounds,
-		bool& bUseForNavmesh,
-		FIntBox& NavmeshBounds,
-		bool& bUseForTessellation,
-		FIntBox& TessellationBounds) const override;
+	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const override;
 	//~ End UVoxelInvokerComponentBase Interface
 };
 

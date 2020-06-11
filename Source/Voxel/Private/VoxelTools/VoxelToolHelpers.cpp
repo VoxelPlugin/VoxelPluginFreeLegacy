@@ -82,7 +82,7 @@ bool FVoxelToolHelpers::GetLogEditToolsTimes()
 	return CVarLogEditToolsTimes.GetValueOnAnyThread() != 0;
 }
 
-void FVoxelToolHelpers::UpdateWorld(AVoxelWorld* World, const FIntBox& Bounds)
+void FVoxelToolHelpers::UpdateWorld(AVoxelWorld* World, const FVoxelIntBox& Bounds)
 {
 	check(World);
 	World->GetLODManager().UpdateBounds(Bounds);
@@ -183,7 +183,7 @@ bool FVoxelToolHelpers::StartAsyncLatentAction_WithWorld(
 	bool bHideLatentWarnings, 
 	TFunction<void(FVoxelData&)> DoWork, 
 	EVoxelUpdateRender UpdateRender, 
-	const FIntBox& BoundsToUpdate)
+	const FVoxelIntBox& BoundsToUpdate)
 {
 	return StartAsyncLatentActionImpl<FVoxelLatentActionAsyncWork_WithWorld>(
 		WorldContextObject,

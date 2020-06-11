@@ -4,7 +4,7 @@
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelData/VoxelData.h"
 
-void UVoxelBoxTools::SetValueBoxImpl(FVoxelData& Data, const FIntBox& Bounds, FVoxelValue Value)
+void UVoxelBoxTools::SetValueBoxImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, FVoxelValue Value)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 	
@@ -15,7 +15,7 @@ void UVoxelBoxTools::SetValueBoxImpl(FVoxelData& Data, const FIntBox& Bounds, FV
 }
 
 template<bool bAdd>
-void UVoxelBoxTools::BoxEditImpl(FVoxelData& Data, const FIntBox& Bounds)
+void UVoxelBoxTools::BoxEditImpl(FVoxelData& Data, const FVoxelIntBox& Bounds)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 	
@@ -35,10 +35,10 @@ void UVoxelBoxTools::BoxEditImpl(FVoxelData& Data, const FIntBox& Bounds)
 	});
 }
 
-template VOXEL_API void UVoxelBoxTools::BoxEditImpl<false>(FVoxelData& Data, const FIntBox& Bounds);
-template VOXEL_API void UVoxelBoxTools::BoxEditImpl<true>(FVoxelData& Data, const FIntBox& Bounds);
+template VOXEL_API void UVoxelBoxTools::BoxEditImpl<false>(FVoxelData& Data, const FVoxelIntBox& Bounds);
+template VOXEL_API void UVoxelBoxTools::BoxEditImpl<true>(FVoxelData& Data, const FVoxelIntBox& Bounds);
 
-void UVoxelBoxTools::SetMaterialBoxImpl(FVoxelData& Data, const FIntBox& Bounds, const FVoxelPaintMaterial& PaintMaterial)
+void UVoxelBoxTools::SetMaterialBoxImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, const FVoxelPaintMaterial& PaintMaterial)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 	
@@ -53,22 +53,22 @@ void UVoxelBoxTools::SetMaterialBoxImpl(FVoxelData& Data, const FIntBox& Bounds,
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelBoxTools::SetValueBox(AVoxelWorld* World, FIntBox Bounds, float Value)
+void UVoxelBoxTools::SetValueBox(AVoxelWorld* World, FVoxelIntBox Bounds, float Value)
 {
 	VOXEL_TOOL_HELPER(Write, UpdateRender, NO_PREFIX, SetValueBoxImpl(Data, Bounds, FVoxelValue(Value)));
 }
 
-void UVoxelBoxTools::AddBox(AVoxelWorld* World, FIntBox Bounds)
+void UVoxelBoxTools::AddBox(AVoxelWorld* World, FVoxelIntBox Bounds)
 {
 	VOXEL_TOOL_HELPER(Write, UpdateRender, NO_PREFIX, BoxEditImpl<true>(Data, Bounds));
 }
 
-void UVoxelBoxTools::RemoveBox(AVoxelWorld* World, FIntBox Bounds)
+void UVoxelBoxTools::RemoveBox(AVoxelWorld* World, FVoxelIntBox Bounds)
 {
 	VOXEL_TOOL_HELPER(Write, UpdateRender, NO_PREFIX, BoxEditImpl<false>(Data, Bounds));
 }
 
-void UVoxelBoxTools::SetMaterialBox(AVoxelWorld* World, FIntBox Bounds, FVoxelPaintMaterial PaintMaterial)
+void UVoxelBoxTools::SetMaterialBox(AVoxelWorld* World, FVoxelIntBox Bounds, FVoxelPaintMaterial PaintMaterial)
 {	
 	VOXEL_TOOL_HELPER(Write, UpdateRender, NO_PREFIX, SetMaterialBoxImpl(Data, Bounds, PaintMaterial));
 }
@@ -81,7 +81,7 @@ void UVoxelBoxTools::SetValueBoxAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	float Value,
 	bool bHideLatentWarnings)
 {
@@ -92,7 +92,7 @@ void UVoxelBoxTools::AddBoxAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	bool bHideLatentWarnings)
 {
 	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, NO_PREFIX, BoxEditImpl<true>(Data, Bounds));
@@ -102,7 +102,7 @@ void UVoxelBoxTools::RemoveBoxAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	bool bHideLatentWarnings)
 {
 	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, NO_PREFIX, BoxEditImpl<false>(Data, Bounds));
@@ -112,7 +112,7 @@ void UVoxelBoxTools::SetMaterialBoxAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	FVoxelPaintMaterial PaintMaterial,
 	bool bHideLatentWarnings)
 {
