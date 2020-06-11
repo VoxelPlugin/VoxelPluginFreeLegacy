@@ -1,8 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelNodeFunctions.h"
-#include "VoxelWorldGeneratorInstance.h"
-#include "VoxelWorldGeneratorInstance.inl"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
 #include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
 #include "VoxelMessages.h"
 #include "Curves/CurveFloat.h"
@@ -227,7 +227,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorValue(
 	const FVoxelGraphCustomDataRange& CustomData,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-	const FIntBox Bounds = BoundsFromRanges(X, Y, Z);
+	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
 	if (Context.Items.IsEmpty())
 	{
 		if (DefaultGenerator)
@@ -318,7 +318,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	const FVoxelGraphCustomDataRange& CustomData,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-	const FIntBox Bounds = BoundsFromRanges(X, Y, Z);
+	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
 	if (Context.Items.IsEmpty())
 	{
 		if (DefaultGenerator)
@@ -377,7 +377,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 	const FVoxelContextRange& Context,
 	const FVoxelGraphCustomDataRange& CustomData)
 {
-	const FIntBox Bounds = BoundsFromRanges(X, Y, Z);
+	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
 	if (const auto Ptr = WorldGenerator.CustomPtrs.FloatRange.FindRef(Name))
 	{
 		return TVoxelRange<v_flt>((WorldGenerator.*Ptr)(Bounds, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder).WithCustomData(&CustomData)));
@@ -559,6 +559,8 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 		{
 			return Instances[BestIndex]->GetMaterial(X, Y, Z, Context.LOD, Items);
 		}
+// TODO
+#if 0
 		case EVoxelMaterialConfig::DoubleIndex:
 		{
 			TArray<int32, TFixedAllocator<8>> NewIndices;
@@ -583,8 +585,9 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 			}
 			return CreateDoubleIndexMaterial(NewIndices, NewAlphas, BestData);
 		}
+#endif
 		default:
-			check(false);
+			ensure(false);
 			return FVoxelMaterial::Default();
 		}
 	};
@@ -653,7 +656,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
 
 	const auto Items = Context.Items.WithCustomData(&CustomData);
 	
-	const FIntBox Bounds = BoundsFromRanges(X, Y, Z);
+	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
 	OutFloatOutputs.SetNumUninitialized(FloatOutputsNames.Num());
 
 	const auto ComputeFloatOutputsLambda = [&](auto& Instance, bool bUnion)

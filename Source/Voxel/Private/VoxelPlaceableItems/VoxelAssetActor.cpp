@@ -14,7 +14,7 @@
 #include "VoxelWorld.h"
 #include "VoxelDefaultPool.h"
 #include "VoxelMessages.h"
-#include "VoxelThreadingUtilities.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 #include "Components/BoxComponent.h"
 
@@ -38,12 +38,12 @@ AVoxelAssetActor::AVoxelAssetActor()
 }
 
 
-FIntBox AVoxelAssetActor::AddItemToData(
+FVoxelIntBox AVoxelAssetActor::AddItemToData(
 	AVoxelWorld* VoxelWorld,
 	FVoxelData* VoxelWorldData) const
 {
 	FVoxelMessages::ShowVoxelPluginProError("Asset Actors require Voxel Plugin Pro.\nTo use an asset in Voxel Plugin Free, set it as World Generator of a Voxel World");
-	return FIntBox(0, 25);
+	return FVoxelIntBox(0, 25);
 }
 
 #if WITH_EDITOR
@@ -184,10 +184,22 @@ void AVoxelAssetActor::CreatePreview()
 	}
 
 	PrimitiveComponent->SetWorldTransform(PreviewWorld->GetTransform());
-	const FIntBox Bounds = AddItemToData(PreviewWorld, nullptr);
+	const FVoxelIntBox Bounds = AddItemToData(PreviewWorld, nullptr);
 
 	{
-		auto EmptyGenerator = MakeVoxelShared<FVoxelEmptyWorldGeneratorInstance>(bImportAsReference ? 1 : bSubtractiveAsset ? -1 : 1);
+		bool bIsGeneratorSubtractive = bSubtractiveAsset;
+		if (bImportAsReference)
+		{
+			if (auto* DataAsset = Cast<UVoxelDataAsset>(WorldGenerator.GetObject()))
+			{
+				bIsGeneratorSubtractive = DataAsset->bSubtractiveAsset;
+			}
+			else
+			{
+				bIsGeneratorSubtractive = false;
+			}
+		}
+		auto EmptyGenerator = MakeVoxelShared<FVoxelEmptyWorldGeneratorInstance>(bIsGeneratorSubtractive ? -1 : 1);
 		EmptyGenerator->Init(PreviewWorld->GetInitStruct());
 		Data = FVoxelData::Create(
 			FVoxelDataSettings(
@@ -226,7 +238,7 @@ void AVoxelAssetActor::CreatePreview()
 			StaticPool.ToSharedRef(),
 			Data.Get()));
 
-	while (!LODManager->Initialize(FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD), 64) && ensure(PreviewLOD < 24))
+	while (!LODManager->Initialize(FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD), MaxPreviewChunks) && ensure(PreviewLOD < 24))
 	{
 		PreviewLOD++;
 	}
@@ -261,7 +273,7 @@ void AVoxelAssetActor::UpdateBox()
 {
 	if (!ensure(PreviewWorld)) return;
 
-	const FIntBox Bounds = AddItemToData(PreviewWorld, nullptr);
+	const FVoxelIntBox Bounds = AddItemToData(PreviewWorld, nullptr);
 
 	Box->SetWorldTransform(PreviewWorld->GetTransform());
 	Box->SetBoxExtent(FVector(Bounds.Size()) / 2 * PreviewWorld->VoxelSize * PreviewWorld->GetActorScale3D());

@@ -11,7 +11,7 @@
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelWorldRootComponent.h"
 #include "VoxelMessages.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "IVoxelPool.h"
 
 #include "PhysicsEngine/PhysicsSettings.h"
@@ -86,7 +86,7 @@ void UVoxelProceduralMeshComponent::Init(
 	NumConvexHullsPerAxis = RendererSettings.NumConvexHullsPerAxis;
 	bCleanCollisionMesh = RendererSettings.bCleanCollisionMeshes;
 	bClearProcMeshBuffersOnFinishUpdate = RendererSettings.bStaticWorld && !RendererSettings.bRenderWorld; // We still need the buffers if we are rendering!
-	bNewInit = true;
+	DistanceFieldSelfShadowBias = RendererSettings.DistanceFieldSelfShadowBias;
 }
 
 void UVoxelProceduralMeshComponent::ClearInit()
@@ -458,7 +458,14 @@ void UVoxelProceduralMeshComponent::GetUsedMaterials(TArray<UMaterialInterface*>
 FMaterialRelevance UVoxelProceduralMeshComponent::GetMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const
 {
 	FMaterialRelevance Result;
-	const auto Apply = [&](auto* MaterialInterface) { Result |= MaterialInterface->GetRelevance_Concurrent(InFeatureLevel); };
+	const auto Apply = [&](auto* MaterialInterface)
+	{
+		if (MaterialInterface)
+		{
+			// MaterialInterface will be null in force delete
+			Result |= MaterialInterface->GetRelevance_Concurrent(InFeatureLevel);
+		}
+	};
 	for (auto& Section : ProcMeshSections)
 	{
 		if (Section.Settings.Material.IsValid())

@@ -8,7 +8,7 @@
 #include "VoxelMessages.h"
 #include "VoxelCustomVersion.h"
 #include "VoxelWorldInterface.h"
-#include "VoxelWorldGeneratorUtilities.h"
+#include "VoxelUtilities/VoxelWorldGeneratorUtilities.h"
 
 #include "Async/Async.h"
 #include "TimerManager.h"

@@ -176,7 +176,8 @@ EVoxelPinCategory UVoxelGraphMacroNode::GetOutputPinCategory(int32 PinIndex) con
 
 FString UVoxelGraphMacroNode::GetInputPinDefaultValue(int32 PinIndex) const
 {
-	return GetPin(Macro, EVoxelPinDirection::Input, PinIndex).DefaultValue;
+	const auto& Pin = GetPin(Macro, EVoxelPinDirection::Input, PinIndex);
+	return Pin.bCustomDefaultValue ? Pin.DefaultValue : Super::GetInputPinDefaultValue(PinIndex);
 }
 
 inline bool ArePinsArraysSameNameAndCategory(const TArray<FVoxelPin>& A, const TArray<FVoxelPin>& B)

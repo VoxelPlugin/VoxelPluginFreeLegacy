@@ -3,7 +3,7 @@
 #include "VoxelRender/LODManager/VoxelDefaultLODManager.h"
 #include "VoxelRender/LODManager/VoxelRenderOctree.h"
 #include "VoxelRender/IVoxelRenderer.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "IVoxelPool.h"
 #include "VoxelWorldInterface.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
@@ -50,13 +50,13 @@ FVoxelDefaultLODManager::~FVoxelDefaultLODManager()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-inline FIntBox GetBoundsToUpdate(const FIntBox& Bounds)
+inline FVoxelIntBox GetBoundsToUpdate(const FVoxelIntBox& Bounds)
 {
 	// For normals
 	return Bounds.Extend(2);
 }
 
-int32 FVoxelDefaultLODManager::UpdateBounds(const FIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate)
+int32 FVoxelDefaultLODManager::UpdateBounds(const FVoxelIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate)
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
@@ -71,7 +71,7 @@ int32 FVoxelDefaultLODManager::UpdateBounds(const FIntBox& Bounds, const FVoxelO
 	return Settings.Renderer->UpdateChunks(Bounds, ChunksToUpdate, FinishDelegate);
 }
 
-int32 FVoxelDefaultLODManager::UpdateBounds(const TArray<FIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate)
+int32 FVoxelDefaultLODManager::UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate)
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
@@ -82,7 +82,7 @@ int32 FVoxelDefaultLODManager::UpdateBounds(const TArray<FIntBox>& Bounds, const
 	}
 
 	TArray<uint64> ChunksToUpdate;
-	FIntBox GlobalBounds = Bounds[0];
+	FVoxelIntBox GlobalBounds = Bounds[0];
 	for (auto& BoundsToUpdate : Bounds)
 	{
 		GlobalBounds = GlobalBounds + BoundsToUpdate;
@@ -144,6 +144,8 @@ void FVoxelDefaultLODManager::Tick(float DeltaTime)
 	if (bAsyncTaskWorking && Task->IsDone())
 	{
 		VOXEL_SCOPE_COUNTER("OnTaskFinished");
+	
+		LOG_VOXEL(Verbose, TEXT("LOD Update Finished"));
 
 		Task->ReportBuildTime();
 		if (Task->NewOctree.IsValid()) // Make sure the new octree is valid before using it, else the ids will be out of sync
@@ -181,28 +183,69 @@ void FVoxelDefaultLODManager::UpdateInvokers()
 	{
 		return;
 	}
+
+	ensure(SortedInvokerComponents.Num() == InvokerComponentsInfos.Num());
 	
 	bool bNeedUpdate = false;
 	
-	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> NewInvokerComponents = UVoxelInvokerComponentBase::GetInvokers(Settings.World.Get());
-	NewInvokerComponents.Sort([](auto& A, auto& B) { return A.Get() < B.Get(); });
-
-	if (InvokerComponents != NewInvokerComponents)
+	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> NewSortedInvokerComponents = UVoxelInvokerComponentBase::GetInvokers(Settings.World.Get());
+	NewSortedInvokerComponents.Sort([](auto& A, auto& B) { return A.Get() < B.Get(); });
+	
+	if (SortedInvokerComponents != NewSortedInvokerComponents)
 	{
+		LOG_VOXEL(Verbose, TEXT("Tiggering LOD Update: Invoker Components Array changed"));
 		bNeedUpdate = true;
 	}
-	else
-	{
-		const uint64 Threshold = FMath::Square(FMath::Max(DynamicSettings->InvokerDistanceThreshold / Settings.VoxelSize, 0.f)); // Truncate
-		for (auto& Invoker : NewInvokerComponents)
-		{
-			const FIntVector OldPosition = InvokerComponentsLocalPositions[Invoker];
-			const FIntVector NewPosition = Invoker->GetInvokerVoxelPosition(VoxelWorldInterface.Get());
 
-			if (FVoxelUtilities::SquaredSize(OldPosition - NewPosition) > Threshold)
+	TMap<TWeakObjectPtr<UVoxelInvokerComponentBase>, FVoxelInvokerInfo> NewInvokerComponentsInfos;
+	NewInvokerComponentsInfos.Reserve(NewSortedInvokerComponents.Num());
+	
+	const uint64 SquaredDistanceThreshold = FMath::Square(FMath::Max(DynamicSettings->InvokerDistanceThreshold / Settings.VoxelSize, 0.f)); // Truncate
+	for (const auto& InvokerComponent : NewSortedInvokerComponents)
+	{
+		FVoxelInvokerSettings InvokerSettings = InvokerComponent->GetInvokerSettings(VoxelWorldInterface.Get());
+		InvokerSettings.bUseForLOD &= InvokerComponent->IsLocalInvoker();
+
+		const FIntVector InvokerPosition = InvokerComponent->GetInvokerVoxelPosition(VoxelWorldInterface.Get());
+		
+		FVoxelInvokerInfo Info;
+		Info.LocalPosition = InvokerPosition;
+		Info.Settings = InvokerSettings;
+
+		NewInvokerComponentsInfos.Add(InvokerComponent, Info);
+
+		if (!bNeedUpdate)
+		{
+			auto* ExistingInfo = InvokerComponentsInfos.Find(InvokerComponent);
+			if (ensure(ExistingInfo)) // Should be valid if bNeedUpdate is false (would be set to true if invoker components array changed)
 			{
-				bNeedUpdate = true;
-				break;
+				const auto& OldSettings = ExistingInfo->Settings;
+				const auto& NewSettings = Info.Settings;
+				if (OldSettings.bUseForLOD != NewSettings.bUseForLOD)
+				{
+					LOG_VOXEL(Verbose, TEXT("Tiggering LOD Update: bUseForLOD changed"));
+					bNeedUpdate = true;
+				}
+				else if (OldSettings.LODToSet != NewSettings.LODToSet)
+				{
+					LOG_VOXEL(Verbose, TEXT("Tiggering LOD Update: LODToSet changed"));
+					bNeedUpdate = true;
+				}
+				else if (OldSettings.bUseForCollisions != NewSettings.bUseForCollisions)
+				{
+					LOG_VOXEL(Verbose, TEXT("Tiggering LOD Update: bUseForCollisions changed"));
+					bNeedUpdate = true;
+				}
+				else if (OldSettings.bUseForNavmesh != NewSettings.bUseForNavmesh)
+				{
+					LOG_VOXEL(Verbose, TEXT("Tiggering LOD Update: bUseForNavmesh changed"));
+					bNeedUpdate = true;
+				}
+				else if (FVoxelUtilities::SquaredSize(ExistingInfo->LocalPosition - Info.LocalPosition) > SquaredDistanceThreshold)
+				{
+					LOG_VOXEL(Verbose, TEXT("Tiggering LOD Update: Invoker Component moved"));
+					bNeedUpdate = true;
+				}
 			}
 		}
 	}
@@ -214,25 +257,21 @@ void FVoxelDefaultLODManager::UpdateInvokers()
 			bLODUpdateQueued = true;
 		}
 
-		InvokerComponents = NewInvokerComponents;
-		InvokerComponentsLocalPositions.Reset();
-
-		for (auto& Invoker : NewInvokerComponents)
-		{
-			const FIntVector LocalPosition = Invoker->GetInvokerVoxelPosition(VoxelWorldInterface.Get());
-			InvokerComponentsLocalPositions.Add(Invoker, LocalPosition);
-		}
+		SortedInvokerComponents = MoveTemp(NewSortedInvokerComponents);
+		InvokerComponentsInfos = MoveTemp(NewInvokerComponentsInfos);
 
 		TArray<FIntVector> InvokersPositionsForPriorities;
-		for (auto& It : InvokerComponentsLocalPositions)
+		for (auto& It : InvokerComponentsInfos)
 		{
 			if (It.Key->bUseForPriorities)
 			{
-				InvokersPositionsForPriorities.Add(It.Value);
+				InvokersPositionsForPriorities.Add(It.Value.LocalPosition);
 			}
 		}
 		Settings.Renderer->SetInvokersPositionsForPriorities(InvokersPositionsForPriorities);
 	}
+
+	ensure(SortedInvokerComponents.Num() == InvokerComponentsInfos.Num());
 
 	const double Time = FPlatformTime::Seconds();
 	if (bLODUpdateQueued && Task->IsDone() && Time - LastLODUpdateTime > Settings.MinDelayBetweenLODUpdates)
@@ -246,35 +285,25 @@ void FVoxelDefaultLODManager::UpdateInvokers()
 void FVoxelDefaultLODManager::UpdateLODs()
 {
 	VOXEL_FUNCTION_COUNTER();
-
-	TArray<FVoxelInvoker> Invokers;
-	for (auto& It : InvokerComponentsLocalPositions)
-	{
-		FVoxelInvoker Invoker;
-		It.Key->GetInvokerSettings(
-			const_cast<AVoxelWorldInterface*>(VoxelWorldInterface.Get()),
-			Invoker.bUseForLOD,
-			Invoker.LODToSet,
-			Invoker.LODBounds,
-			Invoker.bUseForCollisions,
-			Invoker.CollisionsBounds,
-			Invoker.bUseForNavmesh,
-			Invoker.NavmeshBounds,
-			Invoker.bUseForTessellation,
-			Invoker.TessellationBounds);
-		Invoker.bUseForLOD &= It.Key->IsLocalInvoker();
-		if (Invoker.bUseForLOD || Invoker.bUseForCollisions || Invoker.bUseForNavmesh || Invoker.bUseForTessellation)
-		{
-			Invokers.Emplace(Invoker);
-		}
-	}
+	
+	LOG_VOXEL(Verbose, TEXT("Starting LOD Update"));
 
 	FVoxelRenderOctreeSettings OctreeSettings;
 	OctreeSettings.MinLOD = DynamicSettings->MinLOD;
 	OctreeSettings.MaxLOD = DynamicSettings->MaxLOD;
 	OctreeSettings.WorldBounds = Settings.WorldBounds;
 
-	OctreeSettings.Invokers = Invokers;
+	OctreeSettings.Invokers.Reserve(InvokerComponentsInfos.Num());
+	for (const auto& It : InvokerComponentsInfos)
+	{
+		if (It.Value.Settings.bUseForLOD ||
+			It.Value.Settings.bUseForCollisions ||
+			It.Value.Settings.bUseForNavmesh)
+		{
+			OctreeSettings.Invokers.Add(It.Value.Settings);
+		}
+	}
+
 	OctreeSettings.ChunksCullingLOD = DynamicSettings->ChunksCullingLOD;
 
 	OctreeSettings.bEnableRender = DynamicSettings->bEnableRender;
@@ -289,8 +318,6 @@ void FVoxelDefaultLODManager::UpdateLODs()
 	OctreeSettings.bComputeVisibleChunksNavmesh = DynamicSettings->bComputeVisibleChunksNavmesh;
 	OctreeSettings.VisibleChunksNavmeshMaxLOD = DynamicSettings->VisibleChunksNavmeshMaxLOD;
 
-	OctreeSettings.bEnableTessellation = DynamicSettings->bEnableTessellation;
-
 	Task->Init(OctreeSettings, Octree);
 	Settings.Pool->QueueTask(EVoxelTaskType::RenderOctree, Task.Get());
 	bAsyncTaskWorking = true;
@@ -298,5 +325,6 @@ void FVoxelDefaultLODManager::UpdateLODs()
 
 void FVoxelDefaultLODManager::ClearInvokerComponents()
 {
-	InvokerComponents.Reset();
+	SortedInvokerComponents.Reset();
+	InvokerComponentsInfos.Reset();
 }

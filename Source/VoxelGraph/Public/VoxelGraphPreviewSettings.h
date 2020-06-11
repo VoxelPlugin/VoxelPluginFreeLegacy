@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "VoxelConfigEnums.h"
-#include "VoxelIntVectorUtilities.h"
-#include "IntBox.h"
+#include "VoxelUtilities/VoxelIntVectorUtilities.h"
+#include "VoxelIntBox.h"
 #include "VoxelGraphPreviewSettings.generated.h"
+
+class UVoxelMaterialCollectionBase;
 
 UENUM()
 enum class EVoxelGraphPreviewAxes : uint8
@@ -23,6 +25,31 @@ enum class EVoxelGraphPreviewType : uint8
 	Material
 };
 
+UENUM()
+enum class EVoxelGraphMaterialPreviewType : uint8
+{
+	// Show the material RGB values
+	RGB,
+	// Show the material Alpha value
+	Alpha,
+	// Assign one color per index
+	SingleIndex,
+	// Blends the indices colors
+	MultiIndex_Overview,
+	// Only shows the strength of a single index (set by MultiIndexToPreview)
+	MultiIndex_SingleIndexPreview,
+	// Wetness
+	MultiIndex_Wetness,
+	// Red-Green preview of UV0
+	UV0,
+	// Red-Green preview of UV1
+	UV1,
+	// Red-Green preview of UV2
+	UV2,
+	// Red-Green preview of UV3
+	UV3
+};
+
 UCLASS()
 class VOXELGRAPH_API UVoxelGraphPreviewSettings : public UObject
 	{
@@ -30,6 +57,15 @@ class VOXELGRAPH_API UVoxelGraphPreviewSettings : public UObject
 
 public:
 	UVoxelGraphPreviewSettings();
+		
+public:
+	// Min displayed value
+	UPROPERTY(VisibleAnywhere, Category = "Preview Info")
+	mutable float MinValue = -1.f;
+
+	// Max displayed value
+	UPROPERTY(VisibleAnywhere, Category = "Preview Info")
+	mutable float MaxValue = 1.f;
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Preview Zone")
@@ -48,26 +84,43 @@ public:
 	int32 ResolutionScale = 0;
 
 	UPROPERTY(VisibleAnywhere, Category = "Preview Zone")
-	FIntBox PreviewedBounds;
-
+	FVoxelIntBox PreviewedBounds;
+		
 public:
-	// Black
-	UPROPERTY(EditAnywhere, Category = "Preview Range")
-	float MinValue = -1;
+	// Set this to the material config your voxel world will use
+	UPROPERTY(EditAnywhere, Category = "Voxel World Settings")
+	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
 
-	// White
-	UPROPERTY(EditAnywhere, Category = "Preview Range")
-	float MaxValue = 1;
+	// Use to preview Get Index from Material Collection
+	UPROPERTY(EditAnywhere, Category = "Voxel World Settings")
+	UVoxelMaterialCollectionBase* MaterialCollection = nullptr;
+
+	// Seeds used by seed nodes
+	UPROPERTY(EditAnywhere, Category = "Voxel World Settings")
+	mutable TMap<FName, int32> Seeds;
+
+	// Value returned by the Voxel Size node
+	UPROPERTY(EditAnywhere, Category = "Voxel World Settings", AdvancedDisplay)
+	float VoxelSize = 100;
 
 public:
 	UPROPERTY(EditAnywhere, Category = "2D Preview Color")
 	EVoxelGraphPreviewType PreviewType2D = EVoxelGraphPreviewType::Density;
 
+	// If true, will color the distance field orange when positive, blue when negative, and will apply a cosine to make progression easier to see
+	// This coloring is directly derived from Inigo Quilez's work
 	UPROPERTY(EditAnywhere, Category = "2D Preview Color")
-	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
+	bool bDrawColoredDistanceField = true;
 
 	UPROPERTY(EditAnywhere, Category = "2D Preview Color")
-	TArray<FLinearColor> IndexColors = { FLinearColor::Green, FLinearColor::Red, FLinearColor::Blue, FLinearColor::White };
+	EVoxelGraphMaterialPreviewType MaterialPreviewType = EVoxelGraphMaterialPreviewType::RGB;
+		
+	// Used if material preview type is MultiIndex_SingleIndexPreview
+	UPROPERTY(EditAnywhere, Category = "2D Preview Color")
+	int32 MultiIndexToPreview = 0;
+		
+	UPROPERTY(EditAnywhere, Category = "2D Preview Color")
+	TArray<FColor> IndexColors;
 
 public:
 	UPROPERTY(EditAnywhere, Category = "3D Preview Color")
@@ -105,6 +158,18 @@ public:
 	FVector MeshScale = FVector(10, 10, 10);
 
 public:
+	// Will set black to the lowest value in the image, and white to the highest
+	UPROPERTY(EditAnywhere, Category = "Misc")
+	bool bAutoNormalize = true;
+		
+	// Black
+	UPROPERTY(EditAnywhere, Category = "Misc", AdvancedDisplay, meta = (EditCondition = "!bAutoNormalize"))
+	float NormalizeMinValue = -1;
+
+	// White
+	UPROPERTY(EditAnywhere, Category = "Misc", AdvancedDisplay, meta = (EditCondition = "!bAutoNormalize"))
+	float NormalizeMaxValue = 1;
+		
 	// Simulate querying a chunk at a specific LOD, eg to check fractal noise settings
 	UPROPERTY(EditAnywhere, Category = "Misc", meta = (ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, DisplayName = "LOD to preview"))
 	int32 LODToPreview = 0;
@@ -153,10 +218,10 @@ public:
 		return Size;
 	}
 
-	inline FIntBox GetBounds() const
+	inline FVoxelIntBox GetBounds() const
 	{
 		const FIntVector Start = GetStart();
-		return FIntBox(Start, Start + GetSize() * GetStep());
+		return FVoxelIntBox(Start, Start + GetSize() * GetStep());
 	}
 
 	inline FIntVector GetPosition(int32 X, int32 Y) const

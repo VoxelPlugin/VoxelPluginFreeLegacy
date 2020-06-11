@@ -20,6 +20,8 @@ public:
 };
 
 // Set the color at that position. Inputs between 0 and 1
+// Will not work in multi index!
+// In single index, Alpha will be ignored (as it's used for the index)
 UCLASS(DisplayName = "Set Color")
 class VOXELGRAPH_API UVoxelNode_SetColor : public UVoxelNode_MaterialSetter
 {
@@ -30,8 +32,6 @@ class VOXELGRAPH_API UVoxelNode_SetColor : public UVoxelNode_MaterialSetter
 };
 
 // Set the material index at that position. Input clamped between 0 and 255.
-// DataA/B/C can be used in the material using the GetSingleIndexData material function
-// DataA/B/C are between 0 and 1
 UCLASS(DisplayName = "Set Single Index")
 class VOXELGRAPH_API UVoxelNode_SetSingleIndex : public UVoxelNode_MaterialSetter
 {
@@ -41,27 +41,44 @@ class VOXELGRAPH_API UVoxelNode_SetSingleIndex : public UVoxelNode_MaterialSette
 	UVoxelNode_SetSingleIndex();
 };
 
-// Set double index
-// Data can be used in the material using the GetDoubleIndexData material function
-// Data is between 0 and 1
-UCLASS(DisplayName = "Set Double Index")
-class VOXELGRAPH_API UVoxelNode_SetDoubleIndex : public UVoxelNode_MaterialSetter
+// Set the multi index wetness as that position, between 0 and 1. Wetness can be queried using the GetMultiIndexWetness material function in your shader.
+UCLASS(DisplayName = "Set Multi Index Wetness")
+class VOXELGRAPH_API UVoxelNode_SetMultiIndexWetness : public UVoxelNode_MaterialSetter
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
 
-	UVoxelNode_SetDoubleIndex();
+	UVoxelNode_SetMultiIndexWetness();
+};
+
+// Add multi index with the specified strength
+// The strength will be normalized according to the other strengths set, except if Lock Strength is true
+UCLASS(DisplayName = "Add Multi Index")
+class VOXELGRAPH_API UVoxelNode_AddMultiIndex : public UVoxelNode_MaterialSetter
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+
+	UVoxelNode_AddMultiIndex();
 };
 
 // Set the material additional UVs channels
 // By default the plugin has 2 UV channels that can be queried using TexCoord[1] and TexCoord[2] in the material
 // Values should be between 0.f and 1.f
-// Index should be 0 or 1 (or 2/3 if you enabled them in VoxelUserGlobals.h) 
+// Index should be 0 or 1 (or 2/3 if you enabled them in VoxelUserDefinitions.h)
+// UVs 0 and 1 will not be set in MultiIndex!
 UCLASS(DisplayName = "Set UV Channel")
 class VOXELGRAPH_API UVoxelNode_SetUVs : public UVoxelNode_MaterialSetter
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	bool bSetU = true;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	bool bSetV = true;
 
 	UVoxelNode_SetUVs();
 };

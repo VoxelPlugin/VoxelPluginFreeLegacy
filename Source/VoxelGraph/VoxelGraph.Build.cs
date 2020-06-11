@@ -12,8 +12,8 @@ public class VoxelGraph : ModuleRules
         bLegacyPublicIncludePaths = false;
 
 
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
+		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
+        PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
         
         PublicDependencyModuleNames.AddRange(
             new string[]

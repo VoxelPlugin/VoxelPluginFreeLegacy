@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelSpawners/VoxelInstancedMeshSettings.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"

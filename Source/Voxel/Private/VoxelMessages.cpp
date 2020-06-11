@@ -41,19 +41,27 @@ void FVoxelMessages::ShowNotification(
 	const FText& Message,
 	const FText& ButtonText,
 	const FText& ButtonTooltip,
-	const FSimpleDelegate& OnClick)
+	const FSimpleDelegate& OnClick,
+	bool bWithIgnore,
+	const FSimpleDelegate& OnIgnore)
 {
 	if (!ensure(IsInGameThread())) return;
 	
 	if (ShowNotificationDelegate.IsBound())
 	{
-		ShowNotificationDelegate.Broadcast(UniqueId, Message, ButtonText, ButtonTooltip, OnClick);
+		ShowNotificationDelegate.Broadcast(UniqueId, Message, ButtonText, ButtonTooltip, OnClick, bWithIgnore, OnIgnore);
 	}
 }
 
 void FVoxelMessages::ShowVoxelPluginProError(const FString& Message, const UObject* Object)
 {
 	if (!ensure(IsInGameThread())) return;
+
+	static bool bIgnore = false;
+	if (bIgnore)
+	{
+		return;
+	}
 	
 	// This URL is to record click statistics
 	// It will always redirect to https://buy.voxelplugin.com
@@ -67,6 +75,6 @@ void FVoxelMessages::ShowVoxelPluginProError(const FString& Message, const UObje
 			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to open " + URL + "\n:" + Error));
 		}
 	};
-	ShowNotification(GetTypeHash(Message), Message, "Get Voxel Plugin Pro", "https://buy.voxelplugin.com", FSimpleDelegate::CreateLambda(Popup));
-	LogMessage(FText::FromString(Message), EMessageSeverity::Error, EVoxelShowNotification::Hide, Object);
+	ShowNotification(GetTypeHash(Message), Message, "Get Voxel Plugin Pro", "https://buy.voxelplugin.com", FSimpleDelegate::CreateLambda(Popup), true, FSimpleDelegate::CreateLambda([&]() { bIgnore = true; }));
+	LogMessage(FText::FromString(Message), EMessageSeverity::Warning, EVoxelShowNotification::Hide, Object);
 }

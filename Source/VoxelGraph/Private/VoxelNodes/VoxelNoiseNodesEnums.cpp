@@ -7,11 +7,11 @@ FString FVoxelNoiseNodesEnums::GetFastNoiseName(EInterp Interpolation)
 	switch (Interpolation)
 	{
 	case EInterp::Linear:
-		return "FastNoise::Linear";
+		return "FVoxelFastNoise::Linear";
 	case EInterp::Hermite:
-		return "FastNoise::Hermite";
+		return "FVoxelFastNoise::Hermite";
 	case EInterp::Quintic:
-		return "FastNoise::Quintic";
+		return "FVoxelFastNoise::Quintic";
 	default:
 		check(false);
 		return "";
@@ -23,11 +23,11 @@ FString FVoxelNoiseNodesEnums::GetFastNoiseName(EFractalType FractalType)
 	switch (FractalType)
 	{
 	case EFractalType::FBM:
-		return "FastNoise::FBM";
+		return "FVoxelFastNoise::FBM";
 	case EFractalType::Billow:
-		return "FastNoise::Billow";
+		return "FVoxelFastNoise::Billow";
 	case EFractalType::RigidMulti:
-		return "FastNoise::RigidMulti";
+		return "FVoxelFastNoise::RigidMulti";
 	default:
 		check(false);
 		return "";
@@ -39,11 +39,11 @@ FString FVoxelNoiseNodesEnums::GetFastNoiseName(ECellularDistanceFunction Distan
 	switch (DistanceFunction)
 	{
 	case ECellularDistanceFunction::Euclidean:
-		return "FastNoise::Euclidean";
+		return "FVoxelFastNoise::Euclidean";
 	case ECellularDistanceFunction::Manhattan:
-		return "FastNoise::Manhattan";
+		return "FVoxelFastNoise::Manhattan";
 	case ECellularDistanceFunction::Natural:
-		return "FastNoise::Natural";
+		return "FVoxelFastNoise::Natural";
 	default:
 		check(false);
 		return "";
@@ -55,93 +55,93 @@ FString FVoxelNoiseNodesEnums::GetFastNoiseName(ECellularReturnType ReturnType)
 	switch (ReturnType)
 	{
 	case ECellularReturnType::CellValue:
-		return "FastNoise::CellValue";
+		return "FVoxelFastNoise::CellValue";
 	case ECellularReturnType::Distance:
-		return "FastNoise::Distance";
+		return "FVoxelFastNoise::Distance";
 	case ECellularReturnType::Distance2:
-		return "FastNoise::Distance2";
+		return "FVoxelFastNoise::Distance2";
 	case ECellularReturnType::Distance2Add:
-		return "FastNoise::Distance2Add";
+		return "FVoxelFastNoise::Distance2Add";
 	case ECellularReturnType::Distance2Sub:
-		return "FastNoise::Distance2Sub";
+		return "FVoxelFastNoise::Distance2Sub";
 	case ECellularReturnType::Distance2Mul:
-		return "FastNoise::Distance2Mul";
+		return "FVoxelFastNoise::Distance2Mul";
 	case ECellularReturnType::Distance2Div:
-		return "FastNoise::Distance2Div";
+		return "FVoxelFastNoise::Distance2Div";
 	default:
 		check(false);
 		return "";
 	}
 }
 
-FastNoise::Interp FVoxelNoiseNodesEnums::GetFastNoiseEnum(EInterp Interpolation)
+FVoxelFastNoise::Interp FVoxelNoiseNodesEnums::GetFastNoiseEnum(EInterp Interpolation)
 {
 	switch (Interpolation)
 	{
 	case EInterp::Linear: 
-		return FastNoise::Linear;
+		return FVoxelFastNoise::Linear;
 	case EInterp::Hermite:
-		return FastNoise::Hermite;
+		return FVoxelFastNoise::Hermite;
 	case EInterp::Quintic:
-		return FastNoise::Quintic;
+		return FVoxelFastNoise::Quintic;
 	default:;
 		check(false);
-		return FastNoise::Linear;
+		return FVoxelFastNoise::Linear;
 	}
 }
 
-FastNoise::FractalType FVoxelNoiseNodesEnums::GetFastNoiseEnum(EFractalType FractalType)
+FVoxelFastNoise::FractalType FVoxelNoiseNodesEnums::GetFastNoiseEnum(EFractalType FractalType)
 {
 	switch (FractalType)
 	{
 	case EFractalType::FBM:
-		return FastNoise::FBM;
+		return FVoxelFastNoise::FBM;
 	case EFractalType::Billow:
-		return FastNoise::Billow;
+		return FVoxelFastNoise::Billow;
 	case EFractalType::RigidMulti:
-		return FastNoise::RigidMulti;
+		return FVoxelFastNoise::RigidMulti;
 	default:
 		check(false);
-		return FastNoise::FBM;
+		return FVoxelFastNoise::FBM;
 	}
 }
 
-FastNoise::CellularDistanceFunction FVoxelNoiseNodesEnums::GetFastNoiseEnum(ECellularDistanceFunction DistanceFunction)
+FVoxelFastNoise::CellularDistanceFunction FVoxelNoiseNodesEnums::GetFastNoiseEnum(ECellularDistanceFunction DistanceFunction)
 {
 	switch (DistanceFunction)
 	{
 	case ECellularDistanceFunction::Euclidean:
-		return FastNoise::Euclidean;
+		return FVoxelFastNoise::Euclidean;
 	case ECellularDistanceFunction::Manhattan:
-		return FastNoise::Manhattan;
+		return FVoxelFastNoise::Manhattan;
 	case ECellularDistanceFunction::Natural:
-		return FastNoise::Natural;
+		return FVoxelFastNoise::Natural;
 	default:
 		check(false);
-		return FastNoise::Euclidean;
+		return FVoxelFastNoise::Euclidean;
 	}
 }
 
-FastNoise::CellularReturnType FVoxelNoiseNodesEnums::GetFastNoiseEnum(ECellularReturnType ReturnType)
+FVoxelFastNoise::CellularReturnType FVoxelNoiseNodesEnums::GetFastNoiseEnum(ECellularReturnType ReturnType)
 {
 	switch (ReturnType)
 	{
 	case ECellularReturnType::CellValue:
-		return FastNoise::CellValue;
+		return FVoxelFastNoise::CellValue;
 	case ECellularReturnType::Distance:
-		return FastNoise::Distance;
+		return FVoxelFastNoise::Distance;
 	case ECellularReturnType::Distance2:
-		return FastNoise::Distance2;
+		return FVoxelFastNoise::Distance2;
 	case ECellularReturnType::Distance2Add:
-		return FastNoise::Distance2Add;
+		return FVoxelFastNoise::Distance2Add;
 	case ECellularReturnType::Distance2Sub:
-		return FastNoise::Distance2Sub;
+		return FVoxelFastNoise::Distance2Sub;
 	case ECellularReturnType::Distance2Mul:
-		return FastNoise::Distance2Mul;
+		return FVoxelFastNoise::Distance2Mul;
 	case ECellularReturnType::Distance2Div:
-		return FastNoise::Distance2Div;
+		return FVoxelFastNoise::Distance2Div;
 	default:
 		check(false);
-		return FastNoise::CellValue;
+		return FVoxelFastNoise::CellValue;
 	}
 }

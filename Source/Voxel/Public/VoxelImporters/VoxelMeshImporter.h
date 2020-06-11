@@ -54,44 +54,12 @@ struct VOXEL_API FVoxelMeshImporterRenderTargetCache
 };
 
 USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelMeshImporterSettings
+struct VOXEL_API FVoxelMeshImporterSettingsBase
 {
 	GENERATED_BODY()
 
-	FVoxelMeshImporterSettings();
-	
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0"))
 	float VoxelSize = 100;
-	
-	// Will sample ColorsMaterial at the mesh UVs to get the voxel colors
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
-	bool bPaintColors = true;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bPaintColors"))
-	UMaterialInterface* ColorsMaterial = nullptr;
-
-	// Will sample UVChannelsMaterial at the mesh UVs to get the voxel UVs
-	// RG will go in first UV channel, BA in second
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
-	bool bPaintUVs = true;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = bPaintUVs))
-	UMaterialInterface* UVsMaterial = nullptr;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (InlineEditConditionToggle))
-	bool bSetSingleIndex = false;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bSetSingleIndex"))
-	uint8 SingleIndex = 0;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (InlineEditConditionToggle))
-	bool bSetDoubleIndex = false;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bSetDoubleIndex"))
-	uint8 DoubleIndex = 0;
-
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
-	int32 RenderTargetSize = 4096;
 	
 	// If true, will hide leaks by having holes instead
 	// If false, leaks will be long tubes going through the entire asset
@@ -118,6 +86,45 @@ struct VOXEL_API FVoxelMeshImporterSettings
 	// Much faster if false
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
 	bool bComputeExactDistance = false;
+};
+
+USTRUCT(BlueprintType)
+struct VOXEL_API FVoxelMeshImporterSettings : public FVoxelMeshImporterSettingsBase
+{
+	GENERATED_BODY()
+
+	FVoxelMeshImporterSettings();
+	explicit FVoxelMeshImporterSettings(const FVoxelMeshImporterSettingsBase& Base);
+	
+	// Will sample ColorsMaterial at the mesh UVs to get the voxel colors
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
+	bool bPaintColors = true;
+	
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bPaintColors"))
+	UMaterialInterface* ColorsMaterial = nullptr;
+
+	// Will sample UVChannelsMaterial at the mesh UVs to get the voxel UVs
+	// RG will go in first UV channel, BA in second
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
+	bool bPaintUVs = true;
+	
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = bPaintUVs))
+	UMaterialInterface* UVsMaterial = nullptr;
+	
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (InlineEditConditionToggle))
+	bool bSetSingleIndex = false;
+	
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bSetSingleIndex"))
+	uint8 SingleIndex = 0;
+	
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (InlineEditConditionToggle))
+	bool bSetMultiIndex = false;
+	
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bSetMultiIndex"))
+	uint8 MultiIndex = 0;
+
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
+	int32 RenderTargetSize = 4096;
 };
 
 UCLASS()
@@ -168,6 +175,16 @@ public:
 		bool bSubtractive,
 		FVoxelMeshImporterSettings Settings,
 		UPARAM(ref) FVoxelMeshImporterRenderTargetCache& RenderTargetCache,
+		UVoxelDataAsset*& Asset,
+		int32& NumLeaks);
+	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Mesh Importer", meta = (WorldContext = "WorldContextObject"))
+	static void ConvertMeshToVoxels_NoMaterials(
+		UObject* WorldContextObject,
+		UVoxelMeshImporterInputData* Mesh,
+		FTransform Transform,
+		bool bSubtractive,
+		FVoxelMeshImporterSettingsBase Settings,
 		UVoxelDataAsset*& Asset,
 		int32& NumLeaks);
 };

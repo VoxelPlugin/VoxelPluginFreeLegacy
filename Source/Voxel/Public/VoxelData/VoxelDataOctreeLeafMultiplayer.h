@@ -6,7 +6,7 @@
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
 #include "VoxelDiff.h"
-#include "VoxelMiscUtilities.h"
+#include "VoxelUtilities/VoxelMiscUtilities.h"
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Multiplayer Memory"), STAT_VoxelMultiplayerMemory, STATGROUP_VoxelMemory, VOXEL_API);
 

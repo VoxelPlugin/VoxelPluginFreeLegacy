@@ -1,20 +1,24 @@
 // Copyright 2020 Phyronnaz
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnull-dereference"
-#else
-#pragma warning(push)
-#pragma warning(disable : 4101 4701)
-#endif
-
 #include "VoxelExample_Planet.h"
 
-using Seed = int32;
+PRAGMA_GENERATED_VOXEL_GRAPH_START
 
+using FVoxelGraphSeed = int32;
+
+#if VOXEL_GRAPH_GENERATED_VERSION == 1
 class FVoxelExample_PlanetInstance : public TVoxelGraphGeneratorInstanceHelper<FVoxelExample_PlanetInstance, UVoxelExample_Planet>
 {
 public:
+	struct FParams
+	{
+		const float Frequency;
+		const float Radius;
+		const FVoxelRichCurve PlanetCurve;
+		const FVoxelColorRichCurve PlanetColorCurve;
+		const float Noise_Strength;
+	};
+	
 	class FLocalComputeStruct_LocalValue
 	{
 	public:
@@ -22,12 +26,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
 			
 			v_flt Value;
 		};
@@ -56,12 +62,8 @@ public:
 			v_flt Variable_17; // Y output 0
 		};
 		
-		FLocalComputeStruct_LocalValue(const float& InFrequency, const float& InRadius, const FVoxelRichCurve& InPlanetCurve, const FVoxelColorRichCurve& InPlanetColorCurve, const float& InNoise_Strength)
-			: Frequency(InFrequency)
-			, Radius(InRadius)
-			, PlanetCurve(InPlanetCurve)
-			, PlanetColorCurve(InPlanetColorCurve)
-			, Noise_Strength(InNoise_Strength)
+		FLocalComputeStruct_LocalValue(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -80,7 +82,7 @@ public:
 					/////////////////////////////////////////////////////////////////////////////////
 					
 					// Init of Noise Seed
-					Seed Variable_20; // Noise Seed output 0
+					FVoxelGraphSeed Variable_20; // Noise Seed output 0
 					{
 						static FName StaticName = "Noise Seed";
 						Variable_20 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
@@ -104,13 +106,13 @@ public:
 			////////////////////////////////////////////////////
 			{
 				// Noise Strength = 0.02
-				BufferConstant.Variable_8 = Noise_Strength;
+				BufferConstant.Variable_8 = Params.Noise_Strength;
 				
 				// Frequency = 2.0
-				BufferConstant.Variable_10 = Frequency;
+				BufferConstant.Variable_10 = Params.Frequency;
 				
 				// Radius = 1000.0
-				BufferConstant.Variable_5 = Radius;
+				BufferConstant.Variable_5 = Params.Radius;
 				
 			}
 		}
@@ -141,15 +143,12 @@ public:
 		
 	private:
 		FBufferConstant BufferConstant;
-		FastNoise _3D_Gradient_Perturb_0_Noise;
-		FastNoise _3D_IQ_Noise_0_Noise;
-		TStaticArray<uint8, 32> _3D_IQ_Noise_0_LODToOctaves;
 		
-		const float& Frequency;
-		const float& Radius;
-		const FVoxelRichCurve& PlanetCurve;
-		const FVoxelColorRichCurve& PlanetColorCurve;
-		const float& Noise_Strength;
+		const FParams& Params;
+		
+		FVoxelFastNoise _3D_Gradient_Perturb_0_Noise;
+		FVoxelFastNoise _3D_IQ_Noise_0_Noise;
+		TStaticArray<uint8, 32> _3D_IQ_Noise_0_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -158,22 +157,22 @@ public:
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
 			// Init of Noise Seed
-			Seed Variable_20; // Noise Seed output 0
+			FVoxelGraphSeed Variable_20; // Noise Seed output 0
 			{
 				static FName StaticName = "Noise Seed";
 				Variable_20 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
 			}
 			
 			// Init of 3D Gradient Perturb
-			_3D_Gradient_Perturb_0_Noise.SetSeed(Seed(1337));
-			_3D_Gradient_Perturb_0_Noise.SetInterp(FastNoise::Quintic);
+			_3D_Gradient_Perturb_0_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_3D_Gradient_Perturb_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			
 			// Init of 3D IQ Noise
 			_3D_IQ_Noise_0_Noise.SetSeed(Variable_20);
-			_3D_IQ_Noise_0_Noise.SetInterp(FastNoise::Quintic);
+			_3D_IQ_Noise_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_3D_IQ_Noise_0_Noise.SetFractalOctavesAndGain(15, 0.6);
 			_3D_IQ_Noise_0_Noise.SetFractalLacunarity(2.0);
-			_3D_IQ_Noise_0_Noise.SetFractalType(FastNoise::FBM);
+			_3D_IQ_Noise_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_3D_IQ_Noise_0_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
 			_3D_IQ_Noise_0_LODToOctaves[0] = 15;
 			_3D_IQ_Noise_0_LODToOctaves[1] = 15;
@@ -306,7 +305,7 @@ public:
 			
 			// Float Curve: PlanetCurve
 			v_flt Variable_11; // Float Curve: PlanetCurve output 0
-			Variable_11 = FVoxelNodeFunctions::GetCurveValue(PlanetCurve, Variable_12);
+			Variable_11 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetCurve, Variable_12);
 			
 			// *
 			v_flt Variable_7; // * output 0
@@ -395,7 +394,7 @@ public:
 			
 			// Float Curve: PlanetCurve
 			v_flt Variable_11; // Float Curve: PlanetCurve output 0
-			Variable_11 = FVoxelNodeFunctions::GetCurveValue(PlanetCurve, Variable_12);
+			Variable_11 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetCurve, Variable_12);
 			
 			// *
 			v_flt Variable_7; // * output 0
@@ -420,14 +419,17 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
+				MaterialBuilder.SetMaterialConfig(Init.MaterialConfig);
 			}
 			
-			FVoxelMaterial Material;
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
+			
+			FVoxelMaterialBuilder MaterialBuilder;
 		};
 		struct FBufferConstant
 		{
@@ -450,12 +452,8 @@ public:
 			v_flt Variable_11; // Y output 0
 		};
 		
-		FLocalComputeStruct_LocalMaterial(const float& InFrequency, const float& InRadius, const FVoxelRichCurve& InPlanetCurve, const FVoxelColorRichCurve& InPlanetColorCurve, const float& InNoise_Strength)
-			: Frequency(InFrequency)
-			, Radius(InRadius)
-			, PlanetCurve(InPlanetCurve)
-			, PlanetColorCurve(InPlanetColorCurve)
-			, Noise_Strength(InNoise_Strength)
+		FLocalComputeStruct_LocalMaterial(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -474,7 +472,7 @@ public:
 					/////////////////////////////////////////////////////////////////////////////////
 					
 					// Init of Noise Seed
-					Seed Variable_15; // Noise Seed output 0
+					FVoxelGraphSeed Variable_15; // Noise Seed output 0
 					{
 						static FName StaticName = "Noise Seed";
 						Variable_15 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
@@ -498,7 +496,7 @@ public:
 			////////////////////////////////////////////////////
 			{
 				// Frequency = 2.0
-				BufferConstant.Variable_1 = Frequency;
+				BufferConstant.Variable_1 = Params.Frequency;
 				
 			}
 		}
@@ -529,15 +527,12 @@ public:
 		
 	private:
 		FBufferConstant BufferConstant;
-		FastNoise _3D_Gradient_Perturb_1_Noise;
-		FastNoise _3D_IQ_Noise_1_Noise;
-		TStaticArray<uint8, 32> _3D_IQ_Noise_1_LODToOctaves;
 		
-		const float& Frequency;
-		const float& Radius;
-		const FVoxelRichCurve& PlanetCurve;
-		const FVoxelColorRichCurve& PlanetColorCurve;
-		const float& Noise_Strength;
+		const FParams& Params;
+		
+		FVoxelFastNoise _3D_Gradient_Perturb_1_Noise;
+		FVoxelFastNoise _3D_IQ_Noise_1_Noise;
+		TStaticArray<uint8, 32> _3D_IQ_Noise_1_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -546,22 +541,22 @@ public:
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
 			// Init of Noise Seed
-			Seed Variable_15; // Noise Seed output 0
+			FVoxelGraphSeed Variable_15; // Noise Seed output 0
 			{
 				static FName StaticName = "Noise Seed";
 				Variable_15 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
 			}
 			
 			// Init of 3D Gradient Perturb
-			_3D_Gradient_Perturb_1_Noise.SetSeed(Seed(1337));
-			_3D_Gradient_Perturb_1_Noise.SetInterp(FastNoise::Quintic);
+			_3D_Gradient_Perturb_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_3D_Gradient_Perturb_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			
 			// Init of 3D IQ Noise
 			_3D_IQ_Noise_1_Noise.SetSeed(Variable_15);
-			_3D_IQ_Noise_1_Noise.SetInterp(FastNoise::Quintic);
+			_3D_IQ_Noise_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_3D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.6);
 			_3D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
-			_3D_IQ_Noise_1_Noise.SetFractalType(FastNoise::FBM);
+			_3D_IQ_Noise_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_3D_IQ_Noise_1_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
 			_3D_IQ_Noise_1_LODToOctaves[0] = 15;
 			_3D_IQ_Noise_1_LODToOctaves[1] = 15;
@@ -677,16 +672,16 @@ public:
 			v_flt Variable_4; // Color Curve: PlanetColorCurve output 1
 			v_flt Variable_5; // Color Curve: PlanetColorCurve output 2
 			v_flt Variable_6; // Color Curve: PlanetColorCurve output 3
-			Variable_3 = FVoxelNodeFunctions::GetCurveValue(PlanetColorCurve.Curves[0], Variable_2);
-			Variable_4 = FVoxelNodeFunctions::GetCurveValue(PlanetColorCurve.Curves[1], Variable_2);
-			Variable_5 = FVoxelNodeFunctions::GetCurveValue(PlanetColorCurve.Curves[2], Variable_2);
-			Variable_6 = FVoxelNodeFunctions::GetCurveValue(PlanetColorCurve.Curves[3], Variable_2);
+			Variable_3 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetColorCurve.Curves[0], Variable_2);
+			Variable_4 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetColorCurve.Curves[1], Variable_2);
+			Variable_5 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetColorCurve.Curves[2], Variable_2);
+			Variable_6 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetColorCurve.Curves[3], Variable_2);
 			
 			// Make Color
 			FColor Variable_14; // Make Color output 0
 			Variable_14 = FVoxelNodeFunctions::MakeColorFloat(Variable_3, Variable_4, Variable_5, Variable_6);
 			
-			Outputs.Material.SetColor(Variable_14);
+			Outputs.MaterialBuilder.SetColor(Variable_14);
 		}
 		
 		void Function0_XYZWithoutCache_Compute(const FVoxelContext& Context, FOutputs& Outputs) const
@@ -748,16 +743,16 @@ public:
 			v_flt Variable_4; // Color Curve: PlanetColorCurve output 1
 			v_flt Variable_5; // Color Curve: PlanetColorCurve output 2
 			v_flt Variable_6; // Color Curve: PlanetColorCurve output 3
-			Variable_3 = FVoxelNodeFunctions::GetCurveValue(PlanetColorCurve.Curves[0], Variable_2);
-			Variable_4 = FVoxelNodeFunctions::GetCurveValue(PlanetColorCurve.Curves[1], Variable_2);
-			Variable_5 = FVoxelNodeFunctions::GetCurveValue(PlanetColorCurve.Curves[2], Variable_2);
-			Variable_6 = FVoxelNodeFunctions::GetCurveValue(PlanetColorCurve.Curves[3], Variable_2);
+			Variable_3 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetColorCurve.Curves[0], Variable_2);
+			Variable_4 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetColorCurve.Curves[1], Variable_2);
+			Variable_5 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetColorCurve.Curves[2], Variable_2);
+			Variable_6 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetColorCurve.Curves[3], Variable_2);
 			
 			// Make Color
 			FColor Variable_14; // Make Color output 0
 			Variable_14 = FVoxelNodeFunctions::MakeColorFloat(Variable_3, Variable_4, Variable_5, Variable_6);
 			
-			Outputs.Material.SetColor(Variable_14);
+			Outputs.MaterialBuilder.SetColor(Variable_14);
 		}
 		
 	};
@@ -768,12 +763,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
 			
 			v_flt UpVectorX;
 			v_flt UpVectorY;
@@ -799,12 +796,8 @@ public:
 			v_flt Variable_2; // Set Sphere Up Vector.Y output 0
 		};
 		
-		FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ(const float& InFrequency, const float& InRadius, const FVoxelRichCurve& InPlanetCurve, const FVoxelColorRichCurve& InPlanetColorCurve, const float& InNoise_Strength)
-			: Frequency(InFrequency)
-			, Radius(InRadius)
-			, PlanetCurve(InPlanetCurve)
-			, PlanetColorCurve(InPlanetColorCurve)
-			, Noise_Strength(InNoise_Strength)
+		FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -869,11 +862,8 @@ public:
 	private:
 		FBufferConstant BufferConstant;
 		
-		const float& Frequency;
-		const float& Radius;
-		const FVoxelRichCurve& PlanetCurve;
-		const FVoxelColorRichCurve& PlanetColorCurve;
-		const float& Noise_Strength;
+		const FParams& Params;
+		
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -949,12 +939,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(TVoxelRange<T>*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			TVoxelRange<T> Get() const;
+			template<typename T, uint32 Index>
+			void Set(TVoxelRange<T> Value);
 			
 			TVoxelRange<v_flt> Value;
 		};
@@ -983,12 +975,8 @@ public:
 			TVoxelRange<v_flt> Variable_1; // Y output 0
 		};
 		
-		FLocalComputeStruct_LocalValueRangeAnalysis(const float& InFrequency, const float& InRadius, const FVoxelRichCurve& InPlanetCurve, const FVoxelColorRichCurve& InPlanetColorCurve, const float& InNoise_Strength)
-			: Frequency(InFrequency)
-			, Radius(InRadius)
-			, PlanetCurve(InPlanetCurve)
-			, PlanetColorCurve(InPlanetColorCurve)
-			, Noise_Strength(InNoise_Strength)
+		FLocalComputeStruct_LocalValueRangeAnalysis(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -1024,16 +1012,16 @@ public:
 			////////////////////////////////////////////////////
 			{
 				// Noise Strength = 0.02
-				BufferConstant.Variable_8 = Noise_Strength;
+				BufferConstant.Variable_8 = Params.Noise_Strength;
 				
 				// Frequency = 2.0
-				BufferConstant.Variable_10 = Frequency;
+				BufferConstant.Variable_10 = Params.Frequency;
 				
 				// Sphere Normalize with Preview.Normalize.Range Union
 				BufferConstant.Variable_17 = FVoxelNodeFunctions::Union(TVoxelRange<v_flt>(-1.0f), TVoxelRange<v_flt>(1.0f));
 				
 				// Radius = 1000.0
-				BufferConstant.Variable_5 = Radius;
+				BufferConstant.Variable_5 = Params.Radius;
 				
 			}
 		}
@@ -1048,15 +1036,12 @@ public:
 		
 	private:
 		FBufferConstant BufferConstant;
-		FastNoise _3D_Gradient_Perturb_2_Noise;
-		FastNoise _3D_IQ_Noise_2_Noise;
-		TStaticArray<uint8, 32> _3D_IQ_Noise_2_LODToOctaves;
 		
-		const float& Frequency;
-		const float& Radius;
-		const FVoxelRichCurve& PlanetCurve;
-		const FVoxelColorRichCurve& PlanetColorCurve;
-		const float& Noise_Strength;
+		const FParams& Params;
+		
+		FVoxelFastNoise _3D_Gradient_Perturb_2_Noise;
+		FVoxelFastNoise _3D_IQ_Noise_2_Noise;
+		TStaticArray<uint8, 32> _3D_IQ_Noise_2_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -1065,15 +1050,15 @@ public:
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
 			// Init of 3D Gradient Perturb
-			_3D_Gradient_Perturb_2_Noise.SetSeed(Seed(1337));
-			_3D_Gradient_Perturb_2_Noise.SetInterp(FastNoise::Quintic);
+			_3D_Gradient_Perturb_2_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_3D_Gradient_Perturb_2_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			
 			// Init of 3D IQ Noise
-			_3D_IQ_Noise_2_Noise.SetSeed(Seed(1337));
-			_3D_IQ_Noise_2_Noise.SetInterp(FastNoise::Quintic);
+			_3D_IQ_Noise_2_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_3D_IQ_Noise_2_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_3D_IQ_Noise_2_Noise.SetFractalOctavesAndGain(15, 0.6);
 			_3D_IQ_Noise_2_Noise.SetFractalLacunarity(2.0);
-			_3D_IQ_Noise_2_Noise.SetFractalType(FastNoise::FBM);
+			_3D_IQ_Noise_2_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_3D_IQ_Noise_2_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
 			_3D_IQ_Noise_2_LODToOctaves[0] = 15;
 			_3D_IQ_Noise_2_LODToOctaves[1] = 15;
@@ -1160,7 +1145,7 @@ public:
 			
 			// Float Curve: PlanetCurve
 			TVoxelRange<v_flt> Variable_11; // Float Curve: PlanetCurve output 0
-			Variable_11 = FVoxelNodeFunctions::GetCurveValue(PlanetCurve, Variable_12);
+			Variable_11 = FVoxelNodeFunctions::GetCurveValue(Params.PlanetCurve, Variable_12);
 			
 			// *
 			TVoxelRange<v_flt> Variable_7; // * output 0
@@ -1179,43 +1164,56 @@ public:
 		
 	};
 	
-	FVoxelExample_PlanetInstance(const float& InFrequency, const float& InRadius, const FVoxelRichCurve& InPlanetCurve, const FVoxelColorRichCurve& InPlanetColorCurve, const float& InNoise_Strength, bool bEnableRangeAnalysis)
-		: TVoxelGraphGeneratorInstanceHelper(
+	FVoxelExample_PlanetInstance(const UVoxelExample_Planet& Object)
+			: TVoxelGraphGeneratorInstanceHelper(
+			{
+				{ "Value", 1 },
+			},
+			{
+			},
+			{
+			},
+			{
+				{
+					{ "Value", NoTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr<v_flt>>() },
+				},
+				{
+				},
+				{
+				},
+				{
+					{ "Value", NoTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr<v_flt>>() },
+				}
+			},
+			{
+				{
+					{ "Value", WithTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr_Transform<v_flt>>() },
+				},
+				{
+				},
+				{
+				},
+				{
+					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
+				}
+			},
+			Object.bEnableRangeAnalysis)
+		, Params(FParams
 		{
-			{"Value", 1}
-		},
-		{
-		},
-		{
-			{"Value", NoTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr<v_flt>>()}
-		},
-		{
-		},
-		{
-			{"Value", NoTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr<v_flt>>()}
-		},
-		{
-			{"Value", WithTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr_Transform<v_flt>>()}
-		},
-		{
-		},
-		{
-			{"Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>()}
-		},
-		bEnableRangeAnalysis)
-		, Frequency(InFrequency)
-		, Radius(InRadius)
-		, PlanetCurve(InPlanetCurve)
-		, PlanetColorCurve(InPlanetColorCurve)
-		, Noise_Strength(InNoise_Strength)
-		, LocalValue(Frequency, Radius, PlanetCurve, PlanetColorCurve, Noise_Strength)
-		, LocalMaterial(Frequency, Radius, PlanetCurve, PlanetColorCurve, Noise_Strength)
-		, LocalUpVectorXUpVectorYUpVectorZ(Frequency, Radius, PlanetCurve, PlanetColorCurve, Noise_Strength)
-		, LocalValueRangeAnalysis(Frequency, Radius, PlanetCurve, PlanetColorCurve, Noise_Strength)
+			Object.Frequency,
+			Object.Radius,
+			FVoxelRichCurve(Object.PlanetCurve.LoadSynchronous()),
+			FVoxelColorRichCurve(Object.PlanetColorCurve.LoadSynchronous()),
+			Object.Noise_Strength
+		})
+		, LocalValue(Params)
+		, LocalMaterial(Params)
+		, LocalUpVectorXUpVectorYUpVectorZ(Params)
+		, LocalValueRangeAnalysis(Params)
 	{
 	}
 	
-	virtual void Init(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1232,11 +1230,7 @@ public:
 	inline void ReportRangeAnalysisFailure() const {}
 	
 private:
-	const float Frequency;
-	const float Radius;
-	const FVoxelRichCurve PlanetCurve;
-	const FVoxelColorRichCurve PlanetColorCurve;
-	const float Noise_Strength;
+	FParams Params;
 	FLocalComputeStruct_LocalValue LocalValue;
 	FLocalComputeStruct_LocalMaterial LocalMaterial;
 	FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ LocalUpVectorXUpVectorYUpVectorZ;
@@ -1245,34 +1239,63 @@ private:
 };
 
 template<>
-inline auto& FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalValue::FOutputs::GetRef<v_flt, 1>()
+inline v_flt FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalValue::FOutputs::Get<v_flt, 1>() const
 {
 	return Value;
 }
 template<>
-inline auto& FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalMaterial::FOutputs::GetRef<FVoxelMaterial, 2>()
+inline void FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalValue::FOutputs::Set<v_flt, 1>(v_flt InValue)
 {
-	return Material;
+	Value = InValue;
 }
 template<>
-inline auto& FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 3>()
+inline FVoxelMaterial FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalMaterial::FOutputs::Get<FVoxelMaterial, 2>() const
+{
+	return MaterialBuilder.Build();
+}
+template<>
+inline void FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalMaterial::FOutputs::Set<FVoxelMaterial, 2>(FVoxelMaterial Material)
+{
+}
+template<>
+inline v_flt FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 3>() const
 {
 	return UpVectorX;
 }
 template<>
-inline auto& FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 4>()
+inline void FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 3>(v_flt InValue)
+{
+	UpVectorX = InValue;
+}
+template<>
+inline v_flt FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 4>() const
 {
 	return UpVectorY;
 }
 template<>
-inline auto& FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 5>()
+inline void FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 4>(v_flt InValue)
+{
+	UpVectorY = InValue;
+}
+template<>
+inline v_flt FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 5>() const
 {
 	return UpVectorZ;
 }
 template<>
-inline auto& FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::GetRef<v_flt, 1>()
+inline void FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 5>(v_flt InValue)
+{
+	UpVectorZ = InValue;
+}
+template<>
+inline TVoxelRange<v_flt> FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::Get<v_flt, 1>() const
 {
 	return Value;
+}
+template<>
+inline void FVoxelExample_PlanetInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::Set<v_flt, 1>(TVoxelRange<v_flt> InValue)
+{
+	Value = InValue;
 }
 template<>
 inline auto& FVoxelExample_PlanetInstance::GetTarget<1>() const
@@ -1294,6 +1317,7 @@ inline auto& FVoxelExample_PlanetInstance::GetTarget<3, 4, 5>() const
 {
 	return LocalUpVectorXUpVectorYUpVectorZ;
 }
+#endif
 
 ////////////////////////////////////////////////////////////
 ////////////////////////// UCLASS //////////////////////////
@@ -1313,18 +1337,18 @@ TMap<FName, int32> UVoxelExample_Planet::GetDefaultSeeds() const
 
 TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Planet::GetTransformableInstance()
 {
-	return MakeVoxelShared<FVoxelExample_PlanetInstance>(
-		Frequency,
-		Radius,
-		FVoxelRichCurve(PlanetCurve.LoadSynchronous()),
-		FVoxelColorRichCurve(PlanetColorCurve.LoadSynchronous()),
-		Noise_Strength,
-		bEnableRangeAnalysis);
+#if VOXEL_GRAPH_GENERATED_VERSION == 1
+	return MakeVoxelShared<FVoxelExample_PlanetInstance>(*this);
+#else
+#if VOXEL_GRAPH_GENERATED_VERSION > 1
+	EMIT_CUSTOM_WARNING("Outdated generated voxel graph: VoxelExample_Planet. You need to regenerate it.");
+	FVoxelMessages::Warning("Outdated generated voxel graph: VoxelExample_Planet. You need to regenerate it.");
+#else
+	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Planet. You need to update the plugin.");
+	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Planet. You need to update the plugin.");
+#endif
+	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+#endif
 }
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#else
-#pragma warning(pop)
-#endif
-
+PRAGMA_GENERATED_VOXEL_GRAPH_END

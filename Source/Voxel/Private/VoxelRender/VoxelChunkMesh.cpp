@@ -1,8 +1,9 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelRender/VoxelChunkMesh.h"
+#include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelData/VoxelDataUtilities.h"
-#include "StackArray.h"
+#include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
 
 #include "Materials/MaterialInstanceDynamic.h"
 #include "DistanceFieldAtlas.h"
@@ -62,7 +63,7 @@ private:
 
 void FVoxelChunkMeshBuffers::BuildAdjacency(TArray<uint32>& OutAdjacencyIndices) const
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 #if ENABLE_TESSELLATION
 	if (Indices.Num())
@@ -86,10 +87,14 @@ void FVoxelChunkMeshBuffers::BuildAdjacency(TArray<uint32>& OutAdjacencyIndices)
 #endif
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 void FVoxelChunkMeshBuffers::OptimizeIndices()
 {
 #if ENABLE_OPTIMIZE_INDICES
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	TArray<uint32> OptimizedIndices;
 	OptimizedIndices.AddUninitialized(Indices.Num());
@@ -131,72 +136,124 @@ void FVoxelChunkMeshBuffers::UpdateStats()
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
 }
 
-void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector & Position, const FVoxelData & Data)
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data, const FVoxelRendererSettingsBase& Settings)
 {
-#if ENABLE_VOXEL_DISTANCE_FIELDS
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	if (IsEmpty())
 	{
 		return;
 	}
 
-	// One voxel thick layer around the chunk where the distance is > 0 to have a valid distance field
-	// Will be fine in the global one has nearby chunks will have a < 0 distance at these positions
+	// Need to overlap distance fields to avoid glitches
+	const int32 BorderSize = Settings.DistanceFieldBoundsExtension;
 	
-	constexpr int32 BorderSize = 1;
-	constexpr int32 Size = RENDER_CHUNK_SIZE + 1 + 2 * BorderSize;
-	constexpr int32 NumVoxels = Size * Size * Size;
+	const int32 HighResSize = RENDER_CHUNK_SIZE + 1 + 2 * BorderSize;
+	const int32 HighResNumVoxels = HighResSize * HighResSize * HighResSize;
 
 	const int32 Step = 1 << LOD;
 
-	TStackArray<FVoxelValue, NumVoxels> Values;
+	TArray<FVoxelValue> Values;
+	Values.SetNumUninitialized(HighResNumVoxels);
 	{
-		const FIntBox LockedBounds(Position - BorderSize * Step, Position + (Size - BorderSize) * Step);
-		FVoxelReadScopeLock Lock(Data, LockedBounds, "Distance Field Build");
-		TVoxelQueryZone<FVoxelValue> QueryZone(LockedBounds, FIntVector(Size), LOD, Values);
+		const FIntVector Start = Position - BorderSize * Step;
+		const FVoxelIntBox Bounds(Start, Start + HighResSize * Step);
+
+		FVoxelReadScopeLock Lock(Data, Bounds, "Distance Field Build");
+
+		TVoxelQueryZone<FVoxelValue> QueryZone(Bounds, FIntVector(HighResSize), LOD, Values);
 		Data.Get<FVoxelValue>(QueryZone, LOD);
 	}
+	
+	TArray<float> HighResDistances;
+	HighResDistances.SetNumUninitialized(HighResNumVoxels);
+	FVoxelDistanceFieldUtilities::ConvertDensitiesToDistances(FIntVector(HighResSize), Values, HighResDistances);
 
-	TStackArray<float, NumVoxels> DistanceFieldVolume;
-	for (int32 Z = 0; Z < Size; Z++)
+	// NOTE: we do this on the high res data, else the distance field is very blocky
+	for (int32 Pass = 0; Pass < Settings.DistanceFieldQuality; Pass++)
+	{
+		FVoxelDistanceFieldUtilities::ExpandDistanceField(FIntVector(HighResSize), HighResDistances);
+	}
+
+	const int32 Divisor = FMath::Clamp(Settings.DistanceFieldResolutionDivisor, 1, HighResSize);
+	const int32 Size = FVoxelUtilities::DivideCeil(HighResSize, Divisor);
+	const int32 NumVoxels = Size * Size * Size;
+
+	TArray<float> Distances;
+	if (Divisor == 1)
+	{
+		Distances = MoveTemp(HighResDistances);
+	}
+	else
+	{
+		// Downscale
+		
+		Distances.SetNumUninitialized(NumVoxels);
+		for (int32 X = 0; X < Size; X++)
+		{
+			for (int32 Y = 0; Y < Size; Y++)
+			{
+				for (int32 Z = 0; Z < Size; Z++)
+				{
+					const int32 Index = X + Y * Size + Z * Size * Size;
+					const int32 HighResIndex = X * Divisor + Y * Divisor * HighResSize + Z * Divisor * HighResSize * HighResSize;
+					Distances[Index] = HighResDistances[HighResIndex];
+				}
+			}
+		}
+	}
+
+	// Restore signs
+	// TRICKY: Divide by Size: distance fields are expected to be relative to volume
+	for (int32 X = 0; X < Size; X++)
 	{
 		for (int32 Y = 0; Y < Size; Y++)
 		{
-			for (int32 X = 0; X < Size; X++)
+			for (int32 Z = 0; Z < Size; Z++)
 			{
-				const uint32 Index = X + Size * Y + Size * Size * Z;
-				float Value = Values[Index].ToFloat();
-				if (X == 0 || X == Size - 1 ||
-					Y == 0 || Y == Size - 1 ||
-					Z == 0 || Z == Size - 1)
-				{
-					Value = FMath::Max(1.f, Value);
-				}
-				DistanceFieldVolume[Index] = Value * Step;
+				const int32 Index = X + Y * Size + Z * Size * Size;
+				const int32 HighResIndex = X * Divisor + Y * Divisor * HighResSize + Z * Divisor * HighResSize * HighResSize;
+				
+				float& Distance = Distances[Index];
+				Distance *= Values[HighResIndex].Sign();
+				Distance /= Size;
 			}
 		}
 	}
 	
-	const float MinVolumeDistance = -1.f;
-	const float MaxVolumeDistance = 1.f;
+	float MinVolumeDistance = Distances[0];
+	float MaxVolumeDistance = Distances[0];
+
+	for (float Distance : Distances)
+	{
+		MinVolumeDistance = FMath::Min(MinVolumeDistance, Distance);
+		MaxVolumeDistance = FMath::Max(MaxVolumeDistance, Distance);
+	}
+	
 	const float InvDistanceRange = 1.0f / (MaxVolumeDistance - MinVolumeDistance);
 
 	static const auto CVarEightBit = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.DistanceFieldBuild.EightBit"));
 
 	const bool bEightBitFixedPoint = CVarEightBit->GetValueOnAnyThread() != 0;
 	const int32 FormatSize = bEightBitFixedPoint ? sizeof(uint8) : sizeof(FFloat16);
-	constexpr int32 MaxFormatSize = FMath::Max(sizeof(uint8), sizeof(FFloat16));
 
-	TStackArray<uint8, MaxFormatSize * NumVoxels> QuantizedDistanceFieldVolume;
-	for (int32 Z = 0; Z < Size; Z++)
+	TArray<uint8> QuantizedDistanceFieldVolume;
+	QuantizedDistanceFieldVolume.SetNumUninitialized(FormatSize * NumVoxels);
+	
+	for (int32 X = 0; X < Size; X++)
 	{
 		for (int32 Y = 0; Y < Size; Y++)
 		{
-			for (int32 X = 0; X < Size; X++)
+			for (int32 Z = 0; Z < Size; Z++)
 			{
 				const uint32 Index = X + Size * Y + Size * Size * Z;
-				const float Distance = DistanceFieldVolume[Index];
+
+				const float Distance = Distances[Index];
+
 				if (bEightBitFixedPoint)
 				{
 					check(FormatSize == sizeof(uint8));
@@ -218,10 +275,10 @@ void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector & Position,
 	check(!DistanceFieldVolumeData.IsValid());
 	DistanceFieldVolumeData = MakeVoxelShared<FDistanceFieldVolumeData>();
 	DistanceFieldVolumeData->bMeshWasClosed = true; // Not used
-	DistanceFieldVolumeData->bBuiltAsIfTwoSided = true;
+	DistanceFieldVolumeData->bBuiltAsIfTwoSided = false;
 	DistanceFieldVolumeData->bMeshWasPlane = false; // Maybe check this?
 	DistanceFieldVolumeData->Size = FIntVector(Size);
-	DistanceFieldVolumeData->LocalBoundingBox = FBox(FVector(-BorderSize - 0.5f) * Step, FVector(-BorderSize - 0.5f + Size) * Step);
+	DistanceFieldVolumeData->LocalBoundingBox = FBox(FVector(-BorderSize - 0.5f) * Step, FVector(-BorderSize - 0.5f + HighResSize) * Step);
 	DistanceFieldVolumeData->DistanceMinMax = FVector2D(MinVolumeDistance, MaxVolumeDistance);
 
 	auto& CompressedDistanceFieldVolume = DistanceFieldVolumeData->CompressedDistanceFieldVolume;
@@ -230,6 +287,8 @@ void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector & Position,
 
 	if (bCompress)
 	{
+		VOXEL_ASYNC_SCOPE_COUNTER("Compress");
+		
 		const int32 UncompressedSize = QuantizedDistanceFieldVolume.Num() * QuantizedDistanceFieldVolume.GetTypeSize();
 
 		// Compressed can be slightly larger than uncompressed
@@ -251,5 +310,4 @@ void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector & Position,
 	{
 		CompressedDistanceFieldVolume = QuantizedDistanceFieldVolume;
 	}
-#endif
 }

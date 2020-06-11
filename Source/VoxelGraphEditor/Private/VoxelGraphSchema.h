@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "EdGraph/EdGraphSchema.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelPinCategory.h"
 #include "VoxelGraphSchema.generated.h"
 

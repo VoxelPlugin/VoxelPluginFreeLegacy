@@ -2,8 +2,8 @@
 
 #include "VoxelData/VoxelDataOctree.h"
 #include "VoxelData/VoxelDataUtilities.h"
-#include "VoxelWorldGeneratorInstance.h"
-#include "VoxelWorldGeneratorInstance.inl"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreesMemory);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelUndoRedoMemory);
@@ -24,7 +24,7 @@ DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeCachedFoliageMemory);
 
 IVoxelData::IVoxelData(
 	int32 Depth,
-	const FIntBox& WorldBounds,
+	const FVoxelIntBox& WorldBounds,
 	bool bEnableMultiplayer,
 	bool bEnableUndoRedo,
 	const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& VoxelWorldGeneratorInstance)
@@ -170,7 +170,7 @@ void FVoxelDataOctreeParent::CreateChildren()
 	{
 		for (auto& Child : AsParent().GetChildren())
 		{
-			const FIntBox ChildBounds = Child.GetBounds();
+			const FVoxelIntBox ChildBounds = Child.GetBounds();
 			for (auto& Items : AllItems)
 			{
 				for (auto* Item : Items)

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelConfigEnums.h"
+#include "VoxelAssets/VoxelHeightmapAsset.h"
 #include "GameFramework/Actor.h"
 #include "VoxelLandscapeImporter.generated.h"
 
@@ -35,7 +36,7 @@ public:
 	ALandscape* Landscape = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Import configuration")
-	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
+	EVoxelHeightmapImporterMaterialConfig MaterialConfig = EVoxelHeightmapImporterMaterialConfig::RGB;
 
 	UPROPERTY(EditAnywhere, Category = "Import configuration")
 	TArray<FVoxelLandscapeImporterLayerInfo> LayerInfos;

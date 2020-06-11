@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelTickable.h"
 
 enum class EVoxelPlayType;
@@ -37,16 +37,16 @@ public:
 	void Destroy();
 
 public:
-	void ReportUpdatedChunks(TFunction<TArray<FIntBox>()> InUpdatedChunks);
-	void ReportRenderChunks(TFunction<TArray<FIntBox>()> InRenderChunks);
-	void ReportMultiplayerSyncedChunks(TFunction<TArray<FIntBox>()> InMultiplayerSyncedChunks);
+	void ReportUpdatedChunks(TFunction<TArray<FVoxelIntBox>()> InUpdatedChunks);
+	void ReportRenderChunks(TFunction<TArray<FVoxelIntBox>()> InRenderChunks);
+	void ReportMultiplayerSyncedChunks(TFunction<TArray<FVoxelIntBox>()> InMultiplayerSyncedChunks);
 
 	void ReportMeshTaskCount(int32 TaskCount);
 	void ReportMeshTasksCallbacksQueueNum(int32 Num);
 	void ReportMeshActionQueueNum(int32 Num);
 	void ReportFoliageTaskCount(int32 TaskCount);
 	
-	void ReportChunkEmptyState(const FIntBox& Bounds, bool bIsEmpty);
+	void ReportChunkEmptyState(const FVoxelIntBox& Bounds, bool bIsEmpty);
 	void ClearChunksEmptyStates();
 
 public:
@@ -62,9 +62,9 @@ protected:
 private:
 	explicit FVoxelDebugManager(const FVoxelDebugManagerSettings& Settings);
 
-	TArray<FIntBox> UpdatedChunks;
-	TArray<FIntBox> RenderChunks;
-	TArray<FIntBox> MultiplayerSyncedChunks;
+	TArray<FVoxelIntBox> UpdatedChunks;
+	TArray<FVoxelIntBox> RenderChunks;
+	TArray<FVoxelIntBox> MultiplayerSyncedChunks;
 
 	int32 MeshTaskCount = 0;
 	int32 MeshTasksCallbacksQueueNum = 0;
@@ -73,7 +73,7 @@ private:
 
 	struct FChunkEmptyState
 	{
-		FIntBox Bounds;
+		FVoxelIntBox Bounds;
 		bool bIsEmpty;
 	};
 	TArray<FChunkEmptyState> ChunksEmptyStates;

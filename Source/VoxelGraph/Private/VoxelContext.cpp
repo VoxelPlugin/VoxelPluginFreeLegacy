@@ -13,4 +13,4 @@ const FVoxelContextRange FVoxelContextRange::EmptyContext = FVoxelContextRange(
 	FVoxelItemStack::Empty,
 	FTransform::Identity,
 	false,
-	FIntBox());
+	FVoxelIntBox());

@@ -8,7 +8,7 @@
 #include "VoxelRender/VoxelChunkMesh.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelDebug/VoxelDebugManager.h"
-#include "VoxelThreadingUtilities.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 #include "IVoxelPool.h"
 #include "VoxelAsyncWork.h"
 

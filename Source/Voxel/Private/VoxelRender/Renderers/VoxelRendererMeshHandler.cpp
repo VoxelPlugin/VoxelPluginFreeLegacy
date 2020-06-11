@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelRendererMeshHandler.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
@@ -273,7 +273,7 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 	ActiveMeshes.Add(NewMesh, Position);
 	SetMeshPosition(*NewMesh, Position);
 	
-	const FIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD);
+	const FVoxelIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD);
 	const FVoxelPriorityHandler PriorityHandler(Bounds, Renderer.GetInvokersPositionsForPriorities());
 
 	// Set mesh variables

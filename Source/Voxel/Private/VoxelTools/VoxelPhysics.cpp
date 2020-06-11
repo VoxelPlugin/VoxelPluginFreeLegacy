@@ -10,7 +10,7 @@
 #include "VoxelDebug/VoxelDebugUtilities.h"
 
 #include "VoxelWorld.h"
-#include "VoxelIntVectorUtilities.h"
+#include "VoxelUtilities/VoxelIntVectorUtilities.h"
 
 #include "Async/Async.h"
 #include "DrawDebugHelpers.h"
@@ -19,8 +19,9 @@
 void UVoxelPhysicsTools::ApplyVoxelPhysics(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
+	TArray<TScriptInterface<IVoxelPhysicsPartSpawnerResult>>& OutResults,
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	TScriptInterface<IVoxelPhysicsPartSpawner> PartSpawner,
 	int32 MinParts,
 	bool bDebug,

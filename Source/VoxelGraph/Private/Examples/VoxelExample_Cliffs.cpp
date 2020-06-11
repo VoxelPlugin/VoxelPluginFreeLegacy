@@ -1,20 +1,28 @@
 // Copyright 2020 Phyronnaz
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnull-dereference"
-#else
-#pragma warning(push)
-#pragma warning(disable : 4101 4701)
-#endif
-
 #include "VoxelExample_Cliffs.h"
 
-using Seed = int32;
+PRAGMA_GENERATED_VOXEL_GRAPH_START
 
+using FVoxelGraphSeed = int32;
+
+#if VOXEL_GRAPH_GENERATED_VERSION == 1
 class FVoxelExample_CliffsInstance : public TVoxelGraphGeneratorInstanceHelper<FVoxelExample_CliffsInstance, UVoxelExample_Cliffs>
 {
 public:
+	struct FParams
+	{
+		const float Cliffs_Slope;
+		const float Height;
+		const float Overhangs;
+		const float Base_Shape_Frequency;
+		const float Base_Shape_Offset;
+		const float Sides_Noise_Frequency;
+		const float Sides_Noise_Amplitude;
+		const float Top_Noise_Scale;
+		const float Top_Noise_Frequency;
+	};
+	
 	class FLocalComputeStruct_LocalValue
 	{
 	public:
@@ -22,12 +30,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
 			
 			v_flt Value;
 		};
@@ -64,16 +74,8 @@ public:
 			v_flt Variable_26; // * output 0
 		};
 		
-		FLocalComputeStruct_LocalValue(const float& InCliffs_Slope, const float& InHeight, const float& InOverhangs, const float& InBase_Shape_Frequency, const float& InBase_Shape_Offset, const float& InSides_Noise_Frequency, const float& InSides_Noise_Amplitude, const float& InTop_Noise_Scale, const float& InTop_Noise_Frequency)
-			: Cliffs_Slope(InCliffs_Slope)
-			, Height(InHeight)
-			, Overhangs(InOverhangs)
-			, Base_Shape_Frequency(InBase_Shape_Frequency)
-			, Base_Shape_Offset(InBase_Shape_Offset)
-			, Sides_Noise_Frequency(InSides_Noise_Frequency)
-			, Sides_Noise_Amplitude(InSides_Noise_Amplitude)
-			, Top_Noise_Scale(InTop_Noise_Scale)
-			, Top_Noise_Frequency(InTop_Noise_Frequency)
+		FLocalComputeStruct_LocalValue(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -92,21 +94,21 @@ public:
 					/////////////////////////////////////////////////////////////////////////////////
 					
 					// Init of Base Shape Seed
-					Seed Variable_31; // Base Shape Seed output 0
+					FVoxelGraphSeed Variable_31; // Base Shape Seed output 0
 					{
 						static FName StaticName = "Base Shape Seed";
 						Variable_31 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 3323;
 					}
 					
 					// Init of Sides Noise Seed
-					Seed Variable_34; // Sides Noise Seed output 0
+					FVoxelGraphSeed Variable_34; // Sides Noise Seed output 0
 					{
 						static FName StaticName = "Sides Noise Seed";
 						Variable_34 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 2647;
 					}
 					
 					// Init of Top Noise Seed
-					Seed Variable_36; // Top Noise Seed output 0
+					FVoxelGraphSeed Variable_36; // Top Noise Seed output 0
 					{
 						static FName StaticName = "Top Noise Seed";
 						Variable_36 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 12932;
@@ -130,32 +132,32 @@ public:
 			////////////////////////////////////////////////////
 			{
 				// Cliffs Slope = 10.0
-				BufferConstant.Variable_21 = Cliffs_Slope;
+				BufferConstant.Variable_21 = Params.Cliffs_Slope;
 				
 				// Sides Noise Amplitude = 0.2
-				BufferConstant.Variable_27 = Sides_Noise_Amplitude;
+				BufferConstant.Variable_27 = Params.Sides_Noise_Amplitude;
 				
 				// Height = 50.0
-				BufferConstant.Variable_28 = Height;
+				BufferConstant.Variable_28 = Params.Height;
 				
 				// Overhangs = 0.2
-				BufferConstant.Variable_29 = Overhangs;
+				BufferConstant.Variable_29 = Params.Overhangs;
 				
 				// Base Shape Frequency = 0.005
-				BufferConstant.Variable_30 = Base_Shape_Frequency;
+				BufferConstant.Variable_30 = Params.Base_Shape_Frequency;
 				
 				// Base Shape Offset = 0.0
 				v_flt Variable_20; // Base Shape Offset = 0.0 output 0
-				Variable_20 = Base_Shape_Offset;
+				Variable_20 = Params.Base_Shape_Offset;
 				
 				// Sides Noise Frequency = 0.1
-				BufferConstant.Variable_33 = Sides_Noise_Frequency;
+				BufferConstant.Variable_33 = Params.Sides_Noise_Frequency;
 				
 				// Top Noise Frequency = 0.01
-				BufferConstant.Variable_35 = Top_Noise_Frequency;
+				BufferConstant.Variable_35 = Params.Top_Noise_Frequency;
 				
 				// Top Noise Scale = 25.0
-				BufferConstant.Variable_37 = Top_Noise_Scale;
+				BufferConstant.Variable_37 = Params.Top_Noise_Scale;
 				
 				// /
 				BufferConstant.Variable_32 = Variable_20 / v_flt(10.0f);
@@ -189,22 +191,15 @@ public:
 		
 	private:
 		FBufferConstant BufferConstant;
-		FastNoise _2D_Perlin_Noise_Fractal_0_Noise;
-		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_0_LODToOctaves;
-		FastNoise _2D_Perlin_Noise_Fractal_1_Noise;
-		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_1_LODToOctaves;
-		FastNoise _2D_IQ_Noise_0_Noise;
-		TStaticArray<uint8, 32> _2D_IQ_Noise_0_LODToOctaves;
 		
-		const float& Cliffs_Slope;
-		const float& Height;
-		const float& Overhangs;
-		const float& Base_Shape_Frequency;
-		const float& Base_Shape_Offset;
-		const float& Sides_Noise_Frequency;
-		const float& Sides_Noise_Amplitude;
-		const float& Top_Noise_Scale;
-		const float& Top_Noise_Frequency;
+		const FParams& Params;
+		
+		FVoxelFastNoise _2D_Perlin_Noise_Fractal_0_Noise;
+		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_0_LODToOctaves;
+		FVoxelFastNoise _2D_Perlin_Noise_Fractal_1_Noise;
+		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_1_LODToOctaves;
+		FVoxelFastNoise _2D_IQ_Noise_0_Noise;
+		TStaticArray<uint8, 32> _2D_IQ_Noise_0_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -213,21 +208,21 @@ public:
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
 			// Init of Top Noise Seed
-			Seed Variable_36; // Top Noise Seed output 0
+			FVoxelGraphSeed Variable_36; // Top Noise Seed output 0
 			{
 				static FName StaticName = "Top Noise Seed";
 				Variable_36 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 12932;
 			}
 			
 			// Init of Base Shape Seed
-			Seed Variable_31; // Base Shape Seed output 0
+			FVoxelGraphSeed Variable_31; // Base Shape Seed output 0
 			{
 				static FName StaticName = "Base Shape Seed";
 				Variable_31 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 3323;
 			}
 			
 			// Init of Sides Noise Seed
-			Seed Variable_34; // Sides Noise Seed output 0
+			FVoxelGraphSeed Variable_34; // Sides Noise Seed output 0
 			{
 				static FName StaticName = "Sides Noise Seed";
 				Variable_34 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 2647;
@@ -235,10 +230,10 @@ public:
 			
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_0_Noise.SetSeed(Variable_31);
-			_2D_Perlin_Noise_Fractal_0_Noise.SetInterp(FastNoise::Quintic);
+			_2D_Perlin_Noise_Fractal_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalOctavesAndGain(3, 0.5);
 			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FastNoise::FBM);
+			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[0] = 3;
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[1] = 3;
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[2] = 3;
@@ -274,10 +269,10 @@ public:
 			
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_1_Noise.SetSeed(Variable_34);
-			_2D_Perlin_Noise_Fractal_1_Noise.SetInterp(FastNoise::Quintic);
+			_2D_Perlin_Noise_Fractal_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(3, 0.5);
 			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FastNoise::FBM);
+			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 3;
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 3;
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 3;
@@ -313,10 +308,10 @@ public:
 			
 			// Init of 2D IQ Noise
 			_2D_IQ_Noise_0_Noise.SetSeed(Variable_36);
-			_2D_IQ_Noise_0_Noise.SetInterp(FastNoise::Quintic);
+			_2D_IQ_Noise_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_2D_IQ_Noise_0_Noise.SetFractalOctavesAndGain(15, 0.5);
 			_2D_IQ_Noise_0_Noise.SetFractalLacunarity(2.0);
-			_2D_IQ_Noise_0_Noise.SetFractalType(FastNoise::FBM);
+			_2D_IQ_Noise_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_2D_IQ_Noise_0_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
 			_2D_IQ_Noise_0_LODToOctaves[0] = 15;
 			_2D_IQ_Noise_0_LODToOctaves[1] = 15;
@@ -629,14 +624,17 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
+				MaterialBuilder.SetMaterialConfig(Init.MaterialConfig);
 			}
 			
-			FVoxelMaterial Material;
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
+			
+			FVoxelMaterialBuilder MaterialBuilder;
 		};
 		struct FBufferConstant
 		{
@@ -656,16 +654,8 @@ public:
 			
 		};
 		
-		FLocalComputeStruct_LocalMaterial(const float& InCliffs_Slope, const float& InHeight, const float& InOverhangs, const float& InBase_Shape_Frequency, const float& InBase_Shape_Offset, const float& InSides_Noise_Frequency, const float& InSides_Noise_Amplitude, const float& InTop_Noise_Scale, const float& InTop_Noise_Frequency)
-			: Cliffs_Slope(InCliffs_Slope)
-			, Height(InHeight)
-			, Overhangs(InOverhangs)
-			, Base_Shape_Frequency(InBase_Shape_Frequency)
-			, Base_Shape_Offset(InBase_Shape_Offset)
-			, Sides_Noise_Frequency(InSides_Noise_Frequency)
-			, Sides_Noise_Amplitude(InSides_Noise_Amplitude)
-			, Top_Noise_Scale(InTop_Noise_Scale)
-			, Top_Noise_Frequency(InTop_Noise_Frequency)
+		FLocalComputeStruct_LocalMaterial(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -730,15 +720,8 @@ public:
 	private:
 		FBufferConstant BufferConstant;
 		
-		const float& Cliffs_Slope;
-		const float& Height;
-		const float& Overhangs;
-		const float& Base_Shape_Frequency;
-		const float& Base_Shape_Offset;
-		const float& Sides_Noise_Frequency;
-		const float& Sides_Noise_Amplitude;
-		const float& Top_Noise_Scale;
-		const float& Top_Noise_Frequency;
+		const FParams& Params;
+		
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -780,12 +763,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(T*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			T Get() const;
+			template<typename T, uint32 Index>
+			void Set(T Value);
 			
 			v_flt UpVectorX;
 			v_flt UpVectorY;
@@ -809,16 +794,8 @@ public:
 			
 		};
 		
-		FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ(const float& InCliffs_Slope, const float& InHeight, const float& InOverhangs, const float& InBase_Shape_Frequency, const float& InBase_Shape_Offset, const float& InSides_Noise_Frequency, const float& InSides_Noise_Amplitude, const float& InTop_Noise_Scale, const float& InTop_Noise_Frequency)
-			: Cliffs_Slope(InCliffs_Slope)
-			, Height(InHeight)
-			, Overhangs(InOverhangs)
-			, Base_Shape_Frequency(InBase_Shape_Frequency)
-			, Base_Shape_Offset(InBase_Shape_Offset)
-			, Sides_Noise_Frequency(InSides_Noise_Frequency)
-			, Sides_Noise_Amplitude(InSides_Noise_Amplitude)
-			, Top_Noise_Scale(InTop_Noise_Scale)
-			, Top_Noise_Frequency(InTop_Noise_Frequency)
+		FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -883,15 +860,8 @@ public:
 	private:
 		FBufferConstant BufferConstant;
 		
-		const float& Cliffs_Slope;
-		const float& Height;
-		const float& Overhangs;
-		const float& Base_Shape_Frequency;
-		const float& Base_Shape_Offset;
-		const float& Sides_Noise_Frequency;
-		const float& Sides_Noise_Amplitude;
-		const float& Top_Noise_Scale;
-		const float& Top_Noise_Frequency;
+		const FParams& Params;
+		
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -933,12 +903,14 @@ public:
 		{
 			FOutputs() {}
 			
-			template<typename T, uint32 Index>
-			inline auto& GetRef()
+			void Init(const FVoxelGraphOutputsInit& Init)
 			{
-				unimplemented();
-				return *(TVoxelRange<T>*)nullptr;
 			}
+			
+			template<typename T, uint32 Index>
+			TVoxelRange<T> Get() const;
+			template<typename T, uint32 Index>
+			void Set(TVoxelRange<T> Value);
 			
 			TVoxelRange<v_flt> Value;
 		};
@@ -975,16 +947,8 @@ public:
 			TVoxelRange<v_flt> Variable_26; // * output 0
 		};
 		
-		FLocalComputeStruct_LocalValueRangeAnalysis(const float& InCliffs_Slope, const float& InHeight, const float& InOverhangs, const float& InBase_Shape_Frequency, const float& InBase_Shape_Offset, const float& InSides_Noise_Frequency, const float& InSides_Noise_Amplitude, const float& InTop_Noise_Scale, const float& InTop_Noise_Frequency)
-			: Cliffs_Slope(InCliffs_Slope)
-			, Height(InHeight)
-			, Overhangs(InOverhangs)
-			, Base_Shape_Frequency(InBase_Shape_Frequency)
-			, Base_Shape_Offset(InBase_Shape_Offset)
-			, Sides_Noise_Frequency(InSides_Noise_Frequency)
-			, Sides_Noise_Amplitude(InSides_Noise_Amplitude)
-			, Top_Noise_Scale(InTop_Noise_Scale)
-			, Top_Noise_Frequency(InTop_Noise_Frequency)
+		FLocalComputeStruct_LocalValueRangeAnalysis(const FParams& InParams)
+			: Params(InParams)
 		{
 		}
 		
@@ -1020,32 +984,32 @@ public:
 			////////////////////////////////////////////////////
 			{
 				// Base Shape Frequency = 0.005
-				BufferConstant.Variable_30 = Base_Shape_Frequency;
+				BufferConstant.Variable_30 = Params.Base_Shape_Frequency;
 				
 				// Cliffs Slope = 10.0
-				BufferConstant.Variable_21 = Cliffs_Slope;
+				BufferConstant.Variable_21 = Params.Cliffs_Slope;
 				
 				// Sides Noise Amplitude = 0.2
-				BufferConstant.Variable_27 = Sides_Noise_Amplitude;
+				BufferConstant.Variable_27 = Params.Sides_Noise_Amplitude;
 				
 				// Height = 50.0
-				BufferConstant.Variable_28 = Height;
+				BufferConstant.Variable_28 = Params.Height;
 				
 				// Overhangs = 0.2
-				BufferConstant.Variable_29 = Overhangs;
+				BufferConstant.Variable_29 = Params.Overhangs;
 				
 				// Base Shape Offset = 0.0
 				TVoxelRange<v_flt> Variable_20; // Base Shape Offset = 0.0 output 0
-				Variable_20 = Base_Shape_Offset;
+				Variable_20 = Params.Base_Shape_Offset;
 				
 				// Sides Noise Frequency = 0.1
-				BufferConstant.Variable_32 = Sides_Noise_Frequency;
+				BufferConstant.Variable_32 = Params.Sides_Noise_Frequency;
 				
 				// Top Noise Frequency = 0.01
-				BufferConstant.Variable_33 = Top_Noise_Frequency;
+				BufferConstant.Variable_33 = Params.Top_Noise_Frequency;
 				
 				// Top Noise Scale = 25.0
-				BufferConstant.Variable_34 = Top_Noise_Scale;
+				BufferConstant.Variable_34 = Params.Top_Noise_Scale;
 				
 				// /
 				BufferConstant.Variable_31 = Variable_20 / TVoxelRange<v_flt>(10.0f);
@@ -1063,22 +1027,15 @@ public:
 		
 	private:
 		FBufferConstant BufferConstant;
-		FastNoise _2D_IQ_Noise_1_Noise;
-		TStaticArray<uint8, 32> _2D_IQ_Noise_1_LODToOctaves;
-		FastNoise _2D_Perlin_Noise_Fractal_2_Noise;
-		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_2_LODToOctaves;
-		FastNoise _2D_Perlin_Noise_Fractal_3_Noise;
-		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_3_LODToOctaves;
 		
-		const float& Cliffs_Slope;
-		const float& Height;
-		const float& Overhangs;
-		const float& Base_Shape_Frequency;
-		const float& Base_Shape_Offset;
-		const float& Sides_Noise_Frequency;
-		const float& Sides_Noise_Amplitude;
-		const float& Top_Noise_Scale;
-		const float& Top_Noise_Frequency;
+		const FParams& Params;
+		
+		FVoxelFastNoise _2D_IQ_Noise_1_Noise;
+		TStaticArray<uint8, 32> _2D_IQ_Noise_1_LODToOctaves;
+		FVoxelFastNoise _2D_Perlin_Noise_Fractal_2_Noise;
+		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_2_LODToOctaves;
+		FVoxelFastNoise _2D_Perlin_Noise_Fractal_3_Noise;
+		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_3_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -1087,11 +1044,11 @@ public:
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
 			// Init of 2D IQ Noise
-			_2D_IQ_Noise_1_Noise.SetSeed(Seed(1337));
-			_2D_IQ_Noise_1_Noise.SetInterp(FastNoise::Quintic);
+			_2D_IQ_Noise_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_2D_IQ_Noise_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_2D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.5);
 			_2D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
-			_2D_IQ_Noise_1_Noise.SetFractalType(FastNoise::FBM);
+			_2D_IQ_Noise_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_2D_IQ_Noise_1_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
 			_2D_IQ_Noise_1_LODToOctaves[0] = 15;
 			_2D_IQ_Noise_1_LODToOctaves[1] = 15;
@@ -1127,11 +1084,11 @@ public:
 			_2D_IQ_Noise_1_LODToOctaves[31] = 15;
 			
 			// Init of 2D Perlin Noise Fractal
-			_2D_Perlin_Noise_Fractal_2_Noise.SetSeed(Seed(1337));
-			_2D_Perlin_Noise_Fractal_2_Noise.SetInterp(FastNoise::Quintic);
+			_2D_Perlin_Noise_Fractal_2_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_2D_Perlin_Noise_Fractal_2_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_2D_Perlin_Noise_Fractal_2_Noise.SetFractalOctavesAndGain(3, 0.5);
 			_2D_Perlin_Noise_Fractal_2_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_2_Noise.SetFractalType(FastNoise::FBM);
+			_2D_Perlin_Noise_Fractal_2_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_2D_Perlin_Noise_Fractal_2_LODToOctaves[0] = 3;
 			_2D_Perlin_Noise_Fractal_2_LODToOctaves[1] = 3;
 			_2D_Perlin_Noise_Fractal_2_LODToOctaves[2] = 3;
@@ -1166,11 +1123,11 @@ public:
 			_2D_Perlin_Noise_Fractal_2_LODToOctaves[31] = 3;
 			
 			// Init of 2D Perlin Noise Fractal
-			_2D_Perlin_Noise_Fractal_3_Noise.SetSeed(Seed(1337));
-			_2D_Perlin_Noise_Fractal_3_Noise.SetInterp(FastNoise::Quintic);
+			_2D_Perlin_Noise_Fractal_3_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_2D_Perlin_Noise_Fractal_3_Noise.SetInterp(FVoxelFastNoise::Quintic);
 			_2D_Perlin_Noise_Fractal_3_Noise.SetFractalOctavesAndGain(3, 0.5);
 			_2D_Perlin_Noise_Fractal_3_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_3_Noise.SetFractalType(FastNoise::FBM);
+			_2D_Perlin_Noise_Fractal_3_Noise.SetFractalType(FVoxelFastNoise::FBM);
 			_2D_Perlin_Noise_Fractal_3_LODToOctaves[0] = 3;
 			_2D_Perlin_Noise_Fractal_3_LODToOctaves[1] = 3;
 			_2D_Perlin_Noise_Fractal_3_LODToOctaves[2] = 3;
@@ -1321,47 +1278,60 @@ public:
 		
 	};
 	
-	FVoxelExample_CliffsInstance(const float& InCliffs_Slope, const float& InHeight, const float& InOverhangs, const float& InBase_Shape_Frequency, const float& InBase_Shape_Offset, const float& InSides_Noise_Frequency, const float& InSides_Noise_Amplitude, const float& InTop_Noise_Scale, const float& InTop_Noise_Frequency, bool bEnableRangeAnalysis)
-		: TVoxelGraphGeneratorInstanceHelper(
+	FVoxelExample_CliffsInstance(const UVoxelExample_Cliffs& Object)
+			: TVoxelGraphGeneratorInstanceHelper(
+			{
+				{ "Value", 1 },
+			},
+			{
+			},
+			{
+			},
+			{
+				{
+					{ "Value", NoTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr<v_flt>>() },
+				},
+				{
+				},
+				{
+				},
+				{
+					{ "Value", NoTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr<v_flt>>() },
+				}
+			},
+			{
+				{
+					{ "Value", WithTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr_Transform<v_flt>>() },
+				},
+				{
+				},
+				{
+				},
+				{
+					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
+				}
+			},
+			Object.bEnableRangeAnalysis)
+		, Params(FParams
 		{
-			{"Value", 1}
-		},
-		{
-		},
-		{
-			{"Value", NoTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr<v_flt>>()}
-		},
-		{
-		},
-		{
-			{"Value", NoTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr<v_flt>>()}
-		},
-		{
-			{"Value", WithTransformAccessor<v_flt>::Get<1, TOutputFunctionPtr_Transform<v_flt>>()}
-		},
-		{
-		},
-		{
-			{"Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>()}
-		},
-		bEnableRangeAnalysis)
-		, Cliffs_Slope(InCliffs_Slope)
-		, Height(InHeight)
-		, Overhangs(InOverhangs)
-		, Base_Shape_Frequency(InBase_Shape_Frequency)
-		, Base_Shape_Offset(InBase_Shape_Offset)
-		, Sides_Noise_Frequency(InSides_Noise_Frequency)
-		, Sides_Noise_Amplitude(InSides_Noise_Amplitude)
-		, Top_Noise_Scale(InTop_Noise_Scale)
-		, Top_Noise_Frequency(InTop_Noise_Frequency)
-		, LocalValue(Cliffs_Slope, Height, Overhangs, Base_Shape_Frequency, Base_Shape_Offset, Sides_Noise_Frequency, Sides_Noise_Amplitude, Top_Noise_Scale, Top_Noise_Frequency)
-		, LocalMaterial(Cliffs_Slope, Height, Overhangs, Base_Shape_Frequency, Base_Shape_Offset, Sides_Noise_Frequency, Sides_Noise_Amplitude, Top_Noise_Scale, Top_Noise_Frequency)
-		, LocalUpVectorXUpVectorYUpVectorZ(Cliffs_Slope, Height, Overhangs, Base_Shape_Frequency, Base_Shape_Offset, Sides_Noise_Frequency, Sides_Noise_Amplitude, Top_Noise_Scale, Top_Noise_Frequency)
-		, LocalValueRangeAnalysis(Cliffs_Slope, Height, Overhangs, Base_Shape_Frequency, Base_Shape_Offset, Sides_Noise_Frequency, Sides_Noise_Amplitude, Top_Noise_Scale, Top_Noise_Frequency)
+			Object.Cliffs_Slope,
+			Object.Height,
+			Object.Overhangs,
+			Object.Base_Shape_Frequency,
+			Object.Base_Shape_Offset,
+			Object.Sides_Noise_Frequency,
+			Object.Sides_Noise_Amplitude,
+			Object.Top_Noise_Scale,
+			Object.Top_Noise_Frequency
+		})
+		, LocalValue(Params)
+		, LocalMaterial(Params)
+		, LocalUpVectorXUpVectorYUpVectorZ(Params)
+		, LocalValueRangeAnalysis(Params)
 	{
 	}
 	
-	virtual void Init(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1378,15 +1348,7 @@ public:
 	inline void ReportRangeAnalysisFailure() const {}
 	
 private:
-	const float Cliffs_Slope;
-	const float Height;
-	const float Overhangs;
-	const float Base_Shape_Frequency;
-	const float Base_Shape_Offset;
-	const float Sides_Noise_Frequency;
-	const float Sides_Noise_Amplitude;
-	const float Top_Noise_Scale;
-	const float Top_Noise_Frequency;
+	FParams Params;
 	FLocalComputeStruct_LocalValue LocalValue;
 	FLocalComputeStruct_LocalMaterial LocalMaterial;
 	FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ LocalUpVectorXUpVectorYUpVectorZ;
@@ -1395,34 +1357,63 @@ private:
 };
 
 template<>
-inline auto& FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalValue::FOutputs::GetRef<v_flt, 1>()
+inline v_flt FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalValue::FOutputs::Get<v_flt, 1>() const
 {
 	return Value;
 }
 template<>
-inline auto& FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalMaterial::FOutputs::GetRef<FVoxelMaterial, 2>()
+inline void FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalValue::FOutputs::Set<v_flt, 1>(v_flt InValue)
 {
-	return Material;
+	Value = InValue;
 }
 template<>
-inline auto& FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 3>()
+inline FVoxelMaterial FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalMaterial::FOutputs::Get<FVoxelMaterial, 2>() const
+{
+	return MaterialBuilder.Build();
+}
+template<>
+inline void FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalMaterial::FOutputs::Set<FVoxelMaterial, 2>(FVoxelMaterial Material)
+{
+}
+template<>
+inline v_flt FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 3>() const
 {
 	return UpVectorX;
 }
 template<>
-inline auto& FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 4>()
+inline void FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 3>(v_flt InValue)
+{
+	UpVectorX = InValue;
+}
+template<>
+inline v_flt FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 4>() const
 {
 	return UpVectorY;
 }
 template<>
-inline auto& FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::GetRef<v_flt, 5>()
+inline void FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 4>(v_flt InValue)
+{
+	UpVectorY = InValue;
+}
+template<>
+inline v_flt FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Get<v_flt, 5>() const
 {
 	return UpVectorZ;
 }
 template<>
-inline auto& FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::GetRef<v_flt, 1>()
+inline void FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalUpVectorXUpVectorYUpVectorZ::FOutputs::Set<v_flt, 5>(v_flt InValue)
+{
+	UpVectorZ = InValue;
+}
+template<>
+inline TVoxelRange<v_flt> FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::Get<v_flt, 1>() const
 {
 	return Value;
+}
+template<>
+inline void FVoxelExample_CliffsInstance::FLocalComputeStruct_LocalValueRangeAnalysis::FOutputs::Set<v_flt, 1>(TVoxelRange<v_flt> InValue)
+{
+	Value = InValue;
 }
 template<>
 inline auto& FVoxelExample_CliffsInstance::GetTarget<1>() const
@@ -1444,6 +1435,7 @@ inline auto& FVoxelExample_CliffsInstance::GetTarget<3, 4, 5>() const
 {
 	return LocalUpVectorXUpVectorYUpVectorZ;
 }
+#endif
 
 ////////////////////////////////////////////////////////////
 ////////////////////////// UCLASS //////////////////////////
@@ -1465,22 +1457,18 @@ TMap<FName, int32> UVoxelExample_Cliffs::GetDefaultSeeds() const
 
 TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Cliffs::GetTransformableInstance()
 {
-	return MakeVoxelShared<FVoxelExample_CliffsInstance>(
-		Cliffs_Slope,
-		Height,
-		Overhangs,
-		Base_Shape_Frequency,
-		Base_Shape_Offset,
-		Sides_Noise_Frequency,
-		Sides_Noise_Amplitude,
-		Top_Noise_Scale,
-		Top_Noise_Frequency,
-		bEnableRangeAnalysis);
+#if VOXEL_GRAPH_GENERATED_VERSION == 1
+	return MakeVoxelShared<FVoxelExample_CliffsInstance>(*this);
+#else
+#if VOXEL_GRAPH_GENERATED_VERSION > 1
+	EMIT_CUSTOM_WARNING("Outdated generated voxel graph: VoxelExample_Cliffs. You need to regenerate it.");
+	FVoxelMessages::Warning("Outdated generated voxel graph: VoxelExample_Cliffs. You need to regenerate it.");
+#else
+	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Cliffs. You need to update the plugin.");
+	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Cliffs. You need to update the plugin.");
+#endif
+	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+#endif
 }
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#else
-#pragma warning(pop)
-#endif
-
+PRAGMA_GENERATED_VOXEL_GRAPH_END

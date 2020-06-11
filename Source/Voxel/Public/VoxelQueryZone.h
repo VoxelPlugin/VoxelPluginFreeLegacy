@@ -3,31 +3,31 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
-#include "StackArray.h"
+#include "VoxelMinimal.h"
+#include "VoxelIntBox.h"
+#include "VoxelStaticArray.h"
 
 template<typename T>
 class TVoxelQueryZone
 {
 public:
 	const uint32 Step;
-	const FIntBox Bounds;
+	const FVoxelIntBox Bounds;
 
-	TVoxelQueryZone(const FIntBox& Bounds, TArray<T>& Data)
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, TArray<T>& Data)
 		: TVoxelQueryZone(Bounds, Bounds.Size(), 0, Data)
 	{
 	}
 	template<uint32 Size>
-	TVoxelQueryZone(const FIntBox& Bounds, TStackArray<T, Size>& Data)
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, TVoxelStaticArray<T, Size>& Data)
 		: TVoxelQueryZone(Bounds, Bounds.Size(), 0, Data)
 	{
 	}
-	TVoxelQueryZone(const FIntBox& Bounds, T* Data)
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, T* Data)
 		: TVoxelQueryZone(Bounds, Bounds.Size(), 0, Data)
 	{
 	}
-	TVoxelQueryZone(const FIntBox& Bounds, const FIntVector& ArraySize, int32 LOD, TArray<T>& Data)
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, const FIntVector& ArraySize, int32 LOD, TArray<T>& Data)
 		: TVoxelQueryZone(Bounds, Bounds.Min, ArraySize, LOD, Data.GetData())
 	{
 		check(Bounds.IsValid());
@@ -35,14 +35,14 @@ public:
 		check(Data.Num() == ArraySize.X * ArraySize.Y * ArraySize.Z);
 	}
 	template<uint32 Size>
-	TVoxelQueryZone(const FIntBox& Bounds, const FIntVector& ArraySize, int32 LOD, TStackArray<T, Size>& Data)
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, const FIntVector& ArraySize, int32 LOD, TVoxelStaticArray<T, Size>& Data)
 		: TVoxelQueryZone(Bounds, Bounds.Min, ArraySize, LOD, Data.GetData())
 	{
 		check(Bounds.IsValid());
 		check(Bounds.Size() / Step == ArraySize);
 		check(Data.Num() == ArraySize.X * ArraySize.Y * ArraySize.Z);
 	}
-	TVoxelQueryZone(const FIntBox& Bounds, const FIntVector& ArraySize, int32 LOD, T* Data)
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, const FIntVector& ArraySize, int32 LOD, T* Data)
 		: TVoxelQueryZone(Bounds, Bounds.Min, ArraySize, LOD, Data)
 	{
 		check(Bounds.IsValid());
@@ -74,9 +74,9 @@ public:
 		Data[Index] = Value;
 	}
 	
-	TVoxelQueryZone<T> ShrinkTo(const FIntBox& InBounds) const
+	TVoxelQueryZone<T> ShrinkTo(const FVoxelIntBox& InBounds) const
 	{
-		FIntBox LocalBounds = Bounds.Overlap(InBounds);
+		FVoxelIntBox LocalBounds = Bounds.Overlap(InBounds);
 		LocalBounds = LocalBounds.MakeMultipleOfRoundUp(Step);
 		return TVoxelQueryZone<T>(LocalBounds, Offset, ArraySize, LOD, Data);
 	}
@@ -87,7 +87,7 @@ private:
 	const FIntVector ArraySize;
 	const uint32 LOD;
 	
-	TVoxelQueryZone(const FIntBox& Bounds, const FIntVector& Offset, const FIntVector& ArraySize, int32 LOD, T* Data)
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, const FIntVector& Offset, const FIntVector& ArraySize, int32 LOD, T* Data)
 		: Step(1 << LOD)
 		, Bounds(Bounds)
 		, Data(Data)

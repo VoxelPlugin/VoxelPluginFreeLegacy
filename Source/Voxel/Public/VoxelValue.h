@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
-#include "VoxelBaseUtilities.h"
+#include "VoxelMinimal.h"
+#include "VoxelUtilities/VoxelBaseUtilities.h"
 
 namespace ConstExprUtils
 {

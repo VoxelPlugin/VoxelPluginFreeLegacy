@@ -1,8 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelData/VoxelSave.h"
-#include "VoxelSerializationUtilities.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelSerializationUtilities.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelCustomVersion.h"
 #include "VoxelMessages.h"
 

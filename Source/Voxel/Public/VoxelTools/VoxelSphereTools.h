@@ -20,9 +20,9 @@ class VOXEL_API UVoxelSphereTools : public UBlueprintFunctionLibrary
 
 public:
 	// Bounds to lock
-	inline static FIntBox GetSphereBounds(const FVoxelVector& Position, float Radius)
+	inline static FVoxelIntBox GetSphereBounds(const FVoxelVector& Position, float Radius)
 	{
-		return FIntBox(Position - Radius - 3, Position + Radius + 3);
+		return FVoxelIntBox(Position - Radius - 3, Position + Radius + 3);
 	}
 
 	static void SetValueSphereImpl(

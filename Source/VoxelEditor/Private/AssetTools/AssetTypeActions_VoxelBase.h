@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "AssetTypeActions_Base.h"
 
 class FAssetTypeActions_VoxelBase : public FAssetTypeActions_Base

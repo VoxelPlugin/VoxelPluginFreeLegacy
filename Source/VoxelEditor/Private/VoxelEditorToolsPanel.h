@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/GCObject.h"
 #include "Engine/EngineBaseTypes.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 class UVoxelToolManager;
 class HHitProxy;

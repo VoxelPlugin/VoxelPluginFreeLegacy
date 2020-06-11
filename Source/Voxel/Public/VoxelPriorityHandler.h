@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 
 // Somewhat thread safe array
 class FInvokerPositionsArray
@@ -55,11 +55,11 @@ private:
 
 struct FVoxelPriorityHandler
 {
-	FIntBox Bounds;
+	FVoxelIntBox Bounds;
 	TVoxelSharedPtr<FInvokerPositionsArray> InvokersPositions;
 
 	FVoxelPriorityHandler() = default;
-	FVoxelPriorityHandler(const FIntBox& Bounds, const TVoxelSharedRef<FInvokerPositionsArray>& InvokersPositions)
+	FVoxelPriorityHandler(const FVoxelIntBox& Bounds, const TVoxelSharedRef<FInvokerPositionsArray>& InvokersPositions)
 		: Bounds(Bounds)
 		, InvokersPositions(InvokersPositions)
 	{

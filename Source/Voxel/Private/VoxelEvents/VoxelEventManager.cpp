@@ -4,7 +4,7 @@
 #include "VoxelComponents/VoxelInvokerComponent.h"
 #include "VoxelDebug/VoxelDebugUtilities.h"
 #include "VoxelWorld.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Num Voxel Events"), STAT_NumVoxelEvents, STATGROUP_VoxelCounters);
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Event Manager - Num active or generated chunks"), STAT_VoxelEventManager_NumActiveOrGeneratedChunks, STATGROUP_VoxelCounters);
@@ -270,7 +270,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 
 		const auto GetChunkBounds = [&](const FIntVector& Chunk)
 		{
-			return FIntBox(Chunk * EventInfo.ChunkSize, (Chunk + 1) * EventInfo.ChunkSize);
+			return FVoxelIntBox(Chunk * EventInfo.ChunkSize, (Chunk + 1) * EventInfo.ChunkSize);
 		};
 
 		TSet<FIntVector> NewActiveChunks;
@@ -286,7 +286,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 				// Max is exclusive, since this is the coordinate of the Bounds.Min of the chunk
 				const FIntVector MaxChunkPosition = FVoxelUtilities::DivideCeil(InvokerPosition + EventInfo.ChunkSize * EventInfo.DistanceInChunks, EventInfo.ChunkSize);
 
-				if (!Settings.WorldBounds.Intersect(FIntBox(MinChunkPosition, MaxChunkPosition)))
+				if (!Settings.WorldBounds.Intersect(FVoxelIntBox(MinChunkPosition, MaxChunkPosition)))
 				{
 					continue;
 				}
@@ -300,7 +300,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 						for (int32 Z = MinChunkPosition.Z; Z < MaxChunkPosition.Z; Z++)
 						{
 							const FIntVector Chunk = FIntVector(X, Y, Z);
-							const FIntBox ChunkBounds = GetChunkBounds(Chunk);
+							const FVoxelIntBox ChunkBounds = GetChunkBounds(Chunk);
 							
 							if (ChunkBounds.ComputeSquaredDistanceFromBoxToPoint(InvokerPosition) <= SquaredDistanceInVoxels &&
 								ChunkBounds.Intersect(Settings.WorldBounds))
@@ -328,7 +328,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 						EventInfo.ActiveOrGeneratedChunks.Add(Chunk, &bAlreadyInSet);
 						if (!bAlreadyInSet)
 						{
-							const FIntBox Bounds = GetChunkBounds(Chunk);
+							const FVoxelIntBox Bounds = GetChunkBounds(Chunk);
 							EventInfo.OnActivate.Broadcast(Bounds);
 
 							if (bDebug)
@@ -348,7 +348,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 					{
 						if (!EventInfo.ActiveOrGeneratedChunks.Contains(Chunk))
 						{
-							const FIntBox Bounds = GetChunkBounds(Chunk);
+							const FVoxelIntBox Bounds = GetChunkBounds(Chunk);
 							EventInfo.OnActivate.Broadcast(Bounds);
 
 							if (bDebug)
@@ -364,7 +364,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 					{
 						if (!NewActiveChunks.Contains(Chunk))
 						{
-							const FIntBox Bounds = GetChunkBounds(Chunk);
+							const FVoxelIntBox Bounds = GetChunkBounds(Chunk);
 							EventInfo.OnDeactivate.Broadcast(Bounds);
 
 							if (bDebug)

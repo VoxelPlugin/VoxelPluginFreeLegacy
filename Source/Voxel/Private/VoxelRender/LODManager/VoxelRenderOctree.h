@@ -3,11 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelDirection.h"
 #include "VoxelSimpleOctree.h"
 #include "VoxelAsyncWork.h"
+#include "VoxelInvokerSettings.h"
 #include "VoxelRender/VoxelChunkToUpdate.h"
 
 #include "HAL/ThreadSafeBool.h"
@@ -16,32 +17,16 @@ class FVoxelRenderOctree;
 struct FVoxelLODSettings;
 class FVoxelDebugManager;
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdate, FIntBox);
+DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdate, FVoxelIntBox);
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Render Octrees Memory"), STAT_VoxelRenderOctreesMemory, STATGROUP_VoxelMemory, VOXEL_API);
-
-struct FVoxelInvoker
-{
-	bool bUseForLOD = false;
-	int32 LODToSet = 0;
-	FIntBox LODBounds;
-
-	bool bUseForCollisions = false;
-	FIntBox CollisionsBounds;
-
-	bool bUseForNavmesh = false;
-	FIntBox NavmeshBounds;
-
-	bool bUseForTessellation = false;
-	FIntBox TessellationBounds;
-};
 
 struct FVoxelRenderOctreeSettings
 {
 	int32 MinLOD;
 	int32 MaxLOD;
-	FIntBox WorldBounds;
+	FVoxelIntBox WorldBounds;
 
-	TArray<FVoxelInvoker> Invokers;
+	TArray<FVoxelInvokerSettings> Invokers;
 
 	int32 ChunksCullingLOD;
 
@@ -56,8 +41,6 @@ struct FVoxelRenderOctreeSettings
 	bool bEnableNavmesh;
 	bool bComputeVisibleChunksNavmesh;
 	int32 VisibleChunksNavmeshMaxLOD;
-
-	bool bEnableTessellation;
 };
 
 class FVoxelRenderOctreeAsyncBuilder : public FVoxelAsyncWork
@@ -71,7 +54,7 @@ public:
 	// We don't want to do the deletion on the game thread
 	TVoxelSharedPtr<FVoxelRenderOctree> OctreeToDelete;
 
-	FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth, const FIntBox& WorldBounds);
+	FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth, const FVoxelIntBox& WorldBounds);
 
 private:
 	~FVoxelRenderOctreeAsyncBuilder() = default;
@@ -91,7 +74,7 @@ private:
 
 private:
 	const uint8 OctreeDepth;
-	const FIntBox WorldBounds;
+	const FVoxelIntBox WorldBounds;
 
 	FVoxelRenderOctreeSettings OctreeSettings{};
 
@@ -110,7 +93,7 @@ private:
 public:
 	FVoxelRenderOctree* const Root;
 	const uint64 ChunkId;
-	const FIntBox OctreeBounds;
+	const FVoxelIntBox OctreeBounds;
 
 	enum class EDivisionType : uint8
 	{
@@ -154,8 +137,8 @@ public:
 		TArray<FVoxelChunkUpdate>& ChunkUpdates, 
 		bool bVisible = true);
 
-	void GetChunksToUpdateForBounds(const FIntBox& Bounds, TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdate& OnChunkUpdate) const;
-	void GetVisibleChunksOverlappingBounds(const FIntBox& Bounds, TArray<uint64, TInlineAllocator<8>>& VisibleChunks) const;
+	void GetChunksToUpdateForBounds(const FVoxelIntBox& Bounds, TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdate& OnChunkUpdate) const;
+	void GetVisibleChunksOverlappingBounds(const FVoxelIntBox& Bounds, TArray<uint64, TInlineAllocator<8>>& VisibleChunks) const;
 
 	bool IsCanceled() const;
 
@@ -167,7 +150,7 @@ private:
 	const FVoxelRenderOctree* GetVisibleAdjacentChunk(EVoxelDirection::Type Direction, int32 Index) const;
 
 	template<typename T1, typename T2>
-	bool IsInvokerInRange(const TArray<FVoxelInvoker>& Invokers, T1 SelectInvoker, T2 GetInvokerBounds) const;
+	bool IsInvokerInRange(const TArray<FVoxelInvokerSettings>& Invokers, T1 SelectInvoker, T2 GetInvokerBounds) const;
 
 	uint64 GetId();
 };

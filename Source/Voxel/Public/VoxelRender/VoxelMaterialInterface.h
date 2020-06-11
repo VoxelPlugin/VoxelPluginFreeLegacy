@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "Containers/Queue.h"
 #include "UObject/GCObject.h"
 #include "UObject/WeakObjectPtr.h"
@@ -97,6 +97,7 @@ class VOXEL_API FVoxelMaterialInterface
 public:
 	~FVoxelMaterialInterface();
 
+	// Will be null if the asset is force deleted
 	UMaterialInterface* GetMaterial() const;
 
 private:

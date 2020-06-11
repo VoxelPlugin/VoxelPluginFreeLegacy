@@ -1,46 +1,68 @@
 // Copyright 2020 Phyronnaz
 
 #include "IVoxelPool.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "Engine/World.h"
 
-TMap<TWeakObjectPtr<UWorld>, IVoxelPool::FPool> IVoxelPool::GlobalMap;
+TMap<TWeakObjectPtr<UWorld>, TVoxelSharedPtr<IVoxelPool>> IVoxelPool::WorldsPools;
+TVoxelSharedPtr<IVoxelPool> IVoxelPool::GlobalPool;
 
-TVoxelSharedPtr<IVoxelPool> IVoxelPool::GetGlobalPool(UWorld* World)
+TVoxelSharedPtr<IVoxelPool> IVoxelPool::GetWorldPool(UWorld* World)
 {
-	GlobalMap.Remove(nullptr);
-	return GlobalMap.FindChecked(World).Pool;
+	return WorldsPools.FindRef(World);
 }
 
-const FString& IVoxelPool::GetGlobalPoolCreator(UWorld* World)
+TVoxelSharedPtr<IVoxelPool> IVoxelPool::GetGlobalPool()
 {
-	GlobalMap.Remove(nullptr);
-	return GlobalMap.FindChecked(World).Creator;
+	return GlobalPool;
 }
 
-void IVoxelPool::DestroyGlobalVoxelPool(UWorld* World)
+TVoxelSharedPtr<IVoxelPool> IVoxelPool::GetPoolForWorld(UWorld* World)
 {
-	GlobalMap.Remove(nullptr);
-	GlobalMap.Remove(World);
-	LOG_VOXEL(Log, TEXT("Global pool destroyed for %s"), *World->GetName());
+	if (auto Pool = GetWorldPool(World))
+	{
+		return Pool;
+	}
+	return GetGlobalPool();
 }
 
-bool IVoxelPool::IsGlobalVoxelPoolCreated(UWorld* World)
+///////////////////////////////////////////////////////////////////////////////
+
+void IVoxelPool::SetWorldPool(UWorld* World, const TVoxelSharedRef<IVoxelPool>& Pool, const FString& Creator)
 {
-	GlobalMap.Remove(nullptr);
-	return GlobalMap.Contains(World);
+	ensure(World);
+	ensure(!WorldsPools.Contains(World));
+	
+	WorldsPools.Add(World, Pool);
+
+	LOG_VOXEL(Log, TEXT("Voxel Pool created by %s for world %s"), *Creator, *World->GetName());
 }
 
-void IVoxelPool::SetGlobalVoxelPool(UWorld* World, const TVoxelSharedPtr<IVoxelPool>& Pool, const FString& Creator)
+void IVoxelPool::SetGlobalPool(const TVoxelSharedRef<IVoxelPool>& Pool, const FString& Creator)
 {
-	check(Pool.IsValid());
+	ensure(!GlobalPool.IsValid());
 
-	GlobalMap.Remove(nullptr);
-	checkf(!GlobalMap.Contains(World), TEXT("Global voxel pool already created!"));
+	GlobalPool = Pool;
 
-	auto& NewPool = GlobalMap.Add(World);
-	NewPool.Creator = Creator;
-	NewPool.Pool = Pool;
+	LOG_VOXEL(Log, TEXT("Global Voxel Pool created by %s"), *Creator);
+}
 
-	LOG_VOXEL(Log, TEXT("Global pool created by %s for %s"), *Creator, *World->GetName());
+///////////////////////////////////////////////////////////////////////////////
+
+void IVoxelPool::DestroyWorldPool(UWorld* World)
+{
+	if (ensure(WorldsPools.Contains(World)))
+	{
+		WorldsPools.Remove(World);
+		LOG_VOXEL(Log, TEXT("Voxel Pool destroyed for %s"), *World->GetName());
+	}
+}
+
+void IVoxelPool::DestroyGlobalPool()
+{
+	if (ensure(GlobalPool.IsValid()))
+	{
+		GlobalPool.Reset();
+		LOG_VOXEL(Log, TEXT("Global Voxel Pool destroyed"));
+	}
 }

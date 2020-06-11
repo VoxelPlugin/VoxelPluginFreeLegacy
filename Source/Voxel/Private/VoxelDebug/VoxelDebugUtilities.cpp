@@ -2,7 +2,7 @@
 
 #include "VoxelDebug/VoxelDebugUtilities.h"
 #include "VoxelDebug/VoxelLineBatchComponent.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelWorld.h"
 #include "VoxelMessages.h"
 #include "VoxelData/VoxelData.h"
@@ -14,7 +14,7 @@
 
 void UVoxelDebugUtilities::DrawDebugIntBox(
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	FTransform Transform,
 	float Lifetime,
 	float Thickness,
@@ -108,7 +108,7 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 
 void UVoxelDebugUtilities::DrawDebugIntBox(
 	const AVoxelWorldInterface* World,
-	FIntBox Box,
+	FVoxelIntBox Box,
 	float Lifetime,
 	float Thickness,
 	FLinearColor Color)
@@ -122,7 +122,7 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 
 void UVoxelDebugUtilities::DebugVoxelsInsideBounds(
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	FLinearColor Color,
 	float Lifetime,
 	float Thickness,
@@ -139,12 +139,12 @@ void UVoxelDebugUtilities::DebugVoxelsInsideBounds(
 		{
 			for (int32 Z = Bounds.Min.Z; Z < Bounds.Max.Z; Z++)
 			{
-				DrawDebugIntBox(World, FIntBox(X, Y, Z), Lifetime, Thickness, Color);
+				DrawDebugIntBox(World, FVoxelIntBox(X, Y, Z), Lifetime, Thickness, Color);
 
 				if (bDebugDensities)
 				{
 					auto& Data = World->GetData();
-					FVoxelReadScopeLock Lock(Data, FIntBox(X, Y, Z), "DebugVoxelsInsideBox");
+					FVoxelReadScopeLock Lock(Data, FVoxelIntBox(X, Y, Z), "DebugVoxelsInsideBox");
 					float Value = Data.GetValue(X, Y, Z, 0).ToFloat();
 					DrawDebugString(World->GetWorld(), World->LocalToGlobal(FIntVector(X, Y, Z)), LexToString(Value), nullptr, TextColor.ToFColor(false), Lifetime);
 				}
@@ -227,7 +227,7 @@ void UVoxelDebugUtilities::DrawDataOctree(
 
 	auto& Data = World->GetData();
 
-	FVoxelReadScopeLock Lock(Data, FIntBox::Infinite, FUNCTION_FNAME);
+	FVoxelReadScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 
 	if (DataType == EVoxelDataType::Values) DrawDataOctreeImpl<FVoxelValue>(Data, Settings);
 	if (DataType == EVoxelDataType::Materials) DrawDataOctreeImpl<FVoxelMaterial>(Data, Settings);

@@ -14,7 +14,7 @@ void UVoxelAssetTools::ImportAssetAsReference(
 	UVoxelTransformableWorldGenerator* Asset,
 	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	int32 Priority,
 	bool bConvertToVoxelSpace,
 	bool bUpdateRender)
@@ -30,7 +30,7 @@ void UVoxelAssetTools::ImportAssetAsReferenceAsync(
 	UVoxelTransformableWorldGenerator* Asset,
 	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	int32 Priority,
 	bool bConvertToVoxelSpace,
 	bool bUpdateRender,
@@ -49,7 +49,7 @@ void UVoxelAssetTools::ImportModifierAsset(
 	UVoxelTransformableWorldGenerator* Asset,
 	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	bool bModifyValues,
 	bool bModifyMaterials,
 	bool bLockEntireWorld,
@@ -65,7 +65,7 @@ void UVoxelAssetTools::ImportModifierAssetAsync(
 	UVoxelTransformableWorldGenerator* Asset,
 	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	bool bModifyValues,
 	bool bModifyMaterials,
 	bool bLockEntireWorld,
@@ -85,7 +85,7 @@ void UVoxelAssetTools::ImportAsset(
 	UVoxelTransformableWorldGenerator* Asset,
 	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	bool bSubtractive,
 	EVoxelAssetMergeMode MergeMode,
 	bool bConvertToVoxelSpace)
@@ -100,7 +100,7 @@ void UVoxelAssetTools::ImportAssetAsync(
 	UVoxelTransformableWorldGenerator* Asset,
 	const TMap<FName, int32>& Seeds,
 	FTransform Transform,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	bool bSubtractive,
 	EVoxelAssetMergeMode MergeMode,
 	bool bConvertToVoxelSpace,
@@ -163,7 +163,7 @@ void UVoxelAssetTools::SetDataAssetMaterial(UVoxelDataAsset* Asset, UVoxelDataAs
 
 UVoxelDataAsset* UVoxelAssetTools::CreateDataAssetFromWorldSection(
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	bool bCopyMaterials)
 {
 	VOXEL_PRO_ONLY();
@@ -176,7 +176,7 @@ UVoxelDataAsset* UVoxelAssetTools::CreateDataAssetFromWorldSection(
 void UVoxelAssetTools::AddDisableEditsBox(
 	FVoxelPlaceableItemReference& Reference,
 	AVoxelWorld* World, 
-	FIntBox Bounds)
+	FVoxelIntBox Bounds)
 {
 	VOXEL_PRO_ONLY_VOID();
 }
@@ -186,7 +186,7 @@ void UVoxelAssetTools::AddDisableEditsBoxAsync(
 	FLatentActionInfo LatentInfo, 
 	FVoxelPlaceableItemReference& Reference,
 	AVoxelWorld* World,
-	FIntBox Bounds,
+	FVoxelIntBox Bounds,
 	bool bHideLatentWarnings)
 {
 	VOXEL_PRO_ONLY_VOID();

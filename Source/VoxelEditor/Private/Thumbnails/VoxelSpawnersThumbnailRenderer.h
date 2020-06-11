@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "ThumbnailRendering/StaticMeshThumbnailRenderer.h"
 #include "VoxelSpawnersThumbnailRenderer.generated.h"
 

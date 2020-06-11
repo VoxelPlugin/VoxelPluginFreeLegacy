@@ -4,7 +4,7 @@
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelWorldGenerators/VoxelFlatWorldGenerator.h"
 #include "VoxelGraphGenerator.h"
-#include "VoxelWorldGeneratorInstance.inl"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
 #include "VoxelNodeFunctions.h"
 
 EVoxelPinCategory UVoxelNode_WorldGeneratorSamplerBase::GetInputPinCategory(int32 PinIndex) const

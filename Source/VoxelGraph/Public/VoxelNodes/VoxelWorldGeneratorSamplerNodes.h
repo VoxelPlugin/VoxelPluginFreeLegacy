@@ -6,7 +6,7 @@
 #include "VoxelNodeHelper.h"
 #include "VoxelNodeHelperMacros.h"
 #include "VoxelExposedNodes.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelGraphErrorReporter.h"
 #include "VoxelWorldGeneratorSamplerNodes.generated.h"
 
@@ -93,20 +93,6 @@ class VOXELGRAPH_API UVoxelNode_GetWorldGeneratorCustomOutput : public UVoxelNod
 	//~ Begin UVoxelNode Interface
 	virtual FText GetTitle() const override;
 	//~ End UVoxelNode Interface
-};
-
-UCLASS(DisplayName = "World Generator Sampler", NotPlaceable)
-class VOXELGRAPH_API UVoxelNode_WorldGeneratorSampler : public UVoxelExposedNode
-{
-	GENERATED_BODY()
-	DEPRECATED_VOXELNODE("use Get World Generator Value / Get World Generator Material instead")
-
-public:
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	FVoxelWorldGeneratorPicker WorldGenerator;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	TArray<FName> Seeds;
 };
 
 // Read data sent by a previous world generator

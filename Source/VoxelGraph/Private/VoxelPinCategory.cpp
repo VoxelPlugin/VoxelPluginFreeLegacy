@@ -146,7 +146,7 @@ FString FVoxelPinCategory::GetTypeString(EVoxelPinCategory Category)
 	case EVoxelPinCategory::Color:
 		return "FColor";
 	case EVoxelPinCategory::Seed:
-		return "Seed";
+		return "FVoxelGraphSeed";
 	case EVoxelPinCategory::Wildcard:
 	case EVoxelPinCategory::Exec:
 	default:
@@ -170,7 +170,7 @@ FString FVoxelPinCategory::GetRangeTypeString(EVoxelPinCategory Category)
 	case EVoxelPinCategory::Color:
 		return "FVoxelColorRange";
 	case EVoxelPinCategory::Seed:
-		return "Seed";
+		return "FVoxelGraphSeed";
 	case EVoxelPinCategory::Wildcard:
 	case EVoxelPinCategory::Exec:
 	default:
@@ -288,7 +288,7 @@ FString FVoxelPinCategory::ToString(EVoxelPinCategory Category, FVoxelNodeType V
 	case EVoxelPinCategory::Float:
 		return LexToString(Value.Get<v_flt>());
 	case EVoxelPinCategory::Seed:
-		return LexToString(Value.Get<Seed>());
+		return LexToString(Value.Get<FVoxelGraphSeed>());
 	case EVoxelPinCategory::Color:
 		return FLinearColor(
 			Value.Get<FColor>().R / 255.999f,

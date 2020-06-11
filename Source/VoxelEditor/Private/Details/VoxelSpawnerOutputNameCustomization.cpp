@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "Details/VoxelSpawnerOutputNameCustomization.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
 #include "VoxelSpawners/VoxelSpawnerOutputsConfig.h"

@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelSpawners/VoxelBasicSpawner.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelAssetSpawner.generated.h"
 
 class FVoxelAssetItem;
@@ -25,7 +25,7 @@ public:
 	FVoxelTransformableWorldGeneratorPicker Generator;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Settings")
-	FIntBox GeneratorLocalBounds = FIntBox(-25, 25);
+	FVoxelIntBox GeneratorLocalBounds = FVoxelIntBox(-25, 25);
 
 	// The voxel world seeds will be sent to the generator.
 	// Add the names of the seeds you want to be randomized here

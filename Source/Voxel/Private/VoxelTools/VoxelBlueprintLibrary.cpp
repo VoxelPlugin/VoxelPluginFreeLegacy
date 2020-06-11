@@ -3,7 +3,7 @@
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelTools/VoxelDataTools.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelWorld.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelDataUtilities.h"
@@ -20,10 +20,11 @@
 #include "IVoxelPool.h"
 #include "VoxelDefaultPool.h"
 #include "VoxelMessages.h"
-#include "VoxelWorldGeneratorUtilities.h"
+#include "VoxelUtilities/VoxelWorldGeneratorUtilities.h"
 
 #include "Async/Async.h"
 #include "Engine/StaticMesh.h"
+#include "EngineUtils.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -227,10 +228,196 @@ float UVoxelBlueprintLibrary::GetEstimatedCollisionsMemoryUsageInMB(AVoxelWorld*
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+FVoxelIntBox UVoxelBlueprintLibrary::TransformGlobalBoxToVoxelBox(AVoxelWorld* World, FBox Box)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED();
+
+	FVoxelIntBoxWithValidity Result;
+
+	const auto Add = [&](const FVector& Position)
+	{
+		const FVoxelVector LocalPosition = World->GlobalToLocalFloat(Position);
+		Result += FVoxelUtilities::FloorToInt(LocalPosition);
+		Result += FVoxelUtilities::CeilToInt(LocalPosition);
+	};
+
+	Add({ Box.Min.X, Box.Min.Y, Box.Min.Z });
+	Add({ Box.Max.X, Box.Min.Y, Box.Min.Z });
+	Add({ Box.Min.X, Box.Max.Y, Box.Min.Z });
+	Add({ Box.Max.X, Box.Max.Y, Box.Min.Z });
+	Add({ Box.Min.X, Box.Min.Y, Box.Max.Z });
+	Add({ Box.Max.X, Box.Min.Y, Box.Max.Z });
+	Add({ Box.Min.X, Box.Max.Y, Box.Max.Z });
+	Add({ Box.Max.X, Box.Max.Y, Box.Max.Z });
+
+	return Result.GetBox();
+}
+
+FBox UVoxelBlueprintLibrary::TransformVoxelBoxToGlobalBox(AVoxelWorld* World, FVoxelIntBox Box)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED();
+
+	FBox Result(ForceInit);
+
+	for (const auto& Corner : Box.GetCorners(1))
+	{
+		Result += World->LocalToGlobal(Corner);
+	}
+
+	return Result;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+AVoxelWorld* UVoxelBlueprintLibrary::GetVoxelWorldContainingPosition(UObject* WorldContextObject, FVector Position)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!WorldContextObject)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("No world context!"));
+		return {};
+	}
+
+	const auto VoxelWorlds = GetAllVoxelWorldsContainingPosition(WorldContextObject, Position);
+	if (VoxelWorlds.Num() == 0)
+	{
+		return nullptr;
+	}
+
+	if (VoxelWorlds.Num() > 1)
+	{
+		FVoxelMessages::Warning(FUNCTION_ERROR("More than one voxel world is containing position! Consider using GetAllVoxelWorldsContainingPosition instead"));
+	}
+
+	return VoxelWorlds[0];
+}
+
+TArray<AVoxelWorld*> UVoxelBlueprintLibrary::GetAllVoxelWorldsContainingPosition(UObject* WorldContextObject, FVector Position)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!WorldContextObject)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("No world context!"));
+		return {};
+	}
+
+	TArray<AVoxelWorld*> Result;
+	for (auto* VoxelWorld : TActorRange<AVoxelWorld>(WorldContextObject->GetWorld()))
+	{
+		if (VoxelWorld->IsCreated())
+		{
+			const FVoxelIntBox WorldBounds = VoxelWorld->GetWorldBounds();
+			const FVoxelVector LocalPosition = VoxelWorld->GlobalToLocalFloat(Position);
+			if (WorldBounds.ContainsFloat(LocalPosition))
+			{
+				Result.Add(VoxelWorld);
+			}
+		}
+	}
+	return Result;
+}
+
+AVoxelWorld* UVoxelBlueprintLibrary::GetVoxelWorldOverlappingBox(UObject* WorldContextObject, FBox Box)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!WorldContextObject)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("No world context!"));
+		return {};
+	}
+
+	const auto VoxelWorlds = GetAllVoxelWorldsOverlappingBox(WorldContextObject, Box);
+	if (VoxelWorlds.Num() == 0)
+	{
+		return nullptr;
+	}
+
+	if (VoxelWorlds.Num() > 1)
+	{
+		FVoxelMessages::Warning(FUNCTION_ERROR("More than one voxel world is overlapping box! Consider using GetAllVoxelWorldsOverlappingBox instead"));
+	}
+
+	return VoxelWorlds[0];
+}
+
+TArray<AVoxelWorld*> UVoxelBlueprintLibrary::GetAllVoxelWorldsOverlappingBox(UObject* WorldContextObject, FBox Box)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!WorldContextObject)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("No world context!"));
+		return {};
+	}
+
+	TArray<AVoxelWorld*> Result;
+	for (auto* VoxelWorld : TActorRange<AVoxelWorld>(WorldContextObject->GetWorld()))
+	{
+		if (VoxelWorld->IsCreated())
+		{
+			const FVoxelIntBox WorldBounds = VoxelWorld->GetWorldBounds();
+			const FVoxelIntBox LocalBox = TransformGlobalBoxToVoxelBox(VoxelWorld, Box);
+			if (WorldBounds.Intersect(LocalBox))
+			{
+				Result.Add(VoxelWorld);
+			}
+		}
+	}
+	return Result;
+}
+
+AVoxelWorld* UVoxelBlueprintLibrary::GetVoxelWorldOverlappingActor(AActor* Actor)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!Actor)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("No Actor!"));
+		return {};
+	}
+
+	const auto VoxelWorlds = GetAllVoxelWorldsOverlappingActor(Actor);
+	if (VoxelWorlds.Num() == 0)
+	{
+		return nullptr;
+	}
+
+	if (VoxelWorlds.Num() > 1)
+	{
+		FVoxelMessages::Warning(FUNCTION_ERROR("More than one voxel world is overlapping actor! Consider using GetAllVoxelWorldsOverlappingActor instead"));
+	}
+
+	return VoxelWorlds[0];
+}
+
+TArray<AVoxelWorld*> UVoxelBlueprintLibrary::GetAllVoxelWorldsOverlappingActor(AActor* Actor)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!Actor)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("No Actor!"));
+		return {};
+	}
+
+	return GetAllVoxelWorldsOverlappingBox(Actor, Actor->GetComponentsBoundingBox(true));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 void UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorsInArea(
 	TArray<AVoxelSpawnerActor*>& OutActors, 
 	AVoxelWorld* World,
-	FIntBox Bounds, 
+	FVoxelIntBox Bounds, 
 	EVoxelSpawnerActorSpawnType SpawnType)
 {
 	VOXEL_PRO_ONLY_VOID();
@@ -260,12 +447,12 @@ void UVoxelBlueprintLibrary::AddInstances(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelBlueprintLibrary::RegenerateSpawners(AVoxelWorld* World, FIntBox Bounds)
+void UVoxelBlueprintLibrary::RegenerateSpawners(AVoxelWorld* World, FVoxelIntBox Bounds)
 {
 	VOXEL_PRO_ONLY_VOID();
 }
 
-void UVoxelBlueprintLibrary::MarkSpawnersDirty(AVoxelWorld* World, FIntBox Bounds)
+void UVoxelBlueprintLibrary::MarkSpawnersDirty(AVoxelWorld* World, FVoxelIntBox Bounds)
 {
 	VOXEL_PRO_ONLY_VOID();
 }
@@ -284,7 +471,7 @@ void UVoxelBlueprintLibrary::LoadFromSpawnersSave(AVoxelWorld* World, const FVox
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-bool UVoxelBlueprintLibrary::Undo(AVoxelWorld* World, TArray<FIntBox>& OutUpdatedBounds)
+bool UVoxelBlueprintLibrary::Undo(AVoxelWorld* World, TArray<FVoxelIntBox>& OutUpdatedBounds)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
@@ -314,11 +501,11 @@ bool UVoxelBlueprintLibrary::Undo(AVoxelWorld* World, TArray<FIntBox>& OutUpdate
 
 bool UVoxelBlueprintLibrary::Undo(AVoxelWorld* World)
 {
-	TArray<FIntBox> Dummy;
+	TArray<FVoxelIntBox> Dummy;
 	return Undo(World, Dummy);
 }
 
-bool UVoxelBlueprintLibrary::Redo(AVoxelWorld* World, TArray<FIntBox>& OutUpdatedBounds)
+bool UVoxelBlueprintLibrary::Redo(AVoxelWorld* World, TArray<FVoxelIntBox>& OutUpdatedBounds)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
@@ -348,7 +535,7 @@ bool UVoxelBlueprintLibrary::Redo(AVoxelWorld* World, TArray<FIntBox>& OutUpdate
 
 bool UVoxelBlueprintLibrary::Redo(AVoxelWorld* World)
 {
-	TArray<FIntBox> Dummy;
+	TArray<FVoxelIntBox> Dummy;
 	return Redo(World, Dummy);
 }
 
@@ -365,7 +552,7 @@ void UVoxelBlueprintLibrary::SaveFrame(AVoxelWorld* World)
 		return;
 	}
 	
-	Data.SaveFrame(FIntBox::Infinite);
+	Data.SaveFrame(FVoxelIntBox::Infinite);
 }
 
 void UVoxelBlueprintLibrary::ClearFrames(AVoxelWorld* World)
@@ -406,7 +593,7 @@ FVector UVoxelBlueprintLibrary::GetNormal(AVoxelWorld* World, FIntVector Positio
 	CHECK_VOXELWORLD_IS_CREATED();
 	
 	const auto& Data = World->GetData();
-	FVoxelReadScopeLock Lock(Data, FIntBox(Position - FIntVector(1), Position + FIntVector(2)), "GetNormal");
+	FVoxelReadScopeLock Lock(Data, FVoxelIntBox(Position - FIntVector(1), Position + FIntVector(2)), "GetNormal");
 	return FVoxelDataUtilities::GetGradientFromGetValue<int32>(FVoxelDataUtilities::MakeFloatData(Data), Position.X, Position.Y, Position.Z, 0);
 }
 
@@ -442,7 +629,7 @@ int32 UVoxelBlueprintLibrary::GetIntOutput(AVoxelWorld* World, FName Name, float
 	return Data.GetCustomOutput<int32>(DefaultValue, Name, X, Y, Z, 0);
 }
 
-FIntBox UVoxelBlueprintLibrary::GetBounds(AVoxelWorld* World)
+FVoxelIntBox UVoxelBlueprintLibrary::GetBounds(AVoxelWorld* World)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
@@ -458,7 +645,7 @@ void UVoxelBlueprintLibrary::ClearAllData(AVoxelWorld* World, bool bUpdateRender
 
 	if (bUpdateRender)
 	{
-		World->GetLODManager().UpdateBounds(FIntBox::Infinite);
+		World->GetLODManager().UpdateBounds(FVoxelIntBox::Infinite);
 	}
 }
 
@@ -470,13 +657,13 @@ void UVoxelBlueprintLibrary::ClearValueData(AVoxelWorld* World, bool bUpdateRend
 	auto& Data = World->GetData();
 
 	{
-		FVoxelWriteScopeLock Lock(Data, FIntBox::Infinite, FUNCTION_FNAME);
+		FVoxelWriteScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 		FVoxelDataUtilities::ClearData<FVoxelValue>(Data);
 	}
 	
 	if (bUpdateRender)
 	{
-		World->GetLODManager().UpdateBounds(FIntBox::Infinite);
+		World->GetLODManager().UpdateBounds(FVoxelIntBox::Infinite);
 	}
 }
 
@@ -488,13 +675,13 @@ void UVoxelBlueprintLibrary::ClearMaterialData(AVoxelWorld* World, bool bUpdateR
 	auto& Data = World->GetData();
 
 	{
-		FVoxelWriteScopeLock Lock(Data, FIntBox::Infinite, FUNCTION_FNAME);
+		FVoxelWriteScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 		FVoxelDataUtilities::ClearData<FVoxelMaterial>(Data);
 	}
 		
 	if (bUpdateRender)
 	{
-		World->GetLODManager().UpdateBounds(FIntBox::Infinite);
+		World->GetLODManager().UpdateBounds(FVoxelIntBox::Infinite);
 	}
 }
 
@@ -505,7 +692,7 @@ bool UVoxelBlueprintLibrary::HasValueData(AVoxelWorld* World)
 	
 	auto& Data = World->GetData();
 
-	FVoxelReadScopeLock Lock(Data, FIntBox::Infinite, FUNCTION_FNAME);
+	FVoxelReadScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 	return FVoxelDataUtilities::HasData<FVoxelValue>(World->GetData());
 }
 
@@ -516,7 +703,7 @@ bool UVoxelBlueprintLibrary::HasMaterialData(AVoxelWorld* World)
 	
 	auto& Data = World->GetData();
 	
-	FVoxelReadScopeLock Lock(Data, FIntBox::Infinite, FUNCTION_FNAME);
+	FVoxelReadScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 	return FVoxelDataUtilities::HasData<FVoxelMaterial>(Data);
 }
 
@@ -526,10 +713,10 @@ void UVoxelBlueprintLibrary::ClearDirtyData(AVoxelWorld* World, bool bUpdateRend
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	auto& Data = World->GetData();
 
-	TArray<FIntBox> OutBoundsToUpdate;
+	TArray<FVoxelIntBox> OutBoundsToUpdate;
 
 	{
-		FVoxelWriteScopeLock Lock(Data, FIntBox::Infinite, FUNCTION_FNAME);
+		FVoxelWriteScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 		Data.ClearOctreeData(OutBoundsToUpdate);
 	}
 
@@ -547,10 +734,10 @@ void UVoxelBlueprintLibrary::UpdatePosition(AVoxelWorld* World, FIntVector Posit
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetLODManager().UpdateBounds(FIntBox(Position));
+	World->GetLODManager().UpdateBounds(FVoxelIntBox(Position));
 }
 
-void UVoxelBlueprintLibrary::UpdateBounds(AVoxelWorld* World, FIntBox Bounds)
+void UVoxelBlueprintLibrary::UpdateBounds(AVoxelWorld* World, FVoxelIntBox Bounds)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
@@ -562,7 +749,7 @@ void UVoxelBlueprintLibrary::UpdateAll(AVoxelWorld* World)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetLODManager().UpdateBounds(FIntBox::Infinite);
+	World->GetLODManager().UpdateBounds(FVoxelIntBox::Infinite);
 }
 
 void UVoxelBlueprintLibrary::ApplyLODSettings(AVoxelWorld* World)
@@ -633,10 +820,20 @@ void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
+	FVoxelScopedFastSaveLoad FastSaveScope;
+
+	UVoxelWorldSaveObject* SaveObject = nullptr;
 	FVoxelUncompressedWorldSave Save;
 	if (bSaveData)
 	{
 		UVoxelDataTools::GetSave(World, Save);
+
+		// Clear dirty flag to avoid popup
+		World->GetData().ClearDirtyFlag();
+
+		// Else, the world will load from the save object when created
+		SaveObject = World->SaveObject;
+		World->SaveObject = nullptr;
 	}
 
 	World->RecreateAll();
@@ -644,6 +841,10 @@ void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)
 	if (bSaveData)
 	{
 		ensure(UVoxelDataTools::LoadFromSave(World, Save));
+		// Set back dirty flag
+		World->GetData().MarkAsDirty();
+		// Restore save object
+		World->SaveObject = SaveObject;
 	}
 }
 
@@ -662,11 +863,11 @@ void UVoxelBlueprintLibrary::BindVoxelChunkEvents(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	auto OnActivateLambda = [OnActivate](const FIntBox& Bounds)
+	auto OnActivateLambda = [OnActivate](const FVoxelIntBox& Bounds)
 	{
 		OnActivate.ExecuteIfBound(Bounds);
 	};
-	auto OnDeactivateLambda = [OnDeactivate](const FIntBox& Bounds)
+	auto OnDeactivateLambda = [OnDeactivate](const FVoxelIntBox& Bounds)
 	{
 		OnDeactivate.ExecuteIfBound(Bounds);
 	};
@@ -689,7 +890,7 @@ void UVoxelBlueprintLibrary::BindVoxelGenerationEvent(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	auto OnGenerateLambda = [OnGenerate](const FIntBox& Bounds)
+	auto OnGenerateLambda = [OnGenerate](const FVoxelIntBox& Bounds)
 	{
 		OnGenerate.ExecuteIfBound(Bounds);
 	};
@@ -768,7 +969,6 @@ void UVoxelBlueprintLibrary::SetToolRenderingEnabled(AVoxelWorld* World, FVoxelT
 ///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(
-	UObject* WorldContextObject,
 	const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
 	const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides,
 	int32 NumberOfThreads,
@@ -776,53 +976,103 @@ void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	if (IsGlobalVoxelPoolCreated(WorldContextObject->GetWorld()))
+	if (IsGlobalVoxelPoolCreated())
 	{
-		FVoxelMessages::Error("CreateGlobalVoxelThreadPool called but global pool already created! Creator: " +
-			IVoxelPool::GetGlobalPoolCreator(WorldContextObject->GetWorld()));
+		FVoxelMessages::Error(FUNCTION_ERROR("Global pool already created"));
 		return;
 	}
+	
 	const auto Pool = FVoxelDefaultPool::Create(
 		FMath::Max(1, NumberOfThreads),
 		bConstantPriorities,
 		PriorityCategoriesOverrides,
 		PriorityOffsetsOverrides);
-	IVoxelPool::SetGlobalVoxelPool(WorldContextObject->GetWorld(), Pool, "CreateGlobalVoxelThreadPool");
+	IVoxelPool::SetGlobalPool(Pool, __FUNCTION__);
 }
 
-void UVoxelBlueprintLibrary::DestroyGlobalVoxelThreadPool(UObject* WorldContextObject)
+void UVoxelBlueprintLibrary::DestroyGlobalVoxelThreadPool()
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	if (!IsGlobalVoxelPoolCreated(WorldContextObject->GetWorld()))
+	if (!IsGlobalVoxelPoolCreated())
 	{
-		FVoxelMessages::Error("DestroyGlobalVoxelThreadPool called but global pool isn't created!");
+		FVoxelMessages::Error(FUNCTION_ERROR("Global pool not created"));
 		return;
 	}
-	IVoxelPool::DestroyGlobalVoxelPool(WorldContextObject->GetWorld());
+	IVoxelPool::DestroyGlobalPool();
 }
 
-bool UVoxelBlueprintLibrary::IsGlobalVoxelPoolCreated(UObject* WorldContextObject)
+bool UVoxelBlueprintLibrary::IsGlobalVoxelPoolCreated()
+{
+	return IVoxelPool::GetGlobalPool().IsValid();
+}
+
+void UVoxelBlueprintLibrary::CreateWorldVoxelThreadPool(
+	UWorld* World,
+	const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
+	const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides, 
+	int32 NumberOfThreads, 
+	bool bConstantPriorities)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	return IVoxelPool::IsGlobalVoxelPoolCreated(WorldContextObject->GetWorld());
+	if (!World)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("World is NULL"));
+		return;
+	}
+	
+	if (IsWorldVoxelPoolCreated(World))
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Pool already created for this world"));
+		return;
+	}
+	
+	const auto Pool = FVoxelDefaultPool::Create(
+		FMath::Max(1, NumberOfThreads),
+		bConstantPriorities,
+		PriorityCategoriesOverrides,
+		PriorityOffsetsOverrides);
+	IVoxelPool::SetWorldPool(World, Pool, __FUNCTION__);
+}
+
+void UVoxelBlueprintLibrary::DestroyWorldVoxelThreadPool(UWorld* World)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!World)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("World is NULL"));
+		return;
+	}
+	
+	if (!IsWorldVoxelPoolCreated(World))
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("No voxel pool created for this world"));
+		return;
+	}
+	IVoxelPool::DestroyWorldPool(World);
+}
+
+bool UVoxelBlueprintLibrary::IsWorldVoxelPoolCreated(UWorld* World)
+{
+	return IVoxelPool::GetWorldPool(World).IsValid();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntBox UVoxelBlueprintLibrary::MakeIntBoxFromGlobalPositionAndRadius(AVoxelWorld* World, FVector GlobalPosition, float Radius)
+FVoxelIntBox UVoxelBlueprintLibrary::MakeIntBoxFromGlobalPositionAndRadius(AVoxelWorld* World, FVector GlobalPosition, float Radius)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
-	return FIntBox::SafeConstruct(
+	return FVoxelIntBox::SafeConstruct(
 		World->GlobalToLocal(GlobalPosition - Radius, EVoxelWorldCoordinatesRounding::RoundDown),
 		World->GlobalToLocal(GlobalPosition + Radius, EVoxelWorldCoordinatesRounding::RoundUp)
 	);
 }
 
-FIntBox UVoxelBlueprintLibrary::GetRenderBoundsOverlappingDataBounds(AVoxelWorld* World, FIntBox Bounds, int32 LOD)
+FVoxelIntBox UVoxelBlueprintLibrary::GetRenderBoundsOverlappingDataBounds(AVoxelWorld* World, FVoxelIntBox Bounds, int32 LOD)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
 	CHECK_BOUNDS_ARE_VALID();
@@ -839,26 +1089,18 @@ FIntBox UVoxelBlueprintLibrary::GetRenderBoundsOverlappingDataBounds(AVoxelWorld
 ///////////////////////////////////////////////////////////////////////////////
 
 
-FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateFiveWayBlendPaintMaterial(
-	int32 Channel,
-	float TargetValue,
-	bool bPaintR,
-	bool bPaintG,
-	bool bPaintB,
-	bool bPaintA)
+FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateFiveWayBlendPaintMaterial(FVoxelPaintMaterialFiveWayBlend FiveWayBlend)
 {
-	if (!(0 <= Channel && Channel < 5))
+	if (!(0 <= FiveWayBlend.Channel && FiveWayBlend.Channel < 5))
 	{
 		FVoxelMessages::Error(FUNCTION_ERROR("Channel needs to be between 0 and 4"));
-		Channel = 0;
+		FiveWayBlend.Channel = 0;
 	}
-	return FVoxelPaintMaterial::CreateFiveWayBlend(
-		Channel,
-		TargetValue,
-		bPaintR,
-		bPaintG,
-		bPaintB,
-		bPaintA);
+
+	FVoxelPaintMaterial PaintMaterial;
+	PaintMaterial.Type = EVoxelPaintMaterialType::FiveWayBlend;
+	PaintMaterial.FiveWayBlend = FiveWayBlend;
+	return PaintMaterial;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

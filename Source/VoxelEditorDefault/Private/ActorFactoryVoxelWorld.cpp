@@ -21,9 +21,8 @@ void UActorFactoryVoxelWorld::PostSpawnActor(UObject* Asset, AActor* NewActor)
 	VoxelWorld->bCreateWorldAutomatically = true;
 	VoxelWorld->bUseCameraIfNoInvokersFound = true;
 	VoxelWorld->SetWorldGeneratorClass(UVoxelFlatWorldGenerator::StaticClass());
-	VoxelWorld->bEnableTessellation = false;
 	VoxelWorld->MaterialConfig = EVoxelMaterialConfig::RGB;
-	VoxelWorld->MaterialCollection = LoadObject<UVoxelMaterialCollectionBase>(nullptr, TEXT("/Voxel/Examples/Materials/TriplanarExampleCollection/TriplanarExampleCollection"));
-	VoxelWorld->VoxelMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Voxel/Examples/Materials/RGB/M_VoxelMaterial_5WayBlend"));
+	VoxelWorld->MaterialCollection = LoadObject<UVoxelMaterialCollectionBase>(nullptr, TEXT("/Voxel/Examples/Materials/Quixel/MC_Quixel"));
+	VoxelWorld->VoxelMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Voxel/Examples/Materials/Quixel/MI_VoxelQuixel_FiveWayBlend_Inst"));
 	VoxelWorld->Toggle();
 }

@@ -3,12 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelRender/VoxelProcMeshTangent.h"
 #include "VoxelRender/VoxelMaterialIndices.h"
 
-class FDistanceFieldVolumeData;
 class FVoxelData;
+class FDistanceFieldVolumeData;
+struct FVoxelRendererSettingsBase;
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Chunk Mesh Memory"), STAT_VoxelChunkMeshMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
@@ -16,10 +17,13 @@ struct VOXEL_API FVoxelChunkMeshBuffers
 {
 	TArray<uint32> Indices;
 	TArray<FVector> Positions;
+
+	// Will not be set if bRenderWorld is false
 	TArray<FVector> Normals;
 	TArray<FVoxelProcMeshTangent> Tangents;
 	TArray<FColor> Colors;
 	TArray<TArray<FVector2D>> TextureCoordinates;
+
 	FBox Bounds;
 	FGuid Guid; // Use to avoid rebuilding collisions when the mesh didn't change
 
@@ -98,7 +102,7 @@ public:
 	}
 	
 public:
-	void BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data);
+	void BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data, const FVoxelRendererSettingsBase& Settings);
 	
 	template<typename T>
 	inline void IterateBuffers(T Lambda)

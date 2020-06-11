@@ -24,6 +24,7 @@ namespace FVoxelMesherUtilities
 {
 	TVoxelSharedPtr<FVoxelChunkMesh> CreateChunkFromVertices(
 		const FVoxelRendererSettings& Settings,
+		int32 LOD,
 		TArray<uint32>&& Indices,
 		TArray<FVoxelMesherVertex>&& Vertices);
 
@@ -118,7 +119,7 @@ namespace FVoxelMesherUtilities
 	template<typename T>
 	inline static void SanitizeMesh(TArray<uint32>& Indices, TArray<T>& Vertices)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 		
 		TArray<uint32> NewIndices;
 		NewIndices.Reserve(Indices.Num());

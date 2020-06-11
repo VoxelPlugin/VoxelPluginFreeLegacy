@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
-#include "SafeSparseArray.h"
+#include "VoxelMinimal.h"
+#include "VoxelSparseArray.h"
 #include "Misc/ScopeLock.h"
 
 class FVoxelMaterialInterface;
@@ -16,7 +16,7 @@ struct FVoxelToolRendering
 	TVoxelSharedPtr<FVoxelMaterialInterface> Material;
 };
 
-DEFINE_TYPED_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
+DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
 
 class FVoxelToolRenderingManager : public TVoxelSharedFromThis<FVoxelToolRenderingManager>
 {
@@ -66,7 +66,7 @@ public:
 
 private:
 	mutable FCriticalSection Section;
-	TSafeTypedSparseArray<FVoxelToolRenderingId, FVoxelToolRendering> Tools;
+	TVoxelTypedSparseArray<FVoxelToolRenderingId, FVoxelToolRendering> Tools;
 	TArray<TVoxelSharedPtr<const FVoxelMaterialInterface>> ToolsMaterials;
 
 	inline void RecomputeToolsMaterials()

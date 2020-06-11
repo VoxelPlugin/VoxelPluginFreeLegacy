@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelTickable.h"
 
@@ -13,9 +13,9 @@ class AVoxelWorld;
 class AVoxelWorldInterface;
 class UVoxelInvokerComponentBase;
 
-DECLARE_DELEGATE_OneParam(FChunkDelegate, FIntBox);
-DECLARE_MULTICAST_DELEGATE_OneParam(FChunkMulticastDelegate, FIntBox);
-DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnMeshCreatedDelegate, int32, const FIntBox&, const FVoxelChunkMesh&);
+DECLARE_DELEGATE_OneParam(FChunkDelegate, FVoxelIntBox);
+DECLARE_MULTICAST_DELEGATE_OneParam(FChunkMulticastDelegate, FVoxelIntBox);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnMeshCreatedDelegate, int32, const FVoxelIntBox&, const FVoxelChunkMesh&);
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Events Memory"), STAT_VoxelEventsMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
@@ -24,7 +24,7 @@ struct FVoxelEventManagerSettings
 	const float UpdateRate;
 	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
 	const TWeakObjectPtr<UWorld> World;
-	const FIntBox WorldBounds;
+	const FVoxelIntBox WorldBounds;
 
 	FVoxelEventManagerSettings(const AVoxelWorld* World, EVoxelPlayType PlayType);
 };
@@ -93,7 +93,7 @@ public:
 			auto& Event = **EventPtr;
 			for (auto& P : Event.ActiveOrGeneratedChunks)
 			{
-				Lambda(FIntBox(P * Event.ChunkSize, (P + 1) * Event.ChunkSize));
+				Lambda(FVoxelIntBox(P * Event.ChunkSize, (P + 1) * Event.ChunkSize));
 			}
 		}
 	}

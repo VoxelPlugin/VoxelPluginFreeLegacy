@@ -3,10 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGraphGeneratorHelpers.h"
-#include "VoxelNodeFunctions.h"
-#include "FastNoise.h"
-#include "Containers/StaticArray.h"
+#include "VoxelGeneratedWorldGeneratorsIncludes.h"
 #include "VoxelExample_Cave.generated.h"
 
 UCLASS(Blueprintable)

@@ -7,12 +7,12 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelValue.h"
 #include "VoxelPaintMaterial.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelBoxTools.generated.h"
 
 class FVoxelData;
 class AVoxelWorld;
-struct FIntBox;
+struct FVoxelIntBox;
 
 UCLASS()
 class VOXEL_API UVoxelBoxTools : public UBlueprintFunctionLibrary
@@ -20,12 +20,12 @@ class VOXEL_API UVoxelBoxTools : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 
 public:
-	static void SetValueBoxImpl(FVoxelData& Data, const FIntBox& Bounds, FVoxelValue Value);
+	static void SetValueBoxImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, FVoxelValue Value);
 
 	template<bool bAdd>
-	static void BoxEditImpl(FVoxelData& Data, const FIntBox& Bounds);
+	static void BoxEditImpl(FVoxelData& Data, const FVoxelIntBox& Bounds);
 
-	static void SetMaterialBoxImpl(FVoxelData& Data, const FIntBox& Bounds, const FVoxelPaintMaterial& PaintMaterial);
+	static void SetMaterialBoxImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, const FVoxelPaintMaterial& PaintMaterial);
 
 public:
 	/**
@@ -35,7 +35,7 @@ public:
 	 * @param	Value			The value to set
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World"))
-	static void SetValueBox(AVoxelWorld* World,	FIntBox Bounds,	float Value);
+	static void SetValueBox(AVoxelWorld* World,	FVoxelIntBox Bounds,	float Value);
 
 	/**
 	 * Add a box shape
@@ -43,7 +43,7 @@ public:
 	 * @param	Bounds			The bounds of the box
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World"))
-	static void AddBox(AVoxelWorld* World, FIntBox Bounds);
+	static void AddBox(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	/**
 	 * Remove a box shape
@@ -51,7 +51,7 @@ public:
 	 * @param	Bounds			The bounds of the box
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World"))
-	static void RemoveBox(AVoxelWorld* World, FIntBox Bounds);
+	static void RemoveBox(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	/**
 	 * Paint a box shape
@@ -60,7 +60,7 @@ public:
 	 * @param	PaintMaterial	The material to set
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Box Tools", meta = (DefaultToSelf = "World"))
-	static void SetMaterialBox(AVoxelWorld* World, FIntBox Bounds, FVoxelPaintMaterial PaintMaterial);
+	static void SetMaterialBox(AVoxelWorld* World, FVoxelIntBox Bounds, FVoxelPaintMaterial PaintMaterial);
 
 public:
 	/**
@@ -74,7 +74,7 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		float Value,
 		bool bHideLatentWarnings = false);
 
@@ -88,7 +88,7 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 
 	/**
@@ -101,7 +101,7 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
 
 	/**
@@ -115,7 +115,7 @@ public:
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		FVoxelPaintMaterial PaintMaterial,
 		bool bHideLatentWarnings = false);
 };

@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelMinimal.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelMaterial.generated.h"
 
 namespace EVoxelMaterialConfigFlag
@@ -52,18 +52,27 @@ namespace EVoxelMaterialMask
 		None = 0,
 		All = R | G | B| A | U0 | U1 | U2 | U3 | V0 | V1 | V2 | V3,
 
-		Color = R | G | B | A,
+		RGB  = R | G | B,
+		RGBA = R | G | B | A,
 		
-		SingleIndex_Index = A,
-		SingleIndex_DataA = R,
-		SingleIndex_DataB = G,
-		SingleIndex       = SingleIndex_Index | SingleIndex_DataA | SingleIndex_DataB,
+		SingleIndex = A,
 		
-		DoubleIndex_IndexA = R,
-		DoubleIndex_IndexB = G,
-		DoubleIndex_Blend  = B,
-		DoubleIndex_Data   = A,
-		DoubleIndex        = DoubleIndex_IndexA | DoubleIndex_IndexB | DoubleIndex_Blend | DoubleIndex_Data,
+		MultiIndex_Blend0    = R,
+		MultiIndex_Blend1    = G,
+		MultiIndex_Blend2    = B,
+		MultiIndex_Wetness   = A,
+		MultiIndex_Index0    = U0,
+		MultiIndex_Index1    = V0,
+		MultiIndex_Index2    = U1,
+		MultiIndex_Index3    = V1,
+		MultiIndex_NoWetness = MultiIndex_Blend0 |
+		                       MultiIndex_Blend1 |
+		                       MultiIndex_Blend2 |
+							   MultiIndex_Index0 |
+							   MultiIndex_Index1 |
+							   MultiIndex_Index2 |
+							   MultiIndex_Index3,
+		MultiIndex = MultiIndex_NoWetness | MultiIndex_Wetness,
 
 		UV0 = U0 | V0,
 		UV1 = U1 | V1,
@@ -187,19 +196,20 @@ public:
 	FORCEINLINE uint8 Get##Name() const { return Get##Forward(); } \
 	FORCEINLINE float Get##Name##_AsFloat() const { return Get##Forward##_AsFloat(); }
 
-	DEFINE_FORWARD(SingleIndex_Index, A)
-	DEFINE_FORWARD(SingleIndex_DataA, R)
-	DEFINE_FORWARD(SingleIndex_DataB, G)
-	DEFINE_FORWARD(SingleIndex_DataC, B)
+	DEFINE_FORWARD(SingleIndex, A)
 
-	DEFINE_FORWARD(DoubleIndex_IndexA, R)
-	DEFINE_FORWARD(DoubleIndex_IndexB, G)
-	DEFINE_FORWARD(DoubleIndex_Blend, B)
-	DEFINE_FORWARD(DoubleIndex_Data, A)
+	DEFINE_FORWARD(MultiIndex_Blend0, R)
+	DEFINE_FORWARD(MultiIndex_Blend1, G)
+	DEFINE_FORWARD(MultiIndex_Blend2, B)
+	DEFINE_FORWARD(MultiIndex_Wetness, A)
+	DEFINE_FORWARD(MultiIndex_Index0, U0)
+	DEFINE_FORWARD(MultiIndex_Index1, V0)
+	DEFINE_FORWARD(MultiIndex_Index2, U1)
+	DEFINE_FORWARD(MultiIndex_Index3, V1)
 #undef DEFINE_FORWARD
 
 public:
-	FORCEINLINE uint32 GetPackedInt() const
+	FORCEINLINE uint32 GetPackedColor() const
 	{
 		return
 			(uint32(GetR()) <<  0) |
@@ -272,24 +282,6 @@ public:
 	{
 		T Material(ForceInit);
 		Material.SetColor(Color);
-		return Material;
-	}
-	FORCEINLINE static T CreateFromSingleIndex(uint8 Index, float DataA = 0.f, float DataB = 0.f, float DataC = 0.f)
-	{
-		T Material(ForceInit);
-		Material.SetSingleIndex_Index(Index);
-		Material.SetSingleIndex_DataA_AsFloat(DataA);
-		Material.SetSingleIndex_DataB_AsFloat(DataB);
-		Material.SetSingleIndex_DataC_AsFloat(DataC);
-		return Material;
-	}
-	FORCEINLINE static T CreateFromDoubleIndex(uint8 IndexA, uint8 IndexB, float Blend, float Data = 0.f)
-	{
-		T Material(ForceInit);
-		Material.SetDoubleIndex_IndexA(IndexA);
-		Material.SetDoubleIndex_IndexB(IndexB);
-		Material.SetDoubleIndex_Blend_AsFloat(Blend);
-		Material.SetDoubleIndex_Data_AsFloat(Data);
 		return Material;
 	}
 

@@ -2,19 +2,20 @@
 
 #include "VoxelRender/MaterialCollections/VoxelCachedMaterialCollection.h"
 
-UMaterialInterface* UVoxelCachedMaterialCollection::GetVoxelMaterial(const FVoxelMaterialIndices& Indices, bool bTessellation, uint64 UniqueIdForErrors) const
+UMaterialInterface* UVoxelCachedMaterialCollection::GetVoxelMaterial(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const
 {
-	const FVoxelCachedMaterialCollectionKey Key{ Indices, bTessellation };
+	const FVoxelMaterialIndices Key{ Indices };
 	auto*& Material = CachedMaterials.FindOrAdd(Key);
 	if (!Material)
 	{
 		// Note: if this errors out and return nullptr, we want to call it again next time
-		Material = GetVoxelMaterial_NotCached(Indices, bTessellation, UniqueIdForErrors);
+		Material = GetVoxelMaterial_NotCached(Indices, UniqueIdForErrors);
 	}
 	return Material;
 }
 
-void UVoxelCachedMaterialCollection::ClearCache()
+void UVoxelCachedMaterialCollection::InitializeCollection()
 {
+	// Make sure to apply changes
 	CachedMaterials.Empty();
 }

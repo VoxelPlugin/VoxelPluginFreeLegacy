@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "StackArray.h"
 #include "VoxelDirection.h"
+#include "VoxelStaticArray.h"
 #include "VoxelData/VoxelDataAccelerator.h"
 #include "VoxelRender/Meshers/VoxelMesher.h"
 
@@ -16,14 +16,14 @@ public:
 	using FVoxelMesher::FVoxelMesher;
 	
 protected:
-	virtual FIntBox GetBoundsToCheckIsEmptyOn() const override final;
-	virtual FIntBox GetBoundsToLock() const override final;
+	virtual FVoxelIntBox GetBoundsToCheckIsEmptyOn() const override final;
+	virtual FVoxelIntBox GetBoundsToLock() const override final;
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunkImpl(FVoxelMesherTimes& Times) override final;
 	virtual void CreateGeometryImpl(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<FVector>& Vertices) override final;
 	
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
-	TStackArray<FVoxelValue, CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS> CachedValues;
+	TVoxelStaticArray<FVoxelValue, CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS> CachedValues;
 
 private:
 	template<typename T>
@@ -39,8 +39,8 @@ public:
 	using FVoxelTransitionsMesher::FVoxelTransitionsMesher;
 
 protected:
-	virtual FIntBox GetBoundsToCheckIsEmptyOn() const override final;
-	virtual FIntBox GetBoundsToLock() const override final;
+	virtual FVoxelIntBox GetBoundsToCheckIsEmptyOn() const override final;
+	virtual FVoxelIntBox GetBoundsToLock() const override final;
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunkImpl(FVoxelMesherTimes& Times) override final;
 
 private:

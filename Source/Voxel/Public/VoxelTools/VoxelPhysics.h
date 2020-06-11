@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelPhysicsPartSpawnerInterface.h"
 #include "VoxelPhysics.generated.h"
 
@@ -23,6 +23,7 @@ public:
 public:
 	/**
 	 * Apply voxel physics in a section of the voxel world by removing floating parts
+	 * @param Results				Each part spawner result correspond to an individual floating part. Cast them to their corresponding class to get info from them.
 	 * @param World					The voxel world
 	 * @param Bounds				The bounds to search in (caution: keep this small!)
 	 * @param PartSpawner			The part spawner that will handle the spawning of new parts (construct a new object of class VoxelPhysicsPartSpawner_Smthg)
@@ -34,8 +35,9 @@ public:
 	static void ApplyVoxelPhysics(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
+		TArray<TScriptInterface<IVoxelPhysicsPartSpawnerResult>>& Results,
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		TScriptInterface<IVoxelPhysicsPartSpawner> PartSpawner,
 		int32 MinParts = 2,
 		bool bDebug = false,

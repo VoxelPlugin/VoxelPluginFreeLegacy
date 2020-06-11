@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- TVoxelStaticArray visualizer -->
+  <Type Name="TVoxelStaticArray&lt;*,*,*&gt;">
+    <DisplayString>Num={$T2}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>$T2</Size>
+        <ValuePointer>(TVoxelStaticArray&lt;$T1,$T2,$T3&gt;::ElementType*)Data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

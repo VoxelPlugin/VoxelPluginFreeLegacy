@@ -185,7 +185,6 @@ void FVoxelEditorToolsPanel::Tick(FEditorViewportClient* ViewportClient, float D
 
 			FVoxelToolManagerTickData TickData;
 			TickData.World = ViewportClient->GetWorld();
-			TickData.DeltaTime = DeltaTime;
 			TickData.MousePosition = FVector2D(ViewportInteractX, ViewportInteractY);
 			TickData.CameraViewDirection = SceneView->ViewMatrices.GetInvViewMatrix().TransformVector(FVector(0, 0, 1));
 			TickData.RayOrigin = RayOrigin;

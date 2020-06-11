@@ -3,12 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "StackArray.h"
+#include "VoxelStaticArray.h"
+#include "VoxelMaterialIndices.generated.h"
 
+USTRUCT() // UStruct to use it in TMap for GC
 struct FVoxelMaterialIndices
 {
+	GENERATED_BODY()
+	
 	uint8 NumIndices = 0;
-	TStackArray<uint8, 6> SortedIndices;
+	TVoxelStaticArray<uint8, 6> SortedIndices;
 
 	FVoxelMaterialIndices() = default;
 

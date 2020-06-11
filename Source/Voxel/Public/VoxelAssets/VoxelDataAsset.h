@@ -3,9 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
-#include "VoxelMathUtilities.h"
-#include "VoxelWorldGeneratorInstance.h"
+#include "VoxelMinimal.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
 #include "VoxelDataAsset.generated.h"
 
 class FVoxelDataAssetInstance;
@@ -261,9 +260,9 @@ public:
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data Asset")
-	virtual FIntBox GetBounds() const override
+	virtual FVoxelIntBox GetBounds() const override
 	{
-		return FIntBox(PositionOffset, PositionOffset + Size);
+		return FVoxelIntBox(PositionOffset, PositionOffset + Size);
 	}
 
 	//~ Begin UVoxelWorldGenerator Interface

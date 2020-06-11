@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelWorldGenerator.h"
-#include "VoxelWorldGeneratorInstance.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
 #include "VoxelMessages.h"
 
 TMap<FName, int32> UVoxelWorldGenerator::GetDefaultSeeds() const
@@ -42,7 +42,7 @@ TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelTransformableWorldGenerator:
 
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntBox UVoxelTransformableWorldGeneratorWithBounds::GetBounds() const
+FVoxelIntBox UVoxelTransformableWorldGeneratorWithBounds::GetBounds() const
 {
 	unimplemented();
 	return {};

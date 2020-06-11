@@ -2,7 +2,7 @@
 
 #include "VoxelImporters/VoxelLandscapeImporter.h"
 #include "Landscape.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 #if WITH_EDITOR
 void AVoxelLandscapeImporter::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

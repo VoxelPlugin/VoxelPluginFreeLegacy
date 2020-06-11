@@ -24,8 +24,8 @@ static TAutoConsoleVariable<int32> CVarLogRenderOctreeBuildTime(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelRenderOctreeAsyncBuilder::FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth, const FIntBox& WorldBounds)
-	: FVoxelAsyncWork("Render Octree Build", 1e9)
+FVoxelRenderOctreeAsyncBuilder::FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth, const FVoxelIntBox& WorldBounds)
+	: FVoxelAsyncWork(STATIC_FNAME("Render Octree Build"), 1e9)
 	, OctreeDepth(OctreeDepth)
 	, WorldBounds(WorldBounds)
 {
@@ -73,40 +73,40 @@ void FVoxelRenderOctreeAsyncBuilder::ReportBuildTime()
 
 void FVoxelRenderOctreeAsyncBuilder::DoWork()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	LOG_TIME_IMPL("Waiting in thread pool", Counter);
 
 	double WorkStartTime = FPlatformTime::Seconds();
 	
 	{
-		VOXEL_SCOPE_COUNTER("Deleting previous octree");
+		VOXEL_ASYNC_SCOPE_COUNTER("Deleting previous octree");
 		OctreeToDelete.Reset();
 		LOG_TIME("Deleting previous octree");
 	}
 
 	{
-		VOXEL_SCOPE_COUNTER("Resetting arrays");
+		VOXEL_ASYNC_SCOPE_COUNTER("Resetting arrays");
 		ChunkUpdates.Reset();
 		NewOctree.Reset();
 		LOG_TIME("Resetting arrays");
 	}
 	
 	{
-		VOXEL_SCOPE_COUNTER("Cloning octree");
+		VOXEL_ASYNC_SCOPE_COUNTER("Cloning octree");
 		NewOctree = OldOctree.IsValid() ? MakeVoxelShared<FVoxelRenderOctree>(&*OldOctree) : MakeVoxelShared<FVoxelRenderOctree>(OctreeDepth);
 		LOG_TIME("Cloning octree");
 	}
 	
 	{
-		VOXEL_SCOPE_COUNTER("ResetDivisionType");
+		VOXEL_ASYNC_SCOPE_COUNTER("ResetDivisionType");
 		NewOctree->ResetDivisionType();
 		LOG_TIME("ResetDivisionType");
 	}
 
 	bool bChanged;
 	{
-		VOXEL_SCOPE_COUNTER("UpdateSubdividedByDistance");
+		VOXEL_ASYNC_SCOPE_COUNTER("UpdateSubdividedByDistance");
 		bChanged = NewOctree->UpdateSubdividedByDistance(OctreeSettings);
 		LOG_TIME("UpdateSubdividedByDistance");
 		Log += "; Need to recompute neighbors: " + FString(bChanged ? "true" : "false");
@@ -114,7 +114,7 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 
 	if (bChanged)
 	{
-		VOXEL_SCOPE_COUNTER("UpdateSubdividedByNeighbors");
+		VOXEL_ASYNC_SCOPE_COUNTER("UpdateSubdividedByNeighbors");
 		int32 UpdateSubdividedByNeighborsCounter = 0;
 		while (NewOctree->UpdateSubdividedByNeighbors(OctreeSettings)) { UpdateSubdividedByNeighborsCounter++; }
 		LOG_TIME("UpdateSubdividedByNeighbors");
@@ -122,30 +122,30 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 	}
 	else
 	{
-		VOXEL_SCOPE_COUNTER("ReuseOldNeighbors");
+		VOXEL_ASYNC_SCOPE_COUNTER("ReuseOldNeighbors");
 		NewOctree->ReuseOldNeighbors();
 	}
 	
 	{
-		VOXEL_SCOPE_COUNTER("UpdateSubdividedByOthers");
+		VOXEL_ASYNC_SCOPE_COUNTER("UpdateSubdividedByOthers");
 		NewOctree->UpdateSubdividedByOthers(OctreeSettings);
 		LOG_TIME("UpdateSubdividedByOthers");
 	}
 	
 	{
-		VOXEL_SCOPE_COUNTER("DeleteChunks");
+		VOXEL_ASYNC_SCOPE_COUNTER("DeleteChunks");
 		NewOctree->DeleteChunks(ChunkUpdates);
 		LOG_TIME("DeleteChunks");
 	}
 	
 	{
-		VOXEL_SCOPE_COUNTER("GetUpdates");
+		VOXEL_ASYNC_SCOPE_COUNTER("GetUpdates");
 		NewOctree->GetUpdates(NewOctree->UpdateIndex + 1, bChanged, OctreeSettings, ChunkUpdates);
 		LOG_TIME("GetUpdates");
 	}
 	
 	{
-		VOXEL_SCOPE_COUNTER("Sort By LODs");
+		VOXEL_ASYNC_SCOPE_COUNTER("Sort By LODs");
 		// Make sure that LOD 0 chunks are processed first
 		ChunkUpdates.Sort([](const auto& A, const auto& B) { return A.LOD < B.LOD; });
 		LOG_TIME("Sort By LODs");
@@ -153,7 +153,7 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 
 	if (OldOctree.IsValid())
 	{
-		VOXEL_SCOPE_COUNTER("Find previous chunks");
+		VOXEL_ASYNC_SCOPE_COUNTER("Find previous chunks");
 		for (auto& ChunkUpdate : ChunkUpdates)
 		{
 			if (ChunkUpdate.NewSettings.bVisible && !ChunkUpdate.OldSettings.bVisible)
@@ -165,7 +165,7 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 	LOG_TIME("Find previous chunks");
 	
 	{
-		VOXEL_SCOPE_COUNTER("Deleting old octree");
+		VOXEL_ASYNC_SCOPE_COUNTER("Deleting old octree");
 		OldOctree.Reset();
 		LOG_TIME("Deleting old octree");
 	}
@@ -479,8 +479,8 @@ void FVoxelRenderOctree::GetUpdates(
 		Settings.bEnableCollisions &&
 		((Height == 0 &&
 			IsInvokerInRange(Settings.Invokers,
-				[](const FVoxelInvoker& Invoker) { return Invoker.bUseForCollisions; },
-				[](const FVoxelInvoker& Invoker) { return Invoker.CollisionsBounds; })
+				[](const FVoxelInvokerSettings& Invoker) { return Invoker.bUseForCollisions; },
+				[](const FVoxelInvokerSettings& Invoker) { return Invoker.CollisionsBounds; })
 		 )
 		 ||
 		 (NewSettings.bVisible && Settings.bComputeVisibleChunksCollisions && Height <= Settings.VisibleChunksCollisionsMaxLOD)
@@ -490,19 +490,12 @@ void FVoxelRenderOctree::GetUpdates(
 		Settings.bEnableNavmesh &&
 		((Height == 0 &&
 			IsInvokerInRange(Settings.Invokers,
-				[](const FVoxelInvoker& Invoker) { return Invoker.bUseForNavmesh; },
-				[](const FVoxelInvoker& Invoker) { return Invoker.NavmeshBounds; })
+				[](const FVoxelInvokerSettings& Invoker) { return Invoker.bUseForNavmesh; },
+				[](const FVoxelInvokerSettings& Invoker) { return Invoker.NavmeshBounds; })
 		)
 		||
 		(NewSettings.bVisible && Settings.bComputeVisibleChunksNavmesh && Height <= Settings.VisibleChunksNavmeshMaxLOD)
 		);
-
-	NewSettings.bEnableTessellation = 
-		Settings.bEnableTessellation && 
-		NewSettings.bVisible && 
-		IsInvokerInRange(Settings.Invokers,
-			[](const FVoxelInvoker& Invoker) { return Invoker.bUseForTessellation; },
-			[&](const FVoxelInvoker& Invoker) { return Invoker.TessellationBounds; });
 
 	check(NewSettings.TransitionsMask == 0);
 	if (NewSettings.HasRenderChunk())
@@ -554,7 +547,7 @@ void FVoxelRenderOctree::GetUpdates(
 	ChunkSettings.Settings = NewSettings;
 }
 
-void FVoxelRenderOctree::GetChunksToUpdateForBounds(const FIntBox& Bounds, TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdate& OnChunkUpdate) const
+void FVoxelRenderOctree::GetChunksToUpdateForBounds(const FVoxelIntBox& Bounds, TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdate& OnChunkUpdate) const
 {
 	if (!OctreeBounds.Intersect(Bounds))
 	{
@@ -577,7 +570,7 @@ void FVoxelRenderOctree::GetChunksToUpdateForBounds(const FIntBox& Bounds, TArra
 }
 
 
-void FVoxelRenderOctree::GetVisibleChunksOverlappingBounds(const FIntBox& Bounds, TArray<uint64, TInlineAllocator<8>>& VisibleChunks) const
+void FVoxelRenderOctree::GetVisibleChunksOverlappingBounds(const FVoxelIntBox& Bounds, TArray<uint64, TInlineAllocator<8>>& VisibleChunks) const
 {
 	if (!OctreeBounds.Intersect(Bounds))
 	{
@@ -692,14 +685,14 @@ bool FVoxelRenderOctree::ShouldSubdivideByOthers(const FVoxelRenderOctreeSetting
 	}
 
 	if (Settings.bEnableCollisions && IsInvokerInRange(Settings.Invokers,
-		[](const FVoxelInvoker& Invoker) { return Invoker.bUseForCollisions; },
-		[](const FVoxelInvoker& Invoker) { return Invoker.CollisionsBounds; }))
+		[](const FVoxelInvokerSettings& Invoker) { return Invoker.bUseForCollisions; },
+		[](const FVoxelInvokerSettings& Invoker) { return Invoker.CollisionsBounds; }))
 	{
 		return true;
 	}
 	if (Settings.bEnableNavmesh && IsInvokerInRange(Settings.Invokers,
-		[](const FVoxelInvoker& Invoker) { return Invoker.bUseForNavmesh; },
-		[](const FVoxelInvoker& Invoker) { return Invoker.NavmeshBounds; }))
+		[](const FVoxelInvokerSettings& Invoker) { return Invoker.bUseForNavmesh; },
+		[](const FVoxelInvokerSettings& Invoker) { return Invoker.NavmeshBounds; }))
 	{
 		return true;
 	}
@@ -784,7 +777,7 @@ const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDire
 }
 
 template<typename T1, typename T2>
-bool FVoxelRenderOctree::IsInvokerInRange(const TArray<FVoxelInvoker>& Invokers, T1 SelectInvoker, T2 GetInvokerBounds) const
+bool FVoxelRenderOctree::IsInvokerInRange(const TArray<FVoxelInvokerSettings>& Invokers, T1 SelectInvoker, T2 GetInvokerBounds) const
 {
 	for (auto& Invoker : Invokers)
 	{

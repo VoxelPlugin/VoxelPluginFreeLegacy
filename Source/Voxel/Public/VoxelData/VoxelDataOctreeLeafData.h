@@ -6,7 +6,7 @@
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
 #include "VoxelFoliage.h"
-#include "VoxelMiscUtilities.h"
+#include "VoxelUtilities/VoxelMiscUtilities.h"
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Dirty Values Memory"), STAT_VoxelDataOctreeDirtyValuesMemory, STATGROUP_VoxelMemory, VOXEL_API);
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Dirty Materials Memory"), STAT_VoxelDataOctreeDirtyMaterialsMemory, STATGROUP_VoxelMemory, VOXEL_API);

@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "Details/VoxelSpawnerDensityCustomization.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
 
 #include "DetailWidgetRow.h"
@@ -78,6 +78,16 @@ void FVoxelSpawnerDensityCustomization::CustomizeChildren(TSharedRef<IPropertyHa
 	case EVoxelSpawnerDensityType::MaterialFiveWayBlend:
 	{
 		Group->AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerDensity, FiveWayBlendChannel));
+		break;
+	}
+	case EVoxelSpawnerDensityType::SingleIndex:
+	{
+		Group->AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerDensity, SingleIndexChannels));
+		break;
+	}
+	case EVoxelSpawnerDensityType::MultiIndex:
+	{
+		Group->AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerDensity, MultiIndexChannels));
 		break;
 	}
 	case EVoxelSpawnerDensityType::Foliage:

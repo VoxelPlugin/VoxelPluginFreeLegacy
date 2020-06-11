@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemActor.h"
 #include "VoxelDisableEditsBox.generated.h"
 
@@ -20,7 +20,7 @@ public:
 
 
 private:
-	FIntBox GetBox(AVoxelWorld* World) const;
+	FVoxelIntBox GetBox(AVoxelWorld* World) const;
 
 	UPROPERTY()
 	UBoxComponent* Box;

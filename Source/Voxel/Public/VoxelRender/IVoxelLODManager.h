@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelConfigEnums.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 class IVoxelRenderer;
 class IVoxelPool;
@@ -14,8 +14,8 @@ class AVoxelWorld;
 class FVoxelData;
 
 // Fired once per chunk
-DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdateFinished, FIntBox);
-DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdate, FIntBox);
+DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdateFinished, FVoxelIntBox);
+DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdate, FVoxelIntBox);
 
 struct FVoxelLODSettings
 {
@@ -24,7 +24,7 @@ struct FVoxelLODSettings
 
 	const float VoxelSize;
 	const int32 OctreeDepth;
-	const FIntBox WorldBounds;
+	const FVoxelIntBox WorldBounds;
 	const bool bConstantLOD;
 	const bool bStaticWorld;
 	const float MinDelayBetweenLODUpdates;
@@ -59,8 +59,8 @@ public:
 	//~ Begin IVoxelLODManager Interface
 	// Both specializations are used, and we don't want to allocate single element arrays or to do lots of virtual calls
 	// Returns the number of chunks to update = number of times FinishDelegate is going to be fired
-	virtual int32 UpdateBounds(const FIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate = FVoxelOnChunkUpdateFinished()) = 0;
-	virtual int32 UpdateBounds(const TArray<FIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate = FVoxelOnChunkUpdateFinished()) = 0;
+	virtual int32 UpdateBounds(const FVoxelIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate = FVoxelOnChunkUpdateFinished()) = 0;
+	virtual int32 UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate = FVoxelOnChunkUpdateFinished()) = 0;
 
 	virtual void ForceLODsUpdate() = 0;
 	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const = 0;
@@ -69,13 +69,13 @@ public:
 	//~ End IVoxelLODManager Interface
 	
 public:
-	inline int32 UpdateBounds(const FIntBox& Bounds, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate)
+	inline int32 UpdateBounds(const FVoxelIntBox& Bounds, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate)
 	{
 		FVoxelOnChunkUpdateFinished MulticastDelegate;
 		MulticastDelegate.Add(FinishDelegate);
 		return UpdateBounds(Bounds, MulticastDelegate);
 	}
-	inline int32 UpdateBounds(const TArray<FIntBox>& Bounds, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate)
+	inline int32 UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate)
 	{
 		FVoxelOnChunkUpdateFinished MulticastDelegate;
 		MulticastDelegate.Add(FinishDelegate);
@@ -88,7 +88,7 @@ public:
 		TVoxelSharedRef<int32> Count = MakeVoxelShared<int32>(0);
 		*Count = UpdateBounds(
 			Bounds,
-			FVoxelOnChunkUpdateFinished::FDelegate::CreateLambda([=](FIntBox ChunkBounds)
+			FVoxelOnChunkUpdateFinished::FDelegate::CreateLambda([=](FVoxelIntBox ChunkBounds)
 				{
 					(*Count)--;
 					ensure(*Count >= 0);

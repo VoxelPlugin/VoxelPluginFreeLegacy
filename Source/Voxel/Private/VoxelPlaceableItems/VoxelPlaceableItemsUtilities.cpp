@@ -4,7 +4,7 @@
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelWorld.h"
-#include "FastNoise.h"
+#include "VoxelFastNoise.h"
 #include "VoxelMessages.h"
 
 void UVoxelPlaceableItemsUtilities::AddWorms(

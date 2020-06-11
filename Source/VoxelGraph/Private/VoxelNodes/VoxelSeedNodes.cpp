@@ -2,7 +2,7 @@
 
 #include "VoxelNodes/VoxelSeedNodes.h"
 #include "VoxelNodes/VoxelNodeColors.h"
-#include "VoxelWorldGeneratorInit.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
 #include "VoxelGraphGlobals.h"
 
 UVoxelSeedNode::UVoxelSeedNode()

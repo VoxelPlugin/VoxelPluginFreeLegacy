@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "ActorFactories/ActorFactory.h"
 #include "VoxelImporters/VoxelMeshImporter.h"
 #include "ActorFactoryVoxelMeshImporter.generated.h"

@@ -9,13 +9,13 @@
 
 #include "Async/Async.h"
 #include "Misc/MessageDialog.h"
-#include "VoxelThreadingUtilities.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 FVoxelMesherAsyncWork::FVoxelMesherAsyncWork(
 	FVoxelDefaultRenderer& Renderer,
 	const uint64 ChunkId,
 	const int32 LOD,
-	const FIntBox& Bounds,
+	const FVoxelIntBox& Bounds,
 	const bool bIsTransitionTask,
 	const uint8 TransitionsMask)
 	: FVoxelAsyncWork(STATIC_FNAME("FVoxelMesherAsyncWork"), Renderer.Settings.PriorityDuration)
@@ -57,7 +57,7 @@ static void ShowWorldGeneratorError(TVoxelWeakPtr<const FVoxelData> Data)
 
 void FVoxelMesherAsyncWork::DoWork()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	auto PinnedRenderer = Renderer.Pin();
 	if (IsCanceled()) return;
@@ -72,15 +72,33 @@ void FVoxelMesherAsyncWork::DoWork()
 
 	CreationTime = FPlatformTime::Seconds();
 
-	const auto MesherChunk = Mesher->CreateFullChunk();
-	if (MesherChunk.IsValid())
+	if (PinnedRenderer->Settings.bRenderWorld)
 	{
-		Chunk = MesherChunk.ToSharedRef();
+		const auto MesherChunk = Mesher->CreateFullChunk();
+		if (MesherChunk.IsValid())
+		{
+			Chunk = MesherChunk.ToSharedRef();
+		}
+		else
+		{
+			AsyncTask(ENamedThreads::GameThread, [Data = MakeVoxelWeakPtr(PinnedRenderer->Settings.Data)]() { ShowWorldGeneratorError(Data); });
+			Chunk = Mesher->CreateEmptyChunk();
+		}
 	}
 	else
 	{
-		AsyncTask(ENamedThreads::GameThread, [Data = MakeVoxelWeakPtr(PinnedRenderer->Settings.Data)]() { ShowWorldGeneratorError(Data); });
+		// If we're not rendering the world, we only need the geometry for collisions/navmesh
+
+		TArray<uint32> Indices;
+		TArray<FVector> Vertices;
+		Mesher->CreateGeometry(Indices, Vertices);
+		
 		Chunk = MakeVoxelShared<FVoxelChunkMesh>();
+		Chunk->SetIsSingle(true);
+		FVoxelChunkMeshBuffers& Buffers = Chunk->CreateSingleBuffers();
+
+		Buffers.Indices = MoveTemp(Indices);
+		Buffers.Positions = MoveTemp(Vertices);
 	}
 	
 	FVoxelUtilities::DeleteOnGameThread_AnyThread(PinnedRenderer);
@@ -88,7 +106,7 @@ void FVoxelMesherAsyncWork::DoWork()
 
 void FVoxelMesherAsyncWork::PostDoWork()
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	auto RendererPtr = Renderer.Pin();
 	if (ensure(RendererPtr.IsValid()))
@@ -110,7 +128,7 @@ TUniquePtr<FVoxelMesherBase> FVoxelMesherAsyncWork::GetMesher(
 	bool bIsTransitionTask,
 	uint8 TransitionsMask)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	switch (Settings.RenderType)
 	{

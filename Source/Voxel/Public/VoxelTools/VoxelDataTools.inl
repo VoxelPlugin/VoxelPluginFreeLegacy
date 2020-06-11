@@ -5,10 +5,10 @@
 #include "CoreMinimal.h"
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
-#include "VoxelShaders/VoxelDistanceFieldShader.h"
+#include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
 
 template<typename T1, typename T2>
-void UVoxelDataTools::MergeDistanceFieldImpl(FVoxelData& Data, const FIntBox& Bounds, T1 GetSDF, T2 MergeSDF, float MaxDistance, bool bMultiThreaded)
+void UVoxelDataTools::MergeDistanceFieldImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, T1 GetSDF, T2 MergeSDF, float MaxDistance, bool bMultiThreaded)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 	
@@ -36,15 +36,7 @@ void UVoxelDataTools::MergeDistanceFieldImpl(FVoxelData& Data, const FIntBox& Bo
 		}, !bMultiThreaded);
 	}
 
-	{
-		VOXEL_SCOPE_COUNTER("Compute distance field");
-		auto DataPtr = MakeVoxelShared<TArray<FFloat16>>(MoveTemp(DistanceField));
-		DataPtr->SetNum(Size.X * Size.Y * Size.Z);
-		auto Helper = MakeVoxelShared<FVoxelDistanceFieldShaderHelper>();
-		Helper->StartCompute(Size, DataPtr, FMath::CeilToInt(MaxDistance), true);
-		Helper->WaitForCompletion();
-		DistanceField = MoveTemp(*DataPtr);
-	}
+	FVoxelDistanceFieldUtilities::ComputeDistanceField_GPU(Size, DistanceField, EVoxelDistanceFieldInputType::Densities, FMath::CeilToInt(MaxDistance));
 
 	{
 		VOXEL_SCOPE_COUNTER("Merge SDFs");

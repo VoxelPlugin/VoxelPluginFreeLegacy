@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelShaders/VoxelErosion.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelMessages.h"
 
 #include "Engine/Texture2D.h"

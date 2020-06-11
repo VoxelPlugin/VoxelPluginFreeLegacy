@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelWorldGeneratorHelpers.h"
-#include "VoxelWorldGeneratorInstance.inl"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
 #include "VoxelEmptyWorldGenerator.generated.h"
 
 class UVoxelEmptyWorldGenerator;
@@ -31,7 +31,7 @@ public:
 	{
 		return FVoxelMaterial::Default();
 	}
-	TVoxelRange<v_flt> GetValueRangeImpl(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<v_flt> GetValueRangeImpl(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return Value;
 	}
@@ -49,9 +49,9 @@ private:
 class FVoxelTransformableEmptyWorldGeneratorInstance : public TVoxelTransformableWorldGeneratorInstanceHelper<FVoxelTransformableEmptyWorldGeneratorInstance, UVoxelEmptyWorldGenerator>
 {
 public:
-	const FIntBox LocalBounds;
+	const FVoxelIntBox LocalBounds;
 	
-	explicit FVoxelTransformableEmptyWorldGeneratorInstance(FIntBox LocalBounds = FIntBox(-1, 2))
+	explicit FVoxelTransformableEmptyWorldGeneratorInstance(FVoxelIntBox LocalBounds = FVoxelIntBox(-1, 2))
 		: LocalBounds(LocalBounds)
 	{
 	}
@@ -84,7 +84,7 @@ public:
 		}
 	}
 	template<bool bCustomTransform>
-	TVoxelRange<v_flt> GetValueRangeImpl(const FTransform& LocalToWorld, const FIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<v_flt> GetValueRangeImpl(const FTransform& LocalToWorld, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		if (Items.IsEmpty() || WorldBounds.Intersect(LocalBounds.ApplyTransform(LocalToWorld)))
 		{
@@ -126,12 +126,12 @@ public:
 	}
 	void SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const override
 	{
-		FIntBox Bounds = static_cast<const FVoxelTransformableEmptyWorldGeneratorInstance&>(Instance).LocalBounds;
+		FVoxelIntBox Bounds = static_cast<const FVoxelTransformableEmptyWorldGeneratorInstance&>(Instance).LocalBounds;
 		Ar << Bounds;
 	}
 	TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> LoadInstance(FArchive& Ar) const override
 	{
-		FIntBox Bounds;
+		FVoxelIntBox Bounds;
 		Ar << Bounds;
 		return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>(Bounds);
 	}

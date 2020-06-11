@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 
 struct FVoxelRendererSettings;
 struct FVoxelChunkMesh;
@@ -63,7 +63,9 @@ struct FVoxelMesherTimes
 	uint64 Normals = 0;
 	uint64 UVs = 0;
 	uint64 CreateChunk = 0;
-
+	
+	uint64 FinishCreatingChunk = 0;
+	uint64 DistanceField = 0;
 };
 
 class FVoxelMesherBase
@@ -86,10 +88,12 @@ public:
 
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunk() = 0;
 	virtual void CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vertices) = 0;
+	
+	TVoxelSharedPtr<FVoxelChunkMesh> CreateEmptyChunk() const;
 
 protected:
-	virtual FIntBox GetBoundsToCheckIsEmptyOn() const = 0;
-	virtual FIntBox GetBoundsToLock() const = 0;
+	virtual FVoxelIntBox GetBoundsToCheckIsEmptyOn() const = 0;
+	virtual FVoxelIntBox GetBoundsToLock() const = 0;
 
 	void UnlockData();
 	
@@ -98,7 +102,6 @@ private:
 
 	void LockData();
 	bool IsEmpty() const;
-	TVoxelSharedPtr<FVoxelChunkMesh> CreateEmptyChunk() const;
 	void FinishCreatingChunk(FVoxelChunkMesh& Chunk) const;
 
 	friend class FVoxelMesher;

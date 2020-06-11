@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemActor.h"
 #include "VoxelTools/VoxelAssetTools.h"
 #include "Components/PrimitiveComponent.h"
@@ -57,7 +57,7 @@ public:
 	bool bOverrideAssetBounds = false;	
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Asset Actor Settings", meta = (EditCondition = "bOverrideAssetBounds"))
-	FIntBox AssetBounds = FIntBox(-25, 25);
+	FVoxelIntBox AssetBounds = FVoxelIntBox(-25, 25);
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Asset Actor Settings")
 	bool bImportAsReference = true;
@@ -80,6 +80,11 @@ public:
 	// If true, the voxel asset actor position will be rounded to the nearest voxel position when moved
 	UPROPERTY(EditAnywhere, Category = "Preview Settings")
 	bool bRoundAssetPosition = false;
+
+	// Increase this if you want a higher quality preview
+	// Be careful: might freeze Unreal if too high!
+	UPROPERTY(EditAnywhere, Category = "Preview Settings", AdvancedDisplay)
+	uint32 MaxPreviewChunks = 1024;
 #endif
 
 public:
@@ -87,7 +92,7 @@ public:
 
 	
 	// If VoxelWorldData is null, will only return the bounds
-	FIntBox AddItemToData(
+	FVoxelIntBox AddItemToData(
 		AVoxelWorld* VoxelWorld, 
 		FVoxelData* VoxelWorldData) const;
 	

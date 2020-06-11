@@ -4,7 +4,7 @@
 #include "VoxelThreadPool.h"
 #include "VoxelQueuedWork.h"
 #include "Misc/QueuedThreadPool.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 FVoxelDefaultPool::FVoxelDefaultPool(
 	int32 ThreadCount,
@@ -74,32 +74,32 @@ void FVoxelDefaultPool::FixPriorityCategories(TMap<EVoxelTaskType, int32>& Prior
 	{
 		It.Value = FMath::Max(0, It.Value);
 	}
-#define FIX(Name, DefaultValue) if (!PriorityCategories.Contains(EVoxelTaskType::Name)) PriorityCategories.Add(EVoxelTaskType::Name, DefaultValue);
-	FIX(ChunksMeshing, 0);
-	FIX(CollisionsChunksMeshing, 1);
-	FIX(VisibleChunksMeshing, 10);
-	FIX(VisibleCollisionsChunksMeshing, 100);
-	FIX(CollisionCooking, 100);
-	FIX(FoliageBuild, 100);
-	FIX(HISMBuild, 1000);
-	FIX(AsyncEditFunctions, 50);
-	FIX(MeshMerge, 100000);
-	FIX(RenderOctree, 1000000);
+#define FIX(Name) if (!PriorityCategories.Contains(EVoxelTaskType::Name)) PriorityCategories.Add(EVoxelTaskType::Name, EVoxelTaskType_DefaultPriorityCategories::Name);
+	FIX(ChunksMeshing);
+	FIX(CollisionsChunksMeshing);
+	FIX(VisibleChunksMeshing);
+	FIX(VisibleCollisionsChunksMeshing);
+	FIX(CollisionCooking);
+	FIX(FoliageBuild);
+	FIX(HISMBuild);
+	FIX(AsyncEditFunctions);
+	FIX(MeshMerge);
+	FIX(RenderOctree);
 #undef FIX
 }
 
 void FVoxelDefaultPool::FixPriorityOffsets(TMap<EVoxelTaskType, int32>& PriorityOffsets)
 {
-#define FIX(Name, DefaultValue) if (!PriorityOffsets.Contains(EVoxelTaskType::Name)) PriorityOffsets.Add(EVoxelTaskType::Name, DefaultValue);
-	FIX(ChunksMeshing, 0);
-	FIX(VisibleChunksMeshing, 0);
-	FIX(CollisionsChunksMeshing, 0);
-	FIX(VisibleCollisionsChunksMeshing, 0);
-	FIX(CollisionCooking, 32);
-	FIX(FoliageBuild, -32);
-	FIX(HISMBuild, 0);
-	FIX(AsyncEditFunctions, 0);
-	FIX(RenderOctree, 0);
-	FIX(MeshMerge, 0);
+#define FIX(Name) if (!PriorityOffsets.Contains(EVoxelTaskType::Name)) PriorityOffsets.Add(EVoxelTaskType::Name, EVoxelTaskType_DefaultPriorityOffsets::Name);
+	FIX(ChunksMeshing);
+	FIX(VisibleChunksMeshing);
+	FIX(CollisionsChunksMeshing);
+	FIX(VisibleCollisionsChunksMeshing);
+	FIX(CollisionCooking);
+	FIX(FoliageBuild);
+	FIX(HISMBuild);
+	FIX(AsyncEditFunctions);
+	FIX(RenderOctree);
+	FIX(MeshMerge);
 #undef FIX
 }

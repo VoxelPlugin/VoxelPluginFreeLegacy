@@ -2,15 +2,15 @@
 
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
-#include "VoxelWorldGeneratorHelpers.h"
-#include "VoxelWorldGeneratorInstance.inl"
-#include "VoxelData/VoxelTransformableWorldGeneratorHelper.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
+#include "VoxelWorldGenerators/VoxelTransformableWorldGeneratorHelper.h"
 #include "VoxelCustomVersion.h"
 #include "VoxelMessages.h"
-#include "VoxelSerializationUtilities.h"
+#include "VoxelFeedbackContext.h"
+#include "VoxelUtilities/VoxelSerializationUtilities.h"
 
 #include "Engine/Texture2D.h"
-#include "Misc/ScopedSlowTask.h"
 #include "Serialization/BufferArchive.h"
 #include "Serialization/MemoryReader.h"
 
@@ -60,7 +60,7 @@ public:
 		}
 	}
 	
-	TVoxelRange<v_flt> GetValueRangeImpl(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<v_flt> GetValueRangeImpl(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		if (Bounds.Intersect(GetLocalBounds()))
 		{
@@ -84,9 +84,9 @@ public:
 	}
 
 private:
-	FORCEINLINE FIntBox GetLocalBounds() const
+	FORCEINLINE FVoxelIntBox GetLocalBounds() const
 	{
-		return FIntBox(PositionOffset, PositionOffset + Data->GetSize());
+		return FVoxelIntBox(PositionOffset, PositionOffset + Data->GetSize());
 	}
 };
 
@@ -109,6 +109,8 @@ void FVoxelDataAssetData::SetSize(const FIntVector& NewSize, bool bCreateMateria
 
 void FVoxelDataAssetData::Serialize(FArchive& Ar, uint32 ValueConfigFlag, uint32 MaterialConfigFlag, int32 VoxelCustomVersion)
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	FVoxelScopedSlowTask Serializing(2.f);
 	
 	Ar.UsingCustomVersion(FVoxelCustomVersion::GUID);
@@ -219,6 +221,8 @@ TVoxelSharedRef<FVoxelDataAssetInstance> UVoxelDataAsset::GetInstanceImpl()
 
 void UVoxelDataAsset::Save()
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	FVoxelScopedSlowTask Saving(2.f);
 
 	Modify();
@@ -241,6 +245,8 @@ void UVoxelDataAsset::Save()
 
 void UVoxelDataAsset::Load()
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	if (CompressedData.Num() == 0)
 	{
 		// Nothing to load
@@ -293,6 +299,8 @@ void UVoxelDataAsset::SyncProperties()
 
 void UVoxelDataAsset::Serialize(FArchive& Ar)
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	Super::Serialize(Ar);
 
 	if ((Ar.IsLoading() || Ar.IsSaving()) && !Ar.IsTransacting())

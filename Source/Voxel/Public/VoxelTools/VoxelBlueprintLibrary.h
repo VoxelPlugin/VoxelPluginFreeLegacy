@@ -6,12 +6,13 @@
 #include "Templates/SubclassOf.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelPaintMaterial.h"
 #include "VoxelTexture.h"
 #include "VoxelSpawners/VoxelInstancedMeshSettings.h"
 #include "VoxelSpawners/VoxelSpawner.h"
 #include "VoxelRender/VoxelToolRendering.h"
+#include "VoxelUtilities/VoxelMaterialUtilities.h"
 
 #include "VoxelBlueprintLibrary.generated.h"
 
@@ -23,8 +24,8 @@ class APlayerState;
 class AController;
 class UStaticMesh;
 
-DECLARE_DYNAMIC_DELEGATE_TwoParams(FVoxelOnChunkGenerationDynamicDelegate, AVoxelWorld*, World, FIntBox, Bounds);
-DECLARE_DYNAMIC_DELEGATE_OneParam(FChunkDynamicDelegate, FIntBox, Bounds);
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FVoxelOnChunkGenerationDynamicDelegate, AVoxelWorld*, World, FVoxelIntBox, Bounds);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FChunkDynamicDelegate, FVoxelIntBox, Bounds);
 
 USTRUCT(BlueprintType)
 struct FVoxelToolRenderingRef
@@ -96,6 +97,53 @@ public:
 	// Should give a rough estimate of how much memory is used for physics
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Memory", meta = (DefaultToSelf = "World"))
 	static float GetEstimatedCollisionsMemoryUsageInMB(AVoxelWorld* World);
+
+public:
+	/**
+	 * Transform a box in global space to voxel space
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (DefaultToSelf = "World"))
+	static FVoxelIntBox TransformGlobalBoxToVoxelBox(AVoxelWorld* World, FBox Box);
+	
+	/**
+	 * Transform a box in voxel space to global space
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (DefaultToSelf = "World"))
+	static FBox TransformVoxelBoxToGlobalBox(AVoxelWorld* World, FVoxelIntBox Box);
+
+public:
+	/**
+	 * Iterate all voxel worlds in the scene, and return the first one that contains Position
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (WorldContext = "WorldContextObject"))
+	static AVoxelWorld* GetVoxelWorldContainingPosition(UObject* WorldContextObject, FVector Position);	
+	/**
+	 * Iterate all voxel worlds in the scene, and return all the ones that contains Position
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (WorldContext = "WorldContextObject"))
+	static TArray<AVoxelWorld*> GetAllVoxelWorldsContainingPosition(UObject* WorldContextObject, FVector Position);
+	
+	/**
+	 * Iterate all voxel worlds in the scene, and return the first one that overlaps Box
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (WorldContext = "WorldContextObject"))
+	static AVoxelWorld* GetVoxelWorldOverlappingBox(UObject* WorldContextObject, FBox Box);	
+	/**
+	 * Iterate all voxel worlds in the scene, and return all the ones that overlaps Box
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (WorldContext = "WorldContextObject"))
+	static TArray<AVoxelWorld*> GetAllVoxelWorldsOverlappingBox(UObject* WorldContextObject, FBox Box);
+	
+	/**
+	 * Iterate all voxel worlds in the scene, and return the first one that overlaps the actor bounding box
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (DefaultToSelf = "Actor"))
+	static AVoxelWorld* GetVoxelWorldOverlappingActor(AActor* Actor);	
+	/**
+	 * Iterate all voxel worlds in the scene, and return all the ones that overlaps the actor bounding box
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (DefaultToSelf = "Actor"))
+	static TArray<AVoxelWorld*> GetAllVoxelWorldsOverlappingActor(AActor* Actor);
 	
 public:
 	/**
@@ -108,7 +156,7 @@ public:
 	static void SpawnVoxelSpawnerActorsInArea(
 		TArray<AVoxelSpawnerActor*>& OutActors, 
 		AVoxelWorld* World,
-		FIntBox Bounds,
+		FVoxelIntBox Bounds,
 		EVoxelSpawnerActorSpawnType SpawnType = EVoxelSpawnerActorSpawnType::OnlyFloating);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
@@ -142,11 +190,11 @@ public:
 
 	// Regenerate spawners in an aera
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
-	static void RegenerateSpawners(AVoxelWorld* World, FIntBox Bounds);
+	static void RegenerateSpawners(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	// Mark spawners as dirty so that they don't get trash if they go out of scope
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
-	static void MarkSpawnersDirty(AVoxelWorld* World, FIntBox Bounds);
+	static void MarkSpawnersDirty(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
 	static FVoxelSpawnersSave GetSpawnersSave(AVoxelWorld* World);
@@ -163,12 +211,12 @@ public:
 	// Undo last frame. bEnableUndoRedo must be true, and SaveFrame must have been called after any edits
 	// @return Success
 	UFUNCTION(BlueprintCallable, Category = "Voxel|UndoRedo", meta = (DefaultToSelf = "World"))
-	static bool Undo(AVoxelWorld* World, TArray<FIntBox>& OutUpdatedBounds);
+	static bool Undo(AVoxelWorld* World, TArray<FVoxelIntBox>& OutUpdatedBounds);
 	static bool Undo(AVoxelWorld* World);
 	// Redo last undone frame. bEnableUndoRedo must be true, and SaveFrame must have been called after any edits
 	// @return Success
 	UFUNCTION(BlueprintCallable, Category = "Voxel|UndoRedo", meta = (DefaultToSelf = "World"))
-	static bool Redo(AVoxelWorld* World, TArray<FIntBox>& OutUpdatedBounds);
+	static bool Redo(AVoxelWorld* World, TArray<FVoxelIntBox>& OutUpdatedBounds);
 	static bool Redo(AVoxelWorld* World);
 	// Save the edits since the last call to SaveFrame/Undo/Redo and clear the redo stack. bEnableUndoRedo must be true
 	UFUNCTION(BlueprintCallable, Category = "Voxel|UndoRedo", meta = (DefaultToSelf = "World"))
@@ -194,7 +242,7 @@ public:
 
 	// Bounds of this world
 	UFUNCTION(BlueprintPure, Category = "Voxel|Data", meta = (DefaultToSelf = "World"))
-	static FIntBox GetBounds(AVoxelWorld* World);
+	static FVoxelIntBox GetBounds(AVoxelWorld* World);
 
 	// TODO: delegate to chunk creation to setup material
 	// Will cleanup the code there as well, as no need to manually call world gen thingy
@@ -232,7 +280,7 @@ public:
 	static void UpdatePosition(AVoxelWorld* World, FIntVector Position);
 	// Update the chunks overlapping Bounds. 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
-	static void UpdateBounds(AVoxelWorld* World, FIntBox Bounds);
+	static void UpdateBounds(AVoxelWorld* World, FVoxelIntBox Bounds);
 	// Update all the chunks
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
 	static void UpdateAll(AVoxelWorld* World);
@@ -331,28 +379,49 @@ public:
 public:
 	/**
 	 * Create the global voxel thread pool. Must not be already created.
+	 * CreateWorldVoxelThreadPool is preferred, as pools will be per level
 	 * @param	NumberOfThreads		At least 1
 	 * @param	bConstantPriorities	If true won't recompute the tasks priorities once added. Useful if you have many tasks, but will give bad task scheduling when moving fast
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads", meta = (WorldContext = "WorldContextObject", AdvancedDisplay = "PriorityCategoriesOverrides, PriorityOffsetsOverrides"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads", meta = (AdvancedDisplay = "PriorityCategoriesOverrides, PriorityOffsetsOverrides"))
 	static void CreateGlobalVoxelThreadPool(
-		UObject* WorldContextObject,
 		const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
 		const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides,
 		int32 NumberOfThreads = 2,
 		bool bConstantPriorities = false);
 
 	// Destroy the global voxel thread pool
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads", meta = (WorldContext = "WorldContextObject"))
-	static void DestroyGlobalVoxelThreadPool(UObject* WorldContextObject);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads")
+	static void DestroyGlobalVoxelThreadPool();
 
 	// Is the global voxel thread pool created?
-	UFUNCTION(BlueprintPure, Category = "Voxel|Threads", meta = (WorldContext = "WorldContextObject"))
-	static bool IsGlobalVoxelPoolCreated(UObject* WorldContextObject);
+	UFUNCTION(BlueprintPure, Category = "Voxel|Threads")
+	static bool IsGlobalVoxelPoolCreated();
+	
+	/**
+	 * Create the voxel thread pool for a specific world. Must not be already created.
+	 * @param	NumberOfThreads		At least 1
+	 * @param	bConstantPriorities	If true won't recompute the tasks priorities once added. Useful if you have many tasks, but will give bad task scheduling when moving fast
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads", meta = (AdvancedDisplay = "PriorityCategoriesOverrides, PriorityOffsetsOverrides"))
+	static void CreateWorldVoxelThreadPool(
+		UWorld* World,
+		const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
+		const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides,
+		int32 NumberOfThreads = 2,
+		bool bConstantPriorities = false);
+
+	// Destroy the world voxel thread pool
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads")
+	static void DestroyWorldVoxelThreadPool(UWorld* World);
+
+	// Is the global voxel thread pool created?
+	UFUNCTION(BlueprintPure, Category = "Voxel|Threads")
+	static bool IsWorldVoxelPoolCreated(UWorld* World);
 
 public:
 	/**
-	 * FIntBox helpers
+	 * FVoxelIntBox helpers
 	 */
 	
 public:
@@ -361,11 +430,11 @@ public:
 	 * @param	Radius	in cm
 	 */
 	UFUNCTION(BlueprintPure, Category = "Voxel|Utilities", meta = (DefaultToSelf = "World"))
-	static FIntBox MakeIntBoxFromGlobalPositionAndRadius(AVoxelWorld* World, FVector GlobalPosition, float Radius);
+	static FVoxelIntBox MakeIntBoxFromGlobalPositionAndRadius(AVoxelWorld* World, FVector GlobalPosition, float Radius);
 
 	// eg if you want to cache all the data that's going to be used by render chunks when updating the world
 	UFUNCTION(BlueprintPure, Category = "Voxel|Utilities", meta = (DefaultToSelf = "World"))
-	static FIntBox GetRenderBoundsOverlappingDataBounds(AVoxelWorld* World, FIntBox DataBounds, int32 LOD = 0);
+	static FVoxelIntBox GetRenderBoundsOverlappingDataBounds(AVoxelWorld* World, FVoxelIntBox DataBounds, int32 LOD = 0);
 
 public:
 	/**
@@ -429,65 +498,68 @@ public:
 public:
 	 // Create from color
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials", DisplayName = "Create RGB Paint Material")
-	static FVoxelPaintMaterial CreateRGBPaintMaterial(
-		FLinearColor Color, 
-		bool bPaintR = true, 
-		bool bPaintG = true, 
-		bool bPaintB = true, 
-		bool bPaintA = true)
+	static FVoxelPaintMaterial CreateColorPaintMaterial(FVoxelPaintMaterialColor Color)
 	{
-		return FVoxelPaintMaterial::CreateRGB(Color, bPaintR, bPaintG, bPaintB, bPaintA);
+		FVoxelPaintMaterial PaintMaterial;
+		PaintMaterial.Type = EVoxelPaintMaterialType::Color;
+		PaintMaterial.Color = Color;
+		return PaintMaterial;
 	}
 	
 	/**
 	 * Create paint material for 5 way blend
-	 * @param	Channel		Between 0 and 4. 1,2,3,4 => R,G,B,A. 0 => material displayed by default
 	 */
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials", DisplayName = "Create RGB Paint Material")
-	static FVoxelPaintMaterial CreateFiveWayBlendPaintMaterial(
-		int32 Channel,
-		float TargetValue = 1.f,
-		bool bPaintR = true,
-		bool bPaintG = true,
-		bool bPaintB = true,
-		bool bPaintA = true);
-
-	// Create from index
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelPaintMaterial CreateSingleIndexPaintMaterial(uint8 Index)
+	static FVoxelPaintMaterial CreateFiveWayBlendPaintMaterial(FVoxelPaintMaterialFiveWayBlend FiveWayBlend);
+
+	// Create for single index
+	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
+	static FVoxelPaintMaterial CreateSingleIndexPaintMaterial(FVoxelPaintMaterialSingleIndex SingleIndex)
 	{
-		return FVoxelPaintMaterial::CreateSingleIndex(Index);
+		FVoxelPaintMaterial PaintMaterial;
+		PaintMaterial.Type = EVoxelPaintMaterialType::SingleIndex;
+		PaintMaterial.SingleIndex = SingleIndex;
+		return PaintMaterial;
 	}
 
-	// Create from double index
+	// Create for multi index
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelPaintMaterial CreateDoubleIndexSetPaintMaterial(
-		uint8 IndexA, 
-		uint8 IndexB, 
-		float Blend, 
-		bool bSetIndexA = true,
-		bool bSetIndexB = true, 
-		bool bSetBlend = true)
+	static FVoxelPaintMaterial CreateMultiIndexPaintMaterial(FVoxelPaintMaterialMultiIndex MultiIndex)
 	{
-		return FVoxelPaintMaterial::CreateDoubleIndexSet(IndexA, IndexB, Blend, bSetIndexA, bSetIndexB, bSetBlend);
+		FVoxelPaintMaterial PaintMaterial;
+		PaintMaterial.Type = EVoxelPaintMaterialType::MultiIndex;
+		PaintMaterial.MultiIndex = MultiIndex;
+		return PaintMaterial;
 	}
 
-	// Create from double index
+	// Create for multi index wetness
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelPaintMaterial CreateDoubleIndexBlendPaintMaterial(uint8 Index)
+	static FVoxelPaintMaterial CreateMultiIndexWetnessPaintMaterial(FVoxelPaintMaterialMultiIndexWetness MultiIndexWetness)
 	{
-		return FVoxelPaintMaterial::CreateDoubleIndexBlend(Index);
+		FVoxelPaintMaterial PaintMaterial;
+		PaintMaterial.Type = EVoxelPaintMaterialType::MultiIndexWetness;
+		PaintMaterial.MultiIndexWetness = MultiIndexWetness;
+		return PaintMaterial;
+	}
+
+	// Create for multi index, setting the data directly
+	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
+	static FVoxelPaintMaterial CreateMultiIndexRawPaintMaterial(FVoxelPaintMaterialMultiIndexRaw MultiIndexRaw)
+	{
+		FVoxelPaintMaterial PaintMaterial;
+		PaintMaterial.Type = EVoxelPaintMaterialType::MultiIndexRaw;
+		PaintMaterial.MultiIndexRaw = MultiIndexRaw;
+		return PaintMaterial;
 	}
 
 	// Create UV paint
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials", DisplayName = "Create UV Paint Material")
-	static FVoxelPaintMaterial CreateUVPaintMaterial(
-		uint8 Channel, 
-		FVector2D UV, 
-		bool bPaintU = true, 
-		bool bPaintV = true)
+	static FVoxelPaintMaterial CreateUVPaintMaterial(FVoxelPaintMaterialUV UV)
 	{
-		return FVoxelPaintMaterial::CreateUV(Channel, UV, bPaintU, bPaintV);
+		FVoxelPaintMaterial PaintMaterial;
+		PaintMaterial.Type = EVoxelPaintMaterialType::UV;
+		PaintMaterial.UV = UV;
+		return PaintMaterial;
 	}
 
 	// Apply a Paint Material to a Voxel Material
@@ -510,76 +582,192 @@ public:
 		return Material.GetLinearColor();
 	}
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelMaterial CreateMaterialFromColor(FLinearColor Color)
+	static uint8 GetSingleIndex(FVoxelMaterial Material)
 	{
-		return FVoxelMaterial::CreateFromColor(Color);
+		return Material.GetSingleIndex();
+	}
+	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
+	static void GetMultiIndex(FVoxelMaterial Material,
+		float& Strength0, uint8& Index0,
+		float& Strength1, uint8& Index1,
+		float& Strength2, uint8& Index2,
+		float& Strength3, uint8& Index3,
+		float& Wetness)
+	{
+		const TVoxelStaticArray<float, 4> Strengths = FVoxelUtilities::GetMultiIndexStrengths(Material);
+
+		Strength0 = Strengths[0];
+		Strength1 = Strengths[1];
+		Strength2 = Strengths[2];
+		Strength3 = Strengths[3];
+
+		Index0 = Material.GetMultiIndex_Index0();
+		Index1 = Material.GetMultiIndex_Index1();
+		Index2 = Material.GetMultiIndex_Index2();
+		Index3 = Material.GetMultiIndex_Index3();
+
+		Wetness = Material.GetMultiIndex_Wetness_AsFloat();
+	}
+	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
+	static FVector2D GetUV(FVoxelMaterial Material, int32 Channel)
+	{
+		return Material.GetUV_AsFloat(Channel);
 	}
 
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static void GetSingleIndex(FVoxelMaterial Material, uint8& Index, float& DataA, float& DataB, float& DataC)
+	static void GetRawMaterial(
+		FVoxelMaterial Material,
+		uint8& R, uint8& G, uint8& B, uint8& A,
+		uint8& U0, uint8& V0,
+		uint8& U1, uint8& V1,
+		uint8& U2, uint8& V2,
+		uint8& U3, uint8& V3)
 	{
-		Index = Material.GetSingleIndex_Index();
-		DataA = Material.GetSingleIndex_DataA_AsFloat();
-		DataB = Material.GetSingleIndex_DataB_AsFloat();
-		DataC = Material.GetSingleIndex_DataC_AsFloat();
+		R = Material.Impl_GetR();
+		G = Material.Impl_GetG();
+		B = Material.Impl_GetB();
+		A = Material.Impl_GetA();
+		U0 = Material.Impl_GetU0();
+		V0 = Material.Impl_GetV0();
+		U1 = Material.Impl_GetU1();
+		V1 = Material.Impl_GetV1();
+		U2 = Material.Impl_GetU2();
+		V2 = Material.Impl_GetV2();
+		U3 = Material.Impl_GetU3();
+		V3 = Material.Impl_GetV3();
 	}
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelMaterial CreateMaterialFromSingleIndex(uint8 Index, float DataA, float DataB, float DataC)
+	static FVoxelMaterial MakeRawMaterial(
+		uint8 R, uint8 G, uint8 B, uint8 A,
+		uint8 U0, uint8 V0,
+		uint8 U1, uint8 V1,
+		uint8 U2, uint8 V2,
+		uint8 U3, uint8 V3)
 	{
-		return FVoxelMaterial::CreateFromSingleIndex(Index, DataA, DataB, DataC);
-	}
-
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static void GetDoubleIndex(FVoxelMaterial Material, uint8& IndexA, uint8& IndexB, float& Blend, float& Data)
-	{
-		IndexA = Material.GetDoubleIndex_IndexA();
-		IndexB = Material.GetDoubleIndex_IndexB();
-		Blend = Material.GetDoubleIndex_Blend_AsFloat();
-		Data = Material.GetDoubleIndex_Data_AsFloat();
-	}
-	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static FVoxelMaterial CreateMaterialFromDoubleIndex(uint8 IndexA, uint8 IndexB, float Blend, float Data)
-	{
-		return FVoxelMaterial::CreateFromDoubleIndex(IndexA, IndexB, Blend, Data);
+		FVoxelMaterial Material{ ForceInit };
+		Material.Impl_SetR(R);
+		Material.Impl_SetG(G);
+		Material.Impl_SetB(B);
+		Material.Impl_SetA(A);
+		Material.Impl_SetU0(U0);
+		Material.Impl_SetV0(V0);
+		Material.Impl_SetU1(U1);
+		Material.Impl_SetV1(V1);
+		Material.Impl_SetU2(U2);
+		Material.Impl_SetV2(V2);
+		Material.Impl_SetU3(U3);
+		Material.Impl_SetV3(V3);
+		return Material;
 	}
 
 public:
 	/**
-	 * FVoxelFloatTexture helpers
+	 * FVoxelTexture helpers
 	 */
 	
 public:
-	// Will create Texture if null, and set it
-	// Returns Texture for convenience
+	/**
+	 * Will create Texture if null, and set it
+	 * Returns Texture for convenience
+	 *
+	 * Texture will have the following config:
+	 * Pixel format: PF_R32_FLOAT
+	 * Compression settings: TC_HDR
+	 * SRGB: false
+	 * Filter: TF_Bilinear
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
-	static UTexture2D* CreateOrUpdateTextureFromVoxelTexture(FVoxelFloatTexture VoxelTexture, UPARAM(ref) UTexture2D*& Texture)
+	static UTexture2D* CreateOrUpdateTextureFromVoxelFloatTexture(FVoxelFloatTexture VoxelTexture, UPARAM(ref) UTexture2D*& Texture)
 	{
 		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
 		return Texture;
 	}
-	
+	/**
+	 * Same as CreateOrUpdateTextureFromVoxelFloatTexture with nullptr in input
+	 *
+	 * Texture will have the following config:
+	 * Pixel format: PF_R32_FLOAT
+	 * Compression settings: TC_HDR
+	 * SRGB: false
+	 * Filter: TF_Bilinear
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
-	static UTexture2D* CreateTextureFromVoxelTexture(FVoxelFloatTexture VoxelTexture)
+	static UTexture2D* CreateTextureFromVoxelFloatTexture(FVoxelFloatTexture VoxelTexture)
 	{
 		UTexture2D* Texture = nullptr;
 		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
 		return Texture;
 	}
-	
+	/**
+	 * Creates a voxel float texture from the color channel of a texture
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
-	static FVoxelFloatTexture CreateVoxelTextureFromTextureChannel(UTexture2D* Texture, EVoxelRGBA Channel)
+	static FVoxelFloatTexture CreateVoxelFloatTextureFromTextureChannel(UTexture2D* Texture, EVoxelRGBA Channel)
 	{
 		return { FVoxelTextureUtilities::CreateFromTexture_Float(Texture, Channel) };
 	}
 	
+public:
+	/**
+	 * Will create Texture if null, and set it
+	 * Returns Texture for convenience
+	 *
+	 * Texture will have the following config:
+	 * Pixel format: PF_B8G8R8A8
+	 * Compression settings: TC_VectorDisplacementmap
+	 * SRGB: false
+	 * Filter: TF_Bilinear
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
+	static UTexture2D* CreateOrUpdateTextureFromVoxelColorTexture(FVoxelColorTexture VoxelTexture, UPARAM(ref) UTexture2D*& Texture)
+	{
+		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
+		return Texture;
+	}
+	/**
+	 * Same as CreateOrUpdateTextureFromVoxelFloatTexture with nullptr in input
+	 *
+	 * Texture will have the following config:
+	 * Pixel format: PF_B8G8R8A8
+	 * Compression settings: TC_VectorDisplacementmap
+	 * SRGB: false
+	 * Filter: TF_Bilinear
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
+	static UTexture2D* CreateTextureFromVoxelColorTexture(FVoxelColorTexture VoxelTexture)
+	{
+		UTexture2D* Texture = nullptr;
+		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
+		return Texture;
+	}
+	/**
+	 * Creates a voxel color texture by putting a float texture into a specific channel
+	 * @param bNormalize	If true, the float texture min value will be mapped to 0, and max value to 1
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
+	static FVoxelColorTexture CreateVoxelColorTextureFromVoxelFloatTexture(FVoxelFloatTexture Texture, EVoxelRGBA Channel, bool bNormalize = true)
+	{
+		return { FVoxelTextureUtilities::CreateColorTextureFromFloatTexture(Texture.Texture, Channel, bNormalize) };
+	}
+
+public:
 	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Texture")
-	static FIntPoint GetVoxelTextureSize(FVoxelFloatTexture Texture)
+	static FIntPoint GetVoxelFloatTextureSize(FVoxelFloatTexture Texture)
 	{
 		return { Texture.Texture.GetSizeX(), Texture.Texture.GetSizeY() };
 	}
-	
 	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Texture")
-	static bool IsVoxelTextureValid(FVoxelFloatTexture Texture)
+	static FIntPoint GetVoxelColorTextureSize(FVoxelColorTexture Texture)
+	{
+		return { Texture.Texture.GetSizeX(), Texture.Texture.GetSizeY() };
+	}
+	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Texture")
+	static bool IsVoxelFloatTextureValid(FVoxelFloatTexture Texture)
+	{
+		return FMath::Max(Texture.Texture.GetSizeX(), Texture.Texture.GetSizeY()) > 1;
+	}
+	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Texture")
+	static bool IsVoxelColorTextureValid(FVoxelFloatTexture Texture)
 	{
 		return FMath::Max(Texture.Texture.GetSizeX(), Texture.Texture.GetSizeY()) > 1;
 	}

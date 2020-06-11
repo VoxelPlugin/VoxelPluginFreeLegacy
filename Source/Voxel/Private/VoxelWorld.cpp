@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelWorld.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "IVoxelPool.h"
 #include "VoxelSettings.h"
 #include "VoxelDefaultPool.h"
@@ -12,6 +12,7 @@
 #include "VoxelRender/LODManager/VoxelDefaultLODManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
+#include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelSaveUtilities.h"
@@ -27,7 +28,8 @@
 #include "VoxelDebug/VoxelLineBatchComponent.h"
 #include "VoxelEvents/VoxelEventManager.h"
 #include "VoxelMessages.h"
-#include "VoxelThreadingUtilities.h"
+#include "VoxelFeedbackContext.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 #include "EngineUtils.h"
 #include "Engine/World.h"
@@ -37,14 +39,13 @@
 
 #include "Misc/MessageDialog.h"
 #include "Misc/FileHelper.h"
-#include "Misc/UObjectToken.h"
-#include "Misc/ScopedSlowTask.h"
 #include "Misc/FeedbackContext.h"
 #include "Components/BillboardComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "HAL/PlatformFilemanager.h"
 #include "TimerManager.h"
+#include "Materials/Material.h"
 
 #include "Framework/Notifications/NotificationManager.h"
 #include "Framework/Application/SlateApplication.h"
@@ -84,6 +85,109 @@ AVoxelWorld::AVoxelWorld()
 		SpriteComponent->SetupAttachment(RootComponent);
 		SpriteComponent->bReceivesDecals = false;
 	}
+
+	// Automatically refresh material on property change/material recompile
+	const auto RefreshMaterial = [=](UMaterialInterface* Material)
+	{
+		if (!Material || !bAutomaticallyRefreshMaterials || !IsCreated())
+		{
+			return;
+		}
+
+		bool bUsed = false;
+		if (MaterialConfig == EVoxelMaterialConfig::RGB)
+		{
+			if (VoxelMaterial == Material)
+			{
+				bUsed = true;
+			}
+			else
+			{
+				for (auto& LODMaterial : LODMaterials)
+				{
+					if (LODMaterial.Material == Material)
+					{
+						bUsed = true;
+						break;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (MaterialCollection && 
+				MaterialCollection->GetMaterialIndex(Material->GetFName()) != -1)
+			{
+				bUsed = true;
+			}
+			else
+			{
+				for (auto& LODMaterialCollection : LODMaterialCollections)
+				{
+					if (LODMaterialCollection.MaterialCollection && 
+						LODMaterialCollection.MaterialCollection->GetMaterialIndex(Material->GetFName()) != -1)
+					{
+						bUsed = true;
+						break;
+					}
+				}
+			}
+		}
+
+		if (bUsed)
+		{
+			UVoxelBlueprintLibrary::ApplyNewMaterials(this);
+		}
+	};
+
+	FCoreUObjectDelegates::OnObjectPropertyChanged.AddWeakLambda(this, [=](UObject* Object, FPropertyChangedEvent& PropertyChangedEvent)
+	{
+		if (PropertyChangedEvent.ChangeType == EPropertyChangeType::Interactive)
+		{
+			return;
+		}
+		
+		if (!Object || !bAutomaticallyRefreshMaterials || !IsCreated())
+		{
+			return;
+		}
+		
+		RefreshMaterial(Cast<UMaterialInterface>(Object));
+
+		if (MaterialConfig != EVoxelMaterialConfig::RGB && Object->IsA<UVoxelMaterialCollectionBase>())
+		{
+			bool bUsed = false;
+			if (MaterialCollection == Object)
+			{
+				bUsed = true;
+			}
+			else
+			{
+				for (auto& It : LODMaterialCollections)
+				{
+					if (It.MaterialCollection == Object)
+					{
+						bUsed = true;
+						break;
+					}
+				}
+			}
+
+			if (bUsed)
+			{
+				UVoxelBlueprintLibrary::ApplyNewMaterials(this);
+
+				if (PropertyChangedEvent.MemberProperty && 
+					PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelInstancedMaterialCollection, MaxMaterialsToBlendAtOnce))
+				{
+					// Need to recompute the chunks if MaxMaterialsToBlendAtOnce changed, as they are built with the wrong number of indices
+					UVoxelBlueprintLibrary::UpdateAll(this);
+				}
+			}
+		}
+	});
+		
+	UMaterial::OnMaterialCompilationFinished().AddWeakLambda(this, RefreshMaterial);
 #endif
 }
 
@@ -170,13 +274,13 @@ FVoxelWorldGeneratorInit AVoxelWorld::GetInitStruct() const
 		this);
 }
 
-FIntBox AVoxelWorld::GetWorldBounds() const
+FVoxelIntBox AVoxelWorld::GetWorldBounds() const
 {
 	if (bUseCustomWorldBounds)
 	{
 		return 
 			FVoxelUtilities::GetCustomBoundsForDepth<RENDER_CHUNK_SIZE>(
-				FIntBox::SafeConstruct(CustomWorldBounds.Min, CustomWorldBounds.Max), 
+				FVoxelIntBox::SafeConstruct(CustomWorldBounds.Min, CustomWorldBounds.Max), 
 				RenderOctreeDepth);
 	}
 	else
@@ -479,6 +583,33 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 		ProcMeshClass = UVoxelProceduralMeshComponent::StaticClass();
 	}
 
+	if (auto* Property = PropertyChangedEvent.Property)
+	{
+		const FName Name = Property->GetFName();
+		if (Name == GET_MEMBER_NAME_STATIC(FVoxelLODMaterialsBase, StartLOD))
+		{
+			for (auto& It : LODMaterials)
+			{
+				It.EndLOD = FMath::Max(It.StartLOD, It.EndLOD);
+			}
+			for (auto& It : LODMaterialCollections)
+			{
+				It.EndLOD = FMath::Max(It.StartLOD, It.EndLOD);
+			}
+		}
+		else if (Name == GET_MEMBER_NAME_STATIC(FVoxelLODMaterialsBase, EndLOD))
+		{
+			for (auto& It : LODMaterials)
+			{
+				It.StartLOD = FMath::Min(It.StartLOD, It.EndLOD);
+			}
+			for (auto& It : LODMaterialCollections)
+			{
+				It.StartLOD = FMath::Min(It.StartLOD, It.EndLOD);
+			}
+		}
+	}
+	
 	if (auto* Property = PropertyChangedEvent.MemberProperty)
 	{
 		const FName Name = Property->GetFName();
@@ -549,7 +680,7 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 			
 			if (Property->HasMetaData("Recreate"))
 			{
-				RecreateAll();
+				UVoxelBlueprintLibrary::Recreate(this, true);
 			}
 			else if (Property->HasMetaData("RecreateRender"))
 			{
@@ -562,7 +693,7 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 			else if (Property->HasMetaData("UpdateAll"))
 			{
 				UpdateDynamicLODSettings();
-				GetLODManager().UpdateBounds(FIntBox::Infinite);
+				GetLODManager().UpdateBounds(FVoxelIntBox::Infinite);
 			}
 			else if (Property->HasMetaData("UpdateLODs"))
 			{
@@ -603,6 +734,7 @@ void AVoxelWorld::UpdateCollisionProfile()
 void AVoxelWorld::OnWorldLoadedCallback()
 {
 	LOG_VOXEL(Log, TEXT("%s took %fs to generate"), *GetName(), FPlatformTime::Seconds() - TimeOfCreation);
+	bIsLoaded = true;
 	OnWorldLoaded.Broadcast();
 }
 
@@ -639,38 +771,38 @@ TVoxelSharedRef<IVoxelPool> AVoxelWorld::CreatePool() const
 	{
 		if (bCreateGlobalPool)
 		{
-			if (!IVoxelPool::IsGlobalVoxelPoolCreated(GetWorld()))
+			const auto ExistingPool = IVoxelPool::GetPoolForWorld(GetWorld());
+			if (!ExistingPool.IsValid())
 			{
 				const auto NewPool = CreateOwnPool(NumberOfThreads, bConstantPriorities);
-				IVoxelPool::SetGlobalVoxelPool(GetWorld(), NewPool, GetName());
+				IVoxelPool::SetWorldPool(GetWorld(), NewPool, GetName());
 				return NewPool;
 			}
 			else
 			{
-				FVoxelMessages::Warning(FString::Printf(TEXT(
-					"CreateGlobalPool = true but global pool is already created! Using existing one, NumberOfThreads will be ignored. "
-					"Consider setting CreateGlobalPool to false and calling CreateGlobalVoxelThreadPool at BeginPlay (for instance in your level blueprint). "
-					"Creator: %s"), *IVoxelPool::GetGlobalPoolCreator(GetWorld())),
+				FVoxelMessages::Warning(
+					"CreateGlobalPool = true but global or world pool is already created! Using existing one, NumberOfThreads will be ignored.\n"
+					"Consider setting CreateGlobalPool to false and calling CreateWorldVoxelThreadPool at BeginPlay (for instance in your level blueprint).",
 					this);
-				return IVoxelPool::GetGlobalPool(GetWorld()).ToSharedRef();
+				return ExistingPool.ToSharedRef();
 			}
 		}
 		else
 		{
-			if (IVoxelPool::IsGlobalVoxelPoolCreated(GetWorld()))
+			const auto ExistingPool = IVoxelPool::GetPoolForWorld(GetWorld());
+			if (ExistingPool.IsValid())
 			{
-				return IVoxelPool::GetGlobalPool(GetWorld()).ToSharedRef();
+				return ExistingPool.ToSharedRef();
 			}
 			else
 			{
-
 				FVoxelMessages::Warning(
 						"CreateGlobalPool = false but global pool isn't created! Creating it with default setting NumberOfThreads = 2. "
-						"You need to call CreateGlobalVoxelThreadPool at BeginPlay (for instance in your level blueprint).",
+						"You need to call CreateWorldVoxelThreadPool at BeginPlay (for instance in your level blueprint).",
 					this);
 				
 				const auto NewPool = CreateOwnPool(NumberOfThreads, bConstantPriorities);
-				IVoxelPool::SetGlobalVoxelPool(GetWorld(), NewPool, GetName());
+				IVoxelPool::SetWorldPool(GetWorld(), NewPool, GetName());
 				return NewPool;
 			}
 		}
@@ -725,6 +857,7 @@ void AVoxelWorld::CreateWorldInternal()
 	LOG_VOXEL(Log, TEXT("Loading world"));
 
 	bIsCreated = true;
+	bIsLoaded = false;
 	TimeOfCreation = FPlatformTime::Seconds();
 
 	if (!WorldGenerator.IsValid())
@@ -820,6 +953,7 @@ void AVoxelWorld::DestroyWorldInternal()
 	LOG_VOXEL(Log, TEXT("Unloading world"));
 
 	bIsCreated = false;
+	bIsLoaded = false;
 	
 	Data.Reset();
 	Pool.Reset();
@@ -881,7 +1015,7 @@ void AVoxelWorld::LoadFromSaveObject()
 		LOG_VOXEL(Warning, TEXT("Save Object depth is bigger than world depth, the save data outside world bounds will be ignored"));
 	}
 
-	TArray<FIntBox> BoundsToUpdate;
+	TArray<FVoxelIntBox> BoundsToUpdate;
 	if (!Data->LoadFromSave(this, Save, BoundsToUpdate))
 	{
 		const auto Result = FMessageDialog::Open(
@@ -923,22 +1057,70 @@ void AVoxelWorld::UpdateDynamicLODSettings() const
 	
 	LODDynamicSettings->bComputeVisibleChunksNavmesh = bComputeVisibleChunksNavmesh;
 	LODDynamicSettings->VisibleChunksNavmeshMaxLOD = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(VisibleChunksNavmeshMaxLOD);
-
-	LODDynamicSettings->bEnableTessellation = bEnableTessellation;
 }
 
 void AVoxelWorld::UpdateDynamicRendererSettings() const
 {
-	if (MaterialCollection)
+	VOXEL_FUNCTION_COUNTER();
+
+	TArray<UVoxelMaterialCollectionBase*> MaterialCollectionsToInitialize;
+	for (int32 LOD = 0; LOD < 32; LOD++)
 	{
-		MaterialCollection->ClearCache();
+		auto& LODData = RendererDynamicSettings->LODData[LOD];
+
+		// Copy materials
+		LODData.Material = nullptr;
+		for (auto& It : LODMaterials)
+		{
+			if (It.StartLOD <= LOD && LOD <= It.EndLOD)
+			{
+				if (LODData.Material.IsValid())
+				{
+					FVoxelMessages::Warning(FString::Printf(TEXT("Multiple materials are assigned to LOD %d!"), LOD), this);
+				}
+				LODData.Material = It.Material;
+			}
+		}
+		if (!LODData.Material.IsValid())
+		{
+			LODData.Material = VoxelMaterial;
+		}
+
+		// Copy material collection
+		LODData.MaterialCollection = nullptr;
+		for (auto& It : LODMaterialCollections)
+		{
+			if (It.StartLOD <= LOD && LOD <= It.EndLOD)
+			{
+				if (LODData.MaterialCollection.IsValid())
+				{
+					FVoxelMessages::Warning(FString::Printf(TEXT("Multiple material collections are assigned to LOD %d!"), LOD), this);
+				}
+				LODData.MaterialCollection = It.MaterialCollection;
+			}
+		}
+		if (!LODData.MaterialCollection.IsValid())
+		{
+			LODData.MaterialCollection = MaterialCollection;
+		}
+
+		// Set MaxMaterialIndices
+		if (auto* Collection = LODData.MaterialCollection.Get())
+		{
+			LODData.MaxMaterialIndices.Set(FMath::Max(Collection->GetMaxMaterialIndices(), 1));
+			MaterialCollectionsToInitialize.AddUnique(Collection);
+		}
+		else
+		{
+			LODData.MaxMaterialIndices.Set(1);
+		}
 	}
-	
-	RendererDynamicSettings->VoxelMaterialWithoutTessellation = VoxelMaterial;
-	RendererDynamicSettings->VoxelMaterialWithTessellation = TessellatedVoxelMaterial;
-	RendererDynamicSettings->MaterialCollection = MaterialCollection;
-	RendererDynamicSettings->MaxMaterialIndices.Set(MaterialCollection ? FMath::Max(MaterialCollection->GetMaxMaterialIndices(), 1) : 1);
-	check(RendererDynamicSettings->MaxMaterialIndices.GetValue() > 0);
+
+	// Initialize all used collections
+	for (auto* Collection : MaterialCollectionsToInitialize)
+	{
+		Collection->InitializeCollection();
+	}
 }
 
 void AVoxelWorld::RecreateRender()
@@ -1045,7 +1227,15 @@ void AVoxelWorld::SaveData()
 	{
 		if (!SaveObject && ensure(IVoxelWorldEditor::GetVoxelWorldEditor()))
 		{
-			FMessageDialog::Open(EAppMsgType::Ok, VOXEL_LOCTEXT("The voxel world Save Object is null. You need to create one now if you don't want to lose your changes."));
+			const EAppReturnType::Type Result = FMessageDialog::Open(
+				EAppMsgType::YesNo,
+				VOXEL_LOCTEXT("The voxel world Save Object is null. You need to create one now if you don't want to lose your changes.\n\nSave changes?"));
+			
+			if (Result == EAppReturnType::No)
+			{
+				return;
+			}
+			
 			Modify();
 			SaveObject = IVoxelWorldEditor::GetVoxelWorldEditor()->CreateSaveObject();
 		}
@@ -1056,7 +1246,7 @@ void AVoxelWorld::SaveData()
 				Progress.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Rounding voxels"));
 				if (GetDefault<UVoxelSettings>()->bRoundBeforeSaving)
 				{
-					UVoxelDataTools::RoundVoxels(this, FIntBox::Infinite);
+					UVoxelDataTools::RoundVoxels(this, FVoxelIntBox::Infinite);
 				}
 				Progress.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Creating save"));
 				FVoxelUncompressedWorldSaveImpl Save;
@@ -1243,10 +1433,21 @@ void AVoxelWorld::OnPreExit()
 	bIsToggled = false; // Disable saving data
 }
 
-void AVoxelWorld::OnRefreshEditor()
+void AVoxelWorld::OnApplyObjectToActor(UObject* Object, AActor* Actor)
 {
-	// This is triggered when a material is recompiled in the editor
-	UVoxelBlueprintLibrary::ApplyNewMaterials(this);
+	if (Actor != this)
+	{
+		return;
+	}
+
+	if (auto* CastedObject = Cast<UMaterialInterface>(Object))
+	{
+		MarkPackageDirty();
+		
+		VoxelMaterial = CastedObject;
+		MaterialConfig = EVoxelMaterialConfig::RGB;
+		RecreateRender();
+	}
 }
 
 void IVoxelWorldEditor::SetVoxelWorldEditor(TSharedPtr<IVoxelWorldEditor> InVoxelWorldEditor)

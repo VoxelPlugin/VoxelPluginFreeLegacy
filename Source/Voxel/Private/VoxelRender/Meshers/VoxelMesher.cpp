@@ -6,7 +6,7 @@
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelDebug/VoxelDebugManager.h"
-#include "VoxelStatsUtilities.h"
+#include "VoxelUtilities/VoxelStatsUtilities.h"
 
 #include "Async/Async.h"
 #include "Engine/World.h"
@@ -73,6 +73,8 @@ struct FVoxelMesherStats
 		double TotalMaterialsTime = 0;
 		uint64 TotalValuesAccesses = 0;
 		uint64 TotalMaterialsAccesses = 0;
+
+		double TotalDistanceFieldsTime = 0;
 		
 		const auto Print = [&](const TArray<FChunkStats>& Stats)
 		{
@@ -87,6 +89,9 @@ struct FVoxelMesherStats
 				double NormalsTime = 0;
 				double UVsTime = 0;
 				double CreateChunkTime = 0;
+
+				double FinishCreatingChunkTime = 0;
+				double DistanceFieldTime = 0;
 
 				uint64 ValuesAccesses = 0;
 				uint64 MaterialsAccesses = 0;
@@ -105,6 +110,9 @@ struct FVoxelMesherStats
 				Mean.NormalsTime += FPlatformTime::ToSeconds64(Stat.Times.Normals);
 				Mean.UVsTime += FPlatformTime::ToSeconds64(Stat.Times.UVs);
 				Mean.CreateChunkTime += FPlatformTime::ToSeconds64(Stat.Times.CreateChunk);
+				
+				Mean.FinishCreatingChunkTime += FPlatformTime::ToSeconds64(Stat.Times.FinishCreatingChunk);
+				Mean.DistanceFieldTime += FPlatformTime::ToSeconds64(Stat.Times.DistanceField);
 
 				Mean.ValuesAccesses += Stat.Times._ValuesAccesses;
 				Mean.MaterialsAccesses += Stat.Times._MaterialsAccesses;
@@ -114,7 +122,7 @@ struct FVoxelMesherStats
 
 			LODToMeans.KeySort(TLess<int32>());
 
-			LOG_VOXEL(Log, TEXT("\tLOD; Chunks (%%)     ; Total (%%)         ; Avg       ; Values (%%)        , Per Voxel ; Materials (%%)     , Per Voxel ; Normals (%%)       ; UVs (%%)           ; CreateChunk (%%)   ;"));
+			LOG_VOXEL(Log, TEXT("\tLOD; Chunks (%%)     ; Total (%%)         ; Avg       ; Values (%%)        , Per Voxel ; Materials (%%)     , Per Voxel ; Normals (%%)       ; UVs (%%)           ; CreateChunk (%%)   ; FinishCreatingChunk (%%); DistanceFields (%%)"));
 			for (auto& It : LODToMeans)
 			{
 				auto& V = It.Value;
@@ -123,8 +131,10 @@ struct FVoxelMesherStats
 				TotalMaterialsTime += V.MaterialsTime;
 				TotalValuesAccesses += V.ValuesAccesses;
 				TotalMaterialsAccesses += V.MaterialsAccesses;
+
+				TotalDistanceFieldsTime += V.DistanceFieldTime;
 				
-				LOG_VOXEL(Log, TEXT("\t %2d: %6d (%5.2f%%); %8.3fs (%5.2f%%); %8.3fms; %8.3fs (%5.2f%%), %8.1fns; %8.3fs (%5.2f%%), %8.1fns; %8.3fs (%5.2f%%); %8.3fs (%5.2f%%); %8.3fs (%5.2f%%)"),
+				LOG_VOXEL(Log, TEXT("\t %2d: %6d (%5.2f%%); %8.3fs (%5.2f%%); %8.3fms; %8.3fs (%5.2f%%), %8.1fns; %8.3fs (%5.2f%%), %8.1fns; %8.3fs (%5.2f%%); %8.3fs (%5.2f%%); %8.3fs (%5.2f%%);      %8.3fs (%5.2f%%); %8.3fs (%5.2f%%)"),
 					It.Key,
 					V.Count,
 					V.Count / double(Stats.Num()) * 100,
@@ -147,7 +157,13 @@ struct FVoxelMesherStats
 					V.UVsTime / V.TotalTime * 100,
 					
 					V.CreateChunkTime,
-					V.CreateChunkTime / V.TotalTime * 100);
+					V.CreateChunkTime / V.TotalTime * 100,
+					
+					V.FinishCreatingChunkTime,
+					V.FinishCreatingChunkTime / V.TotalTime * 100,
+					
+					V.DistanceFieldTime,
+					V.DistanceFieldTime / V.TotalTime * 100);
 			}
 
 			return GlobalTotalTime;
@@ -170,9 +186,13 @@ struct FVoxelMesherStats
 		LOG_VOXEL(Log, TEXT("Main Time: %fs"), NormalTime);
 		LOG_VOXEL(Log, TEXT("Transitions Time: %fs"), TransitionsTime);
 		LOG_VOXEL(Log, TEXT("Geometry Time: %fs"), GeometryTime);
-		LOG_VOXEL(Log, TEXT("Total Time: %fs"), NormalTime + TransitionsTime + GeometryTime);
-		LOG_VOXEL(Log, TEXT("Values Time: %3.2f%% of total time"), 100 * TotalValuesTime / (NormalTime + TransitionsTime + GeometryTime));
+		LOG_VOXEL(Log, TEXT("------------------------------"));
+		const double TotalTime = NormalTime + TransitionsTime + GeometryTime;
+		LOG_VOXEL(Log, TEXT("Total Time: %fs"), TotalTime);
+		LOG_VOXEL(Log, TEXT("Values Time: %3.2f%% of total time (%fs)"), 100 * TotalValuesTime / TotalTime, TotalValuesTime);
+		LOG_VOXEL(Log, TEXT("Distance Fields Time: %3.2f%% of total time (%fs)"), 100 * TotalDistanceFieldsTime / TotalTime, TotalDistanceFieldsTime);
 		LOG_VOXEL(Log, TEXT("Transitions Time: %3.2f%% of Main + Transitions"), 100 * TransitionsTime / (NormalTime + TransitionsTime));
+		LOG_VOXEL(Log, TEXT("------------------------------"));
 		LOG_VOXEL(Log, TEXT("Values: %llu reads in %fs, avg %.1fns/voxel"), TotalValuesAccesses, TotalValuesTime, TotalValuesTime / TotalValuesAccesses * 1e9);
 		LOG_VOXEL(Log, TEXT("Materials: %llu reads in %fs, avg %.1fns/voxel"), TotalMaterialsAccesses, TotalMaterialsTime, TotalMaterialsTime / TotalMaterialsAccesses * 1e9);
 	}
@@ -225,13 +245,13 @@ void FVoxelMesherBase::LockData()
 
 bool FVoxelMesherBase::IsEmpty() const
 {
-	const FIntBox Bounds = GetBoundsToCheckIsEmptyOn();
+	const FVoxelIntBox Bounds = GetBoundsToCheckIsEmptyOn();
 	const bool bIsEmpty = CVarDoNotSkipEmptyChunks.GetValueOnAnyThread() != 0 ? false : Data.IsEmpty(Bounds, LOD);
 
 	if (!bIsTransitions)
 	{
-		VOXEL_SCOPE_COUNTER("DebugIsEmpty");
-		const FIntBox BoundsCopy(Bounds.Min, Bounds.Max - FIntVector(Step));
+		VOXEL_ASYNC_SCOPE_COUNTER("DebugIsEmpty");
+		const FVoxelIntBox BoundsCopy(Bounds.Min, Bounds.Max - FIntVector(Step));
 		AsyncTask(ENamedThreads::GameThread, [WeakDebug = MakeVoxelWeakPtr(Settings.DebugManager), BoundsCopy, bIsEmpty]
 			{
 				auto Debug = WeakDebug.Pin();
@@ -247,11 +267,17 @@ bool FVoxelMesherBase::IsEmpty() const
 
 TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherBase::CreateEmptyChunk() const
 {
-	auto Chunk = MakeVoxelShared<FVoxelChunkMesh>();
+	const auto Chunk = MakeVoxelShared<FVoxelChunkMesh>();
+	// We need to make sure the chunk has the right configuration, even if it's empty
+	// This is because else, we might end up with a MainChunk that's single, but with a TransitionChunk that's not
 	if (Settings.MaterialConfig == EVoxelMaterialConfig::RGB)
 	{
 		Chunk->SetIsSingle(true);
 		Chunk->CreateSingleBuffers();
+	}
+	else
+	{
+		Chunk->SetIsSingle(false);
 	}
 	return Chunk;
 }
@@ -284,8 +310,8 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesher::CreateFullChunk()
 	VOXEL_SCOPE_COUNTER_FORMAT("Creating Chunk LOD=%d", LOD);
 
 	{
-		VOXEL_SCOPE_COUNTER("InitArea");
-		Data.WorldGenerator->InitArea(FIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
+		VOXEL_ASYNC_SCOPE_COUNTER("InitArea");
+		Data.WorldGenerator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
 	}
 
 	LockData();
@@ -294,26 +320,33 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesher::CreateFullChunk()
 	if (IsEmpty())
 	{
 		Chunk = CreateEmptyChunk();
+		FinishCreatingChunk(*Chunk);
 		UnlockData();
 	}
 	else
 	{
 		const double StartTime = FPlatformTime::Seconds();
 		FVoxelMesherTimes Times;
+		
 		Chunk = CreateFullChunkImpl(Times);
 		check(!LockInfo.IsValid());
+
+		if (Chunk.IsValid())
+		{
+			{
+				MESHER_TIME_SCOPE(FinishCreatingChunk)
+				FinishCreatingChunk(*Chunk);
+			}
+
+			if (LOD <= Settings.MaxDistanceFieldLOD)
+			{
+				MESHER_TIME_SCOPE(DistanceField)
+				Chunk->BuildDistanceField(LOD, ChunkPosition, Data, Settings);
+			}
+		}
+
 		const double EndTime = FPlatformTime::Seconds();
 		FVoxelMesherStats::Report(Settings.World, LOD, EndTime - StartTime, Times, false, false);
-	}
-
-	if (Chunk.IsValid())
-	{
-		FinishCreatingChunk(*Chunk);
-
-		if (LOD <= Settings.MaxDistanceFieldLOD)
-		{
-			Chunk->BuildDistanceField(LOD, ChunkPosition, Data);
-		}
 	}
 	
 	return Chunk;
@@ -324,8 +357,8 @@ void FVoxelMesher::CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vert
 	VOXEL_SCOPE_COUNTER_FORMAT("Creating Geometry LOD=%d", LOD);
 
 	{
-		VOXEL_SCOPE_COUNTER("InitArea");
-		Data.WorldGenerator->InitArea(FIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
+		VOXEL_ASYNC_SCOPE_COUNTER("InitArea");
+		Data.WorldGenerator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
 	}
 
 	LockData();
@@ -373,21 +406,25 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelTransitionsMesher::CreateFullChunk()
 	if (IsEmpty())
 	{
 		Chunk = CreateEmptyChunk();
+		FinishCreatingChunk(*Chunk);
 		UnlockData();
 	}
 	else
 	{
 		const double StartTime = FPlatformTime::Seconds();
 		FVoxelMesherTimes Times;
+		
 		Chunk = CreateFullChunkImpl(Times);
 		check(!LockInfo.IsValid());
+
+		if (Chunk.IsValid())
+		{
+			MESHER_TIME_SCOPE(FinishCreatingChunk)
+			FinishCreatingChunk(*Chunk);
+		}
+		
 		const double EndTime = FPlatformTime::Seconds();
 		FVoxelMesherStats::Report(Settings.World, LOD, EndTime - StartTime, Times, true, false);
-	}
-
-	if (Chunk.IsValid())
-	{
-		FinishCreatingChunk(*Chunk);
 	}
 
 	return Chunk;

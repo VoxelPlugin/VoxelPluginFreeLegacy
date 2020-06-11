@@ -28,7 +28,7 @@ public:
 	template<typename T>
 	static TArray<FVoxelMesherVertex> CreateMesherVertices(TArray<T>& Vertices)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 
 		TArray<FVoxelMesherVertex> MesherVertices;
 		MesherVertices.SetNumUninitialized(Vertices.Num());
@@ -44,7 +44,7 @@ public:
 	template<typename T, typename TMesher>
 	static void ComputeMaterials(TMesher& Mesher, TArray<FVoxelMesherVertex>& MesherVertices, TArray<T>& Vertices)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 		const auto GetMaterial = [&](const FIntVector& P)
 		{
@@ -76,14 +76,17 @@ public:
 
 				if (Mesher.Settings.bInterpolateUVs)
 				{
-					MesherVertex.Material.SetU0(FVoxelUtilities::ClampToUINT8(FMath::Lerp(MaterialA.GetU0(), MaterialB.GetU0(), Alpha)));
-					MesherVertex.Material.SetV0(FVoxelUtilities::ClampToUINT8(FMath::Lerp(MaterialA.GetV0(), MaterialB.GetV0(), Alpha)));
-					MesherVertex.Material.SetU1(FVoxelUtilities::ClampToUINT8(FMath::Lerp(MaterialA.GetU1(), MaterialB.GetU1(), Alpha)));
-					MesherVertex.Material.SetV1(FVoxelUtilities::ClampToUINT8(FMath::Lerp(MaterialA.GetV1(), MaterialB.GetV1(), Alpha)));
-					MesherVertex.Material.SetU2(FVoxelUtilities::ClampToUINT8(FMath::Lerp(MaterialA.GetU2(), MaterialB.GetU2(), Alpha)));
-					MesherVertex.Material.SetV2(FVoxelUtilities::ClampToUINT8(FMath::Lerp(MaterialA.GetV2(), MaterialB.GetV2(), Alpha)));
-					MesherVertex.Material.SetU3(FVoxelUtilities::ClampToUINT8(FMath::Lerp(MaterialA.GetU3(), MaterialB.GetU3(), Alpha)));
-					MesherVertex.Material.SetV3(FVoxelUtilities::ClampToUINT8(FMath::Lerp(MaterialA.GetV3(), MaterialB.GetV3(), Alpha)));
+					if (Mesher.Settings.MaterialConfig != EVoxelMaterialConfig::MultiIndex)
+					{
+						MesherVertex.Material.SetU0_AsFloat(FMath::Lerp(MaterialA.GetU0_AsFloat(), MaterialB.GetU0_AsFloat(), Alpha));
+						MesherVertex.Material.SetV0_AsFloat(FMath::Lerp(MaterialA.GetV0_AsFloat(), MaterialB.GetV0_AsFloat(), Alpha));
+						MesherVertex.Material.SetU1_AsFloat(FMath::Lerp(MaterialA.GetU1_AsFloat(), MaterialB.GetU1_AsFloat(), Alpha));
+						MesherVertex.Material.SetV1_AsFloat(FMath::Lerp(MaterialA.GetV1_AsFloat(), MaterialB.GetV1_AsFloat(), Alpha));
+					}
+					MesherVertex.Material.SetU2_AsFloat(FMath::Lerp(MaterialA.GetU2_AsFloat(), MaterialB.GetU2_AsFloat(), Alpha));
+					MesherVertex.Material.SetV2_AsFloat(FMath::Lerp(MaterialA.GetV2_AsFloat(), MaterialB.GetV2_AsFloat(), Alpha));
+					MesherVertex.Material.SetU3_AsFloat(FMath::Lerp(MaterialA.GetU3_AsFloat(), MaterialB.GetU3_AsFloat(), Alpha));
+					MesherVertex.Material.SetV3_AsFloat(FMath::Lerp(MaterialA.GetV3_AsFloat(), MaterialB.GetV3_AsFloat(), Alpha));
 				}
 				
 				if (Mesher.Settings.bInterpolateColors)
@@ -94,15 +97,17 @@ public:
 					}
 					else if (Mesher.Settings.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
 					{
-						MesherVertex.Material.SetSingleIndex_DataA_AsFloat(FMath::Lerp(MaterialA.GetSingleIndex_DataA_AsFloat(), MaterialB.GetSingleIndex_DataA_AsFloat(), Alpha));
-						MesherVertex.Material.SetSingleIndex_DataB_AsFloat(FMath::Lerp(MaterialA.GetSingleIndex_DataB_AsFloat(), MaterialB.GetSingleIndex_DataB_AsFloat(), Alpha));
-						MesherVertex.Material.SetSingleIndex_DataC_AsFloat(FMath::Lerp(MaterialA.GetSingleIndex_DataC_AsFloat(), MaterialB.GetSingleIndex_DataC_AsFloat(), Alpha));
+						MesherVertex.Material.SetR_AsFloat(FMath::Lerp(MaterialA.GetR_AsFloat(), MaterialB.GetR_AsFloat(), Alpha));
+						MesherVertex.Material.SetG_AsFloat(FMath::Lerp(MaterialA.GetG_AsFloat(), MaterialB.GetG_AsFloat(), Alpha));
+						MesherVertex.Material.SetB_AsFloat(FMath::Lerp(MaterialA.GetB_AsFloat(), MaterialB.GetB_AsFloat(), Alpha));
 					}
 					else
 					{
-						checkVoxelSlow(Mesher.Settings.MaterialConfig == EVoxelMaterialConfig::DoubleIndex);
-						MesherVertex.Material.SetDoubleIndex_Blend_AsFloat(FMath::Lerp(MaterialA.GetDoubleIndex_Blend_AsFloat(), MaterialB.GetDoubleIndex_Blend_AsFloat(), Alpha));
-						MesherVertex.Material.SetDoubleIndex_Data_AsFloat(FMath::Lerp(MaterialA.GetDoubleIndex_Blend_AsFloat(), MaterialB.GetDoubleIndex_Blend_AsFloat(), Alpha));
+						checkVoxelSlow(Mesher.Settings.MaterialConfig == EVoxelMaterialConfig::MultiIndex);
+						MesherVertex.Material.SetMultiIndex_Blend0_AsFloat(FMath::Lerp(MaterialA.GetMultiIndex_Blend0_AsFloat(), MaterialB.GetMultiIndex_Blend0_AsFloat(), Alpha));
+						MesherVertex.Material.SetMultiIndex_Blend1_AsFloat(FMath::Lerp(MaterialA.GetMultiIndex_Blend1_AsFloat(), MaterialB.GetMultiIndex_Blend1_AsFloat(), Alpha));
+						MesherVertex.Material.SetMultiIndex_Blend2_AsFloat(FMath::Lerp(MaterialA.GetMultiIndex_Blend2_AsFloat(), MaterialB.GetMultiIndex_Blend2_AsFloat(), Alpha));
+						MesherVertex.Material.SetMultiIndex_Wetness_AsFloat(FMath::Lerp(MaterialA.GetMultiIndex_Wetness_AsFloat(), MaterialB.GetMultiIndex_Wetness_AsFloat(), Alpha));
 					}
 				}
 			}
@@ -132,7 +137,7 @@ public:
 	
 	static void ComputeNormals(FVoxelMarchingCubeMesher& Mesher, TArray<FVoxelMesherVertex>& MesherVertices, TArray<uint32>& Indices)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 
 		const auto GetGradient = [&](const FVector& Position)
 		{
@@ -220,7 +225,7 @@ public:
 	}
 	static void ComputeNormals(FVoxelMarchingCubeTransitionsMesher& Mesher, TArray<FVoxelMesherVertex>& MesherVertices)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 
 		if (Mesher.Settings.NormalConfig == EVoxelNormalConfig::GradientNormal || Mesher.Settings.NormalConfig == EVoxelNormalConfig::MeshNormal)
 		{
@@ -252,7 +257,7 @@ public:
 	template<typename TMesher>
 	static void ComputeUVs(TMesher& Mesher, TArray<FVoxelMesherVertex>& MesherVertices)
 	{
-		VOXEL_FUNCTION_COUNTER();
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 
 		for (auto& Vertex : MesherVertices)
 		{
@@ -261,15 +266,15 @@ public:
 	}
 };
 
-FIntBox FVoxelMarchingCubeMesher::GetBoundsToCheckIsEmptyOn() const
+FVoxelIntBox FVoxelMarchingCubeMesher::GetBoundsToCheckIsEmptyOn() const
 {
-	return FIntBox(ChunkPosition, ChunkPosition + CHUNK_SIZE_WITH_END_EDGE * Step);
+	return FVoxelIntBox(ChunkPosition, ChunkPosition + CHUNK_SIZE_WITH_END_EDGE * Step);
 }
 
-FIntBox FVoxelMarchingCubeMesher::GetBoundsToLock() const
+FVoxelIntBox FVoxelMarchingCubeMesher::GetBoundsToLock() const
 {
 	// We need to lock for the normals (also work with LOD 0)
-	return FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition + FIntVector(Step) + CHUNK_SIZE_WITH_END_EDGE * Step);
+	return FVoxelIntBox(ChunkPosition - FIntVector(Step), ChunkPosition + FIntVector(Step) + CHUNK_SIZE_WITH_END_EDGE * Step);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -278,7 +283,7 @@ FIntBox FVoxelMarchingCubeMesher::GetBoundsToLock() const
 	
 TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(FVoxelMesherTimes& Times)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	struct FLocalVertex
 	{
@@ -375,13 +380,14 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(F
 
 	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		LOD,
 		MoveTemp(Indices),
 		MoveTemp(MesherVertices)));
 }
 
 void FVoxelMarchingCubeMesher::CreateGeometryImpl(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<FVector>& Vertices)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	struct FVectorVertex : FVector
 	{
@@ -402,11 +408,11 @@ void FVoxelMarchingCubeMesher::CreateGeometryImpl(FVoxelMesherTimes& Times, TArr
 template<typename T>
 bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	const int32 DataSize = LOD == 0 ? CHUNK_SIZE_WITH_NORMALS : CHUNK_SIZE_WITH_END_EDGE;
 
-	FIntBox BoundsToQuery(ChunkPosition, ChunkPosition + CHUNK_SIZE_WITH_END_EDGE * Step);
+	FVoxelIntBox BoundsToQuery(ChunkPosition, ChunkPosition + CHUNK_SIZE_WITH_END_EDGE * Step);
 	if (LOD == 0)
 	{
 		// Account for normals
@@ -472,7 +478,7 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 						Transvoxel::RegularCellData CellData = Transvoxel::regularCellData[CellClass];
 
 						// Indices of the vertices used in this cube
-						TStackArray<int32, 16> VertexIndices;
+						TVoxelStaticArray<int32, 16> VertexIndices;
 						for (int32 I = 0; I < CellData.GetVertexCount(); I++)
 						{
 							int32 VertexIndex = -2;
@@ -652,6 +658,11 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 
 								VertexIndex = Vertices.Num();
 
+								if (Settings.RenderSharpness != 0)
+								{
+									IntersectionPoint = FVector(FVoxelUtilities::RoundToInt(IntersectionPoint * Settings.RenderSharpness)) / Settings.RenderSharpness;
+								}
+
 								Vertices.Add(T(IntersectionPoint, MaterialPosition));
 
 								checkVoxelSlow((ValueAtB.IsNull() && LocalIndexB == 7) == !CacheDirection);
@@ -710,14 +721,14 @@ FORCEINLINE int32 FVoxelMarchingCubeMesher::GetCacheIndex(int32 EdgeIndex, int32
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntBox FVoxelMarchingCubeTransitionsMesher::GetBoundsToCheckIsEmptyOn() const
+FVoxelIntBox FVoxelMarchingCubeTransitionsMesher::GetBoundsToCheckIsEmptyOn() const
 {
-	return FIntBox(ChunkPosition, ChunkPosition + CHUNK_SIZE_WITH_END_EDGE * Step);
+	return FVoxelIntBox(ChunkPosition, ChunkPosition + CHUNK_SIZE_WITH_END_EDGE * Step);
 }
 
-FIntBox FVoxelMarchingCubeTransitionsMesher::GetBoundsToLock() const
+FVoxelIntBox FVoxelMarchingCubeTransitionsMesher::GetBoundsToLock() const
 {
-	return FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition + FIntVector(Step) + CHUNK_SIZE_WITH_END_EDGE * Step);
+	return FVoxelIntBox(ChunkPosition - FIntVector(Step), ChunkPosition + FIntVector(Step) + CHUNK_SIZE_WITH_END_EDGE * Step);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -727,7 +738,7 @@ FIntBox FVoxelMarchingCubeTransitionsMesher::GetBoundsToLock() const
 template<typename T>
 bool FVoxelMarchingCubeTransitionsMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	Accelerator = MakeUnique<FVoxelConstDataAccelerator>(Data, GetBoundsToLock());
 
@@ -1032,7 +1043,7 @@ bool FVoxelMarchingCubeTransitionsMesher::CreateGeometryForDirection(FVoxelMeshe
 
 TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFullChunkImpl(FVoxelMesherTimes& Times)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	struct FLocalVertex
 	{
@@ -1067,7 +1078,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 	MESHER_TIME(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
 
 	{
-		VOXEL_SCOPE_COUNTER("Translate Vertices");
+		VOXEL_ASYNC_SCOPE_COUNTER("Translate Vertices");
 		for (int32 Index = 0; Index < Vertices.Num(); Index++)
 		{
 			if (Vertices[Index].bNeedToTranslateVertex)
@@ -1081,7 +1092,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 	// Important: sanitize AFTER translating!
 	FVoxelMesherUtilities::SanitizeMesh(Indices, MesherVertices);
 
-	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(Settings, MoveTemp(Indices), MoveTemp(MesherVertices)));
+	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(Settings, LOD, MoveTemp(Indices), MoveTemp(MesherVertices)));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

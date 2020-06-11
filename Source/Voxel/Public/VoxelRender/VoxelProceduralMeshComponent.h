@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelPriorityHandler.h"
 #include "VoxelRender/VoxelProcMeshSectionSettings.h"
 #include "Components/PrimitiveComponent.h"
@@ -76,16 +76,15 @@ private:
 	bool bCleanCollisionMesh = false;
 	// Will clear the proc mesh buffers once navmesh + collisions have been built
 	bool bClearProcMeshBuffersOnFinishUpdate = false;
-	// If we were just init, and no proxy have yet been created
-	// Used to fix motion blur
-	bool bNewInit = false;
+	// Distance field bias
+	float DistanceFieldSelfShadowBias = 0.f;
 	
 public:
 	UVoxelProceduralMeshComponent();
 	~UVoxelProceduralMeshComponent();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Voxel")
-	void InitChunk(uint8 ChunkLOD, FIntBox ChunkBounds);
+	void InitChunk(uint8 ChunkLOD, FVoxelIntBox ChunkBounds);
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Voxel|Collisions")

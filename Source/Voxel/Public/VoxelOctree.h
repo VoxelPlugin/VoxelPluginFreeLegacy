@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
-#include "IntBox.h"
+#include "VoxelMinimal.h"
+#include "VoxelIntBox.h"
 
 struct FVoxelOctreeId
 {
@@ -56,9 +56,9 @@ public:
 	{
 		return Position + GetHalfSize();
 	}
-	FORCEINLINE FIntBox GetBounds() const
+	FORCEINLINE FVoxelIntBox GetBounds() const
 	{
-		return FIntBox(GetMin(), GetMax());
+		return FVoxelIntBox(GetMin(), GetMax());
 	}
 	FORCEINLINE bool IsInOctree(int32 X, int32 Y, int32 Z) const
 	{

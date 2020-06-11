@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 
 #if WITH_EDITOR
 void UVoxelSpawnerConfig::PostEditChangeProperty(FPropertyChangedEvent & PropertyChangedEvent)

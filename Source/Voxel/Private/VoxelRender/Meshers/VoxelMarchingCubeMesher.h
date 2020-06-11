@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "StackArray.h"
+#include "VoxelStaticArray.h"
 #include "VoxelData/VoxelDataAccelerator.h"
 #include "VoxelRender/Meshers/VoxelMesher.h"
 
@@ -18,8 +18,8 @@ public:
 	using FVoxelMesher::FVoxelMesher;
 
 protected:
-	virtual FIntBox GetBoundsToCheckIsEmptyOn() const override final;
-	virtual FIntBox GetBoundsToLock() const override final;
+	virtual FVoxelIntBox GetBoundsToCheckIsEmptyOn() const override final;
+	virtual FVoxelIntBox GetBoundsToLock() const override final;
 
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunkImpl(FVoxelMesherTimes& Times) override final;
 	virtual void CreateGeometryImpl(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<FVector>& Vertices) override final;
@@ -38,8 +38,8 @@ public:
 
 private:
 	// Use LOD0 size as it's bigger
-	using FCachedValues = TStackArray<FVoxelValue, CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS>;
-	using FCache = TStackArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * EDGE_INDEX_COUNT>;
+	using FCachedValues = TVoxelStaticArray<FVoxelValue, CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS>;
+	using FCache = TVoxelStaticArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * EDGE_INDEX_COUNT>;
 
 	TUniquePtr<FCachedValues> CachedValuesStorage = MakeUnique<FCachedValues>();
 	TUniquePtr<FCache> CacheStorageA = MakeUnique<FCache>();
@@ -72,13 +72,13 @@ public:
 	using FVoxelTransitionsMesher::FVoxelTransitionsMesher;
 
 protected:
-	virtual FIntBox GetBoundsToCheckIsEmptyOn() const override final;
-	virtual FIntBox GetBoundsToLock() const override final;
+	virtual FVoxelIntBox GetBoundsToCheckIsEmptyOn() const override final;
+	virtual FVoxelIntBox GetBoundsToLock() const override final;
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunkImpl(FVoxelMesherTimes& Times) override final;
 
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
-	TStackArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * TRANSITION_EDGE_INDEX_COUNT> Cache2D;
+	TVoxelStaticArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * TRANSITION_EDGE_INDEX_COUNT> Cache2D;
 
 private:
 	// T: will be created as T(IntersectionPoint, MaterialPosition, bNeedToTranslate)

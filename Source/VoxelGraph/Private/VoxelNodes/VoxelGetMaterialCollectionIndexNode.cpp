@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelGetMaterialCollectionIndexNode.h"
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelNodeFunctions.h"
-#include "VoxelWorldGeneratorInit.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 #include "VoxelGraphGenerator.h"
 

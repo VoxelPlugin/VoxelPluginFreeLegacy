@@ -43,5 +43,5 @@ private:
 		{
 		}
 	};
-	TSafeTypedSparseArray<FChunkId, FChunkInfo> ChunkInfos;
+	TVoxelTypedSparseArray<FChunkId, FChunkInfo> ChunkInfos;
 };

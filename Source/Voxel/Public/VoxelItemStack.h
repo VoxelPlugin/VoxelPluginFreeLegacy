@@ -35,12 +35,12 @@ public:
 
 	template<typename T>
 	T Get(v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
-	TVoxelRange<v_flt> GetValueRange(const FIntBox& Bounds, int32 LOD) const;
+	TVoxelRange<v_flt> GetValueRange(const FVoxelIntBox& Bounds, int32 LOD) const;
 	
 	template<typename T>
 	T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
 	template<typename T>
-	TVoxelRange<T> GetCustomOutputRange(TVoxelRange<T> DefaultValue, FName Name, const FIntBox& Bounds, int32 LOD) const;
+	TVoxelRange<T> GetCustomOutputRange(TVoxelRange<T> DefaultValue, FName Name, const FVoxelIntBox& Bounds, int32 LOD) const;
 
 	template<typename ...TArgs>
 	inline FVoxelItemStack GetNextStack(TArgs... Args) const

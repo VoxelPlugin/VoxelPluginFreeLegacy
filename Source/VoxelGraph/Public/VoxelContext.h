@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "VoxelRange.h"
-#include "IntBox.h"
+#include "VoxelIntBox.h"
 #include "VoxelItemStack.h"
 
 struct VOXELGRAPH_API FVoxelContext
@@ -92,8 +92,8 @@ struct VOXELGRAPH_API FVoxelContextRange
 	const FVoxelItemStack Items;
 	const FTransform LocalToWorld;
 	const bool bHasCustomTransform;
-	const FIntBox WorldBounds;
-	const FIntBox LocalBounds;
+	const FVoxelIntBox WorldBounds;
+	const FVoxelIntBox LocalBounds;
 
 	static const FVoxelContextRange EmptyContext;
 
@@ -102,7 +102,7 @@ struct VOXELGRAPH_API FVoxelContextRange
 		const FVoxelItemStack& Items,
 		const FTransform& LocalToWorld,
 		bool bHasCustomTransform,
-		const FIntBox& WorldBounds)
+		const FVoxelIntBox& WorldBounds)
 		: LOD(LOD)
 		, Items(Items)
 		, LocalToWorld(LocalToWorld)

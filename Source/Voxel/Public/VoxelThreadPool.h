@@ -5,11 +5,26 @@
 #include "CoreMinimal.h"
 #include "HAL/PlatformAffinity.h"
 #include "HAL/ThreadSafeBool.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include <queue>
 
 class IVoxelQueuedWork;
 class FVoxelQueuedThread;
+
+class VOXEL_API FVoxelQueuedThreadPoolStats
+{
+public:
+	static FVoxelQueuedThreadPoolStats& Get();
+
+	void Report(FName Name, double Time);
+	void LogTimes() const;
+
+private:
+	FVoxelQueuedThreadPoolStats() = default;
+	
+	mutable FCriticalSection Section;
+	TMap<FName, double> Times;
+};
 
 struct VOXEL_API FVoxelQueuedThreadPoolSettings
 {

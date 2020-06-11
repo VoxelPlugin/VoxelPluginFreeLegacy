@@ -72,7 +72,7 @@ FORCEINLINE void AddFace(
 {
 	if (TVertex::bComputeMaterial && Mesher.Settings.bOneMaterialPerCubeSide)
 	{
-		uint8 Index = Material.GetSingleIndex_Index();
+		uint8 Index = Material.GetSingleIndex();
 		
 		switch (Direction)
 		{
@@ -90,7 +90,7 @@ FORCEINLINE void AddFace(
 			break;
 		}
 
-		Material.SetSingleIndex_Index(Index);
+		Material.SetSingleIndex(Index);
 	}
 	
 	FVector Positions[4];
@@ -253,12 +253,12 @@ FORCEINLINE void AddFace(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntBox FVoxelCubicMesher::GetBoundsToCheckIsEmptyOn() const
+FVoxelIntBox FVoxelCubicMesher::GetBoundsToCheckIsEmptyOn() const
 {
-	return FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition - FIntVector(Step) + CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * Step);
+	return FVoxelIntBox(ChunkPosition - FIntVector(Step), ChunkPosition - FIntVector(Step) + CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * Step);
 }
 
-FIntBox FVoxelCubicMesher::GetBoundsToLock() const
+FVoxelIntBox FVoxelCubicMesher::GetBoundsToLock() const
 {
 	return GetBoundsToCheckIsEmptyOn();
 }
@@ -274,6 +274,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicMesher::CreateFullChunkImpl(FVoxelMe
 	
 	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		LOD,
 		MoveTemp(Indices),
 		MoveTemp(reinterpret_cast<TArray<FVoxelMesherVertex>&>(Vertices))));
 }
@@ -301,7 +302,7 @@ void FVoxelCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<
 	MESHER_TIME_VALUES(CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS, Data.Get<FVoxelValue>(QueryZone, LOD));
 	
 	{
-		VOXEL_SCOPE_COUNTER("Iteration");
+		VOXEL_ASYNC_SCOPE_COUNTER("Iteration");
 		for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
 		{
 			for (int32 Y = 0; Y < RENDER_CHUNK_SIZE; Y++)
@@ -365,12 +366,12 @@ FORCEINLINE FVoxelValue FVoxelCubicMesher::GetValue(int32 X, int32 Y, int32 Z) c
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntBox FVoxelCubicTransitionsMesher::GetBoundsToCheckIsEmptyOn() const
+FVoxelIntBox FVoxelCubicTransitionsMesher::GetBoundsToCheckIsEmptyOn() const
 {
-	return FIntBox(ChunkPosition - FIntVector(Step), ChunkPosition - FIntVector(Step) + CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * Step);
+	return FVoxelIntBox(ChunkPosition - FIntVector(Step), ChunkPosition - FIntVector(Step) + CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * Step);
 }
 
-FIntBox FVoxelCubicTransitionsMesher::GetBoundsToLock() const
+FVoxelIntBox FVoxelCubicTransitionsMesher::GetBoundsToLock() const
 {
 	return GetBoundsToCheckIsEmptyOn();
 }
@@ -393,6 +394,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicTransitionsMesher::CreateFullChunkIm
 
 	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		LOD,
 		MoveTemp(Indices),
 		MoveTemp(reinterpret_cast<TArray<FVoxelMesherVertex>&>(Vertices))));
 }

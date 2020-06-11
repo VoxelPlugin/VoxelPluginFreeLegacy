@@ -4,6 +4,11 @@
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
 #include "VoxelRender/IVoxelRenderer.h"
 
+/**
+ * This code is based on an original implementation kindly provided by Dexyfex
+ * You can check out his website here: https://dexyfex.com/
+ */
+
 struct FVoxelSurfaceNetFullVertex : FVoxelMesherVertex
 {
 	static constexpr bool bComputeParentPosition = true;
@@ -64,12 +69,12 @@ struct FVoxelSurfaceNetGeometryVertex : FVector
 };
 static_assert(sizeof(FVoxelSurfaceNetGeometryVertex) == sizeof(FVector), "");
 
-FIntBox FVoxelSurfaceNetMesher::GetBoundsToCheckIsEmptyOn() const
+FVoxelIntBox FVoxelSurfaceNetMesher::GetBoundsToCheckIsEmptyOn() const
 {
-	return FIntBox(ChunkPosition, ChunkPosition + SN_EXTENDED_CHUNK_SIZE * Step);
+	return FVoxelIntBox(ChunkPosition, ChunkPosition + SN_EXTENDED_CHUNK_SIZE * Step);
 }
 
-FIntBox FVoxelSurfaceNetMesher::GetBoundsToLock() const
+FVoxelIntBox FVoxelSurfaceNetMesher::GetBoundsToLock() const
 {
 	return GetBoundsToCheckIsEmptyOn();
 }
@@ -102,63 +107,57 @@ inline FVector GetNormal(const float Values[8], const FVector& Offset)
 template<typename TVertex>
 void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<TVertex>& Vertices)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	TVoxelQueryZone<FVoxelValue> QueryZone(GetBoundsToCheckIsEmptyOn(), FIntVector(SN_EXTENDED_CHUNK_SIZE), LOD, CachedValues);
 	MESHER_TIME_VALUES(SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE, Data.Get<FVoxelValue>(QueryZone, LOD));
 
 	Accelerator = MakeUnique<FVoxelConstDataAccelerator>(Data, GetBoundsToLock());
 
-	constexpr uint32 VoxelIndexOffsetY = SN_EXTENDED_CHUNK_SIZE;
-	constexpr uint32 VoxelIndexOffsetZ = SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE;
-	constexpr uint32 VertexIndexOffsetY = SN_CHUNK_SIZE;
-	constexpr uint32 VertexIndexOffsetZ = SN_CHUNK_SIZE * SN_CHUNK_SIZE;
-	constexpr uint32 EdgeIndexOffsetY = VoxelIndexOffsetY * 3;
-	constexpr uint32 EdgeIndexOffsetZ = VoxelIndexOffsetZ * 3;
 	constexpr uint32 EdgeIndexOffsets[12] =
 	{
 		0,
-		EdgeIndexOffsetY,
-		EdgeIndexOffsetZ,
-		EdgeIndexOffsetY + EdgeIndexOffsetZ,
+		SN_EXTENDED_CHUNK_SIZE * 3,
+		SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
+		SN_EXTENDED_CHUNK_SIZE * 3 + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
 		1,
 		4,
-		1 + EdgeIndexOffsetZ,
-		4 + EdgeIndexOffsetZ,
+		1 + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
+		4 + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
 		2,
 		5,
-		2 + EdgeIndexOffsetY,
-		5 + EdgeIndexOffsetY
+		2 + SN_EXTENDED_CHUNK_SIZE * 3,
+		5 + SN_EXTENDED_CHUNK_SIZE * 3
 	};
 	constexpr uint32 ParentEdgeIndexOffsetsMin[12] =
 	{
 		0,
-		2 * EdgeIndexOffsetY,
-		2 * EdgeIndexOffsetZ,
-		2 * EdgeIndexOffsetY + 2 * EdgeIndexOffsetZ,
+		2 * SN_EXTENDED_CHUNK_SIZE * 3,
+		2 * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
+		2 * SN_EXTENDED_CHUNK_SIZE * 3 + 2 * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
 		1,
 		7,
-		1 + 2 * EdgeIndexOffsetZ,
-		7 + 2 * EdgeIndexOffsetZ,
+		1 + 2 * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
+		7 + 2 * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
 		2,
 		8,
-		2 + 2 * EdgeIndexOffsetY,
-		8 + 2 * EdgeIndexOffsetY
+		2 + 2 * SN_EXTENDED_CHUNK_SIZE * 3,
+		8 + 2 * SN_EXTENDED_CHUNK_SIZE * 3
 	};
 	constexpr uint32 ParentEdgeIndexOffsetsMax[12] =
 	{
 		3,
-		2 * EdgeIndexOffsetY + 3,
-		2 * EdgeIndexOffsetZ + 3,
-		2 * EdgeIndexOffsetY + 2 * EdgeIndexOffsetZ + 3,
-		1 + EdgeIndexOffsetY,
-		7 + EdgeIndexOffsetY,
-		1 + 2 * EdgeIndexOffsetZ + EdgeIndexOffsetY,
-		7 + 2 * EdgeIndexOffsetZ + EdgeIndexOffsetY,
-		2 + EdgeIndexOffsetZ,
-		8 + EdgeIndexOffsetZ,
-		2 + 2 * EdgeIndexOffsetY + EdgeIndexOffsetZ,
-		8 + 2 * EdgeIndexOffsetY + EdgeIndexOffsetZ
+		2 * SN_EXTENDED_CHUNK_SIZE * 3 + 3,
+		2 * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3 + 3,
+		2 * SN_EXTENDED_CHUNK_SIZE * 3 + 2 * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3 + 3,
+		1 + SN_EXTENDED_CHUNK_SIZE * 3,
+		7 + SN_EXTENDED_CHUNK_SIZE * 3,
+		1 + 2 * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3 + SN_EXTENDED_CHUNK_SIZE * 3,
+		7 + 2 * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3 + SN_EXTENDED_CHUNK_SIZE * 3,
+		2 + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
+		8 + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
+		2 + 2 * SN_EXTENDED_CHUNK_SIZE * 3 + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3,
+		8 + 2 * SN_EXTENDED_CHUNK_SIZE * 3 + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3
 	};
 	constexpr uint32 EdgeFirstCornerIndex[12] = { 0, 2, 4, 6, 0, 1, 4, 5, 0, 1, 2, 3 };
 	constexpr uint32 EdgeSecondCornerIndex[12] = { 1, 3, 5, 7, 2, 3, 6, 7, 4, 5, 6, 7 };
@@ -185,21 +184,20 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 		{0,2,2},
 		{2,2,2}
 	};
-	constexpr uint32 Offsets[3] = { 1, VoxelIndexOffsetY, VoxelIndexOffsetZ };
+	constexpr uint32 Offsets[3] = { 1, SN_EXTENDED_CHUNK_SIZE, SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE };
 	const FIntVector icorners[3] = { {1,0,0},{0,1,0},{0,0,1} };
 
 	{
-		VOXEL_SCOPE_COUNTER("Find Intersections");
+		VOXEL_ASYNC_SCOPE_COUNTER("Find Intersections");
 
 		// find intersections and calculate the edge blend factors for all cells
-		for (uint32 LZ = 0; LZ < SN_EXTENDED_CHUNK_SIZE; LZ++)
+		for (int32 LZ = 0; LZ < SN_EXTENDED_CHUNK_SIZE; LZ++)
 		{
-			for (uint32 LY = 0; LY < SN_EXTENDED_CHUNK_SIZE; LY++)
+			for (int32 LY = 0; LY < SN_EXTENDED_CHUNK_SIZE; LY++)
 			{
-				for (uint32 LX = 0; LX < SN_EXTENDED_CHUNK_SIZE; LX++)
+				for (int32 LX = 0; LX < SN_EXTENDED_CHUNK_SIZE; LX++)
 				{
 					const uint32 VoxelIndex = LX + LY * SN_EXTENDED_CHUNK_SIZE + LZ * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE;
-					const uint32 VoxelEdgeIndex = VoxelIndex * 3;
 					const FVoxelValue MinCornerValue = CachedValues[VoxelIndex];
 					FIntVector MinCornerPosition = FIntVector(LX, LY, LZ) * Step;
 					FIntVector MaxCornerPositions = FIntVector(LX + 1, LY + 1, LZ + 1);
@@ -249,16 +247,72 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 								}
 							}
 						}
-						EdgeFactors[VoxelEdgeIndex + Direction] = Factor;
+						EdgeFactors[3 * VoxelIndex + Direction] = Factor;
 					}
-
+					
+					if (TVertex::bComputeMaterial)
+					{
+						// We need to find the min value that's a surface value
+						if (LX < SN_EXTENDED_CHUNK_SIZE - 1 && 
+							LY < SN_EXTENDED_CHUNK_SIZE - 1 &&
+							LZ < SN_EXTENDED_CHUNK_SIZE - 1)
+						{
+							FVoxelValue VoxelValues[8];
+							VoxelValues[0] = CachedValues[VoxelIndex];
+							VoxelValues[1] = CachedValues[VoxelIndex + 1];
+							VoxelValues[2] = CachedValues[VoxelIndex + SN_EXTENDED_CHUNK_SIZE];
+							VoxelValues[3] = CachedValues[VoxelIndex + SN_EXTENDED_CHUNK_SIZE + 1];
+							VoxelValues[4] = CachedValues[VoxelIndex + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE];
+							VoxelValues[5] = CachedValues[VoxelIndex + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE + 1];
+							VoxelValues[6] = CachedValues[VoxelIndex + SN_EXTENDED_CHUNK_SIZE + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE];
+							VoxelValues[7] = CachedValues[VoxelIndex + SN_EXTENDED_CHUNK_SIZE + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE + 1];
+							
+							FVoxelValue MinValue = FVoxelValue::Empty();
+							int32 MinValueIndex = 0;
+							
+							for (int32 Index = 0; Index < 8; Index++)
+							{
+								if (VoxelValues[Index] > MinValue)
+								{
+									continue;
+								}
+								bool bIsSurfaceValue = false;
+								for (int32 Neighbor = 0; Neighbor < 3; Neighbor++)
+								{
+									const int32 NeighborIndex = Index ^ (1 << Neighbor);
+									if (VoxelValues[Index].IsEmpty() != VoxelValues[NeighborIndex].IsEmpty())
+									{
+										bIsSurfaceValue = true;
+										break;
+									}
+								}
+								if (!bIsSurfaceValue)
+								{
+									continue;
+								}
+								MinValue = VoxelValues[Index];
+								MinValueIndex = Index;
+							}
+							
+							MaterialPositions[VoxelIndex] = 
+							{
+								LX + bool(MinValueIndex & 0x1),
+								LY + bool(MinValueIndex & 0x2),
+								LZ + bool(MinValueIndex & 0x4)
+							};
+						}
+						else
+						{
+							MaterialPositions[VoxelIndex] = { LX, LY, LZ };
+						}
+					}
 				}
 			}
 		}
 	}
 
 	{
-		VOXEL_SCOPE_COUNTER("Generate Vertices");
+		VOXEL_ASYNC_SCOPE_COUNTER("Generate Vertices");
 
 		// generate the vertices and store the indices for the next step
 		for (uint32 LZ = 0; LZ < SN_CHUNK_SIZE; LZ++)
@@ -267,18 +321,18 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 			{
 				for (uint32 LX = 0; LX < SN_CHUNK_SIZE; LX++)
 				{
-					const uint32 VoxelIndex = LX + LY * VoxelIndexOffsetY + LZ * VoxelIndexOffsetZ;
-					const uint32 VertexIndex = LX + LY * VertexIndexOffsetY + LZ * VertexIndexOffsetZ;
+					const uint32 VoxelIndex = LX + LY * SN_EXTENDED_CHUNK_SIZE + LZ * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE;
+					const uint32 VertexIndex = LX + LY * SN_CHUNK_SIZE + LZ * SN_CHUNK_SIZE * SN_CHUNK_SIZE;
 
 					uint32 VoxelIndices[8];
 					VoxelIndices[0] = VoxelIndex;
 					VoxelIndices[1] = VoxelIndex + 1;
-					VoxelIndices[2] = VoxelIndex + VoxelIndexOffsetY;
-					VoxelIndices[3] = VoxelIndex + VoxelIndexOffsetY + 1;
-					VoxelIndices[4] = VoxelIndex + VoxelIndexOffsetZ;
-					VoxelIndices[5] = VoxelIndex + VoxelIndexOffsetZ + 1;
-					VoxelIndices[6] = VoxelIndex + VoxelIndexOffsetY + VoxelIndexOffsetZ;
-					VoxelIndices[7] = VoxelIndex + VoxelIndexOffsetY + VoxelIndexOffsetZ + 1;
+					VoxelIndices[2] = VoxelIndex + SN_EXTENDED_CHUNK_SIZE;
+					VoxelIndices[3] = VoxelIndex + SN_EXTENDED_CHUNK_SIZE + 1;
+					VoxelIndices[4] = VoxelIndex + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE;
+					VoxelIndices[5] = VoxelIndex + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE + 1;
+					VoxelIndices[6] = VoxelIndex + SN_EXTENDED_CHUNK_SIZE + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE;
+					VoxelIndices[7] = VoxelIndex + SN_EXTENDED_CHUNK_SIZE + SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE + 1;
 
 					FVoxelValue VoxelValues[8];
 					VoxelValues[0] = CachedValues[VoxelIndices[0]];
@@ -333,7 +387,7 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 
 					constexpr int32 RemoveFirstBit = 0xFFFE; // TODO: what if more than 64k vertices
 					const FIntVector ParentPosition((LX & RemoveFirstBit), (LY & RemoveFirstBit), (LZ & RemoveFirstBit));
-					const uint32 ParentVoxelIndex = ParentPosition.X + ParentPosition.Y * VoxelIndexOffsetY + ParentPosition.Z * VoxelIndexOffsetZ;
+					const uint32 ParentVoxelIndex = ParentPosition.X + ParentPosition.Y * SN_EXTENDED_CHUNK_SIZE + ParentPosition.Z * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE;
 					const uint32 ParentVoxelEdgeIndex = ParentVoxelIndex * 3;
 					FVector ParentCrossingTotal = FVector(0, 0, 0);
 					uint32 ParentCrossingCount = 0;
@@ -376,12 +430,10 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 					const FIntVector CellPosition(LX * Step, LY * Step, LZ * Step);
 					const FVector CornerPosition{ CellPosition };
 					const FVector FinalPosition = CornerPosition + Offset * Step;
-					const FIntVector MaterialOffset = FVoxelUtilities::RoundToInt(Offset * Step);
 
 					const FIntVector ParentCellPosition = ParentPosition * Step;
 					const FVector ParentCornerPosition{ ParentCellPosition };
 					const FVector ParentFinalPosition = ParentCornerPosition + ParentOffset * Step;
-
 					
 					TVertex Vertex;
 					Vertex.SetPosition(FinalPosition);
@@ -395,7 +447,7 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 					}
 					if (TVertex::bComputeMaterial)
 					{
-						Vertex.SetMaterial(MESHER_TIME_RETURN_MATERIALS(1, Accelerator->GetMaterial(CellPosition + MaterialOffset + ChunkPosition, LOD)));
+						Vertex.SetMaterial(MESHER_TIME_RETURN_MATERIALS(1, Accelerator->GetMaterial(MaterialPositions[VoxelIndex] * Step + ChunkPosition, LOD)));
 					}
 					if (TVertex::bComputeTextureCoordinate)
 					{
@@ -410,7 +462,7 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 	UnlockData();
 
 	{
-		VOXEL_SCOPE_COUNTER("Generate Mesh");
+		VOXEL_ASYNC_SCOPE_COUNTER("Generate Mesh");
 
 		// generate the mesh indices
 		for (uint32 LZ = 0; LZ < RENDER_CHUNK_SIZE; LZ++)
@@ -419,7 +471,7 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 			{
 				for (uint32 LX = 0; LX < RENDER_CHUNK_SIZE; LX++)
 				{
-					const uint32 VoxelIndex = LX + LY * VertexIndexOffsetY + LZ * VertexIndexOffsetZ;
+					const uint32 VoxelIndex = LX + LY * SN_CHUNK_SIZE + LZ * SN_CHUNK_SIZE * SN_CHUNK_SIZE;
 					const uint8 SurfaceNetCase = VertexSNCases[VoxelIndex];
 
 					constexpr uint32 QuadsOffsets[8] = 
@@ -499,6 +551,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelSurfaceNetMesher::CreateFullChunkImpl(FVo
 
 	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		LOD,
 		MoveTemp(Indices),
 		MoveTemp(reinterpret_cast<TArray<FVoxelMesherVertex>&>(Vertices))));
 }

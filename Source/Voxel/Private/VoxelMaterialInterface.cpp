@@ -72,7 +72,7 @@ TVoxelSharedRef<FVoxelMaterialInterface> FVoxelMaterialInterfaceManager::CreateM
 
 void FVoxelMaterialInterfaceManager::AddReferencedObjects(FReferenceCollector& Collector)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	Collector.AddReferencedObjects(InstancePool);
 
@@ -223,6 +223,7 @@ TVoxelSharedRef<FVoxelMaterialInterface> FVoxelMaterialInterfaceManager::CreateM
 UMaterialInstanceDynamic* FVoxelMaterialInterfaceManager::GetInstanceFromPool()
 {
 	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
 
 	INC_DWORD_STAT(STAT_VoxelMaterialInstancesUsed);
 
@@ -284,5 +285,6 @@ FVoxelMaterialInterface::~FVoxelMaterialInterface()
 
 UMaterialInterface* FVoxelMaterialInterface::GetMaterial() const
 {
+	VOXEL_SLOW_FUNCTION_COUNTER();
 	return FVoxelMaterialInterfaceManager::Get().GetMaterial_AnyThread(Reference);
 }

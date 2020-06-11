@@ -3,7 +3,7 @@
 #include "VoxelRender/LODManager/VoxelFixedResolutionLODManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelChunkToUpdate.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 
 TVoxelSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager::Create(
 	const FVoxelLODSettings& LODSettings)
@@ -16,7 +16,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(int32 ChunkLOD, int32 MaxChunks
 	TArray<FVoxelChunkUpdate> ChunkUpdates;
 	
 	const int32 ChunkSize = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(ChunkLOD);
-	const FIntBox& WorldBounds = Settings.WorldBounds;
+	const FVoxelIntBox& WorldBounds = Settings.WorldBounds;
 
 	const FIntVector Min = FVoxelUtilities::FloorToInt(FVector(WorldBounds.Min) / ChunkSize) * ChunkSize;
 	const FIntVector Max = FVoxelUtilities::CeilToInt(FVector(WorldBounds.Max) / ChunkSize) * ChunkSize;
@@ -37,7 +37,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(int32 ChunkLOD, int32 MaxChunks
 			for (int32 Z = Min.Z; Z < Max.Z; Z += ChunkSize)
 			{
 				const FIntVector Position = FIntVector(X, Y, Z);
-				const FIntBox ChunkBounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, ChunkLOD);
+				const FVoxelIntBox ChunkBounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, ChunkLOD);
 				if (WorldBounds.Intersect(ChunkBounds))
 				{
 					ChunkUpdates.Emplace(
@@ -47,7 +47,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(int32 ChunkLOD, int32 MaxChunks
 							ChunkLOD,
 							ChunkBounds,
 							{},
-							FVoxelChunkSettings::VisibleWithCollisions(false),
+							FVoxelChunkSettings::VisibleWithCollisions(),
 							{}
 						});
 				}

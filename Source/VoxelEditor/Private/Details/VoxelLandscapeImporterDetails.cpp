@@ -38,7 +38,7 @@ void FVoxelLandscapeImporterDetails::CustomizeDetails(IDetailLayoutBuilder& Deta
 			DetailLayout.HideProperty(Handle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelLandscapeImporterLayerInfo, Index)));
 			break;
 		case EVoxelMaterialConfig::SingleIndex:
-		case EVoxelMaterialConfig::DoubleIndex:
+		case EVoxelMaterialConfig::MultiIndex:
 			DetailLayout.HideProperty(Handle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelLandscapeImporterLayerInfo, Layer)));
 			break;
 		default:

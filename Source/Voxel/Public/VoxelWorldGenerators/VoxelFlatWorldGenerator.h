@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelWorldGeneratorHelpers.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
 #include "VoxelFlatWorldGenerator.generated.h"
 
 class UVoxelFlatWorldGenerator;
@@ -11,7 +11,12 @@ class UVoxelFlatWorldGenerator;
 class VOXEL_API FVoxelFlatWorldGeneratorInstance : public TVoxelWorldGeneratorInstanceHelper<FVoxelFlatWorldGeneratorInstance, UVoxelFlatWorldGenerator>
 {
 public:
-	FVoxelFlatWorldGeneratorInstance() = default;
+	const FVoxelMaterial Material;
+	
+	explicit FVoxelFlatWorldGeneratorInstance(const FVoxelMaterial& Material = FVoxelMaterial::Default())
+		: Material(Material)
+	{
+	}
 
 	//~ Begin FVoxelWorldGeneratorInstance Interface
 	inline v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
@@ -20,9 +25,9 @@ public:
 	}
 	inline FVoxelMaterial GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		return FVoxelMaterial::Default();
+		return Material;
 	}
-	TVoxelRange<v_flt> GetValueRangeImpl(const FIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<v_flt> GetValueRangeImpl(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return TVoxelRange<v_flt>(Bounds.Min.Z, Bounds.Max.Z);
 	}
@@ -42,10 +47,13 @@ class VOXEL_API UVoxelFlatWorldGenerator : public UVoxelWorldGenerator
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	FLinearColor Color = FLinearColor::Transparent;
+		
 	//~ Begin UVoxelWorldGenerator Interface
 	TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override
 	{
-		return MakeVoxelShared<FVoxelFlatWorldGeneratorInstance>();
+		return MakeVoxelShared<FVoxelFlatWorldGeneratorInstance>(FVoxelMaterial::CreateFromColor(Color));
 	}
 	//~ End UVoxelWorldGenerator Interface
 };

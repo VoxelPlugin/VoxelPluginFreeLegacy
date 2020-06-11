@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "PhysicsEngine/BodySetupEnums.h"
-#include "IntBox.h"
+#include "VoxelMinimal.h"
+#include "VoxelIntBox.h"
+#include "VoxelStaticArray.h"
 #include "VoxelConfigEnums.h"
-#include "VoxelGlobals.h"
 #include "VoxelRender/VoxelMeshConfig.h"
 
 struct FVoxelMaterialIndices;
@@ -24,15 +25,19 @@ struct FVoxelChunkUpdate;
 
 DECLARE_MULTICAST_DELEGATE(FVoxelRendererOnWorldLoaded);
 // Fired once per chunk
-DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdateFinished, FIntBox);
-DECLARE_MULTICAST_DELEGATE_ThreeParams(FVoxelOnMaterialInstanceCreated, int32 /*ChunkLOD*/, const FIntBox& /*ChunkBounds*/, UMaterialInstanceDynamic* /*Instance*/);
+DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdateFinished, FVoxelIntBox);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FVoxelOnMaterialInstanceCreated, int32 /*ChunkLOD*/, const FVoxelIntBox& /*ChunkBounds*/, UMaterialInstanceDynamic* /*Instance*/);
 
 struct FVoxelRendererDynamicSettings
 {
-	TWeakObjectPtr<UMaterialInterface> VoxelMaterialWithoutTessellation;
-	TWeakObjectPtr<UMaterialInterface> VoxelMaterialWithTessellation;
-	TWeakObjectPtr<UVoxelMaterialCollectionBase> MaterialCollection;
-	FThreadSafeCounter MaxMaterialIndices = 1;
+	struct FLODData
+	{
+		TWeakObjectPtr<UMaterialInterface> Material;
+		TWeakObjectPtr<UVoxelMaterialCollectionBase> MaterialCollection;
+		FThreadSafeCounter MaxMaterialIndices = 1;
+	};
+	
+	TVoxelStaticArray<FLODData, 32> LODData{ ForceInit };
 };
 
 struct FVoxelRendererSettingsBase
@@ -61,11 +66,18 @@ struct FVoxelRendererSettingsBase
 	const bool bCleanCollisionMeshes;
 
 	const EVoxelRenderType RenderType;
+	const uint32 RenderSharpness;
 	const bool bCreateMaterialInstances;
 	const bool bDitherChunks;
 	const float ChunksDitheringDuration;
 	const bool bOptimizeIndices;
+
 	const int32 MaxDistanceFieldLOD;
+	const int32 DistanceFieldBoundsExtension;
+	const int32 DistanceFieldResolutionDivisor;
+	const int32 DistanceFieldQuality;
+	const float DistanceFieldSelfShadowBias;
+	
 	const bool bOneMaterialPerCubeSide;
 	const bool bHalfPrecisionCoordinates;
 	const bool bInterpolateColors;
@@ -100,8 +112,8 @@ public:
 		return FVector(Position + *WorldOffset) * VoxelSize;
 	}
 
-	UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& MaterialIndices, bool bTessellation) const;
-	UMaterialInterface* GetVoxelMaterial(bool bTessellation) const;
+	UMaterialInterface* GetVoxelMaterial(int32 LOD, const FVoxelMaterialIndices& MaterialIndices) const;
+	UMaterialInterface* GetVoxelMaterial(int32 LOD) const;
 
 	inline void OnMaterialsChanged() const
 	{
@@ -146,7 +158,7 @@ public:
 	virtual void Destroy() = 0;
 
 	virtual int32 UpdateChunks(
-		const FIntBox& Bounds,
+		const FVoxelIntBox& Bounds,
 		const TArray<uint64>& ChunksToUpdate, 
 		const FVoxelOnChunkUpdateFinished& FinishDelegate) = 0;
 	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) = 0;

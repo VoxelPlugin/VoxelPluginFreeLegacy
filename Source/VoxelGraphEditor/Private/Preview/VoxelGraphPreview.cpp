@@ -6,6 +6,7 @@
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphPreviewSettings.h"
 #include "VoxelGraphErrorReporter.h"
+#include "VoxelUtilities/VoxelMaterialUtilities.h"
 
 #include "SVoxelGraphPreview.h"
 #include "SVoxelGraphPreviewViewport.h"
@@ -31,18 +32,6 @@ inline void UpdateTexture(UTexture2D*& Texture, int32 Size, const TArray<FColor>
 	}
 	Mip.BulkData.Unlock();
 	Texture->UpdateResource();
-}
-
-inline FLinearColor GetColor(const TArray<FLinearColor>& IndexColors, uint8 Index)
-{
-	if (IndexColors.IsValidIndex(Index))
-	{
-		return IndexColors[Index];
-	}
-	else
-	{
-		return FColor::Black;
-	}
 }
 
 FVoxelGraphPreview::FVoxelGraphPreview(
@@ -82,7 +71,7 @@ void FVoxelGraphPreview::Update(bool bUpdateTextures, bool bAutomaticPreview)
 		const int32 ResolutionScale = Settings->ResolutionScale;
 		const FIntVector Size = Settings->GetSize();
 
-		TArray<float> Values;
+		TArray<v_flt> Values;
 		TArray<FVoxelMaterial> Materials;
 		Values.SetNumUninitialized(Resolution * Resolution);
 		Materials.SetNumUninitialized(Resolution * Resolution);
@@ -102,16 +91,59 @@ void FVoxelGraphPreview::Update(bool bUpdateTextures, bool bAutomaticPreview)
 			}
 		}
 
-		// Show seed errors
-		WorldGenerator->GetDefaultSeeds();
+		// Show seed errors & update preview settings seeds
+		{
+			TMap<FName, int32> Seeds = WorldGenerator->GetDefaultSeeds();
+
+			for (auto& It : Settings->Seeds)
+			{
+				int32* Value = Seeds.Find(It.Key);
+				if (Value)
+				{
+					*Value = It.Value;
+				}
+			}
+			Settings->Seeds = MoveTemp(Seeds);
+		}
+
+		const bool bIsPreviewingPin = WorldGenerator->PreviewedPin.Get() != nullptr;
+		const bool bShowDensities = Settings->PreviewType2D == EVoxelGraphPreviewType::Density || bIsPreviewingPin;
 
 		TArray<FColor> NewDensities;
 		TArray<FColor> NewMaterials;
 		NewDensities.SetNumUninitialized(Resolution * Resolution);
 		NewMaterials.SetNumUninitialized(Resolution * Resolution);
+
+		v_flt MinValue;
+		v_flt MaxValue;
+		if (Settings->bAutoNormalize)
+		{
+			MinValue = Values[0];
+			MaxValue = Values[0];
+			for (const auto& Value : Values)
+			{
+				MinValue = FMath::Min(Value, MinValue);
+				MaxValue = FMath::Max(Value, MaxValue);
+			}
+		}
+		else
+		{
+			MinValue = Settings->NormalizeMinValue;
+			MaxValue = Settings->NormalizeMaxValue;
+		}
+
+		if (bShowDensities)
+		{
+			Settings->MinValue = float(MinValue);
+			Settings->MaxValue = float(MaxValue);
+		}
+		else
+		{
+			// For materials, values are between 0 and 1
+			Settings->MinValue = 0.f;
+			Settings->MaxValue = 1.f;
+		}
 		
-		const EVoxelMaterialConfig MaterialConfig = Settings->MaterialConfig;
-		const TArray<FLinearColor>& IndexColors = Settings->IndexColors;
 		for (int32 X = 0; X < Resolution; X++)
 		{
 			for (int32 Y = 0; Y < Resolution; Y++)
@@ -120,35 +152,139 @@ void FVoxelGraphPreview::Update(bool bUpdateTextures, bool bAutomaticPreview)
 				const int32 TextureIndex = X + Resolution * Y;
 				const int32 DataIndex = Position.X + Position.Y * Size.X + Position.Z * Size.X * Size.Y;
 
-				ensure(FIntBox(FIntVector::ZeroValue, Size).Contains(Position));
-
+				ensure(FVoxelIntBox(FIntVector::ZeroValue, Size).Contains(Position));
+				
+				const float Value = Values[DataIndex];
+				const float Alpha = (Value - MinValue) / (MaxValue - MinValue);
+			
 				{
-					float Alpha = (Values[DataIndex] - Settings->MinValue) / (Settings->MaxValue - Settings->MinValue);
 					uint8 IntAlpha = FVoxelUtilities::FloatToUINT8(Alpha);
 					NewDensities[TextureIndex] = FColor(IntAlpha, IntAlpha, IntAlpha, 255);
 				}
-
+				
+				if (bShowDensities)
 				{
-					FVoxelMaterial& Material = Materials[DataIndex];
-					FColor Color;
+					if (Settings->bDrawColoredDistanceField)
+					{
+						// Credit for this snippet goes to Inigo Quilez
+						const float ScaledValue = Value / (Resolution << ResolutionScale) * 2;
 
-					if (MaterialConfig == EVoxelMaterialConfig::RGB)
-					{
-						Color = Material.GetColor();
-					}
-					else if (MaterialConfig == EVoxelMaterialConfig::SingleIndex)
-					{
-						Color = GetColor(IndexColors, Material.GetSingleIndex_Index()).ToFColor(false);
+						FLinearColor Color = FLinearColor::White - FMath::Sign(ScaledValue) * FLinearColor(0.1, 0.4, 0.7, 0.f);
+						Color *= 1.0 - FMath::Exp(-3.0 * FMath::Abs(ScaledValue));
+						Color *= 0.8 + 0.2 * FMath::Cos(150.0 * ScaledValue);
+						Color = FMath::Lerp(Color, FLinearColor::White, 1.0 - FMath::SmoothStep(0.0, 0.01, FMath::Abs(ScaledValue)));
+						Color.A = 1.f;
+						NewMaterials[TextureIndex] = FLinearColor(Color.ToFColor(false)).ToFColor(false);
 					}
 					else
 					{
-						check(MaterialConfig == EVoxelMaterialConfig::DoubleIndex);
-						FLinearColor ColorA = GetColor(IndexColors, Material.GetDoubleIndex_IndexA());
-						FLinearColor ColorB = GetColor(IndexColors, Material.GetDoubleIndex_IndexB());
-						Color = FMath::Lerp(ColorA, ColorB, Material.GetDoubleIndex_Blend_AsFloat()).ToFColor(false);
+						NewMaterials[TextureIndex] = NewDensities[TextureIndex];
+					}
+				}
+				else
+				{
+					const FVoxelMaterial& Material = Materials[DataIndex];
+					FColor Color = FColor::Black;
+
+					const auto GetColor = [&](int32 Index)
+					{
+						if (Settings->IndexColors.IsValidIndex(Index))
+						{
+							return Settings->IndexColors[Index];
+						}
+						else
+						{
+							return FColor::Black;
+						}
+					};
+
+					switch (Settings->MaterialPreviewType)
+					{
+					case EVoxelGraphMaterialPreviewType::RGB:
+					{
+						Color.R = Material.GetR();
+						Color.G = Material.GetG();
+						Color.B = Material.GetB();
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::Alpha:
+					{
+						Color.R = Material.GetA();
+						Color.G = Material.GetA();
+						Color.B = Material.GetA();
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::SingleIndex:
+					{
+						Color = GetColor(Material.GetSingleIndex());
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::MultiIndex_Overview:
+					{
+						const TVoxelStaticArray<float, 4> Strengths = FVoxelUtilities::GetMultiIndexStrengths(Material);
+
+						const FColor Color0 = GetColor(Material.GetMultiIndex_Index0());
+						const FColor Color1 = GetColor(Material.GetMultiIndex_Index1());
+						const FColor Color2 = GetColor(Material.GetMultiIndex_Index2());
+						const FColor Color3 = GetColor(Material.GetMultiIndex_Index3());
+						
+						Color.R = FVoxelUtilities::ClampToUINT8(FMath::RoundToInt(Color0.R * Strengths[0] + Color1.R * Strengths[1] + Color2.R * Strengths[2] + Color3.R * Strengths[3]));
+						Color.G = FVoxelUtilities::ClampToUINT8(FMath::RoundToInt(Color0.G * Strengths[0] + Color1.G * Strengths[1] + Color2.G * Strengths[2] + Color3.G * Strengths[3]));
+						Color.B = FVoxelUtilities::ClampToUINT8(FMath::RoundToInt(Color0.B * Strengths[0] + Color1.B * Strengths[1] + Color2.B * Strengths[2] + Color3.B * Strengths[3]));
+						
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::MultiIndex_SingleIndexPreview:
+					{
+						const TVoxelStaticArray<float, 4> Strengths = FVoxelUtilities::GetMultiIndexStrengths(Material);
+
+						float Strength = 0;
+						if (Settings->MultiIndexToPreview == Material.GetMultiIndex_Index0()) Strength += Strengths[0];
+						if (Settings->MultiIndexToPreview == Material.GetMultiIndex_Index1()) Strength += Strengths[1];
+						if (Settings->MultiIndexToPreview == Material.GetMultiIndex_Index2()) Strength += Strengths[2];
+						if (Settings->MultiIndexToPreview == Material.GetMultiIndex_Index3()) Strength += Strengths[3];
+
+						Color.R = FVoxelUtilities::FloatToUINT8(Strength);
+						Color.G = FVoxelUtilities::FloatToUINT8(Strength);
+						Color.B = FVoxelUtilities::FloatToUINT8(Strength);
+
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::MultiIndex_Wetness:
+					{
+						Color.R = Material.GetMultiIndex_Wetness();
+						Color.G = Material.GetMultiIndex_Wetness();
+						Color.B = Material.GetMultiIndex_Wetness();
+
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::UV0:
+					{
+						Color.R = Material.GetU0();
+						Color.G = Material.GetV0();
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::UV1:
+					{
+						Color.R = Material.GetU1();
+						Color.G = Material.GetV1();
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::UV2:
+					{
+						Color.R = Material.GetU2();
+						Color.G = Material.GetV2();
+						break;
+					}
+					case EVoxelGraphMaterialPreviewType::UV3:
+					{
+						Color.R = Material.GetU3();
+						Color.G = Material.GetV3();
+						break;
+					}
+					default: ensure(false);
 					}
 
-					// Ignore alpha as it does silly stuff
 					Color.A = 255;
 
 					NewMaterials[TextureIndex] = Color;
@@ -159,8 +295,8 @@ void FVoxelGraphPreview::Update(bool bUpdateTextures, bool bAutomaticPreview)
 		UpdateTexture(DensitiesTexture, Resolution, NewDensities);
 		UpdateTexture(MaterialsTexture, Resolution, NewMaterials);
 
-		Preview->SetTexture(Settings->PreviewType2D == EVoxelGraphPreviewType::Density ? DensitiesTexture : MaterialsTexture);
-		WorldGenerator->SetPreviewTexture(Settings->PreviewType2D == EVoxelGraphPreviewType::Density ? NewDensities : NewMaterials, Resolution);
+		Preview->SetTexture(MaterialsTexture);
+		WorldGenerator->SetPreviewTexture(NewMaterials, Resolution);
 	}
 
 	if (!PreviewSceneMaterial || PreviewSceneMaterial->Parent != Settings->Material)

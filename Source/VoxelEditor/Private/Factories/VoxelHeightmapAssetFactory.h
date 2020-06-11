@@ -22,7 +22,7 @@ public:
 	UVoxelHeightmapAssetFloatFactory();
 
 	UPROPERTY()
-	EVoxelMaterialConfig MaterialConfig;
+	EVoxelHeightmapImporterMaterialConfig MaterialConfig;
 	
 	UPROPERTY()
 	TArray<FVoxelLandscapeImporterLayerInfo> LayerInfos;
@@ -52,12 +52,6 @@ namespace FVoxelHeightmapImportersHelpers
 
 		FWeightmap() = default;
 	};
-
-	template<typename T>
-	void ImportMaterialFromWeightmaps(
-		EVoxelMaterialConfig MaterialConfig, 
-		const TArray<FWeightmap>& Weightmaps, uint32 WeightmapIndex,
-		TVoxelHeightmapAssetData<T>& HeightmapAssetData, int32 HeightmapAssetDataIndex);
 }
 
 UCLASS(HideCategories=Object, CollapseCategories)
@@ -72,7 +66,7 @@ public:
 	FFilePath Heightmap;
 
 	UPROPERTY(EditAnywhere, Category = "Import configuration")
-	EVoxelMaterialConfig MaterialConfig;
+	EVoxelHeightmapImporterMaterialConfig MaterialConfig;
 
 	UPROPERTY(EditAnywhere, Category = "Import configuration", meta = (DisplayName = "Weightmaps"))
 	TArray<FVoxelHeightmapImporterWeightmapInfos> WeightmapsInfos;

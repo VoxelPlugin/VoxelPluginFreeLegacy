@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IntBox.h"
-#include "VoxelGlobals.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelPriorityHandler.h"
 #include "VoxelAsyncWork.h"
 
@@ -32,7 +32,7 @@ public:
 		FVoxelDefaultRenderer& Renderer,
 		uint64 ChunkId,
 		int32 LOD,
-		const FIntBox& Bounds,
+		const FVoxelIntBox& Bounds,
 		bool bIsTransitionTask,
 		uint8 TransitionsMask);
 

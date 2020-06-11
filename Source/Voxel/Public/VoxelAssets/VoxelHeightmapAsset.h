@@ -4,10 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Engine/EngineTypes.h"
+#include "VoxelRange.h"
 #include "VoxelMaterial.h"
-#include "VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelConfigEnums.h"
-#include "VoxelWorldGeneratorHelpers.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
 #include "VoxelHeightmapAsset.generated.h"
 
 class UVoxelHeightmapAsset;
@@ -16,16 +17,31 @@ class UTexture2D;
 template<typename>
 class TVoxelHeightmapAssetInstance;
 
+UENUM()
+enum class EVoxelHeightmapImporterMaterialConfig : uint8
+{
+	RGB,
+	FourWayBlend,
+	FiveWayBlend,
+	SingleIndex,
+	MultiIndex
+};
+
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Heightmap Assets Memory"), STAT_VoxelHeightmapAssetMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
+// TODO move to its own file
 template<typename T>
 struct TVoxelHeightmapAssetData
 {	
+public:
 	TWeakObjectPtr<UVoxelHeightmapAsset> const Owner;
 
 	explicit TVoxelHeightmapAssetData(UVoxelHeightmapAsset* Owner)
 		: Owner(Owner)
 	{
+		// Make it safe to sample an empty asset
+		SetSize(2, 2, false, {});
+		SetAllHeightsTo(0);
 	}
 	~TVoxelHeightmapAssetData()
 	{
@@ -33,11 +49,11 @@ struct TVoxelHeightmapAssetData
 	}
 
 public:
-	inline int32 GetWidth() const
+	int32 GetWidth() const
 	{
 		return Width;
 	}
-	inline int32 GetHeight() const
+	int32 GetHeight() const
 	{
 		return Height;
 	}
@@ -49,9 +65,12 @@ public:
 	{
 		return MaxHeight;
 	}
-	inline void SetSize(int32 NewWidth, int32 NewHeight, bool bCreateMaterials, EVoxelMaterialConfig InMaterialConfig)
+	void SetSize(int32 NewWidth, int32 NewHeight, bool bCreateMaterials, EVoxelMaterialConfig InMaterialConfig)
 	{
-		// Somewhat thread safe
+		VOXEL_FUNCTION_COUNTER();
+		
+		check(NewWidth > 0 && NewHeight > 0);
+		
 		Heights.SetNumUninitialized(NewWidth * NewHeight);
 
 		if (bCreateMaterials)
@@ -61,7 +80,7 @@ public:
 				? 4
 				: InMaterialConfig == EVoxelMaterialConfig::SingleIndex
 				? 1
-				: 3));
+				: 7));
 		}
 		else
 		{
@@ -70,102 +89,283 @@ public:
 		
 		Width = NewWidth;
 		Height = NewHeight;
-		MinHeight = TNumericLimits<T>::Max();
-		MaxHeight = TNumericLimits<T>::Lowest();
-
+	
+		MinHeight = PositiveInfinity<T>();
+		MaxHeight = NegativeInfinity<T>();
+		
 		MaterialConfig = InMaterialConfig;
 
 		UpdateStats();
+		InitializeHeightRangeMips();
 	}
-	inline void SetAllHeightsTo(T NewHeight)
+	void SetAllHeightsTo(T NewHeight)
 	{
+		VOXEL_ASYNC_FUNCTION_COUNTER();
+		
 		for (auto& HeightIt : Heights)
 		{
 			HeightIt = NewHeight;
 		}
-		MinHeight = MaxHeight = NewHeight;
+		for (auto& HeightRangeMip : HeightRangeMips)
+		{
+			for (auto& HeightRange : HeightRangeMip.Data)
+			{
+				HeightRange = NewHeight;
+			}
+		}
 	}
 	
-	inline bool HasMaterials() const
+	bool HasMaterials() const
 	{
 		return Materials.Num() > 0;
 	}
-	inline bool IsEmpty() const
+	bool IsEmpty() const
 	{
 		return Heights.Num() <= 4 && Materials.Num() == 0;
 	}
-	inline int32 GetAllocatedSize() const
+	int32 GetAllocatedSize() const
 	{
 		return Heights.GetAllocatedSize() + Materials.GetAllocatedSize();
 	}
-
+	
 public:
-	inline int32 GetIndex(int32 X, int32 Y) const
+	int32 GetNumHeightRangeMips() const
 	{
-		return X + Width * Y;
+		return HeightRangeMips.Num();
 	}
-	inline bool IsValidIndex(int32 X, int32 Y) const
+	const TVoxelRange<T>& GetHeightRange(int32 X, int32 Y, int32 Mip, EVoxelSamplerMode SamplerMode) const
+	{
+		int32 LocalX;
+		int32 LocalY;
+		GetHeightRangeLocalCoordinates(Mip, X, Y, LocalX, LocalY);
+
+		FixHeightRangeLocalCoordinates(Mip, LocalX, LocalY, SamplerMode);
+		
+		return GetHeightRangeLocal(Mip, LocalX, LocalY);
+	}
+	// Max: excluded
+	TVoxelRange<T> GetHeightRange(TVoxelRange<int32> X, TVoxelRange<int32> Y, EVoxelSamplerMode SamplerMode) const
+	{
+		if (!ensure(X.Min < X.Max && Y.Min < Y.Max))
+		{
+			return { MinHeight, MaxHeight };
+		}
+
+		int32 MinX = X.Min;
+		int32 MaxX = X.Max;
+
+		int32 MinY = Y.Min;
+		int32 MaxY = Y.Max;
+
+		if (SamplerMode == EVoxelSamplerMode::Clamp)
+		{
+			// Clamp min and max
+			
+			MinX = FMath::Clamp(MinX, 0, GetWidth() - 1);
+			MinY = FMath::Clamp(MinY, 0, GetHeight() - 1);
+			
+			MaxX = FMath::Clamp(MaxX, 1, GetWidth());
+			MaxY = FMath::Clamp(MaxY, 1, GetHeight());
+		}
+		else
+		{
+			// Tile min, and set max to be max one tile after
+			// The coordinates will be tiled again when sampling the mips
+			
+			const int32 SizeX = MaxX - MinX;
+			const int32 SizeY = MaxY - MinY;
+			
+			TileCoordinates(MinX, MinY);
+
+			MaxX = MinX + SizeX;
+			MaxY = MinY + SizeY;
+		}
+		
+		const int32 SizeX = MaxX - MinX;
+		const int32 SizeY = MaxY - MinY;
+
+		const int32 MaxSize = FMath::Max(SizeX, SizeY);
+
+		int32 Mip = FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(MaxSize);
+		Mip = FMath::Clamp(Mip, 0, GetNumHeightRangeMips() - 1);
+
+		const int32 MipPixelSize = RENDER_CHUNK_SIZE << Mip;
+		
+		const int32 LocalMinX = FVoxelUtilities::DivideFloor(MinX, MipPixelSize);
+		const int32 LocalMinY = FVoxelUtilities::DivideFloor(MinY, MipPixelSize);
+
+		// Note: since MaxX/Y are excluded, LocalMaxX/Y are too
+		const int32 LocalMaxX = FVoxelUtilities::DivideCeil(MaxX, MipPixelSize);
+		const int32 LocalMaxY = FVoxelUtilities::DivideCeil(MaxY, MipPixelSize);
+
+		const int32 LocalSizeX = LocalMaxX - LocalMinX;
+		const int32 LocalSizeY = LocalMaxY - LocalMinY;
+
+		checkVoxelSlow(0 < LocalSizeX);
+		checkVoxelSlow(0 < LocalSizeY);
+		
+		ensureVoxelSlow(LocalSizeX <= 2);
+		ensureVoxelSlow(LocalSizeY <= 2);
+
+		// Combine the range of all the overlapping pixels
+		TOptional<TVoxelRange<T>> Range;
+		for (int32 LocalX = LocalMinX; LocalX < LocalMaxX; LocalX++)
+		{
+			for (int32 LocalY = LocalMinY; LocalY < LocalMaxY; LocalY++)
+			{
+				int32 FixedLocalX = LocalX;
+				int32 FixedLocalY = LocalY;
+
+				// Tile the coordinates if needed
+				FixHeightRangeLocalCoordinates(Mip, FixedLocalX, FixedLocalY, SamplerMode);
+				ensureVoxelSlow(SamplerMode == EVoxelSamplerMode::Tile || (LocalX == FixedLocalX && LocalY == FixedLocalY));
+				
+				const auto LocalRange = GetHeightRangeLocal(Mip, FixedLocalX, FixedLocalY);
+
+				Range = Range.IsSet() ? TVoxelRange<T>::Union(Range.GetValue(), LocalRange) : LocalRange;
+			}
+		}
+
+		// Crashed
+		ensureMsgf(
+			Range.IsSet(),
+			TEXT("LocalMinX: %d; LocalMaxX: %d; LocalMinY: %d; LocalMaxY: %d; Width: %d; Height: %d; MinX: %d; MaxX: %d; MinY: %d; MaxY: %d"),
+			LocalMinX, LocalMaxX, LocalMinY, LocalMaxY, Width, Height, MinX, MaxX, MinY, MaxY);
+		return Range.Get({ MinHeight, MaxHeight });
+	}
+
+private:
+	FORCEINLINE void GetHeightRangeLocalCoordinates(int32 Mip, int32 X, int32 Y, int32& LocalX, int32& LocalY) const
+	{
+		checkVoxelSlow(IsValidIndex(X, Y));
+		checkVoxelSlow(HeightRangeMips.IsValidIndex(Mip));
+
+		constexpr int32 BaseMipDepth = FVoxelUtilities::IntLog2(RENDER_CHUNK_SIZE);
+		const int32 MipDepth = BaseMipDepth + Mip;
+
+		// Find the mip coordinates by dividing and flooring
+		LocalX = X >> MipDepth;
+		LocalY = Y >> MipDepth;
+	}
+	FORCEINLINE TVoxelRange<T>& GetHeightRangeLocal(int32 Mip, int32 LocalX, int32 LocalY)
+	{
+		return HeightRangeMips[Mip].Get(LocalX, LocalY);
+	}
+	FORCEINLINE const TVoxelRange<T>& GetHeightRangeLocal(int32 Mip, int32 LocalX, int32 LocalY) const
+	{
+		return HeightRangeMips[Mip].Get(LocalX, LocalY);
+	}
+
+	void FixHeightRangeLocalCoordinates(int32 Mip, int32& LocalX, int32& LocalY, EVoxelSamplerMode SamplerMode) const
+	{
+		auto& HeightRangeMip = HeightRangeMips[Mip];
+		
+		if (SamplerMode == EVoxelSamplerMode::Clamp)
+		{
+			LocalX = FMath::Clamp(LocalX, 0, HeightRangeMip.Width - 1);
+			LocalY = FMath::Clamp(LocalY, 0, HeightRangeMip.Height - 1);
+		}
+		else
+		{
+			LocalX = FVoxelUtilities::PositiveMod(LocalX, HeightRangeMip.Width);
+			LocalY = FVoxelUtilities::PositiveMod(LocalY, HeightRangeMip.Height);
+		}
+	}
+
+	void InitializeHeightRangeMips()
+	{
+		const int32 NumHeightRangeMips = 1 + FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(FMath::Max(Width, Height));
+		check(NumHeightRangeMips >= 1);
+
+		HeightRangeMips.Empty();
+		for (int32 MipIndex = 0; MipIndex < NumHeightRangeMips; MipIndex++)
+		{
+			const int32 MipPixelSize = RENDER_CHUNK_SIZE << MipIndex;
+
+			TVoxelRange<T> Range;
+			Range.Min = PositiveInfinity<T>();
+			Range.Max = NegativeInfinity<T>();
+			
+			FHeightRangeMip NewMip;
+			NewMip.Width = FVoxelUtilities::DivideCeil(Width, MipPixelSize);
+			NewMip.Height = FVoxelUtilities::DivideCeil(Height, MipPixelSize);
+			NewMip.Data.Init(Range, NewMip.Width * NewMip.Height);
+
+			HeightRangeMips.Add(NewMip);
+		}
+	}
+	
+public:
+	FORCEINLINE bool IsValidIndex(int32 X, int32 Y) const
 	{
 		return (0 <= X && X < Width) && (0 <= Y && Y < Height);
 	}
+	FORCEINLINE int32 GetIndex(int32 X, int32 Y) const
+	{
+		checkVoxelSlow(IsValidIndex(X, Y));
+		return X + Width * Y;
+	}
 
-	inline void SetHeight(int32 X, int32 Y, T NewHeight)
+	void SetHeight(int32 X, int32 Y, T NewHeight)
 	{
-		SetHeight(GetIndex(X, Y), NewHeight);
-	}
-	inline void SetMaterial_RGB(int32 X, int32 Y, FColor Color)
-	{
-		SetMaterial_RGB(GetIndex(X, Y), Color);
-	}
-	inline void SetMaterial_SingleIndex(int32 X, int32 Y, uint8 SingleIndex)
-	{
-		SetMaterial_SingleIndex(GetIndex(X, Y), SingleIndex);
-	}
-	inline void SetMaterial_DoubleIndex(int32 X, int32 Y, uint8 IndexA, uint8 IndexB, uint8 Alpha)
-	{
-		SetMaterial_DoubleIndex(GetIndex(X, Y), IndexA, IndexB, Alpha);
-	}
-	
-	inline void SetHeight(int32 Index, T NewHeight)
-	{
+		Heights[GetIndex(X, Y)] = NewHeight;
+		
 		MaxHeight = FMath::Max(MaxHeight, NewHeight);
 		MinHeight = FMath::Min(MinHeight, NewHeight);
-		Heights[Index] = NewHeight;
+		
+		for (int32 Mip = 0; Mip < GetNumHeightRangeMips(); Mip++)
+		{
+			int32 LocalX;
+			int32 LocalY;
+			GetHeightRangeLocalCoordinates(Mip, X, Y, LocalX, LocalY);
+
+			auto& Range = GetHeightRangeLocal(Mip, LocalX, LocalY);
+			Range.Min = FMath::Min(Range.Min, NewHeight);
+			Range.Max = FMath::Max(Range.Max, NewHeight);
+		}
 	}
-	inline void SetMaterial_RGB(int32 Index, FColor Color)
+	void SetMaterial_RGB(int32 X, int32 Y, FColor Color)
 	{
 		checkVoxelSlow(MaterialConfig == EVoxelMaterialConfig::RGB);
+		const int32 Index = GetIndex(X, Y);
+		
 		Materials[4 * Index + 0] = Color.R;
 		Materials[4 * Index + 1] = Color.G;
 		Materials[4 * Index + 2] = Color.B;
 		Materials[4 * Index + 3] = Color.A;
 	}
-	inline void SetMaterial_SingleIndex(int32 Index, uint8 SingleIndex)
+	void SetMaterial_SingleIndex(int32 X, int32 Y, uint8 SingleIndex)
 	{
 		checkVoxelSlow(MaterialConfig == EVoxelMaterialConfig::SingleIndex);
-		Materials[Index] = SingleIndex;
+		Materials[GetIndex(X, Y)] = SingleIndex;
 	}
-	inline void SetMaterial_DoubleIndex(int32 Index, uint8 IndexA, uint8 IndexB, uint8 Alpha)
+	void SetMaterial_MultiIndex(int32 X, int32 Y, const FVoxelMaterial& Material)
 	{
-		checkVoxelSlow(MaterialConfig == EVoxelMaterialConfig::DoubleIndex);
-		Materials[3 * Index + 0] = IndexA;
-		Materials[3 * Index + 1] = IndexB;
-		Materials[3 * Index + 2] = Alpha;
+		checkVoxelSlow(MaterialConfig == EVoxelMaterialConfig::MultiIndex);
+		const int32 Index = GetIndex(X, Y);
+		
+		Materials[7 * Index + 0] = Material.GetMultiIndex_Blend0();
+		Materials[7 * Index + 1] = Material.GetMultiIndex_Blend1();
+		Materials[7 * Index + 2] = Material.GetMultiIndex_Blend2();
+		Materials[7 * Index + 3] = Material.GetMultiIndex_Index0();
+		Materials[7 * Index + 4] = Material.GetMultiIndex_Index1();
+		Materials[7 * Index + 5] = Material.GetMultiIndex_Index2();
+		Materials[7 * Index + 6] = Material.GetMultiIndex_Index3();
 	}
 
-	inline T GetHeightUnsafe(int32 X, int32 Y) const
+	FORCEINLINE T GetHeightUnsafe(int32 X, int32 Y) const
 	{
 		return GetHeightUnsafe(GetIndex(X, Y));
 	}
-	inline FVoxelMaterial GetMaterialUnsafe(int32 X, int32 Y) const
+	FORCEINLINE FVoxelMaterial GetMaterialUnsafe(int32 X, int32 Y) const
 	{
 		return GetMaterialUnsafe(GetIndex(X, Y));
 	}
-	inline T GetHeightUnsafe(int32 Index) const
+	FORCEINLINE T GetHeightUnsafe(int32 Index) const
 	{
 		return Heights[Index];
 	}
-	inline FVoxelMaterial GetMaterialUnsafe(int32 Index) const
+	FORCEINLINE FVoxelMaterial GetMaterialUnsafe(int32 Index) const
 	{
 		FVoxelMaterial Material(ForceInit);
 		switch (MaterialConfig)
@@ -177,30 +377,34 @@ public:
 			Material.SetA(Materials[4 * Index + 3]);
 			break;
 		case EVoxelMaterialConfig::SingleIndex:
-			Material.SetSingleIndex_Index(Materials[Index]);
+			Material.SetSingleIndex(Materials[Index]);
 			break;
-		case EVoxelMaterialConfig::DoubleIndex:
+		case EVoxelMaterialConfig::MultiIndex:
 		default:
-			Material.SetDoubleIndex_IndexA(Materials[3 * Index + 0]);
-			Material.SetDoubleIndex_IndexB(Materials[3 * Index + 1]);
-			Material.SetDoubleIndex_Blend(Materials[3 * Index + 2]);
+			Material.SetMultiIndex_Blend0(Materials[7 * Index + 0]);
+			Material.SetMultiIndex_Blend1(Materials[7 * Index + 1]);
+			Material.SetMultiIndex_Blend2(Materials[7 * Index + 2]);
+			Material.SetMultiIndex_Index0(Materials[7 * Index + 3]);
+			Material.SetMultiIndex_Index1(Materials[7 * Index + 4]);
+			Material.SetMultiIndex_Index2(Materials[7 * Index + 5]);
+			Material.SetMultiIndex_Index3(Materials[7 * Index + 6]);
 			break;
 		}
 		return Material;
 	}
 
 public:
-	inline void TileCoordinates(int32& X, int32& Y) const
+	FORCEINLINE void TileCoordinates(int32& X, int32& Y) const
 	{
 		X = FVoxelUtilities::PositiveMod(X, GetWidth());
 		Y = FVoxelUtilities::PositiveMod(Y, GetHeight());
 	}
-	inline void ClampCoordinates(int32& X, int32& Y) const
+	FORCEINLINE void ClampCoordinates(int32& X, int32& Y) const
 	{
 		X = FMath::Clamp(X, 0, GetWidth() - 1);
 		Y = FMath::Clamp(Y, 0, GetHeight() - 1);
 	}
-	inline T GetHeight(int32 X, int32 Y, EVoxelSamplerMode Mode, T DefaultHeight) const
+	T GetHeight(int32 X, int32 Y, EVoxelSamplerMode Mode) const
 	{
 		if (!IsValidIndex(X, Y))
 		{
@@ -212,14 +416,11 @@ public:
 			{
 				ClampCoordinates(X, Y);
 			}
-			if (!ensureMsgf(IsValidIndex(X, Y), TEXT("X: %d, Y: %d"), X, Y))
-			{
-				return DefaultHeight;
-			}
+			checkVoxelSlow(IsValidIndex(X, Y));
 		}
 		return GetHeightUnsafe(X, Y);
 	}
-	inline FVoxelMaterial GetMaterial(int32 X, int32 Y, EVoxelSamplerMode Mode) const
+	FVoxelMaterial GetMaterial(int32 X, int32 Y, EVoxelSamplerMode Mode) const
 	{
 		if (!IsValidIndex(X, Y))
 		{
@@ -231,15 +432,12 @@ public:
 			{
 				ClampCoordinates(X, Y);
 			}
-			if (!ensureMsgf(IsValidIndex(X, Y), TEXT("X: %d, Y: %d"), X, Y))
-			{
-				return FVoxelMaterial::Default();
-			}
+			checkVoxelSlow(IsValidIndex(X, Y));
 		}
 		return GetMaterialUnsafe(X, Y);
 	}
 	
-	inline float GetHeight(float X, float Y, EVoxelSamplerMode Mode, T DefaultHeight) const
+	float GetHeight(float X, float Y, EVoxelSamplerMode Mode) const
 	{
 		const int32 MinX = FMath::FloorToInt(X);
 		const int32 MinY = FMath::FloorToInt(Y);
@@ -251,14 +449,14 @@ public:
 		const float AlphaY = Y - MinY;
 
 		return FVoxelUtilities::BilinearInterpolation<float>(
-			GetHeight(MinX, MinY, Mode, DefaultHeight),
-			GetHeight(MaxX, MinY, Mode, DefaultHeight),
-			GetHeight(MinX, MaxY, Mode, DefaultHeight),
-			GetHeight(MaxX, MaxY, Mode, DefaultHeight),
+			GetHeight(MinX, MinY, Mode),
+			GetHeight(MaxX, MinY, Mode),
+			GetHeight(MinX, MaxY, Mode),
+			GetHeight(MaxX, MaxY, Mode),
 			AlphaX,
 			AlphaY);
 	}
-	inline FVoxelMaterial GetMaterial(float X, float Y, EVoxelSamplerMode Mode) const
+	FVoxelMaterial GetMaterial(float X, float Y, EVoxelSamplerMode Mode) const
 	{
 		if (HasMaterials())
 		{
@@ -271,7 +469,7 @@ public:
 	}
 
 public:
-	inline const TArray<T>& GetRawHeights() const
+	const TArray<T>& GetRawHeights() const
 	{
 		return Heights;
 	}
@@ -280,15 +478,36 @@ public:
 	void Serialize(FArchive& Ar, uint32 MaterialConfigFlag, int32 VoxelCustomVersion);
 	
 private:
-	TArray<T> Heights = { 0, 0, 0, 0 };
+	TArray<T> Heights;
 	TArray<uint8> Materials;
 	
-	int32 Width = 2;
-	int32 Height = 2;
+	int32 Width = -1;
+	int32 Height = -1;
+	
 	T MinHeight = 0;
 	T MaxHeight = 0;
 
-	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
+	EVoxelMaterialConfig MaterialConfig{};
+
+	struct FHeightRangeMip
+	{
+		int32 Width = -1;
+		int32 Height = -1;
+
+		TArray<TVoxelRange<T>> Data;
+
+		TVoxelRange<T>& Get(int32 X, int32 Y)
+		{
+			checkVoxelSlow(0 <= X && X < Width && 0 <= Y && Y < Height);
+			return Data[X + Width * Y];
+		}
+		const TVoxelRange<T>& Get(int32 X, int32 Y) const
+		{
+			checkVoxelSlow(0 <= X && X < Width && 0 <= Y && Y < Height);
+			return Data[X + Width * Y];
+		}
+	};
+	TArray<FHeightRangeMip, TInlineAllocator<16>> HeightRangeMips;
 	
 private:
 	uint32 AllocatedSize = 0;
@@ -296,7 +515,11 @@ private:
 	void UpdateStats()
 	{
 		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelHeightmapAssetMemory, AllocatedSize);
-		AllocatedSize = Heights.GetAllocatedSize() + Materials.GetAllocatedSize();
+		AllocatedSize = Heights.GetAllocatedSize() + Materials.GetAllocatedSize() + HeightRangeMips.GetAllocatedSize();
+		for (auto& Mip : HeightRangeMips)
+		{
+			AllocatedSize += Mip.Data.GetAllocatedSize();
+		}
 		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelHeightmapAssetMemory, AllocatedSize);
 	}
 };
@@ -311,16 +534,24 @@ struct TVoxelHeightmapAssetSamplerWrapper
 
 	explicit TVoxelHeightmapAssetSamplerWrapper(UVoxelHeightmapAsset* Asset);
 
-	inline float GetHeight(v_flt X, v_flt Y, EVoxelSamplerMode SamplerMode) const
+	float GetHeight(v_flt X, v_flt Y, EVoxelSamplerMode SamplerMode) const
 	{
-		return HeightOffset + HeightScale * Data->GetHeight(float(X / Scale), float(Y / Scale), SamplerMode, Data->GetMinHeight());
+		return HeightOffset + HeightScale * Data->GetHeight(float(X / Scale), float(Y / Scale), SamplerMode);
 	}
-	inline FVoxelMaterial GetMaterial(v_flt X, v_flt Y, EVoxelSamplerMode SamplerMode) const
+	FVoxelMaterial GetMaterial(v_flt X, v_flt Y, EVoxelSamplerMode SamplerMode) const
 	{
 		return Data->GetMaterial(float(X / Scale), float(Y / Scale), SamplerMode);
 	}
 
-	inline void SetHeight(int32 X, int32 Y, float Height)
+	TVoxelRange<float> GetHeightRange(TVoxelRange<v_flt> X, TVoxelRange<v_flt> Y, EVoxelSamplerMode SamplerMode) const
+	{
+		return HeightOffset + HeightScale * TVoxelRange<float>(Data->GetHeightRange(
+			{ FMath::FloorToInt(X.Min / Scale), FMath::CeilToInt(X.Max / Scale) }, 
+			{ FMath::FloorToInt(Y.Min / Scale), FMath::CeilToInt(Y.Max / Scale) }, 
+			SamplerMode));
+	}
+
+	void SetHeight(int32 X, int32 Y, float Height)
 	{
 		ensureVoxelSlowNoSideEffects(Scale == 1.f);
 		Height -= HeightOffset;
@@ -336,20 +567,20 @@ struct TVoxelHeightmapAssetSamplerWrapper
 		}
 	}
 
-	inline float GetMinHeight() const
+	float GetMinHeight() const
 	{
 		return HeightOffset + HeightScale * Data->GetMinHeight();
 	}
-	inline float GetMaxHeight() const
+	float GetMaxHeight() const
 	{
 		return HeightOffset + HeightScale * Data->GetMaxHeight();
 	}
 	
-	inline float GetWidth() const
+	float GetWidth() const
 	{
 		return Scale * Data->GetWidth();
 	}
-	inline float GetHeight() const
+	float GetHeight() const
 	{
 		return Scale * Data->GetHeight();
 	}
@@ -415,7 +646,7 @@ protected:
 	void SyncProperties(const TVoxelSharedRef<TVoxelHeightmapAssetData<T>>& Data);
 
 	template<typename T>
-	FIntBox GetBoundsImpl() const;
+	FVoxelIntBox GetBoundsImpl() const;
 	
 protected:
 	virtual void Serialize(FArchive& Ar) override;
@@ -470,7 +701,7 @@ public:
 	//~ Begin UVoxelWorldGenerator Interface
 	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
-	virtual FIntBox GetBounds() const override;
+	virtual FVoxelIntBox GetBounds() const override;
 	//~ End UVoxelWorldGenerator Interface
 
 private:
@@ -503,7 +734,7 @@ public:
 	FString Heightmap;
 
 	UPROPERTY(VisibleAnywhere, Category = "Import configuration")
-	EVoxelMaterialConfig MaterialConfig;
+	EVoxelHeightmapImporterMaterialConfig MaterialConfig;
 
 	UPROPERTY(VisibleAnywhere, Category = "Import configuration")
 	TArray<FString> Weightmaps;
@@ -523,7 +754,7 @@ public:
 	//~ Begin UVoxelWorldGenerator Interface
 	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
-	virtual FIntBox GetBounds() const override;
+	virtual FVoxelIntBox GetBounds() const override;
 	//~ End UVoxelWorldGenerator Interface
 
 private:

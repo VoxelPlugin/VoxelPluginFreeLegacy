@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "IVoxelPool.generated.h"
 
 UENUM(BlueprintType)
@@ -34,6 +34,44 @@ enum class EVoxelTaskType : uint8
 	RenderOctree
 };
 
+namespace EVoxelTaskType_DefaultPriorityCategories
+{
+	enum Type : int32
+	{
+		Min                            = 0,
+		Max                            = 1000000,
+		
+		ChunksMeshing                  = 0,
+		CollisionsChunksMeshing        = 1,
+		VisibleChunksMeshing           = 10,
+		VisibleCollisionsChunksMeshing = 100,
+		CollisionCooking               = 100,
+		FoliageBuild                   = 100,
+		HISMBuild                      = 1000,
+		AsyncEditFunctions             = 50,
+		MeshMerge                      = 100000,
+		RenderOctree                   = 1000000
+	};
+}
+
+namespace EVoxelTaskType_DefaultPriorityOffsets
+{
+	enum Type : int32
+	{
+		ChunksMeshing                  = 0,
+		CollisionsChunksMeshing        = 0,
+		VisibleChunksMeshing           = 0,
+		// By default, do collision cooking slightly before collision meshing, and foliage slightly after
+		VisibleCollisionsChunksMeshing = 0,
+		CollisionCooking               = +32,
+		FoliageBuild                   = -32,
+		HISMBuild                      = 0,
+		AsyncEditFunctions             = 0,
+		MeshMerge                      = 0,
+		RenderOctree                   = 0
+	};
+}
+
 class FVoxelQueuedThreadPool;
 class FQueuedThreadPool;
 class IVoxelQueuedWork;
@@ -52,18 +90,20 @@ public:
 	//~ End IVoxelPool Interface
 
 public:
-	static TVoxelSharedPtr<IVoxelPool> GetGlobalPool(UWorld* World);
-	static const FString& GetGlobalPoolCreator(UWorld* World);
-	static void DestroyGlobalVoxelPool(UWorld* World);
-	static bool IsGlobalVoxelPoolCreated(UWorld* World);
+	static TVoxelSharedPtr<IVoxelPool> GetWorldPool(UWorld* World);
+	static TVoxelSharedPtr<IVoxelPool> GetGlobalPool();
 
-	static void SetGlobalVoxelPool(UWorld* World, const TVoxelSharedPtr<IVoxelPool>& Pool, const FString& Creator);
-
+	static TVoxelSharedPtr<IVoxelPool> GetPoolForWorld(UWorld* World);
+	
+public:
+	static void SetWorldPool(UWorld* World, const TVoxelSharedRef<IVoxelPool>& Pool, const FString& Creator);
+	static void SetGlobalPool(const TVoxelSharedRef<IVoxelPool>& Pool, const FString& Creator);
+	
+public:
+	static void DestroyWorldPool(UWorld* World);
+	static void DestroyGlobalPool();
+	
 private:
-	struct FPool
-	{
-		TVoxelSharedPtr<IVoxelPool> Pool;
-		FString Creator;
-	};
-	static TMap<TWeakObjectPtr<UWorld>, FPool> GlobalMap;
+	static TMap<TWeakObjectPtr<UWorld>, TVoxelSharedPtr<IVoxelPool>> WorldsPools;
+	static TVoxelSharedPtr<IVoxelPool> GlobalPool;
 };

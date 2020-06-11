@@ -25,8 +25,7 @@ UVoxelPhysicsPartSpawner_Cubes::UVoxelPhysicsPartSpawner_Cubes()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshFinder(TEXT("/Engine/BasicShapes/Cube"));
 	CubeMesh = MeshFinder.Object;
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MaterialFinder(TEXT("/Voxel/Examples/Materials/RGB/M_VoxelMaterial_Colors_Parameter"));
-	Material = MaterialFinder.Object;
+	Material = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Voxel/Examples/Materials/RGB/M_VoxelMaterial_Colors_Parameter.M_VoxelMaterial_Colors_Parameter'"));
 }
 
 

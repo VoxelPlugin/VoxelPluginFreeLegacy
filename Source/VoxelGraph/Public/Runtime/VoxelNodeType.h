@@ -6,7 +6,7 @@
 #include "VoxelMaterial.h"
 #include "VoxelRange.h"
 
-using Seed = int32;
+using FVoxelGraphSeed = int32;
 
 struct FVoxelNodeType
 {
@@ -15,9 +15,19 @@ struct FVoxelNodeType
 	FVoxelNodeType() = default;
 
 	template<typename T>
-	FORCEINLINE T& Get() { static_assert(sizeof(T) <= VoxelNodeTypeSize, ""); return *reinterpret_cast<T*>(Data); }
+	FORCEINLINE T& Get()
+	{
+		static_assert(sizeof(T) <= VoxelNodeTypeSize, "");
+		static_assert(TOr<TIsSame<T, v_flt>, TIsSame<T, int32>, TIsSame<T, bool>, TIsSame<T, FVoxelMaterial>, TIsSame<T, FColor>>::Value, "");
+		return *reinterpret_cast<T*>(Data);
+	}
 	template<typename T>
-	FORCEINLINE const T& Get() const { static_assert(sizeof(T) <= VoxelNodeTypeSize, ""); return *reinterpret_cast<const T*>(Data); }
+	FORCEINLINE const T& Get() const
+	{
+		static_assert(sizeof(T) <= VoxelNodeTypeSize, "");
+		static_assert(TOr<TIsSame<T, v_flt>, TIsSame<T, int32>, TIsSame<T, bool>, TIsSame<T, FVoxelMaterial>, TIsSame<T, FColor>>::Value, "");
+		return *reinterpret_cast<const T*>(Data);
+	}
 
 private:
 	static_assert(sizeof(v_flt) <= VoxelNodeTypeSize, "");

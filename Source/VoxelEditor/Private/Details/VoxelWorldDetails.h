@@ -17,7 +17,7 @@ public:
 	
 	const bool bIsDataAssetEditor;
 	
-	explicit FVoxelWorldDetails(bool bIsDataAssetEditor)
+	explicit FVoxelWorldDetails(bool bIsDataAssetEditor = false)
 		: bIsDataAssetEditor(bIsDataAssetEditor)
 	{
 	}

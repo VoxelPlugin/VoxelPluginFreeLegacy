@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelEditorDetailsUtilities.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 #include "Misc/MessageDialog.h"
 #include "UnrealClient.h"

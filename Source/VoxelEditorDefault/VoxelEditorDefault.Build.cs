@@ -13,7 +13,7 @@ public class VoxelEditorDefault : ModuleRules
 
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
+        PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
 
         DynamicallyLoadedModuleNames.AddRange(
             new string[] {
@@ -31,7 +31,5 @@ public class VoxelEditorDefault : ModuleRules
         PrivateIncludePathModuleNames.AddRange(
             new string[] {
             });
-
-        PublicDefinitions.Add("VOXEL_PLUGIN_PRO=1");
     }
 }

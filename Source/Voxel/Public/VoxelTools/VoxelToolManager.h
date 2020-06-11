@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelConfigEnums.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "VoxelToolManager.generated.h"
 
@@ -17,7 +17,7 @@ class UTextureRenderTarget2D;
 class UStaticMesh;
 class AVoxelWorld;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVoxelToolManager_OnBoundsUpdated, AVoxelWorld*, World, FIntBox, Bounds);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FVoxelToolManager_OnBoundsUpdated, AVoxelWorld*, World, FVoxelIntBox, Bounds);
 
 UENUM(BlueprintType)
 enum class EVoxelToolManagerTool : uint8
@@ -72,9 +72,6 @@ struct FVoxelToolManagerTickData
 	UWorld* World = nullptr;
 
 	UPROPERTY(Category = "Voxel", EditAnywhere, BlueprintReadWrite)
-	float DeltaTime = 0;
-
-	UPROPERTY(Category = "Voxel", EditAnywhere, BlueprintReadWrite)
 	FVector2D MousePosition = FVector2D::ZeroVector;
 	
 	UPROPERTY(Category = "Voxel", EditAnywhere, BlueprintReadWrite)
@@ -107,6 +104,9 @@ struct VOXEL_API FVoxelToolManager_SurfaceSettings
 
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
 	UMaterialInterface* ToolMaterial = nullptr;
+
+	UPROPERTY(Category = "Voxel Editor", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, meta = (UIMin=0, UIMax=1))
+	float ToolOpacity = 0.5f;
 	
 	///////////////////////////////////////////////////////////////////////////
 
@@ -180,7 +180,7 @@ struct VOXEL_API FVoxelToolManager_SurfaceSettings
 
 	// Relative to brush size
 	UPROPERTY(Category = "Sculpt Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bSculpt", UIMin = "0", UIMax = "1"))
-	float SculptStrength = 0.1;
+	float SculptStrength = 0.5f;
 	
 	///////////////////////////////////////////////////////////////////////////
 
@@ -188,7 +188,7 @@ struct VOXEL_API FVoxelToolManager_SurfaceSettings
 	bool bPaint = false;
 	
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint", UIMin = "0", UIMax = "1"))
-	float PaintStrength = 0.1;
+	float PaintStrength = 0.5f;
 };
 
 USTRUCT(BlueprintType)
@@ -202,6 +202,9 @@ struct VOXEL_API FVoxelToolManager_FlattenSettings
 
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
 	UMaterialInterface* ToolMaterial = nullptr;
+
+	UPROPERTY(Category = "Voxel Editor", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, meta = (UIMin=0, UIMax=1))
+	float ToolOpacity = 0.5f;
 	
 	///////////////////////////////////////////////////////////////////////////
 	
@@ -241,6 +244,9 @@ struct VOXEL_API FVoxelToolManager_TrimSettings
 
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
 	UMaterialInterface* ToolMaterial = nullptr;
+
+	UPROPERTY(Category = "Voxel Editor", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, meta = (UIMin=0, UIMax=1))
+	float ToolOpacity = 0.5f;
 	
 	///////////////////////////////////////////////////////////////////////////
 
@@ -265,6 +271,9 @@ struct VOXEL_API FVoxelToolManager_LevelSettings
 
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
 	UStaticMesh* CylinderMesh = nullptr;
+
+	UPROPERTY(Category = "Voxel Editor", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, meta = (UIMin=0, UIMax=1))
+	float ToolOpacity = 0.5f;
 	
 	///////////////////////////////////////////////////////////////////////////
 	
@@ -294,6 +303,9 @@ struct VOXEL_API FVoxelToolManager_SmoothSettings
 
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
 	UMaterialInterface* ToolMaterial = nullptr;
+
+	UPROPERTY(Category = "Voxel Editor", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, meta = (UIMin=0, UIMax=1))
+	float ToolOpacity = 0.5f;
 	
 	///////////////////////////////////////////////////////////////////////////
 
@@ -315,9 +327,13 @@ struct VOXEL_API FVoxelToolManager_SphereSettingsBase
 
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
 	UStaticMesh* SphereMesh = nullptr;
+
+	UPROPERTY(Category = "Voxel Editor", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, meta = (UIMin=0, UIMax=1))
+	float ToolOpacity = 0.5f;
 	
 	///////////////////////////////////////////////////////////////////////////
 
+	// The plane your sculpting is restricted to when holding mouse button down
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
 	EVoxelToolManagerAlignment Alignment = EVoxelToolManagerAlignment::View;
 
@@ -354,6 +370,9 @@ struct VOXEL_API FVoxelToolManager_MeshSettings
 
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
 	UMaterialInterface* ToolMaterial = nullptr;
+
+	UPROPERTY(Category = "Voxel Editor", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, meta = (UIMin=0, UIMax=1))
+	float ToolOpacity = 0.5f;
 	
 	///////////////////////////////////////////////////////////////////////////
 
@@ -368,6 +387,7 @@ struct VOXEL_API FVoxelToolManager_MeshSettings
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (UIMin=0, UIMax=1))
 	float Stride = 0.f;
 	
+	// The plane your sculpting is restricted to when holding mouse button down
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
 	EVoxelToolManagerAlignment Alignment = EVoxelToolManagerAlignment::Surface;
 
@@ -383,16 +403,18 @@ struct VOXEL_API FVoxelToolManager_MeshSettings
 	bool bShowPlanePreview = true;
 
 	// Do a smooth import by converting the voxel densities & the mesh to true distance fields, and doing a smooth union/subtraction on these
-	// Will disable painting
-	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
+	// NOTE: Will disable painting
+	// NOTE: Disabled if bProgressiveStamp = true
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "!bProgressiveStamp"))
 	bool bSmoothImport = false;
 
 	// Relative to radius
-	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bSmoothImport", UIMin = 0, UIMax = 1))
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bSmoothImport && !bProgressiveStamp", UIMin = 0, UIMax = 1))
 	float Smoothness = 0.5f;
 
 	// Will slowly grow/shrink the surface towards the mesh
-	// Will disabled SmoothImport
+	// NOTE: Will disable painting
+	// NOTE: Will disable SmoothImport
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
 	bool bProgressiveStamp = false;
 
@@ -408,38 +430,39 @@ struct VOXEL_API FVoxelToolManager_MeshSettings
 	
 	///////////////////////////////////////////////////////////////////////////
 
-	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite)
+	// NOTE: Painting is disabled if bSmoothImport = true or bProgressiveStamp = true!
+	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "!bSmoothImport && !bProgressiveStamp"))
 	bool bPaint = true;
 	
 	// Will sample ColorsMaterial at the mesh UVs to get the voxel colors
-	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint"))
+	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp", ShowForMaterialConfigs = "RGB, SingleIndex"))
 	bool bPaintColors = true;
 	
-	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && bPaintColors"))
+	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp && bPaintColors", ShowForMaterialConfigs = "RGB, SingleIndex"))
 	UMaterialInterface* ColorsMaterial = nullptr;
 
 	// Will sample UVChannelsMaterial at the mesh UVs to get the voxel UVs
-	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint"))
+	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp", ShowForMaterialConfigs = "RGB, SingleIndex"))
 	bool bPaintUVs = true;
 	
-	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && bPaintUVs"))
+	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp && bPaintUVs", ShowForMaterialConfigs = "RGB, SingleIndex"))
 	UMaterialInterface* UVsMaterial = nullptr;
 
-	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint", ShowForMaterialConfigs = "SingleIndex, DoubleIndex"))
+	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp", ShowForMaterialConfigs = "SingleIndex, MultiIndex"))
 	bool bPaintIndex = false;
 	
-	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && bPaintIndex", ShowForMaterialConfigs = "SingleIndex, DoubleIndex"))
+	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp && bPaintIndex", ShowForMaterialConfigs = "SingleIndex, MultiIndex"))
 	uint8 Index = 0;
 
 	// For debug
-	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, VisibleAnywhere, BlueprintReadOnly, Transient)
+	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, VisibleAnywhere, BlueprintReadOnly, Transient, meta = (ShowForMaterialConfigs = "RGB, SingleIndex"))
 	UTextureRenderTarget2D* UVsRenderTarget = nullptr;
 
 	// For debug
-	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, VisibleAnywhere, BlueprintReadOnly, Transient)
+	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, VisibleAnywhere, BlueprintReadOnly, Transient, meta = (ShowForMaterialConfigs = "RGB, SingleIndex"))
 	UTextureRenderTarget2D* ColorsRenderTarget = nullptr;
 
-	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint"))
+	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp"), meta = (ShowForMaterialConfigs = "RGB, SingleIndex"))
 	int32 RenderTargetSize = 4096;
 	
 	///////////////////////////////////////////////////////////////////////////
@@ -595,7 +618,7 @@ public:
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FRegisterTransactionDelegate, FName, AVoxelWorld*);
 	FRegisterTransactionDelegate RegisterTransaction;
 	
-	void SaveFrame(AVoxelWorld& World, const FIntBox& Bounds, FName Name) const;
+	void SaveFrame(AVoxelWorld& World, const FVoxelIntBox& Bounds, FName Name) const;
 	
 private:
 	EVoxelToolManagerTool ToolInstanceType = EVoxelToolManagerTool::Surface;

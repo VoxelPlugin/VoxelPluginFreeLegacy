@@ -62,9 +62,6 @@ UVoxelInvokerEditorComponent::UVoxelInvokerEditorComponent()
 
 	bUseForCollisions = false;
 	bUseForNavmesh = false;
-
-	bUseForTessellation = true;
-	TessellationRange = 10000;
 }
 
 void UVoxelInvokerEditorComponent::OnRegister()

@@ -3,8 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
+// We use std functions here as they support both float and doubles
 #include <cmath>
 
 // Vector that optionally has double precision
@@ -288,6 +289,16 @@ struct FVoxelVector
 			X * V.Y - Y * V.X
 		);
 	}
+
+	FORCEINLINE float operator|(const FVoxelVector& V) const
+	{
+		return X * V.X + Y * V.Y + Z * V.Z;
+	}
+
+	static FORCEINLINE float DotProduct(const FVoxelVector& A, const FVoxelVector& B)
+	{
+		return A | B;
+	}
 	
 	static FORCEINLINE float Dist(const FVoxelVector& V1, const FVoxelVector& V2)
 	{
@@ -336,3 +347,51 @@ FORCEINLINE FVoxelVector operator+(const FIntVector& A, const FVoxelVector& B)
 {
 	return FVoxelVector(A) + B;
 }
+
+struct FVoxelVector2D
+{
+	v_flt X;
+	v_flt Y;
+
+	FVoxelVector2D() = default;
+	FVoxelVector2D(v_flt X, v_flt Y)
+		: X(X)
+		, Y(Y)
+	{
+	}
+	explicit FVoxelVector2D(EForceInit)
+		: X(0.0f)
+		, Y(0.0f)
+	{
+	}
+	FVoxelVector2D(const FVector2D& Vector)
+		: X(Vector.X)
+		, Y(Vector.Y)
+	{
+	}
+	FVoxelVector2D(const FIntPoint& Vector)
+		: X(Vector.X)
+		, Y(Vector.Y)
+	{
+	}
+
+	FORCEINLINE v_flt Size() const
+	{
+		return std::sqrt(X * X + Y * Y);
+	}
+
+	FORCEINLINE v_flt operator^(const FVoxelVector2D& V) const
+	{
+		return X * V.Y - Y * V.X;
+	}
+
+	FORCEINLINE float operator|(const FVoxelVector2D& V) const
+	{
+		return X * V.X + Y * V.Y;
+	}
+
+	static FORCEINLINE float DotProduct(const FVoxelVector2D& A, const FVoxelVector2D& B)
+	{
+		return A | B;
+	}
+};

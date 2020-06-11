@@ -79,7 +79,7 @@ void FVoxelDefaultRenderer::Destroy()
 ///////////////////////////////////////////////////////////////////////////////
 
 int32 FVoxelDefaultRenderer::UpdateChunks(
-	const FIntBox& Bounds,
+	const FVoxelIntBox& Bounds,
 	const TArray<uint64>& ChunksToUpdate, 
 	const FVoxelOnChunkUpdateFinished& FinishDelegate)
 {
@@ -112,7 +112,7 @@ int32 FVoxelDefaultRenderer::UpdateChunks(
 	{
 		VOXEL_SCOPE_COUNTER("Cancel Dithering");
 
-		FIntBoxWithValidity ChunksToRemoveBounds;
+		FVoxelIntBoxWithValidity ChunksToRemoveBounds;
 		// First remove all chunks that are dithering out
 		for (auto& ChunkToRemove : ChunksToRemove)
 		{
@@ -151,7 +151,7 @@ int32 FVoxelDefaultRenderer::UpdateChunks(
 
 	Settings.DebugManager->ReportUpdatedChunks([&]()
 		{
-			TArray<FIntBox> UpdatedChunks;
+			TArray<FVoxelIntBox> UpdatedChunks;
 			UpdatedChunks.Reserve(ChunksToUpdate.Num());
 			for (auto& ChunkId : ChunksToUpdate)
 			{
@@ -613,7 +613,7 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 
 	Settings.DebugManager->ReportRenderChunks([&]()
 		{
-			TArray<FIntBox> Result;
+			TArray<FVoxelIntBox> Result;
 			Result.Reserve(ChunksMap.Num());
 			for (auto& It : ChunksMap)
 			{
@@ -1012,8 +1012,7 @@ void FVoxelDefaultRenderer::ApplyPendingSettings(FChunk& Chunk, bool bApplyVisib
 
 	if (NewSettings.bVisible            != OldSettings.bVisible          ||
 		NewSettings.bEnableCollisions   != OldSettings.bEnableCollisions ||
-		NewSettings.bEnableNavmesh      != OldSettings.bEnableNavmesh    ||
-		NewSettings.bEnableTessellation != OldSettings.bEnableTessellation)
+		NewSettings.bEnableNavmesh      != OldSettings.bEnableNavmesh)
 	{
 		if (Chunk.MeshId.IsValid() && ensure(Chunk.BuiltData.MainChunk.IsValid())) // If we have a mesh we must have a built chunk
 		{
@@ -1310,7 +1309,7 @@ void FVoxelDefaultRenderer::DestroyChunk(FChunk& Chunk)
 	for (auto& PendingUpdate : Chunk.PendingUpdates)
 	{
 		// We must always fire all delegates
-		PendingUpdate.OnUpdateFinished.Broadcast(FIntBox());
+		PendingUpdate.OnUpdateFinished.Broadcast(FVoxelIntBox());
 	}
 	ensure(ChunksMap.Remove(Chunk.Id) == 1);
 }

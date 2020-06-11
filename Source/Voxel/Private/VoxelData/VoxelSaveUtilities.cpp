@@ -4,7 +4,7 @@
 #include "VoxelData/VoxelDataOctreeLeafData.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 #include "VoxelMessages.h"
-#include "VoxelSerializationUtilities.h"
+#include "VoxelUtilities/VoxelSerializationUtilities.h"
 #include "VoxelCustomVersion.h"
 
 #include "Serialization/BufferArchive.h"
@@ -46,7 +46,7 @@ void FVoxelSaveBuilder::AddChunk(
 
 void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	check(Depth >= 0);
 	OutSave.Guid = FGuid::NewGuid();
@@ -222,6 +222,7 @@ void FVoxelSaveLoader::ExtractChunk(
 TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> FVoxelSaveLoader::GetPlaceableItems(const AVoxelWorld* VoxelWorld)
 {
 	VOXEL_FUNCTION_COUNTER();
+	ensure(IsInGameThread());
 	
 	FMemoryReader Reader(Save.PlaceableItems);
 	Reader.SetCustomVersion(FVoxelCustomVersion::GUID, Save.Version, "VoxelCustomVersion");
@@ -253,7 +254,7 @@ void UVoxelSaveUtilities::CompressVoxelSave(const FVoxelUncompressedWorldSave& U
 
 void UVoxelSaveUtilities::CompressVoxelSave(const FVoxelUncompressedWorldSaveImpl& UncompressedSave, FVoxelCompressedWorldSaveImpl& OutCompressedSave)
 {
-	VOXEL_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	OutCompressedSave.Depth = UncompressedSave.GetDepth();
 	OutCompressedSave.Guid = UncompressedSave.GetGuid();

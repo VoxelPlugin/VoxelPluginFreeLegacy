@@ -2,7 +2,7 @@
 
 #include "VoxelMessagesEditor.h"
 #include "VoxelSettings.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 
 #include "Logging/MessageLog.h"
 #include "Misc/CoreMisc.h"
@@ -163,7 +163,9 @@ void FVoxelMessagesEditor::ShowNotification(
 	const FText& Message,
 	const FText& ButtonText,
 	const FText& ButtonTooltip,
-	const FSimpleDelegate& OnClick)
+	const FSimpleDelegate& OnClick,
+	bool bWithIgnore,
+	const FSimpleDelegate& OnIgnore)
 {
 	struct FLastNotification
 	{
@@ -185,6 +187,10 @@ void FVoxelMessagesEditor::ShowNotification(
 	const TSharedRef<TWeakPtr<SNotificationItem>> PtrToPtr = MakeShared<TWeakPtr<SNotificationItem>>();
 	AddButton(Info, OnClick, ButtonText, ButtonTooltip, PtrToPtr);
 	AddButton(Info, {}, VOXEL_LOCTEXT("Close"), VOXEL_LOCTEXT("Close"), PtrToPtr);
+	if (bWithIgnore)
+	{
+		AddButton(Info, OnIgnore, VOXEL_LOCTEXT("Ignore All"), VOXEL_LOCTEXT("Ignore all notifications for this session"), PtrToPtr);
+	}
 	const auto Ptr = FSlateNotificationManager::Get().AddNotification(Info);
 	*PtrToPtr = Ptr;
 

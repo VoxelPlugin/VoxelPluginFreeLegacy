@@ -8,11 +8,12 @@
 class IVoxelQueuedWork : public IQueuedWork
 {
 public:
+	// Used for performance reporting and debugging
 	const FName Name;
 	// Number of seconds a priority can be cached before being recomputed
 	const double PriorityDuration;
 
-	IVoxelQueuedWork(FName Name, double PriorityDuration)
+	FORCEINLINE IVoxelQueuedWork(FName Name, double PriorityDuration)
 		: Name(Name)
 		, PriorityDuration(PriorityDuration)
 	{

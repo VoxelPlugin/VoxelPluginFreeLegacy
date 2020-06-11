@@ -496,6 +496,7 @@ class VOXELGRAPH_API UVoxelNode_Exp : public UVoxelPureNode
 };
 
 // Return the sine of the input
+// Input is in radians
 UCLASS(DisplayName = "Sin", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Sin : public UVoxelPureNode
 {
@@ -507,6 +508,7 @@ class VOXELGRAPH_API UVoxelNode_Sin : public UVoxelPureNode
 };
 
 // Return the asin (inverse of sine) of the input
+// Output is in radians
 UCLASS(DisplayName = "Asin", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Asin : public UVoxelPureNode
 {
@@ -518,6 +520,7 @@ class VOXELGRAPH_API UVoxelNode_Asin : public UVoxelPureNode
 };
 
 // Return the sinh (hyperbolic sine) of the input
+// Input is in radians
 UCLASS(DisplayName = "Sinh", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Sinh : public UVoxelPureNode
 {
@@ -529,6 +532,7 @@ class VOXELGRAPH_API UVoxelNode_Sinh : public UVoxelPureNode
 };
 
 // Return the cosine of the input
+// Input is in radians
 UCLASS(DisplayName = "Cos", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Cos : public UVoxelPureNode
 {
@@ -540,6 +544,7 @@ class VOXELGRAPH_API UVoxelNode_Cos : public UVoxelPureNode
 };
 
 // Return the acos (inverse of cosine) of the input
+// Output is in radians
 UCLASS(DisplayName = "Acos", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Acos : public UVoxelPureNode
 {
@@ -550,7 +555,20 @@ class VOXELGRAPH_API UVoxelNode_Acos : public UVoxelPureNode
 	UVoxelNode_Acos();
 };
 
+// Return the Sinus and Cosinus of the input
+// Input is in radians
+UCLASS(DisplayName = "SinCos", Category = "Math|Float")
+class VOXELGRAPH_API UVoxelNode_SinCos : public UVoxelPureNode
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+	COMPACT_VOXELNODE("SIN COS")
+
+	UVoxelNode_SinCos();
+};
+
 // Return the tan of the input
+// Input is in radians
 UCLASS(DisplayName = "Tan", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Tan : public UVoxelPureNode
 {
@@ -562,6 +580,7 @@ class VOXELGRAPH_API UVoxelNode_Tan : public UVoxelPureNode
 };
 
 // Return the atan of the input
+// Output is in radians
 UCLASS(DisplayName = "Atan", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Atan : public UVoxelPureNode
 {
@@ -573,6 +592,7 @@ class VOXELGRAPH_API UVoxelNode_Atan : public UVoxelPureNode
 };
 
 // Return atan2(Y, X)
+// Input is in radians
 UCLASS(DisplayName = "Atan2", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Atan2 : public UVoxelPureNode
 {

@@ -2,6 +2,8 @@
 
 #include "Factories/VoxelHeightmapAssetFactory.h"
 #include "VoxelEditorDetailsUtilities.h"
+#include "VoxelFeedbackContext.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelMessages.h"
 
 #include "Widgets/SWindow.h"
@@ -17,7 +19,6 @@
 #include "DetailLayoutBuilder.h"
 
 #include "Modules/ModuleManager.h"
-#include "Misc/ScopedSlowTask.h"
 
 #include "LandscapeEditorModule.h"
 #include "LandscapeComponent.h"
@@ -120,11 +121,11 @@ bool UVoxelHeightmapAssetUINT16Factory::ConfigureProperties()
 		FName Name = Property.Property.GetFName();
 		if (Name == GET_MEMBER_NAME_STATIC(FVoxelHeightmapImporterWeightmapInfos, Layer))
 		{
-			return MaterialConfig == EVoxelMaterialConfig::RGB;
+			return MaterialConfig == EVoxelHeightmapImporterMaterialConfig::RGB;
 		}
 		else if (Name == GET_MEMBER_NAME_STATIC(FVoxelHeightmapImporterWeightmapInfos, Index))
 		{
-			return MaterialConfig == EVoxelMaterialConfig::SingleIndex || MaterialConfig == EVoxelMaterialConfig::DoubleIndex;
+			return MaterialConfig != EVoxelHeightmapImporterMaterialConfig::RGB;
 		}
 		else
 		{
@@ -215,7 +216,7 @@ bool UVoxelHeightmapAssetUINT16Factory::ConfigureProperties()
 UObject* UVoxelHeightmapAssetUINT16Factory::FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
 	auto* Asset = NewObject<UVoxelHeightmapAssetUINT16>(InParent, Class, Name, Flags | RF_Transactional);
-	if(DoImport(Asset))
+	if (DoImport(Asset))
 	{
 		return Asset;
 	}

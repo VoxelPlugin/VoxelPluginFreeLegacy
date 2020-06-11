@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
+#include "VoxelMinimal.h"
 #include "Engine/EngineTypes.h"
 #include "UObject/WeakObjectPtr.h"
 #include "Templates/SubclassOf.h"

@@ -3,13 +3,13 @@
 #include "VoxelPlaceableItems/VoxelAssetItem.h"
 #include "VoxelData/VoxelDataUtilities.h"
 #include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
-#include "VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "VoxelMessages.h"
 #include "VoxelWorld.h"
 
 FVoxelAssetItem::FVoxelAssetItem(
 	const TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance>& WorldGenerator,
-	const FIntBox& WorldBounds,
+	const FVoxelIntBox& WorldBounds,
 	const FTransform& LocalToWorld,
 	int32 Priority)
 	: FVoxelPlaceableItem(StaticId(), WorldBounds, Priority)
@@ -27,7 +27,7 @@ FString FVoxelAssetItem::GetDescription() const
 void FVoxelAssetItem::Save(FArchive& Ar) const
 {
 	FString ClassPath = WorldGenerator->Class->GetPathName();
-	FIntBox WorldBoundsCopy = WorldBounds;
+	FVoxelIntBox WorldBoundsCopy = WorldBounds;
 	FTransform LocalToWorldCopy = LocalToWorld;
 	int32 PriorityCopy = Priority;
 
@@ -44,7 +44,7 @@ FVoxelAssetItemLoader FVoxelAssetItemLoader::AssetLoader;
 TVoxelSharedRef<FVoxelPlaceableItem> FVoxelAssetItemLoader::Load(FArchive& Ar, const AVoxelWorld* VoxelWorld) const
 {
 	FString ClassPath;
-	FIntBox WorldBounds;
+	FVoxelIntBox WorldBounds;
 	FTransform LocalToWorld;
 	int32 Priority;
 	

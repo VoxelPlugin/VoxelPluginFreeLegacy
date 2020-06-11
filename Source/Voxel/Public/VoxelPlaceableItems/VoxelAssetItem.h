@@ -14,11 +14,11 @@ public:
 
 	const TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> WorldGenerator;
 	const FTransform LocalToWorld;
-	const FIntBox WorldBounds;
+	const FVoxelIntBox WorldBounds;
 
 	FVoxelAssetItem(
 		const TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance>& WorldGenerator,
-		const FIntBox& WorldBounds, 
+		const FVoxelIntBox& WorldBounds, 
 		const FTransform& LocalToWorld,
 		int32 Priority);
 

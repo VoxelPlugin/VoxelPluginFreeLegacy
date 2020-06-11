@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelNodeHelper.h"
 #include "VoxelNodeHelperMacros.h"
-#include "VoxelWorldGeneratorPicker.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelGraphAssetNodes.generated.h"
 
 UCLASS(Abstract, Category = "Graph Asset")

@@ -3,15 +3,57 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelGlobals.h"
-#include "VoxelBaseUtilities.h"
+#include "VoxelMinimal.h"
 #include "VoxelConfigEnums.h"
+#include "VoxelUtilities/VoxelBaseUtilities.h"
 #include "VoxelTexture.generated.h"
 
 class UTexture;
 class UTexture2D;
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Texture Memory"), STAT_VoxelTextureMemory, STATGROUP_VoxelMemory, VOXEL_API);
+
+template<>
+struct TNumericLimits<FColor> 
+{
+	typedef FColor NumericType;
+
+	static constexpr NumericType Min()
+	{
+		return FColor(MIN_uint8, MIN_uint8, MIN_uint8, MIN_uint8);
+	}
+
+	static constexpr NumericType Max()
+	{
+		return FColor(MAX_uint8, MAX_uint8, MAX_uint8, MAX_uint8);
+	}
+
+	static constexpr NumericType Lowest()
+	{
+		return Min();
+	}
+};
+
+namespace FVoxelUtilities
+{
+	inline float ComponentMin(float A, float B)
+	{
+		return FMath::Min(A, B);
+	}
+	inline float ComponentMax(float A, float B)
+	{
+		return FMath::Max(A, B);
+	}
+	
+	inline FColor ComponentMin(FColor A, FColor B)
+	{
+		return FColor(FMath::Min(A.R, B.R), FMath::Min(A.G, B.G), FMath::Min(A.B, B.B), FMath::Min(A.A, B.A));
+	}
+	inline FColor ComponentMax(FColor A, FColor B)
+	{
+		return FColor(FMath::Max(A.R, B.R), FMath::Max(A.G, B.G), FMath::Max(A.B, B.B), FMath::Max(A.A, B.A));
+	}
+}
 
 template<typename T>
 struct TVoxelTexture
@@ -108,8 +150,8 @@ public:
 		{
 			checkVoxelSlow(TextureData.IsValidIndex(Index));
 			TextureData.GetData()[Index] = Value;
-			Min = FMath::Min(Min, Value);
-			Max = FMath::Max(Max, Value);
+			Min = FVoxelUtilities::ComponentMin(Min, Value);
+			Max = FVoxelUtilities::ComponentMax(Max, Value);
 		}
 		inline void UpdateAllocatedSize()
 		{
@@ -171,5 +213,26 @@ struct VOXEL_API FVoxelFloatTexture
 {
 	GENERATED_BODY()
 
+	FVoxelFloatTexture() = default;
+	FVoxelFloatTexture(const TVoxelTexture<float>& Texture)
+		: Texture(Texture)
+	{
+	}
+	
 	TVoxelTexture<float> Texture;
+};
+
+USTRUCT(BlueprintType)
+struct VOXEL_API FVoxelColorTexture
+{
+	GENERATED_BODY()
+
+	FVoxelColorTexture() = default;
+	FVoxelColorTexture(const TVoxelTexture<FColor>& Texture)
+		: Texture(Texture)
+	{
+	}
+	
+
+	TVoxelTexture<FColor> Texture;
 };
