@@ -12,7 +12,6 @@ It is compatible with 4.23, 4.24 and 4.25.
 - Twitter: https://twitter.com/voxelplugin
 - Youtube: http://youtube.com/voxelplugin
 - Discord: https://discord.voxelplugin.com
-- Issues: https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues
 - UE Forums: https://forums.unrealengine.com/community/released-projects/125045-voxel-plugin
 
 ## Installation
