@@ -38,7 +38,6 @@ It is compatible with 4.23, 4.24 and 4.25.
 ## Screenshots
 ![Materials](https://i.imgur.com/XW4o2g3.png)
 ![Fast Edits](https://i.imgur.com/4ouIrX9.png)
-![Procedural Spawning (Pro only)](https://i.imgur.com/0Ic3o6h.png)
 ![Infinite World](https://i.imgur.com/hvfXNob.png)
 ![Multiplayer](https://i.imgur.com/wEMPfYm.png)
 ![Entirely Destructible](https://i.imgur.com/v3zjXQj.png)
