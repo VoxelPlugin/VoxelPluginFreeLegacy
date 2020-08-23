@@ -2,7 +2,6 @@
 
 #include "VoxelMultiplayer/VoxelMultiplayerTcp.h"
 #include "VoxelMessages.h"
-#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 #include "Sockets.h"
 #include "SocketSubsystem.h"

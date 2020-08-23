@@ -9,6 +9,10 @@
 #include "VoxelAsyncWork.h"
 #include "VoxelMessages.h"
 #include "VoxelData/VoxelData.h"
+#include "VoxelData/VoxelDataLock.h"
+
+// TODO REMOVE
+#include "VoxelTools/Impl/VoxelToolsBaseImpl.inl"
 
 #include "LatentActions.h"
 #include "Engine/LatentActionManager.h"
@@ -200,8 +204,6 @@ private:
 
 struct VOXEL_API FVoxelToolHelpers
 {
-	static bool GetLogEditToolsTimes();
-
 	// Avoids having to include the LOD Manager header in every tool file
 	static void UpdateWorld(AVoxelWorld* World, const FVoxelIntBox& Bounds);
 	// If World is null, will start an async on AnyThread. Else will use the voxel world thread pool.
@@ -266,7 +268,8 @@ struct VOXEL_API FVoxelToolHelpers
 		T& Value,
 		TDoWork DoWork,
 		EVoxelUpdateRender UpdateRender,
-		const FVoxelIntBox& BoundsToUpdate)
+		const FVoxelIntBox& BoundsToUpdate,
+		TFunction<void()> GameThreadCallback = nullptr)
 	{
 		using FWork = TVoxelLatentActionAsyncWork_WithWorld_WithValue<T>;
 		return StartAsyncLatentActionImpl<FWork>(
@@ -281,6 +284,10 @@ struct VOXEL_API FVoxelToolHelpers
 				if (WeakWorldContextObject.IsValid())
 				{
 					Value = MoveTemp(Work.Value);
+					if (GameThreadCallback)
+					{
+						GameThreadCallback();
+					}
 				}
 				if (UpdateRender == EVoxelUpdateRender::UpdateRender && Work.World.IsValid())
 				{
@@ -355,6 +362,19 @@ if (!World->IsCreated()) \
 }
 #define CHECK_VOXELWORLD_IS_CREATED() CHECK_VOXELWORLD_IS_CREATED_IMPL(World, {});
 #define CHECK_VOXELWORLD_IS_CREATED_VOID() CHECK_VOXELWORLD_IS_CREATED_IMPL(World, PREPROCESSOR_NOTHING);
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_OBJECT_PARAMETER_IMPL(Object, ReturnValue) \
+if (!Object) \
+{ \
+	FVoxelMessages::Error(FString::Printf(TEXT("%s: "#Object" is invalid!"), *FString(__FUNCTION__))); \
+	return ReturnValue; \
+}
+#define CHECK_OBJECT_PARAMETER(Object) CHECK_OBJECT_PARAMETER_IMPL(Object, {});
+#define CHECK_OBJECT_PARAMETER_VOID(Object) CHECK_OBJECT_PARAMETER_IMPL(Object, PREPROCESSOR_NOTHING);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -461,24 +481,3 @@ if (!FVoxelUtilities::CountIs32Bits(Bounds.Size())) \
 	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE_BODY(InValue, InLockType, InUpdateRender, __VA_ARGS__)
 
 #define NO_PREFIX
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-struct VOXEL_API FScopeToolsTimeLogger
-{
-	const char* Name;
-	const int64 NumVoxels;
-	const double StartTime = FPlatformTime::Seconds();
-
-	explicit FScopeToolsTimeLogger(const char* Name, int64 NumVoxels)
-		: Name(Name)
-		, NumVoxels(NumVoxels)
-	{
-	}
-	~FScopeToolsTimeLogger();
-};
-
-#define VOXEL_TOOL_FUNCTION_COUNTER(Num) FScopeToolsTimeLogger PREPROCESSOR_JOIN(EditCounter, __LINE__)(__FUNCTION__, Num); VOXEL_ASYNC_FUNCTION_COUNTER()
-#define VOXEL_TOOL_SCOPE_COUNTER(Name, Num) FScopeToolsTimeLogger PREPROCESSOR_JOIN(EditCounter, __LINE__)(Name, Num); VOXEL_ASYNC_SCOPE_COUNTER(Name)

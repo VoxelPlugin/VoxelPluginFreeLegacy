@@ -15,15 +15,23 @@ enum class EVoxelWorldCoordinatesRounding : uint8
 	RoundDown
 };
 
-UCLASS(Abstract)
-class VOXEL_API AVoxelWorldInterface : public AActor
+#if CPP
+class IVoxelWorldInterface
 {
-	GENERATED_BODY()
-
 public:
+	virtual ~IVoxelWorldInterface() = default;
+
 	virtual FIntVector GlobalToLocal(const FVector& Position, EVoxelWorldCoordinatesRounding Rounding = EVoxelWorldCoordinatesRounding::RoundToNearest) const { unimplemented(); return {}; }
 	virtual FVoxelVector GlobalToLocalFloat(const FVector& Position) const { unimplemented(); return {}; }
 
 	virtual FVector LocalToGlobal(const FIntVector& Position) const { unimplemented(); return {}; }
 	virtual FVector LocalToGlobalFloat(const FVoxelVector& Position) const { unimplemented(); return {}; }
+};
+#endif
+
+// AActor so we can keep a weak ptr to it
+UCLASS(Abstract)
+class VOXEL_API AVoxelWorldInterface : public AActor, public IVoxelWorldInterface
+{
+	GENERATED_BODY()
 };

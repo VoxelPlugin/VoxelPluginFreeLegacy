@@ -4,7 +4,7 @@
 #include "VoxelRender/VoxelMesherAsyncWork.h"
 #include "VoxelRender/VoxelChunkMesh.h"
 #include "VoxelRender/IVoxelRenderer.h"
-#include "VoxelData/VoxelData.h"
+#include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelUtilities/VoxelStatsUtilities.h"
 

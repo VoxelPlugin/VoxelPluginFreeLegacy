@@ -16,12 +16,8 @@ class VOXELGRAPH_API UVoxelNode_BiomeMerge : public UVoxelNode
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Biomes")
+	UPROPERTY(EditAnywhere, Category = "Biomes", meta = (ReconstructNode))
 	TArray<FString> Biomes;
-
-	// Additional data you want to send through the generated function separator
-	UPROPERTY(EditAnywhere, Category = "Biomes")
-	TArray<FVoxelNamedDataPin> AdditionalData;
 
 	UPROPERTY(EditAnywhere, Category = "Config")
 	float Tolerance = 0.00001;

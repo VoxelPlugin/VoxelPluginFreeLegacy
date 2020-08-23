@@ -150,6 +150,7 @@ FString UVoxelNode_NoiseNode::GetInputPinDefaultValue(int32 PinIndex) const
 	}
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
 
 #if WITH_EDITOR
@@ -287,41 +288,3 @@ bool UVoxelNode_IQNoiseBase::CanEditChange(const UProperty* InProperty) const
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-#if WITH_EDITOR
-void UVoxelNode_NoiseNodeWithDerivative::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	if (PropertyChangedEvent.Property &&
-		PropertyChangedEvent.Property->GetFName()  == GET_MEMBER_NAME_STATIC(UVoxelNode_NoiseNodeWithDerivative, bComputeDerivative) &&
-		PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive &&
-		Graph &&
-		GraphNode)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-
-	// Reconstruct first to have the right output count
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-}
-
-void UVoxelNode_NoiseNodeWithDerivativeFractal::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	if (PropertyChangedEvent.Property &&
-		PropertyChangedEvent.Property->GetFName()  == GET_MEMBER_NAME_STATIC(UVoxelNode_NoiseNodeWithDerivative, bComputeDerivative) &&
-		PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive &&
-		Graph &&
-		GraphNode)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-
-	// Reconstruct first to have the right output count
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-}
-#endif

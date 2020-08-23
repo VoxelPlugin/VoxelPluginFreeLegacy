@@ -39,7 +39,6 @@ public:
 		// TODO bit arrays would be better
 		TSet<FVoxelCellIndex> Values;
 		TSet<FVoxelCellIndex> Materials;
-		TEmptyArray<FVoxelCellIndex> Foliage;
 	};
 	FDirty Dirty;
 
@@ -50,13 +49,13 @@ public:
 		FVoxelUtilities::TValuesMaterialsSelector<T>::Get(Dirty).Add(Index);
 	}
 	
-	template<typename T>
-	void AddToDiffQueueAndReset(T* Data, TArray<TVoxelDiff<T>>& OutDiffQueue)
+	template<typename T, typename TData>
+	void AddToDiffQueueAndReset(const TData& Data, TArray<TVoxelDiff<T>>& OutDiffQueue)
 	{
 		auto& DirtyT = FVoxelUtilities::TValuesMaterialsSelector<T>::Get(Dirty);
 		for (int32 Index : DirtyT)
 		{
-			OutDiffQueue.Emplace(Index, Data[Index]);
+			OutDiffQueue.Emplace(Index, Data.Get(Index));
 		}
 		DirtyT.Empty();
 	}

@@ -50,12 +50,6 @@ EVoxelPinCategory UVoxelGraphMacroInputOutputNode::GetOutputPinCategory(int32 Pi
 #if WITH_EDITOR
 void UVoxelGraphMacroInputOutputNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-	if (PropertyChangedEvent.Property && Graph && GraphNode)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-
 	if (IsA<UVoxelGraphMacroOutputNode>())
 	{
 		for (auto& Pin : Pins)
@@ -202,29 +196,16 @@ void UVoxelGraphMacroNode::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 	
 	if (!Macro)
 	{
-		ErrorReporter.AddMessageToNode(this, "invalid macro ref", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "invalid macro ref", EVoxelGraphNodeMessageType::Error);
 	}
 	else if (!Macro->InputNode || !Macro->OutputNode)
 	{
-		ErrorReporter.AddMessageToNode(this, "corrupted macro", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "corrupted macro", EVoxelGraphNodeMessageType::Error);
 	}
 	else if (!ArePinsArraysSameNameAndCategory(InputPins, Macro->InputNode->OutputPins) || 
 		     !ArePinsArraysSameNameAndCategory(OutputPins, Macro->OutputNode->InputPins))
 	{
 		ErrorReporter.AddError("Outdated macro: please right click it and press Reconstruct Node");
-		ErrorReporter.AddMessageToNode(this, "outdated macro", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "outdated macro", EVoxelGraphNodeMessageType::Error);
 	}
 }
-
-#if WITH_EDITOR
-void UVoxelGraphMacroNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{	
-	if (PropertyChangedEvent.Property && PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphMacroNode, Macro) && Graph && GraphNode)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-}
-#endif // WITH_EDITOR

@@ -5,7 +5,7 @@
 #include "VoxelWorldGenerators/VoxelFlatWorldGenerator.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 EVoxelPinCategory UVoxelNode_WorldGeneratorSamplerBase::GetInputPinCategory(int32 PinIndex) const
 {
@@ -58,19 +58,6 @@ int32 UVoxelNode_WorldGeneratorSamplerBase::GetMaxInputPins() const
 }
 
 
-#if WITH_EDITOR
-void UVoxelNode_WorldGeneratorSamplerBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	if (Graph && GraphNode && PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-}
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -98,7 +85,7 @@ void UVoxelNode_SingleWorldGeneratorSamplerBase::LogErrors(FVoxelGraphErrorRepor
 	
 	if (!WorldGenerator.IsValid())
 	{
-		ErrorReporter.AddMessageToNode(this, "invalid world generator", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "invalid world generator", EVoxelGraphNodeMessageType::Error);
 	}
 }
 

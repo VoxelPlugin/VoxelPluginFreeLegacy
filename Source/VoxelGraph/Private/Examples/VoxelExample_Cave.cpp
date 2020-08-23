@@ -1637,7 +1637,7 @@ public:
 		
 	};
 	
-	FVoxelExample_CaveInstance(const UVoxelExample_Cave& Object)
+	FVoxelExample_CaveInstance(UVoxelExample_Cave& Object)
 			: TVoxelGraphGeneratorInstanceHelper(
 			{
 				{ "Value", 1 },
@@ -1670,7 +1670,7 @@ public:
 					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
 				}
 			},
-			Object.bEnableRangeAnalysis)
+			Object)
 		, Params(FParams
 		{
 			Object.Bottom_Noise_Frequency,

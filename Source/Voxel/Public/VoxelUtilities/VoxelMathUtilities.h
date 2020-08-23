@@ -5,7 +5,8 @@
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
 #include "VoxelIntBox.h"
-#include "VoxelStaticArray.h"
+#include "VoxelConfigEnums.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelUtilities/VoxelIntVectorUtilities.h"
 
 namespace FVoxelUtilities
@@ -110,7 +111,9 @@ namespace FVoxelUtilities
 	{
 		CHECK_CHUNK_SIZE();
 		constexpr int32 ChunkSizeDepth = IntLog2(ChunkSize);
-		constexpr int32 MaxDepth = 31;
+		// In theory MaxDepth could be 31
+		// To avoid overflows when doing math we use 30
+		constexpr int32 MaxDepth = 30;
 		// ChunkSizeDepth + Depth <= MaxDepth
 		// Depth <= MaxDepth - ChunkSizeDepth
 		return FMath::Clamp(Depth, 0, MaxDepth - ChunkSizeDepth);
@@ -400,5 +403,130 @@ namespace FVoxelUtilities
 	FORCEINLINE TVoxelStaticArray<TTuple<int32, T>, N> FindTopXElements(const TVoxelStaticArray<T, Num>& Array, TLambda LessThan = TLess<T>())
 	{
 		return FindTopXElements_Impl<N, T>(Array, LessThan);
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+
+	// Skips expensive bound checks outside of debug
+	template<typename T>
+	FORCEINLINE auto& Get(T& Array, int32 Index)
+	{
+		checkVoxelSlow(0 <= Index && Index < GetNum(Array));
+		return GetData(Array)[Index];
+	}
+	
+	FORCEINLINE int32 Get3DIndex(const FIntVector& Size, int32 X, int32 Y, int32 Z, const FIntVector& Offset = FIntVector(0, 0, 0))
+	{
+		X -= Offset.X;
+		Y -= Offset.Y;
+		Z -= Offset.Z;
+		checkVoxelSlow(0 <= X && X < Size.X);
+		checkVoxelSlow(0 <= Y && Y < Size.Y);
+		checkVoxelSlow(0 <= Z && Z < Size.Z);
+		checkVoxelSlow(int64(Size.X) * int64(Size.Y) * int64(Size.X) < MAX_int32);
+		return X + Y * Size.X + Z * Size.X * Size.Y;
+	}
+	FORCEINLINE int32 Get3DIndex(const FIntVector& Size, const FIntVector& Position, const FIntVector& Offset = FIntVector(0, 0, 0))
+	{
+		return Get3DIndex(Size, Position.X, Position.Y, Position.Z, Offset);
+	}
+	
+	template<typename T>
+	FORCEINLINE T& Get3D(T* RESTRICT Array, const FIntVector& Size, int32 X, int32 Y, int32 Z, const FIntVector& Offset = FIntVector(0, 0, 0))
+	{
+		return Array[Get3DIndex(Size, X, Y, Z, Offset)];
+	}
+	template<typename T>
+	FORCEINLINE T& Get3D(T* RESTRICT Array, const FIntVector& Size, const FIntVector& Position, const FIntVector& Offset = FIntVector(0, 0, 0))
+	{
+		return Get3D(Array, Size, Position.X, Position.Y, Position.Z, Offset);
+	}
+	
+	template<typename T>
+	FORCEINLINE auto& Get3D(T& Array, const FIntVector& Size, int32 X, int32 Y, int32 Z, const FIntVector& Offset = FIntVector(0, 0, 0))
+	{
+		checkVoxelSlow(GetNum(Array) == Size.X * Size.Y * Size.Z);
+		return Get3D(GetData(Array), Size, X, Y, Z, Offset);
+	}
+	template<typename T>
+	FORCEINLINE auto& Get3D(T& Array, const FIntVector& Size, const FIntVector& Position, const FIntVector& Offset = FIntVector(0, 0, 0))
+	{
+		return Get3D(Array, Size, Position.X, Position.Y, Position.Z, Offset);
+	}
+	
+	template<typename T>
+	FORCEINLINE auto Create3DGetter(T& Array, const FIntVector& Size, const FIntVector& Offset = FIntVector(0, 0, 0)) -> decltype(auto)
+	{
+		return [&](int32 X, int32 Y, int32 Z) -> decltype(auto) { return Get3D(Array, Size, X, Y, Z, Offset); };
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+
+	FORCEINLINE float LinearFalloff(float Distance, float Radius, float Falloff)
+	{
+		return Distance <= Radius
+			? 1.0f
+			: Radius + Falloff <= Distance
+			? 0.f
+			: 1.0f - (Distance - Radius) / Falloff;
+	}
+	FORCEINLINE float SmoothFalloff(float Distance, float Radius, float Falloff)
+	{
+		const float X = LinearFalloff(Distance, Radius, Falloff);
+		return FMath::SmoothStep(0, 1, X);
+	}
+	FORCEINLINE float SphericalFalloff(float Distance, float Radius, float Falloff)
+	{
+		return Distance <= Radius
+			? 1.0f
+			: Radius + Falloff <= Distance
+			? 0.f
+			: FMath::Sqrt(1.0f - FMath::Square((Distance - Radius) / Falloff));
+	}
+	FORCEINLINE float TipFalloff(float Distance, float Radius, float Falloff)
+	{
+		return Distance <= Radius
+			? 1.0f
+			: Radius + Falloff <= Distance
+			? 0.f
+			: 1.0f - FMath::Sqrt(1.0f - FMath::Square((Falloff + Radius - Distance) / Falloff));
+	}
+
+	// Falloff: between 0 and 1
+	template<typename T>
+	FORCEINLINE auto DispatchFalloff(EVoxelFalloff FalloffType, float Radius, float Falloff, T Lambda) -> decltype(auto)
+	{
+		Falloff = FMath::Clamp(Falloff, 0.f, 1.f);
+		if (Falloff == 0.f)
+		{
+			return Lambda([&](float Distance) { return 1.f; });
+		}
+		
+		const float RelativeRadius = Radius * (1.f - Falloff);
+		const float RelativeFalloff = Radius * Falloff;
+		switch (FalloffType)
+		{
+		default: ensure(false);
+		case EVoxelFalloff::Linear:
+		{
+			return Lambda([=](float Distance) { return LinearFalloff(Distance, RelativeRadius, RelativeFalloff); });
+		}
+		case EVoxelFalloff::Smooth:
+		{
+			return Lambda([=](float Distance) { return SmoothFalloff(Distance, RelativeRadius, RelativeFalloff); });
+		}
+		case EVoxelFalloff::Spherical:
+		{
+			return Lambda([=](float Distance) { return SphericalFalloff(Distance, RelativeRadius, RelativeFalloff); });
+		}
+		case EVoxelFalloff::Tip:
+		{
+			return Lambda([=](float Distance) { return TipFalloff(Distance, RelativeRadius, RelativeFalloff); });
+		}
+		}
 	}
 }

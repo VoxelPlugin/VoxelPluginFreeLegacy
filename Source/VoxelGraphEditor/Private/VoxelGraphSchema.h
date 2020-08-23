@@ -45,6 +45,9 @@ struct FVoxelGraphSchemaAction_NewLocalVariableDeclaration : public FEdGraphSche
 
 public:
 	UPROPERTY()
+	FName DefaultName;
+	
+	UPROPERTY()
 	EVoxelPinCategory PinCategory;
 	
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
@@ -111,7 +114,7 @@ public:
 
 
 UCLASS()
-class UVoxelGraphSchema : public UEdGraphSchema
+class VOXELGRAPHEDITOR_API UVoxelGraphSchema : public UEdGraphSchema
 {
 	GENERATED_BODY()
 	

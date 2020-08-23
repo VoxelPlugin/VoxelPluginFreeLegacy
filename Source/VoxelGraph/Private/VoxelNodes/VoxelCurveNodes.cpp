@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelCurveNodes.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveLinearColor.h"
@@ -25,7 +25,7 @@ void UVoxelNode_Curve::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 	Super::LogErrors(ErrorReporter);
 	if (!Curve)
 	{
-		ErrorReporter.AddMessageToNode(this, "invalid curve", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "invalid curve", EVoxelGraphNodeMessageType::Error);
 	}
 }
 
@@ -61,7 +61,7 @@ void UVoxelNode_CurveColor::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 	Super::LogErrors(ErrorReporter);
 	if (!Curve)
 	{
-		ErrorReporter.AddMessageToNode(this, "invalid color curve", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "invalid color curve", EVoxelGraphNodeMessageType::Error);
 	}
 }
 

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelRange.h"
-#include "VoxelStaticArray.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "VoxelVDBAsset.generated.h"
 
@@ -59,12 +59,36 @@ struct FVoxelVDBImportChannelConfig
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+namespace FVoxelVDBAssetDataVersion
+{
+	enum Type : int32
+	{
+		BeforeCustomVersionWasAdded,
+		SHARED_PlaceableItemsInSave,
+		SHARED_AssetItemsImportValueMaterials,
+		SHARED_DataAssetScale,
+		SHARED_RemoveVoxelGrass,
+		SHARED_DataAssetTransform,
+		SHARED_RemoveEnableVoxelSpawnedActorsEnableVoxelGrass,
+		SHARED_FoliagePaint,
+		SHARED_ValueConfigFlagAndSaveGUIDs,
+		SHARED_SingleValues,
+		SHARED_NoVoxelMaterialInHeightmapAssets,
+		SHARED_FixMissingMaterialsInHeightmapAssets,
+		SHARED_AddUserFlagsToSaves,
+		SHARED_StoreSpawnerMatricesRelativeToComponent,
+		SHARED_StoreMaterialChannelsIndividuallyAndRemoveFoliage,
+		
+		// -----<new versions can be added above this line>-------------------------------------------------
+		VersionPlusOne,
+		LatestVersion = VersionPlusOne - 1
+	};
+};
+
 class VOXELVDB_API FVoxelVDBAssetData
 {
 public:
-	const TWeakObjectPtr<UVoxelVDBAsset> Owner;
-
-	explicit FVoxelVDBAssetData(TWeakObjectPtr<UVoxelVDBAsset> Owner);
+	FVoxelVDBAssetData();
 	~FVoxelVDBAssetData();
 
 public:
@@ -116,13 +140,10 @@ public:
 	virtual FVoxelIntBox GetBounds() const override;
 	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override final;
-	virtual void SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const override final;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> LoadInstance(FArchive& Ar) const override final;
 	//~ End UVoxelWorldGenerator Interface
 
 public:
 	TVoxelSharedRef<const FVoxelVDBAssetData> GetData();
-	TVoxelSharedRef<FVoxelVDBAssetData> MakeData();
 	void SetData(const TVoxelSharedRef<FVoxelVDBAssetData>& InData);
 
 protected:
@@ -137,7 +158,7 @@ protected:
 	virtual void Serialize(FArchive& Ar) override;
 
 private:
-	TVoxelSharedRef<FVoxelVDBAssetData> Data = MakeVoxelShared<FVoxelVDBAssetData>(this);
+	TVoxelSharedRef<FVoxelVDBAssetData> Data = MakeVoxelShared<FVoxelVDBAssetData>();
 
 private:
 	UPROPERTY()

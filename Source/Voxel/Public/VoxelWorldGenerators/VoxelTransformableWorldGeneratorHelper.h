@@ -10,15 +10,19 @@ template<typename T, typename TObject = typename T::UStaticClass>
 class TVoxelTransformableWorldGeneratorHelper : public TVoxelTransformableWorldGeneratorInstanceHelper<TVoxelTransformableWorldGeneratorHelper<T, TObject>, TObject>
 {
 public:
+	using Super = TVoxelTransformableWorldGeneratorInstanceHelper<TVoxelTransformableWorldGeneratorHelper<T, TObject>, TObject>;
+	
 	const TVoxelSharedRef<T> WorldGenerator;
 	const bool bSubtractiveAsset;
 
 	explicit TVoxelTransformableWorldGeneratorHelper(
 		const TVoxelSharedRef<T>& WorldGenerator,
 		bool bSubtractiveAsset)
-		: WorldGenerator(WorldGenerator)
+		: Super(Cast<TObject>(WorldGenerator->Object.Get()))
+		, WorldGenerator(WorldGenerator)
 		, bSubtractiveAsset(bSubtractiveAsset)
 	{
+		ensure(!WorldGenerator->Object.IsValid() || this->Object.IsValid());
 	}
 	
 	//~ Begin FVoxelWorldGeneratorInstance Interface

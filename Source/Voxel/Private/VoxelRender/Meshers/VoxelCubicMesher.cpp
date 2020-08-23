@@ -3,6 +3,7 @@
 #include "VoxelRender/Meshers/VoxelCubicMesher.h"
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
 #include "VoxelRender/IVoxelRenderer.h"
+#include "VoxelData/VoxelDataIncludes.h"
 
 struct FVoxelCubicFullVertex : FVoxelMesherVertex
 {
@@ -64,7 +65,7 @@ struct FVoxelCubicGeometryVertex : FVector
 };
 static_assert(sizeof(FVoxelCubicGeometryVertex) == sizeof(FVector), "");
 
-template<EVoxelDirection::Type Direction, typename TVertex, typename TMesher>
+template<EVoxelDirectionFlag::Type Direction, typename TVertex, typename TMesher>
 FORCEINLINE void AddFace(
 	TMesher& Mesher, int32 Step, FVoxelMaterial Material, 
 	int32 X, int32 Y, int32 Z, 
@@ -76,16 +77,16 @@ FORCEINLINE void AddFace(
 		
 		switch (Direction)
 		{
-		case EVoxelDirection::XMin:
-		case EVoxelDirection::XMax:
-		case EVoxelDirection::YMin:
-		case EVoxelDirection::YMax:
+		case EVoxelDirectionFlag::XMin:
+		case EVoxelDirectionFlag::XMax:
+		case EVoxelDirectionFlag::YMin:
+		case EVoxelDirectionFlag::YMax:
 			Index = 3 * Index + 1;
 			break;
-		case EVoxelDirection::ZMin:
+		case EVoxelDirectionFlag::ZMin:
 			Index = 3 * Index + 2;
 			break;
-		case EVoxelDirection::ZMax:
+		case EVoxelDirectionFlag::ZMax:
 			Index = 3 * Index + 0;
 			break;
 		}
@@ -107,7 +108,7 @@ FORCEINLINE void AddFace(
 
 	switch (Direction)
 	{
-	case EVoxelDirection::XMin:
+	case EVoxelDirectionFlag::XMin:
 		Positions[0] = FVector(0, 0, 1);
 		Positions[1] = FVector(0, 1, 1);
 		Positions[2] = FVector(0, 1, 0);
@@ -115,7 +116,7 @@ FORCEINLINE void AddFace(
 		Normal = FVector(-1, 0, 0);
 		Tangent = FVector(0, 1, 0);
 		break;
-	case EVoxelDirection::XMax:
+	case EVoxelDirectionFlag::XMax:
 		Positions[0] = FVector(1, 1, 1);
 		Positions[1] = FVector(1, 0, 1);
 		Positions[2] = FVector(1, 0, 0);
@@ -123,7 +124,7 @@ FORCEINLINE void AddFace(
 		Normal = FVector(1, 0, 0);
 		Tangent = FVector(0, -1, 0);
 		break;
-	case EVoxelDirection::YMin:
+	case EVoxelDirectionFlag::YMin:
 		Positions[0] = FVector(1, 0, 1);
 		Positions[1] = FVector(0, 0, 1);
 		Positions[2] = FVector(0, 0, 0);
@@ -131,7 +132,7 @@ FORCEINLINE void AddFace(
 		Normal = FVector(0, -1, 0);
 		Tangent = FVector(-1, 0, 0);
 		break;
-	case EVoxelDirection::YMax:
+	case EVoxelDirectionFlag::YMax:
 		Positions[0] = FVector(0, 1, 1);
 		Positions[1] = FVector(1, 1, 1);
 		Positions[2] = FVector(1, 1, 0);
@@ -139,7 +140,7 @@ FORCEINLINE void AddFace(
 		Normal = FVector(0, 1, 0);
 		Tangent = FVector(1, 0, 0);
 		break;
-	case EVoxelDirection::ZMin:
+	case EVoxelDirectionFlag::ZMin:
 		Positions[0] = FVector(0, 1, 0);
 		Positions[1] = FVector(1, 1, 0);
 		Positions[2] = FVector(1, 0, 0);
@@ -148,7 +149,7 @@ FORCEINLINE void AddFace(
 		Tangent = FVector(1, 0, 0);
 		break;
 	default:
-		check(Direction == EVoxelDirection::ZMax);
+		check(Direction == EVoxelDirectionFlag::ZMax);
 		Positions[0] = FVector(1, 0, 1);
 		Positions[1] = FVector(1, 1, 1);
 		Positions[2] = FVector(0, 1, 1);
@@ -178,23 +179,23 @@ FORCEINLINE void AddFace(
 				const FVector V = VertexPosition + FVector(Mesher.ChunkPosition);
 				switch (Direction)
 				{
-				case EVoxelDirection::XMin:
+				case EVoxelDirectionFlag::XMin:
 					TextureCoordinate = { V.Y, V.Z };
 					break;
-				case EVoxelDirection::XMax:
+				case EVoxelDirectionFlag::XMax:
 					TextureCoordinate = { -V.Y, V.Z };
 					break;
-				case EVoxelDirection::YMin:
+				case EVoxelDirectionFlag::YMin:
 					TextureCoordinate = { -V.X, V.Z };
 					break;
-				case EVoxelDirection::YMax:
+				case EVoxelDirectionFlag::YMax:
 					TextureCoordinate = { V.X, V.Z };
 					break;
-				case EVoxelDirection::ZMin:
+				case EVoxelDirectionFlag::ZMin:
 					TextureCoordinate = { V.X, V.Y };
 					break;
 				default:
-					check(Direction == EVoxelDirection::ZMax);
+					check(Direction == EVoxelDirectionFlag::ZMax);
 					TextureCoordinate = { V.X, -V.Y };
 					break;
 				}
@@ -211,23 +212,23 @@ FORCEINLINE void AddFace(
 				const auto& V = VertexPositionInCube;
 				switch (Direction)
 				{
-				case EVoxelDirection::XMin:
+				case EVoxelDirectionFlag::XMin:
 					TextureCoordinate = { V.Y, V.Z };
 					break;
-				case EVoxelDirection::XMax:
+				case EVoxelDirectionFlag::XMax:
 					TextureCoordinate = { 1 - V.Y, V.Z };
 					break;
-				case EVoxelDirection::YMin:
+				case EVoxelDirectionFlag::YMin:
 					TextureCoordinate = { 1 - V.X, V.Z };
 					break;
-				case EVoxelDirection::YMax:
+				case EVoxelDirectionFlag::YMax:
 					TextureCoordinate = { V.X, V.Z };
 					break;
-				case EVoxelDirection::ZMin:
+				case EVoxelDirectionFlag::ZMin:
 					TextureCoordinate = { V.X, V.Y };
 					break;
 				default:
-					check(Direction == EVoxelDirection::ZMax);
+					check(Direction == EVoxelDirectionFlag::ZMax);
 					TextureCoordinate = { V.X, 1 - V.Y };
 					break;
 				}
@@ -333,12 +334,12 @@ void FVoxelCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<
 					}
 
 #define CHECK_SIDE(Direction) if (Flag & Direction) AddFace<Direction>(*this, Step, Material, X, Y, Z, Indices, Vertices)
-					CHECK_SIDE(EVoxelDirection::XMin);
-					CHECK_SIDE(EVoxelDirection::XMax);
-					CHECK_SIDE(EVoxelDirection::YMin);
-					CHECK_SIDE(EVoxelDirection::YMax);
-					CHECK_SIDE(EVoxelDirection::ZMin);
-					CHECK_SIDE(EVoxelDirection::ZMax);
+					CHECK_SIDE(EVoxelDirectionFlag::XMin);
+					CHECK_SIDE(EVoxelDirectionFlag::XMax);
+					CHECK_SIDE(EVoxelDirectionFlag::YMin);
+					CHECK_SIDE(EVoxelDirectionFlag::YMax);
+					CHECK_SIDE(EVoxelDirectionFlag::ZMin);
+					CHECK_SIDE(EVoxelDirectionFlag::ZMax);
 #undef CHECK_SIDE
 				}
 			}
@@ -383,12 +384,12 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicTransitionsMesher::CreateFullChunkIm
 	TArray<FVoxelCubicFullVertex> Vertices;
 	TArray<uint32> Indices;
 
-	CreateTransitionsForDirection<EVoxelDirection::XMin>(Times, Indices, Vertices);
-	CreateTransitionsForDirection<EVoxelDirection::XMax>(Times, Indices, Vertices);
-	CreateTransitionsForDirection<EVoxelDirection::YMin>(Times, Indices, Vertices);
-	CreateTransitionsForDirection<EVoxelDirection::YMax>(Times, Indices, Vertices);
-	CreateTransitionsForDirection<EVoxelDirection::ZMin>(Times, Indices, Vertices);
-	CreateTransitionsForDirection<EVoxelDirection::ZMax>(Times, Indices, Vertices);
+	CreateTransitionsForDirection<EVoxelDirectionFlag::XMin>(Times, Indices, Vertices);
+	CreateTransitionsForDirection<EVoxelDirectionFlag::XMax>(Times, Indices, Vertices);
+	CreateTransitionsForDirection<EVoxelDirectionFlag::YMin>(Times, Indices, Vertices);
+	CreateTransitionsForDirection<EVoxelDirectionFlag::YMax>(Times, Indices, Vertices);
+	CreateTransitionsForDirection<EVoxelDirectionFlag::ZMin>(Times, Indices, Vertices);
+	CreateTransitionsForDirection<EVoxelDirectionFlag::ZMax>(Times, Indices, Vertices);
 
 	UnlockData();
 
@@ -403,28 +404,28 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicTransitionsMesher::CreateFullChunkIm
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-template<EVoxelDirection::Type Direction>
-inline constexpr EVoxelDirection::Type InverseVoxelDirection()
+template<EVoxelDirectionFlag::Type Direction>
+inline constexpr EVoxelDirectionFlag::Type InverseVoxelDirection()
 {
 	switch (Direction)
 	{
-	case EVoxelDirection::XMin:
-		return EVoxelDirection::XMax;
-	case EVoxelDirection::XMax:
-		return EVoxelDirection::XMin;
-	case EVoxelDirection::YMin:
-		return EVoxelDirection::YMax;
-	case EVoxelDirection::YMax:
-		return EVoxelDirection::YMin;
-	case EVoxelDirection::ZMin:
-		return EVoxelDirection::ZMax;
-	case EVoxelDirection::ZMax:
+	case EVoxelDirectionFlag::XMin:
+		return EVoxelDirectionFlag::XMax;
+	case EVoxelDirectionFlag::XMax:
+		return EVoxelDirectionFlag::XMin;
+	case EVoxelDirectionFlag::YMin:
+		return EVoxelDirectionFlag::YMax;
+	case EVoxelDirectionFlag::YMax:
+		return EVoxelDirectionFlag::YMin;
+	case EVoxelDirectionFlag::ZMin:
+		return EVoxelDirectionFlag::ZMax;
+	case EVoxelDirectionFlag::ZMax:
 	default:
-		return EVoxelDirection::ZMin;
+		return EVoxelDirectionFlag::ZMin;
 	}
 }
 
-template<EVoxelDirection::Type Direction, typename TVertex>
+template<EVoxelDirectionFlag::Type Direction, typename TVertex>
 void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<TVertex>& Vertices)
 {
 	if (!(TransitionsMask & Direction)) return;
@@ -474,7 +475,7 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 				// Need to do some stitching
 
 				// The new faces are facing outwards, same direction as the transitions
-				constexpr EVoxelDirection::Type FaceDirection = Direction;
+				constexpr EVoxelDirectionFlag::Type FaceDirection = Direction;
 				
 				const auto Material = MESHER_TIME_RETURN_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, 0));
 				Add2DFace<Direction, FaceDirection>(Step, Material, LX, LY, Vertices, Indices);
@@ -522,7 +523,7 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 
 				// The face direction is from the high res to the low res: the opposite of the transition direction,
 				// which is low res to high res (ie us to other)
-				constexpr EVoxelDirection::Type FaceDirection = InverseVoxelDirection<Direction>();
+				constexpr EVoxelDirectionFlag::Type FaceDirection = InverseVoxelDirection<Direction>();
 				
 				const auto Material = MESHER_TIME_RETURN_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, -HalfStep));
 				if (AreBothFull & 0x1)
@@ -546,27 +547,27 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 	}
 }
 
-template<EVoxelDirection::Type Direction>
+template<EVoxelDirectionFlag::Type Direction>
 FORCEINLINE FVoxelValue FVoxelCubicTransitionsMesher::GetValue(int32 InStep, int32 X, int32 Y, int32 Z) const
 {
 	const FIntVector Position = Local2DToGlobal<Direction>(RENDER_CHUNK_SIZE * Step - InStep, X, Y, Z);
 	return Accelerator->GetValue(ChunkPosition + Position, LOD);
 }
 
-template<EVoxelDirection::Type Direction>
+template<EVoxelDirectionFlag::Type Direction>
 FORCEINLINE FVoxelMaterial FVoxelCubicTransitionsMesher::GetMaterial(int32 InStep, int32 X, int32 Y, int32 Z) const
 {
 	const FIntVector Position = Local2DToGlobal<Direction>(RENDER_CHUNK_SIZE * Step - InStep, X, Y, Z);
 	return Accelerator->GetMaterial(ChunkPosition + Position, LOD);
 }
 
-template<EVoxelDirection::Type Direction>
+template<EVoxelDirectionFlag::Type Direction>
 inline bool IsDirectionMax()
 {
-	return Direction == EVoxelDirection::XMax || Direction == EVoxelDirection::YMax || Direction == EVoxelDirection::ZMax;
+	return Direction == EVoxelDirectionFlag::XMax || Direction == EVoxelDirectionFlag::YMax || Direction == EVoxelDirectionFlag::ZMax;
 }
 
-template<EVoxelDirection::Type Direction, EVoxelDirection::Type FaceDirection, typename TVertex>
+template<EVoxelDirectionFlag::Type Direction, EVoxelDirectionFlag::Type FaceDirection, typename TVertex>
 void FVoxelCubicTransitionsMesher::Add2DFace(
 	int32 InStep, 
 	const FVoxelMaterial& Material, 
@@ -581,23 +582,23 @@ void FVoxelCubicTransitionsMesher::Add2DFace(
 	AddFace<FaceDirection>(*this, InStep, Material, P.X, P.Y, P.Z, Indices, Vertices);
 }
 
-template<EVoxelDirection::Type Direction>
+template<EVoxelDirectionFlag::Type Direction>
 FORCEINLINE FIntVector FVoxelCubicTransitionsMesher::Local2DToGlobal(int32 InSize, int32 LX, int32 LY, int32 LZ)
 {
 	const int32& S = InSize;
 	switch (Direction)
 	{
-	case EVoxelDirection::XMin:
+	case EVoxelDirectionFlag::XMin:
 		return { LZ, LX, LY };
-	case EVoxelDirection::XMax:
+	case EVoxelDirectionFlag::XMax:
 		return { S - LZ, LY, LX };
-	case EVoxelDirection::YMin:
+	case EVoxelDirectionFlag::YMin:
 		return { LY, LZ, LX };
-	case EVoxelDirection::YMax:
+	case EVoxelDirectionFlag::YMax:
 		return { LX, S - LZ, LY };
-	case EVoxelDirection::ZMin:
+	case EVoxelDirectionFlag::ZMin:
 		return { LX, LY, LZ };
-	case EVoxelDirection::ZMax:
+	case EVoxelDirectionFlag::ZMax:
 		return { LY, LX, S - LZ };
 	default:
 	check(false);

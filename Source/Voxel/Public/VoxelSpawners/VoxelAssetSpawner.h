@@ -8,11 +8,15 @@
 #include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelAssetSpawner.generated.h"
 
-class FVoxelAssetItem;
 class UVoxelAssetSpawner;
 class UVoxelTransformableWorldGenerator;
 class FVoxelTransformableWorldGeneratorInstance;
 class FVoxelAssetSpawnerProxy;
+
+template<typename T>
+class TVoxelDataItemWrapper;
+
+struct FVoxelAssetItem;
 
 
 UCLASS()
@@ -45,4 +49,7 @@ public:
 	
 public:
 	//~ Begin UVoxelSpawner Interface
+#if WITH_EDITOR
+	virtual bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) override { return Object == Generator.GetObject(); }
+#endif
 };

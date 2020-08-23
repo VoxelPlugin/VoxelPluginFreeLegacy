@@ -3,6 +3,7 @@
 #include "VoxelRender/Meshers/VoxelSurfaceNetMesher.h"
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
 #include "VoxelRender/IVoxelRenderer.h"
+#include "VoxelData/VoxelDataIncludes.h"
 
 /**
  * This code is based on an original implementation kindly provided by Dexyfex

@@ -35,6 +35,35 @@ public:
 		Max = Box.Max;
 	}
 
+public:
+	UFUNCTION(BlueprintPure, Category="Math|VoxelIntBox", meta=(Keywords="construct build", NativeMakeFunc))
+	static FVoxelIntBoxWithValidity MakeIntBoxWithValidity(FVoxelIntBox Box, bool bIsValid = true)
+	{
+		if (bIsValid)
+		{
+			return Box;
+		}
+		else
+		{
+			return {};
+		}
+	}
+	UFUNCTION(BlueprintPure, Category="Math|VoxelIntBox", meta=(NativeBreakFunc))
+	static void BreakIntBoxWithValidity(FVoxelIntBoxWithValidity BoxWithValidity, FVoxelIntBox& Box, bool& bIsValid)
+	{
+		if (BoxWithValidity.IsValid())
+		{
+			bIsValid = true;
+			Box = BoxWithValidity.GetBox();
+		}
+		else
+		{
+			bIsValid = false;
+			Box = {};
+		}
+	}
+
+public:
 	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")
 	static FVoxelIntBox InfiniteBox()
 	{
@@ -171,5 +200,24 @@ public:
 	static bool NotEqual_IntBoxIntBox(FVoxelIntBox A, FVoxelIntBox B)
 	{
 		return A != B;
+	}
+	
+	UFUNCTION(BlueprintPure, Category="Math|VoxelIntBox", meta=(Keywords="construct build", NativeMakeFunc))
+	static FVoxelIntBox MakeIntBoxFromPoints(TArray<FVector> Points)
+	{
+		if (Points.Num() == 0)
+		{
+			FVoxelMessages::Error(FUNCTION_ERROR("No points!"));
+			Points.Add(FVector::ZeroVector);
+		}
+
+		if (Points.Num() == 2)
+		{
+			return FVoxelIntBox::SafeConstruct(Points[0], Points[1]);
+		}
+		else
+		{
+			return FVoxelIntBox(Points);
+		}
 	}
 };

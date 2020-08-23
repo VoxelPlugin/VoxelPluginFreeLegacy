@@ -16,6 +16,6 @@
 #define checkVoxelGraph(...)
 #endif
 
-#define OUTDATED_GRAPH_FUNCTION() UE_DEPRECATED(0, "Outdated C++ graph, should compile to C++ again")
+#define DEPRECATED_VOXEL_GRAPH_FUNCTION() UE_DEPRECATED(0, "Outdated C++ voxel graph, you should compile it to C++ again")
 
 #define VOXEL_GRAPH_GENERATED_VERSION 1

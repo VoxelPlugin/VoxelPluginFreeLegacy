@@ -3,14 +3,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMaterial.h"
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssetTools.generated.h"
 
 class AVoxelWorld;
-class FVoxelPlaceableItem;
 class FVoxelData;
+
+template<typename T>
+class TVoxelDataItemWrapper;
+
+struct FVoxelAssetItem;
+struct FVoxelDisableEditsBoxItem;
 
 UENUM(BlueprintType)
 enum class EVoxelAssetMergeMode : uint8
@@ -30,12 +36,21 @@ enum class EVoxelAssetMergeMode : uint8
 };
 
 USTRUCT(BlueprintType)
-struct FVoxelPlaceableItemReference
+struct FVoxelAssetItemReference
 {
 	GENERATED_BODY()
 
 	FVoxelIntBox Bounds;
-	TVoxelWeakPtr<FVoxelPlaceableItem> Item;
+	TVoxelWeakPtr<const TVoxelDataItemWrapper<FVoxelAssetItem>> Item;
+};
+
+USTRUCT(BlueprintType)
+struct FVoxelDisableEditsBoxItemReference
+{
+	GENERATED_BODY()
+
+	FVoxelIntBox Bounds;
+	TVoxelWeakPtr<const TVoxelDataItemWrapper<FVoxelDisableEditsBoxItem>> Item;
 };
 
 UCLASS()
@@ -59,7 +74,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (AutoCreateRefTerm = "Seeds", DefaultToSelf = "World", AdvancedDisplay = "bConvertToVoxelSpace, bUpdateRender"))
 	static void ImportAssetAsReference(
-		FVoxelPlaceableItemReference& Reference,
+		FVoxelAssetItemReference& Reference,
 		AVoxelWorld* World,
 		UVoxelTransformableWorldGenerator* Asset,
 		const TMap<FName, int32>& Seeds,
@@ -87,7 +102,7 @@ public:
 	static void ImportAssetAsReferenceAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
-		FVoxelPlaceableItemReference& Reference,
+		FVoxelAssetItemReference& Reference,
 		AVoxelWorld* World,
 		UVoxelTransformableWorldGenerator* Asset,
 		const TMap<FName, int32>& Seeds,
@@ -263,7 +278,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World"))
 	static void AddDisableEditsBox(
-		FVoxelPlaceableItemReference& Reference,
+		FVoxelDisableEditsBoxItemReference& Reference,
 		AVoxelWorld* World,
 		FVoxelIntBox Bounds);
 	
@@ -277,21 +292,8 @@ public:
 	static void AddDisableEditsBoxAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
-		FVoxelPlaceableItemReference& Reference,
+		FVoxelDisableEditsBoxItemReference& Reference,
 		AVoxelWorld* World,
 		FVoxelIntBox Bounds,
 		bool bHideLatentWarnings = false);
-
-public:
-	/**
-	 * Remove a placeable item (voxel asset or disable edit box) from the voxel world
-	 * @param	World						The voxel world to edit
-	 * @param	Reference					The reference to the placeable item
-	 * @param	bResetOverlappingChunksData	By default, manually edited (= dirty) chunks affected by the item are kept as-is, as it's not possible to remove the item while keeping the other edits that happened to that chunk.
-	 *										Enabling this option will reset such chunks instead, removing any other edit applied to them
-	 * @param	bUpdateRender				If the render should be updated. Not needed if a disable edits box
-	 * @param	Error						Error if unsuccessful
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World", Keywords = "Disable edits box import voxel asset actor", AdvancedDisplay = "bResetOverlappingChunksData, bUpdateRender"))
-	static bool RemovePlaceableItem(AVoxelWorld* World, FVoxelPlaceableItemReference Reference, FString& Error, bool bResetOverlappingChunksData = false, bool bUpdateRender = true);
 };

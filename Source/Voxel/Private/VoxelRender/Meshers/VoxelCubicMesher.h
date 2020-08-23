@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelDirection.h"
-#include "VoxelStaticArray.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelData/VoxelDataAccelerator.h"
 #include "VoxelRender/Meshers/VoxelMesher.h"
 
@@ -47,23 +47,23 @@ private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
 
 private:
-	template<EVoxelDirection::Type Direction, typename TVertex>
+	template<EVoxelDirectionFlag::Type Direction, typename TVertex>
 	void CreateTransitionsForDirection(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<TVertex>& Vertices);
 	
 private:
-	template<EVoxelDirection::Type Direction>
+	template<EVoxelDirectionFlag::Type Direction>
 	FVoxelValue GetValue(int32 InStep, int32 X, int32 Y, int32 Z) const;
-	template<EVoxelDirection::Type Direction>
+	template<EVoxelDirectionFlag::Type Direction>
 	FVoxelMaterial GetMaterial(int32 InStep, int32 X, int32 Y, int32 Z) const;
 
 	// LX * HalfStep = GX
-	template<EVoxelDirection::Type Direction, EVoxelDirection::Type FaceDirection, typename TVertex>
+	template<EVoxelDirectionFlag::Type Direction, EVoxelDirectionFlag::Type FaceDirection, typename TVertex>
 	void Add2DFace(
 		int32 InStep, 
 		const FVoxelMaterial& Material, 
 		int32 LX, int32 LY, 
 		TArray<TVertex>& Vertices, TArray<uint32>& Indices);
 	
-	template<EVoxelDirection::Type Direction>
+	template<EVoxelDirectionFlag::Type Direction>
 	static FIntVector Local2DToGlobal(int32 InSize, int32 LX, int32 LY, int32 LZ);
 };

@@ -7,68 +7,69 @@
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
 
-template<typename T1, typename T2>
-void UVoxelDataTools::MergeDistanceFieldImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, T1 GetSDF, T2 MergeSDF, float MaxDistance, bool bMultiThreaded)
+template<typename T1, typename T2, typename T3>
+void UVoxelDataTools::MergeDistanceFieldImpl(
+	FVoxelData& Data, 
+	const FVoxelIntBox& Bounds, 
+	T1 GetSDF, 
+	T2 MergeSDF, 
+	bool bMultiThreaded,
+	bool bSetMaterials,
+	T3 GetMaterial)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
-	
-	const auto Get = [&](auto& Array, auto Index) -> auto&
-	{
-#if VOXEL_DEBUG
-		return Array[Index];
-#else
-			return Array.GetData()[Index];
-#endif
-	};
 
 	const FIntVector Size = Bounds.Size();
 
-	TArray<FFloat16> DistanceField;
-	DistanceField.SetNumUninitialized(Bounds.Count());
+	const TArray<FVoxelValue> Values = Data.ParallelGet<FVoxelValue>(Bounds.Extend(1) /* See GetSurfacePositionsFromDensities */, !bMultiThreaded);
 
-	const TArray<FVoxelValue> Values = Data.ParallelGet<FVoxelValue>(Bounds, !bMultiThreaded);
+	TArray<float> Distances;
+	TArray<FVector> SurfacePositions;
+	FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(Size, Values, Distances, SurfacePositions);
+	FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions, EVoxelComputeDevice::GPU);
+	FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(Size, SurfacePositions, Distances);
 
-	{
-		VOXEL_SCOPE_COUNTER("Expand values to floats");
-		ParallelFor(DistanceField.Num(), [&](int32 Index)
-		{
-			Get(DistanceField, Index) = Get(Values, Index).ToFloat();
-		}, !bMultiThreaded);
-	}
-
-	FVoxelDistanceFieldUtilities::ComputeDistanceField_GPU(Size, DistanceField, EVoxelDistanceFieldInputType::Densities, FMath::CeilToInt(MaxDistance));
-
-	{
-		VOXEL_SCOPE_COUNTER("Merge SDFs");
-
-		// Distance on boundaries is invalid, don't consider these
-		ParallelFor(Size.X - 2, [&](int32 XIndex)
-		{
-			const int32 X = XIndex + 1;
-			for (int32 Y = 1; Y < Size.Y - 1; Y++)
-			{
-				for (int32 Z = 1; Z < Size.Z - 1; Z++)
-				{
-					const int32 Index = X + Y * Size.X + Z * Size.X * Size.Y;
-					FFloat16& Distance = Get(DistanceField, Index);
-					const float SDF = float(Distance) * Values[Index].Sign();
-					const float OtherSDF = GetSDF(Bounds.Min.X + X, Bounds.Min.Y + Y, Bounds.Min.Z + Z);
-					Distance = MergeSDF(SDF, OtherSDF);
-				}
-			}
-		}, !bMultiThreaded);
-	}
-
-	Data.Set<FVoxelValue>(Bounds.Extend(-1), [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
+	FVoxelDebug::Broadcast("Values", Bounds.Size(), Data.Get<FVoxelValue>(Bounds));
+	FVoxelDebug::Broadcast("Distances", Bounds.Size(), Distances);
+	
+	const auto Set = [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, FVoxelMaterial& Material, auto bSetMaterials_Static)
 	{
 		checkVoxelSlow(Bounds.Contains(X, Y, Z));
-		X -= Bounds.Min.X;
-		Y -= Bounds.Min.Y;
-		Z -= Bounds.Min.Z;
-		checkVoxelSlow(0 < X && X < Size.X);
-		checkVoxelSlow(0 < Y && Y < Size.Y);
-		checkVoxelSlow(0 < Z && Z < Size.Z);
+		
+		const float OtherSDF = GetSDF(X, Y, Z);
+		const float OldSDF = FVoxelUtilities::Get3D(Distances, Size, X, Y, Z, Bounds.Min);
+		const float NewSDF = MergeSDF(OldSDF, OtherSDF);
 
-		Value = FVoxelValue(float(Get(DistanceField, X + Size.X * Y + Size.X * Size.Y * Z)));
-	});
+		Value = FVoxelValue(NewSDF);
+
+		if (bSetMaterials_Static)
+		{
+			Material = GetMaterial(OldSDF, NewSDF, Material);
+		}
+	};
+
+	if (bSetMaterials)
+	{
+		Data.ParallelSet<FVoxelValue, FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, FVoxelMaterial& Material)
+		{
+			Set(X, Y, Z, Value, Material, FVoxelUtilities::FTrueType());
+		}, !bMultiThreaded);
+	}
+	else
+	{
+		// TODO optional
+		// TODO check surface position is in bounds
+		Data.ParallelSet<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
+		{
+			const FVector SurfacePosition = FVoxelUtilities::Get3D(SurfacePositions, Size, X, Y, Z, Bounds.Min);
+			const auto Result = FindClosestNonEmptyVoxelImpl(Data, FVoxelVector(Bounds.Min) + SurfacePosition);
+			
+			Material = Data.GetMaterial(Result.Position, 0);
+		}, !bMultiThreaded);
+		Data.ParallelSet<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
+		{
+			FVoxelMaterial Material;
+			Set(X, Y, Z, Value, Material, FVoxelUtilities::FFalseType());
+		}, !bMultiThreaded);
+	}
 }

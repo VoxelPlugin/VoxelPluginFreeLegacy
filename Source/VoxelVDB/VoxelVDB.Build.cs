@@ -17,6 +17,9 @@ public class VoxelVDB : ModuleRules
         bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
 
+#if UE_4_24_OR_LATER
+#else
+#endif
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
         PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));

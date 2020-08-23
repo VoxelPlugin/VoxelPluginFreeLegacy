@@ -34,11 +34,13 @@ void FVoxelLandscapeImporterDetails::CustomizeDetails(IDetailLayoutBuilder& Deta
 		auto Handle = LayerInfos->GetElement(Index);
 		switch (Importer->MaterialConfig)
 		{
-		case EVoxelMaterialConfig::RGB:
+		case EVoxelHeightmapImporterMaterialConfig::RGB:
 			DetailLayout.HideProperty(Handle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelLandscapeImporterLayerInfo, Index)));
 			break;
-		case EVoxelMaterialConfig::SingleIndex:
-		case EVoxelMaterialConfig::MultiIndex:
+		case EVoxelHeightmapImporterMaterialConfig::FourWayBlend:
+		case EVoxelHeightmapImporterMaterialConfig::FiveWayBlend:
+		case EVoxelHeightmapImporterMaterialConfig::SingleIndex:
+		case EVoxelHeightmapImporterMaterialConfig::MultiIndex:
 			DetailLayout.HideProperty(Handle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelLandscapeImporterLayerInfo, Layer)));
 			break;
 		default:

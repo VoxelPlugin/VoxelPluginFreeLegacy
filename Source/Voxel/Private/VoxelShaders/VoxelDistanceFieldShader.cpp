@@ -2,7 +2,6 @@
 
 #include "VoxelShaders/VoxelDistanceFieldShader.h"
 #include "VoxelUtilities/VoxelIntVectorUtilities.h"
-#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 #include "ShaderParameterUtils.h"
 
@@ -19,7 +18,6 @@ void FVoxelDistanceFieldBaseCS::ModifyCompilationEnvironment(const FGlobalShader
 {
 	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
 	OutEnvironment.SetDefine(TEXT("NUM_THREADS_CS"), VOXEL_DISTANCE_FIELD_NUM_THREADS_CS);
-	//OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
 }
 
 #if ENGINE_MINOR_VERSION < 25
@@ -47,43 +45,16 @@ void FVoxelDistanceFieldBaseCS::SetUniformBuffers(FRHICommandList& RHICmdList, c
 	SetUniformBufferParameter(RHICmdList, UE_25_SWITCH(GetComputeShader(), RHICmdList.GetBoundComputeShader()), GetUniformBufferParameter<FVoxelDistanceFieldParameters>(), ParametersBuffer);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 IMPLEMENT_TYPE_LAYOUT(FVoxelDistanceFieldBaseCS)
-IMPLEMENT_SHADER_TYPE(, FVoxelExpandDistanceFieldCS, TEXT("/Plugin/Voxel/Private/DistanceField.usf"), TEXT("ExpandDistanceField"), SF_Compute);
-IMPLEMENT_SHADER_TYPE(, FVoxelComputeDistanceFieldFromValuesCS, TEXT("/Plugin/Voxel/Private/DistanceField.usf"), TEXT("ComputeDistanceFieldFromValues"), SF_Compute);
+IMPLEMENT_SHADER_TYPE(, FVoxelJumpFloodCS, TEXT("/Plugin/Voxel/Private/DistanceField.usf"), TEXT("ExpandDistanceField"), SF_Compute);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelDistanceFieldShaderHelper::StartCompute(
-	const FIntVector& Size,
-	const TVoxelSharedRef<TArray<FFloat16>>& InOutData,
-	int32 NumberOfPasses,
-	bool bInputIsDensities)
-{
-	VOXEL_FUNCTION_COUNTER();
-	check(IsInGameThread());
-
-#if VOXEL_DEBUG
-	if (!bInputIsDensities)
-	{
-		for (auto& F : *InOutData) ensureVoxelSlow(F >= 0);
-	}
-#endif
-	
-	check(InOutData->Num() == Size.X * Size.Y * Size.Z);
-	check(Size.X > 0 && Size.Y > 0 && Size.Z > 0);
-	
-	ensure(Fence.IsFenceComplete());
-	
-	ENQUEUE_RENDER_COMMAND(VoxelDistanceFieldCompute)(
-		FVoxelUtilities::MakeVoxelWeakPtrLambda<FRHICommandListImmediate&>(this, [=](FVoxelDistanceFieldShaderHelper& Helper, FRHICommandListImmediate& RHICmdList)
-		{
-			Helper.Compute_RenderThread(RHICmdList, Size, InOutData, NumberOfPasses, bInputIsDensities);
-		}));
-	
-	Fence.BeginFence();
-}
 
 void FVoxelDistanceFieldShaderHelper::WaitForCompletion() const
 {
@@ -92,55 +63,76 @@ void FVoxelDistanceFieldShaderHelper::WaitForCompletion() const
 	Fence.Wait();
 }
 
+void FVoxelDistanceFieldShaderHelper::StartCompute(const FIntVector& Size, const TVoxelSharedRef<TArray<FVector>>& InOutData, int32 MaxPasses_Debug)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+	
+	check(InOutData->Num() == Size.X * Size.Y * Size.Z);
+	check(Size.X > 0 && Size.Y > 0 && Size.Z > 0);
+	
+	ensure(Fence.IsFenceComplete());
+	
+	ENQUEUE_RENDER_COMMAND(VoxelDistanceFieldCompute)(
+		MakeVoxelWeakPtrLambda(this, [=](FRHICommandListImmediate& RHICmdList)
+		{
+			Compute_RenderThread(RHICmdList, Size, GetData(*InOutData), GetNum(*InOutData), MaxPasses_Debug);
+		}));
+	
+	Fence.BeginFence();
+}
+
 void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 	FRHICommandListImmediate& RHICmdList,
 	const FIntVector& Size,
-	const TVoxelSharedRef<TArray<FFloat16>>& InOutData,
-	int32 NumberOfPasses,
-	bool bInputIsDensities)
+	FVector* RESTRICT const Data,
+	const int32 Num,
+	int32 MaxPasses_Debug)
 {
 	VOXEL_RENDER_FUNCTION_COUNTER();
 	check(IsInRenderingThread());
 
 	check(Size.X > 0 && Size.Y > 0 && Size.Z > 0);
-	const int32 Num = Size.X * Size.Y * Size.Z;
-	check(InOutData->Num() == Num);
+	check(Num == Size.X * Size.Y * Size.Z);
 	
 	if (AllocatedSize != Size)
 	{
 		VOXEL_RENDER_SCOPE_COUNTER("Create Buffers");
 		
 		AllocatedSize = Size;
-
-		SrcBuffer.Release();
-		DstBuffer.Release();
 		
-		SrcBuffer.Initialize(sizeof(FFloat16), Num, PF_R16F);
-		DstBuffer.Initialize(sizeof(FFloat16), Num, PF_R16F);
+		SrcBuffer.Initialize(sizeof(float), 3 * Num, PF_R32_FLOAT);
+		DstBuffer.Initialize(sizeof(float), 3 * Num, PF_R32_FLOAT);
 	}
 	
 	{
 		VOXEL_RENDER_SCOPE_COUNTER("Copy Data To Buffers");
 		void* BufferData = RHICmdList.LockVertexBuffer(SrcBuffer.Buffer, 0, SrcBuffer.NumBytes, EResourceLockMode::RLM_WriteOnly);
-		FMemory::Memcpy(BufferData, InOutData->GetData(), SrcBuffer.NumBytes);
+		FMemory::Memcpy(BufferData, Data, SrcBuffer.NumBytes);
 		RHICmdList.UnlockVertexBuffer(SrcBuffer.Buffer);
 	}
 
-	if (bInputIsDensities)
+	const int32 PowerOfTwo = FMath::CeilLogTwo(Size.GetMax());
+	for (int32 Pass = 0; Pass < PowerOfTwo; Pass++)
 	{
-		ApplyComputeShader<FVoxelComputeDistanceFieldFromValuesCS>(RHICmdList, Size, 1);
+		if (MaxPasses_Debug == Pass)
+		{
+			break;
+		}
+	
+		// -1: we want to start with half the size
+		const int32 Step = 1 << (PowerOfTwo - 1 - Pass);
+		ApplyComputeShader<FVoxelJumpFloodCS>(RHICmdList, Size, Step);
 	}
-
-	ApplyComputeShader<FVoxelExpandDistanceFieldCS>(RHICmdList, Size, NumberOfPasses);
 
 	// To copy data
 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, DstBuffer.UAV);
 	
 	{
 		VOXEL_RENDER_SCOPE_COUNTER("Copy Data From Buffers");
-		void* BufferData = RHICmdList.LockVertexBuffer(DstBuffer.Buffer, 0, DstBuffer.NumBytes, EResourceLockMode::RLM_ReadOnly);
-		FMemory::Memcpy(InOutData->GetData(), BufferData, DstBuffer.NumBytes);
-		RHICmdList.UnlockVertexBuffer(DstBuffer.Buffer);
+		void* BufferData = RHICmdList.LockVertexBuffer(SrcBuffer.Buffer, 0, SrcBuffer.NumBytes, EResourceLockMode::RLM_ReadOnly);
+		FMemory::Memcpy(Data, BufferData, SrcBuffer.NumBytes);
+		RHICmdList.UnlockVertexBuffer(SrcBuffer.Buffer);
 	}
 
 	// Make sure to release the buffers, else will crash on DX12!
@@ -148,11 +140,15 @@ void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 	DstBuffer.Release();
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 template<typename T>
 void FVoxelDistanceFieldShaderHelper::ApplyComputeShader(
 	FRHICommandListImmediate& RHICmdList,
 	const FIntVector& Size,
-	int32 NumberOfPasses)
+	int32 Step)
 {
 	check(IsInRenderingThread());
 	
@@ -163,18 +159,16 @@ void FVoxelDistanceFieldShaderHelper::ApplyComputeShader(
 	Parameters.SizeX = Size.X;
 	Parameters.SizeY = Size.Y;
 	Parameters.SizeZ = Size.Z;
+	Parameters.Step = Step;
 	ComputeShader->SetUniformBuffers(RHICmdList, Parameters);
 	
 	const FIntVector NumThreads = FVoxelUtilities::DivideCeil(Size, VOXEL_DISTANCE_FIELD_NUM_THREADS_CS);
 	check(NumThreads.X > 0 && NumThreads.Y > 0 && NumThreads.Z > 0);
 
-	for (int32 Pass = 0; Pass < FMath::Min<int32>(NumberOfPasses, Size.GetMax()); Pass++)
-	{
-		RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, SrcBuffer.UAV);
-		RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, DstBuffer.UAV);
+	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, SrcBuffer.UAV);
+	RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, DstBuffer.UAV);
 
-		ComputeShader->SetBuffers(RHICmdList, SrcBuffer, DstBuffer);
-		RHICmdList.DispatchComputeShader(NumThreads.X, NumThreads.Y, NumThreads.Z);
-		Swap(SrcBuffer, DstBuffer);
-	}
+	ComputeShader->SetBuffers(RHICmdList, SrcBuffer, DstBuffer);
+	RHICmdList.DispatchComputeShader(NumThreads.X, NumThreads.Y, NumThreads.Z);
+	Swap(SrcBuffer, DstBuffer);
 }

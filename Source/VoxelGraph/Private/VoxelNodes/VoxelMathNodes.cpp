@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelMathNodes.h"
 #include "Runtime/VoxelNodeType.h"
 #include "VoxelContext.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 UVoxelNode_FMax::UVoxelNode_FMax()
 {
@@ -286,6 +286,22 @@ GENERATED_VOXELNODE_IMPL
 	UVoxelNode_SwitchFloat,
 	DEFINE_INPUTS(v_flt, v_flt, bool),
 	DEFINE_OUTPUTS(v_flt),
+	_O0 = FVoxelNodeFunctions::Switch(_I0, _I1, _I2);
+)
+
+UVoxelNode_SwitchColor::UVoxelNode_SwitchColor()
+{
+	SetInputs(
+		{ "A", EC::Color, "A" },
+		{ "B", EC::Color, "B" },
+		{ "Pick A", EC::Boolean, "Condition" });
+	SetOutputs(EC::Color);
+}
+GENERATED_VOXELNODE_IMPL
+(
+	UVoxelNode_SwitchColor,
+	DEFINE_INPUTS(FColor, FColor, bool),
+	DEFINE_OUTPUTS(FColor),
 	_O0 = FVoxelNodeFunctions::Switch(_I0, _I1, _I2);
 )
 

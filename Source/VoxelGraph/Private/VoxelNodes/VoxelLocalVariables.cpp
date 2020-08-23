@@ -292,7 +292,7 @@ void UVoxelLocalVariableUsage::LogErrors(FVoxelGraphErrorReporter& ErrorReporter
 	Super::LogErrors(ErrorReporter);
 	if (!IsDeclarationValid())
 	{
-		ErrorReporter.AddMessageToNode(this, "invalid variable", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "invalid variable", EVoxelGraphNodeMessageType::Error);
 	}
 }
 

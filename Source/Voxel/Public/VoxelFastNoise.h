@@ -3,9 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 #include "Math/TransformCalculus2D.h"
 #include "Math/TransformCalculus3D.h"
-#include "VoxelMinimal.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 
 //
 // MIT License
@@ -246,8 +247,8 @@ public:
 	FN_DECIMAL GetWhiteNoiseInt_4D(int x, int y, int z, int w) const;
 
 private:
-	unsigned char m_perm[512];
-	unsigned char m_perm12[512];
+	TVoxelStaticArray<uint8, 512> m_perm;
+	TVoxelStaticArray<uint8, 512> m_perm12;
 
 	int m_seed = 1337;
 	//FN_DECIMAL frequency = FN_DECIMAL(0.01);

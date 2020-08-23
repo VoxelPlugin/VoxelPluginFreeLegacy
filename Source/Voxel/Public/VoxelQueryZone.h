@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
 #include "VoxelIntBox.h"
-#include "VoxelStaticArray.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 
 template<typename T>
 class TVoxelQueryZone
@@ -14,7 +14,8 @@ public:
 	const uint32 Step;
 	const FVoxelIntBox Bounds;
 
-	TVoxelQueryZone(const FVoxelIntBox& Bounds, TArray<T>& Data)
+	template<typename TAllocator>
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, TArray<T, TAllocator>& Data)
 		: TVoxelQueryZone(Bounds, Bounds.Size(), 0, Data)
 	{
 	}
@@ -27,7 +28,8 @@ public:
 		: TVoxelQueryZone(Bounds, Bounds.Size(), 0, Data)
 	{
 	}
-	TVoxelQueryZone(const FVoxelIntBox& Bounds, const FIntVector& ArraySize, int32 LOD, TArray<T>& Data)
+	template<typename TAllocator>
+	TVoxelQueryZone(const FVoxelIntBox& Bounds, const FIntVector& ArraySize, int32 LOD, TArray<T, TAllocator>& Data)
 		: TVoxelQueryZone(Bounds, Bounds.Min, ArraySize, LOD, Data.GetData())
 	{
 		check(Bounds.IsValid());

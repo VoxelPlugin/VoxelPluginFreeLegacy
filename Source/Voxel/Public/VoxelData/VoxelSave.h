@@ -5,12 +5,39 @@
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "VoxelFoliage.h"
 #include "VoxelSaveStruct.h"
+#include "VoxelObjectArchive.h"
 #include "VoxelSave.generated.h"
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Uncompressed Saves Memory"), STAT_VoxelUncompressedSavesMemory, STATGROUP_VoxelMemory, VOXEL_API);
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Compressed Saves Memory"), STAT_VoxelCompressedSavesMemory, STATGROUP_VoxelMemory, VOXEL_API);
+
+namespace FVoxelSaveVersion
+{
+	enum Type : int32
+	{
+		BeforeCustomVersionWasAdded,
+		PlaceableItemsInSave,
+		SHARED_AssetItemsImportValueMaterials,
+		SHARED_DataAssetScale,
+		SHARED_RemoveVoxelGrass,
+		SHARED_DataAssetTransform,
+		RemoveEnableVoxelSpawnedActorsEnableVoxelGrass,
+		FoliagePaint,
+		ValueConfigFlagAndSaveGUIDs,
+		SingleValues,
+		SHARED_NoVoxelMaterialInHeightmapAssets,
+		SHARED_FixMissingMaterialsInHeightmapAssets,
+		AddUserFlagsToSaves,
+		SHARED_StoreSpawnerMatricesRelativeToComponent,
+		StoreMaterialChannelsIndividuallyAndRemoveFoliage,
+		ProperlySerializePlaceableItemsObjects,
+		
+		// -----<new versions can be added above this line>-------------------------------------------------
+		VersionPlusOne,
+		LatestVersion = VersionPlusOne - 1
+	};
+}
 
 struct VOXEL_API FVoxelUncompressedWorldSaveImpl
 {
@@ -40,10 +67,6 @@ public:
 	bool HasMaterials() const
 	{
 		return MaterialBuffers.Num() > 0;
-	}
-	bool HasFoliage() const
-	{
-		return FoliageBuffers.Num() > 0;
 	}
 
 	/**
@@ -78,11 +101,15 @@ public:
 	{
 		return UserFlags;
 	}
+	
+	int64 GetAllocatedSize() const
+	{
+		return AllocatedSize;
+	}
 
 public:
 	void UpdateAllocatedSize() const;
 	bool Serialize(FArchive& Ar);
-	TArray<uint8> GetSerializedData() const;
 
 	bool operator==(const FVoxelUncompressedWorldSaveImpl& Other) const
 	{
@@ -93,42 +120,49 @@ private:
 	struct FVoxelChunkSave
 	{
 		FIntVector Position;
-		// GSingleValueIndexFlag bit is set if it's an index to the single value buffers
+
 		int32 ValuesIndex = -1;
+		// Index into MaterialsIndices. MaterialsIndices are indices to single materials if they have MaterialIndexSingleValueFlag
 		int32 MaterialsIndex = -1;
-		int32 FoliageIndex = -1;
+
+		bool bSingleValue = false;
 
 		friend FArchive& operator<<(FArchive& Ar, FVoxelChunkSave& Save)
 		{
 			Ar << Save.Position;
+			
 			Ar << Save.ValuesIndex;
 			Ar << Save.MaterialsIndex;
-			Ar << Save.FoliageIndex;
+			
+			Ar << Save.bSingleValue;
+			
 			return Ar;
 		}
 	};
+
+	// In theory shouldn't overlap with actual data, as array nums are int32
+	static constexpr uint32 MaterialIndexSingleValueFlag = 1u << 31;
 	
 	int32 Version = -1;
 	FGuid Guid;
 	int32 Depth = -1;
 	uint64 UserFlags = 0;
 	
-	TArray<FVoxelValue> ValueBuffers;
-	TArray<FVoxelMaterial> MaterialBuffers;
-	TArray<FVoxelFoliage> FoliageBuffers;
+	TNoGrowArray<FVoxelValue> ValueBuffers;
+	TNoGrowArray<FVoxelValue> SingleValues;
 	
-	TArray<FVoxelValue> SingleValues;
-	TArray<FVoxelMaterial> SingleMaterials;
-	TArray<FVoxelFoliage> SingleFoliage;
+	TNoGrowArray<TVoxelMaterialStorage<uint32>> MaterialsIndices;
+	TNoGrowArray<uint8> MaterialBuffers;
+	TNoGrowArray<uint8> SingleMaterials;
 	
-	TArray<FVoxelChunkSave> Chunks;
+	TNoGrowArray<FVoxelChunkSave> Chunks;
+	
 	TArray<uint8> PlaceableItems;
 
-	mutable uint32 AllocatedSize = 0;
+	mutable int64 AllocatedSize = 0;
 
 	friend class FVoxelSaveBuilder;
 	friend class FVoxelSaveLoader;
-	friend struct FVoxelChunkSaveWithoutFoliage;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -159,7 +193,7 @@ private:
 	int32 Depth = -1;
 	TArray<uint8> CompressedData;
 
-	mutable uint32 AllocatedSize = 0;
+	mutable int64 AllocatedSize = 0;
 
 	friend class UVoxelSaveUtilities;
 };
@@ -176,6 +210,9 @@ struct VOXEL_API FVoxelUncompressedWorldSave
 #endif
 {
 	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, Category = "Objects")
+	TArray<FVoxelObjectArchiveEntry> Objects;
 };
 
 // Blueprint wrapper that's cheap to copy around
@@ -186,6 +223,9 @@ struct VOXEL_API FVoxelCompressedWorldSave
 #endif
 {
 	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, Category = "Objects")
+	TArray<FVoxelObjectArchiveEntry> Objects;
 };
 
 DEFINE_VOXEL_SAVE_STRUCT(FVoxelUncompressedWorldSave);

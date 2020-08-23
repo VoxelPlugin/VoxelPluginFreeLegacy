@@ -56,7 +56,7 @@ inline void ReserveBuffer(
 
 		if (MaterialConfig == EVoxelMaterialConfig::MultiIndex)
 		{
-			Buffer.TextureCoordinates.SetNum(2);
+			Buffer.TextureCoordinates.SetNum(2 + VOXEL_MATERIAL_ENABLE_UV2 + VOXEL_MATERIAL_ENABLE_UV3);
 			Buffer.TextureCoordinates[0].Reserve(Num);
 			// Note: we always create the additional UV channel, else it creates issues when merging chunks
 			Buffer.TextureCoordinates[1].Reserve(Num);
@@ -87,9 +87,86 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	
 	if (Settings.MaterialConfig == EVoxelMaterialConfig::RGB)
 	{
+		if (Settings.bHardColorTransitions)
+		{
+			VOXEL_ASYNC_SCOPE_COUNTER("Hard Color Transitions");
+			
+			// Add new vertices as needed
+			for (int32 I = 0; I < Indices.Num(); I += 3)
+			{
+				uint32& IndexA = Indices[I + 0];
+				uint32& IndexB = Indices[I + 1];
+				uint32& IndexC = Indices[I + 2];
+
+				const FColor ColorA = Vertices[IndexA].Material.GetColor();
+				const FColor ColorB = Vertices[IndexB].Material.GetColor();
+				const FColor ColorC = Vertices[IndexC].Material.GetColor();
+
+				if (ColorA == ColorB && ColorA == ColorC)
+				{
+					continue;
+				}
+
+				FColor Color;
+				if (ColorA == ColorB)
+				{
+					Color = ColorA;
+				}
+				else if (ColorA == ColorC)
+				{
+					Color = ColorA;
+				}
+				else if (ColorB == ColorC)
+				{
+					Color = ColorB;
+				}
+				else
+				{
+					// Deterministic way to choose between 2 colors
+					const auto PickColor = [](FColor A, FColor B)
+					{
+						if (A.R < B.R) return A;
+						if (B.R < A.R) return B;
+						if (A.G < B.G) return A;
+						if (B.G < A.G) return B;
+						if (A.B < B.B) return A;
+						if (B.B < A.B) return B;
+						if (A.A < B.A) return A;
+						if (B.A < A.A) return B;
+						ensureVoxelSlow(A == B);
+						return A;
+					};
+					// Pick the min color between the 3 (arbitrary, but should always be the same to have consistent results)
+					Color = PickColor(ColorA, PickColor(ColorB, ColorC));
+				}
+
+				if (Color != ColorA)
+				{
+					auto NewVertex = Vertices[IndexA];
+					NewVertex.Material.SetColor(Color);
+					IndexA = Vertices.Add(NewVertex);
+				}
+				if (Color != ColorB)
+				{
+					auto NewVertex = Vertices[IndexB];
+					NewVertex.Material.SetColor(Color);
+					IndexB = Vertices.Add(NewVertex);
+				}
+				if (Color != ColorC)
+				{
+					auto NewVertex = Vertices[IndexC];
+					NewVertex.Material.SetColor(Color);
+					IndexC = Vertices.Add(NewVertex);
+				}
+			}
+
+			// Make sure to remove all unused vertices
+			RemoveUnusedVertices(Indices, Vertices);
+		}
+
 		Chunk->SetIsSingle(true);
 		FVoxelChunkMeshBuffers& Buffers = Chunk->CreateSingleBuffers();
-		
+
 		Buffers.Indices = MoveTemp(Indices);
 
 		ReserveBuffer(Buffers, Vertices.Num(), Settings.bRenderWorld, EVoxelMaterialConfig::RGB);

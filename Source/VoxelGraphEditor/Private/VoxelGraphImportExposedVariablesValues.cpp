@@ -19,7 +19,7 @@ void ReportNodeError(FVoxelGraphErrorReporter& Reporter, const TArray<UVoxelNode
 {
 	for (auto* Node : Nodes)
 	{
-		Reporter.AddMessageToNode(Node, Name.ToString() + " is used multiple times", EVoxelGraphNodeMessageType::FatalError);
+		Reporter.AddMessageToNode(Node, Name.ToString() + " is used multiple times", EVoxelGraphNodeMessageType::Error);
 	}
 }
 

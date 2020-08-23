@@ -12,7 +12,7 @@ namespace FVoxelUtilities
 {
 	// Call this when you pin a shared ptr on another thread that needs to always be deleted on the game thread
 	template<typename T>
-	inline void DeleteOnGameThread_AnyThread(TVoxelSharedPtr<T>& Ptr)
+	void DeleteOnGameThread_AnyThread(TVoxelSharedPtr<T>& Ptr)
 	{
 		if (!ensure(!IsInGameThread()))
 		{
@@ -32,38 +32,8 @@ namespace FVoxelUtilities
 		check(!Ptr.IsValid());
 	}
 	
-	template<typename... TArgs, typename T, typename TLambda>
-	inline auto MakeVoxelWeakPtrLambda(const T& Ptr, TLambda Lambda)
-	{
-		return [WeakPtr = MakeVoxelWeakPtr(Ptr), Lambda](TArgs... Args)
-		{
-			auto Pinned = WeakPtr.Pin();
-			if (Pinned.IsValid())
-			{
-				Lambda(*Pinned, Forward<TArgs>(Args)...);
-			}
-		};
-	}
-	template<typename RetVal = void, typename... TArgs, typename T, typename TLambda>
-	inline auto MakeVoxelWeakPtrDelegate(const T& Ptr, TLambda Lambda)
-	{
-		return TBaseDelegate<RetVal, TArgs...>::CreateLambda(MakeVoxelWeakPtrLambda<TArgs...>(Ptr, Lambda));
-	}
-	template<typename... TArgs, typename T, typename TLambda>
-	inline auto MakeVoxelWeakPtrDelegate_GameThreadDelete(const T& Ptr, TLambda Lambda)
-	{
-		return [WeakPtr = MakeVoxelWeakPtr(Ptr), Lambda](TArgs... Args)
-		{
-			auto Pinned = WeakPtr.Pin();
-			if (Pinned.IsValid())
-			{
-				Lambda(*Pinned, Forward<TArgs>(Args)...);
-				DeleteOnGameThread_AnyThread(Pinned);
-			}
-		};
-	}
 	template<typename T>
-	inline void DeleteTickable(UWorld* World, TVoxelSharedPtr<T>& Ptr)
+	void DeleteTickable(UWorld* World, TVoxelSharedPtr<T>& Ptr)
 	{
 		// There is a bug in 4.23/24 where FTickableGameObject gets added to a set of deleted tickable objects on destruction
 		// This set is then checked in the next frame before adding a new tickable to see if it has been deleted
@@ -73,7 +43,7 @@ namespace FVoxelUtilities
 		// This set of ptr is only valid one frame. To bypass this bug, we are postponing the tickable deletion for 1s
 		// Fixed by https://github.com/EpicGames/UnrealEngine/commit/70d70e56f2df9ba6941b91d9893ba6c6e99efc4c
 		ensure(Ptr.IsValid());
-		if (World)
+		if (World && ENGINE_MINOR_VERSION < 25)
 		{
 			// No world when exiting
 			FTimerManager& TimerManager = World->GetTimerManager();
@@ -86,5 +56,52 @@ namespace FVoxelUtilities
 			ensure(!Ptr.IsUnique());
 		}
 		Ptr.Reset();
+	}
+
+	template<typename TGetPerThreadData, typename TLambda>
+	void ParallelFor_PerThreadData(int32 Num, TGetPerThreadData GetPerThreadData, TLambda Lambda, bool bForceSingleThread = false)
+	{
+		if (Num == 0 || !ensure(Num > 0))
+		{
+			return;
+		}
+		
+		if (bForceSingleThread)
+		{
+			auto PerThreadData = GetPerThreadData();
+			for (int32 Index = 0; Index < Num; Index++)
+			{
+				Lambda(PerThreadData, Index);
+			}
+		}
+		else
+		{
+			const int32 NumThreads = FMath::Min<int32>(FTaskGraphInterface::Get().GetNumWorkerThreads(), Num);
+			ensure(NumThreads < 64); // Else bad perf below
+
+			using TData = typename TDecay<decltype(GetPerThreadData())>::Type;
+			TArray<TData, TInlineAllocator<64>> PerThreadDataArray;
+			PerThreadDataArray.Reserve(NumThreads);
+			for (int32 Index = 0; Index < NumThreads; Index++)
+			{
+				PerThreadDataArray.Emplace(GetPerThreadData());
+			}
+
+			const int32 ChunkSize = Num / NumThreads;
+			check(ChunkSize >= 1);
+
+			ParallelFor(NumThreads, [&](int32 ThreadIndex)
+			{
+				auto& ThreadData = PerThreadDataArray[ThreadIndex];
+				
+				const int32 Start = ThreadIndex * ChunkSize;
+				const int32 End = FMath::Min((ThreadIndex + 1) * ChunkSize, Num);
+				for (int32 Index = Start; Index < End; Index++)
+				{
+					Lambda(ThreadData, Index);
+				}
+			});
+		}
+		
 	}
 }

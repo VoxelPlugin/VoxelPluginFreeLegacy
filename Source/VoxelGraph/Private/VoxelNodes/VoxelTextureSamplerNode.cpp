@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelTextureSamplerNode.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 #include "Engine/Texture2D.h"
 
 UVoxelNode_TextureSampler::UVoxelNode_TextureSampler()
@@ -36,7 +36,7 @@ void UVoxelNode_TextureSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporte
 	FString Error;
 	if (!FVoxelTextureUtilities::CanCreateFromTexture(Texture, Error))
 	{
-		ErrorReporter.AddMessageToNode(this, Error, EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, Error, EVoxelGraphNodeMessageType::Error);
 	}
 }
 
@@ -44,20 +44,6 @@ void UVoxelNode_TextureSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporte
 bool UVoxelNode_TextureSampler::TryImportFromProperty(UProperty* Property, UObject* Object)
 {
 	return TryImportObject(Property, Object, Texture);
-}
-
-void UVoxelNode_TextureSampler::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.Property &&
-		PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelNode_TextureSampler, bBilinearInterpolation) &&
-		GraphNode &&
-		Graph)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
 }
 #endif
 

@@ -2957,7 +2957,7 @@ public:
 		
 	};
 	
-	FVoxelExample_RingWorldInstance(const UVoxelExample_RingWorld& Object)
+	FVoxelExample_RingWorldInstance(UVoxelExample_RingWorld& Object)
 			: TVoxelGraphGeneratorInstanceHelper(
 			{
 				{ "Value", 1 },
@@ -2990,7 +2990,7 @@ public:
 					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
 				}
 			},
-			Object.bEnableRangeAnalysis)
+			Object)
 		, Params(FParams
 		{
 			Object.Scale,

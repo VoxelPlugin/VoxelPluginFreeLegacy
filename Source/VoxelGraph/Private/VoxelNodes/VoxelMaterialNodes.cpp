@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelMaterialNodes.h"
 #include "Runtime/VoxelNodeType.h"
 #include "VoxelContext.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 UVoxelNode_GetColor::UVoxelNode_GetColor()
 {

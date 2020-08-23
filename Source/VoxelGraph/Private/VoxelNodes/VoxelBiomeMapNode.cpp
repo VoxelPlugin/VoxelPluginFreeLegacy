@@ -5,7 +5,7 @@
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelGraphErrorReporter.h"
 #include "VoxelGraphGenerator.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 #include "Engine/Texture2D.h"
 
@@ -54,7 +54,7 @@ void UVoxelNode_BiomeMapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReport
 	FString Error;
 	if (!FVoxelTextureUtilities::CanCreateFromTexture(Texture, Error))
 	{
-		ErrorReporter.AddMessageToNode(this, Error, EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, Error, EVoxelGraphNodeMessageType::Error);
 	}
 }
 
@@ -66,9 +66,7 @@ bool UVoxelNode_BiomeMapSampler::TryImportFromProperty(UProperty* Property, UObj
 
 void UVoxelNode_BiomeMapSampler::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (Graph && GraphNode && PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
+	if (PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
 		if (Biomes.Num() >= 256)
 		{
@@ -82,9 +80,8 @@ void UVoxelNode_BiomeMapSampler::PostEditChangeProperty(FPropertyChangedEvent& P
 				Biome.Name = FString::Printf(TEXT("Biome %d"), Index);
 			}
 		}
-
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
 	}
+	
+	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 #endif

@@ -10,26 +10,21 @@
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 #include "VoxelRange.generated.h"
 
-struct FVoxelRangeFailStatus : TThreadSingleton<FVoxelRangeFailStatus>
+class FVoxelRangeFailStatus : public TThreadSingleton<FVoxelRangeFailStatus>
 {
-	bool HasFailed() const
-	{
-		return bHasFailed;
-	}
-	bool HasWarning() const
-	{
-		return bHasWarning;
-	}
-
+public:
+	bool HasFailed() const { return bHasFailed; }
+	bool HasWarning() const { return bHasWarning; }
+	const TCHAR* GetMessage() const { return Message; }
+	
+public:
 	void Fail(const TCHAR* InError)
 	{
 		// Note: bHasFailed might be true already if the generated graph has scoped ifs that failed
 		if (!HasFailed())
 		{
 			bHasFailed = true;
-			bNeedReport = true;
 			Message = InError;
-			MessageType = EMessageType::Error;
 		}
 	}
 	void Warning(const TCHAR* InError)
@@ -37,9 +32,7 @@ struct FVoxelRangeFailStatus : TThreadSingleton<FVoxelRangeFailStatus>
 		if (!HasFailed() && !HasWarning())
 		{
 			bHasWarning = true;
-			bNeedReport = true;
 			Message = InError;
-			MessageType = EMessageType::Warning;
 		}
 	}
 	void Reset()
@@ -48,44 +41,22 @@ struct FVoxelRangeFailStatus : TThreadSingleton<FVoxelRangeFailStatus>
 		bHasWarning = false;
 		Message = nullptr;
 	}
-	FString GetError() const
-	{
-		if (!ensure(Message)) return {};
-		
-		if (MessageType == EMessageType::Warning)
-		{
-			return FString::Printf(TEXT("warning: %s"), Message);
-		}
-		else
-		{
-			check(MessageType == EMessageType::Error);
-			return FString::Printf(TEXT("error: %s"), Message);
-		}
-	}
-
-	bool NeedReport() const
-	{
-		return bNeedReport;
-	}
-	void ResetNeedReport()
-	{
-		bNeedReport = false;
-	}
 
 private:
 	bool bHasFailed = false;
 	bool bHasWarning = false;
-	bool bNeedReport = false;
 
-	enum class EMessageType
-	{
-		Warning,
-		Error
-	};
-	
 	const TCHAR* Message = nullptr;
-	EMessageType MessageType = EMessageType::Warning;
+	
+	// Not inline, else it's messed up across modules
+	static VOXEL_API uint32& GetTlsSlot();
+
+	friend TThreadSingleton<FVoxelRangeFailStatus>;
 };
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 struct FVoxelBoolRange
 {
@@ -166,7 +137,7 @@ struct FVoxelBoolRange
 		else
 		{
 			checkVoxelSlow(bCanBeTrue && bCanBeFalse);
-			FVoxelRangeFailStatus::Get().Fail(TEXT("range analysis: condition can be true or false"));
+			FVoxelRangeFailStatus::Get().Fail(TEXT("condition can be true or false"));
 			return false;
 		}
 	}
@@ -194,6 +165,10 @@ struct FVoxelBoolRange
 		}
 	}
 };
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
 T NegativeInfinity();
@@ -255,6 +230,32 @@ inline constexpr FVoxelValue PositiveInfinity<FVoxelValue>()
 	return FVoxelValue::Empty();
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+FString PrettyPrint(const T& Value)
+{
+	return LexToString(Value);
+}
+
+template<>
+inline FString PrettyPrint<float>(const float& Value)
+{
+	return FString::SanitizeFloat(Value);
+}
+
+template<>
+inline FString PrettyPrint<double>(const double& Value)
+{
+	return FString::SanitizeFloat(Value);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 template<typename T>
 struct TVoxelRange
 {
@@ -280,6 +281,10 @@ struct TVoxelRange
 	{
 	}
 
+public:
+	static constexpr bool bIsInteger = TIsIntegral<T>::Value;
+	
+public:
 	template<typename ...TArgs>
 	static TVoxelRange<T> FromList(TArgs... Values)
 	{
@@ -327,7 +332,7 @@ struct TVoxelRange
 
 	FString ToString() const
 	{
-		return IsSingleValue() ? LexToString(Min) : FString::Printf(TEXT("%s, %s"), *LexToString(Min), *LexToString(Max));
+		return IsSingleValue() ? PrettyPrint(Min) : FString::Printf(TEXT("%s, %s"), *PrettyPrint(Min), *PrettyPrint(Max));
 	}
 	
 	template<typename TOther>
@@ -499,7 +504,27 @@ public:
 	{
 		if (Other.IsSingleValue() && Other.GetSingleValue() == 0)
 		{
-			return 0;
+			if (bIsInteger)
+			{
+				// That's how integer / 0 is handled in voxel graphs
+				return 0;
+			}
+			if (IsSingleValue() && GetSingleValue() == 0)
+			{
+				FVoxelRangeFailStatus::Get().Warning(TEXT("0 / 0 encountered, will result in a nan"));
+				return Infinite();
+			}
+			if (0 < Min)
+			{
+				// Single value: +inf
+				return PositiveInfinity<T>();
+			}
+			if (Max < 0)
+			{
+				// Single value: -inf
+				return NegativeInfinity<T>();
+			}
+			return Infinite();
 		}
 
 		if (!Other.Contains(0)) // Will also handle single value cases
@@ -606,17 +631,41 @@ public:
 	}
 };
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+FArchive& operator<<(FArchive& Ar, TVoxelRange<T>& Range)
+{
+	Ar << Range.Min;
+	Ar << Range.Max;
+	return Ar;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 struct FVoxelMaterialRange
 {
 	FVoxelMaterialRange() = default;
 	FVoxelMaterialRange(const struct FVoxelMaterial&) {}
 };
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 struct FVoxelColorRange
 {
 	FVoxelColorRange() = default;
 	FVoxelColorRange(const struct FColor&) {}
 };
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 // For display and serialization
 USTRUCT()

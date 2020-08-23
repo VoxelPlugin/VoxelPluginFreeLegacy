@@ -1075,7 +1075,7 @@ public:
 		
 	};
 	
-	FVoxelExample_HollowPlanetInstance(const UVoxelExample_HollowPlanet& Object)
+	FVoxelExample_HollowPlanetInstance(UVoxelExample_HollowPlanet& Object)
 			: TVoxelGraphGeneratorInstanceHelper(
 			{
 				{ "Value", 1 },
@@ -1108,7 +1108,7 @@ public:
 					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
 				}
 			},
-			Object.bEnableRangeAnalysis)
+			Object)
 		, Params(FParams
 		{
 			Object.Use_IQ_Noise,

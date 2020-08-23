@@ -6,9 +6,9 @@
 #include "PhysicsEngine/BodySetupEnums.h"
 #include "VoxelMinimal.h"
 #include "VoxelIntBox.h"
-#include "VoxelStaticArray.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelRender/VoxelMeshConfig.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 
 struct FVoxelMaterialIndices;
 class FInvokerPositionsArray;
@@ -58,7 +58,8 @@ struct FVoxelRendererSettingsBase
 	const float UVScale;
 	const EVoxelNormalConfig NormalConfig;
 	const EVoxelMaterialConfig MaterialConfig;
-
+	const bool bHardColorTransitions;
+	
 	const float BoundsExtension;
 
 	const ECollisionTraceFlag CollisionTraceFlag;
@@ -75,7 +76,6 @@ struct FVoxelRendererSettingsBase
 	const int32 MaxDistanceFieldLOD;
 	const int32 DistanceFieldBoundsExtension;
 	const int32 DistanceFieldResolutionDivisor;
-	const int32 DistanceFieldQuality;
 	const float DistanceFieldSelfShadowBias;
 	
 	const bool bOneMaterialPerCubeSide;

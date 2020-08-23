@@ -11,6 +11,7 @@
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelMessages.h"
 #include "VoxelFeedbackContext.h"
+#include "VoxelScopedTransaction.h"
 
 #include "Modules/ModuleManager.h"
 
@@ -116,14 +117,19 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			break;
 		}
 		
-		const FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([&DetailLayout]()
+		const FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([Properties = MakeWeakPtr(DetailLayout.GetPropertyUtilities())]()
 		{
-			DetailLayout.ForceRefreshDetails();
+			if (Properties.IsValid())
+			{
+				Properties.Pin()->ForceRefresh();
+			}
 		});
 		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialConfig))->SetOnPropertyValueChanged(RefreshDelegate);
 		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, UVConfig))->SetOnPropertyValueChanged(RefreshDelegate);
 		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, RGBHardness))->SetOnPropertyValueChanged(RefreshDelegate);
 	}
+
+	DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, EditorOnly_NewScale));
 
 	if (bIsDataAssetEditor)
 	{
@@ -289,6 +295,32 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 					World.Toggle();
 					GEditor->SelectActor(&World, true, true, true, true);
 				}));
+			
+			FVoxelEditorUtilities::AddPropertyToCategory(
+				DetailLayout,
+				"Voxel - Preview",
+				GET_MEMBER_NAME_STATIC(AVoxelWorld, EditorOnly_NewScale),
+				true);
+			FVoxelEditorUtilities::AddButtonToCategory(
+				DetailLayout,
+				"Voxel - Preview",
+				VOXEL_LOCTEXT("Scale"),
+				VOXEL_LOCTEXT("Scale World Data"),
+				VOXEL_LOCTEXT("Scale"),
+				true,
+				CreateWorldsDelegate([](AVoxelWorld& World)
+				{
+					if (World.IsCreated())
+					{
+						FVoxelScopedSlowTask Scope(1.f, VOXEL_LOCTEXT("Scaling data"));
+						Scope.MakeDialog();
+						Scope.EnterProgressFrame();
+						
+						FVoxelScopedTransaction Transaction(&World, "Scaling data", EVoxelChangeType::DataSwap);
+						UVoxelBlueprintLibrary::ScaleData(&World, World.EditorOnly_NewScale);
+					}
+				}));
+			
 			FVoxelEditorUtilities::AddButtonToCategory(
 				DetailLayout,
 				"Voxel - Preview",

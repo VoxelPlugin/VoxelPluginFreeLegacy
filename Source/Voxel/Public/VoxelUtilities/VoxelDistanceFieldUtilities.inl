@@ -2,23 +2,26 @@
 
 #pragma once
 
-#include "VoxelDistanceFieldUtilities.h"
+#include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelMiscUtilities.h"
 
 template<typename T, typename TLambda>
-void FVoxelDistanceFieldUtilities::ConvertDensitiesToDistances(const FIntVector& Size, TArrayView<const T> Densities, TArrayView<float> OutDistances, TLambda GetFloatFromT)
+void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(
+	const FIntVector& Size,
+	TArrayView<const T> Densities,
+	TArrayView<float> OutDistances,
+	TArrayView<FVector> OutSurfacePositions,
+	TLambda GetFloatFromT)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
-	
-	check(Densities.Num() == Size.X * Size.Y * Size.Z);
-	check(OutDistances.Num() == Size.X * Size.Y * Size.Z);
 
-#if VOXEL_DEBUG
-	auto& InData = Densities;
-	auto& OutData = OutDistances;
-#else
-	auto* RESTRICT InData = Densities.GetData();
-	auto* RESTRICT OutData = OutDistances.GetData();
-#endif
+	const FIntVector DensitiesSize = Size + 2;
+	const FIntVector DensitiesOffset = FIntVector(-1, -1, -1);
+	
+	check(Densities.Num() == DensitiesSize.X * DensitiesSize.Y * DensitiesSize.Z);
+	check(OutDistances.Num() == Size.X * Size.Y * Size.Z);
+	check(OutSurfacePositions.Num() == Size.X * Size.Y * Size.Z);
 
 	for (int32 X = 0; X < Size.X; X++)
 	{
@@ -28,40 +31,60 @@ void FVoxelDistanceFieldUtilities::ConvertDensitiesToDistances(const FIntVector&
 			{
 				const FIntVector Position(X, Y, Z);
 
-				const int32 Index = Position.X + Size.X * Position.Y + Size.X * Size.Y * Position.Z;
+				const float Value = GetFloatFromT(FVoxelUtilities::Get3D(Densities, DensitiesSize, Position, DensitiesOffset));
+				
+				const int32 Index = FVoxelUtilities::Get3DIndex(Size, Position);
+				FVoxelUtilities::Get(OutDistances, Index) = FMath::Sign(Value);
 
-				const float Value = GetFloatFromT(InData[Index]);
-				float Distance = 1e20;
+				// Static branch
+				const auto Lambda = [&](auto IsNegative)
+				{
+					// Take the max: this is the one that will "push" the value the closest to us
+					// Only consider positive values, so that there's a surface between us
+					// By symmetry, take the min value negative if Value is positive
+					float MaxNeighborValue = 0.f;
+					FIntVector MaxNeighborPosition;
 
 #define	CheckNeighbor(DX, DY, DZ) \
-				{ \
-					const FIntVector NeighborPosition = Position + FIntVector(DX, DY, DZ); \
-					\
-					if (0 <= NeighborPosition.X && NeighborPosition.X < Size.X && \
-						0 <= NeighborPosition.Y && NeighborPosition.Y < Size.Y && \
-						0 <= NeighborPosition.Z && NeighborPosition.Z < Size.Z) \
 					{ \
-						const int32 NeighborIndex = NeighborPosition.X + Size.X * NeighborPosition.Y + Size.X * Size.Y * NeighborPosition.Z; \
-						const float NeighborValue = GetFloatFromT(InData[NeighborIndex]); \
+						const FIntVector NeighborPosition = Position + FIntVector(DX, DY, DZ); \
+						const float NeighborValue = GetFloatFromT(FVoxelUtilities::Get3D(Densities, DensitiesSize, NeighborPosition, DensitiesOffset)); \
 						\
-						if (Value > 0 != NeighborValue > 0) \
+						if (IsNegative ? (NeighborValue > MaxNeighborValue) : (NeighborValue < MaxNeighborValue)) \
 						{ \
-							const float SurfaceDistance = Value / (Value - NeighborValue); \
-							Distance = FMath::Min(Distance, SurfaceDistance); \
+							MaxNeighborValue = NeighborValue; \
+							MaxNeighborPosition = NeighborPosition; \
 						} \
-					} \
-				}
+					}
 
-				CheckNeighbor(-1, 0, 0);
-				CheckNeighbor(+1, 0, 0);
-				CheckNeighbor(0, -1, 0);
-				CheckNeighbor(0, +1, 0);
-				CheckNeighbor(0, 0, -1);
-				CheckNeighbor(0, 0, +1);
+					CheckNeighbor(-1, 0, 0);
+					CheckNeighbor(+1, 0, 0);
+					CheckNeighbor(0, -1, 0);
+					CheckNeighbor(0, +1, 0);
+					CheckNeighbor(0, 0, -1);
+					CheckNeighbor(0, 0, +1);
 
 #undef CheckNeighbor
 
-				OutData[Index] = Distance;
+					if (MaxNeighborValue == 0.f)
+					{
+						FVoxelUtilities::Get(OutSurfacePositions, Index) = MakeInvalidSurfacePosition();
+					}
+					else
+					{
+						const float Alpha = Value / (Value - MaxNeighborValue);
+						FVoxelUtilities::Get(OutSurfacePositions, Index) = FMath::Lerp(FVector(Position), FVector(MaxNeighborPosition), Alpha);
+					}
+				};
+				
+				if (Value <= 0)
+				{
+					Lambda(FVoxelUtilities::FTrueType());
+				}
+				else
+				{
+					Lambda(FVoxelUtilities::FFalseType());
+				}
 			}
 		}
 	}

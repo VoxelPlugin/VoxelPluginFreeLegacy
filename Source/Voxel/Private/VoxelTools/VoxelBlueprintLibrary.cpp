@@ -7,6 +7,7 @@
 #include "VoxelWorld.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelDataUtilities.h"
+#include "VoxelData/VoxelDataUtilities.inl"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
@@ -15,8 +16,8 @@
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelSpawners/VoxelHierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelEvents/VoxelEventManager.h"
-#include "VoxelAssets/VoxelDataAsset.h"
-#include "VoxelAssets/VoxelHeightmapAsset.h"
+#include "VoxelAssets/VoxelDataAssetData.h"
+#include "VoxelAssets/VoxelHeightmapAssetData.h"
 #include "IVoxelPool.h"
 #include "VoxelDefaultPool.h"
 #include "VoxelMessages.h"
@@ -67,14 +68,10 @@ float UVoxelBlueprintLibrary::GetMemoryUsageInMB(EVoxelMemoryUsageType Type)
 		CASE(STAT_VoxelDataOctreeDirtyValuesMemory_MemoryUsage);
 	case EVoxelMemoryUsageType::VoxelsDirtyMaterialsData:
 		CASE(STAT_VoxelDataOctreeDirtyMaterialsMemory_MemoryUsage);
-	case EVoxelMemoryUsageType::VoxelsDirtyFoliageData:
-		CASE(STAT_VoxelDataOctreeDirtyFoliageMemory_MemoryUsage);
 	case EVoxelMemoryUsageType::VoxelsCachedValuesData:
 		CASE(STAT_VoxelDataOctreeCachedValuesMemory_MemoryUsage);
 	case EVoxelMemoryUsageType::VoxelsCachedMaterialsData:
 		CASE(STAT_VoxelDataOctreeCachedMaterialsMemory_MemoryUsage);
-	case EVoxelMemoryUsageType::VoxelsCachedFoliageData:
-		CASE(STAT_VoxelDataOctreeCachedFoliageMemory_MemoryUsage);
 	case EVoxelMemoryUsageType::UndoRedo:
 		CASE(STAT_VoxelUndoRedoMemory_MemoryUsage);
 	case EVoxelMemoryUsageType::Multiplayer:
@@ -122,14 +119,10 @@ float UVoxelBlueprintLibrary::GetPeakMemoryUsageInMB(EVoxelMemoryUsageType Type)
 		CASE(STAT_VoxelDataOctreeDirtyValuesMemory_MemoryPeak);
 	case EVoxelMemoryUsageType::VoxelsDirtyMaterialsData:
 		CASE(STAT_VoxelDataOctreeDirtyMaterialsMemory_MemoryPeak);
-	case EVoxelMemoryUsageType::VoxelsDirtyFoliageData:
-		CASE(STAT_VoxelDataOctreeDirtyFoliageMemory_MemoryPeak);
 	case EVoxelMemoryUsageType::VoxelsCachedValuesData:
 		CASE(STAT_VoxelDataOctreeCachedValuesMemory_MemoryPeak);
 	case EVoxelMemoryUsageType::VoxelsCachedMaterialsData:
 		CASE(STAT_VoxelDataOctreeCachedMaterialsMemory_MemoryPeak);
-	case EVoxelMemoryUsageType::VoxelsCachedFoliageData:
-		CASE(STAT_VoxelDataOctreeCachedFoliageMemory_MemoryPeak);
 	case EVoxelMemoryUsageType::UndoRedo:
 		CASE(STAT_VoxelUndoRedoMemory_MemoryPeak);
 	case EVoxelMemoryUsageType::Multiplayer:
@@ -726,6 +719,27 @@ void UVoxelBlueprintLibrary::ClearDirtyData(AVoxelWorld* World, bool bUpdateRend
 	}
 }
 
+void UVoxelBlueprintLibrary::ScaleData(AVoxelWorld* World, const FVector& Scale)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	auto& SourceData = World->GetData();
+	const auto DestData = SourceData.Clone();
+
+	{
+		FVoxelReadScopeLock LockA(SourceData, FVoxelIntBox::Infinite, FUNCTION_FNAME);
+		FVoxelWriteScopeLock LockB(*DestData, FVoxelIntBox::Infinite, FUNCTION_FNAME);
+		FVoxelDataUtilities::ScaleWorldData<FVoxelValue>(SourceData, *DestData, Scale);
+	}
+
+	World->DestroyWorld();
+	
+	FVoxelWorldCreateInfo Info;
+	Info.bOverrideData = true;
+	Info.DataOverride_Raw = DestData;
+	World->CreateWorld(Info);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -790,6 +804,16 @@ int32 UVoxelBlueprintLibrary::GetTaskCount(AVoxelWorld* World)
 	return World && World->IsCreated() ? FMath::Max(World->GetRenderer().GetTaskCount(), 0) : 0;
 }
 
+bool UVoxelBlueprintLibrary::IsVoxelWorldMeshLoading(AVoxelWorld* World)
+{
+	return World && World->IsCreated() && World->GetRenderer().GetTaskCount() > 0;
+}
+
+bool UVoxelBlueprintLibrary::IsVoxelWorldFoliageLoading(AVoxelWorld* World)
+{
+	VOXEL_PRO_ONLY()
+}
+
 void UVoxelBlueprintLibrary::ApplyNewMaterials(AVoxelWorld* World)
 {
 	VOXEL_FUNCTION_COUNTER();
@@ -821,30 +845,23 @@ void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	FVoxelScopedFastSaveLoad FastSaveScope;
-
-	UVoxelWorldSaveObject* SaveObject = nullptr;
-	FVoxelUncompressedWorldSave Save;
+	
+	FVoxelWorldCreateInfo Info;
 	if (bSaveData)
 	{
-		UVoxelDataTools::GetSave(World, Save);
+		Info.bOverrideSave = true;
+		UVoxelDataTools::GetSave(World, Info.SaveOverride);
 
 		// Clear dirty flag to avoid popup
 		World->GetData().ClearDirtyFlag();
-
-		// Else, the world will load from the save object when created
-		SaveObject = World->SaveObject;
-		World->SaveObject = nullptr;
 	}
 
-	World->RecreateAll();
+	World->RecreateAll(Info);
 
 	if (bSaveData)
 	{
-		ensure(UVoxelDataTools::LoadFromSave(World, Save));
 		// Set back dirty flag
 		World->GetData().MarkAsDirty();
-		// Restore save object
-		World->SaveObject = SaveObject;
 	}
 }
 

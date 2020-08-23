@@ -1,9 +1,9 @@
 // Copyright 2020 Phyronnaz
 
 #include "ActorFactoryVoxelPlaceableItems.h"
-#include "VoxelPlaceableItems/VoxelPlaceableItemActor.h"
-#include "VoxelPlaceableItems/VoxelDisableEditsBox.h"
-#include "VoxelPlaceableItems/VoxelAssetActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
+#include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "VoxelWorld.h"
 #include "EngineUtils.h"

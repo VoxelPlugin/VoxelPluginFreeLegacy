@@ -1278,7 +1278,7 @@ public:
 		
 	};
 	
-	FVoxelExample_CliffsInstance(const UVoxelExample_Cliffs& Object)
+	FVoxelExample_CliffsInstance(UVoxelExample_Cliffs& Object)
 			: TVoxelGraphGeneratorInstanceHelper(
 			{
 				{ "Value", 1 },
@@ -1311,7 +1311,7 @@ public:
 					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
 				}
 			},
-			Object.bEnableRangeAnalysis)
+			Object)
 		, Params(FParams
 		{
 			Object.Cliffs_Slope,

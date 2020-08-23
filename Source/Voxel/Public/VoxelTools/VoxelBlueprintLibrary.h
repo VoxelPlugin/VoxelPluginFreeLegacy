@@ -41,10 +41,8 @@ enum class EVoxelMemoryUsageType : uint8
 	Total,
 	VoxelsDirtyValuesData,
 	VoxelsDirtyMaterialsData,
-	VoxelsDirtyFoliageData,
 	VoxelsCachedValuesData,
 	VoxelsCachedMaterialsData,
-	VoxelsCachedFoliageData,
 	UndoRedo,
 	Multiplayer,
 	IntermediateBuffers,
@@ -268,6 +266,10 @@ public:
 	// Clear all the edited data in the world, excluding items/assets
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bUpdateRender"))
 	static void ClearDirtyData(AVoxelWorld* World, bool bUpdateRender = true);
+
+	// Scale the voxel world data. Will recreate the voxel world!
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Data", meta = (DefaultToSelf = "World"))
+	static void ScaleData(AVoxelWorld* World, const FVector& Scale);
 	
 public:
 	/**
@@ -307,6 +309,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
 	static int32 GetTaskCount(AVoxelWorld* World);
 
+	// Returns true if there are still mesh tasks queued
+	UFUNCTION(BlueprintPure, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
+	static bool IsVoxelWorldMeshLoading(AVoxelWorld* World);
+
+	// Returns true if there are still foliage tasks queued
+	UFUNCTION(BlueprintPure, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
+	static bool IsVoxelWorldFoliageLoading(AVoxelWorld* World);
+	
 	// Call this after changing a voxel world VoxelMaterial/MaterialCollection to apply it
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
 	static void ApplyNewMaterials(AVoxelWorld* World);
@@ -658,6 +668,28 @@ public:
 		Material.Impl_SetU3(U3);
 		Material.Impl_SetV3(V3);
 		return Material;
+	}
+	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
+	static int32 MakeMaterialMask(
+		bool R, bool G, bool B, bool A,
+		bool U0, bool V0,
+		bool U1, bool V1,
+		bool U2, bool V2,
+		bool U3, bool V3)
+	{
+		return
+			EVoxelMaterialMask::R * R |
+			EVoxelMaterialMask::G * G |
+			EVoxelMaterialMask::B * B |
+			EVoxelMaterialMask::A * A |
+			EVoxelMaterialMask::U0 * U0 |
+			EVoxelMaterialMask::U1 * U1 |
+			EVoxelMaterialMask::U2 * U2 |
+			EVoxelMaterialMask::U3 * U3 |
+			EVoxelMaterialMask::V0 * V0 |
+			EVoxelMaterialMask::V1 * V1 |
+			EVoxelMaterialMask::V2 * V2 |
+			EVoxelMaterialMask::V3 * V3;
 	}
 
 public:

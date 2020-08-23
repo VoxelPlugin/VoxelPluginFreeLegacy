@@ -2,6 +2,7 @@
 
 #include "VoxelWorld.h"
 #include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorCache.h"
 #include "IVoxelPool.h"
 #include "VoxelSettings.h"
 #include "VoxelDefaultPool.h"
@@ -20,9 +21,10 @@
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
-#include "VoxelPlaceableItems/VoxelPlaceableItemActor.h"
-#include "VoxelPlaceableItems/VoxelAssetActor.h"
-#include "VoxelPlaceableItems/VoxelDisableEditsBox.h"
+#include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
+#include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelDebug/VoxelLineBatchComponent.h"
@@ -52,6 +54,18 @@
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Serialization/BufferArchive.h"
 #include "Serialization/MemoryReader.h"
+
+void AVoxelWorld::FGameThreadTasks::Flush()
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+
+	TFunction<void()> Task;
+	while (Tasks.Dequeue(Task))
+	{
+		Task();
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -139,15 +153,11 @@ AVoxelWorld::AVoxelWorld()
 			UVoxelBlueprintLibrary::ApplyNewMaterials(this);
 		}
 	};
+	UMaterial::OnMaterialCompilationFinished().AddWeakLambda(this, RefreshMaterial);
 
-	FCoreUObjectDelegates::OnObjectPropertyChanged.AddWeakLambda(this, [=](UObject* Object, FPropertyChangedEvent& PropertyChangedEvent)
+	const auto TryRefreshMaterials = [=](UObject* Object, FPropertyChangedEvent& PropertyChangedEvent)
 	{
-		if (PropertyChangedEvent.ChangeType == EPropertyChangeType::Interactive)
-		{
-			return;
-		}
-		
-		if (!Object || !bAutomaticallyRefreshMaterials || !IsCreated())
+		if (!bAutomaticallyRefreshMaterials)
 		{
 			return;
 		}
@@ -173,6 +183,14 @@ AVoxelWorld::AVoxelWorld()
 				}
 			}
 
+			if (auto* MaterialCollectionInstance = Cast<UVoxelInstancedMaterialCollectionInstance>(MaterialCollection))
+			{
+				if (MaterialCollectionInstance->LayersSource == Object)
+				{
+					bUsed = true;
+				}
+			}
+
 			if (bUsed)
 			{
 				UVoxelBlueprintLibrary::ApplyNewMaterials(this);
@@ -185,9 +203,27 @@ AVoxelWorld::AVoxelWorld()
 				}
 			}
 		}
-	});
+	};
+	
+	const auto TryRefreshFoliage = [=](UObject* Object, FPropertyChangedEvent& PropertyChangedEvent)
+	{
+	};
 		
-	UMaterial::OnMaterialCompilationFinished().AddWeakLambda(this, RefreshMaterial);
+	FCoreUObjectDelegates::OnObjectPropertyChanged.AddWeakLambda(this, [=](UObject* Object, FPropertyChangedEvent& PropertyChangedEvent)
+	{
+		if (PropertyChangedEvent.ChangeType == EPropertyChangeType::Interactive)
+		{
+			return;
+		}
+		
+		if (!Object || !IsCreated())
+		{
+			return;
+		}
+
+		TryRefreshMaterials(Object, PropertyChangedEvent);
+		TryRefreshFoliage(Object, PropertyChangedEvent);
+	});
 #endif
 }
 
@@ -200,7 +236,7 @@ AVoxelWorld::~AVoxelWorld()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void AVoxelWorld::CreateWorld()
+void AVoxelWorld::CreateWorld(FVoxelWorldCreateInfo Info)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -216,13 +252,13 @@ void AVoxelWorld::CreateWorld()
 	{
 		// Called in editor - probably by a BP construction script
 		// Forward to CreateInEditor
-		CreateInEditor();
+		CreateInEditor(Info);
 		return;
 	}
 #endif
 	
 	PlayType = EVoxelPlayType::Game;
-	CreateWorldInternal();
+	CreateWorldInternal(Info);
 	if (bUseCameraIfNoInvokersFound && UVoxelInvokerComponentBase::GetInvokers(GetWorld()).Num() == 0)
 	{
 		const auto NetMode = GetWorld()->GetNetMode();
@@ -456,6 +492,7 @@ void AVoxelWorld::Tick(float DeltaTime)
 	if (IsCreated())
 	{
 		WorldRoot->TickWorldRoot();
+		GameThreadTasks->Flush();
 #if WITH_EDITOR
 		if (PlayType == EVoxelPlayType::Preview && Data->IsDirty())
 		{
@@ -507,11 +544,13 @@ void AVoxelWorld::OnConstruction(const FTransform& Transform)
 
 void AVoxelWorld::UnregisterAllComponents(bool bForReregister)
 {
+#if WITH_EDITOR
 	if (bDisableComponentUnregister)
 	{
 		Super::UnregisterAllComponents(true); // Do as if it was a reregister so that proc mesh are ignored
 	}
 	else
+#endif
 	{
 		Super::UnregisterAllComponents(bForReregister);
 	}
@@ -848,7 +887,7 @@ TVoxelSharedPtr<FVoxelToolRenderingManager> AVoxelWorld::CreateToolRenderingMana
 }
 
 
-void AVoxelWorld::CreateWorldInternal()
+void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -866,34 +905,46 @@ void AVoxelWorld::CreateWorldInternal()
 	}
 
 	// Setup root
-	{
-		WorldRoot->CollisionTraceFlag = CollisionTraceFlag;
-		WorldRoot->CanCharacterStepUpOn = CanCharacterStepUpOn;
-		WorldRoot->SetGenerateOverlapEvents(bGenerateOverlapEvents);
-		// Only copy collision data - we don't want to override the physics settings
-		WorldRoot->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&CollisionPresets);
-		WorldRoot->BodyInstance.SetObjectType(CollisionPresets.GetObjectType());
-		WorldRoot->BodyInstance.SetPhysMaterialOverride(PhysMaterialOverride);
-		WorldRoot->BodyInstance.bNotifyRigidBodyCollision = bNotifyRigidBodyCollision;
-		WorldRoot->BodyInstance.bUseCCD = bUseCCD;
-		WorldRoot->RecreatePhysicsState();
-	}
-
+	ApplyCollisionSettingsToRoot();
+	
 	if (PlayType == EVoxelPlayType::Game && WorldRoot->BodyInstance.bSimulatePhysics && CollisionTraceFlag == ECollisionTraceFlag::CTF_UseComplexAsSimple)
 	{
 		FVoxelMessages::Error("Simulate physics requires using Simple collisions (either 'Simple And Complex' or 'Use Simple Collision As Complex')", this);
 	}
 
+	GetLineBatchComponent().Flush();
+
 	*WorldOffset = FIntVector::ZeroValue;
 	UpdateDynamicLODSettings();
 	UpdateDynamicRendererSettings();
 
-	const bool bHasPendingData = PendingData.IsValid();
-	if (bHasPendingData)
+	WorldGeneratorCache = MakeVoxelShared<FVoxelWorldGeneratorCache>(GetInitStruct());
+	GameThreadTasks = MakeVoxelShared<FGameThreadTasks>();
+
+	if (Info.bOverrideData)
 	{
-		Data = MoveTemp(PendingData);
+		ensure(!(Info.DataOverride && Info.DataOverride_Raw));
+		if (Info.DataOverride)
+		{
+			if (Info.DataOverride->IsCreated())
+			{
+				Data = Info.DataOverride->GetDataSharedPtr();
+			}
+			else
+			{
+				FVoxelMessages::Warning(FUNCTION_ERROR("Info.DataOverride is not created! Can't copy data from it."), this);
+			}
+		}
+		else if (Info.DataOverride_Raw)
+		{
+			Data = Info.DataOverride_Raw;
+		}
+		else
+		{
+			FVoxelMessages::Warning(FUNCTION_ERROR("Info.bOverrideData is true, but DataOverride is null!"), this);
+		}
 	}
-	else
+	if (!Data)
 	{
 		Data = CreateData();
 	}
@@ -915,10 +966,19 @@ void AVoxelWorld::CreateWorldInternal()
 		FVoxelMessages::ShowVoxelPluginProError("Multiplayer is only available in Voxel Plugin Pro", this);
 	}
 
-	if (!bHasPendingData)
+	if (Info.bOverrideData && Info.bOverrideSave)
+	{
+		FVoxelMessages::Warning(FUNCTION_ERROR("Cannot use Info.bOverrideSave if Info.bOverrideData is true!"), this);
+	}
+
+	if (!Info.bOverrideData)
 	{
 		// Load if possible
-		if (SaveObject)
+		if (Info.bOverrideSave)
+		{
+			UVoxelDataTools::LoadFromSave(this, Info.SaveOverride);
+		}
+		else if (SaveObject)
 		{
 			LoadFromSaveObject();
 			if (!IsCreated()) // if LoadFromSaveObject destroyed the world
@@ -929,6 +989,14 @@ void AVoxelWorld::CreateWorldInternal()
 
 		// Add placeable items AFTER loading
 		ApplyPlaceableItems();
+
+		if (PlaceableItemManager)
+		{
+			PlaceableItemManager->Clear();
+			PlaceableItemManager->Generate();
+			PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache);
+			PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
+		}
 	}
 
 	if (PlayType == EVoxelPlayType::Preview)
@@ -973,7 +1041,15 @@ void AVoxelWorld::DestroyWorldInternal()
 
 	WorldOffset = MakeVoxelShared<FIntVector>(FIntVector::ZeroValue);
 
+	GameThreadTasks->Flush();
+	GameThreadTasks.Reset();
+
+	// Clear world generator cache to avoid keeping instances alive
+	WorldGeneratorCache.Reset();
+
 	DestroyVoxelComponents();
+
+	GetLineBatchComponent().Flush();
 }
 
 void AVoxelWorld::DestroyVoxelComponents()
@@ -1002,21 +1078,20 @@ void AVoxelWorld::LoadFromSaveObject()
 		return;
 	}
 	
-	FVoxelUncompressedWorldSaveImpl Save;
-	UVoxelSaveUtilities::DecompressVoxelSave(SaveObject->Save.Const(), Save);
+	FVoxelUncompressedWorldSave Save;
+	UVoxelSaveUtilities::DecompressVoxelSave(SaveObject->Save, Save);
 	
-	if (Save.GetDepth() == -1)
+	if (Save.Const().GetDepth() == -1)
 	{
 		FVoxelMessages::Error("Invalid Save Object!", this);
 		return;
 	}
-	if (Save.GetDepth() > Data->Depth)
+	if (Save.Const().GetDepth() > Data->Depth)
 	{
 		LOG_VOXEL(Warning, TEXT("Save Object depth is bigger than world depth, the save data outside world bounds will be ignored"));
 	}
 
-	TArray<FVoxelIntBox> BoundsToUpdate;
-	if (!Data->LoadFromSave(this, Save, BoundsToUpdate))
+	if (!UVoxelDataTools::LoadFromSave(this, Save))
 	{
 		const auto Result = FMessageDialog::Open(
 			EAppMsgType::YesNoCancel,
@@ -1028,10 +1103,8 @@ void AVoxelWorld::LoadFromSaveObject()
 			Data->ClearData();
 			PlayType = EVoxelPlayType::Game; // Hack
 			DestroyWorldInternal();
-			return;
 		}
 	}
-	LODManager->UpdateBounds(BoundsToUpdate);
 }
 
 void AVoxelWorld::ApplyPlaceableItems()
@@ -1123,6 +1196,22 @@ void AVoxelWorld::UpdateDynamicRendererSettings() const
 	}
 }
 
+void AVoxelWorld::ApplyCollisionSettingsToRoot() const
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	WorldRoot->CollisionTraceFlag = CollisionTraceFlag;
+	WorldRoot->CanCharacterStepUpOn = CanCharacterStepUpOn;
+	WorldRoot->SetGenerateOverlapEvents(bGenerateOverlapEvents);
+	// Only copy collision data - we don't want to override the physics settings
+	WorldRoot->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&CollisionPresets);
+	WorldRoot->BodyInstance.SetObjectType(CollisionPresets.GetObjectType());
+	WorldRoot->BodyInstance.SetPhysMaterialOverride(PhysMaterialOverride);
+	WorldRoot->BodyInstance.bNotifyRigidBodyCollision = bNotifyRigidBodyCollision;
+	WorldRoot->BodyInstance.bUseCCD = bUseCCD;
+	WorldRoot->RecreatePhysicsState();
+}
+
 void AVoxelWorld::RecreateRender()
 {
 	VOXEL_FUNCTION_COUNTER();
@@ -1149,12 +1238,12 @@ void AVoxelWorld::RecreateSpawners()
 {
 }
 
-void AVoxelWorld::RecreateAll()
+void AVoxelWorld::RecreateAll(const FVoxelWorldCreateInfo& Info)
 {
 	check(IsCreated());
 
 	DestroyWorldInternal();
-	CreateWorldInternal();
+	CreateWorldInternal(Info);
 }
 
 #if WITH_EDITOR
@@ -1179,7 +1268,7 @@ void AVoxelWorld::Toggle()
 	}
 }
 
-void AVoxelWorld::CreateInEditor()
+void AVoxelWorld::CreateInEditor(const FVoxelWorldCreateInfo& Info)
 {
 	if (!IVoxelWorldEditor::GetVoxelWorldEditor())
 	{
@@ -1213,7 +1302,7 @@ void AVoxelWorld::CreateInEditor()
 		DestroyWorldInternal();
 	}
 	PlayType = EVoxelPlayType::Preview;
-	CreateWorldInternal();
+	CreateWorldInternal(Info);
 }
 
 void AVoxelWorld::SaveData()
@@ -1248,11 +1337,14 @@ void AVoxelWorld::SaveData()
 				{
 					UVoxelDataTools::RoundVoxels(this, FVoxelIntBox::Infinite);
 				}
+
+				FVoxelUncompressedWorldSave Save;
+
 				Progress.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Creating save"));
-				FVoxelUncompressedWorldSaveImpl Save;
-				Data->GetSave(Save);
+				UVoxelDataTools::GetSave(this, Save);
+				
 				Progress.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Compressing save"));
-				UVoxelSaveUtilities::CompressVoxelSave(Save, SaveObject->Save.NewMutable());
+				UVoxelSaveUtilities::CompressVoxelSave(Save, SaveObject->Save);
 			}
 			
 			SaveObject->CopyDepthFromSave();
@@ -1331,7 +1423,8 @@ bool AVoxelWorld::SaveToFile(const FString& Path, FText& Error)
 	PlatformFile.CreateDirectoryTree(*FPaths::GetPath(Path));
 
 	FBufferArchive Archive(true);
-	FVoxelCompressedWorldSaveImpl CompressedSave;
+	
+	FVoxelCompressedWorldSave CompressedSave;
 	UVoxelDataTools::GetCompressedSave(this, CompressedSave);
 	CompressedSave.Serialize(Archive);
 
@@ -1339,6 +1432,13 @@ bool AVoxelWorld::SaveToFile(const FString& Path, FText& Error)
 	{
 		const FNotificationInfo Info(FText::Format(VOXEL_LOCTEXT("{0} was successfully created"), FText::FromString(Path)));
 		FSlateNotificationManager::Get().AddNotification(Info);
+
+		if (CompressedSave.Objects.Num() > 0)
+		{
+			const FNotificationInfo OtherInfo(FText::Format(VOXEL_LOCTEXT("The voxel data has {0} placeable items (eg, data assets)! These will not be saved"), CompressedSave.Objects.Num()));
+			FSlateNotificationManager::Get().AddNotification(OtherInfo);
+		}
+		
 		return true;
 	}
 	else
@@ -1364,7 +1464,7 @@ bool AVoxelWorld::LoadFromFile(const FString& Path, FText& Error)
 	}
 
 	FMemoryReader Reader(Array);
-	FVoxelCompressedWorldSaveImpl CompressedSave;
+	FVoxelCompressedWorldSave CompressedSave;
 	CompressedSave.Serialize(Reader);
 	UVoxelDataTools::LoadFromCompressedSave(this, CompressedSave);
 

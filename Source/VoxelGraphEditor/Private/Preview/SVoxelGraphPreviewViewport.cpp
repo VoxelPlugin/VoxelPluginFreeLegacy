@@ -167,7 +167,8 @@ void SVoxelGraphPreviewViewport::OnFloatingButtonClicked()
 
 void SVoxelGraphPreviewViewport::RefreshViewport()
 {
-	SceneViewport->InvalidateDisplay();
+	Client->RedrawRequested(nullptr);
+	GEditor->UpdateSingleViewportClient(Client.Get(), true, false);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

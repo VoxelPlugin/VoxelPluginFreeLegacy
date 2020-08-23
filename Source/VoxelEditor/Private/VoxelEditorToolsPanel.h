@@ -3,17 +3,24 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 #include "UObject/GCObject.h"
 #include "Engine/EngineBaseTypes.h"
-#include "VoxelMinimal.h"
+#include "Widgets/Input/SComboBox.h"
 
+class AVoxelWorld;
 class UVoxelToolManager;
 class HHitProxy;
 class SWidget;
-class FViewport;
-class FEditorViewportClient;
 class IDetailsView;
 class FReply;
+class FViewport;
+class FSceneView;
+class FUICommandList;
+class FToolBarBuilder;
+class FEditorViewportClient;
+class FSceneViewFamilyContext;
+
 struct FTransactionContext;
 struct FViewportClick;
 struct FKey;
@@ -25,7 +32,8 @@ public:
 	FVoxelEditorToolsPanel();
 	~FVoxelEditorToolsPanel();
 
-	void Init();
+	void Init(const TSharedPtr<FUICommandList>& CommandListOverride = nullptr);
+	void CustomizeToolbar(FToolBarBuilder& ToolBarBuilder);
 
 public:
 	//~ Begin FGCObject Interface
@@ -33,7 +41,7 @@ public:
 	//~ End FGCObject Interface
 
 public:
-	inline const TSharedPtr<SWidget>& GetWidget() const
+	const TSharedRef<SBox>& GetWidget() const
 	{
 		return Widget;
 	}
@@ -51,13 +59,42 @@ public:
 
 private:
 	UVoxelToolManager* ToolManager = nullptr;
-	TSharedPtr<IDetailsView> DetailsPanel;
-	TSharedPtr<SWidget> Widget;
+
+	TSharedPtr<IDetailsView> SharedConfigDetailsPanel;
+	TSharedPtr<IDetailsView> ToolDetailsPanel;
+
+	TSharedPtr<SComboBox<TSharedPtr<UClass*>>> ComboBox;
+	TSharedRef<SBox> Widget;
+	
 	TWeakObjectPtr<UWorld> LastWorld;
+	TWeakObjectPtr<AVoxelWorld> LastVoxelWorld;
+
+	TArray<TSharedPtr<UClass*>> ToolsOptions;
+	TSharedPtr<FUICommandList> CommandList;
 	
 	float TimeUntilNextGC = 0;
 
 	bool bClick = false;
 	bool bAlternativeMode = false;
-	float MouseWheelDelta = 0;
+
+	float BrushSizeDelta = 0.f;
+	float FalloffDelta = 0.f;
+	float StrengthDelta = 0.f;
+
+private:
+	void RefreshDetails() const;
+	bool IsPropertyVisible(const UProperty& Property, const TArray<const UProperty*>& ParentProperties, int32 ParentPropertyIndex = 0) const;
+
+private:
+	void SetActiveTool(UClass* ToolClass);
+	bool IsToolActive(UClass* ToolClass) const;
+	void BuildToolBars(TArray<FToolBarBuilder>& OutToolBars);
+	void BindCommands();
+
+private:
+	// Only valid in Tick
+	FEditorViewportClient* ViewportClientForDeproject = nullptr;
+
+	FSceneView* GetSceneView(TUniquePtr<FSceneViewFamilyContext>& ViewFamily) const;
+	bool Deproject(const FVector2D& ScreenPosition, FVector& OutWorldPosition, FVector& OutWorldDirection) const;
 };

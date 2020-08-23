@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
-#include "VoxelSparseArray.h"
+#include "VoxelContainers/VoxelSparseArray.h"
 #include "Misc/ScopeLock.h"
 
 class FVoxelMaterialInterface;

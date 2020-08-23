@@ -8,13 +8,33 @@
 
 class UVoxelFlatWorldGenerator;
 
-class VOXEL_API FVoxelFlatWorldGeneratorInstance : public TVoxelWorldGeneratorInstanceHelper<FVoxelFlatWorldGeneratorInstance, UVoxelFlatWorldGenerator>
+/**
+ * Flat world
+ */
+UCLASS(Blueprintable)
+class VOXEL_API UVoxelFlatWorldGenerator : public UVoxelWorldGenerator
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	FLinearColor Color = FLinearColor::Transparent;
+		
+	//~ Begin UVoxelWorldGenerator Interface
+	TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
+	//~ End UVoxelWorldGenerator Interface
+};
+
+class FVoxelFlatWorldGeneratorInstance : public TVoxelWorldGeneratorInstanceHelper<FVoxelFlatWorldGeneratorInstance, UVoxelFlatWorldGenerator>
 {
 public:
+	using Super = TVoxelWorldGeneratorInstanceHelper<FVoxelFlatWorldGeneratorInstance, UVoxelFlatWorldGenerator>;
+	
 	const FVoxelMaterial Material;
 	
-	explicit FVoxelFlatWorldGeneratorInstance(const FVoxelMaterial& Material = FVoxelMaterial::Default())
-		: Material(Material)
+	explicit FVoxelFlatWorldGeneratorInstance(UVoxelFlatWorldGenerator& Object)
+		: Super(&Object)
+		, Material(FVoxelMaterial::CreateFromColor(Object.Color))
 	{
 	}
 
@@ -38,22 +58,7 @@ public:
 	//~ End FVoxelWorldGeneratorInstance Interface
 };
 
-/**
- * Flat world
- */
-UCLASS(Blueprintable)
-class VOXEL_API UVoxelFlatWorldGenerator : public UVoxelWorldGenerator
+inline TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelFlatWorldGenerator::GetInstance()
 {
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	FLinearColor Color = FLinearColor::Transparent;
-		
-	//~ Begin UVoxelWorldGenerator Interface
-	TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override
-	{
-		return MakeVoxelShared<FVoxelFlatWorldGeneratorInstance>(FVoxelMaterial::CreateFromColor(Color));
-	}
-	//~ End UVoxelWorldGenerator Interface
-};
+	return MakeVoxelShared<FVoxelFlatWorldGeneratorInstance>(*this);
+}

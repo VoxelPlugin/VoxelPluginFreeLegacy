@@ -2,6 +2,7 @@
 
 #include "ActorFactoryVoxelWorld.h"
 #include "VoxelWorld.h"
+#include "VoxelUtilities/VoxelExampleUtilities.h"
 #include "VoxelWorldGenerators/VoxelFlatWorldGenerator.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 
@@ -22,7 +23,7 @@ void UActorFactoryVoxelWorld::PostSpawnActor(UObject* Asset, AActor* NewActor)
 	VoxelWorld->bUseCameraIfNoInvokersFound = true;
 	VoxelWorld->SetWorldGeneratorClass(UVoxelFlatWorldGenerator::StaticClass());
 	VoxelWorld->MaterialConfig = EVoxelMaterialConfig::RGB;
-	VoxelWorld->MaterialCollection = LoadObject<UVoxelMaterialCollectionBase>(nullptr, TEXT("/Voxel/Examples/Materials/Quixel/MC_Quixel"));
-	VoxelWorld->VoxelMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Voxel/Examples/Materials/Quixel/MI_VoxelQuixel_FiveWayBlend_Inst"));
+	VoxelWorld->MaterialCollection = FVoxelExampleUtilities::LoadExampleObject<UVoxelMaterialCollectionBase>(TEXT("/Voxel/Examples/Materials/Quixel/MC_Quixel"));
+	VoxelWorld->VoxelMaterial = FVoxelExampleUtilities::LoadExampleObject<UMaterialInterface>(TEXT("/Voxel/Examples/Materials/Quixel/MI_VoxelQuixel_FiveWayBlend_Inst"));
 	VoxelWorld->Toggle();
 }

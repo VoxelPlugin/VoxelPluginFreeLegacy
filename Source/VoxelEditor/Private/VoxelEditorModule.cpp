@@ -15,19 +15,26 @@
 #include "MessageLogModule.h"
 #include "EditorReimportHandler.h"
 #include "Framework/Commands/Commands.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+
+#include "WorkspaceMenuStructure.h"
+#include "WorkspaceMenuStructureModule.h"
 
 #include "VoxelGraphGenerator.h"
+#include "IVoxelPool.h"
 #include "VoxelWorld.h"
 #include "VoxelTexture.h"
-#include "VoxelPlaceableItems/VoxelDisableEditsBox.h"
-#include "VoxelPlaceableItems/VoxelAssetActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
+#include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelMessages.h"
 #include "VoxelMessagesEditor.h"
+#include "VoxelOpenAssetsOnStartup.h"
 
 #include "AssetTools/AssetTypeActions_VoxelDataAsset.h"
 #include "AssetTools/AssetTypeActions_VoxelHeightmapAsset.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphWorldGenerator.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphOutputsConfig.h"
+#include "AssetTools/AssetTypeActions_VoxelGraphDataItemConfig.h"
 #include "AssetTools/AssetTypeActions_VoxelSpawnerConfig.h"
 #include "AssetTools/AssetTypeActions_VoxelSpawners.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphMacro.h"
@@ -40,6 +47,7 @@
 #include "Thumbnails/VoxelHeightmapAssetThumbnailRenderer.h"
 
 #include "EdMode/VoxelEdMode.h"
+#include "VoxelToolsCommands.h"
 
 #include "ActorFactoryVoxelWorld.h"
 #include "ActorFactoryVoxelPlaceableItems.h"
@@ -68,6 +76,7 @@
 #include "Factories/VoxelWorldSaveObjectFactory.h"
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelWorldEditorControls.h"
+#include "VoxelDebugEditor.h"
 
 const FVector2D Icon14x14(14.0f, 14.0f);
 const FVector2D Icon16x16(16.0f, 16.0f);
@@ -188,17 +197,29 @@ class FVoxelEditorModule : public IVoxelEditorModule
 public:
 	virtual void StartupModule() override
 	{
+		UVoxelOpenAssetsOnStartup::Init();
+		
 		// Voxel World Editor
 		if (!IVoxelWorldEditor::GetVoxelWorldEditor())
 		{
 			IVoxelWorldEditor::SetVoxelWorldEditor(MakeShared<FVoxelWorldEditor>());
 		}
+
+		// Destroy global pool on end PIE
+		FEditorDelegates::EndPIE.AddLambda([](bool bIsSimulating)
+		{
+			if (IVoxelPool::GetGlobalPool())
+			{
+				IVoxelPool::DestroyGlobalPool();
+			}
+		});
 		
 		// Clear texture cache on reimport
 		FReimportManager::Instance()->OnPostReimport().AddLambda([](UObject*, bool) { FVoxelTextureUtilities::ClearCache(); });
 		
 		// Global commands
 		FVoxelEditorCommands::Register();
+		FVoxelToolsCommands::Register();
 
 		FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
 		LevelEditorModule.GetGlobalLevelEditorActions()->MapAction(
@@ -245,58 +266,84 @@ public:
 			StyleSet->SetContentRoot(FPaths::EngineContentDir() / TEXT("Editor/Slate"));
 			StyleSet->SetCoreContentRoot(FPaths::EngineContentDir() / TEXT("Slate"));
 
+			// For menus
+			StyleSet->Set("VoxelIcon"                                        , new FSlateImageBrush(ContentDir + TEXT("Editor/UIIcons/mode_40.png"), Icon16x16));
+
 			// VoxelWorld
-			StyleSet->Set("ClassThumbnail.VoxelWorld"                        , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/World_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelWorld"                             , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/World_16x.png"), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelWorld"                        , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/World_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelWorld"                             , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/World_16x.png"), Icon16x16));
 																		     
 			// Voxel Material Collection								     
-			StyleSet->Set("ClassThumbnail.VoxelMaterialCollectionBase"       , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/AssetIcons/PaperTileMap_64x.png")), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelMaterialCollectionBase"            , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/AssetIcons/PaperTileMap_16x.png")), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelMaterialCollectionBase"       , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/MaterialCollection_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelMaterialCollectionBase"            , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/MaterialCollection_16x.png"), Icon16x16));
 
 			// Importers
-			StyleSet->Set("ClassThumbnail.VoxelLandscapeImporter"            , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/Import_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelLandscapeImporter"                 , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/Import_16x.png"), Icon16x16));
-			StyleSet->Set("ClassThumbnail.VoxelMeshImporter"                 , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/Import_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelMeshImporter"                      , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/Import_16x.png"), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelLandscapeImporter"            , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Import_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelLandscapeImporter"                 , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Import_16x.png"), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelMeshImporter"                 , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Import_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelMeshImporter"                      , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Import_16x.png"), Icon16x16));
 			
 			// Spawners
-			StyleSet->Set("ClassThumbnail.VoxelSpawnerConfig"                , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/SpawnerConfig_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelSpawnerConfig"                     , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/SpawnerConfig_16x.png"), Icon16x16));
-			StyleSet->Set("ClassThumbnail.VoxelSpawner"                      , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/Spawner_64x.png")  , Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelSpawner"                           , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/Spawner_16x.png")  , Icon16x16));
-			StyleSet->Set("ClassThumbnail.VoxelSpawnerGroup"                 , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/SpawnerGroup_64x.png")  , Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelSpawnerGroup"                      , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/SpawnerGroup_16x.png")  , Icon16x16));
-			StyleSet->Set("ClassThumbnail.VoxelMeshSpawnerGroup"             , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/SpawnerGroup_64x.png")  , Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelMeshSpawnerGroup"                  , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/SpawnerGroup_16x.png")  , Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelSpawnerConfig"                , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerConfig_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelSpawnerConfig"                     , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerConfig_16x.png"), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelSpawner"                      , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Spawner_64x.png")  , Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelSpawner"                           , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Spawner_16x.png")  , Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelSpawnerGroup"                 , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerGroup_64x.png")  , Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelSpawnerGroup"                      , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerGroup_16x.png")  , Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelMeshSpawnerGroup"             , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerGroup_64x.png")  , Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelMeshSpawnerGroup"                  , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerGroup_16x.png")  , Icon16x16));
 																		     
 			// Voxel Graph												     
-			StyleSet->Set("ClassThumbnail.VoxelGraphGenerator"               , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/VoxelGraph_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelGraphGenerator"                    , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/VoxelGraph_16x.png"), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelGraphGenerator"               , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/VoxelGraph_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelGraphGenerator"                    , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/VoxelGraph_16x.png"), Icon16x16));
 																		     
 			// Data Asset												     
-			StyleSet->Set("ClassThumbnail.VoxelDataAsset"                    , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/DataAsset_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelDataAsset"                         , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/DataAsset_16x.png"), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelDataAsset"                    , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/DataAsset_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelDataAsset"                         , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/DataAsset_16x.png"), Icon16x16));
 																		     
 			// Landscape asset											     
-			StyleSet->Set("ClassThumbnail.VoxelLandscapeAsset"               , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/Landscape_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelLandscapeAsset"                    , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/Landscape_16x.png"), Icon16x16));	
+			StyleSet->Set("ClassThumbnail.VoxelLandscapeAsset"               , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Landscape_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelLandscapeAsset"                    , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Landscape_16x.png"), Icon16x16));	
 																		     
 			// Data Asset Editor										     
-			StyleSet->Set("VoxelDataAssetEditor.InvertDataAsset"             , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/icon_rotateb_40x.png")), Icon40x40));
+			StyleSet->Set("VoxelDataAssetEditor.InvertDataAsset"             , new FSlateImageBrush(ContentDir + TEXT("Editor/UIIcons/InvertDataAsset_40x.png"), Icon40x40));
+			StyleSet->Set("VoxelDataAssetEditor.InvertDataAsset.Small"       , new FSlateImageBrush(ContentDir + TEXT("Editor/UIIcons/InvertDataAsset_16x.png"), Icon16x16));
 																		     
 			// Voxel Editor Tools										     
-			StyleSet->Set("VoxelTools.Tab"                                   , new FSlateImageBrush(ContentDir + TEXT("Icons/UIIcons/mode_40.png"), Icon40x40));
-			StyleSet->Set("VoxelTools.Tab.Small"                             , new FSlateImageBrush(ContentDir + TEXT("Icons/UIIcons/mode_40.png"), Icon16x16));
+			StyleSet->Set("VoxelTools.Tab"                                   , new FSlateImageBrush(ContentDir + TEXT("Editor/UIIcons/mode_40.png"), Icon40x40));
+			StyleSet->Set("VoxelTools.Tab.Small"                             , new FSlateImageBrush(ContentDir + TEXT("Editor/UIIcons/mode_40.png"), Icon16x16));
 																		     
 			// World generator											     
-			StyleSet->Set("ClassThumbnail.VoxelWorldGenerator"               , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/WorldGenerator_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelWorldGenerator"                    , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/WorldGenerator_16x.png"), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelWorldGenerator"               , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/WorldGenerator_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelWorldGenerator"                    , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/WorldGenerator_16x.png"), Icon16x16));
 																		     
 			// Voxel World Object Save									     
-			StyleSet->Set("ClassThumbnail.VoxelWorldSaveObject"              , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/VoxelWorldSaveObject_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelWorldSaveObject"                   , new FSlateImageBrush(ContentDir + TEXT("Icons/AssetIcons/VoxelWorldSaveObject_16x.png"), Icon16x16));
+			StyleSet->Set("ClassThumbnail.VoxelWorldSaveObject"              , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/VoxelWorldSaveObject_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelWorldSaveObject"                   , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/VoxelWorldSaveObject_16x.png"), Icon16x16));
+
+			// Tools
+			const auto AddTool = [&](const FString& Name)
+			{
+				StyleSet->Set(*("VoxelTools." + Name), new FSlateImageBrush(ContentDir + "Editor/UIIcons/Tools/" + Name + "_40.png", Icon40x40));
+				StyleSet->Set(*("VoxelTools." + Name + ".Small"), new FSlateImageBrush(ContentDir + "Editor/UIIcons/Tools/" + Name + "_40.png", Icon16x16));
+			};
+			AddTool("FlattenTool");
+			AddTool("LevelTool");
+			AddTool("MeshTool");
+			AddTool("RevertTool");
+			AddTool("SmoothTool");
+			AddTool("SphereTool");
+			AddTool("SurfaceTool");
+			AddTool("TrimTool");
 			
 			FSlateStyleRegistry::RegisterSlateStyle(*StyleSet.Get());
+		}
+
+		{
+			FTabSpawnerEntry& SpawnerEntry = FGlobalTabmanager::Get()->RegisterNomadTabSpawner("VoxelDebug", FOnSpawnTab::CreateStatic(&FVoxelDebugEditor::CreateTab))
+				.SetDisplayName(VOXEL_LOCTEXT("Voxel Debug"))
+				.SetIcon(FSlateIcon(StyleSet->GetStyleSetName(), "VoxelIcon"));
+			SpawnerEntry.SetGroup(WorkspaceMenu::GetMenuStructure().GetDeveloperToolsMiscCategory());
 		}
 
 		// Voxel Editor Tools
@@ -449,6 +496,7 @@ private:
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphWorldGenerator>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphMacro>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphOutputsConfig>();
+		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphDataItemConfig>();
 	}
 
 	void UnregisterAssetTools()

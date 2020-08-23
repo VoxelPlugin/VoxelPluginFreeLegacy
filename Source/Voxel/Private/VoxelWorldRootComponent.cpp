@@ -196,6 +196,31 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
 	}
 }
 
+#if ENGINE_MINOR_VERSION >= 24
+class UMRMeshComponent
+{
+public:
+	static void FinishCreatingPhysicsMeshes(UBodySetup* Body, const TArray<physx::PxConvexMesh*>& ConvexMeshes, const TArray<physx::PxConvexMesh*>& ConvexMeshesNegX, const TArray<physx::PxTriangleMesh*>& TriMeshes)
+	{
+		Body->FinishCreatingPhysicsMeshes_PhysX(ConvexMeshes, ConvexMeshesNegX, TriMeshes);
+	}
+};
+#endif
+
+void UVoxelWorldRootComponent::SetCookedTriMeshes(const TArray<physx::PxTriangleMesh*>& TriMeshes)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	// Create body setup
+	GetBodySetup();
+
+#if ENGINE_MINOR_VERSION < 24
+	BodySetup->FinishCreatingPhysicsMeshes({}, {}, TriMeshes);
+#else
+	UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetup, {}, {}, TriMeshes);
+#endif
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

@@ -4,6 +4,7 @@
 #include "VoxelData/VoxelDataUtilities.h"
 #include "VoxelWorld.h"
 #include "VoxelWorldRootComponent.h"
+#include "VoxelUtilities/VoxelExampleUtilities.h"
 
 #include "Engine/StaticMeshActor.h"
 #include "Engine/StaticMesh.h"
@@ -25,7 +26,7 @@ UVoxelPhysicsPartSpawner_Cubes::UVoxelPhysicsPartSpawner_Cubes()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshFinder(TEXT("/Engine/BasicShapes/Cube"));
 	CubeMesh = MeshFinder.Object;
 
-	Material = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Voxel/Examples/Materials/RGB/M_VoxelMaterial_Colors_Parameter.M_VoxelMaterial_Colors_Parameter'"));
+	Material = FVoxelExampleUtilities::LoadExampleObject<UMaterialInterface>(TEXT("Material'/Voxel/Examples/Materials/RGB/M_VoxelMaterial_Colors_Parameter.M_VoxelMaterial_Colors_Parameter'"));
 }
 
 

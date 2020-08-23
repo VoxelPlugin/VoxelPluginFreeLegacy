@@ -4,43 +4,64 @@
 
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
-
-enum class EVoxelDistanceFieldInputType
-{
-	// Distances to the surface. Unknown distances must be high enough to be cleared by a min with the real distance.
-	Distances,
-	// Densities, the distance is found by looking at the ratio to neighboring densities
-	Densities
-};
+#include "VoxelConfigEnums.h"
 
 struct VOXEL_API FVoxelDistanceFieldUtilities
 {
 public:
-	/**
-	 * Takes in input distances or densities (only need to be exact near the surface)
-	 * and will expand them to find the "exact" distance field
-	 *
-	 * The result will not be entirely exact: the distance fields will only be propagated using mins, which won't be a "true" distance but should be good enough
-	 * Game thread only
-	 * 
-	 * NOTE: will return the absolute value of the distance!
-	 *
-	 * @param	NumberOfPasses	Distances will be exact up to this distance from the surface
-	 */
-	static void ComputeDistanceField_GPU(
-		const FIntVector& Size,
-		TArray<FFloat16>& InOutData,
-		EVoxelDistanceFieldInputType InputType,
-		int32 NumberOfPasses);
+	FORCEINLINE static bool IsSurfacePositionValid(const FVector& P)
+	{
+		return P.X < 1e9;
+	}
+	FORCEINLINE static FVector MakeInvalidSurfacePosition()
+	{
+		return FVector(1e9);
+	}
 
 public:
-	template<typename T, typename TLambda>
-	static void ConvertDensitiesToDistances(const FIntVector& Size, TArrayView<const T> Densities, TArrayView<float> OutDistances, TLambda GetFloatFromT);
+	static FColor GetDistanceFieldColor(float Value);
 
-	static void ConvertDensitiesToDistances(const FIntVector& Size, TArrayView<const float> Densities, TArrayView<float> OutDistances);
-	static void ConvertDensitiesToDistances(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArrayView<float> OutDistances);
+public:
+	static void JumpFlood(const FIntVector& Size, TArray<FVector>& InOutPackedPositions, EVoxelComputeDevice Device, bool bMultiThreaded = false, int32 MaxPasses_Debug = -1);
+	// Only the InOutDistances sign will be used, not their actual values
+	static void GetDistancesFromSurfacePositions(const FIntVector& Size, TArrayView<const FVector> SurfacePositions, TArrayView<float> InOutDistances);
 	
-	// NOTE: since we use the same buffer in input and output, data is written as it's read
-	// This will lead to a faster propagation of the distances, although the speed of propagation will likely be biased by the direction
-	static void ExpandDistanceField(const FIntVector& Size, TArrayView<float> InOutData);
+public:
+	// OutDistances will only have the signs of the values
+	// Note: densities need to match Size + 2, so that all neighbors can be queried!
+	template<typename T, typename TLambda>
+	static void GetSurfacePositionsFromDensities(
+		const FIntVector& Size,
+		TArrayView<const T> Densities,
+		TArrayView<float> OutDistances,
+		TArrayView<FVector> OutSurfacePositions,
+		TLambda GetFloatFromT);
+
+	static void GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const float> Densities, TArrayView<float> OutDistances, TArrayView<FVector> OutSurfacePositions);
+	static void GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArrayView<float> OutDistances, TArrayView<FVector> OutSurfacePositions);
+	
+	static void GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArray<float>& OutDistances, TArray<FVector>& OutSurfacePositions);
+
+public:
+	// Must be called BEFORE JumpFlood
+	// bShrink: if true, will bias towards shrinking the distance field. If false, will bias towards growing it
+	// TODO Doesn't work well, signs are leaking & wrongs on the borders
+	static void DownSample(
+		const FIntVector& Size, 
+		TArrayView<const float> InDistances, 
+		TArrayView<const FVector> InSurfacePositions,
+		TArrayView<float> OutDistances, 
+		TArrayView<FVector> OutSurfacePositions,
+		int32 Divisor,
+		bool bShrink);
+	
+	static void DownSample(
+		FIntVector& Size, 
+		TArray<float>& Distances, 
+		TArray<FVector>& SurfacePositions,
+		int32 Divisor,
+		bool bShrink);
+
+private:
+	static void JumpFloodStep_CPU(const FIntVector& Size, TArrayView<const FVector> InData, TArrayView<FVector> OutData, int32 Step, bool bMultiThreaded);
 };

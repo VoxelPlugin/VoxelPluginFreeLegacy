@@ -138,35 +138,15 @@ public:
 
 // Break the graph into multiple functions
 UCLASS(DisplayName = "Function Separator", Category = "Flow Control")
-class VOXELGRAPH_API UVoxelNode_FunctionSeparator : public UVoxelNode
+class VOXELGRAPH_API UVoxelNode_FunctionSeparator : public UVoxelNodeHelper
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	TArray<FVoxelNamedDataPin> ArgTypes = { {EVoxelDataPinCategory::Float, "Value"} };
-
-	UVoxelNode_FunctionSeparator() = default;
-
+	UVoxelNode_FunctionSeparator();
+	
 	//~ Begin UVoxelNode Interface
-	virtual FLinearColor GetColor() const override;
-
-	virtual EVoxelPinCategory GetInputPinCategory(int32 PinIndex) const override;
-	virtual EVoxelPinCategory GetOutputPinCategory(int32 PinIndex) const override;
-
-	virtual FName GetInputPinName(int32 PinIndex) const override;
-	virtual FName GetOutputPinName(int32 PinIndex) const override;
-
-	virtual int32 GetMinInputPins() const override;
-	virtual int32 GetMaxInputPins() const override;
-
-	virtual int32 GetOutputPinsCount() const override;
-
 	//~ End UVoxelNode Interface
-
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 };
 
 // Merges exec flow
@@ -176,7 +156,7 @@ class VOXELGRAPH_API UVoxelNode_FlowMerge : public UVoxelNode
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ReconstructNode))
 	TArray<FVoxelNamedDataPin> Types = { {EVoxelDataPinCategory::Float, "Value"} };
 
 	//~ Begin UVoxelNode Interface
@@ -194,8 +174,4 @@ public:
 	virtual int32 GetOutputPinsCount() const override;
 
 	//~ End UVoxelNode Interface
-
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 };

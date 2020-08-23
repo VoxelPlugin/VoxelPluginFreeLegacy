@@ -20,7 +20,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Config")
 	UVoxelDataAsset* Asset;
 	
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
 	bool bBilinearInterpolation = true;
 	
 	UVoxelNode_DataAssetSampler();
@@ -35,6 +35,5 @@ public:
 	//~ Begin UVoxelExposedNode Interface
 	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
 	//~ End UVoxelExposedNode Interface
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 };

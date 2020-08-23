@@ -45,6 +45,7 @@ void UVoxelInvokerComponentBase::EnableInvoker()
 		FVoxelMessages::Error(FUNCTION_ERROR("Invoker already enabled"), this);
 		return;
 	}
+	bIsInvokerEnabled = true;
 	
 	auto& Array = Components.FindOrAdd(GetWorld());
 	Array.AddUnique(MakeWeakObjectPtr(this));
@@ -60,6 +61,7 @@ void UVoxelInvokerComponentBase::DisableInvoker()
 		FVoxelMessages::Error(FUNCTION_ERROR("Invoker already disabled"), this);
 		return;
 	}
+	bIsInvokerEnabled = false;
 	
 	auto& Array = Components.FindOrAdd(GetWorld());
 	Array.RemoveAllSwap([this](auto& X) { return !X.IsValid() || X == this; });

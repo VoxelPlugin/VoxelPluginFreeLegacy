@@ -53,13 +53,14 @@ inline TWeakPtr<T> MakeWeakPtr(T* Ptr)
 	return TWeakPtr<T>(StaticCastSharedRef<T>(Ptr->AsShared()));
 }
 
+// Need TEnableIf as &&& is equivalent to &, so T could get matched with Smthg&
 template<typename T>
-inline TSharedRef<T> MakeSharedCopy(T&& Data)
+inline typename TEnableIf<!TIsReferenceType<T>::Value, TSharedRef<T>>::Type MakeSharedCopy(T&& Data)
 {
 	return MakeShared<T>(MoveTemp(Data));
 }
 template<typename T>
-inline TVoxelSharedRef<T> MakeVoxelSharedCopy(T&& Data)
+inline typename TEnableIf<!TIsReferenceType<T>::Value, TVoxelSharedRef<T>>::Type MakeVoxelSharedCopy(T&& Data)
 {
 	return MakeVoxelShared<T>(MoveTemp(Data));
 }

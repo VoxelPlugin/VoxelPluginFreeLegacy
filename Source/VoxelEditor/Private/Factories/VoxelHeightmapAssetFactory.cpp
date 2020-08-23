@@ -1,10 +1,11 @@
 // Copyright 2020 Phyronnaz
 
 #include "Factories/VoxelHeightmapAssetFactory.h"
-#include "VoxelEditorDetailsUtilities.h"
-#include "VoxelFeedbackContext.h"
+#include "VoxelAssets/VoxelHeightmapAssetData.inl"
 #include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelMessages.h"
+#include "VoxelFeedbackContext.h"
+#include "VoxelEditorDetailsUtilities.h"
 
 #include "Widgets/SWindow.h"
 #include "Widgets/Input/SButton.h"

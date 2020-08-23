@@ -76,5 +76,7 @@ void FVoxelMessages::ShowVoxelPluginProError(const FString& Message, const UObje
 		}
 	};
 	ShowNotification(GetTypeHash(Message), Message, "Get Voxel Plugin Pro", "https://buy.voxelplugin.com", FSimpleDelegate::CreateLambda(Popup), true, FSimpleDelegate::CreateLambda([&]() { bIgnore = true; }));
+
+	// Warning and not Error, else cooking might fail
 	LogMessage(FText::FromString(Message), EMessageSeverity::Warning, EVoxelShowNotification::Hide, Object);
 }

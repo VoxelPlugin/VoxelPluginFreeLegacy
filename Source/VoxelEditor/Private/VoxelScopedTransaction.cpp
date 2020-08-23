@@ -5,14 +5,27 @@
 #include "VoxelWorld.h"
 #include "Editor.h"
 
-FVoxelUndoRedoChange::FVoxelUndoRedoChange(const TVoxelWeakPtr<FVoxelData>& DataWeakPtr, FName Name, bool bIsUndo)
-	: DataWeakPtr(DataWeakPtr)
-	, Name(Name)
+FVoxelChangeBase::FVoxelChangeBase(FName Name)
+{
+}
+
+FString FVoxelChangeBase::ToString() const
+{
+	return FString::Printf(TEXT("Voxel: %s"), *Name.ToString());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelEditChange::FVoxelEditChange(const TVoxelWeakPtr<FVoxelData>& DataWeakPtr, FName Name, bool bIsUndo)
+	: FVoxelChangeBase(Name)
+	, DataWeakPtr(DataWeakPtr)
 	, bIsUndo(bIsUndo)
 {
 }
 
-TUniquePtr<FChange> FVoxelUndoRedoChange::Execute(UObject* Object)
+TUniquePtr<FChange> FVoxelEditChange::Execute(UObject* Object)
 {
 	auto* VoxelWorld = Cast<AVoxelWorld>(Object);
 
@@ -30,24 +43,67 @@ TUniquePtr<FChange> FVoxelUndoRedoChange::Execute(UObject* Object)
 		}
 	}
 
-	return MakeUnique<FVoxelUndoRedoChange>(DataWeakPtr, Name, !bIsUndo);
-}
-
-FString FVoxelUndoRedoChange::ToString() const
-{
-	return FString::Printf(TEXT("Voxel: %s"), *Name.ToString());
+	return MakeUnique<FVoxelEditChange>(DataWeakPtr, Name, !bIsUndo);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-FVoxelScopedTransaction::FVoxelScopedTransaction(AVoxelWorld* World, FName Name)
+FVoxelDataSwapChange::FVoxelDataSwapChange(const TVoxelSharedRef<FVoxelData>& Data, FName Name)
+	: FVoxelChangeBase(Name)
+	, Data(Data)
+{
+}
+
+TUniquePtr<FChange> FVoxelDataSwapChange::Execute(UObject* Object)
+{
+	auto* VoxelWorld = Cast<AVoxelWorld>(Object);
+	if (!ensure(VoxelWorld))
+	{
+		return nullptr;
+	}
+
+	const auto NewData = VoxelWorld->GetDataSharedPtr();
+
+	VoxelWorld->DestroyWorld();
+	
+	FVoxelWorldCreateInfo Info;
+	Info.bOverrideData = true;
+	Info.DataOverride_Raw = Data;
+	VoxelWorld->CreateWorld(Info);
+	
+	if (!ensure(NewData.IsValid()))
+	{
+		return nullptr;
+	}
+	else
+	{
+		return MakeUnique<FVoxelDataSwapChange>(NewData.ToSharedRef(), Name);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelScopedTransaction::FVoxelScopedTransaction(AVoxelWorld* World, FName Name, EVoxelChangeType ChangeType)
 	: bValid(ensure(World) && ensure(World->IsCreated()))
 {
 	if (bValid)
 	{
 		GEditor->BeginTransaction(TEXT("VoxelEditorTools"), FText::FromName(Name), nullptr);
 		if (!ensure(GUndo)) return;
-		GUndo->StoreUndo(World, MakeUnique<FVoxelUndoRedoChange>(World->GetDataSharedPtr(), Name, true));
+
+		if (ChangeType == EVoxelChangeType::Edit)
+		{
+			GUndo->StoreUndo(World, MakeUnique<FVoxelEditChange>(World->GetDataSharedPtr(), Name, true));
+		}
+		else
+		{
+			check(ChangeType == EVoxelChangeType::DataSwap);
+			GUndo->StoreUndo(World, MakeUnique<FVoxelDataSwapChange>(World->GetDataSharedPtr().ToSharedRef(), Name));
+		}
 	}
 }
 

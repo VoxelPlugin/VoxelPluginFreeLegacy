@@ -8,6 +8,9 @@
 #include "VoxelIntBox.h"
 #include "VoxelGraphPreviewSettings.generated.h"
 
+class UStaticMesh;
+class UMaterialInterface;
+class UVoxelPlaceableItemManager;
 class UVoxelMaterialCollectionBase;
 
 UENUM()
@@ -22,7 +25,9 @@ UENUM()
 enum class EVoxelGraphPreviewType : uint8
 {
 	Density,
-	Material
+	Material,
+	Cost,
+	RangeAnalysis
 };
 
 UENUM()
@@ -52,20 +57,30 @@ enum class EVoxelGraphMaterialPreviewType : uint8
 
 UCLASS()
 class VOXELGRAPH_API UVoxelGraphPreviewSettings : public UObject
-	{
+{
 	GENERATED_BODY()
 
 public:
 	UVoxelGraphPreviewSettings();
 		
 public:
+	UPROPERTY()
+	bool bShowStats = false;
+	
+	UPROPERTY()
+	bool bShowValues = false;
+
+public:
 	// Min displayed value
 	UPROPERTY(VisibleAnywhere, Category = "Preview Info")
-	mutable float MinValue = -1.f;
+	mutable FString MinValue;
 
 	// Max displayed value
 	UPROPERTY(VisibleAnywhere, Category = "Preview Info")
-	mutable float MaxValue = 1.f;
+	mutable FString MaxValue;
+
+	UPROPERTY(VisibleAnywhere, Category = "Preview Info", AdvancedDisplay)
+	FVoxelIntBox PreviewedBounds;
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Preview Zone")
@@ -74,17 +89,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Preview Zone")
 	EVoxelGraphPreviewAxes BottomToTop = EVoxelGraphPreviewAxes::Y;
 
-	UPROPERTY(EditAnywhere, Category = "Preview Zone")
-	FIntVector Center = FIntVector(0, 0, 0);
-	
-	UPROPERTY(EditAnywhere, Category = "Preview Zone")
+	UPROPERTY(EditAnywhere, Category = "Preview Zone", meta = (ClampMin = 32, ClampMax = 8192, UIMin = 100, UIMax = 1000))
 	int32 Resolution = 512;
 
-	UPROPERTY(EditAnywhere, Category = "Preview Zone", meta = (ClampMin = 0, ClampMax = 20, UIMin = 0, UIMax = 20))
-	int32 ResolutionScale = 0;
+	UPROPERTY(EditAnywhere, Category = "Preview Zone", meta = (UIMin = 0, UIMax = 20))
+	int32 ResolutionMultiplierLog = 0;
 
-	UPROPERTY(VisibleAnywhere, Category = "Preview Zone")
-	FVoxelIntBox PreviewedBounds;
+	// Right click & pan the preview to change it
+	UPROPERTY(EditAnywhere, Category = "Preview Zone")
+	FIntVector Center = FIntVector(0, 0, 0);
+
+	// Left click the preview to set it
+	UPROPERTY(EditAnywhere, Category = "Preview Zone")
+	FIntVector PreviewedVoxel = FIntVector(0, 0, 0);
 		
 public:
 	// Set this to the material config your voxel world will use
@@ -95,6 +112,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel World Settings")
 	UVoxelMaterialCollectionBase* MaterialCollection = nullptr;
 
+	// Used to preview placeable items
+	UPROPERTY(EditAnywhere, Category = "Voxel World Settings", Instanced, meta = (Automatic, UpdateItems))
+	UVoxelPlaceableItemManager* PlaceableItemManager = nullptr;
+		
 	// Seeds used by seed nodes
 	UPROPERTY(EditAnywhere, Category = "Voxel World Settings")
 	mutable TMap<FName, int32> Seeds;
@@ -122,41 +143,55 @@ public:
 	UPROPERTY(EditAnywhere, Category = "2D Preview Color")
 	TArray<FColor> IndexColors;
 
+	// If true, areas where the density is > 0 will be shown as black
+	UPROPERTY(EditAnywhere, Category = "2D Preview Color", AdvancedDisplay)
+	bool bHybridMaterialRendering = true;
+
+	// Increase this if there's too much noise in the cost view
+	UPROPERTY(EditAnywhere, Category = "2D Preview Color", AdvancedDisplay, meta = (UIMin = 0, UIMax = 1))
+	float CostPercentile = 0.05f;
+	
+	UPROPERTY(EditAnywhere, Category = "2D Preview Color", AdvancedDisplay, meta = (UIMin = 1, UIMax = 1024))
+	int32 NumRangeAnalysisChunksPerAxis = 64;
+
 public:
-	UPROPERTY(EditAnywhere, Category = "3D Preview Color")
+	UPROPERTY(EditAnywhere, Category = "3D Preview Settings")
+	bool bHeightmapMode = true;
+	
+	UPROPERTY(EditAnywhere, Category = "3D Preview Heightmap Settings")
 	bool bHeightBasedColor = true;
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Color", meta = (EditCondition = bHeightBasedColor))
+	UPROPERTY(EditAnywhere, Category = "3D Preview Heightmap Settings", meta = (MeshOnly, EditCondition = bHeightBasedColor))
 	bool bEnableWater = false;
-
-public:
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings", meta = (NoRebuild))
+	
+	UPROPERTY(EditAnywhere, Category = "3D Preview Heightmap Settings", meta = (MeshOnly))
 	float Height = 200;
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings", meta = (NoRebuild))
+	UPROPERTY(EditAnywhere, Category = "3D Preview Heightmap Settings", meta = (MeshOnly))
 	FVector LightDirection = FVector(1, 1, 1);
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings|Raytraced Shadows", meta = (NoRebuild))
+	UPROPERTY(EditAnywhere, Category = "3D Preview Heightmap Settings|Raytraced Shadows", meta = (MeshOnly))
 	float StartBias = 0.01;
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings|Raytraced Shadows", meta = (NoRebuild))
+	UPROPERTY(EditAnywhere, Category = "3D Preview Heightmap Settings|Raytraced Shadows", meta = (MeshOnly))
 	int32 MaxSteps = 128;
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings|Raytraced Shadows", meta = (NoRebuild, UIMin = 0, UIMax = 1))
+	UPROPERTY(EditAnywhere, Category = "3D Preview Heightmap Settings|Raytraced Shadows", meta = (MeshOnly, UIMin = 0, UIMax = 1))
 	float Brightness = 1;
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings|Raytraced Shadows", meta = (NoRebuild, UIMin = 0))
+	UPROPERTY(EditAnywhere, Category = "3D Preview Heightmap Settings|Raytraced Shadows", meta = (MeshOnly, UIMin = 0))
 	float ShadowDensity = 8;
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings|Mesh", meta = (NoRebuild))
-	class UStaticMesh* Mesh = nullptr;
+public:
+	UPROPERTY()
+	UStaticMesh* Mesh = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings|Mesh", meta = (NoRebuild))
-	class UMaterialInterface* Material = nullptr;
+	UPROPERTY()
+	UMaterialInterface* HeightmapMaterial = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "3D Preview Settings|Mesh", meta = (NoRebuild))
-	FVector MeshScale = FVector(10, 10, 10);
-
+	UPROPERTY()
+	UMaterialInterface* SliceMaterial = nullptr;
+	
 public:
 	// Will set black to the lowest value in the image, and white to the highest
 	UPROPERTY(EditAnywhere, Category = "Misc")
@@ -178,62 +213,32 @@ public:
 	UPROPERTY()
 	class UVoxelGraphGenerator* Graph;
 
-protected:
 #if WITH_EDITOR
-	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+};
+
+struct VOXELGRAPH_API FVoxelGraphPreviewSettingsWrapper
+{
+public:
+	int32 LOD; // != LOD to preview!
+	int32 Step;
+	int32 Resolution;
+
+	FIntVector Start;
+	FIntVector Size;
+	FIntVector Center;
+	
+	FVoxelIntBox Bounds;
+
+	EVoxelGraphPreviewAxes LeftToRight = EVoxelGraphPreviewAxes::X;
+	EVoxelGraphPreviewAxes BottomToTop = EVoxelGraphPreviewAxes::Y;
+
+	explicit FVoxelGraphPreviewSettingsWrapper(const UVoxelGraphPreviewSettings& Settings);
 
 public:
-	inline int32 GetStep() const
-	{
-		return 1 << ResolutionScale;
-	}
-
-	inline FIntVector GetCenter() const
-	{
-		const int32 Step = GetStep();
-		return FVoxelUtilities::RoundToInt(FVector(Center) / Step) * Step;
-	}
-
-	inline FIntVector GetStart() const
-	{
-		FIntVector Start = GetCenter();
-
-		const int32 Offset = Resolution / 2 * GetStep();
-		for (EVoxelGraphPreviewAxes Axis : { LeftToRight, BottomToTop })
-		{
-			GetAxis(Start, Axis) -= Offset;
-		}
-
-		return Start;
-	}
-
-	inline FIntVector GetSize() const
-	{
-		FIntVector Size = FIntVector(1, 1, 1);
-		for (EVoxelGraphPreviewAxes Axis : { LeftToRight, BottomToTop })
-		{
-			GetAxis(Size, Axis) = Resolution;
-		}
-		return Size;
-	}
-
-	inline FVoxelIntBox GetBounds() const
-	{
-		const FIntVector Start = GetStart();
-		return FVoxelIntBox(Start, Start + GetSize() * GetStep());
-	}
-
-	inline FIntVector GetPosition(int32 X, int32 Y) const
-	{
-		FIntVector Position(0, 0, 0);
-		GetAxis(Position, LeftToRight) = X;
-		GetAxis(Position, BottomToTop) = Resolution - 1 - Y;
-		return Position;
-	}
-
-private:
-	static inline int32& GetAxis(FIntVector& Vector, EVoxelGraphPreviewAxes Axis)
+	template<typename T>
+	static auto& GetAxis(T& Vector, EVoxelGraphPreviewAxes Axis)
 	{
 		switch (Axis)
 		{
@@ -245,5 +250,56 @@ private:
 		default:
 			return Vector.Z;
 		}
+	}
+
+	FIntVector GetRelativePosition(int32 X, int32 Y) const
+	{
+		FIntVector Position(0, 0, 0);
+		GetAxis(Position, LeftToRight) = X;
+		GetAxis(Position, BottomToTop) = Y;
+		return Position;
+	}
+	FVector GetRelativePosition(float X, float Y) const
+	{
+		FVector Position(0, 0, 0);
+		GetAxis(Position, LeftToRight) = X;
+		GetAxis(Position, BottomToTop) = Y;
+		return Position;
+	}
+	
+	FIntVector GetWorldPosition(int32 X, int32 Y) const
+	{
+		return Start + Step * GetRelativePosition(X, Y);
+	}
+	
+	FIntPoint GetScreenPosition(FIntVector WorldPosition) const
+	{
+		WorldPosition -= Start;
+		WorldPosition = FVoxelUtilities::DivideRound(WorldPosition, Step);
+
+		FIntPoint Result;
+		Result.X = GetAxis(WorldPosition, LeftToRight);
+		Result.Y = GetAxis(WorldPosition, BottomToTop);
+		return Result;
+	}
+	FVector2D GetScreenPosition(FVector WorldPosition) const
+	{
+		WorldPosition -= FVector(Start);
+		WorldPosition /= Step;
+
+		FVector2D Result;
+		Result.X = GetAxis(WorldPosition, LeftToRight);
+		Result.Y = GetAxis(WorldPosition, BottomToTop);
+		return Result;
+	}
+	
+	int32 GetDataIndex(int32 X, int32 Y) const
+	{
+		const FIntVector Position = GetRelativePosition(X, Y);
+		return Position.X + Position.Y * Size.X + Position.Z * Size.X * Size.Y;
+	}
+	int32 GetTextureIndex(int32 X, int32 Y) const
+	{
+		return X + Resolution * (Resolution - 1 - Y);
 	}
 };

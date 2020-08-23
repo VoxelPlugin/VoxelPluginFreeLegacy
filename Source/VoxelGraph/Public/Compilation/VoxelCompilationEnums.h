@@ -24,10 +24,12 @@ enum class EVoxelCompilationNodeType : uint8
 	FunctionInit,
 	If,
 	Setter,
-	StaticClamp,
+	RangeAnalysisConstant,
+	GetRangeAnalysis,
 	BiomeMerge,
 	CompileTimeConstant,
-	Switch
+	Switch,
+	SmartMinMax
 };
 
 enum class EVoxelPinIter : uint8

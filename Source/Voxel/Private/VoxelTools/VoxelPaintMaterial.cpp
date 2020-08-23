@@ -5,6 +5,9 @@
 
 void FVoxelPaintMaterial::ApplyToMaterial(FVoxelMaterial& Material, float Strength) const
 {
+	// Else goes way beyond target
+	Strength = FMath::Clamp(Strength, -1.f, 1.f);
+	
 	switch (Type)
 	{
 	case EVoxelPaintMaterialType::Color:

@@ -65,31 +65,19 @@ public:
 			// Clear messages											     
 			StyleSet->Set("VoxelGraphEditor.ClearNodesMessages"              , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/icon_file_new_40x.png")), Icon40x40));
 			StyleSet->Set("VoxelGraphEditor.ClearNodesMessages.Small"        , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/icon_file_new_16px.png")), Icon20x20));
-																		     
-			// Show stats											     
-			StyleSet->Set("VoxelGraphEditor.ShowStats"					     , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/profiler_stats_40x.png")), Icon40x40));
-			StyleSet->Set("VoxelGraphEditor.ShowStats.Small"				 , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/profiler_stats_40x.png")), Icon20x20));
-																		     
-			// Show range analysis errors											     
-			StyleSet->Set("VoxelGraphEditor.ShowRangeAnalysisErrors"		 , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/EventMessage_Default_Error.png")), Icon40x40));
-			StyleSet->Set("VoxelGraphEditor.ShowRangeAnalysisErrors.Small"   , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/EventMessage_Default_Error.png")), Icon20x20));
-			
-			// Range Analysis Debug											     
-			StyleSet->Set("VoxelGraphEditor.ToggleRangeAnalysisDebug"		 , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/icon_TextureEd_CompressNow_512x.png")), Icon40x40));
-			StyleSet->Set("VoxelGraphEditor.ToggleRangeAnalysisDebug.Small"  , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/icon_TextureEd_CompressNow_512x.png")), Icon20x20));
-
-			// Toggle stats												     
-			StyleSet->Set("VoxelGraphEditor.ToggleStats"                     , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/Profiler_Data_Capture_40x.png")), Icon40x40));
-			StyleSet->Set("VoxelGraphEditor.ToggleStats.Small"               , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/Profiler_Data_Capture_40x.png")), Icon20x20));
-
+					
 			// Show Axis Dependencies
 			StyleSet->Set("VoxelGraphEditor.ShowAxisDependencies"            , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/profiler_Calls_32x.png")), Icon40x40));
 			StyleSet->Set("VoxelGraphEditor.ShowAxisDependencies.Small"      , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/profiler_Calls_32x.png")), Icon20x20));
-																		     
-			// Show selected nodes stats											     
-			StyleSet->Set("VoxelGraphEditor.ShowSelectedNodesStats"			 , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/profiler_sync_40x.png")), Icon40x40));
-			StyleSet->Set("VoxelGraphEditor.ShowSelectedNodesStats.Small"    , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/profiler_sync_40x.png")), Icon20x20));
-			
+		
+			// Show stats												     
+			StyleSet->Set("VoxelGraphEditor.ShowStats"                       , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/Profiler_Data_Capture_40x.png")), Icon40x40));
+			StyleSet->Set("VoxelGraphEditor.ShowStats.Small"                 , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/Profiler/Profiler_Data_Capture_40x.png")), Icon20x20));
+
+			// Show values											     
+			StyleSet->Set("VoxelGraphEditor.ShowValues"                      , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/icon_TextureEd_CompressNow_512x.png")), Icon40x40));
+			StyleSet->Set("VoxelGraphEditor.ShowValues.Small"                , new FSlateImageBrush(StyleSet->RootToContentDir(TEXT("Icons/icon_TextureEd_CompressNow_512x.png")), Icon20x20));
+
 			FSlateStyleRegistry::RegisterSlateStyle(*StyleSet.Get());
 		}
 	}

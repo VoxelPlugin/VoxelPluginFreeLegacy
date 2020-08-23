@@ -7,11 +7,6 @@
 
 void FVoxelEdModeToolkit::Init(const TSharedPtr<IToolkitHost>& InitToolkitHost)
 {
-	FEdModeVoxel* VoxelEdMode = static_cast<FEdModeVoxel*>(GetEditorMode());
-	check(VoxelEdMode);
-
-	ToolkitWidget = VoxelEdMode->GetPanel().GetWidget();
-
 	FModeToolkit::Init(InitToolkitHost);
 }
 
@@ -28,4 +23,48 @@ FText FVoxelEdModeToolkit::GetBaseToolkitName() const
 class FEdMode* FVoxelEdModeToolkit::GetEditorMode() const
 {
 	return GLevelEditorModeTools().GetActiveMode(FEdModeVoxel::EM_Voxel);
+}
+
+TSharedPtr<SWidget> FVoxelEdModeToolkit::GetInlineContent() const
+{
+	return GetPanel().GetWidget();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void FVoxelEdModeToolkit::GetToolPaletteNames(TArray<FName>& InPaletteName) const
+{
+	InPaletteName = { STATIC_FNAME("Main") };
+}
+
+void FVoxelEdModeToolkit::BuildToolPalette(FName PaletteName, FToolBarBuilder& ToolBarBuilder)
+{
+	GetPanel().CustomizeToolbar(ToolBarBuilder);
+}
+
+void FVoxelEdModeToolkit::OnToolPaletteChanged(FName PaletteName)
+{
+}
+
+FText FVoxelEdModeToolkit::GetActiveToolDisplayName() const
+{
+	return {};
+}
+
+FText FVoxelEdModeToolkit::GetActiveToolMessage() const
+{
+	return {};
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelEditorToolsPanel& FVoxelEdModeToolkit::GetPanel() const
+{
+	FEdModeVoxel* VoxelEdMode = static_cast<FEdModeVoxel*>(GetEditorMode());
+	check(VoxelEdMode);
+	return VoxelEdMode->GetPanel();
 }

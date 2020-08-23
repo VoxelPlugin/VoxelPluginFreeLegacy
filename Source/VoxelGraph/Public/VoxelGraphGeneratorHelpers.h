@@ -35,6 +35,7 @@ public:
 	using FVoxelWorldGeneratorInstance::FCustomFunctionPtrs;
 	using FVoxelTransformableWorldGeneratorInstance::FCustomFunctionPtrs_Transform;
 
+	DEPRECATED_VOXEL_GRAPH_FUNCTION()
 	TVoxelGraphGeneratorInstanceHelper(
 		const TMap<FName, uint32>& FloatOutputs,
 		const TMap<FName, uint32>& Int32Outputs,
@@ -44,8 +45,39 @@ public:
 		const FCustomFunctionPtrs_Transform& CustomFunctionPtrs_Transform,
 		
 		bool bEnableRangeAnalysis)
-		: TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>(CustomFunctionPtrs, CustomFunctionPtrs_Transform)
+		: TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>(nullptr, CustomFunctionPtrs, CustomFunctionPtrs_Transform)
 		, bEnableRangeAnalysis(bEnableRangeAnalysis)
+		, CustomOutputsNames(FName())
+	{
+		auto& Array = const_cast<TStaticArray<FName, MAX_VOXELGRAPH_OUTPUTS>&>(CustomOutputsNames);
+		for (auto& It : FloatOutputs)
+		{
+			ensure(Array[It.Value] == FName());
+			Array[It.Value] = It.Key;
+		}
+		for (auto& It : Int32Outputs)
+		{
+			ensure(Array[It.Value] == FName());
+			Array[It.Value] = It.Key;
+		}
+		for (auto& It : ColorOutputs)
+		{
+			ensure(Array[It.Value] == FName());
+			Array[It.Value] = It.Key;
+		}
+	}
+	
+	TVoxelGraphGeneratorInstanceHelper(
+		const TMap<FName, uint32>& FloatOutputs,
+		const TMap<FName, uint32>& Int32Outputs,
+		const TMap<FName, uint32>& ColorOutputs,
+
+		const FCustomFunctionPtrs& CustomFunctionPtrs,
+		const FCustomFunctionPtrs_Transform& CustomFunctionPtrs_Transform,
+		
+		UWorldObject& Object)
+		: TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>(&Object, CustomFunctionPtrs, CustomFunctionPtrs_Transform)
+		, bEnableRangeAnalysis(Object.bEnableRangeAnalysis)
 		, CustomOutputsNames(FName())
 	{
 		auto& Array = const_cast<TStaticArray<FName, MAX_VOXELGRAPH_OUTPUTS>&>(CustomOutputsNames);
@@ -67,8 +99,8 @@ public:
 	}
 
 public:
-	template<bool bCustomTransform, typename T, uint32 Index, typename F>
-	inline T GetOutput(const FTransform& LocalToWorld, T DefaultValue, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items, F CallNextGenerator) const
+	template<bool bCustomTransform, typename T, uint32 Index>
+	T GetOutput(const FTransform& LocalToWorld, T DefaultValue, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		ensure(bInit);
 		
@@ -78,14 +110,15 @@ public:
 		Outputs.Init(FVoxelGraphOutputsInit{ MaterialConfig });
 		Outputs.template Set<T, Index>(DefaultValue);
 
-		const FVoxelContext Context(LOD, Items, LocalToWorld, bCustomTransform, X, Y, Z);
+		FVoxelContext Context(LOD, Items, LocalToWorld, bCustomTransform);
+		Context.UpdateCoordinates<bCustomTransform>(X, Y, Z);
 		Target.ComputeXYZWithoutCache(Context, Outputs);
 
 		return Outputs.template Get<T, Index>();
 	}
 
 	template<bool bCustomTransform, typename T, uint32 Index>
-	inline TVoxelRange<T> GetOutputRange(const FTransform& LocalToWorld, TVoxelRange<T> DefaultValue, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<T> GetOutputRange(const FTransform& LocalToWorld, TVoxelRange<T> DefaultValue, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		ensure(bInit);
 		
@@ -109,12 +142,6 @@ public:
 
 		Target.ComputeXYZWithoutCache(Context, Outputs);
 		
-		if (RangeFailStatus.NeedReport())
-		{
-			RangeFailStatus.ResetNeedReport();
-			This().ReportRangeAnalysisFailure();
-		}
-		
 		if (RangeFailStatus.HasFailed())
 		{
 			RangeFailStatus.Reset();
@@ -124,32 +151,36 @@ public:
 		return Outputs.template Get<T, Index>();
 	}
 
-	template<bool bCustomTransform, typename T, typename QueryZoneType, uint32 Index, typename F>
-	inline void GetOutput(const FTransform& LocalToWorld, T DefaultValue, TVoxelQueryZone<QueryZoneType>& QueryZone, int32 LOD, const FVoxelItemStack& Items, F CallNextGenerator) const
+	template<bool bCustomTransform, typename T, typename QueryZoneType, uint32 Index>
+	void GetOutput(const FTransform& LocalToWorld, T DefaultValue, TVoxelQueryZone<QueryZoneType>& QueryZone, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		ensure(bInit);
 		
 		auto&& Target = This().template GetTarget<Index>();
+
 		FVoxelContext Context(LOD, Items, LocalToWorld, bCustomTransform);
-		if (!bCustomTransform || LocalToWorld.GetRotation() == FQuat::Identity)
+		
+		if (!bCustomTransform)
 		{
 			// We can only use the dependencies analysis if we don't have a transform, or if it's only translation + scale
-			// (and thus not changing the axis)
+			// (and thus not changing the axis). Not checking that second case though.
 			for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, X))
 			{
-				Context.SetWorldX(X);
+				Context.LocalX = Context.WorldX = X;
+				
 				auto BufferX = Target.GetBufferX();
 				Target.ComputeX(Context, BufferX);
 
 				for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Y))
 				{
-					Context.SetWorldY(Y);
+					Context.LocalY = Context.WorldY = Y;
+
 					auto BufferXY = Target.GetBufferXY();
 					Target.ComputeXYWithCache(Context, BufferX, BufferXY);
 
 					for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Z))
 					{
-						Context.SetWorldZ(Z);
+						Context.LocalZ = Context.WorldZ = Z;
 
 						auto Outputs = Target.GetOutputs();
 						Outputs.Init(FVoxelGraphOutputsInit{ MaterialConfig });
@@ -165,13 +196,11 @@ public:
 			// Have to query all the voxels individually
 			for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, X))
 			{
-				Context.SetWorldX(X);
 				for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Y))
 				{
-					Context.SetWorldY(Y);
 					for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Z))
 					{
-						Context.SetWorldZ(Z);
+						Context.UpdateCoordinates<true>(X, Y, Z);
 
 						auto Outputs = Target.GetOutputs();
 						Outputs.Init(FVoxelGraphOutputsInit{ MaterialConfig });
@@ -185,57 +214,48 @@ public:
 	}
 
 	template<bool bCustomTransform, typename T, uint32 Index>
-	inline T GetDataImpl(const FTransform& LocalToWorld, T DefaultValue, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+	T GetDataImpl(const FTransform& LocalToWorld, T DefaultValue, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		return GetOutput<bCustomTransform, T, Index>(LocalToWorld, DefaultValue, X, Y, Z, LOD, Items, [&](auto& NextStack)
-		{
-			return NextStack.template Get<T>(X, Y, Z, LOD);
-		});
+		return GetOutput<bCustomTransform, T, Index>(LocalToWorld, DefaultValue, X, Y, Z, LOD, Items);
 	}
 
 	template<bool bCustomTransform, typename T, typename QueryZoneType, uint32 Index>
-	inline void GetData(const FTransform& LocalToWorld, T DefaultValue, TVoxelQueryZone<QueryZoneType>& QueryZone, int32 LOD, const FVoxelItemStack& Items) const
+	void GetData(const FTransform& LocalToWorld, T DefaultValue, TVoxelQueryZone<QueryZoneType>& QueryZone, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		return GetOutput<bCustomTransform, T, QueryZoneType, Index>(LocalToWorld, DefaultValue, QueryZone, LOD, Items, [&](auto& NextStack, int32 X, int32 Y, int32 Z)
-		{
-			return NextStack.template Get<T>(X, Y, Z, LOD);
-		});
+		return GetOutput<bCustomTransform, T, QueryZoneType, Index>(LocalToWorld, DefaultValue, QueryZone, LOD, Items);
 	}
 
 	template<bool bCustomTransform, typename T, uint32 Index>
 	T GetCustomOutputImpl(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		static_assert(Index < MAX_VOXELGRAPH_OUTPUTS, "");
-		return GetOutput<bCustomTransform, T, Index>(LocalToWorld, T{}, X, Y, Z, LOD, Items, [&](auto& NextStack)
-		{
-			return NextStack.MSVC_TEMPLATE GetCustomOutput<T>(T{}, CustomOutputsNames[Index], X, Y, Z, LOD);
-		});
+		return GetOutput<bCustomTransform, T, Index>(LocalToWorld, T{}, X, Y, Z, LOD, Items);
 	}
 
 	template<bool bCustomTransform, typename T, uint32 Index>
-	inline TVoxelRange<T> GetCustomOutputRangeImpl(const FTransform& LocalToWorld, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<T> GetCustomOutputRangeImpl(const FTransform& LocalToWorld, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		static_assert(Index < MAX_VOXELGRAPH_OUTPUTS, "");
 		return GetOutputRange<bCustomTransform, T, Index>(LocalToWorld, T{}, WorldBounds, LOD, Items);
 	}
 	
 	template<typename T, uint32 Index>
-	inline T GetCustomOutputWithTransform(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+	T GetCustomOutputWithTransform(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return GetCustomOutputImpl<true, T, Index>(LocalToWorld, X, Y, Z, LOD, Items);
 	}
 	template<typename T, uint32 Index>
-	inline TVoxelRange<T> GetCustomOutputRangeWithTransform(const FTransform& LocalToWorld, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<T> GetCustomOutputRangeWithTransform(const FTransform& LocalToWorld, const FVoxelIntBox& WorldBounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return GetCustomOutputRangeImpl<true, T, Index>(LocalToWorld, WorldBounds, LOD, Items);
 	}
 	template<typename T, uint32 Index>
-	inline T GetCustomOutputNoTransform(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
+	T GetCustomOutputNoTransform(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return GetCustomOutputImpl<false, T, Index>(FTransform(), X, Y, Z, LOD, Items);
 	}
 	template<typename T, uint32 Index>
-	inline TVoxelRange<T> GetCustomOutputRangeNoTransform(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
+	TVoxelRange<T> GetCustomOutputRangeNoTransform(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return GetCustomOutputRangeImpl<false, T, Index>(FTransform(), Bounds, LOD, Items);
 	}
@@ -297,7 +317,8 @@ public:
 		Outputs.template Set<v_flt, FVoxelGraphOutputsIndices::UpVectorYIndex>(0);
 		Outputs.template Set<v_flt, FVoxelGraphOutputsIndices::UpVectorZIndex>(1);
 
-		const FVoxelContext Context(0, FVoxelItemStack::Empty, FTransform::Identity, false, X, Y, Z);
+		FVoxelContext Context(0, FVoxelItemStack::Empty, FTransform::Identity, false);
+		Context.UpdateCoordinates<false>(X, Y, Z);
 
 		Target.ComputeXYZWithoutCache(Context, Outputs);
 
@@ -316,7 +337,7 @@ protected:
 	struct NoTransformAccessor
 	{
 		template<uint32 Index, typename ReturnType>
-		inline static ReturnType Get()
+		static ReturnType Get()
 		{
 			return static_cast<ReturnType>(&TChild::template GetCustomOutputNoTransform<T, Index>);
 		}
@@ -325,7 +346,7 @@ protected:
 	struct NoTransformRangeAccessor
 	{
 		template<uint32 Index, typename ReturnType>
-		inline static ReturnType Get()
+		static ReturnType Get()
 		{
 			return static_cast<ReturnType>(&TChild::template GetCustomOutputRangeNoTransform<T, Index>);
 		}
@@ -334,7 +355,7 @@ protected:
 	struct WithTransformAccessor
 	{
 		template<uint32 Index, typename ReturnType>
-		inline static ReturnType Get()
+		static ReturnType Get()
 		{
 			return static_cast<ReturnType>(&TChild::template GetCustomOutputWithTransform<T, Index>);
 		}
@@ -343,7 +364,7 @@ protected:
 	struct WithTransformRangeAccessor
 	{
 		template<uint32 Index, typename ReturnType>
-		inline static ReturnType Get()
+		static ReturnType Get()
 		{
 			return static_cast<ReturnType>(&TChild::template GetCustomOutputRangeWithTransform<T, Index>);
 		}
@@ -357,11 +378,11 @@ private:
 	bool bInit = false;
 	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig(-1);
 
-	inline const TChild& This() const
+	const TChild& This() const
 	{
 		return static_cast<const TChild&>(*this);
 	}
-	inline TChild& This()
+	TChild& This()
 	{
 		return static_cast<TChild&>(*this);
 	}
@@ -376,14 +397,4 @@ public:
 	// Range analysis gives a pretty significant speed-up. You should not disable it
 	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Misc")
 	bool bEnableRangeAnalysis = true;
-	
-	//~ Begin UVoxelTransformableWorldGenerator Interface
-	void SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const override
-	{
-	}
-	TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> LoadInstance(FArchive& Ar) const override
-	{
-		return GetClass()->GetDefaultObject<UVoxelGraphGeneratorHelper>()->GetTransformableInstance();
-	}
-	//~ End UVoxelTransformableWorldGenerator Interface
 };

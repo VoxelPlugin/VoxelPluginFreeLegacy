@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelStaticArray.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelMaterialIndices.generated.h"
 
 USTRUCT() // UStruct to use it in TMap for GC

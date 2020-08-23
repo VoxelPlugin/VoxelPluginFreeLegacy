@@ -3,9 +3,10 @@
 #include "VoxelNodes/VoxelWorldGeneratorMergeNode.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
 #include "VoxelGraphOutputsConfig.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 constexpr int32 NumDefaultInputPins_WGMN = 3 + 2 * 4;
 
@@ -100,7 +101,7 @@ void UVoxelNode_WorldGeneratorMerge::LogErrors(FVoxelGraphErrorReporter& ErrorRe
 	{
 		if (!WorldGenerator.IsValid())
 		{
-			ErrorReporter.AddMessageToNode(this, "invalid world generator", EVoxelGraphNodeMessageType::FatalError);
+			ErrorReporter.AddMessageToNode(this, "invalid world generator", EVoxelGraphNodeMessageType::Error);
 		}
 	}
 }

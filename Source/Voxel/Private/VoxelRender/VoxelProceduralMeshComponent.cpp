@@ -341,7 +341,8 @@ void UVoxelProceduralMeshComponent::FinishSectionsUpdates()
 
 FPrimitiveSceneProxy* UVoxelProceduralMeshComponent::CreateSceneProxy()
 {
-	VOXEL_FUNCTION_COUNTER();
+	// Sometimes called outside of the render thread at EndPlay
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	for (auto& Section : ProcMeshSections)
 	{

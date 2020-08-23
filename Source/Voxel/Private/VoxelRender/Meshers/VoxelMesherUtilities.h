@@ -44,9 +44,9 @@ namespace FVoxelMesherUtilities
 			return Vertex;
 		}
 		
-		if ((Vertex.X == 0.f && !(TransitionsMask & EVoxelDirection::XMin)) || (Vertex.X == Size && !(TransitionsMask & EVoxelDirection::XMax)) ||
-	  	    (Vertex.Y == 0.f && !(TransitionsMask & EVoxelDirection::YMin)) || (Vertex.Y == Size && !(TransitionsMask & EVoxelDirection::YMax)) ||
-	  	    (Vertex.Z == 0.f && !(TransitionsMask & EVoxelDirection::ZMin)) || (Vertex.Z == Size && !(TransitionsMask & EVoxelDirection::ZMax)))
+		if ((Vertex.X == 0.f && !(TransitionsMask & EVoxelDirectionFlag::XMin)) || (Vertex.X == Size && !(TransitionsMask & EVoxelDirectionFlag::XMax)) ||
+	  	    (Vertex.Y == 0.f && !(TransitionsMask & EVoxelDirectionFlag::YMin)) || (Vertex.Y == Size && !(TransitionsMask & EVoxelDirectionFlag::YMax)) ||
+	  	    (Vertex.Z == 0.f && !(TransitionsMask & EVoxelDirectionFlag::ZMin)) || (Vertex.Z == Size && !(TransitionsMask & EVoxelDirectionFlag::ZMax)))
 		{
 			// Can't translate when on a corner
 			return Vertex;
@@ -54,27 +54,27 @@ namespace FVoxelMesherUtilities
 
 		FVector Delta(0.f);
 
-		if ((TransitionsMask & EVoxelDirection::XMin) && Vertex.X < LowerBound)
+		if ((TransitionsMask & EVoxelDirectionFlag::XMin) && Vertex.X < LowerBound)
 		{
 			Delta.X = LowerBound - Vertex.X;
 		}
-		if ((TransitionsMask & EVoxelDirection::XMax) && Vertex.X > UpperBound)
+		if ((TransitionsMask & EVoxelDirectionFlag::XMax) && Vertex.X > UpperBound)
 		{
 			Delta.X = UpperBound - Vertex.X;
 		}
-		if ((TransitionsMask & EVoxelDirection::YMin) && Vertex.Y < LowerBound)
+		if ((TransitionsMask & EVoxelDirectionFlag::YMin) && Vertex.Y < LowerBound)
 		{
 			Delta.Y = LowerBound - Vertex.Y;
 		}
-		if ((TransitionsMask & EVoxelDirection::YMax) && Vertex.Y > UpperBound)
+		if ((TransitionsMask & EVoxelDirectionFlag::YMax) && Vertex.Y > UpperBound)
 		{
 			Delta.Y = UpperBound - Vertex.Y;
 		}
-		if ((TransitionsMask & EVoxelDirection::ZMin) && Vertex.Z < LowerBound)
+		if ((TransitionsMask & EVoxelDirectionFlag::ZMin) && Vertex.Z < LowerBound)
 		{
 			Delta.Z = LowerBound - Vertex.Z;
 		}
-		if ((TransitionsMask & EVoxelDirection::ZMax) && Vertex.Z > UpperBound)
+		if ((TransitionsMask & EVoxelDirectionFlag::ZMax) && Vertex.Z > UpperBound)
 		{
 			Delta.Z = UpperBound - Vertex.Z;
 		}
@@ -146,5 +146,45 @@ namespace FVoxelMesherUtilities
 			}
 		}
 		Indices = MoveTemp(NewIndices);
+	}
+	
+	template<typename T>
+	inline static void RemoveUnusedVertices(TArray<uint32>& Indices, TArray<T>& Vertices)
+	{
+		VOXEL_ASYNC_FUNCTION_COUNTER();
+
+		TBitArray<> UsedVertices(false, Vertices.Num());
+		for (uint32 Index : Indices)
+		{
+			UsedVertices[Index] = true;
+		}
+		
+		TArray<uint32> NewIndices;
+		NewIndices.Empty(Vertices.Num());
+		NewIndices.SetNumUninitialized(Vertices.Num());
+		
+		int32 WriteIndex = 0;
+		for (int32 ReadIndex = 0; ReadIndex < Vertices.Num(); ReadIndex++)
+		{
+			if (UsedVertices[ReadIndex])
+			{
+				NewIndices[ReadIndex] = WriteIndex;
+				Vertices[WriteIndex] = Vertices[ReadIndex];
+				WriteIndex++;
+			}
+			else
+			{
+				NewIndices[ReadIndex] = -1;
+			}
+		}
+		
+		check(WriteIndex <= Vertices.Num());
+		Vertices.SetNum(WriteIndex, false);
+
+		for (uint32& Index : Indices)
+		{
+			Index = NewIndices[Index];
+			checkVoxelSlow(Index != -1);
+		}
 	}
 }

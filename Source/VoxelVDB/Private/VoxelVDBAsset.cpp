@@ -4,7 +4,7 @@
 #include "VoxelVDBInclude.h"
 
 #include "VoxelMessages.h"
-#include "VoxelCustomVersion.h"
+#include "VoxelObjectArchive.h"
 #include "VoxelFeedbackContext.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
 #include "VoxelWorldGenerators/VoxelTransformableWorldGeneratorHelper.h"
@@ -108,8 +108,7 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelVDBAssetData::FVoxelVDBAssetData(TWeakObjectPtr<UVoxelVDBAsset> Owner)
-	: Owner(Owner)
+FVoxelVDBAssetData::FVoxelVDBAssetData()
 {
 	for (uint32 Index = 0; Index < Channels.Num(); Index++)
 	{
@@ -302,11 +301,14 @@ TVoxelRange<float> FVoxelVDBAssetData::GetValueRange(const FVoxelIntBox& Bounds)
 class FVoxelVDBAssetInstance : public TVoxelWorldGeneratorInstanceHelper<FVoxelVDBAssetInstance, UVoxelVDBAsset>
 {
 public:
-	const TVoxelSharedPtr<FVoxelVDBAssetData> Data;
+	using Super = TVoxelWorldGeneratorInstanceHelper<FVoxelVDBAssetInstance, UVoxelVDBAsset>;
+	
+	const TVoxelSharedPtr<const FVoxelVDBAssetData> Data;
 
 public:
-	explicit FVoxelVDBAssetInstance(const TVoxelSharedPtr<FVoxelVDBAssetData>& Data)
-		: Data(Data)
+	explicit FVoxelVDBAssetInstance(UVoxelVDBAsset& Asset)
+		: Super(&Asset)
+		, Data(Asset.GetData())
 	{
 	}
 
@@ -323,7 +325,7 @@ public:
 	
 	TVoxelRange<v_flt> GetValueRangeImpl(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
 	{
-		return Data->GetValueRange(Bounds);
+		return TVoxelRange<v_flt>(Data->GetValueRange(Bounds));
 	}
 	FVector GetUpVector(v_flt X, v_flt Y, v_flt Z) const override final
 	{
@@ -352,39 +354,6 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelVDBAsset::GetTr
 	return MakeVoxelShared<TVoxelTransformableWorldGeneratorHelper<FVoxelVDBAssetInstance>>(GetInstanceImpl(), bSubtractiveAsset);
 }
 
-void UVoxelVDBAsset::SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const
-{
-	auto& DataInstance = *static_cast<const TVoxelTransformableWorldGeneratorHelper<FVoxelVDBAssetInstance>&>(Instance).WorldGenerator;
-	FString Path;
-	auto* Owner = DataInstance.Data->Owner.Get();
-	if (Owner)
-	{
-		Path = Owner->GetPathName();
-	}
-	else
-	{
-		FVoxelMessages::Error("Invalid VDB Asset Owner, saving an empty path");
-	}
-	Ar << Path;
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelVDBAsset::LoadInstance(FArchive& Ar) const
-{
-	FString Path;
-	Ar << Path;
-
-	if (auto* Asset = LoadObject<UVoxelVDBAsset>(nullptr, *Path))
-	{
-		return Asset->GetTransformableInstance();
-	}
-	else
-	{
-		Ar.SetError();
-		FVoxelMessages::Error("Invalid VDB Asset Path: " + Path);
-		return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
-	}
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -393,11 +362,6 @@ TVoxelSharedRef<const FVoxelVDBAssetData> UVoxelVDBAsset::GetData()
 {
 	TryLoad();
 	return Data;
-}
-
-TVoxelSharedRef<FVoxelVDBAssetData> UVoxelVDBAsset::MakeData()
-{
-	return MakeVoxelShared<FVoxelVDBAssetData>(this);
 }
 
 void UVoxelVDBAsset::SetData(const TVoxelSharedRef<FVoxelVDBAssetData>& InData)
@@ -413,8 +377,7 @@ void UVoxelVDBAsset::SetData(const TVoxelSharedRef<FVoxelVDBAssetData>& InData)
 
 TVoxelSharedRef<FVoxelVDBAssetInstance> UVoxelVDBAsset::GetInstanceImpl()
 {
-	TryLoad();
-	return MakeVoxelShared<FVoxelVDBAssetInstance>(Data);
+	return MakeVoxelShared<FVoxelVDBAssetInstance>(*this);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -429,7 +392,7 @@ void UVoxelVDBAsset::Save()
 
 	Modify();
 
-	VoxelCustomVersion = FVoxelCustomVersion::LatestVersion;
+	VoxelCustomVersion = FVoxelVDBAssetDataVersion::LatestVersion;
 	Data->Save(CompressedData);
 }
 

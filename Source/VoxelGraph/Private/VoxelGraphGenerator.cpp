@@ -64,16 +64,20 @@ TArray<FVoxelGraphPermutationArray> UVoxelGraphGenerator::GetPermutations() cons
 	Result.Append(FVoxelGraphOutput::DefaultOutputsPermutations);
 	if (Outputs)
 	{
-		for (int32 Index = 0; Index < Outputs->Outputs.Num(); Index++)
+		const auto& GraphOutputs = Outputs->Outputs;
+		for (int32 Index = 0; Index < GraphOutputs.Num(); Index++)
 		{
 			FVoxelGraphPermutationArray NewElement;
 			NewElement.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index);
 			Result.Add(NewElement);
 
-			FVoxelGraphPermutationArray NewRangeElement;
-			NewRangeElement.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index);
-			NewRangeElement.Add(FVoxelGraphOutputsIndices::RangeAnalysisIndex);
-			Result.Add(NewRangeElement);
+			if (GraphOutputs[Index].Category == EVoxelDataPinCategory::Float)
+			{
+				FVoxelGraphPermutationArray NewRangeElement;
+				NewRangeElement.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index);
+				NewRangeElement.Add(FVoxelGraphOutputsIndices::RangeAnalysisIndex);
+				Result.Add(NewRangeElement);
+			}
 		}
 	}
 	return Result;
@@ -203,21 +207,6 @@ TMap<FName, int32> UVoxelGraphGenerator::GetDefaultSeeds() const
 
 TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance()
 {
-	FVoxelMessages::ShowVoxelPluginProError("Voxel Graphs require Voxel Plugin Pro");
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
-}
-
-void UVoxelGraphGenerator::SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const
-{
-	FString Path;
-	Ar << Path;
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelGraphGenerator::LoadInstance(FArchive& Ar) const
-{
-	FString Path;
-	Ar << Path;
-
 	FVoxelMessages::ShowVoxelPluginProError("Voxel Graphs require Voxel Plugin Pro");
 	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
 }

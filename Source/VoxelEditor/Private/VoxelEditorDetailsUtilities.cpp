@@ -110,18 +110,8 @@ void FVoxelEditorUtilities::AddPropertyToCategory(
 	bool bForAdvanced,
 	UClass* Class)
 {
-	auto Property = DetailLayout.GetProperty(PropertyName, Class);
-	DetailLayout.EditCategory(CategoryName).AddCustomRow(FText::FromString(PropertyName.ToString()), bForAdvanced)
-	.NameContent()
-	[
-		Property->CreatePropertyNameWidget()
-	]
-	.ValueContent()
-	.MinDesiredWidth(125.0f)
-	.MaxDesiredWidth(600.0f)
-	[
-		Property->CreatePropertyValueWidget()
-	];
+	const auto Property = DetailLayout.GetProperty(PropertyName, Class);
+	DetailLayout.EditCategory(CategoryName).AddProperty(Property, bForAdvanced ? EPropertyLocation::Advanced : EPropertyLocation::Default);
 }
 
 UObject* FVoxelEditorUtilities::CreateAssetWithDialog(

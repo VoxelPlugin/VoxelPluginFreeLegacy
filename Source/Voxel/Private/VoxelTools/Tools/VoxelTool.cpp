@@ -1,0 +1,295 @@
+// Copyright 2020 Phyronnaz
+
+#include "VoxelTools/Tools/VoxelTool.h"
+#include "VoxelTools/VoxelToolHelpers.h"
+#include "VoxelWorld.h"
+
+#include "Engine/StaticMesh.h"
+#include "Engine/LocalPlayer.h"
+#include "Materials/MaterialInterface.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerController.h"
+#include "UObject/ConstructorHelpers.h"
+
+static bool GVoxelToolsAreFrozen = false;
+
+static void FreezeVoxelTools()
+{
+	if (!GVoxelToolsAreFrozen)
+	{
+		GVoxelToolsAreFrozen = true;
+		LOG_VOXEL(Log, TEXT("Freezing tool manager"));
+	}
+	else
+	{
+		GVoxelToolsAreFrozen = false;
+		LOG_VOXEL(Log, TEXT("Unfreezing tool manager"));
+	}
+}
+
+static FAutoConsoleCommand CmdFreeze(
+    TEXT("voxel.tools.Freeze"),
+    TEXT(""),
+    FConsoleCommandDelegate::CreateStatic(&FreezeVoxelTools));
+
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelToolSharedConfig::UVoxelToolSharedConfig()
+{
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMeshFinder(TEXT("/Engine/BasicShapes/Plane"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> PlaneMaterialFinder(TEXT("/Voxel/ToolMaterials/ViewportPlaneMaterial"));
+
+	PlaneMesh = PlaneMeshFinder.Object;
+	PlaneMaterial = PlaneMaterialFinder.Object;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelTool::EnableTool()
+{
+	ensure(!bEnabled);
+	bEnabled = true;
+
+	if (!SharedConfig)
+	{
+		SharedConfig = NewObject<UVoxelToolSharedConfig>(this);
+	}
+}
+
+void UVoxelTool::DisableTool()
+{
+	ensure(bEnabled);
+	bEnabled = false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	if (!bEnabled)
+	{
+		EnableTool();
+	}
+
+	if (!World)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid World!"));
+		return;
+	}
+	
+	const auto CanEditWorld = [&](AVoxelWorld* InWorld)
+	{
+		return InWorld && InWorld->IsCreated() && (SharedConfig->WorldsToEdit.Num() == 0 || SharedConfig->WorldsToEdit.Contains(InWorld));
+	};
+
+	const FVector Start = TickData.GetRayOrigin();
+	const FVector End = TickData.GetRayOrigin() + float(WORLD_MAX) * TickData.GetRayDirection();
+
+	FHitResult HitResult;
+	World->GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility);
+	
+	AVoxelWorld* VoxelWorld = Cast<AVoxelWorld>(HitResult.Actor);
+	if (!CanEditWorld(VoxelWorld))
+	{
+		VoxelWorld = nullptr;
+	}
+
+#if WITH_EDITOR
+	if (VoxelWorld)
+	{
+		SharedConfig->PaintMaterial.bRestrictType = true;
+		if (SharedConfig->PaintMaterial.MaterialConfigToRestrictTo != VoxelWorld->MaterialConfig)
+		{
+			SharedConfig->PaintMaterial.MaterialConfigToRestrictTo = VoxelWorld->MaterialConfig;
+			SharedConfig->RefreshDetails.Broadcast();
+		}
+		if (SharedConfig->PaintMaterial.PreviewMaterialCollection != VoxelWorld->MaterialCollection)
+		{
+			SharedConfig->PaintMaterial.PreviewMaterialCollection = VoxelWorld->MaterialCollection;
+			SharedConfig->RefreshDetails.Broadcast();
+		}
+	}
+#endif
+	
+	if (!GVoxelToolsAreFrozen)
+	{
+		FrozenTickData = TickData;
+	}
+
+	FCallToolParameters Parameters;
+	Parameters.Mode = ECallToolMode::Tick;
+	Parameters.Position = HitResult.ImpactPoint;
+	Parameters.Normal = HitResult.ImpactNormal;
+	Parameters.bBlockingHit = HitResult.bBlockingHit;
+	
+	CallTool(VoxelWorld, GVoxelToolsAreFrozen ? FrozenTickData : TickData, Parameters);
+}
+
+void UVoxelTool::SimpleTick(
+	APlayerController* PlayerController,
+	bool bEdit,
+	const TMap<FName, bool>& Keys,
+	const TMap<FName, float>& Axes)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	if (!PlayerController)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid PlayerController!"));
+		return;
+	}
+
+	ULocalPlayer* const LocalPlayer = PlayerController->GetLocalPlayer();
+	if (!LocalPlayer)
+	{
+		FVoxelMessages::Warning(FUNCTION_ERROR("Invalid LocalPlayer!"));
+		return;
+	}
+
+	auto* ViewportClient = LocalPlayer->ViewportClient;
+	if (!ViewportClient)
+	{
+		FVoxelMessages::Warning(FUNCTION_ERROR("Invalid ViewportClient!"));
+		return;
+	}
+
+	FVector2D ScreenPosition;
+	if (!ViewportClient->GetMousePosition(ScreenPosition))
+	{
+		// This happen when the mouse is over the Unreal UI: use the center
+		FVector2D Size;
+		ViewportClient->GetViewportSize(Size);
+		ScreenPosition = Size / 2;
+
+		// Make sure to do nothing when clicking on the UI
+		bEdit = false;
+	}
+	
+	APlayerCameraManager* PlayerCameraManager = PlayerController->PlayerCameraManager;
+	if (!PlayerCameraManager)
+	{
+		FVoxelMessages::Warning(FUNCTION_ERROR("Invalid PlayerCameraManager!"));
+		return;
+	}
+
+	FVoxelToolTickData TickData;
+	TickData.MousePosition = ScreenPosition;
+	TickData.CameraViewDirection = PlayerCameraManager->GetCameraRotation().Vector();
+	TickData.bEdit = bEdit;
+	TickData.Keys = Keys;
+	TickData.Axes = Axes;
+
+	const auto Deproject = [PlayerController = MakeWeakObjectPtr(PlayerController)](
+		const FVector2D& InScreenPosition,
+		FVector& OutWorldPosition,
+		FVector& OutWorldDirection)
+	{
+		return UGameplayStatics::DeprojectScreenToWorld(PlayerController.Get(), InScreenPosition, OutWorldPosition, OutWorldDirection);
+	};
+	TickData.Init(Deproject);
+
+	AdvancedTick(PlayerController->GetWorld(), TickData);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelTool::Apply(
+	AVoxelWorld* World, 
+	FVector Position, 
+	FVector Normal, 
+	const TMap<FName, bool>& Keys, 
+	const TMap<FName, float>& Axes)
+{
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+
+	Normal = Normal.GetSafeNormal();
+	if (Normal.IsNearlyZero())
+	{
+		FVoxelMessages::Warning(FUNCTION_ERROR("Normal is zero, using UpVector instead"));
+		Normal = FVector::UpVector;
+	}
+
+	FVoxelToolTickData TickData;
+	TickData.bEdit = true;
+	TickData.Keys = Keys;
+	TickData.Axes = Axes;
+	
+	FCallToolParameters Parameters;
+	Parameters.Mode = ECallToolMode::Apply;
+	Parameters.Position = Position;
+	Parameters.Normal = Normal;
+	Parameters.bBlockingHit = true;
+	
+	CallTool(World, TickData, Parameters);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+FName UVoxelTool::GetToolName() const
+{
+	return ToolName.IsNone() ? GetClass()->GetFName() : ToolName;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+TMap<FName, bool> UVoxelTool::MakeToolKeys(bool bAlternativeMode)
+{
+	return { { FVoxelToolKeys::AlternativeMode, bAlternativeMode } };
+}
+
+TMap<FName, float> UVoxelTool::MakeToolAxes(float BrushSizeDelta, float FalloffDelta, float StrengthDelta)
+{
+	return
+	{
+		{
+			FVoxelToolAxes::BrushSize,
+			BrushSizeDelta
+		},
+		{
+			FVoxelToolAxes::Falloff,
+			FalloffDelta
+		},
+		{
+			FVoxelToolAxes::Strength,
+			StrengthDelta
+		}
+	};
+}
+
+UVoxelTool* UVoxelTool::MakeVoxelTool(TSubclassOf<UVoxelTool> ToolClass)
+{
+	if (!ToolClass)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("null ToolClass"));
+		return nullptr;
+	}
+	if (ToolClass->HasAllClassFlags(CLASS_Abstract))
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("ToolClass is abstract"));
+		return nullptr;
+	}
+
+	auto* Tool = NewObject<UVoxelTool>(GetTransientPackage(), ToolClass);
+	if (!ensure(Tool))
+	{
+		return nullptr;
+	}
+
+	Tool->SharedConfig = NewObject<UVoxelToolSharedConfig>(Tool);
+	return Tool;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelTool::BeginDestroy()
+{
+	// Make sure to not leave any mesh behind
+	if (bEnabled)
+	{
+		DisableTool();
+	}
+	
+	Super::BeginDestroy();
+}

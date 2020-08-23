@@ -3,7 +3,9 @@
 #include "VoxelImporters/VoxelMeshImporter.h"
 
 #include "VoxelAssets/VoxelDataAsset.h"
+#include "VoxelAssets/VoxelDataAssetData.inl"
 #include "VoxelUtilities/VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelExampleUtilities.h"
 #include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
 #include "VoxelMessages.h"
 
@@ -149,17 +151,15 @@ static void GetMergedSectionFromStaticMesh(
 
 FVoxelMeshImporterSettings::FVoxelMeshImporterSettings()
 {
-	ColorsMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_M_Chair_Emissive_Color"));
-	UVsMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_M_Chair_Emissive_UVs"));
+	ColorsMaterial = FVoxelExampleUtilities::LoadExampleObject<UMaterialInterface>(TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_M_Chair_Emissive_Color"));
+	UVsMaterial = FVoxelExampleUtilities::LoadExampleObject<UMaterialInterface>(TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_M_Chair_Emissive_UVs"));
 }
 
 FVoxelMeshImporterSettings::FVoxelMeshImporterSettings(const FVoxelMeshImporterSettingsBase& Base)
 	: FVoxelMeshImporterSettingsBase(Base)
 {
-	bPaintColors = false;
-	bPaintUVs = false;
-	bSetSingleIndex = false;
-	bSetMultiIndex = false;
+	bImportColors = false;
+	bImportUVs = false;
 }
 
 void UVoxelMeshImporterLibrary::CreateMeshDataFromStaticMesh(UStaticMesh* StaticMesh, FVoxelMeshImporterInputData& Data)
@@ -183,13 +183,16 @@ bool UVoxelMeshImporterLibrary::ConvertMeshToVoxels(
 void UVoxelMeshImporterLibrary::ConvertMeshToDistanceField(
 	const FVoxelMeshImporterInputData& Mesh,
 	const FTransform& Transform,
-	const float VoxelSize,
-	float MaxDistance,
+	const FVoxelMeshImporterSettingsBase& Settings,
 	float BoxExtension,
 	TArray<float>& OutDistanceField,
+	TArray<FVector>& OutSurfacePositions,
 	FIntVector& OutSize,
 	FIntVector& OutOffset,
-	int32& OutNumLeaks)
+	int32& OutNumLeaks,
+	EVoxelComputeDevice Device,
+	bool bMultiThreaded,
+	int32 MaxPasses_Debug)
 {
 	VOXEL_PRO_ONLY_VOID();
 }
@@ -248,7 +251,7 @@ AVoxelMeshImporter::AVoxelMeshImporter()
 #if WITH_EDITOR
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
 
-	StaticMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_SM_Chair"));
+	StaticMesh = FVoxelExampleUtilities::LoadExampleObject<UStaticMesh>(TEXT("/Voxel/Examples/Importers/Chair/VoxelExample_SM_Chair"));
 	MeshComponent->SetStaticMesh(StaticMesh);
 	MeshComponent->SetRelativeScale3D(FVector(100.f));
 	RootComponent = MeshComponent;
@@ -330,10 +333,6 @@ void AVoxelMeshImporter::UpdateSizes()
 	SizeY = FMath::CeilToInt(SizeFloat.Y);
 	SizeZ = FMath::CeilToInt(SizeFloat.Z);
 	NumberOfVoxels = SizeX * SizeY * SizeZ;
-	const bool bHasMaterials =
-		Settings.bPaintColors ||
-		Settings.bPaintUVs ||
-		Settings.bSetSingleIndex ||
-		Settings.bSetMultiIndex;
+	const bool bHasMaterials = Settings.bImportColors || Settings.bImportUVs;
 	SizeInMB = double(NumberOfVoxels) * (sizeof(FVoxelValue) + (bHasMaterials ? sizeof(FVoxelMaterial) : 0)) / double(1 << 20);
 }

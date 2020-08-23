@@ -12,29 +12,9 @@ DEFINE_STAT(STAT_VoxelDataOctreesCount);
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeDirtyValuesMemory);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeDirtyMaterialsMemory);
-DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeDirtyFoliageMemory);
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeCachedValuesMemory);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeCachedMaterialsMemory);
-DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelDataOctreeCachedFoliageMemory);
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-IVoxelData::IVoxelData(
-	int32 Depth,
-	const FVoxelIntBox& WorldBounds,
-	bool bEnableMultiplayer,
-	bool bEnableUndoRedo,
-	const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& VoxelWorldGeneratorInstance)
-	: Depth(Depth)
-	, WorldBounds(WorldBounds)
-	, bEnableMultiplayer(bEnableMultiplayer)
-	, bEnableUndoRedo(bEnableUndoRedo)
-	, WorldGenerator(VoxelWorldGeneratorInstance)
-{
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -46,16 +26,13 @@ T FVoxelDataOctreeBase::GetFromGeneratorAndAssets(const FVoxelWorldGeneratorInst
 	ensureThreadSafe(IsLockedForRead());
 	check(IsLeafOrHasNoChildren());
 	
-	const auto Assets = ItemHolder->GetItems<FVoxelAssetItem>();
-	if (Assets.Num() > 0)
+	const auto& Assets = ItemHolder->GetAssetItems();
+	for (int32 Index = Assets.Num() - 1; Index >= 0; Index--)
 	{
-		for (int32 Index = Assets.Num() - 1; Index >= 0; Index--)
+		auto& Asset = *Assets[Index];
+		if (Asset.Bounds.ContainsTemplate(X, Y, Z))
 		{
-			auto& Asset = *Assets[Index];
-			if (Asset.Bounds.ContainsTemplate(X, Y, Z))
-			{
-				return Asset.WorldGenerator->Get_Transform<T>(Asset.LocalToWorld, X, Y, Z, LOD, FVoxelItemStack(*ItemHolder, WorldGenerator, Index));
-			}
+			return Asset.WorldGenerator->Get_Transform<T>(Asset.LocalToWorld, X, Y, Z, LOD, FVoxelItemStack(*ItemHolder, WorldGenerator, Index));
 		}
 	}
 	return WorldGenerator.Get<T>(X, Y, Z, LOD, FVoxelItemStack(*ItemHolder));
@@ -72,7 +49,7 @@ void FVoxelDataOctreeBase::GetFromGeneratorAndAssets(const FVoxelWorldGeneratorI
 	ensureThreadSafe(IsLockedForRead());
 	check(IsLeafOrHasNoChildren());
 	
-	const auto Assets = ItemHolder->GetItems<FVoxelAssetItem>();
+	const auto& Assets = ItemHolder->GetAssetItems();
 
 	if (Assets.Num() == 0)
 	{
@@ -132,16 +109,13 @@ T FVoxelDataOctreeBase::GetCustomOutput(const FVoxelWorldGeneratorInstance& Worl
 	ensureThreadSafe(IsLockedForRead());
 	check(IsLeafOrHasNoChildren());
 	
-	const auto Assets = ItemHolder->GetItems<FVoxelAssetItem>();
-	if (Assets.Num() > 0)
+	const auto& Assets = ItemHolder->GetAssetItems();
+	for (int32 Index = Assets.Num() - 1; Index >= 0; Index--)
 	{
-		for (int32 Index = Assets.Num() - 1; Index >= 0; Index--)
+		auto& Asset = *Assets[Index];
+		if (Asset.Bounds.ContainsTemplate(X, Y, Z))
 		{
-			auto& Asset = *Assets[Index];
-			if (Asset.Bounds.ContainsTemplate(X, Y, Z))
-			{
-				return Asset.WorldGenerator->GetCustomOutput_Transform(Asset.LocalToWorld, DefaultValue, Name, X, Y, Z, LOD, FVoxelItemStack(*ItemHolder, WorldGenerator, Index));
-			}
+			return Asset.WorldGenerator->GetCustomOutput_Transform(Asset.LocalToWorld, DefaultValue, Name, X, Y, Z, LOD, FVoxelItemStack(*ItemHolder, WorldGenerator, Index));
 		}
 	}
 	return WorldGenerator.GetCustomOutput<T>(DefaultValue, Name, X, Y, Z, LOD, FVoxelItemStack(*ItemHolder));
@@ -165,22 +139,18 @@ void FVoxelDataOctreeParent::CreateChildren()
 	}
 #endif
 
-	const auto& AllItems = ItemHolder->GetAllItems();
-	if (AllItems.Num() > 0)
+	if (ItemHolder->NumItems() > 0)
 	{
 		for (auto& Child : AsParent().GetChildren())
 		{
 			const FVoxelIntBox ChildBounds = Child.GetBounds();
-			for (auto& Items : AllItems)
+			ItemHolder->ApplyToAllItems([&](auto& Item)
 			{
-				for (auto* Item : Items)
+				if (Item.Bounds.Intersect(ChildBounds))
 				{
-					if (Item->Bounds.Intersect(ChildBounds))
-					{
-						Child.ItemHolder->AddItem(Item);
-					}
+					Child.ItemHolder->AddItem(Item);
 				}
-			}
+			});
 		}
 	}
 	ItemHolder.Reset();

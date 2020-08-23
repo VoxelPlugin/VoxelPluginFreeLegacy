@@ -60,7 +60,7 @@ UVoxelNode_AddMultiIndex::UVoxelNode_AddMultiIndex()
 	SetInputs(
 		EC::Exec,
 		{ "Index", EC::Int, "Material index between 0 and 255", "", {0, 255 } },
-		{ "Strength", EC::Float, "Strength, usually between 0 and 1" },
+		{ "Strength", EC::Float, "Strength, usually between 0 and 1", "1" },
 		{ "Lock Strength", EC::Boolean, "If true, the strength won't be normalized. For example, if you want small rocks with the same density everywhere." });
 	SetOutputs(EC::Exec);
 }
@@ -116,7 +116,7 @@ void UVoxelNode_SetNode::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 #if WITH_EDITOR
 	if (!UpdateSetterNode())
 	{
-		ErrorReporter.AddMessageToNode(this, "invalid output", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "invalid output", EVoxelGraphNodeMessageType::Error);
 	}
 #endif
 }
@@ -199,63 +199,13 @@ void UVoxelNode_SetNode::PostLoad()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FLinearColor UVoxelNode_FunctionSeparator::GetColor() const
+UVoxelNode_FunctionSeparator::UVoxelNode_FunctionSeparator()
 {
-	return FVoxelNodeColors::ExecNode;
+	SetColor(FVoxelNodeColors::ExecNode);
+	AddInput("", "", EC::Exec);
+	AddOutput("", "", EC::Exec);
 }
 
-EVoxelPinCategory UVoxelNode_FunctionSeparator::GetInputPinCategory(int32 PinIndex) const
-{
-	return PinIndex == 0
-		       ? EVoxelPinCategory::Exec
-		       : FVoxelPinCategory::DataPinToPin(ArgTypes[PinIndex - 1].Type);
-}
-
-EVoxelPinCategory UVoxelNode_FunctionSeparator::GetOutputPinCategory(int32 PinIndex) const
-{
-	return PinIndex == 0
-		       ? EVoxelPinCategory::Exec
-		       : FVoxelPinCategory::DataPinToPin(ArgTypes[PinIndex - 1].Type);
-}
-
-FName UVoxelNode_FunctionSeparator::GetInputPinName(int32 PinIndex) const
-{
-	return PinIndex == 0 ? FName() : FName(*ArgTypes[PinIndex - 1].Name);
-}
-
-FName UVoxelNode_FunctionSeparator::GetOutputPinName(int32 PinIndex) const
-{
-	return FName();
-}
-
-int32 UVoxelNode_FunctionSeparator::GetMinInputPins() const
-{
-	return 1 + ArgTypes.Num();
-}
-
-int32 UVoxelNode_FunctionSeparator::GetMaxInputPins() const
-{
-	return GetMinInputPins();
-}
-
-int32 UVoxelNode_FunctionSeparator::GetOutputPinsCount() const
-{
-	return GetMinInputPins();
-}
-
-
-#if WITH_EDITOR
-void UVoxelNode_FunctionSeparator::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.Property)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -311,16 +261,3 @@ int32 UVoxelNode_FlowMerge::GetOutputPinsCount() const
 	return 1 + Types.Num();
 }
 
-
-#if WITH_EDITOR
-void UVoxelNode_FlowMerge::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.Property)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-}
-#endif

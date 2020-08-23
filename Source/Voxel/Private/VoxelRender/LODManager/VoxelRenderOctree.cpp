@@ -506,7 +506,7 @@ void FVoxelRenderOctree::GetUpdates(
 			{
 				for (int32 DirectionIndex = 0; DirectionIndex < 6; DirectionIndex++)
 				{
-					const auto Direction = EVoxelDirection::Type(1 << DirectionIndex);
+					const auto Direction = EVoxelDirectionFlag::Type(1 << DirectionIndex);
 					const FVoxelRenderOctree* AdjacentChunk = GetVisibleAdjacentChunk(Direction, 0);
 					if (AdjacentChunk && AdjacentChunk->OctreeBounds.Intersect(Settings.WorldBounds))
 					{
@@ -645,7 +645,7 @@ bool FVoxelRenderOctree::ShouldSubdivideByNeighbors(const FVoxelRenderOctreeSett
 	}
 	for (int32 DirectionIndex = 0; DirectionIndex < 6; DirectionIndex++)
 	{
-		const auto Direction = EVoxelDirection::Type(1 << DirectionIndex);
+		const auto Direction = EVoxelDirectionFlag::Type(1 << DirectionIndex);
 		for (int32 Index = 0; Index < 4; Index++) // Iterate the 4 adjacent subdivided chunks
 		{
 			const FVoxelRenderOctree* AdjacentChunk = GetVisibleAdjacentChunk(Direction, Index);
@@ -707,7 +707,7 @@ inline bool IsVisibleParent(const FVoxelRenderOctree* Chunk)
 	return Chunk->ChunkSettings.DivisionType == FVoxelRenderOctree::EDivisionType::ByDistance || Chunk->ChunkSettings.DivisionType == FVoxelRenderOctree::EDivisionType::ByNeighbors;
 }
 
-const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDirection::Type Direction, int32 Index) const
+const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDirectionFlag::Type Direction, int32 Index) const
 {
 	const int32 HalfSize = Size() / 2;
 	const int32 HalfHalfSize = Size() / 4;
@@ -734,22 +734,22 @@ const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDire
 	FIntVector P;
 	switch (Direction)
 	{
-	case EVoxelDirection::XMin:
+	case EVoxelDirectionFlag::XMin:
 		P = Position + FIntVector(-S, X, Y);
 		break;
-	case EVoxelDirection::XMax:
+	case EVoxelDirectionFlag::XMax:
 		P = Position + FIntVector(S, X, Y);
 		break;
-	case EVoxelDirection::YMin:
+	case EVoxelDirectionFlag::YMin:
 		P = Position + FIntVector(X, -S, Y);
 		break;
-	case EVoxelDirection::YMax:
+	case EVoxelDirectionFlag::YMax:
 		P = Position + FIntVector(X, S, Y);
 		break;
-	case EVoxelDirection::ZMin:
+	case EVoxelDirectionFlag::ZMin:
 		P = Position + FIntVector(X, Y, -S);
 		break;
-	case EVoxelDirection::ZMax:
+	case EVoxelDirectionFlag::ZMax:
 		P = Position + FIntVector(X, Y, S);
 		break;
 	default:

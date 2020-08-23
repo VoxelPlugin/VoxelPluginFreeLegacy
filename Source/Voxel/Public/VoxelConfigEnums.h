@@ -80,8 +80,7 @@ UENUM(BlueprintType)
 enum class EVoxelDataType : uint8
 {
 	Values,
-	Materials,
-	Foliage
+	Materials
 };
 
 UENUM(BlueprintType)
@@ -107,4 +106,28 @@ enum class EVoxelRGBHardness : uint8
 	V0,
 	// Use the V1 channel as hardness
 	V1
+};
+
+UENUM(BlueprintType)
+enum class EVoxelFalloff : uint8
+{
+	Linear,
+	Smooth,
+	Spherical,
+	Tip
+};
+
+UENUM(BlueprintType)
+enum class EVoxelComputeDevice : uint8
+{
+	CPU,
+	GPU
+};
+
+UENUM(BlueprintType)
+enum class EVoxelAxis : uint8
+{
+	X,
+	Y,
+	Z
 };

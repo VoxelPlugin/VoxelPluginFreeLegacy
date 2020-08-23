@@ -2,6 +2,7 @@
 
 #include "Factories/VoxelDataAssetFactory.h"
 #include "VoxelAssets/VoxelDataAsset.h"
+#include "VoxelAssets/VoxelDataAssetData.inl"
 #include "VoxelImporters/VoxelMeshImporter.h"
 #include "VoxelFeedbackContext.h"
 #include "VoxelMessages.h"
@@ -30,7 +31,7 @@ UObject* UVoxelDataAssetFactory::FactoryCreateNew(UClass* Class, UObject* InPare
 {
 	auto* NewDataAsset = NewObject<UVoxelDataAsset>(InParent, Class, Name, Flags | RF_Transactional);
 
-	auto Data = NewDataAsset->MakeData();
+	auto Data = MakeVoxelShared<FVoxelDataAssetData>();
 	Data->SetSize(FIntVector(1, 1, 3), false);
 	Data->SetValue(0, 0, 0, FVoxelValue::Full());
 	Data->SetValue(0, 0, 1, FVoxelValue::Empty());

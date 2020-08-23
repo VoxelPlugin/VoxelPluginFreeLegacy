@@ -20,7 +20,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Texture settings")
 	UTexture2D* Texture;
 	
-	UPROPERTY(EditAnywhere, Category = "Texture settings")
+	UPROPERTY(EditAnywhere, Category = "Texture settings", meta = (ReconstructNode))
 	bool bBilinearInterpolation = true;
 	
 	UPROPERTY(EditAnywhere, Category = "Texture settings")
@@ -38,7 +38,6 @@ public:
 	//~ Begin UVoxelExposedNode Interface
 	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
 	//~ End UVoxelExposedNode Interface
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 };
 

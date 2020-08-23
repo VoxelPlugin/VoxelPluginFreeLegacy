@@ -16,24 +16,17 @@ struct VOXELGRAPH_API FVoxelContext
 	const bool bHasCustomTransform;
 
 	static const FVoxelContext EmptyContext;
-
+	
 	FVoxelContext(
 		int32 LOD,
 		const FVoxelItemStack& Items,
 		const FTransform& LocalToWorld,
-		bool bHasCustomTransform,
-		v_flt InWorldX = 0,
-		v_flt InWorldY = 0,
-		v_flt InWorldZ = 0)
+		bool bHasCustomTransform)
 		: LOD(LOD)
 		, Items(Items)
 		, LocalToWorld(LocalToWorld)
 		, bHasCustomTransform(bHasCustomTransform)
 	{
-		WorldX = InWorldX;
-		WorldY = InWorldY;
-		WorldZ = InWorldZ;
-		UpdateCoordinates();
 	}
 
 	FORCEINLINE v_flt GetWorldX() const { return WorldX; }
@@ -44,33 +37,25 @@ struct VOXELGRAPH_API FVoxelContext
 	FORCEINLINE v_flt GetLocalY() const { return LocalY; }
 	FORCEINLINE v_flt GetLocalZ() const { return LocalZ; }
 
-	FORCEINLINE void SetWorldX(v_flt NewX)
-	{
-		WorldX = NewX;
-		UpdateCoordinates();
-	}
-	FORCEINLINE void SetWorldY(v_flt NewY)
-	{
-		WorldY = NewY;
-		UpdateCoordinates();
-	}
-	FORCEINLINE void SetWorldZ(v_flt NewZ)
-	{
-		WorldZ = NewZ;
-		UpdateCoordinates();
-	}
-	
 private:
-	v_flt WorldX;
-	v_flt WorldY;
-	v_flt WorldZ;
-	v_flt LocalX;
-	v_flt LocalY;
-	v_flt LocalZ;
+	v_flt WorldX = 0;
+	v_flt WorldY = 0;
+	v_flt WorldZ = 0;
 	
-	FORCEINLINE void UpdateCoordinates()
+	v_flt LocalX = 0;
+	v_flt LocalY = 0;
+	v_flt LocalZ = 0;
+	
+	template<bool bCustomTransform>
+	FORCEINLINE void UpdateCoordinates(v_flt NewWorldX, v_flt NewWorldY, v_flt NewWorldZ)
 	{
-		if (bHasCustomTransform)
+		checkVoxelSlow(bCustomTransform == bHasCustomTransform);
+
+		WorldX = NewWorldX;
+		WorldY = NewWorldY;
+		WorldZ = NewWorldZ;
+
+		if (bCustomTransform)
 		{
 			const FVector Local = LocalToWorld.InverseTransformPosition(FVector(WorldX, WorldY, WorldZ));
 			LocalX = Local.X;
@@ -79,11 +64,15 @@ private:
 		}
 		else
 		{
-			LocalX = WorldX;
-			LocalY = WorldY;
-			LocalZ = WorldZ;
+			LocalX = NewWorldX;
+			LocalY = NewWorldY;
+			LocalZ = NewWorldZ;
 		}
 	}
+
+	template<typename, typename>
+	friend class TVoxelGraphGeneratorInstanceHelper;
+	friend class FVoxelGraphPreview;
 };
 
 struct VOXELGRAPH_API FVoxelContextRange

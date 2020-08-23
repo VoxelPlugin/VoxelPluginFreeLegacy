@@ -10,15 +10,20 @@
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 
 #include "VoxelAssets/VoxelDataAsset.h"
+#include "VoxelAssets/VoxelDataAssetData.inl"
 #include "VoxelAssets/VoxelHeightmapAsset.h"
+#include "VoxelAssets/VoxelHeightmapAssetSamplerWrapper.h"
 #include "VoxelTools/VoxelHardnessHandler.h"
+
+#include "NodeFunctions/VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelSDFNodeFunctions.h"
+#include "NodeFunctions/VoxelDeprecatedNodeFunctions.h"
+#include "NodeFunctions/VoxelPlaceableItemsNodeFunctions.h"
 
 #include "VoxelContext.h"
 #include "VoxelMessages.h"
 #include "VoxelFastNoise.h"
-#include "VoxelNodeFunctions.h"
 #include "VoxelMaterialBuilder.h"
-#include "VoxelSDFNodeFunctions.h"
 #include "VoxelGraphGeneratorHelpers.h"
 #include "VoxelGeneratedWorldGeneratorsDefinitions.h"
 

@@ -43,7 +43,7 @@ class VOXELGRAPH_API UVoxelGraphMacroInputOutputNode : public UVoxelNode
 {
 	GENERATED_BODY()	
 public:
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ReconstructNode))
 	TArray<FVoxelGraphMacroPin> Pins;
 
 	UPROPERTY()
@@ -127,7 +127,7 @@ class VOXELGRAPH_API UVoxelGraphMacroNode : public UVoxelNode
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ReconstructNode))
 	UVoxelGraphMacro* Macro;
 
 
@@ -150,8 +150,4 @@ public:
 	virtual FString GetInputPinDefaultValue(int32 PinIndex) const override;
 	
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
-
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif // WITH_EDITOR
 };

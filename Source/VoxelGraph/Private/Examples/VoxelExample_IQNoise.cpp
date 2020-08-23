@@ -755,7 +755,7 @@ public:
 		
 	};
 	
-	FVoxelExample_IQNoiseInstance(const UVoxelExample_IQNoise& Object)
+	FVoxelExample_IQNoiseInstance(UVoxelExample_IQNoise& Object)
 			: TVoxelGraphGeneratorInstanceHelper(
 			{
 				{ "Value", 1 },
@@ -788,7 +788,7 @@ public:
 					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
 				}
 			},
-			Object.bEnableRangeAnalysis)
+			Object)
 		, Params(FParams
 		{
 			Object.Height,

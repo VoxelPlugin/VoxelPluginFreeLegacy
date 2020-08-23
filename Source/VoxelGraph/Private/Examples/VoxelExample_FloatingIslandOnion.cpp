@@ -1139,7 +1139,7 @@ public:
 		
 	};
 	
-	FVoxelExample_FloatingIslandOnionInstance(const UVoxelExample_FloatingIslandOnion& Object)
+	FVoxelExample_FloatingIslandOnionInstance(UVoxelExample_FloatingIslandOnion& Object)
 			: TVoxelGraphGeneratorInstanceHelper(
 			{
 				{ "Value", 1 },
@@ -1172,7 +1172,7 @@ public:
 					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
 				}
 			},
-			Object.bEnableRangeAnalysis)
+			Object)
 		, Params(FParams
 		{
 			Object.Top_Noise_Frequency,

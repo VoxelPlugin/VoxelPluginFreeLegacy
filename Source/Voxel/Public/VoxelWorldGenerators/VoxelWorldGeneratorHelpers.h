@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h" // Not needed, but that way only need to include this file when declaring a world generator
 #include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
 
 /**
  * Inherit from TVoxelWorldGeneratorInstanceHelper<FYourInstance, UYourClass>, and implement:
@@ -40,9 +40,10 @@ public:
 
 	using UStaticClass = UWorldObject; 
 
-	explicit TVoxelWorldGeneratorInstanceHelper(const FCustomFunctionPtrs& CustomFunctionPtrs = {})
+	explicit TVoxelWorldGeneratorInstanceHelper(UWorldObject* Object, const FCustomFunctionPtrs& CustomFunctionPtrs = {})
 		: TParent(
 			UWorldObject::StaticClass(),
+			Object,
 			FBaseFunctionPtrs
 			{
 			   static_cast<TOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueImpl),
@@ -134,10 +135,12 @@ public:
 	using UStaticClass = UWorldObject;
 
 	explicit TVoxelTransformableWorldGeneratorInstanceHelper(
+		UWorldObject* Object,
 		const FCustomFunctionPtrs& CustomFunctionPtrs = {},
 		const FCustomFunctionPtrs_Transform& CustomFunctionPtrs_Transform = {})
 		: TParent(
 			UWorldObject::StaticClass(),
+			Object,
 			FBaseFunctionPtrs
 			{
 				static_cast<TOutputFunctionPtr<v_flt>>(&TWorldInstance::GetValueNoTransformImpl),

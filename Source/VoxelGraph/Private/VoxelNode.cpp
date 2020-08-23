@@ -2,6 +2,7 @@
 
 #include "VoxelNode.h"
 #include "IVoxelGraphEditor.h"
+#include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
 #include "EdGraph/EdGraphNode.h"
 
@@ -19,11 +20,6 @@ void UVoxelGraphNodeInterface::ReconstructNode()
 	InfoMsg.Empty();
 	WarningMsg.Empty();
 	ErrorMsg.Empty();
-	DependenciesMsg.Empty();
-	StatsMsg.Empty();
-	RangeAnalysisWarningMsg.Empty();
-	RangeAnalysisErrorMsg.Empty();
-	RangeAnalysisDebugMsg.Empty();
 }
 #endif
 
@@ -102,18 +98,27 @@ void UVoxelNode::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 {
 	if (IsOutdated())
 	{
-		ErrorReporter.AddMessageToNode(this, "outdated node, please right click and press Reconstruct Node", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "outdated node, please right click and press Reconstruct Node", EVoxelGraphNodeMessageType::Error);
 	}
 }
 
 #if WITH_EDITOR
-void UVoxelNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void UVoxelNode::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
 {
-	Super::PostEditChangeProperty(PropertyChangedEvent);
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
 
-	if (Graph && PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
+	if (Graph && GraphNode && PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
-		IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, false, true);
+		for (auto* Property : PropertyChangedEvent.PropertyChain)
+		{
+			if (Property && Property->HasMetaData(STATIC_FNAME("ReconstructNode")))
+			{
+				// Reconstruct before updating preview to have the right output count
+				GraphNode->ReconstructNode();
+				Graph->CompileVoxelNodesFromGraphNodes();
+			}
+		}
+		IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, EVoxelGraphPreviewFlags::UpdateTextures);
 	}
 
 	MarkPackageDirty();
@@ -129,7 +134,7 @@ void UVoxelNode::PostLoad()
 
 	if (IsOutdated())
 	{
-		FVoxelGraphErrorReporter::AddMessageToNodeInternal(this, "outdated node, please right click and press Reconstruct Node", EVoxelGraphNodeMessageType::FatalError);
+		FVoxelGraphErrorReporter::AddMessageToNodeInternal(this, "outdated node, please right click and press Reconstruct Node", EVoxelGraphNodeMessageType::Error);
 	}
 }
 #endif

@@ -3,13 +3,27 @@
 #include "VoxelData/VoxelSave.h"
 #include "VoxelUtilities/VoxelSerializationUtilities.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
-#include "VoxelCustomVersion.h"
 #include "VoxelMessages.h"
-
-#include "Serialization/BufferArchive.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelUncompressedSavesMemory);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelCompressedSavesMemory);
+
+struct FVoxelChunkSave32Bits
+{
+	FIntVector Position;
+	int32 ValuesIndex = -1;
+	int32 MaterialsIndex = -1;
+	int32 FoliageIndex = -1;
+
+	friend FArchive& operator<<(FArchive& Ar, FVoxelChunkSave32Bits& Save)
+	{
+		Ar << Save.Position;
+		Ar << Save.ValuesIndex;
+		Ar << Save.MaterialsIndex;
+		Ar << Save.FoliageIndex;
+		return Ar;
+	}
+};
 
 struct FVoxelChunkSaveWithoutFoliage
 {
@@ -26,9 +40,26 @@ struct FVoxelChunkSaveWithoutFoliage
 		return Ar;
 	}
 
-	FORCEINLINE operator FVoxelUncompressedWorldSaveImpl::FVoxelChunkSave() const
+	FORCEINLINE operator FVoxelChunkSave32Bits() const
 	{
 		return { Position, ValuesIndex, MaterialsIndex, -1 };
+	}
+};
+
+struct FVoxelFoliage
+{
+	uint8 R;
+	uint8 G;
+	uint8 B;
+	uint8 A;
+	
+	inline friend FArchive& operator<<(FArchive& Ar, FVoxelFoliage& Foliage)
+	{
+		Ar << Foliage.R;
+		Ar << Foliage.G;
+		Ar << Foliage.B;
+		Ar << Foliage.A;
+		return Ar;
 	}
 };
 
@@ -39,20 +70,17 @@ void FVoxelUncompressedWorldSaveImpl::UpdateAllocatedSize() const
 		Chunks.GetAllocatedSize() +
 		ValueBuffers.GetAllocatedSize() +
 		MaterialBuffers.GetAllocatedSize() +
-		FoliageBuffers.GetAllocatedSize() +
 		PlaceableItems.GetAllocatedSize();
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, AllocatedSize);
 }
 
 bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 {
-	Ar.UsingCustomVersion(FVoxelCustomVersion::GUID);
-
 	if ((Ar.IsLoading() || Ar.IsSaving()) && !Ar.IsTransacting())
 	{
 		if (Ar.IsSaving())
 		{
-			Version = FVoxelCustomVersion::LatestVersion;
+			Version = FVoxelSaveVersion::LatestVersion;
 		}
 
 		// Serialize version & depth
@@ -66,13 +94,22 @@ bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 			}
 			else
 			{
-				Version = FVoxelCustomVersion::BeforeCustomVersionWasAdded;
+				Version = FVoxelSaveVersion::BeforeCustomVersionWasAdded;
 				Depth = Dummy;
 			}
 		}
+		
+		const auto SerializationVersion =
+			Version >= FVoxelSaveVersion::ValueConfigFlagAndSaveGUIDs
+			? FVoxelSerializationVersion::ValueConfigFlagAndSaveGUIDs
+			: Version >= FVoxelSaveVersion::RemoveEnableVoxelSpawnedActorsEnableVoxelGrass
+			? FVoxelSerializationVersion::RemoveEnableVoxelSpawnedActorsEnableVoxelGrass
+			: FVoxelSerializationVersion::BeforeCustomVersionWasAdded;
+
+		static_assert(FVoxelSerializationVersion::LatestVersion == FVoxelSerializationVersion::SHARED_StoreMaterialChannelsIndividuallyAndRemoveFoliage, "Need to add a new FVoxelSaveVersion");
 
 		// Serialize GUID
-		if (Version >= FVoxelCustomVersion::ValueConfigFlagAndSaveGUIDs)
+		if (Version >= FVoxelSaveVersion::ValueConfigFlagAndSaveGUIDs)
 		{
 			Ar << Guid;
 		}
@@ -82,7 +119,7 @@ bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 		}
 
 		// Serialize UserFlags
-		if (Version >= FVoxelCustomVersion::AddUserFlagsToSaves)
+		if (Version >= FVoxelSaveVersion::AddUserFlagsToSaves)
 		{
 			Ar << UserFlags;
 		}
@@ -93,7 +130,7 @@ bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 		
 		// Serialize value config
 		uint32 ValueConfigFlag = GVoxelValueConfigFlag;
-		if (Version >= FVoxelCustomVersion::ValueConfigFlagAndSaveGUIDs)
+		if (Version >= FVoxelSaveVersion::ValueConfigFlagAndSaveGUIDs)
 		{
 			Ar << ValueConfigFlag;
 		}
@@ -102,47 +139,177 @@ bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 		uint32 MaterialConfigFlag = GVoxelMaterialConfigFlag;
 		Ar << MaterialConfigFlag;
 
-		// Serialize value buffers
-		FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers, ValueConfigFlag, Version);
-
-		// Serialize material buffers
-		FVoxelSerializationUtilities::SerializeMaterials(Ar, MaterialBuffers, MaterialConfigFlag, Version);
-
-		// Serialize foliage buffers
-		if (Version >= FVoxelCustomVersion::FoliagePaint)
+		// Serialize buffers
+		if (Version >= FVoxelSaveVersion::StoreMaterialChannelsIndividuallyAndRemoveFoliage)
 		{
-			FoliageBuffers.BulkSerialize(Ar);
-		}
+			// Serialize value buffers
+			FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers, ValueConfigFlag, SerializationVersion);
+			FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues, ValueConfigFlag, SerializationVersion);
 
-		// Serialize single values buffers
-		if (Version >= FVoxelCustomVersion::SingleValues)
-		{
-			FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues, ValueConfigFlag, Version);
-			FVoxelSerializationUtilities::SerializeMaterials(Ar, SingleMaterials, MaterialConfigFlag, Version);
-			SingleFoliage.BulkSerialize(Ar);
-		}
+			// Serialize material buffers
+			FVoxelSerializationUtilities::SerializeMaterials(Ar, MaterialsIndices, MaterialConfigFlag);
+			MaterialBuffers.BulkSerialize(Ar);
+			SingleMaterials.BulkSerialize(Ar);
 
-		// Serialize chunks indices
-		if (Version < FVoxelCustomVersion::FoliagePaint)
-		{
-			TArray<FVoxelChunkSaveWithoutFoliage> OldChunks;
-			if (Version == FVoxelCustomVersion::BeforeCustomVersionWasAdded)
-			{
-				Ar << OldChunks;
-			}
-			else
-			{
-				OldChunks.BulkSerialize(Ar);
-			}
-			Chunks = TArray<FVoxelChunkSave>(OldChunks);
+			// Serialize chunks indices
+			// Note: make sure to not use BulkSerialize as data isn't aligned
+			Ar << Chunks;
 		}
 		else
 		{
-			Chunks.BulkSerialize(Ar);
+			TNoGrowArray<FVoxelMaterial> OldMaterialBuffers;
+			TNoGrowArray<FVoxelMaterial> OldSingleMaterials;
+			
+			// Serialize value buffers
+			FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers, ValueConfigFlag, SerializationVersion);
+
+			// Serialize material buffers
+			FVoxelSerializationUtilities::SerializeMaterials(Ar, OldMaterialBuffers, MaterialConfigFlag, SerializationVersion);
+
+			// Serialize foliage buffers
+			if (Version >= FVoxelSaveVersion::FoliagePaint)
+			{
+				TArray<FVoxelFoliage> FoliageBuffers;
+				FoliageBuffers.BulkSerialize(Ar);
+			}
+
+			// Serialize single values buffers
+			if (Version >= FVoxelSaveVersion::SingleValues)
+			{
+				FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues, ValueConfigFlag, SerializationVersion);
+				FVoxelSerializationUtilities::SerializeMaterials(Ar, OldSingleMaterials, MaterialConfigFlag, SerializationVersion);
+
+				TArray<FVoxelFoliage> SingleFoliage;
+				SingleFoliage.BulkSerialize(Ar);
+			}
+
+			// Serialize chunks indices
+			struct FVoxelChunkSaveWithSingleMaterial
+			{
+				FIntVector Position;
+
+				int32 ValuesIndex = -1;
+				int32 MaterialsIndex = -1;
+
+				bool bSingleValue = false;
+				// Makes life easier when loading legacy files
+				bool bSingleMaterial_Unused = false;
+			};
+			TNoGrowArray<FVoxelChunkSaveWithSingleMaterial> NewChunks;
+			{
+				TArray<FVoxelChunkSave32Bits> OldChunks;
+				if (Version < FVoxelSaveVersion::FoliagePaint)
+				{
+					TArray<FVoxelChunkSaveWithoutFoliage> ChunksWithoutFoliage;
+					if (Version == FVoxelSaveVersion::BeforeCustomVersionWasAdded)
+					{
+						Ar << ChunksWithoutFoliage;
+					}
+					else
+					{
+						ChunksWithoutFoliage.BulkSerialize(Ar);
+					}
+					OldChunks = TArray<FVoxelChunkSave32Bits>(ChunksWithoutFoliage);
+				}
+				else
+				{
+					OldChunks.BulkSerialize(Ar);
+				}
+
+				NewChunks.Empty(OldChunks.Num());
+				for (auto& OldChunk : OldChunks)
+				{
+					constexpr int32 SingleValueIndexFlag = 1 << 30;
+
+					FVoxelChunkSaveWithSingleMaterial& NewChunk = NewChunks.Emplace_GetRef();
+
+					NewChunk.Position = OldChunk.Position;
+
+					if (OldChunk.ValuesIndex != -1)
+					{
+						NewChunk.ValuesIndex = OldChunk.ValuesIndex & (~SingleValueIndexFlag);
+						NewChunk.bSingleValue = OldChunk.ValuesIndex & SingleValueIndexFlag;
+					}
+					if (OldChunk.MaterialsIndex != -1)
+					{
+						NewChunk.MaterialsIndex = OldChunk.MaterialsIndex & (~SingleValueIndexFlag);
+						NewChunk.bSingleMaterial_Unused = OldChunk.MaterialsIndex & SingleValueIndexFlag;
+					}
+				}
+				ensure(NewChunks.GetSlack() == 0);
+			}
+
+			// Fixup material indices, as they are now referencing the MaterialsIndices array and not MaterialBuffers/SingleMaterials
+			{
+				check(OldMaterialBuffers.Num() % VOXELS_PER_DATA_CHUNK == 0);
+
+				MaterialsIndices.Empty(OldMaterialBuffers.Num() / VOXELS_PER_DATA_CHUNK + OldSingleMaterials.Num());
+				MaterialBuffers.Empty(OldMaterialBuffers.Num() * FVoxelMaterial::NumChannels);
+				SingleMaterials.Empty(OldSingleMaterials.Num() * FVoxelMaterial::NumChannels);
+
+				Chunks.Empty(NewChunks.Num());
+
+				// Fixup chunks
+				for (auto& Chunk : NewChunks)
+				{
+					if (Chunk.MaterialsIndex != -1)
+					{
+						if (Chunk.bSingleMaterial_Unused)
+						{
+							const int32 OldIndex = Chunk.MaterialsIndex;
+
+							Chunk.MaterialsIndex = MaterialsIndices.AddUninitialized(1);
+							auto& MaterialIndices = MaterialsIndices[Chunk.MaterialsIndex];
+
+							const FVoxelMaterial& Material = OldSingleMaterials[OldIndex];
+
+							for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
+							{
+								MaterialIndices.GetRaw(Channel) = SingleMaterials.Add(Material.GetRaw(Channel)) | MaterialIndexSingleValueFlag;
+							}
+						}
+						else
+						{
+							check(Chunk.MaterialsIndex % VOXELS_PER_DATA_CHUNK == 0);
+
+							const int32 OldIndex = Chunk.MaterialsIndex;
+
+							Chunk.MaterialsIndex = MaterialsIndices.AddUninitialized(1);
+							auto& MaterialIndices = MaterialsIndices[Chunk.MaterialsIndex];
+
+							for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
+							{
+								MaterialIndices.GetRaw(Channel) = MaterialBuffers.AddUninitialized(VOXELS_PER_DATA_CHUNK);
+							}
+
+							for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
+							{
+								const FVoxelMaterial& Material = OldMaterialBuffers[OldIndex + Index];
+
+								for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
+								{
+									MaterialBuffers[MaterialIndices.GetRaw(Channel) + Index] = Material.GetRaw(Channel);
+								}
+							}
+						}
+					}
+					FVoxelChunkSave NewChunk;
+					NewChunk.Position = Chunk.Position;
+					NewChunk.ValuesIndex = Chunk.ValuesIndex;
+					NewChunk.MaterialsIndex = Chunk.MaterialsIndex;
+					NewChunk.bSingleValue = Chunk.bSingleValue;
+					Chunks.Add(NewChunk);
+				}
+
+				ensure(MaterialsIndices.GetSlack() == 0);
+				ensure(MaterialBuffers.GetSlack() == 0);
+				ensure(SingleMaterials.GetSlack() == 0);
+				ensure(Chunks.GetSlack() == 0);
+			}
 		}
 
 		// Serialize placeable items
-		if (Version >= FVoxelCustomVersion::PlaceableItemsInSave)
+		if (Version >= FVoxelSaveVersion::PlaceableItemsInSave)
 		{
 			Ar << PlaceableItems;
 		}
@@ -150,25 +317,13 @@ bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 		if (Ar.IsLoading() && Ar.IsError())
 		{
 			FVoxelMessages::Error("VoxelSave: Serialization failed, data is corrupted");
-			Depth = -1;
-			ValueBuffers.Reset();
-			MaterialBuffers.Reset();
-			Chunks.Reset();
-			PlaceableItems.Reset();
+			*this = FVoxelUncompressedWorldSaveImpl();
 		}
 		
 		UpdateAllocatedSize();
 	}
 
 	return true;
-}
-
-TArray<uint8> FVoxelUncompressedWorldSaveImpl::GetSerializedData() const
-{
-	TArray<uint8> Array;
-	FMemoryWriter Archive(Array, true);
-	const_cast<FVoxelUncompressedWorldSaveImpl*>(this)->Serialize(Archive);
-	return MoveTemp(Array);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -186,12 +341,12 @@ bool FVoxelCompressedWorldSaveImpl::Serialize(FArchive& Ar)
 	{
 		if (Ar.IsSaving())
 		{
-			Version = FVoxelCustomVersion::LatestVersion;
+			Version = FVoxelSaveVersion::LatestVersion;
 		}
 
 		Ar << Depth;
 		Ar << Version;
-		if (Version < FVoxelCustomVersion::ValueConfigFlagAndSaveGUIDs)
+		if (Version < FVoxelSaveVersion::ValueConfigFlagAndSaveGUIDs)
 		{
 			uint32 ConfigFlags;
 			Ar << ConfigFlags;

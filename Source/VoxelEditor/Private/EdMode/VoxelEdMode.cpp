@@ -14,18 +14,14 @@ const FEditorModeID FEdModeVoxel::EM_Voxel = TEXT("EM_Voxel");
 void FEdModeVoxel::Enter()
 {
 	FEdMode::Enter();
+	
+	Panel = MakeShareable(new FVoxelEditorToolsPanel());
+	Toolkit = MakeShareable(new FVoxelEdModeToolkit);
 
-	if (!Panel.IsValid())
-	{
-		Panel = MakeShareable(new FVoxelEditorToolsPanel());
-		Panel->Init();
-	}
-
-	if (!Toolkit.IsValid())
-	{
-		Toolkit = MakeShareable(new FVoxelEdModeToolkit);
-		Toolkit->Init(Owner->GetToolkitHost());
-	}
+	// Toolkit needs the panel to be created
+	Toolkit->Init(Owner->GetToolkitHost());
+	Panel->Init(Toolkit->GetToolkitCommands());
+	Toolkit->GetInlineContent();
 	
 	FVoxelEditorUtilities::EnableRealtime();
 }

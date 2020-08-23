@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "VoxelStaticArray.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelUtilities/VoxelMiscUtilities.h"
 
 class IVoxelData;
@@ -84,7 +84,6 @@ private:
 		explicit FFrame(const TLeaf& Leaf)
 			: bValuesDirty(Leaf.Values.IsDirty())
 			, bMaterialsDirty(Leaf.Materials.IsDirty())
-			, bFoliageDirty(Leaf.Foliage.IsDirty())
 		{
 		}
 		~FFrame()
@@ -96,11 +95,9 @@ private:
 		
 		const bool bValuesDirty;
 		const bool bMaterialsDirty;
-		const bool bFoliageDirty;
 
 		TArray<TModifiedValue<FVoxelValue>> Values;
 		TArray<TModifiedValue<FVoxelMaterial>> Materials;
-		TArray<TModifiedValue<FVoxelFoliage>> Foliage;
 		
 		mutable uint32 AllocatedSize = 0;
 		
@@ -108,14 +105,13 @@ private:
 		
 		inline bool IsEmpty() const
 		{
-			return Values.Num() == 0 && Materials.Num() == 0 && Foliage.Num() == 0;
+			return Values.Num() == 0 && Materials.Num() == 0;
 		}
 	};
 	struct FAlreadyModified
 	{
 		TVoxelStaticBitArray<VOXELS_PER_DATA_CHUNK> Values = ForceInit;
 		TVoxelStaticBitArray<VOXELS_PER_DATA_CHUNK> Materials = ForceInit;
-		TVoxelStaticBitArray<VOXELS_PER_DATA_CHUNK> Foliage = ForceInit;
 	};
 
 	FAlreadyModified AlreadyModified;

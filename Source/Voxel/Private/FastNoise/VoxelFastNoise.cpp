@@ -707,12 +707,22 @@ void FVoxelFastNoise::SetSeed(int seed)
 
 	std::mt19937 gen(seed);
 
+	// There is a bug below:
+	// 256 - j should be 255 - j
+	// However, fixing it would break all existing generators
+	// Instead, make sure it's deterministic
+	m_perm.Memzero();
+	m_perm12.Memzero();
+	
 	for (int i = 0; i < 256; i++)
 		m_perm[i] = i;
 
 	for (int j = 0; j < 256; j++)
 	{
-		cross_platform_std::uniform_int_distribution<> dis(0, 256 - j);
+		cross_platform_std::uniform_int_distribution<> dis(0, 256 - j); // <- bug here
+		// K should be max 255
+		// Due to the bug it's max 256
+		// m_perm.Num() = 512, so it's fine to do m_perm[k]
 		int k = dis(gen) + j;
 		int l = m_perm[j];
 		m_perm[j] = m_perm[j + 256] = m_perm[k];

@@ -8,13 +8,8 @@
 #include "VoxelPhysXHelpers.h"
 #include "VoxelMinimal.h"
 
-#if ENGINE_MINOR_VERSION < 23
-#include "Physics/IPhysXCooking.h"
-#include "Physics/IPhysXCookingModule.h"
-#else
 #include "IPhysXCooking.h"
 #include "IPhysXCookingModule.h"
-#endif
 
 #include "Async/Async.h"
 #include "PhysicsPublic.h"

@@ -1,11 +1,11 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelNodes/VoxelOptimizationNodes.h"
-#include "CppTranslation/VoxelVariables.h"
 #include "VoxelContext.h"
-#include "VoxelNodeFunctions.h"
 #include "VoxelMessages.h"
+#include "VoxelGraphConstants.h"
 #include "VoxelGraphGenerator.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 #include "Async/Async.h"
 
@@ -95,3 +95,57 @@ UVoxelNode_RangeUnion::UVoxelNode_RangeUnion()
 }
 
 GENERATED_VOXELNODE_IMPL_PREFIXOPLOOP(UVoxelNode_RangeUnion, FVoxelNodeFunctions::Union, v_flt)
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelNode_IsSingleBool::UVoxelNode_IsSingleBool()
+{
+	SetInputs(EC::Boolean);
+	SetOutputs(EC::Boolean);
+}
+
+GENERATED_VOXELNODE_IMPL
+(
+	UVoxelNode_IsSingleBool,
+	DEFINE_INPUTS(bool),
+	DEFINE_OUTPUTS(bool),
+	_O0 = FVoxelNodeFunctions::IsSingleBool(_I0);
+)
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelNode_GetRangeAnalysis::UVoxelNode_GetRangeAnalysis()
+{
+	SetInputs(EC::Float);
+	AddOutput("Min", "The min value of the input value for the current voxel");
+	AddOutput("Max", "The max value of the input value for the current voxel");
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelNode_SmartMin::UVoxelNode_SmartMin()
+{
+	SetInputs(EC::Float);
+	SetOutputs(EC::Float);
+	SetInputsCount(3, MAX_VOXELNODE_PINS);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelNode_SmartMax::UVoxelNode_SmartMax()
+{
+	SetInputs(EC::Exec, EC::Float);
+	SetOutputs(EC::Exec, EC::Float);
+	SetInputsCount(3, MAX_VOXELNODE_PINS);
+}
+

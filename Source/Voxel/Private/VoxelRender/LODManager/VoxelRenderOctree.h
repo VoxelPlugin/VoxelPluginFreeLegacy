@@ -147,7 +147,7 @@ private:
 	bool ShouldSubdivideByNeighbors(const FVoxelRenderOctreeSettings& Settings) const;
 	bool ShouldSubdivideByOthers(const FVoxelRenderOctreeSettings& Settings) const;
 	
-	const FVoxelRenderOctree* GetVisibleAdjacentChunk(EVoxelDirection::Type Direction, int32 Index) const;
+	const FVoxelRenderOctree* GetVisibleAdjacentChunk(EVoxelDirectionFlag::Type Direction, int32 Index) const;
 
 	template<typename T1, typename T2>
 	bool IsInvokerInRange(const TArray<FVoxelInvokerSettings>& Invokers, T1 SelectInvoker, T2 GetInvokerBounds) const;

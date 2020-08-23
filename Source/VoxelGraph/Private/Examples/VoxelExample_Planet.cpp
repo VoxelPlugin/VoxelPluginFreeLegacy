@@ -1164,7 +1164,7 @@ public:
 		
 	};
 	
-	FVoxelExample_PlanetInstance(const UVoxelExample_Planet& Object)
+	FVoxelExample_PlanetInstance(UVoxelExample_Planet& Object)
 			: TVoxelGraphGeneratorInstanceHelper(
 			{
 				{ "Value", 1 },
@@ -1197,7 +1197,7 @@ public:
 					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
 				}
 			},
-			Object.bEnableRangeAnalysis)
+			Object)
 		, Params(FParams
 		{
 			Object.Frequency,

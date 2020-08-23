@@ -2,9 +2,10 @@
 
 #include "VoxelNodes/VoxelHeightmapSamplerNode.h"
 #include "VoxelAssets/VoxelHeightmapAsset.h"
+#include "VoxelAssets/VoxelHeightmapAssetSamplerWrapper.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 UVoxelNode_HeightmapSampler::UVoxelNode_HeightmapSampler()
 {
@@ -31,7 +32,7 @@ void UVoxelNode_HeightmapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 	Super::LogErrors(ErrorReporter);
 	if ((bFloatHeightmap && !HeightmapFloat) || (!bFloatHeightmap && !HeightmapUINT16))
 	{
-		ErrorReporter.AddMessageToNode(this, "invalid heightmap", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "invalid heightmap", EVoxelGraphNodeMessageType::Error);
 	}
 }
 
