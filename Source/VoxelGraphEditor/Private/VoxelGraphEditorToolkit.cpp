@@ -40,6 +40,7 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Framework/Commands/GenericCommands.h"
 #include "Widgets/Docking/SDockTab.h"
+#include "Widgets/Layout/SScaleBox.h"
 
 #include "EdGraph/EdGraph.h"
 #include "EdGraphUtilities.h"
@@ -291,7 +292,7 @@ void FVoxelGraphEditorToolkit::CreateInternalWidgets()
 	PreviewScene = MakeShareable(new FAdvancedPreviewScene(FPreviewScene::ConstructionValues()));
 
 	Palette = SNew(SVoxelPalette);
-	Preview = SNew(SVoxelGraphPreview);
+	Preview = SNew(SVoxelGraphPreview).PreviewSettings(WorldGenerator->PreviewSettings);
 	PreviewViewport = SNew(SVoxelGraphPreviewViewport).VoxelGraphEditorToolkit(SharedThis(this));
 	
 	PreviewHandler = MakeShared<FVoxelGraphPreview>(WorldGenerator, Preview, PreviewViewport, PreviewScene);
@@ -322,12 +323,10 @@ void FVoxelGraphEditorToolkit::FillToolbar(FToolBarBuilder& ToolbarBuilder)
 	ToolbarBuilder.AddSeparator();
 	ToolbarBuilder.AddToolBarButton(Commands.ClearNodesMessages);
 	ToolbarBuilder.AddSeparator();
-	ToolbarBuilder.AddToolBarButton(Commands.ToggleRangeAnalysisDebug);
-	ToolbarBuilder.AddSeparator();
-	ToolbarBuilder.AddToolBarButton(Commands.ToggleStats);
-	ToolbarBuilder.AddToolBarButton(Commands.ShowSelectedNodesStats);
-	ToolbarBuilder.AddSeparator();
 	ToolbarBuilder.AddToolBarButton(Commands.ShowAxisDependencies);
+	ToolbarBuilder.AddSeparator();
+	ToolbarBuilder.AddToolBarButton(Commands.ShowStats);
+	ToolbarBuilder.AddToolBarButton(Commands.ShowValues);
 
 	ToolbarBuilder.EndSection();
 }
@@ -396,7 +395,7 @@ void FVoxelGraphEditorToolkit::BindGraphCommands()
 
 	ToolkitCommands->MapAction(
 		Commands.UpdatePreview,
-		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::UpdatePreview, true, false));
+		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::UpdatePreview, EVoxelGraphPreviewFlags::UpdateAll | EVoxelGraphPreviewFlags::ManualPreview));
 	
 	ToolkitCommands->MapAction(
 		Commands.UpdateVoxelWorlds,
@@ -407,26 +406,28 @@ void FVoxelGraphEditorToolkit::BindGraphCommands()
 		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::ClearNodesMessages));
 
 	ToolkitCommands->MapAction(
-		Commands.ShowSelectedNodesStats,
-		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::ShowSelectedNodesStats));
+		Commands.ShowAxisDependencies,
+		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::ShowAxisDependencies));
 
 	ToolkitCommands->MapAction(
-		Commands.ToggleRangeAnalysisDebug,
-		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::ToggleRangeAnalysisDebug),
+		Commands.ShowStats,
+		FExecuteAction::CreateWeakLambda(WorldGenerator, [=]()
+		{
+			WorldGenerator->PreviewSettings->bShowStats = !WorldGenerator->PreviewSettings->bShowStats;
+			UpdatePreview(EVoxelGraphPreviewFlags::UpdateTextures);
+		}),
 		FCanExecuteAction(),
-		FIsActionChecked::CreateSP(this, &FVoxelGraphEditorToolkit::IsRangeAnalysisDebugChecked));
-	
+		FIsActionChecked::CreateWeakLambda(WorldGenerator, [=]() { return WorldGenerator->PreviewSettings->bShowStats; }));
+
 	ToolkitCommands->MapAction(
-		Commands.ShowAxisDependencies,
-		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::ToggleShowAxisDependencies),
+		Commands.ShowValues,
+		FExecuteAction::CreateWeakLambda(WorldGenerator, [=]()
+		{
+			WorldGenerator->PreviewSettings->bShowValues = !WorldGenerator->PreviewSettings->bShowValues;
+			UpdatePreview(EVoxelGraphPreviewFlags::UpdateTextures);
+		}),
 		FCanExecuteAction(),
-		FIsActionChecked::CreateSP(this, &FVoxelGraphEditorToolkit::IsShowAxisDependenciesChecked));
-	
-	ToolkitCommands->MapAction(
-		Commands.ToggleStats,
-		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::ToggleStats),
-		FCanExecuteAction(),
-		FIsActionChecked::CreateSP(this, &FVoxelGraphEditorToolkit::IsToggleStatsChecked));
+		FIsActionChecked::CreateWeakLambda(WorldGenerator, [=]() { return WorldGenerator->PreviewSettings->bShowValues; }));
 
 	ToolkitCommands->MapAction(
 		Commands.ImportExposedVariablesValues,
@@ -634,12 +635,12 @@ void FVoxelGraphEditorToolkit::RefreshNodesMessages()
 	}
 }
 
-void FVoxelGraphEditorToolkit::TriggerUpdatePreview(bool bForce, bool bUpdateTextures)
+void FVoxelGraphEditorToolkit::TriggerUpdatePreview(EVoxelGraphPreviewFlags Flags)
 {
-	if (WorldGenerator->bAutomaticPreview || bForce)
+	if (WorldGenerator->bAutomaticPreview || EnumHasAnyFlags(Flags, EVoxelGraphPreviewFlags::ManualPreview))
 	{
 		bUpdatePreviewOnNextTick = true;
-		bNextPreviewUpdatesTextures |= bUpdateTextures;
+		NextPreviewFlags |= Flags;
 	}
 }
 
@@ -657,27 +658,13 @@ inline EMessageSeverity::Type VoxelMessageTypeToMessageSeverity(EVoxelGraphNodeM
 {
 	switch (Type)
 	{
+	default: ensure(false);
 	case EVoxelGraphNodeMessageType::Info:
 		return EMessageSeverity::Info;
 	case EVoxelGraphNodeMessageType::Warning:
 		return EMessageSeverity::Warning;
 	case EVoxelGraphNodeMessageType::Error:
 		return EMessageSeverity::Error;
-	case EVoxelGraphNodeMessageType::FatalError:
-		return EMessageSeverity::CriticalError;
-	case EVoxelGraphNodeMessageType::Dependencies:
-		return EMessageSeverity::Info;
-	case EVoxelGraphNodeMessageType::Stats:
-		return EMessageSeverity::Info;
-	case EVoxelGraphNodeMessageType::RangeAnalysisWarning:
-		return EMessageSeverity::PerformanceWarning;
-	case EVoxelGraphNodeMessageType::RangeAnalysisError:
-		return EMessageSeverity::PerformanceWarning;
-	case EVoxelGraphNodeMessageType::RangeAnalysisDebug:
-		return EMessageSeverity::Info;
-	default:
-		check(false);
-		return EMessageSeverity::Info;
 	}
 }
 
@@ -754,7 +741,7 @@ void FVoxelGraphEditorToolkit::PostUndo(bool bSuccess)
 		VoxelGraphEditor->ClearSelectionSet();
 		VoxelGraphEditor->NotifyGraphChanged();
 	}
-	TriggerUpdatePreview(false, true);
+	TriggerUpdatePreview(EVoxelGraphPreviewFlags::UpdateAll);
 }
 
 void FVoxelGraphEditorToolkit::NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, class UProperty* PropertyThatChanged)
@@ -773,9 +760,9 @@ void FVoxelGraphEditorToolkit::Tick(float DeltaTime)
 {
 	if (bUpdatePreviewOnNextTick)
 	{
-		UpdatePreview(bNextPreviewUpdatesTextures, true);
+		UpdatePreview(NextPreviewFlags);
 		bUpdatePreviewOnNextTick = false;
-		bNextPreviewUpdatesTextures = false;
+		NextPreviewFlags = EVoxelGraphPreviewFlags::None;
 	}
 }
 
@@ -879,7 +866,12 @@ TSharedRef<SDockTab> FVoxelGraphEditorToolkit::SpawnTab_Preview(const FSpawnTabA
 		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Viewports"))
 		.Label(VOXEL_LOCTEXT("Preview"))
 		[
-			Preview.ToSharedRef()
+			// Do the scaling here to make math easier
+			SNew(SScaleBox)
+			.Stretch(EStretch::ScaleToFit)
+			[
+				Preview.ToSharedRef()
+			]
 		];
 	return Tab;
 }
@@ -1050,7 +1042,7 @@ void FVoxelGraphEditorToolkit::OnTogglePinPreview()
 		
 		VoxelGraphEditor->NotifyGraphChanged();
 	}
-	UpdatePreview(true, true);
+	UpdatePreview(EVoxelGraphPreviewFlags::UpdateAll | EVoxelGraphPreviewFlags::ManualPreview);
 }
 
 void FVoxelGraphEditorToolkit::SelectAllNodes()
@@ -1081,6 +1073,15 @@ void FVoxelGraphEditorToolkit::DeleteSelectedNodes()
 				{
 					VoxelNode->Modify();
 					VoxelNode->MarkPendingKill();
+				}
+
+				auto* PreviewedPin = WorldGenerator->PreviewedPin.Get();
+				if (PreviewedPin && PreviewedPin->GetOwningNode() == VoxelGraphNode)
+				{
+					// Clear previewed pin if we delete the owning node
+					WorldGenerator->PreviewedPin = {};
+					// Clear since we're not previewing it anymore
+					PreviewedPin->bIsDiffing = false;
 				}
 
 				FBlueprintEditorUtils::RemoveNode(NULL, VoxelGraphNode, true);
@@ -1647,15 +1648,11 @@ bool FVoxelGraphEditorToolkit::IsToggleAutomaticPreviewChecked() const
 	return WorldGenerator->bAutomaticPreview;
 }
 
-void FVoxelGraphEditorToolkit::UpdatePreview(bool bUpdateTextures, bool bAutomaticPreview)
+void FVoxelGraphEditorToolkit::UpdatePreview(EVoxelGraphPreviewFlags Flags)
 {
-	PreviewHandler->Update(bUpdateTextures, bAutomaticPreview);
-	if (bUpdateTextures)
-	{
-		ShowAxisDependencies();
-	}
+	PreviewHandler->Update(Flags);
 
-	if (!bAutomaticPreview)
+	if (EnumHasAnyFlags(Flags, EVoxelGraphPreviewFlags::ManualPreview))
 	{
 		FVoxelMessages::ShowVoxelPluginProError("You can view and edit Voxel Graphs, but running and previewing them requires Voxel Plugin Pro");
 	}
@@ -1677,57 +1674,11 @@ void FVoxelGraphEditorToolkit::ClearNodesMessages()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelGraphEditorToolkit::ToggleRangeAnalysisDebug()
-{
-	WorldGenerator->Modify();
-	WorldGenerator->bEnableRangeAnalysisDebug = !WorldGenerator->bEnableRangeAnalysisDebug;
-	UpdatePreview(true, true);
-}
-
-bool FVoxelGraphEditorToolkit::IsRangeAnalysisDebugChecked()
-{
-	return WorldGenerator->bEnableRangeAnalysisDebug;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelGraphEditorToolkit::ToggleStats()
-{
-	WorldGenerator->Modify();
-	WorldGenerator->bEnableStats = !WorldGenerator->bEnableStats;
-}
-
-bool FVoxelGraphEditorToolkit::IsToggleStatsChecked() const
-{
-	return WorldGenerator->bEnableStats;
-}
-
-void FVoxelGraphEditorToolkit::ShowSelectedNodesStats()
-{
-	double TotalTime = 0;
-	uint64 TotalCalls = 0;
-	FVoxelGraphErrorReporter::GetStats(GetSelectedNodes(), TotalTime, TotalCalls);
-	FMessageDialog::Open(EAppMsgType::Ok, FText::Format(
-		VOXEL_LOCTEXT("Selected nodes stats: \nTotal time: {0}s\nTotal calls: {1}"), 
-		FText::FromString(FString::SanitizeFloat(TotalTime)), 
-		FText::AsNumber(TotalCalls)));
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelGraphEditorToolkit::ToggleShowAxisDependencies()
-{
-	bShowAxisDependencies = !bShowAxisDependencies;
-	ShowAxisDependencies();
-}
-
 void FVoxelGraphEditorToolkit::ShowAxisDependencies()
 {
-	FVoxelGraphErrorReporter::ClearNodesMessages(WorldGenerator, true, false, EVoxelGraphNodeMessageType::Dependencies);
-	if (bShowAxisDependencies)
-	{
-		FVoxelMessages::ShowVoxelPluginProError("ShowAxisDependencies requires Voxel Plugin Pro");
-	}
+	FVoxelGraphErrorReporter::ClearNodesMessages(WorldGenerator);
+	
+	FVoxelMessages::ShowVoxelPluginProError("ShowAxisDependencies requires Voxel Plugin Pro");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1757,7 +1708,7 @@ void FVoxelGraphEditorToolkit::RedoGraphAction()
 
 void FVoxelGraphEditorToolkit::SelectNodeAndZoomToFit(TWeakObjectPtr<const UVoxelNode> Node)
 {
-	if (Node.IsValid())
+	if (Node.IsValid() && Node->Graph)
 	{
 		if (Node->Graph == WorldGenerator)
 		{

@@ -272,7 +272,7 @@ FString FVoxelPinCategory::ConvertStringDefaultValue(EVoxelPinCategory Category,
 		return FString::FromInt(Value.Get<int32>());
 	case EVoxelPinCategory::Exec:
 	default:
-		check(false);
+		ensure(false);
 		return "";
 	}
 }
@@ -295,10 +295,50 @@ FString FVoxelPinCategory::ToString(EVoxelPinCategory Category, FVoxelNodeType V
 			Value.Get<FColor>().G / 255.999f,
 			Value.Get<FColor>().B / 255.999f,
 			Value.Get<FColor>().A / 255.999f).ToString();
-	case EVoxelPinCategory::Exec:
 	case EVoxelPinCategory::Material:
+	case EVoxelPinCategory::Exec:
+	default:
+		ensure(false);
+		return "";
+	}
+}
+
+FString FVoxelPinCategory::ToString(EVoxelPinCategory Category, FVoxelNodeRangeType Value)
+{
+	switch (Category)
+	{
+	case EVoxelPinCategory::Boolean:
+		return Value.Get<bool>().ToString();
+	case EVoxelPinCategory::Int:
+		return Value.Get<int32>().ToString();
+	case EVoxelPinCategory::Float:
+		return Value.Get<v_flt>().ToString();
+	case EVoxelPinCategory::Material:
+	case EVoxelPinCategory::Color:
+	case EVoxelPinCategory::Seed:
 	default:
 		check(false);
 		return "";
+	}
+}
+
+bool FVoxelPinCategory::IsInRange(EVoxelPinCategory Category, FVoxelNodeType Value, FVoxelNodeRangeType Range)
+{
+	switch (Category)
+	{
+	case EVoxelPinCategory::Boolean:
+		return Value.Get<bool>() ? Range.Get<bool>().bCanBeTrue : Range.Get<bool>().bCanBeFalse;
+	case EVoxelPinCategory::Int:
+		return Range.Get<int32>().Contains(Value.Get<int32>());
+	case EVoxelPinCategory::Float:
+		return Range.Get<v_flt>().Contains(Value.Get<v_flt>());
+	case EVoxelPinCategory::Material:
+		return true;
+	case EVoxelPinCategory::Color:
+		return true;
+	case EVoxelPinCategory::Seed:
+	default:
+		check(false);
+		return false;
 	}
 }

@@ -27,6 +27,9 @@ public:
 	// Only need to tick when created
 	void TickWorldRoot();
 
+public:
+	void UpdateConvexCollision(uint64 Id, const FBox& Bounds, TArray<FKConvexElem>&& ConvexElements, TArray<physx::PxConvexMesh*>&& ConvexMeshes);
+
 private:
 	UPROPERTY(Transient)
 	UBodySetup* BodySetup;
@@ -54,5 +57,5 @@ private:
 	friend class FVoxelRenderSimpleCollisionSceneProxy;
 
 public:
-	void UpdateConvexCollision(uint64 Id, const FBox& Bounds, TArray<FKConvexElem>&& ConvexElements, TArray<physx::PxConvexMesh*>&& ConvexMeshes);
+	void SetCookedTriMeshes(const TArray<physx::PxTriangleMesh*>& TriMeshes);
 };

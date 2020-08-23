@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
 #include "VoxelConfigEnums.h"
-#include "VoxelStaticArray.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 
 class VOXEL_API FVoxelMaterialBuilder
 {
@@ -24,25 +24,25 @@ public:
 public:
 	void AddMultiIndex(uint8 Index, float Strength, bool bLockStrength = false)
 	{
-		if (MaterialConfig != EVoxelMaterialConfig::MultiIndex) 
+		if (MaterialConfig != EVoxelMaterialConfig::MultiIndex || Strength <= 0) 
 		{
 			return;
 		}
 		
-		if (Strength > 0)
+		for (auto& It : IndicesStrengths)
 		{
-			if (Strengths[Index] == 0)
+			if (It.Index == Index)
 			{
-				ensureVoxelSlowNoSideEffects(!Indices.Contains(Index));
-				Indices.Add(Index);
+				It.bLocked |= bLockStrength;
+				It.Strength += Strength;
+				return;
 			}
-			Strengths[Index] += Strength;
 		}
-
-		if (bLockStrength)
-		{
-			LockedStrengths.Set(Index);
-		}
+		
+		auto& NewIndex = IndicesStrengths.Emplace_GetRef();
+		NewIndex.Index = Index;
+		NewIndex.bLocked = bLockStrength;
+		NewIndex.Strength = Strength;
 	}
 	void AddMultiIndex(int32 Index, float Strength, bool bLockStrength = false)
 	{
@@ -131,8 +131,14 @@ private:
 
 	TVoxelStaticArray<uint8, 4> Us{ ForceInit };
 	TVoxelStaticArray<uint8, 4> Vs{ ForceInit };
-	
-	TVoxelStaticArray<float, 256> Strengths{ ForceInit };
-	TVoxelStaticBitArray<256> LockedStrengths{ ForceInit };
-	TArray<uint8, TFixedAllocator<256>> Indices;
+
+	struct FIndexStrength
+	{
+		uint8 Index = 0;
+		bool bLocked = false;
+		float Strength = 0;
+	};
+	// Since we usually have very few of them, it's faster to have a TArray than a TMap
+	// or a static array of size 256, which is expensive to initialize
+	TArray<FIndexStrength, TFixedAllocator<256>> IndicesStrengths;
 };

@@ -24,20 +24,45 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	CHECK_BOUNDS_ARE_VALID_VOID();
 	
-	UWorld* const SceneWorld = World->GetWorld();
-
 	// no debug line drawing on dedicated server
-	if (GEngine->GetNetMode(SceneWorld) == NM_DedicatedServer) return;
+	if (GEngine->GetNetMode(World->GetWorld()) == NM_DedicatedServer) return;
+
+	DrawDebugIntBox(
+		*World,
+		World->GetLineBatchComponent(),
+		Transform,
+		Bounds,
+		Lifetime,
+		Thickness,
+		Color);
+}
+
+void UVoxelDebugUtilities::DrawDebugIntBox(
+	const AVoxelWorldInterface* World,
+	FVoxelIntBox Box,
+	float Lifetime,
+	float Thickness,
+	FLinearColor Color)
+{
+	DrawDebugIntBox(Cast<AVoxelWorld>(const_cast<AVoxelWorldInterface*>(World)), Box, FTransform(), Lifetime, Thickness, Color);
+}
+
+void UVoxelDebugUtilities::DrawDebugIntBox(
+	const IVoxelWorldInterface& World,
+	UVoxelLineBatchComponent& LineBatchComponent, 
+	FTransform Transform,
+	FVoxelIntBox Box, 
+	float Lifetime, 
+	float Thickness,
+	FLinearColor Color)
+{
+	VOXEL_FUNCTION_COUNTER();
 	
-	// this means foreground lines can't be persistent 
-	auto* LineBatcher = World->LineBatchComponent;
-	if (!LineBatcher) return;
-	
-	const float LineLifeTime = (Lifetime > 0.f) ? Lifetime : LineBatcher->DefaultLifeTime;
+	const float LineLifeTime = (Lifetime > 0.f) ? Lifetime : LineBatchComponent.DefaultLifeTime;
 	
 	// Put it in local voxel world space
-	const FVector Min = World->GetTransform().InverseTransformPosition(World->LocalToGlobal(Bounds.Min));
-	const FVector Max = World->GetTransform().InverseTransformPosition(World->LocalToGlobal(Bounds.Max));
+	const FVector Min = LineBatchComponent.GetComponentTransform().InverseTransformPosition(World.LocalToGlobal(Box.Min));
+	const FVector Max = LineBatchComponent.GetComponentTransform().InverseTransformPosition(World.LocalToGlobal(Box.Max));
 
 	const float BorderOffset = Thickness / 2;
 
@@ -46,11 +71,11 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 	const FVector Center = DebugBox.GetCenter();
 	const uint8 DepthPriority = 0;
 
-	Transform = World->GetTransform() * Transform;
+	Transform = LineBatchComponent.GetComponentTransform() * Transform;
 
 	{
 		VOXEL_SCOPE_COUNTER("DrawLines");
-		auto& Lines = LineBatcher->BatchedLines;
+		auto& Lines = LineBatchComponent.BatchedLines;
 
 		FVector Start = Transform.TransformPosition(Center + FVector(Extent.X, Extent.Y, Extent.Z));
 		FVector End = Transform.TransformPosition(Center + FVector(Extent.X, -Extent.Y, Extent.Z));
@@ -102,18 +127,8 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 	}
 	{
 		VOXEL_SCOPE_COUNTER("MarkRenderStateDirty");
-		LineBatcher->MarkRenderStateDirty();
+		LineBatchComponent.MarkRenderStateDirty();
 	}
-}
-
-void UVoxelDebugUtilities::DrawDebugIntBox(
-	const AVoxelWorldInterface* World,
-	FVoxelIntBox Box,
-	float Lifetime,
-	float Thickness,
-	FLinearColor Color)
-{
-	DrawDebugIntBox(Cast<AVoxelWorld>(const_cast<AVoxelWorldInterface*>(World)), Box, FTransform(), Lifetime, Thickness, Color);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -171,26 +186,32 @@ void UVoxelDebugUtilities::DrawDataOctreeImpl(const FVoxelData& Data, const FDra
 		{
 			UVoxelDebugUtilities::DrawDebugIntBox(Settings.World, Leaf.GetBounds(), Settings.Lifetime, 0, FLinearColor(Color));;
 		};
-		if (LeafData.IsSingleValue())
+		if (LeafData.HasData())
 		{
-			if (LeafData.IsDirty())
+			if (LeafData.HasAllocation())
 			{
-				if (Settings.bShowSingle) Draw(Settings.SingleDirtyColor);
+				if (LeafData.IsDirty())
+				{
+					Draw(Settings.DirtyColor);
+				}
+				else
+				{
+					if (Settings.bShowCached)
+					{
+						Draw(Settings.CachedColor);
+					}
+				}
 			}
-			else
+			else if (Settings.bShowSingle)
 			{
-				if (Settings.bShowSingle) Draw(Settings.SingleColor);
-			}
-		}
-		else if (LeafData.GetDataPtr())
-		{
-			if (LeafData.IsDirty())
-			{
-				Draw(Settings.DirtyColor);
-			}
-			else
-			{
-				if (Settings.bShowCached) Draw(Settings.CachedColor);
+				if (LeafData.IsDirty())
+				{
+					Draw(Settings.SingleDirtyColor);
+				}
+				else
+				{
+					Draw(Settings.SingleColor);
+				}
 			}
 		}
 	});
@@ -198,7 +219,6 @@ void UVoxelDebugUtilities::DrawDataOctreeImpl(const FVoxelData& Data, const FDra
 
 template VOXEL_API void UVoxelDebugUtilities::DrawDataOctreeImpl<FVoxelValue   >(const FVoxelData&, const FDrawDataOctreeSettings&);
 template VOXEL_API void UVoxelDebugUtilities::DrawDataOctreeImpl<FVoxelMaterial>(const FVoxelData&, const FDrawDataOctreeSettings&);
-template VOXEL_API void UVoxelDebugUtilities::DrawDataOctreeImpl<FVoxelFoliage >(const FVoxelData&, const FDrawDataOctreeSettings&);
 
 void UVoxelDebugUtilities::DrawDataOctree(
 	AVoxelWorld* World, 
@@ -231,5 +251,4 @@ void UVoxelDebugUtilities::DrawDataOctree(
 
 	if (DataType == EVoxelDataType::Values) DrawDataOctreeImpl<FVoxelValue>(Data, Settings);
 	if (DataType == EVoxelDataType::Materials) DrawDataOctreeImpl<FVoxelMaterial>(Data, Settings);
-	if (DataType == EVoxelDataType::Foliage) DrawDataOctreeImpl<FVoxelFoliage>(Data, Settings);
 }

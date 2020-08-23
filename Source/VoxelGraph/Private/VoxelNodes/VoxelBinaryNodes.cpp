@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelBinaryNodes.h"
 #include "Runtime/VoxelNodeType.h"
 #include "VoxelContext.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 GENERATED_VOXELNODE_IMPL_BINARY_FLOAT(UVoxelNode_FLess, <)
 GENERATED_VOXELNODE_IMPL_BINARY_FLOAT(UVoxelNode_FLessEqual, <=)

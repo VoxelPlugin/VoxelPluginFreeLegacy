@@ -2,14 +2,15 @@
 
 #include "VoxelTools/VoxelAssetTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
-#include "VoxelPlaceableItems/VoxelAssetItem.h"
 #include "VoxelData/VoxelData.h"
+#include "VoxelData/VoxelData.inl"
 #include "VoxelAssets/VoxelDataAsset.h"
+#include "VoxelAssets/VoxelDataAssetData.inl"
 #include "VoxelWorld.h"
 
 
 void UVoxelAssetTools::ImportAssetAsReference(
-	FVoxelPlaceableItemReference& Reference,
+	FVoxelAssetItemReference& Reference,
 	AVoxelWorld* World,
 	UVoxelTransformableWorldGenerator* Asset,
 	const TMap<FName, int32>& Seeds,
@@ -25,7 +26,7 @@ void UVoxelAssetTools::ImportAssetAsReference(
 void UVoxelAssetTools::ImportAssetAsReferenceAsync(
 	UObject* WorldContextObject,
     FLatentActionInfo LatentInfo,
-	FVoxelPlaceableItemReference& Reference,
+	FVoxelAssetItemReference& Reference,
 	AVoxelWorld* World,
 	UVoxelTransformableWorldGenerator* Asset,
 	const TMap<FName, int32>& Seeds,
@@ -174,7 +175,7 @@ UVoxelDataAsset* UVoxelAssetTools::CreateDataAssetFromWorldSection(
 ///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelAssetTools::AddDisableEditsBox(
-	FVoxelPlaceableItemReference& Reference,
+	FVoxelDisableEditsBoxItemReference& Reference,
 	AVoxelWorld* World, 
 	FVoxelIntBox Bounds)
 {
@@ -184,19 +185,10 @@ void UVoxelAssetTools::AddDisableEditsBox(
 void UVoxelAssetTools::AddDisableEditsBoxAsync(
 	UObject* WorldContextObject, 
 	FLatentActionInfo LatentInfo, 
-	FVoxelPlaceableItemReference& Reference,
+	FVoxelDisableEditsBoxItemReference& Reference,
 	AVoxelWorld* World,
 	FVoxelIntBox Bounds,
 	bool bHideLatentWarnings)
 {
 	VOXEL_PRO_ONLY_VOID();
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-bool UVoxelAssetTools::RemovePlaceableItem(AVoxelWorld* World, FVoxelPlaceableItemReference Reference, FString& Error, bool bResetOverlappingChunksData, bool bUpdateRender)
-{
-	VOXEL_PRO_ONLY();
 }

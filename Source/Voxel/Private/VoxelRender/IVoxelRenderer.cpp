@@ -36,6 +36,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, UVScale(InWorld->UVScale)
 	, NormalConfig(InWorld->NormalConfig)
 	, MaterialConfig(InWorld->MaterialConfig)
+	, bHardColorTransitions(InWorld->bHardColorTransitions)
 
 	, BoundsExtension(InWorld->BoundsExtension)
 
@@ -56,7 +57,6 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, MaxDistanceFieldLOD(InWorld->bGenerateDistanceFields ? InWorld->MaxDistanceFieldLOD : -1)
 	, DistanceFieldBoundsExtension(InWorld->DistanceFieldBoundsExtension)
 	, DistanceFieldResolutionDivisor(InWorld->DistanceFieldResolutionDivisor)
-	, DistanceFieldQuality(InWorld->DistanceFieldQuality)
 	, DistanceFieldSelfShadowBias(InWorld->DistanceFieldSelfShadowBias)
 
 	, bOneMaterialPerCubeSide(InWorld->MaterialConfig == EVoxelMaterialConfig::SingleIndex && InWorld->bOneMaterialPerCubeSide)

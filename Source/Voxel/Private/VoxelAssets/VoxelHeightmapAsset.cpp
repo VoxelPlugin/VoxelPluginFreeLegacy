@@ -1,16 +1,16 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelAssets/VoxelHeightmapAsset.h"
+#include "VoxelAssets/VoxelHeightmapAssetInstance.h"
 #include "VoxelIntBox.h"
-#include "VoxelUtilities/VoxelSerializationUtilities.h"
-#include "VoxelCustomVersion.h"
 #include "VoxelMessages.h"
 #include "VoxelFeedbackContext.h"
+#include "VoxelUtilities/VoxelSerializationUtilities.h"
 #include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
 #include "VoxelWorldGenerators/VoxelTransformableWorldGeneratorHelper.h"
 
-#include "Serialization/BufferArchive.h"
-#include "Serialization/MemoryReader.h"
+#include "Serialization/LargeMemoryReader.h"
+#include "Serialization/LargeMemoryWriter.h"
 
 #include "Engine/Texture2D.h"
 #include "Misc/ScopedSlowTask.h"
@@ -18,244 +18,6 @@
 #define LANDSCAPE_ASSET_THUMBNAIL_RES 128
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelHeightmapAssetMemory);
-
-template<typename T>
-struct TVoxelHeightmapAssetSelector;
-
-template<>
-struct TVoxelHeightmapAssetSelector<float>
-{
-	using Type = UVoxelHeightmapAssetFloat;
-};
-
-template<>
-struct TVoxelHeightmapAssetSelector<uint16>
-{
-	using Type = UVoxelHeightmapAssetUINT16;
-};
-
-template<typename T>
-class VOXEL_API TVoxelHeightmapAssetInstance : public TVoxelWorldGeneratorInstanceHelper<TVoxelHeightmapAssetInstance<T>, typename TVoxelHeightmapAssetSelector<T>::Type>
-{
-public:
-	const TVoxelHeightmapAssetSamplerWrapper<T> Wrapper;
-	const float Precision;
-	const bool bInfiniteExtent;
-	const FVoxelIntBox WorldBounds;
-
-public:
-	TVoxelHeightmapAssetInstance(
-		const TVoxelHeightmapAssetSamplerWrapper<T>& Wrapper,
-		float Precision,
-		bool bInfiniteExtent,
-		const FVoxelIntBox& WorldBounds)
-		: Wrapper(Wrapper)
-		, Precision(Precision)
-		, bInfiniteExtent(bInfiniteExtent)
-		, WorldBounds(WorldBounds)
-	{
-	}
-
-	//~ Begin FVoxelWorldGeneratorInstance Interface
-	FORCEINLINE v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
-	{
-		if (bInfiniteExtent || WorldBounds.ContainsFloat(X, Y, Z)) // Note: it's safe to access outside the bounds
-		{
-			const float Height = Wrapper.GetHeight(X + Wrapper.GetWidth() / 2, Y + Wrapper.GetHeight() / 2, EVoxelSamplerMode::Clamp);
-			return (Z - Height) / Precision;
-		}
-		else
-		{
-			// Outside asset bounds
-			return 1;
-		}
-	}
-	FORCEINLINE FVoxelMaterial GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
-	{
-		return Wrapper.GetMaterial(X + Wrapper.GetWidth() / 2, Y + Wrapper.GetHeight() / 2, EVoxelSamplerMode::Clamp);
-	}
-	TVoxelRange<v_flt> GetValueRangeImpl(const FVoxelIntBox& Bounds, int32 LOD, const FVoxelItemStack& Items) const
-	{
-		if (!bInfiniteExtent && !Bounds.Intersect(WorldBounds))
-		{
-			return 1;
-		}
-
-		const bool bEntirelyContained = WorldBounds.Contains(Bounds);
-
-		const auto XRange = TVoxelRange<v_flt>(Bounds.Min.X, Bounds.Max.X) + Wrapper.GetWidth() / 2;
-		const auto YRange = TVoxelRange<v_flt>(Bounds.Min.Y, Bounds.Max.Y) + Wrapper.GetHeight() / 2;
-		const auto ZRange = TVoxelRange<v_flt>(Bounds.Min.Z, Bounds.Max.Z);
-
-		auto HeightRange = TVoxelRange<v_flt>(Wrapper.GetHeightRange(XRange, YRange, EVoxelSamplerMode::Clamp));
-
-		if (!bEntirelyContained && bInfiniteExtent)
-		{
-			// Height will be 0 outside the boundaries if bInfiniteExtent = true
-			HeightRange = TVoxelRange<v_flt>::Union(HeightRange, 0.f);
-		}
-
-		auto Range = (ZRange - HeightRange) / Precision;
-
-		if (!bEntirelyContained && !bInfiniteExtent)
-		{
-			// Intersects with the boundary
-			Range = TVoxelRange<v_flt>::Union(1.f, Range);
-		}
-
-		return Range;
-	}
-	virtual void GetValues(TVoxelQueryZone<FVoxelValue>& QueryZone, int32 LOD, const FVoxelItemStack& Items) const override final
-	{
-		for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, X))
-		{
-			for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Y))
-			{
-				const float Height = Wrapper.GetHeight(X + Wrapper.GetWidth() / 2, Y + Wrapper.GetHeight() / 2, EVoxelSamplerMode::Clamp);
-
-				for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Z))
-				{
-					FVoxelValue Value;
-					if (bInfiniteExtent || WorldBounds.Contains(X, Y, Z))
-					{
-						Value = FVoxelValue((Z - Height) / Precision);
-					}
-					else
-					{
-						// Outside asset bounds
-						Value = FVoxelValue::Empty();
-					}
-					QueryZone.Set(X, Y, Z, Value);
-				}
-			}
-		}
-	}
-	virtual FVector GetUpVector(v_flt X, v_flt Y, v_flt Z) const override final
-	{
-		return FVector::UpVector;
-	}
-	//~ End FVoxelWorldGeneratorInstance Interface
-};
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-template<typename T>
-void TVoxelHeightmapAssetData<T>::Serialize(FArchive& Ar, uint32 MaterialConfigFlag, int32 VoxelCustomVersion)
-{
-	VOXEL_FUNCTION_COUNTER();
-	
-	FVoxelScopedSlowTask Serializing(3.f);
-	
-	Serializing.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Serializing heights"));
-	if (VoxelCustomVersion == FVoxelCustomVersion::BeforeCustomVersionWasAdded)
-	{
-		Ar << Heights;
-	}
-	else
-	{
-		Heights.BulkSerialize(Ar);
-	}
-
-	Serializing.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Serializing materials"));
-	if (VoxelCustomVersion < FVoxelCustomVersion::NoVoxelMaterialInHeightmapAssets)
-	{
-		TArray<FVoxelMaterial> LegacyMaterials;
-		FVoxelSerializationUtilities::SerializeMaterials(Ar, LegacyMaterials, MaterialConfigFlag, VoxelCustomVersion);
-
-		// Assume RGB
-		Materials.Reserve(LegacyMaterials.Num() * 4);
-		for (auto& Material : LegacyMaterials)
-		{
-			const FColor Color = Material.GetColor();
-			Materials.Add(Color.R);
-			Materials.Add(Color.G);
-			Materials.Add(Color.B);
-			Materials.Add(Color.A);
-		}
-	}
-	else if (VoxelCustomVersion < FVoxelCustomVersion::FixMissingMaterialsInHeightmapAssets)
-	{
-		// Do nothing
-	}
-	else
-	{
-		Materials.BulkSerialize(Ar);
-	}
-	
-	Ar << Width;
-	Ar << Height;
-	Ar << MaxHeight;
-	Ar << MinHeight;
-
-	if (VoxelCustomVersion >= FVoxelCustomVersion::NoVoxelMaterialInHeightmapAssets)
-	{
-		Ar << MaterialConfig;
-	}
-
-	if (Width * Height != Heights.Num())
-	{
-		Ar.SetError();
-	}
-
-	if (Materials.Num() > 0)
-	{
-		int32 MaterialSize = 0;
-		switch (MaterialConfig)
-		{
-		case EVoxelMaterialConfig::RGB:
-			MaterialSize = 4;
-			break;
-		case EVoxelMaterialConfig::SingleIndex:
-			MaterialSize = 1;
-			break;
-		case EVoxelMaterialConfig::DoubleIndex_DEPRECATED:
-			MaterialSize = 0;
-			MaterialConfig = EVoxelMaterialConfig::RGB;
-			Materials.Empty();
-			FVoxelMessages::Error("Cannot load double index heightmap materials, removing them. You'll need to reimport your weightmaps", Owner.Get());
-			break;
-		case EVoxelMaterialConfig::MultiIndex:
-			MaterialSize = 7;
-			break;
-		default:
-			Ar.SetError();
-		}
-
-		if (MaterialSize * Width * Height != Materials.Num())
-		{
-			Ar.SetError();
-		}
-	}
-
-	Serializing.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Recomputing height range mips"));
-	if (Ar.IsLoading())
-	{
-		VOXEL_SCOPE_COUNTER("Recomputing height range mips");
-
-		InitializeHeightRangeMips();
-		for (int32 X = 0; X < Width; X++)
-		{
-			for (int32 Y = 0; Y < Height; Y++)
-			{
-				const T LocalHeight = GetHeightUnsafe(X, Y);
-				for (int32 Mip = 0; Mip < GetNumHeightRangeMips(); Mip++)
-				{
-					int32 LocalX;
-					int32 LocalY;
-					GetHeightRangeLocalCoordinates(Mip, X, Y, LocalX, LocalY);
-
-					auto& Range = GetHeightRangeLocal(Mip, LocalX, LocalY);
-					Range.Min = FMath::Min(Range.Min, LocalHeight);
-					Range.Max = FMath::Max(Range.Max, LocalHeight);
-				}
-			}
-		}
-	}
-
-	UpdateStats();
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -266,7 +28,7 @@ VOXEL_API TVoxelHeightmapAssetSamplerWrapper<uint16>::TVoxelHeightmapAssetSample
 	: Scale(Asset ? FMath::Max(SMALL_NUMBER, Asset->Scale) : 1)
 	, HeightScale(Asset ? Asset->HeightScale : 1)
 	, HeightOffset(Asset ? Asset->HeightOffset : 0)
-	, Data(Asset ? CastChecked<UVoxelHeightmapAssetUINT16>(Asset)->GetDataSharedPtr() : MakeVoxelShared<TVoxelHeightmapAssetData<uint16>>(nullptr))
+	, Data(Asset ? CastChecked<UVoxelHeightmapAssetUINT16>(Asset)->GetDataSharedPtr() : MakeVoxelShared<TVoxelHeightmapAssetData<uint16>>())
 {
 }
 template<>
@@ -274,7 +36,7 @@ VOXEL_API TVoxelHeightmapAssetSamplerWrapper<float>::TVoxelHeightmapAssetSampler
 	: Scale(Asset ? FMath::Max(SMALL_NUMBER, Asset->Scale) : 1)
 	, HeightScale(Asset ? Asset->HeightScale : 1)
 	, HeightOffset(Asset ? Asset->HeightOffset : 0)
-	, Data(Asset ? CastChecked<UVoxelHeightmapAssetFloat>(Asset)->GetDataSharedPtr() : MakeVoxelShared<TVoxelHeightmapAssetData<float>>(nullptr))
+	, Data(Asset ? CastChecked<UVoxelHeightmapAssetFloat>(Asset)->GetDataSharedPtr() : MakeVoxelShared<TVoxelHeightmapAssetData<float>>())
 {
 }
 
@@ -283,9 +45,9 @@ VOXEL_API TVoxelHeightmapAssetSamplerWrapper<float>::TVoxelHeightmapAssetSampler
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void UVoxelHeightmapAsset::TryLoad(TVoxelSharedRef<TVoxelHeightmapAssetData<T>>& Data)
+void UVoxelHeightmapAsset::TryLoad(TVoxelHeightmapAssetData<T>& Data)
 {
-	if (Data->IsEmpty())
+	if (Data.IsEmpty())
 	{
 		// Seems invalid, try to load
 		LoadData(Data);
@@ -293,22 +55,25 @@ void UVoxelHeightmapAsset::TryLoad(TVoxelSharedRef<TVoxelHeightmapAssetData<T>>&
 }
 
 template<typename T>
-void UVoxelHeightmapAsset::SaveData(const TVoxelSharedRef<TVoxelHeightmapAssetData<T>>& Data)
+void UVoxelHeightmapAsset::SaveData(const TVoxelHeightmapAssetData<T>& Data)
 {
 	Modify();
 	
 	FVoxelScopedSlowTask Saving(2.f);
 
-	VoxelCustomVersion = FVoxelCustomVersion::LatestVersion;
+	VoxelCustomVersion = FVoxelHeightmapAssetDataVersion::LatestVersion;
 	MaterialConfigFlag = GVoxelMaterialConfigFlag;
 
 	Saving.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Serializing"));
 
-	FBufferArchive Archive(true);
-	Data->Serialize(Archive, MaterialConfigFlag, VoxelCustomVersion);
-
+	FLargeMemoryWriter MemoryWriter(Data.GetAllocatedSize());
+	
+	bool bNeedToSave = false;
+	const_cast<TVoxelHeightmapAssetData<T>&>(Data).Serialize(MemoryWriter, MaterialConfigFlag, FVoxelHeightmapAssetDataVersion::Type(VoxelCustomVersion), bNeedToSave);
+	ensure(!bNeedToSave);
+	
 	Saving.EnterProgressFrame(1.f, VOXEL_LOCTEXT("Compressing"));
-	FVoxelSerializationUtilities::CompressData(Archive, CompressedData);
+	FVoxelSerializationUtilities::CompressData(MemoryWriter, CompressedData);
 
 	SyncProperties(Data);
 
@@ -320,37 +85,47 @@ void UVoxelHeightmapAsset::SaveData(const TVoxelSharedRef<TVoxelHeightmapAssetDa
 }
 
 template<typename T>
-void UVoxelHeightmapAsset::LoadData(TVoxelSharedRef<TVoxelHeightmapAssetData<T>>& Data)
+void UVoxelHeightmapAsset::LoadData(TVoxelHeightmapAssetData<T>& Data)
 {
 	if (CompressedData.Num() == 0)
 	{
 		// Nothing to load
 		return;
 	}
-	TArray<uint8> UncompressedData;
+	TArray64<uint8> UncompressedData;
 	if (!FVoxelSerializationUtilities::DecompressData(CompressedData, UncompressedData))
 	{
 		FVoxelMessages::Error("Decompression failed, data is corrupted", this);
 		return;
 	}
 
-	FMemoryReader Reader(UncompressedData);
-	Data->Serialize(Reader, MaterialConfigFlag, VoxelCustomVersion);
-	if (Reader.IsError())
+	FLargeMemoryReader MemoryReader(UncompressedData.GetData(), UncompressedData.Num());
+
+	bool bNeedToSave = false;
+	Data.Serialize(MemoryReader, MaterialConfigFlag, FVoxelHeightmapAssetDataVersion::Type(VoxelCustomVersion), bNeedToSave);
+	
+	if (!ensure(!MemoryReader.IsError()))
 	{
 		FVoxelMessages::Error("Serialization failed, data is corrupted", this);
-		Data->SetSize(0, 0, false, EVoxelMaterialConfig::RGB);
+		Data.ClearData();
+		return;
+	}
+	ensure(MemoryReader.AtEnd());
+
+	if (bNeedToSave)
+	{
+		SaveData(Data);
 	}
 
 	SyncProperties(Data);
 }
 
 template<typename T>
-void UVoxelHeightmapAsset::SyncProperties(const TVoxelSharedRef<TVoxelHeightmapAssetData<T>>& Data)
+void UVoxelHeightmapAsset::SyncProperties(const TVoxelHeightmapAssetData<T>& Data)
 {
 	// To access those properties without loading the asset
-	Width = Data->GetWidth();
-	Height = Data->GetHeight();
+	Width = Data.GetWidth();
+	Height = Data.GetHeight();
 }
 
 template<typename T>
@@ -380,7 +155,7 @@ void UVoxelHeightmapAsset::Serialize(FArchive& Ar)
 
 	if ((Ar.IsLoading() || Ar.IsSaving()) && !Ar.IsTransacting())
 	{
-		if (VoxelCustomVersion == FVoxelCustomVersion::BeforeCustomVersionWasAdded)
+		if (VoxelCustomVersion == FVoxelHeightmapAssetDataVersion::BeforeCustomVersionWasAdded)
 		{
 			Ar << MaterialConfigFlag;
 			Ar << CompressedData;
@@ -457,6 +232,7 @@ UTexture2D* UVoxelHeightmapAsset::GetThumbnail()
 ///////////////////////////////////////////////////////////////////////////////
 
 UVoxelHeightmapAssetFloat::UVoxelHeightmapAssetFloat()
+	: Data(MakeVoxelShared<TVoxelHeightmapAssetData<float>>())
 {
 	HeightScale = 0.01f;
 }
@@ -468,22 +244,18 @@ TVoxelHeightmapAssetData<float>& UVoxelHeightmapAssetFloat::GetData()
 
 TVoxelSharedRef<TVoxelHeightmapAssetData<float>> UVoxelHeightmapAssetFloat::GetDataSharedPtr()
 {
-	TryLoad(Data);
-	return Data;
+	TryLoad(*Data);
+	return Data.ToSharedRef();
 }
 
 void UVoxelHeightmapAssetFloat::Save()
 {
-	SaveData(Data);
+	SaveData(*Data);
 }
 
 TVoxelSharedRef<TVoxelHeightmapAssetInstance<float>> UVoxelHeightmapAssetFloat::GetInstanceImpl()
 {
-	return MakeVoxelShared<TVoxelHeightmapAssetInstance<float>>(
-		TVoxelHeightmapAssetSamplerWrapper<float>(this),
-		Precision,
-		bInfiniteExtent,
-		GetBounds());
+	return MakeVoxelShared<TVoxelHeightmapAssetInstance<float>>(*this);
 }
 
 TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelHeightmapAssetFloat::GetInstance()
@@ -506,6 +278,7 @@ FVoxelIntBox UVoxelHeightmapAssetFloat::GetBounds() const
 ///////////////////////////////////////////////////////////////////////////////
 
 UVoxelHeightmapAssetUINT16::UVoxelHeightmapAssetUINT16()
+	: Data(MakeVoxelShared<TVoxelHeightmapAssetData<uint16>>())
 {
 	HeightOffset = -32768 / 128.f;
 	HeightScale = 1.f / 128.f;
@@ -519,22 +292,18 @@ TVoxelHeightmapAssetData<uint16>& UVoxelHeightmapAssetUINT16::GetData()
 
 TVoxelSharedRef<TVoxelHeightmapAssetData<uint16>> UVoxelHeightmapAssetUINT16::GetDataSharedPtr()
 {
-	TryLoad(Data);
-	return Data;
+	TryLoad(*Data);
+	return Data.ToSharedRef();
 }
 
 void UVoxelHeightmapAssetUINT16::Save()
 {
-	SaveData(Data);
+	SaveData(*Data);
 }
 
 TVoxelSharedRef<TVoxelHeightmapAssetInstance<uint16>> UVoxelHeightmapAssetUINT16::GetInstanceImpl()
 {
-	return MakeVoxelShared<TVoxelHeightmapAssetInstance<uint16>>(
-		TVoxelHeightmapAssetSamplerWrapper<uint16>(this),
-		Precision,
-		bInfiniteExtent,
-		GetBounds());
+	return MakeVoxelShared<TVoxelHeightmapAssetInstance<uint16>>(*this);
 }
 
 TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelHeightmapAssetUINT16::GetInstance()

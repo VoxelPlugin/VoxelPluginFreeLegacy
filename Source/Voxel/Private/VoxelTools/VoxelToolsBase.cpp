@@ -1,6 +1,6 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelTools/VoxelToolsBase.h"
+#include "VoxelTools/Gen/VoxelToolsBase.h"
 
 template<typename T>
 FVoxelIntBox GetModifiedVoxelsBounds(const TArray<T>& ModifiedVoxels)
@@ -20,12 +20,6 @@ FVoxelIntBox UVoxelToolsBase::GetModifiedVoxelValuesBounds(const TArray<FModifie
 }
 
 FVoxelIntBox UVoxelToolsBase::GetModifiedVoxelMaterialsBounds(const TArray<FModifiedVoxelMaterial>& ModifiedVoxels)
-{
-	VOXEL_FUNCTION_COUNTER();
-	return GetModifiedVoxelsBounds(ModifiedVoxels);
-}
-
-FVoxelIntBox UVoxelToolsBase::GetModifiedVoxelFoliagesBounds(const TArray<FModifiedVoxelFoliage>& ModifiedVoxels)
 {
 	VOXEL_FUNCTION_COUNTER();
 	return GetModifiedVoxelsBounds(ModifiedVoxels);

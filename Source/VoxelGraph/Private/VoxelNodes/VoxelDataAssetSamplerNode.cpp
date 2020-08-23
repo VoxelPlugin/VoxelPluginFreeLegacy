@@ -4,6 +4,7 @@
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
 #include "VoxelAssets/VoxelDataAsset.h"
+#include "VoxelAssets/VoxelDataAssetData.inl"
 
 UVoxelNode_DataAssetSampler::UVoxelNode_DataAssetSampler()
 {
@@ -35,7 +36,7 @@ void UVoxelNode_DataAssetSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 	Super::LogErrors(ErrorReporter);
 	if (!Asset)
 	{
-		ErrorReporter.AddMessageToNode(this, "invalid asset", EVoxelGraphNodeMessageType::FatalError);
+		ErrorReporter.AddMessageToNode(this, "invalid asset", EVoxelGraphNodeMessageType::Error);
 	}
 }
 
@@ -43,19 +44,5 @@ void UVoxelNode_DataAssetSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 bool UVoxelNode_DataAssetSampler::TryImportFromProperty(UProperty* Property, UObject* Object)
 {
 	return TryImportObject(Property, Object, Asset);
-}
-
-void UVoxelNode_DataAssetSampler::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.Property && 
-		PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelNode_DataAssetSampler, bBilinearInterpolation) &&
-		GraphNode &&
-		Graph)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
 }
 #endif

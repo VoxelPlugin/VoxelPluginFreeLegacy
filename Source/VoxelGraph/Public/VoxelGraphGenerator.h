@@ -28,6 +28,8 @@ enum class EVoxelGraphGeneratorDebugLevel : uint8
 	BeforeMacroInlining,
 	AfterMacroInlining,
 	AfterBiomeMergeReplace,
+	AfterSmartMinMaxReplace,
+	BeforeFillFunctionSeparators,
 	Output,
 	Function,
 	Axis
@@ -53,12 +55,6 @@ public:
 	bool bAutomaticPreview = true;
 
 	UPROPERTY()
-	bool bEnableStats = false;
-	
-	UPROPERTY()
-	bool bEnableRangeAnalysisDebug = false;
-
-	UPROPERTY()
 	bool bShowFlowMergeAndFunctionsWarnings = true;
 	
 public:
@@ -79,9 +75,6 @@ public:
 	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Range Analysis")
 	bool bEnableRangeAnalysis = true;
 
-	UPROPERTY(EditAnywhere, Category = "Range Analysis")
-	bool bHideRangeAnalysisErrors = false;
-
 public:
 	// Will show the nodes functions. If DetailedErrors is false, will only show TargetToDebug
 	UPROPERTY(EditAnywhere, Category = "Debug", meta = (Refresh))
@@ -97,6 +90,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	bool bShowPinsIds = false;
+
+	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
+	bool bShowAxisDependencies = false;
 
 	// The level of compilation to debug
 	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
@@ -176,8 +172,6 @@ public:
 	//~ Begin UVoxelWorldGenerator Interface
 	virtual TMap<FName, int32> GetDefaultSeeds() const override;
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
-	virtual void SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> LoadInstance(FArchive& Ar) const override;
 	//~ End UVoxelWorldGenerator Interface
 
 #if WITH_EDITOR

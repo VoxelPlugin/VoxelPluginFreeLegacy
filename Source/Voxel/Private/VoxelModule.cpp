@@ -4,6 +4,8 @@
 
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
+#include "IVoxelPool.h"
+#include "VoxelUtilities/VoxelSerializationUtilities.h"
 
 #include "Interfaces/IPluginManager.h"
 #include "ShaderCore.h"
@@ -17,6 +19,11 @@ void FVoxelModule::StartupModule()
 	LOG_VOXEL(Log, TEXT("VOXEL_DEBUG=%d"), VOXEL_DEBUG);
 	
 	{
+		check((32 << (FVoxelUtilities::GetDepthFromSize<32>(1023) - 1)) < 1023);
+		check((32 << FVoxelUtilities::GetDepthFromSize<32>(1023)) >= 1023);
+		check((32 << (FVoxelUtilities::GetDepthFromSize<32>(1025) - 1)) < 1025);
+		check((32 << FVoxelUtilities::GetDepthFromSize<32>(1025)) >= 1025);
+		
 		FVoxelMaterial Material(ForceInit);
 		const auto CheckUV = [&](int32 Tex)
 		{
@@ -61,6 +68,11 @@ void FVoxelModule::StartupModule()
 		CheckUV(3);
 #endif
 	}
+
+	FVoxelSerializationUtilities::TestCompression(128, EVoxelCompressionLevel::BestSpeed);
+	FVoxelSerializationUtilities::TestCompression(128, EVoxelCompressionLevel::BestCompression);
+	
+	//FVoxelSerializationUtilities::TestCompression(1llu << 32, EVoxelCompressionLevel::BestSpeed);
 	
 	const auto Plugin = IPluginManager::Get().FindPlugin(VOXEL_PLUGIN_NAME);
 
@@ -77,6 +89,7 @@ void FVoxelModule::StartupModule()
 
 void FVoxelModule::ShutdownModule()
 {
+	IVoxelPool::Shutdown();
 }
 
 IMPLEMENT_MODULE(FVoxelModule, Voxel)

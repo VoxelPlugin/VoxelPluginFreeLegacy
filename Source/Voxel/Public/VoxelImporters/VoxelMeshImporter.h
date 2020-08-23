@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelConfigEnums.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelMeshImporter.generated.h"
@@ -60,32 +61,51 @@ struct VOXEL_API FVoxelMeshImporterSettingsBase
 
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (ClampMin = "0"))
 	float VoxelSize = 100;
+
+	// Sweep direction to determine the voxel signs. If you have a plane, use Z
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
+	EVoxelAxis SweepDirection = EVoxelAxis::X;
+
+	// Will do the sweep the other way around: eg, if SweepDirection = Z, the sweep will be done top to bottom if true
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
+	bool bReverseSweep = true;
+
+	// If true, will assume every line of voxels starts outside the mesh, then goes inside, then goes outside it
+	// Set to false if you have a shell and not a true volume
+	// For example:
+	// - sphere: set to true
+	// - half sphere with no bottom geometry: set to false
+	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
+	bool bWatertight = true;
 	
 	// If true, will hide leaks by having holes instead
 	// If false, leaks will be long tubes going through the entire asset
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
 	bool bHideLeaks = true;
 
-	// Adds an offset to the distance field: a negative offset will make the volume bigger, a positive one will make it smaller.
-	// eg try with -0.5 or 0.5
-	// Might need to increase MaxVoxelDistanceFromTriangle if you go beyond -1
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
-	float DistanceFieldOffset = 0;
-
 	// Distance will be exact for voxels under this distance from a triangle
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay, meta = (ClampMin = "1"))
-	int32 MaxVoxelDistanceFromTriangle = 1;
+	int32 ExactBand = 1;
 
 	// Increase this if the shadows/normals quality is bad. Might require to increase MaxVoxelDistanceFromTriangle
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
 	float DistanceDivisor = 1;
 
-	// If true, will compute the distance of every voxel
-	// If false, just set voxels inside the mesh to -1 and voxels outside to 1, 
-	// with voxels under a distance of MaxVoxelDistanceFromTriangle from the mesh having the exact distance
-	// Much faster if false
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
-	bool bComputeExactDistance = false;
+public:
+	friend bool operator==(const FVoxelMeshImporterSettingsBase& Lhs, const FVoxelMeshImporterSettingsBase& RHS)
+	{
+		return Lhs.VoxelSize == RHS.VoxelSize
+			&& Lhs.SweepDirection == RHS.SweepDirection
+			&& Lhs.bWatertight == RHS.bWatertight
+			&& Lhs.bReverseSweep == RHS.bReverseSweep
+			&& Lhs.bHideLeaks == RHS.bHideLeaks
+			&& Lhs.ExactBand == RHS.ExactBand
+			&& Lhs.DistanceDivisor == RHS.DistanceDivisor;
+	}
+	friend bool operator!=(const FVoxelMeshImporterSettingsBase& Lhs, const FVoxelMeshImporterSettingsBase& RHS)
+	{
+		return !(Lhs == RHS);
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -98,7 +118,7 @@ struct VOXEL_API FVoxelMeshImporterSettings : public FVoxelMeshImporterSettingsB
 	
 	// Will sample ColorsMaterial at the mesh UVs to get the voxel colors
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
-	bool bPaintColors = true;
+	bool bImportColors = true;
 	
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bPaintColors"))
 	UMaterialInterface* ColorsMaterial = nullptr;
@@ -106,25 +126,28 @@ struct VOXEL_API FVoxelMeshImporterSettings : public FVoxelMeshImporterSettingsB
 	// Will sample UVChannelsMaterial at the mesh UVs to get the voxel UVs
 	// RG will go in first UV channel, BA in second
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere)
-	bool bPaintUVs = true;
+	bool bImportUVs = true;
 	
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = bPaintUVs))
 	UMaterialInterface* UVsMaterial = nullptr;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (InlineEditConditionToggle))
-	bool bSetSingleIndex = false;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bSetSingleIndex"))
-	uint8 SingleIndex = 0;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (InlineEditConditionToggle))
-	bool bSetMultiIndex = false;
-	
-	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bSetMultiIndex"))
-	uint8 MultiIndex = 0;
 
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
 	int32 RenderTargetSize = 4096;
+
+public:
+	friend bool operator==(const FVoxelMeshImporterSettings& Lhs, const FVoxelMeshImporterSettings& RHS)
+	{
+		return static_cast<const FVoxelMeshImporterSettingsBase&>(Lhs) == static_cast<const FVoxelMeshImporterSettingsBase&>(RHS)
+			&& Lhs.bImportColors == RHS.bImportColors
+			&& Lhs.ColorsMaterial == RHS.ColorsMaterial
+			&& Lhs.bImportUVs == RHS.bImportUVs
+			&& Lhs.UVsMaterial == RHS.UVsMaterial
+			&& Lhs.RenderTargetSize == RHS.RenderTargetSize;
+	}
+	friend bool operator!=(const FVoxelMeshImporterSettings& Lhs, const FVoxelMeshImporterSettings& RHS)
+	{
+		return !(Lhs == RHS);
+	}
 };
 
 UCLASS()
@@ -148,14 +171,17 @@ public:
 	static void ConvertMeshToDistanceField(
 		const FVoxelMeshImporterInputData& Mesh,
 		const FTransform& Transform,
-		float VoxelSize,
-		float MaxDistance,
-		// Needed if we want a smooth import
+		const FVoxelMeshImporterSettingsBase& Settings,
+		// Needed if we want a smooth import, in voxels
 		float BoxExtension,
 		TArray<float>& OutDistanceField,
+		TArray<FVector>& OutSurfacePositions,
 		FIntVector& OutSize,
 		FIntVector& OutOffset,
-		int32& OutNumLeaks);
+		int32& OutNumLeaks,
+		EVoxelComputeDevice Device = EVoxelComputeDevice::GPU,
+		bool bMultiThreaded = true,
+		int32 MaxPasses_Debug = -1);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Mesh Importer")
 	static UVoxelMeshImporterInputData* CreateMeshDataFromStaticMesh(UStaticMesh* StaticMesh);

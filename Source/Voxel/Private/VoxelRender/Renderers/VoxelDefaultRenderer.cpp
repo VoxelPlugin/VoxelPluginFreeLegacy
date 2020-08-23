@@ -13,6 +13,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelData/VoxelData.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelRenderer);
 

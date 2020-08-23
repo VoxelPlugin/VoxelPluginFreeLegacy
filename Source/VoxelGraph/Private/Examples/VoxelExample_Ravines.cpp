@@ -993,7 +993,7 @@ public:
 		
 	};
 	
-	FVoxelExample_RavinesInstance(const UVoxelExample_Ravines& Object)
+	FVoxelExample_RavinesInstance(UVoxelExample_Ravines& Object)
 			: TVoxelGraphGeneratorInstanceHelper(
 			{
 				{ "Value", 1 },
@@ -1026,7 +1026,7 @@ public:
 					{ "Value", WithTransformRangeAccessor<v_flt>::Get<1, TRangeOutputFunctionPtr_Transform<v_flt>>() },
 				}
 			},
-			Object.bEnableRangeAnalysis)
+			Object)
 		, Params(FParams
 		{
 			Object.Bottom_Transition_Smoothness,

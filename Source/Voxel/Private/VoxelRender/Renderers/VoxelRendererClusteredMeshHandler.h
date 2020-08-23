@@ -3,8 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelQueueWithNum.h"
 #include "VoxelMinimal.h"
+#include "VoxelQueueWithNum.h"
+#include "Containers/StaticArray.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
 #include "VoxelRendererMeshHandler.h"
 

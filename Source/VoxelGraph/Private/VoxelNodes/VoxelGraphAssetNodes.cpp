@@ -3,9 +3,9 @@
 #include "VoxelNodes/VoxelGraphAssetNodes.h"
 #include "VoxelNodes/VoxelWorldGeneratorSamplerNodes.h"
 #include "CppTranslation/VoxelVariables.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 #include "VoxelTools/VoxelHardnessHandler.h"
 #include "VoxelGraphGenerator.h"
 
@@ -48,19 +48,6 @@ int32 UVoxelGraphAssetNode::GetMaxInputPins() const
 {
 	return GetMinInputPins();
 }
-
-#if WITH_EDITOR
-void UVoxelGraphAssetNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	if (Graph && GraphNode && PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

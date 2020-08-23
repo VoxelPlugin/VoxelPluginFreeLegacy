@@ -102,6 +102,8 @@ public:
 public:
 	static void DestroyWorldPool(UWorld* World);
 	static void DestroyGlobalPool();
+
+	static void Shutdown();
 	
 private:
 	static TMap<TWeakObjectPtr<UWorld>, TVoxelSharedPtr<IVoxelPool>> WorldsPools;

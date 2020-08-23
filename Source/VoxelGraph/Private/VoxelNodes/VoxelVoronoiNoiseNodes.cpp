@@ -60,23 +60,6 @@ FString UVoxelNode_VoronoiNoiseBase::GetInputPinDefaultValue(int32 PinIndex) con
 	return GetPins().GetInputPin(PinIndex).DefaultValue;
 }
 
-#if WITH_EDITOR
-void UVoxelNode_VoronoiNoiseBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.Property &&
-		PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive &&
-		PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelNode_VoronoiNoiseBase, bComputeNeighbors) &&
-		Graph &&
-		GraphNode)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-}
-#endif
-
 const FVoxelPinsHelper& UVoxelNode_VoronoiNoiseBase::GetPins() const
 {
 	static const TArray<FVoxelHelperPin> InputPinsDim2 =

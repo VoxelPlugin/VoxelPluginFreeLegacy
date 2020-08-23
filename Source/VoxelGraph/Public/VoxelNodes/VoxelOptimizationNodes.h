@@ -174,3 +174,48 @@ class VOXELGRAPH_API UVoxelNode_RangeUnion : public UVoxelNodeHelper
 
 	UVoxelNode_RangeUnion();
 };
+
+// In range analysis, returns false if the condition can be true or false. In other modes, always returns true
+UCLASS(DisplayName = "Is Single bool", Category = "Optimization")
+class VOXELGRAPH_API UVoxelNode_IsSingleBool : public UVoxelNodeHelper
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+
+	UVoxelNode_IsSingleBool();
+};
+
+// Get the range analysis value
+UCLASS(DisplayName = "Get Range", Category = "Optimization", meta = (Keywords = "range analysis"))
+class VOXELGRAPH_API UVoxelNode_GetRangeAnalysis : public UVoxelNodeHelper
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+
+	UVoxelNode_GetRangeAnalysis();
+
+	//~ Begin UVoxelNode Interface
+	//~ End UVoxelNode Interface
+};
+
+UCLASS(DisplayName = "Smart Min", Category = "Optimization", meta = (Keywords = "smart range min fast"))
+class VOXELGRAPH_API UVoxelNode_SmartMin : public UVoxelNodeHelper
+{
+	GENERATED_BODY()
+
+	UVoxelNode_SmartMin();
+
+	//~ Begin UVoxelNode Interface
+	//~ End UVoxelNode Interface
+};
+
+UCLASS(DisplayName = "Smart Max", Category = "Optimization", meta = (Keywords = "smart range max fast"))
+class VOXELGRAPH_API UVoxelNode_SmartMax : public UVoxelNodeHelper
+{
+	GENERATED_BODY()
+
+	UVoxelNode_SmartMax();
+
+	//~ Begin UVoxelNode Interface
+	//~ End UVoxelNode Interface
+};

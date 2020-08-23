@@ -93,7 +93,7 @@ int32 UVoxelVDBFactory::GetPriority() const
 
 bool UVoxelVDBFactory::DoImport(UVoxelVDBAsset& Asset, const FString& Path, const TMap<FName, FVoxelVDBImportChannelConfig>& ExistingChannelConfigs)
 {
-	const auto Data = Asset.MakeData();
+	const auto Data = MakeVoxelShared<FVoxelVDBAssetData>();
 
 	FString Error;
 

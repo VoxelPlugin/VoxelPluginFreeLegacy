@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGraphGlobals.h"
 #include "VoxelMaterial.h"
 #include "VoxelRange.h"
 
@@ -70,3 +71,38 @@ private:
 	DEFINE_GET(FVoxelMaterial, FVoxelMaterialRange);
 	DEFINE_GET(FColor, FVoxelColorRange);
 #undef DEFINE_GET
+
+template<typename T>
+struct TVoxelNodeBuffer
+{
+	T* RESTRICT const Buffer;
+
+	TVoxelNodeBuffer(T* Buffer)
+		: Buffer(Buffer)
+	{
+	}
+
+	FORCEINLINE T& operator[](int32 Index)
+	{
+		checkVoxelGraph(0 <= Index && Index < MAX_VOXELNODE_PINS);
+		return Buffer[Index];
+	}
+};
+
+struct FVoxelNodeInputBuffer : TVoxelNodeBuffer<const FVoxelNodeType>
+{
+	using TVoxelNodeBuffer::TVoxelNodeBuffer;
+};
+struct FVoxelNodeOutputBuffer : TVoxelNodeBuffer<FVoxelNodeType>
+{
+	using TVoxelNodeBuffer::TVoxelNodeBuffer;
+};
+
+struct FVoxelNodeInputRangeBuffer : TVoxelNodeBuffer<const FVoxelNodeRangeType>
+{
+	using TVoxelNodeBuffer::TVoxelNodeBuffer;
+};
+struct FVoxelNodeOutputRangeBuffer : TVoxelNodeBuffer<FVoxelNodeRangeType>
+{
+	using TVoxelNodeBuffer::TVoxelNodeBuffer;
+};

@@ -13,7 +13,7 @@ class VOXELGRAPH_API UVoxelNode_VoronoiNoiseBase : public UVoxelNodeHelper
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Voronoi settings")
+	UPROPERTY(EditAnywhere, Category = "Voronoi settings", meta = (ReconstructNode))
 	bool bComputeNeighbors = false;
 
 	UPROPERTY()
@@ -32,10 +32,6 @@ public:
 	virtual FVoxelPinDefaultValueBounds GetInputPinDefaultValueBounds(int32 PinIndex) const override;
 	virtual FString GetInputPinDefaultValue(int32 PinIndex) const override;
 	//~ End UVoxelNode Interface
-
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 
 private:
 	const FVoxelPinsHelper& GetPins() const;

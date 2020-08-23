@@ -2,17 +2,21 @@
 
 #include "VoxelGraphPreviewSettings.h"
 #include "IVoxelGraphEditor.h"
+#include "VoxelUtilities/VoxelMathUtilities.h"
+
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
 
 UVoxelGraphPreviewSettings::UVoxelGraphPreviewSettings()
 {
-	ConstructorHelpers::FObjectFinderOptional<UStaticMesh> MeshObject(TEXT("/Voxel/Preview/SM_Plane"));
-	ConstructorHelpers::FObjectFinderOptional<UMaterialInterface> MaterialObject(TEXT("/Voxel/Preview/M_PreviewMaterial"));
+	static ConstructorHelpers::FObjectFinderOptional<UStaticMesh> MeshObject(TEXT("/Voxel/Preview/SM_Plane"));
+	static ConstructorHelpers::FObjectFinderOptional<UMaterialInterface> HeightmapMaterialObject(TEXT("/Voxel/Preview/M_PreviewMaterial"));
+	static ConstructorHelpers::FObjectFinderOptional<UMaterialInterface> SliceMaterialObject(TEXT("/Voxel/Preview/M_2DPreviewMaterial"));
 
 	Mesh = MeshObject.Get();
-	Material = MaterialObject.Get();
+	HeightmapMaterial = HeightmapMaterialObject.Get();
+	SliceMaterial = SliceMaterialObject.Get();
 
 	IndexColors.Add(FColorList::Red);
 	IndexColors.Add(FColorList::Green);
@@ -25,7 +29,7 @@ UVoxelGraphPreviewSettings::UVoxelGraphPreviewSettings()
 }
 
 #if WITH_EDITOR
-void UVoxelGraphPreviewSettings::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
+void UVoxelGraphPreviewSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
@@ -43,22 +47,64 @@ void UVoxelGraphPreviewSettings::PostEditChangeProperty(struct FPropertyChangedE
 		}
 	}
 
-	Resolution = FMath::Clamp(1 << FMath::FloorLog2(Resolution), 32, 4096);
+	NumRangeAnalysisChunksPerAxis = FMath::Clamp(NumRangeAnalysisChunksPerAxis, 1, Resolution);
 
-	PreviewedBounds = GetBounds();
+	const FVoxelGraphPreviewSettingsWrapper Wrapper(*this);
+	ResolutionMultiplierLog = Wrapper.LOD;
+	PreviewedBounds = Wrapper.Bounds;
 
-	if (PropertyChangedEvent.MemberProperty && Graph)
+	// Don't let the previewed voxel go out of the bounds
+	PreviewedVoxel = Wrapper.Bounds.Clamp(PreviewedVoxel);
+	
+	const bool bAutomatic = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("Automatic"));
+	const bool bUpdateItems = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("UpdateItems"));
+	const bool bMeshOnly = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("MeshOnly"));
+	
+	if (Graph && PropertyChangedEvent.MemberProperty && (!bAutomatic || PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive))
 	{
-		static FName NoRebuild(TEXT("NoRebuild"));
+		EVoxelGraphPreviewFlags Flags = EVoxelGraphPreviewFlags::None;
+		if (!bAutomatic)
+		{
+			Flags |= EVoxelGraphPreviewFlags::ManualPreview;
+		}
+		Flags |= EVoxelGraphPreviewFlags::UpdateMeshSettings;
+		if (!bMeshOnly)
+		{
+			Flags |= EVoxelGraphPreviewFlags::UpdateTextures;
+		}
+		if (bUpdateItems)
+		{
+			Flags |= EVoxelGraphPreviewFlags::UpdatePlaceableItems;
+		}
 
-		if (PropertyChangedEvent.MemberProperty->HasMetaData(NoRebuild))
-		{
-			IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, true, false);
-		}
-		else if (PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
-		{
-			IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, true, true);
-		}
+		IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, Flags);
 	}
 }
 #endif
+
+FVoxelGraphPreviewSettingsWrapper::FVoxelGraphPreviewSettingsWrapper(const UVoxelGraphPreviewSettings& Settings)
+{
+	LOD = FMath::Clamp(Settings.ResolutionMultiplierLog, 0, 20);
+	Step = 1 << LOD;
+	Resolution = Settings.Resolution;
+	
+	LeftToRight = Settings.LeftToRight;
+	BottomToTop = Settings.BottomToTop;
+	
+	Center = FVoxelUtilities::DivideRound(Settings.Center, Step) * Step;
+
+	{
+		Start = Center;
+		const int32 Offset = Resolution / 2 * Step;
+		GetAxis(Start, LeftToRight) -= Offset;
+		GetAxis(Start, BottomToTop) -= Offset;
+	}
+
+	{
+		Size = FIntVector(1, 1, 1);
+		GetAxis(Size, LeftToRight) = Resolution;
+		GetAxis(Size, BottomToTop) = Resolution;
+	}
+
+	Bounds = FVoxelIntBox(Start, Start + Size * Step);
+}

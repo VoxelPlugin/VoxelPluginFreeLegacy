@@ -4,7 +4,7 @@
 #include "Runtime/VoxelNodeType.h"
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelContext.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 UVoxelNode_RandomFloat::UVoxelNode_RandomFloat()
 {

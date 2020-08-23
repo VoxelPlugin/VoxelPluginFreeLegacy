@@ -66,3 +66,10 @@ void IVoxelPool::DestroyGlobalPool()
 		LOG_VOXEL(Log, TEXT("Global Voxel Pool destroyed"));
 	}
 }
+
+void IVoxelPool::Shutdown()
+{
+	// Make sure to delete them cleanly here, as else issues can arise with ReturnSynchEventToPool
+	GlobalPool.Reset();
+	WorldsPools.Reset();
+}

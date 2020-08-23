@@ -32,22 +32,39 @@ constexpr uint32 GVoxelMaterialConfigFlag =
 	EVoxelMaterialConfigFlag::EnableUV2 * VOXEL_MATERIAL_ENABLE_UV2 +
 	EVoxelMaterialConfigFlag::EnableUV3 * VOXEL_MATERIAL_ENABLE_UV3;
 
+UENUM(BlueprintType, DisplayName = "Voxel Material Mask")
+enum class EVoxelMaterialMask_BP : uint8
+{
+	R,
+	G,
+	B,
+	A,
+	U0,
+	U1,
+	U2,
+	U3,
+	V0,
+	V1,
+	V2,
+	V3,
+};
+
 namespace EVoxelMaterialMask
 {
 	enum Type : uint32
 	{
-		R  = 0x001,
-		G  = 0x002,
-		B  = 0x004,
-		A  = 0x008,
-		U0 = 0x010,
-		U1 = 0x020,
-		U2 = 0x040,
-		U3 = 0x080,
-		V0 = 0x100,
-		V1 = 0x200,
-		V2 = 0x400,
-		V3 = 0x800,
+		R  = 1 << 0,
+		G  = 1 << 1,
+		B  = 1 << 2,
+		A  = 1 << 3,
+		U0 = 1 << 4,
+		U1 = 1 << 5,
+		U2 = 1 << 6,
+		U3 = 1 << 7,
+		V0 = 1 << 8,
+		V1 = 1 << 9,
+		V2 = 1 << 10,
+		V3 = 1 << 11,
 
 		None = 0,
 		All = R | G | B| A | U0 | U1 | U2 | U3 | V0 | V1 | V2 | V3,
@@ -337,25 +354,32 @@ public:
 			GetV2() != Other.GetV2() ||
 			GetV3() != Other.GetV3();
 	}
+};
 
-public:
-	FORCEINLINE static T SerializeWithCustomConfig(FArchive& Ar, uint32 ConfigFlags)
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+struct TVoxelMaterialStorage
+{
+	FORCEINLINE static TVoxelMaterialStorage<T> SerializeWithCustomConfig(FArchive& Ar, uint32 ConfigFlags)
 	{
 		check(Ar.IsLoading());
 
-		uint8 R = 0;
-		uint8 G = 0;
-		uint8 B = 0;
-		uint8 A = 0;
+		T R = 0;
+		T G = 0;
+		T B = 0;
+		T A = 0;
 		
-		uint8 U0 = 0;
-		uint8 V0 = 0;
-		uint8 U1 = 0;
-		uint8 V1 = 0;
-		uint8 U2 = 0;
-		uint8 V2 = 0;
-		uint8 U3 = 0;
-		uint8 V3 = 0;
+		T U0 = 0;
+		T V0 = 0;
+		T U1 = 0;
+		T V1 = 0;
+		T U2 = 0;
+		T V2 = 0;
+		T U3 = 0;
+		T V3 = 0;
 
 		if (ConfigFlags & EVoxelMaterialConfigFlag::EnableR)
 		{
@@ -393,30 +417,294 @@ public:
 			Ar << U3;
 			Ar << V3;
 		}
-
-		T Material(ForceInit);
-		Material.SetR(R);
-		Material.SetG(G);
-		Material.SetB(B);
-		Material.SetA(A);
-		Material.SetU0(U0);
-		Material.SetV0(V0);
-		Material.SetU1(U1);
-		Material.SetV1(V1);
-		Material.SetU2(U2);
-		Material.SetV2(V2);
-		Material.SetU3(U3);
-		Material.SetV3(V3);
 		
-		return Material;
+		TVoxelMaterialStorage<T> Storage;
+		Storage.Impl_SetR(R);
+		Storage.Impl_SetG(G);
+		Storage.Impl_SetB(B);
+		Storage.Impl_SetA(A);
+		Storage.Impl_SetU0(U0);
+		Storage.Impl_SetV0(V0);
+		Storage.Impl_SetU1(U1);
+		Storage.Impl_SetV1(V1);
+		Storage.Impl_SetU2(U2);
+		Storage.Impl_SetV2(V2);
+		Storage.Impl_SetU3(U3);
+		Storage.Impl_SetV3(V3);
+		return Storage;
 	}
+	friend FORCEINLINE FArchive& operator<<(FArchive& Ar, TVoxelMaterialStorage<T>& Storage)
+	{
+#if VOXEL_MATERIAL_ENABLE_R
+		Ar << Storage.R;
+#endif
+#if VOXEL_MATERIAL_ENABLE_G
+		Ar << Storage.G;
+#endif
+#if VOXEL_MATERIAL_ENABLE_B
+		Ar << Storage.B;
+#endif
+#if VOXEL_MATERIAL_ENABLE_A
+		Ar << Storage.A;
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV0
+		Ar << Storage.U0;
+		Ar << Storage.V0;
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV1
+		Ar << Storage.U1;
+		Ar << Storage.V1;
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV2
+		Ar << Storage.U2;
+		Ar << Storage.V2;
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV3
+		Ar << Storage.U3;
+		Ar << Storage.V3;
+#endif
+		return Ar;
+	}
+
+public:
+	static constexpr int32 NumChannels = 
+		VOXEL_MATERIAL_ENABLE_R + 
+		VOXEL_MATERIAL_ENABLE_G + 
+		VOXEL_MATERIAL_ENABLE_B + 
+		VOXEL_MATERIAL_ENABLE_A + 
+		2 * VOXEL_MATERIAL_ENABLE_UV0 +
+		2 * VOXEL_MATERIAL_ENABLE_UV1 +
+		2 * VOXEL_MATERIAL_ENABLE_UV2 +
+		2 * VOXEL_MATERIAL_ENABLE_UV3;
+
+	FORCEINLINE T& GetRaw(int32 Channel)
+	{
+		checkVoxelSlow(0 <= Channel && Channel < NumChannels);
+		return *(reinterpret_cast<T*>(this) + Channel);
+	}
+	FORCEINLINE T GetRaw(int32 Channel) const
+	{
+		checkVoxelSlow(0 <= Channel && Channel < NumChannels);
+		return *(reinterpret_cast<const T*>(this) + Channel);
+	}
+
+public:
+	FORCEINLINE T Impl_GetR() const
+	{
+#if VOXEL_MATERIAL_ENABLE_R
+		return R;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetG() const
+	{
+#if VOXEL_MATERIAL_ENABLE_G
+		return G;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetB() const
+	{
+#if VOXEL_MATERIAL_ENABLE_B
+		return B;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetA() const
+	{
+#if VOXEL_MATERIAL_ENABLE_A
+		return A;
+#else
+		return 0;
+#endif
+	}
+	
+	FORCEINLINE T Impl_GetU0() const
+	{
+#if VOXEL_MATERIAL_ENABLE_UV0
+		return U0;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetU1() const
+	{
+#if VOXEL_MATERIAL_ENABLE_UV1
+		return U1;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetU2() const
+	{
+#if VOXEL_MATERIAL_ENABLE_UV2
+		return U2;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetU3() const
+	{
+#if VOXEL_MATERIAL_ENABLE_UV3
+		return U3;
+#else
+		return 0;
+#endif
+	}
+	
+	FORCEINLINE T Impl_GetV0() const
+	{
+#if VOXEL_MATERIAL_ENABLE_UV0
+		return V0;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetV1() const
+	{
+#if VOXEL_MATERIAL_ENABLE_UV1
+		return V1;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetV2() const
+	{
+#if VOXEL_MATERIAL_ENABLE_UV2
+		return V2;
+#else
+		return 0;
+#endif
+	}
+	FORCEINLINE T Impl_GetV3() const
+	{
+#if VOXEL_MATERIAL_ENABLE_UV3
+		return V3;
+#else
+		return 0;
+#endif
+	}
+
+public:
+	FORCEINLINE void Impl_SetR(T Value)
+	{
+#if VOXEL_MATERIAL_ENABLE_R
+		R = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetG(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_G
+		G = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetB(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_B
+		B = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetA(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_A
+		A = Value;
+#endif
+	}
+	
+	FORCEINLINE void Impl_SetU0(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_UV0
+		U0 = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetU1(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_UV1
+		U1 = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetU2(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_UV2
+		U2 = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetU3(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_UV3
+		U3 = Value;
+#endif
+	}
+	
+	FORCEINLINE void Impl_SetV0(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_UV0
+		V0 = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetV1(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_UV1
+		V1 = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetV2(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_UV2
+		V2 = Value;
+#endif
+	}
+	FORCEINLINE void Impl_SetV3(T Value) 
+	{
+#if VOXEL_MATERIAL_ENABLE_UV3
+		V3 = Value;
+#endif
+	}
+
+private:
+#if VOXEL_MATERIAL_ENABLE_R
+	T R;
+#endif
+#if VOXEL_MATERIAL_ENABLE_G
+	T G;
+#endif
+#if VOXEL_MATERIAL_ENABLE_B
+	T B;
+#endif
+#if VOXEL_MATERIAL_ENABLE_A
+	T A;
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV0
+	T U0;
+	T V0;
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV1
+	T U1;
+	T V1;
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV2
+	T U2;
+	T V2;
+#endif
+#if VOXEL_MATERIAL_ENABLE_UV3
+	T U3;
+	T V3;
+#endif
 };
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 // TODO Make not compatible with BP and have a serialization-safe BP version of it
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelMaterial 
 #if CPP // Hide the template from UHT
 	: public TVoxelMaterialImpl<FVoxelMaterial>
+	, public TVoxelMaterialStorage<uint8>
 #endif
 {
 	GENERATED_BODY()
@@ -429,255 +717,19 @@ public:
 		: TVoxelMaterialImpl<FVoxelMaterial>(ForceInit)
 	{
 	}
-
-	FORCEINLINE uint8 Impl_GetR() const
+	FORCEINLINE FVoxelMaterial(const TVoxelMaterialStorage<uint8>& Storage)
+		: TVoxelMaterialStorage<uint8>(Storage)
 	{
-#if VOXEL_MATERIAL_ENABLE_R
-		return R;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetG() const
-	{
-#if VOXEL_MATERIAL_ENABLE_G
-		return G;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetB() const
-	{
-#if VOXEL_MATERIAL_ENABLE_B
-		return B;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetA() const
-	{
-#if VOXEL_MATERIAL_ENABLE_A
-		return A;
-#else
-		return 0;
-#endif
-	}
-	
-	FORCEINLINE uint8 Impl_GetU0() const
-	{
-#if VOXEL_MATERIAL_ENABLE_UV0
-		return U0;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetU1() const
-	{
-#if VOXEL_MATERIAL_ENABLE_UV1
-		return U1;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetU2() const
-	{
-#if VOXEL_MATERIAL_ENABLE_UV2
-		return U2;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetU3() const
-	{
-#if VOXEL_MATERIAL_ENABLE_UV3
-		return U3;
-#else
-		return 0;
-#endif
-	}
-	
-	FORCEINLINE uint8 Impl_GetV0() const
-	{
-#if VOXEL_MATERIAL_ENABLE_UV0
-		return V0;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetV1() const
-	{
-#if VOXEL_MATERIAL_ENABLE_UV1
-		return V1;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetV2() const
-	{
-#if VOXEL_MATERIAL_ENABLE_UV2
-		return V2;
-#else
-		return 0;
-#endif
-	}
-	FORCEINLINE uint8 Impl_GetV3() const
-	{
-#if VOXEL_MATERIAL_ENABLE_UV3
-		return V3;
-#else
-		return 0;
-#endif
 	}
 
-public:
-	FORCEINLINE void Impl_SetR(uint8 Value)
-	{
-#if VOXEL_MATERIAL_ENABLE_R
-		R = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetG(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_G
-		G = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetB(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_B
-		B = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetA(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_A
-		A = Value;
-#endif
-	}
-	
-	FORCEINLINE void Impl_SetU0(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_UV0
-		U0 = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetU1(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_UV1
-		U1 = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetU2(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_UV2
-		U2 = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetU3(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_UV3
-		U3 = Value;
-#endif
-	}
-	
-	FORCEINLINE void Impl_SetV0(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_UV0
-		V0 = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetV1(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_UV1
-		V1 = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetV2(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_UV2
-		V2 = Value;
-#endif
-	}
-	FORCEINLINE void Impl_SetV3(uint8 Value) 
-	{
-#if VOXEL_MATERIAL_ENABLE_UV3
-		V3 = Value;
-#endif
-	}
-
-public:
-	// TODO Remove
-	friend FORCEINLINE FArchive& operator<<(FArchive& Ar, FVoxelMaterial& Material)
-	{
-#if VOXEL_MATERIAL_ENABLE_A
-		// Serialize A first for legacy reasons
-		Ar << Material.A;
-#endif
-#if VOXEL_MATERIAL_ENABLE_R
-		Ar << Material.R;
-#endif
-#if VOXEL_MATERIAL_ENABLE_G
-		Ar << Material.G;
-#endif
-#if VOXEL_MATERIAL_ENABLE_B
-		Ar << Material.B;
-#endif
-#if VOXEL_MATERIAL_ENABLE_UV0
-		Ar << Material.U0;
-		Ar << Material.V0;
-#endif
-#if VOXEL_MATERIAL_ENABLE_UV1
-		Ar << Material.U1;
-		Ar << Material.V1;
-#endif
-#if VOXEL_MATERIAL_ENABLE_UV2
-		Ar << Material.U2;
-		Ar << Material.V2;
-#endif
-#if VOXEL_MATERIAL_ENABLE_UV3
-		Ar << Material.U3;
-		Ar << Material.V3;
-#endif
-		return Ar;
-	}
-
-	// TODO Remove
 	FORCEINLINE bool Serialize(FArchive& Ar)
 	{
 		Ar << *this;
 		return true;
 	}
-
-private:
-#if VOXEL_MATERIAL_ENABLE_R
-	uint8 R;
-#endif
-#if VOXEL_MATERIAL_ENABLE_G
-	uint8 G;
-#endif
-#if VOXEL_MATERIAL_ENABLE_B
-	uint8 B;
-#endif
-#if VOXEL_MATERIAL_ENABLE_A
-	uint8 A;
-#endif
-#if VOXEL_MATERIAL_ENABLE_UV0
-	uint8 U0;
-	uint8 V0;
-#endif
-#if VOXEL_MATERIAL_ENABLE_UV1
-	uint8 U1;
-	uint8 V1;
-#endif
-#if VOXEL_MATERIAL_ENABLE_UV2
-	uint8 U2;
-	uint8 V2;
-#endif
-#if VOXEL_MATERIAL_ENABLE_UV3
-	uint8 U3;
-	uint8 V3;
-#endif
 };
+
+static_assert(FVoxelMaterial::NumChannels <= sizeof(FVoxelMaterial), "");
 
 template <>
 struct TTypeTraits<FVoxelMaterial> : TTypeTraitsBase<FVoxelMaterial>

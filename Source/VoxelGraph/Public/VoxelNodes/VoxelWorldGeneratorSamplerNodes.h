@@ -17,11 +17,11 @@ class VOXELGRAPH_API UVoxelNode_WorldGeneratorSamplerBase : public UVoxelExposed
 
 public:
 	// Will be sent to world generators. Can be recovered in the generators with the GetCustomData node
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
 	TArray<FName> CustomData;
 	
 	// Seeds to send to the world generators
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
 	TArray<FName> Seeds;
 
 	//~ Begin UVoxelNode Interface
@@ -30,12 +30,6 @@ public:
 	virtual int32 GetMinInputPins() const override;
 	virtual int32 GetMaxInputPins() const override;
 	//~ End UVoxelNode Interface
-
-#if WITH_EDITOR
-	//~ Begin UObject Interface
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	//~ End UObject Interface
-#endif
 };
 
 UCLASS(Abstract)

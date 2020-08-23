@@ -29,10 +29,16 @@ namespace FVoxelUtilities
 		}
 		return Q;
 	}
+	
 	FORCEINLINE constexpr int32 DivideCeil(int32 Dividend, int32 Divisor)
 	{
 		return (Dividend > 0) ? 1 + (Dividend - 1) / Divisor : (Dividend / Divisor);
 	}
+	FORCEINLINE constexpr int64 DivideCeil64(int64 Dividend, int64 Divisor)
+	{
+		return (Dividend > 0) ? 1 + (Dividend - 1) / Divisor : (Dividend / Divisor);
+	}
+	
 	FORCEINLINE constexpr int32 DivideRound(int32 Dividend, int32 Divisor)
 	{
 		const int32 R = PositiveMod(Dividend, Divisor);
@@ -106,7 +112,8 @@ namespace FVoxelUtilities
 	{
 		const float Result = FMath::Lerp<float>(A, B, Alpha);
 		// Do special rounding to not get stuck, eg Lerp(251, 255, 0.1) = 251 should be 252 instead
-		const int32 RoundedResult = Alpha > 0 ? FMath::CeilToInt(Result) : FMath::FloorToInt(Result);
+		// and Lerp(255, 251, 0.1) should be 254
+		const int32 RoundedResult = (Alpha > 0) == (A < B) ? FMath::CeilToInt(Result) : FMath::FloorToInt(Result);
 		return ClampToUINT8(RoundedResult);
 	}
 
@@ -205,6 +212,21 @@ namespace FVoxelUtilities
 		return H;
 	}
 
+	template<uint32 Base>
+	FORCEINLINE float Halton(uint32 Index)
+	{
+		float Result = 0.0f;
+		const float InvBase = 1.0f / Base;
+		float Fraction = InvBase;
+		while (Index > 0)
+		{
+			Result += (Index % Base) * Fraction;
+			Index /= Base;
+			Fraction *= InvBase;
+		}
+		return Result;
+	}
+
 	/**
 	 * Y
 	 * ^ C - D
@@ -267,36 +289,6 @@ namespace FVoxelUtilities
 		return (Val1 > Val2) ?
 			VariadicMax(Val1, Forward<Ts>(Vals)...) :
 			VariadicMax(Val2, Forward<Ts>(Vals)...);
-	}
-
-	FORCEINLINE float LinearFalloff(float Distance, float Radius, float Falloff)
-	{
-		return Distance <= Radius
-			? 1.0f
-			: Radius + Falloff <= Distance
-			? 0.f
-			: 1.0f - (Distance - Radius) / Falloff;
-	}
-	FORCEINLINE float SmoothFalloff(float Distance, float Radius, float Falloff)
-	{
-		const float X = LinearFalloff(Distance, Radius, Falloff);
-		return FMath::SmoothStep(0, 1, X);
-	}
-	FORCEINLINE float SphericalFalloff(float Distance, float Radius, float Falloff)
-	{
-		return Distance <= Radius
-			? 1.0f
-			: Radius + Falloff <= Distance
-			? 0.f
-			: FMath::Sqrt(1.0f - FMath::Square((Distance - Radius) / Falloff));
-	}
-	FORCEINLINE float TipFalloff(float Distance, float Radius, float Falloff)
-	{
-		return Distance <= Radius
-			? 1.0f
-			: Radius + Falloff <= Distance
-			? 0.f
-			: 1.0f - FMath::Sqrt(1.0f - FMath::Square((Falloff + Radius - Distance) / Falloff));
 	}
 
 	FORCEINLINE uint32 Popc(uint32 Value)

@@ -5,7 +5,6 @@
 #include "VoxelStats.h"
 #include "VoxelFeedbackContext.h"
 #include "VoxelIntBox.h"
-#include "VoxelCustomVersion.h"
 #include "VoxelItemStack.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 
@@ -58,11 +57,8 @@ FVoxelScopedSlowTask::FVoxelScopedSlowTask(float InAmountOfWork, const FText& In
 // +/- 1024: prevents integers overflow
 FVoxelIntBox const FVoxelIntBox::Infinite = FVoxelIntBox(FIntVector(MIN_int32 + 1024), FIntVector(MAX_int32 - 1024));
 
-FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(FVoxelPlaceableItemHolder::Empty);
-
-const FGuid FVoxelCustomVersion::GUID(0x07949d97, 0x082f2e4f, 0x0593de63, 0x1164cfc5);
-// Register the custom version with core
-FCustomVersionRegistration GRegisterVoxelCustomVersion(FVoxelCustomVersion::GUID, FVoxelCustomVersion::LatestVersion, TEXT("VoxelVer"));
+const FVoxelPlaceableItemHolder EmptyVoxelPlaceableItemHolder;
+FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(EmptyVoxelPlaceableItemHolder);
 
 const FVoxelVector FVoxelVector::ZeroVector(0.0f, 0.0f, 0.0f);
 const FVoxelVector FVoxelVector::OneVector(1.0f, 1.0f, 1.0f);
@@ -72,3 +68,23 @@ const FVoxelVector FVoxelVector::ForwardVector(1.0f, 0.0f, 0.0f);
 const FVoxelVector FVoxelVector::BackwardVector(-1.0f, 0.0f, 0.0f);
 const FVoxelVector FVoxelVector::RightVector(0.0f, 1.0f, 0.0f);
 const FVoxelVector FVoxelVector::LeftVector(0.0f, -1.0f, 0.0f);
+
+#define VOXEL_DEBUG_DELEGATE(Type) \
+	template<> \
+	VOXEL_API FVoxelDebug::TDelegate<Type>& FVoxelDebug::GetDelegate<Type>() \
+	{ \
+		static TDelegate<Type> Delegate; \
+		return Delegate; \
+	}
+
+VOXEL_DEBUG_DELEGATE(FVoxelValue);
+VOXEL_DEBUG_DELEGATE(float);
+
+#undef VOXEL_DEBUG_DELEGATE
+
+uint32& FVoxelRangeFailStatus::GetTlsSlot()
+{
+	// Not inline, else it's messed up across modules
+	static uint32 TlsSlot = 0xFFFFFFFF;
+	return TlsSlot;
+}

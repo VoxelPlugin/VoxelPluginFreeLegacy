@@ -86,6 +86,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "General Settings")
 	TMap<int32, UMaterialInterface*> MaterialsOverrides;
 	
+public:
+	//~ Begin UVoxelSpawner Interface
+#if WITH_EDITOR
+	virtual bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 };
 
 UCLASS()
@@ -98,4 +103,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Settings")
 	TArray<UStaticMesh*> Meshes;
 	
+public:
+#if WITH_EDITOR
+	virtual bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 };

@@ -54,9 +54,7 @@ enum class EVoxelSpawnerDensityType : uint8
 	// Use a single index channel. Only for Ray Spawners.
 	SingleIndex,
 	// Use a multi index channel. Only for Ray Spawners.
-	MultiIndex,
-	// Use the voxel foliage channels. Only for Ray Spawners.
-	Foliage
+	MultiIndex
 };
 
 UENUM()
@@ -105,9 +103,6 @@ struct FVoxelSpawnerDensity
 	
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 255))
 	TArray<int32> MultiIndexChannels = { 0 };
-	
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	EVoxelRGBA FoliageChannel;
 
 	// Transform to apply to the density
 	UPROPERTY(EditAnywhere, Category = "Voxel")
@@ -189,6 +184,9 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, Category = "Voxel")
 	int32 GenerationDistanceInChunks = 2;
+
+	UPROPERTY()
+	bool bInfiniteGenerationDistance = false;
 
 public:
 	// Whether to save the instances that are removed
@@ -403,7 +401,12 @@ public:
 	
 	UPROPERTY()
 	TArray<FVoxelSpawnerConfigHeightGroup> HeightSpawners_DEPRECATED;
-
+	
+public:
+#if WITH_EDITOR
+	bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent);
+#endif
+	
 protected:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

@@ -4,144 +4,169 @@
 
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
-#include "VoxelValue.h"
-#include "VoxelMinimal.h"
 
-struct FVoxelMaterial;
-class FVoxelPlaceableItemHolder;
 class AVoxelWorld;
+class FVoxelObjectArchive;
+class FVoxelWorldGeneratorInstance;
+class FVoxelTransformableWorldGeneratorInstance;
 
-class VOXEL_API FVoxelPlaceableItem
+struct FVoxelWorldGeneratorInit;
+struct FVoxelObjectArchiveEntry;
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+struct FVoxelAssetItem
 {
-public:
-	const uint8 ItemId; // Item class id
-	const FVoxelIntBox Bounds;
-	const int32 Priority;
-	int32 ItemIndex = -1; // Index in the VoxelData array
+	TVoxelSharedPtr<FVoxelTransformableWorldGeneratorInstance> WorldGenerator;
+	FVoxelIntBox Bounds;
+	FTransform LocalToWorld;
+	// Assets are sorted by priority
+	int32 Priority;
 
-	FVoxelPlaceableItem(uint8 ItemId, const FVoxelIntBox& InBounds, int32 Priority)
-		: ItemId(ItemId)
-		, Bounds(InBounds)
-		, Priority(Priority)
+	static void Sort(TArray<const FVoxelAssetItem*>& Array)
 	{
+		Array.Sort([](const FVoxelAssetItem& A, const FVoxelAssetItem& B) { return A.Priority < B.Priority; });
 	}
-	virtual ~FVoxelPlaceableItem() = default;
-
-	inline bool operator<(const FVoxelPlaceableItem& Other) const
-	{
-		return Priority < Other.Priority;
-	}
-
-	template<typename T>
-	inline bool IsA() const
-	{
-		return ItemId == T::StaticId();
-	}
-
-public:
-	virtual FString GetDescription() const = 0;
-	virtual void Save(FArchive& Ar) const = 0;
-	virtual bool ShouldBeSaved() const { return true; }
 };
 
-struct VOXEL_API FVoxelPlaceableItemLoader
+struct FVoxelDisableEditsBoxItem
 {
-	explicit FVoxelPlaceableItemLoader(uint8 ItemId);
-	virtual ~FVoxelPlaceableItemLoader() = default;
+	FVoxelIntBox Bounds;
 
-	virtual TVoxelSharedRef<FVoxelPlaceableItem> Load(FArchive& Ar, const AVoxelWorld* VoxelWorld) const = 0;
-
-public:
-	static FVoxelPlaceableItemLoader* GetLoader(uint8 ItemId);
-
-private:
-	static TArray<FVoxelPlaceableItemLoader*>& GetStaticLoaders();
+	static void Sort(TArray<const FVoxelDisableEditsBoxItem*>& Array) {}
 };
 
-VOXEL_API FArchive& SerializeVoxelItem(FArchive& Ar, const AVoxelWorld* VoxelWorld, TVoxelSharedPtr<FVoxelPlaceableItem>& Item);
-
-namespace EVoxelPlaceableItemId
+struct FVoxelDataItem
 {
-	enum Enum : uint8
+	TVoxelSharedPtr<FVoxelWorldGeneratorInstance> WorldGenerator;
+	FVoxelIntBox Bounds;
+	TArray<v_flt> Data;
+
+	static void Sort(TArray<const FVoxelDataItem*>& Array) {}
+};
+
+#define FOREACH_VOXEL_ASSET_ITEM(Macro) \
+	Macro(AssetItem) \
+	Macro(DisableEditsBoxItem) \
+	Macro(DataItem)
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+namespace FVoxelPlaceableItemVersion
+{
+	enum Type : int32
 	{
-		Invalid         = 0,
-		PerlinWorm      = 1,
-		Asset           = 2,
-		DisableEditsBox = 3,
-		BuiltinMax      = 32,
+		FirstVersion,
+
+		// -----<new versions can be added above this line>-------------------------------------------------
+		VersionPlusOne,
+		LatestVersion = VersionPlusOne - 1
 	};
 }
 
-class VOXEL_API FVoxelPlaceableItemHolder
+struct FVoxelPlaceableItemLoadInfo
 {
-public:
-	static const FVoxelPlaceableItemHolder Empty;
+	const FVoxelWorldGeneratorInit* WorldGeneratorInit = nullptr;
+	const TArray<FVoxelObjectArchiveEntry>* Objects = nullptr;
+};
 
-	inline void AddItem(FVoxelPlaceableItem* Item)
-	{
-		const int32 ItemId = Item->ItemId;
-		if (Items.Num() <= ItemId)
-		{
-			Items.SetNum(ItemId + 1);
-			Items.Shrink();
-		}
-		auto& ItemArray = Items[ItemId];
-		ensure(!ItemArray.Contains(Item));
-		ItemArray.Add(Item);
-		ItemArray.Sort();
-		ItemArray.Shrink();
-	}
+namespace FVoxelPlaceableItemsUtilities
+{
+	VOXEL_API void SerializeItems(
+		FVoxelObjectArchive& Ar,
+		const FVoxelPlaceableItemLoadInfo& LoadInfo,
+		TArray<FVoxelAssetItem>& AssetItems);
+}
 
-	inline void RemoveItem(FVoxelPlaceableItem* Item)
-	{
-		const int32 ItemId = Item->ItemId;
-		if (Items.IsValidIndex(ItemId))
-		{
-			Items[ItemId].Remove(Item);
-		}
-	}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-	FORCEINLINE TArrayView<FVoxelPlaceableItem* const> GetItems(uint8 ItemId) const
-	{
-		if (Items.IsValidIndex(ItemId))
-		{
-			return Items.GetData()[ItemId];
-		}
-		else
-		{
-			return {};
-		}
-	}
-	template<typename T>
-	FORCEINLINE TArrayView<T* const> GetItems() const
-	{
-		const auto ItemId = T::StaticId();
-		if (Items.IsValidIndex(ItemId))
-		{
-			const auto& Array = Items.GetData()[ItemId];
-			return TArrayView<T* const>(reinterpret_cast<T* const *>(Array.GetData()), Array.Num());
-		}
-		else
-		{
-			return {};
-		}
-	}
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Placeable Items Pointers Memory"), STAT_VoxelPlaceableItemsPointers, STATGROUP_VoxelMemory, VOXEL_API);
 
-	inline const TArray<TArray<FVoxelPlaceableItem*>>& GetAllItems() const
-	{
-		return Items;
-	}
+#define Macro(X) DECLARE_DWORD_ACCUMULATOR_STAT_EXTERN(TEXT("Num " #X " Pointers"), STAT_Num## X ## Pointers, STATGROUP_VoxelCounters, VOXEL_API);
+FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
 
-	inline int32 Num(uint8 ItemId) const
+class FVoxelPlaceableItemHolder
+{
+public:	
+	FVoxelPlaceableItemHolder() = default;
+	~FVoxelPlaceableItemHolder()
 	{
-		return Items.IsValidIndex(ItemId) ? Items[ItemId].Num() : 0;
-	}
-
-	inline bool IsEmpty() const
-	{
-		return Items.Num() == 0;
+#define Macro(X) DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPlaceableItemsPointers, X.GetAllocatedSize()); DEC_DWORD_STAT_BY(STAT_Num ## X ## Pointers, X.Num()); X.Reset();
+		FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
 	}
 
 private:
-	TArray<TArray<FVoxelPlaceableItem*>> Items;
+#define Macro(X) TArray<const FVoxel ## X *> X;
+	FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
+
+public:
+	template<typename T>
+	void ApplyToAllItems(T Lambda)
+	{
+#define Macro(X) for (auto* Item : X) { Lambda(*Item); }
+		FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
+	}
+
+public:
+	int32 NumItems() const
+	{
+		int32 Num = 0;
+#define Macro(X) Num += X.Num();
+		FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
+		return Num;
+	}
+	bool NeedToSubdivide(int32 Threshold) const
+	{
+		bool bValue = false;
+#define Macro(X) bValue |= X.Num() > Threshold;
+		FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
+		return bValue;
+	}
+
+public:
+#define Macro(X) const TArray<const FVoxel ## X*>& Get ## X ## s() const { return X; }
+	FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
+	
+#define Macro(X) \
+	void AddItem(const FVoxel ## X & Item) \
+	{ \
+		INC_DWORD_STAT(STAT_Num ## X ## Pointers); \
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPlaceableItemsPointers, X.GetAllocatedSize()); \
+		\
+		ensureVoxelSlow(!X.Contains(&Item)); \
+		X.Add(&Item); \
+		FVoxel ## X :: Sort(X); \
+		\
+		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPlaceableItemsPointers, X.GetAllocatedSize()); \
+	}
+	FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
+	
+#define Macro(X) \
+	void RemoveItem(const FVoxel ## X& Item) \
+	{ \
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPlaceableItemsPointers, X.GetAllocatedSize()); \
+		\
+		if (X.Remove(&Item)) \
+		{ \
+			DEC_DWORD_STAT(STAT_Num ## X ## Pointers); \
+		} \
+		\
+		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPlaceableItemsPointers, X.GetAllocatedSize()); \
+	}
+	FOREACH_VOXEL_ASSET_ITEM(Macro);
+#undef Macro
 };

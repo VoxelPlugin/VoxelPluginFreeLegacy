@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelConstantNodes.h"
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelContext.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
 
@@ -57,16 +57,3 @@ EVoxelPinCategory UVoxelNode_CompileTimeConstant::GetOutputPinCategory(int32 Pin
 	return Type;
 }
 
-
-#if WITH_EDITOR
-void UVoxelNode_CompileTimeConstant::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (Graph && GraphNode && PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
-	{
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
-	}
-}
-#endif

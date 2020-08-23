@@ -1,9 +1,32 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
+#include "VoxelSpawners/VoxelSpawner.h"
+#include "VoxelSpawners/VoxelSpawnerOutputsConfig.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
 
 #if WITH_EDITOR
+bool UVoxelSpawnerConfig::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent)
+{
+	if (Object == WorldGeneratorOutputs)
+	{
+		return true;
+	}
+
+	for (auto& Spawner : Spawners)
+	{
+		if (Spawner.Spawner == Object)
+		{
+			return true;
+		}
+		if (Spawner.Spawner && Spawner.Spawner->NeedsToRebuild(Object, PropertyChangedEvent))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void UVoxelSpawnerConfig::PostEditChangeProperty(FPropertyChangedEvent & PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);

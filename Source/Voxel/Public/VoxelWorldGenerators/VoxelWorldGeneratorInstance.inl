@@ -3,7 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelPlaceableItems/VoxelAssetItem.h"
+#include "VoxelRange.h"
+#include "VoxelQueryZone.h"
+#include "VoxelItemStack.h"
+#include "VoxelPlaceableItems/VoxelPlaceableItem.h"
+#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
 
 template<typename TVector>
@@ -264,7 +268,7 @@ FORCEINLINE T FVoxelItemStack::Get(v_flt X, v_flt Y, v_flt Z, int32 LOD) const
 	}
 	else
 	{
-		auto& Asset = *ItemHolder.GetItems<FVoxelAssetItem>()[Depth];
+		auto& Asset = *ItemHolder.GetAssetItems()[Depth];
 		return Asset.WorldGenerator->Get_Transform<T>(Asset.LocalToWorld, X, Y, Z, LOD, *this);
 	}
 }
@@ -280,7 +284,7 @@ FORCEINLINE TVoxelRange<v_flt> FVoxelItemStack::GetValueRange(const FVoxelIntBox
 	{
 		TOptional<TVoxelRange<v_flt>> Range;
 
-		auto& Asset = *ItemHolder.GetItems<FVoxelAssetItem>()[Depth];
+		auto& Asset = *ItemHolder.GetAssetItems()[Depth];
 		if (Asset.Bounds.Intersect(Bounds))
 		{
 			Range = Asset.WorldGenerator->GetValueRange_Transform(
@@ -316,7 +320,7 @@ FORCEINLINE T FVoxelItemStack::GetCustomOutput(T DefaultValue, FName Name, v_flt
 	}
 	else
 	{
-		auto& Asset = *ItemHolder.GetItems<FVoxelAssetItem>()[Depth];
+		auto& Asset = *ItemHolder.GetAssetItems()[Depth];
 		return Asset.WorldGenerator->GetCustomOutput_Transform<T>(Asset.LocalToWorld, DefaultValue, Name, X, Y, Z, LOD, *this);
 	}
 }
@@ -331,7 +335,7 @@ FORCEINLINE TVoxelRange<T> FVoxelItemStack::GetCustomOutputRange(TVoxelRange<T> 
 	}
 	else
 	{
-		auto& Asset = *ItemHolder.GetItems<FVoxelAssetItem>()[Depth];
+		auto& Asset = *ItemHolder.GetAssetItems()[Depth];
 		return Asset.WorldGenerator->GetCustomOutputRange_Transform<T>(Asset.LocalToWorld, DefaultValue, Name, Bounds, LOD, *this);
 	}
 }
@@ -341,7 +345,7 @@ int32 FVoxelItemStack::GetNextDepth(TArgs... Args) const
 {
 	for (int32 Index = Depth - 1; Index >= 0; Index--)
 	{
-		auto& Item = *ItemHolder.GetItems<FVoxelAssetItem>()[Index];
+		auto& Item = *ItemHolder.GetAssetItems()[Index];
 		if (Item.Bounds.ContainsTemplate(Args...))
 		{
 			return Index;

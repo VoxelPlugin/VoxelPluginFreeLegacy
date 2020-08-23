@@ -5,7 +5,7 @@
 #include "VoxelData/VoxelData.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
-#include "VoxelData/VoxelDataUtilities.h"
+#include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelSurfaceTools.h"
@@ -48,11 +48,6 @@ static TAutoConsoleVariable<int32> CVarShowMaterialsState(
 	0,
 	TEXT("If true, will show the materials data chunks and their status (cached/created...)"),
 	ECVF_Default);
-static TAutoConsoleVariable<int32> CVarShowFoliageState(
-	TEXT("voxel.data.ShowFoliageState"),
-	0,
-	TEXT("If true, will show the foliage data chunks and their status (cached/created...)"),
-	ECVF_Default);
 
 static TAutoConsoleVariable<int32> CVarShowDirtyValues(
 	TEXT("voxel.data.ShowDirtyValues"),
@@ -64,11 +59,6 @@ static TAutoConsoleVariable<int32> CVarShowDirtyMaterials(
 	0,
 	TEXT("If true, will show the data chunks with dirty materials"),
 	ECVF_Default);
-static TAutoConsoleVariable<int32> CVarShowDirtyFoliage(
-	TEXT("voxel.data.ShowDirtyFoliage"),
-	0,
-	TEXT("If true, will show the data chunks with dirty foliage"),
-	ECVF_Default);
 
 static TAutoConsoleVariable<int32> CVarFreezeDebug(
 	TEXT("voxel.FreezeDebug"),
@@ -79,7 +69,13 @@ static TAutoConsoleVariable<int32> CVarFreezeDebug(
 static TAutoConsoleVariable<int32> CVarShowChunksEmptyStates(
 	TEXT("voxel.renderer.ShowChunksEmptyStates"),
 	0,
-	TEXT("If true, will show updated chunks empty state"),
+	TEXT("If true, will show updated chunks empty state, only if non-empty. Use ShowAllChunksEmptyStates to show empty too."),
+	ECVF_Default);
+
+static TAutoConsoleVariable<int32> CVarShowAllChunksEmptyStates(
+	TEXT("voxel.renderer.ShowAllChunksEmptyStates"),
+	0,
+	TEXT("If true, will show updated chunks empty state, both empty and non-empty. Use ShowChunksEmptyStates to only show non-empty ones"),
 	ECVF_Default);
 
 static TAutoConsoleVariable<int32> CVarShowWorldBounds(
@@ -98,6 +94,12 @@ static TAutoConsoleVariable<int32> CVarShowDirtyVoxels(
 	TEXT("voxel.data.ShowDirtyVoxels"),
 	0,
 	TEXT("If true, will show every dirty voxel in the scene"),
+	ECVF_Default);
+
+static TAutoConsoleVariable<int32> CVarShowPlaceableItemsChunks(
+	TEXT("voxel.data.ShowPlaceableItemsChunks"),
+	0,
+	TEXT("If true, will show every chunk that has a placeable item"),
 	ECVF_Default);
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -551,6 +553,20 @@ void FVoxelDebugManager::Tick(float DeltaTime)
 
 	if (CVarShowChunksEmptyStates.GetValueOnGameThread())
 	{
+		const static FColor NotEmpty = FColorList::Brown;
+
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, NotEmpty, TEXT("Not empty chunks (range analysis failed)"));
+
+		for (auto& EmptyState : ChunksEmptyStates)
+		{
+			if (!EmptyState.bIsEmpty)
+			{
+				DRAW_BOUNDS(EmptyState.Bounds, NotEmpty, false);
+			}
+		}
+	}
+	if (CVarShowAllChunksEmptyStates.GetValueOnGameThread())
+	{
 		const static FColor Empty = FColorList::Green;
 		const static FColor NotEmpty = FColorList::Brown;
 
@@ -617,21 +633,6 @@ void FVoxelDebugManager::Tick(float DeltaTime)
 		FVoxelReadScopeLock Lock(*Settings.Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 		UVoxelDebugUtilities::DrawDataOctreeImpl<FVoxelMaterial>(*Settings.Data, LocalDrawDataOctreeSettings);
 	}
-	if (CVarShowFoliageState.GetValueOnGameThread())
-	{
-		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, "Foliage state:");
-		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, DirtyColor, "Dirty");
-		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, CachedColor, "Cached");
-		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, SingleColor, "Single Item Stored");
-		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, SingleDirtyColor, "Single Item Stored - Dirty");
-
-		auto LocalDrawDataOctreeSettings = DrawDataOctreeSettings;
-		LocalDrawDataOctreeSettings.bShowSingle = true;
-		LocalDrawDataOctreeSettings.bShowCached = true;
-		
-		FVoxelReadScopeLock Lock(*Settings.Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
-		UVoxelDebugUtilities::DrawDataOctreeImpl<FVoxelFoliage>(*Settings.Data, LocalDrawDataOctreeSettings);
-	}
 	
 	if (CVarShowDirtyValues.GetValueOnGameThread())
 	{
@@ -651,14 +652,18 @@ void FVoxelDebugManager::Tick(float DeltaTime)
 		FVoxelReadScopeLock Lock(*Settings.Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 		UVoxelDebugUtilities::DrawDataOctreeImpl<FVoxelMaterial>(*Settings.Data, LocalDrawDataOctreeSettings);
 	}
-	if (CVarShowDirtyFoliage.GetValueOnGameThread())
+
+	if (CVarShowPlaceableItemsChunks.GetValueOnGameThread())
 	{
-		auto LocalDrawDataOctreeSettings = DrawDataOctreeSettings;
-		LocalDrawDataOctreeSettings.bShowSingle = false;
-		LocalDrawDataOctreeSettings.bShowCached = false;
-		
 		FVoxelReadScopeLock Lock(*Settings.Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
-		UVoxelDebugUtilities::DrawDataOctreeImpl<FVoxelFoliage>(*Settings.Data, LocalDrawDataOctreeSettings);
+		FVoxelOctreeUtilities::IterateEntireTree(Settings.Data->GetOctree(), [&](const FVoxelDataOctreeBase& Octree)
+		{
+			if (Octree.IsLeafOrHasNoChildren() && Octree.GetItemHolder().NumItems() > 0)
+			{
+				ensureThreadSafe(Octree.IsLockedForRead());
+				UVoxelDebugUtilities::DrawDebugIntBox(World, Octree.GetBounds(), DebugDT, 0, FColorList::Red);
+			}
+		});
 	}
 	
 	if (GShowCollisionAndNavmeshDebug)

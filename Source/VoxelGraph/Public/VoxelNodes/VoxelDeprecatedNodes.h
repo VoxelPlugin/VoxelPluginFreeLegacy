@@ -157,3 +157,21 @@ class VOXELGRAPH_API UVoxelNode_ZI : public UVoxelNodeHelper
 	
 	UVoxelNode_ZI() { SetOutputs(EC::Int); }
 };
+
+//////////////////////////////////////////////////////////////////////////////////////
+
+UCLASS(DisplayName = "Perlin Worm Distance", NotPlaceable)
+class VOXELGRAPH_API UVoxelNode_PerlinWormDistance : public UVoxelNodeHelper
+{
+	GENERATED_BODY()
+	DEPRECATED_VOXELNODE("Use DataItemSample instead")
+
+	UVoxelNode_PerlinWormDistance()
+	{
+		SetInputs(
+			{ "X", EC::Float, "X" },
+			{ "Y", EC::Float, "Y" },
+			{ "Z", EC::Float, "Z" });
+		SetOutputs(EC::Float);
+	}
+};

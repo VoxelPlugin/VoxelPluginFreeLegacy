@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 #include "VoxelNodeHelper.h"
 #include "VoxelNodeHelperMacros.h"
 #include "VoxelExposedNodes.generated.h"

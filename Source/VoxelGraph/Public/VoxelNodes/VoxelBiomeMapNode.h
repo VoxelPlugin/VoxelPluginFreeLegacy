@@ -35,7 +35,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Biomes", meta = (ClampMin = 0, ClampMax = 255, UIMin = 0, UIMax = 255))
 	int Threshold = 0;
 
-	UPROPERTY(EditAnywhere, Category = "Biomes")
+	UPROPERTY(EditAnywhere, Category = "Biomes", meta = (ReconstructNode))
 	TArray<FBiomeMapElement> Biomes;
 
 	TArray<FColor> GetColors() const;

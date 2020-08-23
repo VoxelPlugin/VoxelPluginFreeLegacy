@@ -73,6 +73,12 @@ struct FVoxelVector
 	{
 		return FVector(X, Y, Z);
 	}
+
+	FORCEINLINE FString ToString() const
+	{
+		return FString::Printf(TEXT("X=%3.3f Y=%3.3f Z=%3.3f"), X, Y, Z);
+	}
+
 	static FORCEINLINE FIntVector ToInt(const FVoxelVector& V)
 	{
 		return V.ToInt();

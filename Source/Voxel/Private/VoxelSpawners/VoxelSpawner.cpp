@@ -4,7 +4,6 @@
 #include "VoxelSpawners/VoxelMeshSpawner.h"
 #include "VoxelSpawners/VoxelAssetSpawner.h"
 #include "VoxelSpawners/VoxelSpawnerGroup.h"
-#include "VoxelCustomVersion.h"
 
 
 bool FVoxelSpawnersSaveImpl::Serialize(FArchive& Ar)
@@ -13,7 +12,7 @@ bool FVoxelSpawnersSaveImpl::Serialize(FArchive& Ar)
 	{
 		if (Ar.IsSaving())
 		{
-			Version = FVoxelCustomVersion::LatestVersion;
+			Version = FVoxelSpawnersSaveVersion::LatestVersion;
 		}
 
 		Ar << Version;

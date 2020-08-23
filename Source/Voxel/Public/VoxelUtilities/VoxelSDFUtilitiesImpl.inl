@@ -3,6 +3,7 @@
 #if defined(__INTELLISENSE__) || defined(__RSCPP_VERSION)
 #include "CoreMinimal.h"
 #include "VoxelRange.h"
+#include "VoxelVector.h"
 
 using flt = TVoxelRange<v_flt>;
 
@@ -35,6 +36,8 @@ struct vec2
 	vec2() = default;
 	FORCEINLINE vec2(flt v) : x(v), y(v) {}
 	FORCEINLINE vec2(flt x, flt y) : x(x), y(y) {}
+	template<typename T, typename = typename TEnableIf<TOr<TIsSame<T, FVector2D>, TIsSame<T, FVoxelVector2D>, TIsSame<T, FIntPoint>>::Value>::Type>
+	FORCEINLINE vec2(T Vector) : x(Vector.X), y(Vector.Y) {}
 	
 #define SWIZZLE(a, b) FORCEINLINE const vec2 a##b() const { return { a, b }; }
 	SWIZZLE(x, y);
@@ -59,6 +62,8 @@ struct vec3
 	vec3() = default;
 	FORCEINLINE vec3(flt v) : x(v), y(v), z(v) {}
 	FORCEINLINE vec3(flt x, flt y, flt z) : x(x), y(y), z(z) {}
+	template<typename T, typename = typename TEnableIf<TOr<TIsSame<T, FVector>, TIsSame<T, FVoxelVector>, TIsSame<T, FIntVector>>::Value>::Type>
+	FORCEINLINE vec3(T Vector) : x(Vector.X), y(Vector.Y), z(Vector.Z) {}
 
 #define SWIZZLE(a, b) \
 	FORCEINLINE const vec2 a##b() const { return { a, b }; } \

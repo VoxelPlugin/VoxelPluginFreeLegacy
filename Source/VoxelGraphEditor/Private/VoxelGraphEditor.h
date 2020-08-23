@@ -11,7 +11,7 @@ public:
 	virtual UEdGraph* CreateNewVoxelGraph(UVoxelGraphGenerator* InVoxelWorldGenerator) override;
 	virtual void CreateVoxelGraphNode(UEdGraph* VoxelGraph, UVoxelNode* InVoxelNode, bool bSelectNewNode) override;
 	virtual void CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* WorldGenerator) override;
-	virtual void UpdatePreview(UVoxelGraphGenerator* WorldGenerator, bool bForce, bool bUpdateTextures) override;
+	virtual void UpdatePreview(UVoxelGraphGenerator* WorldGenerator, EVoxelGraphPreviewFlags Flags) override;
 	virtual void SelectNodesAndZoomToFit(UEdGraph* Graph, const TArray<UEdGraphNode*>& Nodes) override;
 	virtual void RefreshNodesMessages(UEdGraph* Graph) override;
 	virtual void DebugNodes(UEdGraph* DebugGraph, const TSet<FVoxelCompilationNode*>& Nodes) override;

@@ -26,21 +26,6 @@ public:
 
 	UPROPERTY(Transient)
 	FString WarningMsg;
-	
-	UPROPERTY(Transient)
-	FString DependenciesMsg;
-
-	UPROPERTY(Transient)
-	FString StatsMsg;
-
-	UPROPERTY(Transient)
-	FString RangeAnalysisWarningMsg;
-
-	UPROPERTY(Transient)
-	FString RangeAnalysisErrorMsg;
-	
-	UPROPERTY(Transient)
-	FString RangeAnalysisDebugMsg;
 
 	virtual UVoxelNode* GetVoxelNode() const { return nullptr; }
 	virtual bool IsOutdated() const { return false; }
@@ -182,8 +167,8 @@ public:
 
 #if WITH_EDITOR
 	//~ Begin UObject Interface
-	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	void PostLoad() override;
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
+	virtual void PostLoad() override;
 	//~ End UObject Interface
 #endif //WITH_EDITOR
 

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelMinimal.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 
 namespace FVoxelUtilities
@@ -144,7 +144,7 @@ namespace FVoxelUtilities
 		return FMath::Square<int64>(V.X) + FMath::Square<int64>(V.Y) + FMath::Square<int64>(V.Z);
 	}
 
-	inline TArray<FIntVector, TFixedAllocator<8>> GetNeighbors(const FVector& P)
+	FORCEINLINE TVoxelStaticArray<FIntVector, 8> GetNeighbors(const FVector& P)
 	{
 		const int32 MinX = FMath::FloorToInt(P.X);
 		const int32 MinY = FMath::FloorToInt(P.Y);
@@ -165,7 +165,7 @@ namespace FVoxelUtilities
 		FIntVector(MaxX, MaxY, MaxZ)
 		};
 	}
-	inline TArray<FIntPoint, TFixedAllocator<4>> GetNeighbors(float X, float Y)
+	FORCEINLINE TVoxelStaticArray<FIntPoint, 4> GetNeighbors(float X, float Y)
 	{
 		const int32 MinX = FMath::FloorToInt(X);
 		const int32 MinY = FMath::FloorToInt(Y);

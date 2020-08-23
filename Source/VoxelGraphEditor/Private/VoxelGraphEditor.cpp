@@ -152,14 +152,14 @@ void FVoxelGraphEditor::CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* Wo
 	}
 	WorldGenerator->PostEditChange();
 
-	UpdatePreview(WorldGenerator, false, true);
+	UpdatePreview(WorldGenerator, EVoxelGraphPreviewFlags::UpdateTextures);
 }
 
-void FVoxelGraphEditor::UpdatePreview(UVoxelGraphGenerator* WorldGenerator, bool bForce, bool bUpdateTextures)
+void FVoxelGraphEditor::UpdatePreview(UVoxelGraphGenerator* WorldGenerator, EVoxelGraphPreviewFlags Flags)
 {
 	if (auto Editor = FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(WorldGenerator->VoxelGraph))
 	{
-		Editor->TriggerUpdatePreview(bForce, bUpdateTextures);
+		Editor->TriggerUpdatePreview(Flags);
 	}
 }
 

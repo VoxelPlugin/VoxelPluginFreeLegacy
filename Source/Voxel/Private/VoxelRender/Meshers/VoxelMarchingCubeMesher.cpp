@@ -3,8 +3,7 @@
 #include "VoxelRender/Meshers/VoxelMarchingCubeMesher.h"
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
 #include "VoxelRender/IVoxelRenderer.h"
-#include "VoxelData/VoxelData.h"
-#include "VoxelData/VoxelDataUtilities.h"
+#include "VoxelData/VoxelDataIncludes.h"
 #include "Transvoxel.h"
 #include "HAL/IConsoleManager.h"
 
@@ -743,12 +742,12 @@ bool FVoxelMarchingCubeTransitionsMesher::CreateGeometryTemplate(FVoxelMesherTim
 	Accelerator = MakeUnique<FVoxelConstDataAccelerator>(Data, GetBoundsToLock());
 
 	bool bSuccess = true;
-	bSuccess &= CreateGeometryForDirection<EVoxelDirection::XMin>(Times, Indices, Vertices);
-	bSuccess &= CreateGeometryForDirection<EVoxelDirection::XMax>(Times, Indices, Vertices);
-	bSuccess &= CreateGeometryForDirection<EVoxelDirection::YMin>(Times, Indices, Vertices);
-	bSuccess &= CreateGeometryForDirection<EVoxelDirection::YMax>(Times, Indices, Vertices);
-	bSuccess &= CreateGeometryForDirection<EVoxelDirection::ZMin>(Times, Indices, Vertices);
-	bSuccess &= CreateGeometryForDirection<EVoxelDirection::ZMax>(Times, Indices, Vertices);
+	bSuccess &= CreateGeometryForDirection<EVoxelDirectionFlag::XMin>(Times, Indices, Vertices);
+	bSuccess &= CreateGeometryForDirection<EVoxelDirectionFlag::XMax>(Times, Indices, Vertices);
+	bSuccess &= CreateGeometryForDirection<EVoxelDirectionFlag::YMin>(Times, Indices, Vertices);
+	bSuccess &= CreateGeometryForDirection<EVoxelDirectionFlag::YMax>(Times, Indices, Vertices);
+	bSuccess &= CreateGeometryForDirection<EVoxelDirectionFlag::ZMin>(Times, Indices, Vertices);
+	bSuccess &= CreateGeometryForDirection<EVoxelDirectionFlag::ZMax>(Times, Indices, Vertices);
 	return bSuccess;
 }
 
@@ -1119,17 +1118,17 @@ FORCEINLINE FIntVector FVoxelMarchingCubeTransitionsMesher::Local2DToGlobal(int3
 {
 	switch (Direction)
 	{
-	case EVoxelDirection::XMin:
+	case EVoxelDirectionFlag::XMin:
 		return { Z, X, Y };
-	case EVoxelDirection::XMax:
+	case EVoxelDirectionFlag::XMax:
 		return { Size - Z, Y, X };
-	case EVoxelDirection::YMin:
+	case EVoxelDirectionFlag::YMin:
 		return { Y, Z, X };
-	case EVoxelDirection::YMax:
+	case EVoxelDirectionFlag::YMax:
 		return { X, Size - Z, Y };
-	case EVoxelDirection::ZMin:
+	case EVoxelDirectionFlag::ZMin:
 		return { X, Y, Z };
-	case EVoxelDirection::ZMax:
+	case EVoxelDirectionFlag::ZMax:
 		return { Y, X, Size - Z };
 	default:
 		check(false);

@@ -23,10 +23,6 @@ class VOXELGRAPH_API UVoxelNode_If : public UVoxelNodeHelper
 	GENERATED_VOXELNODE_BODY()
 
 public:
-	// Use this to hide range analysis errors on this node
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	bool bIgnoreRangeAnalysisErrors = false;
-	
 	// If the condition range analysis fails, use this branch instead of failing.
 	// DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING, ELSE YOUR WORLD WILL HAVE HOLES
 	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Voxel")

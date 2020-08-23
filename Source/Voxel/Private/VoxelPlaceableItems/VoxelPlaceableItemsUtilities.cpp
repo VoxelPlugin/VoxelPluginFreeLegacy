@@ -1,27 +1,15 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelPlaceableItems/VoxelPlaceableItemsUtilities.h"
+
 #include "VoxelTools/VoxelToolHelpers.h"
-#include "VoxelData/VoxelData.h"
+#include "VoxelData/VoxelData.inl"
 #include "VoxelWorld.h"
 #include "VoxelFastNoise.h"
-#include "VoxelMessages.h"
 
-void UVoxelPlaceableItemsUtilities::AddWorms(
-	AVoxelWorld* World,
-	float Radius,
-	int32 Seed,
-	FVector RotationAmplitude,
-	FVector NoiseDir,
-	float NoiseSegmentLength,
-	FVector Start,
-	FVector InitialDir,
-	float VoxelSegmentLength,
-	int32 NumSegments, 
-	float SplitProbability,
-	float SplitProbabilityGain,
-	int32 BranchMeanSize,
-	int32 BranchSizeVariation)
+#include "Misc/ScopeExit.h"
+
+void UVoxelPlaceableItemsUtilities::AddWorms(FAddWorm AddWorm, const FVoxelPerlinWormsSettings Settings)
 {
 	VOXEL_PRO_ONLY_VOID();
 }

@@ -50,3 +50,21 @@ class VOXELGRAPH_API UVoxelNode_AddSeeds : public UVoxelSeedNode
 
 	UVoxelNode_AddSeeds();
 };
+
+// Make several new seeds from a single one
+UCLASS(DisplayName = "Make Seeds", Category = "Seed", meta = (Keywords = "make combine add seed"))
+class VOXELGRAPH_API UVoxelNode_MakeSeeds : public UVoxelSeedNode
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+	
+public:
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = 2, ClampMax = 32, ReconstructNode))
+	int32 NumOutputs = 5;
+
+	UVoxelNode_MakeSeeds();
+	
+	//~ Begin UVoxelNode Interface
+	virtual int32 GetOutputPinsCount() const override { return NumOutputs; }
+	//~ End UVoxelNode Interface
+};

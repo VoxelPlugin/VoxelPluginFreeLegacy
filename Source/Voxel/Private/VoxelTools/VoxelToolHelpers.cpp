@@ -71,17 +71,6 @@ bool FVoxelLatentActionAsyncWork_WithoutWorld::IsValid() const
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-static TAutoConsoleVariable<int32> CVarLogEditToolsTimes(
-	TEXT("voxel.tools.LogEditTimes"),
-	0,
-	TEXT("Log edit tools times"),
-	ECVF_Default);
-
-bool FVoxelToolHelpers::GetLogEditToolsTimes()
-{
-	return CVarLogEditToolsTimes.GetValueOnAnyThread() != 0;
-}
-
 void FVoxelToolHelpers::UpdateWorld(AVoxelWorld* World, const FVoxelIntBox& Bounds)
 {
 	check(World);
@@ -222,21 +211,3 @@ bool FVoxelToolHelpers::StartAsyncLatentAction_WithoutWorld(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-
-FScopeToolsTimeLogger::~FScopeToolsTimeLogger()
-{
-	const double EndTime = FPlatformTime::Seconds();
-	if (FVoxelToolHelpers::GetLogEditToolsTimes())
-	{
-		const double ElapsedInSeconds = (EndTime - StartTime);
-		const double ElapsedInMilliseconds = ElapsedInSeconds * 1000;
-		if (NumVoxels < 0)
-		{
-			LOG_VOXEL(Log, TEXT("%s took %fms"), *FString(Name), ElapsedInMilliseconds);
-		}
-		else
-		{
-			LOG_VOXEL(Log, TEXT("%s took %fms for %lld voxels (%f G/s)"), *FString(Name), ElapsedInMilliseconds, NumVoxels, NumVoxels / ElapsedInSeconds / 1e9);
-		}
-	}
-}

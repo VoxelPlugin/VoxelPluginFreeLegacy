@@ -91,6 +91,11 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableDeclaration::PerformAction
 	UVoxelLocalVariableDeclaration* Declaration = WorldGenerator->ConstructNewNode<UVoxelLocalVariableDeclaration>(Location, bSelectNewNode);
 	Declaration->SetCategory(PinCategory);
 
+	if (!DefaultName.IsNone())
+	{
+		Declaration->Name = DefaultName;
+	}
+
 	Declaration->GraphNode->ReconstructNode();
 	Declaration->GraphNode->AutowireNewNode(FromPin);
 
@@ -614,37 +619,44 @@ void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, c
 				Node->bFloatHeightmap = false;
 				Node->HeightmapUINT16 = CastChecked<UVoxelHeightmapAssetUINT16>(Asset);
 			}
+			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UVoxelDataAsset>())
 		{
 			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_DataAssetSampler>(GraphPosition);
 			Node->Asset = CastChecked<UVoxelDataAsset>(Asset);
+			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UTexture2D>())
 		{
 			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_TextureSampler>(GraphPosition);
 			Node->Texture = CastChecked<UTexture2D>(Asset);
+			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UCurveFloat>())
 		{
 			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_Curve>(GraphPosition);
 			Node->Curve = CastChecked<UCurveFloat>(Asset);
+			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UCurveLinearColor>())
 		{
 			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_CurveColor>(GraphPosition);
 			Node->Curve = CastChecked<UCurveLinearColor>(Asset);
+			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UVoxelGraphMacro>())
 		{
 			auto* Node = WorldGenerator->ConstructNewNode<UVoxelGraphMacroNode>(GraphPosition);
 			Node->Macro = CastChecked<UVoxelGraphMacro>(Asset);
 			Node->GraphNode->ReconstructNode();
+			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UVoxelWorldGenerator>())
 		{
 			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_GetWorldGeneratorValue>(GraphPosition);
 			Node->WorldGenerator = CastChecked<UVoxelWorldGenerator>(Asset);
+			Node->SetEditableName(Asset->GetName());
 		}
 	}
 	WorldGenerator->CompileVoxelNodesFromGraphNodes();
@@ -906,10 +918,10 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 	{
 		TSharedPtr<FVoxelGraphSchemaAction_NewLocalVariableDeclaration> NewNodeAction(
 			new FVoxelGraphSchemaAction_NewLocalVariableDeclaration(
-				VOXEL_LOCTEXT("Local variables"),
+				FText::GetEmpty(),
 				VOXEL_LOCTEXT("Create local variable"),
 				VOXEL_LOCTEXT("Create a new local variable here"),
-				LocalVariablesPriority));
+				RerouteNodePriority));
 		NewNodeAction->PinCategory = EVoxelPinCategory::Float;
 		bool bAdd = false;
 		if (FromPin)
@@ -918,6 +930,7 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 			{
 				if (Category != EVoxelPinCategory::Exec && Category != EVoxelPinCategory::Wildcard)
 				{
+					NewNodeAction->DefaultName = FromPin->PinName;
 					NewNodeAction->PinCategory = Category;
 					bAdd = true;
 				}

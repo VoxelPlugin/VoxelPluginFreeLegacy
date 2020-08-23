@@ -9,7 +9,7 @@
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
-#include "VoxelTools/VoxelToolsBase.h"
+#include "VoxelTools/Gen/VoxelToolsBase.h"
 #include "VoxelTools/VoxelSurfaceEdits.h"
 #include "VoxelSurfaceTools.generated.h"
 
@@ -48,7 +48,6 @@ public:
 	static FVoxelSurfaceEditsVoxels FindSurfaceVoxelsFromDistanceFieldImpl(
 		FVoxelData& Data,
 		const FVoxelIntBox& Bounds,
-		float MaxDistance,
 		bool bMultiThreaded);
 
 	static FVoxelSurfaceEditsVoxels FindSurfaceVoxels2DImpl(
@@ -89,7 +88,6 @@ public:
 	 * Find voxels that are on the surface using an exact computation of the distance field using the GPU
 	 * @param	World			The voxel world
 	 * @param	Bounds			Bounds to look in
-	 * @param	MaxDistance		How far from the surface the distance field needs to be exact. Keep low for better performance. Approximation: MaxDistance = Edit Strength + 3
 	 * @param	bMultiThreaded	If true will multithread the CPU loops
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "bMultiThreaded"))
@@ -97,7 +95,6 @@ public:
 		FVoxelSurfaceEditsVoxels& Voxels,
 		AVoxelWorld* World,
 		FVoxelIntBox Bounds,
-		float MaxDistance = 2,
 		bool bMultiThreaded = false);
 	
 	/**
@@ -172,80 +169,19 @@ public:
 		bool bConvertToVoxelSpace = true);
 	
 	/**
-	 * Apply a linear falloff to surface voxels, based on their distance from a point.
-	 * If Distance is between 0 and Radius: Strength = 1
-	 * If Distance is between Radius and Radius + Falloff: 0 <= Strength <= 1
-	 * If Distance is beyond Radius + Falloff: Strength = 0
+	 * Apply a falloff to surface voxels, based on their distance from a point.
 	 * @param	World					The voxel world, can be null if bConvertToVoxelSpace = false
+	 * @param	FalloffType				The type of falloff
 	 * @param	Center					The center to compute the distance from, in world space if bConvertToVoxelSpace = true
 	 * @param	Radius					The radius, in cm if bConvertToVoxelSpace = true
-	 * @param	Falloff					The falloff, in cm if bConvertToVoxelSpace = true
+	 * @param	Falloff					The falloff, between 0 and 1
 	 * @param	bConvertToVoxelSpace	Converts Center, Radius and Falloff from world space to voxel space. Requires World to be non null
 	 * @return	New voxels
 	 */
 	UFUNCTION(BlueprintPure, Category = "Voxel|Tools|Surface Tools", meta = (AdvancedDisplay = "bConvertToVoxelSpace", DefaultToSelf = "World"))
-	static FVoxelSurfaceEditsStackElement ApplyLinearFalloff(
+	static FVoxelSurfaceEditsStackElement ApplyFalloff(
 		AVoxelWorld* World,
-		FVector Center,
-		float Radius,
-		float Falloff,
-		bool bConvertToVoxelSpace = true);
-	
-	/**
-	 * Apply a smooth falloff to surface voxels, based on their distance from a point.
-	 * If Distance is between 0 and Radius: Strength = 1
-	 * If Distance is between Radius and Radius + Falloff: 0 <= Strength <= 1
-	 * If Distance is beyond Radius + Falloff: Strength = 0
-	 * @param	World					The voxel world, can be null if bConvertToVoxelSpace = false
-	 * @param	Center					The center to compute the distance from, in world space if bConvertToVoxelSpace = true
-	 * @param	Radius					The radius, in cm if bConvertToVoxelSpace = true
-	 * @param	Falloff					The falloff, in cm if bConvertToVoxelSpace = true
-	 * @param	bConvertToVoxelSpace	Converts Center, Radius and Falloff from world space to voxel space. Requires World to be non null
-	 * @return	New voxels
-	 */
-	UFUNCTION(BlueprintPure, Category = "Voxel|Tools|Surface Tools", meta = (AdvancedDisplay = "bConvertToVoxelSpace", DefaultToSelf = "World"))
-	static FVoxelSurfaceEditsStackElement ApplySmoothFalloff(
-		AVoxelWorld* World,
-		FVector Center,
-		float Radius,
-		float Falloff,
-		bool bConvertToVoxelSpace = true);
-	
-	/**
-	 * Apply a spherical falloff to surface voxels, based on their distance from a point.
-	 * If Distance is between 0 and Radius: Strength = 1
-	 * If Distance is between Radius and Radius + Falloff: 0 <= Strength <= 1
-	 * If Distance is beyond Radius + Falloff: Strength = 0
-	 * @param	World					The voxel world, can be null if bConvertToVoxelSpace = false
-	 * @param	Center					The center to compute the distance from, in world space if bConvertToVoxelSpace = true
-	 * @param	Radius					The radius, in cm if bConvertToVoxelSpace = true
-	 * @param	Falloff					The falloff, in cm if bConvertToVoxelSpace = true
-	 * @param	bConvertToVoxelSpace	Converts Center, Radius and Falloff from world space to voxel space. Requires World to be non null
-	 * @return	New voxels
-	 */
-	UFUNCTION(BlueprintPure, Category = "Voxel|Tools|Surface Tools", meta = (AdvancedDisplay = "bConvertToVoxelSpace", DefaultToSelf = "World"))
-	static FVoxelSurfaceEditsStackElement ApplySphericalFalloff(
-		AVoxelWorld* World,
-		FVector Center,
-		float Radius,
-		float Falloff,
-		bool bConvertToVoxelSpace = true);
-	
-	/**
-	 * Apply a tip falloff to surface voxels, based on their distance from a point.
-	 * If Distance is between 0 and Radius: Strength = 1
-	 * If Distance is between Radius and Radius + Falloff: 0 <= Strength <= 1
-	 * If Distance is beyond Radius + Falloff: Strength = 0
-	 * @param	World					The voxel world, can be null if bConvertToVoxelSpace = false
-	 * @param	Center					The center to compute the distance from, in world space if bConvertToVoxelSpace = true
-	 * @param	Radius					The radius, in cm if bConvertToVoxelSpace = true
-	 * @param	Falloff					The falloff, in cm if bConvertToVoxelSpace = true
-	 * @param	bConvertToVoxelSpace	Converts Center, Radius and Falloff from world space to voxel space. Requires World to be non null
-	 * @return	New voxels
-	 */
-	UFUNCTION(BlueprintPure, Category = "Voxel|Tools|Surface Tools", meta = (AdvancedDisplay = "bConvertToVoxelSpace", DefaultToSelf = "World"))
-	static FVoxelSurfaceEditsStackElement ApplyTipFalloff(
-		AVoxelWorld* World,
+		EVoxelFalloff FalloffType,
 		FVector Center,
 		float Radius,
 		float Falloff,
@@ -329,101 +265,6 @@ public:
 		FVector PlaneNormal = FVector(0, 0, 1),
 		EVoxelSDFMergeMode MergeMode = EVoxelSDFMergeMode::Override,
 		bool bConvertToVoxelSpace = true);
-
-public:
-	static void EditVoxelValuesImpl(
-		FVoxelData& Data,
-		const FVoxelIntBox& Bounds,
-		const TArray<FVoxelSurfaceEditsVoxel>& Voxels,
-		const FVoxelHardnessHandler& HardnessHandler,
-		float DistanceDivisor,
-		bool bHasValues,
-		TArray<FModifiedVoxelValue>* OutModifiedVoxels = nullptr);
-
-	// Bounds need to encompass Bounds(Voxels).Extend(0, 0, MaxStrength + DistanceDivisor + 2)!
-	static void EditVoxelValues2DImpl(
-		FVoxelData& Data,
-		const FVoxelIntBox& Bounds,
-		const TArray<FVoxelSurfaceEditsVoxel>& Voxels,
-		const FVoxelHardnessHandler& HardnessHandler,
-		float DistanceDivisor,
-		TArray<FModifiedVoxelValue>* OutModifiedVoxels = nullptr);
-
-	// Will call EditVoxelValuesImpl or EditVoxelValues2DImpl based on ProcessedVoxels
-	static void EditVoxelValuesImpl(
-		FVoxelData& Data,
-		const FVoxelIntBox& Bounds,
-		const FVoxelSurfaceEditsProcessedVoxels& ProcessedVoxels,
-		const FVoxelHardnessHandler& HardnessHandler,
-		float DistanceDivisor,
-		TArray<FModifiedVoxelValue>* OutModifiedVoxels = nullptr);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "DistanceDivisor"))
-	static void EditVoxelValues(
-		TArray<FModifiedVoxelValue>& ModifiedVoxels,
-		AVoxelWorld* World,
-		FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels,
-		float DistanceDivisor = 1.f);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo = "LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "DistanceDivisor, bHideLatentWarnings"))
-	static void EditVoxelValuesAsync(
-		UObject* WorldContextObject,
-		FLatentActionInfo LatentInfo,
-		TArray<FModifiedVoxelValue>& ModifiedVoxels,
-		AVoxelWorld* World,
-		FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels,
-		float DistanceDivisor = 1.f,
-		bool bHideLatentWarnings = false);
-
-public:
-	static void EditVoxelMaterialsImpl(
-		FVoxelData& Data,
-		const FVoxelIntBox& Bounds,
-		const FVoxelPaintMaterial& PaintMaterial,
-		const TArray<FVoxelSurfaceEditsVoxel>& Voxels,
-		TArray<FModifiedVoxelMaterial>* OutModifiedVoxels = nullptr);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World"))
-	static void EditVoxelMaterials(
-		TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
-		AVoxelWorld* World,
-		const FVoxelPaintMaterial& PaintMaterial,
-		FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels);
-	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
-	static void EditVoxelMaterialsAsync(
-		UObject* WorldContextObject,
-		FLatentActionInfo LatentInfo,
-		TArray<FModifiedVoxelMaterial>& ModifiedVoxels,
-		AVoxelWorld* World,
-		const FVoxelPaintMaterial& PaintMaterial,
-		FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels,
-		bool bHideLatentWarnings = false);
-
-public:
-	static void EditVoxelFoliageImpl(
-		FVoxelData& Data,
-		const FVoxelIntBox& Bounds,
-		EVoxelRGBA Layer,
-		const TArray<FVoxelSurfaceEditsVoxel>& Voxels,
-		TArray<FModifiedVoxelFoliage>* OutModifiedVoxels = nullptr);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World"))
-	static void EditVoxelFoliage(
-		TArray<FModifiedVoxelFoliage>& ModifiedVoxels,
-		AVoxelWorld* World,
-		EVoxelRGBA Layer,
-		FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels);
-	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bHideLatentWarnings"))
-	static void EditVoxelFoliageAsync(
-		UObject* WorldContextObject,
-		FLatentActionInfo LatentInfo,
-		TArray<FModifiedVoxelFoliage>& ModifiedVoxels,
-		AVoxelWorld* World,
-		EVoxelRGBA Layer,
-		FVoxelSurfaceEditsProcessedVoxels ProcessedVoxels,
-		bool bHideLatentWarnings = false);
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World"))

@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelAssetActorDetails.h"
-#include "VoxelPlaceableItems/VoxelAssetActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelWorld.h"
 #include "VoxelEditorDetailsUtilities.h"
@@ -62,7 +62,7 @@ void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayou
 		false,
 		FOnClicked::CreateLambda([=]()
 		{
-			FVoxelScopedTransaction Transaction(AssetActor->PreviewWorld, STATIC_FNAME("Stamp"));
+			FVoxelScopedTransaction Transaction(AssetActor->PreviewWorld, STATIC_FNAME("Stamp"), EVoxelChangeType::Edit);
 			const auto Bounds = AssetActor->AddItemToData(
 				AssetActor->PreviewWorld,
 				&AssetActor->PreviewWorld->GetData());

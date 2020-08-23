@@ -31,22 +31,25 @@ enum class EVoxelDataPinCategory : uint8
 	Color
 };
 
-namespace FVoxelPinCategory
+struct VOXELGRAPH_API FVoxelPinCategory
 {
-	VOXELGRAPH_API EVoxelPinCategory DataPinToPin(EVoxelDataPinCategory Category);
-	VOXELGRAPH_API EVoxelPinCategory FromString(const FName& String);
-	VOXELGRAPH_API FName GetName(EVoxelPinCategory Category);
+	static EVoxelPinCategory DataPinToPin(EVoxelDataPinCategory Category);
+	static EVoxelPinCategory FromString(const FName& String);
+	static FName GetName(EVoxelPinCategory Category);
 
-	VOXELGRAPH_API FString GetDefaultValue(EVoxelPinCategory Category);
-	VOXELGRAPH_API FString GetDefaultValue(EVoxelDataPinCategory Category);
+	static FString GetDefaultValue(EVoxelPinCategory Category);
+	static FString GetDefaultValue(EVoxelDataPinCategory Category);
 
-	VOXELGRAPH_API FString GetTypeString(EVoxelPinCategory Category);
-			inline FString GetTypeString(EVoxelDataPinCategory Category) { return GetTypeString(DataPinToPin(Category)); }
-	VOXELGRAPH_API FString GetRangeTypeString(EVoxelPinCategory Category);
+	static FString GetTypeString(EVoxelPinCategory Category);
+	static FString GetTypeString(EVoxelDataPinCategory Category) { return GetTypeString(DataPinToPin(Category)); }
+	static FString GetRangeTypeString(EVoxelPinCategory Category);
 
-	VOXELGRAPH_API FVoxelNodeType ConvertDefaultValue(EVoxelPinCategory Category, const FString& DefaultValue);
-	VOXELGRAPH_API FVoxelNodeRangeType ConvertRangeDefaultValue(EVoxelPinCategory Category, const FString& DefaultValue);
-	VOXELGRAPH_API FString ConvertStringDefaultValue(EVoxelPinCategory Category, const FString& DefaultValue);
+	static FVoxelNodeType ConvertDefaultValue(EVoxelPinCategory Category, const FString& DefaultValue);
+	static FVoxelNodeRangeType ConvertRangeDefaultValue(EVoxelPinCategory Category, const FString& DefaultValue);
+	static FString ConvertStringDefaultValue(EVoxelPinCategory Category, const FString& DefaultValue);
 
-	VOXELGRAPH_API FString ToString(EVoxelPinCategory Category, FVoxelNodeType Value);
-}
+	static FString ToString(EVoxelPinCategory Category, FVoxelNodeType Value);
+	static FString ToString(EVoxelPinCategory Category, FVoxelNodeRangeType Value);
+
+	static bool IsInRange(EVoxelPinCategory Category, FVoxelNodeType Value, FVoxelNodeRangeType Range);
+};

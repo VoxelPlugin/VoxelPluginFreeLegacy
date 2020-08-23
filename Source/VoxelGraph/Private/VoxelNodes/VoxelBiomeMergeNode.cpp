@@ -6,7 +6,7 @@
 
 int32 UVoxelNode_BiomeMerge::GetMinInputPins() const
 {
-	return 1 + Biomes.Num() * 2 + AdditionalData.Num();
+	return 1 + Biomes.Num() * 2;
 }
 
 int32 UVoxelNode_BiomeMerge::GetMaxInputPins() const
@@ -16,7 +16,7 @@ int32 UVoxelNode_BiomeMerge::GetMaxInputPins() const
 
 int32 UVoxelNode_BiomeMerge::GetOutputPinsCount() const
 {
-	return 1 + 1 + AdditionalData.Num();
+	return 2;
 }
 
 FName UVoxelNode_BiomeMerge::GetInputPinName(int32 PinIndex) const
@@ -37,11 +37,6 @@ FName UVoxelNode_BiomeMerge::GetInputPinName(int32 PinIndex) const
 			return *(Biomes[PinIndex / 2] + " Alpha");
 		}
 	}
-	PinIndex -= 2 * Biomes.Num();
-	if (AdditionalData.IsValidIndex(PinIndex))
-	{
-		return *AdditionalData[PinIndex].Name;
-	}
 	return "Error";
 }
 
@@ -54,11 +49,6 @@ FName UVoxelNode_BiomeMerge::GetOutputPinName(int32 PinIndex) const
 	if (PinIndex == 1)
 	{
 		return "Result";
-	}
-	PinIndex -= 2;
-	if (AdditionalData.IsValidIndex(PinIndex))
-	{
-		return *AdditionalData[PinIndex].Name;
 	}
 	return "Error";
 }
@@ -74,11 +64,6 @@ EVoxelPinCategory UVoxelNode_BiomeMerge::GetInputPinCategory(int32 PinIndex) con
 	{
 		return EC::Float;
 	}
-	PinIndex -= 2 * Biomes.Num();
-	if (AdditionalData.IsValidIndex(PinIndex))
-	{
-		return FVoxelPinCategory::DataPinToPin(AdditionalData[PinIndex].Type);
-	}
 	return EC::Float;
 }
 
@@ -92,11 +77,6 @@ EVoxelPinCategory UVoxelNode_BiomeMerge::GetOutputPinCategory(int32 PinIndex) co
 	{
 		return EC::Float;
 	}
-	PinIndex -= 2;
-	if (AdditionalData.IsValidIndex(PinIndex))
-	{
-		return FVoxelPinCategory::DataPinToPin(AdditionalData[PinIndex].Type);
-	}
 	return EC::Float;
 }
 
@@ -104,9 +84,7 @@ EVoxelPinCategory UVoxelNode_BiomeMerge::GetOutputPinCategory(int32 PinIndex) co
 #if WITH_EDITOR
 void UVoxelNode_BiomeMerge::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (Graph && GraphNode && PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
+	if (PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
 		if (Biomes.Num() >= 256)
 		{
@@ -120,9 +98,8 @@ void UVoxelNode_BiomeMerge::PostEditChangeProperty(FPropertyChangedEvent& Proper
 				Biome = FString::Printf(TEXT("Biome %d"), Index);
 			}
 		}
-
-		GraphNode->ReconstructNode();
-		Graph->CompileVoxelNodesFromGraphNodes();
 	}
+	
+	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 #endif

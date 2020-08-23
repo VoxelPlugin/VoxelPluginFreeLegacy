@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 
-namespace EVoxelDirection
+namespace EVoxelDirectionFlag
 {
 	enum Type : uint8
 	{

@@ -99,7 +99,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	TSubclassOf<UVoxelWorldGenerator> Class = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisallowedClasses = "VoxelGraphMacro"))
 	UVoxelWorldGenerator* Object = nullptr;
 };
 
@@ -129,6 +129,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	TSubclassOf<UVoxelTransformableWorldGenerator> Class = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisallowedClasses = "VoxelGraphMacro"))
 	UVoxelTransformableWorldGenerator* Object = nullptr;
 };

@@ -5,21 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
 #include "VoxelIntBox.h"
-
-struct FVoxelOctreeId
-{
-	FIntVector Position;
-	uint8 Height;
-
-	FORCEINLINE bool operator==(const FVoxelOctreeId& Other) const
-	{
-		return Position == Other.Position && Height == Other.Height;
-	}
-	FORCEINLINE bool operator!=(const FVoxelOctreeId& Other) const
-	{
-		return Position != Other.Position || Height != Other.Height;
-	}
-};
+#include "VoxelOctreeId.h"
 
 template<uint32 ChunkSize>
 class TVoxelOctreeBase

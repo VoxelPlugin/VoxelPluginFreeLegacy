@@ -34,10 +34,6 @@ class VOXEL_API UVoxelTransformableWorldGenerator : public UVoxelWorldGenerator
 public:
 	//~ Begin UVoxelTransformableWorldGenerator Interface
 	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance();
-	// Will be only called on the CDO. Must not save the transform
-	virtual void SaveInstance(const FVoxelTransformableWorldGeneratorInstance& Instance, FArchive& Ar) const;
-	// Will be only called on the CDO
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> LoadInstance(FArchive& Ar) const;
 	//~ End UVoxelTransformableWorldGenerator Interface
 	
 	//~ Begin UVoxelWorldGenerator Interface

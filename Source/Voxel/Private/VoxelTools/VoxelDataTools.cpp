@@ -3,10 +3,10 @@
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelData/VoxelSaveUtilities.h"
-#include "VoxelData/VoxelDataUtilities.h"
-#include "VoxelData/VoxelDataAccelerator.h"
 #include "VoxelAssets/VoxelHeightmapAsset.h"
+#include "VoxelAssets/VoxelHeightmapAssetSamplerWrapper.h"
 #include "VoxelFeedbackContext.h"
 
 #define VOXEL_DATA_TOOL_PREFIX const FVoxelIntBox Bounds(Position);
@@ -37,14 +37,14 @@ void UVoxelDataTools::SetMaterial(AVoxelWorld* World, FIntVector Position, FVoxe
 	VOXEL_TOOL_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.SetMaterial(Position, Material));
 }
 
-void UVoxelDataTools::CacheValues(AVoxelWorld* World, FVoxelIntBox Bounds)
+void UVoxelDataTools::CacheValues(AVoxelWorld* World, FVoxelIntBox Bounds, bool bMultiThreaded)
 {
-	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelValue>(Bounds));
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelValue>(Bounds, bMultiThreaded));
 }
 
-void UVoxelDataTools::CacheMaterials(AVoxelWorld* World, FVoxelIntBox Bounds)
+void UVoxelDataTools::CacheMaterials(AVoxelWorld* World, FVoxelIntBox Bounds, bool bMultiThreaded)
 {
-	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelMaterial>(Bounds));
+	VOXEL_TOOL_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelMaterial>(Bounds, bMultiThreaded));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ void UVoxelDataTools::CacheValuesAsync(
 	FVoxelIntBox Bounds,
 	bool bHideLatentWarnings)
 {
-	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelValue>(Bounds));
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelValue>(Bounds, false));
 }
 
 void UVoxelDataTools::CacheMaterialsAsync(
@@ -110,7 +110,7 @@ void UVoxelDataTools::CacheMaterialsAsync(
 	FVoxelIntBox Bounds,
 	bool bHideLatentWarnings)
 {
-	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelMaterial>(Bounds));
+	VOXEL_TOOL_LATENT_HELPER(Write, DoNotUpdateRender, NO_PREFIX, Data.CacheBounds<FVoxelMaterial>(Bounds, false));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -140,25 +140,25 @@ if (!CheckSave(World->GetData(), Save)) \
 
 void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSave& OutSave)
 {
-	GetSave(World, OutSave.NewMutable());
+	GetSave(World, OutSave.NewMutable(), OutSave.Objects);
 }
 
-void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSaveImpl& OutSave)
+void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxelObjectArchiveEntry>& OutObjects)
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetData().GetSave(OutSave);
+	World->GetData().GetSave(OutSave, OutObjects);
 }
 
 void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorldSave& OutSave)
 {
-	GetCompressedSave(World, OutSave.NewMutable());
+	GetCompressedSave(World, OutSave.NewMutable(), OutSave.Objects);
 }
 
-void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorldSaveImpl& OutSave)
+void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorldSaveImpl& OutSave, TArray<FVoxelObjectArchiveEntry>& OutObjects)
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	FVoxelUncompressedWorldSaveImpl Save;
-	World->GetData().GetSave(Save);
+	World->GetData().GetSave(Save, OutObjects);
 	UVoxelSaveUtilities::CompressVoxelSave(Save, OutSave);
 }
 
@@ -180,7 +180,7 @@ void UVoxelDataTools::GetSaveAsync(
 		OutSave,
 		[](FVoxelData& Data, FVoxelUncompressedWorldSave& Save)
 		{
-			Data.GetSave(Save.NewMutable());
+			Data.GetSave(Save.NewMutable(), Save.Objects);
 		},
 		EVoxelUpdateRender::DoNotUpdateRender,
 		{});
@@ -205,36 +205,42 @@ void UVoxelDataTools::GetCompressedSaveAsync(
 		[](FVoxelData& Data, FVoxelCompressedWorldSave& CompressedSave)
 		{
 			FVoxelUncompressedWorldSaveImpl Save;
-			Data.GetSave(Save);
+			Data.GetSave(Save, CompressedSave.Objects);
 			UVoxelSaveUtilities::CompressVoxelSave(Save, CompressedSave.NewMutable());
 		},
 		EVoxelUpdateRender::DoNotUpdateRender,
 		{});
 }
 
-bool UVoxelDataTools::LoadFromSave(AVoxelWorld* World, const FVoxelUncompressedWorldSave& Save)
+bool UVoxelDataTools::LoadFromSave(const AVoxelWorld* World, const FVoxelUncompressedWorldSave& Save)
 {
-	return LoadFromSave(World, Save.Const());
+	return LoadFromSave(World, Save.Const(), Save.Objects);
 }
 
-bool UVoxelDataTools::LoadFromSave(AVoxelWorld* World, const FVoxelUncompressedWorldSaveImpl& Save)
+bool UVoxelDataTools::LoadFromSave(const AVoxelWorld* World, const FVoxelUncompressedWorldSaveImpl& Save, const TArray<FVoxelObjectArchiveEntry>& Objects)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
 	CHECK_SAVE();
 
 	TArray<FVoxelIntBox> BoundsToUpdate;
 	auto& Data = World->GetData();
-	const bool bSuccess = Data.LoadFromSave(World, Save, BoundsToUpdate);
+	
+	const FVoxelWorldGeneratorInit WorldInit = World->GetInitStruct();
+	const FVoxelPlaceableItemLoadInfo LoadInfo{ &WorldInit, &Objects };
+
+	const bool bSuccess = Data.LoadFromSave(Save, LoadInfo, &BoundsToUpdate);
+
 	World->GetLODManager().UpdateBounds(BoundsToUpdate);
+
 	return bSuccess;
 }
 
-bool UVoxelDataTools::LoadFromCompressedSave(AVoxelWorld* World, const FVoxelCompressedWorldSave& Save)
+bool UVoxelDataTools::LoadFromCompressedSave(const AVoxelWorld* World, const FVoxelCompressedWorldSave& Save)
 {
-	return LoadFromCompressedSave(World, Save.Const());
+	return LoadFromCompressedSave(World, Save.Const(), Save.Objects);
 }
 
-bool UVoxelDataTools::LoadFromCompressedSave(AVoxelWorld* World, const FVoxelCompressedWorldSaveImpl& Save)
+bool UVoxelDataTools::LoadFromCompressedSave(const AVoxelWorld* World, const FVoxelCompressedWorldSaveImpl& Save, const TArray<FVoxelObjectArchiveEntry>& Objects)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
 	CHECK_SAVE();
@@ -242,11 +248,7 @@ bool UVoxelDataTools::LoadFromCompressedSave(AVoxelWorld* World, const FVoxelCom
 	FVoxelUncompressedWorldSaveImpl UncompressedSave;
 	UVoxelSaveUtilities::DecompressVoxelSave(Save, UncompressedSave);
 
-	TArray<FVoxelIntBox> BoundsToUpdate;
-	auto& Data = World->GetData();
-	const bool bSuccess = Data.LoadFromSave(World, UncompressedSave, BoundsToUpdate);
-	World->GetLODManager().UpdateBounds(BoundsToUpdate);
-	return bSuccess;
+	return LoadFromSave(World, UncompressedSave, Objects);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -263,7 +265,7 @@ void UVoxelDataTools::RoundVoxelsImpl(FVoxelData& Data, const FVoxelIntBox& Boun
 		VOXEL_ASYNC_SCOPE_COUNTER("Record stats");
 		FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 		{
-			if (Leaf.GetData<FVoxelValue>().IsDirty() && Leaf.GetData<FVoxelValue>().GetDataPtr())
+			if (Leaf.GetData<FVoxelValue>().IsDirty() && Leaf.GetData<FVoxelValue>().HasAllocation())
 			{
 				NumDirtyLeaves++;
 				NumVoxels += VOXELS_PER_DATA_CHUNK;
@@ -277,7 +279,7 @@ void UVoxelDataTools::RoundVoxelsImpl(FVoxelData& Data, const FVoxelIntBox& Boun
 	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds.Extend(2));
 	FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
-		if (Leaf.GetData<FVoxelValue>().IsDirty() && Leaf.GetData<FVoxelValue>().GetDataPtr())
+		if (Leaf.GetData<FVoxelValue>().IsDirty() && Leaf.GetData<FVoxelValue>().HasAllocation())
 		{
 			SlowTask.EnterProgressFrame();
 			
@@ -285,7 +287,7 @@ void UVoxelDataTools::RoundVoxelsImpl(FVoxelData& Data, const FVoxelIntBox& Boun
 			LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
 			{
 				const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
-				const FVoxelValue& Value = Leaf.GetData<FVoxelValue>().GetDataPtr()[Index];
+				const FVoxelValue& Value = Leaf.GetData<FVoxelValue>().Get(Index);
 						
 				if (Value.IsTotallyEmpty() || Value.IsTotallyFull()) return;
 				
@@ -339,7 +341,7 @@ void UVoxelDataTools::ClearUnusedMaterialsImpl(FVoxelData& Data, const FVoxelInt
 		VOXEL_ASYNC_SCOPE_COUNTER("Record stats");
 		FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 		{
-			if (Leaf.GetData<FVoxelMaterial>().IsDirty() && Leaf.GetData<FVoxelMaterial>().GetDataPtr())
+			if (Leaf.GetData<FVoxelMaterial>().IsDirty() && Leaf.GetData<FVoxelMaterial>().HasAllocation())
 			{
 				NumDirtyLeaves++;
 				NumVoxels += VOXELS_PER_DATA_CHUNK;
@@ -353,7 +355,7 @@ void UVoxelDataTools::ClearUnusedMaterialsImpl(FVoxelData& Data, const FVoxelInt
 	FVoxelMutableDataAccelerator OctreeAccelerator(Data, Bounds.Extend(2));
 	FVoxelOctreeUtilities::IterateLeavesInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
-		if (Leaf.GetData<FVoxelMaterial>().IsDirty() && Leaf.GetData<FVoxelMaterial>().GetDataPtr())
+		if (Leaf.GetData<FVoxelMaterial>().IsDirty() && Leaf.GetData<FVoxelMaterial>().HasAllocation())
 		{
 			SlowTask.EnterProgressFrame();
 
@@ -363,7 +365,7 @@ void UVoxelDataTools::ClearUnusedMaterialsImpl(FVoxelData& Data, const FVoxelInt
 			LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
 			{
 				const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
-				const FVoxelMaterial& Material = Leaf.GetData<FVoxelMaterial>().GetDataPtr()[Index];
+				const FVoxelMaterial Material = Leaf.GetData<FVoxelMaterial>().Get(Index);
 
 				if (Material == FVoxelMaterial::Default()) return;
 				
@@ -389,7 +391,7 @@ void UVoxelDataTools::ClearUnusedMaterialsImpl(FVoxelData& Data, const FVoxelInt
 
 			if (bEdited)
 			{
-				Leaf.GetData<FVoxelMaterial>().TryCompressToSingleValue(Data);
+				Leaf.GetData<FVoxelMaterial>().Compress(Data);
 			}
 		}
 	});
@@ -493,12 +495,10 @@ FVoxelDataMemoryUsageInMB UVoxelDataTools::GetDataMemoryUsageInMB(AVoxelWorld* W
 	FVoxelDataMemoryUsageInMB MemoryUsage;
 
 	MemoryUsage.DirtyValues = Data.GetDirtyMemory().Values.GetValue() / OneMB;
-	MemoryUsage.DirtyMaterials = Data.GetDirtyMemory().Foliage.GetValue() / OneMB;
-	MemoryUsage.DirtyFoliage = Data.GetDirtyMemory().Materials.GetValue() / OneMB;
+	MemoryUsage.DirtyMaterials = Data.GetDirtyMemory().Materials.GetValue() / OneMB;
 
 	MemoryUsage.CachedValues = Data.GetCachedMemory().Values.GetValue() / OneMB;
-	MemoryUsage.CachedMaterials = Data.GetCachedMemory().Foliage.GetValue() / OneMB;
-	MemoryUsage.CachedFoliage = Data.GetCachedMemory().Materials.GetValue() / OneMB;
+	MemoryUsage.CachedMaterials = Data.GetCachedMemory().Materials.GetValue() / OneMB;
 
 	return MemoryUsage;
 }
@@ -630,13 +630,15 @@ void UVoxelDataTools::CompressIntoHeightmapImpl(FVoxelData& Data, TVoxelHeightma
 			auto& DataHolder = Leaf.GetData<FVoxelValue>();
 			if (bCheckAllLeaves)
 			{
-				if (!DataHolder.GetDataPtr() && !DataHolder.IsSingleValue())
+				if (!DataHolder.HasData())
 				{
-					DataHolder.CreateDataPtr(Data);
-					TVoxelQueryZone<FVoxelValue> QueryZone(Leaf.GetBounds(), DataHolder.GetDataPtr());
-					Leaf.GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+					DataHolder.CreateData(Data, [&](FVoxelValue* RESTRICT DataPtr)
+					{
+						TVoxelQueryZone<FVoxelValue> QueryZone(Leaf.GetBounds(), DataPtr);
+						Leaf.GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+					});
 					// Reduce memory usage
-					DataHolder.TryCompressToSingleValue(Data);
+					DataHolder.Compress(Data);
 				}
 			}
 			else
@@ -727,41 +729,22 @@ void UVoxelDataTools::CompressIntoHeightmapImpl(FVoxelData& Data, TVoxelHeightma
 						else
 						{
 							// Go down until we find the height
-
-							TVoxelStaticArray<FVoxelValue, VOXELS_PER_DATA_CHUNK> SingleValueBuffer; 
-							const FVoxelValue* RESTRICT DataPtr;
+							auto& DataHolder = Leaf->GetData<FVoxelValue>();
+							if (DataHolder.IsSingleValue() && !DataHolder.GetSingleValue().IsEmpty())
 							{
-								auto& DataHolder = Leaf->GetData<FVoxelValue>();
-								if (DataHolder.IsSingleValue())
-								{
-									if (!DataHolder.GetSingleValue().IsEmpty())
-									{
-										// Fast path
-										continue;
-									}
-									// Easier that way
-									for (auto& Value : SingleValueBuffer)
-									{
-										Value = DataHolder.GetSingleValue();
-									}
-									DataPtr = SingleValueBuffer.GetData();
-								}
-								else
-								{
-									DataPtr = DataHolder.GetDataPtr();
-								}
+								// Fast path
+								continue;
 							}
-							check(DataPtr);
 
 							for (int32 Z = DATA_CHUNK_SIZE - 1; Z >= 0; Z--)
 							{
-								const FVoxelValue Value = DataPtr[FVoxelDataOctreeUtilities::IndexFromCoordinates(X, Y, Z)];
+								const FVoxelValue Value = DataHolder.Get(FVoxelDataOctreeUtilities::IndexFromCoordinates(X, Y, Z));
 								if (!Value.IsEmpty())
 								{
 									FVoxelValue ValueAbove;
 									if (Z + 1 < DATA_CHUNK_SIZE)
 									{
-										ValueAbove = DataPtr[FVoxelDataOctreeUtilities::IndexFromCoordinates(X, Y, Z + 1)];
+										ValueAbove = DataHolder.Get(FVoxelDataOctreeUtilities::IndexFromCoordinates(X, Y, Z + 1));
 									}
 									else
 									{
@@ -788,11 +771,10 @@ void UVoxelDataTools::CompressIntoHeightmapImpl(FVoxelData& Data, TVoxelHeightma
 										
 										auto* ItLeaf = FVoxelOctreeUtilities::GetLeaf<EVoxelOctreeLeafQuery::CreateIfNull>(Data.GetOctree(), LeafPosition);
 										check(ItLeaf);
-										check(!ItLeaf->GetData<FVoxelValue>().GetDataPtr());
-										check(!ItLeaf->GetData<FVoxelValue>().IsSingleValue());
+										check(!ItLeaf->GetData<FVoxelValue>().HasData());
 
 										ItLeaf->InitForEdit<FVoxelValue>(Data);
-										ItLeaf->GetData<FVoxelValue>().SetDirty(Data);
+										ItLeaf->GetData<FVoxelValue>().SetIsDirty(true, Data);
 
 										// & Add it to the map
 										Leaves.Add(ItLeafMinZ, ItLeaf);
@@ -938,7 +920,7 @@ void UVoxelDataTools::RoundToGeneratorImpl(FVoxelData& Data, const FVoxelIntBox&
 			LeafBounds.Iterate([&](int32 X, int32 Y, int32 Z)
 			{
 				const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
-				const FVoxelValue Value = Leaf.GetData<FVoxelValue>().GetDataPtr()[Index];
+				const FVoxelValue Value = Leaf.GetData<FVoxelValue>().Get(Index);
 				const FVoxelValue GeneratorValue = Data.WorldGenerator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
 
 				if (Value == GeneratorValue) return;
@@ -1027,10 +1009,6 @@ void UVoxelDataTools::CheckIfSameAsGeneratorImpl(FVoxelData& Data, const FVoxelI
 		{
 			FVoxelDataUtilities::CheckIfSameAsGenerator<FVoxelMaterial>(Data, Leaf);
 		}
-		if (Leaf.GetData<FVoxelFoliage>().IsDirty())
-		{
-			FVoxelDataUtilities::CheckIfSameAsGenerator<FVoxelFoliage>(Data, Leaf);
-		}
 	});
 }
 
@@ -1054,7 +1032,7 @@ void UVoxelDataTools::CheckIfSameAsGeneratorAsync(
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void UVoxelDataTools::SetBoxAsDirtyImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, bool bTryCompressToSingleValue)
+void UVoxelDataTools::SetBoxAsDirtyImpl(FVoxelData& Data, const FVoxelIntBox& Bounds, bool bCompress)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
@@ -1070,12 +1048,12 @@ void UVoxelDataTools::SetBoxAsDirtyImpl(FVoxelData& Data, const FVoxelIntBox& Bo
 			ensureThreadSafe(Leaf.IsLockedForWrite());
 			
 			Leaf.InitForEdit<T>(Data);
-			if (bTryCompressToSingleValue)
+			if (bCompress)
 			{
 				// Else memory usage explodes
-				Leaf.GetData<T>().TryCompressToSingleValue(Data);
+				Leaf.GetData<T>().Compress(Data);
 			}
-			Leaf.GetData<T>().SetDirty(Data);
+			Leaf.GetData<T>().SetIsDirty(true, Data);
 		}
 		else
 		{
@@ -1091,7 +1069,6 @@ void UVoxelDataTools::SetBoxAsDirtyImpl(FVoxelData& Data, const FVoxelIntBox& Bo
 
 template VOXEL_API void UVoxelDataTools::SetBoxAsDirtyImpl<FVoxelValue>(FVoxelData&, const FVoxelIntBox&, bool);
 template VOXEL_API void UVoxelDataTools::SetBoxAsDirtyImpl<FVoxelMaterial>(FVoxelData&, const FVoxelIntBox&, bool);
-template VOXEL_API void UVoxelDataTools::SetBoxAsDirtyImpl<FVoxelFoliage>(FVoxelData&, const FVoxelIntBox&, bool);
 
 void UVoxelDataTools::SetBoxAsDirty(
 	AVoxelWorld* World, 
@@ -1128,91 +1105,6 @@ void UVoxelDataTools::SetBoxAsDirtyAsync(
 		{
 			SetBoxAsDirtyImpl<FVoxelMaterial>(Data, Bounds, true);
 		});
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-FVoxelIntBox UVoxelDataTools::GetLevelToolBounds(const FVoxelVector& Position, float Radius, float Height, bool bAdditive)
-{
-	const float R = Radius + 2;
-	if (bAdditive)
-	{
-		// Below
-		return FVoxelIntBox(Position - FVector(R, R, Height + 1.f), Position + FVector(R, R, 1.f));
-	}
-	else
-	{
-		// Above
-		return FVoxelIntBox(Position - FVector(R, R, 1.f), Position + FVector(R, R, Height + 1.f));
-	}
-}
-
-void UVoxelDataTools::LevelImpl(
-	FVoxelData& Data, 
-	const FVoxelVector& Position, 
-	float Radius,
-	float Falloff,
-	float Height,
-	bool bAdditive)
-{
-	const FVoxelIntBox Bounds = GetLevelToolBounds(Position, Radius, Height, bAdditive);
-	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
-
-	// Center the height
-	const FVoxelVector CylinderPosition = Position + FVoxelVector(0, 0, (bAdditive ? -Height : Height) / 2);
-	
-	const float SquaredRadius = FMath::Square(Radius + 2);
-	Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
-	{
-		const float SquaredDistance = FVector2D(X - Position.X, Y - Position.Y).SizeSquared();
-		if (SquaredDistance <= SquaredRadius)
-		{
-			const float SDF = FVoxelUtilities::RoundCylinder(FVoxelVector(X, Y, Z) - CylinderPosition, Radius, Height, Falloff);
-			if (bAdditive)
-			{
-				Value = FMath::Min(Value, FVoxelValue(SDF));
-			}
-			else
-			{
-				Value = FMath::Max(Value, FVoxelValue(-SDF));
-			}
-		}
-	});
-}
-
-#define LEVEL_PREFIX \
-	const FVoxelVector Position = FVoxelToolHelpers::GetRealTemplate(World, InPosition, bConvertToVoxelSpace); \
-	const float Radius = FVoxelToolHelpers::GetRealTemplate(World, InRadius, bConvertToVoxelSpace); \
-	const float Height = FVoxelToolHelpers::GetRealTemplate(World, InHeight, bConvertToVoxelSpace); \
-	const FVoxelIntBox Bounds = GetLevelToolBounds(Position, Radius, Height, bAdditive);
-
-void UVoxelDataTools::Level(
-	AVoxelWorld* World, 
-	FVector InPosition, 
-	float InRadius, 
-	float InHeight, 
-	float Falloff, 
-	bool bAdditive, 
-	bool bConvertToVoxelSpace)
-{
-	VOXEL_TOOL_HELPER(Write, UpdateRender, LEVEL_PREFIX, LevelImpl(Data, Position, Radius, Falloff, Height, bAdditive));
-}
-
-void UVoxelDataTools::LevelAsync(
-	UObject* WorldContextObject, 
-	FLatentActionInfo LatentInfo, 
-	AVoxelWorld* World, 
-	FVector InPosition, 
-	float InRadius, 
-	float InHeight, 
-	float Falloff, 
-	bool bAdditive, 
-	bool bConvertToVoxelSpace, 
-	bool bHideLatentWarnings)
-{
-	VOXEL_TOOL_LATENT_HELPER(Write, UpdateRender, LEVEL_PREFIX, LevelImpl(Data, Position, Radius, Falloff, Height, bAdditive));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -12,18 +12,18 @@ struct VOXEL_API FVoxelItemStack
 {
 public:
 	const FVoxelPlaceableItemHolder& ItemHolder;
-	const FVoxelWorldGeneratorInstance* WorldGenerator;
+	const FVoxelWorldGeneratorInstance* const WorldGenerator;
 	const int32 Depth; // Index in VoxelAssetItem array, -1 if world generator
-	void* const CustomData; // Use this to send custom data to a generator
+	const TArray<v_flt>* const CustomData; // Use this to send custom data to a generator
 
-	explicit FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, void* CustomData = nullptr)
+	explicit FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const TArray<v_flt>* CustomData = nullptr)
 		: ItemHolder(ItemHolder)
 		, WorldGenerator(nullptr)
 		, Depth(-1)
 		, CustomData(CustomData)
 	{
 	}
-	FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const FVoxelWorldGeneratorInstance& WorldGenerator, int32 Depth, void* CustomData = nullptr)
+	FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const FVoxelWorldGeneratorInstance& WorldGenerator, int32 Depth, const TArray<v_flt>* CustomData = nullptr)
 		: ItemHolder(ItemHolder)
 		, WorldGenerator(&WorldGenerator)
 		, Depth(Depth)
@@ -43,20 +43,19 @@ public:
 	TVoxelRange<T> GetCustomOutputRange(TVoxelRange<T> DefaultValue, FName Name, const FVoxelIntBox& Bounds, int32 LOD) const;
 
 	template<typename ...TArgs>
-	inline FVoxelItemStack GetNextStack(TArgs... Args) const
+	FORCEINLINE FVoxelItemStack GetNextStack(TArgs... Args) const
 	{
 		return { ItemHolder, *WorldGenerator, GetNextDepth(Args...), CustomData };
 	}
-	template<typename T>
-	inline FVoxelItemStack WithCustomData(T* InCustomData) const
+	FORCEINLINE FVoxelItemStack WithCustomData(const TArray<v_flt>* InCustomData) const
 	{
-		return { ItemHolder, *WorldGenerator, Depth, const_cast<void*>(reinterpret_cast<const void*>(InCustomData)) };
+		return { ItemHolder, *WorldGenerator, Depth, InCustomData };
 	}
-	inline bool IsEmpty() const
+	FORCEINLINE bool IsEmpty() const
 	{
 		return Depth == -1;
 	}
-	inline bool IsValid() const
+	FORCEINLINE bool IsValid() const
 	{
 		return Depth >= -1;
 	}

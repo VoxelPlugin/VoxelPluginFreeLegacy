@@ -53,6 +53,12 @@
 #define ONLY_UE_25_AND_LOWER(...) __VA_ARGS__
 #endif
 
+#if ENGINE_MINOR_VERSION >= 24
+#define UE_24_SWITCH(Before, AfterOrEqual) AfterOrEqual
+#else
+#define UE_24_SWITCH(Before, AfterOrEqual) Before
+#endif
+
 #if ENGINE_MINOR_VERSION >= 25
 #define UE_25_SWITCH(Before, AfterOrEqual) AfterOrEqual
 #else

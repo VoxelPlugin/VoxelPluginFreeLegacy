@@ -90,11 +90,6 @@ void FVoxelSpawnerDensityCustomization::CustomizeChildren(TSharedRef<IPropertyHa
 		Group->AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerDensity, MultiIndexChannels));
 		break;
 	}
-	case EVoxelSpawnerDensityType::Foliage:
-	{
-		Group->AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerDensity, FoliageChannel));
-		break;
-	}
 	}
 	Group->AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerDensity, Transform));
 }

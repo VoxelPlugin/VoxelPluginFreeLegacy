@@ -10,7 +10,10 @@ class FVoxelGraphCompiler;
 class UVoxelGraphGenerator;
 class UEdGraphNode;
 class FVoxelCompilationNode;
+
 struct FVoxelGraphMessage;
+
+enum class EVoxelGraphPreviewFlags;
 enum class EVoxelGraphNodeMessageType : int32;
 
 class IVoxelGraphEditorToolkit : public FAssetEditorToolkit
@@ -34,7 +37,7 @@ public:
 
 	virtual void RefreshNodesMessages() = 0;
 
-	virtual void TriggerUpdatePreview(bool bForce, bool bUpdateTextures) = 0;
+	virtual void TriggerUpdatePreview(EVoxelGraphPreviewFlags Flags) = 0;
 
 	virtual FAdvancedPreviewScene* GetPreviewScene() const = 0;
 

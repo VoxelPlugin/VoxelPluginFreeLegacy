@@ -7,9 +7,9 @@
 #include "Misc/NotifyHook.h"
 #include "EditorUndoClient.h"
 #include "TickableEditorObject.h"
-#include "Launch/Resources/Version.h"
 #include "VoxelGraphErrorReporter.h"
 #include "IVoxelGraphEditorToolkit.h"
+#include "VoxelGraphEditor.h"
 #include "VoxelMinimal.h"
 
 class IDetailsView;
@@ -61,7 +61,7 @@ public:
 	virtual TSet<UObject*> GetSelectedNodes() const override;
 	virtual void SelectNodesAndZoomToFit(const TArray<UEdGraphNode*>& Nodes) override;
 	virtual void RefreshNodesMessages() override;
-	void TriggerUpdatePreview(bool bForce, bool bUpdateTextures) override;
+	void TriggerUpdatePreview(EVoxelGraphPreviewFlags Flags) override;
 	virtual FAdvancedPreviewScene* GetPreviewScene() const override;
 	virtual void DebugNodes(const TSet<FVoxelCompilationNode*>& Nodes) override;
 	virtual void AddMessages(const TArray<FVoxelGraphMessage>& Messages) override;
@@ -185,22 +185,12 @@ public:
 	
 	void ToggleAutomaticPreview();
 	bool IsToggleAutomaticPreviewChecked() const;
-	void UpdatePreview(bool bUpdateTextures, bool bAutomaticPreview);
+	void UpdatePreview(EVoxelGraphPreviewFlags Flags);
 	void UpdateVoxelWorlds();
 	
 	void ClearNodesMessages();
 	
-	void ToggleRangeAnalysisDebug();
-	bool IsRangeAnalysisDebugChecked();
-	
-	void ToggleStats();
-	bool IsToggleStatsChecked() const;
-	
-	void ShowSelectedNodesStats();
-
-	void ToggleShowAxisDependencies();
 	void ShowAxisDependencies();
-	bool IsShowAxisDependenciesChecked() const { return bShowAxisDependencies; }
 
 	void ImportExposedVariablesValues();
 
@@ -218,10 +208,8 @@ private:
 	// Command list for this editor
 	TSharedPtr<FUICommandList> GraphEditorCommands;
 
-	bool bShowAxisDependencies = false;
-
 	bool bUpdatePreviewOnNextTick = false;
-	bool bNextPreviewUpdatesTextures = false;
+	EVoxelGraphPreviewFlags NextPreviewFlags = EVoxelGraphPreviewFlags::None;
 
 	TArray<FVoxelGraphMessage> CurrentMessages;
 

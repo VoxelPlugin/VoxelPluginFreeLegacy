@@ -5,7 +5,7 @@
 #include "Runtime/VoxelNodeType.h"
 #include "VoxelContext.h"
 #include "VoxelAxisDependencies.h"
-#include "VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelNodeFunctions.h"
 
 UVoxelCoordinateNode::UVoxelCoordinateNode()
 {

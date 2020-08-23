@@ -11,6 +11,8 @@
 class FVoxelData;
 class AVoxelWorld;
 class AVoxelWorldInterface;
+class IVoxelWorldInterface;
+class UVoxelLineBatchComponent;
 
 UCLASS()
 class VOXEL_API UVoxelDebugUtilities : public UBlueprintFunctionLibrary
@@ -29,6 +31,15 @@ public:
 
 	static void DrawDebugIntBox(
 		const AVoxelWorldInterface* World,
+		FVoxelIntBox Box,
+		float Lifetime = 1,
+		float Thickness = 0,
+		FLinearColor Color = FLinearColor::Red);
+
+	static void DrawDebugIntBox(
+		const IVoxelWorldInterface& World,
+		UVoxelLineBatchComponent& LineBatchComponent,
+		FTransform Transform,
 		FVoxelIntBox Box,
 		float Lifetime = 1,
 		float Thickness = 0,

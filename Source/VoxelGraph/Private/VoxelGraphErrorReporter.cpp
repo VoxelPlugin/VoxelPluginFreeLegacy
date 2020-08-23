@@ -39,8 +39,8 @@ void FVoxelGraphErrorReporter::AddError(const FString& Error)
 	if (!Error.IsEmpty())
 	{
 		const FString ErrorWithPrefix = AddPrefixToError(Error);
-		Messages.Add(FVoxelGraphMessage{ nullptr, Error, EVoxelGraphNodeMessageType::FatalError });
-		bHasFatalError = true;
+		Messages.Add(FVoxelGraphMessage{ nullptr, Error, EVoxelGraphNodeMessageType::Error });
+		bHasError = true;
 	}
 }
 
@@ -48,38 +48,24 @@ void FVoxelGraphErrorReporter::AddInternalError(const FString Error)
 {
 	ensureMsgf(false, TEXT("Internal voxel graph compiler error: %s"), *Error);
 
-	const bool bOldHasErrors = bHasFatalError;
+	const bool bOldHasErrors = bHasError;
 	AddError("Internal error: " + Error +
 		"\nPlease create a bug report here: https://gitlab.com/Phyronnaz/VoxelPluginIssues/issues \n"
 		"Don't forget to attach the generated header file");
-	bHasFatalError = bOldHasErrors;
+	bHasError = bOldHasErrors;
 }
 
 inline FString& GetErrorString(UVoxelGraphNodeInterface* Node, EVoxelGraphNodeMessageType Type)
 {
 	switch (Type)
 	{
+	default: ensure(false);
 	case EVoxelGraphNodeMessageType::Info:
 		return Node->InfoMsg;
 	case EVoxelGraphNodeMessageType::Warning:
 		return Node->WarningMsg;
 	case EVoxelGraphNodeMessageType::Error:
-	case EVoxelGraphNodeMessageType::FatalError:
 		return Node->ErrorMsg;
-	case EVoxelGraphNodeMessageType::Dependencies:
-		return Node->DependenciesMsg;
-	case EVoxelGraphNodeMessageType::Stats:
-		return Node->StatsMsg;
-	case EVoxelGraphNodeMessageType::RangeAnalysisWarning:
-		return Node->RangeAnalysisWarningMsg;
-	case EVoxelGraphNodeMessageType::RangeAnalysisError:
-		return Node->RangeAnalysisErrorMsg;
-	case EVoxelGraphNodeMessageType::RangeAnalysisDebug:
-		return Node->RangeAnalysisDebugMsg;
-	default:
-		check(false);
-		static FString Ref;
-		return Ref;
 	}
 }
 
@@ -87,37 +73,24 @@ void FVoxelGraphErrorReporter::AddMessageToNode(
 	const UVoxelNode* Node, 
 	const FString& Message, 
 	EVoxelGraphNodeMessageType Severity, 
-	bool bSelectNode)
+	bool bSelectNode,
+	bool bShowInList)
 {
 	check(Node);
 	const FString MessageWithPrefix = AddPrefixToError(Message);
 
-	if (Severity == EVoxelGraphNodeMessageType::FatalError)
+	if (Severity == EVoxelGraphNodeMessageType::Error)
 	{
-		bHasFatalError = true;
+		bHasError = true;
 	}
-	
-	switch (Severity)
-	{
-	case EVoxelGraphNodeMessageType::Info:
-	case EVoxelGraphNodeMessageType::Warning:
-	case EVoxelGraphNodeMessageType::Error:
-	case EVoxelGraphNodeMessageType::FatalError:
-	case EVoxelGraphNodeMessageType::RangeAnalysisWarning:
-	case EVoxelGraphNodeMessageType::RangeAnalysisError:
+
+	if (bShowInList)
 	{
 		FVoxelGraphMessage NewMessage;
 		NewMessage.Node = Node;
 		NewMessage.Message = MessageWithPrefix;
 		NewMessage.Type = Severity;
 		Messages.Add(NewMessage);
-		break;
-	}
-	case EVoxelGraphNodeMessageType::Dependencies:
-	case EVoxelGraphNodeMessageType::Stats:
-	case EVoxelGraphNodeMessageType::RangeAnalysisDebug:
-	default:
-		break;
 	}
 
 	if (bSelectNode)
@@ -168,7 +141,7 @@ void FVoxelGraphErrorReporter::Apply(bool bSelectNodes)
 	{
 		for (auto& Message : Messages)
 		{
-			if (Message.Type == EVoxelGraphNodeMessageType::FatalError)
+			if (Message.Type == EVoxelGraphNodeMessageType::Error)
 			{
 				LOG_VOXEL(Warning, TEXT("%s failed to compile: %s"), VoxelGraphGenerator ? *VoxelGraphGenerator->GetName() : TEXT(""), *Message.Message);
 			}
@@ -180,7 +153,7 @@ void FVoxelGraphErrorReporter::CopyFrom(FVoxelGraphErrorReporter& Other)
 {
 	check(VoxelGraphGenerator == Other.VoxelGraphGenerator);
 
-	bHasFatalError |= Other.bHasFatalError;
+	bHasError |= Other.bHasError;
 	Messages.Append(Other.Messages);
 	NodesToSelect.Append(Other.NodesToSelect);
 	GraphsToRefresh.Append(Other.GraphsToRefresh);
@@ -220,16 +193,7 @@ void FVoxelGraphErrorReporter::ClearNodesMessages(const UVoxelGraphGenerator* Gr
 	{
 		if (auto* Interface = Cast<UVoxelGraphNodeInterface>(Node))
 		{
-			for (auto Type :
-				{ EVoxelGraphNodeMessageType::Info,
-				  EVoxelGraphNodeMessageType::Warning,
-				  EVoxelGraphNodeMessageType::Error,
-				  EVoxelGraphNodeMessageType::FatalError,
-				  EVoxelGraphNodeMessageType::Dependencies,
-				  EVoxelGraphNodeMessageType::Stats,
-				  EVoxelGraphNodeMessageType::RangeAnalysisWarning,
-				  EVoxelGraphNodeMessageType::RangeAnalysisError,
-				  EVoxelGraphNodeMessageType::RangeAnalysisDebug })
+			for (auto Type : TEnumRange<EVoxelGraphNodeMessageType>())
 
 			{
 				if (bClearAll || MessagesToClear == Type)
@@ -262,31 +226,11 @@ void FVoxelGraphErrorReporter::ClearNodesMessages(const UVoxelGraphGenerator* Gr
 
 void FVoxelGraphErrorReporter::ClearCompilationMessages(const UVoxelGraphGenerator* Graph)
 {
-	for (auto Type :
-		{ EVoxelGraphNodeMessageType::Info,
-		  EVoxelGraphNodeMessageType::Warning,
-		  EVoxelGraphNodeMessageType::Error,
-		  EVoxelGraphNodeMessageType::FatalError,
-		  EVoxelGraphNodeMessageType::Dependencies
-		})
+	for (auto Type : TEnumRange<EVoxelGraphNodeMessageType>())
 	{
 		ClearMessages(Graph, false, Type);
 		ClearNodesMessages(Graph, true, false, Type);
 	}
-}
-
-
-void FVoxelGraphErrorReporter::AddPerfCounters(const UVoxelGraphGenerator* Graph)
-{
-}
-
-
-void FVoxelGraphErrorReporter::GetStats(const TSet<UObject*>& SelectedNodes, double& OutTotalTimeInSeconds, uint64& OutTotalCalls)
-{
-}
-
-void FVoxelGraphErrorReporter::AddRangeAnalysisErrors(const UVoxelGraphGenerator* Graph)
-{
 }
 
 void FVoxelGraphErrorReporter::AddMessageToNodeInternal(

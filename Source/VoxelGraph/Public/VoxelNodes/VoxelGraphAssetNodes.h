@@ -17,11 +17,11 @@ public:
 	UVoxelGraphAssetNode() = default;
 
 	// Can be recovered in the generators with the GetCustomData node
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
 	TArray<FName> CustomData;
 
 	// World generator to sample from when not used as an asset. Useful to preview. Not used when compiled to C++
-	UPROPERTY(EditAnywhere, Category = "Preview")
+	UPROPERTY(EditAnywhere, Category = "Preview", meta = (ReconstructNode))
 	FVoxelWorldGeneratorPicker DefaultWorldGenerator;
 
 	//~ Begin UVoxelNode Interface
@@ -30,12 +30,6 @@ public:
 	virtual int32 GetMinInputPins() const override;
 	virtual int32 GetMaxInputPins() const override;
 	//~ End UVoxelNode Interface
-
-#if WITH_EDITOR
-	//~ Begin UObject Interface
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	//~ End UObject Interface
-#endif
 };
 
 // Get the previous generator value. Only for graph assets

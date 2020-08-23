@@ -5,15 +5,18 @@
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "VoxelRange.h"
 #include "VoxelIntBox.h"
-#include "VoxelQueryZone.h"
-#include "VoxelItemStack.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
 #include "Templates/SubclassOf.h"
 #include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 
+struct FVoxelItemStack;
+struct FVoxelWorldGeneratorInit;
 class UMaterialInstanceDynamic;
+
+template<typename T>
+struct TVoxelRange;
+template<typename T>
+class TVoxelQueryZone;
 
 /**
  * A FVoxelWorldGeneratorInstance is a constant object created by a UVoxelWorldGenerator
@@ -45,9 +48,11 @@ public:
 public:
 	FVoxelWorldGeneratorInstance(
 		TSubclassOf<UVoxelWorldGenerator> Class,
+		UVoxelWorldGenerator* Object,
 		const FBaseFunctionPtrs& BasePtrs,
 		const FCustomFunctionPtrs& CustomPtrs)
 		: Class(Class)
+		, Object(Object)
 		, BasePtrs(BasePtrs)
 		, CustomPtrs(CustomPtrs)
 	{
@@ -59,7 +64,10 @@ public:
 	virtual ~FVoxelWorldGeneratorInstance() = default;
 
 public:
+	// Used for serialization
 	const TSubclassOf<UVoxelWorldGenerator> Class;
+	const TSoftObjectPtr<UVoxelWorldGenerator> Object;
+	
 	const FBaseFunctionPtrs BasePtrs;
 	const FCustomFunctionPtrs CustomPtrs;
 
@@ -139,12 +147,13 @@ public:
 	
 public:
 	FVoxelTransformableWorldGeneratorInstance(
-		TSubclassOf<UVoxelWorldGenerator> Class,
+		TSubclassOf<UVoxelTransformableWorldGenerator> Class,
+		UVoxelTransformableWorldGenerator* Object,
 		const FBaseFunctionPtrs& BasePtrs,
 		const FCustomFunctionPtrs& CustomPtrs,
 		const FBaseFunctionPtrs_Transform& BasePtrs_Transform,
 		const FCustomFunctionPtrs_Transform& CustomPtrs_Transform)
-		: FVoxelWorldGeneratorInstance(Class, BasePtrs, CustomPtrs)
+		: FVoxelWorldGeneratorInstance(Class, Object, BasePtrs, CustomPtrs)
 		, BasePtrs_Transform(BasePtrs_Transform)
 		, CustomPtrs_Transform(CustomPtrs_Transform)
 	{

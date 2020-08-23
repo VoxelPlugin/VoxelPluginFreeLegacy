@@ -46,7 +46,7 @@ FText GetTitle() const override { return VOXEL_LOCTEXT(Text); }
 void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) \
 { \
 	Super::LogErrors(ErrorReporter); \
-	ErrorReporter.AddMessageToNode(this, "deprecated node: " Message, EVoxelGraphNodeMessageType::FatalError); \
+	ErrorReporter.AddMessageToNode(this, "deprecated node: " Message, EVoxelGraphNodeMessageType::Error); \
 }
 
 #define __DEFINE_INPUTS_0(A) auto& _I0 = Inputs[0].Get<A>(); auto& Input0 = _I0;

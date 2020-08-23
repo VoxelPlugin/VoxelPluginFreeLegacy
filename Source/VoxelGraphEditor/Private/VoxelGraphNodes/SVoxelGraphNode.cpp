@@ -593,31 +593,15 @@ void SVoxelGraphNode::SetupErrorReporting()
 	ErrorReporting->SetError(ErrorMsg);
 }
 
-inline FString MergeMessages(const FString& MsgA, const FString& MsgB)
-{
-	if (MsgA.IsEmpty())
-	{
-		return MsgB;
-	}
-	else if (MsgB.IsEmpty())
-	{
-		return MsgA;
-	}
-	else
-	{
-		return MsgA + "\n" + MsgB;
-	}
-}
-
 void SVoxelGraphNode::UpdateErrorInfo()
 {
 	InfoColor = FEditorStyle::GetColor("InfoReporting.BackgroundColor");
 	WarningColor = FEditorStyle::GetColor("ErrorReporting.WarningBackgroundColor");
 	ErrorColor = FEditorStyle::GetColor("ErrorReporting.BackgroundColor");
 
-	InfoMsg = MergeMessages(MergeMessages(VoxelNode->InfoMsg, VoxelNode->RangeAnalysisDebugMsg), VoxelNode->DependenciesMsg);
-	WarningMsg = MergeMessages(MergeMessages(VoxelNode->WarningMsg, VoxelNode->StatsMsg), VoxelNode->RangeAnalysisWarningMsg);
-	ErrorMsg = MergeMessages(VoxelNode->ErrorMsg, VoxelNode->RangeAnalysisErrorMsg);
+	InfoMsg = VoxelNode->InfoMsg;
+	WarningMsg = VoxelNode->WarningMsg;
+	ErrorMsg = VoxelNode->ErrorMsg;
 }
 
 void SVoxelGraphNode::OnNameTextCommited(const FText& InText, ETextCommit::Type CommitInfo)

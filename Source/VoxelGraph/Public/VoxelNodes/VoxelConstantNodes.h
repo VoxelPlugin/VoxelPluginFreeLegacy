@@ -47,7 +47,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	FName Name = "";
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ReconstructNode))
 	EVoxelPinCategory Type = EVoxelPinCategory::Boolean;
 
 	UPROPERTY(Transient, VisibleAnywhere, Category = "Voxel")
@@ -59,8 +59,4 @@ public:
 	virtual FText GetTitle() const override;
 	virtual EVoxelPinCategory GetOutputPinCategory(int32 PinIndex) const override;
 	//~ End UVoxelNode Interface
-
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 };

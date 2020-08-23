@@ -18,25 +18,6 @@
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Data Octrees Memory"), STAT_VoxelDataOctreesMemory, STATGROUP_VoxelMemory, VOXEL_API);
 DECLARE_DWORD_ACCUMULATOR_STAT_EXTERN(TEXT("Voxel Data Octrees Count"), STAT_VoxelDataOctreesCount, STATGROUP_VoxelCounters, VOXEL_API);
 
-class FVoxelWorldGeneratorInstance;
-
-class VOXEL_API IVoxelData : public IVoxelDataOctreeMemory
-{
-public:
-	const int32 Depth;
-	const FVoxelIntBox WorldBounds;
-	const bool bEnableMultiplayer;
-	const bool bEnableUndoRedo;
-	const TVoxelSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator;
-
-	IVoxelData(
-		int32 Depth,
-		const FVoxelIntBox& WorldBounds,
-		bool bEnableMultiplayer,
-		bool bEnableUndoRedo,
-		const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& VoxelWorldGeneratorInstance);
-};
-
 namespace FVoxelDataOctreeUtilities
 {
 	FORCEINLINE FVoxelCellIndex IndexFromCoordinates(int32 X, int32 Y, int32 Z)
@@ -136,34 +117,28 @@ public:
 
 	TVoxelDataOctreeLeafData<FVoxelValue> Values;
 	TVoxelDataOctreeLeafData<FVoxelMaterial> Materials;
-	TVoxelDataOctreeLeafData<FVoxelFoliage> Foliage;
 
 	TUniquePtr<FVoxelDataOctreeLeafUndoRedo> UndoRedo;
 	TUniquePtr<FVoxelDataOctreeLeafMultiplayer> Multiplayer;
 
 public:
-	template<typename T>
+	template<typename TIn>
 	FORCEINLINE void InitForEdit(const IVoxelData& Data)
 	{
-		using TNotConst = typename TRemoveConst<T>::Type;
+		using T = typename TRemoveConst<TIn>::Type;
 		
-		TVoxelDataOctreeLeafData<TNotConst>& DataHolder = GetData<TNotConst>();
-		if (!DataHolder.GetDataPtr())
+		TVoxelDataOctreeLeafData<T>& DataHolder = GetData<T>();
+		if (!DataHolder.HasData())
 		{
-			if (DataHolder.IsSingleValue())
+			DataHolder.CreateData(Data, [&](T* RESTRICT DataPtr)
 			{
-				DataHolder.ExpandSingleValue(Data);
-			}
-			else
-			{
-				DataHolder.CreateDataPtr(Data);
-				{
-					TVoxelQueryZone<TNotConst> QueryZone(GetBounds(), DataHolder.GetDataPtr());
-					GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
-				}
-			}
+				TVoxelQueryZone<T> QueryZone(GetBounds(), DataPtr);
+				GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+			});
 		}
-		if (!TIsConst<T>::Value)
+		DataHolder.PrepareForWrite(Data);
+		
+		if (!TIsConst<TIn>::Value)
 		{
 			if (Data.bEnableMultiplayer && !Multiplayer.IsValid())
 			{
@@ -177,8 +152,8 @@ public:
 	}
 
 public:
-	template<typename T> FORCEINLINE       TVoxelDataOctreeLeafData<T>& GetData()       { return FVoxelUtilities::TValuesMaterialsSelector<T>::Get(*this); }
-	template<typename T> FORCEINLINE const TVoxelDataOctreeLeafData<T>& GetData() const { return FVoxelUtilities::TValuesMaterialsSelector<T>::Get(*this); }
+	template<typename T> FORCEINLINE       TVoxelDataOctreeLeafData<typename TRemoveConst<T>::Type>& GetData()       { return FVoxelUtilities::TValuesMaterialsSelector<T>::Get(*this); }
+	template<typename T> FORCEINLINE const TVoxelDataOctreeLeafData<typename TRemoveConst<T>::Type>& GetData() const { return FVoxelUtilities::TValuesMaterialsSelector<T>::Get(*this); }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -223,14 +198,14 @@ struct FVoxelDataOctreeSetter
 
 		ensureThreadSafe(Leaf.IsLockedForWrite());
 
-		const auto& DisableEditsBoxes = Leaf.GetItemHolder().GetItems(EVoxelPlaceableItemId::DisableEditsBox);
+		const auto& DisableEditsBoxes = Leaf.GetItemHolder().GetDisableEditsBoxItems();
 			
 		const auto DoWork = [&](auto NeedToCheckCanEdit, auto EnableMultiplayer, auto EnableUndoRedo)
 		{
 			Leaf.InitForEdit<T>(Data);
 
 			const FIntVector Min = Leaf.GetMin();
-			T* RESTRICT DataPtr = Leaf.GetData<T>().GetDataPtr();
+			auto& DataHolder = Leaf.GetData<T>();
 			
 			Iterate([&](int32 X, int32 Y, int32 Z)
 			{
@@ -247,14 +222,14 @@ struct FVoxelDataOctreeSetter
 				}
 
 				const uint32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
-				T& Ref = DataPtr[Index];
+				T& Ref = DataHolder.GetRef(Index);
 				T OldValue = Ref;
 
 				Apply(X, Y, Z, Ref);
 
 				if (OldValue != Ref)
 				{
-					Leaf.GetData<T>().SetDirty(Data);
+					DataHolder.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<T>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValue);
 				}
@@ -273,7 +248,7 @@ struct FVoxelDataOctreeSetter
 		
 		ensureThreadSafe(Leaf.IsLockedForWrite());
 
-		const auto& DisableEditsBoxes = Leaf.GetItemHolder().GetItems(EVoxelPlaceableItemId::DisableEditsBox);
+		const auto& DisableEditsBoxes = Leaf.GetItemHolder().GetDisableEditsBoxItems();
 		
 		const auto DoWork = [&](auto NeedToCheckCanEdit, auto EnableMultiplayer, auto EnableUndoRedo)
 		{
@@ -281,8 +256,8 @@ struct FVoxelDataOctreeSetter
 			Leaf.InitForEdit<TB>(Data);
 
 			const FIntVector Min = Leaf.GetMin();
-			TA* RESTRICT DataPtrA = Leaf.GetData<TA>().GetDataPtr();
-			TB* RESTRICT DataPtrB = Leaf.GetData<TB>().GetDataPtr();
+			auto& DataHolderA = Leaf.GetData<TA>();
+			auto& DataHolderB = Leaf.GetData<TB>();
 			
 			Iterate([&](int32 X, int32 Y, int32 Z)
 			{
@@ -300,8 +275,8 @@ struct FVoxelDataOctreeSetter
 				
 				const uint32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
 
-				TA& RefA = DataPtrA[Index];
-				TB& RefB = DataPtrB[Index];
+				TA& RefA = DataHolderA.GetRef(Index);
+				TB& RefB = DataHolderB.GetRef(Index);
 				TA OldValueA = RefA;
 				TB OldValueB = RefB;
 
@@ -309,13 +284,13 @@ struct FVoxelDataOctreeSetter
 
 				if (OldValueA != RefA)
 				{
-					Leaf.GetData<TA>().SetDirty(Data);
+					DataHolderA.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<TA>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValueA);
 				}
 				if (OldValueB != RefB)
 				{
-					Leaf.GetData<TB>().SetDirty(Data);
+					DataHolderB.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<TB>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValueB);
 				}
@@ -369,35 +344,10 @@ T FVoxelDataOctreeBase::Get(const FVoxelWorldGeneratorInstance& WorldGenerator, 
 	if (IsLeaf())
 	{
 		auto& Data = AsLeaf().GetData<T>();
-		if (Data.GetDataPtr())
+		if (Data.HasData())
 		{
-			return Data.GetDataPtr()[FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(GetMin(), X, Y, Z)];
-		}
-		if (Data.IsSingleValue())
-		{
-			return Data.GetSingleValue();
+			return Data.Get(FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(GetMin(), X, Y, Z));
 		}
 	}
 	return GetFromGeneratorAndAssets<T>(WorldGenerator, X, Y, Z, LOD);
-}
-
-// Foliage is an override of the generator values: as such it doesn't make sense to query it from the generator
-template<>
-FORCEINLINE FVoxelFoliage FVoxelDataOctreeBase::GetFromGeneratorAndAssets<FVoxelFoliage>(const FVoxelWorldGeneratorInstance&, int32, int32, int32, int32) const
-{
-	return FVoxelFoliage::NotSet();
-}
-template<>
-inline void FVoxelDataOctreeBase::GetFromGeneratorAndAssets<FVoxelFoliage>(const FVoxelWorldGeneratorInstance&, TVoxelQueryZone<FVoxelFoliage>& QueryZone, int32) const
-{
-	for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, X))
-	{
-		for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Y))
-		{
-			for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Z))
-			{
-				QueryZone.Set(X, Y, Z, FVoxelFoliage::NotSet());
-			}
-		}
-	}
 }

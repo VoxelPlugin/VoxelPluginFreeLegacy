@@ -34,11 +34,10 @@ public:
 	TSharedPtr<FUICommandInfo> UpdateVoxelWorlds;
 	TSharedPtr<FUICommandInfo> ClearNodesMessages;
 
-	TSharedPtr<FUICommandInfo> ShowSelectedNodesStats;
-
-	TSharedPtr<FUICommandInfo> ToggleStats;
-	TSharedPtr<FUICommandInfo> ToggleRangeAnalysisDebug;
 	TSharedPtr<FUICommandInfo> ShowAxisDependencies;
+
+	TSharedPtr<FUICommandInfo> ShowStats;
+	TSharedPtr<FUICommandInfo> ShowValues;
 
 	// Menu
 	TSharedPtr<FUICommandInfo> ImportExposedVariablesValues;
@@ -71,12 +70,10 @@ public:
 		
 		UI_COMMAND(ClearNodesMessages, "Clear Messages", "Clear nodes messages", EUserInterfaceActionType::Button, FInputChord());
 
-		UI_COMMAND(ShowSelectedNodesStats, "Show Selected Nodes Stats", "Show the combined stats of the selected nodes", EUserInterfaceActionType::Button, FInputChord());
+		UI_COMMAND(ShowAxisDependencies, "Show Axis Dependencies", "Show Axis Dependencies", EUserInterfaceActionType::Button, FInputChord());
 
-		UI_COMMAND(ShowAxisDependencies, "Show Axis Dependencies", "Show Axis Dependencies", EUserInterfaceActionType::ToggleButton, FInputChord());
-
-		UI_COMMAND(ToggleStats, "Record Stats", "Enable Stats. Once toggled, generate your world in PIE, stop PIE, and go back here", EUserInterfaceActionType::ToggleButton, FInputChord());
-		UI_COMMAND(ToggleRangeAnalysisDebug, "Range Analysis Debug", "Enable Range Analysis Debug", EUserInterfaceActionType::ToggleButton, FInputChord());
+		UI_COMMAND(ShowStats, "Show Stats", "Show statistics about the previewed voxel. Click the graph preview to change the previewed voxel.", EUserInterfaceActionType::ToggleButton, FInputChord());
+		UI_COMMAND(ShowValues, "Show Values", "Show the values of all the nodes on the previewed voxel. Click the graph preview to change the previewed voxel.", EUserInterfaceActionType::ToggleButton, FInputChord());
 
 		UI_COMMAND(ImportExposedVariablesValues, "Import exposed variables values", "Import exposed variable values from a class", EUserInterfaceActionType::Button, FInputChord());
 

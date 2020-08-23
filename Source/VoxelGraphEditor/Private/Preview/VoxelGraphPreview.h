@@ -3,27 +3,34 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 
-class UVoxelGraphGenerator;
 class SVoxelGraphPreview;
 class SVoxelGraphPreviewViewport;
-class FAdvancedPreviewScene;
+
+class FVoxelData;
 class FReferenceCollector;
-class UStaticMeshComponent;
-class UMaterialInstanceDynamic;
+class FAdvancedPreviewScene;
+class FVoxelGraphGeneratorInstance;
+
 class UTexture2D;
+class UStaticMeshComponent;
+class UVoxelGraphGenerator;
+class UVoxelLineBatchComponent;
+class UMaterialInstanceDynamic;
+
+enum class EVoxelGraphPreviewFlags;
 
 class FVoxelGraphPreview
 {
 public:
-
 	FVoxelGraphPreview(
 		UVoxelGraphGenerator* WorldGenerator,
 		const TSharedPtr<SVoxelGraphPreview>& Preview,
 		const TSharedPtr<SVoxelGraphPreviewViewport>& PreviewViewport,
 		const TSharedPtr<FAdvancedPreviewScene>& PreviewScene);
 
-	void Update(bool bUpdateTextures, bool bAutomaticPreview);
+	void Update(EVoxelGraphPreviewFlags Flags);
 	void AddReferencedObjects(FReferenceCollector& Collector);
 
 private:
@@ -31,10 +38,20 @@ private:
 	TSharedPtr<SVoxelGraphPreview> const Preview;
 	TSharedPtr<SVoxelGraphPreviewViewport> const PreviewViewport;
 	TSharedPtr<FAdvancedPreviewScene> const PreviewScene;
+	
+	TVoxelSharedPtr<FVoxelData> Data;
 
 	UStaticMeshComponent* PreviewSceneFloor = nullptr;
-	UMaterialInstanceDynamic* PreviewSceneMaterial = nullptr;
+	UVoxelLineBatchComponent* LineBatchComponent = nullptr;
+	
+	UMaterialInstanceDynamic* HeightmapMaterial = nullptr;
+	UMaterialInstanceDynamic* SliceMaterial = nullptr;
 
 	UTexture2D* DensitiesTexture = nullptr;
 	UTexture2D* MaterialsTexture = nullptr;
+	UTexture2D* MaterialsTextureWithCrossAndNoAlpha = nullptr;
+	
+	void UpdateTextures(EVoxelGraphPreviewFlags Flags);
+	void UpdateMaterialParameters();
+	void AddMessages(FVoxelGraphGeneratorInstance& GraphGeneratorInstance) const;
 };

@@ -7,8 +7,9 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelSaveUtilities.generated.h"
 
-struct FVoxelFoliage;
-class FVoxelPlaceableItem;
+struct FVoxelAssetItem;
+struct FVoxelPlaceableItemLoadInfo;
+
 class AVoxelWorld;
 class IVoxelDataOctreeMemory;
 template<typename T>
@@ -17,37 +18,30 @@ class TVoxelDataOctreeLeafData;
 class FVoxelSaveBuilder
 {
 public:
-	explicit FVoxelSaveBuilder(int32 Depth)
-		: Depth(Depth)
-	{
-	}
+	explicit FVoxelSaveBuilder(int32 Depth);
+
 	void AddChunk(
-		const FIntVector& InPosition,
-		const TVoxelDataOctreeLeafData<FVoxelValue>& InValues,
-		const TVoxelDataOctreeLeafData<FVoxelMaterial>& InMaterials,
-		const TVoxelDataOctreeLeafData<FVoxelFoliage>& InFoliage);
-	void AddPlaceableItem(const TVoxelSharedPtr<FVoxelPlaceableItem>& PlaceableItem);
-	void Save(FVoxelUncompressedWorldSaveImpl& OutSave);
+		const FIntVector& Position,
+		const TVoxelDataOctreeLeafData<FVoxelValue>& Values,
+		const TVoxelDataOctreeLeafData<FVoxelMaterial>& Materials)
+	{
+		ChunksToSave.Add({ Position, &Values, &Materials });
+	}
+
+	void AddAssetItem(const FVoxelAssetItem& AssetItem);
+
+	void Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxelObjectArchiveEntry>& OutObjects);
 
 private:
 	struct FChunkToSave
 	{
-		template<typename T>
-		struct TData
-		{
-			T* RESTRICT DataPtr = nullptr;
-			bool bIsSingleValue = false;
-			T SingleValue;
-		};
-		
 		FIntVector Position;
-		TData<FVoxelValue> Values;
-		TData<FVoxelMaterial> Materials;
-		TData<FVoxelFoliage> Foliage;
+		const TVoxelDataOctreeLeafData<FVoxelValue>* Values = nullptr;
+		const TVoxelDataOctreeLeafData<FVoxelMaterial>* Materials = nullptr;
 	};
 	const int32 Depth;
 	TArray<FChunkToSave> ChunksToSave;
-	TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> PlaceableItems;
+	TArray<FVoxelAssetItem> AssetItems;
 };
 
 class FVoxelSaveLoader
@@ -62,9 +56,9 @@ public:
 		int32 ChunkIndex,
 		const IVoxelDataOctreeMemory& Memory,
 		TVoxelDataOctreeLeafData<FVoxelValue>& OutValues,
-		TVoxelDataOctreeLeafData<FVoxelMaterial>& OutMaterials,
-		TVoxelDataOctreeLeafData<FVoxelFoliage>& OutFoliage) const;
-	TArray<TVoxelSharedPtr<FVoxelPlaceableItem>> GetPlaceableItems(const AVoxelWorld* VoxelWorld);
+		TVoxelDataOctreeLeafData<FVoxelMaterial>& OutMaterials) const;
+	
+	void GetPlaceableItems(const FVoxelPlaceableItemLoadInfo& LoadInfo, TArray<FVoxelAssetItem>& OutAssetItems);
 
 public:
 	int32 NumChunks() const

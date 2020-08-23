@@ -13,6 +13,17 @@ class UVoxelNode;
 class UVoxelGraphGenerator;
 
 #if WITH_EDITOR
+enum class EVoxelGraphPreviewFlags
+{
+	None = 0,
+	ManualPreview          = 1 << 0,
+	UpdateMeshSettings     = 1 << 1,
+	UpdateTextures         = 1 << 2,
+	UpdatePlaceableItems   = 1 << 3,
+	UpdateAll = UpdateMeshSettings | UpdateTextures | UpdatePlaceableItems,
+};
+ENUM_CLASS_FLAGS(EVoxelGraphPreviewFlags);
+
 /** 
  * Interface for voxel graph interaction with the VoxelEditor module.
  */
@@ -30,8 +41,7 @@ public:
 	// Compiles voxel nodes from graph nodes.
 	virtual void CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* WorldGenerator) = 0;
 
-	// Trigger a preview update if automatic updates are enabled
-	virtual void UpdatePreview(UVoxelGraphGenerator* WorldGenerator, bool bForce, bool bUpdateTextures) = 0;
+	virtual void UpdatePreview(UVoxelGraphGenerator* WorldGenerator, EVoxelGraphPreviewFlags Flags) = 0;
 
 	virtual void SelectNodesAndZoomToFit(UEdGraph* Graph, const TArray<UEdGraphNode*>& Nodes) = 0;
 	virtual void RefreshNodesMessages(UEdGraph* Graph) = 0;

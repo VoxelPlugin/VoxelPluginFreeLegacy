@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelUtilities/VoxelVectorUtilities.h"
 #include "VoxelUtilities/VoxelIntVectorUtilities.h"
+#include "Async/ParallelFor.h"
 #include "VoxelIntBox.generated.h"
 
 enum class EInverseTransform : uint8
@@ -112,6 +113,13 @@ struct VOXEL_API FVoxelIntBox
 		Box.Max = FVoxelUtilities::ComponentMax3(A, B, Box.Min + FIntVector(1, 1, 1));
 		return Box;
 	}
+	FORCEINLINE static FVoxelIntBox SafeConstruct(const FVoxelVector& A, const FVoxelVector& B)
+	{
+		FVoxelIntBox Box;
+		Box.Min = FVoxelUtilities::FloorToInt(FVoxelUtilities::ComponentMin(A, B));
+		Box.Max = FVoxelUtilities::CeilToInt(FVoxelUtilities::ComponentMax3(A, B, Box.Min + FIntVector(1, 1, 1)));
+		return Box;
+	}
 
 	FORCEINLINE FIntVector Size() const
 	{
@@ -141,7 +149,7 @@ struct VOXEL_API FVoxelIntBox
 	/**
 	 * Get the corners that are inside the box (max - 1)
 	 */
-	TArray<FIntVector, TFixedAllocator<8>> GetCorners(int32 MaxBorderSize) const
+	TVoxelStaticArray<FIntVector, 8> GetCorners(int32 MaxBorderSize) const
 	{
 		return {
 			FIntVector(Min.X, Min.Y, Min.Z),
@@ -449,7 +457,7 @@ struct VOXEL_API FVoxelIntBox
 
 	// Guarantee: union(OutChilds).Contains(this)
 	template<typename T>
-	inline void Subdivide(int32 ChildrenSize, TArray<FVoxelIntBox, T>& OutChildren) const
+	bool Subdivide(int32 ChildrenSize, TArray<FVoxelIntBox, T>& OutChildren, int32 MaxChildren = -1) const
 	{
 		const FIntVector LowerBound = FVoxelUtilities::DivideFloor(Min, ChildrenSize) * ChildrenSize;
 		const FIntVector UpperBound = FVoxelUtilities::DivideCeil(Max, ChildrenSize) * ChildrenSize;
@@ -460,14 +468,23 @@ struct VOXEL_API FVoxelIntBox
 				for (int32 Z = LowerBound.Z; Z < UpperBound.Z; Z += ChildrenSize)
 				{
 					OutChildren.Emplace(FIntVector(X, Y, Z), FIntVector(X + ChildrenSize, Y + ChildrenSize, Z + ChildrenSize));
+					if (MaxChildren != -1 && OutChildren.Num() > MaxChildren)
+					{
+						return false;
+					}
 				}
 			}
 		}
+		return true;
 	}
 
 	FORCEINLINE FVoxelIntBox Scale(v_flt S) const
 	{
 		return { FVoxelUtilities::FloorToInt(FVoxelVector(Min) * S), FVoxelUtilities::CeilToInt(FVoxelVector(Max) * S) };
+	}
+	FORCEINLINE FVoxelIntBox Scale(const FVoxelVector& S) const
+	{
+		return SafeConstruct(FVoxelVector(Min) * S, FVoxelVector(Max) * S);
 	}
 	
 	FORCEINLINE FVoxelIntBox Extend(const FIntVector& Amount) const
@@ -527,7 +544,7 @@ struct VOXEL_API FVoxelIntBox
 	}
 
 	template<typename T>
-	void Iterate(T Lambda) const
+	FORCEINLINE void Iterate(T Lambda) const
 	{
 		for (int32 X = Min.X; X < Max.X; X++)
 		{
@@ -541,7 +558,7 @@ struct VOXEL_API FVoxelIntBox
 		}
 	}
 	template<typename T>
-	void Iterate(int32 Step, T Lambda) const
+	FORCEINLINE void Iterate(int32 Step, T Lambda) const
 	{
 		for (int32 X = Min.X; X < Max.X; X += Step)
 		{
@@ -553,6 +570,33 @@ struct VOXEL_API FVoxelIntBox
 				}
 			}
 		}
+	}
+	
+	template<typename T>
+	FORCEINLINE void ParallelSplit(T Lambda, bool bForceSingleThread = false) const
+	{
+		const FIntVector Half = (Min + Max) / 2;
+		ParallelFor(8, [&](int32 Index)
+		{
+			const FVoxelIntBox LocalBounds(
+				FIntVector(
+					(Index & 0x1) ? Half.X : Min.X,
+					(Index & 0x2) ? Half.Y : Min.Y,
+					(Index & 0x4) ? Half.Z : Min.Z),
+				FIntVector(
+					(Index & 0x1) ? Max.X : Half.X,
+					(Index & 0x2) ? Max.Y : Half.Y,
+					(Index & 0x4) ? Max.Z : Half.Z));
+			Lambda(LocalBounds);
+		}, bForceSingleThread);
+	}
+	template<typename T>
+	FORCEINLINE void ParallelIterate(T Lambda, bool bForceSingleThread = false) const
+	{
+		ParallelSplit([&](const FVoxelIntBox& LocalBounds)
+		{
+			LocalBounds.Iterate(Lambda);
+		}, bForceSingleThread);
 	}
 
 	template<EInverseTransform Inverse = EInverseTransform::False>
@@ -606,6 +650,11 @@ FORCEINLINE FVoxelIntBox operator+(const FVoxelIntBox& Box, const FIntVector& Po
 	return Box + FVoxelIntBox(Point);
 }
 
+FORCEINLINE FVoxelIntBox operator+(const FVoxelIntBox& Box, const FVector& Point)
+{
+	return Box + FVoxelIntBox(Point);
+}
+
 FORCEINLINE FArchive& operator<<(FArchive& Ar, FVoxelIntBox& Box)
 {
 	Ar << Box.Min;
@@ -613,13 +662,14 @@ FORCEINLINE FArchive& operator<<(FArchive& Ar, FVoxelIntBox& Box)
 	return Ar;
 }
 
-USTRUCT(BlueprintType)
+// Voxel Int Box with a IsValid flag
+USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelIntBoxLibrary.MakeIntBoxWithValidity", HasNativeBreak="Voxel.VoxelIntBoxLibrary.BreakIntBoxWithValidity"))
 struct FVoxelIntBoxWithValidity
 {
 	GENERATED_BODY()
 	
 	FVoxelIntBoxWithValidity() = default;
-	explicit FVoxelIntBoxWithValidity(const FVoxelIntBox& Box)
+	FVoxelIntBoxWithValidity(const FVoxelIntBox& Box)
 		: Box(Box)
 		, bValid(true)
 	{
@@ -689,6 +739,16 @@ struct FVoxelIntBoxWithValidity
 	FORCEINLINE FVoxelIntBoxWithValidity& operator+=(const FIntVector& Point)
 	{
 		return *this += FVoxelIntBox(Point);
+	}
+
+	template<typename T>
+	FORCEINLINE FVoxelIntBoxWithValidity& operator+=(const TArray<T>& Other)
+	{
+		for (auto& It : Other)
+		{
+			*this += It;
+		}
+		return *this;
 	}
 	
 private:

@@ -7,13 +7,46 @@
 #include "VoxelNodeHelperMacros.h"
 #include "VoxelPlaceableItemsNodes.generated.h"
 
-// Return 0 when outside a worm, and the distance to the closest wall when inside
-// X Y Z inputs must be relatively close to the real XYZ, else the wrong worms will be used
-UCLASS(DisplayName = "Perlin Worm Distance", Category = "Placeable Items")
-class VOXELGRAPH_API UVoxelNode_PerlinWormDistance : public UVoxelNodeWithContext
+class UVoxelGraphDataItemConfig;
+
+UCLASS(DisplayName = "Data Item Sample", Category = "Placeable Items")
+class VOXELGRAPH_API UVoxelNode_DataItemSample : public UVoxelNodeWithContext
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
 
-	UVoxelNode_PerlinWormDistance();
+	UVoxelNode_DataItemSample();
+};
+
+UCLASS(DisplayName = "Data Item Parameters", Category = "Placeable Items")
+class VOXELGRAPH_API UVoxelNode_DataItemParameters : public UVoxelNodeWithContext
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+	
+public:
+	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
+	UVoxelGraphDataItemConfig* Config;
+
+	// If no parameters are provided these will be used
+	UPROPERTY(EditAnywhere, Category = "Preview")
+	TMap<FName, float> PreviewValues;
+
+public:
+	UVoxelNode_DataItemParameters();
+
+	//~ Begin UVoxelNode Interface
+	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
+	virtual int32 GetOutputPinsCount() const override;
+	virtual FName GetOutputPinName(int32 PinIndex) const override;
+	EVoxelPinCategory GetOutputPinCategory(int32 PinIndex) const override;
+	//~ End UVoxelNode Interface
+
+#if WITH_EDITOR
+	//~ Begin UObject Interface
+	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	//~ End UObject Interface
+#endif
+
+	TArray<v_flt> GetPreviewValues() const;
 };

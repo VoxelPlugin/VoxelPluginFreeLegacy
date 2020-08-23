@@ -255,11 +255,11 @@ struct TLambdaConditionalForward<TReturnType(TClass::*)(TArgs...)>
 template<typename T, typename TLambda>
 inline auto MakeWeakPtrLambda(const T& Ptr, TLambda Lambda)
 {
-	return TLambdaConditionalForward<TLambda>::Create(Lambda, [WeakPtr = MakeWeakPtr(Ptr)]() { return WeakPtr.Pin(); }, [](const auto& Ptr) { return Ptr.IsValid(); });
+	return TLambdaConditionalForward<TLambda>::Create(Lambda, [WeakPtr = MakeWeakPtr(Ptr)]() { return WeakPtr.Pin(); }, [](const auto& InPtr) { return InPtr.IsValid(); });
 }
 
 template<typename T, typename TLambda>
-inline auto MakeWeakVoxelPtrLambda(const T& Ptr, TLambda Lambda)
+inline auto MakeVoxelWeakPtrLambda(const T& Ptr, TLambda Lambda)
 {
-	return TLambdaConditionalForward<TLambda>::Create(Lambda, [WeakPtr = MakeWeakVoxelPtr(Ptr)]() { return WeakPtr.Pin(); }, [](const auto& Ptr) { return Ptr.IsValid(); });
+	return TLambdaConditionalForward<TLambda>::Create(Lambda, [WeakPtr = MakeVoxelWeakPtr(Ptr)]() { return WeakPtr.Pin(); }, [](const auto& InPtr) { return InPtr.IsValid(); });
 }

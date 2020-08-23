@@ -16,6 +16,7 @@
 #include "VoxelEditorDelegatesInterface.h"
 #include "VoxelRender/VoxelMeshConfig.h"
 #include "VoxelRender/VoxelLODMaterials.h"
+#include "VoxelWorldCreateInfo.h"
 #include "VoxelWorld.generated.h"
 
 class UVoxelLineBatchComponent;
@@ -23,6 +24,7 @@ class UVoxelSpawnerConfig;
 class UVoxelWorldSaveObject;
 class UVoxelWorldRootComponent;
 class UVoxelMultiplayerInterface;
+class UVoxelPlaceableItemManager;
 class UVoxelMaterialCollectionBase;
 class UVoxelProceduralMeshComponent;
 class IVoxelPool;
@@ -33,10 +35,12 @@ class FVoxelDebugManager;
 class FVoxelEventManager;
 class IVoxelSpawnerManager;
 class FVoxelMultiplayerManager;
+class FVoxelWorldGeneratorCache;
 class FVoxelInstancedMeshManager;
 class FVoxelToolRenderingManager;
 struct FVoxelWorldGeneratorInit;
 struct FVoxelLODDynamicSettings;
+struct FVoxelUncompressedWorldSave;
 struct FVoxelRendererDynamicSettings;
 enum class EVoxelTaskType : uint8;
 
@@ -51,7 +55,24 @@ UCLASS()
 class VOXEL_API AVoxelWorld : public AVoxelWorldInterface, public IVoxelEditorDelegatesInterface
 {
 	GENERATED_BODY()
+		
+public:
+	class FGameThreadTasks
+	{
+	public:
+		void AddTask(const TFunction<void()>& Task)
+		{
+			Tasks.Enqueue(Task);
+		}
 
+	private:
+		TQueue<TFunction<void()>, EQueueMode::Mpsc> Tasks;
+
+		void Flush();
+
+		friend AVoxelWorld;
+	};
+	
 public:
 	UPROPERTY(BlueprintAssignable)
 	FOnWorldLoaded OnWorldLoaded;
@@ -64,12 +85,16 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnMaxFoliageInstancesReached OnMaxFoliageInstancesReached;
 
-public:
+protected:
 	UPROPERTY(Category = "Voxel", VisibleAnywhere, BlueprintReadOnly)
 	UVoxelWorldRootComponent* WorldRoot;
 
 	UPROPERTY()
 	UVoxelLineBatchComponent* LineBatchComponent;
+
+public:
+	UVoxelWorldRootComponent& GetWorldRoot() const { check(WorldRoot); return *WorldRoot; }
+	UVoxelLineBatchComponent& GetLineBatchComponent() const { check(LineBatchComponent); return *LineBatchComponent; }
 
 public:
 	// Automatically loaded on creation
@@ -113,6 +138,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Preview")
 	bool bAutomaticallyRefreshMaterials = true;
 
+	// Turns this off if there's a significant lag when changing foliage properties
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Preview")
+	bool bAutomaticallyRefreshFoliage = true;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Preview", meta = (DisplayName = "New Scale"))
+	FVector EditorOnly_NewScale = FVector(2, 2, 2);
+	
 	//////////////////////////////////////////////////////////////////////////////
 
 	// Size of a voxel in cm
@@ -122,6 +154,9 @@ public:
 	// Generator of this world
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
 	FVoxelWorldGeneratorPicker WorldGenerator;
+	
+	UPROPERTY(EditAnywhere, Category = "Voxel - General", Instanced, meta = (Recreate))
+	UVoxelPlaceableItemManager* PlaceableItemManager = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
 	TMap<FName, int32> Seeds;
@@ -235,6 +270,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Hardness")
 	TMap<FString, float> MaterialsHardness;
 
+	// If true, then in RGB mode additional vertices will be created to ensure that no colors are ever blended
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender))
+	bool bHardColorTransitions = false;
+
 	// Only for Cubic mode. If true, the material index will be 3 x Index + 0 for top, 3 x Index + 1 for sides and 3 x Index + 2 for bottom
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender))
 	bool bOneMaterialPerCubeSide = false;
@@ -340,20 +379,13 @@ public:
 	// By how much to divide the distance field resolution
 	// By default it'll be 32x32x32: if the divisor is 2, it'll be 16x16x16, if 4 8x8x8...
 	// Increasing this decreases quality of the distance field, but saves huge amount of VRAM
+	// NOTE: increasing this can lead to messy distance fields as some signs are messy
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 1, ClampMax = 32, UIMin = 1, UIMax = 8, EditCondition = "bGenerateDistanceFields"))
 	int32 DistanceFieldResolutionDivisor = 1;
 	
 	/** Useful for reducing self shadowing from distance field methods when using world position offset to animate the mesh's vertices. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, EditCondition = "bGenerateDistanceFields"))
 	float DistanceFieldSelfShadowBias = 0.f;
-
-	// How far, in voxels, does the distance field need to be exact
-	// Be careful: the mesh processing time will scale linearly with this!
-	// Set as low as possible
-	// Increase if you are seeing artifacts
-	// The raytracing performance might also be better with a higher value
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32, EditCondition = "bGenerateDistanceFields"))
-	int32 DistanceFieldQuality = 1;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bEnableTransitions = true;
@@ -555,15 +587,11 @@ public:
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
-	void CreateWorld();
-	
+	void CreateWorld(FVoxelWorldCreateInfo Info);
+	void CreateWorld() { CreateWorld({}); }
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
 	void DestroyWorld();
-
-public:
-	// Will use this data in CreateWorld if it's valid
-	// Note: PendingData pointer is cleared on CreateWorld
-	TVoxelSharedPtr<FVoxelData> PendingData;
 	
 public:
 	IVoxelPool& GetPool() const { return *Pool; }
@@ -574,6 +602,9 @@ public:
 	FVoxelEventManager& GetEventManager() const { return *EventManager; }
 	FVoxelToolRenderingManager& GetToolRenderingManager() const { return *ToolRenderingManager; }
 
+	FVoxelWorldGeneratorCache& GetWorldGeneratorCache() const { return *WorldGeneratorCache; }
+	
+	const TVoxelSharedPtr<FGameThreadTasks>& GetGameThreadTasks() const { return GameThreadTasks; }
 	const TVoxelSharedPtr<FVoxelData>& GetDataSharedPtr() const { return Data; }
 	const TVoxelSharedPtr<IVoxelLODManager>& GetLODManagerSharedPtr() const { return LODManager; }
 	const TVoxelSharedPtr<IVoxelPool>& GetPoolSharedPtr() const { return Pool; }
@@ -699,14 +730,16 @@ private:
 	
 	UPROPERTY()
 	bool bIsToggled = false;
-
+	
 	bool bIsCreated = false;
 	bool bIsLoaded = false;
 	EVoxelPlayType PlayType = EVoxelPlayType::Game;
 	double TimeOfCreation = 0;
 
+#if WITH_EDITOR
 	// Temporary variable set in PreEditChange to avoid re-registering proc meshes
 	bool bDisableComponentUnregister = false;
+#endif
 
 private:	
 	TVoxelSharedPtr<FVoxelDebugManager> DebugManager;
@@ -720,7 +753,10 @@ private:
 	TVoxelSharedRef<FIntVector> WorldOffset = MakeVoxelShared<FIntVector>(FIntVector::ZeroValue);
 	TVoxelSharedRef<FVoxelLODDynamicSettings> LODDynamicSettings = TVoxelSharedPtr<FVoxelLODDynamicSettings>().ToSharedRef(); // else the VTABLE constructor doesn't compile...
 	TVoxelSharedRef<FVoxelRendererDynamicSettings> RendererDynamicSettings = TVoxelSharedPtr<FVoxelRendererDynamicSettings>().ToSharedRef();
-
+	
+	TVoxelSharedPtr<FVoxelWorldGeneratorCache> WorldGeneratorCache;	
+	TVoxelSharedPtr<FGameThreadTasks> GameThreadTasks;
+	
 private:
 	void OnWorldLoadedCallback();
 
@@ -732,7 +768,7 @@ private:
 	TVoxelSharedPtr<FVoxelEventManager> CreateEventManager() const;
 	TVoxelSharedPtr<FVoxelToolRenderingManager> CreateToolRenderingManager() const;
 
-	void CreateWorldInternal();
+	void CreateWorldInternal(const FVoxelWorldCreateInfo& Info);
 	void DestroyWorldInternal();
 	void DestroyVoxelComponents();
 
@@ -742,17 +778,18 @@ public:
 
 	void UpdateDynamicLODSettings() const;
 	void UpdateDynamicRendererSettings() const;
+	void ApplyCollisionSettingsToRoot() const;
 
 	void RecreateRender();
 	void RecreateSpawners();
-	void RecreateAll();
+	void RecreateAll(const FVoxelWorldCreateInfo& Info);
 
 #if WITH_EDITOR
 	FSimpleMulticastDelegate OnPropertyChanged;
 	FSimpleMulticastDelegate OnPropertyChanged_Interactive;
 
 	void Toggle();
-	void CreateInEditor();
+	void CreateInEditor(const FVoxelWorldCreateInfo& Info = {});
 	void SaveData();
 	void LoadFromSaveObjectEditor();
 	bool SaveToFile(const FString& Path, FText& Error);

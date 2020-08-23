@@ -289,6 +289,16 @@ class VOXELGRAPH_API UVoxelNode_SwitchFloat : public UVoxelNodeHelper
 	UVoxelNode_SwitchFloat();
 };
 
+// Switch: if bool is true, then A is returned, else B is
+UCLASS(DisplayName = "Switch (color)", Category = "Math|Color", meta = (Keywords = "if branch select"))
+class VOXELGRAPH_API UVoxelNode_SwitchColor : public UVoxelNodeHelper
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+
+	UVoxelNode_SwitchColor();
+};
+
 //////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////

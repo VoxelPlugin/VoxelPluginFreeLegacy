@@ -21,14 +21,8 @@ struct FVoxelSurfaceEditsVoxelBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	float Value = 0;
 
-public:
-	FVoxelSurfaceEditsVoxelBase() = default;
-	FVoxelSurfaceEditsVoxelBase(const FIntVector& Position, const FVector& Normal, float Value)
-		: Position(Position)
-		, Normal(Normal)
-		, Value(Value)
-	{
-	}
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	FVector SurfacePosition = FVector(ForceInit);
 };
 
 USTRUCT(BlueprintType)
@@ -54,6 +48,7 @@ struct FVoxelSurfaceEditsVoxelsInfo
 	bool bHasValues = false;
 	bool bHasExactDistanceField = false;
 	bool bHasNormals = false;
+	bool bHasSurfacePositions = false;
 	bool bIs2D = false;
 };
 

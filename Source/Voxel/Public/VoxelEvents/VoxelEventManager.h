@@ -19,7 +19,7 @@ DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnMeshCreatedDelegate, int32, const FVox
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Events Memory"), STAT_VoxelEventsMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
-struct FVoxelEventManagerSettings
+struct VOXEL_API FVoxelEventManagerSettings
 {
 	const float UpdateRate;
 	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
@@ -54,7 +54,7 @@ namespace EVoxelEventFlags
 	};
 }
 
-class FVoxelEventManager : public FVoxelTickable, public TVoxelSharedFromThis<FVoxelEventManager>
+class VOXEL_API FVoxelEventManager : public FVoxelTickable, public TVoxelSharedFromThis<FVoxelEventManager>
 {
 public:
 	FVoxelEventManagerSettings Settings;
@@ -65,7 +65,8 @@ public:
 
 private:
 	explicit FVoxelEventManager(const FVoxelEventManagerSettings& Settings);
-
+	UE_NONCOPYABLE(FVoxelEventManager);
+	
 public:
 	FVoxelEventHandle BindEvent(
 		bool bFireExistingOnes, 

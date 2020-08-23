@@ -16,14 +16,7 @@ void FVoxelMaterialBuilder::Clear()
 	Us.Memzero();
 	Vs.Memzero();
 
-	// Avoid expensive memzero
-	for (uint8 Index : Indices)
-	{
-		Strengths[Index] = 0;
-		LockedStrengths.Clear(Index);
-	}
-
-	Indices.Reset();
+	IndicesStrengths.Reset();
 }
 
 FVoxelMaterial FVoxelMaterialBuilder::Build() const
@@ -67,52 +60,43 @@ FVoxelMaterial FVoxelMaterialBuilder::Build() const
 	else
 	{
 		check(MaterialConfig == EVoxelMaterialConfig::MultiIndex);
-
-		int32 NumIndices;
-		TVoxelStaticArray<uint8, 4> MaterialIndices{ ForceInit };
-
-		if (Indices.Num() > 4)
-		{
-			const TVoxelStaticArray<TTuple<int32, uint8>, 4> Stack = FVoxelUtilities::FindTopXElements<4>(Indices, [&](uint8 A, uint8 B) { return Strengths[A] < Strengths[B]; });
-
-			NumIndices = 4;
-			MaterialIndices[0] = Stack[0].Get<1>();
-			MaterialIndices[1] = Stack[1].Get<1>();
-			MaterialIndices[2] = Stack[2].Get<1>();
-			MaterialIndices[3] = Stack[3].Get<1>();
-		}
-		else
-		{
-			NumIndices = Indices.Num();
-			if (NumIndices > 0) MaterialIndices[0] = Indices[0];
-			if (NumIndices > 1) MaterialIndices[1] = Indices[1];
-			if (NumIndices > 2) MaterialIndices[2] = Indices[2];
-			if (NumIndices > 3) MaterialIndices[3] = Indices[3];
-		}
-
-		TVoxelStaticArray<float, 3> Alphas;
 		
-		if (NumIndices > 0)
+		TVoxelStaticArray<uint8, 4> MaterialIndices{ ForceInit };
+		TVoxelStaticArray<float, 3> Alphas{ ForceInit };
+		
+		if (IndicesStrengths.Num() > 0)
 		{
 			TVoxelStaticArray<float, 4> MaterialStrengths{ ForceInit };
 			uint32 LockedChannels = 0;
 
-			for (int32 Index = 0; Index < NumIndices; Index++)
+			const auto AddIndexStrength = [&](int32 Index, const FIndexStrength& IndexStrength)
 			{
-				const uint8 MaterialIndex = MaterialIndices[Index];
-
-				MaterialStrengths[Index] = Strengths[MaterialIndex];
-				if (LockedStrengths.Test(MaterialIndex))
+				MaterialIndices[Index] = IndexStrength.Index;
+				MaterialStrengths[Index] = IndexStrength.Strength;
+				if (IndexStrength.bLocked)
 				{
-					LockedChannels |= 1 << Index;
+					LockedChannels |= 1 << IndexStrength.Index;
+				}
+			};
+
+			if (IndicesStrengths.Num() > 4)
+			{
+				const TVoxelStaticArray<TTuple<int32, FIndexStrength>, 4> Stack = FVoxelUtilities::FindTopXElements<4>(IndicesStrengths, [&](auto& A, auto& B) { return A.Strength < B.Strength; });
+
+				AddIndexStrength(0, Stack[0].Get<1>());
+				AddIndexStrength(1, Stack[1].Get<1>());
+				AddIndexStrength(2, Stack[2].Get<1>());
+				AddIndexStrength(3, Stack[3].Get<1>());
+			}
+			else
+			{
+				for (int32 Index = 0; Index < IndicesStrengths.Num(); Index++)
+				{
+					AddIndexStrength(Index, IndicesStrengths[Index]);
 				}
 			}
-			
+
 			Alphas = FVoxelUtilities::XWayBlend_StrengthsToAlphas_Static<4>(MaterialStrengths, LockedChannels);
-		}
-		else
-		{
-			Alphas.Memzero();
 		}
 
 		Material.SetMultiIndex_Wetness(Wetness);

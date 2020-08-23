@@ -354,7 +354,8 @@ int32 UVoxelProjectionTools::FindProjectionVoxelsAsync(
 
 TArray<FIntVector> UVoxelProjectionTools::GetHitsPositions(const TArray<FVoxelProjectionHit>& Hits)
 {
-	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+	VOXEL_FUNCTION_COUNTER();
+	
 	TArray<FIntVector> Voxels;
 	Voxels.Reserve(Hits.Num());
 	for (auto& Hit : Hits)
@@ -366,7 +367,8 @@ TArray<FIntVector> UVoxelProjectionTools::GetHitsPositions(const TArray<FVoxelPr
 
 FVector UVoxelProjectionTools::GetHitsAverageNormal(const TArray<FVoxelProjectionHit>& Hits)
 {
-	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+	VOXEL_FUNCTION_COUNTER();
+	
 	if (Hits.Num() == 0)
 	{
 		return FVector::UpVector;
@@ -385,7 +387,8 @@ FVector UVoxelProjectionTools::GetHitsAverageNormal(const TArray<FVoxelProjectio
 
 FVector UVoxelProjectionTools::GetHitsAveragePosition(const TArray<FVoxelProjectionHit>& Hits)
 {
-	VOXEL_TOOL_FUNCTION_COUNTER(Hits.Num());
+	VOXEL_FUNCTION_COUNTER();
+	
 	if (Hits.Num() == 0)
 	{
 		return FVector::ZeroVector;
@@ -410,14 +413,14 @@ FVoxelSurfaceEditsVoxels UVoxelProjectionTools::CreateSurfaceVoxelsFromHits(cons
 	Voxels.Reserve(Hits.Num());
 	for (auto& Hit : Hits)
 	{
-		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, 0.f);
+		FVoxelSurfaceEditsVoxelBase Voxel;
+		Voxel.Position = Hit.VoxelPosition;
+		Voxel.Normal = Hit.Hit.Normal;
+		Voxels.Add(Voxel);
 	}
 
 	FVoxelSurfaceEditsVoxels EditsVoxels;
-	EditsVoxels.Info.bHasValues = false;
-	EditsVoxels.Info.bHasExactDistanceField = false;
 	EditsVoxels.Info.bHasNormals = true;
-	EditsVoxels.Info.bIs2D = false;
 	
 	EditsVoxels.Voxels = MakeVoxelSharedCopy(MoveTemp(Voxels));
 
@@ -449,14 +452,16 @@ FVoxelSurfaceEditsVoxels UVoxelProjectionTools::CreateSurfaceVoxelsFromHitsWithE
 
 	for (auto& Hit : Hits)
 	{
-		Voxels.Emplace(Hit.VoxelPosition, Hit.Hit.Normal, Accelerator.GetValue(Hit.VoxelPosition, 0).ToFloat());
+		FVoxelSurfaceEditsVoxelBase Voxel;
+		Voxel.Position = Hit.VoxelPosition;
+		Voxel.Normal = Hit.Hit.Normal;
+		Voxel.Value = Accelerator.GetValue(Hit.VoxelPosition, 0).ToFloat();
+		Voxels.Add(Voxel);
 	}
 
 	FVoxelSurfaceEditsVoxels EditsVoxels;
 	EditsVoxels.Info.bHasValues = true;
-	EditsVoxels.Info.bHasExactDistanceField = false;
 	EditsVoxels.Info.bHasNormals = true;
-	EditsVoxels.Info.bIs2D = false;
 	
 	EditsVoxels.Voxels = MakeVoxelSharedCopy(MoveTemp(Voxels));
 

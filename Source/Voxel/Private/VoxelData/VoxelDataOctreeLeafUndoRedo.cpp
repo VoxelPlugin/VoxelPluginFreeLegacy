@@ -35,7 +35,6 @@ void FVoxelDataOctreeLeafUndoRedo::SaveFrame(const FVoxelDataOctreeLeaf& Leaf, i
 
 		AlreadyModified.Values.Clear();
 		AlreadyModified.Materials.Clear();
-		AlreadyModified.Foliage.Clear();
 	}
 	if (RedoFramesStack.Num() > 0)
 	{
@@ -64,7 +63,6 @@ void FVoxelDataOctreeLeafUndoRedo::ClearFramesOfType()
 
 template VOXEL_API void FVoxelDataOctreeLeafUndoRedo::ClearFramesOfType<FVoxelValue>();
 template VOXEL_API void FVoxelDataOctreeLeafUndoRedo::ClearFramesOfType<FVoxelMaterial>();
-template VOXEL_API void FVoxelDataOctreeLeafUndoRedo::ClearFramesOfType<FVoxelFoliage>();
 
 template<EVoxelUndoRedo Type>
 void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOctreeLeaf& Leaf, int32 HistoryPosition)
@@ -91,29 +89,25 @@ void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOc
 		
 		if (FrameData.Num() == 0) return;
 
-		if (DataHolder.IsSingleValue())
-		{
-			DataHolder.ExpandSingleValue(Data);
-		}
-		if (!DataHolder.GetDataPtr())
+		if (!DataHolder.HasData())
 		{
 			// Data was reverted to generator value
 			
-			DataHolder.CreateDataPtr(Data);
-
-			TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataHolder.GetDataPtr());
-			Leaf.GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+			DataHolder.CreateData(Data, [&](T* RESTRICT DataPtr)
+			{
+				TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
+				Leaf.GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+			});
 		}
+		DataHolder.PrepareForWrite(Data);
 
 		NewFrameData.SetNumUninitialized(FrameData.Num());
 
 		const TModifiedValue<T>* RESTRICT const FrameDataPtr = FrameData.GetData();
 		TModifiedValue<T>* RESTRICT const NewFrameDataPtr = NewFrameData.GetData();
-		T* RESTRICT const DataPtr = DataHolder.GetDataPtr();
 
 		checkVoxelSlow(FrameDataPtr);
 		checkVoxelSlow(NewFrameDataPtr);
-		checkVoxelSlow(DataPtr);
 		
 		for (int32 Index = 0; Index < FrameData.Num(); Index++)
 		{
@@ -121,18 +115,18 @@ void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOc
 			checkVoxelSlow(NewFrameData.IsValidIndex(Index));
 
 			const auto ModifiedValue = FrameDataPtr[Index];
-			NewFrameDataPtr[Index] = TModifiedValue<T>(ModifiedValue.Index, DataPtr[ModifiedValue.Index]);
-			DataPtr[ModifiedValue.Index] = ModifiedValue.Value;
+			auto& ValueRef = DataHolder.GetRef(ModifiedValue.Index);
+			
+			NewFrameDataPtr[Index] = TModifiedValue<T>(ModifiedValue.Index, ValueRef);
+			ValueRef = ModifiedValue.Value;
 		}
 
-		if (TIsSame<T, FVoxelValue>::Value) DataHolder.SetDirtyInternal(Frame->bValuesDirty, Data);
-		if (TIsSame<T, FVoxelMaterial>::Value) DataHolder.SetDirtyInternal(Frame->bMaterialsDirty, Data);
-		if (TIsSame<T, FVoxelFoliage>::Value) DataHolder.SetDirtyInternal(Frame->bFoliageDirty, Data);
+		if (TIsSame<T, FVoxelValue>::Value) DataHolder.SetIsDirty(Frame->bValuesDirty, Data);
+		if (TIsSame<T, FVoxelMaterial>::Value) DataHolder.SetIsDirty(Frame->bMaterialsDirty, Data);
 	};
 
 	Apply(FVoxelValue());
 	Apply(FVoxelMaterial());
-	Apply(FVoxelFoliage());
 
 	AddFrameToStack<Type == EVoxelUndoRedo::Undo ? EVoxelUndoRedo::Redo : EVoxelUndoRedo::Undo>(NewFrame);
 }
@@ -143,7 +137,7 @@ template VOXEL_API void FVoxelDataOctreeLeafUndoRedo::UndoRedo<EVoxelUndoRedo::R
 void FVoxelDataOctreeLeafUndoRedo::FFrame::UpdateStats() const
 {
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelUndoRedoMemory, AllocatedSize);
-	AllocatedSize = sizeof(FFrame) + Values.GetAllocatedSize() + Materials.GetAllocatedSize() + Foliage.GetAllocatedSize();
+	AllocatedSize = sizeof(FFrame) + Values.GetAllocatedSize() + Materials.GetAllocatedSize();
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelUndoRedoMemory, AllocatedSize);
 }
 
@@ -154,7 +148,6 @@ void FVoxelDataOctreeLeafUndoRedo::AddFrameToStack(TUniquePtr<FFrame>& Frame)
 		VOXEL_SLOW_SCOPE_COUNTER("Shrink");
 		Frame->Values.Shrink();
 		Frame->Materials.Shrink();
-		Frame->Foliage.Shrink();
 	}
 
 	Frame->UpdateStats();

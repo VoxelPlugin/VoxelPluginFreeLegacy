@@ -3,7 +3,7 @@
 #include "VoxelNodes/VoxelSDFNodes.h"
 #include "Runtime/VoxelNodeType.h"
 #include "VoxelContext.h"
-#include "VoxelSDFNodeFunctions.h"
+#include "NodeFunctions/VoxelSDFNodeFunctions.h"
 
 UVoxelSDFNode::UVoxelSDFNode()
 {

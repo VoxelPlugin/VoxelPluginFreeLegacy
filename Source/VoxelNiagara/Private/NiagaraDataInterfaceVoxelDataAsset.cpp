@@ -4,6 +4,7 @@
 #include "NiagaraShader.h"
 #include "ShaderParameterUtils.h"
 #include "VoxelAssets/VoxelDataAsset.h"
+#include "VoxelAssets/VoxelDataAssetData.inl"
 #include "VoxelMinimal.h"
 
 bool FNDIVoxelDataAsset_InstanceData::Init(UNiagaraDataInterfaceVoxelDataAsset* Interface, FNiagaraSystemInstance* SystemInstance)
@@ -172,10 +173,10 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetVMExternalFunction(const FVMExterna
 
 void UNiagaraDataInterfaceVoxelDataAsset::GetAssetValue(FVectorVMContext& Context)
 {
+	VectorVM::FUserPtrHandler<FNDIVoxelDataAsset_InstanceData> InstData(Context);
 	VectorVM::FExternalFuncInputHandler<float> XParam(Context);
 	VectorVM::FExternalFuncInputHandler<float> YParam(Context);
 	VectorVM::FExternalFuncInputHandler<float> ZParam(Context);
-	VectorVM::FUserPtrHandler<FNDIVoxelDataAsset_InstanceData> InstData(Context);
 	VectorVM::FExternalFuncRegisterHandler<float> OutValue(Context);
 
 	auto& Data = *InstData->Data;
@@ -190,10 +191,10 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetAssetValue(FVectorVMContext& Contex
 
 void UNiagaraDataInterfaceVoxelDataAsset::GetAssetColor(FVectorVMContext& Context)
 {
+	VectorVM::FUserPtrHandler<FNDIVoxelDataAsset_InstanceData> InstData(Context);
 	VectorVM::FExternalFuncInputHandler<float> XParam(Context);
 	VectorVM::FExternalFuncInputHandler<float> YParam(Context);
 	VectorVM::FExternalFuncInputHandler<float> ZParam(Context);
-	VectorVM::FUserPtrHandler<FNDIVoxelDataAsset_InstanceData> InstData(Context);
 	VectorVM::FExternalFuncRegisterHandler<float> OutR(Context);
 	VectorVM::FExternalFuncRegisterHandler<float> OutG(Context);
 	VectorVM::FExternalFuncRegisterHandler<float> OutB(Context);
@@ -215,9 +216,8 @@ void UNiagaraDataInterfaceVoxelDataAsset::GetAssetColor(FVectorVMContext& Contex
 
 void UNiagaraDataInterfaceVoxelDataAsset::GetPositionFromAsset(FVectorVMContext& Context)
 {
-	VectorVM::FExternalFuncInputHandler<int32> IndexParam(Context);
 	VectorVM::FUserPtrHandler<FNDIVoxelDataAsset_InstanceData> InstData(Context);
-
+	VectorVM::FExternalFuncInputHandler<int32> IndexParam(Context);
 	VectorVM::FExternalFuncRegisterHandler<float> OutX(Context);
 	VectorVM::FExternalFuncRegisterHandler<float> OutY(Context);
 	VectorVM::FExternalFuncRegisterHandler<float> OutZ(Context);

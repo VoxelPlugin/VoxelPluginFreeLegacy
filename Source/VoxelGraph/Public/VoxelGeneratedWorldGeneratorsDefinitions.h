@@ -14,7 +14,10 @@
 #else
 #define PRAGMA_GENERATED_VOXEL_GRAPH_START \
 	__pragma(warning(push)) \
-	__pragma(warning(disable: 4101 4701))
+	__pragma(warning(disable: \
+		4101 /* unreferenced local variable */\
+		4701 /* potentially uninitialized local variable */\
+		4723 /* potential divide by 0, happens with FORCEINLINE of math functions */))
 
 #define PRAGMA_GENERATED_VOXEL_GRAPH_END \
 	__pragma(warning(pop))

@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Misc/EnumRange.h"
 #include "UObject/WeakObjectPtr.h"
-#include "UObject/WeakObjectPtrTemplates.h"
 
 class UVoxelNode;
 class UVoxelGraphGenerator;
@@ -17,14 +17,9 @@ enum class EVoxelGraphNodeMessageType : int32
 {
 	Info,
 	Warning,
-	Error,
-	FatalError,
-	Dependencies,
-	Stats,
-	RangeAnalysisWarning,
-	RangeAnalysisError,
-	RangeAnalysisDebug
+	Error
 };
+ENUM_RANGE_BY_FIRST_AND_LAST(EVoxelGraphNodeMessageType, EVoxelGraphNodeMessageType::Info, EVoxelGraphNodeMessageType::Error);
 
 struct FVoxelGraphMessage
 {
@@ -41,7 +36,7 @@ public:
 	FVoxelGraphErrorReporter(FVoxelGraphErrorReporter& Parent, const FString& ErrorPrefix);
 	~FVoxelGraphErrorReporter();
 	
-	inline bool HasFatalError() const { return bHasFatalError; }
+	bool HasError() const { return bHasError; }
 
 	void AddError(const FString& Error);
 	void AddInternalError(const FString Error); // Won't break but will report an error
@@ -50,7 +45,8 @@ public:
 		const UVoxelNode* Node, 
 		const FString& Message, 
 		EVoxelGraphNodeMessageType Severity, 
-		bool bSelectNode = true);
+		bool bSelectNode = true,
+		bool bShowInList = true);
 
 	void AddNodeToSelect(const UVoxelNode* Node);
 	
@@ -65,9 +61,6 @@ public:
 	static void ClearNodesMessages(const UVoxelGraphGenerator* Graph, bool bRecursive = true, bool bClearAll = true, EVoxelGraphNodeMessageType MessagesToClear = EVoxelGraphNodeMessageType::Error);
 	static void ClearCompilationMessages(const UVoxelGraphGenerator* Graph);
 
-	static void AddPerfCounters(const UVoxelGraphGenerator* Graph);
-	static void GetStats(const TSet<UObject*>& SelectedNodes, double& OutTotalTimeInSeconds, uint64& OutTotalCalls);
-	static void AddRangeAnalysisErrors(const UVoxelGraphGenerator* Graph);
 	static void AddMessageToNodeInternal(
 		const UVoxelNode* Node,
 		const FString& Message,
@@ -78,7 +71,7 @@ private:
 	FVoxelGraphErrorReporter* const Parent;
 	const FString ErrorPrefix;
 
-	bool bHasFatalError = false;
+	bool bHasError = false;
 
 	TArray<FVoxelGraphMessage> Messages;
 

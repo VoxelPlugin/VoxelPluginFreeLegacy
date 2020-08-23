@@ -29,13 +29,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Noise settings")
 	EInterp Interpolation = EInterp::Quintic;
 
-	// To find the output range, NumberOfSamples random samples are computed on start.
-	// Increase this if the output range is too irregular, and if you start to see holes in your terrain
-	// Increasing it will add a significant (async) cost in graphs
-	// Free when compiled to C++
+	// To find the output range, NumberOfSamples random samples are computed
+	// Increase this if the output range is too irregular, and if you start to see flat areas in your noise
 	UPROPERTY(EditAnywhere, Category = "Range analysis settings")
-	uint32 NumberOfSamples = 100000;
+	uint32 NumberOfSamples = 1000000;
 
+	// The range analysis interval will be expended by this much (relatively). Increase if you see flat areas in your noise
+	UPROPERTY(EditAnywhere, Category = "Range analysis settings", meta = (UIMin = 0, UIMax = 1))
+	float Tolerance = 0.1f;
+	
 	UPROPERTY(VisibleAnywhere, Category = "Range analysis settings")
 	TArray<FVoxelRange> OutputRanges;
 
@@ -124,14 +126,10 @@ class VOXELGRAPH_API UVoxelNode_NoiseNodeWithDerivative : public UVoxelNode_Nois
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Noise settings")
+	UPROPERTY(EditAnywhere, Category = "Noise settings", meta = (ReconstructNode))
 	bool bComputeDerivative = false;
 
 	virtual bool IsDerivative() const override { return bComputeDerivative; }
-	
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 };
 
 UCLASS(Abstract)
@@ -140,14 +138,10 @@ class VOXELGRAPH_API UVoxelNode_NoiseNodeWithDerivativeFractal : public UVoxelNo
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Noise settings")
+	UPROPERTY(EditAnywhere, Category = "Noise settings", meta = (ReconstructNode))
 	bool bComputeDerivative = false;
 
 	virtual bool IsDerivative() const override { return bComputeDerivative; }
-	
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 };
 
 //////////////////////////////////////////////////////////////////////////////////////

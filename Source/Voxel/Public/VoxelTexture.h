@@ -128,18 +128,24 @@ public:
 			DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTextureMemory, AllocatedSize);
 		}
 
-		inline void SetSize(int32 NewSizeX, int32 NewSizeY)
+		void SetSize(int32 NewSizeX, int32 NewSizeY)
 		{
 			check(NewSizeX >= 0 && NewSizeY >= 0);
 			SizeX = NewSizeX;
 			SizeY = NewSizeY;
+			TextureData.Empty(SizeX * SizeY);
 			TextureData.SetNumUninitialized(SizeX * SizeY);
-			TextureData.Shrink();
 			UpdateAllocatedSize();
 
 			Min = TNumericLimits<T>::Max();
 			Max = TNumericLimits<T>::Lowest();
 		}
+		void SetBounds(T NewMin, T NewMax)
+		{
+			Min = NewMin;
+			Max = NewMax;
+		}
+		
 		FORCEINLINE void SetValue(int32 X, int32 Y, T Value)
 		{
 			checkVoxelSlow(0 <= X && X < SizeX);
@@ -148,17 +154,16 @@ public:
 		}
 		FORCEINLINE void SetValue(int32 Index, T Value)
 		{
-			checkVoxelSlow(TextureData.IsValidIndex(Index));
-			TextureData.GetData()[Index] = Value;
+			SetValue_NoBounds(Index, Value);
 			Min = FVoxelUtilities::ComponentMin(Min, Value);
 			Max = FVoxelUtilities::ComponentMax(Max, Value);
 		}
-		inline void UpdateAllocatedSize()
+		FORCEINLINE void SetValue_NoBounds(int32 Index, T Value)
 		{
-			DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTextureMemory, AllocatedSize);
-			AllocatedSize = TextureData.GetAllocatedSize();
-			INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTextureMemory, AllocatedSize);
+			checkVoxelSlow(TextureData.IsValidIndex(Index));
+			TextureData.GetData()[Index] = Value;
 		}
+		
 	private:
 		int32 SizeX = 1;
 		int32 SizeY = 1;
@@ -166,10 +171,16 @@ public:
 		T Min{};
 		T Max{};
 
-		int32 AllocatedSize = 0;
+		int64 AllocatedSize = 0;
+		
+		void UpdateAllocatedSize()
+		{
+			DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTextureMemory, AllocatedSize);
+			AllocatedSize = TextureData.GetAllocatedSize();
+			INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTextureMemory, AllocatedSize);
+		}
 
 		friend TVoxelTexture;
-		friend class FVoxelTextureUtilities;
 	};
 	
 	TVoxelTexture()
@@ -188,24 +199,23 @@ private:
 
 // TODO: function to clear render target cache
 
-class VOXEL_API FVoxelTextureUtilities
+namespace FVoxelTextureUtilities
 {
-public:
-	static TVoxelTexture<FColor> CreateFromTexture_Color(UTexture* Texture);
-	static TVoxelTexture<float> CreateFromTexture_Float(UTexture* Texture, EVoxelRGBA Channel);
+	VOXEL_API TVoxelTexture<FColor> CreateFromTexture_Color(UTexture* Texture);
+	VOXEL_API TVoxelTexture<float> CreateFromTexture_Float(UTexture* Texture, EVoxelRGBA Channel);
 	
-	static bool CanCreateFromTexture(UTexture* Texture, FString& OutError);
-	static void FixTexture(UTexture* Texture);
+	VOXEL_API bool CanCreateFromTexture(UTexture* Texture, FString& OutError);
+	VOXEL_API void FixTexture(UTexture* Texture);
 
-	static void ClearCache();
-	static void ClearCache(UTexture* Texture);
+	VOXEL_API void ClearCache();
+	VOXEL_API void ClearCache(UTexture* Texture);
 
-	static void CreateOrUpdateUTexture2D(const TVoxelTexture<float>& Texture, UTexture2D*& InOutTexture);
-	static void CreateOrUpdateUTexture2D(const TVoxelTexture<FColor>& Texture, UTexture2D*& InOutTexture);
+	VOXEL_API void CreateOrUpdateUTexture2D(const TVoxelTexture<float>& Texture, UTexture2D*& InOutTexture);
+	VOXEL_API void CreateOrUpdateUTexture2D(const TVoxelTexture<FColor>& Texture, UTexture2D*& InOutTexture);
 
-	static TVoxelTexture<FColor> CreateColorTextureFromFloatTexture(const TVoxelTexture<float>& Texture, EVoxelRGBA Channel, bool bNormalize);
+	VOXEL_API TVoxelTexture<FColor> CreateColorTextureFromFloatTexture(const TVoxelTexture<float>& Texture, EVoxelRGBA Channel, bool bNormalize);
 
-	static TVoxelTexture<float> Normalize(const TVoxelTexture<float>& Texture);
+	VOXEL_API TVoxelTexture<float> Normalize(const TVoxelTexture<float>& Texture);
 };
 
 USTRUCT(BlueprintType)
