@@ -1,7 +1,7 @@
-{
+﻿{
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "Free-Beta-f178d2a1",
+	"VersionName": "Free-Beta-6d1a3ec3",
 	"FriendlyName": "Voxel Plugin Free",
 	"Description": "Create fully volumetric, entirely destructible & infinite worlds",
 	"Category": "Terrain",
@@ -10,10 +10,11 @@
 	"DocsURL": "https://wiki.voxelplugin.com/",
 	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/c61d1941c8664436be42d649404a10e0",
 	"SupportURL": "https://discord.voxelplugin.com",
-	"EngineVersion": "4.23.0",
+	"EngineVersion":  "ANY_VERSION",
+	"EnabledByDefault": true,
 	"CanContainContent": true,
 	"IsBetaVersion": true,
-	"Installed": true,
+	"Installed": false,
 	"Modules": [
 		{
 			"Name": "Voxel",
