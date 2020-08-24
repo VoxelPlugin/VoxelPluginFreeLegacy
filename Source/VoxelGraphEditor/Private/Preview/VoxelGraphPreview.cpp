@@ -194,6 +194,18 @@ void FVoxelGraphPreview::UpdateMaterialParameters()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+using FVoxelNodeArray = TArray<TWeakObjectPtr<const UVoxelNode>>;
+
+uint32 GetTypeHash(const FVoxelNodeArray& Array)
+{
+	uint32 Hash = Array.Num();
+	for (auto& It : Array)
+	{
+		Hash = HashCombine(Hash, GetTypeHash(It));
+	}
+	return Hash;
+}
+
 void FVoxelGraphPreview::AddMessages(FVoxelGraphGeneratorInstance& GraphGeneratorInstance) const
 {
 }
