@@ -30,6 +30,15 @@ enum class EVoxelGraphPreviewType : uint8
 	RangeAnalysis
 };
 
+
+UENUM()
+enum class EVoxelGraphPreviewShowValue : uint8
+{
+	ShowValue,
+	ShowRange,
+	ShowValueAndRange
+};
+
 UENUM()
 enum class EVoxelGraphMaterialPreviewType : uint8
 {
@@ -102,6 +111,9 @@ public:
 	// Left click the preview to set it
 	UPROPERTY(EditAnywhere, Category = "Preview Zone")
 	FIntVector PreviewedVoxel = FIntVector(0, 0, 0);
+	
+	UPROPERTY(EditAnywhere, Category = "Preview Zone", AdvancedDisplay)
+	EVoxelGraphPreviewShowValue ShowValue = EVoxelGraphPreviewShowValue::ShowValueAndRange;
 		
 public:
 	// Set this to the material config your voxel world will use
