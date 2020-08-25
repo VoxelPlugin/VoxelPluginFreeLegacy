@@ -1049,7 +1049,11 @@ void AVoxelWorld::DestroyWorldInternal()
 
 	DestroyVoxelComponents();
 
-	GetLineBatchComponent().Flush();
+	if (LineBatchComponent)
+	{
+		// Note: components might be destroyed if called in BeginDestroy (eg if actor deleted in the editor)
+		LineBatchComponent->Flush();
+	}
 }
 
 void AVoxelWorld::DestroyVoxelComponents()

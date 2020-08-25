@@ -16,14 +16,15 @@ struct VOXEL_API FVoxelMessages
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FLogMessageDelegate, const TSharedRef<FTokenizedMessage>&, EVoxelShowNotification);
 	static FLogMessageDelegate LogMessageDelegate;
 
-	DECLARE_MULTICAST_DELEGATE_SevenParams(FShowNotificationDelegate, 
+	DECLARE_MULTICAST_DELEGATE_EightParams(FShowNotificationDelegate, 
 		uint64, 
 		const FText&, 
 		const FText&, 
 		const FText&, 
 		const FSimpleDelegate&,
 		bool,
-		const FSimpleDelegate&);
+		const FSimpleDelegate&,
+		float);
 	static FShowNotificationDelegate ShowNotificationDelegate;
 	
 public:
@@ -36,7 +37,8 @@ public:
 		const FText& ButtonTooltip, 
 		const FSimpleDelegate& OnClick,
 		bool bWithIgnore = false,
-		const FSimpleDelegate& OnIgnore = {});
+		const FSimpleDelegate& OnIgnore = {},
+		float Duration = 10.f);
 	static void ShowVoxelPluginProError(const FString& Message, const UObject* Object = nullptr);
 	
 public:

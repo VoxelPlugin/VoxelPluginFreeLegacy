@@ -43,13 +43,14 @@ void FVoxelMessages::ShowNotification(
 	const FText& ButtonTooltip,
 	const FSimpleDelegate& OnClick,
 	bool bWithIgnore,
-	const FSimpleDelegate& OnIgnore)
+	const FSimpleDelegate& OnIgnore,
+	float Duration)
 {
 	if (!ensure(IsInGameThread())) return;
 	
 	if (ShowNotificationDelegate.IsBound())
 	{
-		ShowNotificationDelegate.Broadcast(UniqueId, Message, ButtonText, ButtonTooltip, OnClick, bWithIgnore, OnIgnore);
+		ShowNotificationDelegate.Broadcast(UniqueId, Message, ButtonText, ButtonTooltip, OnClick, bWithIgnore, OnIgnore, Duration);
 	}
 }
 
