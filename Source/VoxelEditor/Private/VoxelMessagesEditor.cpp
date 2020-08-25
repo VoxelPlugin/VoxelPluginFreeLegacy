@@ -165,7 +165,8 @@ void FVoxelMessagesEditor::ShowNotification(
 	const FText& ButtonTooltip,
 	const FSimpleDelegate& OnClick,
 	bool bWithIgnore,
-	const FSimpleDelegate& OnIgnore)
+	const FSimpleDelegate& OnIgnore,
+	float Duration)
 {
 	struct FLastNotification
 	{
@@ -182,7 +183,7 @@ void FVoxelMessagesEditor::ShowNotification(
 
 	FNotificationInfo Info(Message);
 	Info.CheckBoxState = ECheckBoxState::Unchecked;
-	Info.ExpireDuration = 10;
+	Info.ExpireDuration = Duration;
 	
 	const TSharedRef<TWeakPtr<SNotificationItem>> PtrToPtr = MakeShared<TWeakPtr<SNotificationItem>>();
 	AddButton(Info, OnClick, ButtonText, ButtonTooltip, PtrToPtr);

@@ -15,5 +15,6 @@ namespace FVoxelMessagesEditor
 		const FText& ButtonTooltip,
 		const FSimpleDelegate& OnClick,
 		bool bWithIgnore,
-		const FSimpleDelegate& OnIgnore);
+		const FSimpleDelegate& OnIgnore,
+		float Duration);
 }

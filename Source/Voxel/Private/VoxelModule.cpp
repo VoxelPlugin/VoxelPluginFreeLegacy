@@ -4,14 +4,17 @@
 
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
+#include "VoxelMessages.h"
 #include "IVoxelPool.h"
 #include "VoxelUtilities/VoxelSerializationUtilities.h"
 
+#include "Containers/Ticker.h"
 #include "Interfaces/IPluginManager.h"
 #include "ShaderCore.h"
 #include "Misc/Paths.h"
 #include "Misc/PackageName.h"
 #include "Misc/MessageDialog.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Modules/ModuleManager.h"
 
 void FVoxelModule::StartupModule()
@@ -73,18 +76,60 @@ void FVoxelModule::StartupModule()
 	FVoxelSerializationUtilities::TestCompression(128, EVoxelCompressionLevel::BestCompression);
 	
 	//FVoxelSerializationUtilities::TestCompression(1llu << 32, EVoxelCompressionLevel::BestSpeed);
-	
-	const auto Plugin = IPluginManager::Get().FindPlugin(VOXEL_PLUGIN_NAME);
 
-	// This is needed to correctly share content across Pro and Free
-	FPackageName::UnRegisterMountPoint(TEXT("/") VOXEL_PLUGIN_NAME TEXT("/"), Plugin->GetContentDir());
-	FPackageName::RegisterMountPoint("/Voxel/", Plugin->GetContentDir());
+	{
+		const auto Plugin = IPluginManager::Get().FindPlugin(VOXEL_PLUGIN_NAME);
 
-	const FString PluginBaseDir = Plugin.IsValid() ? FPaths::ConvertRelativePathToFull(Plugin->GetBaseDir()) : "";
+		// This is needed to correctly share content across Pro and Free
+		FPackageName::UnRegisterMountPoint(TEXT("/") VOXEL_PLUGIN_NAME TEXT("/"), Plugin->GetContentDir());
+		FPackageName::RegisterMountPoint("/Voxel/", Plugin->GetContentDir());
 
-    const FString PluginShaderDir = FPaths::Combine(PluginBaseDir, TEXT("Shaders"));
-    AddShaderSourceDirectoryMapping(TEXT("/Plugin/Voxel"), PluginShaderDir);
-	
+		const FString PluginBaseDir = Plugin.IsValid() ? FPaths::ConvertRelativePathToFull(Plugin->GetBaseDir()) : "";
+
+		const FString PluginShaderDir = FPaths::Combine(PluginBaseDir, TEXT("Shaders"));
+		AddShaderSourceDirectoryMapping(TEXT("/Plugin/Voxel"), PluginShaderDir);
+
+	}
+		
+	FTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=](float)
+	{
+		int32 VoxelPluginVersion = 0;
+		GConfig->GetInt(TEXT("VoxelPlugin"), TEXT("ShowReleaseNotes"), VoxelPluginVersion, GEditorIni);
+
+		constexpr int32 LatestVoxelPluginVersion = 1;
+		if (VoxelPluginVersion < LatestVoxelPluginVersion)
+		{
+			// This URL is to record click statistics
+			// It will always redirect to https://releases.voxelplugin.com
+			const FString URL = "http://bit.ly/voxelpluginreleasenotes_popup";
+			const auto Popup = [=]()
+			{
+				FString Error;
+				FPlatformProcess::LaunchURL(*URL, nullptr, &Error);
+				if (!Error.IsEmpty())
+				{
+					FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to open " + URL + "\n:" + Error));
+				}
+				else
+				{
+					GConfig->SetInt(TEXT("VoxelPlugin"), TEXT("ShowReleaseNotes"), LatestVoxelPluginVersion, GEditorIni);
+				}
+			};
+
+			const FText Message = VOXEL_LOCTEXT("Voxel Plugin has been updated!");
+			FVoxelMessages::ShowNotification(
+				UNIQUE_ID(),
+				Message,
+				VOXEL_LOCTEXT("Show Release Notes"),
+				VOXEL_LOCTEXT("See the latest plugin release notes"),
+				FSimpleDelegate::CreateLambda(Popup),
+				false,
+				{},
+				10000.f);
+		}
+		
+		return false;
+	}));
 }
 
 void FVoxelModule::ShutdownModule()
