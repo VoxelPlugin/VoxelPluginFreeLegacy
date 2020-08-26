@@ -94,38 +94,84 @@ void FVoxelModule::StartupModule()
 	FTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=](float)
 	{
 		int32 VoxelPluginVersion = 0;
-		GConfig->GetInt(TEXT("VoxelPlugin"), TEXT("ShowReleaseNotes"), VoxelPluginVersion, GEditorIni);
+		GConfig->GetInt(TEXT("VoxelPlugin"), TEXT("VoxelPluginVersion"), VoxelPluginVersion, GEditorPerProjectIni);
+		
+		const auto OpenLink = [=](const FString& Url)
+		{
+			FString Error;
+			FPlatformProcess::LaunchURL(*Url, nullptr, &Error);
+			if (!Error.IsEmpty())
+			{
+				FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to open " + Url + "\n:" + Error));
+			}
+		};
 
 		constexpr int32 LatestVoxelPluginVersion = 1;
 		if (VoxelPluginVersion < LatestVoxelPluginVersion)
 		{
-			// This URL is to record click statistics
-			// It will always redirect to https://releases.voxelplugin.com
-			const FString URL = "http://bit.ly/voxelpluginreleasenotes_popup";
-			const auto Popup = [=]()
+			const auto Close = [=]()
 			{
-				FString Error;
-				FPlatformProcess::LaunchURL(*URL, nullptr, &Error);
-				if (!Error.IsEmpty())
-				{
-					FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to open " + URL + "\n:" + Error));
-				}
-				else
-				{
-					GConfig->SetInt(TEXT("VoxelPlugin"), TEXT("ShowReleaseNotes"), LatestVoxelPluginVersion, GEditorIni);
-				}
+				GConfig->SetInt(TEXT("VoxelPlugin"), TEXT("VoxelPluginVersion"), LatestVoxelPluginVersion, GEditorPerProjectIni);
 			};
 
-			const FText Message = VOXEL_LOCTEXT("Voxel Plugin has been updated!");
-			FVoxelMessages::ShowNotification(
-				UNIQUE_ID(),
-				Message,
-				VOXEL_LOCTEXT("Show Release Notes"),
-				VOXEL_LOCTEXT("See the latest plugin release notes"),
-				FSimpleDelegate::CreateLambda(Popup),
-				false,
-				{},
-				10000.f);
+			FVoxelMessages::FNotification Notification;
+			Notification.UniqueId = OBJECT_LINE_ID();
+			Notification.Message = "Voxel Plugin has been updated to 1.1!";
+			Notification.Duration = 1e6f;
+			Notification.OnClose = FSimpleDelegate::CreateLambda(Close);
+			
+			auto& Button = Notification.Buttons.Emplace_GetRef();
+			Button.Text = "Show Release Notes";
+			Button.Tooltip = "See the latest plugin release notes";
+			Button.OnClick = FSimpleDelegate::CreateLambda([=]() 
+			{
+				OpenLink("https://releases.voxelplugin.com");
+				Close();
+			});
+			
+			FVoxelMessages::ShowNotification(Notification);
+		}
+
+		{
+			FVoxelMessages::FNotification Notification;
+			Notification.UniqueId = OBJECT_LINE_ID();
+			Notification.Message = "Thanks for using Voxel Plugin Free!";
+			Notification.Duration = 1e6f;
+
+			{
+				auto& Button = Notification.Buttons.Emplace_GetRef();
+				Button.Text = "Docs";
+				Button.Tooltip = "Open the plugin docs";
+				Button.bCloseOnClick = false;
+				Button.OnClick = FSimpleDelegate::CreateLambda([=]()
+				{
+					OpenLink("https://wiki.voxelplugin.com");
+				});
+			}
+
+			{
+				auto& Button = Notification.Buttons.Emplace_GetRef();
+				Button.Text = "Discord";
+				Button.Tooltip = "Open the plugin discord, where you can interact with an awesome community!";
+				Button.bCloseOnClick = false;
+				Button.OnClick = FSimpleDelegate::CreateLambda([=]()
+				{
+					OpenLink("https://discord.voxelplugin.com");
+				});
+			}
+
+			{
+				auto& Button = Notification.Buttons.Emplace_GetRef();
+				Button.Text = "Pro";
+				Button.Tooltip = "Open the Voxel Plugin Pro marketplace page";
+				Button.bCloseOnClick = false;
+				Button.OnClick = FSimpleDelegate::CreateLambda([=]()
+				{
+					OpenLink("https://pro.voxelplugin.com");
+				});
+			}
+			
+			FVoxelMessages::ShowNotification(Notification);
 		}
 		
 		return false;

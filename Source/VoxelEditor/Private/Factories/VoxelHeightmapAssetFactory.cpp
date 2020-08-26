@@ -40,7 +40,7 @@ UVoxelHeightmapAssetFloatFactory::UVoxelHeightmapAssetFloatFactory()
 
 UObject* UVoxelHeightmapAssetFloatFactory::FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
-	FVoxelMessages::ShowVoxelPluginProError("Importing Landscapes requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Importing Landscapes requires Voxel Plugin Pro");
 	return nullptr;
 }
 
@@ -293,12 +293,12 @@ int32 UVoxelHeightmapAssetUINT16Factory::GetPriority() const
 
 bool UVoxelHeightmapAssetUINT16Factory::TryLoad()
 {
-	FVoxelMessages::ShowVoxelPluginProError("Importing Heightmaps requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Importing Heightmaps requires Voxel Plugin Pro");
 	return false;
 }
 
 bool UVoxelHeightmapAssetUINT16Factory::DoImport(UVoxelHeightmapAssetUINT16* Asset)
 {
-	FVoxelMessages::ShowVoxelPluginProError("Importing Heightmaps requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Importing Heightmaps requires Voxel Plugin Pro");
 	return false;
 }

@@ -81,4 +81,41 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Erosion")
 	FVoxelFloatTexture GetSedimentTexture();
 
+private:
+    int32 RealSize = 0; // Can't be changed through BP after init
+	bool bIsInit = false;
+	
+	FUnorderedAccessViewRHIRef RainMapUAV;
+	FUnorderedAccessViewRHIRef TerrainHeightUAV;
+	FUnorderedAccessViewRHIRef TerrainHeight1UAV;
+	FUnorderedAccessViewRHIRef WaterHeightUAV;
+	FUnorderedAccessViewRHIRef WaterHeight1UAV;
+	FUnorderedAccessViewRHIRef WaterHeight2UAV;
+	FUnorderedAccessViewRHIRef SedimentUAV;
+	FUnorderedAccessViewRHIRef Sediment1UAV;
+	FUnorderedAccessViewRHIRef OutflowUAV;
+	FUnorderedAccessViewRHIRef VelocityUAV;
+
+	FTexture2DRHIRef RainMap;
+	FTexture2DRHIRef TerrainHeight;
+	FTexture2DRHIRef TerrainHeight1;
+	FTexture2DRHIRef WaterHeight;
+	FTexture2DRHIRef WaterHeight1;
+	FTexture2DRHIRef WaterHeight2;
+	FTexture2DRHIRef Sediment;
+	FTexture2DRHIRef Sediment1;
+	FTexture2DRHIRef Outflow;
+	FTexture2DRHIRef Velocity;
+
+	template<typename T>
+	void RunShader(const FVoxelErosionParameters& Parameters);
+
+	void CopyTextureToRHI(const TVoxelTexture<float>& Texture, const FTexture2DRHIRef& RHITexture);
+	void CopyRHIToTexture(const FTexture2DRHIRef& RHITexture, TVoxelSharedRef<TVoxelTexture<float>::FTextureData>& Texture);
+
+	static void CopyTextureToRHI_RenderThread(const TVoxelTexture<float>& Texture, const FTexture2DRHIRef& RHITexture);
+	static void CopyRHIToTexture_RenderThread(const FTexture2DRHIRef& RHITexture, TVoxelTexture<float>::FTextureData& Texture);
+	
+	void Init_RenderThread();
+	void Step_RenderThread(const FVoxelErosionParameters& Parameters, int32 Count);
 };

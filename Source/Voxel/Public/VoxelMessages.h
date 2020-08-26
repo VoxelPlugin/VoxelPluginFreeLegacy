@@ -16,60 +16,30 @@ struct VOXEL_API FVoxelMessages
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FLogMessageDelegate, const TSharedRef<FTokenizedMessage>&, EVoxelShowNotification);
 	static FLogMessageDelegate LogMessageDelegate;
 
-	DECLARE_MULTICAST_DELEGATE_EightParams(FShowNotificationDelegate, 
-		uint64, 
-		const FText&, 
-		const FText&, 
-		const FText&, 
-		const FSimpleDelegate&,
-		bool,
-		const FSimpleDelegate&,
-		float);
+	struct FButton
+	{
+		FString Text;
+		FString Tooltip;
+		FSimpleDelegate OnClick;
+		bool bCloseOnClick = true;
+	};
+	struct FNotification
+	{
+		uint64 UniqueId = 0;
+		FString Message;
+		FSimpleDelegate OnClose;		
+		float Duration = 10.f;
+
+		TArray<FButton> Buttons;
+	};
+	DECLARE_MULTICAST_DELEGATE_OneParam(FShowNotificationDelegate, const FNotification&);
 	static FShowNotificationDelegate ShowNotificationDelegate;
 	
 public:
 	static void LogMessage(const TSharedRef<FTokenizedMessage>& Message, EVoxelShowNotification ShouldShow);
 	static void LogMessage(const FText& Message, EMessageSeverity::Type Severity, EVoxelShowNotification ShouldShow, const UObject* Object = nullptr);
-	static void ShowNotification(
-		uint64 UniqueId, 
-		const FText& Message, 
-		const FText& ButtonText, 
-		const FText& ButtonTooltip, 
-		const FSimpleDelegate& OnClick,
-		bool bWithIgnore = false,
-		const FSimpleDelegate& OnIgnore = {},
-		float Duration = 10.f);
-	static void ShowVoxelPluginProError(const FString& Message, const UObject* Object = nullptr);
+	static void ShowNotification(const FNotification& Notification);
 	
-public:
-	static void ShowNotification(
-		uint64 UniqueId,
-		const FString& Message,
-		const FString& ButtonText,
-		const FString& ButtonTooltip,
-		const FSimpleDelegate& OnClick,
-		bool bWithIgnore = false,
-		const FSimpleDelegate& OnIgnore = {})
-	{
-		ShowNotification(
-			UniqueId,
-			FText::FromString(Message),
-			FText::FromString(ButtonText),
-			FText::FromString(ButtonTooltip),
-			OnClick,
-			bWithIgnore,
-			OnIgnore);
-	}
-
-	static void ShowNotification(uint64 UniqueId, const FString& Message)
-	{
-		ShowNotification(UniqueId, Message, {}, {}, {});
-	}
-	static void ShowNotification(uint64 UniqueId, const FText& Message)
-	{
-		ShowNotification(UniqueId, Message, {}, {}, {});
-	}
-
 public:
 	template<EVoxelShowNotification ShouldShow = EVoxelShowNotification::Show>
 	static void Error(const FString& Message, const UObject* Object = nullptr)

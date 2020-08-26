@@ -23,16 +23,21 @@ inline void AddButton(
 	const FSimpleDelegate& OnClick,
 	const FText& Text,
 	const FText& Tooltip,
+	bool bCloseOnClick,
 	const TSharedRef<TWeakPtr<SNotificationItem>>& PtrToPtr)
 {
 	const auto Callback = FSimpleDelegate::CreateLambda([=]()
 	{
 		OnClick.ExecuteIfBound();
-		auto Ptr = PtrToPtr->Pin();
-		if (Ptr.IsValid())
+
+		if (bCloseOnClick)
 		{
-			Ptr->SetFadeOutDuration(0);
-			Ptr->Fadeout();
+			auto Ptr = PtrToPtr->Pin();
+			if (Ptr.IsValid())
+			{
+				Ptr->SetFadeOutDuration(0);
+				Ptr->Fadeout();
+			}
 		}
 	});
 	
@@ -149,7 +154,7 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 			Info.ExpireDuration = 10;
 	
 			const TSharedRef<TWeakPtr<SNotificationItem>> PtrToPtr = MakeShared<TWeakPtr<SNotificationItem>>();
-			AddButton(Info, {}, VOXEL_LOCTEXT("Close"), VOXEL_LOCTEXT("Close"), PtrToPtr);
+			AddButton(Info, {}, VOXEL_LOCTEXT("Close"), VOXEL_LOCTEXT("Close"), true, PtrToPtr);
 			const auto Ptr = FSlateNotificationManager::Get().AddNotification(Info);
 			*PtrToPtr = Ptr;
 
@@ -158,15 +163,7 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 	}
 }
 
-void FVoxelMessagesEditor::ShowNotification(
-	uint64 UniqueId,
-	const FText& Message,
-	const FText& ButtonText,
-	const FText& ButtonTooltip,
-	const FSimpleDelegate& OnClick,
-	bool bWithIgnore,
-	const FSimpleDelegate& OnIgnore,
-	float Duration)
+void FVoxelMessagesEditor::ShowNotification(const FVoxelMessages::FNotification& Notification)
 {
 	struct FLastNotification
 	{
@@ -175,25 +172,26 @@ void FVoxelMessagesEditor::ShowNotification(
 	};
 	static TArray<FLastNotification> LastNotifications;
 
-	LastNotifications.RemoveAll([](auto& Notification) { return !Notification.Ptr.IsValid(); });
-	if (LastNotifications.FindByPredicate([&](auto& Notification) { return Notification.UniqueId == UniqueId; }))
+	LastNotifications.RemoveAll([](auto& It) { return !It.Ptr.IsValid(); });
+	if (LastNotifications.FindByPredicate([&](auto& It) { return It.UniqueId == Notification.UniqueId; }))
 	{
 		return;
 	}
 
-	FNotificationInfo Info(Message);
+	FNotificationInfo Info(FText::FromString(Notification.Message));
 	Info.CheckBoxState = ECheckBoxState::Unchecked;
-	Info.ExpireDuration = Duration;
+	Info.ExpireDuration = Notification.Duration;
 	
 	const TSharedRef<TWeakPtr<SNotificationItem>> PtrToPtr = MakeShared<TWeakPtr<SNotificationItem>>();
-	AddButton(Info, OnClick, ButtonText, ButtonTooltip, PtrToPtr);
-	AddButton(Info, {}, VOXEL_LOCTEXT("Close"), VOXEL_LOCTEXT("Close"), PtrToPtr);
-	if (bWithIgnore)
+
+	for (auto& Button : Notification.Buttons)
 	{
-		AddButton(Info, OnIgnore, VOXEL_LOCTEXT("Ignore All"), VOXEL_LOCTEXT("Ignore all notifications for this session"), PtrToPtr);
+		AddButton(Info, Button.OnClick, FText::FromString(Button.Text), FText::FromString(Button.Tooltip), Button.bCloseOnClick, PtrToPtr);
 	}
+	AddButton(Info, Notification.OnClose, VOXEL_LOCTEXT("Close"), VOXEL_LOCTEXT("Close"), true, PtrToPtr);
+
 	const auto Ptr = FSlateNotificationManager::Get().AddNotification(Info);
 	*PtrToPtr = Ptr;
 
-	LastNotifications.Add({ Ptr, UniqueId });
+	LastNotifications.Add({ Ptr, Notification.UniqueId });
 }

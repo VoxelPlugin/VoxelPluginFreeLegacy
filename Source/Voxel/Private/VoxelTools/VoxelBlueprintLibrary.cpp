@@ -413,7 +413,7 @@ void UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorsInArea(
 	FVoxelIntBox Bounds, 
 	EVoxelSpawnerActorSpawnType SpawnType)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
 
 AVoxelSpawnerActor* UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorByInstanceIndex(
@@ -421,7 +421,8 @@ AVoxelSpawnerActor* UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorByInstanceInde
 	UVoxelHierarchicalInstancedStaticMeshComponent* Component, 
 	int32 InstanceIndex)
 {
-	VOXEL_PRO_ONLY();
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
+	return nullptr;
 }
 
 void UVoxelBlueprintLibrary::AddInstances(
@@ -433,7 +434,7 @@ void UVoxelBlueprintLibrary::AddInstances(
 	FVoxelSpawnerActorSettings ActorSettings,
 	const FVector FloatingDetectionOffset)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -442,22 +443,23 @@ void UVoxelBlueprintLibrary::AddInstances(
 
 void UVoxelBlueprintLibrary::RegenerateSpawners(AVoxelWorld* World, FVoxelIntBox Bounds)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
 
 void UVoxelBlueprintLibrary::MarkSpawnersDirty(AVoxelWorld* World, FVoxelIntBox Bounds)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
 
 FVoxelSpawnersSave UVoxelBlueprintLibrary::GetSpawnersSave(AVoxelWorld* World)
 {
-	VOXEL_PRO_ONLY();
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
+	return {};
 }
 
 void UVoxelBlueprintLibrary::LoadFromSpawnersSave(AVoxelWorld* World, const FVoxelSpawnersSave& Save)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -811,7 +813,8 @@ bool UVoxelBlueprintLibrary::IsVoxelWorldMeshLoading(AVoxelWorld* World)
 
 bool UVoxelBlueprintLibrary::IsVoxelWorldFoliageLoading(AVoxelWorld* World)
 {
-	VOXEL_PRO_ONLY()
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
+	return false;
 }
 
 void UVoxelBlueprintLibrary::ApplyNewMaterials(AVoxelWorld* World)

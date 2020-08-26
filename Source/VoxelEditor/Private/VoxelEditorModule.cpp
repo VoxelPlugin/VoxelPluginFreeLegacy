@@ -46,6 +46,7 @@
 #include "Thumbnails/VoxelDataAssetThumbnailRenderer.h"
 #include "Thumbnails/VoxelHeightmapAssetThumbnailRenderer.h"
 
+#include "DataAssetEditor/VoxelDataAssetEditorToolkit.h"
 #include "EdMode/VoxelEdMode.h"
 #include "VoxelToolsCommands.h"
 
@@ -512,6 +513,11 @@ private:
 	}
 	
 public:
+	virtual void CreateVoxelDataAssetEditor(const EToolkitMode::Type Mode, const TSharedPtr<IToolkitHost>& InitToolkitHost, UVoxelDataAsset* DataAsset) override
+	{
+		TSharedRef<FVoxelDataAssetEditorToolkit> NewVoxelEditor(new FVoxelDataAssetEditorToolkit());
+		NewVoxelEditor->InitVoxelEditor(Mode, InitToolkitHost, DataAsset);
+	}
 
 	virtual void RefreshVoxelWorlds(UObject* MatchingGenerator) override
 	{

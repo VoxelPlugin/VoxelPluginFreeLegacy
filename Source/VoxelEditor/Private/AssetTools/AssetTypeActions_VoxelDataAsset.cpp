@@ -10,7 +10,17 @@
 
 void FAssetTypeActions_VoxelDataAsset::OpenAssetEditor(const TArray<UObject *>& InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor)
 {
-	FVoxelMessages::ShowVoxelPluginProError("The Voxel Data Asset Editor is only available in Voxel Plugin Pro");
+	const EToolkitMode::Type Mode = EditWithinLevelEditor.IsValid() ? EToolkitMode::WorldCentric : EToolkitMode::Standalone;
+
+	for (auto ObjIt = InObjects.CreateConstIterator(); ObjIt; ++ObjIt)
+	{
+		auto* DataAsset = Cast<UVoxelDataAsset>(*ObjIt);
+		if (DataAsset)
+		{
+			IVoxelEditorModule* VoxelEditorModule = &FModuleManager::LoadModuleChecked<IVoxelEditorModule>("VoxelEditor");
+			VoxelEditorModule->CreateVoxelDataAssetEditor(Mode, EditWithinLevelEditor, DataAsset);
+		}
+	}
 }
 
 void FAssetTypeActions_VoxelDataAsset::GetActions(const TArray<UObject*>& InObjects, FMenuBuilder& MenuBuilder)

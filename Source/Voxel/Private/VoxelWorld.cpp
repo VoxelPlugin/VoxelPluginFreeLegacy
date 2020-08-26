@@ -440,12 +440,14 @@ void AVoxelWorld::AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor)
 
 UVoxelMultiplayerInterface* AVoxelWorld::CreateMultiplayerInterfaceInstance()
 {
-	VOXEL_PRO_ONLY();
+	FVoxelMessages::Info(FUNCTION_ERROR("Multiplayer with TCP require Voxel Plugin Pro"));
+	return nullptr;
 }
 
 UVoxelMultiplayerInterface* AVoxelWorld::GetMultiplayerInterfaceInstance() const
 {
-	VOXEL_PRO_ONLY();
+	FVoxelMessages::Info(FUNCTION_ERROR("Multiplayer with TCP require Voxel Plugin Pro"));
+	return nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -958,12 +960,12 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 
 	if (SpawnerConfig)
 	{
-		FVoxelMessages::ShowVoxelPluginProError("Spawners are only available in Voxel Plugin Pro", this);
+		FVoxelMessages::Info("Spawners are only available in Voxel Plugin Pro", this);
 	}
 		
-	if (PlayType == EVoxelPlayType::Game && bEnableMultiplayer)
+	if (bEnableMultiplayer)
 	{
-		FVoxelMessages::ShowVoxelPluginProError("Multiplayer is only available in Voxel Plugin Pro", this);
+		FVoxelMessages::Info("TCP Multiplayer is only available in Voxel Plugin Pro", this);
 	}
 
 	if (Info.bOverrideData && Info.bOverrideSave)
@@ -1113,6 +1115,33 @@ void AVoxelWorld::LoadFromSaveObject()
 
 void AVoxelWorld::ApplyPlaceableItems()
 {
+	VOXEL_FUNCTION_COUNTER();
+
+	TArray<AVoxelPlaceableItemActor*> PlaceableItemActors;
+	for (TActorIterator<AVoxelPlaceableItemActor> ActorItr(GetWorld()); ActorItr; ++ActorItr)
+	{
+		auto* Actor = *ActorItr;
+		if (Actor->IsA<AVoxelAssetActor>() && !bMergeAssetActors)
+		{
+			continue;
+		}
+		if (Actor->IsA<AVoxelDisableEditsBox>() && !bMergeDisableEditsBoxes)
+		{
+			continue;
+		}
+		if (Actor->bOnlyImportIntoPreviewWorld && Actor->PreviewWorld != this)
+		{
+			continue;
+		}
+		PlaceableItemActors.Add(Actor);
+	}
+	
+	PlaceableItemActors.Sort([](auto& ActorA, auto& ActorB) { return ActorA.GetPriority() < ActorB.GetPriority(); });
+
+	for (auto* PlaceableItemActor : PlaceableItemActors)
+	{
+		PlaceableItemActor->AddItemToWorld(this);
+	}
 }
 
 void AVoxelWorld::UpdateDynamicLODSettings() const
@@ -1240,6 +1269,10 @@ void AVoxelWorld::RecreateRender()
 
 void AVoxelWorld::RecreateSpawners()
 {
+	if (SpawnerConfig)
+	{
+		FVoxelMessages::Info("Spawners are only available in Voxel Plugin Pro", this);
+	}
 }
 
 void AVoxelWorld::RecreateAll(const FVoxelWorldCreateInfo& Info)

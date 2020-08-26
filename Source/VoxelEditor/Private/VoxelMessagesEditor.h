@@ -8,13 +8,5 @@
 namespace FVoxelMessagesEditor
 {
 	void LogMessage(const TSharedRef<FTokenizedMessage>& Message, EVoxelShowNotification ShouldShow);
-	void ShowNotification(
-		uint64 UniqueId,
-		const FText& Message,
-		const FText& ButtonText,
-		const FText& ButtonTooltip,
-		const FSimpleDelegate& OnClick,
-		bool bWithIgnore,
-		const FSimpleDelegate& OnIgnore,
-		float Duration);
+	void ShowNotification(const FVoxelMessages::FNotification& Notification);
 }

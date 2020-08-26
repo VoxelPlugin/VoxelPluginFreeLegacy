@@ -27,5 +27,5 @@ void UVoxelPhysicsTools::ApplyVoxelPhysics(
 	bool bDebug,
 	bool bHideLatentWarnings)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Physics require Voxel Plugin Pro"));
 }

@@ -207,7 +207,7 @@ TMap<FName, int32> UVoxelGraphGenerator::GetDefaultSeeds() const
 
 TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance()
 {
-	FVoxelMessages::ShowVoxelPluginProError("Voxel Graphs require Voxel Plugin Pro");
+	FVoxelMessages::Info("Running Voxel Graphs require Voxel Plugin Pro");
 	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
 }
 

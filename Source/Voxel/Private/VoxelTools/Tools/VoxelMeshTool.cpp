@@ -65,7 +65,7 @@ void UVoxelMeshTool::UpdateRender(UMaterialInstanceDynamic* OverlayMaterialInsta
 
 FVoxelIntBoxWithValidity UVoxelMeshTool::DoEdit()
 {
-	FVoxelMessages::ShowVoxelPluginProError("Using the mesh tool requires the Pro version of Voxel Plugin");
+	FVoxelMessages::Info("Using the mesh tool requires the Pro version of Voxel Plugin");
 	return {};
 }
 

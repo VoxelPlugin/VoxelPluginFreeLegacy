@@ -37,13 +37,105 @@ AVoxelAssetActor::AVoxelAssetActor()
 #endif
 }
 
+void AVoxelAssetActor::AddItemToWorld(AVoxelWorld* World) const
+{
+	check(World);
+
+	if (World->GetPlayType() != EVoxelPlayType::Game)
+	{
+		return;
+	}
+	if (!WorldGenerator.IsValid())
+	{
+		FVoxelMessages::Error("Invalid world generator", this);
+		return;
+	}
+
+	AddItemToData(World, &World->GetData());
+}
+
+int32 AVoxelAssetActor::GetPriority() const
+{
+	return Priority;
+}
 
 FVoxelIntBox AVoxelAssetActor::AddItemToData(
 	AVoxelWorld* VoxelWorld,
 	FVoxelData* VoxelWorldData) const
 {
-	FVoxelMessages::ShowVoxelPluginProError("Asset Actors require Voxel Plugin Pro.\nTo use an asset in Voxel Plugin Free, set it as World Generator of a Voxel World");
-	return FVoxelIntBox(0, 25);
+	auto Transform = GetTransform() * VoxelWorld->GetTransform().Inverse();
+	Transform.ScaleTranslation(1.f / VoxelWorld->VoxelSize);
+
+	FVoxelIntBox WorldBounds;
+	if (bOverrideAssetBounds)
+	{
+		// Might be one-off error there
+		WorldBounds = AssetBounds.Translate(FVoxelUtilities::FloorToInt(Transform.GetTranslation()));
+	}
+	else
+	{
+		if (auto* WorldGeneratorWithBounds = Cast<UVoxelTransformableWorldGeneratorWithBounds>(WorldGenerator.GetObject()))
+		{
+			WorldBounds = WorldGeneratorWithBounds->GetBounds().ApplyTransform(Transform);
+		}
+		else
+		{
+			FVoxelMessages::Error(
+				"Voxel Asset Actor: AssetBounds are not overriden, and cannot deduce them from WorldGenerator\n"
+				"You need to tick the checkbox next to Asset Bounds on the asset actor",
+				this);
+			WorldBounds = FVoxelIntBox(-25, 25).Translate(FVoxelUtilities::FloorToInt(Transform.GetTranslation()));
+		}
+
+		// Small hack to update the asset bounds from the world bounds when bOverrideAssetBounds = false
+		const_cast<AVoxelAssetActor*>(this)->AssetBounds = WorldBounds.Translate(-FVoxelUtilities::FloorToInt(Transform.GetTranslation()));
+	}
+
+	if (!VoxelWorldData || !ensure(WorldBounds.IsValid()))
+	{
+		return WorldBounds;
+	}
+
+	auto AssetInstance = WorldGenerator.GetInstance(false);
+	auto InitStruct = VoxelWorld->GetInitStruct();
+	for (auto& It : Seeds)
+	{
+		InitStruct.Seeds.Add(It.Key, It.Value);
+	}
+	AssetInstance->Init(InitStruct);
+	
+	if (bImportAsReference)
+	{
+		FVoxelWriteScopeLock Lock(*VoxelWorldData, WorldBounds, FUNCTION_FNAME);
+		VoxelWorldData->AddItem<FVoxelAssetItem>(
+			AssetInstance,
+			WorldBounds,
+			Transform,
+			Priority);
+	}
+	else
+	{
+		if (WorldBounds.Count() > 1e8)
+		{
+			FVoxelMessages::Error(
+				"Voxel Asset Actor: importing would affect more than 100 000 000 voxels. Please tick ImportAsReference instead.",
+				this);
+		}
+		else
+		{
+			FVoxelWriteScopeLock Lock(*VoxelWorldData, WorldBounds, FUNCTION_FNAME);
+			UVoxelAssetTools::ImportAssetImpl(
+				*VoxelWorldData,
+				WorldBounds,
+				Transform,
+				*AssetInstance,
+				bSubtractiveAsset,
+				MergeMode,
+				EVoxelMaterialMask::All); // TODO: expose material mask?
+		}
+	}
+
+	return WorldBounds;
 }
 
 #if WITH_EDITOR

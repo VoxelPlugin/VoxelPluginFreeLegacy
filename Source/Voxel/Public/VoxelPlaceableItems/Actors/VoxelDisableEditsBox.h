@@ -18,6 +18,9 @@ class VOXEL_API AVoxelDisableEditsBox : public AVoxelPlaceableItemActor
 public:
 	AVoxelDisableEditsBox();
 
+	//~ Begin AVoxelPlaceableItemActor Interface
+	void AddItemToWorld(AVoxelWorld* World) const override;
+	//~ End AVoxelPlaceableItemActor Interface
 
 private:
 	FVoxelIntBox GetBox(AVoxelWorld* World) const;
