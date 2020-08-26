@@ -114,6 +114,13 @@ public:
 		bool bHideLatentWarnings = false);
 	
 public:
+	static void ImportModifierAssetImpl(
+		FVoxelData& Data,
+		const FVoxelIntBox& Bounds,
+		const FTransform& Transform,
+		const FVoxelTransformableWorldGeneratorInstance& Instance,
+		bool bModifyValues,
+		bool bModifyMaterials);
 
 	/**
 	 * Add a voxel modifier asset to the world. Should be a graph asset.
@@ -165,6 +172,33 @@ public:
 		bool bHideLatentWarnings = false);
 
 public:
+	static void ImportAssetImpl(
+		FVoxelData& Data,
+		const FVoxelIntBox& Bounds,
+		const FTransform& Transform,
+		const FVoxelTransformableWorldGeneratorInstance& Instance,
+		bool bSubtractive,
+		EVoxelAssetMergeMode MergeMode,
+		uint32 MaterialMask);
+	static void ImportDataAssetImpl(
+		FVoxelData& Data,
+		const FVoxelIntBox& Bounds,
+		const FVoxelVector& Position,
+		const FVoxelDataAssetData& AssetData,
+		bool bSubtractive,
+		EVoxelAssetMergeMode MergeMode,
+		uint32 MaterialMask);
+
+	template<typename TData, typename T1, typename T2>
+	static void ImportDataAssetImpl(
+		TData& Data,
+		const FVoxelVector& Position,
+		const FVoxelDataAssetData& AssetData,
+		// To set the default value when querying the asset
+		bool bSubtractive,
+		T1 GetValue = [] (float OldValue, float InstanceValue) { return OldValue; },
+		bool bSetMaterials = false,
+		T2 GetMaterial = [](float OldValue, float NewValue, FVoxelMaterial OldMaterial, float InstanceValue, FVoxelMaterial InstanceMaterial) { return OldMaterial; });
 	
 	/**
 	 * Add a voxel asset to the world: can be a data asset (eg imported from a mesh), or a graph asset
@@ -253,16 +287,28 @@ public:
 		bool bConvertToVoxelSpace = true,
 		bool bHideLatentWarnings = false);
 public:
+	static void InvertDataAssetImpl(
+		const FVoxelDataAssetData& AssetData,
+		FVoxelDataAssetData& InvertedAssetData);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools")
 	static void InvertDataAsset(UVoxelDataAsset* Asset, UVoxelDataAsset*& InvertedAsset);
 	
 public:
+	static void SetDataAssetMaterialImpl(
+		const FVoxelDataAssetData& AssetData,
+		FVoxelDataAssetData& NewAssetData,
+		FVoxelMaterial Material);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools")
 	static void SetDataAssetMaterial(UVoxelDataAsset* Asset, UVoxelDataAsset*& NewAsset, FVoxelMaterial Material);
 
 public:
+	static void CreateDataAssetFromWorldSectionImpl(
+		const FVoxelData& Data,
+		const FVoxelIntBox& Bounds,
+		bool bCopyMaterials,
+		FVoxelDataAssetData& AssetData);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Asset Tools", meta = (DefaultToSelf = "World"))
 	static UVoxelDataAsset* CreateDataAssetFromWorldSection(

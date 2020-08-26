@@ -125,7 +125,7 @@ bool FVoxelVDBAssetData::LoadVDB(const FString& Path, FString& OutError, const T
 	VOXEL_FUNCTION_COUNTER();
 
 	OutError = "Importing VDBs requires Voxel Plugin Pro";
-	FVoxelMessages::ShowVoxelPluginProError(OutError);
+	FVoxelMessages::Info(OutError);
 	return false;
 }
 
@@ -134,7 +134,7 @@ bool FVoxelVDBAssetData::SaveVDB(const FString& Path, FString& OutError) const
 	VOXEL_FUNCTION_COUNTER();
 
 	OutError = "Exporting VDBs requires Voxel Plugin Pro";
-	FVoxelMessages::ShowVoxelPluginProError(OutError);
+	FVoxelMessages::Info(OutError);
 	return false;
 }
 

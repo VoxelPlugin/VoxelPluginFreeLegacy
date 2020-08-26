@@ -96,6 +96,37 @@ public:
 			}
 		}
 	}
+	static void ApplyTerraceImpl(
+		TArray<FVoxelSurfaceEditsVoxel>& Voxels,
+		const int32 TerraceHeightInVoxels,
+		const float Angle,
+		const int32 ImmutableVoxels)
+	{
+		VOXEL_TOOL_FUNCTION_COUNTER(Voxels.Num());
+		
+		if (!ensure(TerraceHeightInVoxels >= 1)) return;
+		const float AngleLimit = FMath::DegreesToRadians(Angle);
+
+		int32 NewNum = 0;
+		for (auto& Voxel : Voxels)
+		{
+			const int32 RelativePosition = FVoxelUtilities::PositiveMod(Voxel.Position.Z, TerraceHeightInVoxels);
+			if (RelativePosition < ImmutableVoxels) continue;
+			
+			const float VoxelAngle = FMath::Acos(Voxel.Normal.Z); // Dot product with UpVector. 0 when facing up, PI when facing down
+			ensure(VoxelAngle >= 0);
+			if (AngleLimit < VoxelAngle) continue;
+
+			// We want 1 went facing up, 0 when facing > angle limit
+			const float Strength = FMath::Max((AngleLimit - VoxelAngle) / AngleLimit, 0.f);
+
+			auto NewVoxel = Voxel;
+			NewVoxel.Strength *= Strength;
+			Voxels[NewNum++] = NewVoxel;
+		}
+		check(NewNum <= Voxels.Num());
+		Voxels.SetNum(NewNum, false);
+	}
 	static void ApplyFlattenImpl(
 		const FVoxelSurfaceEditsVoxelsInfo& Info,
 		TArray<FVoxelSurfaceEditsVoxel>& Voxels,

@@ -25,6 +25,16 @@ AVoxelDisableEditsBox::AVoxelDisableEditsBox()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+void AVoxelDisableEditsBox::AddItemToWorld(AVoxelWorld* World) const
+{
+	check(World);
+
+	FVoxelDisableEditsBoxItemReference Reference;
+	UVoxelAssetTools::AddDisableEditsBox(
+		Reference,
+		World,
+		GetBox(World));
+}
 
 FVoxelIntBox AVoxelDisableEditsBox::GetBox(AVoxelWorld* World) const
 {
@@ -53,8 +63,6 @@ void AVoxelDisableEditsBox::BeginPlay()
 
 void AVoxelDisableEditsBox::Tick(float DeltaTime)
 {
-	FVoxelMessages::ShowVoxelPluginProError("Disable Edits Box requires Voxel Plugin Pro");
-
 	if (PreviewWorld)
 	{
 		if (VoxelSize != PreviewWorld->VoxelSize || WorldLocation != PreviewWorld->GetActorLocation())

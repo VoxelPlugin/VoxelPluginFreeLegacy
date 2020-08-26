@@ -21,4 +21,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Placeable Item Actor Settings")
 	bool bOnlyImportIntoPreviewWorld = true;
 
+	virtual void AddItemToWorld(AVoxelWorld* World) const { unimplemented(); }
+	virtual int32 GetPriority() const { return 0; }
 };

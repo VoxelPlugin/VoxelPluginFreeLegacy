@@ -157,6 +157,7 @@ FVoxelIntBoxWithValidity UVoxelSurfaceTool::DoEdit()
 
 	if (ShouldUseMask())
 	{
+		FVoxelMessages::Info("Using masks requires the Pro version of Voxel Plugin");
 	}
 
 	const FVoxelHardnessHandler HardnessHandler(*GetVoxelWorld());
@@ -220,14 +221,6 @@ FVoxelIntBoxWithValidity UVoxelSurfaceTool::DoEdit()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-bool UVoxelSurfaceTool::GetMaskData(bool bShowNotification, TVoxelTexture<float>& OutTexture, float& OutScaleX, float& OutScaleY)
-{
-	if (bShowNotification)
-	{
-		FVoxelMessages::ShowVoxelPluginProError("Using masks requires the Pro version of Voxel Plugin");
-	}
-	return false;
-}
 
 bool UVoxelSurfaceTool::ShouldUseMask() const
 {

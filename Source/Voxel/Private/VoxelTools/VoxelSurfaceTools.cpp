@@ -451,7 +451,14 @@ FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyStrengthMask(
 	EVoxelSamplerMode SamplerMode,
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_PRO_ONLY();
+	FVoxelMessages::Info(FUNCTION_ERROR("Masks require Voxel Plugin Pro"));
+	
+	return
+	{
+		"ApplyStrengthMask",
+		EVoxelSurfaceEditsStackElementFlags::None,
+		[=](auto& Info, auto& Voxels) {}
+	};
 }
 
 void UVoxelSurfaceTools::GetStrengthMaskScale(
@@ -463,7 +470,7 @@ void UVoxelSurfaceTools::GetStrengthMaskScale(
 	float SizeY, 
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Masks require Voxel Plugin Pro"));
 }
 
 FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyTerrace(
@@ -471,7 +478,21 @@ FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyTerrace(
 	float Angle,
 	int32 ImmutableVoxels)
 {
-	VOXEL_PRO_ONLY();
+	if (TerraceHeightInVoxels < 1)
+	{
+		FVoxelMessages::Error("TerraceHeightInVoxels must be >= 1");
+		return {};
+	}
+	
+	return
+	{
+		"ApplyTerrace",
+		EVoxelSurfaceEditsStackElementFlags::NeedNormals,
+		[=](auto& Info, auto& Voxels)
+		{
+			FVoxelSurfaceToolsImpl::ApplyTerraceImpl(Voxels, TerraceHeightInVoxels, Angle, ImmutableVoxels);
+		}
+	};
 }
 
 FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyFlatten(

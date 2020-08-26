@@ -90,6 +90,10 @@ public:
 public:
 	AVoxelAssetActor();
 
+	//~ Begin AVoxelPlaceableItemActor Interface
+	virtual void AddItemToWorld(AVoxelWorld* World) const override;
+	virtual int32 GetPriority() const override;
+	//~ End AVoxelPlaceableItemActor Interface
 	
 	// If VoxelWorldData is null, will only return the bounds
 	FVoxelIntBox AddItemToData(

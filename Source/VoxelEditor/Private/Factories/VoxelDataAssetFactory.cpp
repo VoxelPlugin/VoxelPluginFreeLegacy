@@ -54,7 +54,7 @@ UVoxelDataAssetFromMeshImporterFactory::UVoxelDataAssetFromMeshImporterFactory()
 
 UObject* UVoxelDataAssetFromMeshImporterFactory::FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
-	FVoxelMessages::ShowVoxelPluginProError("Mesh Importer requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Converting meshes to voxels requires Voxel Plugin Pro");
 	return nullptr;
 }
 
@@ -178,7 +178,7 @@ bool UVoxelDataAssetFromMagicaVoxFactory::FactoryCanImport(const FString& Filena
 
 UObject* UVoxelDataAssetFromMagicaVoxFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
-	FVoxelMessages::ShowVoxelPluginProError("MagicaVox Importer requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Importing MagicaVox assets requires Voxel Plugin Pro");
 	return nullptr;
 }
 
@@ -211,7 +211,7 @@ void UVoxelDataAssetFromMagicaVoxFactory::SetReimportPaths(UObject* Obj, const T
 
 EReimportResult::Type UVoxelDataAssetFromMagicaVoxFactory::Reimport(UObject* Obj)
 {
-	FVoxelMessages::ShowVoxelPluginProError("Mesh Importer requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Converting meshes to voxels requires Voxel Plugin Pro");
 	return EReimportResult::Failed;
 }
 
@@ -238,7 +238,7 @@ bool UVoxelDataAssetFromRawVoxFactory::FactoryCanImport(const FString& Filename)
 
 UObject* UVoxelDataAssetFromRawVoxFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
-	FVoxelMessages::ShowVoxelPluginProError("RawVox requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Importing RawVox assets requires Voxel Plugin Pro");
 	return nullptr;
 }
 
@@ -265,7 +265,7 @@ void UVoxelDataAssetFromRawVoxFactory::SetReimportPaths(UObject* Obj, const TArr
 
 EReimportResult::Type UVoxelDataAssetFromRawVoxFactory::Reimport(UObject* Obj)
 {
-	FVoxelMessages::ShowVoxelPluginProError("RawVox requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Importing RawVox assets requires Voxel Plugin Pro");
 	return EReimportResult::Failed;
 }
 

@@ -148,7 +148,7 @@ void FVoxelGraphEditorToolkit::UnregisterTabSpawners(const TSharedRef<class FTab
 
 void FVoxelGraphEditorToolkit::InitVoxelEditor(const EToolkitMode::Type Mode, const TSharedPtr< class IToolkitHost >& InitToolkitHost, UObject* ObjectToEdit)
 {
-	FVoxelMessages::ShowVoxelPluginProError("You can view and edit Voxel Graphs, but running them requires Voxel Plugin Pro");
+	FVoxelMessages::Info("You can view and edit Voxel Graphs, but running them requires Voxel Plugin Pro");
 	
 	WorldGenerator = CastChecked<UVoxelGraphGenerator>(ObjectToEdit);
 
@@ -651,7 +651,6 @@ FAdvancedPreviewScene* FVoxelGraphEditorToolkit::GetPreviewScene() const
 
 void FVoxelGraphEditorToolkit::DebugNodes(const TSet<FVoxelCompilationNode*>& Nodes)
 {
-	FVoxelMessages::ShowVoxelPluginProError("DebugNodes requires Voxel Plugin Pro");
 }
 
 inline EMessageSeverity::Type VoxelMessageTypeToMessageSeverity(EVoxelGraphNodeMessageType Type)
@@ -714,7 +713,6 @@ void FVoxelGraphEditorToolkit::SaveAsset_Execute()
 {
 	if (WorldGenerator->bCompileToCppOnSave)
 	{
-		FVoxelMessages::ShowVoxelPluginProError("Compiling graphs to C++ requires Voxel Plugin Pro");
 	}
 
 	// Make sure to save AFTER compile to cpp to avoid dirtying it again
@@ -1632,7 +1630,7 @@ void FVoxelGraphEditorToolkit::RecreateNodes()
 
 void FVoxelGraphEditorToolkit::CompileToCpp()
 {
-	FVoxelMessages::ShowVoxelPluginProError("Compiling graphs to C++ requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Compiling graphs to C++ requires Voxel Plugin Pro");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1654,7 +1652,7 @@ void FVoxelGraphEditorToolkit::UpdatePreview(EVoxelGraphPreviewFlags Flags)
 
 	if (EnumHasAnyFlags(Flags, EVoxelGraphPreviewFlags::ManualPreview))
 	{
-		FVoxelMessages::ShowVoxelPluginProError("You can view and edit Voxel Graphs, but running and previewing them requires Voxel Plugin Pro");
+		FVoxelMessages::Info("You can view and edit Voxel Graphs, but running and previewing them requires Voxel Plugin Pro");
 	}
 }
 
@@ -1678,7 +1676,6 @@ void FVoxelGraphEditorToolkit::ShowAxisDependencies()
 {
 	FVoxelGraphErrorReporter::ClearNodesMessages(WorldGenerator);
 	
-	FVoxelMessages::ShowVoxelPluginProError("ShowAxisDependencies requires Voxel Plugin Pro");
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -489,5 +489,5 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 
 void FVoxelWorldDetails::BakeWorld(AVoxelWorld& World)
 {
-	FVoxelMessages::ShowVoxelPluginProError("Baking to static mesh requires Voxel Plugin Pro");
+	FVoxelMessages::Info("Baking to static mesh requires Voxel Plugin Pro");
 }

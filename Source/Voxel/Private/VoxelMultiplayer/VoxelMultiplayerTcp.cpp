@@ -14,12 +14,14 @@
 
 bool UVoxelMultiplayerTcpInterface::ConnectToServer(FString& OutError, const FString& Ip, int32 Port)
 {
-	VOXEL_PRO_ONLY();
+	FVoxelMessages::Info(FUNCTION_ERROR("Multiplayer with TCP sockets is only available in Voxel Plugin Pro"));
+	return false;
 }
 
 bool UVoxelMultiplayerTcpInterface::StartServer(FString& OutError, const FString& Ip, int32 Port)
 {
-	VOXEL_PRO_ONLY();
+	FVoxelMessages::Info(FUNCTION_ERROR("Multiplayer with TCP sockets is only available in Voxel Plugin Pro"));
+	return false;
 }
 
 

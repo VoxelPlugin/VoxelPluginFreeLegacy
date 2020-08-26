@@ -156,7 +156,6 @@ private:
 	UPROPERTY(Transient)
 	UTexture2D* MaskWorldGeneratorCache_RenderTexture = nullptr;
 
-	bool GetMaskData(bool bShowNotification, TVoxelTexture<float>& OutTexture, float& OutScaleX, float& OutScaleY);
 	bool ShouldUseMask() const;
 
 	void GetStrengths(float& OutSignedSculptStrength, float& OutSignedPaintStrength) const;

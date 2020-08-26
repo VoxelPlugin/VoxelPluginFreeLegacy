@@ -164,7 +164,46 @@ FVoxelMeshImporterSettings::FVoxelMeshImporterSettings(const FVoxelMeshImporterS
 
 void UVoxelMeshImporterLibrary::CreateMeshDataFromStaticMesh(UStaticMesh* StaticMesh, FVoxelMeshImporterInputData& Data)
 {
-	VOXEL_PRO_ONLY_VOID();
+	VOXEL_FUNCTION_COUNTER();
+
+	check(StaticMesh);
+	Data.Vertices.Reset();
+	Data.Triangles.Reset();
+	Data.UVs.Reset();
+	
+	const int32 LOD = 0;
+	TArray<uint32> Indices;
+
+	GetMergedSectionFromStaticMesh(StaticMesh, LOD, Data.Vertices, Indices, Data.UVs);
+	
+	const auto Get = [](auto& Array, auto Index) -> auto&
+	{
+#if VOXEL_DEBUG
+		return Array[Index];
+#else
+		return Array.GetData()[Index];
+#endif
+	};
+
+	for (uint32 Index : Indices)
+	{
+		if (Index >= uint32(Data.Vertices.Num()))
+		{
+			FVoxelMessages::Error(FUNCTION_ERROR("Invalid index buffer"));
+			Data = {};
+			return;
+		}
+	}
+	
+	ensure(Indices.Num() % 3 == 0);
+	Data.Triangles.SetNumUninitialized(Indices.Num() / 3);
+	for (int32 Index = 0; Index < Data.Triangles.Num(); Index++)
+	{
+		Get(Data.Triangles, Index) = FIntVector(
+			Get(Indices, 3 * Index + 0),
+			Get(Indices, 3 * Index + 1),
+			Get(Indices, 3 * Index + 2));
+	}
 }
 
 bool UVoxelMeshImporterLibrary::ConvertMeshToVoxels(
@@ -177,7 +216,8 @@ bool UVoxelMeshImporterLibrary::ConvertMeshToVoxels(
 	FIntVector& OutOffset,
 	int32& OutNumLeaks)
 {
-	VOXEL_PRO_ONLY();
+	FVoxelMessages::Info(FUNCTION_ERROR("Converting meshes to voxels require Voxel Plugin Pro"));
+	return false;
 }
 
 void UVoxelMeshImporterLibrary::ConvertMeshToDistanceField(
@@ -194,12 +234,21 @@ void UVoxelMeshImporterLibrary::ConvertMeshToDistanceField(
 	bool bMultiThreaded,
 	int32 MaxPasses_Debug)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Converting meshes to voxels require Voxel Plugin Pro"));
 }
 
 UVoxelMeshImporterInputData* UVoxelMeshImporterLibrary::CreateMeshDataFromStaticMesh(UStaticMesh* StaticMesh)
 {
-	VOXEL_PRO_ONLY();
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!StaticMesh)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid StaticMesh"));
+		return nullptr;
+	}
+	auto* Object = NewObject<UVoxelMeshImporterInputData>(GetTransientPackage());
+	CreateMeshDataFromStaticMesh(StaticMesh, Object->Data);
+	return Object;
 }
 
 UTextureRenderTarget2D* UVoxelMeshImporterLibrary::CreateTextureFromMaterial(
@@ -208,7 +257,32 @@ UTextureRenderTarget2D* UVoxelMeshImporterLibrary::CreateTextureFromMaterial(
 	int32 Width,
 	int32 Height)
 {
-	VOXEL_PRO_ONLY();
+	VOXEL_FUNCTION_COUNTER();
+	
+	if (!WorldContextObject)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid WorldContextObject"));
+		return nullptr;
+	}
+	if (!Material)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid Material"));
+		return nullptr;
+	}
+	if (Width <= 0)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Width <= 0"));
+		return nullptr;
+	}
+	if (Height <= 0)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Height <= 0"));
+		return nullptr;
+	}
+
+	UTextureRenderTarget2D* RenderTarget2D = UKismetRenderingLibrary::CreateRenderTarget2D(WorldContextObject, Width, Height, ETextureRenderTargetFormat::RTF_RGBA8);
+	UKismetRenderingLibrary::DrawMaterialToRenderTarget(WorldContextObject, RenderTarget2D, Material);
+	return RenderTarget2D;
 }
 
 void UVoxelMeshImporterLibrary::ConvertMeshToVoxels(
@@ -221,7 +295,7 @@ void UVoxelMeshImporterLibrary::ConvertMeshToVoxels(
 	UVoxelDataAsset*& Asset,
 	int32& NumLeaks)
 {
-	VOXEL_PRO_ONLY_VOID();
+	FVoxelMessages::Info(FUNCTION_ERROR("Converting meshes to voxels require Voxel Plugin Pro"));
 }
 
 void UVoxelMeshImporterLibrary::ConvertMeshToVoxels_NoMaterials(
