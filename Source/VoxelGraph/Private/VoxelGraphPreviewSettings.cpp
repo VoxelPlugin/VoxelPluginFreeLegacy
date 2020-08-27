@@ -55,29 +55,32 @@ void UVoxelGraphPreviewSettings::PostEditChangeProperty(FPropertyChangedEvent& P
 
 	// Don't let the previewed voxel go out of the bounds
 	PreviewedVoxel = Wrapper.Bounds.Clamp(PreviewedVoxel);
-	
-	const bool bAutomatic = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("Automatic"));
-	const bool bUpdateItems = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("UpdateItems"));
-	const bool bMeshOnly = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("MeshOnly"));
-	
-	if (Graph && PropertyChangedEvent.MemberProperty && (!bAutomatic || PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive))
-	{
-		EVoxelGraphPreviewFlags Flags = EVoxelGraphPreviewFlags::None;
-		if (!bAutomatic)
-		{
-			Flags |= EVoxelGraphPreviewFlags::ManualPreview;
-		}
-		Flags |= EVoxelGraphPreviewFlags::UpdateMeshSettings;
-		if (!bMeshOnly)
-		{
-			Flags |= EVoxelGraphPreviewFlags::UpdateTextures;
-		}
-		if (bUpdateItems)
-		{
-			Flags |= EVoxelGraphPreviewFlags::UpdatePlaceableItems;
-		}
 
-		IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, Flags);
+	if (Graph && PropertyChangedEvent.MemberProperty)
+	{
+		const bool bAutomatic = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("Automatic"));
+		const bool bUpdateItems = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("UpdateItems"));
+		const bool bMeshOnly = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("MeshOnly"));
+
+		if (!bAutomatic || PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
+		{
+			EVoxelGraphPreviewFlags Flags = EVoxelGraphPreviewFlags::None;
+			if (!bAutomatic)
+			{
+				Flags |= EVoxelGraphPreviewFlags::ManualPreview;
+			}
+			Flags |= EVoxelGraphPreviewFlags::UpdateMeshSettings;
+			if (!bMeshOnly)
+			{
+				Flags |= EVoxelGraphPreviewFlags::UpdateTextures;
+			}
+			if (bUpdateItems)
+			{
+				Flags |= EVoxelGraphPreviewFlags::UpdatePlaceableItems;
+			}
+
+			IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, Flags);
+		}
 	}
 }
 #endif
