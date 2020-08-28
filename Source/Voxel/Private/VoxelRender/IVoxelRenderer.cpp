@@ -63,6 +63,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, bHalfPrecisionCoordinates(InWorld->bHalfPrecisionCoordinates)
 	, bInterpolateColors(InWorld->bInterpolateColors)
 	, bInterpolateUVs(InWorld->bInterpolateUVs)
+	, bSRGBColors(InWorld->bSRGBColors)
 
 	, bRenderWorld(InWorld->bRenderWorld)
 

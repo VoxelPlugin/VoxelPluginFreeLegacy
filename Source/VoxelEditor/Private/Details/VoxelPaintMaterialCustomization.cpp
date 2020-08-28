@@ -118,12 +118,11 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 	}
 
 	// Make sure to do that after possibly editing the type
-	const FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([&CustomizationUtils]()
+	const FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([PropertyUtilities = MakeWeakPtr(CustomizationUtils.GetPropertyUtilities())]()
 	{
-		auto Utilities = CustomizationUtils.GetPropertyUtilities();
-		if (Utilities.IsValid())
+		if (PropertyUtilities.IsValid())
 		{
-			Utilities->ForceRefresh();
+			PropertyUtilities.Pin()->ForceRefresh();
 		}
 	});
 	TypeHandle->SetOnPropertyValueChanged(RefreshDelegate);
@@ -172,8 +171,30 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 	if (Type == EVoxelPaintMaterialType::Color)
 	{
 		const auto ColorHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, Color);
+		const auto UseLinearColorHandle = GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, bUseLinearColor);
+
+		UseLinearColorHandle->SetOnPropertyValueChanged(RefreshDelegate);
 		
-		auto& Color = AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, Color));
+		auto& UseLinearColor = AddProperty(UseLinearColorHandle);
+
+		bool bUseLinearColor = false;
+		if (UseLinearColorHandle->GetValue(bUseLinearColor) == FPropertyAccess::Success)
+		{
+			if (bUseLinearColor)
+			{
+				auto& LinearColor = AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, LinearColor));
+			}
+			else
+			{
+				auto& Color = AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, Color));
+			}
+		}
+		else
+		{
+			auto& LinearColor = AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, LinearColor));
+			auto& Color = AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, Color));
+		}
+		
 		auto& PaintR = AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, bPaintR));
 		auto& PaintG = AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, bPaintG));
 		auto& PaintB = AddProperty(GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, bPaintB));

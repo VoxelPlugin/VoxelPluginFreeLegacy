@@ -7,14 +7,28 @@
 FORCEINLINE int32 AddVertexToBuffer(
 	const FVoxelMesherVertex& Vertex,
 	FVoxelChunkMeshBuffers& Buffer, 
-	bool bRenderWorld,
+	const FVoxelRendererSettings& Settings,
 	EVoxelMaterialConfig MaterialConfig,
 	const FColor* Color = nullptr,
 	const FVector2D* UV = nullptr)
 {
 	const int32 Index = Buffer.Positions.Emplace(Vertex.Position);
-	if (bRenderWorld)
+	if (Settings.bRenderWorld)
 	{
+		const auto GetColor = [&](FColor InColor)
+		{
+			if (Settings.bSRGBColors)
+			{
+				// Convert the color from SRGB to linear
+				return FLinearColor(InColor).ToFColor(false);
+			}
+			else
+			{
+				// Use as-is
+				return InColor;
+			}
+		};
+		
 		Buffer.Normals.Emplace(Vertex.Normal);
 		Buffer.Tangents.Emplace(Vertex.Tangent);
 		Buffer.TextureCoordinates[0].Emplace(Vertex.TextureCoordinate);
@@ -22,14 +36,14 @@ FORCEINLINE int32 AddVertexToBuffer(
 		if (MaterialConfig == EVoxelMaterialConfig::MultiIndex)
 		{
 			check(Color && UV);
-			Buffer.Colors.Emplace(*Color);
+			Buffer.Colors.Emplace(GetColor(*Color));
 			Buffer.TextureCoordinates[1].Emplace(*UV);
 			if (VOXEL_MATERIAL_ENABLE_UV2) Buffer.TextureCoordinates[2].Emplace(Vertex.Material.GetUV_AsFloat(2));
 			if (VOXEL_MATERIAL_ENABLE_UV3) Buffer.TextureCoordinates[3].Emplace(Vertex.Material.GetUV_AsFloat(3));
 		}
 		else
 		{
-			Buffer.Colors.Emplace(Vertex.Material.GetColor());
+			Buffer.Colors.Emplace(GetColor(Vertex.Material.GetColor()));
 			if (VOXEL_MATERIAL_ENABLE_UV0) Buffer.TextureCoordinates[1].Emplace(Vertex.Material.GetUV_AsFloat(0));
 			if (VOXEL_MATERIAL_ENABLE_UV1) Buffer.TextureCoordinates[2].Emplace(Vertex.Material.GetUV_AsFloat(1));
 			if (VOXEL_MATERIAL_ENABLE_UV2) Buffer.TextureCoordinates[3].Emplace(Vertex.Material.GetUV_AsFloat(2));
@@ -42,13 +56,13 @@ FORCEINLINE int32 AddVertexToBuffer(
 inline void ReserveBuffer(
 	FVoxelChunkMeshBuffers& Buffer,
 	int32 Num,
-	bool bRenderWorld,
+	const FVoxelRendererSettings& Settings,
 	EVoxelMaterialConfig MaterialConfig)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	Buffer.Positions.Reserve(Num);
-	if (bRenderWorld)
+	if (Settings.bRenderWorld)
 	{
 		Buffer.Normals.Reserve(Num);
 		Buffer.Tangents.Reserve(Num);
@@ -169,10 +183,10 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 
 		Buffers.Indices = MoveTemp(Indices);
 
-		ReserveBuffer(Buffers, Vertices.Num(), Settings.bRenderWorld, EVoxelMaterialConfig::RGB);
+		ReserveBuffer(Buffers, Vertices.Num(), Settings, EVoxelMaterialConfig::RGB);
 		for (auto& Vertex : Vertices)
 		{
-			AddVertexToBuffer(Vertex, Buffers, Settings.bRenderWorld, EVoxelMaterialConfig::RGB);
+			AddVertexToBuffer(Vertex, Buffers, Settings, EVoxelMaterialConfig::RGB);
 		}
 	}
 	else if (Settings.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
@@ -204,7 +218,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 			FVoxelChunkMeshBuffers& Buffer = Chunk->FindOrAddBuffer(MaterialIndices, bAdded);
 			if (bAdded)
 			{
-				ReserveBuffer(Buffer, Vertices.Num(), Settings.bRenderWorld, EVoxelMaterialConfig::SingleIndex);
+				ReserveBuffer(Buffer, Vertices.Num(), Settings, EVoxelMaterialConfig::SingleIndex);
 			}
 			
 			TMap<int32, int32>& IndicesMap = IndicesMaps[MaterialIndexToUse];
@@ -218,7 +232,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 				}
 				else
 				{
-					FinalIndex = AddVertexToBuffer(Vertex, Buffer, Settings.bRenderWorld, EVoxelMaterialConfig::SingleIndex);
+					FinalIndex = AddVertexToBuffer(Vertex, Buffer, Settings, EVoxelMaterialConfig::SingleIndex);
 					IndicesMap.Add(Index, FinalIndex);
 				}
 				Buffer.Indices.Emplace(FinalIndex);
@@ -313,7 +327,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 				bool bAdded;
 				FVoxelChunkMeshBuffers& Buffer = Chunk->FindOrAddBuffer(VoxelMaterialIndices, bAdded);
 				check(bAdded);
-				ReserveBuffer(Buffer, Vertices.Num(), Settings.bRenderWorld, EVoxelMaterialConfig::MultiIndex);
+				ReserveBuffer(Buffer, Vertices.Num(), Settings, EVoxelMaterialConfig::MultiIndex);
 
 				return Buffer;
 			};
@@ -359,7 +373,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 
 				Color.A = Vertex.Material.GetMultiIndex_Wetness();
 				
-				AddVertexToBuffer(Vertex, Buffer, Settings.bRenderWorld, EVoxelMaterialConfig::MultiIndex, &Color, &UV);
+				AddVertexToBuffer(Vertex, Buffer, Settings, EVoxelMaterialConfig::MultiIndex, &Color, &UV);
 			}
 		}
 	}
