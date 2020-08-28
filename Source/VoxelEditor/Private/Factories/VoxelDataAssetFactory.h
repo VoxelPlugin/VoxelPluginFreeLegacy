@@ -54,6 +54,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Import configuration", meta = (EditCondition = bUsePalette))
 	FFilePath Palette;
 
+	// Set to true if the palette is stored in sRGB (LIKELY)
+	// If your colors are off (too bright), try setting it to false
+	UPROPERTY(EditAnywhere, Category = "Import configuration", meta = (EditCondition = bUsePalette, DisplayName = "sRGB Palette"))
+	bool bSRGBPalette = true;
+	
 	UVoxelDataAssetFromMagicaVoxFactory();
 
 	// UFactory interface

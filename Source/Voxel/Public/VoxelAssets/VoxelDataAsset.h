@@ -55,6 +55,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Import")
 	TArray<FString> Paths;
 
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Import")
+	bool bMagicaVoxPaletteSRGB = false;
+
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data Asset")
 	FIntVector GetSize() const

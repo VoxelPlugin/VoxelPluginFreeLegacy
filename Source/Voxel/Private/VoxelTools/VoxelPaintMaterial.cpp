@@ -12,7 +12,8 @@ void FVoxelPaintMaterial::ApplyToMaterial(FVoxelMaterial& Material, float Streng
 	{
 	case EVoxelPaintMaterialType::Color:
 	{
-		FColor ColorToPaint = Color.Color;
+		// Note: the voxel colors are in linear space, even if they are stored in FColors
+		FColor ColorToPaint = Color.bUseLinearColor ? Color.LinearColor.ToFColor(false) : Color.Color;
 		if (Strength < 0)
 		{
 			Strength = -Strength;

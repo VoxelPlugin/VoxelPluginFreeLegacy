@@ -38,6 +38,16 @@ struct FVoxelPaintMaterialColor
 {
 	GENERATED_BODY()
 
+	// Set to true if you want to use the unreal color picker
+	// Set to false if you want to set the bytes manually
+	//
+	// The unreal color picker will write linear colors to LinearColor, and sRGB colors to Color
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	bool bUseLinearColor = true;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
+	FLinearColor LinearColor = FLinearColor::Transparent;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Voxel")
 	FColor Color = FColor::Transparent;
 	

@@ -306,6 +306,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender))
 	bool bInterpolateUVs = false;
 
+	// When ticked, will convert the color stored in the material (as a 4 bytes color) from sRGB to Linear
+	// However, since the target will still be 4 bytes, the conversion won't be perfect
+	// This is a limitation of vertex colors sadly
+	// NOTE: It is recommended to leave this off, and to tick bLinearColor when painting colors instead
+	// That way color operations are done in linear space, which is recommended
+	// NOTE: DO NOT enable in Multi Index, it will just mess up the blend parameters
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender, DisplayName = "sRGB Colors"))
+	bool bSRGBColors = false;
+	
 	//////////////////////////////////////////////////////////////////////////////
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Rendering", meta = (RecreateRender))

@@ -167,6 +167,7 @@ bool UVoxelDataAssetFromMagicaVoxFactory::ConfigureProperties()
 	// Save to default
 	GetMutableDefault<UVoxelDataAssetFromMagicaVoxFactory>()->bUsePalette = bUsePalette;
 	GetMutableDefault<UVoxelDataAssetFromMagicaVoxFactory>()->Palette = Palette;
+	GetMutableDefault<UVoxelDataAssetFromMagicaVoxFactory>()->bSRGBPalette = bSRGBPalette;
 
 	return bSuccess;
 }
