@@ -12,6 +12,7 @@
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
 #include "VoxelTools/VoxelAssetTools.h"
+#include "VoxelUtilities/VoxelConfigUtilities.h"
 
 #include "IDetailsView.h"
 #include "PropertyEditorModule.h"
@@ -204,6 +205,16 @@ void FVoxelDataAssetEditorToolkit::CreateInternalWidgets()
 			AVoxelWorld::StaticClass(),
 			FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldDetails::MakeDataAssetEditorInstance));
 		PreviewSettings->SetObject(&Manager->GetVoxelWorld());
+		PreviewSettings->OnFinishedChangingProperties().AddLambda([=](const FPropertyChangedEvent& Event)
+		{
+			if (Event.ChangeType != EPropertyChangeType::Interactive)
+			{
+				if (DataAsset->bUseSettingsAsDefault)
+				{
+					FVoxelConfigUtilities::SaveConfig(&Manager->GetVoxelWorld(), "VoxelDataAssetEditor.DefaultVoxelWorld");
+				}
+			}
+		});
 	}
 
 	{
@@ -357,6 +368,10 @@ void FVoxelDataAssetEditorToolkit::NotifyPostChange(const FPropertyChangedEvent&
 
 		DataAsset->PositionOffset = PositionOffset;
 		Manager->RecreateWorld();
+	}
+	else if (Name == GET_MEMBER_NAME_STATIC(UVoxelDataAsset, bUseSettingsAsDefault))
+	{
+		// Nothing to do
 	}
 	else
 	{

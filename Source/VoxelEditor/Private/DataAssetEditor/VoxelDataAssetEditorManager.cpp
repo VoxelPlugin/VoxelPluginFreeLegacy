@@ -10,6 +10,7 @@
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssets/VoxelDataAssetData.inl"
+#include "VoxelUtilities/VoxelConfigUtilities.h"
 #include "VoxelUtilities/VoxelExampleUtilities.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 #include "VoxelSettings.h"
@@ -31,6 +32,8 @@ FVoxelDataAssetEditorManager::FVoxelDataAssetEditorManager(UVoxelDataAsset* Data
 		NewWorld->MaterialCollection = FVoxelExampleUtilities::LoadExampleObject<UVoxelMaterialCollectionBase>(TEXT("/Voxel/Examples/Materials/Quixel/MC_Quixel"));
 		NewWorld->VoxelMaterial = FVoxelExampleUtilities::LoadExampleObject<UMaterialInterface>(TEXT("/Voxel/Examples/Materials/Quixel/MI_VoxelQuixel_FiveWayBlend_Inst"));
 
+		FVoxelConfigUtilities::LoadConfig(NewWorld, "VoxelDataAssetEditor.DefaultVoxelWorld");
+		
 		DataAsset->VoxelWorldTemplate = NewWorld;
 		DataAsset->MarkPackageDirty();
 	}

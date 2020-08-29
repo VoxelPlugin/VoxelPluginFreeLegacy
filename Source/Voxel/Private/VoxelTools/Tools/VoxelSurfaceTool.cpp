@@ -230,16 +230,18 @@ bool UVoxelSurfaceTool::ShouldUseMask() const
 void UVoxelSurfaceTool::GetStrengths(float& OutSignedSculptStrength, float& OutSignedPaintStrength) const
 {
 	const bool bIsStrideEnabled = Stride != 0;
+	const bool bUseDeltaTimeForSculpt = bModulateStrengthByDeltaTime && !bIsStrideEnabled;
+	const bool bUseDeltaTimeForPaint = bUseDeltaTimeForSculpt && PaintStrength < 1.f;
+
 	const float MovementStrengthMultiplier = bMovementAffectsStrength ? GetMouseMovementSize() / 100 : 1;
-	const float DeltaTimeMultiplier = bIsStrideEnabled ? 1.f : GetDeltaTime();
 	const float RadiusMultiplier = bIsStrideEnabled ? SharedConfig->BrushSize / 2.f / GetVoxelWorld()->VoxelSize : 1.f;
 
 	// Default paint/sculpt strengths are too low to feel good
 	const float SculptStrengthStaticMultiplier = bIsStrideEnabled ? 1.f : 50.f;
 	const float PaintStrengthStaticMultiplier = 10.f;
 	
-	const float ActualSculptStrength = SculptStrength * MovementStrengthMultiplier * DeltaTimeMultiplier * SculptStrengthStaticMultiplier * RadiusMultiplier;
-	const float ActualPaintStrength = PaintStrength * MovementStrengthMultiplier * DeltaTimeMultiplier * PaintStrengthStaticMultiplier;
+	const float ActualSculptStrength = SculptStrength * MovementStrengthMultiplier * (bUseDeltaTimeForSculpt ? GetDeltaTime() : 1.f) * SculptStrengthStaticMultiplier * RadiusMultiplier;
+	const float ActualPaintStrength = PaintStrength * MovementStrengthMultiplier * (bUseDeltaTimeForPaint ? GetDeltaTime() : 1.f) * PaintStrengthStaticMultiplier;
 
 	const bool bAlternativeMode = GetTickData().IsAlternativeMode();
 	OutSignedSculptStrength = ActualSculptStrength * (bAlternativeMode ? -1 : 1);

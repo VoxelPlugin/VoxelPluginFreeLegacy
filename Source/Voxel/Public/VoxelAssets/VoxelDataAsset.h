@@ -55,9 +55,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Import")
 	TArray<FString> Paths;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Import")
-	bool bMagicaVoxPaletteSRGB = false;
-
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data Asset")
 	FIntVector GetSize() const
@@ -127,6 +124,10 @@ public:
 
 public:
 #if WITH_EDITORONLY_DATA
+	// If true, new data assets will be created with these preview settings
+	UPROPERTY(EditAnywhere, Category = "Preview Settings")
+	bool bUseSettingsAsDefault = true;
+	
 	UPROPERTY()
 	AVoxelWorld* VoxelWorldTemplate;
 #endif

@@ -113,6 +113,11 @@ public:
 	// If false, align the tool to the mouse movement
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "!bAlignToMovement"))
 	FRotator FixedDirection = FRotator::ZeroRotator;
+
+	// If true, strength will be modulated by the time since the last edit so that the results don't depend on the framerate
+	// Automatically turned off if Stride > 0, or if paint strength = 1
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
+	bool bModulateStrengthByDeltaTime = true;
 	
 public:
 	UPROPERTY(Category = "Falloff", EditAnywhere, BlueprintReadWrite)
