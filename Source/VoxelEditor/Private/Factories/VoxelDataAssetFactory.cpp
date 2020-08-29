@@ -74,104 +74,6 @@ UVoxelDataAssetFromMagicaVoxFactory::UVoxelDataAssetFromMagicaVoxFactory()
 	Formats.Add(TEXT("vox;Magica Voxel Asset"));
 }
 
-bool UVoxelDataAssetFromMagicaVoxFactory::ConfigureProperties()
-{
-	// Load from default
-	bUsePalette = GetDefault<UVoxelDataAssetFromMagicaVoxFactory>()->bUsePalette;
-	Palette = GetDefault<UVoxelDataAssetFromMagicaVoxFactory>()->Palette;
-
-	TSharedRef<SWindow> PickerWindow = SNew(SWindow)
-		.Title(VOXEL_LOCTEXT("Import Magica Vox"))
-		.SizingRule(ESizingRule::Autosized);
-
-	bool bSuccess = false;
-
-	auto OnOkClicked = FOnClicked::CreateLambda([&]() 
-	{
-		bSuccess = true;
-		PickerWindow->RequestDestroyWindow();
-		return FReply::Handled();
-	});
-	auto OnCancelClicked = FOnClicked::CreateLambda([&]() 
-	{
-		bSuccess = false;
-		PickerWindow->RequestDestroyWindow();
-		return FReply::Handled();
-	});
-	
-	FPropertyEditorModule& PropertyEditorModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-	FDetailsViewArgs DetailsViewArgs(false, false, false, FDetailsViewArgs::HideNameArea);
-
-	auto DetailsPanel = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
-	DetailsPanel->SetObject(this);
-
-	auto Widget =
-		SNew(SBorder)
-		.Visibility(EVisibility::Visible)
-		.BorderImage(FEditorStyle::GetBrush("Menu.Background"))
-		[
-			SNew(SBox)
-			.Visibility(EVisibility::Visible)
-			.WidthOverride(520.0f)
-			[
-				SNew(SVerticalBox)
-				+SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					DetailsPanel
-				]
-				+SVerticalBox::Slot()
-				.AutoHeight()
-				.HAlign(HAlign_Right)
-				.VAlign(VAlign_Bottom)
-				.Padding(8)
-				[
-					SNew(SUniformGridPanel)
-					.SlotPadding(FEditorStyle::GetMargin("StandardDialog.SlotPadding"))
-					+ SUniformGridPanel::Slot(0, 0)
-					[
-						SNew(SButton)
-						.Text(VOXEL_LOCTEXT("Create"))
-						.HAlign(HAlign_Center)
-						.Visibility(TAttribute<EVisibility>::Create(TAttribute<EVisibility>::FGetter::CreateLambda([&]()
-						{
-							if (bUsePalette && Palette.FilePath.IsEmpty())
-							{
-								return EVisibility::Hidden;
-							}
-							return EVisibility::Visible;
-						})))
-						.ContentPadding(FEditorStyle::GetMargin("StandardDialog.ContentPadding"))
-						.OnClicked(OnOkClicked)
-						.ButtonStyle(FEditorStyle::Get(), "FlatButton.Success")
-						.TextStyle(FEditorStyle::Get(), "FlatButton.DefaultTextStyle")
-					]
-					+SUniformGridPanel::Slot(1,0)
-					[
-						SNew(SButton)
-						.Text(VOXEL_LOCTEXT("Cancel"))
-						.HAlign(HAlign_Center)
-						.ContentPadding(FEditorStyle::GetMargin("StandardDialog.ContentPadding"))
-						.OnClicked(OnCancelClicked)
-						.ButtonStyle(FEditorStyle::Get(), "FlatButton.Default")
-						.TextStyle(FEditorStyle::Get(), "FlatButton.DefaultTextStyle")
-					]
-				]
-			]
-		];
-
-	PickerWindow->SetContent(Widget);
-
-	GEditor->EditorAddModalWindow(PickerWindow);
-
-	// Save to default
-	GetMutableDefault<UVoxelDataAssetFromMagicaVoxFactory>()->bUsePalette = bUsePalette;
-	GetMutableDefault<UVoxelDataAssetFromMagicaVoxFactory>()->Palette = Palette;
-	GetMutableDefault<UVoxelDataAssetFromMagicaVoxFactory>()->bSRGBPalette = bSRGBPalette;
-
-	return bSuccess;
-}
-
 bool UVoxelDataAssetFromMagicaVoxFactory::FactoryCanImport(const FString& Filename)
 {
 	return FPaths::GetExtension(Filename) == TEXT("vox");
@@ -190,8 +92,7 @@ bool UVoxelDataAssetFromMagicaVoxFactory::CanReimport(UObject* Obj, TArray<FStri
 		if (Asset->Source == EVoxelDataAssetImportSource::MagicaVox)
 		{
 			OutFilenames = Asset->Paths;
-			// Else it will ask the user to choose a palette file
-			OutFilenames.RemoveAll([](auto& S) { return S.IsEmpty(); });
+			OutFilenames.SetNum(1);
 			return true;
 		}
 	}
@@ -203,10 +104,7 @@ void UVoxelDataAssetFromMagicaVoxFactory::SetReimportPaths(UObject* Obj, const T
 	if (auto* Asset = Cast<UVoxelDataAsset>(Obj))
 	{
 		Asset->Paths = NewReimportPaths;
-		if (NewReimportPaths.Num() == 1)
-		{
-			Asset->Paths.Add("");
-		}
+		ensure(Asset->Paths.Num() == 1);
 	}
 }
 

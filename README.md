@@ -19,4 +19,6 @@ It is compatible with 4.23, 4.24 and 4.25.
 
 Follow https://wiki.voxelplugin.com/Quick_Start#Using_the_Beta_.2F_Building_from_source
 
+Alternatively, you can grab the plugin binaries here: https://drive.google.com/drive/folders/1qzTSk_vdp-niSOmi3syL0yOAGiftvx3x
+
 ![](https://i.imgur.com/ZLNNTBQ.jpg)
