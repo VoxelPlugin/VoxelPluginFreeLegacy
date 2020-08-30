@@ -48,7 +48,8 @@ public:
 	static FVoxelSurfaceEditsVoxels FindSurfaceVoxelsFromDistanceFieldImpl(
 		FVoxelData& Data,
 		const FVoxelIntBox& Bounds,
-		bool bMultiThreaded);
+		bool bMultiThreaded,
+		EVoxelComputeDevice ComputeDevice);
 
 	static FVoxelSurfaceEditsVoxels FindSurfaceVoxels2DImpl(
 		FVoxelData& Data,
@@ -89,13 +90,15 @@ public:
 	 * @param	World			The voxel world
 	 * @param	Bounds			Bounds to look in
 	 * @param	bMultiThreaded	If true will multithread the CPU loops
+	 * @param	ComputeDevice	Whether to use the GPU or not
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "bMultiThreaded"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Surface Tools", meta = (DefaultToSelf = "World", AdvancedDisplay = "bMultiThreaded, ComputeDevice"))
 	static void FindSurfaceVoxelsFromDistanceField(
 		FVoxelSurfaceEditsVoxels& Voxels,
 		AVoxelWorld* World,
 		FVoxelIntBox Bounds,
-		bool bMultiThreaded = false);
+		bool bMultiThreaded = false,
+		EVoxelComputeDevice ComputeDevice = EVoxelComputeDevice::GPU);
 	
 	/**
 	 * Find voxels that are on the surface. Only keep the one with the surface right above them that are facing up. If 2 surface voxels have the same X Y, will only keep the one with the higher Z

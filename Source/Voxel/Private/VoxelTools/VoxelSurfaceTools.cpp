@@ -162,7 +162,8 @@ template VOXEL_API FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxel
 FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(
 	FVoxelData& Data,
 	const FVoxelIntBox& Bounds,
-	const bool bMultiThreaded)
+	const bool bMultiThreaded,
+	const EVoxelComputeDevice ComputeDevice)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 	
@@ -179,7 +180,7 @@ FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldI
 	TArray<float> Distances;
 	TArray<FVector> SurfacePositions;
 	FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(Size, Values, Distances, SurfacePositions);
-	FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions, EVoxelComputeDevice::GPU);
+	FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions, ComputeDevice);
 	FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(Size, SurfacePositions, Distances);
 	
 	VOXEL_ASYNC_SCOPE_COUNTER("Create OutVoxels");
@@ -287,10 +288,11 @@ void UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceField(
 	FVoxelSurfaceEditsVoxels& Voxels,
 	AVoxelWorld* World,
 	FVoxelIntBox Bounds,
-	bool bMultiThreaded)
+	bool bMultiThreaded,
+	EVoxelComputeDevice ComputeDevice)
 {
 	// TODO compute normals
-	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, Voxels = FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, bMultiThreaded));
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, Voxels = FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, bMultiThreaded, ComputeDevice));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

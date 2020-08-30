@@ -120,6 +120,10 @@ public:
 
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
 	bool bMultiThreaded = true;
+
+	// Which compute device to use when there's a choice
+	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
+	EVoxelComputeDevice ComputeDevice = EVoxelComputeDevice::GPU;
 	
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
 	bool bRegenerateSpawners = true;
@@ -133,6 +137,11 @@ public:
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
 	bool bDebug = false;
 
+	// This is used when calling ApplyTool
+	// We cannot use the app delta time as it's not deterministic
+	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, meta = (HideInPanel))
+	float FixedDeltaTime = 1.f / 60.f;
+	
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
 	UStaticMesh* PlaneMesh = nullptr;
 
@@ -173,7 +182,7 @@ public:
 public:
 	// Shared config allows to share some values across several tools, like the brush size or the paint material
 	// If not set, it will be created in EnableTool
-	UPROPERTY(BlueprintReadOnly, Transient, Category = "Voxel")
+	UPROPERTY(BlueprintReadOnly, Category = "Voxel")
 	UVoxelToolSharedConfig* SharedConfig = nullptr;
 	
 public:
@@ -191,8 +200,12 @@ public:
 	virtual AVoxelWorld* GetVoxelWorld() const { ensure(false); return nullptr; }
 	
 public:
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools")
-	void AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData);
+	DECLARE_DYNAMIC_DELEGATE_TwoParams(FDoEditDynamicOverride, FVector, Position, FVector, Normal);
+	DECLARE_DELEGATE_TwoParams(FDoEditOverride, FVector /* Position */, FVector /* Normal */);
+	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "DoEditOverride"))
+	void AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride);
+	void AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditOverride& DoEditOverride = {});
 
 	/**
 	 * Tick the tool
@@ -200,13 +213,22 @@ public:
 	 * @param	bEdit				Whether the user is pressing the edit button this frame
 	 * @param	Keys				The keys pressed this frame. Use MakeToolKeys. You can add additional values to the map if you have custom tools using them.
 	 * @param	Axes				The axes values in this frame, to control brush size/strength etc. Use MakeToolAxes. You can add additional values to the map if you have custom tools using them.
+	 * @param	DoEditOverride		If provided, the edit will not be done but this function will be called instead.
+	 *								Useful for multiplayer, as you can broadcast the parameters to the other players & call ApplyTool
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (AutoCreateRefTerm = "Keys, Axes"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "Keys, Axes, DoEditOverride"))
 	void SimpleTick(
 		APlayerController* PlayerController, 
 		bool bEdit, 
 		const TMap<FName, bool>& Keys, 
-		const TMap<FName, float>& Axes);
+		const TMap<FName, float>& Axes, 
+		const FDoEditDynamicOverride& DoEditOverride);
+	void SimpleTick(
+		APlayerController* PlayerController, 
+		bool bEdit,
+		const TMap<FName, bool>& Keys, 
+		const TMap<FName, float>& Axes, 
+		const FDoEditOverride& DoEditOverride = {});
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (AutoCreateRefTerm = "Keys, Axes", DefaultToSelf = "World"))
 	void Apply(
@@ -273,6 +295,8 @@ protected:
 		FVector Position;
 		FVector Normal;
 		bool bBlockingHit = false;
+
+		TFunction<void(FVector Position, FVector Normal)> DoEditOverride;
 	};
 	virtual void CallTool(AVoxelWorld* VoxelWorld, const FVoxelToolTickData& TickData, const FCallToolParameters& Parameters) {}
 
