@@ -26,6 +26,10 @@ public:
     UPROPERTY(Config, EditAnywhere, Category="Config")
     bool bEnableOpenAssetsOnStartup = false;
 
+	// If true, will show a context menu option to change the project editor startup map in the context menu
+    UPROPERTY(Config, EditAnywhere, Category="Config")
+    bool bShowSetAsStartupMap = false;
+
 	UPROPERTY()
 	TMap<FName, bool> AssetsToOpenOnStartup;
 };

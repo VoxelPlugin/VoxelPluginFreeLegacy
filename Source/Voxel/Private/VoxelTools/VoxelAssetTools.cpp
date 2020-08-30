@@ -2,8 +2,7 @@
 
 #include "VoxelTools/VoxelAssetTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
-#include "VoxelData/VoxelData.h"
-#include "VoxelData/VoxelData.inl"
+#include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssets/VoxelDataAssetData.inl"
 #include "VoxelWorld.h"
