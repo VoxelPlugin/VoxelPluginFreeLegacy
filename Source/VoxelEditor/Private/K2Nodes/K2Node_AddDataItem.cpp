@@ -168,7 +168,7 @@ void UK2Node_AddDataItem::GetMenuActions(FBlueprintActionDatabaseRegistrar& Acti
 {
 	if (!ActionRegistrar.GetActionKeyFilter())
 	{
-		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));\
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 		
 		FARFilter Filter;
 		Filter.ClassNames.Add(UVoxelGraphDataItemConfig::StaticClass()->GetFName());
@@ -182,6 +182,11 @@ void UK2Node_AddDataItem::GetMenuActions(FBlueprintActionDatabaseRegistrar& Acti
 			UBlueprintNodeSpawner* NodeSpawner = UBlueprintNodeSpawner::Create(GetClass());
 			NodeSpawner->DefaultMenuSignature.MenuName = GetTitle(Asset.AssetName.ToString());
 			NodeSpawner->DefaultMenuSignature.Tooltip = GetTooltip(Asset.AssetName.ToString());
+
+			// Force load
+			// This sucks, but else we get weird errors when assets are loaded as AddDataItem nodes dependencies
+			// The item configs cannot have any dependencies, and are relatively small assets, so it should be fine
+			Asset.GetAsset();
 			
 			if (Asset.IsAssetLoaded())
 			{
