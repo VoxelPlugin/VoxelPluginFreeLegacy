@@ -53,7 +53,8 @@ public class VoxelEditor : ModuleRules
                 "WorkspaceMenuStructure",
                 "BlueprintGraph",
                 "KismetCompiler",
-                "ApplicationCore"
+                "ApplicationCore",
+                "EngineSettings"
             });
 
         PrivateIncludePathModuleNames.AddRange(

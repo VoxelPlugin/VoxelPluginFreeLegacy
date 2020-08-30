@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
 #include "VoxelVector.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 
 namespace FVoxelUtilities
@@ -101,7 +102,7 @@ namespace FVoxelUtilities
 		return ComponentMax(A, ComponentMax(B, C));
 	}
 
-	FORCEINLINE TArray<FIntVector, TFixedAllocator<8>> GetNeighbors(const FVoxelVector& P)
+	FORCEINLINE TVoxelStaticArray<FIntVector, 8> GetNeighbors(const FVoxelVector& P)
 	{
 		const int32 MinX = FloorToInt32(P.X);
 		const int32 MinY = FloorToInt32(P.Y);
