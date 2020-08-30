@@ -121,7 +121,7 @@ FVoxelIntBoxWithValidity UVoxelFlattenTool::DoEdit()
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
 	CacheData<FVoxelValue>(Data, BoundsToCache);
 	
-	const FVoxelSurfaceEditsVoxels Voxels = UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, SharedConfig->bMultiThreaded);
+	const FVoxelSurfaceEditsVoxels Voxels = UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, SharedConfig->bMultiThreaded, SharedConfig->ComputeDevice);
 
 	FVoxelSurfaceEditsStack Stack;
 

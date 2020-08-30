@@ -64,7 +64,17 @@ void UVoxelTool::DisableTool()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData)
+void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride)
+{
+	FDoEditOverride DoEditOverrideCpp;
+	if (DoEditOverride.IsBound())
+	{
+		DoEditOverrideCpp.BindLambda([&](FVector Position, FVector Normal) { DoEditOverride.Execute(Position, Normal); });
+	}
+	AdvancedTick(World, TickData, DoEditOverrideCpp);
+}
+
+void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditOverride& DoEditOverride)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -123,15 +133,38 @@ void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData)
 	Parameters.Position = HitResult.ImpactPoint;
 	Parameters.Normal = HitResult.ImpactNormal;
 	Parameters.bBlockingHit = HitResult.bBlockingHit;
+
+	if (DoEditOverride.IsBound())
+	{
+		Parameters.DoEditOverride = [&](FVector Position, FVector Normal) { DoEditOverride.Execute(Position, Normal); };
+	}
 	
 	CallTool(VoxelWorld, GVoxelToolsAreFrozen ? FrozenTickData : TickData, Parameters);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelTool::SimpleTick(
+	APlayerController* PlayerController,
+	bool bEdit,
+	const TMap<FName, bool>& Keys,
+	const TMap<FName, float>& Axes,
+	const FDoEditDynamicOverride& DoEditOverride)
+{
+	FDoEditOverride DoEditOverrideCpp;
+	if (DoEditOverride.IsBound())
+	{
+		DoEditOverrideCpp.BindLambda([&](FVector Position, FVector Normal) { DoEditOverride.Execute(Position, Normal); });
+	}
+	SimpleTick(PlayerController, bEdit, Keys, Axes, DoEditOverrideCpp);
 }
 
 void UVoxelTool::SimpleTick(
 	APlayerController* PlayerController,
 	bool bEdit,
 	const TMap<FName, bool>& Keys,
-	const TMap<FName, float>& Axes)
+	const TMap<FName, float>& Axes,
+	const FDoEditOverride& DoEditOverride)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -190,7 +223,7 @@ void UVoxelTool::SimpleTick(
 	};
 	TickData.Init(Deproject);
 
-	AdvancedTick(PlayerController->GetWorld(), TickData);
+	AdvancedTick(PlayerController->GetWorld(), TickData, DoEditOverride);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -203,6 +236,11 @@ void UVoxelTool::Apply(
 	const TMap<FName, float>& Axes)
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
+
+	if (!bEnabled)
+	{
+		EnableTool();
+	}
 
 	Normal = Normal.GetSafeNormal();
 	if (Normal.IsNearlyZero())

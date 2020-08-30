@@ -65,7 +65,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 		VoxelWorld = InVoxelWorld;
 	}
 
-	if (!VoxelWorld)
+	if (!VoxelWorld || !VoxelWorld->IsCreated())
 	{
 		return;
 	}
@@ -74,8 +74,15 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 	TickData = InTickData;
 
 	K2_GetToolConfig({}, ToolBaseConfig);
-		
-	MouseMovementSize = (LastFrameTickData.MousePosition - TickData.MousePosition).Size();
+
+	if (Parameters.Mode == ECallToolMode::Apply)
+	{
+		MouseMovementSize = 1;
+	}
+	else
+	{
+		MouseMovementSize = (LastFrameTickData.MousePosition - TickData.MousePosition).Size();
+	}
 
 	// Update position/normal to the hit ones
 	if (Parameters.Mode == ECallToolMode::Apply || Parameters.bBlockingHit)
@@ -188,7 +195,8 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 	}
 
 	// Stride
-	if (ToolBaseConfig.Stride == 0.f ||
+	if (Parameters.Mode == ECallToolMode::Apply ||
+		ToolBaseConfig.Stride == 0.f ||
 		!LastFrameTickData.bEdit || // If not clicking always keep the position under the cursor
 		FVector::Dist(CurrentPosition, StridePosition) >= ToolBaseConfig.Stride * SharedConfig->BrushSize)
 	{
@@ -212,7 +220,6 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 	}
 	else
 	{
-		ensure(Parameters.Mode == ECallToolMode::Tick);
 		bCanEdit = false;
 	}
 
@@ -354,6 +361,12 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 	}
 	else
 	{
+		if (Parameters.Mode == ECallToolMode::Apply)
+		{
+			// Can't use LastTickTime in Apply
+			DeltaTime = SharedConfig->FixedDeltaTime;
+		}
+		else
 		{
 			const double Now = FPlatformTime::Seconds();
 			DeltaTime = float(Now - LastTickTime);
@@ -362,7 +375,17 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 
 		if (bCanEdit)
 		{
-			const FVoxelIntBoxWithValidity ModifiedBounds = K2_DoEdit();
+			FVoxelIntBoxWithValidity ModifiedBounds;
+
+			if (Parameters.DoEditOverride)
+			{
+				// Do not do the actual edit, just call the override
+				Parameters.DoEditOverride(GetToolPosition(), GetToolNormal());
+			}
+			else
+			{
+				ModifiedBounds = K2_DoEdit();
+			}
 
 			if (ModifiedBounds.IsValid())
 			{
