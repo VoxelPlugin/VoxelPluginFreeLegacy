@@ -9,41 +9,6 @@
 #include "VoxelTools/VoxelHardnessHandler.h"
 #include "VoxelGraphGenerator.h"
 
-EVoxelPinCategory UVoxelGraphAssetNode::GetInputPinCategory(int32 PinIndex) const
-{
-	const int32 NumDefaultInputPins = Super::GetMinInputPins();
-	if (PinIndex < NumDefaultInputPins)
-	{
-		return Super::GetInputPinCategory(PinIndex);
-	}
-	PinIndex -= NumDefaultInputPins;
-	if (CustomData.IsValidIndex(PinIndex))
-	{
-		return EC::Float;
-	}
-	return EC::Float;
-}
-
-FName UVoxelGraphAssetNode::GetInputPinName(int32 PinIndex) const
-{
-	const int32 NumDefaultInputPins = Super::GetMinInputPins();
-	if (PinIndex < NumDefaultInputPins)
-	{
-		return Super::GetInputPinName(PinIndex);
-	}
-	PinIndex -= NumDefaultInputPins;
-	if (CustomData.IsValidIndex(PinIndex))
-	{
-		return CustomData[PinIndex];
-	}
-	return "ERROR";
-}
-
-int32 UVoxelGraphAssetNode::GetMinInputPins() const
-{
-	return Super::GetMinInputPins() + CustomData.Num();
-}
-
 int32 UVoxelGraphAssetNode::GetMaxInputPins() const
 {
 	return GetMinInputPins();

@@ -3,19 +3,48 @@
 #include "VoxelTools/VoxelToolManager.h"
 #include "VoxelTools/Tools/VoxelTool.h"
 
+#include "Engine/Blueprint.h"
 #include "UObject/UObjectHash.h"
+#include "AssetRegistryModule.h"
 
 UVoxelToolManager::UVoxelToolManager()
 {
 	SharedConfig = CreateDefaultSubobject<UVoxelToolSharedConfig>(STATIC_FNAME("SharedConfig"));
 }
 
-void UVoxelToolManager::CreateDefaultTools()
+void UVoxelToolManager::CreateDefaultTools(bool bLoadBlueprints)
 {
 	VOXEL_FUNCTION_COUNTER();
 
 	ActiveTool = nullptr;
 	Tools.Empty();
+
+	if (bLoadBlueprints)
+	{
+		TArray<UClass*> ToolClasses;
+		GetDerivedClasses(UVoxelTool::StaticClass(), ToolClasses);
+
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+		
+		FARFilter Filter;
+		Filter.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+
+		for (auto* Class : ToolClasses)
+		{
+			if (Class->HasAnyClassFlags(CLASS_Native))
+			{
+				Filter.TagsAndValues.Add(FBlueprintTags::NativeParentClassPath, FString::Printf(TEXT("%s'%s'"), *UClass::StaticClass()->GetName(), *Class->GetPathName()));
+			}
+		}
+
+		TArray<FAssetData> Assets;
+		AssetRegistryModule.Get().GetAssets(Filter, Assets);
+
+		for (auto& Asset : Assets)
+		{
+			Asset.GetAsset();
+		}
+	}
 	
 	TArray<UClass*> ToolClasses;
 	GetDerivedClasses(UVoxelTool::StaticClass(), ToolClasses);

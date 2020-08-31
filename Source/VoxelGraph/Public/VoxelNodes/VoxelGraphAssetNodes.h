@@ -16,18 +16,11 @@ class VOXELGRAPH_API UVoxelGraphAssetNode : public UVoxelNodeWithContext
 public:
 	UVoxelGraphAssetNode() = default;
 
-	// Can be recovered in the generators with the GetCustomData node
-	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
-	TArray<FName> CustomData;
-
 	// World generator to sample from when not used as an asset. Useful to preview. Not used when compiled to C++
 	UPROPERTY(EditAnywhere, Category = "Preview", meta = (ReconstructNode))
 	FVoxelWorldGeneratorPicker DefaultWorldGenerator;
 
 	//~ Begin UVoxelNode Interface
-	virtual EVoxelPinCategory GetInputPinCategory(int32 PinIndex) const override;
-	virtual FName GetInputPinName(int32 PinIndex) const override;
-	virtual int32 GetMinInputPins() const override;
 	virtual int32 GetMaxInputPins() const override;
 	//~ End UVoxelNode Interface
 };

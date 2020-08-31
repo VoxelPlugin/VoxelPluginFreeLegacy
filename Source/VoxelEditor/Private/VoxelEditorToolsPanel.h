@@ -81,6 +81,9 @@ private:
 	float FalloffDelta = 0.f;
 	float StrengthDelta = 0.f;
 
+	bool bShowCustomTools = false;
+	TSharedPtr<SButton> ExpanderButton;
+
 private:
 	void RefreshDetails() const;
 	bool IsPropertyVisible(const UProperty& Property, const TArray<const UProperty*>& ParentProperties, int32 ParentPropertyIndex = 0) const;
@@ -88,7 +91,7 @@ private:
 private:
 	void SetActiveTool(UClass* ToolClass);
 	bool IsToolActive(UClass* ToolClass) const;
-	void BuildToolBars(TArray<FToolBarBuilder>& OutToolBars);
+	void BuildToolBars(TArray<FToolBarBuilder>& OutToolBars, TArray<FToolBarBuilder>& OutCustomToolBars);
 	void BindCommands();
 
 private:

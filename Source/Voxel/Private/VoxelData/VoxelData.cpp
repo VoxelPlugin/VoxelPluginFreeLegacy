@@ -1009,6 +1009,7 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 	const FVoxelData& Data,
 	FVoxelDataOctreeLeaf& Leaf, 
 	const FVoxelTransformableWorldGeneratorInstance& WorldGenerator, 
+	const FVoxelIntBox& Bounds,
 	const FTransform& LocalToWorld, 
 	bool bModifyValues, 
 	bool bModifyMaterials)
@@ -1022,21 +1023,26 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 		Leaf.InitForEdit<FVoxelMaterial>(Data);
 	}
 	
+	const FVoxelIntBox LeafBounds = Leaf.GetBounds();
+	const FVoxelIntBox BoundsToEdit = LeafBounds.Overlap(Bounds);
+	
 	const FVoxelDataWorldGeneratorInstance_AddAssetItem PtrWorldGenerator(Data);
 	const FVoxelItemStack ItemStack(Leaf.GetItemHolder(), PtrWorldGenerator, 0);
 
-	TVoxelStaticArray<FVoxelValue, VOXELS_PER_DATA_CHUNK> ValuesBuffer;
-	TVoxelStaticArray<FVoxelMaterial, VOXELS_PER_DATA_CHUNK> MaterialsBuffer;
+	TArray<FVoxelValue> ValuesBuffer;
+	TArray<FVoxelMaterial> MaterialsBuffer;
 
 	const auto WriteAssetDataToBuffer = [&](auto& Buffer)
 	{
-		using T = typename std::decay<decltype(Buffer)>::type::ElementType;
+		using T = typename TDecay<decltype(Buffer)>::Type::ElementType;
+
+		Buffer.SetNumUninitialized(BoundsToEdit.Count());
 
 		Leaf.GetData<T>().SetIsDirty(true, Data);
 		
 		auto& DataHolder = Leaf.GetData<T>();
 
-		TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), Buffer.GetData());
+		TVoxelQueryZone<T> QueryZone(BoundsToEdit, Buffer.GetData());
 		WorldGenerator.Get_Transform<T>(
 			LocalToWorld,
 			QueryZone,
@@ -1063,18 +1069,19 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 
 	// Need to first write both of them, as the item stack is referencing the data
 
-	if (bModifyValues) 
+	const auto GetValue = FVoxelUtilities::Create3DGetter(ValuesBuffer, BoundsToEdit.Size(), BoundsToEdit.Min);
+	const auto GetMaterial = FVoxelUtilities::Create3DGetter(MaterialsBuffer, BoundsToEdit.Size(), BoundsToEdit.Min);
+		
+	BoundsToEdit.Iterate([&](int32 X, int32 Y, int32 Z)
 	{
-		for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
+		const int32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
+		if (bModifyValues)
 		{
-			Leaf.Values.GetRef(Index) = ValuesBuffer[Index];
+			Leaf.Values.GetRef(Index) = GetValue(X, Y, Z);
 		}
-	}
-	if (bModifyMaterials)
-	{
-		for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
+		if (bModifyMaterials)
 		{
-			Leaf.Materials.GetRef(Index) = MaterialsBuffer[Index];
+			Leaf.Materials.GetRef(Index) = GetMaterial(X, Y, Z);
 		}
-	}
+	});
 }

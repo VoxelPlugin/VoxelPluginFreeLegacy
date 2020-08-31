@@ -201,7 +201,7 @@ FVoxelNodeType FVoxelPinCategory::ConvertDefaultValue(EVoxelPinCategory Category
 		FLinearColor Color;
 		if (!Color.InitFromString(DefaultValue))
 		{
-			Color = FColor();
+			Color = FColor::Transparent;
 		}
 		Value.Get<FColor>() = Color.ToFColor(false);
 		break;

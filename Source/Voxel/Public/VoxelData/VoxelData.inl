@@ -226,7 +226,7 @@ namespace FVoxelDataItemsUtilities
 template<>
 inline void FVoxelDataItemsUtilities::AddItemToDirtyLeaf<FVoxelAssetItem>(const FVoxelData& Data, FVoxelDataOctreeLeaf& Leaf, const FVoxelAssetItem& Item)
 {
-	FVoxelDataUtilities::AddAssetItemDataToLeaf(Data, Leaf, *Item.WorldGenerator, Item.LocalToWorld, Leaf.Values.IsDirty(), Leaf.Materials.IsDirty());
+	FVoxelDataUtilities::AddAssetItemDataToLeaf(Data, Leaf, *Item.WorldGenerator, Item.Bounds, Item.LocalToWorld, Leaf.Values.IsDirty(), Leaf.Materials.IsDirty());
 }
 
 template<typename T, bool bDoNotModifyExistingDataChunks, typename... TArgs>

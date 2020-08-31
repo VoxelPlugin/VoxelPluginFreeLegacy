@@ -142,7 +142,7 @@ void UVoxelAssetTools::ImportModifierAssetImpl(
 		{
 			ensureThreadSafe(Tree.IsLockedForWrite());
 			auto& Leaf = Tree.AsLeaf();
-			FVoxelDataUtilities::AddAssetItemDataToLeaf(Data, Leaf, Instance, Transform, bModifyValues, bModifyMaterials);
+			FVoxelDataUtilities::AddAssetItemDataToLeaf(Data, Leaf, Instance, Bounds, Transform, bModifyValues, bModifyMaterials);
 		}
 		else
 		{

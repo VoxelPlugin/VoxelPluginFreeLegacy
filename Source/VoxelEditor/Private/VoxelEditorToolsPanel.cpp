@@ -75,7 +75,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	DetailsViewArgs.DefaultsOnlyVisibility = EEditDefaultsOnlyNodeVisibility::Automatic;
 	
 	ToolManager = NewObject<UVoxelToolManager>(GetTransientPackage(), NAME_None, RF_Transient | RF_Transactional);
-	ToolManager->CreateDefaultTools();
+	ToolManager->CreateDefaultTools(true);
 	ToolManager->GetSharedConfig().RefreshDetails.AddSP(this, &FVoxelEditorToolsPanel::RefreshDetails);
 	ToolManager->GetSharedConfig().RegisterTransaction.AddLambda([](FName Name, AVoxelWorld* VoxelWorld)
 	{
@@ -123,6 +123,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	});
 
 	TSharedPtr<SVerticalBox> ToolBarsVerticalBox;
+	TSharedPtr<SVerticalBox> CustomToolBarsVerticalBox;
 
 	Widget->SetContent(
 	SNew(SScrollBox)
@@ -167,49 +168,32 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.Padding(2)
-		.VAlign(VAlign_Center)
-		.HAlign(HAlign_Center)
 		[
 			SAssignNew(ToolBarsVerticalBox, SVerticalBox)
-			/*+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(SBox)
-				.HAlign(HAlign_Center)
-				[
-					SAssignNew(ComboBox, SComboBox<TSharedPtr<UClass*>>)
-					.OptionsSource(&ToolsOptions)
-					.OnSelectionChanged_Lambda([&](TSharedPtr<UClass*> Value, ESelectInfo::Type Type)
-					{
-						if (Type != ESelectInfo::Direct)
-						{
-							SetActiveTool(*Value);
-						}
-					})
-					.OnGenerateWidget_Lambda([&](TSharedPtr<UClass*> Value)
-					{
-						return
-							SNew(STextBlock)
-							.Font(IDetailLayoutBuilder::GetDetailFont())
-							.Text(FText::FromName((**Value).GetDefaultObject<UVoxelTool>()->GetToolName()));
-					})
-					[
-						SNew(STextBlock)
-						.Font(IDetailLayoutBuilder::GetDetailFont())
-						.Text_Lambda([=]() 
-						{
-							if (auto* Tool = ToolManager->GetActiveTool())
-							{
-								return FText::FromName(Tool->GetToolName());
-							}
-							else
-							{
-								return FText();
-							}
-						})
-					]
-				]
-			]*/
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.HAlign(HAlign_Center)
+		[
+			SNew(SButton)
+			.Text(VOXEL_LOCTEXT("Browse to tool BP"))
+			.Visibility_Lambda([=]()
+			{
+				if (ToolManager->GetActiveTool() && !ToolManager->GetActiveTool()->GetClass()->HasAnyClassFlags(CLASS_Native))
+				{
+					return EVisibility::Visible;
+				}
+				else
+				{
+					return EVisibility::Collapsed;
+				}
+			})
+			.OnClicked_Lambda([=]()
+			{
+				TArray<UObject*> Objects = { ToolManager->GetActiveTool()->GetClass() };
+				GEditor->SyncBrowserToObjects(Objects);
+				return FReply::Handled();
+			})
 		]
 		+ SVerticalBox::Slot()
 		.AutoHeight()
@@ -224,13 +208,87 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	]);
 
 	TArray<FToolBarBuilder> ToolBarBuilders;
-	BuildToolBars(ToolBarBuilders);
+	TArray<FToolBarBuilder> CustomToolBarBuilders;
+	BuildToolBars(ToolBarBuilders, CustomToolBarBuilders);
 	BindCommands();
 
 	for (auto& ToolBarBuilder : ToolBarBuilders)
 	{
 		ToolBarsVerticalBox->AddSlot()
 		.AutoHeight()
+		.HAlign(HAlign_Center)
+		[
+			ToolBarBuilder.MakeWidget()
+		];
+	}
+
+	ToolBarsVerticalBox->AddSlot()
+	.AutoHeight()
+	[
+		SAssignNew(CustomToolBarsVerticalBox, SVerticalBox)
+		.Visibility_Lambda([=]()
+		{
+			return bShowCustomTools ? EVisibility::Visible : EVisibility::Collapsed;
+		})
+	];
+
+	GConfig->GetBool(TEXT("VoxelEditorToolsPanel"), TEXT("ShowCustomTools"), bShowCustomTools, GEditorPerProjectIni);
+
+	ToolBarsVerticalBox->AddSlot()
+	.AutoHeight()
+	[
+		SNew(SBorder)
+		.BorderImage(FEditorStyle::GetBrush("DetailsView.AdvancedDropdownBorder"))
+		.Padding(FMargin(0.0f, 3.0f, 16.f, 0.0f))
+		[
+			SAssignNew(ExpanderButton, SButton)
+			.ButtonStyle(FEditorStyle::Get(), "NoBorder")
+			.HAlign(HAlign_Center)
+			.ContentPadding(2)
+			.OnClicked_Lambda([=]()
+			{
+				bShowCustomTools = !bShowCustomTools;
+				GConfig->SetBool(TEXT("VoxelEditorToolsPanel"), TEXT("ShowCustomTools"), bShowCustomTools, GEditorPerProjectIni);
+				return FReply::Handled();
+			})
+			.ToolTipText_Lambda([=]()
+			{
+				return bShowCustomTools ? VOXEL_LOCTEXT("Hide custom tools") : VOXEL_LOCTEXT("Show custom tools");	
+			})
+			[
+				SNew(SImage)
+				.Image_Lambda([=]()
+				{
+					if (ExpanderButton->IsHovered())
+					{
+						return bShowCustomTools ? FEditorStyle::GetBrush("DetailsView.PulldownArrow.Up.Hovered") : FEditorStyle::GetBrush("DetailsView.PulldownArrow.Down.Hovered");
+					}
+					else
+					{
+						return bShowCustomTools ? FEditorStyle::GetBrush("DetailsView.PulldownArrow.Up") : FEditorStyle::GetBrush("DetailsView.PulldownArrow.Down");
+					}
+				})
+			]
+		]
+	];
+
+	CustomToolBarsVerticalBox->AddSlot()
+	.AutoHeight()
+	[
+		SNew(SBorder)
+		.BorderImage(FEditorStyle::GetBrush("DetailsView.CategoryMiddle"))
+		.Padding(FMargin(0.0f, 3.0f, 16.f, 0.0f))
+		[
+			SNew(SImage)
+			.Image(FEditorStyle::GetBrush("DetailsView.AdvancedDropdownBorder.Open"))
+		]
+	];
+	
+	for (auto& ToolBarBuilder : CustomToolBarBuilders)
+	{
+		CustomToolBarsVerticalBox->AddSlot()
+		.AutoHeight()
+		.HAlign(HAlign_Center)
 		[
 			ToolBarBuilder.MakeWidget()
 		];
@@ -601,7 +659,7 @@ bool FVoxelEditorToolsPanel::IsToolActive(UClass* ToolClass) const
 	return Tool && Tool->GetClass() == ToolClass;
 }
 
-void FVoxelEditorToolsPanel::BuildToolBars(TArray<FToolBarBuilder>& OutToolBars)
+void FVoxelEditorToolsPanel::BuildToolBars(TArray<FToolBarBuilder>& OutToolBars, TArray<FToolBarBuilder>& OutCustomToolBars)
 {
 	const auto& Commands = FVoxelToolsCommands::Get();
 
@@ -647,7 +705,18 @@ void FVoxelEditorToolsPanel::BuildToolBars(TArray<FToolBarBuilder>& OutToolBars)
 	GetToolBar().AddToolBarButton(Commands.LevelTool);
 	GetToolBar().AddToolBarButton(Commands.TrimTool);
 	GetToolBar().AddToolBarButton(Commands.RevertTool);
-
+	
+	int32 NumCustomTools = 0;
+	const auto GetCustomToolBar = [&]()
+	{
+		if (NumCustomTools % 4 == 0)
+		{
+			OutCustomToolBars.Emplace(CommandList, FMultiBoxCustomization("VoxelEditorTools"));
+		}
+		NumCustomTools++;
+		return OutCustomToolBars.Last();
+	};
+	
 	for (auto* Tool : ToolManager->GetTools())
 	{
 		auto* Class = Tool->GetClass();
@@ -657,7 +726,7 @@ void FVoxelEditorToolsPanel::BuildToolBars(TArray<FToolBarBuilder>& OutToolBars)
 			continue;
 		}
 
-		GetToolBar().AddToolBarButton(
+		GetCustomToolBar().AddToolBarButton(
 			GetUIAction(Class),
 			NAME_None,
 			FText::FromName(Tool->GetToolName()),
