@@ -17,11 +17,15 @@ enum class EVoxelRenderType : uint8
 UENUM(BlueprintType)
 enum class EVoxelNormalConfig : uint8
 {
-	NoNormal = 0,
+	NoNormal,
 	// Use the density field gradient as normal. Might have glitches on hard corners which can be quite visible when using triplanar projection
-	GradientNormal = 1,
+	GradientNormal,
+	// Each vertex will be duplicated & its normal set to the face normal
+	// This will disable vertex translating on transitions between LODs as the normals are not the same anymore
+	// This will not create any holes, but the transitions might look slightly worse (tiny vertical faces)
+	FlatNormal,
 	// Compute the normal from the mesh faces. This will have glitches on chunks borders, Gradient Normal are preferred
-	MeshNormal = 2
+	MeshNormal
 };
 
 UENUM(BlueprintType)

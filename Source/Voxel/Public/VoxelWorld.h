@@ -258,7 +258,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|UVs", meta = (RecreateRender, DisplayName = "UV Scale"))
 	float UVScale = 1;
 
-	// You should leave this to Gradient Normal
+	// Normal config, only respected by Marching Cubes
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials|Normals", meta = (RecreateRender))
 	EVoxelNormalConfig NormalConfig = EVoxelNormalConfig::GradientNormal;
 
@@ -273,7 +273,7 @@ public:
 	// If true, then in RGB mode additional vertices will be created to ensure that no colors are ever blended
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender))
 	bool bHardColorTransitions = false;
-
+	
 	// Only for Cubic mode. If true, the material index will be 3 x Index + 0 for top, 3 x Index + 1 for sides and 3 x Index + 2 for bottom
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender))
 	bool bOneMaterialPerCubeSide = false;

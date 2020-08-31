@@ -400,7 +400,7 @@ void FVoxelRenderOctree::DeleteChunks(TArray<FVoxelChunkUpdate>& ChunkUpdates)
 				
 				if (Child.ChunkSettings.Settings.HasRenderChunk())
 				{
-					ensureVoxelSlowNoSideEffects(!ChunkUpdates.FindByPredicate([&](const FVoxelChunkUpdate& ChunkUpdate) { return ChunkUpdate.Id == Child.ChunkId; }));
+					//ensureVoxelSlowNoSideEffects(!ChunkUpdates.FindByPredicate([&](const FVoxelChunkUpdate& ChunkUpdate) { return ChunkUpdate.Id == Child.ChunkId; }));
 					ChunkUpdates.Emplace(
 						FVoxelChunkUpdate
 						{

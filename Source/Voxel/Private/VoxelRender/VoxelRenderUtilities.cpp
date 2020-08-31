@@ -496,7 +496,12 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 			LOD,
 			Position,
 			false, // Set below
-			RendererSettings.RenderType == EVoxelRenderType::MarchingCubes && TransitionChunk, // Don't translate if the transition chunk isn't built 
+			RendererSettings.RenderType == EVoxelRenderType::MarchingCubes && 
+			// Don't translate if the transition chunk isn't built 
+			TransitionChunk && 
+			// No valid normals for these, so can't translate
+			RendererSettings.NormalConfig != EVoxelNormalConfig::FlatNormal && 
+			RendererSettings.NormalConfig != EVoxelNormalConfig::NoNormal,
 			ChunkSettings.TransitionsMask);
 	const auto DefaultMeshConfig = FVoxelMeshConfig().CopyFrom(*RendererSettings.ProcMeshClass->GetDefaultObject<UVoxelProceduralMeshComponent>());
 

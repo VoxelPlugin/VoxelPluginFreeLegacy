@@ -10,6 +10,12 @@
 
 DECLARE_DWORD_COUNTER_STAT(TEXT("Voxel Chunk Updates"), STAT_VoxelChunkUpdates, STATGROUP_VoxelCounters);
 
+static TAutoConsoleVariable<int32> CVarFreezeLODs(
+	TEXT("voxel.lod.FreezeLODs"),
+	0,
+	TEXT("Stops LOD manager tick"),
+	ECVF_Default);
+
 TVoxelSharedRef<FVoxelDefaultLODManager> FVoxelDefaultLODManager::Create(
 	const FVoxelLODSettings& LODSettings,
 	TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
@@ -133,6 +139,11 @@ void FVoxelDefaultLODManager::Destroy()
 void FVoxelDefaultLODManager::Tick(float DeltaTime)
 {
 	VOXEL_FUNCTION_COUNTER();
+
+	if (CVarFreezeLODs.GetValueOnGameThread() != 0)
+	{
+		return;
+	}
 	
 	const double Time = FPlatformTime::Seconds();
 	if (Time - LastInvokersUpdateTime > Settings.MinDelayBetweenLODUpdates)
