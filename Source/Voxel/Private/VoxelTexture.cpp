@@ -2,10 +2,16 @@
 
 #include "VoxelTexture.h"
 #include "VoxelMessages.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "Engine/Texture2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTextureMemory);
+
+static FAutoConsoleCommand CmdClearCache(
+    TEXT("voxel.texture.ClearCache"),
+    TEXT("Clears the voxel textures memory cache"),
+    FConsoleCommandDelegate::CreateStatic(&FVoxelTextureUtilities::ClearCache));
 
 struct FVoxelTextureCacheKey
 {
@@ -69,6 +75,7 @@ inline void ExtractTextureData(UTexture* Texture, int32& OutSizeX, int32& OutSiz
 		void* Data = BulkData.Lock(LOCK_READ_ONLY);
 		if (!ensureAlways(Data))
 		{
+			Mip.BulkData.Unlock();
 			OutSizeX = 1;
 			OutSizeY = 1;
 			OutData.SetNum(1);
@@ -227,6 +234,11 @@ bool FVoxelTextureUtilities::CanCreateFromTexture(UTexture* Texture, FString& Ou
 			Texture2D->CompressionSettings != TextureCompressionSettings::TC_EditorIcon)
 		{
 			OutError = "Texture CompressionSettings must be VectorDisplacementmap or UserInterface2D";
+			return false;
+		}
+		if (Texture2D->GetPixelFormat() != PF_B8G8R8A8)
+		{
+			OutError = "Texture pixel format must be B8G8R8A8, try switching CompressionSettings to VectorDisplacementmap";
 			return false;
 		}
 		return true;

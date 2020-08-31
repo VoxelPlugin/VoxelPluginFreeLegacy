@@ -134,6 +134,32 @@ public:
 		}
 	}
 	
+	static void ComputeFlatNormals(TArray<FVoxelMesherVertex>& Vertices, TArray<uint32>& Indices)
+	{
+		VOXEL_ASYNC_FUNCTION_COUNTER();
+
+		TArray<FVoxelMesherVertex> NewVertices;
+		for (int32 I = 0; I < Indices.Num(); I += 3)
+		{
+			uint32& IndexA = Indices[I + 0];
+			uint32& IndexB = Indices[I + 1];
+			uint32& IndexC = Indices[I + 2];
+
+			auto VertexA = Vertices[IndexA];
+			auto VertexB = Vertices[IndexB];
+			auto VertexC = Vertices[IndexC];
+
+			const FVector Normal = FVector::CrossProduct(VertexC.Position - VertexA.Position, VertexB.Position - VertexA.Position).GetSafeNormal();
+			VertexA.Normal = Normal;
+			VertexB.Normal = Normal;
+			VertexC.Normal = Normal;
+
+			IndexA = NewVertices.Add(VertexA);
+			IndexB = NewVertices.Add(VertexB);
+			IndexC = NewVertices.Add(VertexC);
+		}
+		Vertices = MoveTemp(NewVertices);
+	}
 	static void ComputeNormals(FVoxelMarchingCubeMesher& Mesher, TArray<FVoxelMesherVertex>& MesherVertices, TArray<uint32>& Indices)
 	{
 		VOXEL_ASYNC_FUNCTION_COUNTER();
@@ -174,6 +200,10 @@ public:
 				Vertex.Normal = GetGradient(Vertex.Position);
 				Vertex.Tangent = FVoxelProcMeshTangent();
 			}
+		}
+		else if (Mesher.Settings.NormalConfig == EVoxelNormalConfig::FlatNormal)
+		{
+			ComputeFlatNormals(MesherVertices, Indices);
 		}
 		else if (Mesher.Settings.NormalConfig == EVoxelNormalConfig::MeshNormal)
 		{
@@ -222,7 +252,7 @@ public:
 
 		FixupTangents(MesherVertices);
 	}
-	static void ComputeNormals(FVoxelMarchingCubeTransitionsMesher& Mesher, TArray<FVoxelMesherVertex>& MesherVertices)
+	static void ComputeNormals(FVoxelMarchingCubeTransitionsMesher& Mesher, TArray<FVoxelMesherVertex>& MesherVertices, TArray<uint32>& Indices)
 	{
 		VOXEL_ASYNC_FUNCTION_COUNTER();
 
@@ -239,6 +269,10 @@ public:
 					Mesher.Step);;
 				Vertex.Tangent = FVoxelProcMeshTangent();
 			}
+		}
+		else if (Mesher.Settings.NormalConfig == EVoxelNormalConfig::FlatNormal)
+		{
+			ComputeFlatNormals(MesherVertices, Indices);
 		}
 		else
 		{
@@ -1070,12 +1104,15 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 	TArray<FVoxelMesherVertex> MesherVertices = FMarchingCubeHelpers::CreateMesherVertices(Vertices);
 
 	MESHER_TIME_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
-	MESHER_TIME(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices));
+	MESHER_TIME(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
 
 	UnlockData();
 
 	MESHER_TIME(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
 
+	// Can't translate if we don't have valid normals
+	if (Settings.NormalConfig != EVoxelNormalConfig::FlatNormal &&
+		Settings.NormalConfig != EVoxelNormalConfig::NoNormal)
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("Translate Vertices");
 		for (int32 Index = 0; Index < Vertices.Num(); Index++)
