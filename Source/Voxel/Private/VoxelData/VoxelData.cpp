@@ -1048,21 +1048,6 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 			QueryZone,
 			0,
 			ItemStack);
-
-		if (Data.bEnableMultiplayer)
-		{
-			for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
-			{
-				Leaf.Multiplayer->MarkIndexDirty<T>(Index);
-			}
-		}
-		if (Data.bEnableUndoRedo)
-		{
-			for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
-			{
-				Leaf.UndoRedo->SavePreviousValue(Index, DataHolder.Get(Index));
-			}
-		}
 	};
 	if (bModifyValues) WriteAssetDataToBuffer(ValuesBuffer);
 	if (bModifyMaterials) WriteAssetDataToBuffer(MaterialsBuffer);
@@ -1077,10 +1062,26 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 		const int32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
 		if (bModifyValues)
 		{
+			if (Data.bEnableUndoRedo)
+			{
+				Leaf.UndoRedo->SavePreviousValue(Index, Leaf.Values.Get(Index));
+			}
+			if (Data.bEnableMultiplayer)
+			{
+				Leaf.Multiplayer->MarkIndexDirty<FVoxelValue>(Index);
+			}
 			Leaf.Values.GetRef(Index) = GetValue(X, Y, Z);
 		}
 		if (bModifyMaterials)
 		{
+			if (Data.bEnableUndoRedo)
+			{
+				Leaf.UndoRedo->SavePreviousValue(Index, Leaf.Materials.Get(Index));
+			}
+			if (Data.bEnableMultiplayer)
+			{
+				Leaf.Multiplayer->MarkIndexDirty<FVoxelMaterial>(Index);
+			}
 			Leaf.Materials.GetRef(Index) = GetMaterial(X, Y, Z);
 		}
 	});
