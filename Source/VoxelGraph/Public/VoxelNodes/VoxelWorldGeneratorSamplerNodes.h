@@ -16,10 +16,6 @@ class VOXELGRAPH_API UVoxelNode_WorldGeneratorSamplerBase : public UVoxelExposed
 	GENERATED_BODY()
 
 public:
-	// Will be sent to world generators. Can be recovered in the generators with the GetCustomData node
-	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
-	TArray<FName> CustomData;
-	
 	// Seeds to send to the world generators
 	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
 	TArray<FName> Seeds;
@@ -88,40 +84,3 @@ class VOXELGRAPH_API UVoxelNode_GetWorldGeneratorCustomOutput : public UVoxelNod
 	virtual FText GetTitle() const override;
 	//~ End UVoxelNode Interface
 };
-
-// Read data sent by a previous world generator
-UCLASS(DisplayName = "Get Custom Data", Category = "World Generator")
-class VOXELGRAPH_API UVoxelNode_GetCustomData : public UVoxelNodeWithContext
-{
-	GENERATED_BODY()
-	GENERATED_VOXELNODE_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, Category = "Config")
-	FName Name;
-
-	UVoxelNode_GetCustomData();
-	
-	//~ Begin UVoxelNode Interface
-	virtual FText GetTitle() const override;
-	//~ End UVoxelNode Interface
-};
-
-// See if a previous generator set some custom data
-UCLASS(DisplayName = "Is Custom Data Set", Category = "World Generator")
-class VOXELGRAPH_API UVoxelNode_IsCustomDataSet : public UVoxelNodeWithContext
-{
-	GENERATED_BODY()
-	GENERATED_VOXELNODE_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, Category = "Config")
-	FName Name;
-
-	UVoxelNode_IsCustomDataSet();
-	
-	//~ Begin UVoxelNode Interface
-	virtual FText GetTitle() const override;
-	//~ End UVoxelNode Interface
-};
-

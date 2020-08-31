@@ -198,15 +198,13 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetCurveValue(const FVoxelRichCurve& Vox
 v_flt FVoxelNodeFunctions::GetPreviousGeneratorValue(
 	v_flt X, v_flt Y, v_flt Z, 
 	const FVoxelContext& Context,
-	const FVoxelGraphCustomData& CustomData,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	if (Context.Items.IsEmpty())
 	{
 		if (DefaultGenerator)
 		{
-			return DefaultGenerator->GetValue(X, Y, Z, Context.LOD, Context.Items.WithCustomData(&CustomData));
+			return DefaultGenerator->GetValue(X, Y, Z, Context.LOD, Context.Items);
 		}
 		else
 		{
@@ -215,12 +213,9 @@ v_flt FVoxelNodeFunctions::GetPreviousGeneratorValue(
 	}
 	else
 	{
-		const auto NextStack = Context.Items.WithCustomData(&CustomData).GetNextStack(Context.GetWorldX(), Context.GetWorldY(), Context.GetWorldZ());
+		const auto NextStack = Context.Items.GetNextStack(Context.GetWorldX(), Context.GetWorldY(), Context.GetWorldZ());
 		return NextStack.Get<v_flt>(X, Y, Z, Context.LOD);
 	}
-#else
-	return {};
-#endif
 }
 
 TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorValue(
@@ -228,16 +223,14 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorValue(
 	TVoxelRange<v_flt> Y,
 	TVoxelRange<v_flt> Z, 
 	const FVoxelContextRange& Context,
-	const FVoxelGraphCustomDataRange& CustomData,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
 	if (Context.Items.IsEmpty())
 	{
 		if (DefaultGenerator)
 		{
-			return DefaultGenerator->GetValueRange(Bounds, Context.LOD, Context.Items.WithCustomData(&CustomData));
+			return DefaultGenerator->GetValueRange(Bounds, Context.LOD, Context.Items);
 		}
 		else
 		{
@@ -246,7 +239,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorValue(
 	}
 	else
 	{
-		const auto NextStack = Context.Items.WithCustomData(&CustomData).GetNextStack(Context.WorldBounds);
+		const auto NextStack = Context.Items.GetNextStack(Context.WorldBounds);
 		if (NextStack.IsValid())
 		{
 			return NextStack.GetValueRange(Bounds, Context.LOD);
@@ -256,23 +249,18 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorValue(
 			return {-1, 1};
 		}
 	}
-#else
-	return {};
-#endif
 }
 
 FVoxelMaterial FVoxelNodeFunctions::GetPreviousGeneratorMaterial(
 	v_flt X, v_flt Y, v_flt Z,
 	const FVoxelContext& Context,
-	const FVoxelGraphCustomData& CustomData,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	if (Context.Items.IsEmpty())
 	{
 		if (DefaultGenerator)
 		{
-			return DefaultGenerator->GetMaterial(X, Y, Z, Context.LOD, Context.Items.WithCustomData(&CustomData));
+			return DefaultGenerator->GetMaterial(X, Y, Z, Context.LOD, Context.Items);
 		}
 		else
 		{
@@ -281,29 +269,24 @@ FVoxelMaterial FVoxelNodeFunctions::GetPreviousGeneratorMaterial(
 	}
 	else
 	{
-		const auto NextStack = Context.Items.WithCustomData(&CustomData).GetNextStack(Context.GetWorldX(), Context.GetWorldY(), Context.GetWorldZ());
+		const auto NextStack = Context.Items.GetNextStack(Context.GetWorldX(), Context.GetWorldY(), Context.GetWorldZ());
 		return NextStack.Get<FVoxelMaterial>(X, Y, Z, Context.LOD);
 	}
-#else
-	return {};
-#endif
 }
 
 v_flt FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	const FName& Name, 
 	v_flt X, v_flt Y, v_flt Z,
 	const FVoxelContext& Context,
-	const FVoxelGraphCustomData& CustomData,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	if (Context.Items.IsEmpty())
 	{
 		if (DefaultGenerator)
 		{
 			if (const auto Ptr = DefaultGenerator->CustomPtrs.Float.FindRef(Name))
 			{
-				return (DefaultGenerator->*Ptr)(X, Y, Z, Context.LOD, Context.Items.WithCustomData(&CustomData));
+				return (DefaultGenerator->*Ptr)(X, Y, Z, Context.LOD, Context.Items);
 			}
 			else
 			{
@@ -317,12 +300,9 @@ v_flt FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	}
 	else
 	{
-		const auto NextStack = Context.Items.WithCustomData(&CustomData).GetNextStack(Context.GetWorldX(), Context.GetWorldY(), Context.GetWorldZ());
+		const auto NextStack = Context.Items.GetNextStack(Context.GetWorldX(), Context.GetWorldY(), Context.GetWorldZ());
 		return NextStack.GetCustomOutput<v_flt>(0, Name, X, Y, Z, Context.LOD);
 	}
-#else
-	return {};
-#endif
 }
 
 TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
@@ -331,10 +311,8 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	TVoxelRange<v_flt> Y,
 	TVoxelRange<v_flt> Z,
 	const FVoxelContextRange& Context,
-	const FVoxelGraphCustomDataRange& CustomData,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
 	if (Context.Items.IsEmpty())
 	{
@@ -342,7 +320,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 		{
 			if (const auto Ptr = DefaultGenerator->CustomPtrs.FloatRange.FindRef(Name))
 			{
-				return TVoxelRange<v_flt>((DefaultGenerator->*Ptr)(Bounds, Context.LOD, Context.Items.WithCustomData(&CustomData)));
+				return TVoxelRange<v_flt>((DefaultGenerator->*Ptr)(Bounds, Context.LOD, Context.Items));
 			}
 			else
 			{
@@ -356,7 +334,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	}
 	else
 	{
-		const auto NextStack = Context.Items.WithCustomData(&CustomData).GetNextStack(Context.WorldBounds);
+		const auto NextStack = Context.Items.GetNextStack(Context.WorldBounds);
 		if (NextStack.IsValid())
 		{
 			return NextStack.GetCustomOutputRange<v_flt>(0, Name, Bounds, Context.LOD);
@@ -366,30 +344,22 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 			return TVoxelRange<v_flt>::Infinite();
 		}
 	}
-#else
-	return {};
-#endif
 }
 
 v_flt FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 	const FVoxelWorldGeneratorInstance& WorldGenerator,
 	const FName& Name,
 	v_flt X, v_flt Y, v_flt Z,
-	const FVoxelContext& Context,
-	const FVoxelGraphCustomData& CustomData)
+	const FVoxelContext& Context)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	if (const auto Ptr = WorldGenerator.CustomPtrs.Float.FindRef(Name))
 	{
-		return (WorldGenerator.*Ptr)(X, Y, Z, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder).WithCustomData(&CustomData));
+		return (WorldGenerator.*Ptr)(X, Y, Z, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder));
 	}
 	else
 	{
 		return 0;
 	}
-#else
-	return {};
-#endif
 }
 
 TVoxelRange<v_flt> FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
@@ -398,22 +368,17 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 	TVoxelRange<v_flt> X,
 	TVoxelRange<v_flt> Y,
 	TVoxelRange<v_flt> Z,
-	const FVoxelContextRange& Context,
-	const FVoxelGraphCustomDataRange& CustomData)
+	const FVoxelContextRange& Context)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
 	if (const auto Ptr = WorldGenerator.CustomPtrs.FloatRange.FindRef(Name))
 	{
-		return TVoxelRange<v_flt>((WorldGenerator.*Ptr)(Bounds, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder).WithCustomData(&CustomData)));
+		return TVoxelRange<v_flt>((WorldGenerator.*Ptr)(Bounds, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder)));
 	}
 	else
 	{
 		return 0;
 	}
-#else
-	return {};
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -468,7 +433,6 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 	const EVoxelMaterialConfig MaterialConfig, 
 	const float Tolerance,
 	const TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>>& InInstances,
-	const FVoxelGraphCustomData& CustomData,
 	const TArray<FName>& FloatOutputsNames,
 	const FVoxelContext& Context, 
 	v_flt X, v_flt Y, v_flt Z,
@@ -482,7 +446,6 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 	TArray<v_flt, TInlineAllocator<128>>& OutFloatOutputs,
 	int32& NumGeneratorsQueried)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	thread_local int32 RecursionDepth = 0;
 	struct FDepthGuard { FDepthGuard() { RecursionDepth++; } ~FDepthGuard() { RecursionDepth--; } } DepthGuard;
 
@@ -505,7 +468,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 	
 	check(InInstances.Num() > 0);
 
-	const auto Items = Context.Items.WithCustomData(&CustomData);
+	const auto Items = Context.Items;
 	
 	Index0 = FMath::Clamp(Index0, 0, InInstances.Num() - 1);
 	Index1 = FMath::Clamp(Index1, 0, InInstances.Num() - 1);
@@ -649,12 +612,10 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 			});
 		}
 	}
-#endif
 }
 
 void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
 	const TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>>& InInstances,
-	const FVoxelGraphCustomDataRange& CustomData,
 	const TArray<FName>& FloatOutputsNames,
 	const FVoxelContextRange& Context, 
 	const TVoxelRange<v_flt> X,
@@ -665,7 +626,6 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
 	TArray<TVoxelRange<v_flt>, TInlineAllocator<128>>& OutFloatOutputs,
 	TVoxelRange<int32>& NumGeneratorsQueried)
 {
-#if 0 // TODO PLACEABLE ITEMS
 	thread_local int32 RecursionDepth = 0;
 	struct FDepthGuard { FDepthGuard() { RecursionDepth++; } ~FDepthGuard() { RecursionDepth--; } } DepthGuard;
 
@@ -685,7 +645,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
 		return;
 	}
 
-	const auto Items = Context.Items.WithCustomData(&CustomData);
+	const auto Items = Context.Items;
 	
 	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
 	OutFloatOutputs.SetNumUninitialized(FloatOutputsNames.Num());
@@ -725,7 +685,6 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
 		}
 		ComputeFloatOutputsLambda(*InInstances[Index], true);
 	}
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////

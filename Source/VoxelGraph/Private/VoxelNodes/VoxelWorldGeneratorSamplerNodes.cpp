@@ -15,11 +15,6 @@ EVoxelPinCategory UVoxelNode_WorldGeneratorSamplerBase::GetInputPinCategory(int3
 		return Super::GetInputPinCategory(PinIndex);
 	}
 	PinIndex -= NumDefaultInputPins;
-	if (CustomData.IsValidIndex(PinIndex))
-	{
-		return EC::Float;
-	}
-	PinIndex -= CustomData.Num();
 	if (Seeds.IsValidIndex(PinIndex))
 	{
 		return EC::Seed;
@@ -35,11 +30,6 @@ FName UVoxelNode_WorldGeneratorSamplerBase::GetInputPinName(int32 PinIndex) cons
 		return Super::GetInputPinName(PinIndex);
 	}
 	PinIndex -= NumDefaultInputPins;
-	if (CustomData.IsValidIndex(PinIndex))
-	{
-		return CustomData[PinIndex];
-	}
-	PinIndex -= CustomData.Num();
 	if (Seeds.IsValidIndex(PinIndex))
 	{
 		return Seeds[PinIndex];
@@ -49,7 +39,7 @@ FName UVoxelNode_WorldGeneratorSamplerBase::GetInputPinName(int32 PinIndex) cons
 
 int32 UVoxelNode_WorldGeneratorSamplerBase::GetMinInputPins() const
 {
-	return Super::GetMinInputPins() + CustomData.Num() + Seeds.Num();
+	return Super::GetMinInputPins() + Seeds.Num();
 }
 
 int32 UVoxelNode_WorldGeneratorSamplerBase::GetMaxInputPins() const
@@ -142,39 +132,4 @@ FText UVoxelNode_GetWorldGeneratorCustomOutput::GetTitle() const
 {
 	return FText::FromString("Get World Generator Custom Output: " + OutputName.ToString());
 }
-
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-UVoxelNode_GetCustomData::UVoxelNode_GetCustomData()
-{
-	SetOutputs(EC::Float);
-}
-
-FText UVoxelNode_GetCustomData::GetTitle() const
-{
-	return FText::FromString("Custom Data: " + Name.ToString());
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-UVoxelNode_IsCustomDataSet::UVoxelNode_IsCustomDataSet()
-{
-	SetOutputs(EC::Boolean);
-}
-
-FText UVoxelNode_IsCustomDataSet::GetTitle() const
-{
-	return FText::FromString("Is Custom Data Set: " + Name.ToString());
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
 

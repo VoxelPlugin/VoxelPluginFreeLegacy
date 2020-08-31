@@ -367,6 +367,7 @@ namespace FVoxelDataUtilities
 		const FVoxelData& Data,
 		FVoxelDataOctreeLeaf& Leaf,
 		const FVoxelTransformableWorldGeneratorInstance& WorldGenerator, 
+		const FVoxelIntBox& Bounds,
 		const FTransform& LocalToWorld,
 		bool bModifyValues,
 		bool bModifyMaterials);

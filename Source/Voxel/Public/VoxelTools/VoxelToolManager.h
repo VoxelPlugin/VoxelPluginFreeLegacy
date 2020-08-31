@@ -33,8 +33,10 @@ public:
 	const TArray<UVoxelTool*>& GetTools() const { return Tools; }
 
 public:
+	// If bLoadBlueprints is true, all the blueprints inheriting from VoxelTool will be force loaded
+	// If false, tools whose blueprints are not loaded won't show up
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools")
-	void CreateDefaultTools();
+	void CreateDefaultTools(bool bLoadBlueprints = false);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools")
 	void SetActiveTool(UVoxelTool* NewActiveTool);

@@ -74,12 +74,12 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 
 // Inline static helper to avoid rehashing FNames
 #ifndef STATIC_FNAME
-#define STATIC_FNAME(Name) []() -> const FName& { static const FName StaticName = Name; return StaticName; }()
+#define STATIC_FNAME(Name) ([]() -> const FName& { static const FName StaticName = Name; return StaticName; }())
 #endif
 
 // Static string helper
 #ifndef STATIC_FSTRING
-#define STATIC_FSTRING(String) []() -> const FString& { static const FString StaticString = String; return StaticString; }()
+#define STATIC_FSTRING(String) ([]() -> const FString& { static const FString StaticString = String; return StaticString; }())
 #endif
 
 #ifndef UNIQUE_ID

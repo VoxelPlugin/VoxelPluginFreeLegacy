@@ -45,9 +45,6 @@ struct VOXELGRAPH_API FVoxelColorRichCurve
 	FVoxelColorRichCurve(const UCurveLinearColor* Curve);
 };
 
-using FVoxelGraphCustomData = TMap<FName, v_flt>;
-using FVoxelGraphCustomDataRange = TMap<FName, TVoxelRange<v_flt>>;
-
 namespace FVoxelNodeFunctions
 {
 	inline v_flt Sqrt(v_flt F)
@@ -974,27 +971,23 @@ namespace FVoxelNodeFunctions
 	VOXELGRAPH_API v_flt GetPreviousGeneratorValue(
 		v_flt X, v_flt Y, v_flt Z,
 		const FVoxelContext& Context,
-		const FVoxelGraphCustomData& CustomData,
 		const FVoxelWorldGeneratorInstance* DefaultGenerator);
 	VOXELGRAPH_API TVoxelRange<v_flt> GetPreviousGeneratorValue(
 		TVoxelRange<v_flt> X,
 		TVoxelRange<v_flt> Y,
 		TVoxelRange<v_flt> Z,
 		const FVoxelContextRange& Context,
-		const FVoxelGraphCustomDataRange& CustomData,
 		const FVoxelWorldGeneratorInstance* DefaultGenerator);
 
 	VOXELGRAPH_API FVoxelMaterial GetPreviousGeneratorMaterial(
 		v_flt X, v_flt Y, v_flt Z,
 		const FVoxelContext& Context,
-		const FVoxelGraphCustomData& CustomData,
 		const FVoxelWorldGeneratorInstance* DefaultGenerator);
 
 	VOXELGRAPH_API v_flt GetPreviousGeneratorCustomOutput(
 		const FName& Name,
 		v_flt X, v_flt Y, v_flt Z,
 		const FVoxelContext& Context,
-		const FVoxelGraphCustomData& CustomData,
 		const FVoxelWorldGeneratorInstance* DefaultGenerator);
 	VOXELGRAPH_API TVoxelRange<v_flt> GetPreviousGeneratorCustomOutput(
 		const FName& Name,
@@ -1002,21 +995,18 @@ namespace FVoxelNodeFunctions
 		TVoxelRange<v_flt> Y,
 		TVoxelRange<v_flt> Z,
 		const FVoxelContextRange& Context,
-		const FVoxelGraphCustomDataRange& CustomData,
 		const FVoxelWorldGeneratorInstance* DefaultGenerator);
 
 	VOXELGRAPH_API v_flt GetWorldGeneratorCustomOutput(
 		const FVoxelWorldGeneratorInstance& WorldGenerator,
 		const FName& Name,
 		v_flt X, v_flt Y, v_flt Z,
-		const FVoxelContext& Context,
-		const FVoxelGraphCustomData& CustomData);
+		const FVoxelContext& Context);
 	VOXELGRAPH_API TVoxelRange<v_flt> GetWorldGeneratorCustomOutput(
 		const FVoxelWorldGeneratorInstance& WorldGenerator,
 		const FName& Name,
 		TVoxelRange<v_flt> X, TVoxelRange<v_flt> Y, TVoxelRange<v_flt> Z,
-		const FVoxelContextRange& Context,
-		const FVoxelGraphCustomDataRange& CustomData);
+		const FVoxelContextRange& Context);
 
 	inline v_flt Fmod(v_flt X, v_flt Y)
 	{
@@ -1209,7 +1199,6 @@ namespace FVoxelNodeFunctions
 		EVoxelMaterialConfig MaterialConfig,
 		float Tolerance,
 		const TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>>& InInstances,
-		const FVoxelGraphCustomData& CustomData,
 		const TArray<FName>& FloatOutputsNames,
 		const FVoxelContext& Context,
 		v_flt X, v_flt Y, v_flt Z,
@@ -1225,7 +1214,6 @@ namespace FVoxelNodeFunctions
 	
 	VOXELGRAPH_API void ComputeWorldGeneratorsMergeRange(
 		const TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>>& InInstances,
-		const FVoxelGraphCustomDataRange& CustomData,
 		const TArray<FName>& FloatOutputsNames,
 		const FVoxelContextRange& Context,
 		TVoxelRange<v_flt> X,
@@ -1235,52 +1223,6 @@ namespace FVoxelNodeFunctions
 		TVoxelRange<v_flt>& OutValue,
 		TArray<TVoxelRange<v_flt>, TInlineAllocator<128>> & OutFloatOutputs,
 		TVoxelRange<int32>& NumGeneratorsQueried);
-
-	inline v_flt GetCustomData(const FVoxelContext& Context, const FName& Name)
-	{
-		// TODO PLACEABLE ITEMS auto* CustomDataPtr = Context.Items.CustomData;
-		void* CustomDataPtr = nullptr;
-		if (!CustomDataPtr)
-		{
-			return 0;
-		}
-		auto& CustomData = *reinterpret_cast<FVoxelGraphCustomData*>(CustomDataPtr);
-		return CustomData.FindRef(Name);
-	}
-	inline TVoxelRange<v_flt> GetCustomData(const FVoxelContextRange& Context, const FName& Name)
-	{
-		// TODO PLACEABLE ITEMS auto* CustomDataPtr = Context.Items.CustomData;
-		void* CustomDataPtr = nullptr;
-		if (!CustomDataPtr)
-		{
-			return 0;
-		}
-		auto& CustomData = *reinterpret_cast<FVoxelGraphCustomDataRange*>(CustomDataPtr);
-		return CustomData.FindRef(Name);
-	}
-	
-	inline bool IsCustomDataSet(const FVoxelContext& Context, const FName& Name)
-	{
-		// TODO PLACEABLE ITEMS auto* CustomDataPtr = Context.Items.CustomData;
-		void* CustomDataPtr = nullptr;
-		if (!CustomDataPtr)
-		{
-			return false;
-		}
-		auto& CustomData = *reinterpret_cast<FVoxelGraphCustomData*>(CustomDataPtr);
-		return CustomData.Contains(Name);
-	}
-	inline bool IsCustomDataSet(const FVoxelContextRange& Context, const FName& Name)
-	{
-		// TODO PLACEABLE ITEMS auto* CustomDataPtr = Context.Items.CustomData;
-		void* CustomDataPtr = nullptr;
-		if (!CustomDataPtr)
-		{
-			return false;
-		}
-		auto& CustomData = *reinterpret_cast<FVoxelGraphCustomDataRange*>(CustomDataPtr);
-		return CustomData.Contains(Name);
-	}
 
 	template<typename T>
 	inline T Switch(T A, T B, bool bPickA)
