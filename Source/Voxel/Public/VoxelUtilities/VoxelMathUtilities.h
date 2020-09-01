@@ -459,7 +459,7 @@ namespace FVoxelUtilities
 	template<typename T>
 	FORCEINLINE auto Create3DGetter(T& Array, const FIntVector& Size, const FIntVector& Offset = FIntVector(0, 0, 0)) -> decltype(auto)
 	{
-		return [&](int32 X, int32 Y, int32 Z) -> decltype(auto) { return Get3D(Array, Size, X, Y, Z, Offset); };
+		return [&Array, Size, Offset](int32 X, int32 Y, int32 Z) -> decltype(auto) { return Get3D(Array, Size, X, Y, Z, Offset); };
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
