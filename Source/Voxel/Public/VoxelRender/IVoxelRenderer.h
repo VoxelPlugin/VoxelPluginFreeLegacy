@@ -19,6 +19,7 @@ class FVoxelToolRenderingManager;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UVoxelMaterialCollectionBase;
+class UVoxelProceduralMeshComponent;
 class AVoxelWorld;
 class AActor;
 struct FVoxelChunkUpdate;
@@ -168,6 +169,7 @@ public:
 
 	virtual void RecomputeMeshPositions() = 0;
 	virtual void ApplyNewMaterials() = 0;
+	virtual void ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda) = 0;
 	
 	virtual void CreateGeometry_AnyThread(int32 LOD, const FIntVector& ChunkPosition, TArray<uint32>& OutIndices, TArray<FVector>& OutVertices) const = 0;
 	//~ End IVoxelRenderer Interface

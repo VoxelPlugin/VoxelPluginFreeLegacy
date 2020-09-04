@@ -21,6 +21,7 @@ public:
 	virtual void Tick(double MaxTime) override;
 
 	virtual void RecomputeMeshPositions() override;
+	virtual void ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda) override;
 	virtual void StartDestroying() override;
 	//~ End IVoxelRendererMeshHandler Interface
 

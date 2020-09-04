@@ -60,6 +60,7 @@ public:
 
 public:
 	virtual void RecomputeMeshPositions();
+	virtual void ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda);
 	virtual void StartDestroying();
 
 	inline bool IsDestroying() const

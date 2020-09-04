@@ -34,6 +34,7 @@ public:
 	
 	virtual void RecomputeMeshPositions() override;
 	virtual void ApplyNewMaterials() override;
+	virtual void ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda) override;
 	
 	virtual void CreateGeometry_AnyThread(
 		int32 LOD,
