@@ -48,7 +48,7 @@ public:
 public:
 	FVoxelWorldGeneratorInstance(
 		TSubclassOf<UVoxelWorldGenerator> Class,
-		UVoxelWorldGenerator* Object,
+		const UVoxelWorldGenerator* Object,
 		const FBaseFunctionPtrs& BasePtrs,
 		const FCustomFunctionPtrs& CustomPtrs)
 		: Class(Class)
@@ -148,7 +148,7 @@ public:
 public:
 	FVoxelTransformableWorldGeneratorInstance(
 		TSubclassOf<UVoxelTransformableWorldGenerator> Class,
-		UVoxelTransformableWorldGenerator* Object,
+		const UVoxelTransformableWorldGenerator* Object,
 		const FBaseFunctionPtrs& BasePtrs,
 		const FCustomFunctionPtrs& CustomPtrs,
 		const FBaseFunctionPtrs_Transform& BasePtrs_Transform,

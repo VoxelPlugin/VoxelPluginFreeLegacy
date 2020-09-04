@@ -1,7 +1,7 @@
 ﻿{
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "Free-Beta-0964237c",
+	"VersionName": "Free-Beta-72ffe143",
 	"FriendlyName": "Voxel Plugin Free",
 	"Description": "Create fully volumetric, entirely destructible & infinite worlds",
 	"Category": "Terrain",
@@ -23,7 +23,9 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android"
+				"Android",
+				"Mac",
+				"IOS"
 			]
 		},
 		{
@@ -33,7 +35,9 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android"
+				"Android",
+				"Mac",
+				"IOS"
 			]
 		},
 		{
@@ -43,7 +47,9 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android"
+				"Android",
+				"Mac",
+				"IOS"
 			]
 		},
 		{
@@ -69,7 +75,9 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android"
+				"Android",
+				"Mac",
+				"IOS"
 			]
 		},
 		{
@@ -78,7 +86,8 @@
 			"LoadingPhase": "PostEngineInit",
 			"WhitelistPlatforms": [
 				"Win64",
-				"Linux"
+				"Linux",
+				"Mac"
 			]
 		},
 		{
@@ -87,7 +96,8 @@
 			"LoadingPhase": "PostEngineInit",
 			"WhitelistPlatforms": [
 				"Win64",
-				"Linux"
+				"Linux",
+				"Mac"
 			]
 		},
 		{
@@ -96,7 +106,18 @@
 			"LoadingPhase": "Default",
 			"WhitelistPlatforms": [
 				"Win64",
-				"Linux"
+				"Linux",
+				"Mac"
+			]
+		},
+		{
+			"Name": "VoxelExamples",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Linux",
+				"Android"
 			]
 		}
 	],
