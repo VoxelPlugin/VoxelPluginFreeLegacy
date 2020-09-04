@@ -64,7 +64,7 @@ void UVoxelTool::DisableTool()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride)
+void UVoxelTool::K2_AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride)
 {
 	FDoEditOverride DoEditOverrideCpp;
 	if (DoEditOverride.IsBound())
@@ -98,7 +98,7 @@ void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData,
 	const FVector End = TickData.GetRayOrigin() + float(WORLD_MAX) * TickData.GetRayDirection();
 
 	FHitResult HitResult;
-	World->GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility);
+	World->GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, TickData.CollisionChannel);
 	
 	AVoxelWorld* VoxelWorld = Cast<AVoxelWorld>(HitResult.Actor);
 	if (!CanEditWorld(VoxelWorld))
@@ -144,19 +144,20 @@ void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData,
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelTool::SimpleTick(
+void UVoxelTool::K2_SimpleTick(
 	APlayerController* PlayerController,
 	bool bEdit,
 	const TMap<FName, bool>& Keys,
 	const TMap<FName, float>& Axes,
-	const FDoEditDynamicOverride& DoEditOverride)
+	const FDoEditDynamicOverride& DoEditOverride,
+	ECollisionChannel CollisionChannel)
 {
 	FDoEditOverride DoEditOverrideCpp;
 	if (DoEditOverride.IsBound())
 	{
 		DoEditOverrideCpp.BindLambda([&](FVector Position, FVector Normal) { DoEditOverride.Execute(Position, Normal); });
 	}
-	SimpleTick(PlayerController, bEdit, Keys, Axes, DoEditOverrideCpp);
+	SimpleTick(PlayerController, bEdit, Keys, Axes, DoEditOverrideCpp, CollisionChannel);
 }
 
 void UVoxelTool::SimpleTick(
@@ -164,7 +165,8 @@ void UVoxelTool::SimpleTick(
 	bool bEdit,
 	const TMap<FName, bool>& Keys,
 	const TMap<FName, float>& Axes,
-	const FDoEditOverride& DoEditOverride)
+	const FDoEditOverride& DoEditOverride,
+	ECollisionChannel CollisionChannel)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -213,6 +215,7 @@ void UVoxelTool::SimpleTick(
 	TickData.bEdit = bEdit;
 	TickData.Keys = Keys;
 	TickData.Axes = Axes;
+	TickData.CollisionChannel = CollisionChannel;
 
 	const auto Deproject = [PlayerController = MakeWeakObjectPtr(PlayerController)](
 		const FVector2D& InScreenPosition,

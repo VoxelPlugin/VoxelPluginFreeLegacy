@@ -77,7 +77,7 @@ FVoxelIntBoxWithValidity UVoxelFlattenTool::DoEdit()
 	if (bUseAverage)
 	{
 		FVoxelLineTraceParameters Parameters;
-		Parameters.CollisionChannel = GetVoxelWorld()->CollisionPresets.GetObjectType();
+		Parameters.CollisionChannel = GetTickData().CollisionChannel;
 		Parameters.DrawDebugType = SharedConfig->bDebug ? EDrawDebugTrace::ForOneFrame : EDrawDebugTrace::None;
 
 		const float RaysRadius = FMath::Max(Radius, GetVoxelWorld()->VoxelSize);

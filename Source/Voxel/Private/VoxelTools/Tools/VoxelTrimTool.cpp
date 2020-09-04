@@ -34,7 +34,7 @@ void UVoxelTrimTool::Tick()
 	Super::Tick();
 	
 	FVoxelLineTraceParameters Parameters;
-	Parameters.CollisionChannel = GetVoxelWorld()->CollisionPresets.GetObjectType();
+	Parameters.CollisionChannel = GetTickData().CollisionChannel;
 	Parameters.DrawDebugType = SharedConfig->bDebug ? EDrawDebugTrace::ForOneFrame : EDrawDebugTrace::None;
 
 	TArray<FVoxelProjectionHit> Hits;

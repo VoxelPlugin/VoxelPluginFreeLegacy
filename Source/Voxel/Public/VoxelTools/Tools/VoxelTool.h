@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
+#include "Engine/EngineTypes.h"
 #include "Templates/SubclassOf.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "VoxelTool.generated.h"
@@ -43,7 +44,10 @@ struct FVoxelToolTickData
 
 	UPROPERTY(Category = "Voxel", EditAnywhere, BlueprintReadWrite)
 	TMap<FName, float> Axes;
-
+	
+	UPROPERTY(Category = "Voxel", EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<ECollisionChannel> CollisionChannel = ECC_Visibility;
+	
 public:
 	bool IsKeyDown(FName Key) const
 	{
@@ -203,8 +207,8 @@ public:
 	DECLARE_DYNAMIC_DELEGATE_TwoParams(FDoEditDynamicOverride, FVector, Position, FVector, Normal);
 	DECLARE_DELEGATE_TwoParams(FDoEditOverride, FVector /* Position */, FVector /* Normal */);
 	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "DoEditOverride"))
-	void AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", DisplayName = "AdvancedTick", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "DoEditOverride"))
+	void K2_AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride);
 	void AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditOverride& DoEditOverride = {});
 
 	/**
@@ -215,20 +219,23 @@ public:
 	 * @param	Axes				The axes values in this frame, to control brush size/strength etc. Use MakeToolAxes. You can add additional values to the map if you have custom tools using them.
 	 * @param	DoEditOverride		If provided, the edit will not be done but this function will be called instead.
 	 *								Useful for multiplayer, as you can broadcast the parameters to the other players & call ApplyTool
+	 * @param	CollisionChannel	The collision channel to do traces against
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "Keys, Axes, DoEditOverride"))
-	void SimpleTick(
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", DisplayName = "SimpleTick", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "Keys, Axes, DoEditOverride, CollisionChannel"))
+	void K2_SimpleTick(
 		APlayerController* PlayerController, 
 		bool bEdit, 
 		const TMap<FName, bool>& Keys, 
-		const TMap<FName, float>& Axes, 
-		const FDoEditDynamicOverride& DoEditOverride);
+		const TMap<FName, float>& Axes,
+		const FDoEditDynamicOverride& DoEditOverride,
+		ECollisionChannel CollisionChannel = ECC_Visibility);
 	void SimpleTick(
 		APlayerController* PlayerController, 
 		bool bEdit,
 		const TMap<FName, bool>& Keys, 
 		const TMap<FName, float>& Axes, 
-		const FDoEditOverride& DoEditOverride = {});
+		const FDoEditOverride& DoEditOverride = {},
+		ECollisionChannel CollisionChannel = ECC_Visibility);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (AutoCreateRefTerm = "Keys, Axes", DefaultToSelf = "World"))
 	void Apply(
