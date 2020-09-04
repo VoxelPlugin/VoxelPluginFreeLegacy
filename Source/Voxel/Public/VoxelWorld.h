@@ -703,6 +703,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Multiplayer")
 	UVoxelMultiplayerInterface* GetMultiplayerInterfaceInstance() const;
 
+	// Can be called at runtime
+	UFUNCTION(BlueprintCallable, Category="Voxel|Collision")
+	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse NewResponse);
+
 public:
 	//~ Begin AActor Interface
 	virtual void BeginPlay() override;

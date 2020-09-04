@@ -142,6 +142,16 @@ void FVoxelRendererMixedMeshHandler::RecomputeMeshPositions()
 	ClusteredMeshHandler->RecomputeMeshPositions();
 }
 
+void FVoxelRendererMixedMeshHandler::ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	IVoxelRendererMeshHandler::ApplyToAllMeshes(Lambda);
+
+	BasicMeshHandler->ApplyToAllMeshes(Lambda);
+	ClusteredMeshHandler->ApplyToAllMeshes(Lambda);
+}
+
 void FVoxelRendererMixedMeshHandler::StartDestroying()
 {
 	VOXEL_FUNCTION_COUNTER();

@@ -221,6 +221,20 @@ void IVoxelRendererMeshHandler::RecomputeMeshPositions()
 	}
 }
 
+void IVoxelRendererMeshHandler::ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda)
+{
+	VOXEL_FUNCTION_COUNTER();
+	ensure(!bIsDestroying);
+
+	for (auto& It : ActiveMeshes)
+	{
+		if (ensure(It.Key.IsValid()))
+		{
+			Lambda(*It.Key);
+		}
+	}
+}
+
 void IVoxelRendererMeshHandler::StartDestroying()
 {
 	ensure(!bIsDestroying);

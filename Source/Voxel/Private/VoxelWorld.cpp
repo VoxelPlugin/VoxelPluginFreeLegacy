@@ -450,6 +450,23 @@ UVoxelMultiplayerInterface* AVoxelWorld::GetMultiplayerInterfaceInstance() const
 	return nullptr;
 }
 
+void AVoxelWorld::SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse NewResponse)
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	CollisionPresets.SetResponseToChannel(Channel, NewResponse);
+
+	if (IsCreated())
+	{
+		GetWorldRoot().SetCollisionResponseToChannel(Channel, NewResponse);
+		
+		Renderer->ApplyToAllMeshes([&](UVoxelProceduralMeshComponent& MeshComponent)
+		{
+			MeshComponent.SetCollisionResponseToChannel(Channel, NewResponse);
+		});
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
