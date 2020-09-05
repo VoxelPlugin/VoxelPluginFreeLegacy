@@ -1376,6 +1376,8 @@ void AVoxelWorld::SaveData()
 			
 			if (Result == EAppReturnType::No)
 			{
+				// Clear dirty flag so we don't get more annoying popups
+				Data->ClearDirtyFlag();
 				return;
 			}
 			
