@@ -435,7 +435,7 @@ public:
 				auto* SourceDataPtr = Source.Channels_DataPtr[Channel];
 				if (SourceDataPtr)
 				{
-					auto* DataPtr = Channels_DataPtr[Channel];
+					auto*& DataPtr = Channels_DataPtr[Channel];
 					Channels_Allocate(DataPtr, Memory);
 
 					FMemory::Memcpy(DataPtr, SourceDataPtr, Channels_MemorySize);
