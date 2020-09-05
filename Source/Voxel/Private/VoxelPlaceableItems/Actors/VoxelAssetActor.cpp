@@ -37,7 +37,7 @@ AVoxelAssetActor::AVoxelAssetActor()
 #endif
 }
 
-void AVoxelAssetActor::AddItemToWorld(AVoxelWorld* World) const
+void AVoxelAssetActor::AddItemToWorld(AVoxelWorld* World)
 {
 	check(World);
 

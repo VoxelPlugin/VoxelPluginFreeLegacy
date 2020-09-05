@@ -6,6 +6,11 @@
 #include "VoxelIntBox.h"
 #include "VoxelPlaceableItemManager.generated.h"
 
+struct FVoxelDataItem;
+
+template<typename T>
+class TVoxelDataItemWrapper;
+
 class IVoxelWorldInterface;
 
 class UVoxelWorldGenerator;
@@ -80,13 +85,20 @@ public:
 	virtual void OnClear_Implementation() {}
 
 public:
+	using FVoxelDataItemPtr = TVoxelWeakPtr<const TVoxelDataItemWrapper<FVoxelDataItem>>;
+	
 	void Generate();
 	void Clear();
-	void ApplyToData(FVoxelData& Data, FVoxelWorldGeneratorCache& Cache);
+	void ApplyToData(
+		FVoxelData& Data, 
+		FVoxelWorldGeneratorCache& Cache, 
+		TMap<int32, FVoxelDataItemPtr>* OutItems = nullptr);
+
+	const TArray<FVoxelDataItemConstructionInfo>& GetDataItemInfos() const { return DataItemInfos; }
 	
 private:
 	UPROPERTY()
-	TArray<FVoxelDataItemConstructionInfo> DataItemConstructionInfos;
+	TArray<FVoxelDataItemConstructionInfo> DataItemInfos;
 
 public:
 	struct FDebugLine

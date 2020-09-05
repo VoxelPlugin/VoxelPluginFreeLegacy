@@ -2,7 +2,7 @@
 
 #pragma once
 
-#if 1 // VOXEL_PLUGIN_EXAMPLES
+#if 0
 
 #include "CoreMinimal.h"
 #include "VoxelFastNoise.h"

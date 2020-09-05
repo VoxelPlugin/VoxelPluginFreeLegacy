@@ -23,6 +23,7 @@
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
 #include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelDataItemActor.h"
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
@@ -1007,15 +1008,117 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 		}
 
 		// Add placeable items AFTER loading
+		if (!PlaceableItemManager)
+		{
+			// This lets objects adds new items without having to specify a custom class
+			PlaceableItemManager = NewObject<UVoxelPlaceableItemManager>();
+		}
+		PlaceableItemManager->Clear();
+		PlaceableItemManager->Generate();
+
+		// Do that after Clear/Generate
 		ApplyPlaceableItems();
 
-		if (PlaceableItemManager)
+		TMap<AVoxelDataItemActor*, TArray<int32>> ActorsToDataItemsIndices;
+		for (TActorIterator<AVoxelDataItemActor> ActorItr(GetWorld()); ActorItr; ++ActorItr)
 		{
-			PlaceableItemManager->Clear();
-			PlaceableItemManager->Generate();
-			PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache);
-			PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
+			auto* Actor = *ActorItr;
+
+			const int32 PreviousNum = PlaceableItemManager->GetDataItemInfos().Num();
+			{
+				TGuardValue<bool> AllowScriptsInEditor(GAllowActorScriptExecutionInEditor, true);
+				Actor->K2_AddItemToWorld(this);
+			}
+			const int32 NewNum = PlaceableItemManager->GetDataItemInfos().Num();
+
+			auto& DataItemsIndices = ActorsToDataItemsIndices.FindOrAdd(Actor);
+			for (int32 Index = PreviousNum; Index < NewNum; Index++)
+			{
+				DataItemsIndices.Add(Index);
+			}
 		}
+
+		// Let events add other items
+		OnGenerateWorld.Broadcast();
+		
+		using FVoxelDataItemPtr = TVoxelWeakPtr<const TVoxelDataItemWrapper<FVoxelDataItem>>;
+
+		TMap<int32, FVoxelDataItemPtr> DataItemIndicesToPtrs;
+		PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache, &DataItemIndicesToPtrs);
+
+		for (auto& It : ActorsToDataItemsIndices)
+		{
+			if (It.Value.Num() == 0)
+			{
+				continue;
+			}
+			
+			const auto ItemsPtrs = MakeShared<TArray<FVoxelDataItemPtr>>();
+			for (auto& Index : It.Value)
+			{
+				FVoxelDataItemPtr* ItemPtrPtr = DataItemIndicesToPtrs.Find(Index);
+				if (ensure(ItemPtrPtr) && ensure(ItemPtrPtr->IsValid()))
+				{
+					ItemsPtrs->Add(*ItemPtrPtr);
+				}
+			}
+
+			AVoxelDataItemActor* Actor = It.Key;
+			Actor->OnRefresh.RemoveAll(this);
+			Actor->OnRefresh.AddWeakLambda(this, [this, ItemsPtrs, Actor]()
+			{
+				if (!IsCreated() || !ensure(PlaceableItemManager))
+				{
+					return;
+				}
+
+				TArray<FVoxelIntBox> BoundsToUpdate;
+				for (auto Item : *ItemsPtrs)
+				{
+					const auto PinnedItem = Item.Pin();
+					if (!ensure(PinnedItem.IsValid()))
+					{
+						continue;
+					}
+					const auto& Bounds = PinnedItem->Item.Bounds;
+					
+					BoundsToUpdate.Add(Bounds);
+
+					FVoxelWriteScopeLock Lock(*Data, Bounds, FUNCTION_FNAME);
+					FString Error;
+					if (!ensure(Data->RemoveItem(Item, Error)))
+					{
+						LOG_VOXEL(Error, TEXT("Failed to remove data item for %s: %s"), *Actor->GetName(), *Error);
+					}
+				}
+				ItemsPtrs->Empty();
+				
+				PlaceableItemManager->Clear();
+				
+				{
+					TGuardValue<bool> AllowScriptsInEditor(GAllowActorScriptExecutionInEditor, true);
+					Actor->K2_AddItemToWorld(this);
+				}
+
+				TMap<int32, FVoxelDataItemPtr> NewDataItemIndicesToPtrs;
+				PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache, &NewDataItemIndicesToPtrs);
+
+				for (auto& NewIt : NewDataItemIndicesToPtrs)
+				{
+					const auto& PinnedItem = NewIt.Value.Pin();
+					if (ensure(PinnedItem.IsValid()))
+					{
+						BoundsToUpdate.Add(PinnedItem->Item.Bounds);
+						ItemsPtrs->Add(PinnedItem);
+					}
+				}
+
+				LODManager->UpdateBounds(BoundsToUpdate);
+				PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
+			});
+		}
+		
+		PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
 	}
 
 	if (PlayType == EVoxelPlayType::Preview)
@@ -1153,11 +1256,18 @@ void AVoxelWorld::ApplyPlaceableItems()
 		PlaceableItemActors.Add(Actor);
 	}
 	
-	PlaceableItemActors.Sort([](auto& ActorA, auto& ActorB) { return ActorA.GetPriority() < ActorB.GetPriority(); });
+	TGuardValue<bool> AllowScriptsInEditor(GAllowActorScriptExecutionInEditor, true);
+
+	TMap<AVoxelPlaceableItemActor*, int32> Priorities;
+	for (auto* It : PlaceableItemActors)
+	{
+		Priorities.Add(It, It->K2_GetPriority());
+	}
+	PlaceableItemActors.Sort([&](auto& ActorA, auto& ActorB) { return Priorities[&ActorA] < Priorities[&ActorB]; });
 
 	for (auto* PlaceableItemActor : PlaceableItemActors)
 	{
-		PlaceableItemActor->AddItemToWorld(this);
+		PlaceableItemActor->K2_AddItemToWorld(this);
 	}
 }
 

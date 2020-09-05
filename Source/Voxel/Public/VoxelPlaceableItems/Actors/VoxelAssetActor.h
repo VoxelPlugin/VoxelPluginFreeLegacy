@@ -36,7 +36,7 @@ class VOXEL_API UAssetActorPrimitiveComponent : public UPrimitiveComponent
 	GENERATED_BODY()
 };
 
-UCLASS()
+UCLASS(HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "HOLD", "LOD", "Cooking", "Collision"))
 class VOXEL_API AVoxelAssetActor : public AVoxelPlaceableItemActor, public IVoxelEditorDelegatesInterface
 {
 	GENERATED_BODY()
@@ -91,7 +91,7 @@ public:
 	AVoxelAssetActor();
 
 	//~ Begin AVoxelPlaceableItemActor Interface
-	virtual void AddItemToWorld(AVoxelWorld* World) const override;
+	virtual void AddItemToWorld(AVoxelWorld* World) override;
 	virtual int32 GetPriority() const override;
 	//~ End AVoxelPlaceableItemActor Interface
 	

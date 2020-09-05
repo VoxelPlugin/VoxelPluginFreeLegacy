@@ -19,7 +19,7 @@ public:
 	AVoxelDisableEditsBox();
 
 	//~ Begin AVoxelPlaceableItemActor Interface
-	void AddItemToWorld(AVoxelWorld* World) const override;
+	void AddItemToWorld(AVoxelWorld* World) override;
 	//~ End AVoxelPlaceableItemActor Interface
 
 private:

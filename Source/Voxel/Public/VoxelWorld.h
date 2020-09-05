@@ -44,10 +44,6 @@ struct FVoxelUncompressedWorldSave;
 struct FVoxelRendererDynamicSettings;
 enum class EVoxelTaskType : uint8;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWorldLoaded);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWorldDestroyed);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMaxFoliageInstancesReached);
-
 /**
  * Voxel World actor class
  */
@@ -74,6 +70,16 @@ public:
 	};
 	
 public:
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGenerateWorld);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWorldLoaded);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWorldDestroyed);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMaxFoliageInstancesReached);
+
+	// Called when generating the world, right after it's created
+	// Bind this to add data items, or to do something right after the world is created
+	UPROPERTY(BlueprintAssignable)
+	FOnGenerateWorld OnGenerateWorld;
+
 	UPROPERTY(BlueprintAssignable)
 	FOnWorldLoaded OnWorldLoaded;
 
@@ -154,8 +160,9 @@ public:
 	// Generator of this world
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
 	FVoxelWorldGeneratorPicker WorldGenerator;
-	
-	UPROPERTY(EditAnywhere, Category = "Voxel - General", Instanced, meta = (Recreate))
+
+	// Will be automatically created if not set
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", Instanced, meta = (Recreate))
 	UVoxelPlaceableItemManager* PlaceableItemManager = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
