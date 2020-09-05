@@ -848,6 +848,8 @@ void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	FVoxelScopedFastSaveLoad FastSaveScope;
+
+	const bool bDataIsDirty = World->GetData().IsDirty();
 	
 	FVoxelWorldCreateInfo Info;
 	if (bSaveData)
@@ -861,7 +863,7 @@ void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)
 
 	World->RecreateAll(Info);
 
-	if (bSaveData)
+	if (bSaveData && bDataIsDirty)
 	{
 		// Set back dirty flag
 		World->GetData().MarkAsDirty();
