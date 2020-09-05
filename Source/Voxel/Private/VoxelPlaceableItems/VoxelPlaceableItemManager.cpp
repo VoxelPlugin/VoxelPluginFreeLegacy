@@ -20,7 +20,7 @@ void UVoxelPlaceableItemManager::AddDataItem(FVoxelDataItemConstructionInfo Info
 		FVoxelMessages::Error(FUNCTION_ERROR("Bounds are invalid! ") + Info.Bounds.ToString());
 		return;
 	}
-	DataItemConstructionInfos.Add(Info);
+	DataItemInfos.Add(Info);
 }
 
 void UVoxelPlaceableItemManager::DrawDebugLine(FVector Start, FVector End, FLinearColor Color)
@@ -40,19 +40,23 @@ void UVoxelPlaceableItemManager::Generate()
 
 void UVoxelPlaceableItemManager::Clear()
 {
-	DataItemConstructionInfos.Reset();
+	DataItemInfos.Reset();
 	DebugLines.Reset();
 	DebugPoints.Reset();
 
 	OnClear();
 }
 
-void UVoxelPlaceableItemManager::ApplyToData(FVoxelData& Data, FVoxelWorldGeneratorCache& Cache)
+void UVoxelPlaceableItemManager::ApplyToData(
+	FVoxelData& Data,
+	FVoxelWorldGeneratorCache& Cache,
+	TMap<int32, FVoxelDataItemPtr>* OutItems)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	for (auto& Info : DataItemConstructionInfos)
+	for (int32 Index = 0; Index < DataItemInfos.Num(); Index++)
 	{
+		auto& Info = DataItemInfos[Index];
 		if (!ensure(Info.Generator))
 		{
 			continue;
@@ -61,7 +65,13 @@ void UVoxelPlaceableItemManager::ApplyToData(FVoxelData& Data, FVoxelWorldGenera
 		const auto Instance = Cache.CreateWorldGeneratorInstance(*Info.Generator);
 
 		FVoxelWriteScopeLock Lock(Data, Info.Bounds, FUNCTION_FNAME); // TODO No lock on start
-		Data.AddItem<FVoxelDataItem>(Instance, Info.Bounds, TArray<v_flt>(Info.Parameters));
+		const auto ItemPtr = Data.AddItem<FVoxelDataItem>(Instance, Info.Bounds, TArray<v_flt>(Info.Parameters));
+		ensure(ItemPtr.IsValid());
+		
+		if (OutItems)
+		{
+			OutItems->Add(Index, ItemPtr);
+		}
 	}
 }
 
@@ -105,7 +115,7 @@ void UVoxelPlaceableItemManager::DrawDebug(const IVoxelWorldInterface& VoxelWorl
 
 	if (bDebugBounds)
 	{
-		for (auto& Info : DataItemConstructionInfos)
+		for (auto& Info : DataItemInfos)
 		{
 			UVoxelDebugUtilities::DrawDebugIntBox(VoxelWorldInterface, LineBatchComponent, FTransform(), Info.Bounds, Lifetime);
 		}

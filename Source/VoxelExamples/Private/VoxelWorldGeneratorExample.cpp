@@ -1,6 +1,6 @@
 // Copyright 2020 Phyronnaz
 
-#if 1 // VOXEL_PLUGIN_EXAMPLES
+#if 0
 
 #include "VoxelWorldGeneratorExample.h"
 #include "VoxelMaterialBuilder.h"
