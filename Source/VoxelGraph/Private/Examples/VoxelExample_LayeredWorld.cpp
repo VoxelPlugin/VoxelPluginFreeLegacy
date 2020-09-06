@@ -86,10 +86,7 @@ public:
 					
 					// Init of Seed
 					FVoxelGraphSeed Variable_42; // Seed output 0
-					{
-						static FName StaticName = "Seed";
-						Variable_42 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 4761;
-					}
+					Variable_42 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 4761;
 					
 					// Init of Make Seeds
 					FVoxelGraphSeed Variable_37; // Make Seeds output 0
@@ -169,10 +166,7 @@ public:
 		{
 			// Init of Seed
 			FVoxelGraphSeed Variable_42; // Seed output 0
-			{
-				static FName StaticName = "Seed";
-				Variable_42 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 4761;
-			}
+			Variable_42 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 4761;
 			
 			// Init of Make Seeds
 			FVoxelGraphSeed Variable_37; // Make Seeds output 0
@@ -354,7 +348,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_14; // Data Item Sample output 0
-			Variable_14 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_9, BufferXY.Variable_10, Variable_11, v_flt(5.0f), v_flt(1000.0f));
+			Variable_14 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_9, BufferXY.Variable_10, Variable_11, v_flt(5.0f), v_flt(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// -
 			v_flt Variable_5; // - output 0
@@ -591,7 +585,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_14; // Data Item Sample output 0
-			Variable_14 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_9, Variable_10, Variable_11, v_flt(5.0f), v_flt(1000.0f));
+			Variable_14 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_9, Variable_10, Variable_11, v_flt(5.0f), v_flt(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// -
 			v_flt Variable_5; // - output 0
@@ -1339,7 +1333,7 @@ public:
 			
 			// Data Item Sample
 			TVoxelRange<v_flt> Variable_14; // Data Item Sample output 0
-			Variable_14 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_9, Variable_10, Variable_11, TVoxelRange<v_flt>(5.0f), TVoxelRange<v_flt>(1000.0f));
+			Variable_14 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_9, Variable_10, Variable_11, TVoxelRange<v_flt>(5.0f), TVoxelRange<v_flt>(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// +
 			TVoxelRange<v_flt> Variable_18; // + output 0

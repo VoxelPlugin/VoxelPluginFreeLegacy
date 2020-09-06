@@ -56,8 +56,8 @@ void AVoxelDataItemActor::PostEditChangeProperty(FPropertyChangedEvent& Property
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	if (PropertyChangedEvent.Property &&
-		PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
+	// Note: PropertyChangedEvent.Property will be null when undoing
+	if (PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
 		ScheduleRefresh();
 	}

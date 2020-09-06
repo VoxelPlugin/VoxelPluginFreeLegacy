@@ -213,21 +213,101 @@ FORCEINLINE T FVoxelData::Get(int32 X, int32 Y, int32 Z, int32 LOD) const
 
 namespace FVoxelDataItemsUtilities
 {
+	// This will NOT add the item to the item holder
 	template<typename T>
-	void AddItemToDirtyLeaf(
+	void AddItemToLeafData(
 		const FVoxelData& Data,
 		FVoxelDataOctreeLeaf& Leaf,
 		const T& Item)
 	{
-		check(false);
+	}
+	// This will NOT remove the item from the item holder, but will assume it has already been removed
+	template<typename T>
+	void RemoveItemFromLeafData(
+		const FVoxelData& Data,
+		FVoxelDataOctreeLeaf& Leaf,
+		const T& Item)
+	{
+		if (!TIsSame<T, FVoxelAssetItem>::Value && !TIsSame<T, FVoxelDataItem>::Value)
+		{
+			return;
+		}
+
+		// Flush cache if possible
+		if (!Leaf.Values.IsDirty())
+		{
+			Leaf.Values.ClearData(Data);
+		}
+		if (!Leaf.Materials.IsDirty())
+		{
+			Leaf.Materials.ClearData(Data);
+		}
+
+		// If something is still dirty, remove manually
+		if (Leaf.Values.IsDirty())
+		{
+			FVoxelDataUtilities::RemoveItemFromLeafData<FVoxelValue>(Data, Leaf, Item);
+		}
+		if (Leaf.Materials.IsDirty())
+		{
+			FVoxelDataUtilities::RemoveItemFromLeafData<FVoxelMaterial>(Data, Leaf, Item);
+		}
 	}
 }
 
 template<>
-inline void FVoxelDataItemsUtilities::AddItemToDirtyLeaf<FVoxelAssetItem>(const FVoxelData& Data, FVoxelDataOctreeLeaf& Leaf, const FVoxelAssetItem& Item)
+inline void FVoxelDataItemsUtilities::AddItemToLeafData<FVoxelAssetItem>(
+	const FVoxelData& Data,
+	FVoxelDataOctreeLeaf& Leaf,
+	const FVoxelAssetItem& Item)
 {
-	FVoxelDataUtilities::AddAssetItemDataToLeaf(Data, Leaf, *Item.WorldGenerator, Item.Bounds, Item.LocalToWorld, Leaf.Values.IsDirty(), Leaf.Materials.IsDirty());
+	// Flush cache if possible
+	if (!Leaf.Values.IsDirty())
+	{
+		Leaf.Values.ClearData(Data);
+	}
+	if (!Leaf.Materials.IsDirty())
+	{
+		Leaf.Materials.ClearData(Data);
+	}
+
+	// If something is still dirty, merge manually
+	if (Leaf.Values.IsDirty() || Leaf.Materials.IsDirty())
+	{
+		FVoxelDataUtilities::AddAssetItemToLeafData(Data, Leaf, *Item.WorldGenerator, Item.Bounds, Item.LocalToWorld, Leaf.Values.IsDirty(), Leaf.Materials.IsDirty());
+	}
 }
+
+template<>
+inline void FVoxelDataItemsUtilities::AddItemToLeafData<FVoxelDataItem>(
+	const FVoxelData& Data,
+	FVoxelDataOctreeLeaf& Leaf,
+	const FVoxelDataItem& Item)
+{
+	// Flush cache if possible
+	if (!Leaf.Values.IsDirty())
+	{
+		Leaf.Values.ClearData(Data);
+	}
+	if (!Leaf.Materials.IsDirty())
+	{
+		Leaf.Materials.ClearData(Data);
+	}
+
+	// If something is still dirty, merge manually
+	if (Leaf.Values.IsDirty())
+	{
+		FVoxelDataUtilities::AddItemToLeafData<FVoxelValue>(Data, Leaf, Item);
+	}
+	if (Leaf.Materials.IsDirty())
+	{
+		FVoxelDataUtilities::AddItemToLeafData<FVoxelMaterial>(Data, Leaf, Item);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 template<typename T, bool bDoNotModifyExistingDataChunks, typename... TArgs>
 TVoxelWeakPtr<const TVoxelDataItemWrapper<T>> FVoxelData::AddItem(TArgs&&... Args)
@@ -247,25 +327,9 @@ TVoxelWeakPtr<const TVoxelDataItemWrapper<T>> FVoxelData::AddItem(TArgs&&... Arg
 			
 			Tree.GetItemHolder().AddItem(ItemWrapper->Item);
 
-			if (!bDoNotModifyExistingDataChunks && TIsSame<T, FVoxelAssetItem>::Value)
+			if (!bDoNotModifyExistingDataChunks)
 			{
-				auto& Leaf = Tree.AsLeaf();
-
-				// Flush cache if possible
-				if (!Leaf.Values.IsDirty())
-				{
-					Leaf.Values.ClearData(*this);
-				}
-				if (!Leaf.Materials.IsDirty())
-				{
-					Leaf.Materials.ClearData(*this);
-				}
-
-				// If something is still dirty, merge manually
-				if (Leaf.Values.IsDirty() || Leaf.Materials.IsDirty())
-				{
-					FVoxelDataItemsUtilities::AddItemToDirtyLeaf(*this, Leaf, ItemWrapper->Item);
-				}
+				FVoxelDataItemsUtilities::AddItemToLeafData(*this, Tree.AsLeaf(), ItemWrapper->Item);
 			}
 		}
 		else
@@ -329,7 +393,7 @@ bool FVoxelData::RemoveItem(TVoxelWeakPtr<const TVoxelDataItemWrapper<T>>& InIte
 		}
 	}
 
-	FVoxelOctreeUtilities::IterateTreeInBounds(GetOctree(), Item->Item.Bounds, [&](FVoxelDataOctreeBase& Tree) 
+	FVoxelOctreeUtilities::IterateTreeInBounds(GetOctree(), Item->Item.Bounds, [&](FVoxelDataOctreeBase& Tree)
 	{
 		if (Tree.IsLeafOrHasNoChildren())
 		{
@@ -337,19 +401,9 @@ bool FVoxelData::RemoveItem(TVoxelWeakPtr<const TVoxelDataItemWrapper<T>>& InIte
 
 			Tree.GetItemHolder().RemoveItem(Item->Item);
 
-			if (Tree.IsLeaf() && TIsSame<T, FVoxelAssetItem>::Value)
+			if (Tree.IsLeaf())
 			{
-				auto& Leaf = Tree.AsLeaf();
-
-				// Flush cache if possible to clear cached item data
-				if (!Leaf.Values.IsDirty())
-				{
-					Leaf.Values.ClearData(*this);
-				}
-				if (!Leaf.Materials.IsDirty())
-				{
-					Leaf.Materials.ClearData(*this);
-				}
+				FVoxelDataItemsUtilities::RemoveItemFromLeafData(*this, Tree.AsLeaf(), Item->Item);
 			}
 		}
 	});
@@ -371,6 +425,10 @@ bool FVoxelData::RemoveItem(TVoxelWeakPtr<const TVoxelDataItemWrapper<T>>& InIte
 	return true;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 template<>
 inline FVoxelData::TItemData<FVoxelAssetItem>& FVoxelData::GetItemsData<FVoxelAssetItem>()
 {
@@ -387,4 +445,88 @@ template<>
 inline FVoxelData::TItemData<FVoxelDataItem>& FVoxelData::GetItemsData<FVoxelDataItem>()
 {
 	return DataItemsData;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T, typename TApplyOld, typename TApplyNew>
+void FVoxelDataUtilities::MigrateLeafDataToNewGenerator(
+	const FVoxelData& Data,
+	FVoxelDataOctreeLeaf& Leaf,
+	const FVoxelIntBox& BoundsToMigrate,
+	TApplyOld ApplyOldGenerator,
+	TApplyNew ApplyNewGenerator)
+{
+	TVoxelDataOctreeLeafData<T>& DataHolder = Leaf.GetData<T>();
+	if (!ensure(DataHolder.IsDirty()))
+	{
+		return;
+	}
+	
+	const FVoxelIntBox Bounds = Leaf.GetBounds().Overlap(BoundsToMigrate);
+	const FIntVector Size = Bounds.Size();
+
+	// Revert to the old generator to query the old data
+	ApplyOldGenerator();
+	
+	TArray<T> OldGeneratorData;
+	OldGeneratorData.SetNumUninitialized(Bounds.Count());
+	{
+		TVoxelQueryZone<T> QueryZone(Bounds, OldGeneratorData.GetData());
+		Leaf.GetFromGeneratorAndAssets<T>(*Data.WorldGenerator, QueryZone, 0);
+	}
+
+	// Switch back to the new generator, and query the new data
+	ApplyNewGenerator();
+	
+	TArray<T> NewGeneratorData;
+	NewGeneratorData.SetNumUninitialized(Bounds.Count());
+	{
+		TVoxelQueryZone<T> QueryZone(Bounds, NewGeneratorData.GetData());
+		Leaf.GetFromGeneratorAndAssets<T>(*Data.WorldGenerator, QueryZone, 0);
+	}
+
+	// Update all the data that was the same as the old generator to the new generator
+	FVoxelDataOctreeSetter::Set<T>(Data, Leaf, [&](auto Lambda) { Bounds.Iterate(Lambda); }, 
+		[&](int32 X, int32 Y, int32 Z, T& Value)
+		{
+			const int32 Index = FVoxelUtilities::Get3DIndex(Size, X, Y, Z, Bounds.Min);
+
+			if (Value == FVoxelUtilities::Get(OldGeneratorData, Index))
+			{
+				// Switch the edited value to the new value if it wasn't edited
+				Value = FVoxelUtilities::Get(NewGeneratorData, Index);
+			}
+		});
+}
+
+template<typename T, typename TItem>
+void FVoxelDataUtilities::AddItemToLeafData(
+	const FVoxelData& Data,
+	FVoxelDataOctreeLeaf& Leaf,
+	const TItem& Item)
+{
+	MigrateLeafDataToNewGenerator<T>(
+		Data,
+		Leaf,
+		Item.Bounds,
+		[&]() { ensure(Leaf.GetItemHolder().RemoveItem(Item)); },
+		[&]() { Leaf.GetItemHolder().AddItem(Item); });
+}
+
+template<typename T, typename TItem>
+void FVoxelDataUtilities::RemoveItemFromLeafData(
+	const FVoxelData& Data,
+	FVoxelDataOctreeLeaf& Leaf,
+	const TItem& Item)
+{
+	ensureVoxelSlowNoSideEffects(!Leaf.GetItemHolder().RemoveItem(Item));
+	MigrateLeafDataToNewGenerator<T>(
+		Data,
+		Leaf,
+		Item.Bounds,
+		[&]() { Leaf.GetItemHolder().AddItem(Item); },
+		[&]() { ensure(Leaf.GetItemHolder().RemoveItem(Item)); });
 }

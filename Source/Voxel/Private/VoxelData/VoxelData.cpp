@@ -1005,7 +1005,7 @@ public:
 	}
 };
 
-void FVoxelDataUtilities::AddAssetItemDataToLeaf(
+void FVoxelDataUtilities::AddAssetItemToLeafData(
 	const FVoxelData& Data,
 	FVoxelDataOctreeLeaf& Leaf, 
 	const FVoxelTransformableWorldGeneratorInstance& WorldGenerator, 
@@ -1040,8 +1040,6 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 
 		Leaf.GetData<T>().SetIsDirty(true, Data);
 		
-		auto& DataHolder = Leaf.GetData<T>();
-
 		TVoxelQueryZone<T> QueryZone(BoundsToEdit, Buffer.GetData());
 		WorldGenerator.Get_Transform<T>(
 			LocalToWorld,
@@ -1054,35 +1052,18 @@ void FVoxelDataUtilities::AddAssetItemDataToLeaf(
 
 	// Need to first write both of them, as the item stack is referencing the data
 
-	const auto GetValue = FVoxelUtilities::Create3DGetter(ValuesBuffer, BoundsToEdit.Size(), BoundsToEdit.Min);
-	const auto GetMaterial = FVoxelUtilities::Create3DGetter(MaterialsBuffer, BoundsToEdit.Size(), BoundsToEdit.Min);
-		
-	BoundsToEdit.Iterate([&](int32 X, int32 Y, int32 Z)
-	{
-		const int32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
-		if (bModifyValues)
+	const FIntVector Size = BoundsToEdit.Size();
+	FVoxelDataOctreeSetter::Set<FVoxelValue, FVoxelMaterial>(Data, Leaf, [&](auto Lambda) { BoundsToEdit.Iterate(Lambda); }, 
+		[&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, FVoxelMaterial& Material)
 		{
-			if (Data.bEnableUndoRedo)
+			const int32 Index = FVoxelUtilities::Get3DIndex(Size, X, Y, Z, BoundsToEdit.Min);
+			if (bModifyValues)
 			{
-				Leaf.UndoRedo->SavePreviousValue(Index, Leaf.Values.Get(Index));
+				Value = FVoxelUtilities::Get(ValuesBuffer, Index);
 			}
-			if (Data.bEnableMultiplayer)
+			if (bModifyMaterials)
 			{
-				Leaf.Multiplayer->MarkIndexDirty<FVoxelValue>(Index);
+				Material = FVoxelUtilities::Get(MaterialsBuffer, Index);
 			}
-			Leaf.Values.GetRef(Index) = GetValue(X, Y, Z);
-		}
-		if (bModifyMaterials)
-		{
-			if (Data.bEnableUndoRedo)
-			{
-				Leaf.UndoRedo->SavePreviousValue(Index, Leaf.Materials.Get(Index));
-			}
-			if (Data.bEnableMultiplayer)
-			{
-				Leaf.Multiplayer->MarkIndexDirty<FVoxelMaterial>(Index);
-			}
-			Leaf.Materials.GetRef(Index) = GetMaterial(X, Y, Z);
-		}
-	});
+		});
 }

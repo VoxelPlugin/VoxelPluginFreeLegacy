@@ -142,4 +142,9 @@ public:
 		int32 StartY = 0,
 		float VoxelSize = 100,
 		bool bHideLatentWarnings = false);
+	
+public:
+	// Do NOT edit the returned object!
+	UFUNCTION(BlueprintPure, Category = "Voxel", meta = (DeterminesOutputType = "Class"))
+	static UVoxelWorldGenerator* GetWorldGeneratorClassDefaultObject(TSubclassOf<UVoxelWorldGenerator> Class);
 };

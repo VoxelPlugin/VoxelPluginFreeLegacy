@@ -835,6 +835,7 @@ public:
 
 	virtual UVoxelWorldSaveObject* CreateSaveObject() = 0;
 	virtual UClass* GetVoxelWorldEditorClass() = 0;
+	virtual void RegisterTransaction(AVoxelWorld* VoxelWorld, FName Name) = 0;
 
 public:
 	// Sets the voxel world editor implementation.*

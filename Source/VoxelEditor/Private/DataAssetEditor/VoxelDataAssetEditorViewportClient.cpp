@@ -62,9 +62,18 @@ FVoxelDataAssetEditorViewportClient::FVoxelDataAssetEditorViewportClient(
 
 		const int32 Axis = FVoxelUtilities::GetArgMin(Size);
 
+		// Max of vertical and horizontal size of the viewed object
+		const float MaxSize = FMath::Max(Size[(Axis + 1) % 3], Size[(Axis + 2) % 3]);
+
+		const float HalfHorizontalFOV = FMath::DegreesToRadians(ViewFOV / 2);
+		const float HalfVerticalFOV = FMath::Atan(FMath::Tan(HalfHorizontalFOV) / AspectRatio);
+
+		// Distance required to fit the object into view
+		const float Distance = (MaxSize / 2) / FMath::Tan(FMath::Min(HalfVerticalFOV, HalfHorizontalFOV));
+		
 		FVector Position = Bounds.GetCenter().ToFloat();
 		// Be far enough to have the asset in view
-		Position[Axis] = FMath::Max(Size[(Axis + 1) % 3], Size[(Axis + 2) % 3]);
+		Position[Axis] = Size[Axis] + Distance;
 		SetViewLocation(Position * VoxelWorld.VoxelSize);
 
 		FVector Direction = FVector::ZeroVector;

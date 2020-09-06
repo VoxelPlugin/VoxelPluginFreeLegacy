@@ -91,6 +91,12 @@ void UVoxelToolManager::SetActiveTool(UVoxelTool* NewActiveTool)
 
 void UVoxelToolManager::SetActiveToolByClass(TSubclassOf<UVoxelTool> NewActiveTool)
 {
+	if (!NewActiveTool)
+	{
+		SetActiveTool(nullptr);
+		return;
+	}
+	
 	for (auto* Tool : Tools)
 	{
 		if (Tool->GetClass() == NewActiveTool)

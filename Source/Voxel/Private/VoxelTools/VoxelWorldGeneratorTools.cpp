@@ -203,3 +203,8 @@ void UVoxelWorldGeneratorTools::CreateColorTextureFromWorldGeneratorAsync(
 			Texture.Texture = CreateTextureFromWorldGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 		});
 }
+
+UVoxelWorldGenerator* UVoxelWorldGeneratorTools::GetWorldGeneratorClassDefaultObject(TSubclassOf<UVoxelWorldGenerator> Class)
+{
+	return Class ? Class->GetDefaultObject<UVoxelWorldGenerator>() : nullptr;
+}

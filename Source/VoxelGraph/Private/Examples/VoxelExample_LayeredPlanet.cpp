@@ -91,10 +91,7 @@ public:
 					
 					// Init of Seed
 					FVoxelGraphSeed Variable_49; // Seed output 0
-					{
-						static FName StaticName = "Seed";
-						Variable_49 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 4761;
-					}
+					Variable_49 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 4761;
 					
 					// Init of Make Seeds
 					FVoxelGraphSeed Variable_44; // Make Seeds output 0
@@ -177,10 +174,7 @@ public:
 		{
 			// Init of Seed
 			FVoxelGraphSeed Variable_49; // Seed output 0
-			{
-				static FName StaticName = "Seed";
-				Variable_49 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 4761;
-			}
+			Variable_49 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 4761;
 			
 			// Init of Make Seeds
 			FVoxelGraphSeed Variable_44; // Make Seeds output 0
@@ -354,7 +348,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_13; // Data Item Sample output 0
-			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_8, BufferXY.Variable_9, Variable_10, v_flt(5.0f), v_flt(1000.0f));
+			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_8, BufferXY.Variable_9, Variable_10, v_flt(5.0f), v_flt(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// Normalize.Vector Length
 			v_flt Variable_74; // Normalize.Vector Length output 0
@@ -652,7 +646,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_13; // Data Item Sample output 0
-			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, v_flt(5.0f), v_flt(1000.0f));
+			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, v_flt(5.0f), v_flt(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// Normalize.Vector Length
 			v_flt Variable_74; // Normalize.Vector Length output 0
@@ -1509,7 +1503,7 @@ public:
 			
 			// Data Item Sample
 			TVoxelRange<v_flt> Variable_13; // Data Item Sample output 0
-			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, TVoxelRange<v_flt>(5.0f), TVoxelRange<v_flt>(1000.0f));
+			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, TVoxelRange<v_flt>(5.0f), TVoxelRange<v_flt>(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// Vector Length
 			TVoxelRange<v_flt> Variable_16; // Vector Length output 0

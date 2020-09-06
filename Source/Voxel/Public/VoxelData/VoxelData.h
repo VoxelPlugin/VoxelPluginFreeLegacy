@@ -363,7 +363,8 @@ private:
 
 namespace FVoxelDataUtilities
 {
-	VOXEL_API void AddAssetItemDataToLeaf(
+	// This will NOT add the item to the item holder
+	VOXEL_API void AddAssetItemToLeafData(
 		const FVoxelData& Data,
 		FVoxelDataOctreeLeaf& Leaf,
 		const FVoxelTransformableWorldGeneratorInstance& WorldGenerator, 
@@ -371,4 +372,27 @@ namespace FVoxelDataUtilities
 		const FTransform& LocalToWorld,
 		bool bModifyValues,
 		bool bModifyMaterials);
+
+	// Will update all the values that were the same as the old generator to the new generator values
+	template<typename T, typename TApplyOld, typename TApplyNew>
+	void MigrateLeafDataToNewGenerator(
+		const FVoxelData& Data,
+		FVoxelDataOctreeLeaf& Leaf,
+		const FVoxelIntBox& BoundsToMigrate,
+		TApplyOld ApplyOldGenerator,
+		TApplyNew ApplyNewGenerator);
+	
+	// This will NOT add the item to the item holder, but will assume it has already been added
+	template<typename T, typename TItem>
+	void AddItemToLeafData(
+		const FVoxelData& Data,
+		FVoxelDataOctreeLeaf& Leaf,
+		const TItem& Item);
+	
+	// This will NOT remove the item from the item holder, but will assume it has already been removed
+	template<typename T, typename TItem>
+	void RemoveItemFromLeafData(
+		const FVoxelData& Data,
+		FVoxelDataOctreeLeaf& Leaf,
+		const TItem& Item);
 }

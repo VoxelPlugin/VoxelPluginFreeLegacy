@@ -99,6 +99,13 @@ public:
 	{
 		return FVoxelIntBox(FIntVector(-Radius), FIntVector(Radius)).Translate(Position);
 	}
+
+	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")
+	static FVoxelIntBox MakeBoxFromPositionAndRadius(FVector Position, float Radius)
+	{
+		Radius = FMath::Max(0.f, Radius);
+		return FVoxelIntBox(FVoxelUtilities::FloorToInt(Position - Radius), FVoxelUtilities::CeilToInt(Position + Radius));
+	}
 	
 	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")
 	static bool IsIntVectorInsideBox(FVoxelIntBox Box, FIntVector Position)

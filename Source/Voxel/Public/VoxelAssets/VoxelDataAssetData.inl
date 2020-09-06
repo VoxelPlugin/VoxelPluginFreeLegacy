@@ -29,8 +29,18 @@ FORCEINLINE FVoxelMaterial FVoxelDataAssetData::GetMaterial(int32 X, int32 Y, in
 	}
 }
 
-inline float FVoxelDataAssetData::GetInterpolatedValue(float X, float Y, float Z, FVoxelValue DefaultValue) const
+inline float FVoxelDataAssetData::GetInterpolatedValue(float X, float Y, float Z, FVoxelValue DefaultValue, float Tolerance) const
 {
+	const int32 RoundedX = FMath::RoundToInt(X);
+	const int32 RoundedY = FMath::RoundToInt(Y);
+	const int32 RoundedZ = FMath::RoundToInt(Z);
+	if (FMath::IsNearlyEqual(X, RoundedX, Tolerance) && 
+		FMath::IsNearlyEqual(Y, RoundedY, Tolerance) && 
+		FMath::IsNearlyEqual(Z, RoundedZ, Tolerance))
+	{
+		return GetValue(RoundedX, RoundedY, RoundedZ, DefaultValue).ToFloat();
+	}
+	
 	const int32 MinX = FMath::FloorToInt(X);
 	const int32 MinY = FMath::FloorToInt(Y);
 	const int32 MinZ = FMath::FloorToInt(Z);
@@ -57,8 +67,18 @@ inline float FVoxelDataAssetData::GetInterpolatedValue(float X, float Y, float Z
 		AlphaZ);
 }
 
-inline FVoxelMaterial FVoxelDataAssetData::GetInterpolatedMaterial(float X, float Y, float Z) const
+inline FVoxelMaterial FVoxelDataAssetData::GetInterpolatedMaterial(float X, float Y, float Z, float Tolerance) const
 {
+	const int32 RoundedX = FMath::RoundToInt(X);
+	const int32 RoundedY = FMath::RoundToInt(Y);
+	const int32 RoundedZ = FMath::RoundToInt(Z);
+	if (FMath::IsNearlyEqual(X, RoundedX, Tolerance) && 
+		FMath::IsNearlyEqual(Y, RoundedY, Tolerance) && 
+		FMath::IsNearlyEqual(Z, RoundedZ, Tolerance))
+	{
+		return GetMaterial(RoundedX, RoundedY, RoundedZ);
+	}
+
 	// Note: might get better results by interpolating the material colors/UVs
 
 	X = FMath::Clamp<float>(X, 0, Size.X - 1);

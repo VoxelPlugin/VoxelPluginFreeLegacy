@@ -4,6 +4,7 @@
 #include "Runtime/VoxelNodeType.h"
 #include "VoxelContext.h"
 #include "NodeFunctions/VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelMathNodeFunctions.h"
 
 UVoxelNode_FMax::UVoxelNode_FMax()
 {
@@ -797,6 +798,34 @@ GENERATED_VOXELNODE_IMPL
 	DEFINE_INPUTS(v_flt, v_flt, v_flt),
 	DEFINE_OUTPUTS(v_flt, v_flt, v_flt),
 	FVoxelNodeFunctions::HSVToRGB(_I0, _I1, _I2, _O0, _O1, _O2);
+)
+
+//////////////////////////////////////////////////////////////////////////////////////
+
+UVoxelNode_InverseTransformPositionXZ::UVoxelNode_InverseTransformPositionXZ()
+{
+	SetInputs(
+		{ "X.X", EC::Float , "X component of the new basis X vector", "1" },
+		{ "X.Y", EC::Float , "Y component of the new basis X vector", "0" },
+		{ "X.Z", EC::Float , "Z component of the new basis X vector", "0" },
+		{ "Z.X", EC::Float , "X component of the new basis Z vector", "0" },
+		{ "Z.Y", EC::Float , "Y component of the new basis Z vector", "0" },
+		{ "Z.Z", EC::Float , "Z component of the new basis Z vector", "1" },
+		{ "X", EC::Float , "X component of the vector to transform" },
+		{ "Y", EC::Float , "Y component of the vector to transform" },
+		{ "Z", EC::Float , "Z component of the vector to transform" });
+	SetOutputs(
+		{ "X", EC::Float, "X component" },
+		{ "Y", EC::Float, "Y component" },
+		{ "Z", EC::Float, "Z component" });
+}
+
+GENERATED_VOXELNODE_IMPL
+(
+	UVoxelNode_InverseTransformPositionXZ,
+	DEFINE_INPUTS(v_flt, v_flt, v_flt, v_flt, v_flt, v_flt, v_flt, v_flt, v_flt),
+	DEFINE_OUTPUTS(v_flt, v_flt, v_flt),
+	FVoxelMathNodeFunctions::InverseTransformPositionXZ(_I0, _I1, _I2, _I3, _I4, _I5, _I6, _I7, _I8, _O0, _O1, _O2);
 )
 
 //////////////////////////////////////////////////////////////////////////////////////
