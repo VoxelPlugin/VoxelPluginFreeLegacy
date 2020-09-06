@@ -9,13 +9,30 @@
 
 class UVoxelGraphDataItemConfig;
 
+UENUM()
+enum class EVoxelDataItemSampleCombineMode
+{
+	Min,
+	Max,
+	Sum
+};
+
 UCLASS(DisplayName = "Data Item Sample", Category = "Placeable Items")
 class VOXELGRAPH_API UVoxelNode_DataItemSample : public UVoxelNodeWithContext
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
-
+	
+public:
 	UVoxelNode_DataItemSample();
+	
+	// Only items matching the channels ticked here will be sampled (only the items matching (Mask & Item.Mask) != 0)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config", meta = (Bitmask, BitmaskEnum = EVoxel32BitMask))
+	int32 Mask = uint32(-1);
+	
+	UPROPERTY(EditAnywhere, Category = "Config")
+	EVoxelDataItemSampleCombineMode CombineMode = EVoxelDataItemSampleCombineMode::Min;
+
 };
 
 UCLASS(DisplayName = "Data Item Parameters", Category = "Placeable Items")

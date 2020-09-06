@@ -15,6 +15,7 @@
 
 const FName UK2Node_AddDataItem::PC_Generator = "Generator";
 const FName UK2Node_AddDataItem::PC_Bounds = "Bounds";
+const FName UK2Node_AddDataItem::PC_Mask = "Mask";
 
 UEdGraphPin* FindOutputStructPinChecked(UEdGraphNode* Node)
 {
@@ -55,7 +56,9 @@ void UK2Node_AddDataItem::AllocateDefaultPins()
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Object, UVoxelPlaceableItemManager::StaticClass(), UEdGraphSchema_K2::PSC_Self);
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Object, UVoxelWorldGenerator::StaticClass(), PC_Generator);
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Struct, FVoxelIntBox::StaticStruct(), PC_Bounds);
-
+	auto* MaskPin = CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Int, UEdGraphSchema_K2::PSC_Bitmask, StaticEnum<EVoxel32BitMask>(), PC_Mask);
+	MaskPin->DefaultValue = "-1";
+	
 	for (auto& Parameter : DataItemConfig->Parameters)
 	{
 	    CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Float, Parameter);
@@ -153,6 +156,7 @@ void UK2Node_AddDataItem::ExpandNode(class FKismetCompilerContext& CompilerConte
 	CompilerContext.MovePinLinksToIntermediate(*FindPinChecked(UEdGraphSchema_K2::PSC_Self), *CallFunction->FindPinChecked(UEdGraphSchema_K2::PSC_Self));
 	CompilerContext.MovePinLinksToIntermediate(*FindPinChecked(PC_Generator), *MakeStruct->FindPinChecked(GET_FUNCTION_NAME_STRING_CHECKED(FVoxelDataItemConstructionInfo, Generator)));
 	CompilerContext.MovePinLinksToIntermediate(*FindPinChecked(PC_Bounds), *MakeStruct->FindPinChecked(GET_FUNCTION_NAME_STRING_CHECKED(FVoxelDataItemConstructionInfo, Bounds)));
+	CompilerContext.MovePinLinksToIntermediate(*FindPinChecked(PC_Mask), *MakeStruct->FindPinChecked(GET_FUNCTION_NAME_STRING_CHECKED(FVoxelDataItemConstructionInfo, Mask)));
 
 	CompilerContext.MovePinLinksToIntermediate(*GetExecPin(), *CallFunction->GetExecPin());
 	CompilerContext.MovePinLinksToIntermediate(*FindPinChecked(UEdGraphSchema_K2::PN_Then), *CallFunction->GetThenPin());

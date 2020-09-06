@@ -190,7 +190,7 @@ struct FVoxelDataOctreeSetter
 {
 	template<typename T, typename T1, typename T2>
 	static void Set(
-		IVoxelData& Data,
+		const IVoxelData& Data,
 		FVoxelDataOctreeLeaf& Leaf,
 		T1 Iterate, T2 Apply)
 	{
@@ -240,7 +240,7 @@ struct FVoxelDataOctreeSetter
 	}
 	template<typename TA, typename TB, typename T1, typename T2>
 	static void Set(
-		IVoxelData& Data,
+		const IVoxelData& Data,
 		FVoxelDataOctreeLeaf& Leaf, 
 		T1 Iterate, T2 Apply)
 	{

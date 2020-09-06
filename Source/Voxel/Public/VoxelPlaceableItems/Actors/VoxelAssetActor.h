@@ -78,8 +78,14 @@ public:
 	EVoxelAssetActorPreviewUpdateType UpdateType = EVoxelAssetActorPreviewUpdateType::EndOfMove;
 
 	// If true, the voxel asset actor position will be rounded to the nearest voxel position when moved
+	// Always on in cubic mode
 	UPROPERTY(EditAnywhere, Category = "Preview Settings")
 	bool bRoundAssetPosition = false;
+	
+	// If true, the voxel asset actor rotation will be rounded to the nearest valid rotation (90/180/-90)
+	// Always on in cubic mode
+	UPROPERTY(EditAnywhere, Category = "Preview Settings")
+	bool bRoundAssetRotation = false;
 
 	// Increase this if you want a higher quality preview
 	// Be careful: might freeze Unreal if too high!
@@ -118,12 +124,15 @@ private:
 
 protected:
 #if WITH_EDITOR
+	//~ Begin AActor Interface
 	virtual void BeginPlay() override;
 	virtual void BeginDestroy() override;
 	virtual void Tick(float DeltaTime) override;
 	virtual bool ShouldTickIfViewportsOnly() const override { return true; }
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void PostEditMove(bool bFinished) override;
+	virtual bool CanEditChange(const UProperty* InProperty) const override;
+	//~ End AActor Interface
 #endif
 
 private:

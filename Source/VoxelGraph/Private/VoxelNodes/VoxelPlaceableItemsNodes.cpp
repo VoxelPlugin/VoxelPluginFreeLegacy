@@ -18,13 +18,6 @@ UVoxelNode_DataItemSample::UVoxelNode_DataItemSample()
 	SetOutputs(EC::Float);
 }
 
-GENERATED_VOXELNODE_IMPL
-(
-	UVoxelNode_DataItemSample,
-	DEFINE_INPUTS(v_flt, v_flt, v_flt, v_flt, v_flt),
-	DEFINE_OUTPUTS(v_flt),
-	_O0 = FVoxelNodeFunctions::GetDataItemDistance(_C0.Items.ItemHolder, _I0, _I1, _I2, _I3, _I4);
-)
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

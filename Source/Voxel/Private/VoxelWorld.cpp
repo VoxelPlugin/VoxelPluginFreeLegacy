@@ -1019,101 +1019,137 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 		// Do that after Clear/Generate
 		ApplyPlaceableItems();
 
-		TMap<AVoxelDataItemActor*, TArray<int32>> ActorsToDataItemsIndices;
+		// Let events add other items
+		OnGenerateWorld.Broadcast();
+		
+		using FItemInfo = FVoxelDataItemConstructionInfo;
+		using FItemPtr = TVoxelWeakPtr<const TVoxelDataItemWrapper<FVoxelDataItem>>;
+		
+		TMap<AVoxelDataItemActor*, TArray<FItemInfo>> ActorsToItemInfos;
 		for (TActorIterator<AVoxelDataItemActor> ActorItr(GetWorld()); ActorItr; ++ActorItr)
 		{
 			auto* Actor = *ActorItr;
 
-			const int32 PreviousNum = PlaceableItemManager->GetDataItemInfos().Num();
-			{
-				TGuardValue<bool> AllowScriptsInEditor(GAllowActorScriptExecutionInEditor, true);
-				Actor->K2_AddItemToWorld(this);
-			}
-			const int32 NewNum = PlaceableItemManager->GetDataItemInfos().Num();
+			auto& ItemInfos = PlaceableItemManager->GetDataItemInfos();
+			const int32 PreviousNum = ItemInfos.Num();
+			Actor->CallAddItemToWorld(this);
+			const int32 NewNum = ItemInfos.Num();
 
-			auto& DataItemsIndices = ActorsToDataItemsIndices.FindOrAdd(Actor);
+			auto& ActorItemInfos = ActorsToItemInfos.FindOrAdd(Actor);
 			for (int32 Index = PreviousNum; Index < NewNum; Index++)
 			{
-				DataItemsIndices.Add(Index);
+				ActorItemInfos.Add(ItemInfos[Index]);
 			}
 		}
 
-		// Let events add other items
-		OnGenerateWorld.Broadcast();
-		
-		using FVoxelDataItemPtr = TVoxelWeakPtr<const TVoxelDataItemWrapper<FVoxelDataItem>>;
+		TMap<FItemInfo, FItemPtr> GlobalItemInfoToItemPtr;
+		PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache, &GlobalItemInfoToItemPtr);
 
-		TMap<int32, FVoxelDataItemPtr> DataItemIndicesToPtrs;
-		PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache, &DataItemIndicesToPtrs);
-
-		for (auto& It : ActorsToDataItemsIndices)
+		for (auto& ActorIt : ActorsToItemInfos)
 		{
-			if (It.Value.Num() == 0)
+			AVoxelDataItemActor* const Actor = ActorIt.Key;
+			TArray<FItemInfo>& ActorItemInfos = ActorIt.Value;
+			if (ActorItemInfos.Num() == 0)
 			{
 				continue;
 			}
 			
-			const auto ItemsPtrs = MakeShared<TArray<FVoxelDataItemPtr>>();
-			for (auto& Index : It.Value)
+			const auto ItemInfoToItemPtr = MakeShared<TMap<FItemInfo, FItemPtr>>();
+			for (auto& ItemInfo : ActorItemInfos)
 			{
-				FVoxelDataItemPtr* ItemPtrPtr = DataItemIndicesToPtrs.Find(Index);
+				FItemPtr* ItemPtrPtr = GlobalItemInfoToItemPtr.Find(ItemInfo);
 				if (ensure(ItemPtrPtr) && ensure(ItemPtrPtr->IsValid()))
 				{
-					ItemsPtrs->Add(*ItemPtrPtr);
+					ItemInfoToItemPtr->Add(ItemInfo, *ItemPtrPtr);
 				}
 			}
 
-			AVoxelDataItemActor* Actor = It.Key;
 			Actor->OnRefresh.RemoveAll(this);
-			Actor->OnRefresh.AddWeakLambda(this, [this, ItemsPtrs, Actor]()
+			Actor->OnRefresh.AddWeakLambda(this, [this, ItemInfoToItemPtr, Actor]()
 			{
 				if (!IsCreated() || !ensure(PlaceableItemManager))
 				{
 					return;
 				}
-
+				
 				TArray<FVoxelIntBox> BoundsToUpdate;
-				for (auto Item : *ItemsPtrs)
 				{
-					const auto PinnedItem = Item.Pin();
-					if (!ensure(PinnedItem.IsValid()))
+					// Find which items to add/remove
+					TSet<FItemInfo> ItemInfosToAdd;
+					TSet<FItemInfo> ItemInfosToRemove;
 					{
-						continue;
+						PlaceableItemManager->Clear();
+						Actor->CallAddItemToWorld(this);
+
+						TSet<FItemInfo> PreviousItemInfos;
+						TSet<FItemInfo> NewItemInfos;
+
+						for (auto& It : *ItemInfoToItemPtr)
+						{
+							PreviousItemInfos.Add(It.Key);
+						}
+						NewItemInfos.Append(PlaceableItemManager->GetDataItemInfos());
+
+						ItemInfosToAdd = NewItemInfos.Difference(PreviousItemInfos);
+						ItemInfosToRemove = PreviousItemInfos.Difference(NewItemInfos);
 					}
-					const auto& Bounds = PinnedItem->Item.Bounds;
+
+					// Remove the items that aren't here anymore
+					for (const auto& ItemInfoToRemove : ItemInfosToRemove)
+					{
+						FItemPtr ItemPtr;
+						if (!ensure(ItemInfoToItemPtr->RemoveAndCopyValue(ItemInfoToRemove, ItemPtr)))
+						{
+							continue;
+						}
+						
+						BoundsToUpdate.Add(ItemInfoToRemove.Bounds);
+
+						FVoxelWriteScopeLock Lock(*Data, ItemInfoToRemove.Bounds, FUNCTION_FNAME);
+						FString Error;
+						if (!ensure(Data->RemoveItem(ItemPtr, Error)))
+						{
+							LOG_VOXEL(Error, TEXT("Failed to remove data item for %s: %s"), *Actor->GetName(), *Error);
+						}
+					}
 					
-					BoundsToUpdate.Add(Bounds);
-
-					FVoxelWriteScopeLock Lock(*Data, Bounds, FUNCTION_FNAME);
-					FString Error;
-					if (!ensure(Data->RemoveItem(Item, Error)))
+					// Add the new ones
 					{
-						LOG_VOXEL(Error, TEXT("Failed to remove data item for %s: %s"), *Actor->GetName(), *Error);
-					}
-				}
-				ItemsPtrs->Empty();
-				
-				PlaceableItemManager->Clear();
-				
-				{
-					TGuardValue<bool> AllowScriptsInEditor(GAllowActorScriptExecutionInEditor, true);
-					Actor->K2_AddItemToWorld(this);
-				}
+						PlaceableItemManager->Clear();
 
-				TMap<int32, FVoxelDataItemPtr> NewDataItemIndicesToPtrs;
-				PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache, &NewDataItemIndicesToPtrs);
+						for (auto& ItemInfoToAdd : ItemInfosToAdd)
+						{
+							PlaceableItemManager->AddDataItem(ItemInfoToAdd);
+						}
 
-				for (auto& NewIt : NewDataItemIndicesToPtrs)
-				{
-					const auto& PinnedItem = NewIt.Value.Pin();
-					if (ensure(PinnedItem.IsValid()))
-					{
-						BoundsToUpdate.Add(PinnedItem->Item.Bounds);
-						ItemsPtrs->Add(PinnedItem);
+						TMap<FItemInfo, FItemPtr> NewItemInfoToPtr;
+						PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache, &NewItemInfoToPtr);
+
+						for (auto& NewIt : NewItemInfoToPtr)
+						{
+							const FItemInfo& ItemInfo = NewIt.Key;
+							const FItemPtr& ItemPtr = NewIt.Value;
+							ensure(ItemPtr.IsValid());
+
+							BoundsToUpdate.Add(ItemInfo.Bounds);
+							ItemInfoToItemPtr->Add(ItemInfo, ItemPtr);
+						}
 					}
 				}
 
-				LODManager->UpdateBounds(BoundsToUpdate);
+				if (BoundsToUpdate.Num() > 0)
+				{
+					LODManager->UpdateBounds(BoundsToUpdate);
+					// Save the frame for the eventual asset item merge/remove edits
+					// Dummy frame, doesn't really store anything interesting
+					Data->SaveFrame(FVoxelIntBox(BoundsToUpdate));
+
+
+#if WITH_EDITOR
+					IVoxelWorldEditor::GetVoxelWorldEditor()->RegisterTransaction(this, "Applying voxel data item");
+#endif
+				}
+					
 				PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
 			});
 		}

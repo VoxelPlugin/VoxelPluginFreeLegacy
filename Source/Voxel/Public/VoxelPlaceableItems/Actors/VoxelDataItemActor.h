@@ -15,7 +15,8 @@ class VOXEL_API AVoxelDataItemActor : public AActor
 
 public:
 	AVoxelDataItemActor();
-	
+
+public:
 	UFUNCTION(BlueprintNativeEvent, DisplayName = "AddItemToWorld")
 	void K2_AddItemToWorld(AVoxelWorld* World);
 	
@@ -25,6 +26,12 @@ public:
 	}
 
 	virtual void AddItemToWorld(AVoxelWorld* World) {}
+
+	void CallAddItemToWorld(AVoxelWorld* World)
+	{
+		TGuardValue<bool> AllowScriptsInEditor(GAllowActorScriptExecutionInEditor, true);
+		K2_AddItemToWorld(World);
+	}
 
 public:
 	// If true, will automatically remove & add back the item to the voxel world when edited

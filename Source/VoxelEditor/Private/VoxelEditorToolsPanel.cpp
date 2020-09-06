@@ -650,7 +650,7 @@ void FVoxelEditorToolsPanel::SetActiveTool(UClass* ToolClass)
 		ComboBox->SetSelectedItem(*ToolsOptions.FindByPredicate([&](auto& ClassPtr) { return *ClassPtr == ToolClass; }));
 	}
 
-	GConfig->SetString(TEXT("VoxelEditorToolsPanel"), TEXT("ActiveTool"), *ToolClass->GetName(), GEditorPerProjectIni);
+	GConfig->SetString(TEXT("VoxelEditorToolsPanel"), TEXT("ActiveTool"), ToolClass ? *ToolClass->GetName() : TEXT(""), GEditorPerProjectIni);
 }
 
 bool FVoxelEditorToolsPanel::IsToolActive(UClass* ToolClass) const

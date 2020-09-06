@@ -76,8 +76,9 @@
 
 #include "Factories/VoxelWorldSaveObjectFactory.h"
 #include "VoxelEditorDetailsUtilities.h"
-#include "VoxelWorldEditorControls.h"
 #include "VoxelDebugEditor.h"
+#include "VoxelScopedTransaction.h"
+#include "VoxelWorldEditorControls.h"
 
 const FVector2D Icon14x14(14.0f, 14.0f);
 const FVector2D Icon16x16(16.0f, 16.0f);
@@ -188,6 +189,10 @@ public:
 		return AVoxelWorldEditorControls::StaticClass();
 	}
 
+	virtual void RegisterTransaction(AVoxelWorld* VoxelWorld, FName Name) override
+	{
+		FVoxelScopedTransaction Transaction(VoxelWorld, Name, EVoxelChangeType::Edit);
+	}
 };
 
 /**

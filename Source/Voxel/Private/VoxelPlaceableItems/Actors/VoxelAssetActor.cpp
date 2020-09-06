@@ -247,6 +247,24 @@ void AVoxelAssetActor::PostEditMove(const bool bFinished)
 		}
 	}
 }
+
+bool AVoxelAssetActor::CanEditChange(const UProperty* InProperty) const
+{
+	if (InProperty)
+	{
+		const FName Name = InProperty->GetFName();
+		if (Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, bRoundAssetPosition) ||
+			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, bRoundAssetRotation))
+		{
+			if (PreviewWorld && PreviewWorld->RenderType == EVoxelRenderType::Cubic)
+			{
+				return false;
+			}
+		}
+	}
+
+	return Super::CanEditChange(InProperty);
+}
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -374,7 +392,9 @@ void AVoxelAssetActor::UpdateBox()
 
 void AVoxelAssetActor::ClampTransform()
 {
-	if (bRoundAssetPosition)
+	const bool bForceRound = PreviewWorld->RenderType == EVoxelRenderType::Cubic;
+	
+	if (bRoundAssetPosition || bForceRound)
 	{
 		const FVector WorldLocation = PreviewWorld->GetActorLocation();
 		const float VoxelSize = PreviewWorld->VoxelSize;
@@ -391,6 +411,22 @@ void AVoxelAssetActor::ClampTransform()
 		Position += WorldLocation;
 
 		SetActorLocation(Position);
+	}
+	
+	if (bRoundAssetRotation || bForceRound)
+	{
+		const FRotator WorldRotation = PreviewWorld->GetActorRotation();
+		FRotator Rotation = GetActorRotation();
+
+		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation).Inverse()).Rotator();
+
+		Rotation.Pitch = FMath::RoundToInt(Rotation.Pitch / 90) * 90;
+		Rotation.Yaw = FMath::RoundToInt(Rotation.Yaw / 90) * 90;
+		Rotation.Roll = FMath::RoundToInt(Rotation.Roll / 90) * 90;
+		
+		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation)).Rotator();
+		
+		SetActorRotation(Rotation);
 	}
 }
 #endif

@@ -56,6 +56,10 @@ public:
 public:
 	EVisibility GetAddVoxelWorldVisibility() const;
 	FReply AddVoxelWorld() const;
+	void ClearTool()
+	{
+		SetActiveTool(nullptr);
+	}
 
 private:
 	UVoxelToolManager* ToolManager = nullptr;

@@ -32,7 +32,7 @@ constexpr uint32 GVoxelMaterialConfigFlag =
 	EVoxelMaterialConfigFlag::EnableUV2 * VOXEL_MATERIAL_ENABLE_UV2 +
 	EVoxelMaterialConfigFlag::EnableUV3 * VOXEL_MATERIAL_ENABLE_UV3;
 
-UENUM(BlueprintType, DisplayName = "Voxel Material Mask")
+UENUM(BlueprintType, DisplayName = "Voxel Material Mask", meta = (Bitflags))
 enum class EVoxelMaterialMask_BP : uint8
 {
 	R,

@@ -117,8 +117,8 @@ public:
 	template<typename T>
 	FVoxelMaterial GetMaterial(T X, T Y, T Z) const = delete;
 
-	float GetInterpolatedValue(float X, float Y, float Z, FVoxelValue DefaultValue) const;
-	FVoxelMaterial GetInterpolatedMaterial(float X, float Y, float Z) const;
+	float GetInterpolatedValue(float X, float Y, float Z, FVoxelValue DefaultValue, float Tolerance = 0.0001f) const;
+	FVoxelMaterial GetInterpolatedMaterial(float X, float Y, float Z, float Tolerance = 0.0001f) const;
 
 public:
 	void Serialize(FArchive& Ar, uint32 ValueConfigFlag, uint32 MaterialConfigFlag, FVoxelDataAssetDataVersion::Type Version);

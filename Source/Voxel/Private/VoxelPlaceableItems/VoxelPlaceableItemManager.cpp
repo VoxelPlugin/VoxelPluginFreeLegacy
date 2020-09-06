@@ -50,13 +50,12 @@ void UVoxelPlaceableItemManager::Clear()
 void UVoxelPlaceableItemManager::ApplyToData(
 	FVoxelData& Data,
 	FVoxelWorldGeneratorCache& Cache,
-	TMap<int32, FVoxelDataItemPtr>* OutItems)
+	TMap<FVoxelDataItemConstructionInfo, FVoxelDataItemPtr>* OutItems)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	for (int32 Index = 0; Index < DataItemInfos.Num(); Index++)
+	for (auto& Info : DataItemInfos)
 	{
-		auto& Info = DataItemInfos[Index];
 		if (!ensure(Info.Generator))
 		{
 			continue;
@@ -65,12 +64,12 @@ void UVoxelPlaceableItemManager::ApplyToData(
 		const auto Instance = Cache.CreateWorldGeneratorInstance(*Info.Generator);
 
 		FVoxelWriteScopeLock Lock(Data, Info.Bounds, FUNCTION_FNAME); // TODO No lock on start
-		const auto ItemPtr = Data.AddItem<FVoxelDataItem>(Instance, Info.Bounds, TArray<v_flt>(Info.Parameters));
+		const auto ItemPtr = Data.AddItem<FVoxelDataItem>(Instance, Info.Bounds, TArray<v_flt>(Info.Parameters), uint32(Info.Mask));
 		ensure(ItemPtr.IsValid());
 		
 		if (OutItems)
 		{
-			OutItems->Add(Index, ItemPtr);
+			OutItems->Add(Info, ItemPtr);
 		}
 	}
 }

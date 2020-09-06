@@ -125,6 +125,8 @@ void FVoxelDataAssetEditorToolkit::InitVoxelEditor(const EToolkitMode::Type Mode
 
 	ToolsPanel = MakeShared<FVoxelEditorToolsPanel>();
 	ToolsPanel->Init();
+	// To have a nice screenshot
+	ToolsPanel->ClearTool();
 	
 	FVoxelDataAssetEditorCommands::Register();
 

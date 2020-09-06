@@ -43,6 +43,7 @@ struct FVoxelDataItem
 	TVoxelSharedPtr<FVoxelWorldGeneratorInstance> WorldGenerator;
 	FVoxelIntBox Bounds;
 	TArray<v_flt> Data;
+	uint32 Mask = 0;
 
 	static void Sort(TArray<const FVoxelDataItem*>& Array) {}
 };
@@ -146,7 +147,7 @@ public:
 		INC_DWORD_STAT(STAT_Num ## X ## Pointers); \
 		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPlaceableItemsPointers, X.GetAllocatedSize()); \
 		\
-		ensureVoxelSlow(!X.Contains(&Item)); \
+		ensureVoxelSlowNoSideEffects(!X.Contains(&Item)); \
 		X.Add(&Item); \
 		FVoxel ## X :: Sort(X); \
 		\
@@ -156,16 +157,19 @@ public:
 #undef Macro
 	
 #define Macro(X) \
-	void RemoveItem(const FVoxel ## X& Item) \
+	bool RemoveItem(const FVoxel ## X& Item) \
 	{ \
 		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPlaceableItemsPointers, X.GetAllocatedSize()); \
 		\
-		if (X.Remove(&Item)) \
+		const int32 NumRemoved = X.Remove(&Item); \
+		ensureVoxelSlow(NumRemoved <= 1); \
+		if (NumRemoved) \
 		{ \
 			DEC_DWORD_STAT(STAT_Num ## X ## Pointers); \
 		} \
 		\
 		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPlaceableItemsPointers, X.GetAllocatedSize()); \
+		return NumRemoved != 0; \
 	}
 	FOREACH_VOXEL_ASSET_ITEM(Macro);
 #undef Macro

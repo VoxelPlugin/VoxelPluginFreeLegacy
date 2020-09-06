@@ -179,6 +179,27 @@ protected:
 		Pins.InputPins.Add(Pin6);
 		Pins.InputPins.Add(Pin7);
 	}
+	void SetInputs(
+		FVoxelHelperPin Pin0,
+		FVoxelHelperPin Pin1, 
+		FVoxelHelperPin Pin2, 
+		FVoxelHelperPin Pin3,
+		FVoxelHelperPin Pin4, 
+		FVoxelHelperPin Pin5,
+		FVoxelHelperPin Pin6,
+		FVoxelHelperPin Pin7,
+		FVoxelHelperPin Pin8)
+	{
+		Pins.InputPins.Add(Pin0);
+		Pins.InputPins.Add(Pin1);
+		Pins.InputPins.Add(Pin2);
+		Pins.InputPins.Add(Pin3);
+		Pins.InputPins.Add(Pin4);
+		Pins.InputPins.Add(Pin5);
+		Pins.InputPins.Add(Pin6);
+		Pins.InputPins.Add(Pin7);
+		Pins.InputPins.Add(Pin8);
+	}
 	
 	void SetOutputs(FVoxelHelperPin Pin)
 	{

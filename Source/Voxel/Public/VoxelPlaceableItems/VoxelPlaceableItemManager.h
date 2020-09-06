@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
+#include "VoxelConfigEnums.h"
 #include "VoxelPlaceableItemManager.generated.h"
 
 struct FVoxelDataItem;
@@ -32,6 +33,21 @@ struct FVoxelDataItemConstructionInfo
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	TArray<float> Parameters;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (Bitmask, BitmaskEnum = EVoxel32BitMask))
+	int32 Mask = uint32(-1);
+
+	bool operator==(const FVoxelDataItemConstructionInfo& Other) const
+	{
+		return
+			Generator == Other.Generator &&
+			Bounds == Other.Bounds &&
+			Parameters == Other.Parameters;
+	}
+	friend uint32 GetTypeHash(const FVoxelDataItemConstructionInfo& Info)
+	{
+		return HashCombine(HashCombine(GetTypeHash(Info.Generator), GetTypeHash(Info.Bounds)), GetTypeHash(Info.Parameters.Num()));
+	}
 };
 
 UCLASS(EditInlineNew, Blueprintable, BlueprintType)
@@ -92,10 +108,10 @@ public:
 	void ApplyToData(
 		FVoxelData& Data, 
 		FVoxelWorldGeneratorCache& Cache, 
-		TMap<int32, FVoxelDataItemPtr>* OutItems = nullptr);
+		TMap<FVoxelDataItemConstructionInfo, FVoxelDataItemPtr>* OutItems = nullptr);
 
 	const TArray<FVoxelDataItemConstructionInfo>& GetDataItemInfos() const { return DataItemInfos; }
-	
+
 private:
 	UPROPERTY()
 	TArray<FVoxelDataItemConstructionInfo> DataItemInfos;

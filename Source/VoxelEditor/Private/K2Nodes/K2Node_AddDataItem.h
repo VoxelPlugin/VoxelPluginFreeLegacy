@@ -36,4 +36,5 @@ private:
 
 	static const FName PC_Generator;
 	static const FName PC_Bounds;
+	static const FName PC_Mask;
 };

@@ -66,6 +66,12 @@ static TAutoConsoleVariable<int32> CVarFreezeDebug(
 	TEXT("If true, won't clear previous frames boxes"),
 	ECVF_Default);
 
+static TAutoConsoleVariable<int32> CVarDebugDrawTime(
+	TEXT("voxel.debug.DrawTime"),
+	1,
+	TEXT("Draw time will be multiplied by this"),
+	ECVF_Default);
+
 static TAutoConsoleVariable<int32> CVarShowChunksEmptyStates(
 	TEXT("voxel.renderer.ShowChunksEmptyStates"),
 	0,
@@ -460,7 +466,7 @@ void FVoxelDebugManager::Tick(float DeltaTime)
 	if (!World) return;
 	if (World->bDisableDebugManager) return;
 
-	const float DebugDT = DeltaTime * 1.5f;
+	const float DebugDT = DeltaTime * 1.5f * CVarDebugDrawTime.GetValueOnGameThread();
 
 	if (CVarShowRenderChunks.GetValueOnGameThread())
 	{
