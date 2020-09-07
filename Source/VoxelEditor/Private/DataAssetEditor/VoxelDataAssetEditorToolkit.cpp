@@ -335,6 +335,17 @@ void FVoxelDataAssetEditorToolkit::NotifyPostChange(const FPropertyChangedEvent&
 		return;
 	}
 
+	const auto SaveAsset = [&]()
+	{
+		if (Manager->IsDirty())
+		{
+			FVoxelScopedSlowTask Progress(1, VOXEL_LOCTEXT("Saving asset"));
+			Progress.MakeDialog(false, true);
+			Progress.EnterProgressFrame();
+			Manager->Save(false);
+		}
+	};
+
 	const FName Name = PropertyChangedEvent.MemberProperty->GetFName();
 	if (Name == GET_MEMBER_NAME_STATIC(UVoxelDataAsset, bSubtractiveAsset))
 	{
@@ -344,12 +355,7 @@ void FVoxelDataAssetEditorToolkit::NotifyPostChange(const FPropertyChangedEvent&
 			const bool bOldSubtractiveAsset = !bNewSubtractiveAsset;
 			DataAsset->bSubtractiveAsset = bOldSubtractiveAsset;
 
-			{
-				FVoxelScopedSlowTask Progress(1, VOXEL_LOCTEXT("Saving asset"));
-				Progress.MakeDialog(false, true);
-				Progress.EnterProgressFrame();
-				Manager->Save(false);
-			}
+			SaveAsset();
 
 			DataAsset->bSubtractiveAsset = bNewSubtractiveAsset;
 		}
@@ -360,15 +366,14 @@ void FVoxelDataAssetEditorToolkit::NotifyPostChange(const FPropertyChangedEvent&
 		// Save position offset, as it will be changed by Save
 		const FIntVector PositionOffset = DataAsset->PositionOffset;
 
-		if (Manager->IsDirty())
-		{
-			FVoxelScopedSlowTask Progress(1, VOXEL_LOCTEXT("Saving asset"));
-			Progress.MakeDialog(false, true);
-			Progress.EnterProgressFrame();
-			Manager->Save(false);
-		}
+		SaveAsset();
 
 		DataAsset->PositionOffset = PositionOffset;
+		Manager->RecreateWorld();
+	}
+	else if (Name == GET_MEMBER_NAME_STATIC(UVoxelDataAsset, Tolerance))
+	{
+		SaveAsset();
 		Manager->RecreateWorld();
 	}
 	else if (Name == GET_MEMBER_NAME_STATIC(UVoxelDataAsset, bUseSettingsAsDefault))

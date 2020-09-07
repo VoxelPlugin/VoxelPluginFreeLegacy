@@ -63,6 +63,8 @@ FVoxelIntBox AVoxelAssetActor::AddItemToData(
 	AVoxelWorld* VoxelWorld,
 	FVoxelData* VoxelWorldData) const
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	auto Transform = GetTransform() * VoxelWorld->GetTransform().Inverse();
 	Transform.ScaleTranslation(1.f / VoxelWorld->VoxelSize);
 
@@ -178,6 +180,8 @@ void AVoxelAssetActor::BeginDestroy()
 
 void AVoxelAssetActor::Tick(float DeltaTime)
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	if (GetWorld()->WorldType != EWorldType::Editor)
 	{
 		// Editor preview still ticks
@@ -381,6 +385,8 @@ void AVoxelAssetActor::DestroyPreview()
 
 void AVoxelAssetActor::UpdateBox()
 {
+	VOXEL_FUNCTION_COUNTER();
+	
 	if (!ensure(PreviewWorld)) return;
 
 	const FVoxelIntBox Bounds = AddItemToData(PreviewWorld, nullptr);

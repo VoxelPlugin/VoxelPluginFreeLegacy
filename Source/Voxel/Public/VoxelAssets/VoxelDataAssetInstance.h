@@ -14,6 +14,7 @@ public:
 	const TVoxelSharedRef<const FVoxelDataAssetData> Data;
 	const bool bSubtractiveAsset;
 	const FIntVector PositionOffset;
+	float Tolerance = 0.f;
 
 public:
 	FVoxelDataAssetInstance(UVoxelDataAsset& Asset)
@@ -21,17 +22,26 @@ public:
 		, Data(Asset.GetData())
 		, bSubtractiveAsset(Asset.bSubtractiveAsset)
 		, PositionOffset(Asset.PositionOffset)
+		, Tolerance(Asset.Tolerance)
 	{
 	}
 
 	//~ Begin FVoxelWorldGeneratorInstance Interface
+	virtual void Init(const FVoxelWorldGeneratorInit& InitStruct) override
+	{
+		if (InitStruct.RenderType == EVoxelRenderType::Cubic)
+		{
+			Tolerance = FMath::Max(Tolerance, 0.1f);
+		}
+	}
+	
 	v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		X -= PositionOffset.X;
 		Y -= PositionOffset.Y;
 		Z -= PositionOffset.Z;
 		
-		return Data->GetInterpolatedValue(X, Y, Z, bSubtractiveAsset ? FVoxelValue::Full() : FVoxelValue::Empty());
+		return Data->GetInterpolatedValue(X, Y, Z, bSubtractiveAsset ? FVoxelValue::Full() : FVoxelValue::Empty(), Tolerance);
 	}
 	
 	FVoxelMaterial GetMaterialImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
@@ -42,7 +52,7 @@ public:
 		
 		if (Data->HasMaterials())
 		{
-			return Data->GetInterpolatedMaterial(X, Y, Z);
+			return Data->GetInterpolatedMaterial(X, Y, Z, Tolerance);
 		}
 		else
 		{

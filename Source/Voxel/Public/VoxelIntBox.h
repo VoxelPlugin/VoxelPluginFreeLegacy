@@ -599,8 +599,10 @@ struct VOXEL_API FVoxelIntBox
 		}, bForceSingleThread);
 	}
 
+	// MaxBorderSize: if we do a 180 rotation for example, min and max are inverted
+	// If we don't work on values that are actually inside the box, the resulting box will be wrong
 	template<EInverseTransform Inverse = EInverseTransform::False>
-	FVoxelIntBox ApplyTransform(const FTransform& Transform, int32 MaxBorderSize = 0) const
+	FVoxelIntBox ApplyTransform(const FTransform& Transform, int32 MaxBorderSize = 1) const
 	{
 		const auto Corners = GetCorners(MaxBorderSize);
 

@@ -39,6 +39,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Config")
 	FIntVector PositionOffset;
 
+	// When sampled, positions that are close to a whole number will be rounded
+	// Tolerance defines the threshold
+	// Automatically set to 0.1 in Cubic
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Config", AdvancedDisplay, meta = (UIMin = 0.f, UIMax = 1.f))
+	float Tolerance = 0.0001f;
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Config")
 	FIntVector Size;
 	
