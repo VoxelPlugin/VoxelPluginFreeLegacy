@@ -13,42 +13,78 @@
 
 #include "Kismet2/BlueprintEditorUtils.h"
 
-inline FVoxelPin CreateVoxelPinFromGraphPin(UEdGraphPin* Pin)
+inline TArray<FVoxelPin> CreateVoxelPinsFromGraphPin(UEdGraphPin& Pin)
 {
-	TArray<UVoxelNode*> OtherNodes;
-	TArray<FGuid> OtherPinIds;
+	TArray<FVoxelPin> Result;
 
-	if (Pin->LinkedTo.Num() > 0)
+	if (Pin.SubPins.Num() == 0)
 	{
-		for (UEdGraphPin* OtherPin : Pin->LinkedTo)
+		Result.Add(FVoxelPin(Pin.PinId, Pin.DefaultValue, FVoxelPinCategory::FromString(Pin.PinType.PinCategory)));
+	}
+	else
+	{
+		TArray<FString> SubDefaultValues;
+		Pin.DefaultValue.ParseIntoArray(SubDefaultValues, TEXT(","));
+
+		for (int32 Index = 0; Index < Pin.SubPins.Num(); Index++)
+		{
+			auto& SubPin = *Pin.SubPins[Index];
+			Result.Add(FVoxelPin(
+				SubPin.PinId,
+				SubDefaultValues.IsValidIndex(Index) ? SubDefaultValues[Index] : "",
+				FVoxelPinCategory::FromString(SubPin.PinType.PinCategory)));
+		}
+	}
+
+	const auto CheckOtherPin = [&](UEdGraphPin& OtherPin)
+	{
+		auto* const OtherNode = Cast<UVoxelGraphNode>(OtherPin.GetOwningNode());
+		if (!OtherNode)
+		{
+			return;
+		}
+		
+		if (Pin.SubPins.Num() > 0)
+		{
+			if (!ensure(Pin.SubPins.Num() == OtherPin.SubPins.Num()))
+			{
+				return;
+			}
+
+			for (int32 Index = 0; Index < Pin.SubPins.Num(); Index++)
+			{
+				Result[Index].OtherNodes.Add(OtherNode->VoxelNode);
+				Result[Index].OtherPinIds.Add(OtherPin.SubPins[Index]->PinId);
+			}
+		}
+		else
+		{
+			Result[0].OtherNodes.Add(OtherNode->VoxelNode);
+			Result[0].OtherPinIds.Add(OtherPin.PinId);
+		}
+	};
+
+	if (Pin.LinkedTo.Num() > 0)
+	{
+		for (UEdGraphPin* OtherPin : Pin.LinkedTo)
 		{
 			auto Knot = Cast<UVoxelGraphNode_Knot>(OtherPin->GetOwningNode());
 			if (Knot)
 			{
-				auto NewOtherPins = Pin->Direction == EEdGraphPinDirection::EGPD_Input ? Knot->GetAllInputPins() : Knot->GetAllOutputPins();
+				const auto NewOtherPins = Pin.Direction == EGPD_Input ? Knot->GetAllInputPins() : Knot->GetAllOutputPins();
 				for (auto& NewOtherPin : NewOtherPins)
 				{
-					auto* const NewOtherNode = Cast<UVoxelGraphNode>(NewOtherPin->GetOwningNode());
-					if (NewOtherNode)
-					{
-						OtherNodes.Add(NewOtherNode->VoxelNode);
-						OtherPinIds.Add(NewOtherPin->PinId);
-					}
+					CheckOtherPin(*NewOtherPin);
 				}
 			}
 			else
 			{
-				auto* const OtherNode = Cast<UVoxelGraphNode>(OtherPin->GetOwningNode());
-				if (OtherNode)
-				{
-					OtherNodes.Add(OtherNode->VoxelNode);
-					OtherPinIds.Add(OtherPin->PinId);
-				}
+				CheckOtherPin(*OtherPin);
 			}
 		}
 	}
 
-	return FVoxelPin(Pin->PinId, Pin->DefaultValue, FVoxelPinCategory::FromString(Pin->PinType.PinCategory), OtherNodes, OtherPinIds);
+	return Result;
 }
 
 UEdGraph* FVoxelGraphEditor::CreateNewVoxelGraph(UVoxelGraphGenerator* InVoxelWorldGenerator)
@@ -84,30 +120,28 @@ void FVoxelGraphEditor::CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* Wo
 				check(!AllNodes.Contains(VoxelNode));
 				AllNodes.Add(VoxelNode);
 
-				TArray<FVoxelPin> InputVoxelPins;
+				TArray<FVoxelPin> InputPins;
+				for (auto& InputPin : GraphNode->GetInputPins())
 				{
-					TArray<UEdGraphPin*> InputPins;
-					GraphNode->GetInputPins(InputPins);
-					for (auto& InputPin : InputPins)
+					if (!InputPin->bHidden)
 					{
-						InputVoxelPins.Add(CreateVoxelPinFromGraphPin(InputPin));
+						InputPins.Append(CreateVoxelPinsFromGraphPin(*InputPin));
 					}
 				}
 
-				TArray<FVoxelPin> OutputVoxelPins;
+				TArray<FVoxelPin> OutputPins;
+				for (auto& OutputPin : GraphNode->GetOutputPins())
 				{
-					TArray<UEdGraphPin*> OutputPins;
-					GraphNode->GetOutputPins(OutputPins);
-					for (auto& OutputPin : OutputPins)
+					if (!OutputPin->bHidden)
 					{
-						OutputVoxelPins.Add(CreateVoxelPinFromGraphPin(OutputPin));
+						OutputPins.Append(CreateVoxelPinsFromGraphPin(*OutputPin));
 					}
 				}
 
 				VoxelNode->SetFlags(RF_Transactional);
 				VoxelNode->Modify();
-				VoxelNode->InputPins = InputVoxelPins;
-				VoxelNode->OutputPins = OutputVoxelPins;
+				VoxelNode->InputPins = InputPins;
+				VoxelNode->OutputPins = OutputPins;
 				VoxelNode->PostEditChange();
 			}
 			else
@@ -115,8 +149,7 @@ void FVoxelGraphEditor::CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* Wo
 				UVoxelGraphNode_Root* GraphNodeRoot = Cast<UVoxelGraphNode_Root>(Node);
 				if (GraphNodeRoot)
 				{
-					TArray<UEdGraphPin*> OutputPins;
-					GraphNodeRoot->GetOutputPins(OutputPins);
+					const TArray<UEdGraphPin*> OutputPins = GraphNodeRoot->GetOutputPins();
 
 					check(OutputPins.Num() == 1);
 					check(OutputPins[0]->LinkedTo.Num() <= 1);

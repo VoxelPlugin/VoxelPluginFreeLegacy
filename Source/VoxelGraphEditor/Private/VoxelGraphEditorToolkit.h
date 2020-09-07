@@ -135,6 +135,9 @@ public:
 	
 	void OnTogglePinPreview();
 
+	void OnSplitPin();
+	void OnCombinePin();
+	
 	void SelectAllNodes();
 	bool CanSelectAllNodes() const { return true; }
 

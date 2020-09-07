@@ -11,6 +11,7 @@
 #include "KismetPins/SGraphPinInteger.h"
 #include "KismetPins/SGraphPinNum.h"
 #include "KismetPins/SGraphPinColor.h"
+#include "KismetPins/SGraphPinVector.h"
 
 class FVoxelGraphPanelPinFactory : public FGraphPanelPinFactory
 {
@@ -38,6 +39,8 @@ class FVoxelGraphPanelPinFactory : public FGraphPanelPinFactory
 				return SNew(SGraphPinInteger, InPin);
 			case EVoxelPinCategory::Wildcard:
 				return SNew(SGraphPin, InPin);
+			case EVoxelPinCategory::Vector:
+				return SNew(SGraphPinVector, InPin);
 			default:
 				check(false);
 				return nullptr;

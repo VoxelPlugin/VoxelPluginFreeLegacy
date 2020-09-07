@@ -459,6 +459,11 @@ TSharedRef<SGraphEditor> FVoxelGraphEditorToolkit::CreateGraphEditorWidget(bool 
 		GraphEditorCommands->MapAction(FVoxelGraphEditorCommands::Get().TogglePinPreview,
 			FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::OnTogglePinPreview));
 
+		GraphEditorCommands->MapAction(FVoxelGraphEditorCommands::Get().SplitPin,
+			FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::OnSplitPin));
+		GraphEditorCommands->MapAction(FVoxelGraphEditorCommands::Get().CombinePin,
+			FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::OnCombinePin));
+
 		// Graph Editor Commands
 		GraphEditorCommands->MapAction(FGraphEditorCommands::Get().CreateComment,
 			FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::OnCreateComment)
@@ -1043,6 +1048,20 @@ void FVoxelGraphEditorToolkit::OnTogglePinPreview()
 	UpdatePreview(EVoxelGraphPreviewFlags::UpdateAll | EVoxelGraphPreviewFlags::ManualPreview);
 }
 
+void FVoxelGraphEditorToolkit::OnSplitPin()
+{
+	UEdGraphPin* SelectedPin = VoxelGraphEditor->GetGraphPinForMenu();
+	UVoxelGraphNode* SelectedNode = Cast<UVoxelGraphNode>(SelectedPin->GetOwningNode());
+	SelectedNode->TrySplitPin(*SelectedPin, false);
+}
+
+void FVoxelGraphEditorToolkit::OnCombinePin()
+{
+	UEdGraphPin* SelectedPin = VoxelGraphEditor->GetGraphPinForMenu();
+	UVoxelGraphNode* SelectedNode = Cast<UVoxelGraphNode>(SelectedPin->GetOwningNode());
+	SelectedNode->TryCombinePin(*SelectedPin, false);
+}
+
 void FVoxelGraphEditorToolkit::SelectAllNodes()
 {
 	VoxelGraphEditor->SelectAllNodes();
@@ -1268,6 +1287,11 @@ void FVoxelGraphEditorToolkit::PasteNodesHere(const FVector2D& Location)
 				WorldGenerator->AllNodes.Add(VoxelNode);
 				VoxelNode->Graph = WorldGenerator;
 			}
+
+			// Combine pins if possible
+			// This cannot destroy any link
+			// Else combined pins are all expanded on copy
+			VoxelGraphNode->CombineAll();
 		}
 
 		// Select the newly pasted stuff

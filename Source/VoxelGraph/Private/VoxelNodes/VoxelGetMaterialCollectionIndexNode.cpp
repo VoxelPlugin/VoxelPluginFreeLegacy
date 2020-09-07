@@ -11,6 +11,7 @@
 #include "Misc/UObjectToken.h"
 #include "UObject/Package.h"
 #include "AssetData.h"
+#include "VoxelGraphPreviewSettings.h"
 #include "Materials/MaterialFunction.h"
 #include "Materials/MaterialInstanceConstant.h"
 
@@ -37,13 +38,17 @@ UClass* UVoxelNode_GetMaterialCollectionIndex::GetAssetClass() const
 void UVoxelNode_GetMaterialCollectionIndex::SetAsset(UObject* Object)
 {
 	Material = Cast<UMaterialInterface>(Object);
+
+	UpdatePreview(false);
 }
 
 bool UVoxelNode_GetMaterialCollectionIndex::ShouldFilterAsset(const FAssetData& Asset) const
 {
-	UClass* Class = Asset.GetClass();
-	return
-		!Class->IsChildOf(UMaterialFunction::StaticClass()) &&
-		!Class->IsChildOf(UMaterialInstanceConstant::StaticClass());
+	if (!ensure(Graph) || !Graph->PreviewSettings->MaterialCollection)
+	{
+		return true;
+	}
+
+	return Graph->PreviewSettings->MaterialCollection->GetMaterialIndex(Asset.AssetName) == -1;
 }
 

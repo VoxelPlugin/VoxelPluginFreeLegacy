@@ -111,6 +111,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Macro Config")
 	bool bShowInContextMenu = true;
 
+	UPROPERTY(EditAnywhere, Category = "Macro Config")
+	bool bVectorOnlyNode = false;	
+
 	UPROPERTY()
 	UVoxelGraphMacroInputNode* InputNode;
 

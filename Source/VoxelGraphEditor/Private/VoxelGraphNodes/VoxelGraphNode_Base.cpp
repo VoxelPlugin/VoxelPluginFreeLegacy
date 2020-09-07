@@ -7,30 +7,14 @@
 #include "EdGraph/EdGraphPin.h"
 #include "EdGraph/EdGraph.h"
 
-void UVoxelGraphNode_Base::GetOutputPins(TArray<UEdGraphPin*>& OutOutputPins)
+TArray<UEdGraphPin*> UVoxelGraphNode_Base::GetOutputPins() const
 {
-	OutOutputPins.Empty();
-
-	for (int32 PinIndex = 0; PinIndex < Pins.Num(); PinIndex++)
-	{
-		if (Pins[PinIndex]->Direction == EGPD_Output)
-		{
-			OutOutputPins.Add(Pins[PinIndex]);
-		}
-	}
+	return Pins.FilterByPredicate([&](const UEdGraphPin* Pin) { return Pin->Direction == EGPD_Output; });
 }
 
-void UVoxelGraphNode_Base::GetInputPins(TArray<UEdGraphPin*>& OutInputPins)
+TArray<UEdGraphPin*> UVoxelGraphNode_Base::GetInputPins() const
 {
-	OutInputPins.Empty();
-
-	for (int32 PinIndex = 0; PinIndex < Pins.Num(); PinIndex++)
-	{
-		if (Pins[PinIndex]->Direction == EGPD_Input)
-		{
-			OutInputPins.Add(Pins[PinIndex]);
-		}
-	}
+	return Pins.FilterByPredicate([&](const UEdGraphPin* Pin) { return Pin->Direction == EGPD_Input; });
 }
 
 UEdGraphPin* UVoxelGraphNode_Base::GetInputPin(int32 InputIndex)
@@ -279,10 +263,8 @@ void UVoxelGraphNode_Base::ReconstructNode()
 	}
 
 	// Store the old Input and Output pins
-	TArray<UEdGraphPin*> OldInputPins;
-	GetInputPins(OldInputPins);
-	TArray<UEdGraphPin*> OldOutputPins;
-	GetOutputPins(OldOutputPins);
+	const TArray<UEdGraphPin*> OldInputPins = GetInputPins();
+	const TArray<UEdGraphPin*> OldOutputPins = GetOutputPins();
 
 	// Move the existing pins to a saved array
 	TArray<UEdGraphPin*> OldPins(Pins);
@@ -292,10 +274,8 @@ void UVoxelGraphNode_Base::ReconstructNode()
 	AllocateDefaultPins();
 
 	// Get new Input and Output pins
-	TArray<UEdGraphPin*> NewInputPins;
-	GetInputPins(NewInputPins);
-	TArray<UEdGraphPin*> NewOutputPins;
-	GetOutputPins(NewOutputPins);
+	const TArray<UEdGraphPin*> NewInputPins = GetInputPins();
+	const TArray<UEdGraphPin*> NewOutputPins = GetOutputPins();
 
 	MovePins(OldInputPins, NewInputPins);
 	MovePins(OldOutputPins, NewOutputPins);

@@ -52,8 +52,25 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGra
 
 	UVoxelNode* NewNode = WorldGenerator->ConstructNewNode(VoxelNodeClass, Location, bSelectNewNode);
 	NewNode->GraphNode->ReconstructNode();
-	NewNode->GraphNode->AutowireNewNode(FromPin);
 
+	// Autowire before combining if not vector
+	if (FromPin && FVoxelPinCategory::FromString(FromPin->PinType.PinCategory) != EVoxelPinCategory::Vector)
+	{
+		NewNode->GraphNode->AutowireNewNode(FromPin);
+	}
+
+	// Combine all vector pins on spawn
+	if (auto* VoxelNode = Cast<UVoxelGraphNode>(NewNode->GraphNode))
+	{
+		VoxelNode->CombineAll();
+	}
+	
+	// Autowire after combining if vector
+	if (FromPin && FVoxelPinCategory::FromString(FromPin->PinType.PinCategory) == EVoxelPinCategory::Vector)
+	{
+		NewNode->GraphNode->AutowireNewNode(FromPin);
+	}
+	
 	// Else the voxel pin arrays are invalid
 	WorldGenerator->CompileVoxelNodesFromGraphNodes();
 
@@ -72,7 +89,24 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewMacroNode::PerformAction(UEdGraph* Pare
 	UVoxelGraphMacroNode* NewNode = WorldGenerator->ConstructNewNode<UVoxelGraphMacroNode>(Location, bSelectNewNode);
 	NewNode->Macro = Macro;
 	NewNode->GraphNode->ReconstructNode();
-	NewNode->GraphNode->AutowireNewNode(FromPin);
+
+	// Autowire before combining if not vector
+	if (FromPin && FVoxelPinCategory::FromString(FromPin->PinType.PinCategory) != EVoxelPinCategory::Vector)
+	{
+		NewNode->GraphNode->AutowireNewNode(FromPin);
+	}
+
+	// Combine all vector pins on spawn
+	if (auto* VoxelNode = Cast<UVoxelGraphNode>(NewNode->GraphNode))
+	{
+		VoxelNode->CombineAll();
+	}
+	
+	// Autowire after combining if vector
+	if (FromPin && FVoxelPinCategory::FromString(FromPin->PinType.PinCategory) == EVoxelPinCategory::Vector)
+	{
+		NewNode->GraphNode->AutowireNewNode(FromPin);
+	}
 
 	// Else the voxel pin arrays are invalid
 	WorldGenerator->CompileVoxelNodesFromGraphNodes();
@@ -455,6 +489,10 @@ FLinearColor UVoxelGraphSchema::GetPinTypeColor(const FEdGraphPinType& PinType) 
 	{
 		return Settings->SoftClassPinTypeColor;
 	}
+	else if (Category == EVoxelPinCategory::Vector)
+	{
+		return Settings->VectorPinTypeColor;
+	}
 
 	// Type does not have a defined color!
 	return Settings->DefaultPinTypeColor;
@@ -525,6 +563,14 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 				{
 					Section.AddMenuEntry(FVoxelGraphEditorCommands::Get().TogglePinPreview);
 				}
+				if (Node->CanSplitPin_Voxel(*InGraphPin))
+				{
+					Section.AddMenuEntry(FVoxelGraphEditorCommands::Get().SplitPin);
+				}
+				if (Node->CanCombinePin(*InGraphPin))
+				{
+					Section.AddMenuEntry(FVoxelGraphEditorCommands::Get().CombinePin);
+				}
 			}
 		}
 	}
@@ -534,7 +580,9 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 		if (auto* Knot = Cast<UVoxelGraphNode_Knot>(InGraphNode))
 		{
 			const EVoxelPinCategory Category = FVoxelPinCategory::FromString(Knot->GetInputPin()->PinType.PinCategory);
-			if (Category != EVoxelPinCategory::Exec && Category != EVoxelPinCategory::Wildcard)
+			if (Category != EVoxelPinCategory::Exec &&
+				Category != EVoxelPinCategory::Wildcard &&
+				Category != EVoxelPinCategory::Vector)
 			{
 				FToolMenuSection& Section = Menu->AddSection("MaterialEditorMenu1");
 				Section.AddMenuEntry(FVoxelGraphEditorCommands::Get().ConvertRerouteToVariables);
@@ -871,6 +919,19 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 	const int32 ParameterNodesPriority = 0;
 	const int32 MacroNodesPriority = 0;
 
+	const auto PinMatchesNode = [&](UVoxelNode* Node)
+	{
+		if (Category == EVoxelPinCategory::Vector)
+		{
+			// Make sure to check the opposite direction of FromPin
+			return UVoxelGraphNode::HasVectorPin(*Node, FromPin->Direction == EGPD_Input ? EGPD_Output : EGPD_Input);
+		}
+
+		return FromPin->Direction == EGPD_Input
+			? Node->HasInputPinWithCategory(Category)
+			: Node->HasOutputPinWithCategory(Category);
+	};
+
 	// Macros
 	{
 		// Load the asset registry module
@@ -891,10 +952,25 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 				continue;
 			}
 
-			if (Macro->bShowInContextMenu &&
-				(!FromPin ||
-				(FromPin->Direction == EGPD_Input && Macro->OutputNode && Macro->OutputNode->HasInputPinWithCategory(Category)) ||
-					(FromPin->Direction == EGPD_Output && Macro->InputNode && Macro->InputNode->HasOutputPinWithCategory(Category))))
+			const auto PinMatchesMacro = [&]()
+			{
+				// Make sure to check the opposite direction of FromPin
+				auto* Node = FromPin->Direction == EGPD_Input ? static_cast<UVoxelNode*>(Macro->OutputNode) : Macro->InputNode;
+				if (!Node)
+				{
+					return false;
+				}
+
+				if (Category != EVoxelPinCategory::Vector && Macro->bVectorOnlyNode)
+				{
+					// Having all the vector macros when dragging a float is annoying
+					return false;
+				}
+
+				return PinMatchesNode(Node);
+			};
+			
+			if (Macro->bShowInContextMenu && (!FromPin || PinMatchesMacro()))
 			{
 				const FText Name = Macro->GetMacroName();
 				const FText AddToolTip = FText::FromString(Macro->Tooltip);
@@ -928,7 +1004,9 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 		{
 			if (FromPin->Direction == EGPD_Output)
 			{
-				if (Category != EVoxelPinCategory::Exec && Category != EVoxelPinCategory::Wildcard)
+				if (Category != EVoxelPinCategory::Exec && 
+					Category != EVoxelPinCategory::Wildcard && 
+					Category != EVoxelPinCategory::Vector)
 				{
 					NewNodeAction->DefaultName = FromPin->PinName;
 					NewNodeAction->PinCategory = Category;
@@ -1007,9 +1085,7 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 	for (auto& NodeClass : VoxelNodeClasses)
 	{
 		UVoxelNode* DefaultNode = NodeClass->GetDefaultObject<UVoxelNode>();
-		if (!FromPin ||
-			(FromPin->Direction == EGPD_Input && DefaultNode->HasOutputPinWithCategory(Category)) ||
-			(FromPin->Direction == EGPD_Output && DefaultNode->HasInputPinWithCategory(Category)))
+		if (!FromPin || PinMatchesNode(DefaultNode))
 		{
 			const auto GetCategory = [](UClass* Class)
 			{

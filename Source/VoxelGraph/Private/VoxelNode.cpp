@@ -109,16 +109,16 @@ void UVoxelNode::PostEditChangeChainProperty(FPropertyChangedChainEvent& Propert
 
 	if (Graph && GraphNode && PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
+		bool bReconstructNode = false;
 		for (auto* Property : PropertyChangedEvent.PropertyChain)
 		{
 			if (Property && Property->HasMetaData(STATIC_FNAME("ReconstructNode")))
 			{
-				// Reconstruct before updating preview to have the right output count
-				GraphNode->ReconstructNode();
-				Graph->CompileVoxelNodesFromGraphNodes();
+				bReconstructNode = true;
+				break;
 			}
 		}
-		IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, EVoxelGraphPreviewFlags::UpdateTextures);
+		UpdatePreview(bReconstructNode);
 	}
 
 	MarkPackageDirty();
@@ -136,6 +136,18 @@ void UVoxelNode::PostLoad()
 	{
 		FVoxelGraphErrorReporter::AddMessageToNodeInternal(this, "outdated node, please right click and press Reconstruct Node", EVoxelGraphNodeMessageType::Error);
 	}
+}
+
+void UVoxelNode::UpdatePreview(bool bReconstructNode) const
+{
+	if (bReconstructNode)
+	{
+		// Reconstruct before updating preview to have the right output count
+		GraphNode->ReconstructNode();
+		Graph->CompileVoxelNodesFromGraphNodes();
+	}
+
+	IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, EVoxelGraphPreviewFlags::UpdateTextures);
 }
 #endif
 
