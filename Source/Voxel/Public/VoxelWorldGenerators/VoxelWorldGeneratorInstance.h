@@ -83,10 +83,12 @@ public:
 
 	// Called before a chunk is computed
 	// Needs to be thread safe!
+	// EXPERIMENTAL
 	virtual void InitArea(const FVoxelIntBox& Bounds, int32 LOD) {}
 
 	// Will be called on every chunk material instance
 	// Can be used eg to pass a texture per chunk
+	// EXPERIMENTAL
 	virtual void SetupMaterialInstance(int32 ChunkLOD, const FVoxelIntBox& ChunkBounds, UMaterialInstanceDynamic* Instance) {}
 	
 	// You should implement a fast version of that function, called every time a chunk is updated

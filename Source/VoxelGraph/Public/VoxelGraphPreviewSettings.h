@@ -136,6 +136,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel World Settings", AdvancedDisplay)
 	float VoxelSize = 100;
 
+	UPROPERTY(EditAnywhere, Category = "Voxel World Settings", AdvancedDisplay)
+	EVoxelRenderType RenderType = EVoxelRenderType::MarchingCubes;
+
 public:
 	UPROPERTY(EditAnywhere, Category = "2D Preview Color")
 	EVoxelGraphPreviewType PreviewType2D = EVoxelGraphPreviewType::Density;

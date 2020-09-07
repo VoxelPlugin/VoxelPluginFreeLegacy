@@ -173,7 +173,7 @@ void FVoxelDataAssetEditorManager::RecreateWorld()
 
 bool FVoxelDataAssetEditorManager::IsDirty() const
 {
-	return World->GetData().IsDirty();
+	return ensure(World->IsCreated()) && World->GetData().IsDirty();
 }
 
 void FVoxelDataAssetEditorManager::CreateWorld()

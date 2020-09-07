@@ -26,6 +26,11 @@ public:
 	}
 	
 	//~ Begin FVoxelWorldGeneratorInstance Interface
+	virtual void Init(const FVoxelWorldGeneratorInit& InitStruct)
+	{
+		WorldGenerator->Init(InitStruct);
+	}
+	
 	template<bool bCustomTransform>
 	inline float GetValueImpl(const FTransform& LocalToWorld, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{

@@ -306,6 +306,7 @@ FVoxelWorldGeneratorInit AVoxelWorld::GetInitStruct() const
 		Seeds,
 		VoxelSize,
 		FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(RenderOctreeDepth),
+		RenderType,
 		MaterialConfig,
 		MaterialCollection,
 		this);

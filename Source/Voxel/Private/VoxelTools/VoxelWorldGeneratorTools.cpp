@@ -86,7 +86,7 @@ TVoxelSharedPtr<FVoxelWorldGeneratorInstance> SetupWorldGenerator(
 		return {};
 	}
 
-	const FVoxelWorldGeneratorInit Init(Seeds, VoxelSize, FMath::Max(SizeX, SizeY), EVoxelMaterialConfig::RGB, nullptr, nullptr);
+	const FVoxelWorldGeneratorInit Init(Seeds, VoxelSize, FMath::Max(SizeX, SizeY), EVoxelRenderType::MarchingCubes, EVoxelMaterialConfig::RGB, nullptr, nullptr);
 	Instance->Init(Init);
 
 	return Instance;
