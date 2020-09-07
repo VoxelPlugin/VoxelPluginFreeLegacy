@@ -26,6 +26,9 @@ UVoxelGraphPreviewSettings::UVoxelGraphPreviewSettings()
 	IndexColors.Add(FColorList::Cyan);
 	IndexColors.Add(FColorList::Orange);
 	IndexColors.Add(FColorList::Aquamarine);
+	IndexColors.Add(FColorList::BakerChocolate);
+	IndexColors.Add(FColorList::Brass);
+	IndexColors.Add(FColorList::Gold);
 }
 
 #if WITH_EDITOR

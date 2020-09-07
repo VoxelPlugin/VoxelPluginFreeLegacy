@@ -228,7 +228,7 @@ void IVoxelRendererMeshHandler::ApplyToAllMeshes(TFunctionRef<void(UVoxelProcedu
 
 	for (auto& It : ActiveMeshes)
 	{
-		if (ensure(It.Key.IsValid()))
+		if (ensureVoxelSlow(It.Key.IsValid()))
 		{
 			Lambda(*It.Key);
 		}
@@ -249,7 +249,7 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 	auto& Settings = Renderer.Settings;
 	
 	auto* const RootComponent = Settings.RootComponent.Get();
-	if (!ensure(RootComponent))
+	if (!ensureVoxelSlow(RootComponent))
 	{
 		return nullptr;
 	}

@@ -18,7 +18,8 @@ enum class EVoxelPinCategory : uint8
 	Material,
 	Color,
 	Seed,
-	Wildcard  UMETA(Hidden)
+	Wildcard  UMETA(Hidden),
+	Vector  UMETA(Hidden)
 };
 
 UENUM()

@@ -49,6 +49,8 @@ public:
 	TSharedPtr<FUICommandInfo> DeleteInput;
 
 	TSharedPtr<FUICommandInfo> TogglePinPreview;
+	TSharedPtr<FUICommandInfo> SplitPin;
+	TSharedPtr<FUICommandInfo> CombinePin;
 
 	// Local variables
 	TSharedPtr<FUICommandInfo> SelectLocalVariableUsages;
@@ -81,6 +83,8 @@ public:
 		UI_COMMAND(DeleteInput, "Delete Input", "Removes an input from the node", EUserInterfaceActionType::Button, FInputChord());
 
 		UI_COMMAND(TogglePinPreview, "Toggle pin preview", "Makes the preview viewport start/stop previewing this pin", EUserInterfaceActionType::Button, FInputChord());
+		UI_COMMAND(SplitPin, "Split vector pin", "Split this pin into X Y Z pins", EUserInterfaceActionType::Button, FInputChord());
+		UI_COMMAND(CombinePin, "Combine pins into vector", "Combine this pin with its neighbors to make a vector", EUserInterfaceActionType::Button, FInputChord());
 
 		UI_COMMAND(SelectLocalVariableUsages, "Select Usages", "Select this variable usages", EUserInterfaceActionType::Button, FInputChord());
 		UI_COMMAND(SelectLocalVariableDeclaration, "Select Declaration", "Select this variable declaration", EUserInterfaceActionType::Button, FInputChord());

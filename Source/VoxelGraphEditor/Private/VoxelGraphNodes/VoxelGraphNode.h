@@ -19,15 +19,27 @@ public:
 
 	/** Set the VoxelNode this represents (also assigns this to the VoxelNode in Editor)*/
 	void SetVoxelNode(UVoxelNode* InVoxelNode);
+	/** Fix up the node's owner after being copied */
+	void PostCopyNode();
 	/** Create a new input pin for this node */
 	void CreateInputPin();
 	/** Create a new output pin for this node */
 	void CreateOutputPin();
 	/** Remove a specific input pin from this node and recompile the WorldGenerator */
 	void RemoveInputPin(UEdGraphPin* InGraphPin);
-	/** Fix up the node's owner after being copied */
-	void PostCopyNode();
-	
+
+public:
+	bool CanSplitPin_Voxel(const UEdGraphPin& Pin) const;
+	bool CanCombinePin(const UEdGraphPin& Pin) const;
+
+	bool TrySplitPin(UEdGraphPin& Pin, bool bOnlyCheck);
+	bool TryCombinePin(UEdGraphPin& Pin, bool bOnlyCheck);
+
+	void CombineAll();
+
+	static bool HasVectorPin(UVoxelNode& Node, EEdGraphPinDirection Direction);
+
+public:
 	// UVoxelGraphNodeInterface interface
 	virtual UVoxelNode* GetVoxelNode() const override { return VoxelNode; }
 	virtual bool IsOutdated() const override;
@@ -68,5 +80,4 @@ public:
 private:
 	/** Make sure the voxel node is owned by the World Generator */
 	void ResetVoxelNodeOwner();
-
 };

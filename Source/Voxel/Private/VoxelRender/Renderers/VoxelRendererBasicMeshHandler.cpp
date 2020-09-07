@@ -281,7 +281,7 @@ void FVoxelRendererBasicMeshHandler::FlushActionQueue(double MaxTime)
 				{
 					// Not enough meshes to render the built mesh, allocate new ones
 					auto* NewMesh = GetNewMesh(Action.ChunkId, ChunkInfo.Position, ChunkInfo.LOD);
-					if (!ensure(NewMesh)) return;
+					if (!ensureVoxelSlow(NewMesh)) return;
 					ChunkInfo.Meshes.Add(NewMesh);
 				}
 

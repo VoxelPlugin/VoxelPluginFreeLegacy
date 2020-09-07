@@ -47,23 +47,21 @@ struct FVoxelPin
 	UPROPERTY()
 	FString DefaultValue;
 
+	// Used for macros to check that the nodes are the same
+	UPROPERTY()
+	EVoxelPinCategory PinCategory = EVoxelPinCategory::Exec;
+
 	UPROPERTY()
 	TArray<UVoxelNode*> OtherNodes;
 
 	UPROPERTY()
 	TArray<FGuid> OtherPinIds;
-
-	// Used for macros to check that the nodes are the same
-	UPROPERTY()
-	EVoxelPinCategory PinCategory = EVoxelPinCategory::Exec;
 	
 	FVoxelPin() = default;
 	
-	FVoxelPin(const FGuid& PinId, const FString& DefaultValue, EVoxelPinCategory PinCategory, const TArray<UVoxelNode*>& OtherNodes, const TArray<FGuid>& OtherPinIds)
+	FVoxelPin(const FGuid& PinId, const FString& DefaultValue, EVoxelPinCategory PinCategory)
 		: PinId(PinId)
 		, DefaultValue(DefaultValue)
-		, OtherNodes(OtherNodes)
-		, OtherPinIds(OtherPinIds)
 		, PinCategory(PinCategory)
 	{
 	}
@@ -171,6 +169,9 @@ public:
 	virtual void PostLoad() override;
 	//~ End UObject Interface
 #endif //WITH_EDITOR
+
+protected:
+	void UpdatePreview(bool bReconstructNode) const;
 
 private:
 	bool IsOutdated() const;

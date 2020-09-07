@@ -97,18 +97,15 @@ void UVoxelGraphNode::RemoveInputPin(UEdGraphPin* InGraphPin)
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Delete Input Pin"));
 	Modify();
 
-	TArray<UEdGraphPin*> InputPins;
-	GetInputPins(InputPins);
-
-	for (int32 InputIndex = 0; InputIndex < InputPins.Num(); InputIndex++)
+	for (auto* InputPin : GetInputPins())
 	{
-		if (InGraphPin == InputPins[InputIndex])
+		if (InGraphPin == InputPin)
 		{
 			InGraphPin->MarkPendingKill();
 			Pins.Remove(InGraphPin);
 
 			const int32 Increment = VoxelNode->GetInputPinsIncrement();
-			if(Increment > 1)
+			if (Increment > 1)
 			{
 				const int32 PinIndex = VoxelNode->GetInputPinIndex(InGraphPin->PinId);
 				if (ensure(PinIndex != -1))
@@ -143,6 +140,245 @@ void UVoxelGraphNode::RemoveInputPin(UEdGraphPin* InGraphPin)
 	// Refresh the current graph, so the pins can be updated
 	GetGraph()->NotifyGraphChanged();
 }
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+bool UVoxelGraphNode::CanSplitPin_Voxel(const UEdGraphPin& Pin) const
+{
+	return const_cast<UVoxelGraphNode*>(this)->TrySplitPin(const_cast<UEdGraphPin&>(Pin), true);
+}
+
+bool UVoxelGraphNode::CanCombinePin(const UEdGraphPin& Pin) const
+{
+	return const_cast<UVoxelGraphNode*>(this)->TryCombinePin(const_cast<UEdGraphPin&>(Pin), true);
+}
+
+bool UVoxelGraphNode::TrySplitPin(UEdGraphPin& Pin, bool bOnlyCheck)
+{
+	ensure(!Pin.bHidden);
+	if (Pin.SubPins.Num() == 0 || Pin.LinkedTo.Num() > 0)
+	{
+		return false;
+	}
+
+	if (bOnlyCheck)
+	{
+		return true;
+	}
+
+	TArray<FString> SubDefaultValues;
+	Pin.DefaultValue.ParseIntoArray(SubDefaultValues, TEXT(","));
+
+	for (int32 Index = 0; Index < Pin.SubPins.Num(); Index++)
+	{
+		auto* SubPin = Pin.SubPins[Index];
+		ensure(SubPin->bHidden);
+		ensure(SubPin->ParentPin == &Pin);
+		SubPin->bHidden = false;
+		SubPin->ParentPin = nullptr;
+		SubPin->DefaultValue = SubDefaultValues.IsValidIndex(Index) ? SubDefaultValues[Index] : "";
+	}
+	Pin.SubPins.Empty();
+
+	ensure(RemovePin(&Pin));
+
+	GetGraph()->NotifyGraphChanged();
+
+	return true;
+}
+
+bool UVoxelGraphNode::TryCombinePin(UEdGraphPin& Pin, bool bOnlyCheck)
+{
+	ensure(!Pin.bHidden);
+
+	const auto NeighborPins = Pin.Direction == EGPD_Input ? GetInputPins() : GetOutputPins();
+	const int32 PinIndex = NeighborPins.Find(&Pin);
+
+	if (!ensure(PinIndex != -1))
+	{
+		return false;
+	}
+
+	const auto CheckStart = [&](int32 Index)
+	{
+		if (!NeighborPins.IsValidIndex(Index) ||
+			!NeighborPins.IsValidIndex(Index + 2))
+		{
+			return false;
+		}
+
+		FString Name = NeighborPins[Index]->GetName();
+		if (!Name.RemoveFromStart("X"))
+		{
+			return false;
+		}
+		return
+			NeighborPins[Index + 1]->GetName() == "Y" + Name &&
+			NeighborPins[Index + 2]->GetName() == "Z" + Name;
+	};
+	const auto CheckEnd = [&](int32 Index)
+	{
+		if (!NeighborPins.IsValidIndex(Index) ||
+			!NeighborPins.IsValidIndex(Index + 2))
+		{
+			return false;
+		}
+
+		FString Name = NeighborPins[Index]->GetName();
+		if (!Name.RemoveFromEnd("X"))
+		{
+			return false;
+		}
+		return
+			NeighborPins[Index + 1]->GetName() == Name + "Y" &&
+			NeighborPins[Index + 2]->GetName() == Name + "Z";
+	};
+
+	int32 IndexX = -1;
+	bool bIsStart = false;
+	for (int32 Index = PinIndex - 2; Index <= PinIndex; Index++)
+	{
+		if (CheckStart(Index))
+		{
+			bIsStart = true;
+			IndexX = Index;
+			break;
+		}
+		if (CheckEnd(Index))
+		{
+			bIsStart = false;
+			IndexX = Index;
+			break;
+		}
+	}
+
+	if (IndexX == -1)
+	{
+		return false;
+	}
+	
+	for (int32 Index = 0; Index < 3; Index++)
+	{
+		if (NeighborPins[IndexX + Index]->LinkedTo.Num() > 0)
+		{
+			return false;
+		}
+	}
+
+	if (bOnlyCheck)
+	{
+		return true;
+	}
+
+	FString ParentPinName = NeighborPins[IndexX]->GetName();
+	if (bIsStart)
+	{
+		ensure(ParentPinName.RemoveFromStart("X"));
+		ParentPinName.RemoveFromStart(".");
+	}
+	else 
+	{
+		ensure(ParentPinName.RemoveFromEnd("X"));
+		ParentPinName.RemoveFromEnd(".");
+	}
+
+	auto* ParentPin = CreatePin(Pin.Direction, FVoxelPinCategory::GetName(EVoxelPinCategory::Vector), FName(), nullptr, *ParentPinName);
+	Pins.Pop(false);
+
+	FVector DefaultValue;
+	for (int32 Index = 0; Index < 3; Index++)
+	{
+		auto* SubPin = NeighborPins[IndexX + Index];
+		SubPin->bHidden = true;
+		SubPin->ParentPin = ParentPin;
+
+		DefaultValue[Index] = FCString::Atof(*SubPin->DefaultValue);
+
+		ParentPin->SubPins.Add(SubPin);
+	}
+	ParentPin->DefaultValue = FString::Printf(TEXT("%f,%f,%f"), DefaultValue.X, DefaultValue.Y, DefaultValue.Z);
+
+	// Add the parent before the sub pins
+	const int32 InsertIndex = Pins.Find(NeighborPins[IndexX]);
+	check(InsertIndex != -1);
+	Pins.Insert(ParentPin, InsertIndex);
+
+	GetGraph()->NotifyGraphChanged();
+
+	return true;
+}
+
+void UVoxelGraphNode::CombineAll()
+{
+	const auto Copy = Pins;
+	for (auto& Pin : Copy)
+	{
+		if (!Pin->bHidden)
+		{
+			TryCombinePin(*Pin, false);
+		}
+	}
+}
+
+bool UVoxelGraphNode::HasVectorPin(UVoxelNode& Node, EEdGraphPinDirection Direction)
+{
+	TArray<FString> Names;
+
+	if (Direction == EGPD_Input)
+	{
+		const int32 InputCount = Node.GetMinInputPins();
+		for (int32 Index = 0; Index < InputCount; Index++)
+		{
+			Names.Add(Node.GetInputPinName(Index).ToString());
+		}
+	}
+	else
+	{
+		const int32 OutputCount = Node.GetOutputPinsCount();
+		for (int32 Index = 0; Index < OutputCount; Index++)
+		{
+			Names.Add(Node.GetOutputPinName(Index).ToString());
+		}
+	}
+	
+	const auto CheckStart = [&](int32 Index)
+	{
+		FString Name = Names[Index];
+		if (!Name.RemoveFromStart("X"))
+		{
+			return false;
+		}
+		return
+			Names[Index + 1] == "Y" + Name &&
+			Names[Index + 2] == "Z" + Name;
+	};
+	const auto CheckEnd = [&](int32 Index)
+	{
+		FString Name = Names[Index];
+		if (!Name.RemoveFromEnd("X"))
+		{
+			return false;
+		}
+		return
+			Names[Index + 1] == Name + "Y" &&
+			Names[Index + 2] == Name + "Z";
+	};
+
+	for (int32 Index = 0; Index < Names.Num() - 2; Index++)
+	{
+		if (CheckStart(Index) || CheckEnd(Index))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 bool UVoxelGraphNode::CanAddInputPin() const
 {
@@ -194,8 +430,13 @@ bool UVoxelGraphNode::IsOutdated() const
 {
 	int32 InputIndex = 0;
 	int32 OutputIndex = 0;
-	for(auto* Pin : Pins)
+	for (auto* Pin : Pins)
 	{
+		if (Pin->SubPins.Num() > 0)
+		{
+			continue;
+		}
+
 		if (Pin->Direction == EGPD_Input)
 		{
 			if (FVoxelPinCategory::GetName(VoxelNode->GetInputPinCategory(InputIndex)) != Pin->PinType.PinCategory)
@@ -312,6 +553,14 @@ void UVoxelGraphNode::GetContextMenuActions(const FGraphNodeContextMenuBuilder& 
 			{
 				Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().TogglePinPreview);
 			}
+			if (CanSplitPin_Voxel(*Context.Pin))
+			{
+				Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().SplitPin);
+			}
+			if (CanCombinePin(*Context.Pin))
+			{
+				Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().CombinePin);
+			}
 		}
 	}
 	else if (Context.Node)
@@ -320,7 +569,9 @@ void UVoxelGraphNode::GetContextMenuActions(const FGraphNodeContextMenuBuilder& 
 		if (auto* Knot = Cast<UVoxelGraphNode_Knot>(this))
 		{
 			EVoxelPinCategory Category = FVoxelPinCategory::FromString(Knot->GetInputPin()->PinType.PinCategory);
-			if (Category != EVoxelPinCategory::Exec && Category != EVoxelPinCategory::Wildcard)
+			if (Category != EVoxelPinCategory::Exec && 
+				Category != EVoxelPinCategory::Wildcard && 
+				Category != EVoxelPinCategory::Vector)
 			{
 				Context.MenuBuilder->BeginSection("MaterialEditorMenu1");
 				{
@@ -454,19 +705,34 @@ void UVoxelGraphNode::OnRenameNode(const FString& NewName)
 
 void UVoxelGraphNode::GetPinHoverText(const UEdGraphPin& Pin, FString& HoverTextOut) const
 {
-	if (VoxelNode)
+	if (!VoxelNode)
 	{
-		int32 Index = VoxelNode->GetInputPinIndex(Pin.PinId);
+		return;
+	}
+	
+	TArray<FGuid> PinIds;
+
+	PinIds.Add(Pin.PinId);
+	for (auto& SubPin : Pin.SubPins)
+	{
+		PinIds.Add(SubPin->PinId);
+	}
+
+	for (auto& PinId : PinIds)
+	{
+		int32 Index = VoxelNode->GetInputPinIndex(PinId);
 		if (Index != -1)
 		{
-			HoverTextOut = VoxelNode->GetInputPinToolTip(Index);
+			if (!HoverTextOut.IsEmpty()) HoverTextOut += "\n";
+			HoverTextOut += VoxelNode->GetInputPinToolTip(Index);
 		}
 		else
 		{
-			Index = VoxelNode->GetOutputPinIndex(Pin.PinId);
+			Index = VoxelNode->GetOutputPinIndex(PinId);
 			if (Index != -1)
 			{
-				HoverTextOut = VoxelNode->GetOutputPinToolTip(Index);
+				if (!HoverTextOut.IsEmpty()) HoverTextOut += "\n";
+				HoverTextOut += VoxelNode->GetOutputPinToolTip(Index);
 			}
 		}
 	}

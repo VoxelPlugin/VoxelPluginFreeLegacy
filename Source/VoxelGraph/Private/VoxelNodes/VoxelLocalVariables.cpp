@@ -75,6 +75,7 @@ void UVoxelLocalVariableDeclaration::SetCategory(EVoxelPinCategory NewCategory)
 		break;
 	case EVoxelPinCategory::Wildcard:
 	case EVoxelPinCategory::Exec:
+	case EVoxelPinCategory::Vector:
 	default:
 		ensure(false);
 		break;

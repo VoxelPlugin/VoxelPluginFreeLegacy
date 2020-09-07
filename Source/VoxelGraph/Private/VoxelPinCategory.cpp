@@ -11,6 +11,7 @@ static const FName PC_Material(TEXT("FVoxelMaterial"));
 static const FName PC_Color(TEXT("Color"));
 static const FName PC_Seed(TEXT("Seed"));
 static const FName PC_Wildcard(TEXT("Wildcard"));
+static const FName PC_Vector(TEXT("Vector"));
 
 EVoxelPinCategory FVoxelPinCategory::DataPinToPin(EVoxelDataPinCategory Category)
 {
@@ -66,6 +67,10 @@ EVoxelPinCategory FVoxelPinCategory::FromString(const FName& String)
 	{
 		return EVoxelPinCategory::Wildcard;
 	}
+	else if (String == PC_Vector)
+	{
+		return EVoxelPinCategory::Vector;
+	}
 	else
 	{
 		ensure(false);
@@ -93,6 +98,8 @@ FName FVoxelPinCategory::GetName(EVoxelPinCategory Category)
 		return PC_Seed;
 	case EVoxelPinCategory::Wildcard:
 		return PC_Wildcard;
+	case EVoxelPinCategory::Vector:
+		return PC_Vector;
 	default:
 		check(false);
 		return FName();
@@ -118,6 +125,8 @@ FString FVoxelPinCategory::GetDefaultValue(EVoxelPinCategory Category)
 	case EVoxelPinCategory::Seed:
 		return TEXT("1337");
 	case EVoxelPinCategory::Wildcard:
+		return FString();
+	case EVoxelPinCategory::Vector:
 		return FString();
 	default:
 		check(false);
@@ -149,6 +158,7 @@ FString FVoxelPinCategory::GetTypeString(EVoxelPinCategory Category)
 		return "FVoxelGraphSeed";
 	case EVoxelPinCategory::Wildcard:
 	case EVoxelPinCategory::Exec:
+	case EVoxelPinCategory::Vector:
 	default:
 		check(false);
 		return "";
@@ -173,6 +183,7 @@ FString FVoxelPinCategory::GetRangeTypeString(EVoxelPinCategory Category)
 		return "FVoxelGraphSeed";
 	case EVoxelPinCategory::Wildcard:
 	case EVoxelPinCategory::Exec:
+	case EVoxelPinCategory::Vector:
 	default:
 		check(false);
 		return "";
@@ -286,7 +297,7 @@ FString FVoxelPinCategory::ToString(EVoxelPinCategory Category, FVoxelNodeType V
 	case EVoxelPinCategory::Int:
 		return LexToString(Value.Get<int32>());
 	case EVoxelPinCategory::Float:
-		return LexToString(Value.Get<v_flt>());
+		return FString::SanitizeFloat(Value.Get<v_flt>());
 	case EVoxelPinCategory::Seed:
 		return LexToString(Value.Get<FVoxelGraphSeed>());
 	case EVoxelPinCategory::Color:

@@ -28,8 +28,8 @@ public:
 	virtual bool CanAddInputPin() const { return false; }
 	//~ End UVoxelGraphNode_Base Interface
 
-	void GetInputPins(TArray<UEdGraphPin*>& OutInputPins);
-	void GetOutputPins(TArray<UEdGraphPin*>& OutOutputPins);
+	TArray<UEdGraphPin*> GetInputPins() const;
+	TArray<UEdGraphPin*> GetOutputPins() const;
 
 	UEdGraphPin* GetInputPin(int32 InputIndex);
 	UEdGraphPin* GetOutputPin(int32 OutputIndex);

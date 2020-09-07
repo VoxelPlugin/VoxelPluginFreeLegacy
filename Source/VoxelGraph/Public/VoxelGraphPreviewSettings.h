@@ -113,7 +113,7 @@ public:
 	FIntVector PreviewedVoxel = FIntVector(0, 0, 0);
 	
 	UPROPERTY(EditAnywhere, Category = "Preview Zone", AdvancedDisplay)
-	EVoxelGraphPreviewShowValue ShowValue = EVoxelGraphPreviewShowValue::ShowValueAndRange;
+	EVoxelGraphPreviewShowValue ShowValue = EVoxelGraphPreviewShowValue::ShowValue;
 		
 public:
 	// Set this to the material config your voxel world will use

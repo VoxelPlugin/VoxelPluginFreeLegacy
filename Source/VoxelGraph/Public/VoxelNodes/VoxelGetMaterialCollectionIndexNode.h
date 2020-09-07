@@ -15,7 +15,7 @@ class VOXELGRAPH_API UVoxelNode_GetMaterialCollectionIndex : public UVoxelAssetP
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
 	UMaterialInterface* Material;
 
 	UVoxelNode_GetMaterialCollectionIndex();
