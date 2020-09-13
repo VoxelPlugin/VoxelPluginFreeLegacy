@@ -1117,13 +1117,17 @@ void UVoxelDataTools::SetBoxAsDirtyAsync(
 
 FVoxelFindClosestNonEmptyVoxelResult UVoxelDataTools::FindClosestNonEmptyVoxelImpl(
 	FVoxelData& Data,
-	const FVoxelVector& Position)
+	const FVoxelVector& Position, 
+	bool bReadMaterial)
 {
 	FVoxelFindClosestNonEmptyVoxelResult Result;
+
+	const FVoxelConstDataAccelerator Accelerator(Data);
+	
 	v_flt Distance = MAX_vflt;
 	for (auto& Neighbor : FVoxelUtilities::GetNeighbors(Position))
 	{
-		const FVoxelValue Value = Data.GetValue(Neighbor, 0);
+		const FVoxelValue Value = Accelerator.GetValue(Neighbor, 0);
 		if (!Value.IsEmpty())
 		{
 			const v_flt PointDistance = (FVoxelVector(Neighbor) - Position).SizeSquared();
@@ -1136,6 +1140,12 @@ FVoxelFindClosestNonEmptyVoxelResult UVoxelDataTools::FindClosestNonEmptyVoxelIm
 			}
 		}
 	}
+
+	if (Result.bSuccess && bReadMaterial)
+	{
+		Result.Material = Accelerator.GetMaterial(Result.Position, 0);
+	}
+	
 	return Result;
 }
 
@@ -1143,9 +1153,10 @@ void UVoxelDataTools::FindClosestNonEmptyVoxel(
 	FVoxelFindClosestNonEmptyVoxelResult& Result,
 	AVoxelWorld* World,
 	FVector InPosition,
+	bool bReadMaterial,
 	bool bConvertToVoxelSpace)
 {
-	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, FINDCLOSESTNONEMPTYVOXEL_PREFIX, Result = FindClosestNonEmptyVoxelImpl(Data, Position));
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, FINDCLOSESTNONEMPTYVOXEL_PREFIX, Result = FindClosestNonEmptyVoxelImpl(Data, Position, bReadMaterial));
 }
 
 void UVoxelDataTools::FindClosestNonEmptyVoxelAsync(
@@ -1154,8 +1165,9 @@ void UVoxelDataTools::FindClosestNonEmptyVoxelAsync(
 	FVoxelFindClosestNonEmptyVoxelResult& Result,
 	AVoxelWorld* World,
 	FVector InPosition,
+	bool bReadMaterial,
 	bool bConvertToVoxelSpace,
 	bool bHideLatentWarnings)
 {
-	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Result, Read, DoNotUpdateRender, FINDCLOSESTNONEMPTYVOXEL_PREFIX, InResult = FindClosestNonEmptyVoxelImpl(Data, Position));
+	VOXEL_TOOL_LATENT_HELPER_WITH_VALUE(Result, Read, DoNotUpdateRender, FINDCLOSESTNONEMPTYVOXEL_PREFIX, InResult = FindClosestNonEmptyVoxelImpl(Data, Position, bReadMaterial));
 }

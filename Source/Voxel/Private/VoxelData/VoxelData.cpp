@@ -952,7 +952,6 @@ void FVoxelData::SaveFrame(const FVoxelIntBox& Bounds)
 
 	ensure(UndoRedo.UndoFramesBounds.Num() == UndoRedo.HistoryPosition);
 	ensure(UndoRedo.UndoUniqueIds.Num() == UndoRedo.HistoryPosition);
-	
 }
 
 bool FVoxelData::IsCurrentFrameEmpty()

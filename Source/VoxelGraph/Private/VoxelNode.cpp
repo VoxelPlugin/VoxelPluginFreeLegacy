@@ -137,9 +137,11 @@ void UVoxelNode::PostLoad()
 		FVoxelGraphErrorReporter::AddMessageToNodeInternal(this, "outdated node, please right click and press Reconstruct Node", EVoxelGraphNodeMessageType::Error);
 	}
 }
+#endif
 
 void UVoxelNode::UpdatePreview(bool bReconstructNode) const
 {
+#if WITH_EDITOR
 	if (bReconstructNode)
 	{
 		// Reconstruct before updating preview to have the right output count
@@ -148,8 +150,8 @@ void UVoxelNode::UpdatePreview(bool bReconstructNode) const
 	}
 
 	IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, EVoxelGraphPreviewFlags::UpdateTextures);
-}
 #endif
+}
 
 bool UVoxelNode::IsOutdated() const
 {

@@ -28,7 +28,11 @@ namespace FVoxelMathNodeFunctions
 		}
 
 		const FMatrix Matrix(BaseX, BaseY, BaseZ, FVector::ZeroVector);
-        const FVector Result = Matrix.InverseTransformPosition(FVoxelVector(X, Y, Z).ToFloat());
+
+		FMatrix InvertedMatrix;
+		VectorMatrixInverse(&InvertedMatrix, &Matrix);
+
+		const FVector Result = InvertedMatrix.TransformPosition(FVoxelVector(X, Y, Z).ToFloat());
 		
 		OutX = Result.X;
 		OutY = Result.Y;
@@ -63,13 +67,16 @@ namespace FVoxelMathNodeFunctions
 			return;
 		}
 		
-		const FMatrix Matrix = FMatrix(BaseX, BaseY, BaseZ, FVector::ZeroVector).InverseFast();
+		const FMatrix Matrix = FMatrix(BaseX, BaseY, BaseZ, FVector::ZeroVector);
+		
+		FMatrix InvertedMatrix;
+		VectorMatrixInverse(&InvertedMatrix, &Matrix);
 
 		bool bOutSet = false;
 
 		const auto Check = [&](v_flt InX, v_flt InY, v_flt InZ)
 		{
-			const FVector Result = Matrix.TransformPosition(FVoxelVector(InX, InY, InZ).ToFloat());
+			const FVector Result = InvertedMatrix.TransformPosition(FVoxelVector(InX, InY, InZ).ToFloat());
 
 			if (bOutSet)
 			{

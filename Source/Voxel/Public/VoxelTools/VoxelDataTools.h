@@ -63,6 +63,9 @@ struct FVoxelFindClosestNonEmptyVoxelResult
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	float Value = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	FVoxelMaterial Material = FVoxelMaterial(ForceInit);
 };
 
 UCLASS()
@@ -486,7 +489,8 @@ public:
 	// All neighbors of Position need to be locked (ie, FVoxelIntBox(Position, Position + 1))
 	static FVoxelFindClosestNonEmptyVoxelResult FindClosestNonEmptyVoxelImpl(
 		FVoxelData& Data,
-		const FVoxelVector& Position);
+		const FVoxelVector& Position,
+		bool bReadMaterial);
 	
 	/**
 	 * Finds the closest voxel to Position that is not empty
@@ -494,13 +498,15 @@ public:
 	 *
 	 * @param		World					The voxel world
 	 * @param		Position				The position, in world space if bConvertToVoxelSpace is true
+	 * @param		bReadMaterial			If false will not read the material
 	 * @param		bConvertToVoxelSpace	If true, will convert Position to voxel space. If false, assumes it's already in voxels
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bConvertToVoxelSpace"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", AdvancedDisplay = "bReadMaterial, bConvertToVoxelSpace"))
 	static void FindClosestNonEmptyVoxel(
 		FVoxelFindClosestNonEmptyVoxelResult& Result,
 		AVoxelWorld* World,
 		FVector Position,
+		bool bReadMaterial = true,
 		bool bConvertToVoxelSpace = true);
 	
 	/**
@@ -509,15 +515,17 @@ public:
 	 *
 	 * @param		World					The voxel world
 	 * @param		Position				The position, in world space if bConvertToVoxelSpace is true
+	 * @param		bReadMaterial			If false will not read the material
 	 * @param		bConvertToVoxelSpace	If true, will convert Position to voxel space. If false, assumes it's already in voxels
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bConvertToVoxelSpace, bHideLatentWarnings"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World", Latent, LatentInfo="LatentInfo", WorldContext = "WorldContextObject", AdvancedDisplay = "bReadMaterial, bConvertToVoxelSpace, bHideLatentWarnings"))
 	static void FindClosestNonEmptyVoxelAsync(
 		UObject* WorldContextObject,
 		FLatentActionInfo LatentInfo,
 		FVoxelFindClosestNonEmptyVoxelResult& Result,
 		AVoxelWorld* World,
 		FVector Position,
+		bool bReadMaterial = true,
 		bool bConvertToVoxelSpace = true,
 		bool bHideLatentWarnings = false);
 	

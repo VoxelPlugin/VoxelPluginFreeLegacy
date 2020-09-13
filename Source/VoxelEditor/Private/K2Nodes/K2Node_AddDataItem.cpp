@@ -57,7 +57,7 @@ void UK2Node_AddDataItem::AllocateDefaultPins()
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Object, UVoxelWorldGenerator::StaticClass(), PC_Generator);
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Struct, FVoxelIntBox::StaticStruct(), PC_Bounds);
 	auto* MaskPin = CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Int, UEdGraphSchema_K2::PSC_Bitmask, StaticEnum<EVoxel32BitMask>(), PC_Mask);
-	MaskPin->DefaultValue = "-1";
+	MaskPin->DefaultValue = "1";
 	
 	for (auto& Parameter : DataItemConfig->Parameters)
 	{

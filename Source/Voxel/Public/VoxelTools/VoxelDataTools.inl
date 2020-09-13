@@ -62,9 +62,12 @@ void UVoxelDataTools::MergeDistanceFieldImpl(
 		Data.ParallelSet<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
 		{
 			const FVector SurfacePosition = FVoxelUtilities::Get3D(SurfacePositions, Size, X, Y, Z, Bounds.Min);
-			const auto Result = FindClosestNonEmptyVoxelImpl(Data, FVoxelVector(Bounds.Min) + SurfacePosition);
-			
-			Material = Data.GetMaterial(Result.Position, 0);
+			const auto Result = FindClosestNonEmptyVoxelImpl(Data, FVoxelVector(Bounds.Min) + SurfacePosition, true);
+
+			if (Result.bSuccess)
+			{
+				Material = Result.Material;
+			}
 		}, !bMultiThreaded);
 		Data.ParallelSet<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
 		{

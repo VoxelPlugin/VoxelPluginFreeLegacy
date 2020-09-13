@@ -46,4 +46,11 @@ public:
 	{
 	}
 	//~ End UVoxelMaterialCollectionBase Interface
+
+public:
+	UFUNCTION(BlueprintPure, Category = "Voxel|Material Collection")
+	UMaterialInterface* GetIndexMaterial(uint8 Index) const
+	{
+		return GetVoxelMaterialForPreview(Index);
+	}
 };

@@ -44,10 +44,13 @@ void AVoxelDataItemActor::ScheduleRefresh()
 	}
 	else
 	{
-		GetWorld()->GetTimerManager().SetTimer(RefreshTimerHandle, MakeWeakObjectPtrDelegate(this, [=]()
+		if (auto* World = GetWorld())
 		{
-			OnRefresh.Broadcast();
-		}), RefreshDelay, false);
+			World->GetTimerManager().SetTimer(RefreshTimerHandle, MakeWeakObjectPtrDelegate(this, [=]()
+			{
+				OnRefresh.Broadcast();
+			}), RefreshDelay, false);
+		}	
 	}
 }
 
