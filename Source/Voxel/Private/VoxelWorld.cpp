@@ -1141,9 +1141,13 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 				if (BoundsToUpdate.Num() > 0)
 				{
 					LODManager->UpdateBounds(BoundsToUpdate);
-					// Save the frame for the eventual asset item merge/remove edits
-					// Dummy frame, doesn't really store anything interesting
-					Data->SaveFrame(FVoxelIntBox(BoundsToUpdate));
+					
+					if (!Data->IsCurrentFrameEmpty())
+					{
+						// Save the frame for the eventual asset item merge/remove edits
+						// Dummy frame, doesn't really store anything interesting
+						Data->SaveFrame(FVoxelIntBox(BoundsToUpdate));
+					}
 
 
 #if WITH_EDITOR

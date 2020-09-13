@@ -28,7 +28,7 @@ public:
 	
 	// Only items matching the channels ticked here will be sampled (only the items matching (Mask & Item.Mask) != 0)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config", meta = (Bitmask, BitmaskEnum = EVoxel32BitMask))
-	int32 Mask = uint32(-1);
+	int32 Mask = 1;
 	
 	UPROPERTY(EditAnywhere, Category = "Config")
 	EVoxelDataItemSampleCombineMode CombineMode = EVoxelDataItemSampleCombineMode::Min;

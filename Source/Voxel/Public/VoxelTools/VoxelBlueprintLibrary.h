@@ -596,28 +596,17 @@ public:
 	{
 		return Material.GetSingleIndex();
 	}
+	// If SortByStrength is true, Index 0 will have the highest strength, Index 1 the second highest etc
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
-	static void GetMultiIndex(FVoxelMaterial Material,
+	static void GetMultiIndex(
+		FVoxelMaterial Material, 
+		bool bSortByStrength,
 		float& Strength0, uint8& Index0,
 		float& Strength1, uint8& Index1,
 		float& Strength2, uint8& Index2,
 		float& Strength3, uint8& Index3,
-		float& Wetness)
-	{
-		const TVoxelStaticArray<float, 4> Strengths = FVoxelUtilities::GetMultiIndexStrengths(Material);
+		float& Wetness);
 
-		Strength0 = Strengths[0];
-		Strength1 = Strengths[1];
-		Strength2 = Strengths[2];
-		Strength3 = Strengths[3];
-
-		Index0 = Material.GetMultiIndex_Index0();
-		Index1 = Material.GetMultiIndex_Index1();
-		Index2 = Material.GetMultiIndex_Index2();
-		Index3 = Material.GetMultiIndex_Index3();
-
-		Wetness = Material.GetMultiIndex_Wetness_AsFloat();
-	}
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
 	static FVector2D GetUV(FVoxelMaterial Material, int32 Channel)
 	{

@@ -1110,7 +1110,6 @@ FVoxelIntBox UVoxelBlueprintLibrary::GetRenderBoundsOverlappingDataBounds(AVoxel
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-
 FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateFiveWayBlendPaintMaterial(FVoxelPaintMaterialFiveWayBlend FiveWayBlend)
 {
 	if (!(0 <= FiveWayBlend.Channel && FiveWayBlend.Channel < 5))
@@ -1123,6 +1122,43 @@ FVoxelPaintMaterial UVoxelBlueprintLibrary::CreateFiveWayBlendPaintMaterial(FVox
 	PaintMaterial.Type = EVoxelPaintMaterialType::FiveWayBlend;
 	PaintMaterial.FiveWayBlend = FiveWayBlend;
 	return PaintMaterial;
+}
+
+void UVoxelBlueprintLibrary::GetMultiIndex(
+	FVoxelMaterial Material, 
+	bool bSortByStrength,
+	float& Strength0, uint8& Index0,
+	float& Strength1, uint8& Index1,
+	float& Strength2, uint8& Index2,
+	float& Strength3, uint8& Index3,
+	float& Wetness)
+{
+	const TVoxelStaticArray<float, 4> Strengths = FVoxelUtilities::GetMultiIndexStrengths(Material);
+
+	Strength0 = Strengths[0];
+	Strength1 = Strengths[1];
+	Strength2 = Strengths[2];
+	Strength3 = Strengths[3];
+
+	Index0 = Material.GetMultiIndex_Index0();
+	Index1 = Material.GetMultiIndex_Index1();
+	Index2 = Material.GetMultiIndex_Index2();
+	Index3 = Material.GetMultiIndex_Index3();
+
+	Wetness = Material.GetMultiIndex_Wetness_AsFloat();
+
+	if (bSortByStrength)
+	{
+#define SWAP(A, B) if (Strength##A < Strength##B) { Swap(Strength##A, Strength##B); Swap(Index##A, Index##B); }
+		SWAP(0, 1);
+		SWAP(2, 3);
+		SWAP(0, 2);
+		SWAP(1, 3);
+		SWAP(1, 2);
+#undef SWAP
+
+		ensure(Strength0 >= Strength1 && Strength1 >= Strength2 && Strength2 >= Strength3);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
