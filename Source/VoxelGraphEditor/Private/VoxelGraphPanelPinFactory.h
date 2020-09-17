@@ -6,6 +6,7 @@
 #include "VoxelGraphSchema.h"
 #include "VoxelPinCategory.h"
 
+#include "EdGraphUtilities.h"
 #include "KismetPins/SGraphPinExec.h"
 #include "KismetPins/SGraphPinBool.h"
 #include "KismetPins/SGraphPinInteger.h"
@@ -19,7 +20,7 @@ class FVoxelGraphPanelPinFactory : public FGraphPanelPinFactory
 	{
 		if (InPin->GetSchema()->IsA(UVoxelGraphSchema::StaticClass()))
 		{
-			EVoxelPinCategory Category = FVoxelPinCategory::FromString(InPin->PinType.PinCategory);
+			const EVoxelPinCategory Category = FVoxelPinCategory::FromString(InPin->PinType.PinCategory);
 
 			switch (Category)
 			{

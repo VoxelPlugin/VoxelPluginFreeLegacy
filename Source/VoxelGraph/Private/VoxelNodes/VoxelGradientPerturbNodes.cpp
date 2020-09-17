@@ -2,6 +2,7 @@
 
 #include "VoxelNodes/VoxelGradientPerturbNodes.h"
 #include "VoxelContext.h"
+#include "FastNoise/VoxelFastNoise.inl"
 
 UVoxelNode_2DGradientPerturb::UVoxelNode_2DGradientPerturb()
 {

@@ -95,24 +95,15 @@ public:
 					
 					// Init of Base Shape Seed
 					FVoxelGraphSeed Variable_31; // Base Shape Seed output 0
-					{
-						static FName StaticName = "Base Shape Seed";
-						Variable_31 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 3323;
-					}
+					Variable_31 = InitStruct.Seeds.Contains(STATIC_FNAME("Base Shape Seed")) ? InitStruct.Seeds[STATIC_FNAME("Base Shape Seed")] : 3323;
 					
 					// Init of Sides Noise Seed
 					FVoxelGraphSeed Variable_34; // Sides Noise Seed output 0
-					{
-						static FName StaticName = "Sides Noise Seed";
-						Variable_34 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 2647;
-					}
+					Variable_34 = InitStruct.Seeds.Contains(STATIC_FNAME("Sides Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Sides Noise Seed")] : 2647;
 					
 					// Init of Top Noise Seed
 					FVoxelGraphSeed Variable_36; // Top Noise Seed output 0
-					{
-						static FName StaticName = "Top Noise Seed";
-						Variable_36 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 12932;
-					}
+					Variable_36 = InitStruct.Seeds.Contains(STATIC_FNAME("Top Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Top Noise Seed")] : 12932;
 					
 					
 					////////////////////////////////////////////////////
@@ -209,31 +200,22 @@ public:
 		{
 			// Init of Top Noise Seed
 			FVoxelGraphSeed Variable_36; // Top Noise Seed output 0
-			{
-				static FName StaticName = "Top Noise Seed";
-				Variable_36 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 12932;
-			}
+			Variable_36 = InitStruct.Seeds.Contains(STATIC_FNAME("Top Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Top Noise Seed")] : 12932;
 			
 			// Init of Base Shape Seed
 			FVoxelGraphSeed Variable_31; // Base Shape Seed output 0
-			{
-				static FName StaticName = "Base Shape Seed";
-				Variable_31 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 3323;
-			}
+			Variable_31 = InitStruct.Seeds.Contains(STATIC_FNAME("Base Shape Seed")) ? InitStruct.Seeds[STATIC_FNAME("Base Shape Seed")] : 3323;
 			
 			// Init of Sides Noise Seed
 			FVoxelGraphSeed Variable_34; // Sides Noise Seed output 0
-			{
-				static FName StaticName = "Sides Noise Seed";
-				Variable_34 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 2647;
-			}
+			Variable_34 = InitStruct.Seeds.Contains(STATIC_FNAME("Sides Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Sides Noise Seed")] : 2647;
 			
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_0_Noise.SetSeed(Variable_31);
-			_2D_Perlin_Noise_Fractal_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_2D_Perlin_Noise_Fractal_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalOctavesAndGain(3, 0.5);
 			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[0] = 3;
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[1] = 3;
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[2] = 3;
@@ -269,10 +251,10 @@ public:
 			
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_1_Noise.SetSeed(Variable_34);
-			_2D_Perlin_Noise_Fractal_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_2D_Perlin_Noise_Fractal_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(3, 0.5);
 			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 3;
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 3;
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 3;
@@ -308,10 +290,10 @@ public:
 			
 			// Init of 2D IQ Noise
 			_2D_IQ_Noise_0_Noise.SetSeed(Variable_36);
-			_2D_IQ_Noise_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_2D_IQ_Noise_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_2D_IQ_Noise_0_Noise.SetFractalOctavesAndGain(15, 0.5);
 			_2D_IQ_Noise_0_Noise.SetFractalLacunarity(2.0);
-			_2D_IQ_Noise_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_2D_IQ_Noise_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_2D_IQ_Noise_0_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
 			_2D_IQ_Noise_0_LODToOctaves[0] = 15;
 			_2D_IQ_Noise_0_LODToOctaves[1] = 15;
@@ -382,16 +364,19 @@ public:
 			// 2D Perlin Noise Fractal
 			v_flt Variable_2; // 2D Perlin Noise Fractal output 0
 			Variable_2 = _2D_Perlin_Noise_Fractal_0_Noise.GetPerlinFractal_2D(BufferX.Variable_0, Variable_1, BufferConstant.Variable_30, _2D_Perlin_Noise_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_2 = FMath::Clamp<v_flt>(Variable_2, -0.576700, 0.658489);
 			
 			// 2D Perlin Noise Fractal
 			v_flt Variable_23; // 2D Perlin Noise Fractal output 0
 			Variable_23 = _2D_Perlin_Noise_Fractal_1_Noise.GetPerlinFractal_2D(BufferX.Variable_24, Variable_25, BufferConstant.Variable_33, _2D_Perlin_Noise_Fractal_1_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_23 = FMath::Clamp<v_flt>(Variable_23, -0.594076, 0.593483);
 			
 			// 2D IQ Noise
 			v_flt Variable_16; // 2D IQ Noise output 0
 			v_flt _2D_IQ_Noise_0_Temp_1; // 2D IQ Noise output 1
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
-			Variable_16 = _2D_IQ_Noise_0_Noise.IQNoiseDeriv_2D(BufferX.Variable_14, Variable_15, BufferConstant.Variable_35, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_16 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_14, Variable_15, BufferConstant.Variable_35, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_16 = FMath::Clamp<v_flt>(Variable_16, -0.648057, 0.611352);
 			
 			// +
 			BufferXY.Variable_19 = Variable_2 + BufferConstant.Variable_32;
@@ -430,16 +415,19 @@ public:
 			// 2D Perlin Noise Fractal
 			v_flt Variable_2; // 2D Perlin Noise Fractal output 0
 			Variable_2 = _2D_Perlin_Noise_Fractal_0_Noise.GetPerlinFractal_2D(BufferX.Variable_0, Variable_1, BufferConstant.Variable_30, _2D_Perlin_Noise_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_2 = FMath::Clamp<v_flt>(Variable_2, -0.576700, 0.658489);
 			
 			// 2D Perlin Noise Fractal
 			v_flt Variable_23; // 2D Perlin Noise Fractal output 0
 			Variable_23 = _2D_Perlin_Noise_Fractal_1_Noise.GetPerlinFractal_2D(BufferX.Variable_24, Variable_25, BufferConstant.Variable_33, _2D_Perlin_Noise_Fractal_1_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_23 = FMath::Clamp<v_flt>(Variable_23, -0.594076, 0.593483);
 			
 			// 2D IQ Noise
 			v_flt Variable_16; // 2D IQ Noise output 0
 			v_flt _2D_IQ_Noise_0_Temp_1; // 2D IQ Noise output 1
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
-			Variable_16 = _2D_IQ_Noise_0_Noise.IQNoiseDeriv_2D(BufferX.Variable_14, Variable_15, BufferConstant.Variable_35, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_16 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_14, Variable_15, BufferConstant.Variable_35, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_16 = FMath::Clamp<v_flt>(Variable_16, -0.648057, 0.611352);
 			
 			// +
 			BufferXY.Variable_19 = Variable_2 + BufferConstant.Variable_32;
@@ -546,16 +534,19 @@ public:
 			// 2D Perlin Noise Fractal
 			v_flt Variable_2; // 2D Perlin Noise Fractal output 0
 			Variable_2 = _2D_Perlin_Noise_Fractal_0_Noise.GetPerlinFractal_2D(Variable_0, Variable_1, BufferConstant.Variable_30, _2D_Perlin_Noise_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_2 = FMath::Clamp<v_flt>(Variable_2, -0.576700, 0.658489);
 			
 			// 2D Perlin Noise Fractal
 			v_flt Variable_23; // 2D Perlin Noise Fractal output 0
 			Variable_23 = _2D_Perlin_Noise_Fractal_1_Noise.GetPerlinFractal_2D(Variable_24, Variable_25, BufferConstant.Variable_33, _2D_Perlin_Noise_Fractal_1_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_23 = FMath::Clamp<v_flt>(Variable_23, -0.594076, 0.593483);
 			
 			// 2D IQ Noise
 			v_flt Variable_16; // 2D IQ Noise output 0
 			v_flt _2D_IQ_Noise_0_Temp_1; // 2D IQ Noise output 1
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
-			Variable_16 = _2D_IQ_Noise_0_Noise.IQNoiseDeriv_2D(Variable_14, Variable_15, BufferConstant.Variable_35, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_16 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(Variable_14, Variable_15, BufferConstant.Variable_35, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_16 = FMath::Clamp<v_flt>(Variable_16, -0.648057, 0.611352);
 			
 			// /
 			v_flt Variable_4; // / output 0
@@ -918,33 +909,24 @@ public:
 		{
 			FBufferConstant() {}
 			
-			TVoxelRange<v_flt> Variable_30; // Base Shape Frequency = 0.005 output 0
-			TVoxelRange<v_flt> Variable_21; // Cliffs Slope = 10.0 output 0
-			TVoxelRange<v_flt> Variable_27; // Sides Noise Amplitude = 0.2 output 0
-			TVoxelRange<v_flt> Variable_28; // Height = 50.0 output 0
-			TVoxelRange<v_flt> Variable_29; // Overhangs = 0.2 output 0
-			TVoxelRange<v_flt> Variable_32; // Sides Noise Frequency = 0.1 output 0
-			TVoxelRange<v_flt> Variable_33; // Top Noise Frequency = 0.01 output 0
-			TVoxelRange<v_flt> Variable_34; // Top Noise Scale = 25.0 output 0
-			TVoxelRange<v_flt> Variable_31; // / output 0
+			TVoxelRange<v_flt> Variable_17; // Cliffs Slope = 10.0 output 0
+			TVoxelRange<v_flt> Variable_22; // Height = 50.0 output 0
+			TVoxelRange<v_flt> Variable_23; // Overhangs = 0.2 output 0
+			TVoxelRange<v_flt> Variable_13; // * output 0
+			TVoxelRange<v_flt> Variable_20; // * output 0
+			TVoxelRange<v_flt> Variable_15; // + output 0
 		};
 		
 		struct FBufferX
 		{
 			FBufferX() {}
 			
-			TVoxelRange<v_flt> Variable_14; // X output 0
-			TVoxelRange<v_flt> Variable_0; // X output 0
-			TVoxelRange<v_flt> Variable_24; // X output 0
 		};
 		
 		struct FBufferXY
 		{
 			FBufferXY() {}
 			
-			TVoxelRange<v_flt> Variable_17; // * output 0
-			TVoxelRange<v_flt> Variable_19; // + output 0
-			TVoxelRange<v_flt> Variable_26; // * output 0
 		};
 		
 		FLocalComputeStruct_LocalValueRangeAnalysis(const FParams& InParams)
@@ -971,6 +953,124 @@ public:
 					///////////// Then init constant nodes /////////////
 					////////////////////////////////////////////////////
 					
+					// Init of 2D Perlin Noise Fractal
+					_2D_Perlin_Noise_Fractal_2_Noise.SetSeed(FVoxelGraphSeed(1337));
+					_2D_Perlin_Noise_Fractal_2_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+					_2D_Perlin_Noise_Fractal_2_Noise.SetFractalOctavesAndGain(3, 0.5);
+					_2D_Perlin_Noise_Fractal_2_Noise.SetFractalLacunarity(2.0);
+					_2D_Perlin_Noise_Fractal_2_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[0] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[1] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[2] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[3] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[4] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[5] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[6] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[7] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[8] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[9] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[10] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[11] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[12] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[13] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[14] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[15] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[16] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[17] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[18] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[19] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[20] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[21] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[22] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[23] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[24] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[25] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[26] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[27] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[28] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[29] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[30] = 3;
+					_2D_Perlin_Noise_Fractal_2_LODToOctaves[31] = 3;
+					
+					// Init of 2D IQ Noise
+					_2D_IQ_Noise_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+					_2D_IQ_Noise_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+					_2D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.5);
+					_2D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
+					_2D_IQ_Noise_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+					_2D_IQ_Noise_1_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
+					_2D_IQ_Noise_1_LODToOctaves[0] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[1] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[2] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[3] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[4] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[5] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[6] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[7] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[8] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[9] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[10] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[11] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[12] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[13] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[14] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[15] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[16] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[17] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[18] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[19] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[20] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[21] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[22] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[23] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[24] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[25] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[26] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[27] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[28] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[29] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[30] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[31] = 15;
+					
+					// Init of 2D Perlin Noise Fractal
+					_2D_Perlin_Noise_Fractal_3_Noise.SetSeed(FVoxelGraphSeed(1337));
+					_2D_Perlin_Noise_Fractal_3_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+					_2D_Perlin_Noise_Fractal_3_Noise.SetFractalOctavesAndGain(3, 0.5);
+					_2D_Perlin_Noise_Fractal_3_Noise.SetFractalLacunarity(2.0);
+					_2D_Perlin_Noise_Fractal_3_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[0] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[1] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[2] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[3] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[4] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[5] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[6] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[7] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[8] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[9] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[10] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[11] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[12] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[13] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[14] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[15] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[16] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[17] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[18] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[19] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[20] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[21] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[22] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[23] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[24] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[25] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[26] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[27] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[28] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[29] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[30] = 3;
+					_2D_Perlin_Noise_Fractal_3_LODToOctaves[31] = 3;
+					
 				}
 				
 				////////////////////////////////////////////////////
@@ -983,36 +1083,55 @@ public:
 			//////////////// Compute constants /////////////////
 			////////////////////////////////////////////////////
 			{
-				// Base Shape Frequency = 0.005
-				BufferConstant.Variable_30 = Params.Base_Shape_Frequency;
+				// 2D Perlin Noise Fractal
+				TVoxelRange<v_flt> Variable_19; // 2D Perlin Noise Fractal output 0
+				Variable_19 = { -0.594076f, 0.593483f };
 				
-				// Cliffs Slope = 10.0
-				BufferConstant.Variable_21 = Params.Cliffs_Slope;
-				
-				// Sides Noise Amplitude = 0.2
-				BufferConstant.Variable_27 = Params.Sides_Noise_Amplitude;
-				
-				// Height = 50.0
-				BufferConstant.Variable_28 = Params.Height;
-				
-				// Overhangs = 0.2
-				BufferConstant.Variable_29 = Params.Overhangs;
-				
-				// Base Shape Offset = 0.0
-				TVoxelRange<v_flt> Variable_20; // Base Shape Offset = 0.0 output 0
-				Variable_20 = Params.Base_Shape_Offset;
-				
-				// Sides Noise Frequency = 0.1
-				BufferConstant.Variable_32 = Params.Sides_Noise_Frequency;
-				
-				// Top Noise Frequency = 0.01
-				BufferConstant.Variable_33 = Params.Top_Noise_Frequency;
+				// 2D IQ Noise
+				TVoxelRange<v_flt> Variable_12; // 2D IQ Noise output 0
+				TVoxelRange<v_flt> _2D_IQ_Noise_1_Temp_1; // 2D IQ Noise output 1
+				TVoxelRange<v_flt> _2D_IQ_Noise_1_Temp_2; // 2D IQ Noise output 2
+				Variable_12 = { -0.648057f, 0.611352f };
+				_2D_IQ_Noise_1_Temp_1 = { -1.300998f, 1.397865f };
+				_2D_IQ_Noise_1_Temp_2 = { -1.723871f, 1.259353f };
 				
 				// Top Noise Scale = 25.0
-				BufferConstant.Variable_34 = Params.Top_Noise_Scale;
+				TVoxelRange<v_flt> Variable_25; // Top Noise Scale = 25.0 output 0
+				Variable_25 = Params.Top_Noise_Scale;
+				
+				// Base Shape Offset = 0.0
+				TVoxelRange<v_flt> Variable_16; // Base Shape Offset = 0.0 output 0
+				Variable_16 = Params.Base_Shape_Offset;
+				
+				// Cliffs Slope = 10.0
+				BufferConstant.Variable_17 = Params.Cliffs_Slope;
+				
+				// 2D Perlin Noise Fractal
+				TVoxelRange<v_flt> Variable_0; // 2D Perlin Noise Fractal output 0
+				Variable_0 = { -0.576700f, 0.658489f };
+				
+				// Height = 50.0
+				BufferConstant.Variable_22 = Params.Height;
+				
+				// Sides Noise Amplitude = 0.2
+				TVoxelRange<v_flt> Variable_21; // Sides Noise Amplitude = 0.2 output 0
+				Variable_21 = Params.Sides_Noise_Amplitude;
+				
+				// Overhangs = 0.2
+				BufferConstant.Variable_23 = Params.Overhangs;
+				
+				// *
+				BufferConstant.Variable_13 = Variable_12 * Variable_25;
+				
+				// *
+				BufferConstant.Variable_20 = Variable_19 * Variable_21;
 				
 				// /
-				BufferConstant.Variable_31 = Variable_20 / TVoxelRange<v_flt>(10.0f);
+				TVoxelRange<v_flt> Variable_24; // / output 0
+				Variable_24 = Variable_16 / TVoxelRange<v_flt>(10.0f);
+				
+				// +
+				BufferConstant.Variable_15 = Variable_0 + Variable_24;
 				
 			}
 		}
@@ -1030,10 +1149,10 @@ public:
 		
 		const FParams& Params;
 		
-		FVoxelFastNoise _2D_IQ_Noise_1_Noise;
-		TStaticArray<uint8, 32> _2D_IQ_Noise_1_LODToOctaves;
 		FVoxelFastNoise _2D_Perlin_Noise_Fractal_2_Noise;
 		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_2_LODToOctaves;
+		FVoxelFastNoise _2D_IQ_Noise_1_Noise;
+		TStaticArray<uint8, 32> _2D_IQ_Noise_1_LODToOctaves;
 		FVoxelFastNoise _2D_Perlin_Noise_Fractal_3_Noise;
 		TStaticArray<uint8, 32> _2D_Perlin_Noise_Fractal_3_LODToOctaves;
 		
@@ -1043,124 +1162,6 @@ public:
 		
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
-			// Init of 2D IQ Noise
-			_2D_IQ_Noise_1_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_2D_IQ_Noise_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
-			_2D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.5);
-			_2D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
-			_2D_IQ_Noise_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
-			_2D_IQ_Noise_1_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
-			_2D_IQ_Noise_1_LODToOctaves[0] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[1] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[2] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[3] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[4] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[5] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[6] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[7] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[8] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[9] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[10] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[11] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[12] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[13] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[14] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[15] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[16] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[17] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[18] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[19] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[20] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[21] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[22] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[23] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[24] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[25] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[26] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[27] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[28] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[29] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[30] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[31] = 15;
-			
-			// Init of 2D Perlin Noise Fractal
-			_2D_Perlin_Noise_Fractal_2_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_2D_Perlin_Noise_Fractal_2_Noise.SetInterp(FVoxelFastNoise::Quintic);
-			_2D_Perlin_Noise_Fractal_2_Noise.SetFractalOctavesAndGain(3, 0.5);
-			_2D_Perlin_Noise_Fractal_2_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_2_Noise.SetFractalType(FVoxelFastNoise::FBM);
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[0] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[1] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[2] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[3] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[4] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[5] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[6] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[7] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[8] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[9] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[10] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[11] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[12] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[13] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[14] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[15] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[16] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[17] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[18] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[19] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[20] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[21] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[22] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[23] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[24] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[25] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[26] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[27] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[28] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[29] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[30] = 3;
-			_2D_Perlin_Noise_Fractal_2_LODToOctaves[31] = 3;
-			
-			// Init of 2D Perlin Noise Fractal
-			_2D_Perlin_Noise_Fractal_3_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_2D_Perlin_Noise_Fractal_3_Noise.SetInterp(FVoxelFastNoise::Quintic);
-			_2D_Perlin_Noise_Fractal_3_Noise.SetFractalOctavesAndGain(3, 0.5);
-			_2D_Perlin_Noise_Fractal_3_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_3_Noise.SetFractalType(FVoxelFastNoise::FBM);
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[0] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[1] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[2] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[3] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[4] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[5] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[6] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[7] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[8] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[9] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[10] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[11] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[12] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[13] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[14] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[15] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[16] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[17] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[18] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[19] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[20] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[21] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[22] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[23] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[24] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[25] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[26] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[27] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[28] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[29] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[30] = 3;
-			_2D_Perlin_Noise_Fractal_3_LODToOctaves[31] = 3;
-			
 		}
 		
 		///////////////////////////////////////////////////////////////////////
@@ -1170,110 +1171,58 @@ public:
 		void Function0_XYZWithoutCache_Compute(const FVoxelContextRange& Context, FOutputs& Outputs) const
 		{
 			// Z
-			TVoxelRange<v_flt> Variable_7; // Z output 0
-			Variable_7 = Context.GetLocalZ();
-			
-			// Y
-			TVoxelRange<v_flt> Variable_15; // Y output 0
-			Variable_15 = Context.GetLocalY();
-			
-			// X
-			TVoxelRange<v_flt> Variable_14; // X output 0
-			Variable_14 = Context.GetLocalX();
-			
-			// X
-			TVoxelRange<v_flt> Variable_0; // X output 0
-			Variable_0 = Context.GetLocalX();
+			TVoxelRange<v_flt> Variable_5; // Z output 0
+			Variable_5 = Context.GetLocalZ();
 			
 			// Z
-			TVoxelRange<v_flt> Variable_3; // Z output 0
-			Variable_3 = Context.GetLocalZ();
-			
-			// Y
-			TVoxelRange<v_flt> Variable_25; // Y output 0
-			Variable_25 = Context.GetLocalY();
-			
-			// X
-			TVoxelRange<v_flt> Variable_24; // X output 0
-			Variable_24 = Context.GetLocalX();
-			
-			// Y
-			TVoxelRange<v_flt> Variable_1; // Y output 0
-			Variable_1 = Context.GetLocalY();
-			
-			// 2D IQ Noise
-			TVoxelRange<v_flt> Variable_16; // 2D IQ Noise output 0
-			TVoxelRange<v_flt> _2D_IQ_Noise_1_Temp_1; // 2D IQ Noise output 1
-			TVoxelRange<v_flt> _2D_IQ_Noise_1_Temp_2; // 2D IQ Noise output 2
-			Variable_16 = { -0.648057f, 0.611352f };
-			_2D_IQ_Noise_1_Temp_1 = { -1.300998f, 1.397865f };
-			_2D_IQ_Noise_1_Temp_2 = { -1.723871f, 1.259353f };
-			
-			// 2D Perlin Noise Fractal
-			TVoxelRange<v_flt> Variable_2; // 2D Perlin Noise Fractal output 0
-			Variable_2 = { -0.576700f, 0.658489f };
-			
-			// 2D Perlin Noise Fractal
-			TVoxelRange<v_flt> Variable_23; // 2D Perlin Noise Fractal output 0
-			Variable_23 = { -0.594076f, 0.593483f };
+			TVoxelRange<v_flt> Variable_1; // Z output 0
+			Variable_1 = Context.GetLocalZ();
 			
 			// /
-			TVoxelRange<v_flt> Variable_4; // / output 0
-			Variable_4 = Variable_3 / BufferConstant.Variable_28;
-			
-			// *
-			TVoxelRange<v_flt> Variable_17; // * output 0
-			Variable_17 = Variable_16 * BufferConstant.Variable_34;
+			TVoxelRange<v_flt> Variable_2; // / output 0
+			Variable_2 = Variable_1 / BufferConstant.Variable_22;
 			
 			// +
-			TVoxelRange<v_flt> Variable_19; // + output 0
-			Variable_19 = Variable_2 + BufferConstant.Variable_31;
-			
-			// *
-			TVoxelRange<v_flt> Variable_26; // * output 0
-			Variable_26 = Variable_23 * BufferConstant.Variable_27;
-			
-			// +
-			TVoxelRange<v_flt> Variable_22; // + output 0
-			Variable_22 = Variable_4 + Variable_26;
+			TVoxelRange<v_flt> Variable_18; // + output 0
+			Variable_18 = Variable_2 + BufferConstant.Variable_20;
 			
 			// Clamp
-			TVoxelRange<v_flt> Variable_5; // Clamp output 0
-			Variable_5 = FVoxelNodeFunctions::Clamp(Variable_22, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f));
-			
-			// *
-			TVoxelRange<v_flt> Variable_12; // * output 0
-			Variable_12 = Variable_5 * BufferConstant.Variable_29;
-			
-			// +
-			TVoxelRange<v_flt> Variable_6; // + output 0
-			Variable_6 = Variable_19 + Variable_12;
+			TVoxelRange<v_flt> Variable_3; // Clamp output 0
+			Variable_3 = FVoxelNodeFunctions::Clamp(Variable_18, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f));
 			
 			// *
 			TVoxelRange<v_flt> Variable_10; // * output 0
-			Variable_10 = Variable_6 * BufferConstant.Variable_21;
-			
-			// Clamp
-			TVoxelRange<v_flt> Variable_11; // Clamp output 0
-			Variable_11 = FVoxelNodeFunctions::Clamp(Variable_10, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f));
-			
-			// Lerp
-			TVoxelRange<v_flt> Variable_18; // Lerp output 0
-			Variable_18 = FVoxelNodeFunctions::Lerp(TVoxelRange<v_flt>(0.0f), Variable_17, Variable_11);
-			
-			// *
-			TVoxelRange<v_flt> Variable_9; // * output 0
-			Variable_9 = Variable_11 * BufferConstant.Variable_28;
+			Variable_10 = Variable_3 * BufferConstant.Variable_23;
 			
 			// +
-			TVoxelRange<v_flt> Variable_13; // + output 0
-			Variable_13 = Variable_9 + Variable_18;
+			TVoxelRange<v_flt> Variable_4; // + output 0
+			Variable_4 = BufferConstant.Variable_15 + Variable_10;
+			
+			// *
+			TVoxelRange<v_flt> Variable_8; // * output 0
+			Variable_8 = Variable_4 * BufferConstant.Variable_17;
+			
+			// Clamp
+			TVoxelRange<v_flt> Variable_9; // Clamp output 0
+			Variable_9 = FVoxelNodeFunctions::Clamp(Variable_8, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f));
+			
+			// *
+			TVoxelRange<v_flt> Variable_7; // * output 0
+			Variable_7 = Variable_9 * BufferConstant.Variable_22;
+			
+			// Lerp
+			TVoxelRange<v_flt> Variable_14; // Lerp output 0
+			Variable_14 = FVoxelNodeFunctions::Lerp(TVoxelRange<v_flt>(0.0f), BufferConstant.Variable_13, Variable_9);
+			
+			// +
+			TVoxelRange<v_flt> Variable_11; // + output 0
+			Variable_11 = Variable_7 + Variable_14;
 			
 			// -
-			TVoxelRange<v_flt> Variable_8; // - output 0
-			Variable_8 = Variable_7 - Variable_13;
+			TVoxelRange<v_flt> Variable_6; // - output 0
+			Variable_6 = Variable_5 - Variable_11;
 			
-			Outputs.Value = Variable_8;
+			Outputs.Value = Variable_6;
 		}
 		
 	};
@@ -1344,8 +1293,6 @@ public:
 	
 	template<uint32... Permutation>
 	auto& GetRangeTarget() const;
-	
-	inline void ReportRangeAnalysisFailure() const {}
 	
 private:
 	FParams Params;

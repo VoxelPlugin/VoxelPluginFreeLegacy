@@ -190,23 +190,23 @@ public:
 			
 			// Init of 3D Perlin Noise
 			_3D_Perlin_Noise_0_Noise.SetSeed(Variable_45);
-			_3D_Perlin_Noise_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Perlin_Noise_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			
 			// Init of 3D Perlin Noise
 			_3D_Perlin_Noise_1_Noise.SetSeed(Variable_48);
-			_3D_Perlin_Noise_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Perlin_Noise_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			
 			// Init of 3D Perlin Noise
 			_3D_Perlin_Noise_2_Noise.SetSeed(Variable_47);
-			_3D_Perlin_Noise_2_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Perlin_Noise_2_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			
 			// Init of 3D Perlin Noise
 			_3D_Perlin_Noise_3_Noise.SetSeed(Variable_46);
-			_3D_Perlin_Noise_3_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Perlin_Noise_3_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			
 			// Init of 3D Perlin Noise
 			_3D_Perlin_Noise_4_Noise.SetSeed(Variable_44);
-			_3D_Perlin_Noise_4_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Perlin_Noise_4_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			
 		}
 		
@@ -348,7 +348,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_13; // Data Item Sample output 0
-			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_8, BufferXY.Variable_9, Variable_10, v_flt(5.0f), v_flt(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
+			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_8, BufferXY.Variable_9, Variable_10, v_flt(5.0f), v_flt(1000.0f), 1u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// Normalize.Vector Length
 			v_flt Variable_74; // Normalize.Vector Length output 0
@@ -646,7 +646,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_13; // Data Item Sample output 0
-			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, v_flt(5.0f), v_flt(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
+			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, v_flt(5.0f), v_flt(1000.0f), 1u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// Normalize.Vector Length
 			v_flt Variable_74; // Normalize.Vector Length output 0
@@ -1340,23 +1340,23 @@ public:
 					
 					// Init of 3D Perlin Noise
 					_3D_Perlin_Noise_5_Noise.SetSeed(FVoxelGraphSeed(13339));
-					_3D_Perlin_Noise_5_Noise.SetInterp(FVoxelFastNoise::Quintic);
+					_3D_Perlin_Noise_5_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 					
 					// Init of 3D Perlin Noise
 					_3D_Perlin_Noise_6_Noise.SetSeed(FVoxelGraphSeed(1340));
-					_3D_Perlin_Noise_6_Noise.SetInterp(FVoxelFastNoise::Quintic);
+					_3D_Perlin_Noise_6_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 					
 					// Init of 3D Perlin Noise
 					_3D_Perlin_Noise_7_Noise.SetSeed(FVoxelGraphSeed(1330));
-					_3D_Perlin_Noise_7_Noise.SetInterp(FVoxelFastNoise::Quintic);
+					_3D_Perlin_Noise_7_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 					
 					// Init of 3D Perlin Noise
 					_3D_Perlin_Noise_8_Noise.SetSeed(FVoxelGraphSeed(1337));
-					_3D_Perlin_Noise_8_Noise.SetInterp(FVoxelFastNoise::Quintic);
+					_3D_Perlin_Noise_8_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 					
 					// Init of 3D Perlin Noise
 					_3D_Perlin_Noise_9_Noise.SetSeed(FVoxelGraphSeed(1339));
-					_3D_Perlin_Noise_9_Noise.SetInterp(FVoxelFastNoise::Quintic);
+					_3D_Perlin_Noise_9_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 					
 				}
 				
@@ -1503,7 +1503,7 @@ public:
 			
 			// Data Item Sample
 			TVoxelRange<v_flt> Variable_13; // Data Item Sample output 0
-			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, TVoxelRange<v_flt>(5.0f), TVoxelRange<v_flt>(1000.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Min);
+			Variable_13 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, TVoxelRange<v_flt>(5.0f), TVoxelRange<v_flt>(1000.0f), 1u, EVoxelDataItemSampleCombineMode::Min);
 			
 			// Vector Length
 			TVoxelRange<v_flt> Variable_16; // Vector Length output 0

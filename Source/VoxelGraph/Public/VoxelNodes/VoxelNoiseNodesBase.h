@@ -4,12 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Containers/StaticArray.h"
-#include "VoxelFastNoise.h"
 #include "VoxelRange.h"
 #include "VoxelNode.h"
 #include "VoxelNodeHelper.h"
 #include "VoxelNodeHelperMacros.h"
-#include "VoxelNoiseNodesEnums.h"
+#include "FastNoise/VoxelFastNoise.h"
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelNoiseNodesBase.generated.h"
 
@@ -27,7 +26,7 @@ public:
 	float Frequency = 0.02;
 
 	UPROPERTY(EditAnywhere, Category = "Noise settings")
-	EInterp Interpolation = EInterp::Quintic;
+	EVoxelNoiseInterpolation Interpolation = EVoxelNoiseInterpolation::Quintic;
 
 	// To find the output range, NumberOfSamples random samples are computed
 	// Increase this if the output range is too irregular, and if you start to see flat areas in your noise
@@ -92,7 +91,7 @@ public:
 	float FractalGain = 0.5;
 
 	UPROPERTY(EditAnywhere, Category = "Fractal Noise settings")
-	EFractalType FractalType = EFractalType::FBM;
+	EVoxelNoiseFractalType FractalType = EVoxelNoiseFractalType::FBM;
 
 	// To use lower quality noise for far LODs
 	UPROPERTY(EditAnywhere, Category = "LOD settings", meta = (DisplayName = "LOD to Octaves map"))

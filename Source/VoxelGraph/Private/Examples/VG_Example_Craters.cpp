@@ -140,10 +140,10 @@ public:
 		{
 			// Init of 3D Perlin Noise Fractal
 			_3D_Perlin_Noise_Fractal_0_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_3D_Perlin_Noise_Fractal_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Perlin_Noise_Fractal_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalOctavesAndGain(3, 0.5);
 			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalLacunarity(4.0);
-			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[0] = 3;
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[1] = 3;
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[2] = 3;
@@ -251,7 +251,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_7; // Data Item Sample output 0
-			Variable_7 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_8, BufferXY.Variable_9, Variable_10, v_flt(0.0f), v_flt(0.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Sum);
+			Variable_7 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_8, BufferXY.Variable_9, Variable_10, v_flt(0.0f), v_flt(0.0f), 1u, EVoxelDataItemSampleCombineMode::Sum);
 			
 			// Vector Length
 			v_flt Variable_3; // Vector Length output 0
@@ -337,7 +337,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_7; // Data Item Sample output 0
-			Variable_7 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, v_flt(0.0f), v_flt(0.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Sum);
+			Variable_7 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, v_flt(0.0f), v_flt(0.0f), 1u, EVoxelDataItemSampleCombineMode::Sum);
 			
 			// Vector Length
 			v_flt Variable_3; // Vector Length output 0
@@ -727,10 +727,10 @@ public:
 					
 					// Init of 3D Perlin Noise Fractal
 					_3D_Perlin_Noise_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
-					_3D_Perlin_Noise_Fractal_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
+					_3D_Perlin_Noise_Fractal_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(3, 0.5);
 					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(4.0);
-					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
+					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 					_3D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 3;
 					_3D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 3;
 					_3D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 3;
@@ -845,7 +845,7 @@ public:
 			
 			// Data Item Sample
 			TVoxelRange<v_flt> Variable_4; // Data Item Sample output 0
-			Variable_4 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_5, Variable_6, Variable_7, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(0.0f), 4294967295u, EVoxelDataItemSampleCombineMode::Sum);
+			Variable_4 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_5, Variable_6, Variable_7, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(0.0f), 1u, EVoxelDataItemSampleCombineMode::Sum);
 			
 			// Vector Length
 			TVoxelRange<v_flt> Variable_3; // Vector Length output 0

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "VoxelFastNoise.h"
+#include "FastNoise/VoxelFastNoise.h"
 
-UE_DEPRECATED(4.24, "Please use FVoxelFastNoise instead of FastNoise, and include VoxelFastNoise.h instead of FastNoise.h")
+UE_DEPRECATED(4.24, "Please use FVoxelFastNoise instead of FastNoise, and include FastNoise/VoxelFastNoise.inl instead of FastNoise.h")
 typedef FVoxelFastNoise FastNoise;

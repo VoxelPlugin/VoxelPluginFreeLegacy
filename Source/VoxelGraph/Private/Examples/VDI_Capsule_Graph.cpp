@@ -138,7 +138,7 @@ public:
 		{
 			// Init of 3D Gradient Perturb
 			_3D_Gradient_Perturb_0_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_3D_Gradient_Perturb_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Gradient_Perturb_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			
 		}
 		
@@ -705,7 +705,7 @@ public:
 		{
 			// Init of 3D Gradient Perturb
 			_3D_Gradient_Perturb_1_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_3D_Gradient_Perturb_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Gradient_Perturb_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			
 		}
 		

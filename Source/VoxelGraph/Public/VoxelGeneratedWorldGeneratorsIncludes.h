@@ -23,8 +23,9 @@
 
 #include "VoxelContext.h"
 #include "VoxelMessages.h"
-#include "VoxelFastNoise.h"
 #include "VoxelMaterialBuilder.h"
+#include "FastNoise/VoxelFastNoise.h"
+#include "FastNoise/VoxelFastNoise.inl"
 #include "VoxelGraphGeneratorHelpers.h"
 #include "VoxelGeneratedWorldGeneratorsDefinitions.h"
 

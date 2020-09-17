@@ -81,10 +81,7 @@ public:
 					
 					// Init of 3D Noise Seed
 					FVoxelGraphSeed Variable_12; // 3D Noise Seed output 0
-					{
-						static FName StaticName = "3D Noise Seed";
-						Variable_12 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
-					}
+					Variable_12 = InitStruct.Seeds.Contains(STATIC_FNAME("3D Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("3D Noise Seed")] : 1443;
 					
 					
 					////////////////////////////////////////////////////
@@ -158,17 +155,14 @@ public:
 		{
 			// Init of 3D Noise Seed
 			FVoxelGraphSeed Variable_12; // 3D Noise Seed output 0
-			{
-				static FName StaticName = "3D Noise Seed";
-				Variable_12 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
-			}
+			Variable_12 = InitStruct.Seeds.Contains(STATIC_FNAME("3D Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("3D Noise Seed")] : 1443;
 			
 			// Init of 3D Perlin Noise Fractal
 			_3D_Perlin_Noise_Fractal_0_Noise.SetSeed(Variable_12);
-			_3D_Perlin_Noise_Fractal_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Perlin_Noise_Fractal_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalOctavesAndGain(1, 0.5);
 			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalLacunarity(2.0);
-			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[0] = 1;
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[1] = 1;
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[2] = 1;
@@ -253,6 +247,7 @@ public:
 			// 3D Perlin Noise Fractal
 			v_flt Variable_3; // 3D Perlin Noise Fractal output 0
 			Variable_3 = _3D_Perlin_Noise_Fractal_0_Noise.GetPerlinFractal_3D(BufferX.Variable_0, BufferXY.Variable_1, Variable_2, BufferConstant.Variable_11, _3D_Perlin_Noise_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_3 = FMath::Clamp<v_flt>(Variable_3, -0.852398, 0.865098);
 			
 			// *
 			v_flt Variable_4; // * output 0
@@ -362,6 +357,7 @@ public:
 			// 3D Perlin Noise Fractal
 			v_flt Variable_3; // 3D Perlin Noise Fractal output 0
 			Variable_3 = _3D_Perlin_Noise_Fractal_0_Noise.GetPerlinFractal_3D(Variable_0, Variable_1, Variable_2, BufferConstant.Variable_11, _3D_Perlin_Noise_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_3 = FMath::Clamp<v_flt>(Variable_3, -0.852398, 0.865098);
 			
 			// *
 			v_flt Variable_4; // * output 0
@@ -744,24 +740,22 @@ public:
 		{
 			FBufferConstant() {}
 			
-			TVoxelRange<v_flt> Variable_9; // Top Transition Smoothness = 5.0 output 0
-			TVoxelRange<v_flt> Variable_10; // Bottom Transition Smoothness = 5.0 output 0
-			TVoxelRange<v_flt> Variable_11; //  3D Noise Frequency = 0.02 output 0
-			TVoxelRange<v_flt> Variable_5; // Height = 50.0 output 0
+			TVoxelRange<v_flt> Variable_7; // Bottom Transition Smoothness = 5.0 output 0
+			TVoxelRange<v_flt> Variable_2; // Height = 50.0 output 0
+			TVoxelRange<v_flt> Variable_6; // Top Transition Smoothness = 5.0 output 0
+			TVoxelRange<v_flt> Variable_1; // * output 0
 		};
 		
 		struct FBufferX
 		{
 			FBufferX() {}
 			
-			TVoxelRange<v_flt> Variable_0; // X output 0
 		};
 		
 		struct FBufferXY
 		{
 			FBufferXY() {}
 			
-			TVoxelRange<v_flt> Variable_1; // Y output 0
 		};
 		
 		FLocalComputeStruct_LocalValueRangeAnalysis(const FParams& InParams)
@@ -788,6 +782,45 @@ public:
 					///////////// Then init constant nodes /////////////
 					////////////////////////////////////////////////////
 					
+					// Init of 3D Perlin Noise Fractal
+					_3D_Perlin_Noise_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+					_3D_Perlin_Noise_Fractal_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(1, 0.5);
+					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(2.0);
+					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[3] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[4] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[5] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[6] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[7] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[8] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[9] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[10] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[11] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[12] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[13] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[14] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[15] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[16] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[17] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[18] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[19] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[20] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[21] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[22] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[23] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[24] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[25] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[26] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[27] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[28] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[29] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[30] = 1;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[31] = 1;
+					
 				}
 				
 				////////////////////////////////////////////////////
@@ -800,17 +833,21 @@ public:
 			//////////////// Compute constants /////////////////
 			////////////////////////////////////////////////////
 			{
-				// Top Transition Smoothness = 5.0
-				BufferConstant.Variable_9 = Params.Top_Transition_Smoothness;
-				
 				// Bottom Transition Smoothness = 5.0
-				BufferConstant.Variable_10 = Params.Bottom_Transition_Smoothness;
-				
-				//  3D Noise Frequency = 0.02
-				BufferConstant.Variable_11 = Params._3D_Noise_Frequency;
+				BufferConstant.Variable_7 = Params.Bottom_Transition_Smoothness;
 				
 				// Height = 50.0
-				BufferConstant.Variable_5 = Params.Height;
+				BufferConstant.Variable_2 = Params.Height;
+				
+				// Top Transition Smoothness = 5.0
+				BufferConstant.Variable_6 = Params.Top_Transition_Smoothness;
+				
+				// 3D Perlin Noise Fractal
+				TVoxelRange<v_flt> Variable_0; // 3D Perlin Noise Fractal output 0
+				Variable_0 = { -0.852398f, 0.865098f };
+				
+				// *
+				BufferConstant.Variable_1 = Variable_0 * TVoxelRange<v_flt>(5.0f);
 				
 			}
 		}
@@ -837,45 +874,6 @@ public:
 		
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
-			// Init of 3D Perlin Noise Fractal
-			_3D_Perlin_Noise_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_3D_Perlin_Noise_Fractal_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
-			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(1, 0.5);
-			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(2.0);
-			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[3] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[4] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[5] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[6] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[7] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[8] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[9] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[10] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[11] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[12] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[13] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[14] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[15] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[16] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[17] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[18] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[19] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[20] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[21] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[22] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[23] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[24] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[25] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[26] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[27] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[28] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[29] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[30] = 1;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[31] = 1;
-			
 		}
 		
 		///////////////////////////////////////////////////////////////////////
@@ -885,110 +883,90 @@ public:
 		void Function0_XYZWithoutCache_Compute(const FVoxelContextRange& Context, FOutputs& Outputs) const
 		{
 			// Z
-			TVoxelRange<v_flt> Variable_2; // Z output 0
-			Variable_2 = Context.GetLocalZ();
-			
-			// Y
-			TVoxelRange<v_flt> Variable_1; // Y output 0
-			Variable_1 = Context.GetLocalY();
+			TVoxelRange<v_flt> Variable_5; // Z output 0
+			Variable_5 = Context.GetLocalZ();
 			
 			// Z
-			TVoxelRange<v_flt> Variable_8; // Z output 0
-			Variable_8 = Context.GetLocalZ();
-			
-			// X
-			TVoxelRange<v_flt> Variable_0; // X output 0
-			Variable_0 = Context.GetLocalX();
-			
-			// Z
-			TVoxelRange<v_flt> Variable_6; // Z output 0
-			Variable_6 = Context.GetLocalZ();
-			
-			// 3D Perlin Noise Fractal
-			TVoxelRange<v_flt> Variable_3; // 3D Perlin Noise Fractal output 0
-			Variable_3 = { -0.852398f, 0.865098f };
+			TVoxelRange<v_flt> Variable_3; // Z output 0
+			Variable_3 = Context.GetLocalZ();
 			
 			// +
-			TVoxelRange<v_flt> Variable_7; // + output 0
-			Variable_7 = Variable_8 + BufferConstant.Variable_5;
-			
-			// *
-			TVoxelRange<v_flt> Variable_4; // * output 0
-			Variable_4 = Variable_3 * TVoxelRange<v_flt>(5.0f);
+			TVoxelRange<v_flt> Variable_4; // + output 0
+			Variable_4 = Variable_5 + BufferConstant.Variable_2;
 			
 			// Smooth Intersection.-
-			TVoxelRange<v_flt> Variable_19; // Smooth Intersection.- output 0
-			Variable_19 = Variable_6 - Variable_4;
+			TVoxelRange<v_flt> Variable_15; // Smooth Intersection.- output 0
+			Variable_15 = Variable_3 - BufferConstant.Variable_1;
 			
 			// Smooth Intersection./
-			TVoxelRange<v_flt> Variable_12; // Smooth Intersection./ output 0
-			Variable_12 = Variable_19 / BufferConstant.Variable_9;
+			TVoxelRange<v_flt> Variable_8; // Smooth Intersection./ output 0
+			Variable_8 = Variable_15 / BufferConstant.Variable_6;
 			
 			// Smooth Intersection.*
-			TVoxelRange<v_flt> Variable_13; // Smooth Intersection.* output 0
-			Variable_13 = Variable_12 * TVoxelRange<v_flt>(0.5f);
+			TVoxelRange<v_flt> Variable_9; // Smooth Intersection.* output 0
+			Variable_9 = Variable_8 * TVoxelRange<v_flt>(0.5f);
 			
 			// Smooth Intersection.-
-			TVoxelRange<v_flt> Variable_20; // Smooth Intersection.- output 0
-			Variable_20 = TVoxelRange<v_flt>(0.5f) - Variable_13;
+			TVoxelRange<v_flt> Variable_16; // Smooth Intersection.- output 0
+			Variable_16 = TVoxelRange<v_flt>(0.5f) - Variable_9;
 			
 			// Smooth Intersection.Clamp
-			TVoxelRange<v_flt> Variable_14; // Smooth Intersection.Clamp output 0
-			Variable_14 = FVoxelNodeFunctions::Clamp(Variable_20, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f));
-			
-			// Smooth Intersection.Lerp
-			TVoxelRange<v_flt> Variable_15; // Smooth Intersection.Lerp output 0
-			Variable_15 = FVoxelNodeFunctions::Lerp(Variable_6, Variable_4, Variable_14);
+			TVoxelRange<v_flt> Variable_10; // Smooth Intersection.Clamp output 0
+			Variable_10 = FVoxelNodeFunctions::Clamp(Variable_16, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f));
 			
 			// Smooth Intersection.1 - X
-			TVoxelRange<v_flt> Variable_17; // Smooth Intersection.1 - X output 0
-			Variable_17 = 1 - Variable_14;
+			TVoxelRange<v_flt> Variable_13; // Smooth Intersection.1 - X output 0
+			Variable_13 = 1 - Variable_10;
+			
+			// Smooth Intersection.Lerp
+			TVoxelRange<v_flt> Variable_11; // Smooth Intersection.Lerp output 0
+			Variable_11 = FVoxelNodeFunctions::Lerp(Variable_3, BufferConstant.Variable_1, Variable_10);
 			
 			// Smooth Intersection.*
-			TVoxelRange<v_flt> Variable_16; // Smooth Intersection.* output 0
-			Variable_16 = BufferConstant.Variable_9 * Variable_14 * Variable_17;
+			TVoxelRange<v_flt> Variable_12; // Smooth Intersection.* output 0
+			Variable_12 = BufferConstant.Variable_6 * Variable_10 * Variable_13;
 			
 			// Smooth Intersection.+
-			TVoxelRange<v_flt> Variable_18; // Smooth Intersection.+ output 0
-			Variable_18 = Variable_15 + Variable_16;
+			TVoxelRange<v_flt> Variable_14; // Smooth Intersection.+ output 0
+			Variable_14 = Variable_11 + Variable_12;
 			
 			// Smooth Union.-
-			TVoxelRange<v_flt> Variable_21; // Smooth Union.- output 0
-			Variable_21 = Variable_7 - Variable_18;
+			TVoxelRange<v_flt> Variable_17; // Smooth Union.- output 0
+			Variable_17 = Variable_4 - Variable_14;
 			
 			// Smooth Union./
-			TVoxelRange<v_flt> Variable_22; // Smooth Union./ output 0
-			Variable_22 = Variable_21 / BufferConstant.Variable_10;
+			TVoxelRange<v_flt> Variable_18; // Smooth Union./ output 0
+			Variable_18 = Variable_17 / BufferConstant.Variable_7;
 			
 			// Smooth Union.*
-			TVoxelRange<v_flt> Variable_23; // Smooth Union.* output 0
-			Variable_23 = Variable_22 * TVoxelRange<v_flt>(0.5f);
+			TVoxelRange<v_flt> Variable_19; // Smooth Union.* output 0
+			Variable_19 = Variable_18 * TVoxelRange<v_flt>(0.5f);
 			
 			// Smooth Union.+
-			TVoxelRange<v_flt> Variable_24; // Smooth Union.+ output 0
-			Variable_24 = Variable_23 + TVoxelRange<v_flt>(0.5f);
+			TVoxelRange<v_flt> Variable_20; // Smooth Union.+ output 0
+			Variable_20 = Variable_19 + TVoxelRange<v_flt>(0.5f);
 			
 			// Smooth Union.Clamp
-			TVoxelRange<v_flt> Variable_25; // Smooth Union.Clamp output 0
-			Variable_25 = FVoxelNodeFunctions::Clamp(Variable_24, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f));
+			TVoxelRange<v_flt> Variable_21; // Smooth Union.Clamp output 0
+			Variable_21 = FVoxelNodeFunctions::Clamp(Variable_20, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f));
 			
 			// Smooth Union.1 - X
-			TVoxelRange<v_flt> Variable_29; // Smooth Union.1 - X output 0
-			Variable_29 = 1 - Variable_25;
+			TVoxelRange<v_flt> Variable_25; // Smooth Union.1 - X output 0
+			Variable_25 = 1 - Variable_21;
 			
 			// Smooth Union.Lerp
-			TVoxelRange<v_flt> Variable_26; // Smooth Union.Lerp output 0
-			Variable_26 = FVoxelNodeFunctions::Lerp(Variable_7, Variable_18, Variable_25);
+			TVoxelRange<v_flt> Variable_22; // Smooth Union.Lerp output 0
+			Variable_22 = FVoxelNodeFunctions::Lerp(Variable_4, Variable_14, Variable_21);
 			
 			// Smooth Union.*
-			TVoxelRange<v_flt> Variable_28; // Smooth Union.* output 0
-			Variable_28 = BufferConstant.Variable_10 * Variable_25 * Variable_29;
+			TVoxelRange<v_flt> Variable_24; // Smooth Union.* output 0
+			Variable_24 = BufferConstant.Variable_7 * Variable_21 * Variable_25;
 			
 			// Smooth Union.-
-			TVoxelRange<v_flt> Variable_27; // Smooth Union.- output 0
-			Variable_27 = Variable_26 - Variable_28;
+			TVoxelRange<v_flt> Variable_23; // Smooth Union.- output 0
+			Variable_23 = Variable_22 - Variable_24;
 			
-			Outputs.Value = Variable_27;
+			Outputs.Value = Variable_23;
 		}
 		
 	};
@@ -1054,8 +1032,6 @@ public:
 	
 	template<uint32... Permutation>
 	auto& GetRangeTarget() const;
-	
-	inline void ReportRangeAnalysisFailure() const {}
 	
 private:
 	FParams Params;
