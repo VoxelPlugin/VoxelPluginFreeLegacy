@@ -88,10 +88,7 @@ public:
 					
 					// Init of Seed
 					FVoxelGraphSeed Variable_20; // Seed output 0
-					{
-						static FName StaticName = "Seed";
-						Variable_20 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
-					}
+					Variable_20 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 1443;
 					
 					
 					////////////////////////////////////////////////////
@@ -176,17 +173,14 @@ public:
 		{
 			// Init of Seed
 			FVoxelGraphSeed Variable_20; // Seed output 0
-			{
-				static FName StaticName = "Seed";
-				Variable_20 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
-			}
+			Variable_20 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 1443;
 			
 			// Init of 3D IQ Noise
 			_3D_IQ_Noise_0_Noise.SetSeed(Variable_20);
-			_3D_IQ_Noise_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_IQ_Noise_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_3D_IQ_Noise_0_Noise.SetFractalOctavesAndGain(15, 0.5);
 			_3D_IQ_Noise_0_Noise.SetFractalLacunarity(2.0);
-			_3D_IQ_Noise_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_3D_IQ_Noise_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_3D_IQ_Noise_0_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
 			_3D_IQ_Noise_0_LODToOctaves[0] = 15;
 			_3D_IQ_Noise_0_LODToOctaves[1] = 15;
@@ -223,10 +217,10 @@ public:
 			
 			// Init of 3D Perlin Noise Fractal
 			_3D_Perlin_Noise_Fractal_0_Noise.SetSeed(Variable_20);
-			_3D_Perlin_Noise_Fractal_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_3D_Perlin_Noise_Fractal_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalOctavesAndGain(3, 0.5);
 			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalLacunarity(2.0);
-			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_3D_Perlin_Noise_Fractal_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[0] = 3;
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[1] = 3;
 			_3D_Perlin_Noise_Fractal_0_LODToOctaves[2] = 3;
@@ -337,11 +331,13 @@ public:
 			v_flt _3D_IQ_Noise_0_Temp_1; // 3D IQ Noise output 1
 			v_flt _3D_IQ_Noise_0_Temp_2; // 3D IQ Noise output 2
 			v_flt _3D_IQ_Noise_0_Temp_3; // 3D IQ Noise output 3
-			Variable_18 = _3D_IQ_Noise_0_Noise.IQNoiseDeriv_3D(Variable_25, Variable_26, Variable_27, BufferConstant.Variable_19, _3D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_0_Temp_1,_3D_IQ_Noise_0_Temp_2,_3D_IQ_Noise_0_Temp_3);
+			Variable_18 = _3D_IQ_Noise_0_Noise.IQNoise_3D_Deriv(Variable_25, Variable_26, Variable_27, BufferConstant.Variable_19, _3D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_0_Temp_1,_3D_IQ_Noise_0_Temp_2,_3D_IQ_Noise_0_Temp_3);
+			Variable_18 = FMath::Clamp<v_flt>(Variable_18, -0.732619, 0.767129);
 			
 			// 3D Perlin Noise Fractal
 			v_flt Variable_3; // 3D Perlin Noise Fractal output 0
 			Variable_3 = _3D_Perlin_Noise_Fractal_0_Noise.GetPerlinFractal_3D(Variable_25, Variable_26, Variable_27, BufferConstant.Variable_19, _3D_Perlin_Noise_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_3 = FMath::Clamp<v_flt>(Variable_3, -0.419158, 0.458317);
 			
 			// Switch (float)
 			v_flt Variable_21; // Switch (float) output 0
@@ -441,11 +437,13 @@ public:
 			v_flt _3D_IQ_Noise_0_Temp_1; // 3D IQ Noise output 1
 			v_flt _3D_IQ_Noise_0_Temp_2; // 3D IQ Noise output 2
 			v_flt _3D_IQ_Noise_0_Temp_3; // 3D IQ Noise output 3
-			Variable_18 = _3D_IQ_Noise_0_Noise.IQNoiseDeriv_3D(Variable_25, Variable_26, Variable_27, BufferConstant.Variable_19, _3D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_0_Temp_1,_3D_IQ_Noise_0_Temp_2,_3D_IQ_Noise_0_Temp_3);
+			Variable_18 = _3D_IQ_Noise_0_Noise.IQNoise_3D_Deriv(Variable_25, Variable_26, Variable_27, BufferConstant.Variable_19, _3D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_0_Temp_1,_3D_IQ_Noise_0_Temp_2,_3D_IQ_Noise_0_Temp_3);
+			Variable_18 = FMath::Clamp<v_flt>(Variable_18, -0.732619, 0.767129);
 			
 			// 3D Perlin Noise Fractal
 			v_flt Variable_3; // 3D Perlin Noise Fractal output 0
 			Variable_3 = _3D_Perlin_Noise_Fractal_0_Noise.GetPerlinFractal_3D(Variable_25, Variable_26, Variable_27, BufferConstant.Variable_19, _3D_Perlin_Noise_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)]);
+			Variable_3 = FMath::Clamp<v_flt>(Variable_3, -0.419158, 0.458317);
 			
 			// Switch (float)
 			v_flt Variable_21; // Switch (float) output 0
@@ -796,14 +794,9 @@ public:
 		{
 			FBufferConstant() {}
 			
-			TVoxelRange<v_flt> Variable_8; // Radius = 250.0 output 0
-			TVoxelRange<v_flt> Variable_20; // Normalize.Range Union output 0
-			TVoxelRange<v_flt> Variable_13; // Noise Bias = 0.2 output 0
 			TVoxelRange<v_flt> Variable_14; // Intersection Smoothness = 10.0 output 0
-			TVoxelRange<v_flt> Variable_16; // Noise Frequency = 4.0 output 0
-			FVoxelBoolRange Variable_18; // Use IQ Noise = true output 0
-			TVoxelRange<v_flt> Variable_7; // Noise Scale = 20.0 output 0
-			TVoxelRange<v_flt> Variable_9; // * -1 output 0
+			TVoxelRange<v_flt> Variable_6; // 2D Noise SDF.+ output 0
+			TVoxelRange<v_flt> Variable_1; // 2D Noise SDF.+ output 0
 		};
 		
 		struct FBufferX
@@ -811,8 +804,6 @@ public:
 			FBufferX() {}
 			
 			TVoxelRange<v_flt> Variable_3; // X output 0
-			TVoxelRange<v_flt> Variable_6; // 2D Noise SDF.+ output 0
-			TVoxelRange<v_flt> Variable_1; // 2D Noise SDF.+ output 0
 		};
 		
 		struct FBufferXY
@@ -846,6 +837,85 @@ public:
 					///////////// Then init constant nodes /////////////
 					////////////////////////////////////////////////////
 					
+					// Init of 3D Perlin Noise Fractal
+					_3D_Perlin_Noise_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+					_3D_Perlin_Noise_Fractal_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(3, 0.5);
+					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(2.0);
+					_3D_Perlin_Noise_Fractal_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[3] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[4] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[5] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[6] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[7] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[8] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[9] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[10] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[11] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[12] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[13] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[14] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[15] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[16] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[17] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[18] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[19] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[20] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[21] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[22] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[23] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[24] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[25] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[26] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[27] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[28] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[29] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[30] = 3;
+					_3D_Perlin_Noise_Fractal_1_LODToOctaves[31] = 3;
+					
+					// Init of 3D IQ Noise
+					_3D_IQ_Noise_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+					_3D_IQ_Noise_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+					_3D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.5);
+					_3D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
+					_3D_IQ_Noise_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+					_3D_IQ_Noise_1_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
+					_3D_IQ_Noise_1_LODToOctaves[0] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[1] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[2] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[3] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[4] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[5] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[6] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[7] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[8] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[9] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[10] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[11] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[12] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[13] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[14] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[15] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[16] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[17] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[18] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[19] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[20] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[21] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[22] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[23] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[24] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[25] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[26] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[27] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[28] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[29] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[30] = 15;
+					_3D_IQ_Noise_1_LODToOctaves[31] = 15;
+					
 				}
 				
 				////////////////////////////////////////////////////
@@ -858,29 +928,64 @@ public:
 			//////////////// Compute constants /////////////////
 			////////////////////////////////////////////////////
 			{
-				// Radius = 250.0
-				BufferConstant.Variable_8 = Params.Radius;
-				
-				// Normalize.Range Union
-				BufferConstant.Variable_20 = FVoxelNodeFunctions::Union(TVoxelRange<v_flt>(-1.0f), TVoxelRange<v_flt>(1.0f));
-				
 				// Noise Bias = 0.2
-				BufferConstant.Variable_13 = Params.Noise_Bias;
+				TVoxelRange<v_flt> Variable_13; // Noise Bias = 0.2 output 0
+				Variable_13 = Params.Noise_Bias;
+				
+				// 3D Perlin Noise Fractal
+				TVoxelRange<v_flt> Variable_0; // 3D Perlin Noise Fractal output 0
+				Variable_0 = { -0.419158f, 0.458317f };
 				
 				// Intersection Smoothness = 10.0
 				BufferConstant.Variable_14 = Params.Intersection_Smoothness;
 				
-				// Noise Frequency = 4.0
-				BufferConstant.Variable_16 = Params.Noise_Frequency;
+				// Noise Scale = 20.0
+				TVoxelRange<v_flt> Variable_7; // Noise Scale = 20.0 output 0
+				Variable_7 = Params.Noise_Scale;
+				
+				// Radius = 250.0
+				TVoxelRange<v_flt> Variable_8; // Radius = 250.0 output 0
+				Variable_8 = Params.Radius;
+				
+				// 3D IQ Noise
+				TVoxelRange<v_flt> Variable_15; // 3D IQ Noise output 0
+				TVoxelRange<v_flt> _3D_IQ_Noise_1_Temp_1; // 3D IQ Noise output 1
+				TVoxelRange<v_flt> _3D_IQ_Noise_1_Temp_2; // 3D IQ Noise output 2
+				TVoxelRange<v_flt> _3D_IQ_Noise_1_Temp_3; // 3D IQ Noise output 3
+				Variable_15 = { -0.732619f, 0.767129f };
+				_3D_IQ_Noise_1_Temp_1 = { -1.577728f, 1.771872f };
+				_3D_IQ_Noise_1_Temp_2 = { -1.779903f, 1.388687f };
+				_3D_IQ_Noise_1_Temp_3 = { -1.667376f, 1.695596f };
 				
 				// Use IQ Noise = true
-				BufferConstant.Variable_18 = Params.Use_IQ_Noise;
+				FVoxelBoolRange Variable_17; // Use IQ Noise = true output 0
+				Variable_17 = Params.Use_IQ_Noise;
 				
-				// Noise Scale = 20.0
-				BufferConstant.Variable_7 = Params.Noise_Scale;
+				// Switch (float)
+				TVoxelRange<v_flt> Variable_16; // Switch (float) output 0
+				Variable_16 = FVoxelNodeFunctions::Switch(Variable_15, Variable_0, Variable_17);
 				
 				// * -1
-				BufferConstant.Variable_9 = BufferConstant.Variable_7 * -1;
+				TVoxelRange<v_flt> Variable_9; // * -1 output 0
+				Variable_9 = Variable_7 * -1;
+				
+				// +
+				TVoxelRange<v_flt> Variable_11; // + output 0
+				Variable_11 = Variable_16 + Variable_13;
+				
+				// 2D Noise SDF.*
+				TVoxelRange<v_flt> Variable_20; // 2D Noise SDF.* output 0
+				Variable_20 = Variable_11 * Variable_7;
+				
+				// 2D Noise SDF.*
+				TVoxelRange<v_flt> Variable_22; // 2D Noise SDF.* output 0
+				Variable_22 = Variable_11 * Variable_9;
+				
+				// 2D Noise SDF.+
+				BufferConstant.Variable_6 = Variable_22 + Variable_8;
+				
+				// 2D Noise SDF.+
+				BufferConstant.Variable_1 = Variable_20 + Variable_8;
 				
 			}
 		}
@@ -909,85 +1014,6 @@ public:
 		
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
-			// Init of 3D Perlin Noise Fractal
-			_3D_Perlin_Noise_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_3D_Perlin_Noise_Fractal_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
-			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(3, 0.5);
-			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(2.0);
-			_3D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[3] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[4] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[5] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[6] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[7] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[8] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[9] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[10] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[11] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[12] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[13] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[14] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[15] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[16] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[17] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[18] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[19] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[20] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[21] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[22] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[23] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[24] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[25] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[26] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[27] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[28] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[29] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[30] = 3;
-			_3D_Perlin_Noise_Fractal_1_LODToOctaves[31] = 3;
-			
-			// Init of 3D IQ Noise
-			_3D_IQ_Noise_1_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_3D_IQ_Noise_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
-			_3D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.5);
-			_3D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
-			_3D_IQ_Noise_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
-			_3D_IQ_Noise_1_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
-			_3D_IQ_Noise_1_LODToOctaves[0] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[1] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[2] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[3] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[4] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[5] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[6] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[7] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[8] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[9] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[10] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[11] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[12] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[13] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[14] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[15] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[16] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[17] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[18] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[19] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[20] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[21] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[22] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[23] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[24] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[25] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[26] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[27] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[28] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[29] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[30] = 15;
-			_3D_IQ_Noise_1_LODToOctaves[31] = 15;
-			
 		}
 		
 		///////////////////////////////////////////////////////////////////////
@@ -996,27 +1022,13 @@ public:
 		
 		void Function0_XYZWithoutCache_Compute(const FVoxelContextRange& Context, FOutputs& Outputs) const
 		{
-			// 3D Perlin Noise Fractal
-			TVoxelRange<v_flt> Variable_0; // 3D Perlin Noise Fractal output 0
-			Variable_0 = { -0.419158f, 0.458317f };
-			
-			// 3D IQ Noise
-			TVoxelRange<v_flt> Variable_15; // 3D IQ Noise output 0
-			TVoxelRange<v_flt> _3D_IQ_Noise_1_Temp_1; // 3D IQ Noise output 1
-			TVoxelRange<v_flt> _3D_IQ_Noise_1_Temp_2; // 3D IQ Noise output 2
-			TVoxelRange<v_flt> _3D_IQ_Noise_1_Temp_3; // 3D IQ Noise output 3
-			Variable_15 = { -0.732619f, 0.767129f };
-			_3D_IQ_Noise_1_Temp_1 = { -1.577728f, 1.771872f };
-			_3D_IQ_Noise_1_Temp_2 = { -1.779903f, 1.388687f };
-			_3D_IQ_Noise_1_Temp_3 = { -1.667376f, 1.695596f };
+			// X
+			TVoxelRange<v_flt> Variable_3; // X output 0
+			Variable_3 = Context.GetLocalX();
 			
 			// Y
 			TVoxelRange<v_flt> Variable_4; // Y output 0
 			Variable_4 = Context.GetLocalY();
-			
-			// X
-			TVoxelRange<v_flt> Variable_3; // X output 0
-			Variable_3 = Context.GetLocalX();
 			
 			// Z
 			TVoxelRange<v_flt> Variable_5; // Z output 0
@@ -1026,51 +1038,27 @@ public:
 			TVoxelRange<v_flt> Variable_2; // Vector Length output 0
 			Variable_2 = FVoxelNodeFunctions::VectorLength(Variable_3, Variable_4, Variable_5);
 			
-			// Switch (float)
-			TVoxelRange<v_flt> Variable_17; // Switch (float) output 0
-			Variable_17 = FVoxelNodeFunctions::Switch(Variable_15, Variable_0, BufferConstant.Variable_18);
-			
-			// +
-			TVoxelRange<v_flt> Variable_11; // + output 0
-			Variable_11 = Variable_17 + BufferConstant.Variable_13;
-			
-			// 2D Noise SDF.*
-			TVoxelRange<v_flt> Variable_22; // 2D Noise SDF.* output 0
-			Variable_22 = Variable_11 * BufferConstant.Variable_7;
-			
-			// 2D Noise SDF.*
-			TVoxelRange<v_flt> Variable_24; // 2D Noise SDF.* output 0
-			Variable_24 = Variable_11 * BufferConstant.Variable_9;
-			
-			// 2D Noise SDF.+
-			TVoxelRange<v_flt> Variable_6; // 2D Noise SDF.+ output 0
-			Variable_6 = Variable_24 + BufferConstant.Variable_8;
-			
-			// 2D Noise SDF.+
-			TVoxelRange<v_flt> Variable_1; // 2D Noise SDF.+ output 0
-			Variable_1 = Variable_22 + BufferConstant.Variable_8;
-			
-			// 2D Noise SDF.-
-			TVoxelRange<v_flt> Variable_23; // 2D Noise SDF.- output 0
-			Variable_23 = Variable_2 - Variable_6;
-			
 			// 2D Noise SDF.-
 			TVoxelRange<v_flt> Variable_21; // 2D Noise SDF.- output 0
-			Variable_21 = Variable_2 - Variable_1;
+			Variable_21 = Variable_2 - BufferConstant.Variable_6;
+			
+			// 2D Noise SDF.-
+			TVoxelRange<v_flt> Variable_19; // 2D Noise SDF.- output 0
+			Variable_19 = Variable_2 - BufferConstant.Variable_1;
 			
 			// * -1
 			TVoxelRange<v_flt> Variable_10; // * -1 output 0
-			Variable_10 = Variable_23 * -1;
+			Variable_10 = Variable_21 * -1;
 			
 			// Smooth Intersection
 			TVoxelRange<v_flt> Variable_12; // Smooth Intersection output 0
-			Variable_12 = FVoxelSDFNodeFunctions::SmoothIntersection(Variable_21, Variable_10, BufferConstant.Variable_14);
+			Variable_12 = FVoxelSDFNodeFunctions::SmoothIntersection(Variable_19, Variable_10, BufferConstant.Variable_14);
 			
 			// Set High Quality Value.*
-			TVoxelRange<v_flt> Variable_19; // Set High Quality Value.* output 0
-			Variable_19 = Variable_12 * TVoxelRange<v_flt>(0.2f);
+			TVoxelRange<v_flt> Variable_18; // Set High Quality Value.* output 0
+			Variable_18 = Variable_12 * TVoxelRange<v_flt>(0.2f);
 			
-			Outputs.Value = Variable_19;
+			Outputs.Value = Variable_18;
 		}
 		
 	};
@@ -1138,8 +1126,6 @@ public:
 	
 	template<uint32... Permutation>
 	auto& GetRangeTarget() const;
-	
-	inline void ReportRangeAnalysisFailure() const {}
 	
 private:
 	FParams Params;

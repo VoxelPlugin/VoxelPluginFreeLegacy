@@ -44,14 +44,13 @@ public:
 			
 			v_flt Variable_6; // Data Item Parameters output 6
 			v_flt Variable_7; // X output 0
-			v_flt Variable_26; // vector - vector.- output 0
-			v_flt Variable_30; // vector - vector.- output 0
-			v_flt Variable_29; // vector - vector.- output 0
-			v_flt Variable_35; // vector / float./ output 0
-			v_flt Variable_14; // * output 0
-			v_flt Variable_36; // vector / float./ output 0
-			v_flt Variable_21; // vector / float./ output 0
-			v_flt Variable_25; // + output 0
+			v_flt Variable_28; // vector - vector.- output 0
+			v_flt Variable_27; // vector - vector.- output 0
+			v_flt Variable_21; // vector - vector.- output 0
+			v_flt Variable_34; // vector / float./ output 0
+			v_flt Variable_16; // vector / float./ output 0
+			v_flt Variable_33; // vector / float./ output 0
+			v_flt Variable_20; // + output 0
 		};
 		
 		struct FBufferXY
@@ -129,7 +128,8 @@ public:
 		
 		const FParams& Params;
 		
-		FVoxelFastNoise _3D_Gradient_Perturb_0_Noise;
+		FVoxelFastNoise _3D_Gradient_Perturb_Fractal_0_Noise;
+		TStaticArray<uint8, 32> _3D_Gradient_Perturb_Fractal_0_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -137,9 +137,44 @@ public:
 		
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
-			// Init of 3D Gradient Perturb
-			_3D_Gradient_Perturb_0_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_3D_Gradient_Perturb_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			// Init of 3D Gradient Perturb Fractal
+			_3D_Gradient_Perturb_Fractal_0_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_3D_Gradient_Perturb_Fractal_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+			_3D_Gradient_Perturb_Fractal_0_Noise.SetFractalOctavesAndGain(10, 0.5);
+			_3D_Gradient_Perturb_Fractal_0_Noise.SetFractalLacunarity(2.0);
+			_3D_Gradient_Perturb_Fractal_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[0] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[1] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[2] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[3] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[4] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[5] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[6] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[7] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[8] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[9] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[10] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[11] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[12] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[13] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[14] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[15] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[16] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[17] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[18] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[19] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[20] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[21] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[22] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[23] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[24] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[25] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[26] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[27] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[28] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[29] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[30] = 10;
+			_3D_Gradient_Perturb_Fractal_0_LODToOctaves[31] = 10;
 			
 		}
 		
@@ -168,8 +203,8 @@ public:
 			}
 			else
 			{
-				Variable_0 = 132.784760;
-				Variable_1 = 62.540493;
+				Variable_0 = 0.000000;
+				Variable_1 = 100.000000;
 				Variable_2 = 0.000000;
 				Variable_3 = 0.000000;
 				Variable_4 = 0.000000;
@@ -181,68 +216,61 @@ public:
 			BufferX.Variable_7 = Context.GetLocalX();
 			
 			// vector - vector.-
-			BufferX.Variable_26 = Variable_5 - Variable_2;
+			BufferX.Variable_28 = Variable_4 - Variable_1;
 			
 			// vector - vector.-
-			BufferX.Variable_30 = Variable_4 - Variable_1;
+			v_flt Variable_35; // vector - vector.- output 0
+			Variable_35 = Variable_0 - Variable_3;
 			
 			// vector - vector.-
-			BufferX.Variable_29 = Variable_3 - Variable_0;
-			
-			// vector + vector.+
-			v_flt Variable_33; // vector + vector.+ output 0
-			Variable_33 = Variable_0 + Variable_3;
-			
-			// 1 / X
-			v_flt Variable_13; // 1 / X output 0
-			Variable_13 = FVoxelNodeFunctions::OneOverX(BufferX.Variable_6);
+			BufferX.Variable_27 = Variable_3 - Variable_0;
 			
 			// vector - vector.-
-			v_flt Variable_38; // vector - vector.- output 0
-			Variable_38 = Variable_1 - Variable_4;
+			BufferX.Variable_21 = Variable_5 - Variable_2;
 			
 			// /
-			v_flt Variable_27; // / output 0
-			Variable_27 = BufferX.Variable_6 / v_flt(4.0f);
+			v_flt Variable_22; // / output 0
+			Variable_22 = BufferX.Variable_6 / v_flt(4.0f);
 			
 			// vector + vector.+
-			v_flt Variable_34; // vector + vector.+ output 0
-			Variable_34 = Variable_1 + Variable_4;
+			v_flt Variable_15; // vector + vector.+ output 0
+			Variable_15 = Variable_2 + Variable_5;
 			
 			// vector + vector.+
-			v_flt Variable_20; // vector + vector.+ output 0
-			Variable_20 = Variable_2 + Variable_5;
+			v_flt Variable_31; // vector + vector.+ output 0
+			Variable_31 = Variable_0 + Variable_3;
 			
 			// vector - vector.-
-			v_flt Variable_22; // vector - vector.- output 0
-			Variable_22 = Variable_2 - Variable_5;
+			v_flt Variable_17; // vector - vector.- output 0
+			Variable_17 = Variable_2 - Variable_5;
+			
+			// vector + vector.+
+			v_flt Variable_32; // vector + vector.+ output 0
+			Variable_32 = Variable_1 + Variable_4;
 			
 			// vector - vector.-
-			v_flt Variable_37; // vector - vector.- output 0
-			Variable_37 = Variable_0 - Variable_3;
+			v_flt Variable_36; // vector - vector.- output 0
+			Variable_36 = Variable_1 - Variable_4;
 			
 			// vector / float./
-			BufferX.Variable_35 = Variable_33 / v_flt(2.0f);
-			
-			// *
-			BufferX.Variable_14 = Variable_13 * v_flt(0.2f);
+			BufferX.Variable_34 = Variable_32 / v_flt(2.0f);
 			
 			// vector / float./
-			BufferX.Variable_36 = Variable_34 / v_flt(2.0f);
-			
-			// vector / float./
-			BufferX.Variable_21 = Variable_20 / v_flt(2.0f);
+			BufferX.Variable_16 = Variable_15 / v_flt(2.0f);
 			
 			// Vector Length
-			v_flt Variable_23; // Vector Length output 0
-			Variable_23 = FVoxelNodeFunctions::VectorLength(Variable_37, Variable_38, Variable_22);
+			v_flt Variable_18; // Vector Length output 0
+			Variable_18 = FVoxelNodeFunctions::VectorLength(Variable_35, Variable_36, Variable_17);
+			
+			// vector / float./
+			BufferX.Variable_33 = Variable_31 / v_flt(2.0f);
 			
 			// /
-			v_flt Variable_24; // / output 0
-			Variable_24 = Variable_23 / v_flt(2.0f);
+			v_flt Variable_19; // / output 0
+			Variable_19 = Variable_18 / v_flt(2.0f);
 			
 			// +
-			BufferX.Variable_25 = Variable_24 + Variable_27;
+			BufferX.Variable_20 = Variable_19 + Variable_22;
 			
 		}
 		
@@ -277,8 +305,8 @@ public:
 			}
 			else
 			{
-				Variable_0 = 132.784760;
-				Variable_1 = 62.540493;
+				Variable_0 = 0.000000;
+				Variable_1 = 100.000000;
 				Variable_2 = 0.000000;
 				Variable_3 = 0.000000;
 				Variable_4 = 0.000000;
@@ -290,68 +318,61 @@ public:
 			BufferX.Variable_7 = Context.GetLocalX();
 			
 			// vector - vector.-
-			BufferX.Variable_26 = Variable_5 - Variable_2;
+			BufferX.Variable_28 = Variable_4 - Variable_1;
 			
 			// vector - vector.-
-			BufferX.Variable_30 = Variable_4 - Variable_1;
+			v_flt Variable_35; // vector - vector.- output 0
+			Variable_35 = Variable_0 - Variable_3;
 			
 			// vector - vector.-
-			BufferX.Variable_29 = Variable_3 - Variable_0;
-			
-			// vector + vector.+
-			v_flt Variable_33; // vector + vector.+ output 0
-			Variable_33 = Variable_0 + Variable_3;
-			
-			// 1 / X
-			v_flt Variable_13; // 1 / X output 0
-			Variable_13 = FVoxelNodeFunctions::OneOverX(BufferX.Variable_6);
+			BufferX.Variable_27 = Variable_3 - Variable_0;
 			
 			// vector - vector.-
-			v_flt Variable_38; // vector - vector.- output 0
-			Variable_38 = Variable_1 - Variable_4;
+			BufferX.Variable_21 = Variable_5 - Variable_2;
 			
 			// /
-			v_flt Variable_27; // / output 0
-			Variable_27 = BufferX.Variable_6 / v_flt(4.0f);
+			v_flt Variable_22; // / output 0
+			Variable_22 = BufferX.Variable_6 / v_flt(4.0f);
 			
 			// vector + vector.+
-			v_flt Variable_34; // vector + vector.+ output 0
-			Variable_34 = Variable_1 + Variable_4;
+			v_flt Variable_15; // vector + vector.+ output 0
+			Variable_15 = Variable_2 + Variable_5;
 			
 			// vector + vector.+
-			v_flt Variable_20; // vector + vector.+ output 0
-			Variable_20 = Variable_2 + Variable_5;
+			v_flt Variable_31; // vector + vector.+ output 0
+			Variable_31 = Variable_0 + Variable_3;
 			
 			// vector - vector.-
-			v_flt Variable_22; // vector - vector.- output 0
-			Variable_22 = Variable_2 - Variable_5;
+			v_flt Variable_17; // vector - vector.- output 0
+			Variable_17 = Variable_2 - Variable_5;
+			
+			// vector + vector.+
+			v_flt Variable_32; // vector + vector.+ output 0
+			Variable_32 = Variable_1 + Variable_4;
 			
 			// vector - vector.-
-			v_flt Variable_37; // vector - vector.- output 0
-			Variable_37 = Variable_0 - Variable_3;
+			v_flt Variable_36; // vector - vector.- output 0
+			Variable_36 = Variable_1 - Variable_4;
 			
 			// vector / float./
-			BufferX.Variable_35 = Variable_33 / v_flt(2.0f);
-			
-			// *
-			BufferX.Variable_14 = Variable_13 * v_flt(0.2f);
+			BufferX.Variable_34 = Variable_32 / v_flt(2.0f);
 			
 			// vector / float./
-			BufferX.Variable_36 = Variable_34 / v_flt(2.0f);
-			
-			// vector / float./
-			BufferX.Variable_21 = Variable_20 / v_flt(2.0f);
+			BufferX.Variable_16 = Variable_15 / v_flt(2.0f);
 			
 			// Vector Length
-			v_flt Variable_23; // Vector Length output 0
-			Variable_23 = FVoxelNodeFunctions::VectorLength(Variable_37, Variable_38, Variable_22);
+			v_flt Variable_18; // Vector Length output 0
+			Variable_18 = FVoxelNodeFunctions::VectorLength(Variable_35, Variable_36, Variable_17);
+			
+			// vector / float./
+			BufferX.Variable_33 = Variable_31 / v_flt(2.0f);
 			
 			// /
-			v_flt Variable_24; // / output 0
-			Variable_24 = Variable_23 / v_flt(2.0f);
+			v_flt Variable_19; // / output 0
+			Variable_19 = Variable_18 / v_flt(2.0f);
 			
 			// +
-			BufferX.Variable_25 = Variable_24 + Variable_27;
+			BufferX.Variable_20 = Variable_19 + Variable_22;
 			
 		}
 		
@@ -361,53 +382,53 @@ public:
 			v_flt Variable_9; // Z output 0
 			Variable_9 = Context.GetLocalZ();
 			
-			// 3D Gradient Perturb
-			v_flt Variable_10; // 3D Gradient Perturb output 0
-			v_flt Variable_11; // 3D Gradient Perturb output 1
-			v_flt Variable_12; // 3D Gradient Perturb output 2
-			Variable_10 = BufferX.Variable_7;
-			Variable_11 = BufferXY.Variable_8;
-			Variable_12 = Variable_9;
-			_3D_Gradient_Perturb_0_Noise.GradientPerturb_3D(Variable_10, Variable_11, Variable_12, BufferX.Variable_14, v_flt(0.0f));
+			// 3D Gradient Perturb Fractal
+			v_flt Variable_23; // 3D Gradient Perturb Fractal output 0
+			v_flt Variable_24; // 3D Gradient Perturb Fractal output 1
+			v_flt Variable_25; // 3D Gradient Perturb Fractal output 2
+			Variable_23 = BufferX.Variable_7;
+			Variable_24 = BufferXY.Variable_8;
+			Variable_25 = Variable_9;
+			_3D_Gradient_Perturb_Fractal_0_Noise.GradientPerturbFractal_3D(Variable_23, Variable_24, Variable_25, v_flt(0.001f), _3D_Gradient_Perturb_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)], v_flt(200.0f));
 			
 			// vector - vector.-
-			v_flt Variable_31; // vector - vector.- output 0
-			Variable_31 = Variable_10 - BufferX.Variable_35;
+			v_flt Variable_29; // vector - vector.- output 0
+			Variable_29 = Variable_23 - BufferX.Variable_33;
 			
 			// vector - vector.-
-			v_flt Variable_32; // vector - vector.- output 0
-			Variable_32 = Variable_11 - BufferX.Variable_36;
+			v_flt Variable_14; // vector - vector.- output 0
+			Variable_14 = Variable_25 - BufferX.Variable_16;
 			
 			// vector - vector.-
-			v_flt Variable_19; // vector - vector.- output 0
-			Variable_19 = Variable_12 - BufferX.Variable_21;
+			v_flt Variable_30; // vector - vector.- output 0
+			Variable_30 = Variable_24 - BufferX.Variable_34;
 			
 			// Inverse Transform Position XZ
-			v_flt Variable_16; // Inverse Transform Position XZ output 0
-			v_flt Variable_17; // Inverse Transform Position XZ output 1
-			v_flt Variable_18; // Inverse Transform Position XZ output 2
-			FVoxelMathNodeFunctions::InverseTransformPositionXZ(BufferX.Variable_29, BufferX.Variable_30, BufferX.Variable_26, v_flt(0.0f), v_flt(0.0f), v_flt(1.0f), Variable_31, Variable_32, Variable_19, Variable_16, Variable_17, Variable_18);
+			v_flt Variable_11; // Inverse Transform Position XZ output 0
+			v_flt Variable_12; // Inverse Transform Position XZ output 1
+			v_flt Variable_13; // Inverse Transform Position XZ output 2
+			FVoxelMathNodeFunctions::InverseTransformPositionXZ(BufferX.Variable_27, BufferX.Variable_28, BufferX.Variable_21, v_flt(0.0f), v_flt(0.0f), v_flt(1.0f), Variable_29, Variable_30, Variable_14, Variable_11, Variable_12, Variable_13);
 			
-			// * -1
-			v_flt Variable_28; // * -1 output 0
-			Variable_28 = Variable_18 * -1;
+			// *
+			v_flt Variable_26; // * output 0
+			Variable_26 = Variable_13 * v_flt(2.0f);
 			
 			// Triangular Prism SDF
-			v_flt Variable_15; // Triangular Prism SDF output 0
-			Variable_15 = FVoxelSDFNodeFunctions::TriPrism(Variable_17, Variable_16, Variable_28, BufferX.Variable_6, BufferX.Variable_25);
+			v_flt Variable_10; // Triangular Prism SDF output 0
+			Variable_10 = FVoxelSDFNodeFunctions::TriPrism(Variable_12, Variable_11, Variable_26, BufferX.Variable_6, BufferX.Variable_20);
 			
-			Outputs.Value = Variable_15;
+			Outputs.Value = Variable_10;
 		}
 		
 		void Function0_XYZWithoutCache_Compute(const FVoxelContext& Context, FOutputs& Outputs) const
 		{
-			// Z
-			v_flt Variable_9; // Z output 0
-			Variable_9 = Context.GetLocalZ();
-			
 			// Y
 			v_flt Variable_8; // Y output 0
 			Variable_8 = Context.GetLocalY();
+			
+			// Z
+			v_flt Variable_9; // Z output 0
+			Variable_9 = Context.GetLocalZ();
 			
 			// Data Item Parameters
 			v_flt Variable_0; // Data Item Parameters output 0
@@ -429,8 +450,8 @@ public:
 			}
 			else
 			{
-				Variable_0 = 132.784760;
-				Variable_1 = 62.540493;
+				Variable_0 = 0.000000;
+				Variable_1 = 100.000000;
 				Variable_2 = 0.000000;
 				Variable_3 = 0.000000;
 				Variable_4 = 0.000000;
@@ -443,113 +464,105 @@ public:
 			Variable_7 = Context.GetLocalX();
 			
 			// vector - vector.-
-			v_flt Variable_26; // vector - vector.- output 0
-			Variable_26 = Variable_5 - Variable_2;
+			v_flt Variable_28; // vector - vector.- output 0
+			Variable_28 = Variable_4 - Variable_1;
 			
 			// vector - vector.-
-			v_flt Variable_30; // vector - vector.- output 0
-			Variable_30 = Variable_4 - Variable_1;
+			v_flt Variable_35; // vector - vector.- output 0
+			Variable_35 = Variable_0 - Variable_3;
+			
+			// 3D Gradient Perturb Fractal
+			v_flt Variable_23; // 3D Gradient Perturb Fractal output 0
+			v_flt Variable_24; // 3D Gradient Perturb Fractal output 1
+			v_flt Variable_25; // 3D Gradient Perturb Fractal output 2
+			Variable_23 = Variable_7;
+			Variable_24 = Variable_8;
+			Variable_25 = Variable_9;
+			_3D_Gradient_Perturb_Fractal_0_Noise.GradientPerturbFractal_3D(Variable_23, Variable_24, Variable_25, v_flt(0.001f), _3D_Gradient_Perturb_Fractal_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)], v_flt(200.0f));
+			
+			// vector - vector.-
+			v_flt Variable_27; // vector - vector.- output 0
+			Variable_27 = Variable_3 - Variable_0;
+			
+			// vector - vector.-
+			v_flt Variable_21; // vector - vector.- output 0
+			Variable_21 = Variable_5 - Variable_2;
+			
+			// /
+			v_flt Variable_22; // / output 0
+			Variable_22 = Variable_6 / v_flt(4.0f);
+			
+			// vector + vector.+
+			v_flt Variable_15; // vector + vector.+ output 0
+			Variable_15 = Variable_2 + Variable_5;
+			
+			// vector + vector.+
+			v_flt Variable_31; // vector + vector.+ output 0
+			Variable_31 = Variable_0 + Variable_3;
+			
+			// vector - vector.-
+			v_flt Variable_17; // vector - vector.- output 0
+			Variable_17 = Variable_2 - Variable_5;
+			
+			// vector + vector.+
+			v_flt Variable_32; // vector + vector.+ output 0
+			Variable_32 = Variable_1 + Variable_4;
+			
+			// vector - vector.-
+			v_flt Variable_36; // vector - vector.- output 0
+			Variable_36 = Variable_1 - Variable_4;
+			
+			// vector / float./
+			v_flt Variable_34; // vector / float./ output 0
+			Variable_34 = Variable_32 / v_flt(2.0f);
+			
+			// vector / float./
+			v_flt Variable_16; // vector / float./ output 0
+			Variable_16 = Variable_15 / v_flt(2.0f);
+			
+			// Vector Length
+			v_flt Variable_18; // Vector Length output 0
+			Variable_18 = FVoxelNodeFunctions::VectorLength(Variable_35, Variable_36, Variable_17);
+			
+			// vector / float./
+			v_flt Variable_33; // vector / float./ output 0
+			Variable_33 = Variable_31 / v_flt(2.0f);
 			
 			// vector - vector.-
 			v_flt Variable_29; // vector - vector.- output 0
-			Variable_29 = Variable_3 - Variable_0;
-			
-			// vector + vector.+
-			v_flt Variable_33; // vector + vector.+ output 0
-			Variable_33 = Variable_0 + Variable_3;
-			
-			// 1 / X
-			v_flt Variable_13; // 1 / X output 0
-			Variable_13 = FVoxelNodeFunctions::OneOverX(Variable_6);
-			
-			// vector - vector.-
-			v_flt Variable_38; // vector - vector.- output 0
-			Variable_38 = Variable_1 - Variable_4;
+			Variable_29 = Variable_23 - Variable_33;
 			
 			// /
-			v_flt Variable_27; // / output 0
-			Variable_27 = Variable_6 / v_flt(4.0f);
-			
-			// vector + vector.+
-			v_flt Variable_34; // vector + vector.+ output 0
-			Variable_34 = Variable_1 + Variable_4;
-			
-			// vector + vector.+
-			v_flt Variable_20; // vector + vector.+ output 0
-			Variable_20 = Variable_2 + Variable_5;
+			v_flt Variable_19; // / output 0
+			Variable_19 = Variable_18 / v_flt(2.0f);
 			
 			// vector - vector.-
-			v_flt Variable_22; // vector - vector.- output 0
-			Variable_22 = Variable_2 - Variable_5;
+			v_flt Variable_14; // vector - vector.- output 0
+			Variable_14 = Variable_25 - Variable_16;
 			
 			// vector - vector.-
-			v_flt Variable_37; // vector - vector.- output 0
-			Variable_37 = Variable_0 - Variable_3;
-			
-			// vector / float./
-			v_flt Variable_35; // vector / float./ output 0
-			Variable_35 = Variable_33 / v_flt(2.0f);
-			
-			// *
-			v_flt Variable_14; // * output 0
-			Variable_14 = Variable_13 * v_flt(0.2f);
-			
-			// vector / float./
-			v_flt Variable_36; // vector / float./ output 0
-			Variable_36 = Variable_34 / v_flt(2.0f);
-			
-			// vector / float./
-			v_flt Variable_21; // vector / float./ output 0
-			Variable_21 = Variable_20 / v_flt(2.0f);
-			
-			// Vector Length
-			v_flt Variable_23; // Vector Length output 0
-			Variable_23 = FVoxelNodeFunctions::VectorLength(Variable_37, Variable_38, Variable_22);
-			
-			// /
-			v_flt Variable_24; // / output 0
-			Variable_24 = Variable_23 / v_flt(2.0f);
-			
-			// 3D Gradient Perturb
-			v_flt Variable_10; // 3D Gradient Perturb output 0
-			v_flt Variable_11; // 3D Gradient Perturb output 1
-			v_flt Variable_12; // 3D Gradient Perturb output 2
-			Variable_10 = Variable_7;
-			Variable_11 = Variable_8;
-			Variable_12 = Variable_9;
-			_3D_Gradient_Perturb_0_Noise.GradientPerturb_3D(Variable_10, Variable_11, Variable_12, Variable_14, v_flt(0.0f));
-			
-			// +
-			v_flt Variable_25; // + output 0
-			Variable_25 = Variable_24 + Variable_27;
-			
-			// vector - vector.-
-			v_flt Variable_31; // vector - vector.- output 0
-			Variable_31 = Variable_10 - Variable_35;
-			
-			// vector - vector.-
-			v_flt Variable_32; // vector - vector.- output 0
-			Variable_32 = Variable_11 - Variable_36;
-			
-			// vector - vector.-
-			v_flt Variable_19; // vector - vector.- output 0
-			Variable_19 = Variable_12 - Variable_21;
+			v_flt Variable_30; // vector - vector.- output 0
+			Variable_30 = Variable_24 - Variable_34;
 			
 			// Inverse Transform Position XZ
-			v_flt Variable_16; // Inverse Transform Position XZ output 0
-			v_flt Variable_17; // Inverse Transform Position XZ output 1
-			v_flt Variable_18; // Inverse Transform Position XZ output 2
-			FVoxelMathNodeFunctions::InverseTransformPositionXZ(Variable_29, Variable_30, Variable_26, v_flt(0.0f), v_flt(0.0f), v_flt(1.0f), Variable_31, Variable_32, Variable_19, Variable_16, Variable_17, Variable_18);
+			v_flt Variable_11; // Inverse Transform Position XZ output 0
+			v_flt Variable_12; // Inverse Transform Position XZ output 1
+			v_flt Variable_13; // Inverse Transform Position XZ output 2
+			FVoxelMathNodeFunctions::InverseTransformPositionXZ(Variable_27, Variable_28, Variable_21, v_flt(0.0f), v_flt(0.0f), v_flt(1.0f), Variable_29, Variable_30, Variable_14, Variable_11, Variable_12, Variable_13);
 			
-			// * -1
-			v_flt Variable_28; // * -1 output 0
-			Variable_28 = Variable_18 * -1;
+			// +
+			v_flt Variable_20; // + output 0
+			Variable_20 = Variable_19 + Variable_22;
+			
+			// *
+			v_flt Variable_26; // * output 0
+			Variable_26 = Variable_13 * v_flt(2.0f);
 			
 			// Triangular Prism SDF
-			v_flt Variable_15; // Triangular Prism SDF output 0
-			Variable_15 = FVoxelSDFNodeFunctions::TriPrism(Variable_17, Variable_16, Variable_28, Variable_6, Variable_25);
+			v_flt Variable_10; // Triangular Prism SDF output 0
+			Variable_10 = FVoxelSDFNodeFunctions::TriPrism(Variable_12, Variable_11, Variable_26, Variable_6, Variable_20);
 			
-			Outputs.Value = Variable_15;
+			Outputs.Value = Variable_10;
 		}
 		
 	};
@@ -862,14 +875,13 @@ public:
 			
 			TVoxelRange<v_flt> Variable_6; // Data Item Parameters output 6
 			TVoxelRange<v_flt> Variable_7; // X output 0
-			TVoxelRange<v_flt> Variable_26; // vector - vector.- output 0
-			TVoxelRange<v_flt> Variable_30; // vector - vector.- output 0
-			TVoxelRange<v_flt> Variable_29; // vector - vector.- output 0
-			TVoxelRange<v_flt> Variable_35; // vector / float./ output 0
-			TVoxelRange<v_flt> Variable_14; // * output 0
-			TVoxelRange<v_flt> Variable_36; // vector / float./ output 0
-			TVoxelRange<v_flt> Variable_21; // vector / float./ output 0
-			TVoxelRange<v_flt> Variable_25; // + output 0
+			TVoxelRange<v_flt> Variable_28; // vector - vector.- output 0
+			TVoxelRange<v_flt> Variable_27; // vector - vector.- output 0
+			TVoxelRange<v_flt> Variable_21; // vector - vector.- output 0
+			TVoxelRange<v_flt> Variable_34; // vector / float./ output 0
+			TVoxelRange<v_flt> Variable_16; // vector / float./ output 0
+			TVoxelRange<v_flt> Variable_33; // vector / float./ output 0
+			TVoxelRange<v_flt> Variable_20; // + output 0
 		};
 		
 		struct FBufferXY
@@ -931,7 +943,8 @@ public:
 		
 		const FParams& Params;
 		
-		FVoxelFastNoise _3D_Gradient_Perturb_1_Noise;
+		FVoxelFastNoise _3D_Gradient_Perturb_Fractal_1_Noise;
+		TStaticArray<uint8, 32> _3D_Gradient_Perturb_Fractal_1_LODToOctaves;
 		
 		///////////////////////////////////////////////////////////////////////
 		//////////////////////////// Init functions ///////////////////////////
@@ -939,9 +952,44 @@ public:
 		
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
-			// Init of 3D Gradient Perturb
-			_3D_Gradient_Perturb_1_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_3D_Gradient_Perturb_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			// Init of 3D Gradient Perturb Fractal
+			_3D_Gradient_Perturb_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_3D_Gradient_Perturb_Fractal_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+			_3D_Gradient_Perturb_Fractal_1_Noise.SetFractalOctavesAndGain(10, 0.5);
+			_3D_Gradient_Perturb_Fractal_1_Noise.SetFractalLacunarity(2.0);
+			_3D_Gradient_Perturb_Fractal_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[0] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[1] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[2] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[3] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[4] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[5] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[6] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[7] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[8] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[9] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[10] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[11] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[12] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[13] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[14] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[15] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[16] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[17] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[18] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[19] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[20] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[21] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[22] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[23] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[24] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[25] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[26] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[27] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[28] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[29] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[30] = 10;
+			_3D_Gradient_Perturb_Fractal_1_LODToOctaves[31] = 10;
 			
 		}
 		
@@ -951,13 +999,13 @@ public:
 		
 		void Function0_XYZWithoutCache_Compute(const FVoxelContextRange& Context, FOutputs& Outputs) const
 		{
-			// Z
-			TVoxelRange<v_flt> Variable_9; // Z output 0
-			Variable_9 = Context.GetLocalZ();
-			
 			// Y
 			TVoxelRange<v_flt> Variable_8; // Y output 0
 			Variable_8 = Context.GetLocalY();
+			
+			// Z
+			TVoxelRange<v_flt> Variable_9; // Z output 0
+			Variable_9 = Context.GetLocalZ();
 			
 			// Data Item Parameters
 			TVoxelRange<v_flt> Variable_0; // Data Item Parameters output 0
@@ -979,8 +1027,8 @@ public:
 			}
 			else
 			{
-				Variable_0 = 132.784760;
-				Variable_1 = 62.540493;
+				Variable_0 = 0.000000;
+				Variable_1 = 100.000000;
 				Variable_2 = 0.000000;
 				Variable_3 = 0.000000;
 				Variable_4 = 0.000000;
@@ -993,112 +1041,104 @@ public:
 			Variable_7 = Context.GetLocalX();
 			
 			// vector - vector.-
-			TVoxelRange<v_flt> Variable_26; // vector - vector.- output 0
-			Variable_26 = Variable_5 - Variable_2;
+			TVoxelRange<v_flt> Variable_28; // vector - vector.- output 0
+			Variable_28 = Variable_4 - Variable_1;
 			
 			// vector - vector.-
-			TVoxelRange<v_flt> Variable_30; // vector - vector.- output 0
-			Variable_30 = Variable_4 - Variable_1;
+			TVoxelRange<v_flt> Variable_35; // vector - vector.- output 0
+			Variable_35 = Variable_0 - Variable_3;
+			
+			// 3D Gradient Perturb Fractal
+			TVoxelRange<v_flt> Variable_23; // 3D Gradient Perturb Fractal output 0
+			TVoxelRange<v_flt> Variable_24; // 3D Gradient Perturb Fractal output 1
+			TVoxelRange<v_flt> Variable_25; // 3D Gradient Perturb Fractal output 2
+			Variable_23 = TVoxelRange<v_flt>::FromList(Variable_7.Min - 2 * TVoxelRange<v_flt>(200.0f).Max, Variable_7.Max + 2 * TVoxelRange<v_flt>(200.0f).Max);
+			Variable_24 = TVoxelRange<v_flt>::FromList(Variable_8.Min - 2 * TVoxelRange<v_flt>(200.0f).Max, Variable_8.Max + 2 * TVoxelRange<v_flt>(200.0f).Max);
+			Variable_25 = TVoxelRange<v_flt>::FromList(Variable_9.Min - 2 * TVoxelRange<v_flt>(200.0f).Max, Variable_9.Max + 2 * TVoxelRange<v_flt>(200.0f).Max);
+			
+			// vector - vector.-
+			TVoxelRange<v_flt> Variable_27; // vector - vector.- output 0
+			Variable_27 = Variable_3 - Variable_0;
+			
+			// vector - vector.-
+			TVoxelRange<v_flt> Variable_21; // vector - vector.- output 0
+			Variable_21 = Variable_5 - Variable_2;
+			
+			// /
+			TVoxelRange<v_flt> Variable_22; // / output 0
+			Variable_22 = Variable_6 / TVoxelRange<v_flt>(4.0f);
+			
+			// vector + vector.+
+			TVoxelRange<v_flt> Variable_15; // vector + vector.+ output 0
+			Variable_15 = Variable_2 + Variable_5;
+			
+			// vector + vector.+
+			TVoxelRange<v_flt> Variable_31; // vector + vector.+ output 0
+			Variable_31 = Variable_0 + Variable_3;
+			
+			// vector - vector.-
+			TVoxelRange<v_flt> Variable_17; // vector - vector.- output 0
+			Variable_17 = Variable_2 - Variable_5;
+			
+			// vector + vector.+
+			TVoxelRange<v_flt> Variable_32; // vector + vector.+ output 0
+			Variable_32 = Variable_1 + Variable_4;
+			
+			// vector - vector.-
+			TVoxelRange<v_flt> Variable_36; // vector - vector.- output 0
+			Variable_36 = Variable_1 - Variable_4;
+			
+			// vector / float./
+			TVoxelRange<v_flt> Variable_34; // vector / float./ output 0
+			Variable_34 = Variable_32 / TVoxelRange<v_flt>(2.0f);
+			
+			// vector / float./
+			TVoxelRange<v_flt> Variable_16; // vector / float./ output 0
+			Variable_16 = Variable_15 / TVoxelRange<v_flt>(2.0f);
+			
+			// Vector Length
+			TVoxelRange<v_flt> Variable_18; // Vector Length output 0
+			Variable_18 = FVoxelNodeFunctions::VectorLength(Variable_35, Variable_36, Variable_17);
+			
+			// vector / float./
+			TVoxelRange<v_flt> Variable_33; // vector / float./ output 0
+			Variable_33 = Variable_31 / TVoxelRange<v_flt>(2.0f);
 			
 			// vector - vector.-
 			TVoxelRange<v_flt> Variable_29; // vector - vector.- output 0
-			Variable_29 = Variable_3 - Variable_0;
-			
-			// vector + vector.+
-			TVoxelRange<v_flt> Variable_33; // vector + vector.+ output 0
-			Variable_33 = Variable_0 + Variable_3;
-			
-			// 1 / X
-			TVoxelRange<v_flt> Variable_13; // 1 / X output 0
-			Variable_13 = FVoxelNodeFunctions::OneOverX(Variable_6);
-			
-			// vector - vector.-
-			TVoxelRange<v_flt> Variable_38; // vector - vector.- output 0
-			Variable_38 = Variable_1 - Variable_4;
+			Variable_29 = Variable_23 - Variable_33;
 			
 			// /
-			TVoxelRange<v_flt> Variable_27; // / output 0
-			Variable_27 = Variable_6 / TVoxelRange<v_flt>(4.0f);
-			
-			// vector + vector.+
-			TVoxelRange<v_flt> Variable_34; // vector + vector.+ output 0
-			Variable_34 = Variable_1 + Variable_4;
-			
-			// vector + vector.+
-			TVoxelRange<v_flt> Variable_20; // vector + vector.+ output 0
-			Variable_20 = Variable_2 + Variable_5;
+			TVoxelRange<v_flt> Variable_19; // / output 0
+			Variable_19 = Variable_18 / TVoxelRange<v_flt>(2.0f);
 			
 			// vector - vector.-
-			TVoxelRange<v_flt> Variable_22; // vector - vector.- output 0
-			Variable_22 = Variable_2 - Variable_5;
+			TVoxelRange<v_flt> Variable_14; // vector - vector.- output 0
+			Variable_14 = Variable_25 - Variable_16;
 			
 			// vector - vector.-
-			TVoxelRange<v_flt> Variable_37; // vector - vector.- output 0
-			Variable_37 = Variable_0 - Variable_3;
-			
-			// vector / float./
-			TVoxelRange<v_flt> Variable_35; // vector / float./ output 0
-			Variable_35 = Variable_33 / TVoxelRange<v_flt>(2.0f);
-			
-			// *
-			TVoxelRange<v_flt> Variable_14; // * output 0
-			Variable_14 = Variable_13 * TVoxelRange<v_flt>(0.2f);
-			
-			// vector / float./
-			TVoxelRange<v_flt> Variable_36; // vector / float./ output 0
-			Variable_36 = Variable_34 / TVoxelRange<v_flt>(2.0f);
-			
-			// vector / float./
-			TVoxelRange<v_flt> Variable_21; // vector / float./ output 0
-			Variable_21 = Variable_20 / TVoxelRange<v_flt>(2.0f);
-			
-			// Vector Length
-			TVoxelRange<v_flt> Variable_23; // Vector Length output 0
-			Variable_23 = FVoxelNodeFunctions::VectorLength(Variable_37, Variable_38, Variable_22);
-			
-			// /
-			TVoxelRange<v_flt> Variable_24; // / output 0
-			Variable_24 = Variable_23 / TVoxelRange<v_flt>(2.0f);
-			
-			// 3D Gradient Perturb
-			TVoxelRange<v_flt> Variable_10; // 3D Gradient Perturb output 0
-			TVoxelRange<v_flt> Variable_11; // 3D Gradient Perturb output 1
-			TVoxelRange<v_flt> Variable_12; // 3D Gradient Perturb output 2
-			Variable_10 = TVoxelRange<v_flt>::FromList(Variable_7.Min - 2 * TVoxelRange<v_flt>(0.0f).Max, Variable_7.Max + 2 * TVoxelRange<v_flt>(0.0f).Max);
-			Variable_11 = TVoxelRange<v_flt>::FromList(Variable_8.Min - 2 * TVoxelRange<v_flt>(0.0f).Max, Variable_8.Max + 2 * TVoxelRange<v_flt>(0.0f).Max);
-			Variable_12 = TVoxelRange<v_flt>::FromList(Variable_9.Min - 2 * TVoxelRange<v_flt>(0.0f).Max, Variable_9.Max + 2 * TVoxelRange<v_flt>(0.0f).Max);
-			
-			// +
-			TVoxelRange<v_flt> Variable_25; // + output 0
-			Variable_25 = Variable_24 + Variable_27;
-			
-			// vector - vector.-
-			TVoxelRange<v_flt> Variable_31; // vector - vector.- output 0
-			Variable_31 = Variable_10 - Variable_35;
-			
-			// vector - vector.-
-			TVoxelRange<v_flt> Variable_32; // vector - vector.- output 0
-			Variable_32 = Variable_11 - Variable_36;
-			
-			// vector - vector.-
-			TVoxelRange<v_flt> Variable_19; // vector - vector.- output 0
-			Variable_19 = Variable_12 - Variable_21;
+			TVoxelRange<v_flt> Variable_30; // vector - vector.- output 0
+			Variable_30 = Variable_24 - Variable_34;
 			
 			// Inverse Transform Position XZ
-			TVoxelRange<v_flt> Variable_16; // Inverse Transform Position XZ output 0
-			TVoxelRange<v_flt> Variable_17; // Inverse Transform Position XZ output 1
-			TVoxelRange<v_flt> Variable_18; // Inverse Transform Position XZ output 2
-			FVoxelMathNodeFunctions::InverseTransformPositionXZ(Variable_29, Variable_30, Variable_26, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f), Variable_31, Variable_32, Variable_19, Variable_16, Variable_17, Variable_18);
+			TVoxelRange<v_flt> Variable_11; // Inverse Transform Position XZ output 0
+			TVoxelRange<v_flt> Variable_12; // Inverse Transform Position XZ output 1
+			TVoxelRange<v_flt> Variable_13; // Inverse Transform Position XZ output 2
+			FVoxelMathNodeFunctions::InverseTransformPositionXZ(Variable_27, Variable_28, Variable_21, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(1.0f), Variable_29, Variable_30, Variable_14, Variable_11, Variable_12, Variable_13);
 			
-			// * -1
-			TVoxelRange<v_flt> Variable_28; // * -1 output 0
-			Variable_28 = Variable_18 * -1;
+			// +
+			TVoxelRange<v_flt> Variable_20; // + output 0
+			Variable_20 = Variable_19 + Variable_22;
+			
+			// *
+			TVoxelRange<v_flt> Variable_26; // * output 0
+			Variable_26 = Variable_13 * TVoxelRange<v_flt>(2.0f);
 			
 			// Triangular Prism SDF
-			TVoxelRange<v_flt> Variable_15; // Triangular Prism SDF output 0
-			Variable_15 = FVoxelSDFNodeFunctions::TriPrism(Variable_17, Variable_16, Variable_28, Variable_6, Variable_25);
+			TVoxelRange<v_flt> Variable_10; // Triangular Prism SDF output 0
+			Variable_10 = FVoxelSDFNodeFunctions::TriPrism(Variable_12, Variable_11, Variable_26, Variable_6, Variable_20);
 			
-			Outputs.Value = Variable_15;
+			Outputs.Value = Variable_10;
 		}
 		
 	};

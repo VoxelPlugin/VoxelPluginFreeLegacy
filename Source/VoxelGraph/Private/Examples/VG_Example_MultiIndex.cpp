@@ -147,10 +147,10 @@ public:
 			
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_0_Noise.SetSeed(Variable_5);
-			_2D_Perlin_Noise_Fractal_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_2D_Perlin_Noise_Fractal_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalOctavesAndGain(7, 0.5);
 			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_2D_Perlin_Noise_Fractal_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[0] = 7;
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[1] = 7;
 			_2D_Perlin_Noise_Fractal_0_LODToOctaves[2] = 7;
@@ -486,10 +486,10 @@ public:
 			
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_1_Noise.SetSeed(Variable_10);
-			_2D_Perlin_Noise_Fractal_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_2D_Perlin_Noise_Fractal_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalOctavesAndGain(7, 0.5);
 			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalLacunarity(2.0);
-			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_2D_Perlin_Noise_Fractal_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[0] = 7;
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[1] = 7;
 			_2D_Perlin_Noise_Fractal_1_LODToOctaves[2] = 7;
@@ -866,10 +866,10 @@ public:
 					
 					// Init of 2D Perlin Noise Fractal
 					_2D_Perlin_Noise_Fractal_2_Noise.SetSeed(FVoxelGraphSeed(1337));
-					_2D_Perlin_Noise_Fractal_2_Noise.SetInterp(FVoxelFastNoise::Quintic);
+					_2D_Perlin_Noise_Fractal_2_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 					_2D_Perlin_Noise_Fractal_2_Noise.SetFractalOctavesAndGain(7, 0.5);
 					_2D_Perlin_Noise_Fractal_2_Noise.SetFractalLacunarity(2.0);
-					_2D_Perlin_Noise_Fractal_2_Noise.SetFractalType(FVoxelFastNoise::FBM);
+					_2D_Perlin_Noise_Fractal_2_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 					_2D_Perlin_Noise_Fractal_2_LODToOctaves[0] = 7;
 					_2D_Perlin_Noise_Fractal_2_LODToOctaves[1] = 7;
 					_2D_Perlin_Noise_Fractal_2_LODToOctaves[2] = 7;

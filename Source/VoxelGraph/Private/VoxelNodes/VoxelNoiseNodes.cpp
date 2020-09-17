@@ -267,7 +267,7 @@ void UVoxelNode_NoiseNodeFractal::PostInitProperties()
 UVoxelNode_IQNoiseBase::UVoxelNode_IQNoiseBase()
 {
 	bComputeDerivative = true;
-	FractalType = EFractalType::FBM;
+	FractalType = EVoxelNoiseFractalType::FBM;
 	FractalOctaves = 15;
 	Frequency = 0.001;
 	NumberOfSamples = 1000000;

@@ -5,7 +5,7 @@
 #if 0
 
 #include "CoreMinimal.h"
-#include "VoxelFastNoise.h"
+#include "FastNoise/VoxelFastNoise.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
 #include "VoxelWorldGeneratorExample.generated.h"
 

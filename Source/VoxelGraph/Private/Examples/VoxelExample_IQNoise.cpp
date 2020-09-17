@@ -77,10 +77,7 @@ public:
 					
 					// Init of Seed
 					FVoxelGraphSeed Variable_8; // Seed output 0
-					{
-						static FName StaticName = "Seed";
-						Variable_8 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
-					}
+					Variable_8 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 1443;
 					
 					
 					////////////////////////////////////////////////////
@@ -148,17 +145,14 @@ public:
 		{
 			// Init of Seed
 			FVoxelGraphSeed Variable_8; // Seed output 0
-			{
-				static FName StaticName = "Seed";
-				Variable_8 = InitStruct.Seeds.Contains(StaticName) ? InitStruct.Seeds[StaticName] : 1443;
-			}
+			Variable_8 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 1443;
 			
 			// Init of 2D IQ Noise
 			_2D_IQ_Noise_0_Noise.SetSeed(Variable_8);
-			_2D_IQ_Noise_0_Noise.SetInterp(FVoxelFastNoise::Quintic);
+			_2D_IQ_Noise_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			_2D_IQ_Noise_0_Noise.SetFractalOctavesAndGain(15, 0.5);
 			_2D_IQ_Noise_0_Noise.SetFractalLacunarity(2.0);
-			_2D_IQ_Noise_0_Noise.SetFractalType(FVoxelFastNoise::FBM);
+			_2D_IQ_Noise_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
 			_2D_IQ_Noise_0_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
 			_2D_IQ_Noise_0_LODToOctaves[0] = 15;
 			_2D_IQ_Noise_0_LODToOctaves[1] = 15;
@@ -216,7 +210,8 @@ public:
 			v_flt Variable_4; // 2D IQ Noise output 0
 			v_flt _2D_IQ_Noise_0_Temp_1; // 2D IQ Noise output 1
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
-			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoiseDeriv_2D(BufferX.Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_4 = FMath::Clamp<v_flt>(Variable_4, -0.722945, 0.798964);
 			
 			// *
 			BufferXY.Variable_2 = Variable_4 * BufferConstant.Variable_3;
@@ -236,7 +231,8 @@ public:
 			v_flt Variable_4; // 2D IQ Noise output 0
 			v_flt _2D_IQ_Noise_0_Temp_1; // 2D IQ Noise output 1
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
-			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoiseDeriv_2D(BufferX.Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_4 = FMath::Clamp<v_flt>(Variable_4, -0.722945, 0.798964);
 			
 			// *
 			BufferXY.Variable_2 = Variable_4 * BufferConstant.Variable_3;
@@ -274,7 +270,8 @@ public:
 			v_flt Variable_4; // 2D IQ Noise output 0
 			v_flt _2D_IQ_Noise_0_Temp_1; // 2D IQ Noise output 1
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
-			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoiseDeriv_2D(Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
+			Variable_4 = FMath::Clamp<v_flt>(Variable_4, -0.722945, 0.798964);
 			
 			// *
 			v_flt Variable_2; // * output 0
@@ -589,22 +586,19 @@ public:
 		{
 			FBufferConstant() {}
 			
-			TVoxelRange<v_flt> Variable_7; // Frequency = 0.001 output 0
-			TVoxelRange<v_flt> Variable_3; // Height = 500.0 output 0
+			TVoxelRange<v_flt> Variable_2; // * output 0
 		};
 		
 		struct FBufferX
 		{
 			FBufferX() {}
 			
-			TVoxelRange<v_flt> Variable_5; // X output 0
 		};
 		
 		struct FBufferXY
 		{
 			FBufferXY() {}
 			
-			TVoxelRange<v_flt> Variable_2; // * output 0
 		};
 		
 		FLocalComputeStruct_LocalValueRangeAnalysis(const FParams& InParams)
@@ -631,6 +625,46 @@ public:
 					///////////// Then init constant nodes /////////////
 					////////////////////////////////////////////////////
 					
+					// Init of 2D IQ Noise
+					_2D_IQ_Noise_1_Noise.SetSeed(FVoxelGraphSeed(1337));
+					_2D_IQ_Noise_1_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
+					_2D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.5);
+					_2D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
+					_2D_IQ_Noise_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
+					_2D_IQ_Noise_1_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
+					_2D_IQ_Noise_1_LODToOctaves[0] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[1] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[2] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[3] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[4] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[5] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[6] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[7] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[8] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[9] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[10] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[11] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[12] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[13] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[14] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[15] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[16] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[17] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[18] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[19] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[20] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[21] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[22] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[23] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[24] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[25] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[26] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[27] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[28] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[29] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[30] = 15;
+					_2D_IQ_Noise_1_LODToOctaves[31] = 15;
+					
 				}
 				
 				////////////////////////////////////////////////////
@@ -643,11 +677,20 @@ public:
 			//////////////// Compute constants /////////////////
 			////////////////////////////////////////////////////
 			{
-				// Frequency = 0.001
-				BufferConstant.Variable_7 = Params.Frequency;
-				
 				// Height = 500.0
-				BufferConstant.Variable_3 = Params.Height;
+				TVoxelRange<v_flt> Variable_3; // Height = 500.0 output 0
+				Variable_3 = Params.Height;
+				
+				// 2D IQ Noise
+				TVoxelRange<v_flt> Variable_4; // 2D IQ Noise output 0
+				TVoxelRange<v_flt> _2D_IQ_Noise_1_Temp_1; // 2D IQ Noise output 1
+				TVoxelRange<v_flt> _2D_IQ_Noise_1_Temp_2; // 2D IQ Noise output 2
+				Variable_4 = { -0.722945f, 0.798964f };
+				_2D_IQ_Noise_1_Temp_1 = { -1.342896f, 1.704131f };
+				_2D_IQ_Noise_1_Temp_2 = { -1.209649f, 1.295183f };
+				
+				// *
+				BufferConstant.Variable_2 = Variable_4 * Variable_3;
 				
 			}
 		}
@@ -674,46 +717,6 @@ public:
 		
 		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
 		{
-			// Init of 2D IQ Noise
-			_2D_IQ_Noise_1_Noise.SetSeed(FVoxelGraphSeed(1337));
-			_2D_IQ_Noise_1_Noise.SetInterp(FVoxelFastNoise::Quintic);
-			_2D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.5);
-			_2D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
-			_2D_IQ_Noise_1_Noise.SetFractalType(FVoxelFastNoise::FBM);
-			_2D_IQ_Noise_1_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
-			_2D_IQ_Noise_1_LODToOctaves[0] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[1] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[2] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[3] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[4] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[5] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[6] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[7] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[8] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[9] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[10] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[11] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[12] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[13] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[14] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[15] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[16] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[17] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[18] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[19] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[20] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[21] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[22] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[23] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[24] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[25] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[26] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[27] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[28] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[29] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[30] = 15;
-			_2D_IQ_Noise_1_LODToOctaves[31] = 15;
-			
 		}
 		
 		///////////////////////////////////////////////////////////////////////
@@ -726,29 +729,9 @@ public:
 			TVoxelRange<v_flt> Variable_0; // Z output 0
 			Variable_0 = Context.GetLocalZ();
 			
-			// X
-			TVoxelRange<v_flt> Variable_5; // X output 0
-			Variable_5 = Context.GetLocalX();
-			
-			// Y
-			TVoxelRange<v_flt> Variable_6; // Y output 0
-			Variable_6 = Context.GetLocalY();
-			
-			// 2D IQ Noise
-			TVoxelRange<v_flt> Variable_4; // 2D IQ Noise output 0
-			TVoxelRange<v_flt> _2D_IQ_Noise_1_Temp_1; // 2D IQ Noise output 1
-			TVoxelRange<v_flt> _2D_IQ_Noise_1_Temp_2; // 2D IQ Noise output 2
-			Variable_4 = { -0.722945f, 0.798964f };
-			_2D_IQ_Noise_1_Temp_1 = { -1.342896f, 1.704131f };
-			_2D_IQ_Noise_1_Temp_2 = { -1.209649f, 1.295183f };
-			
-			// *
-			TVoxelRange<v_flt> Variable_2; // * output 0
-			Variable_2 = Variable_4 * BufferConstant.Variable_3;
-			
 			// -
 			TVoxelRange<v_flt> Variable_1; // - output 0
-			Variable_1 = Variable_0 - Variable_2;
+			Variable_1 = Variable_0 - BufferConstant.Variable_2;
 			
 			Outputs.Value = Variable_1;
 		}
@@ -814,8 +797,6 @@ public:
 	
 	template<uint32... Permutation>
 	auto& GetRangeTarget() const;
-	
-	inline void ReportRangeAnalysisFailure() const {}
 	
 private:
 	FParams Params;

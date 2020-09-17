@@ -3,6 +3,7 @@
 #if 0
 
 #include "VoxelWorldGeneratorExample.h"
+#include "FastNoise/VoxelFastNoise.inl"
 #include "VoxelMaterialBuilder.h"
 
 TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelWorldGeneratorExample::GetInstance()

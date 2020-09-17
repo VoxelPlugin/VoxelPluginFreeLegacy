@@ -1,18 +1,20 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelGraphEditorModule.h"
-#include "VoxelGraphConnectionDrawingPolicy.h"
-#include "VoxelGraphPanelPinFactory.h"
-#include "VoxelGraphEditorToolkit.h"
-#include "VoxelGraphNodes/VoxelGraphNodeFactory.h"
-#include "VoxelGraphGenerator.h"
-#include "VoxelGraphEditor.h"
 
-#include "Interfaces/IPluginManager.h"
+#include "VoxelGraphEditor.h"
+#include "VoxelGraphGenerator.h"
+#include "VoxelGraphEditorToolkit.h"
+#include "VoxelGraphPanelPinFactory.h"
+#include "VoxelGraphConnectionDrawingPolicy.h"
+#include "VoxelGraphNodes/VoxelGraphNodeFactory.h"
+
+#include "ContentBrowserModule.h"
+#include "Modules/ModuleManager.h"
 #include "Brushes/SlateImageBrush.h"
 #include "Styling/SlateStyle.h"
 #include "Styling/SlateStyleRegistry.h"
-#include "Modules/ModuleManager.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 
 const FVector2D Icon14x14(14.0f, 14.0f);
 const FVector2D Icon16x16(16.0f, 16.0f);
@@ -31,14 +33,40 @@ public:
 	{
 		IVoxelGraphEditor::SetVoxelGraphEditor(MakeShared<FVoxelGraphEditor>());
 		
-		TSharedPtr<FVoxelGraphConnectionDrawingPolicyFactory> VoxelGraphConnectionFactory = MakeShareable(new FVoxelGraphConnectionDrawingPolicyFactory);
-		FEdGraphUtilities::RegisterVisualPinConnectionFactory(VoxelGraphConnectionFactory);
+		FEdGraphUtilities::RegisterVisualPinConnectionFactory(MakeShared<FVoxelGraphConnectionDrawingPolicyFactory>());
+		FEdGraphUtilities::RegisterVisualNodeFactory(MakeShared<FVoxelGraphNodeFactory>());
+		FEdGraphUtilities::RegisterVisualPinFactory(MakeShared<FVoxelGraphPanelPinFactory>());
 
-		TSharedPtr<FVoxelGraphNodeFactory> VoxelGraphNodeFactory = MakeShareable(new FVoxelGraphNodeFactory());
-		FEdGraphUtilities::RegisterVisualNodeFactory(VoxelGraphNodeFactory);
+		FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>(TEXT("ContentBrowser"));
+		ContentBrowserModule.GetAllAssetViewContextMenuExtenders().Add(FContentBrowserMenuExtender_SelectedAssets::CreateLambda([=](const TArray<FAssetData>& SelectedAssets)
+		{
+			const auto Extender = MakeShared<FExtender>();
+			
+			for (auto& It : SelectedAssets)
+			{
+				if (!It.GetClass()->IsChildOf<UVoxelGraphGenerator>())
+				{
+					return Extender;
+				}
+			}
+		
+			Extender->AddMenuExtension(
+				"CommonAssetActions",
+				EExtensionHook::After,
+				nullptr,
+				FMenuExtensionDelegate::CreateLambda([=](FMenuBuilder& MenuBuilder)
+				{
+					MenuBuilder.AddMenuEntry(
+					VOXEL_LOCTEXT("Compile voxel graph to C++"),
+					TAttribute<FText>(),
+					FSlateIcon(NAME_None, NAME_None),
+					FUIAction(FExecuteAction::CreateLambda([=]()
+					{
+					})));
+				}));
 
-		TSharedPtr<FVoxelGraphPanelPinFactory> VoxelGraphPanelPinFactory = MakeShareable(new FVoxelGraphPanelPinFactory());
-		FEdGraphUtilities::RegisterVisualPinFactory(VoxelGraphPanelPinFactory);
+			return Extender;
+		}));
 
 		// Icons
 		{

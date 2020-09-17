@@ -5,7 +5,7 @@
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelData/VoxelData.inl"
 #include "VoxelWorld.h"
-#include "VoxelFastNoise.h"
+#include "FastNoise/VoxelFastNoise.inl"
 
 #include "Misc/ScopeExit.h"
 

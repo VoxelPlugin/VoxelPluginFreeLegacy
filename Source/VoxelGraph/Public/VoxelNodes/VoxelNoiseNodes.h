@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelNoiseNodesBase.h"
+#include "FastNoise/VoxelFastNoise.inl"
 #include "VoxelNoiseNodes.generated.h"
 
 #define GENERATED_NOISENODE_BODY_IMPL(Dimension, FunctionName, Body, Parent) \
@@ -191,10 +192,10 @@ class VOXELGRAPH_API UVoxelNode_CellularNoise : public UVoxelNode_NoiseNode
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Cellular Noise settings")
-	ECellularDistanceFunction DistanceFunction;
+	EVoxelCellularDistanceFunction DistanceFunction;
 
 	UPROPERTY(EditAnywhere, Category = "Cellular Noise settings")
-	ECellularReturnType ReturnType;
+	EVoxelCellularReturnType ReturnType;
 
 	UPROPERTY(EditAnywhere, Category = "Cellular Noise settings")
 	float Jitter = 0.45;
