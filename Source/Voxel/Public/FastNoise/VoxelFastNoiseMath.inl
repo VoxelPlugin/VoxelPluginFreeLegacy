@@ -3,6 +3,7 @@
 #pragma once
 
 #include "FastNoise/VoxelFastNoiseMath.h"
+#include <cmath>
 
 // THIS CODE IS A MODIFIED VERSION OF FAST NOISE: SEE LICENSE BELOW
 //

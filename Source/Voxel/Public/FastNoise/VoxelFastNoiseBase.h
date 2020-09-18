@@ -111,6 +111,11 @@ public:
 	void SetCellularJitter(v_flt NewCellularJitter) { CellularJitter = NewCellularJitter; }
 	v_flt GetCellularJitter() const { return CellularJitter; }
 
+	// Higher value = flatter crater borders
+	// 0 to disable (much faster disabled)
+	void SetCraterFalloffExponent(v_flt NewCraterFalloffExponent) { CraterFalloffExponent = NewCraterFalloffExponent; }
+	v_flt GetCraterFalloffExponent() const { return CraterFalloffExponent; }
+
 protected:
 	EVoxelNoiseInterpolation Interpolation = EVoxelNoiseInterpolation::Quintic;
 	
@@ -125,6 +130,7 @@ protected:
 	EVoxelCellularDistanceFunction CellularDistanceFunction = EVoxelCellularDistanceFunction::Euclidean;
 	EVoxelCellularReturnType CellularReturnType = EVoxelCellularReturnType::CellValue;
 	v_flt CellularJitter = v_flt(0.45);
+	v_flt CraterFalloffExponent = 0.f;
 
 protected:
 	template<typename T>
@@ -224,58 +230,58 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#define GENERATED_VOXEL_NOISE_FUNCTION_2D(Name) \
-	FN_FORCEINLINE v_flt Get ## Name ## _2D(v_flt x, v_flt y, v_flt frequency) const \
+#define GENERATED_VOXEL_NOISE_FUNCTION_2D(FunctionName) \
+	FN_FORCEINLINE v_flt Get ## FunctionName ## _2D(v_flt x, v_flt y, v_flt frequency) const \
 	{ \
-		return Single ## Name ## _2D(0, x * frequency, y * frequency); \
+		return Single ## FunctionName ## _2D(0, x * frequency, y * frequency); \
 	}
 
-#define GENERATED_VOXEL_NOISE_FUNCTION_2D_DERIV(Name) \
-	FN_FORCEINLINE v_flt Get ## Name ## _2D_Deriv(v_flt x, v_flt y, v_flt frequency, v_flt& outDx, v_flt& outDy) const \
+#define GENERATED_VOXEL_NOISE_FUNCTION_2D_DERIV(FunctionName) \
+	FN_FORCEINLINE v_flt Get ## FunctionName ## _2D_Deriv(v_flt x, v_flt y, v_flt frequency, v_flt& outDx, v_flt& outDy) const \
 	{ \
-		return Single ## Name ## _2D_Deriv(0, x * frequency, y * frequency, outDx, outDy); \
+		return Single ## FunctionName ## _2D_Deriv(0, x * frequency, y * frequency, outDx, outDy); \
 	}
 
-#define GENERATED_VOXEL_NOISE_FUNCTION_3D(Name) \
-	FN_FORCEINLINE v_flt Get ## Name ## _3D(v_flt x, v_flt y, v_flt z, v_flt frequency) const \
+#define GENERATED_VOXEL_NOISE_FUNCTION_3D(FunctionName) \
+	FN_FORCEINLINE v_flt Get ## FunctionName ## _3D(v_flt x, v_flt y, v_flt z, v_flt frequency) const \
 	{ \
-		return Single ## Name ## _3D(0, x * frequency, y * frequency, z * frequency); \
+		return Single ## FunctionName ## _3D(0, x * frequency, y * frequency, z * frequency); \
 	}
 
-#define GENERATED_VOXEL_NOISE_FUNCTION_3D_DERIV(Name) \
-	FN_FORCEINLINE v_flt Get ## Name ## _3D_Deriv(v_flt x, v_flt y, v_flt z, v_flt frequency, v_flt& outDx, v_flt& outDy, v_flt& outDz) const \
+#define GENERATED_VOXEL_NOISE_FUNCTION_3D_DERIV(FunctionName) \
+	FN_FORCEINLINE v_flt Get ## FunctionName ## _3D_Deriv(v_flt x, v_flt y, v_flt z, v_flt frequency, v_flt& outDx, v_flt& outDy, v_flt& outDz) const \
 	{ \
-		return Single ## Name ## _3D_Deriv(0, x * frequency, y * frequency, z * frequency, outDx, outDy, outDz); \
+		return Single ## FunctionName ## _3D_Deriv(0, x * frequency, y * frequency, z * frequency, outDx, outDy, outDz); \
 	}
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#define GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_2D(Name) \
-	DEFINE_VOXEL_NOISE_LAMBDA(TVoxelFastNoise_ ## Name ## Noise<T>, Single ## Name ## _2D) \
-	FN_FORCEINLINE v_flt Get ## Name ## Fractal_2D(v_flt x, v_flt y, v_flt frequency, int32 octaves) const \
+#define GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_2D(ClassName, FunctionName) \
+	DEFINE_VOXEL_NOISE_LAMBDA(TVoxelFastNoise_ ## ClassName ## Noise<T>, Single ## FunctionName ## _2D) \
+	FN_FORCEINLINE v_flt Get ## FunctionName ## Fractal_2D(v_flt x, v_flt y, v_flt frequency, int32 octaves) const \
 	{ \
-		return This().Fractal_2D(FLambda_ ## Single ## Name ## _2D { *this }, x, y, frequency, octaves); \
+		return This().Fractal_2D(FLambda_ ## Single ## FunctionName ## _2D { *this }, x, y, frequency, octaves); \
 	}
 
-#define GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_2D_DERIV(Name) \
-	DEFINE_VOXEL_NOISE_LAMBDA(TVoxelFastNoise_ ## Name ## Noise<T>, Single ## Name ## _2D_Deriv) \
-	FN_FORCEINLINE v_flt Get ## Name ## Fractal_2D_Deriv(v_flt x, v_flt y, v_flt frequency, int32 octaves, v_flt& outDx, v_flt& outDy) const \
+#define GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_2D_DERIV(ClassName, FunctionName) \
+	DEFINE_VOXEL_NOISE_LAMBDA(TVoxelFastNoise_ ## ClassName ## Noise<T>, Single ## FunctionName ## _2D_Deriv) \
+	FN_FORCEINLINE v_flt Get ## FunctionName ## Fractal_2D_Deriv(v_flt x, v_flt y, v_flt frequency, int32 octaves, v_flt& outDx, v_flt& outDy) const \
 	{ \
-		return This().Fractal_2D_Deriv(FLambda_ ## Single ## Name ## _2D_Deriv { *this }, x, y, frequency, octaves, outDx, outDy); \
+		return This().Fractal_2D_Deriv(FLambda_ ## Single ## FunctionName ## _2D_Deriv { *this }, x, y, frequency, octaves, outDx, outDy); \
 	}
 
-#define GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_3D(Name) \
-	DEFINE_VOXEL_NOISE_LAMBDA(TVoxelFastNoise_ ## Name ## Noise<T>, Single ## Name ## _3D) \
-	FN_FORCEINLINE v_flt Get ## Name ## Fractal_3D(v_flt x, v_flt y, v_flt z, v_flt frequency, int32 octaves) const \
+#define GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_3D(ClassName, FunctionName) \
+	DEFINE_VOXEL_NOISE_LAMBDA(TVoxelFastNoise_ ## ClassName ## Noise<T>, Single ## FunctionName ## _3D) \
+	FN_FORCEINLINE v_flt Get ## FunctionName ## Fractal_3D(v_flt x, v_flt y, v_flt z, v_flt frequency, int32 octaves) const \
 	{ \
-		return This().Fractal_3D(FLambda_ ## Single ## Name ## _3D { *this }, x, y, z, frequency, octaves); \
+		return This().Fractal_3D(FLambda_ ## Single ## FunctionName ## _3D { *this }, x, y, z, frequency, octaves); \
 	}
 
-#define GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_3D_DERIV(Name) \
-	DEFINE_VOXEL_NOISE_LAMBDA(TVoxelFastNoise_ ## Name ## Noise<T>, Single ## Name ## _3D_Deriv) \
-	FN_FORCEINLINE v_flt Get ## Name ## Fractal_3D_Deriv(v_flt x, v_flt y, v_flt z, v_flt frequency, int32 octaves, v_flt& outDx, v_flt& outDy, v_flt& outDz) const \
+#define GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_3D_DERIV(ClassName, FunctionName) \
+	DEFINE_VOXEL_NOISE_LAMBDA(TVoxelFastNoise_ ## ClassName ## Noise<T>, Single ## FunctionName ## _3D_Deriv) \
+	FN_FORCEINLINE v_flt Get ## FunctionName ## Fractal_3D_Deriv(v_flt x, v_flt y, v_flt z, v_flt frequency, int32 octaves, v_flt& outDx, v_flt& outDy, v_flt& outDz) const \
 	{ \
-		return This().Fractal_3D_Deriv(FLambda_ ## Single ## Name ## _3D_Deriv { *this }, x, y, z, frequency, octaves, outDx, outDy, outDz); \
+		return This().Fractal_3D_Deriv(FLambda_ ## Single ## FunctionName ## _3D_Deriv { *this }, x, y, z, frequency, octaves, outDx, outDy, outDz); \
 	}
