@@ -926,10 +926,11 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 			// Make sure to check the opposite direction of FromPin
 			return UVoxelGraphNode::HasVectorPin(*Node, FromPin->Direction == EGPD_Input ? EGPD_Output : EGPD_Input);
 		}
-
+		
+		// Make sure to check the opposite direction of FromPin
 		return FromPin->Direction == EGPD_Input
-			? Node->HasInputPinWithCategory(Category)
-			: Node->HasOutputPinWithCategory(Category);
+			? Node->HasOutputPinWithCategory(Category)
+			: Node->HasInputPinWithCategory(Category);
 	};
 
 	// Macros

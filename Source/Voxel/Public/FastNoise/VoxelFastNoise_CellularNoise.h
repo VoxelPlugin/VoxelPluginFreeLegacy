@@ -23,6 +23,11 @@ public:
 		v_flt& out_x1, v_flt& out_y1, v_flt& out_distance1, 
 		v_flt& out_x2, v_flt& out_y2, v_flt& out_distance2, 
 		v_flt& out_x3, v_flt& out_y3, v_flt& out_distance3) const;
+
+	GENERATED_VOXEL_NOISE_FUNCTION_2D(Crater)
+	GENERATED_VOXEL_NOISE_FUNCTION_3D(Crater)
+	GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_2D(Cellular, Crater)
+	GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_3D(Cellular, Crater)
 	
 protected:
 	template<EVoxelCellularDistanceFunction CellularDistance>
@@ -37,10 +42,15 @@ protected:
 	
 	template<EVoxelCellularDistanceFunction CellularDistance>
 	void SingleVoronoi_2D(v_flt x, v_flt y, v_flt m_jitter, v_flt& out_x, v_flt& out_y) const;
+	
+	v_flt SingleCrater_2D(uint8 offset, v_flt x, v_flt y) const;
+	v_flt SingleCrater_3D(uint8 offset, v_flt x, v_flt y, v_flt z) const;
 
 protected:
-	template<EVoxelCellularDistanceFunction Enum>
+	template<EVoxelCellularDistanceFunction CellularDistance>
 	static v_flt CellularDistance_2D(v_flt vecX, v_flt vecY);
-	template<EVoxelCellularDistanceFunction Enum>
+	template<EVoxelCellularDistanceFunction CellularDistance>
 	static v_flt CellularDistance_3D(v_flt vecX, v_flt vecY, v_flt vecZ);
+
+	void AccumulateCrater(v_flt sqDistance, v_flt& va, v_flt& wt) const;
 };

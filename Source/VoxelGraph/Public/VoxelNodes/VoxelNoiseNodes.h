@@ -218,6 +218,10 @@ class VOXELGRAPH_API UVoxelNode_3DCellularNoise : public UVoxelNode_CellularNois
 	GENERATED_NOISENODE_BODY_DIM_IMPL(3,,, GetCellular, FVoxelCellularNoiseComputeNode)
 };
 
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
 // 2D IQ Noise: uses the derivative to "smooth" the fractals. 
 // For more details: 
 // http://www.iquilezles.org/www/articles/morenoise/morenoise.htm
@@ -238,4 +242,71 @@ class VOXELGRAPH_API UVoxelNode_3DIQNoise : public UVoxelNode_3DIQNoiseBase
 {
 	GENERATED_BODY()
 	GENERATED_NOISENODE_BODY_DIM_IMPL(3, _DERIVATIVE, _FRACTAL, IQNoise, FVoxel3DIQNoiseComputeNode)
+};
+
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+UCLASS(Abstract)
+class VOXELGRAPH_API UVoxelNode_CraterNoise : public UVoxelNode_NoiseNode
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, Category = "Crater Noise settings")
+	float Jitter = 0.45;
+	
+	// Higher value = flatter crater borders
+	// 0 to disable (much faster disabled)
+	UPROPERTY(EditAnywhere, Category = "Crater Noise settings")
+	float FalloffExponent = 0.f;
+};
+
+UCLASS(Abstract)
+class VOXELGRAPH_API UVoxelNode_CraterNoiseFractal : public UVoxelNode_NoiseNodeFractal
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, Category = "Crater Noise settings")
+	float Jitter = 0.45;
+	
+	// Higher value = flatter crater borders
+	// 0 to disable (much faster disabled)
+	UPROPERTY(EditAnywhere, Category = "Crater Noise settings")
+	float FalloffExponent = 0.f;
+};
+
+
+// 2D Crater Noise
+UCLASS(DisplayName = "2D Crater Noise", Category = "Noise|Crater Noise")
+class VOXELGRAPH_API UVoxelNode_2DCraterNoise : public UVoxelNode_CraterNoise
+{
+	GENERATED_BODY()
+	GENERATED_NOISENODE_BODY_DIM_IMPL(2,,, GetCrater, FVoxelCraterNoiseComputeNode)
+};
+
+// 3D Crater Noise
+UCLASS(DisplayName = "3D Crater Noise", Category = "Noise|Crater Noise")
+class VOXELGRAPH_API UVoxelNode_3DCraterNoise : public UVoxelNode_CraterNoise
+{
+	GENERATED_BODY()
+	GENERATED_NOISENODE_BODY_DIM_IMPL(3,,, GetCrater, FVoxelCraterNoiseComputeNode)
+};
+
+// 2D Crater Noise Fractal
+UCLASS(DisplayName = "2D Crater Noise Fractal", Category = "Noise|Crater Noise")
+class VOXELGRAPH_API UVoxelNode_2DCraterNoiseFractal : public UVoxelNode_CraterNoiseFractal
+{
+	GENERATED_BODY()
+	GENERATED_NOISENODE_BODY_DIM_IMPL(2,, _FRACTAL, GetCraterFractal, FVoxelCraterNoiseFractalComputeNode)
+};
+
+// 3D Crater Noise Fractal
+UCLASS(DisplayName = "3D Crater Noise Fractal", Category = "Noise|Crater Noise")
+class VOXELGRAPH_API UVoxelNode_3DCraterNoiseFractal : public UVoxelNode_CraterNoiseFractal
+{
+	GENERATED_BODY()
+	GENERATED_NOISENODE_BODY_DIM_IMPL(3,, _FRACTAL, GetCraterFractal, FVoxelCraterNoiseFractalComputeNode)
 };

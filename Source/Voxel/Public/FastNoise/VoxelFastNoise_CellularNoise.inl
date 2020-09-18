@@ -343,6 +343,76 @@ FN_FORCEINLINE_SINGLE void TVoxelFastNoise_CellularNoise<T>::SingleVoronoi_2D(v_
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_CellularNoise<T>::SingleCrater_2D(uint8 offset, v_flt x, v_flt y) const
+{
+	const int32 xi = FNoiseMath::FastFloor(x);
+	const int32 yi = FNoiseMath::FastFloor(y);
+	const v_flt xf = x - xi;
+	const v_flt yf = y - yi;
+	
+	v_flt va = 0.f;
+	v_flt wt = 0.f;
+
+	for (int32 i = -1; i <= 1; i++)
+	{
+		for (int32 j = -1; j <= 1; j++)
+		{
+			const uint8 lutPos = This().Index2D_256(offset, xi + i, yi + j);
+
+			const v_flt vecX = xf - (i + 0.5f + This().CELL_3D_X[lutPos] * This().CellularJitter);
+			const v_flt vecY = yf - (j + 0.5f + This().CELL_3D_Y[lutPos] * This().CellularJitter);
+
+			const v_flt sqDistance = vecX * vecX + vecY * vecY;
+			AccumulateCrater(sqDistance, va, wt);
+		}
+	}
+	
+	return wt == 0 ? 0 : FNoiseMath::FastAbs(va / wt);
+}
+
+template<typename T>
+FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_CellularNoise<T>::SingleCrater_3D(uint8 offset, v_flt x, v_flt y, v_flt z) const
+{
+	const int32 xi = FNoiseMath::FastFloor(x);
+	const int32 yi = FNoiseMath::FastFloor(y);
+	const int32 zi = FNoiseMath::FastFloor(z);
+	const v_flt xf = x - xi;
+	const v_flt yf = y - yi;
+	const v_flt zf = z - zi;
+	
+	v_flt va = 0.f;
+	v_flt wt = 0.f;
+
+	for (int32 i = -1; i <= 1; i++)
+	{
+		for (int32 j = -1; j <= 1; j++)
+		{
+			for (int32 k = -1; k <= 1; k++)
+			{
+				const uint8 lutPos = This().Index3D_256(offset, xi + i, yi + j, zi + k);
+
+				const v_flt vecX = xf - (i + 0.5f + This().CELL_3D_X[lutPos] * This().CellularJitter);
+				const v_flt vecY = yf - (j + 0.5f + This().CELL_3D_Y[lutPos] * This().CellularJitter);
+				const v_flt vecZ = zf - (k + 0.5f + This().CELL_3D_Z[lutPos] * This().CellularJitter);
+
+				const v_flt sqDistance = vecX * vecX + vecY * vecY + vecZ * vecZ;
+				AccumulateCrater(sqDistance, va, wt);
+			}
+		}
+	}
+	
+	return wt == 0 ? 0 : FNoiseMath::FastAbs(va / wt);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 template<typename T>
 FN_FORCEINLINE void TVoxelFastNoise_CellularNoise<T>::GetVoronoiNeighbors_2D(
 	v_flt x, v_flt y,
@@ -433,10 +503,10 @@ FN_FORCEINLINE void TVoxelFastNoise_CellularNoise<T>::GetVoronoiNeighbors_2D(
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-template<EVoxelCellularDistanceFunction Enum>
+template<EVoxelCellularDistanceFunction CellularDistance>
 FN_FORCEINLINE_MATH v_flt TVoxelFastNoise_CellularNoise<T>::CellularDistance_2D(v_flt vecX, v_flt vecY)
 {
-	switch (Enum)
+	switch (CellularDistance)
 	{
 	default: ensureVoxelSlow(false);
 	case EVoxelCellularDistanceFunction::Euclidean:
@@ -449,10 +519,10 @@ FN_FORCEINLINE_MATH v_flt TVoxelFastNoise_CellularNoise<T>::CellularDistance_2D(
 }
 
 template<typename T>
-template<EVoxelCellularDistanceFunction Enum>
+template<EVoxelCellularDistanceFunction CellularDistance>
 FN_FORCEINLINE_MATH v_flt TVoxelFastNoise_CellularNoise<T>::CellularDistance_3D(v_flt vecX, v_flt vecY, v_flt vecZ)
 {
-	switch (Enum)
+	switch (CellularDistance)
 	{
 	default: ensureVoxelSlow(false);
 	case EVoxelCellularDistanceFunction::Euclidean:
@@ -462,4 +532,36 @@ FN_FORCEINLINE_MATH v_flt TVoxelFastNoise_CellularNoise<T>::CellularDistance_3D(
 	case EVoxelCellularDistanceFunction::Natural:
 		return (FNoiseMath::FastAbs(vecX) + FNoiseMath::FastAbs(vecY) + FNoiseMath::FastAbs(vecZ)) + (vecX * vecX + vecY * vecY + vecZ * vecZ);
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+FN_FORCEINLINE_MATH void TVoxelFastNoise_CellularNoise<T>::AccumulateCrater(const v_flt sqDistance, v_flt& va, v_flt& wt) const
+{
+	// This is heavily inspired from https://www.shadertoy.com/view/MtjGRD
+
+	// Early cull far craters
+	if (sqDistance >= 1) return;
+	
+	const v_flt distance = std::sqrt(sqDistance);
+
+	// Make sure that the function is nulled beyond 1, else we get issue when only iterating nearby craters
+	v_flt w = FMath::Clamp<v_flt>((1.f - distance) * 2.f, 0, 1);
+
+	// Exponential decrease
+	w *= std::exp(-4.f * distance);
+
+	v_flt multiplier = 1;
+	if (This().CraterFalloffExponent != 0)
+	{
+		multiplier = std::exp(-This().CraterFalloffExponent * distance);
+	}
+
+	// Sin for the bump
+	// + 0.055f so we don't get a bump in the middle of the crater
+	va += w * std::sin(2.f * PI * std::sqrt(distance + 0.055f)) * multiplier;
+	wt += w;
 }
