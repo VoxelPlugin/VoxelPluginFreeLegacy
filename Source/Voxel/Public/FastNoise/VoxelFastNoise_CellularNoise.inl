@@ -414,6 +414,50 @@ FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_CellularNoise<T>::SingleCrater_3D(ui
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
+FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_CellularNoise<T>::SingleGavoronoi_2D(uint8 offset, v_flt x, v_flt y, v_flt dirX, v_flt dirY, v_flt dirVariation) const
+{
+	// From https://www.shadertoy.com/view/llsGWl
+	
+	const int32 xi = FNoiseMath::FastFloor(x);
+	const int32 yi = FNoiseMath::FastFloor(y);
+	const v_flt xf = x - xi;
+	const v_flt yf = y - yi;
+
+	v_flt va = 0.f;
+	v_flt wt = 0.f;
+
+	for (int32 i = -1; i <= 1; i++)
+	{
+		for (int32 j = -1; j <= 1; j++)
+		{
+			const uint8 lutPos = This().Index2D_256(offset, xi + i, yi + j);
+			const v_flt jitterX = This().CELL_3D_X[lutPos];
+			const v_flt jitterY = This().CELL_3D_Y[lutPos];
+
+			const v_flt vecX = xf - (i + 0.5f + jitterX * This().CellularJitter);
+			const v_flt vecY = yf - (j + 0.5f + jitterY * This().CellularJitter);
+
+			const v_flt sqDistance = vecX * vecX + vecY * vecY;
+			const v_flt distance = std::sqrt(sqDistance);
+
+			const v_flt w = std::exp(-4.f * distance);
+			
+			const v_flt noisyDirectionX = dirX + jitterX * dirVariation;
+			const v_flt noisyDirectionY = dirY + jitterY * dirVariation;
+			
+			va += w * std::cos((vecX * noisyDirectionX + vecY * noisyDirectionY) * 2.f * PI);
+			wt += w;
+		}
+	}
+
+	return wt == 0 ? 0 : FNoiseMath::FastAbs(va / wt);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
 FN_FORCEINLINE void TVoxelFastNoise_CellularNoise<T>::GetVoronoiNeighbors_2D(
 	v_flt x, v_flt y,
 	v_flt m_jitter,

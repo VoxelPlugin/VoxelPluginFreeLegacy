@@ -13,6 +13,7 @@
 #include "VoxelNoiseNodesBase.generated.h"
 
 class FVoxelCppConstructor;
+class IVoxelNoiseNodeHelper;
 struct FVoxelWorldGeneratorInit;
 
 UCLASS(Abstract)
@@ -45,11 +46,11 @@ public:
 	virtual FName GetOutputPinName(int32 PinIndex) const override;
 	virtual FString GetInputPinToolTip(int32 PinIndex) const override;
 	virtual FString GetOutputPinToolTip(int32 PinIndex) const override;
-	virtual int32 GetMinInputPins() const override { return GetDimension() + 2; }
-	virtual int32 GetMaxInputPins() const override { return GetDimension() + 2; }
-	virtual int32 GetOutputPinsCount() const override { return IsDerivative() ? GetDimension() + 1 : 1; }
-	virtual EVoxelPinCategory GetInputPinCategory(int32 PinIndex) const override { return PinIndex == GetDimension() + 1 ? EVoxelPinCategory::Seed : EVoxelPinCategory::Float; }
-	virtual EVoxelPinCategory GetOutputPinCategory(int32 PinIndex) const override { return EVoxelPinCategory::Float; }
+	virtual int32 GetMinInputPins() const override { return GetBaseInputPinsCount() + CustomNoisePins.InputPins.Num(); }
+	virtual int32 GetMaxInputPins() const override { return GetMinInputPins(); }
+	virtual int32 GetOutputPinsCount() const override { return GetBaseOutputPinsCount() + CustomNoisePins.OutputPins.Num(); }
+	virtual EVoxelPinCategory GetInputPinCategory(int32 PinIndex) const override;
+	virtual EVoxelPinCategory GetOutputPinCategory(int32 PinIndex) const override;
 	virtual FString GetInputPinDefaultValue(int32 PinIndex) const override;
 	//~ End UVoxelNode Interface
 
@@ -68,6 +69,12 @@ public:
 	virtual void PostLoad() override;
 	virtual void PostInitProperties() override;
 	//~ End UObject Interface
+
+protected:
+	FVoxelPinsHelper CustomNoisePins;
+
+	int32 GetBaseInputPinsCount() const { return GetDimension() + 2; }
+	int32 GetBaseOutputPinsCount() const { return IsDerivative() ? GetDimension() + 1 : 1; }
 };
 
 

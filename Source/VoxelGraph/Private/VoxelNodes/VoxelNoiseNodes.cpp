@@ -22,7 +22,7 @@ FName UVoxelNode_NoiseNode::GetInputPinName(int32 PinIndex) const
 		{
 			return "Frequency";
 		}
-		else
+		else if (PinIndex == 3)
 		{
 			return "Seed";
 		}
@@ -45,11 +45,13 @@ FName UVoxelNode_NoiseNode::GetInputPinName(int32 PinIndex) const
 		{
 			return "Frequency";
 		}
-		else
+		else if (PinIndex == 4)
 		{
 			return "Seed";
 		}
 	}
+	
+	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount()).Name;
 }
 
 FName UVoxelNode_NoiseNode::GetOutputPinName(int32 PinIndex) const
@@ -58,18 +60,24 @@ FName UVoxelNode_NoiseNode::GetOutputPinName(int32 PinIndex) const
 	{
 		return IsDerivative() ? "Value" : "";
 	}
-	else if (PinIndex == 1)
+
+	if (IsDerivative())
 	{
-		return "DX";
+		if (PinIndex == 1)
+		{
+			return "DX";
+		}
+		else if (PinIndex == 2)
+		{
+			return "DY";
+		}
+		else if (PinIndex == 3)
+		{
+			return "DZ";
+		}
 	}
-	else if (PinIndex == 2)
-	{
-		return "DY";
-	}
-	else
-	{
-		return "DZ";
-	}
+
+	return CustomNoisePins.GetOutputPin(PinIndex - GetBaseOutputPinsCount()).Name;
 }
 
 FString UVoxelNode_NoiseNode::GetInputPinToolTip(int32 PinIndex) const
@@ -88,7 +96,7 @@ FString UVoxelNode_NoiseNode::GetInputPinToolTip(int32 PinIndex) const
 		{
 			return "The frequency of the noise";
 		}
-		else
+		else if (PinIndex == 3)
 		{
 			return "The seed to use";
 		}
@@ -111,11 +119,13 @@ FString UVoxelNode_NoiseNode::GetInputPinToolTip(int32 PinIndex) const
 		{
 			return "The frequency of the noise";
 		}
-		else
+		else if (PinIndex == 4)
 		{
 			return "The seed to use";
 		}
 	}
+	
+	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount()).ToolTip;
 }
 
 FString UVoxelNode_NoiseNode::GetOutputPinToolTip(int32 PinIndex) const
@@ -132,10 +142,22 @@ FString UVoxelNode_NoiseNode::GetOutputPinToolTip(int32 PinIndex) const
 	{
 		return "The derivative along the Y axis. Can be used to compute the slope of the noise using GetSlopeFromDerivatives.";
 	}
-	else
+	else if (PinIndex == 3)
 	{
 		return "The derivative along the Z axis. Can be used to compute the slope of the noise using GetSlopeFromDerivatives.";
 	}
+
+	return CustomNoisePins.GetOutputPin(PinIndex - GetBaseOutputPinsCount()).ToolTip;
+}
+
+EVoxelPinCategory UVoxelNode_NoiseNode::GetInputPinCategory(int32 PinIndex) const
+{
+	return PinIndex == GetDimension() + 1 ? EVoxelPinCategory::Seed : EVoxelPinCategory::Float;
+}
+
+EVoxelPinCategory UVoxelNode_NoiseNode::GetOutputPinCategory(int32 PinIndex) const
+{
+	return EVoxelPinCategory::Float;
 }
 
 FString UVoxelNode_NoiseNode::GetInputPinDefaultValue(int32 PinIndex) const
@@ -144,10 +166,8 @@ FString UVoxelNode_NoiseNode::GetInputPinDefaultValue(int32 PinIndex) const
 	{
 		return FString::SanitizeFloat(Frequency);
 	}
-	else
-	{
-		return "";
-	}
+	
+	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount()).DefaultValue;
 }
 
 

@@ -93,6 +93,9 @@ public:
 	// Used by IQ noise
 	void SetMatrix(const FMatrix2x2& NewMatrix) { Matrix2 = NewMatrix; }
 	void SetMatrix(const FMatrix& NewMatrix) { Matrix3 = NewMatrix; }
+
+	void SetMatrixFromRotation_2D(float RotationInDegrees) { Matrix2 = FMatrix2x2(FQuat2D(FMath::DegreesToRadians(RotationInDegrees))); }
+	void SetMatrixFromRotation_3D(const FRotator& Rotation) { Matrix3 = ToMatrix(Rotation); }
 	
 	// Sets distance function used in cellular noise calculations
 	// Default: Euclidean

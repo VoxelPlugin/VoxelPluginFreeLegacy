@@ -4,38 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelNoiseNodesBase.h"
-#include "FastNoise/VoxelFastNoise.inl"
+#include "VoxelNoiseNodesMacros.h"
 #include "VoxelNoiseNodes.generated.h"
-
-#define GENERATED_NOISENODE_BODY_IMPL(Dimension, FunctionName, Body, Parent) \
-	virtual uint32 GetDimension() const override final { return Dimension; }
-
-#define GENERATED_NOISENODE_BODY_DIM_IMPL(Dimension, Derivative, Fractal, FunctionName, Parent) \
-	virtual uint32 GetDimension() const override final { return Dimension; }
-
-#define GENERATED_NOISENODE_BODY_DIM2(FunctionName) \
-	GENERATED_NOISENODE_BODY_DIM_IMPL(2,,, FunctionName, FVoxelNoiseComputeNode)
-#define GENERATED_NOISENODE_BODY_DIM3(FunctionName) \
-	GENERATED_NOISENODE_BODY_DIM_IMPL(3,,, FunctionName, FVoxelNoiseComputeNode)
-
-#define GENERATED_NOISENODE_BODY_FRACTAL_DIM2(FunctionName) \
-	GENERATED_NOISENODE_BODY_DIM_IMPL(2,, _FRACTAL, FunctionName, FVoxelNoiseFractalComputeNode)
-#define GENERATED_NOISENODE_BODY_FRACTAL_DIM3(FunctionName) \
-	GENERATED_NOISENODE_BODY_DIM_IMPL(3,, _FRACTAL, FunctionName, FVoxelNoiseFractalComputeNode)
-
-#define GENERATED_NOISENODE_BODY_DERIVATIVE_DIM2(FunctionName) \
-	GENERATED_NOISENODE_BODY_DIM_IMPL(2, _DERIVATIVE,, FunctionName, FVoxelNoiseComputeNode)
-#define GENERATED_NOISENODE_BODY_DERIVATIVE_DIM3(FunctionName) \
-	GENERATED_NOISENODE_BODY_DIM_IMPL(3, _DERIVATIVE,, FunctionName, FVoxelNoiseComputeNode)
-
-#define GENERATED_NOISENODE_BODY_FRACTAL_DERIVATIVE_DIM2(FunctionName) \
-	GENERATED_NOISENODE_BODY_DIM_IMPL(2, _DERIVATIVE, _FRACTAL, FunctionName, FVoxelNoiseFractalComputeNode)
-#define GENERATED_NOISENODE_BODY_FRACTAL_DERIVATIVE_DIM3(FunctionName) \
-	GENERATED_NOISENODE_BODY_DIM_IMPL(3, _DERIVATIVE, _FRACTAL, FunctionName, FVoxelNoiseFractalComputeNode)
-
-//////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////
 
 // 2D Value Noise
 UCLASS(DisplayName = "2D Value Noise", Category = "Noise|Value Noise")
@@ -197,7 +167,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Cellular Noise settings")
 	EVoxelCellularReturnType ReturnType;
 
-	UPROPERTY(EditAnywhere, Category = "Cellular Noise settings")
+	UPROPERTY(EditAnywhere, Category = "Cellular Noise settings", meta = (UIMin = 0, UIMax = 0.5))
 	float Jitter = 0.45;
 };
 
@@ -230,7 +200,7 @@ UCLASS(DisplayName = "2D IQ Noise", Category = "Noise|IQ Noise")
 class VOXELGRAPH_API UVoxelNode_2DIQNoise : public UVoxelNode_2DIQNoiseBase
 {
 	GENERATED_BODY()
-	GENERATED_NOISENODE_BODY_DIM_IMPL(2, _DERIVATIVE, _FRACTAL, IQNoise, FVoxel2DIQNoiseComputeNode)
+	GENERATED_NOISENODE_BODY_DIM_IMPL(2, _DERIV, _FRACTAL, IQNoise, FVoxel2DIQNoiseComputeNode)
 };
 
 // 3D IQ Noise: uses the derivative to "smooth" the fractals. 
@@ -241,7 +211,7 @@ UCLASS(DisplayName = "3D IQ Noise", Category = "Noise|IQ Noise")
 class VOXELGRAPH_API UVoxelNode_3DIQNoise : public UVoxelNode_3DIQNoiseBase
 {
 	GENERATED_BODY()
-	GENERATED_NOISENODE_BODY_DIM_IMPL(3, _DERIVATIVE, _FRACTAL, IQNoise, FVoxel3DIQNoiseComputeNode)
+	GENERATED_NOISENODE_BODY_DIM_IMPL(3, _DERIV, _FRACTAL, IQNoise, FVoxel3DIQNoiseComputeNode)
 };
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +224,7 @@ class VOXELGRAPH_API UVoxelNode_CraterNoise : public UVoxelNode_NoiseNode
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Crater Noise settings")
+	UPROPERTY(EditAnywhere, Category = "Crater Noise settings", meta = (UIMin = 0, UIMax = 0.5))
 	float Jitter = 0.45;
 	
 	// Higher value = flatter crater borders
@@ -269,7 +239,7 @@ class VOXELGRAPH_API UVoxelNode_CraterNoiseFractal : public UVoxelNode_NoiseNode
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Crater Noise settings")
+	UPROPERTY(EditAnywhere, Category = "Crater Noise settings", meta = (UIMin = 0, UIMax = 0.5))
 	float Jitter = 0.45;
 	
 	// Higher value = flatter crater borders
