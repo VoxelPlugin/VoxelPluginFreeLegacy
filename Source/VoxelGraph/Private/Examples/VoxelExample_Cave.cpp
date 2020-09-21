@@ -233,7 +233,7 @@ public:
 			_2D_IQ_Noise_0_Noise.SetFractalOctavesAndGain(15, 0.5);
 			_2D_IQ_Noise_0_Noise.SetFractalLacunarity(2.0);
 			_2D_IQ_Noise_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
-			_2D_IQ_Noise_0_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
+			_2D_IQ_Noise_0_Noise.SetMatrixFromRotation_2D(40.0);
 			_2D_IQ_Noise_0_LODToOctaves[0] = 15;
 			_2D_IQ_Noise_0_LODToOctaves[1] = 15;
 			_2D_IQ_Noise_0_LODToOctaves[2] = 15;
@@ -1282,7 +1282,7 @@ public:
 					_2D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.5);
 					_2D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
 					_2D_IQ_Noise_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
-					_2D_IQ_Noise_1_Noise.SetMatrix(FMatrix2x2(FQuat2D(FMath::DegreesToRadians(40.000000))));
+					_2D_IQ_Noise_1_Noise.SetMatrixFromRotation_2D(40.0);
 					_2D_IQ_Noise_1_LODToOctaves[0] = 15;
 					_2D_IQ_Noise_1_LODToOctaves[1] = 15;
 					_2D_IQ_Noise_1_LODToOctaves[2] = 15;

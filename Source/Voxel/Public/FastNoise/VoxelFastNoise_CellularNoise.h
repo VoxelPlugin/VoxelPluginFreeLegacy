@@ -29,6 +29,18 @@ public:
 	GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_2D(Cellular, Crater)
 	GENERATED_VOXEL_NOISE_FUNCTION_FRACTAL_3D(Cellular, Crater)
 	
+	FN_FORCEINLINE v_flt GetGavoronoi_2D(v_flt x, v_flt y, v_flt frequency, v_flt dirX, v_flt dirY, v_flt dirVariation) const
+	{
+		return SingleGavoronoi_2D(0, x * frequency, y * frequency, dirX, dirY, dirVariation);
+	}
+	FN_FORCEINLINE v_flt GetGavoronoiFractal_2D(v_flt x, v_flt y, v_flt frequency, int32 octaves, v_flt dirX, v_flt dirY, v_flt dirVariation) const
+	{
+		return This().Fractal_2D([&](auto in_offset, auto in_x, auto in_y)
+		{
+			return SingleGavoronoi_2D(in_offset, in_x, in_y, dirX, dirY, dirVariation);
+		}, x, y, frequency, octaves);
+	}
+	
 protected:
 	template<EVoxelCellularDistanceFunction CellularDistance>
 	v_flt SingleCellular_2D(v_flt x, v_flt y) const;
@@ -45,6 +57,8 @@ protected:
 	
 	v_flt SingleCrater_2D(uint8 offset, v_flt x, v_flt y) const;
 	v_flt SingleCrater_3D(uint8 offset, v_flt x, v_flt y, v_flt z) const;
+	
+	v_flt SingleGavoronoi_2D(uint8 offset, v_flt x, v_flt y, v_flt dirX, v_flt dirY, v_flt dirVariation) const;
 
 protected:
 	template<EVoxelCellularDistanceFunction CellularDistance>

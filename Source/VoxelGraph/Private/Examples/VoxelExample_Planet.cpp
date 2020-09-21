@@ -167,7 +167,7 @@ public:
 			_3D_IQ_Noise_0_Noise.SetFractalOctavesAndGain(15, 0.6);
 			_3D_IQ_Noise_0_Noise.SetFractalLacunarity(2.0);
 			_3D_IQ_Noise_0_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
-			_3D_IQ_Noise_0_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
+			_3D_IQ_Noise_0_Noise.SetMatrixFromRotation_3D(FRotator(40.000000, 45.000000, 50.000000));
 			_3D_IQ_Noise_0_LODToOctaves[0] = 15;
 			_3D_IQ_Noise_0_LODToOctaves[1] = 15;
 			_3D_IQ_Noise_0_LODToOctaves[2] = 15;
@@ -547,7 +547,7 @@ public:
 			_3D_IQ_Noise_1_Noise.SetFractalOctavesAndGain(15, 0.6);
 			_3D_IQ_Noise_1_Noise.SetFractalLacunarity(2.0);
 			_3D_IQ_Noise_1_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
-			_3D_IQ_Noise_1_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
+			_3D_IQ_Noise_1_Noise.SetMatrixFromRotation_3D(FRotator(40.000000, 45.000000, 50.000000));
 			_3D_IQ_Noise_1_LODToOctaves[0] = 15;
 			_3D_IQ_Noise_1_LODToOctaves[1] = 15;
 			_3D_IQ_Noise_1_LODToOctaves[2] = 15;
@@ -993,7 +993,7 @@ public:
 					_3D_IQ_Noise_2_Noise.SetFractalOctavesAndGain(15, 0.6);
 					_3D_IQ_Noise_2_Noise.SetFractalLacunarity(2.0);
 					_3D_IQ_Noise_2_Noise.SetFractalType(EVoxelNoiseFractalType::FBM);
-					_3D_IQ_Noise_2_Noise.SetMatrix(ToMatrix(FRotator(40.000000, 45.000000, 50.000000)));
+					_3D_IQ_Noise_2_Noise.SetMatrixFromRotation_3D(FRotator(40.000000, 45.000000, 50.000000));
 					_3D_IQ_Noise_2_LODToOctaves[0] = 15;
 					_3D_IQ_Noise_2_LODToOctaves[1] = 15;
 					_3D_IQ_Noise_2_LODToOctaves[2] = 15;

@@ -38,13 +38,13 @@
 
 
 template<typename T>
-FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturb_2D(v_flt& x, v_flt& y, float frequency, float m_gradientPerturbAmp) const
+FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturb_2D(v_flt& x, v_flt& y, v_flt frequency, v_flt m_gradientPerturbAmp) const
 {
 	SingleGradientPerturb_2D(0, m_gradientPerturbAmp, frequency, x, y);
 }
 
 template<typename T>
-FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturb_3D(v_flt& x, v_flt& y, v_flt& z, float frequency, float m_gradientPerturbAmp) const
+FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturb_3D(v_flt& x, v_flt& y, v_flt& z, v_flt frequency, v_flt m_gradientPerturbAmp) const
 {
 	SingleGradientPerturb_3D(0, m_gradientPerturbAmp, frequency, x, y, z);
 }
@@ -54,7 +54,7 @@ FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturb_3D(v_flt
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturbFractal_2D(v_flt& x, v_flt& y, float frequency, int32 octaves, float m_gradientPerturbAmp) const
+FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturbFractal_2D(v_flt& x, v_flt& y, v_flt frequency, int32 octaves, v_flt m_gradientPerturbAmp) const
 {
 	v_flt amp = m_gradientPerturbAmp * This().FractalBounding;
 	v_flt freq = frequency;
@@ -71,7 +71,7 @@ FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturbFractal_2
 }
 
 template<typename T>
-FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturbFractal_3D(v_flt& x, v_flt& y, v_flt& z, float frequency, int32 octaves, float m_gradientPerturbAmp) const
+FN_FORCEINLINE void TVoxelFastNoise_GradientPerturb<T>::GradientPerturbFractal_3D(v_flt& x, v_flt& y, v_flt& z, v_flt frequency, int32 octaves, v_flt m_gradientPerturbAmp) const
 {
 	v_flt amp = m_gradientPerturbAmp * This().FractalBounding;
 	v_flt freq = frequency;
