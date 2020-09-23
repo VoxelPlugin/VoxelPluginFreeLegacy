@@ -34,9 +34,14 @@ struct VOXELGRAPH_API FVoxelPinsHelper
 	TArray<FVoxelHelperPin> InputPins;
 	TArray<FVoxelHelperPin> OutputPins;
 
-	inline FVoxelHelperPin GetInputPin(int32 PinIndex) const
+	FVoxelHelperPin GetInputPin(int32 PinIndex, bool bClamp = true) const
 	{
-		PinIndex = FMath::Clamp(PinIndex, 0, InputPins.Num() - 1);
+		// Clamping is needed for variable input pins count
+		if (bClamp)
+		{
+			PinIndex = FMath::Clamp(PinIndex, 0, InputPins.Num() - 1);
+		}
+		
 		if (InputPins.IsValidIndex(PinIndex))
 		{
 			return InputPins[PinIndex];
@@ -46,9 +51,14 @@ struct VOXELGRAPH_API FVoxelPinsHelper
 			return {};
 		}
 	}
-	inline FVoxelHelperPin GetOutputPin(int32 PinIndex) const
+	FVoxelHelperPin GetOutputPin(int32 PinIndex, bool bClamp = true) const
 	{
-		PinIndex = FMath::Clamp(PinIndex, 0, OutputPins.Num() - 1);
+		// Clamping is needed for variable input pins count
+		if (bClamp)
+		{
+			PinIndex = FMath::Clamp(PinIndex, 0, OutputPins.Num() - 1);
+		}
+
 		if (OutputPins.IsValidIndex(PinIndex))
 		{
 			return OutputPins[PinIndex];

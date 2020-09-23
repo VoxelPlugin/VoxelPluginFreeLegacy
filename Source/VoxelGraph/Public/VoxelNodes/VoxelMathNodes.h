@@ -218,6 +218,17 @@ class VOXELGRAPH_API UVoxelNode_SafeLerp : public UVoxelPureNode
 	UVoxelNode_SafeLerp();
 };
 
+ // Returns a smooth Hermite interpolation between 0 and 1 for the value X (where X ranges between A and B)
+ // Clamped to 0 for X <= A and 1 for X >= B.
+UCLASS(DisplayName = "Smooth Step", Category = "Math|Float")
+class VOXELGRAPH_API UVoxelNode_SmoothStep : public UVoxelPureNode
+{
+	GENERATED_BODY()
+	GENERATED_VOXELNODE_BODY()
+
+	UVoxelNode_SmoothStep();
+};
+
 // Clamp Value between Min and Max
 UCLASS(DisplayName = "Clamp", Category = "Math|Float")
 class VOXELGRAPH_API UVoxelNode_Clamp : public UVoxelPureNode

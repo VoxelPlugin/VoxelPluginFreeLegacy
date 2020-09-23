@@ -9,12 +9,12 @@ inline void AddGavoronoiPins(FVoxelPinsHelper& Pins)
 	Pins.InputPins.Add(FVoxelHelperPin("Direction Variation", EVoxelPinCategory::Float, "Strength of the noise added to the direction, between 0 and 1", "0.4"));
 }
 
-UVoxelNode_GavoronoiNoise::UVoxelNode_GavoronoiNoise()
+UVoxelNode_2DGavoronoiNoise::UVoxelNode_2DGavoronoiNoise()
 {
 	AddGavoronoiPins(CustomNoisePins);
 }
 
-UVoxelNode_GavoronoiNoiseFractal::UVoxelNode_GavoronoiNoiseFractal()
+UVoxelNode_2DGavoronoiNoiseFractal::UVoxelNode_2DGavoronoiNoiseFractal()
 {
 	AddGavoronoiPins(CustomNoisePins);
 }
@@ -32,4 +32,30 @@ UVoxelNode_GavoronoiNoiseFractal::UVoxelNode_GavoronoiNoiseFractal()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelNode_2DErosion::UVoxelNode_2DErosion()
+{
+	bComputeDerivative = true;
+
+	const FString ToolTip = "The derivative of the noise to erode. You can get them by ticking Compute Derivatives in the node details";
+	
+	CustomNoisePins.InputPins.Add(FVoxelHelperPin("Noise DX", EVoxelPinCategory::Float, ToolTip));
+	CustomNoisePins.InputPins.Add(FVoxelHelperPin("Noise DY", EVoxelPinCategory::Float, ToolTip));
+}
+
+
+#if WITH_EDITOR
+bool UVoxelNode_2DErosion::CanEditChange(const UProperty* InProperty) const
+{
+	return
+		Super::CanEditChange(InProperty) &&
+		InProperty->GetFName() != GET_MEMBER_NAME_STATIC(UVoxelNode_2DErosion, bComputeDerivative) &&
+		InProperty->GetFName() != GET_MEMBER_NAME_STATIC(UVoxelNode_2DErosion, FractalType);
+}
+#endif
 

@@ -453,6 +453,61 @@ FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_CellularNoise<T>::SingleGavoronoi_2D
 	return wt == 0 ? 0 : FNoiseMath::FastAbs(va / wt);
 }
 
+template<typename T>
+FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_CellularNoise<T>::SingleGavoronoi_Erosion_2D(uint8 offset, v_flt x, v_flt y, v_flt dirX, v_flt dirY, v_flt& outDx, v_flt& outDy) const
+{
+	// From https://www.shadertoy.com/view/MtGcWh
+	
+	const int32 xi = FNoiseMath::FastFloor(x);
+	const int32 yi = FNoiseMath::FastFloor(y);
+	const v_flt xf = x - xi;
+	const v_flt yf = y - yi;
+
+	v_flt va = 0.f;
+	v_flt va_dx = 0.f;
+	v_flt va_dy = 0.f;
+	v_flt wt = 0.f;
+
+	for (int32 i = -2; i <= 2; i++)
+	{
+		for (int32 j = -2; j <= 2; j++)
+		{
+			const uint8 lutPos = This().Index2D_256(offset, xi + i, yi + j);
+			const v_flt jitterX = This().CELL_3D_X[lutPos];
+			const v_flt jitterY = This().CELL_3D_Y[lutPos];
+
+			const v_flt vecX = xf - (i + 0.5f + jitterX * This().CellularJitter);
+			const v_flt vecY = yf - (j + 0.5f + jitterY * This().CellularJitter);
+
+			const v_flt sqDistance = vecX * vecX + vecY * vecY;
+
+			const v_flt w = std::exp(-2.f * sqDistance);
+
+			const v_flt sample_pos = (vecX * dirX + vecY * dirY) * 2.f * PI;
+			const v_flt cos = std::cos(sample_pos);
+			const v_flt sin = std::sin(sample_pos);
+			
+			va += w * cos;
+			va_dx += -w * sin * (vecX + dirX);
+			va_dy += -w * sin * (vecY + dirY);
+			wt += w;
+		}
+	}
+
+	if (wt == 0)
+	{
+		outDx = 0;
+		outDy = 0;
+		return 0;
+	}
+	else
+	{
+		outDx = va_dx / wt;
+		outDy = va_dy / wt;
+		return va / wt;
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -576,6 +631,52 @@ FN_FORCEINLINE_MATH v_flt TVoxelFastNoise_CellularNoise<T>::CellularDistance_3D(
 	case EVoxelCellularDistanceFunction::Natural:
 		return (FNoiseMath::FastAbs(vecX) + FNoiseMath::FastAbs(vecY) + FNoiseMath::FastAbs(vecZ)) + (vecX * vecX + vecY * vecY + vecZ * vecZ);
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+FN_FORCEINLINE v_flt TVoxelFastNoise_CellularNoise<T>::GetErosion_2D(v_flt x, v_flt y, v_flt frequency, int32 octaves, v_flt noise_dx, v_flt noise_dy, v_flt& outDx, v_flt& outDy) const
+{
+	// From https://www.shadertoy.com/view/MtGcWh
+
+	x *= frequency;
+	y *= frequency;
+    
+    // Take the curl of the normal to get the gradient facing down the slope
+	const v_flt dir_x = noise_dy;
+	const v_flt dir_y = -noise_dx;
+
+	v_flt r = 0;
+	v_flt r_dx = 0;
+	v_flt r_dy = 0;
+
+	// Now we compute another fbm type noise
+	// erosion is a type of noise with a strong directionality
+	// we pass in the direction based on the slope of the terrain
+	// erosion also returns the slope. we add that to a running total
+	// so that the direction of successive layers are based on the
+	// past layers
+	v_flt amp = 1.f;
+	for (int32 i = 0; i < octaves; i++)
+	{
+		v_flt erosion_dx, erosion_dy;
+		const v_flt erosion = SingleGavoronoi_Erosion_2D(i, x, y, dir_x + r_dy, dir_y - r_dx, erosion_dx, erosion_dy);
+
+		r += erosion * amp;
+		r_dx += erosion_dx * amp;
+		r_dy += erosion_dy * amp;
+		
+		x *= This().Lacunarity;
+		y *= This().Lacunarity;
+		amp *= This().Gain;
+	}
+	
+	outDx = r_dx;
+	outDy = r_dy;
+	return r;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

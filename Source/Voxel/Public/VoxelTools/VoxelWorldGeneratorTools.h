@@ -6,6 +6,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Engine/LatentActionManager.h"
 #include "VoxelTexture.h"
+#include "Templates/SubclassOf.h"
 #include "VoxelWorldGeneratorTools.generated.h"
 
 class FVoxelWorldGeneratorInstance;

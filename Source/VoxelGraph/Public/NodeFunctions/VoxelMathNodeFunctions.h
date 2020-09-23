@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
 #include "VoxelRange.h"
+#include "VoxelUtilities/VoxelRangeUtilities.h"
 
 namespace FVoxelMathNodeFunctions
 {
@@ -147,5 +148,40 @@ namespace FVoxelMathNodeFunctions
 		{
 			It = TVoxelRange<v_flt>(0, 1);
 		}
+	}
+
+	FORCEINLINE v_flt SmoothStep(v_flt A, v_flt B, v_flt X)
+	{
+		if (X <= A)
+		{
+			return 0.0f;
+		}
+		else if (B <= X)
+		{
+			return 1.0f;
+		}
+		const v_flt InterpFraction = (X - A) / (B - A);
+		return InterpFraction * InterpFraction * (3.0f - 2.0f * InterpFraction);
+	}
+	FORCEINLINE TVoxelRange<v_flt> SmoothStep(TVoxelRange<v_flt> A, TVoxelRange<v_flt> B, TVoxelRange<v_flt> X)
+	{
+		if (A.IsSingleValue() && B.IsSingleValue())
+		{
+			return { SmoothStep(A.GetSingleValue(), B.GetSingleValue(), X.Min), SmoothStep(A.GetSingleValue(), B.GetSingleValue(), X.Max) };
+		}
+
+		if (X.Max <= A.Min)
+		{
+			return 0.f;
+		}
+		if (B.Max <= X.Min)
+		{
+			return 1.f;
+		}
+
+		const auto InterpFraction = (X - A) / (B - A);
+		const auto Result = InterpFraction * InterpFraction * (3.0f - 2.0f * InterpFraction);
+
+		return FVoxelRangeUtilities::Clamp<v_flt>(Result, 0.f, 1.f);
 	}
 }

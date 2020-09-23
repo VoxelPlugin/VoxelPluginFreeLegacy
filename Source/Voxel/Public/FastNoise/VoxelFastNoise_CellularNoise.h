@@ -40,6 +40,8 @@ public:
 			return SingleGavoronoi_2D(in_offset, in_x, in_y, dirX, dirY, dirVariation);
 		}, x, y, frequency, octaves);
 	}
+
+	v_flt GetErosion_2D(v_flt x, v_flt y, v_flt frequency, int32 octaves, v_flt noise_dx, v_flt noise_dy, v_flt& outDx, v_flt& outDy) const;
 	
 protected:
 	template<EVoxelCellularDistanceFunction CellularDistance>
@@ -59,6 +61,7 @@ protected:
 	v_flt SingleCrater_3D(uint8 offset, v_flt x, v_flt y, v_flt z) const;
 	
 	v_flt SingleGavoronoi_2D(uint8 offset, v_flt x, v_flt y, v_flt dirX, v_flt dirY, v_flt dirVariation) const;
+	v_flt SingleGavoronoi_Erosion_2D(uint8 offset, v_flt x, v_flt y, v_flt dirX, v_flt dirY, v_flt& outDx, v_flt& outDy) const;
 
 protected:
 	template<EVoxelCellularDistanceFunction CellularDistance>
