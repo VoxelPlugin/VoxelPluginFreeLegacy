@@ -4,6 +4,7 @@
 #include "VoxelMinimal.h"
 #include "VoxelUtilities/VoxelConfigUtilities.h"
 
+#include "Editor.h"
 #include "Engine/World.h"
 #include "GameMapsSettings.h"
 #include "Containers/Ticker.h"

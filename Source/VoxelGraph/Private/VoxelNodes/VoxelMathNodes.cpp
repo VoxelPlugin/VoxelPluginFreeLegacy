@@ -209,6 +209,22 @@ GENERATED_VOXELNODE_IMPL
 	_O0 = FVoxelNodeFunctions::SafeLerp(_I0, _I1, _I2);
 )
 
+UVoxelNode_SmoothStep::UVoxelNode_SmoothStep()
+{
+	SetInputs(
+		{ "A", EC::Float, "Minimum value of X", "0" },
+		{ "B", EC::Float, "Maximum value of X", "1" },
+		{ "X", EC::Float, "Parameter" });
+	SetOutputs(EC::Float);
+}
+GENERATED_VOXELNODE_IMPL
+(
+	UVoxelNode_SmoothStep,
+	DEFINE_INPUTS(v_flt, v_flt, v_flt),
+	DEFINE_OUTPUTS(v_flt),
+	_O0 = FVoxelMathNodeFunctions::SmoothStep(_I0, _I1, _I2);
+)
+
 UVoxelNode_Clamp::UVoxelNode_Clamp()
 {
 	SetInputs(
@@ -217,6 +233,7 @@ UVoxelNode_Clamp::UVoxelNode_Clamp()
 		{ "Max", EC::Float, "Max value", "1" });
 	SetOutputs(EC::Float);
 }
+
 GENERATED_VOXELNODE_IMPL
 (
 	UVoxelNode_Clamp,

@@ -89,12 +89,12 @@ public:
 
 	// A multiplier that determines how quickly the frequency increases for each successive octave
 	// The frequency of each successive octave is equal to the product of the previous octave's frequency and the lacunarity value.
-	UPROPERTY(EditAnywhere, Category = "Fractal Noise settings")
+	UPROPERTY(EditAnywhere, Category = "Fractal Noise settings", meta = (UIMin = 0))
 	float FractalLacunarity = 2;
 
 	// A multiplier that determines how quickly the amplitudes diminish for each successive octave
 	// The amplitude of each successive octave is equal to the product of the previous octave's amplitude and the gain value. Increasing the gain produces "rougher" Perlin noise.
-	UPROPERTY(EditAnywhere, Category = "Fractal Noise settings")
+	UPROPERTY(EditAnywhere, Category = "Fractal Noise settings", meta = (UIMin = 0, UIMax = 1))
 	float FractalGain = 0.5;
 
 	UPROPERTY(EditAnywhere, Category = "Fractal Noise settings")

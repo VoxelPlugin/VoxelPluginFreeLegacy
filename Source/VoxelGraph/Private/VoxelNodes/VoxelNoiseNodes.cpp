@@ -51,7 +51,7 @@ FName UVoxelNode_NoiseNode::GetInputPinName(int32 PinIndex) const
 		}
 	}
 	
-	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount()).Name;
+	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount(), false).Name;
 }
 
 FName UVoxelNode_NoiseNode::GetOutputPinName(int32 PinIndex) const
@@ -77,7 +77,7 @@ FName UVoxelNode_NoiseNode::GetOutputPinName(int32 PinIndex) const
 		}
 	}
 
-	return CustomNoisePins.GetOutputPin(PinIndex - GetBaseOutputPinsCount()).Name;
+	return CustomNoisePins.GetOutputPin(PinIndex - GetBaseOutputPinsCount(), false).Name;
 }
 
 FString UVoxelNode_NoiseNode::GetInputPinToolTip(int32 PinIndex) const
@@ -125,7 +125,7 @@ FString UVoxelNode_NoiseNode::GetInputPinToolTip(int32 PinIndex) const
 		}
 	}
 	
-	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount()).ToolTip;
+	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount(), false).ToolTip;
 }
 
 FString UVoxelNode_NoiseNode::GetOutputPinToolTip(int32 PinIndex) const
@@ -147,7 +147,7 @@ FString UVoxelNode_NoiseNode::GetOutputPinToolTip(int32 PinIndex) const
 		return "The derivative along the Z axis. Can be used to compute the slope of the noise using GetSlopeFromDerivatives.";
 	}
 
-	return CustomNoisePins.GetOutputPin(PinIndex - GetBaseOutputPinsCount()).ToolTip;
+	return CustomNoisePins.GetOutputPin(PinIndex - GetBaseOutputPinsCount(), false).ToolTip;
 }
 
 EVoxelPinCategory UVoxelNode_NoiseNode::GetInputPinCategory(int32 PinIndex) const
@@ -167,8 +167,11 @@ FString UVoxelNode_NoiseNode::GetInputPinDefaultValue(int32 PinIndex) const
 		return FString::SanitizeFloat(Frequency);
 	}
 	
-	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount()).DefaultValue;
+	return CustomNoisePins.GetInputPin(PinIndex - GetBaseInputPinsCount(), false).DefaultValue;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
 
 
 ///////////////////////////////////////////////////////////////////////////////
