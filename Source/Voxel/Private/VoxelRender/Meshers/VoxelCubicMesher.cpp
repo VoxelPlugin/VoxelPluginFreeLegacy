@@ -163,7 +163,7 @@ FORCEINLINE void AddFace(
 	for (int32 Index = 0; Index < 4; Index++)
 	{
 		const FVector VertexPositionInCube = Positions[Index];
-		const FVector VertexPosition = (VertexPositionInCube + FVector(X, Y, Z)) * Step;
+		const FVector VertexPosition = (VertexPositionInCube + FVector(X, Y, Z)) * Step - FVector(0.5f);
 		
 		TVertex Vertex;
 		Vertex.SetPosition(VertexPosition);

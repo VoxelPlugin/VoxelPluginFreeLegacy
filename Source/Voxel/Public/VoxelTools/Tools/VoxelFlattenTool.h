@@ -37,6 +37,10 @@ public:
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bUseFixedRotation"))
 	FRotator FixedRotation { ForceInit };
 	
+	// If true, will propagate materials so that the surface stays correctly painted. Expensive.
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
+	bool bPropagateMaterials = true;
+	
 public:
 	UPROPERTY(Category = "Falloff", EditAnywhere, BlueprintReadWrite)
 	bool bEnableFalloff = true;

@@ -659,7 +659,7 @@ public:
 	/**
 	 * Convert position from world space to voxel space
 	 * @param	Position	Position in world space
-	 * @param	Rounding	How to round. For cubic will always be round down
+	 * @param	Rounding	How to round
 	 * @return	Position in voxel space
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "World Position to Voxel", AdvancedDisplay = "Rounding"))
