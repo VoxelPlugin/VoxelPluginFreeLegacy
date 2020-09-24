@@ -362,11 +362,6 @@ void AVoxelWorld::SetWorldSize(uint32 NewWorldSizeInVoxels)
 
 FIntVector AVoxelWorld::GlobalToLocal(const FVector& Position, EVoxelWorldCoordinatesRounding Rounding) const
 {
-	if (RenderType == EVoxelRenderType::Cubic)
-	{
-		Rounding = EVoxelWorldCoordinatesRounding::RoundDown;
-	}
-
 	const FVector LocalPosition = GetTransform().InverseTransformPosition(Position) / VoxelSize;
 
 	FIntVector VoxelPosition;

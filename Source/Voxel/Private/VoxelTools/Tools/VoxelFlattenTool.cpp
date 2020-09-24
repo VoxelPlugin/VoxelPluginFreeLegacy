@@ -147,6 +147,11 @@ FVoxelIntBoxWithValidity UVoxelFlattenTool::DoEdit()
 		GetTickData().IsAlternativeMode() ? EVoxelSDFMergeMode::Intersection : EVoxelSDFMergeMode::Union));
 
 	const auto ProcessedVoxels = Stack.Execute(Voxels, false);
+
+	if (bPropagateMaterials)
+	{
+		FVoxelSurfaceEditToolsImpl::PropagateVoxelMaterials(Data, ProcessedVoxels);
+	}
 	
 	FVoxelSurfaceEditToolsImpl::EditVoxelValues(DataImpl, FVoxelHardnessHandler(*GetVoxelWorld()), Bounds, ProcessedVoxels, DistanceDivisor);
 
