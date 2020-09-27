@@ -126,7 +126,11 @@ void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 	}
 
 	// To copy data
+#if ENGINE_MINOR_VERSION < 26
 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, DstBuffer.UAV);
+#else
+	RHICmdList.Transition(FRHITransitionInfo(DstBuffer.UAV, ERHIAccess::Unknown, ERHIAccess::UAVCompute)); // TODO not unknown?
+#endif
 	
 	{
 		VOXEL_RENDER_SCOPE_COUNTER("Copy Data From Buffers");
@@ -164,10 +168,15 @@ void FVoxelDistanceFieldShaderHelper::ApplyComputeShader(
 	
 	const FIntVector NumThreads = FVoxelUtilities::DivideCeil(Size, VOXEL_DISTANCE_FIELD_NUM_THREADS_CS);
 	check(NumThreads.X > 0 && NumThreads.Y > 0 && NumThreads.Z > 0);
-
+	
+#if ENGINE_MINOR_VERSION < 26
 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, SrcBuffer.UAV);
 	RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, DstBuffer.UAV);
-
+#else
+	RHICmdList.Transition(FRHITransitionInfo(SrcBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::UAVCompute));
+	RHICmdList.Transition(FRHITransitionInfo(DstBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::UAVCompute));
+#endif
+	
 	ComputeShader->SetBuffers(RHICmdList, SrcBuffer, DstBuffer);
 	RHICmdList.DispatchComputeShader(NumThreads.X, NumThreads.Y, NumThreads.Z);
 	Swap(SrcBuffer, DstBuffer);

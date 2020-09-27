@@ -36,7 +36,7 @@ public:
 
 #if WITH_EDITOR
 	//~ Begin UVoxelExposedNode Interface
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 	//~ End UVoxelExposedNode Interface
 #endif
 };
@@ -67,7 +67,7 @@ public:
 
 #if WITH_EDITOR
 	//~ Begin UVoxelExposedNode Interface
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 	//~ End UVoxelExposedNode Interface
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif

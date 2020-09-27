@@ -2,7 +2,7 @@
 
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/VoxelProceduralMeshSceneProxy.h"
-#include "VoxelRender/VoxelAsyncPhysicsCooker.h"
+#include "VoxelRender/PhysicsCooker/VoxelAsyncPhysicsCooker.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
 #include "VoxelRender/VoxelToolRendering.h"
@@ -22,7 +22,7 @@
 #include "DrawDebugHelpers.h"
 #include "Materials/Material.h"
 
-DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelPhysXTriangleMeshesMemory);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelPhysicsTriangleMeshesMemory);
 
 static TAutoConsoleVariable<int32> CVarShowCollisionsUpdates(
 	TEXT("voxel.renderer.ShowCollisionsUpdates"),
@@ -70,7 +70,9 @@ void UVoxelProceduralMeshComponent::Init(
 	if (UniqueId != 0)
 	{
 		// Make sure we don't have any convex collision left
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 		UpdateConvexMeshes({}, {}, {});
+#endif
 	}
 	
 	bInit = true;
@@ -121,7 +123,7 @@ UVoxelProceduralMeshComponent::~UVoxelProceduralMeshComponent()
 		AsyncCooker = nullptr;
 	}
 
-	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysXTriangleMeshesMemory, TriangleMeshesMemory);
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysicsTriangleMeshesMemory, MemoryUsage.TriangleMeshes);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -545,7 +547,9 @@ void UVoxelProceduralMeshComponent::OnComponentDestroyed(bool bDestroyingHierarc
 	if (bInit)
 	{
 		// Clear convex collisions
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 		UpdateConvexMeshes({}, {}, {}, true);
+#endif
 	}
 	
 	// Destroy async cooker
@@ -631,20 +635,27 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 	{
 		BodySetupBeingCooked = NewObject<UBodySetup>(this);
 	}
-	BodySetupBeingCooked->ClearPhysicsMeshes();
+	VOXEL_INLINE_COUNTER("ClearPhysicsMeshes", BodySetupBeingCooked->ClearPhysicsMeshes());
+	BodySetupBeingCooked->bGenerateMirroredCollision = false;
+	BodySetupBeingCooked->CollisionTraceFlag = CollisionTraceFlag;
 
 	if (ProcMeshSections.FindByPredicate([](auto& Section) { return Section.Settings.bEnableCollisions; }))
 	{
 		auto PoolPtr = Pool.Pin();
 		if (ensure(PoolPtr.IsValid()))
 		{
-			AsyncCooker = new FVoxelAsyncPhysicsCooker(this);
-			PoolPtr->QueueTask(EVoxelTaskType::CollisionCooking, AsyncCooker);
+			AsyncCooker = IVoxelAsyncPhysicsCooker::CreateCooker(this);
+			if (ensure(AsyncCooker))
+			{
+				PoolPtr->QueueTask(EVoxelTaskType::CollisionCooking, AsyncCooker);
+			}
 		}
 	}
 	else
 	{
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 		UpdateConvexMeshes({}, {}, {});
+#endif
 		FinishCollisionUpdate();
 	}
 }
@@ -671,6 +682,7 @@ void UVoxelProceduralMeshComponent::FinishCollisionUpdate()
 	}
 }
 
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 void UVoxelProceduralMeshComponent::UpdateConvexMeshes(
 	const FBox& ConvexBounds,
 	TArray<FKConvexElem>&& ConvexElements,
@@ -700,21 +712,11 @@ void UVoxelProceduralMeshComponent::UpdateConvexMeshes(
 
 	Root->UpdateConvexCollision(UniqueId, ConvexBounds, MoveTemp(ConvexElements), MoveTemp(ConvexMeshes));
 }
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-#if ENGINE_MINOR_VERSION >= 24
-class UMRMeshComponent
-{
-public:
-	static void FinishCreatingPhysicsMeshes(UBodySetup* Body, const TArray<physx::PxConvexMesh*>& ConvexMeshes, const TArray<physx::PxConvexMesh*>& ConvexMeshesNegX, const TArray<physx::PxTriangleMesh*>& TriMeshes)
-	{
-		Body->FinishCreatingPhysicsMeshes_PhysX(ConvexMeshes, ConvexMeshesNegX, TriMeshes);
-	}
-};
 #endif
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 {
@@ -726,37 +728,23 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 		LOG_VOXEL(VeryVerbose, TEXT("Late async cooker callback, ignoring it"));
 		return;
 	}
-
-	if (!ensure(AsyncCooker->IsDone())) return;
-	
-	if (!AsyncCooker->IsSuccessful())
+	if (!ensure(AsyncCooker->IsDone()) || !ensure(BodySetupBeingCooked))
 	{
-		//LOG_VOXEL(Warning, TEXT("Async cooker wasn't successful, ignoring it"));
 		return;
 	}
 
-	if (!ensure(BodySetupBeingCooked)) return;
-	
-	FVoxelAsyncPhysicsCooker::FCookResult& CookResult = AsyncCooker->CookResult;
-	BodySetupBeingCooked->bGenerateMirroredCollision = false;
-	BodySetupBeingCooked->CollisionTraceFlag = CollisionTraceFlag;
-	{
-		VOXEL_SCOPE_COUNTER("ClearPhysicsMeshes");
-		BodySetupBeingCooked->ClearPhysicsMeshes();
-	}
-	{
-		VOXEL_SCOPE_COUNTER("FinishCreatingPhysicsMeshes");
-#if ENGINE_MINOR_VERSION < 24
-		BodySetupBeingCooked->FinishCreatingPhysicsMeshes({}, {}, CookResult.TriangleMeshes);
-#else
-		UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetupBeingCooked, {}, {}, CookResult.TriangleMeshes);
-#endif
-	}
-	UpdateConvexMeshes(CookResult.ConvexBounds, MoveTemp(CookResult.ConvexElems), MoveTemp(CookResult.ConvexMeshes));
+	// Might not be needed?
+	VOXEL_INLINE_COUNTER("ClearPhysicsMeshes", BodySetupBeingCooked->ClearPhysicsMeshes());
 
-	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysXTriangleMeshesMemory, TriangleMeshesMemory);
-	TriangleMeshesMemory = CookResult.TriangleMeshesMemoryUsage;
-	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysXTriangleMeshesMemory, TriangleMeshesMemory);
+	FVoxelProceduralMeshComponentMemoryUsage NewMemoryUsage;
+	if (!AsyncCooker->Finalize(*BodySetupBeingCooked, NewMemoryUsage))
+	{
+		return;
+	}
+	
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysicsTriangleMeshesMemory, MemoryUsage.TriangleMeshes);
+	MemoryUsage.TriangleMeshes = NewMemoryUsage.TriangleMeshes;
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysicsTriangleMeshesMemory, MemoryUsage.TriangleMeshes);
 
 	AsyncCooker->CancelAndAutodelete();
 	AsyncCooker = nullptr;

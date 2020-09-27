@@ -31,7 +31,7 @@ bool UVoxelGraphBlueprintTools::SetVoxelGraphFloatParameter(UVoxelWorldGenerator
 	}
 	else
 	{
-		UFloatProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<UFloatProperty>(WorldGenerator->GetClass(), UniqueName);
+		FFloatProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<FFloatProperty>(WorldGenerator->GetClass(), UniqueName);
 		if (Prop)
 		{
 			Prop->SetPropertyValue_InContainer(WorldGenerator, Value);
@@ -55,7 +55,7 @@ bool UVoxelGraphBlueprintTools::SetVoxelGraphIntParameter(UVoxelWorldGenerator* 
 	}
 	else
 	{
-		UIntProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<UIntProperty>(WorldGenerator->GetClass(), UniqueName);
+		FIntProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<FIntProperty>(WorldGenerator->GetClass(), UniqueName);
 		if (Prop)
 		{
 			Prop->SetPropertyValue_InContainer(WorldGenerator, Value);
@@ -79,7 +79,7 @@ bool UVoxelGraphBlueprintTools::SetVoxelGraphBoolParameter(UVoxelWorldGenerator*
 	}
 	else
 	{
-		UBoolProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<UBoolProperty>(WorldGenerator->GetClass(), UniqueName);
+		FBoolProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<FBoolProperty>(WorldGenerator->GetClass(), UniqueName);
 		if (Prop)
 		{
 			Prop->SetPropertyValue_InContainer(WorldGenerator, Value);
@@ -103,7 +103,7 @@ bool UVoxelGraphBlueprintTools::SetVoxelGraphColorParameter(UVoxelWorldGenerator
 	}
 	else
 	{
-		UStructProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<UStructProperty>(WorldGenerator->GetClass(), UniqueName);
+		FStructProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<FStructProperty>(WorldGenerator->GetClass(), UniqueName);
 		if (Prop && Prop->GetCPPType(nullptr, 0) == "FLinearColor")
 		{
 			*Prop->ContainerPtrToValuePtr<FLinearColor>(WorldGenerator) = Value;
@@ -127,7 +127,7 @@ bool UVoxelGraphBlueprintTools::SetVoxelGraphVoxelTextureParameter(UVoxelWorldGe
 	}
 	else
 	{
-		UStructProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<UStructProperty>(WorldGenerator->GetClass(), UniqueName);
+		FStructProperty* Prop = UE_25_SWITCH(FindField, FindFProperty)<FStructProperty>(WorldGenerator->GetClass(), UniqueName);
 		if (Prop && Prop->GetCPPType(nullptr, 0) == "FVoxelFloatTexture")
 		{
 			*Prop->ContainerPtrToValuePtr<FVoxelFloatTexture>(WorldGenerator) = Value;

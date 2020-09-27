@@ -12,7 +12,7 @@ FVoxelDefaultPool::FVoxelDefaultPool(
 	const TMap<EVoxelTaskType, int32>& InPriorityCategories,
 	const TMap<EVoxelTaskType, int32>& InPriorityOffsets)
 	: Pool(FVoxelQueuedThreadPool::Create(FVoxelQueuedThreadPoolSettings(
-		FString::Printf(TEXT("Default Pool %llu"), UNIQUE_ID()),
+		FString::Printf(TEXT("Voxel Pool %llu"), UNIQUE_ID()),
 		ThreadCount,
 		1024 * 1024,
 		EThreadPriority::TPri_Normal,

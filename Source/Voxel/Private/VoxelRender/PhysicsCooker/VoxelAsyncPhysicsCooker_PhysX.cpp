@@ -1,35 +1,17 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelRender/VoxelAsyncPhysicsCooker.h"
-#include "VoxelRender/VoxelProceduralMeshComponent.h"
+#include "VoxelRender/PhysicsCooker/VoxelAsyncPhysicsCooker_PhysX.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
-#include "VoxelRender/IVoxelProceduralMeshComponent_PhysicsCallbackHandler.h"
-#include "VoxelUtilities/VoxelThreadingUtilities.h"
+#include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelPhysXHelpers.h"
-#include "VoxelMinimal.h"
 
-#include "IPhysXCooking.h"
 #include "IPhysXCookingModule.h"
 
-#include "Async/Async.h"
 #include "PhysicsPublic.h"
+#include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsSettings.h"
-//#include "ThirdParty/VHACD/public/VHACD.h"
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-static TAutoConsoleVariable<int32> CVarLogCollisionCookingTimes(
-	TEXT("voxel.renderer.LogCollisionCookingTimes"),
-	0,
-	TEXT("If true, will log the time it took to cook the voxel meshes collisions"),
-	ECVF_Default);
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 inline IPhysXCooking* GetPhysXCooking()
 {
 	static IPhysXCookingModule* PhysXCookingModule = nullptr;
@@ -46,46 +28,51 @@ static const FName PhysXFormat = FPlatformProperties::GetPhysicsFormat();
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelAsyncPhysicsCooker::FVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component)
-	: FVoxelAsyncWork(STATIC_FNAME("AsyncPhysicsCooker"), Component->PriorityDuration)
-	, UniqueId(UNIQUE_ID())
-	, Component(Component)
-	, PhysicsCallbackHandler(Component->PhysicsCallbackHandler)
-	, LOD(Component->LOD)
-	, CollisionTraceFlag(
-		Component->CollisionTraceFlag == ECollisionTraceFlag::CTF_UseDefault
-		? ECollisionTraceFlag(UPhysicsSettings::Get()->DefaultShapeComplexity)
-		: Component->CollisionTraceFlag)
-	, PriorityHandler(Component->PriorityHandler)
-	, bCleanCollisionMesh(Component->bCleanCollisionMesh)
-	, NumConvexHullsPerAxis(Component->NumConvexHullsPerAxis)
-	, Buffers([&]()
-		{
-			TArray<TVoxelSharedPtr<const FVoxelProcMeshBuffers>> TmpBuffers;
-			TmpBuffers.Reserve(Component->ProcMeshSections.Num());
-			for (auto& Section : Component->ProcMeshSections)
-			{
-				if (Section.Settings.bEnableCollisions)
-				{
-					TmpBuffers.Add(Section.Buffers);
-				}
-			}
-			return TmpBuffers;
-		}())
-	, LocalToRoot(Component->GetRelativeTransform())
+FVoxelAsyncPhysicsCooker_PhysX::FVoxelAsyncPhysicsCooker_PhysX(UVoxelProceduralMeshComponent* Component)
+	: IVoxelAsyncPhysicsCooker(Component)
 	, PhysXCooking(GetPhysXCooking())
 {
-	check(IsInGameThread());
-	ensure(CollisionTraceFlag != ECollisionTraceFlag::CTF_UseDefault);
-	ensure(Buffers.Num() > 0);
 }
 
-void FVoxelAsyncPhysicsCooker::DoWork()
+#if ENGINE_MINOR_VERSION >= 24
+class UMRMeshComponent
 {
-	VOXEL_ASYNC_FUNCTION_COUNTER();
+public:
+	static void FinishCreatingPhysicsMeshes(UBodySetup& Body, const TArray<physx::PxConvexMesh*>& ConvexMeshes, const TArray<physx::PxConvexMesh*>& ConvexMeshesNegX, const TArray<physx::PxTriangleMesh*>& TriMeshes)
+	{
+		Body.FinishCreatingPhysicsMeshes_PhysX(ConvexMeshes, ConvexMeshesNegX, TriMeshes);
+	}
+};
+#endif
 
-	const double CookStartTime = FPlatformTime::Seconds();
+bool FVoxelAsyncPhysicsCooker_PhysX::Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage)
+{
+	VOXEL_FUNCTION_COUNTER();
 	
+	if (ErrorCounter.GetValue() > 0)
+	{
+		return false;
+	}
+
+	{
+		VOXEL_SCOPE_COUNTER("FinishCreatingPhysicsMeshes");
+#if ENGINE_MINOR_VERSION < 24
+		BodySetup.FinishCreatingPhysicsMeshes({}, {}, CookResult.TriangleMeshes);
+#else
+		UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetup, {}, {}, CookResult.TriangleMeshes);
+#endif
+	}
+	
+	// TODO a bit hacky?
+	Component->UpdateConvexMeshes(CookResult.ConvexBounds, MoveTemp(CookResult.ConvexElems), MoveTemp(CookResult.ConvexMeshes));
+	
+	OutMemoryUsage.TriangleMeshes = CookResult.TriangleMeshesMemoryUsage;
+
+	return true;
+}
+
+void FVoxelAsyncPhysicsCooker_PhysX::CookMesh()
+{
 	if (CollisionTraceFlag != ECollisionTraceFlag::CTF_UseComplexAsSimple)
 	{
 		DecomposeMeshToHulls();
@@ -95,33 +82,13 @@ void FVoxelAsyncPhysicsCooker::DoWork()
 	{
 		CreateTriMesh();
 	}
-
-	if (CVarLogCollisionCookingTimes.GetValueOnAnyThread() != 0)
-	{
-		LOG_VOXEL(Log, TEXT("Collisions cooking took %fms"), (FPlatformTime::Seconds() - CookStartTime) * 1000);
-	}
-}
-
-void FVoxelAsyncPhysicsCooker::PostDoWork()
-{
-	auto Pinned = PhysicsCallbackHandler.Pin();
-	if (Pinned.IsValid())
-	{
-		Pinned->CookerCallback(UniqueId, Component);
-		FVoxelUtilities::DeleteOnGameThread_AnyThread(Pinned);
-	}
-}
-
-uint32 FVoxelAsyncPhysicsCooker::GetPriority() const
-{
-	return PriorityHandler.GetPriority();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelAsyncPhysicsCooker::CreateTriMesh()
+void FVoxelAsyncPhysicsCooker_PhysX::CreateTriMesh()
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
@@ -260,7 +227,7 @@ void FVoxelAsyncPhysicsCooker::CreateTriMesh()
 	}
 }
 
-void FVoxelAsyncPhysicsCooker::CreateConvexMesh()
+void FVoxelAsyncPhysicsCooker_PhysX::CreateConvexMesh()
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
@@ -287,178 +254,10 @@ void FVoxelAsyncPhysicsCooker::CreateConvexMesh()
 	}
 }
 
-void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
+void FVoxelAsyncPhysicsCooker_PhysX::DecomposeMeshToHulls()
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
-#if 0 // This is way too slow :(
-	TArray<FVector> Vertices;
-	TArray<uint32> Indices;
-	
-	// Copy data from buffers
-	{
-		VOXEL_ASYNC_SCOPE_COUNTER("Copy data from buffers");
-
-		{
-			int32 NumIndices = 0;
-			int32 NumVertices = 0;
-			for (auto& Buffer : Buffers)
-			{
-				NumIndices += Buffer->GetNumIndices();
-				NumVertices += Buffer->GetNumVertices();
-			}
-			VOXEL_ASYNC_SCOPE_COUNTER("Reserve");
-			Vertices.Reserve(NumVertices);
-			Indices.Reserve(NumIndices);
-		}
-
-		int32 VertexOffset = 0;
-		for (int32 SectionIndex = 0; SectionIndex < Buffers.Num(); SectionIndex++)
-		{
-			auto& Buffer = *Buffers[SectionIndex];
-			const auto Get = [](auto& Array, int32 Index) -> auto&
-			{
-#if VOXEL_DEBUG
-				return Array[Index];
-#else
-				return Array.GetData()[Index];
-#endif
-			};
-
-			// Copy vertices
-			{
-				auto& PositionBuffer = Buffer.VertexBuffers.PositionVertexBuffer;
-
-				const int32 Offset = Vertices.Num();
-				Vertices.AddUninitialized(PositionBuffer.GetNumVertices());
-
-				VOXEL_ASYNC_SCOPE_COUNTER("Copy vertices");
-				for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
-				{
-					Get(Vertices, Offset + Index) = PositionBuffer.VertexPosition(Index);
-				}
-			}
-
-			// Copy triangle data
-			{
-				auto& IndexBuffer = Buffer.IndexBuffer;
-
-				const int32 Offset = Indices.Num();
-				Indices.AddUninitialized(IndexBuffer.GetNumIndices());
-
-				{
-					VOXEL_ASYNC_SCOPE_COUNTER("Copy triangles");
-					const auto Lambda = [&](const auto* RESTRICT Data)
-					{
-						for (int32 Index = 0; Index < IndexBuffer.GetNumIndices(); Index++)
-						{
-							checkVoxelSlow(Index < IndexBuffer.GetNumIndices());
-							Get(Indices, Offset + Index) = Data[Index] + VertexOffset;
-						}
-					};
-					if (IndexBuffer.Is32Bit())
-					{
-						Lambda(IndexBuffer.GetData_32());
-					}
-					else
-					{
-						Lambda(IndexBuffer.GetData_16());
-					}
-				}
-			}
-
-			VertexOffset = Vertices.Num();
-		}
-	}
-
-	// Validate input by checking bounding box
-	FBox Box(ForceInit);
-	for (auto& Vertex : Vertices)
-	{
-		Box += Vertex;
-	}
-
-	// If box is invalid, or the largest dimension is less than 1 unit, or smallest is less than 0.1, skip trying to generate collision (V-HACD often crashes...)
-	if (Box.IsValid == 0 || Box.GetSize().GetMax() < 1.f || Box.GetSize().GetMin() < 0.1f)
-	{
-		LOG_VOXEL(Warning, TEXT("Convex decomposition failed: mesh too small. Bounds: %s"), *Box.ToString());
-		ErrorCounter.Increment();
-		return;
-	}
-
-	VHACD::IVHACD::Parameters VHACD_Params;
-	VHACD_Params.m_resolution = 1000; // Maximum number of voxels generated during the voxelization stage (default=100,000, range=10,000-16,000,000)
-	VHACD_Params.m_maxNumVerticesPerCH = 16; // Controls the maximum number of triangles per convex-hull (default=64, range=4-1024)
-	VHACD_Params.m_concavity = 0.001; // NOT TRUE: Concavity is set to zero so that we consider any concave shape as a potential hull. The number of output hulls is better controlled by recursion depth and the max convex hulls parameter
-	VHACD_Params.m_maxConvexHulls = 2; // The number of convex hulls requested by the artists/designer
-	VHACD_Params.m_oclAcceleration = false;
-	VHACD_Params.m_minVolumePerCH = 1.f; // this should be around 1 / (3 * m_resolution ^ (1/3))
-	VHACD_Params.m_projectHullVertices = false; // Project the approximate hull vertices onto the original source mesh and use highest precision results possible.
-	VHACD_Params.m_callback = nullptr; // callback interface for message/status updates
-
-#if 1
-	class VHACDLogger : public VHACD::IVHACD::IUserLogger
-	{
-	public:
-		virtual ~VHACDLogger() = default;
-		virtual void Log(const char* const msg) override
-		{
-			LOG_VOXEL(Log, TEXT("VHACD: %s"), ANSI_TO_TCHAR(msg));
-		}
-	};
-	VHACDLogger logger;
-	VHACD_Params.m_logger = &logger;
-#endif
-
-	VHACD::IVHACD* InterfaceVHACD = VHACD::CreateVHACD();
-	
-	const float* const Verts = reinterpret_cast<float*>(Vertices.GetData());
-	const unsigned int NumVerts = Vertices.Num();
-	const uint32_t* const Tris = static_cast<uint32_t*>(Indices.GetData());
-	const unsigned int NumTris = Indices.Num() / 3;
-
-	bool bSuccess;
-	{
-		VOXEL_ASYNC_SCOPE_COUNTER("Compute");
-		bSuccess = InterfaceVHACD->Compute(Verts, NumVerts, Tris, NumTris, VHACD_Params);
-	}
-
-	if (!bSuccess)
-	{
-		LOG_VOXEL(Warning, TEXT("Convex decomposition failed: VHACD failed"));
-		ErrorCounter.Increment();
-		return;
-	}
-
-	{
-		VOXEL_ASYNC_SCOPE_COUNTER("Copy hulls");
-		
-		const int32 NumHulls = InterfaceVHACD->GetNConvexHulls();
-		ensure(CookResult.ConvexElems.Num() == 0);
-		CookResult.ConvexElems.SetNum(NumHulls);
-		for (int32 HullIndex = 0; HullIndex < NumHulls; HullIndex++)
-		{
-			VHACD::IVHACD::ConvexHull Hull;
-			InterfaceVHACD->GetConvexHull(HullIndex, Hull);
-
-			FKConvexElem& ConvexElem = CookResult.ConvexElems[HullIndex];
-			ConvexElem.VertexData.SetNumUninitialized(Hull.m_nPoints);
-			for (uint32 Index = 0; Index < Hull.m_nPoints; Index++)
-			{
-				FVector V;
-				V.X = float(Hull.m_points[(Index * 3) + 0]);
-				V.Y = float(Hull.m_points[(Index * 3) + 1]);
-				V.Z = float(Hull.m_points[(Index * 3) + 2]);
-				ConvexElem.VertexData[Index] = V;
-			}
-			ConvexElem.UpdateElemBox();
-		}
-	}
-
-	InterfaceVHACD->Clean();
-	InterfaceVHACD->Release();
-#else
-
 	if (Buffers.Num() == 1 && Buffers[0]->GetNumVertices() < 4) return;
 
 	auto& ConvexElems = CookResult.ConvexElems;
@@ -559,10 +358,9 @@ void FVoxelAsyncPhysicsCooker::DecomposeMeshToHulls()
 		Element.UpdateElemBox();
 		CookResult.ConvexBounds += Element.ElemBox;
 	}
-#endif
 }
 
-EPhysXMeshCookFlags FVoxelAsyncPhysicsCooker::GetCookFlags() const
+EPhysXMeshCookFlags FVoxelAsyncPhysicsCooker_PhysX::GetCookFlags() const
 {
 	EPhysXMeshCookFlags CookFlags = EPhysXMeshCookFlags::Default;
 	if (!bCleanCollisionMesh)
@@ -574,3 +372,4 @@ EPhysXMeshCookFlags FVoxelAsyncPhysicsCooker::GetCookFlags() const
 	CookFlags |= EPhysXMeshCookFlags::FastCook;
 	return CookFlags;
 }
+#endif

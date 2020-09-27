@@ -126,20 +126,19 @@ namespace FVoxelMesherUtilities
 		check(Indices.Num() % 3 == 0);
 		for (int32 Index = 0; Index < Indices.Num(); Index += 3)
 		{
-			const uint32 IndexA = Indices.GetData()[Index + 0];
-			const uint32 IndexB = Indices.GetData()[Index + 1];
-			const uint32 IndexC = Indices.GetData()[Index + 2];
-			checkVoxelSlow(Vertices.IsValidIndex(IndexA));
-			checkVoxelSlow(Vertices.IsValidIndex(IndexB));
-			checkVoxelSlow(Vertices.IsValidIndex(IndexC));
-			const auto& A = Vertices.GetData()[IndexA];
-			const auto& B = Vertices.GetData()[IndexB];
-			const auto& C = Vertices.GetData()[IndexC];
-			if (A.Position != B.Position && 
-				A.Position != C.Position && 
-				B.Position != C.Position)
+			const uint32 IndexA = FVoxelUtilities::Get(Indices, Index + 0);
+			const uint32 IndexB = FVoxelUtilities::Get(Indices, Index + 1);
+			const uint32 IndexC = FVoxelUtilities::Get(Indices, Index + 2);
+
+			const auto& A = FVoxelUtilities::Get(Vertices, IndexA);
+			const auto& B = FVoxelUtilities::Get(Vertices, IndexB);
+			const auto& C = FVoxelUtilities::Get(Vertices, IndexC);
+			
+			const FVector BA = B.Position - A.Position;
+			const FVector CA = C.Position - A.Position;
+			const FVector Cross = FVector::CrossProduct(BA, CA);
+			if (Cross.Size() > 1e-4) // See Chaos::FConvexBuilder::IsValidTriangle
 			{
-				// Else physx crashes
 				NewIndices.Emplace(IndexA);
 				NewIndices.Emplace(IndexB);
 				NewIndices.Emplace(IndexC);

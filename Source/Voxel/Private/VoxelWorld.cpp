@@ -624,7 +624,7 @@ void AVoxelWorld::PostLoad()
 
 #if WITH_EDITOR
 
-void AVoxelWorld::PreEditChange(UProperty* PropertyThatWillChange)
+void AVoxelWorld::PreEditChange(FProperty* PropertyThatWillChange)
 {
 	bDisableComponentUnregister = true;
 	Super::PreEditChange(PropertyThatWillChange);

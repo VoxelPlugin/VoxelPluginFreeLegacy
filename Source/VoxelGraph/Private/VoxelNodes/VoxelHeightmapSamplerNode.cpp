@@ -37,7 +37,7 @@ void UVoxelNode_HeightmapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_HeightmapSampler::TryImportFromProperty(UProperty* Property, UObject* Object)
+bool UVoxelNode_HeightmapSampler::TryImportFromProperty(FProperty* Property, UObject* Object)
 {
 	UVoxelHeightmapAsset* HeightmapAsset = nullptr;
 	if (TryImportObject(Property, Object, HeightmapAsset))

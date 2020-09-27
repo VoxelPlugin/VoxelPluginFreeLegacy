@@ -88,3 +88,22 @@ uint32& FVoxelRangeFailStatus::GetTlsSlot()
 	static uint32 TlsSlot = 0xFFFFFFFF;
 	return TlsSlot;
 }
+
+VOXEL_API FString VoxelStats_RemoveLambdaFromFunctionName(const FString& FunctionName)
+{
+#if PLATFORM_WINDOWS
+	ensure(FunctionName.EndsWith("::operator ()"));
+
+	TArray<FString> Array;
+	FunctionName.ParseIntoArray(Array, TEXT("::"));
+
+	// operator()
+	if (ensure(Array.Num() > 1)) Array.Pop(false);
+	// <lambda XXXXXXX>
+	if (ensure(Array.Num() > 1)) Array.Pop(false);
+
+	return FString::Join(Array, TEXT("::"));
+#else
+	return FunctionName;
+#endif
+}

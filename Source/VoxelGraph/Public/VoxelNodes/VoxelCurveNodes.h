@@ -25,7 +25,7 @@ public:
 	virtual FText GetTitle() const override;
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 #if WITH_EDITOR
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 #endif
 };
 
@@ -46,6 +46,6 @@ public:
 	virtual FText GetTitle() const override;
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 #if WITH_EDITOR
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 #endif
 };

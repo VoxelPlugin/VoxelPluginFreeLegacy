@@ -18,8 +18,10 @@ bool FVoxelUtilities::IsMaterialTessellated(UMaterialInterface* Material)
 	{
 		return false;
 	}
-	
+
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	return BaseMaterial->D3D11TessellationMode != EMaterialTessellationMode::MTM_NoTessellation;
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
 UMaterialInterface* FVoxelUtilities::GetDefaultMaterial(int32 NumIndices)

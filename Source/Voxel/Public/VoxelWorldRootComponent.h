@@ -28,7 +28,10 @@ public:
 	void TickWorldRoot();
 
 public:
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	void UpdateConvexCollision(uint64 Id, const FBox& Bounds, TArray<FKConvexElem>&& ConvexElements, TArray<physx::PxConvexMesh*>&& ConvexMeshes);
+	void SetCookedTriMeshes(const TArray<physx::PxTriangleMesh*>& TriMeshes);
+#endif
 
 private:
 	UPROPERTY(Transient)
@@ -36,6 +39,10 @@ private:
 
 	FBoxSphereBounds LocalBounds;
 
+	// For debug draw
+	FCriticalSection BodySetupLock;
+	
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	struct FConvexElements
 	{
 		const FBox Bounds;
@@ -47,15 +54,10 @@ private:
 	};
 	TMap<uint64, TUniquePtr<FConvexElements>> Elements;
 
-	// For debug draw
-	FCriticalSection BodySetupLock;
-
 	bool bRebuildQueued = false;
 	
 	void RebuildConvexCollision();
+#endif
 
 	friend class FVoxelRenderSimpleCollisionSceneProxy;
-
-public:
-	void SetCookedTriMeshes(const TArray<physx::PxTriangleMesh*>& TriMeshes);
 };

@@ -80,9 +80,9 @@ void UVoxelNode_SingleWorldGeneratorSamplerBase::LogErrors(FVoxelGraphErrorRepor
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_SingleWorldGeneratorSamplerBase::TryImportFromProperty(UProperty* Property, UObject* Object)
+bool UVoxelNode_SingleWorldGeneratorSamplerBase::TryImportFromProperty(FProperty* Property, UObject* Object)
 {
-	if (auto* Prop = UE_25_SWITCH(Cast, CastField)<UStructProperty>(Property))
+	if (auto* Prop = UE_25_SWITCH(Cast, CastField)<FStructProperty>(Property))
 	{
 		if (Prop->GetCPPType(nullptr, 0) == "FVoxelWorldGeneratorPicker")
 		{

@@ -86,7 +86,7 @@ public:
 	//~ End FEditorUndoClient Interface
 
 	//~ Begin FNotifyHook Interface
-	virtual void NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, UProperty* PropertyThatChanged) override;
+	virtual void NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, FProperty* PropertyThatChanged) override;
 	//~ End FNotifyHook Interface
 
 	//~ Begin FTickableGameObject Interface

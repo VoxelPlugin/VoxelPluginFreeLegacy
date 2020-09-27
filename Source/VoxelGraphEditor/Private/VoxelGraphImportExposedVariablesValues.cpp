@@ -72,7 +72,7 @@ void DoImport(UVoxelGraphGenerator* Graph, UClass* From)
 	int32 Count = 0;
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Import Exposed Variables"));
-	for (TFieldIterator<UProperty> It(From); It; ++It)
+	for (TFieldIterator<FProperty> It(From); It; ++It)
 	{
 		auto* Property = *It;
 		FName Name = Property->GetFName();

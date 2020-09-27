@@ -90,7 +90,7 @@ private:
 
 private:
 	void RefreshDetails() const;
-	bool IsPropertyVisible(const UProperty& Property, const TArray<const UProperty*>& ParentProperties, int32 ParentPropertyIndex = 0) const;
+	bool IsPropertyVisible(const FProperty& Property, const TArray<const FProperty*>& ParentProperties, int32 ParentPropertyIndex = 0) const;
 
 private:
 	void SetActiveTool(UClass* ToolClass);

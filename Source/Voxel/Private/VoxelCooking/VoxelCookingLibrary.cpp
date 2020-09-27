@@ -20,6 +20,7 @@
 #include "Interface_CollisionDataProviderCore.h"
 #include "Engine/Private/PhysicsEngine/PhysXSupport.h" // For FPhysXInputStream
 
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 struct FVoxelCookingTaskData
 {
 	IVoxelRenderer& Renderer;
@@ -154,6 +155,7 @@ public:
 		return 0;
 	}
 };
+#endif
 
 FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSettings& Settings, const FVoxelUncompressedWorldSaveImpl* Save)
 {
@@ -208,6 +210,8 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	LOG_VOXEL(Log, TEXT("VOXEL COOKING: Starting cooking with %lld tasks"), TotalNumChunks);
 
 	FVoxelCookedData CookedData;
+	
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	FVoxelCookingTaskData TaskData(*Renderer, CookedData.Mutable(), TotalNumChunks, Settings);
 
 	for (int32 X = Min.X; X < Max.X; X += RENDER_CHUNK_SIZE)
@@ -241,6 +245,9 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	LOG_VOXEL(Log, TEXT("VOXEL COOKING: Async Thread meshing time: %fs"), MeshingTime);
 	LOG_VOXEL(Log, TEXT("VOXEL COOKING: Async Thread collision time: %fs"), CollisionTime);
 	LOG_VOXEL(Log, TEXT("VOXEL COOKING: Overhead time: %fs (%f%%)"), OverheadTime, 100. * OverheadTime / GameThreadTime);
+#else
+	ensure(false);
+#endif
 	
 	Renderer->Destroy();
 	DebugManager->Destroy();
@@ -285,7 +292,8 @@ void UVoxelCookingLibrary::LoadCookedVoxelData(FVoxelCookedData CookedData, AVox
 	UVoxelWorldRootComponent& WorldRoot = World->GetWorldRoot();
 
 	const auto& Chunks = CookedData.Const().GetChunks();
-	
+
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	TArray<physx::PxTriangleMesh*> TriMeshes;
 	TriMeshes.Reserve(Chunks.Num());
 	
@@ -300,6 +308,9 @@ void UVoxelCookingLibrary::LoadCookedVoxelData(FVoxelCookedData CookedData, AVox
 	}
 
 	WorldRoot.SetCookedTriMeshes(TriMeshes);
+#else
+	ensure(false);
+#endif
 
 	World->ApplyCollisionSettingsToRoot();
 	

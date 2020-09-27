@@ -59,7 +59,7 @@ void UVoxelNode_BiomeMapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReport
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_BiomeMapSampler::TryImportFromProperty(UProperty* Property, UObject* Object)
+bool UVoxelNode_BiomeMapSampler::TryImportFromProperty(FProperty* Property, UObject* Object)
 {
 	return TryImportObject(Property, Object, Texture);
 }

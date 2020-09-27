@@ -131,7 +131,7 @@ protected:
 	virtual bool ShouldTickIfViewportsOnly() const override { return true; }
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void PostEditMove(bool bFinished) override;
-	virtual bool CanEditChange(const UProperty* InProperty) const override;
+	virtual bool CanEditChange(const FProperty* InProperty) const override;
 	//~ End AActor Interface
 #endif
 

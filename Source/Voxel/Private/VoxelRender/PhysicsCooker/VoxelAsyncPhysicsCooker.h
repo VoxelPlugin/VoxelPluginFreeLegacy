@@ -10,12 +10,12 @@
 #include "UObject/WeakObjectPtrTemplates.h"
 
 struct FVoxelProcMeshBuffers;
-class IVoxelProceduralMeshComponent_PhysicsCallbackHandler;
-class IPhysXCooking;
+struct FVoxelProceduralMeshComponentMemoryUsage;
 class UBodySetup;
 class UVoxelProceduralMeshComponent;
+class IVoxelProceduralMeshComponent_PhysicsCallbackHandler;
 
-class FVoxelAsyncPhysicsCooker : public FVoxelAsyncWork
+class IVoxelAsyncPhysicsCooker : public FVoxelAsyncWork
 {
 public:
 	const uint64 UniqueId;
@@ -30,44 +30,21 @@ public:
 	const TArray<TVoxelSharedPtr<const FVoxelProcMeshBuffers>> Buffers;
 	const FTransform LocalToRoot;
 
-	explicit FVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component);
+	explicit IVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component);
 
-	inline bool IsSuccessful() const
-	{
-		return ErrorCounter.GetValue() == 0;
-	}
-
-private:
-	~FVoxelAsyncPhysicsCooker() = default;
-
-	template<typename T>
-	friend struct TVoxelAsyncWorkDelete;
+	static IVoxelAsyncPhysicsCooker* CreateCooker(UVoxelProceduralMeshComponent* Component);
 	
+public:
+	//~ Begin IVoxelAsyncPhysicsCooker Interface
+	virtual bool Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage) = 0;
+protected:
+	virtual void CookMesh() = 0;
+	//~ End IVoxelAsyncPhysicsCooker Interface
+
 protected:
 	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override;
 	virtual void PostDoWork() override;
 	virtual uint32 GetPriority() const override;
 	//~ End FVoxelAsyncWork Interface
-	
-private:
-	void CreateTriMesh();
-	void CreateConvexMesh();
-	void DecomposeMeshToHulls();
-	EPhysXMeshCookFlags GetCookFlags() const;
-
-	IPhysXCooking* const PhysXCooking;
-	FThreadSafeCounter ErrorCounter;
-
-public:
-	struct FCookResult
-	{
-		FBox ConvexBounds;
-		TArray<FKConvexElem> ConvexElems;
-		TArray<physx::PxConvexMesh*> ConvexMeshes;
-		TArray<physx::PxTriangleMesh*> TriangleMeshes;
-
-		uint64 TriangleMeshesMemoryUsage = 0;
-	};
-	FCookResult CookResult;
 };
