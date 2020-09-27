@@ -41,7 +41,7 @@ void UVoxelNode_DataAssetSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_DataAssetSampler::TryImportFromProperty(UProperty* Property, UObject* Object)
+bool UVoxelNode_DataAssetSampler::TryImportFromProperty(FProperty* Property, UObject* Object)
 {
 	return TryImportObject(Property, Object, Asset);
 }

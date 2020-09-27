@@ -17,7 +17,7 @@ struct FVoxelRendererSettings;
 struct FMaterialRelevance;
 class FVoxelToolRenderingManager;
 class FDistanceFieldVolumeData;
-class FVoxelAsyncPhysicsCooker;
+class IVoxelAsyncPhysicsCooker;
 class UBodySetup;
 class UMaterialInterface;
 class UVoxelProceduralMeshComponent;
@@ -25,7 +25,12 @@ class AVoxelWorld;
 class IVoxelPool;
 class IVoxelProceduralMeshComponent_PhysicsCallbackHandler;
 
-DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel PhysX Triangle Meshes Memory"), STAT_VoxelPhysXTriangleMeshesMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Physics Triangle Meshes Memory"), STAT_VoxelPhysicsTriangleMeshesMemory, STATGROUP_VoxelMemory, VOXEL_API);
+
+struct FVoxelProceduralMeshComponentMemoryUsage
+{
+	uint32 TriangleMeshes = 0;
+};
 
 enum class EVoxelProcMeshSectionUpdate : uint8
 {
@@ -146,16 +151,21 @@ private:
 	void UpdateNavigation();
 	void UpdateCollision();
 	void FinishCollisionUpdate();
+	
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	void UpdateConvexMeshes(
 		const FBox& ConvexBounds,
 		TArray<FKConvexElem>&& ConvexElements,
 		TArray<physx::PxConvexMesh*>&& ConvexMeshes,
 		bool bCanFail = false);
+#endif
 
 private:
 	void PhysicsCookerCallback(uint64 CookerId);
 
-	friend class FVoxelAsyncPhysicsCooker;
+	friend class IVoxelAsyncPhysicsCooker;
+	friend class FVoxelAsyncPhysicsCooker_PhysX;
+	friend class FVoxelAsyncPhysicsCooker_Chaos;
 	friend class IVoxelProceduralMeshComponent_PhysicsCallbackHandler;
 	
 private:
@@ -164,8 +174,8 @@ private:
 	UPROPERTY(Transient)
 	UBodySetup* BodySetupBeingCooked;
 	
-	FVoxelAsyncPhysicsCooker* AsyncCooker = nullptr;
-	uint64 TriangleMeshesMemory = 0;
+	IVoxelAsyncPhysicsCooker* AsyncCooker = nullptr;
+	FVoxelProceduralMeshComponentMemoryUsage MemoryUsage;
 	
 	struct FVoxelProcMeshSection
 	{

@@ -54,7 +54,10 @@ public class VoxelEditor : ModuleRules
                 "BlueprintGraph",
                 "KismetCompiler",
                 "ApplicationCore",
-                "EngineSettings"
+                "EngineSettings",
+#if UE_4_26_OR_LATER
+                "DeveloperSettings",
+#endif
             });
 
         PrivateIncludePathModuleNames.AddRange(

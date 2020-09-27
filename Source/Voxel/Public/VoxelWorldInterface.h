@@ -31,7 +31,11 @@ public:
 
 // AActor so we can keep a weak ptr to it
 UCLASS(Abstract)
-class VOXEL_API AVoxelWorldInterface : public AActor, public IVoxelWorldInterface
+class VOXEL_API AVoxelWorldInterface
+	: public AActor
+#if CPP
+	, public IVoxelWorldInterface
+#endif
 {
 	GENERATED_BODY()
 };

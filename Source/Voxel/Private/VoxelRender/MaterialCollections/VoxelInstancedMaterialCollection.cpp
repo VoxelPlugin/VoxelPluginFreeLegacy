@@ -360,7 +360,7 @@ void UVoxelInstancedMaterialCollectionInstance::PostEditChangeProperty(FProperty
 	}
 }
 
-bool UVoxelInstancedMaterialCollectionInstance::CanEditChange(const UProperty* InProperty) const
+bool UVoxelInstancedMaterialCollectionInstance::CanEditChange(const FProperty* InProperty) const
 {
 	if (InProperty && InProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelInstancedMaterialCollectionInstance, Layers))
 	{

@@ -7,6 +7,7 @@
 #include "Engine/Engine.h"
 #include "Materials/Material.h"
 
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 UVoxelWorldRootComponent::FConvexElements::FConvexElements(
 	const FBox& Bounds,
 	TArray<FKConvexElem>&& InConvexElements,
@@ -30,6 +31,7 @@ UVoxelWorldRootComponent::FConvexElements::~FConvexElements()
 		ConvexMesh->release();
 	}
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,7 +47,9 @@ UVoxelWorldRootComponent::UVoxelWorldRootComponent()
 
 UVoxelWorldRootComponent::~UVoxelWorldRootComponent()
 {
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	ensure(Elements.Num() == 0);
+#endif
 }
 
 UBodySetup* UVoxelWorldRootComponent::GetBodySetup()
@@ -69,14 +73,17 @@ FBoxSphereBounds UVoxelWorldRootComponent::CalcBounds(const FTransform& LocalToW
 void UVoxelWorldRootComponent::TickWorldRoot()
 {
 	VOXEL_FUNCTION_COUNTER();
-
+	
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	if (bRebuildQueued)
 	{
 		bRebuildQueued = false;
 		RebuildConvexCollision();
 	}
+#endif
 }
 
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 void UVoxelWorldRootComponent::UpdateConvexCollision(
 	uint64 Id,
 	const FBox& InBounds,
@@ -220,6 +227,7 @@ void UVoxelWorldRootComponent::SetCookedTriMeshes(const TArray<physx::PxTriangle
 	UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetup, {}, {}, TriMeshes);
 #endif
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -282,11 +290,7 @@ public:
 				SolidMaterialInstance,
 				true,
 				true,
-#if ENGINE_MINOR_VERSION < 23
-				UseEditorDepthTest(),
-#else
 				DrawsVelocity(),
-#endif
 				ViewIndex,
 				Collector);
 		}
@@ -307,11 +311,7 @@ public:
 				WireframeMaterialInstance,
 				true,
 				false,
-#if ENGINE_MINOR_VERSION < 23
-				UseEditorDepthTest(),
-#else
 				DrawsVelocity(),
-#endif
 				ViewIndex,
 				Collector);
 		}

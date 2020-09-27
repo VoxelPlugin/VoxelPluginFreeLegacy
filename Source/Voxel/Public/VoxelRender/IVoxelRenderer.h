@@ -3,8 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "PhysicsEngine/BodySetupEnums.h"
 #include "VoxelMinimal.h"
+#if ENGINE_MINOR_VERSION < 26
+#include "PhysicsEngine/BodySetupEnums.h"
+#else
+#include "BodySetupEnums.h"
+#endif
 #include "VoxelIntBox.h"
 #include "VoxelConfigEnums.h"
 #include "VoxelRender/VoxelMeshConfig.h"

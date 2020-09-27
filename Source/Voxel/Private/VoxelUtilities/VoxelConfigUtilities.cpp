@@ -12,7 +12,7 @@ void FVoxelConfigUtilities::SaveConfig(UObject* Object, const FString& BaseSecti
 	UClass* Class = Object->GetClass();
 	const UObject* CDO = Class->GetDefaultObject();
 
-	for (TFieldIterator<UProperty> It(Class, EFieldIteratorFlags::IncludeSuper); It; ++It)
+	for (TFieldIterator<FProperty> It(Class, EFieldIteratorFlags::IncludeSuper); It; ++It)
 	{
 		auto& Property = **It;
 		if (Property.HasAnyPropertyFlags(CPF_Transient)) continue;
@@ -35,7 +35,7 @@ void FVoxelConfigUtilities::SaveConfig(UObject* Object, const FString& BaseSecti
 void FVoxelConfigUtilities::LoadConfig(UObject* Object, const FString& BaseSectionName, const FString& Filename)
 {
 	UClass* Class = Object->GetClass();
-	for (TFieldIterator<UProperty> It(Class, EFieldIteratorFlags::IncludeSuper); It; ++It)
+	for (TFieldIterator<FProperty> It(Class, EFieldIteratorFlags::IncludeSuper); It; ++It)
 	{
 		auto& Property = **It;
 		if (Property.HasAnyPropertyFlags(CPF_Transient)) continue;

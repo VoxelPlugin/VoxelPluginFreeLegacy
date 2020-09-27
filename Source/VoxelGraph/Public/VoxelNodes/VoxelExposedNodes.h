@@ -31,7 +31,7 @@ public:
 
 	//~ Begin UVoxelExposedNode Interface
 #if WITH_EDITOR
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object);
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object);
 #endif
 	//~ End UVoxelExposedNode Interface
 
@@ -52,9 +52,9 @@ protected:
 	//~ End UObject Interface
 
 	template<typename T>
-	static bool TryImportObject(UProperty* Property, UObject* Object, T*& NodeAsset)
+	static bool TryImportObject(FProperty* Property, UObject* Object, T*& NodeAsset)
 	{
-		if (auto* ObjectProp = UE_25_SWITCH(Cast, CastField)<USoftObjectProperty>(Property))
+		if (auto* ObjectProp = UE_25_SWITCH(Cast, CastField)<FSoftObjectProperty>(Property))
 		{
 			auto* AssetPtr = ObjectProp->ContainerPtrToValuePtr<const TSoftObjectPtr<UObject>>(Object);
 			if (AssetPtr)

@@ -30,7 +30,7 @@ void UVoxelNode_Curve::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_Curve::TryImportFromProperty(UProperty* Property, UObject* Object)
+bool UVoxelNode_Curve::TryImportFromProperty(FProperty* Property, UObject* Object)
 {
 	return TryImportObject(Property, Object, Curve);
 }
@@ -66,7 +66,7 @@ void UVoxelNode_CurveColor::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_CurveColor::TryImportFromProperty(UProperty* Property, UObject* Object)
+bool UVoxelNode_CurveColor::TryImportFromProperty(FProperty* Property, UObject* Object)
 {
 	return TryImportObject(Property, Object, Curve);
 }

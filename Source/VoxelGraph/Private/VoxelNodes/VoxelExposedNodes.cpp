@@ -7,7 +7,7 @@
 #include "EdGraph/EdGraphNode.h"
 
 #if WITH_EDITOR
-bool UVoxelExposedNode::TryImportFromProperty(UProperty* Property, UObject* Object)
+bool UVoxelExposedNode::TryImportFromProperty(FProperty* Property, UObject* Object)
 {
 	ensure(false);
 	return false;

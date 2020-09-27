@@ -96,7 +96,7 @@ void UVoxelOpenAssetsOnStartup::ActualInit()
 						auto* Settings = GetMutableDefault<UGameMapsSettings>();
 						Settings->EditorStartupMap = SelectedAssets[0].ToSoftObjectPath();
 
-						auto* Property = UE_25_SWITCH(FindField, FindFProperty)<UProperty>(UGameMapsSettings::StaticClass(), GET_MEMBER_NAME_CHECKED(UGameMapsSettings, EditorStartupMap));
+						auto* Property = UE_25_SWITCH(FindField, FindFProperty)<FProperty>(UGameMapsSettings::StaticClass(), GET_MEMBER_NAME_CHECKED(UGameMapsSettings, EditorStartupMap));
 						Settings->UpdateSinglePropertyInConfigFile(Property, Settings->GetDefaultConfigFilename());
 					})));
 				}));

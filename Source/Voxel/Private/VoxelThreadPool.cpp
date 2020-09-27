@@ -9,6 +9,7 @@
 #include "HAL/Runnable.h"
 #include "HAL/RunnableThread.h"
 #include "Misc/ScopeLock.h"
+#include "Misc/ScopeExit.h"
 #include "Async/TaskGraphInterfaces.h"
 
 DECLARE_DWORD_COUNTER_STAT(TEXT("VoxelThreadPoolDummyCounter"), STAT_VoxelThreadPoolDummyCounter, STATGROUP_ThreadPoolAsyncTasks);
@@ -182,8 +183,16 @@ FVoxelQueuedThreadPoolSettings::FVoxelQueuedThreadPoolSettings(
 
 inline TArray<TUniquePtr<FVoxelQueuedThread>> CreateThreads(FVoxelQueuedThreadPool* Pool)
 {
+#if ENGINE_MINOR_VERSION < 26
 	TRACE_THREAD_GROUP_SCOPE("VoxelThreadPool");
-
+#else
+	Trace::ThreadGroupBegin(TEXT("VoxelThreadPool"));
+	ON_SCOPE_EXIT
+	{
+		Trace::ThreadGroupEnd();
+	};
+#endif
+	
 	auto& Settings = Pool->Settings;
 	const uint32 NumThreads = Settings.NumThreads;
 	

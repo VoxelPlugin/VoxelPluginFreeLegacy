@@ -107,9 +107,9 @@ void UVoxelNode_WorldGeneratorMerge::LogErrors(FVoxelGraphErrorReporter& ErrorRe
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_WorldGeneratorMerge::TryImportFromProperty(UProperty* Property, UObject* Object)
+bool UVoxelNode_WorldGeneratorMerge::TryImportFromProperty(FProperty* Property, UObject* Object)
 {
-	if(auto* ArrayProperty = UE_25_SWITCH(Cast, CastField)<UArrayProperty>(Property))
+	if(auto* ArrayProperty = UE_25_SWITCH(Cast, CastField)<FArrayProperty>(Property))
 	{
 		if (ArrayProperty->Inner->GetCPPType(nullptr, 0) == "FVoxelWorldGeneratorPicker")
 		{

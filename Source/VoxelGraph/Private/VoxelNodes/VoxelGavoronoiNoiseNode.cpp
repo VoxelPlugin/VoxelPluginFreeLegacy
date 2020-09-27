@@ -50,7 +50,7 @@ UVoxelNode_2DErosion::UVoxelNode_2DErosion()
 
 
 #if WITH_EDITOR
-bool UVoxelNode_2DErosion::CanEditChange(const UProperty* InProperty) const
+bool UVoxelNode_2DErosion::CanEditChange(const FProperty* InProperty) const
 {
 	return
 		Super::CanEditChange(InProperty) &&

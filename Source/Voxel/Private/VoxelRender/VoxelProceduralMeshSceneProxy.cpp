@@ -85,11 +85,7 @@ FVoxelProcMeshBuffersRenderData::FVoxelProcMeshBuffersRenderData(
 		FRayTracingGeometryInitializer Initializer;
 		Initializer.IndexBuffer = IndexBuffer.IndexBufferRHI;
 		Initializer.TotalPrimitiveCount = IndexBuffer.GetNumIndices() / 3;
-#if ENGINE_MINOR_VERSION < 23
-		Initializer.PrimitiveType = PT_TriangleList;
-#else
 		Initializer.GeometryType = RTGT_Triangles;
-#endif
 		Initializer.bFastBuild = true;
 		Initializer.bAllowUpdate = false;
 
@@ -253,7 +249,6 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 
 FVoxelProceduralMeshSceneProxy::~FVoxelProceduralMeshSceneProxy()
 {
-	ONLY_UE_23_AND_LOWER(DestroyRenderThreadResources());
 	for (auto& Section : Sections)
 	{
 		check(!Section.RenderData.IsValid());

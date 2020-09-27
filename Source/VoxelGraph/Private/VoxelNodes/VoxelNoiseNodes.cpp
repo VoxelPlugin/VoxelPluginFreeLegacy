@@ -187,7 +187,7 @@ void UVoxelNode_NoiseNode::PostEditChangeProperty(FPropertyChangedEvent& Propert
 	}
 }
 
-bool UVoxelNode_NoiseNode::CanEditChange(const UProperty* InProperty) const
+bool UVoxelNode_NoiseNode::CanEditChange(const FProperty* InProperty) const
 {
 	return
 		Super::CanEditChange(InProperty) && 
@@ -297,7 +297,7 @@ UVoxelNode_IQNoiseBase::UVoxelNode_IQNoiseBase()
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_IQNoiseBase::CanEditChange(const UProperty* InProperty) const
+bool UVoxelNode_IQNoiseBase::CanEditChange(const FProperty* InProperty) const
 {
 	return
 		Super::CanEditChange(InProperty) &&

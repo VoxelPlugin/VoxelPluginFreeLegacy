@@ -64,7 +64,7 @@ public:
 	//~ Begin UObject Interface
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	virtual bool CanEditChange(const UProperty* InProperty) const override;
+	virtual bool CanEditChange(const FProperty* InProperty) const override;
 #endif
 	virtual void PostLoad() override;
 	virtual void PostInitProperties() override;
@@ -162,7 +162,7 @@ public:
 
 	//~ Begin UObject Interface
 #if WITH_EDITOR
-	virtual bool CanEditChange(const UProperty* InProperty) const override;
+	virtual bool CanEditChange(const FProperty* InProperty) const override;
 #endif
 	//~ End UObject Interface
 };

@@ -92,7 +92,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	const auto IsPropertyVisibleDelegate = MakeWeakPtrDelegate(this, [=](const FPropertyAndParent& PropertyAndParent)
 		{
 #if ENGINE_MINOR_VERSION < 24
-			TArray<const UProperty*> ParentProperties;
+			TArray<const FProperty*> ParentProperties;
 			if (PropertyAndParent.ParentProperty)
 			{
 				ParentProperties.Add(PropertyAndParent.ParentProperty);
@@ -594,7 +594,7 @@ void FVoxelEditorToolsPanel::RefreshDetails() const
 	ToolDetailsPanel->ForceRefresh();
 }
 
-bool FVoxelEditorToolsPanel::IsPropertyVisible(const UProperty& Property, const TArray<const UProperty*>& ParentProperties, int32 ParentPropertyIndex) const
+bool FVoxelEditorToolsPanel::IsPropertyVisible(const FProperty& Property, const TArray<const FProperty*>& ParentProperties, int32 ParentPropertyIndex) const
 {
 	if (Property.HasMetaData(STATIC_FNAME("HideInPanel")))
 	{

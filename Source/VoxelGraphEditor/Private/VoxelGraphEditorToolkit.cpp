@@ -747,7 +747,7 @@ void FVoxelGraphEditorToolkit::PostUndo(bool bSuccess)
 	TriggerUpdatePreview(EVoxelGraphPreviewFlags::UpdateAll);
 }
 
-void FVoxelGraphEditorToolkit::NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, class UProperty* PropertyThatChanged)
+void FVoxelGraphEditorToolkit::NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, FProperty* PropertyThatChanged)
 {
 	if (VoxelGraphEditor.IsValid() && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{

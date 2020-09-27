@@ -25,7 +25,7 @@ public:
 	//~ End UVoxelOptionallyExposedNode Interface
 
 #if WITH_EDITOR
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 #endif
 };
 
@@ -48,7 +48,7 @@ public:
 	//~ End UVoxelOptionallyExposedNode Interface
 
 #if WITH_EDITOR
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 #endif
 };
 
@@ -71,7 +71,7 @@ public:
 	//~ End UVoxelOptionallyExposedNode Interface
 
 #if WITH_EDITOR
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 #endif
 };
 
@@ -94,6 +94,6 @@ public:
 	//~ End UVoxelOptionallyExposedNode Interface
 
 #if WITH_EDITOR
-	virtual bool TryImportFromProperty(UProperty* Property, UObject* Object) override;
+	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 #endif
 };

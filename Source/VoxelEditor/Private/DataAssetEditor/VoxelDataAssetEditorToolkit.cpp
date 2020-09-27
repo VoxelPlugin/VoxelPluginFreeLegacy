@@ -325,7 +325,7 @@ void FVoxelDataAssetEditorToolkit::AddReferencedObjects(FReferenceCollector& Col
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDataAssetEditorToolkit::NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, UProperty* PropertyThatChanged)
+void FVoxelDataAssetEditorToolkit::NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, FProperty* PropertyThatChanged)
 {
 	if (PropertyChangedEvent.ChangeType == EPropertyChangeType::Interactive ||
 		!ensure(PropertyChangedEvent.GetNumObjectsBeingEdited() == 1) ||

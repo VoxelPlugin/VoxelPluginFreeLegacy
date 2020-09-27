@@ -252,7 +252,7 @@ void AVoxelAssetActor::PostEditMove(const bool bFinished)
 	}
 }
 
-bool AVoxelAssetActor::CanEditChange(const UProperty* InProperty) const
+bool AVoxelAssetActor::CanEditChange(const FProperty* InProperty) const
 {
 	if (InProperty)
 	{

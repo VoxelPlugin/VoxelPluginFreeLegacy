@@ -64,12 +64,18 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 			}
 		}
 	};
-	
+
+#if ENGINE_MINOR_VERSION < 26
 	FBlueprintExceptionTracker& BlueprintExceptionTracker = FBlueprintExceptionTracker::Get();
+	auto& ScriptStack =BlueprintExceptionTracker.ScriptStack;
+#else
+	const TArray<const FFrame*>& ScriptStack = FBlueprintContextTracker::Get().GetScriptStack();
+#endif
+	
 	TArray<TSharedPtr<IMessageToken>> ReversedTokens;
-	if (BlueprintExceptionTracker.ScriptStack.Num() > 0)
+	if (ScriptStack.Num() > 0)
 	{
-		const FFrame& StackFrame = *BlueprintExceptionTracker.ScriptStack.Last();
+		const FFrame& StackFrame = *ScriptStack.Last();
 		UClass* ClassContainingCode = FKismetDebugUtilities::FindClassForNode(nullptr, StackFrame.Node);
 		UBlueprint* BlueprintObj = (ClassContainingCode ? Cast<UBlueprint>(ClassContainingCode->ClassGeneratedBy) : NULL);
 		if (BlueprintObj)
