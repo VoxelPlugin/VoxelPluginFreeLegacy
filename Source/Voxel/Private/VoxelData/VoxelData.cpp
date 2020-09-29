@@ -9,9 +9,9 @@
 #include "VoxelData/VoxelDataUtilities.h"
 
 #include "VoxelDiff.h"
+#include "VoxelEnums.h"
 #include "VoxelWorld.h"
 #include "VoxelQueryZone.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 

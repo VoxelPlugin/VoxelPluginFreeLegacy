@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelIntBox.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelPlaceableItemManager.generated.h"
 
 struct FVoxelDataItem;
@@ -16,9 +16,9 @@ class IVoxelWorldInterface;
 
 class UVoxelWorldGenerator;
 class UVoxelLineBatchComponent;
+class UVoxelWorldGeneratorCache;
 
 class FVoxelData;
-class FVoxelWorldGeneratorCache;
 
 USTRUCT(BlueprintType)
 struct FVoxelDataItemConstructionInfo
@@ -107,7 +107,7 @@ public:
 	void Clear();
 	void ApplyToData(
 		FVoxelData& Data, 
-		FVoxelWorldGeneratorCache& Cache, 
+		const UVoxelWorldGeneratorCache& Cache, 
 		TMap<FVoxelDataItemConstructionInfo, FVoxelDataItemPtr>* OutItems = nullptr);
 
 	const TArray<FVoxelDataItemConstructionInfo>& GetDataItemInfos() const { return DataItemInfos; }

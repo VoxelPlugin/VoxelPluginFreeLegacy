@@ -333,6 +333,9 @@ public:
 			v_flt _3D_IQ_Noise_0_Temp_3; // 3D IQ Noise output 3
 			Variable_18 = _3D_IQ_Noise_0_Noise.IQNoise_3D_Deriv(Variable_25, Variable_26, Variable_27, BufferConstant.Variable_19, _3D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_0_Temp_1,_3D_IQ_Noise_0_Temp_2,_3D_IQ_Noise_0_Temp_3);
 			Variable_18 = FMath::Clamp<v_flt>(Variable_18, -0.732619, 0.767129);
+			_3D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_1, -1.577728, 1.771872);
+			_3D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_2, -1.779903, 1.388687);
+			_3D_IQ_Noise_0_Temp_3 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_3, -1.667376, 1.695596);
 			
 			// 3D Perlin Noise Fractal
 			v_flt Variable_3; // 3D Perlin Noise Fractal output 0
@@ -439,6 +442,9 @@ public:
 			v_flt _3D_IQ_Noise_0_Temp_3; // 3D IQ Noise output 3
 			Variable_18 = _3D_IQ_Noise_0_Noise.IQNoise_3D_Deriv(Variable_25, Variable_26, Variable_27, BufferConstant.Variable_19, _3D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_0_Temp_1,_3D_IQ_Noise_0_Temp_2,_3D_IQ_Noise_0_Temp_3);
 			Variable_18 = FMath::Clamp<v_flt>(Variable_18, -0.732619, 0.767129);
+			_3D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_1, -1.577728, 1.771872);
+			_3D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_2, -1.779903, 1.388687);
+			_3D_IQ_Noise_0_Temp_3 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_3, -1.667376, 1.695596);
 			
 			// 3D Perlin Noise Fractal
 			v_flt Variable_3; // 3D Perlin Noise Fractal output 0

@@ -8,6 +8,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
+#include "VoxelTools/VoxelDataTools.inl"
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelMessages.h"
 #include "VoxelFeedbackContext.h"
@@ -312,12 +313,17 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 				{
 					if (World.IsCreated())
 					{
-						FVoxelScopedSlowTask Scope(1.f, VOXEL_LOCTEXT("Scaling data"));
-						Scope.MakeDialog();
-						Scope.EnterProgressFrame();
-						
-						FVoxelScopedTransaction Transaction(&World, "Scaling data", EVoxelChangeType::DataSwap);
-						UVoxelBlueprintLibrary::ScaleData(&World, World.EditorOnly_NewScale);
+						if (EAppReturnType::Yes == FMessageDialog::Open(
+							EAppMsgType::YesNoCancel,
+							VOXEL_LOCTEXT("Scaling data might take a while/crash your PC! Do you want to continue?")))
+						{
+							FVoxelScopedSlowTask Scope(1.f, VOXEL_LOCTEXT("Scaling data"));
+							Scope.MakeDialog();
+							Scope.EnterProgressFrame();
+
+							FVoxelScopedTransaction Transaction(&World, "Scaling data", EVoxelChangeType::DataSwap);
+							UVoxelBlueprintLibrary::ScaleData(&World, World.EditorOnly_NewScale);
+						}
 					}
 				}));
 			
@@ -342,11 +348,12 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 						}
 					}
 				}));
+			
 			FVoxelEditorUtilities::AddButtonToCategory(
 				DetailLayout,
 				"Voxel - Preview",
 				VOXEL_LOCTEXT("Clear Values"),
-				VOXEL_LOCTEXT("Clear World Value Data"),
+				VOXEL_LOCTEXT("Clear Value Data"),
 				VOXEL_LOCTEXT("Clear Values"),
 				true,
 				CreateWorldsDelegate([](AVoxelWorld& World)
@@ -357,6 +364,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 							EAppMsgType::YesNoCancel, 
 							VOXEL_LOCTEXT("This will clear all the voxel world value edits! Do you want to continue?")))
 						{
+							FVoxelScopedTransaction Transaction(&World, "Clear values", EVoxelChangeType::DataSwap);
 							UVoxelBlueprintLibrary::ClearValueData(&World);
 						}
 					}
@@ -365,7 +373,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 				DetailLayout,
 				"Voxel - Preview",
 				VOXEL_LOCTEXT("Clear Materials"),
-				VOXEL_LOCTEXT("Clear World Material Data"),
+				VOXEL_LOCTEXT("Clear Material Data"),
 				VOXEL_LOCTEXT("Clear Materials"),
 				true,
 				CreateWorldsDelegate([](AVoxelWorld& World)
@@ -376,7 +384,58 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 							EAppMsgType::YesNoCancel, 
 							VOXEL_LOCTEXT("This will clear all the voxel world material edits! Do you want to continue?")))
 						{
+							FVoxelScopedTransaction Transaction(&World, "Clear materials", EVoxelChangeType::DataSwap);
 							UVoxelBlueprintLibrary::ClearMaterialData(&World);
+						}
+					}
+				}));
+			FVoxelEditorUtilities::AddButtonToCategory(
+				DetailLayout,
+				"Voxel - Preview",
+				VOXEL_LOCTEXT("Set Values Dirty"),
+				VOXEL_LOCTEXT("Set Values as Dirty"),
+				VOXEL_LOCTEXT("Set Values Dirty"),
+				true,
+				CreateWorldsDelegate([](AVoxelWorld& World)
+				{
+					if (World.IsCreated())
+					{
+						if (EAppReturnType::Yes == FMessageDialog::Open(
+							EAppMsgType::YesNoCancel,
+							VOXEL_LOCTEXT("Setting values as dirty might take a while/crash your PC! Make sure your World Size is as small as possible. Do you want to continue?")))
+						{
+							FVoxelScopedSlowTask Scope(1.f, VOXEL_LOCTEXT("Setting values as dirty"));
+							Scope.MakeDialog();
+							Scope.EnterProgressFrame();
+
+							FVoxelScopedTransaction Transaction(&World, "Setting values as dirty", EVoxelChangeType::DataSwap);
+							UVoxelDataTools::SetBoxAsDirty(&World, FVoxelIntBox::Infinite, true, false);
+							World.GetData().MarkAsDirty();
+						}
+					}
+				}));
+			FVoxelEditorUtilities::AddButtonToCategory(
+				DetailLayout,
+				"Voxel - Preview",
+				VOXEL_LOCTEXT("Set Materials Dirty"),
+				VOXEL_LOCTEXT("Set Materials as Dirty"),
+				VOXEL_LOCTEXT("Set Materials Dirty"),
+				true,
+				CreateWorldsDelegate([](AVoxelWorld& World)
+				{
+					if (World.IsCreated())
+					{
+						if (EAppReturnType::Yes == FMessageDialog::Open(
+							EAppMsgType::YesNoCancel,
+							VOXEL_LOCTEXT("Setting materials as dirty might take a while/crash your PC! Make sure your World Size is as small as possible. Do you want to continue?")))
+						{
+							FVoxelScopedSlowTask Scope(1.f, VOXEL_LOCTEXT("Setting materials as dirty"));
+							Scope.MakeDialog();
+							Scope.EnterProgressFrame();
+
+							FVoxelScopedTransaction Transaction(&World, "Setting materials as dirty", EVoxelChangeType::DataSwap);
+							UVoxelDataTools::SetBoxAsDirty(&World, FVoxelIntBox::Infinite, false, true);
+							World.GetData().MarkAsDirty();
 						}
 					}
 				}));

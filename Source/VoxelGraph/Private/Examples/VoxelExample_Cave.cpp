@@ -391,6 +391,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_23 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_19, Variable_20, BufferConstant.Variable_31, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_23 = FMath::Clamp<v_flt>(Variable_23, -0.779186, 0.705623);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.482251, 1.789484);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.568460, 1.481016);
 			
 			// 2D Perlin Noise Fractal
 			v_flt Variable_5; // 2D Perlin Noise Fractal output 0
@@ -460,6 +462,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_23 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_19, Variable_20, BufferConstant.Variable_31, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_23 = FMath::Clamp<v_flt>(Variable_23, -0.779186, 0.705623);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.482251, 1.789484);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.568460, 1.481016);
 			
 			// 2D Perlin Noise Fractal
 			v_flt Variable_5; // 2D Perlin Noise Fractal output 0
@@ -686,6 +690,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_23 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(Variable_19, Variable_20, BufferConstant.Variable_31, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_23 = FMath::Clamp<v_flt>(Variable_23, -0.779186, 0.705623);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.482251, 1.789484);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.568460, 1.481016);
 			
 			// 2D Perlin Noise Fractal
 			v_flt Variable_5; // 2D Perlin Noise Fractal output 0

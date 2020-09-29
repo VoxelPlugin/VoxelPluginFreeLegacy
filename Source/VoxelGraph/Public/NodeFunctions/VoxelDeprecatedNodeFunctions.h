@@ -5,8 +5,12 @@
 #include "CoreMinimal.h"
 #include "VoxelRange.h"
 #include "VoxelGraphGlobals.h"
+#include "VoxelUtilities/VoxelRangeUtilities.h"
 
 class FVoxelPlaceableItemHolder;
+
+DEPRECATED_VOXEL_GRAPH_FUNCTION()
+typedef EVoxelDataItemCombineMode EVoxelDataItemSampleCombineMode;
 
 namespace FVoxelNodeFunctions
 {
@@ -20,4 +24,11 @@ namespace FVoxelNodeFunctions
 	{
 		return 0;
 	}
+	
+	DEPRECATED_VOXEL_GRAPH_FUNCTION()
+	inline FVoxelIntBox BoundsFromRanges(TVoxelRange<v_flt> X, TVoxelRange<v_flt> Y, TVoxelRange<v_flt> Z)
+	{
+		return FVoxelRangeUtilities::BoundsFromRanges(X, Y, Z);
+	}
+
 }

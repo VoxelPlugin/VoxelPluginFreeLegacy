@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelConfigEnums.h"
+#include "VoxelEnums.h"
 #include "VoxelAssets/VoxelHeightmapAsset.h"
 #include "GameFramework/Actor.h"
 #include "VoxelLandscapeImporter.generated.h"

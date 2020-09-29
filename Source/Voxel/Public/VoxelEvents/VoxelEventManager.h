@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelIntBox.h"
 #include "VoxelMinimal.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelTickable.h"
 
 struct FVoxelChunkMesh;

@@ -23,7 +23,7 @@ public:
 	TArray<TModifiedValue> ModifiedValues;
 	TArray<TOtherModifiedValue> OtherModifiedValues;
 
-	explicit TVoxelDataImpl(FVoxelData& Data, bool bMultiThreadedEdits = false, bool bRecordModifiedValues = true)
+	explicit TVoxelDataImpl(FVoxelData& Data, bool bMultiThreadedEdits, bool bRecordModifiedValues)
 		: Data(Data)
 		, bMultiThreadedEdits(bMultiThreadedEdits)
 		, bRecordModifiedValues(bRecordModifiedValues)

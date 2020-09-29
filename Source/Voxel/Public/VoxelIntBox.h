@@ -593,9 +593,17 @@ struct VOXEL_API FVoxelIntBox
 	template<typename T>
 	FORCEINLINE void ParallelIterate(T Lambda, bool bForceSingleThread = false) const
 	{
-		ParallelSplit([&](const FVoxelIntBox& LocalBounds)
+		ParallelFor(Size().X, [&](int32 Index)
 		{
-			LocalBounds.Iterate(Lambda);
+			const int32 X = Min.X + Index;
+			checkVoxelSlow(X < Max.X);
+			for (int32 Y = Min.Y; Y < Max.Y; Y++)
+			{
+				for (int32 Z = Min.Z; Z < Max.Z; Z++)
+				{
+					Lambda(X, Y, Z);
+				}
+			}
 		}, bForceSingleThread);
 	}
 

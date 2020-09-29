@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelValue.h"
-#include "VoxelConfigEnums.h"
 
 struct VOXEL_API FVoxelDistanceFieldUtilities
 {

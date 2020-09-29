@@ -18,6 +18,7 @@ public:
 	//~ Begin UVoxelGraphNode_Base Interface
 	virtual void CreateInputPins() {}
 	virtual void CreateOutputPins() {}
+	virtual void RestoreVectorPins(const TArray<UEdGraphPin*>& OldInputPins, const TArray<UEdGraphPin*>& OldOutputPins) {}
 
 	virtual bool IsCompact() const { return false; }
 	virtual FLinearColor GetNodeBodyColor() const { return FLinearColor::White; }
@@ -50,7 +51,7 @@ public:
 	void InsertNewNode(UEdGraphPin* FromPin, UEdGraphPin* NewLinkPin, TSet<UEdGraphNode*>& OutNodeList);
 
 	//~ Begin UEdGraphNode Interface.
-	virtual void AllocateDefaultPins() override;
+	virtual void AllocateDefaultPins() final override;
 	virtual void ReconstructNode() override;
 	virtual void AutowireNewNode(UEdGraphPin* FromPin) override;
 	virtual bool CanCreateUnderSpecifiedSchema(const UEdGraphSchema* Schema) const override;

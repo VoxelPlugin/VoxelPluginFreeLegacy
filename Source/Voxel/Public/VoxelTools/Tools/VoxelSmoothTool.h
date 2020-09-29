@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMaterial.h"
 #include "VoxelTools/Tools/VoxelToolBase.h"
 #include "VoxelSmoothTool.generated.h"
 
@@ -16,6 +17,18 @@ public:
 	UMaterialInterface* ToolMaterial = nullptr;
 
 public:
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
+	bool bSculpt = true;
+
+	// Doesn't work with multi index yet
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (UIMin = 0, UIMax = 1))
+	bool bPaint = false;
+
+	// Which channels to smooth
+	// In Single Index Alpha will be automatically disabled
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint", Bitmask, BitmaskEnum = EVoxelMaterialMask_BP))
+	int32 PaintMask = EVoxelMaterialMask::All;
+
 	// NumIterations also affects strength
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (UIMin = 0, UIMax = 1))
 	float Strength = 1.f;

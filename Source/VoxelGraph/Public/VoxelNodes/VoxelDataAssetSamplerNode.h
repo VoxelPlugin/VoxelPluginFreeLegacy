@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelExposedNodes.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelDataAssetSamplerNode.generated.h"
 
 class UVoxelDataAsset;

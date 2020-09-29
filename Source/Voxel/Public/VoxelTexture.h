@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
-#include "VoxelConfigEnums.h"
+#include "VoxelEnums.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 #include "VoxelTexture.generated.h"
 

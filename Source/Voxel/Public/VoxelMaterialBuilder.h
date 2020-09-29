@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelMaterial.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelContainers/VoxelStaticArray.h"
 
 class VOXEL_API FVoxelMaterialBuilder

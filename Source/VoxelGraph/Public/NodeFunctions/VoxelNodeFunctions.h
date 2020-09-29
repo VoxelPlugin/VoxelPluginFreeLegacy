@@ -955,19 +955,6 @@ namespace FVoxelNodeFunctions
 		V = { 0.f, 1.f };
 	}
 
-	inline FVoxelIntBox BoundsFromRanges(TVoxelRange<v_flt> X, TVoxelRange<v_flt> Y, TVoxelRange<v_flt> Z)
-	{
-		return FVoxelIntBox(
-			FIntVector(
-				FMath::FloorToInt(X.Min),
-				FMath::FloorToInt(Y.Min),
-				FMath::FloorToInt(Z.Min)),
-			FIntVector(
-				FMath::CeilToInt(X.Max) + 1,
-				FMath::CeilToInt(Y.Max) + 1,
-				FMath::CeilToInt(Z.Max) + 1));
-	}
-
 	VOXELGRAPH_API v_flt GetPreviousGeneratorValue(
 		v_flt X, v_flt Y, v_flt Z,
 		const FVoxelContext& Context,

@@ -36,7 +36,7 @@ UEdGraphPin* UVoxelGraphNode_Base::GetInputPin(int32 InputIndex)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 UEdGraphPin* UVoxelGraphNode_Base::GetOutputPin(int32 OutputIndex)
@@ -58,7 +58,7 @@ UEdGraphPin* UVoxelGraphNode_Base::GetOutputPin(int32 OutputIndex)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 int32 UVoxelGraphNode_Base::GetInputPinIndex(const UEdGraphPin* Pin) const
@@ -174,8 +174,8 @@ void UVoxelGraphNode_Base::AllocateDefaultPins()
 
 inline bool MovePin(UEdGraphPin* OldPin, UEdGraphPin* NewPin)
 {
-	auto OldType = FVoxelPinCategory::FromString(OldPin->PinType.PinCategory);
-	auto NewType = FVoxelPinCategory::FromString(NewPin->PinType.PinCategory);
+	const auto OldType = FVoxelPinCategory::FromString(OldPin->PinType.PinCategory);
+	const auto NewType = FVoxelPinCategory::FromString(NewPin->PinType.PinCategory);
 	if (OldType == NewType ||
 		OldType == EVoxelPinCategory::Wildcard ||
 		NewType == EVoxelPinCategory::Wildcard)
@@ -191,23 +191,15 @@ inline bool MovePin(UEdGraphPin* OldPin, UEdGraphPin* NewPin)
 
 inline void MovePins(const TArray<UEdGraphPin*>& OldPins, const TArray<UEdGraphPin*>& NewPins)
 {
-	TMap<FName, int32> NewPinsNamesCount;
-	for (auto& Pin : NewPins)
-	{
-		NewPinsNamesCount.FindOrAdd(Pin->PinName)++;
-	}
-
 	TSet<UEdGraphPin*> MovedOldPins;
 	TSet<UEdGraphPin*> MovedNewPins;
 
-	// First try based on name if unique & pin id
+	// Tricky case: renaming a macro node pin
+	
+	// First try the PinId
 	for (auto* OldPin : OldPins)
 	{
 		UEdGraphPin* const * NewPinPtr = nullptr;
-		if (NewPinsNamesCount.FindOrAdd(OldPin->PinName) == 1)
-		{
-			NewPinPtr = NewPins.FindByPredicate([&](auto* NewPin) { return NewPin->PinName == OldPin->PinName; });
-		}
 		if (!NewPinPtr)
 		{
 			NewPinPtr = NewPins.FindByPredicate([&](auto* NewPin) { return NewPin->PinId == OldPin->PinId; });
@@ -224,7 +216,7 @@ inline void MovePins(const TArray<UEdGraphPin*>& OldPins, const TArray<UEdGraphP
 	}
 
 	// Else use the index
-	for (int32 Index = 0; Index < OldPins.Num() ; Index++)
+	for (int32 Index = 0; Index < OldPins.Num(); Index++)
 	{
 		auto* OldPin = OldPins[Index];
 		if (!MovedOldPins.Contains(OldPin) && NewPins.IsValidIndex(Index))
@@ -267,11 +259,13 @@ void UVoxelGraphNode_Base::ReconstructNode()
 	const TArray<UEdGraphPin*> OldOutputPins = GetOutputPins();
 
 	// Move the existing pins to a saved array
-	TArray<UEdGraphPin*> OldPins(Pins);
+	const TArray<UEdGraphPin*> OldPins = Pins;
 	Pins.Reset();
 
 	// Recreate the new pins
 	AllocateDefaultPins();
+	// Restore vector pins
+	RestoreVectorPins(OldInputPins, OldOutputPins);
 
 	// Get new Input and Output pins
 	const TArray<UEdGraphPin*> NewInputPins = GetInputPins();

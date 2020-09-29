@@ -49,7 +49,7 @@ void UVoxelPlaceableItemManager::Clear()
 
 void UVoxelPlaceableItemManager::ApplyToData(
 	FVoxelData& Data,
-	FVoxelWorldGeneratorCache& Cache,
+	const UVoxelWorldGeneratorCache& Cache,
 	TMap<FVoxelDataItemConstructionInfo, FVoxelDataItemPtr>* OutItems)
 {
 	VOXEL_FUNCTION_COUNTER();

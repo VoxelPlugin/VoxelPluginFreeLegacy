@@ -58,6 +58,24 @@ void UVoxelGraphMacroInputOutputNode::PostEditChangeProperty(FPropertyChangedEve
 		}
 	}
 
+	if (PropertyChangedEvent.ChangeType == EPropertyChangeType::ArrayAdd)
+	{
+		const int32 EditedIndex = PropertyChangedEvent.GetArrayIndex(GET_MEMBER_NAME_STRING_CHECKED(UVoxelGraphMacroInputOutputNode, Pins));
+		if (Pins.IsValidIndex(EditedIndex))
+		{
+			if (EditedIndex == 0)
+			{
+				// Most macros are using floats
+				Pins[EditedIndex].Category = EVoxelPinCategory::Float;
+			}
+			else
+			{
+				// Nicer when adding many pins
+				Pins[EditedIndex].Category = Pins[EditedIndex - 1].Category;
+			}
+		}
+	}
+
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 

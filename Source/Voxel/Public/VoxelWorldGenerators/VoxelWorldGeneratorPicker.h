@@ -93,15 +93,27 @@ public:
 	FVoxelWorldGeneratorPicker(TSoftClassPtr<UVoxelWorldGenerator> InClass);
 	FVoxelWorldGeneratorPicker(TSoftObjectPtr<UVoxelWorldGenerator> InObject);
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	EVoxelWorldGeneratorPickerType Type = EVoxelWorldGeneratorPickerType::Class;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	TSubclassOf<UVoxelWorldGenerator> Class = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisallowedClasses = "VoxelGraphMacro"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisallowedClasses = "VoxelGraphMacro"))
 	UVoxelWorldGenerator* Object = nullptr;
 };
+
+inline uint32 GetTypeHash(const FVoxelWorldGeneratorPicker& Key)
+{
+	return HashCombine(HashCombine(GetTypeHash(Key.Type), GetTypeHash(Key.Class)), GetTypeHash(Key.Object));
+}
+inline bool operator==(const FVoxelWorldGeneratorPicker& A, const FVoxelWorldGeneratorPicker& B)
+{
+	return
+		A.Type == B.Type &&
+		A.Class.Get() == B.Class.Get() &&
+		A.Object == B.Object;
+}
 
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelTransformableWorldGeneratorPicker
@@ -123,12 +135,24 @@ public:
 	FVoxelTransformableWorldGeneratorPicker(TSoftClassPtr<UVoxelTransformableWorldGenerator> InClass);
 	FVoxelTransformableWorldGeneratorPicker(TSoftObjectPtr<UVoxelTransformableWorldGenerator> InObject);
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	EVoxelWorldGeneratorPickerType Type = EVoxelWorldGeneratorPickerType::Class;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	TSubclassOf<UVoxelTransformableWorldGenerator> Class = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisallowedClasses = "VoxelGraphMacro"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisallowedClasses = "VoxelGraphMacro"))
 	UVoxelTransformableWorldGenerator* Object = nullptr;
 };
+
+inline uint32 GetTypeHash(const FVoxelTransformableWorldGeneratorPicker& Key)
+{
+	return HashCombine(HashCombine(GetTypeHash(Key.Type), GetTypeHash(Key.Class)), GetTypeHash(Key.Object));
+}
+inline bool operator==(const FVoxelTransformableWorldGeneratorPicker& A, const FVoxelTransformableWorldGeneratorPicker& B)
+{
+	return
+		A.Type == B.Type &&
+		A.Class.Get() == B.Class.Get() &&
+		A.Object == B.Object;
+}

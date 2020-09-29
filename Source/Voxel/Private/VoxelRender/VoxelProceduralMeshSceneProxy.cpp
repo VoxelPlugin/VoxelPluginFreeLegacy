@@ -249,6 +249,10 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 
 FVoxelProceduralMeshSceneProxy::~FVoxelProceduralMeshSceneProxy()
 {
+#if ENGINE_MINOR_VERSION <= 23
+	DestroyRenderThreadResources();
+#endif
+	
 	for (auto& Section : Sections)
 	{
 		check(!Section.RenderData.IsValid());

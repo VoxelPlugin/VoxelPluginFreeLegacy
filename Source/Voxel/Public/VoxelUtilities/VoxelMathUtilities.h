@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelIntBox.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelUtilities/VoxelIntVectorUtilities.h"
 

@@ -180,7 +180,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Tool")
 	float GetValueAfterAxisInput(FName AxisName, float CurrentValue, float Min = 0.f, float Max = 1.f) const;
 	
-protected:
+public:
 	UFUNCTION(BlueprintCallable, Category = "Tool|Render")
 	void SetToolOverlayBounds(const FBox& Bounds);
 	
@@ -194,7 +194,7 @@ protected:
 protected:
 	TVoxelDataImpl<> GetDataImpl(FVoxelData& Data) const
 	{
-		return TVoxelDataImpl<>(Data, SharedConfig->bMultiThreaded);
+		return TVoxelDataImpl<>(Data, SharedConfig->bMultiThreaded, false);
 	}
 	template<typename T>
 	TVoxelDataImpl<T> GetDataImpl(FVoxelData& Data) const

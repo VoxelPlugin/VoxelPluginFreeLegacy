@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelIntBox.h"
 #include "VoxelTexture.h"
-#include "VoxelConfigEnums.h"
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelTools/VoxelPaintMaterial.h"

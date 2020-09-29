@@ -40,12 +40,12 @@ enum class EVoxelMaterialMask_BP : uint8
 	B,
 	A,
 	U0,
-	U1,
-	U2,
-	U3,
 	V0,
+	U1,
 	V1,
+	U2,
 	V2,
+	U3,
 	V3,
 };
 
@@ -58,12 +58,12 @@ namespace EVoxelMaterialMask
 		B  = 1 << 2,
 		A  = 1 << 3,
 		U0 = 1 << 4,
-		U1 = 1 << 5,
-		U2 = 1 << 6,
-		U3 = 1 << 7,
-		V0 = 1 << 8,
-		V1 = 1 << 9,
-		V2 = 1 << 10,
+		V0 = 1 << 5,
+		U1 = 1 << 6,
+		V1 = 1 << 7,
+		U2 = 1 << 8,
+		V2 = 1 << 9,
+		U3 = 1 << 10,
 		V3 = 1 << 11,
 
 		None = 0,
@@ -476,6 +476,16 @@ public:
 		2 * VOXEL_MATERIAL_ENABLE_UV1 +
 		2 * VOXEL_MATERIAL_ENABLE_UV2 +
 		2 * VOXEL_MATERIAL_ENABLE_UV3;
+	
+	static constexpr uint32 ChannelsMask = 
+		EVoxelMaterialMask::R * VOXEL_MATERIAL_ENABLE_R + 
+		EVoxelMaterialMask::G * VOXEL_MATERIAL_ENABLE_G + 
+		EVoxelMaterialMask::B * VOXEL_MATERIAL_ENABLE_B + 
+		EVoxelMaterialMask::A * VOXEL_MATERIAL_ENABLE_A + 
+		EVoxelMaterialMask::UV0 * VOXEL_MATERIAL_ENABLE_UV0 +
+		EVoxelMaterialMask::UV1 * VOXEL_MATERIAL_ENABLE_UV1 +
+		EVoxelMaterialMask::UV2 * VOXEL_MATERIAL_ENABLE_UV2 +
+		EVoxelMaterialMask::UV3 * VOXEL_MATERIAL_ENABLE_UV3;
 
 	FORCEINLINE T& GetRaw(int32 Channel)
 	{
@@ -486,6 +496,15 @@ public:
 	{
 		checkVoxelSlow(0 <= Channel && Channel < NumChannels);
 		return *(reinterpret_cast<const T*>(this) + Channel);
+	}
+
+	FORCEINLINE T& operator[](int32 Channel)
+	{
+		return GetRaw(Channel);
+	}
+	FORCEINLINE T operator[](int32 Channel) const
+	{
+		return GetRaw(Channel);
 	}
 
 public:

@@ -8,9 +8,9 @@
 #include "PhysicsEngine/BodyInstance.h"
 #include "Components/PrimitiveComponent.h"
 
+#include "VoxelEnums.h"
 #include "VoxelIntBox.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelWorldInterface.h"
 #include "VoxelEditorDelegatesInterface.h"
@@ -19,6 +19,7 @@
 #include "VoxelWorldCreateInfo.h"
 #include "VoxelWorld.generated.h"
 
+class UVoxelWorldGeneratorCache;
 class UVoxelLineBatchComponent;
 class UVoxelSpawnerConfig;
 class UVoxelWorldSaveObject;
@@ -35,7 +36,6 @@ class FVoxelDebugManager;
 class FVoxelEventManager;
 class IVoxelSpawnerManager;
 class FVoxelMultiplayerManager;
-class FVoxelWorldGeneratorCache;
 class FVoxelInstancedMeshManager;
 class FVoxelToolRenderingManager;
 struct FVoxelWorldGeneratorInit;
@@ -618,7 +618,7 @@ public:
 	FVoxelEventManager& GetEventManager() const { return *EventManager; }
 	FVoxelToolRenderingManager& GetToolRenderingManager() const { return *ToolRenderingManager; }
 
-	FVoxelWorldGeneratorCache& GetWorldGeneratorCache() const { return *WorldGeneratorCache; }
+	const UVoxelWorldGeneratorCache& GetWorldGeneratorCache() const { return *WorldGeneratorCache; }
 	
 	const TVoxelSharedPtr<FGameThreadTasks>& GetGameThreadTasks() const { return GameThreadTasks; }
 	const TVoxelSharedPtr<FVoxelData>& GetDataSharedPtr() const { return Data; }
@@ -703,6 +703,11 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
 	void AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor = true);
+
+	// The world generator cache allows to reuse voxel world objects
+	// This is required for DataItemActors to allow for smaller update when moving them
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General", DisplayName = "Get World Generator Cache")
+	UVoxelWorldGeneratorCache* K2_GetWorldGeneratorCache() const { return WorldGeneratorCache; }
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Multiplayer")
 	UVoxelMultiplayerInterface* CreateMultiplayerInterfaceInstance();
@@ -747,6 +752,9 @@ private:
 
 	UPROPERTY(Transient)
 	mutable UVoxelMultiplayerInterface* MultiplayerInterfaceInstance;
+
+	UPROPERTY(Transient)
+	UVoxelWorldGeneratorCache* WorldGeneratorCache = nullptr;	
 	
 	UPROPERTY()
 	bool bIsToggled = false;
@@ -774,7 +782,6 @@ private:
 	TVoxelSharedRef<FVoxelLODDynamicSettings> LODDynamicSettings = TVoxelSharedPtr<FVoxelLODDynamicSettings>().ToSharedRef(); // else the VTABLE constructor doesn't compile...
 	TVoxelSharedRef<FVoxelRendererDynamicSettings> RendererDynamicSettings = TVoxelSharedPtr<FVoxelRendererDynamicSettings>().ToSharedRef();
 	
-	TVoxelSharedPtr<FVoxelWorldGeneratorCache> WorldGeneratorCache;	
 	TVoxelSharedPtr<FGameThreadTasks> GameThreadTasks;
 	
 private:

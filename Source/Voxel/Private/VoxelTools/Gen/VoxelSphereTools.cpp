@@ -294,6 +294,9 @@ void UVoxelSphereTools::SetMaterialSphere(
 	const FVector& Position,
 	float Radius,
 	const FVoxelPaintMaterial& PaintMaterial,
+	float Strength,
+	EVoxelFalloff FalloffType,
+	float Falloff,
 	bool bMultiThreaded,
 	bool bRecordModifiedMaterials,
 	bool bConvertToVoxelSpace,
@@ -306,7 +309,7 @@ void UVoxelSphereTools::SetMaterialSphere(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL(Material, FVoxelSphereToolsImpl::SetMaterialSphere(Data, RealPosition, RealRadius, PaintMaterial));
+	GENERATED_TOOL_CALL(Material, FVoxelSphereToolsImpl::SetMaterialSphere(Data, RealPosition, RealRadius, PaintMaterial, Strength, FalloffType, Falloff));
 }
 
 void UVoxelSphereTools::SetMaterialSphereAsync(
@@ -318,6 +321,9 @@ void UVoxelSphereTools::SetMaterialSphereAsync(
 	const FVector& Position,
 	float Radius,
 	const FVoxelPaintMaterial& PaintMaterial,
+	float Strength,
+	EVoxelFalloff FalloffType,
+	float Falloff,
 	bool bMultiThreaded,
 	bool bRecordModifiedMaterials,
 	bool bConvertToVoxelSpace,
@@ -331,7 +337,7 @@ void UVoxelSphereTools::SetMaterialSphereAsync(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_ASYNC(Material, FVoxelSphereToolsImpl::SetMaterialSphere(Data, RealPosition, RealRadius, PaintMaterial));
+	GENERATED_TOOL_CALL_ASYNC(Material, FVoxelSphereToolsImpl::SetMaterialSphere(Data, RealPosition, RealRadius, PaintMaterial, Strength, FalloffType, Falloff));
 }
 
 void UVoxelSphereTools::SetMaterialSphere(
@@ -339,6 +345,9 @@ void UVoxelSphereTools::SetMaterialSphere(
 	const FVector& Position,
 	float Radius,
 	const FVoxelPaintMaterial& PaintMaterial,
+	float Strength,
+	EVoxelFalloff FalloffType,
+	float Falloff,
 	TArray<FModifiedVoxelMaterial>* OutModifiedMaterials,
 	FVoxelIntBox* OutEditedBounds,
 	bool bMultiThreaded,
@@ -352,7 +361,7 @@ void UVoxelSphereTools::SetMaterialSphere(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_CPP(Material, FVoxelSphereToolsImpl::SetMaterialSphere(Data, RealPosition, RealRadius, PaintMaterial));
+	GENERATED_TOOL_CALL_CPP(Material, FVoxelSphereToolsImpl::SetMaterialSphere(Data, RealPosition, RealRadius, PaintMaterial, Strength, FalloffType, Falloff));
 }
 
 void UVoxelSphereTools::SetMaterialSphereAsync(
@@ -360,6 +369,9 @@ void UVoxelSphereTools::SetMaterialSphereAsync(
 	const FVector& Position,
 	float Radius,
 	const FVoxelPaintMaterial& PaintMaterial,
+	float Strength,
+	EVoxelFalloff FalloffType,
+	float Falloff,
 	const FOnVoxelToolComplete_WithModifiedMaterials& Callback,
 	FVoxelIntBox* OutEditedBounds,
 	bool bMultiThreaded,
@@ -374,7 +386,7 @@ void UVoxelSphereTools::SetMaterialSphereAsync(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_ASYNC_CPP(Material, FVoxelSphereToolsImpl::SetMaterialSphere(Data, RealPosition, RealRadius, PaintMaterial));
+	GENERATED_TOOL_CALL_ASYNC_CPP(Material, FVoxelSphereToolsImpl::SetMaterialSphere(Data, RealPosition, RealRadius, PaintMaterial, Strength, FalloffType, Falloff));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,7 +416,7 @@ void UVoxelSphereTools::ApplyKernelSphere(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL(Value, FVoxelSphereToolsImpl::ApplyKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, [](float Distance){return 1.f;}));
+	GENERATED_TOOL_CALL(Value, FVoxelSphereToolsImpl::ApplyKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, FVoxelLambdaUtilities::ConstantStrength));
 }
 
 void UVoxelSphereTools::ApplyKernelSphereAsync(
@@ -433,7 +445,7 @@ void UVoxelSphereTools::ApplyKernelSphereAsync(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_ASYNC(Value, FVoxelSphereToolsImpl::ApplyKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, [](float Distance){return 1.f;}));
+	GENERATED_TOOL_CALL_ASYNC(Value, FVoxelSphereToolsImpl::ApplyKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, FVoxelLambdaUtilities::ConstantStrength));
 }
 
 void UVoxelSphereTools::ApplyKernelSphere(
@@ -458,7 +470,7 @@ void UVoxelSphereTools::ApplyKernelSphere(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_CPP(Value, FVoxelSphereToolsImpl::ApplyKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, [](float Distance){return 1.f;}));
+	GENERATED_TOOL_CALL_CPP(Value, FVoxelSphereToolsImpl::ApplyKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, FVoxelLambdaUtilities::ConstantStrength));
 }
 
 void UVoxelSphereTools::ApplyKernelSphereAsync(
@@ -484,7 +496,121 @@ void UVoxelSphereTools::ApplyKernelSphereAsync(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_ASYNC_CPP(Value, FVoxelSphereToolsImpl::ApplyKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, [](float Distance){return 1.f;}));
+	GENERATED_TOOL_CALL_ASYNC_CPP(Value, FVoxelSphereToolsImpl::ApplyKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, FVoxelLambdaUtilities::ConstantStrength));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+void UVoxelSphereTools::ApplyMaterialKernelSphere(
+	TArray<FModifiedVoxelMaterial>& ModifiedMaterials,
+	FVoxelIntBox& EditedBounds,
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	float CenterMultiplier,
+	float FirstDegreeNeighborMultiplier,
+	float SecondDegreeNeighborMultiplier,
+	float ThirdDegreeNeighborMultiplier,
+	int32 NumIterations,
+	int32 Mask,
+	bool bMultiThreaded,
+	bool bRecordModifiedMaterials,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION(Material);
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL(Material, FVoxelSphereToolsImpl::ApplyMaterialKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, Mask, FVoxelLambdaUtilities::ConstantStrength));
+}
+
+void UVoxelSphereTools::ApplyMaterialKernelSphereAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	TArray<FModifiedVoxelMaterial>& ModifiedMaterials,
+	FVoxelIntBox& EditedBounds,
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	float CenterMultiplier,
+	float FirstDegreeNeighborMultiplier,
+	float SecondDegreeNeighborMultiplier,
+	float ThirdDegreeNeighborMultiplier,
+	int32 NumIterations,
+	int32 Mask,
+	bool bMultiThreaded,
+	bool bRecordModifiedMaterials,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender,
+	bool bHideLatentWarnings)
+{
+	GENERATED_TOOL_FUNCTION_ASYNC(Material);
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_ASYNC(Material, FVoxelSphereToolsImpl::ApplyMaterialKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, Mask, FVoxelLambdaUtilities::ConstantStrength));
+}
+
+void UVoxelSphereTools::ApplyMaterialKernelSphere(
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	float CenterMultiplier,
+	float FirstDegreeNeighborMultiplier,
+	float SecondDegreeNeighborMultiplier,
+	float ThirdDegreeNeighborMultiplier,
+	int32 NumIterations,
+	uint32 Mask,
+	TArray<FModifiedVoxelMaterial>* OutModifiedMaterials,
+	FVoxelIntBox* OutEditedBounds,
+	bool bMultiThreaded,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION_CPP(Material);
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_CPP(Material, FVoxelSphereToolsImpl::ApplyMaterialKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, Mask, FVoxelLambdaUtilities::ConstantStrength));
+}
+
+void UVoxelSphereTools::ApplyMaterialKernelSphereAsync(
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	float CenterMultiplier,
+	float FirstDegreeNeighborMultiplier,
+	float SecondDegreeNeighborMultiplier,
+	float ThirdDegreeNeighborMultiplier,
+	int32 NumIterations,
+	uint32 Mask,
+	const FOnVoxelToolComplete_WithModifiedMaterials& Callback,
+	FVoxelIntBox* OutEditedBounds,
+	bool bMultiThreaded,
+	bool bRecordModifiedMaterials,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION_ASYNC_CPP(Material);
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_ASYNC_CPP(Material, FVoxelSphereToolsImpl::ApplyMaterialKernelSphere(Data, RealPosition, RealRadius, CenterMultiplier, FirstDegreeNeighborMultiplier, SecondDegreeNeighborMultiplier, ThirdDegreeNeighborMultiplier, NumIterations, Mask, FVoxelLambdaUtilities::ConstantStrength));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -591,6 +717,116 @@ void UVoxelSphereTools::SmoothSphereAsync(
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
 	GENERATED_TOOL_CALL_ASYNC_CPP(Value, FVoxelSphereToolsImpl::SmoothSphere(Data, RealPosition, RealRadius, Strength, NumIterations, FalloffType, Falloff));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+void UVoxelSphereTools::SmoothMaterialSphere(
+	TArray<FModifiedVoxelMaterial>& ModifiedMaterials,
+	FVoxelIntBox& EditedBounds,
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	float Strength,
+	int32 NumIterations,
+	int32 Mask,
+	EVoxelFalloff FalloffType,
+	float Falloff,
+	bool bMultiThreaded,
+	bool bRecordModifiedMaterials,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION(Material);
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL(Material, FVoxelSphereToolsImpl::SmoothMaterialSphere(Data, RealPosition, RealRadius, Strength, NumIterations, Mask, FalloffType, Falloff));
+}
+
+void UVoxelSphereTools::SmoothMaterialSphereAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	TArray<FModifiedVoxelMaterial>& ModifiedMaterials,
+	FVoxelIntBox& EditedBounds,
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	float Strength,
+	int32 NumIterations,
+	int32 Mask,
+	EVoxelFalloff FalloffType,
+	float Falloff,
+	bool bMultiThreaded,
+	bool bRecordModifiedMaterials,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender,
+	bool bHideLatentWarnings)
+{
+	GENERATED_TOOL_FUNCTION_ASYNC(Material);
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_ASYNC(Material, FVoxelSphereToolsImpl::SmoothMaterialSphere(Data, RealPosition, RealRadius, Strength, NumIterations, Mask, FalloffType, Falloff));
+}
+
+void UVoxelSphereTools::SmoothMaterialSphere(
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	float Strength,
+	int32 NumIterations,
+	uint32 Mask,
+	EVoxelFalloff FalloffType,
+	float Falloff,
+	TArray<FModifiedVoxelMaterial>* OutModifiedMaterials,
+	FVoxelIntBox* OutEditedBounds,
+	bool bMultiThreaded,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION_CPP(Material);
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_CPP(Material, FVoxelSphereToolsImpl::SmoothMaterialSphere(Data, RealPosition, RealRadius, Strength, NumIterations, Mask, FalloffType, Falloff));
+}
+
+void UVoxelSphereTools::SmoothMaterialSphereAsync(
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	float Strength,
+	int32 NumIterations,
+	uint32 Mask,
+	EVoxelFalloff FalloffType,
+	float Falloff,
+	const FOnVoxelToolComplete_WithModifiedMaterials& Callback,
+	FVoxelIntBox* OutEditedBounds,
+	bool bMultiThreaded,
+	bool bRecordModifiedMaterials,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION_ASYNC_CPP(Material);
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_ASYNC_CPP(Material, FVoxelSphereToolsImpl::SmoothMaterialSphere(Data, RealPosition, RealRadius, Strength, NumIterations, Mask, FalloffType, Falloff));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

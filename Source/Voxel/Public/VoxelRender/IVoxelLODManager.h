@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelIntBox.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelMinimal.h"
 
 class IVoxelRenderer;

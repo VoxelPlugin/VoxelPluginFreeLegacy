@@ -1,6 +1,9 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelTools/Tools/VoxelSmoothTool.h"
+#include "VoxelTools/Tools/VoxelToolLibary.h"
+
+#include "VoxelMessages.h"
 #include "VoxelTools/Impl/VoxelSphereToolsImpl.h"
 #include "VoxelTools/Impl/VoxelSphereToolsImpl.inl"
 #include "VoxelWorld.h"
@@ -36,24 +39,7 @@ void UVoxelSmoothTool::Tick()
 
 void UVoxelSmoothTool::UpdateRender(UMaterialInstanceDynamic* OverlayMaterialInstance, UMaterialInstanceDynamic* MeshMaterialInstance)
 {
-	VOXEL_FUNCTION_COUNTER();
-
-	if (!OverlayMaterialInstance)
-	{
-		return;
-	}
-
-	const FVector Position = GetToolPreviewPosition();
-
-	const float Radius = SharedConfig->BrushSize / 2.f;
-	OverlayMaterialInstance->SetScalarParameterValue(STATIC_FNAME("Radius"), Radius);
-	OverlayMaterialInstance->SetVectorParameterValue(STATIC_FNAME("Position"), Position);
-	OverlayMaterialInstance->SetScalarParameterValue(STATIC_FNAME("Opacity"), SharedConfig->ToolOpacity);
-	OverlayMaterialInstance->SetScalarParameterValue(STATIC_FNAME("Falloff"), Falloff);
-	OverlayMaterialInstance->SetScalarParameterValue(STATIC_FNAME("EnableFalloff"), true);
-	OverlayMaterialInstance->SetScalarParameterValue(STATIC_FNAME("FalloffType"), int32(FalloffType));
-
-	SetToolOverlayBounds(FBox(Position - Radius, Position + Radius));
+	UVoxelToolLibrary::UpdateSphereOverlayMaterial(this, OverlayMaterialInstance, FalloffType, Falloff);
 }
 
 FVoxelIntBoxWithValidity UVoxelSmoothTool::DoEdit()
@@ -78,14 +64,43 @@ FVoxelIntBoxWithValidity UVoxelSmoothTool::DoEdit()
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
 	CacheData<FVoxelValue>(Data, BoundsToCache);
 
-	FVoxelSphereToolsImpl::SmoothSphere(
-		DataImpl,
-		VoxelPosition,
-		VoxelRadius,
-		Strength,
-		GetTickData().IsAlternativeMode() ? 1 : NumIterations,
-		FalloffType,
-		Falloff);
+	const int32 CurrentNumIterations = GetTickData().IsAlternativeMode() ? 1 : NumIterations;
+	
+	if (bSculpt)
+	{
+		FVoxelSphereToolsImpl::SmoothSphere(
+			DataImpl,
+			VoxelPosition,
+			VoxelRadius,
+			Strength,
+			CurrentNumIterations,
+			FalloffType,
+			Falloff);
+	}
+
+	if (bPaint)
+	{
+		uint32 Mask = PaintMask;
+		if (GetVoxelWorld()->MaterialConfig == EVoxelMaterialConfig::SingleIndex)
+		{
+			Mask &= ~EVoxelMaterialMask::SingleIndex;	
+		}
+		else if (GetVoxelWorld()->MaterialConfig == EVoxelMaterialConfig::MultiIndex)
+		{
+			FVoxelMessages::Warning("MultiIndex is not supported by smooth material", this);
+			Mask = EVoxelMaterialMask::None;
+		}
+		
+		FVoxelSphereToolsImpl::SmoothMaterialSphere(
+			DataImpl,
+			VoxelPosition,
+			VoxelRadius,
+			Strength,
+			CurrentNumIterations,
+			Mask,
+			FalloffType,
+			Falloff);
+	}
 
 	return Bounds;
 }
