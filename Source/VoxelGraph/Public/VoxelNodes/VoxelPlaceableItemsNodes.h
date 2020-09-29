@@ -3,19 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelNodeHelper.h"
 #include "VoxelNodeHelperMacros.h"
 #include "VoxelPlaceableItemsNodes.generated.h"
 
 class UVoxelGraphDataItemConfig;
-
-UENUM()
-enum class EVoxelDataItemSampleCombineMode
-{
-	Min,
-	Max,
-	Sum
-};
 
 UCLASS(DisplayName = "Data Item Sample", Category = "Placeable Items")
 class VOXELGRAPH_API UVoxelNode_DataItemSample : public UVoxelNodeWithContext
@@ -31,7 +24,7 @@ public:
 	int32 Mask = 1;
 	
 	UPROPERTY(EditAnywhere, Category = "Config")
-	EVoxelDataItemSampleCombineMode CombineMode = EVoxelDataItemSampleCombineMode::Min;
+	EVoxelDataItemCombineMode CombineMode = EVoxelDataItemCombineMode::Min;
 
 };
 

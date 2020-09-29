@@ -1287,11 +1287,6 @@ void FVoxelGraphEditorToolkit::PasteNodesHere(const FVector2D& Location)
 				WorldGenerator->AllNodes.Add(VoxelNode);
 				VoxelNode->Graph = WorldGenerator;
 			}
-
-			// Combine pins if possible
-			// This cannot destroy any link
-			// Else combined pins are all expanded on copy
-			VoxelGraphNode->CombineAll();
 		}
 
 		// Select the newly pasted stuff

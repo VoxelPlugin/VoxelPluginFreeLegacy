@@ -251,7 +251,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_7; // Data Item Sample output 0
-			Variable_7 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_8, BufferXY.Variable_9, Variable_10, v_flt(0.0f), v_flt(0.0f), 1u, EVoxelDataItemSampleCombineMode::Sum);
+			Variable_7 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, BufferX.Variable_8, BufferXY.Variable_9, Variable_10, v_flt(0.0f), v_flt(0.0f), 1u, EVoxelDataItemCombineMode::Sum);
 			
 			// Vector Length
 			v_flt Variable_3; // Vector Length output 0
@@ -337,7 +337,7 @@ public:
 			
 			// Data Item Sample
 			v_flt Variable_7; // Data Item Sample output 0
-			Variable_7 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, v_flt(0.0f), v_flt(0.0f), 1u, EVoxelDataItemSampleCombineMode::Sum);
+			Variable_7 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_8, Variable_9, Variable_10, v_flt(0.0f), v_flt(0.0f), 1u, EVoxelDataItemCombineMode::Sum);
 			
 			// Vector Length
 			v_flt Variable_3; // Vector Length output 0
@@ -845,7 +845,7 @@ public:
 			
 			// Data Item Sample
 			TVoxelRange<v_flt> Variable_4; // Data Item Sample output 0
-			Variable_4 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_5, Variable_6, Variable_7, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(0.0f), 1u, EVoxelDataItemSampleCombineMode::Sum);
+			Variable_4 = FVoxelNodeFunctions::GetDataItemDistance(Context.Items.ItemHolder, Variable_5, Variable_6, Variable_7, TVoxelRange<v_flt>(0.0f), TVoxelRange<v_flt>(0.0f), 1u, EVoxelDataItemCombineMode::Sum);
 			
 			// Vector Length
 			TVoxelRange<v_flt> Variable_3; // Vector Length output 0

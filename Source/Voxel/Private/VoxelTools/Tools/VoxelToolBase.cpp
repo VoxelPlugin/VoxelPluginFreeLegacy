@@ -323,13 +323,23 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 			check(ToolOverlayMaterialInstance);
 
 			ToolRenderingManager.EditTool(ToolRenderingId, [&](FVoxelToolRendering& Tool)
+			{
+				if (!Tool.Material.IsValid() || Tool.Material->GetMaterial() != ToolOverlayMaterialInstance)
 				{
-					if (!Tool.Material.IsValid() || Tool.Material->GetMaterial() != ToolOverlayMaterialInstance)
-					{
-						Tool.Material = FVoxelMaterialInterfaceManager::Get().CreateMaterial(ToolOverlayMaterialInstance);
-					}
-				});
+					Tool.Material = FVoxelMaterialInterfaceManager::Get().CreateMaterial(ToolOverlayMaterialInstance);
+				}
+			});
 		}
+		else if (ToolRenderingId.IsValid())
+		{
+			// Some tools can enabled/disable overlay
+			auto& ToolRenderingManager = VoxelWorld->GetToolRenderingManager();
+			ToolRenderingManager.RemoveTool(ToolRenderingId);
+			ToolRenderingId.Reset();
+
+			ToolOverlayMaterialInstance = nullptr;
+		}
+		
 		if (ToolBaseConfig.MeshMaterial)
 		{
 			if (!ToolMeshMaterialInstance || ToolMeshMaterialInstance->Parent != ToolBaseConfig.MeshMaterial)
@@ -337,6 +347,10 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 				ToolMeshMaterialInstance = UMaterialInstanceDynamic::Create(ToolBaseConfig.MeshMaterial, GetTransientPackage());
 				if (!ensure(ToolMeshMaterialInstance)) return;
 			}
+		}
+		else
+		{
+			ToolMeshMaterialInstance = nullptr;
 		}
 	}
 

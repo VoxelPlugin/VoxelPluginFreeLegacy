@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelConfigEnums.h"
+#include "VoxelEnums.h"
 #include "Engine/EngineTypes.h"
 #include "VoxelWorldGenerators/VoxelWorldGenerator.h"
 #include "VoxelHeightmapAsset.generated.h"

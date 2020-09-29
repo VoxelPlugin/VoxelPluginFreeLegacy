@@ -5,6 +5,7 @@
 #include "VoxelTools/Impl/VoxelSphereToolsImpl.h"
 #include "VoxelTools/Impl/VoxelToolsBaseImpl.inl"
 #include "VoxelUtilities/VoxelSDFUtilities.h"
+#include "VoxelInterpolator.h"
 
 #define VOXEL_SPHERE_TOOL_IMPL() const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(Position, Radius); VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 
@@ -42,6 +43,275 @@ void FVoxelSphereToolsImpl::SphereEdit(TData& Data, const FVoxelVector& Position
 	});
 }
 
+template<typename TData, typename T>
+void FVoxelSphereToolsImpl::SetMaterialSphereImpl(
+	TData& Data, 
+	const FVoxelVector& Position, 
+	float Radius, 
+	const FVoxelPaintMaterial& PaintMaterial,
+	T GetStrength)
+{
+	VOXEL_SPHERE_TOOL_IMPL();
+
+	const float SquaredRadius = FMath::Square(Radius);
+	Data.template Set<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
+	{
+		const float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
+		if (SquaredDistance <= SquaredRadius)
+		{
+			PaintMaterial.ApplyToMaterial(Material, GetStrength(FMath::Sqrt(SquaredDistance)));
+		}
+	});
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T, typename TInterpolator, typename TGetInterpolator>
+void FVoxelSphereToolsImpl::ApplyKernelSphereImpl_GetData(
+	FVoxelData& Data, 
+	const FVoxelIntBox& Bounds, 
+	TInterpolator* RESTRICT & SrcBuffer, 
+	bool bForceSingleThread, 
+	TGetInterpolator GetInterpolator)
+{
+	VOXEL_ASYNC_FUNCTION_COUNTER();
+
+	const FIntVector Size = Bounds.Size();
+	
+	const TArray<T> Values = GetActualData(Data).template Get<T>(Bounds);
+	FVoxelIntBox(0, Size).ParallelIterate([&](int32 X, int32 Y, int32 Z)
+	{
+		FVoxelUtilities::Get3D(SrcBuffer, Size, X, Y, Z) = GetInterpolator(FVoxelUtilities::Get3D(Values, Size, X, Y, Z));
+	}, bForceSingleThread);
+}
+
+template<typename TInterpolator>
+TInterpolator FVoxelSphereToolsImpl::ApplyKernelSphereImpl_GetNeighborsValue(
+	TInterpolator* Buffer,
+	float FirstDegreeNeighborMultiplier,
+	float SecondDegreeNeighborMultiplier,
+	float ThirdDegreeNeighborMultiplier,
+	const FIntVector& Size,
+	int32 X, int32 Y, int32 Z)
+{
+	const auto GetNeighbor = [&](int32 DX, int32 DY, int32 DZ)
+	{
+		const int32 Degree = FMath::Abs(DX) + FMath::Abs(DY) + FMath::Abs(DZ);
+		const float Multiplier =
+			Degree == 1 ? FirstDegreeNeighborMultiplier
+			: Degree == 2 ? SecondDegreeNeighborMultiplier
+			: ThirdDegreeNeighborMultiplier;
+
+		// We can safely query neighbors thanks to the sphere distance check
+		return FVoxelUtilities::Get3D(Buffer, Size, X + DX, Y + DY, Z + DZ) * Multiplier;
+	};
+
+	return
+		GetNeighbor(-1, -1, -1) +
+		GetNeighbor(+0, -1, -1) +
+		GetNeighbor(+1, -1, -1) +
+		GetNeighbor(-1, +0, -1) +
+		GetNeighbor(+0, +0, -1) +
+		GetNeighbor(+1, +0, -1) +
+		GetNeighbor(-1, +1, -1) +
+		GetNeighbor(+0, +1, -1) +
+		GetNeighbor(+1, +1, -1) +
+		GetNeighbor(-1, -1, +0) +
+		GetNeighbor(+0, -1, +0) +
+		GetNeighbor(+1, -1, +0) +
+		GetNeighbor(-1, +0, +0) +
+		GetNeighbor(+1, +0, +0) +
+		GetNeighbor(-1, +1, +0) +
+		GetNeighbor(+0, +1, +0) +
+		GetNeighbor(+1, +1, +0) +
+		GetNeighbor(-1, -1, +1) +
+		GetNeighbor(+0, -1, +1) +
+		GetNeighbor(+1, -1, +1) +
+		GetNeighbor(-1, +0, +1) +
+		GetNeighbor(+0, +0, +1) +
+		GetNeighbor(+1, +0, +1) +
+		GetNeighbor(-1, +1, +1) +
+		GetNeighbor(+0, +1, +1) +
+		GetNeighbor(+1, +1, +1);
+}
+
+template<typename TInterpolator, typename TGetStrength>
+void FVoxelSphereToolsImpl::ApplyKernelSphereImpl_Iterate(
+	TInterpolator* RESTRICT & SrcBuffer,
+	TInterpolator* RESTRICT & DstBuffer,
+	bool bForceSingleThread,
+	const FVoxelVector& LocalPosition, 
+	const FIntVector& Size, 
+	float SquaredRadius, 
+	float CenterMultiplier, 
+	float FirstDegreeNeighborMultiplier, 
+	float SecondDegreeNeighborMultiplier, 
+	float ThirdDegreeNeighborMultiplier, 
+	int32 NumIterations, 
+	TGetStrength GetStrength)
+{
+	VOXEL_ASYNC_FUNCTION_COUNTER();
+
+	for (int32 Iteration = 0; Iteration < NumIterations; Iteration++)
+	{
+		VOXEL_ASYNC_SCOPE_COUNTER("Step");
+		FVoxelIntBox(0, Size).ParallelIterate([&](int32 X, int32 Y, int32 Z)
+		{
+			const float SquaredDistance = FVector(X - LocalPosition.X, Y - LocalPosition.Y, Z - LocalPosition.Z).SizeSquared();
+
+			const int32 Index = FVoxelUtilities::Get3DIndex(Size, X, Y, Z);
+			if (SquaredDistance <= SquaredRadius) // Kinda hacky: assume this is false for at least a 1-voxel thick border, making it safe to query neighbors
+			{
+				const TInterpolator NeighborsValue = ApplyKernelSphereImpl_GetNeighborsValue(
+					SrcBuffer,
+					FirstDegreeNeighborMultiplier,
+					SecondDegreeNeighborMultiplier,
+					ThirdDegreeNeighborMultiplier,
+					Size,
+					X, Y, Z);
+				const TInterpolator OldValue = SrcBuffer[Index];
+				const TInterpolator NewValue = NeighborsValue + OldValue * CenterMultiplier;
+				DstBuffer[Index] = FMath::Lerp(OldValue, NewValue, GetStrength(FMath::Sqrt(SquaredDistance)));
+			}
+			else
+			{
+				DstBuffer[Index] = SrcBuffer[Index];
+			}
+		}, bForceSingleThread);
+
+		// Swap of RESTRICT is confusing clang
+		auto Copy = SrcBuffer;
+		SrcBuffer = DstBuffer;
+		DstBuffer = Copy;
+	}
+}
+
+template<typename T, typename TInterpolator, typename TData, typename TGetInterpolator, typename TSetInterpolator, typename TGetStrength>
+void FVoxelSphereToolsImpl::ApplyKernelSphereImpl(
+	TData& Data, 
+	TGetInterpolator GetInterpolator,
+	TSetInterpolator SetInterpolator,
+	const FVoxelVector& Position, 
+	float Radius, 
+	float CenterMultiplier, 
+	float FirstDegreeNeighborMultiplier, 
+	float SecondDegreeNeighborMultiplier, 
+	float ThirdDegreeNeighborMultiplier, 
+	int32 NumIterations, 
+	TGetStrength GetStrength)
+{
+	VOXEL_SPHERE_TOOL_IMPL();
+	
+	if (NumIterations <= 0)
+	{
+		return;
+	}
+	
+	const bool bForceSingleThread = !IsDataMultiThreaded(Data);
+	const float SquaredRadius = FMath::Square(Radius);
+	const FIntVector Size = Bounds.Size();
+	const FVoxelVector LocalPosition = Position - Bounds.Min;
+
+	TArray<TInterpolator> Buffer;
+	Buffer.SetNumUninitialized(Bounds.Count() * 2);
+
+	// Only make one allocation
+	TInterpolator* RESTRICT SrcBuffer = Buffer.GetData();
+	TInterpolator* RESTRICT DstBuffer = Buffer.GetData() + Bounds.Count();
+
+	// Copy data to buffer
+	// We could do it inline in Step, but it would do the conversions many more times than needed when querying the neighbors
+	ApplyKernelSphereImpl_GetData<T>(
+		GetActualData(Data),
+		Bounds,
+		SrcBuffer,
+		bForceSingleThread,
+		GetInterpolator);
+
+	ApplyKernelSphereImpl_Iterate(
+		SrcBuffer,
+		DstBuffer,
+		bForceSingleThread,
+		LocalPosition,
+		Size,
+		SquaredRadius,
+		CenterMultiplier,
+		FirstDegreeNeighborMultiplier,
+		SecondDegreeNeighborMultiplier,
+		ThirdDegreeNeighborMultiplier,
+		NumIterations,
+		GetStrength);
+
+	Data.template Set<T>(Bounds, [&](int32 X, int32 Y, int32 Z, T& Value)
+	{
+		const float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
+		if (SquaredDistance <= SquaredRadius)
+		{
+			TInterpolator NewValue = FVoxelUtilities::Get3D(SrcBuffer, Size, X, Y, Z, Bounds.Min);
+			SetInterpolator(NewValue, Value);
+		}
+	});
+}
+
+template<int32 NumChannels, typename TData, typename T>
+void FVoxelSphereToolsImpl::ApplyMaterialKernelSphereImpl(
+	TData& Data,
+	const FVoxelVector& Position,
+	float Radius,
+	float CenterMultiplier, 
+	float FirstDegreeNeighborMultiplier,
+	float SecondDegreeNeighborMultiplier, 
+	float ThirdDegreeNeighborMultiplier,
+	int32 NumIterations,
+	uint32 Mask, 
+	T GetStrength)
+{
+	ApplyKernelSphereImpl<FVoxelMaterial, TVoxelInterpolator<NumChannels>>(
+		Data,
+		[&](const FVoxelMaterial& Material)
+		{
+			TVoxelInterpolator<NumChannels> Interpolator;
+
+			int32 Index = 0;
+			for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
+			{
+				if (Mask & (1 << Channel))
+				{
+					Interpolator.Data[Index++] = Material[Channel];
+				}
+			}
+			ensureVoxelSlow(Index == NumChannels);
+
+			return Interpolator;
+		},
+		[&](const TVoxelInterpolator<NumChannels>& Interpolator, FVoxelMaterial& Material)
+		{
+			int32 Index = 0;
+			for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
+			{
+				if (Mask & (1 << Channel))
+				{
+					Material[Channel] = Interpolator.Data[Index++];
+				}
+			}
+			ensureVoxelSlow(Index == NumChannels);
+		},
+		Position,
+		Radius,
+		CenterMultiplier,
+		FirstDegreeNeighborMultiplier,
+		SecondDegreeNeighborMultiplier,
+		ThirdDegreeNeighborMultiplier,
+		NumIterations,
+		GetStrength);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 template<typename TData>
 void FVoxelSphereToolsImpl::SetValueSphere(TData& Data, const FVoxelVector& Position, float Radius, FVoxelValue Value)
 {
@@ -60,20 +330,18 @@ void FVoxelSphereToolsImpl::SetValueSphere(TData& Data, const FVoxelVector& Posi
 }
 
 template<typename TData>
-void FVoxelSphereToolsImpl::SetMaterialSphere(TData& Data, const FVoxelVector& Position, float Radius, const FVoxelPaintMaterial& PaintMaterial)
+void FVoxelSphereToolsImpl::SetMaterialSphere(
+	TData& Data,
+	const FVoxelVector& Position,
+	float Radius,
+	const FVoxelPaintMaterial& PaintMaterial,
+	float Strength,
+	EVoxelFalloff FalloffType,
+	float Falloff)
 {
-	VOXEL_SPHERE_TOOL_IMPL();
-
-	const float SquaredRadius = FMath::Square(Radius);
-	Data.template Set<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
+	FVoxelUtilities::DispatchFalloff(FalloffType, Radius, Falloff, [&](auto GetFalloff)
 	{
-		const float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
-		if (SquaredDistance <= SquaredRadius)
-		{
-			//const float Alpha = FMath::Sqrt(SquaredDistance / SquaredRadius);
-			const float Strength = 1; // TODO use Alpha
-			PaintMaterial.ApplyToMaterial(Material, Strength);
-		}
+		SetMaterialSphereImpl(Data, Position, Radius, PaintMaterial, [&](float Distance) { return Strength * GetFalloff(Distance); });
 	});
 }
 
@@ -89,6 +357,29 @@ void FVoxelSphereToolsImpl::ApplyKernelSphere(
 	int32 NumIterations, 
 	T GetStrength)
 {
+	// ApplyKernelSphereImpl compiles 2x faster, but is 2x slower at runtime for values 
+#if 0
+	ApplyKernelSphereImpl<FVoxelValue, TVoxelInterpolator<1>>(
+		Data,
+		[](FVoxelValue Value)
+		{
+			TVoxelInterpolator<1> Interpolator;
+			Interpolator.Data[0] = Value.ToFloat();
+			return Interpolator;
+		},
+		[](TVoxelInterpolator<1> Interpolator, FVoxelValue& Value)
+		{
+			Value = FVoxelValue(Interpolator.Data[0]);
+		},
+		Position,
+		Radius,
+		CenterMultiplier,
+		FirstDegreeNeighborMultiplier,
+		SecondDegreeNeighborMultiplier,
+		ThirdDegreeNeighborMultiplier,
+		NumIterations,
+		GetStrength);
+#else
 	VOXEL_SPHERE_TOOL_IMPL();
 	
 	if (NumIterations <= 0)
@@ -221,6 +512,56 @@ void FVoxelSphereToolsImpl::ApplyKernelSphere(
 			}
 		});
 	}
+#endif
+}
+
+template<typename TData, typename T>
+void FVoxelSphereToolsImpl::ApplyMaterialKernelSphere(
+	TData& Data, 
+	const FVoxelVector& Position, 
+	float Radius, 
+	float CenterMultiplier,
+	float FirstDegreeNeighborMultiplier,
+	float SecondDegreeNeighborMultiplier,
+	float ThirdDegreeNeighborMultiplier, 
+	int32 NumIterations,
+	uint32 Mask,
+	T GetStrength)
+{
+	Mask &= FVoxelMaterial::ChannelsMask;
+	
+#if VOXEL_ENABLE_SLOW_OPTIMIZATIONS
+	const int32 NumChannels = FMath::CountBits(Mask);
+	if (NumChannels == 0) return;
+	ensure(NumChannels <= FVoxelMaterial::NumChannels);
+	
+	FVoxelUtilities::TStaticSwitch<FVoxelMaterial::NumChannels>::Switch(NumChannels - 1, [&](auto Num)
+	{
+		ApplyMaterialKernelSphereImpl<Num + 1>(
+			Data,
+			Position,
+			Radius,
+			CenterMultiplier,
+			FirstDegreeNeighborMultiplier,
+			SecondDegreeNeighborMultiplier,
+			ThirdDegreeNeighborMultiplier,
+			NumIterations,
+			Mask,
+			GetStrength);
+	});
+#else
+	ApplyMaterialKernelSphereImpl<FVoxelMaterial::NumChannels>(
+		Data,
+		Position,
+		Radius,
+		CenterMultiplier,
+		FirstDegreeNeighborMultiplier,
+		SecondDegreeNeighborMultiplier,
+		ThirdDegreeNeighborMultiplier,
+		NumIterations,
+		Mask,
+		GetStrength);
+#endif
 }
 
 template<typename TData>
@@ -243,6 +584,39 @@ void FVoxelSphereToolsImpl::SmoothSphere(TData& Data, const FVoxelVector& Positi
 			NeighborsStrength,
 			NeighborsStrength,
 			NumIterations,
+			GetFalloff);
+	});
+}
+
+template<typename TData>
+void FVoxelSphereToolsImpl::SmoothMaterialSphere(
+	TData& Data, 
+	const FVoxelVector& Position, 
+	float Radius, 
+	float Strength, 
+	int32 NumIterations, 
+	uint32 Mask, 
+	EVoxelFalloff FalloffType, 
+	float Falloff)
+{
+	float CenterStrength = 1;
+	float NeighborsStrength = Strength;
+	const float Sum = 26 * NeighborsStrength + CenterStrength;
+	CenterStrength /= Sum;
+	NeighborsStrength /= Sum;
+
+	FVoxelUtilities::DispatchFalloff(FalloffType, Radius, Falloff, [&](auto GetFalloff)
+	{
+		ApplyMaterialKernelSphere(
+			Data,
+			Position,
+			Radius,
+			CenterStrength,
+			NeighborsStrength,
+			NeighborsStrength,
+			NeighborsStrength,
+			NumIterations,
+			Mask,
 			GetFalloff);
 	});
 }

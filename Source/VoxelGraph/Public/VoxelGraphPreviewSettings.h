@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelConfigEnums.h"
-#include "VoxelUtilities/VoxelIntVectorUtilities.h"
+#include "VoxelEnums.h"
 #include "VoxelIntBox.h"
+#include "VoxelUtilities/VoxelIntVectorUtilities.h"
 #include "VoxelGraphPreviewSettings.generated.h"
 
 class UStaticMesh;

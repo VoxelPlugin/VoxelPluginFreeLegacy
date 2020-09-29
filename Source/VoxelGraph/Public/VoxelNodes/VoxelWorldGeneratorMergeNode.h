@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelConfigEnums.h"
+#include "VoxelEnums.h"
 #include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
 #include "VoxelWorldGeneratorSamplerNodes.h"
 #include "VoxelWorldGeneratorMergeNode.generated.h"

@@ -212,6 +212,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_4 = FMath::Clamp<v_flt>(Variable_4, -0.722945, 0.798964);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.342896, 1.704131);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.209649, 1.295183);
 			
 			// *
 			BufferXY.Variable_2 = Variable_4 * BufferConstant.Variable_3;
@@ -233,6 +235,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_4 = FMath::Clamp<v_flt>(Variable_4, -0.722945, 0.798964);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.342896, 1.704131);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.209649, 1.295183);
 			
 			// *
 			BufferXY.Variable_2 = Variable_4 * BufferConstant.Variable_3;
@@ -272,6 +276,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_4 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(Variable_5, Variable_6, BufferConstant.Variable_7, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_4 = FMath::Clamp<v_flt>(Variable_4, -0.722945, 0.798964);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.342896, 1.704131);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.209649, 1.295183);
 			
 			// *
 			v_flt Variable_2; // * output 0

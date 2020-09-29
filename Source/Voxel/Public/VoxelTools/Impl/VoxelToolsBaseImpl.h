@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelValue.h"
 #include "VoxelIntBox.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelData/VoxelDataImpl.h"
 
 class AVoxelWorld;

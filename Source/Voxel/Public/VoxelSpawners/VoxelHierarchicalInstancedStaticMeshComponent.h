@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelIntBox.h"
 #include "VoxelMinimal.h"
-#include "VoxelConfigEnums.h"
+#include "VoxelEnums.h"
+#include "VoxelIntBox.h"
 #include "VoxelSpawners/VoxelInstancedMeshSettings.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelHierarchicalInstancedStaticMeshComponent.generated.h"

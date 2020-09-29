@@ -48,6 +48,7 @@ public:
 	// UVoxelGraphNode_Base interface
 	virtual void CreateInputPins() override;
 	virtual void CreateOutputPins() override;
+	virtual void RestoreVectorPins(const TArray<UEdGraphPin*>& OldInputPins, const TArray<UEdGraphPin*>& OldOutputPins) override;
 	virtual bool IsCompact() const override;
 	virtual FLinearColor GetNodeBodyColor() const override;
 	virtual void AddInputPin() override;

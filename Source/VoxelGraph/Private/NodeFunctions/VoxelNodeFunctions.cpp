@@ -225,7 +225,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorValue(
 	const FVoxelContextRange& Context,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
+	const FVoxelIntBox Bounds = FVoxelRangeUtilities::BoundsFromRanges(X, Y, Z);
 	if (Context.Items.IsEmpty())
 	{
 		if (DefaultGenerator)
@@ -313,7 +313,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	const FVoxelContextRange& Context,
 	const FVoxelWorldGeneratorInstance* DefaultGenerator)
 {
-	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
+	const FVoxelIntBox Bounds = FVoxelRangeUtilities::BoundsFromRanges(X, Y, Z);
 	if (Context.Items.IsEmpty())
 	{
 		if (DefaultGenerator)
@@ -370,7 +370,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 	TVoxelRange<v_flt> Z,
 	const FVoxelContextRange& Context)
 {
-	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
+	const FVoxelIntBox Bounds = FVoxelRangeUtilities::BoundsFromRanges(X, Y, Z);
 	if (const auto Ptr = WorldGenerator.CustomPtrs.FloatRange.FindRef(Name))
 	{
 		return TVoxelRange<v_flt>((WorldGenerator.*Ptr)(Bounds, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder)));
@@ -647,7 +647,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
 
 	const auto Items = Context.Items;
 	
-	const FVoxelIntBox Bounds = BoundsFromRanges(X, Y, Z);
+	const FVoxelIntBox Bounds = FVoxelRangeUtilities::BoundsFromRanges(X, Y, Z);
 	OutFloatOutputs.SetNumUninitialized(FloatOutputsNames.Num());
 
 	const auto ComputeFloatOutputsLambda = [&](auto& Instance, bool bUnion)

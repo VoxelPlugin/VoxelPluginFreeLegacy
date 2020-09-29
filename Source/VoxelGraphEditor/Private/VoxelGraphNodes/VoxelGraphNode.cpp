@@ -470,25 +470,51 @@ bool UVoxelGraphNode::IsOutdated() const
 
 void UVoxelGraphNode::CreateInputPins()
 {
-	if (VoxelNode)
+	if (!ensure(VoxelNode)) return;
+
+	VoxelNode->InputPinCount = FMath::Clamp(VoxelNode->InputPinCount, VoxelNode->GetMinInputPins(), VoxelNode->GetMaxInputPins());
+	while (GetInputCount() < VoxelNode->InputPinCount)
 	{
-		VoxelNode->InputPinCount = FMath::Clamp(VoxelNode->InputPinCount, VoxelNode->GetMinInputPins(), VoxelNode->GetMaxInputPins());
-		while (GetInputCount() < VoxelNode->InputPinCount)
-		{
-			CreateInputPin();
-		}
+		CreateInputPin();
 	}
 }
 
 void UVoxelGraphNode::CreateOutputPins()
 {
-	if (VoxelNode)
+	if (!ensure(VoxelNode)) return;
+
+	while (GetOutputCount() < VoxelNode->GetOutputPinsCount())
 	{
-		while (GetOutputCount() < VoxelNode->GetOutputPinsCount())
-		{
-			CreateOutputPin();
-		}
+		CreateOutputPin();
 	}
+}
+
+void UVoxelGraphNode::RestoreVectorPins(const TArray<UEdGraphPin*>& OldInputPins, const TArray<UEdGraphPin*>& OldOutputPins)
+{
+	const auto NewInputPins = GetInputPins();
+	const auto NewOutputPins = GetOutputPins();
+
+	const auto Restore = [&](const TArray<UEdGraphPin*>& OldPins, const TArray<UEdGraphPin*>& NewPins)
+	{
+		int32 NewIndex = 0;
+		for (int32 Index = 0; Index < OldPins.Num() && NewIndex < NewPins.Num(); Index++)
+		{
+			auto* OldPin = OldPins[Index];
+			if (OldPin->SubPins.Num() == 0)
+			{
+				// Not a parent pin
+				auto* NewPin = NewPins[NewIndex++];
+
+				if (OldPin->ParentPin && !NewPin->ParentPin)
+				{
+					TryCombinePin(*NewPin, false);
+				}
+			}
+		}
+	};
+
+	Restore(OldInputPins, NewInputPins);
+	Restore(OldOutputPins, NewOutputPins);
 }
 
 FText UVoxelGraphNode::GetNodeTitle(ENodeTitleType::Type TitleType) const

@@ -6,17 +6,16 @@
 
 const static FName Wildcard(FVoxelPinCategory::GetName(EVoxelPinCategory::Wildcard));
 
-void UVoxelGraphNode_Knot::AllocateDefaultPins()
+void UVoxelGraphNode_Knot::CreateInputPins()
 {
-	const FName InputPinName(TEXT("InputPin"));
-	const FName OutputPinName(TEXT("OutputPin"));
-
-	UEdGraphPin* InputPin = CreatePin(EGPD_Input, Wildcard, InputPinName);
+	UEdGraphPin* InputPin = CreatePin(EGPD_Input, Wildcard, "InputPin");
 	InputPin->bDefaultValueIsIgnored = true;
-	
-	UEdGraphPin* OutputPin = CreatePin(EGPD_Output, Wildcard, OutputPinName);
 }
 
+void UVoxelGraphNode_Knot::CreateOutputPins()
+{
+	CreatePin(EGPD_Output, Wildcard, "OutputPin");
+}
 
 void UVoxelGraphNode_Knot::ReconstructNode()
 {

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelExposedNodes.h"
-#include "VoxelConfigEnums.h"
+#include "VoxelEnums.h"
 #include "VoxelHeightmapSamplerNode.generated.h"
 
 class UVoxelHeightmapAssetFloat;
@@ -30,6 +30,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Heightmap settings")
 	EVoxelSamplerMode SamplerType = EVoxelSamplerMode::Tile;
 
+	// If true, the heightmap will be centered
+	UPROPERTY(EditAnywhere, Category = "Heightmap settings")
+	bool bCenter = false;
+	
 	UVoxelNode_HeightmapSampler();
 
 	//~ Begin UVoxelNode Interface

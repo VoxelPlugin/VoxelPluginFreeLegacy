@@ -9,8 +9,8 @@
 #else
 #include "BodySetupEnums.h"
 #endif
+#include "VoxelEnums.h"
 #include "VoxelIntBox.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelRender/VoxelMeshConfig.h"
 #include "VoxelContainers/VoxelStaticArray.h"
 

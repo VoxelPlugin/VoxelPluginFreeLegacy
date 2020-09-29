@@ -13,7 +13,10 @@ class UVoxelGraphNode_Knot : public UVoxelGraphNode
 
 public:
 	// UEdGraphNode interface
-	virtual void AllocateDefaultPins() override;
+
+	virtual void CreateInputPins() override;
+	virtual void CreateOutputPins() override;
+	
 	virtual void ReconstructNode() override;
 	virtual FText GetTooltipText() const override;
 	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;

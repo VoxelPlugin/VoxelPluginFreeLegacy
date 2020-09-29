@@ -289,6 +289,9 @@ public:
 			v_flt _3D_IQ_Noise_0_Temp_3; // 3D IQ Noise output 3
 			Variable_6 = _3D_IQ_Noise_0_Noise.IQNoise_3D_Deriv(Variable_13, Variable_14, Variable_15, BufferConstant.Variable_10, _3D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_0_Temp_1,_3D_IQ_Noise_0_Temp_2,_3D_IQ_Noise_0_Temp_3);
 			Variable_6 = FMath::Clamp<v_flt>(Variable_6, -0.653693, 0.750231);
+			_3D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_1, -1.536367, 1.653675);
+			_3D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_2, -1.654880, 1.681203);
+			_3D_IQ_Noise_0_Temp_3 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_3, -1.580102, 1.625968);
 			
 			// -
 			v_flt Variable_19; // - output 0
@@ -379,6 +382,9 @@ public:
 			v_flt _3D_IQ_Noise_0_Temp_3; // 3D IQ Noise output 3
 			Variable_6 = _3D_IQ_Noise_0_Noise.IQNoise_3D_Deriv(Variable_13, Variable_14, Variable_15, BufferConstant.Variable_10, _3D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_0_Temp_1,_3D_IQ_Noise_0_Temp_2,_3D_IQ_Noise_0_Temp_3);
 			Variable_6 = FMath::Clamp<v_flt>(Variable_6, -0.653693, 0.750231);
+			_3D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_1, -1.536367, 1.653675);
+			_3D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_2, -1.654880, 1.681203);
+			_3D_IQ_Noise_0_Temp_3 = FMath::Clamp<v_flt>(_3D_IQ_Noise_0_Temp_3, -1.580102, 1.625968);
 			
 			// -
 			v_flt Variable_19; // - output 0
@@ -649,6 +655,9 @@ public:
 			v_flt _3D_IQ_Noise_1_Temp_3; // 3D IQ Noise output 3
 			Variable_0 = _3D_IQ_Noise_1_Noise.IQNoise_3D_Deriv(Variable_7, Variable_8, Variable_9, BufferConstant.Variable_1, _3D_IQ_Noise_1_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_1_Temp_1,_3D_IQ_Noise_1_Temp_2,_3D_IQ_Noise_1_Temp_3);
 			Variable_0 = FMath::Clamp<v_flt>(Variable_0, -0.653693, 0.750231);
+			_3D_IQ_Noise_1_Temp_1 = FMath::Clamp<v_flt>(_3D_IQ_Noise_1_Temp_1, -1.536367, 1.653675);
+			_3D_IQ_Noise_1_Temp_2 = FMath::Clamp<v_flt>(_3D_IQ_Noise_1_Temp_2, -1.654880, 1.681203);
+			_3D_IQ_Noise_1_Temp_3 = FMath::Clamp<v_flt>(_3D_IQ_Noise_1_Temp_3, -1.580102, 1.625968);
 			
 			// -
 			v_flt Variable_13; // - output 0
@@ -721,6 +730,9 @@ public:
 			v_flt _3D_IQ_Noise_1_Temp_3; // 3D IQ Noise output 3
 			Variable_0 = _3D_IQ_Noise_1_Noise.IQNoise_3D_Deriv(Variable_7, Variable_8, Variable_9, BufferConstant.Variable_1, _3D_IQ_Noise_1_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_3D_IQ_Noise_1_Temp_1,_3D_IQ_Noise_1_Temp_2,_3D_IQ_Noise_1_Temp_3);
 			Variable_0 = FMath::Clamp<v_flt>(Variable_0, -0.653693, 0.750231);
+			_3D_IQ_Noise_1_Temp_1 = FMath::Clamp<v_flt>(_3D_IQ_Noise_1_Temp_1, -1.536367, 1.653675);
+			_3D_IQ_Noise_1_Temp_2 = FMath::Clamp<v_flt>(_3D_IQ_Noise_1_Temp_2, -1.654880, 1.681203);
+			_3D_IQ_Noise_1_Temp_3 = FMath::Clamp<v_flt>(_3D_IQ_Noise_1_Temp_3, -1.580102, 1.625968);
 			
 			// -
 			v_flt Variable_13; // - output 0

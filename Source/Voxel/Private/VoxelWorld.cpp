@@ -934,7 +934,10 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 	UpdateDynamicLODSettings();
 	UpdateDynamicRendererSettings();
 
-	WorldGeneratorCache = MakeVoxelShared<FVoxelWorldGeneratorCache>(GetInitStruct());
+	ensure(!WorldGeneratorCache);
+	WorldGeneratorCache = NewObject<UVoxelWorldGeneratorCache>(this);
+	WorldGeneratorCache->SetWorldGeneratorInit(GetInitStruct());
+	
 	GameThreadTasks = MakeVoxelShared<FGameThreadTasks>();
 
 	if (Info.bOverrideData)
@@ -1203,7 +1206,9 @@ void AVoxelWorld::DestroyWorldInternal()
 	GameThreadTasks.Reset();
 
 	// Clear world generator cache to avoid keeping instances alive
-	WorldGeneratorCache.Reset();
+	WorldGeneratorCache->ClearCache();
+	WorldGeneratorCache->MarkPendingKill();
+	WorldGeneratorCache = nullptr;
 
 	DestroyVoxelComponents();
 

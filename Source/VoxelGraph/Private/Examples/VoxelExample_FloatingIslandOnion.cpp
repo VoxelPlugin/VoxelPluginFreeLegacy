@@ -290,6 +290,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_0 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_1, Variable_2, BufferConstant.Variable_22, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_0 = FMath::Clamp<v_flt>(Variable_0, -0.631134, 0.652134);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.224071, 1.771704);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.220247, 1.219364);
 			
 			// 2D Gradient Perturb Fractal
 			v_flt Variable_13; // 2D Gradient Perturb Fractal output 0
@@ -343,6 +345,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_0 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(BufferX.Variable_1, Variable_2, BufferConstant.Variable_22, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_0 = FMath::Clamp<v_flt>(Variable_0, -0.631134, 0.652134);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.224071, 1.771704);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.220247, 1.219364);
 			
 			// 2D Gradient Perturb Fractal
 			v_flt Variable_13; // 2D Gradient Perturb Fractal output 0
@@ -459,6 +463,8 @@ public:
 			v_flt _2D_IQ_Noise_0_Temp_2; // 2D IQ Noise output 2
 			Variable_0 = _2D_IQ_Noise_0_Noise.IQNoise_2D_Deriv(Variable_1, Variable_2, BufferConstant.Variable_22, _2D_IQ_Noise_0_LODToOctaves[FMath::Clamp(Context.LOD, 0, 31)],_2D_IQ_Noise_0_Temp_1,_2D_IQ_Noise_0_Temp_2);
 			Variable_0 = FMath::Clamp<v_flt>(Variable_0, -0.631134, 0.652134);
+			_2D_IQ_Noise_0_Temp_1 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_1, -1.224071, 1.771704);
+			_2D_IQ_Noise_0_Temp_2 = FMath::Clamp<v_flt>(_2D_IQ_Noise_0_Temp_2, -1.220247, 1.219364);
 			
 			// 2D Gradient Perturb Fractal
 			v_flt Variable_13; // 2D Gradient Perturb Fractal output 0

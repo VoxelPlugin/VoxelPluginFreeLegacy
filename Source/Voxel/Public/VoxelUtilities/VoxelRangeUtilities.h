@@ -102,4 +102,16 @@ namespace FVoxelRangeUtilities
 			return A + Alpha * (B - A);
 		}
 	}
+	inline FVoxelIntBox BoundsFromRanges(TVoxelRange<v_flt> X, TVoxelRange<v_flt> Y, TVoxelRange<v_flt> Z)
+	{
+		return FVoxelIntBox(
+			FIntVector(
+				FMath::FloorToInt(X.Min),
+				FMath::FloorToInt(Y.Min),
+				FMath::FloorToInt(Z.Min)),
+			FIntVector(
+				FMath::CeilToInt(X.Max) + 1,
+				FMath::CeilToInt(Y.Max) + 1,
+				FMath::CeilToInt(Z.Max) + 1));
+	}
 }

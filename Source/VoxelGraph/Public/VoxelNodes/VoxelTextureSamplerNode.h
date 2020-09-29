@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelConfigEnums.h"
+#include "VoxelEnums.h"
 #include "VoxelExposedNodes.h"
 #include "VoxelTextureSamplerNode.generated.h"
 

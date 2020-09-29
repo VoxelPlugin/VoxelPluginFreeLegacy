@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelConfigEnums.generated.h"
+#include "VoxelEnums.generated.h"
 
 UENUM(BlueprintType)
 enum class EVoxelRenderType : uint8
@@ -171,4 +171,12 @@ enum class EVoxel32BitMask : uint8
 	Channel29,
 	Channel30,
 	Channel31
+};
+
+UENUM()
+enum class EVoxelDataItemCombineMode
+{
+	Min,
+	Max,
+	Sum
 };

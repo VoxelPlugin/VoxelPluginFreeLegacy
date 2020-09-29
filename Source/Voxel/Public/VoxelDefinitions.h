@@ -19,10 +19,20 @@
 #define VOXEL_DEBUG 0
 #endif
 
+// True when compilation speed does not matter
+#ifndef VOXEL_PLUGIN_PACKAGED
+#define VOXEL_PLUGIN_PACKAGED 1
+#endif
+
 // Disable if the stats file is too big
 // Expensive
 #ifndef VOXEL_SLOW_STATS
 #define VOXEL_SLOW_STATS 0
+#endif
+
+// Will take longer to compile, but will be faster at runtime
+#ifndef VOXEL_ENABLE_SLOW_OPTIMIZATIONS
+#define VOXEL_ENABLE_SLOW_OPTIMIZATIONS (UE_BUILD_SHIPPING || VOXEL_PLUGIN_PACKAGED)
 #endif
 
 // Will check that the data octree is locked for read/write

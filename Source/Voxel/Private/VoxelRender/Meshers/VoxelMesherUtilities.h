@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
 #include "VoxelMaterial.h"
-#include "VoxelConfigEnums.h"
 #include "VoxelDirection.h"
 #include "VoxelRender/VoxelProcMeshTangent.h"
 
