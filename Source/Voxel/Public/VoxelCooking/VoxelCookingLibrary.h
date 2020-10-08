@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelCookedData.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelData/VoxelSave.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelCookingLibrary.generated.h"
@@ -29,10 +29,7 @@ struct FVoxelCookingSettings
 	EVoxelRenderType RenderType = EVoxelRenderType::MarchingCubes;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	FVoxelWorldGeneratorPicker WorldGenerator;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	TMap<FName, int32> Seeds;
+	FVoxelGeneratorPicker Generator;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", AdvancedDisplay)
 	bool bLogProgress = false;

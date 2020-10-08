@@ -12,11 +12,8 @@ class AVoxelAssetActor;;
 class FVoxelAssetActorDetails : public IDetailCustomization
 {
 public:
-	static TSharedRef<IDetailCustomization> MakeInstance();
-
 	FVoxelAssetActorDetails() = default;
 
-private:
 	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelTexture.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelTools/Tools/VoxelToolBase.h"
 #include "VoxelSurfaceTool.generated.h"
 
@@ -14,7 +14,7 @@ UENUM(BlueprintType)
 enum class EVoxelSurfaceToolMaskType : uint8
 {
 	Texture,
-	WorldGenerator
+	Generator
 };
 
 USTRUCT(BlueprintType)
@@ -34,7 +34,7 @@ public:
 
 public:
 	UPROPERTY(Category = "Mask|Generator", EditAnywhere, BlueprintReadWrite)
-	FVoxelWorldGeneratorPicker WorldGenerator;
+	FVoxelGeneratorPicker Generator;
 
 	UPROPERTY(Category = "Mask|Generator", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
 	TArray<FName> SeedsToRandomize = { "Seed" };
@@ -43,7 +43,7 @@ public:
 	bool bScaleWithBrushSize = true;
 	
 	UPROPERTY(Category = "Mask|Generator", VisibleAnywhere, BlueprintReadOnly, AdvancedDisplay, Transient)
-	UTexture2D* WorldGeneratorDebugTexture = nullptr;
+	UTexture2D* GeneratorDebugTexture = nullptr;
 	
 public:
 	UPROPERTY(Category = "Mask", EditAnywhere, BlueprintReadWrite, meta = (UIMin = 0.01, UIMax = 10))
@@ -57,7 +57,7 @@ public:
 	bool HasSameGeneratorSettings(const FVoxelSurfaceToolMask& Other) const
 	{
 		return
-			WorldGenerator.GetObject() == Other.WorldGenerator.GetObject() &&
+			Generator.GetObject() == Other.Generator.GetObject() &&
 			SeedsToRandomize == Other.SeedsToRandomize &&
 			bScaleWithBrushSize == Other.bScaleWithBrushSize &&
 			Scale == Other.Scale &&
@@ -147,7 +147,7 @@ public:
 	//~ End UVoxelToolBase Interface
 
 private:
-	struct FMaskWorldGeneratorCache
+	struct FMaskGeneratorCache
 	{
 		FVoxelSurfaceToolMask CachedConfig;
 		float BrushSize = 0.f; // Needed for bScaleWithBrushSize
@@ -156,10 +156,10 @@ private:
 
 		TVoxelTexture<float> VoxelTexture;
 	};
-	FMaskWorldGeneratorCache MaskWorldGeneratorCache;
+	FMaskGeneratorCache MaskGeneratorCache;
 
 	UPROPERTY(Transient)
-	UTexture2D* MaskWorldGeneratorCache_RenderTexture = nullptr;
+	UTexture2D* MaskGeneratorCache_RenderTexture = nullptr;
 
 	bool ShouldUseMask() const;
 

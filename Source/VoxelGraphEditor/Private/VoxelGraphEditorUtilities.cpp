@@ -63,7 +63,7 @@ TSharedPtr<IVoxelGraphEditorToolkit> FVoxelGraphEditorUtilities::GetIVoxelEditor
 	if (!ensure(ObjectToFocusOn)) return {};
 
 	// Find the associated VoxelGraphGenerator
-	UVoxelGraphGenerator* VoxelGraphGenerator = Cast<const UVoxelEdGraph>(ObjectToFocusOn)->GetWorldGenerator();
+	UVoxelGraphGenerator* VoxelGraphGenerator = Cast<const UVoxelEdGraph>(ObjectToFocusOn)->GetGenerator();
 
 	TSharedPtr<IVoxelGraphEditorToolkit> VoxelEditor;
 	if (VoxelGraphGenerator)

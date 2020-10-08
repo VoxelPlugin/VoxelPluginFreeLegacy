@@ -5,29 +5,29 @@
 #include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssets/VoxelDataAssetData.inl"
+#include "VoxelGenerators/VoxelGeneratorInstanceWrapper.h"
 #include "VoxelWorld.h"
 
-inline TVoxelSharedPtr<FVoxelTransformableWorldGeneratorInstance> ImportAssetHelper(
+inline TVoxelSharedPtr<FVoxelTransformableGeneratorInstance> ImportAssetHelper(
 	const FString& FunctionName,
 	AVoxelWorld* World,
-	UVoxelTransformableWorldGenerator* Asset,
-	const TMap<FName, int32>& Seeds,
+	UVoxelTransformableGeneratorInstanceWrapper* Asset,
 	FTransform& Transform,
 	FVoxelIntBox& Bounds,
 	bool bConvertToVoxelSpace)
 {
 	Transform = FVoxelToolHelpers::GetRealTransform(World, Transform, bConvertToVoxelSpace);
 	
-	if (!Asset)
+	if (!Asset || !Asset->IsValid())
 	{
 		FVoxelMessages::Error(FunctionName + ": Invalid asset");
 		return nullptr;
 	}
 	if (!Bounds.IsValid())
 	{
-		if (auto* WorldGeneratorWithBounds = Cast<UVoxelTransformableWorldGeneratorWithBounds>(Asset))
+		if (Asset->Instance->HasBounds())
 		{
-			Bounds = WorldGeneratorWithBounds->GetBounds().ApplyTransform(Transform);
+			Bounds = Asset->Instance->GetBounds().ApplyTransform(Transform);
 		}
 		else
 		{
@@ -36,21 +36,13 @@ inline TVoxelSharedPtr<FVoxelTransformableWorldGeneratorInstance> ImportAssetHel
 		}
 	}
 
-	auto AssetInstance = Asset->GetTransformableInstance();
-	auto InitStruct = World->GetInitStruct();
-	for (auto& It : Seeds)
-	{
-		InitStruct.Seeds.Add(It.Key, It.Value);
-	}
-	AssetInstance->Init(InitStruct);
-	return AssetInstance;
+	return Asset->Instance;
 }
 
 void UVoxelAssetTools::ImportAssetAsReference(
 	FVoxelAssetItemReference& Reference,
 	AVoxelWorld* World,
-	UVoxelTransformableWorldGenerator* Asset,
-	const TMap<FName, int32>& Seeds,
+	UVoxelTransformableGeneratorInstanceWrapper* Asset,
 	FTransform Transform,
 	FVoxelIntBox Bounds,
 	int32 Priority,
@@ -60,7 +52,7 @@ void UVoxelAssetTools::ImportAssetAsReference(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Seeds, Transform, Bounds, bConvertToVoxelSpace);
+	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Transform, Bounds, bConvertToVoxelSpace);
 	if (!AssetInstance) return;
 
 	auto& Data = World->GetData();
@@ -86,8 +78,7 @@ void UVoxelAssetTools::ImportAssetAsReferenceAsync(
     FLatentActionInfo LatentInfo,
 	FVoxelAssetItemReference& Reference,
 	AVoxelWorld* World,
-	UVoxelTransformableWorldGenerator* Asset,
-	const TMap<FName, int32>& Seeds,
+	UVoxelTransformableGeneratorInstanceWrapper* Asset,
 	FTransform Transform,
 	FVoxelIntBox Bounds,
 	int32 Priority,
@@ -98,7 +89,7 @@ void UVoxelAssetTools::ImportAssetAsReferenceAsync(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Seeds, Transform, Bounds, bConvertToVoxelSpace);
+	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Transform, Bounds, bConvertToVoxelSpace);
 	if (!AssetInstance) return;
 
 	FVoxelToolHelpers::StartAsyncLatentAction_WithWorld_WithValue(
@@ -130,7 +121,7 @@ void UVoxelAssetTools::ImportModifierAssetImpl(
 	FVoxelData& Data, 
 	const FVoxelIntBox& Bounds, 
 	const FTransform& Transform, 
-	const FVoxelTransformableWorldGeneratorInstance& Instance,
+	const FVoxelTransformableGeneratorInstance& Instance,
 	bool bModifyValues,
 	bool bModifyMaterials)
 {
@@ -158,8 +149,7 @@ void UVoxelAssetTools::ImportModifierAssetImpl(
 
 void UVoxelAssetTools::ImportModifierAsset(
 	AVoxelWorld* World,
-	UVoxelTransformableWorldGenerator* Asset,
-	const TMap<FName, int32>& Seeds,
+	UVoxelTransformableGeneratorInstanceWrapper* Asset,
 	FTransform Transform,
 	FVoxelIntBox Bounds,
 	bool bModifyValues,
@@ -170,7 +160,7 @@ void UVoxelAssetTools::ImportModifierAsset(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Seeds, Transform, Bounds, bConvertToVoxelSpace);
+	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Transform, Bounds, bConvertToVoxelSpace);
 	if (!AssetInstance) return;
 
 	CHECK_BOUNDS_ARE_VALID_VOID();
@@ -188,8 +178,7 @@ void UVoxelAssetTools::ImportModifierAssetAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	UVoxelTransformableWorldGenerator* Asset,
-	const TMap<FName, int32>& Seeds,
+	UVoxelTransformableGeneratorInstanceWrapper* Asset,
 	FTransform Transform,
 	FVoxelIntBox Bounds,
 	bool bModifyValues,
@@ -201,7 +190,7 @@ void UVoxelAssetTools::ImportModifierAssetAsync(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Seeds, Transform, Bounds, bConvertToVoxelSpace);
+	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Transform, Bounds, bConvertToVoxelSpace);
 	if (!AssetInstance) return;
 
 	CHECK_BOUNDS_ARE_VALID_VOID();
@@ -315,7 +304,7 @@ void UVoxelAssetTools::ImportAssetImpl(
 	FVoxelData& Data,
 	const FVoxelIntBox& Bounds,
 	const FTransform& Transform,
-	const FVoxelTransformableWorldGeneratorInstance& Instance,
+	const FVoxelTransformableGeneratorInstance& Instance,
 	bool bSubtractive,
 	EVoxelAssetMergeMode MergeMode,
 	uint32 MaterialMask)
@@ -468,8 +457,7 @@ void UVoxelAssetTools::ImportDataAssetImpl(
 
 void UVoxelAssetTools::ImportAsset(
 	AVoxelWorld* World,
-	UVoxelTransformableWorldGenerator* Asset,
-	const TMap<FName, int32>& Seeds,
+	UVoxelTransformableGeneratorInstanceWrapper* Asset,
 	FTransform Transform,
 	FVoxelIntBox Bounds,
 	bool bSubtractive,
@@ -479,7 +467,7 @@ void UVoxelAssetTools::ImportAsset(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Seeds, Transform, Bounds, bConvertToVoxelSpace);
+	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Transform, Bounds, bConvertToVoxelSpace);
 	if (!AssetInstance) return;
 
 	CHECK_BOUNDS_ARE_VALID_VOID();
@@ -500,8 +488,7 @@ void UVoxelAssetTools::ImportAssetAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	AVoxelWorld* World,
-	UVoxelTransformableWorldGenerator* Asset,
-	const TMap<FName, int32>& Seeds,
+	UVoxelTransformableGeneratorInstanceWrapper* Asset,
 	FTransform Transform,
 	FVoxelIntBox Bounds,
 	bool bSubtractive,
@@ -512,7 +499,7 @@ void UVoxelAssetTools::ImportAssetAsync(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Seeds, Transform, Bounds, bConvertToVoxelSpace);
+	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Transform, Bounds, bConvertToVoxelSpace);
 	if (!AssetInstance) return;
 
 	CHECK_BOUNDS_ARE_VALID_VOID();

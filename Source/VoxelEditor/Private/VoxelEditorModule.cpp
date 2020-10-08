@@ -24,15 +24,18 @@
 #include "IVoxelPool.h"
 #include "VoxelWorld.h"
 #include "VoxelTexture.h"
-#include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
-#include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelMessages.h"
+#include "VoxelBoolVector.h"
 #include "VoxelMessagesEditor.h"
 #include "VoxelOpenAssetsOnStartup.h"
+#include "VoxelTools/VoxelPaintMaterial.h"
+#include "VoxelNodes/VoxelOptimizationNodes.h"
+#include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
 
 #include "AssetTools/AssetTypeActions_VoxelDataAsset.h"
 #include "AssetTools/AssetTypeActions_VoxelHeightmapAsset.h"
-#include "AssetTools/AssetTypeActions_VoxelGraphWorldGenerator.h"
+#include "AssetTools/AssetTypeActions_VoxelGraphGenerator.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphOutputsConfig.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphDataItemConfig.h"
 #include "AssetTools/AssetTypeActions_VoxelSpawnerConfig.h"
@@ -58,7 +61,7 @@
 #include "Details/VoxelLandscapeImporterDetails.h"
 #include "Details/VoxelMeshImporterDetails.h"
 #include "Details/VoxelAssetActorDetails.h"
-#include "Details/VoxelWorldGeneratorPickerCustomization.h"
+#include "Details/VoxelGeneratorPickerCustomization.h"
 #include "Details/RangeAnalysisDebuggerDetails.h"
 #include "Details/VoxelPaintMaterialCustomization.h"
 #include "Details/VoxelMeshSpawnerBaseDetails.h"
@@ -129,7 +132,7 @@ static void RefreshVoxelWorlds_Execute(UObject* MatchingGenerator = nullptr)
 			{
 				for (TActorIterator<AVoxelWorld> It(World); It; ++It)
 				{
-					if (It->IsCreated() && (!MatchingGenerator || It->WorldGenerator.GetObject() == MatchingGenerator))
+					if (It->IsCreated() && (!MatchingGenerator || It->Generator.GetObject() == MatchingGenerator))
 					{
 						It->Toggle();
 						It->Toggle();
@@ -319,9 +322,9 @@ public:
 			StyleSet->Set("VoxelTools.Tab"                                   , new FSlateImageBrush(ContentDir + TEXT("Editor/UIIcons/mode_40.png"), Icon40x40));
 			StyleSet->Set("VoxelTools.Tab.Small"                             , new FSlateImageBrush(ContentDir + TEXT("Editor/UIIcons/mode_40.png"), Icon16x16));
 																		     
-			// World generator											     
-			StyleSet->Set("ClassThumbnail.VoxelWorldGenerator"               , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/WorldGenerator_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelWorldGenerator"                    , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/WorldGenerator_16x.png"), Icon16x16));
+			// Generator											     
+			StyleSet->Set("ClassThumbnail.VoxelGenerator"                    , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Generator_64x.png"), Icon64x64));
+			StyleSet->Set("ClassIcon.VoxelGenerator"                         , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Generator_16x.png"), Icon16x16));
 																		     
 			// Voxel World Object Save									     
 			StyleSet->Set("ClassThumbnail.VoxelWorldSaveObject"              , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/VoxelWorldSaveObject_64x.png"), Icon64x64));
@@ -418,43 +421,47 @@ private:
 	}
 
 private:
-	template<typename T>
-	void RegisterCustomClassLayout(FPropertyEditorModule& PropertyModule, FName Name)
+	template<typename TDetails, typename TClass>
+	void RegisterCustomClassLayout()
 	{
-		PropertyModule.RegisterCustomClassLayout(Name, FOnGetDetailCustomizationInstance::CreateLambda([]() { return MakeShared<T>(); }));
+		FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+
+		const FName Name = TClass::StaticClass()->GetFName();
+		PropertyModule.RegisterCustomClassLayout(Name, FOnGetDetailCustomizationInstance::CreateLambda([]() { return MakeShared<TDetails>(); }));
 		RegisteredCustomClassLayouts.Add(Name);
 	}
-	template<typename T>
-	void RegisterCustomPropertyLayout(FPropertyEditorModule& PropertyModule, FName Name)
+	template<typename TDetails, typename TStruct>
+	void RegisterCustomPropertyLayout()
 	{
-		PropertyModule.RegisterCustomPropertyTypeLayout(Name, FOnGetPropertyTypeCustomizationInstance::CreateLambda([]() { return MakeShared<T>(); }));
+		FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+
+		const FName Name = TStruct::StaticStruct()->GetFName();
+		PropertyModule.RegisterCustomPropertyTypeLayout(Name, FOnGetPropertyTypeCustomizationInstance::CreateLambda([]() { return MakeShared<TDetails>(); }));
 		RegisteredCustomPropertyLayouts.Add(Name);
 	}
 
 	void RegisterCustomClassLayouts()
 	{
+		RegisterCustomClassLayout<FVoxelWorldDetails            , AVoxelWorld                          >();
+		RegisterCustomClassLayout<FVoxelLandscapeImporterDetails, AVoxelLandscapeImporter              >();
+		RegisterCustomClassLayout<FVoxelMeshImporterDetails     , AVoxelMeshImporter                   >();
+		RegisterCustomClassLayout<FVoxelAssetActorDetails       , AVoxelAssetActor                     >();
+		RegisterCustomClassLayout<FRangeAnalysisDebuggerDetails , UVoxelNode_RangeAnalysisDebuggerFloat>();
+		RegisterCustomClassLayout<FVoxelMeshSpawnerBaseDetails  , UVoxelMeshSpawnerBase                >();
+
+		RegisterCustomPropertyLayout<FVoxelGeneratorPickerCustomization					       , FVoxelGeneratorPicker                        >();
+		RegisterCustomPropertyLayout<FVoxelGeneratorPickerCustomization					       , FVoxelTransformableGeneratorPicker           >();
+		RegisterCustomPropertyLayout<FVoxelPaintMaterialCustomization                          , FVoxelPaintMaterial                          >();
+		RegisterCustomPropertyLayout<FVoxelPaintMaterial_MaterialCollectionChannelCustomization, FVoxelPaintMaterial_MaterialCollectionChannel>();
+		RegisterCustomPropertyLayout<FVoxelBoolVectorCustomization                             , FVoxelBoolVector                             >();
+		RegisterCustomPropertyLayout<FVoxelBasicSpawnerScaleSettingsCustomization              , FVoxelBasicSpawnerScaleSettings              >();
+		RegisterCustomPropertyLayout<FVoxelSpawnerOutputNameCustomization                      , FVoxelSpawnerOutputName                      >();
+		RegisterCustomPropertyLayout<FVoxelSpawnerDensityCustomization                         , FVoxelSpawnerDensity                         >();
+		RegisterCustomPropertyLayout<FVoxelSpawnerConfigSpawnerCustomization                   , FVoxelSpawnerConfigSpawner                   >();
+		RegisterCustomPropertyLayout<FVoxelGraphOutputCustomization                            , FVoxelGraphOutput                            >();
+		RegisterCustomPropertyLayout<FVoxelInt32IntervalCustomization                          , FVoxelInt32Interval                          >();
+		
 		FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-
-		RegisterCustomClassLayout<FVoxelWorldDetails                    >(PropertyModule, "VoxelWorld");
-		RegisterCustomClassLayout<FVoxelLandscapeImporterDetails        >(PropertyModule, "VoxelLandscapeImporter");
-		RegisterCustomClassLayout<FVoxelMeshImporterDetails             >(PropertyModule, "VoxelMeshImporter");
-		RegisterCustomClassLayout<FVoxelAssetActorDetails               >(PropertyModule, "VoxelAssetActor");
-		RegisterCustomClassLayout<FRangeAnalysisDebuggerDetails         >(PropertyModule, "VoxelNode_RangeAnalysisDebuggerFloat");
-		RegisterCustomClassLayout<FVoxelMeshSpawnerBaseDetails          >(PropertyModule, "VoxelMeshSpawnerBase");
-
-		// TODO type safe
-		RegisterCustomPropertyLayout<FVoxelWorldGeneratorPickerCustomization                   >(PropertyModule, "VoxelWorldGeneratorPicker");
-		RegisterCustomPropertyLayout<FVoxelWorldGeneratorPickerCustomization                   >(PropertyModule, "VoxelTransformableWorldGeneratorPicker");
-		RegisterCustomPropertyLayout<FVoxelPaintMaterialCustomization                          >(PropertyModule, "VoxelPaintMaterial");
-		RegisterCustomPropertyLayout<FVoxelPaintMaterial_MaterialCollectionChannelCustomization>(PropertyModule, "VoxelPaintMaterial_MaterialCollectionChannel");
-		RegisterCustomPropertyLayout<FVoxelBoolVectorCustomization                             >(PropertyModule, "VoxelBoolVector");
-		RegisterCustomPropertyLayout<FVoxelBasicSpawnerScaleSettingsCustomization              >(PropertyModule, "VoxelBasicSpawnerScaleSettings");
-		RegisterCustomPropertyLayout<FVoxelSpawnerOutputNameCustomization                      >(PropertyModule, "VoxelSpawnerOutputName");
-		RegisterCustomPropertyLayout<FVoxelSpawnerDensityCustomization                         >(PropertyModule, "VoxelSpawnerDensity");
-		RegisterCustomPropertyLayout<FVoxelSpawnerConfigSpawnerCustomization                   >(PropertyModule, "VoxelSpawnerConfigSpawner");
-		RegisterCustomPropertyLayout<FVoxelGraphOutputCustomization                            >(PropertyModule, "VoxelGraphOutput");
-		RegisterCustomPropertyLayout<FVoxelInt32IntervalCustomization                          >(PropertyModule, "VoxelInt32Interval");
-
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}
 
@@ -499,7 +506,7 @@ private:
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelMeshSpawnerGroup>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelSpawnerGroup>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelHeightmapAsset>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphWorldGenerator>();
+		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphGenerator>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphMacro>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphOutputsConfig>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphDataItemConfig>();

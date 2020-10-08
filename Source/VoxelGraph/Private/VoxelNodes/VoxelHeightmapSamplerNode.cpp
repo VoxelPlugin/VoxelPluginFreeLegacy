@@ -35,23 +35,3 @@ void UVoxelNode_HeightmapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 		ErrorReporter.AddMessageToNode(this, "invalid heightmap", EVoxelGraphNodeMessageType::Error);
 	}
 }
-
-#if WITH_EDITOR
-bool UVoxelNode_HeightmapSampler::TryImportFromProperty(FProperty* Property, UObject* Object)
-{
-	UVoxelHeightmapAsset* HeightmapAsset = nullptr;
-	if (TryImportObject(Property, Object, HeightmapAsset))
-	{
-		if (bFloatHeightmap)
-		{
-			HeightmapFloat = Cast<UVoxelHeightmapAssetFloat>(HeightmapAsset);
-		}
-		else
-		{
-			HeightmapUINT16 = Cast<UVoxelHeightmapAssetUINT16>(HeightmapAsset);
-		}
-		return true;
-	}
-	return false;
-}
-#endif

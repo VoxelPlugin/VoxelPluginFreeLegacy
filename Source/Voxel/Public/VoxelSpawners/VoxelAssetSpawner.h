@@ -5,12 +5,12 @@
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
 #include "VoxelSpawners/VoxelBasicSpawner.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelAssetSpawner.generated.h"
 
 class UVoxelAssetSpawner;
-class UVoxelTransformableWorldGenerator;
-class FVoxelTransformableWorldGeneratorInstance;
+class UVoxelTransformableGenerator;
+class FVoxelTransformableGeneratorInstance;
 class FVoxelAssetSpawnerProxy;
 
 template<typename T>
@@ -26,7 +26,7 @@ class VOXEL_API UVoxelAssetSpawner : public UVoxelBasicSpawner
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Settings")
-	FVoxelTransformableWorldGeneratorPicker Generator;
+	FVoxelTransformableGeneratorPicker Generator;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Settings")
 	FVoxelIntBox GeneratorLocalBounds = FVoxelIntBox(-25, 25);

@@ -10,7 +10,7 @@
 #include "VoxelRender/LODManager/VoxelFixedResolutionLODManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
-#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
+#include "VoxelGenerators/VoxelEmptyGenerator.h"
 #include "VoxelWorld.h"
 #include "VoxelDefaultPool.h"
 #include "VoxelMessages.h"
@@ -45,9 +45,9 @@ void AVoxelAssetActor::AddItemToWorld(AVoxelWorld* World)
 	{
 		return;
 	}
-	if (!WorldGenerator.IsValid())
+	if (!Generator.IsValid())
 	{
-		FVoxelMessages::Error("Invalid world generator", this);
+		FVoxelMessages::Error("Invalid generator", this);
 		return;
 	}
 
@@ -76,14 +76,14 @@ FVoxelIntBox AVoxelAssetActor::AddItemToData(
 	}
 	else
 	{
-		if (auto* WorldGeneratorWithBounds = Cast<UVoxelTransformableWorldGeneratorWithBounds>(WorldGenerator.GetObject()))
+		if (auto* GeneratorWithBounds = Cast<UVoxelTransformableGeneratorWithBounds>(Generator.GetObject()))
 		{
-			WorldBounds = WorldGeneratorWithBounds->GetBounds().ApplyTransform(Transform);
+			WorldBounds = GeneratorWithBounds->GetBounds().ApplyTransform(Transform);
 		}
 		else
 		{
 			FVoxelMessages::Error(
-				"Voxel Asset Actor: AssetBounds are not overriden, and cannot deduce them from WorldGenerator\n"
+				"Voxel Asset Actor: AssetBounds are not overriden, and cannot deduce them from the generator\n"
 				"You need to tick the checkbox next to Asset Bounds on the asset actor",
 				this);
 			WorldBounds = FVoxelIntBox(-25, 25).Translate(FVoxelUtilities::FloorToInt(Transform.GetTranslation()));
@@ -98,13 +98,8 @@ FVoxelIntBox AVoxelAssetActor::AddItemToData(
 		return WorldBounds;
 	}
 
-	auto AssetInstance = WorldGenerator.GetInstance(false);
-	auto InitStruct = VoxelWorld->GetInitStruct();
-	for (auto& It : Seeds)
-	{
-		InitStruct.Seeds.Add(It.Key, It.Value);
-	}
-	AssetInstance->Init(InitStruct);
+	auto AssetInstance = Generator.GetInstance(false);
+	AssetInstance->Init(VoxelWorld->GetGeneratorInit());
 	
 	if (bImportAsReference)
 	{
@@ -144,7 +139,7 @@ FVoxelIntBox AVoxelAssetActor::AddItemToData(
 void AVoxelAssetActor::UpdatePreview()
 {
 	if (!PreviewWorld) return;
-	if (!WorldGenerator.IsValid()) return;
+	if (!Generator.IsValid()) return;
 
 	if (IsPreviewCreated())
 	{
@@ -189,7 +184,7 @@ void AVoxelAssetActor::Tick(float DeltaTime)
 	}
 	if (PreviewWorld)
 	{
-		if (WorldGenerator.IsValid() && !IsPreviewCreated())
+		if (Generator.IsValid() && !IsPreviewCreated())
 		{
 			CreatePreview();
 		}
@@ -212,16 +207,15 @@ void AVoxelAssetActor::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 	if (PropertyChangedEvent.MemberProperty && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
 		const auto Name = PropertyChangedEvent.MemberProperty->GetFName();
-		if (Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, WorldGenerator) ||
-			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableWorldGeneratorPicker, Type) ||
-			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableWorldGeneratorPicker, Class) ||
-			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableWorldGeneratorPicker, Object) ||
+		if (Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, Generator) ||
+			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableGeneratorPicker, Type) ||
+			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableGeneratorPicker, Class) ||
+			Name == GET_MEMBER_NAME_STATIC(FVoxelTransformableGeneratorPicker, Object) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, bOverrideAssetBounds) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, AssetBounds) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, PreviewLOD) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, bSubtractiveAsset) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, bImportAsReference) ||
-			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, Seeds) ||
 			Name == GET_MEMBER_NAME_STATIC(AVoxelAssetActor, PreviewWorld) ||
 			Name == STATIC_FNAME("RelativeScale3D") ||
 			Name == STATIC_FNAME("RelativeRotation"))
@@ -235,7 +229,7 @@ void AVoxelAssetActor::PostEditMove(const bool bFinished)
 {
 	Super::PostEditMove(bFinished);
 
-	if (PreviewWorld && WorldGenerator.IsValid())
+	if (PreviewWorld && Generator.IsValid())
 	{
 		if (UpdateType == EVoxelAssetActorPreviewUpdateType::RealTime)
 		{
@@ -286,7 +280,7 @@ void AVoxelAssetActor::CreatePreview()
 	BindEditorDelegates(this);
 
 	if (!ensure(PreviewWorld)) return;
-	if (!ensure(WorldGenerator.IsValid())) return;
+	if (!ensure(Generator.IsValid())) return;
 	if (!ensure(!IsPreviewCreated())) return;
 
 	// Do that now as sometimes this is called before AVoxelWorld::BeginPlay
@@ -304,7 +298,7 @@ void AVoxelAssetActor::CreatePreview()
 		bool bIsGeneratorSubtractive = bSubtractiveAsset;
 		if (bImportAsReference)
 		{
-			if (auto* DataAsset = Cast<UVoxelDataAsset>(WorldGenerator.GetObject()))
+			if (auto* DataAsset = Cast<UVoxelDataAsset>(Generator.GetObject()))
 			{
 				bIsGeneratorSubtractive = DataAsset->bSubtractiveAsset;
 			}
@@ -313,8 +307,8 @@ void AVoxelAssetActor::CreatePreview()
 				bIsGeneratorSubtractive = false;
 			}
 		}
-		auto EmptyGenerator = MakeVoxelShared<FVoxelEmptyWorldGeneratorInstance>(bIsGeneratorSubtractive ? -1 : 1);
-		EmptyGenerator->Init(PreviewWorld->GetInitStruct());
+		auto EmptyGenerator = MakeVoxelShared<FVoxelEmptyGeneratorInstance>(bIsGeneratorSubtractive ? -1 : 1);
+		EmptyGenerator->Init(PreviewWorld->GetGeneratorInit());
 		Data = FVoxelData::Create(
 			FVoxelDataSettings(
 				Bounds,

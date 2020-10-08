@@ -65,7 +65,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -135,7 +135,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 3D Gradient Perturb Fractal
 			_3D_Gradient_Perturb_Fractal_0_Noise.SetSeed(FVoxelGraphSeed(1337));
@@ -608,7 +608,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -676,7 +676,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -748,7 +748,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -816,7 +816,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -896,7 +896,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -950,7 +950,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 3D Gradient Perturb Fractal
 			_3D_Gradient_Perturb_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
@@ -1184,7 +1184,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1297,13 +1297,7 @@ UVDI_Ravine_Graph::UVDI_Ravine_Graph()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVDI_Ravine_Graph::GetDefaultSeeds() const
-{
-	return {
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVDI_Ravine_Graph::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVDI_Ravine_Graph::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVDI_Ravine_GraphInstance>(*this);
@@ -1315,7 +1309,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVDI_Ravine_Graph::Ge
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VDI_Ravine_Graph. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VDI_Ravine_Graph. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

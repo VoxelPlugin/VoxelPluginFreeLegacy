@@ -5,11 +5,6 @@
 
 #include "DetailLayoutBuilder.h"
 
-TSharedRef<IDetailCustomization> FVoxelMeshSpawnerBaseDetails::MakeInstance()
-{
-	return MakeShareable(new FVoxelMeshSpawnerBaseDetails());
-}
-
 void FVoxelMeshSpawnerBaseDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	DetailLayout.EditCategory("General Settings", FText(), ECategoryPriority::Important);

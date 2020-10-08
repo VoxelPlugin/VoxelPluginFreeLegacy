@@ -78,7 +78,7 @@ class VOXEL_API UVoxelBasicSpawner : public UVoxelSpawner
 	GENERATED_BODY()
 
 public:
-	// Min/max angle between object up vector and world generator up vector in degrees
+	// Min/max angle between object up vector and generator up vector in degrees
 	UPROPERTY(EditAnywhere, Category = "Placement", meta = (UIMin = 0, ClampMin = 0, UIMax = 180, ClampMax = 180))
 	FFloatInterval GroundSlopeAngle = { 0, 90 };
 

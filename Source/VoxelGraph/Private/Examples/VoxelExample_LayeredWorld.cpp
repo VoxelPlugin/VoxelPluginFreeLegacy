@@ -12,8 +12,9 @@ class FVoxelExample_LayeredWorldInstance : public TVoxelGraphGeneratorInstanceHe
 public:
 	struct FParams
 	{
-		const FVoxelRichCurve None1;
 		const float Frequency;
+		const FVoxelRichCurve None1;
+		const int32 Seed;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -70,7 +71,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -84,9 +85,9 @@ public:
 					//////// First compute all seeds in case they are used by constant nodes ////////
 					/////////////////////////////////////////////////////////////////////////////////
 					
-					// Init of Seed
-					FVoxelGraphSeed Variable_42; // Seed output 0
-					Variable_42 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 4761;
+					// Init of Seed = 4761
+					FVoxelGraphSeed Variable_42; // Seed = 4761 output 0
+					Variable_42 = Params.Seed;
 					
 					// Init of Make Seeds
 					FVoxelGraphSeed Variable_37; // Make Seeds output 0
@@ -162,11 +163,11 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
-			// Init of Seed
-			FVoxelGraphSeed Variable_42; // Seed output 0
-			Variable_42 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 4761;
+			// Init of Seed = 4761
+			FVoxelGraphSeed Variable_42; // Seed = 4761 output 0
+			Variable_42 = Params.Seed;
 			
 			// Init of Make Seeds
 			FVoxelGraphSeed Variable_37; // Make Seeds output 0
@@ -254,8 +255,8 @@ public:
 			Variable_36 = _2D_Perlin_Noise_0_Noise.GetPerlin_2D(BufferX.Variable_15, Variable_16, v_flt(0.01f));
 			Variable_36 = FMath::Clamp<v_flt>(Variable_36, -0.767493, 0.745772);
 			
-			// Float Curve: None
-			v_flt Variable_8; // Float Curve: None output 0
+			// Float Curve: 
+			v_flt Variable_8; // Float Curve:  output 0
 			Variable_8 = FVoxelNodeFunctions::GetCurveValue(Params.None1, Variable_36);
 			
 			// *
@@ -307,8 +308,8 @@ public:
 			Variable_36 = _2D_Perlin_Noise_0_Noise.GetPerlin_2D(BufferX.Variable_15, Variable_16, v_flt(0.01f));
 			Variable_36 = FMath::Clamp<v_flt>(Variable_36, -0.767493, 0.745772);
 			
-			// Float Curve: None
-			v_flt Variable_8; // Float Curve: None output 0
+			// Float Curve: 
+			v_flt Variable_8; // Float Curve:  output 0
 			Variable_8 = FVoxelNodeFunctions::GetCurveValue(Params.None1, Variable_36);
 			
 			// *
@@ -628,8 +629,8 @@ public:
 			Variable_25 = _3D_Perlin_Noise_3_Noise.GetPerlin_3D(Variable_26, Variable_27, Variable_28, BufferConstant.Variable_35);
 			Variable_25 = FMath::Clamp<v_flt>(Variable_25, -0.790554, 0.781474);
 			
-			// Float Curve: None
-			v_flt Variable_8; // Float Curve: None output 0
+			// Float Curve: 
+			v_flt Variable_8; // Float Curve:  output 0
 			Variable_8 = FVoxelNodeFunctions::GetCurveValue(Params.None1, Variable_36);
 			
 			// Cave Layer.*
@@ -798,7 +799,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -866,7 +867,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -996,7 +997,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1064,7 +1065,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1144,7 +1145,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1215,8 +1216,8 @@ public:
 				TVoxelRange<v_flt> Variable_19; // 3D Perlin Noise output 0
 				Variable_19 = { -0.790554f, 0.781474f };
 				
-				// Float Curve: None
-				TVoxelRange<v_flt> Variable_8; // Float Curve: None output 0
+				// Float Curve: 
+				TVoxelRange<v_flt> Variable_8; // Float Curve:  output 0
 				Variable_8 = FVoxelNodeFunctions::GetCurveValue(Params.None1, Variable_21);
 				
 				// Cave Layer.*
@@ -1285,7 +1286,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1448,8 +1449,9 @@ public:
 			Object)
 		, Params(FParams
 		{
+			Object.Frequency,
 			FVoxelRichCurve(Object.None1.LoadSynchronous()),
-			Object.Frequency
+			Object.Seed
 		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
@@ -1458,7 +1460,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1571,14 +1573,7 @@ UVoxelExample_LayeredWorld::UVoxelExample_LayeredWorld()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVoxelExample_LayeredWorld::GetDefaultSeeds() const
-{
-	return {
-		{ "Seed", 4761 },
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_LayeredWorld::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelExample_LayeredWorld::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVoxelExample_LayeredWorldInstance>(*this);
@@ -1590,7 +1585,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Layered
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_LayeredWorld. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_LayeredWorld. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

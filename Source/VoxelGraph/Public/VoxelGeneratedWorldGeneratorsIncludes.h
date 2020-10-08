@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
-#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
+#include "VoxelGenerators/VoxelGenerator.h"
+#include "VoxelGenerators/VoxelEmptyGenerator.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.h"
 
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 

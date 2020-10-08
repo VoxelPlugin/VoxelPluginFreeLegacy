@@ -17,7 +17,7 @@ class VOXELGRAPH_API UVoxelNode_DataAssetSampler : public UVoxelExposedNode
 	GENERATED_VOXELNODE_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Config", meta = (NonNull))
 	UVoxelDataAsset* Asset;
 	
 	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
@@ -28,12 +28,9 @@ public:
 	//~ Begin UVoxelNode Interface
 	virtual EVoxelPinCategory GetInputPinCategory(int32 PinIndex) const override;
 	virtual FText GetTitle() const override;
-	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 	//~ End UVoxelNode Interface
 
-#if WITH_EDITOR
 	//~ Begin UVoxelExposedNode Interface
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Asset); }
 	//~ End UVoxelExposedNode Interface
-#endif
 };

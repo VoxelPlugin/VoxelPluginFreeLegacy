@@ -67,7 +67,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -135,7 +135,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -501,7 +501,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -569,7 +569,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -641,7 +641,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -709,7 +709,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -781,7 +781,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -836,7 +836,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -999,7 +999,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1112,13 +1112,7 @@ UVDI_Example_Crater_Graph::UVDI_Example_Crater_Graph()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVDI_Example_Crater_Graph::GetDefaultSeeds() const
-{
-	return {
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVDI_Example_Crater_Graph::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVDI_Example_Crater_Graph::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVDI_Example_Crater_GraphInstance>(*this);
@@ -1130,7 +1124,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVDI_Example_Crater_G
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VDI_Example_Crater_Graph. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VDI_Example_Crater_Graph. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

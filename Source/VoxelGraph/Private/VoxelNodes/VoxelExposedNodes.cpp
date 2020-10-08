@@ -4,15 +4,32 @@
 #include "VoxelNodes/VoxelNodeColors.h"
 #include "CppTranslation/VoxelVariables.h"
 #include "VoxelGraphGenerator.h"
-#include "EdGraph/EdGraphNode.h"
+#include "VoxelGenerators/VoxelGeneratorParameters.h"
 
-#if WITH_EDITOR
-bool UVoxelExposedNode::TryImportFromProperty(FProperty* Property, UObject* Object)
+#include "EdGraph/EdGraphNode.h"
+#include "UObject/Package.h"
+#include "UObject/PropertyPortFlags.h"
+
+TMap<FName, FString> UVoxelExposedNode::GetMetaData() const
 {
-	ensure(false);
-	return false;
+	auto Result = CustomMetaData;
+	Result.Add("DisplayName", DisplayName);
+
+	if (!UIMin.IsEmpty())
+	{
+		Result.Add("UIMin", UIMin);
+	}
+	if (!UIMax.IsEmpty())
+	{
+		Result.Add("UIMax", UIMax);
+	}
+	
+	return Result;
 }
-#endif
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 FLinearColor UVoxelExposedNode::GetColor() const
 {
@@ -21,7 +38,29 @@ FLinearColor UVoxelExposedNode::GetColor() const
 
 FText UVoxelExposedNode::GetTitle() const
 {
-	return FText::FromName(UniqueName);
+	const FName PropertyName = GetParameterPropertyName();
+	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
+	if (!ensure(Property))
+	{
+		return FText::FromString(DisplayName);
+	}
+
+	if (Property->IsA<FFloatProperty>() ||
+		Property->IsA<FIntProperty>() ||
+		Property->IsA<FBoolProperty>())
+	{
+		FString Value;
+		Property->ExportTextItem(Value, Property->ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
+		
+		if (Property->IsA<FFloatProperty>())
+		{
+			Value = FString::SanitizeFloat(FCString::Atof(*Value));
+		}
+		
+		return FText::FromString(FString::Printf(TEXT("%s = %s"), *DisplayName, *Value));
+	}
+	
+	return FText::FromString(DisplayName);
 }
 
 bool UVoxelExposedNode::CanRenameNode() const
@@ -31,13 +70,13 @@ bool UVoxelExposedNode::CanRenameNode() const
 
 FString UVoxelExposedNode::GetEditableName() const
 {
-	return UniqueName.IsNone() ? "" : UniqueName.ToString();
+	return DisplayName;
 }
 
 void UVoxelExposedNode::SetEditableName(const FString& NewName)
 {
 	bCanBeRenamed = false;
-	UniqueName = *NewName;
+	DisplayName = *NewName;
 	MakeNameUnique();
 	MarkPackageDirty();
 #if WITH_EDITOR
@@ -49,6 +88,63 @@ void UVoxelExposedNode::SetEditableName(const FString& NewName)
 #endif
 }
 
+void UVoxelExposedNode::ApplyParameters(const TMap<FName, FString>& Parameters)
+{
+	auto* NewValuePtr = Parameters.Find(UniqueName);
+	if (!NewValuePtr) 
+	{
+		return;
+	}
+
+	const FName PropertyName = GetParameterPropertyName();
+	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
+	if (!ensure(Property))
+	{
+		return;
+	}
+
+	Modify();
+
+	if (!ensure(Property->ImportText(**NewValuePtr, Property->ContainerPtrToValuePtr<void>(this), PPF_None, this)))
+	{
+		return;
+	}
+	
+#if WITH_EDITOR
+	if (GraphNode)
+	{
+		GraphNode->ReconstructNode();
+	}
+#endif
+}
+
+void UVoxelExposedNode::GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const
+{
+	const FName PropertyName = GetParameterPropertyName();
+	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
+	if (!ensure(Property))
+	{
+		return;
+	}
+
+	FString DefaultValue;
+	Property->ExportTextItem(DefaultValue, Property->ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
+
+	OutParameters.Add(FVoxelGeneratorParameter(
+		UniqueName,
+		FVoxelGeneratorParameterType(*Property),
+		DisplayName,
+		Category,
+		Tooltip,
+		Priority,
+		GetMetaData(),
+		DefaultValue));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 #if WITH_EDITOR
 void UVoxelExposedNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -56,7 +152,6 @@ void UVoxelExposedNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 
 	if (PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
-		UniqueName = *FVoxelVariable::SanitizeName(UniqueName.ToString());
 		MakeNameUnique();
 	}
 }
@@ -69,63 +164,75 @@ void UVoxelExposedNode::PostEditImport()
 	MakeNameUnique();
 }
 
+void UVoxelExposedNode::PostLoad()
+{
+	Super::PostLoad();
+
+	if (DisplayName.IsEmpty() && !UniqueName.IsNone())
+	{
+		// Fixup old versions that only had UniqueName
+		DisplayName = UniqueName.ToString();
+		DisplayName = DisplayName.Replace(TEXT("_"), TEXT(" "));
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 void UVoxelExposedNode::MakeNameUnique()
 {
-	if (Graph)
+	if (!Graph)
 	{
-		TSet<FName> Names;
-		for (auto* Node : Graph->AllNodes)
-		{
-			auto* ExposedNode = Cast<UVoxelExposedNode>(Node);
-			if (ExposedNode && ExposedNode != this && ExposedNode->GetClass() != GetClass())
-			{
-				Names.Add(ExposedNode->UniqueName);
-			}
-		}
+		return;
+	}
 
-		int32 Number = UniqueName.GetNumber();
-		bool bDirty = false;
-		while (Names.Contains(UniqueName))
+	const auto OriginalUniqueName = UniqueName;
+
+	UniqueName = *FVoxelVariable::SanitizeName(DisplayName);
+
+	TSet<FName> Names;
+	for (auto* Node : Graph->AllNodes)
+	{
+		auto* ExposedNode = Cast<UVoxelExposedNode>(Node);
+		if (ExposedNode && ExposedNode != this && ExposedNode->GetClass() != GetClass())
 		{
-			UniqueName.SetNumber(++Number);
-			bDirty = true;
+			Names.Add(ExposedNode->UniqueName);
 		}
-		if (bDirty)
-		{
-			MarkPackageDirty();
-		}
+	}
+
+	int32 Number = UniqueName.GetNumber();
+	while (Names.Contains(UniqueName))
+	{
+		UniqueName.SetNumber(++Number);
+	}
+	
+	if (OriginalUniqueName != UniqueName)
+	{
+		MarkPackageDirty();
 	}
 }
 
-
-FText UVoxelOptionallyExposedNode::GetTitle() const
+const void* UVoxelExposedNode::GetParameterInternal(void* Temp, UScriptStruct* Struct) const
 {
-	const FString ValueString = GetValueString();
-	if (bExposeToBP)
-	{
-		FString Text = UniqueName.ToString().Replace(TEXT("_"), TEXT(" "));
-		if (!ValueString.IsEmpty())
-		{
-			Text += " = " + ValueString;
-		}
-		return FText::FromString(Text);
-	}
-	else
-	{
-		return FText::FromString(ValueString);
-	}
-}
+	const FName PropertyName = GetParameterPropertyName();
+	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
+	if (!ensure(Property)) return Temp;
 
-FLinearColor UVoxelOptionallyExposedNode::GetColor() const
-{
-	return bExposeToBP ? Super::GetColor() : GetNotExposedColor();
-}
-
-void UVoxelOptionallyExposedNode::SetEditableName(const FString& NewName)
-{
-	if (!NewName.IsEmpty())
+	if (auto* StructProperty = UE_25_SWITCH(Cast, CastField)<FStructProperty>(Property))
 	{
-		bExposeToBP = true;
+		ensure(StructProperty->Struct == Struct);
 	}
-	Super::SetEditableName(NewName);
+	
+	const void* Default = Property->ContainerPtrToValuePtr<void>(this);
+
+	auto* Parameter = Graph->TransientParameters.Find(UniqueName);
+	if (!Parameter) return Default;
+
+	if (!ensure(Property->ImportText(**Parameter, Temp, PPF_None, GetTransientPackage())))
+	{
+		return Default;
+	}
+
+	return Temp;
 }

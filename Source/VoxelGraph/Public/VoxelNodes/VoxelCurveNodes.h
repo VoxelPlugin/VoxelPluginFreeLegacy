@@ -17,16 +17,13 @@ class VOXELGRAPH_API UVoxelNode_Curve : public UVoxelExposedNode
 	GENERATED_VOXELNODE_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (NonNull))
 	UCurveFloat* Curve;
 
 	UVoxelNode_Curve();
 
 	virtual FText GetTitle() const override;
-	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
-#if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
-#endif
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Curve); }
 };
 
 // Apply a color curve
@@ -38,14 +35,11 @@ class VOXELGRAPH_API UVoxelNode_CurveColor : public UVoxelExposedNode
 	GENERATED_VOXELNODE_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (NonNull))
 	UCurveLinearColor* Curve;
 
 	UVoxelNode_CurveColor();
 
 	virtual FText GetTitle() const override;
-	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
-#if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
-#endif
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Curve); }
 };

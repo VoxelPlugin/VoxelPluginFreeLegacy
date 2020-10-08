@@ -94,6 +94,10 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #define GET_MEMBER_NAME_STATIC(ClassName, MemberName) STATIC_FNAME(GET_MEMBER_NAME_STRING_CHECKED(ClassName, MemberName))
 #endif
 
+#ifndef GET_OWN_MEMBER_NAME
+#define GET_OWN_MEMBER_NAME(MemberName) GET_MEMBER_NAME_CHECKED(TDecay<decltype(*this)>::Type, MemberName)
+#endif
+
 #ifndef FUNCTION_FNAME
 #define FUNCTION_FNAME FName(__FUNCTION__)
 #endif
@@ -105,3 +109,5 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #ifndef FUNCTION_ERROR
 #define FUNCTION_ERROR(Error) FUNCTION_ERROR_IMPL(__FUNCTION__, Error)
 #endif
+
+#define VOXEL_DEPRECATED(Version, Message) UE_DEPRECATED(0, Message " If this is a C++ voxel graph, you should compile it to C++ again.")

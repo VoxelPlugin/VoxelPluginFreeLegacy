@@ -59,7 +59,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -129,7 +129,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 3D Crater Noise Fractal
 			_3D_Crater_Noise_Fractal_0_Noise.SetSeed(FVoxelGraphSeed(1337));
@@ -389,7 +389,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -457,7 +457,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -529,7 +529,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -597,7 +597,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -670,7 +670,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -780,7 +780,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -860,7 +860,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -973,13 +973,7 @@ UVG_Example_FastCraters::UVG_Example_FastCraters()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVG_Example_FastCraters::GetDefaultSeeds() const
-{
-	return {
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVG_Example_FastCraters::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVG_Example_FastCraters::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVG_Example_FastCratersInstance>(*this);
@@ -991,7 +985,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVG_Example_FastCrate
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VG_Example_FastCraters. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VG_Example_FastCraters. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

@@ -5,7 +5,6 @@
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphShortcuts.h"
 #include "VoxelGraphPreviewSettings.h"
-#include "VoxelGraphImportExposedVariablesValues.h"
 #include "VoxelGraphSchema.h"
 #include "VoxelNodes/VoxelGraphMacro.h"
 #include "VoxelNodes/VoxelLocalVariables.h"
@@ -150,9 +149,9 @@ void FVoxelGraphEditorToolkit::InitVoxelEditor(const EToolkitMode::Type Mode, co
 {
 	FVoxelMessages::Info("You can view and edit Voxel Graphs, but running them requires Voxel Plugin Pro");
 	
-	WorldGenerator = CastChecked<UVoxelGraphGenerator>(ObjectToEdit);
+	Generator = CastChecked<UVoxelGraphGenerator>(ObjectToEdit);
 
-	if (!ensureAlways(WorldGenerator->VoxelGraph && WorldGenerator->VoxelDebugGraph))
+	if (!ensureAlways(Generator->VoxelGraph && Generator->VoxelDebugGraph))
 	{
 		FAssetEditorToolkit::InitAssetEditor(
 			Mode,
@@ -167,7 +166,7 @@ void FVoxelGraphEditorToolkit::InitVoxelEditor(const EToolkitMode::Type Mode, co
 	}
 
 	// Support undo/redo
-	WorldGenerator->SetFlags(RF_Transactional);
+	Generator->SetFlags(RF_Transactional);
 
 	GEditor->RegisterForUndo(this);
 
@@ -271,33 +270,33 @@ void FVoxelGraphEditorToolkit::CreateInternalWidgets()
 
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	VoxelProperties = PropertyModule.CreateDetailView(Args);
-	VoxelProperties->SetObject(WorldGenerator);
+	VoxelProperties->SetObject(Generator);
 
 	ShortcutsProperties = PropertyModule.CreateDetailView(Args);
 	ShortcutsProperties->SetObject(GetMutableDefault<UVoxelGraphShortcuts>());
 
-	if (!WorldGenerator->PreviewSettings)
+	if (!Generator->PreviewSettings)
 	{
-		WorldGenerator->PreviewSettings = NewObject<UVoxelGraphPreviewSettings>(WorldGenerator);
-		WorldGenerator->PreviewSettings->Graph = WorldGenerator;
+		Generator->PreviewSettings = NewObject<UVoxelGraphPreviewSettings>(Generator);
+		Generator->PreviewSettings->Graph = Generator;
 	}
 
 	// Needed for undo/redo
-	WorldGenerator->PreviewSettings->SetFlags(RF_Transactional);
+	Generator->PreviewSettings->SetFlags(RF_Transactional);
 
 	PreviewSettings = PropertyModule.CreateDetailView(Args);
-	PreviewSettings->SetObject(WorldGenerator->PreviewSettings);
+	PreviewSettings->SetObject(Generator->PreviewSettings);
 	
 	// Must be created before PreviewViewport
 	PreviewScene = MakeShareable(new FAdvancedPreviewScene(FPreviewScene::ConstructionValues()));
 
 	Palette = SNew(SVoxelPalette);
-	Preview = SNew(SVoxelGraphPreview).PreviewSettings(WorldGenerator->PreviewSettings);
+	Preview = SNew(SVoxelGraphPreview).PreviewSettings(Generator->PreviewSettings);
 	PreviewViewport = SNew(SVoxelGraphPreviewViewport).VoxelGraphEditorToolkit(SharedThis(this));
 	
-	PreviewHandler = MakeShared<FVoxelGraphPreview>(WorldGenerator, Preview, PreviewViewport, PreviewScene);
+	PreviewHandler = MakeShared<FVoxelGraphPreview>(Generator, Preview, PreviewViewport, PreviewScene);
 
-	Preview->SetTexture(WorldGenerator->GetPreviewTexture());
+	Preview->SetTexture(Generator->GetPreviewTexture());
 
 	// Messages panel
 	FMessageLogModule& MessageLogModule = FModuleManager::LoadModuleChecked<FMessageLogModule>("MessageLog");
@@ -349,7 +348,6 @@ void FVoxelGraphEditorToolkit::FillVoxelMenu(FMenuBuilder& MenuBuilder)
 {
 	auto& Commands = FVoxelGraphEditorCommands::Get();
 
-	MenuBuilder.AddMenuEntry(Commands.ImportExposedVariablesValues);
 	MenuBuilder.AddMenuEntry(Commands.RecreateNodes);
 }
 
@@ -411,27 +409,23 @@ void FVoxelGraphEditorToolkit::BindGraphCommands()
 
 	ToolkitCommands->MapAction(
 		Commands.ShowStats,
-		FExecuteAction::CreateWeakLambda(WorldGenerator, [=]()
+		FExecuteAction::CreateWeakLambda(Generator, [=]()
 		{
-			WorldGenerator->PreviewSettings->bShowStats = !WorldGenerator->PreviewSettings->bShowStats;
+			Generator->PreviewSettings->bShowStats = !Generator->PreviewSettings->bShowStats;
 			UpdatePreview(EVoxelGraphPreviewFlags::UpdateTextures);
 		}),
 		FCanExecuteAction(),
-		FIsActionChecked::CreateWeakLambda(WorldGenerator, [=]() { return WorldGenerator->PreviewSettings->bShowStats; }));
+		FIsActionChecked::CreateWeakLambda(Generator, [=]() { return Generator->PreviewSettings->bShowStats; }));
 
 	ToolkitCommands->MapAction(
 		Commands.ShowValues,
-		FExecuteAction::CreateWeakLambda(WorldGenerator, [=]()
+		FExecuteAction::CreateWeakLambda(Generator, [=]()
 		{
-			WorldGenerator->PreviewSettings->bShowValues = !WorldGenerator->PreviewSettings->bShowValues;
+			Generator->PreviewSettings->bShowValues = !Generator->PreviewSettings->bShowValues;
 			UpdatePreview(EVoxelGraphPreviewFlags::UpdateTextures);
 		}),
 		FCanExecuteAction(),
-		FIsActionChecked::CreateWeakLambda(WorldGenerator, [=]() { return WorldGenerator->PreviewSettings->bShowValues; }));
-
-	ToolkitCommands->MapAction(
-		Commands.ImportExposedVariablesValues,
-		FExecuteAction::CreateSP(this, &FVoxelGraphEditorToolkit::ImportExposedVariablesValues));
+		FIsActionChecked::CreateWeakLambda(Generator, [=]() { return Generator->PreviewSettings->bShowValues; }));
 
 	ToolkitCommands->MapAction(
 		FGenericCommands::Get().Undo,
@@ -567,7 +561,7 @@ TSharedRef<SGraphEditor> FVoxelGraphEditorToolkit::CreateGraphEditorWidget(bool 
 		return SNew(SGraphEditor)
 			.IsEditable(true)
 			.Appearance(AppearanceInfo)
-			.GraphToEdit(WorldGenerator->VoxelDebugGraph)
+			.GraphToEdit(Generator->VoxelDebugGraph)
 			.AutoExpandActionMenu(false)
 			.ShowGraphStateOverlay(false);
 	}
@@ -586,7 +580,7 @@ TSharedRef<SGraphEditor> FVoxelGraphEditorToolkit::CreateGraphEditorWidget(bool 
 			.AdditionalCommands(GraphEditorCommands)
 			.IsEditable(true)
 			.Appearance(AppearanceInfo)
-			.GraphToEdit(WorldGenerator->VoxelGraph)
+			.GraphToEdit(Generator->VoxelGraph)
 			.GraphEvents(InEvents)
 			.AutoExpandActionMenu(false)
 			.ShowGraphStateOverlay(false);
@@ -627,7 +621,7 @@ void FVoxelGraphEditorToolkit::SelectNodesAndZoomToFit(const TArray<UEdGraphNode
 
 void FVoxelGraphEditorToolkit::RefreshNodesMessages()
 {
-	for (auto* Node : WorldGenerator->VoxelGraph->Nodes)
+	for (auto* Node : Generator->VoxelGraph->Nodes)
 	{
 		if (Node->IsA<UVoxelGraphNode>() && !Node->IsA<UVoxelGraphNode_Knot>())
 		{
@@ -642,7 +636,7 @@ void FVoxelGraphEditorToolkit::RefreshNodesMessages()
 
 void FVoxelGraphEditorToolkit::TriggerUpdatePreview(EVoxelGraphPreviewFlags Flags)
 {
-	if (WorldGenerator->bAutomaticPreview || EnumHasAnyFlags(Flags, EVoxelGraphPreviewFlags::ManualPreview))
+	if (Generator->bAutomaticPreview || EnumHasAnyFlags(Flags, EVoxelGraphPreviewFlags::ManualPreview))
 	{
 		bUpdatePreviewOnNextTick = true;
 		NextPreviewFlags |= Flags;
@@ -716,7 +710,7 @@ void FVoxelGraphEditorToolkit::ClearMessages(bool bClearAll, EVoxelGraphNodeMess
 
 void FVoxelGraphEditorToolkit::SaveAsset_Execute()
 {
-	if (WorldGenerator->bCompileToCppOnSave)
+	if (Generator->bCompileToCppOnSave)
 	{
 	}
 
@@ -730,7 +724,7 @@ void FVoxelGraphEditorToolkit::SaveAsset_Execute()
 
 void FVoxelGraphEditorToolkit::AddReferencedObjects(FReferenceCollector& Collector)
 {
-	Collector.AddReferencedObject(WorldGenerator);
+	Collector.AddReferencedObject(Generator);
 	if (PreviewHandler.IsValid())
 	{
 		PreviewHandler->AddReferencedObjects(Collector);
@@ -921,7 +915,7 @@ void FVoxelGraphEditorToolkit::OnSelectedNodesChanged(const TSet<class UObject*>
 		{
 			if (Cast<UVoxelGraphNode_Root>(Object) || Cast<UVoxelGraphMacroInputOutputNode>(Object))
 			{
-				Selection.Add(WorldGenerator);
+				Selection.Add(Generator);
 			}
 			else if (UVoxelGraphNode* GraphNode = Cast<UVoxelGraphNode>(Object))
 			{
@@ -935,7 +929,7 @@ void FVoxelGraphEditorToolkit::OnSelectedNodesChanged(const TSet<class UObject*>
 	}
 	else
 	{
-		Selection.Add(WorldGenerator);
+		Selection.Add(Generator);
 	}
 	
 	VoxelProperties->SetObjects(Selection);
@@ -967,7 +961,7 @@ FReply FVoxelGraphEditorToolkit::OnSpawnGraphNodeByShortcut(FInputChord InChord,
 	{
 		FVoxelGraphSchemaAction_NewNode Action(FText(), FText(), FText(), 0);
 		Action.VoxelNodeClass = ClassToSpawn;
-		Action.PerformAction(WorldGenerator->VoxelGraph, nullptr, InPosition);
+		Action.PerformAction(Generator->VoxelGraph, nullptr, InPosition);
 	}
 
 	return FReply::Handled();
@@ -1016,7 +1010,7 @@ bool FVoxelGraphEditorToolkit::CanDeleteInput() const
 void FVoxelGraphEditorToolkit::OnCreateComment()
 {
 	FVoxelGraphSchemaAction_NewComment CommentAction;
-	CommentAction.PerformAction(WorldGenerator->VoxelGraph, NULL, VoxelGraphEditor->GetPasteLocation());
+	CommentAction.PerformAction(Generator->VoxelGraph, NULL, VoxelGraphEditor->GetPasteLocation());
 }
 
 void FVoxelGraphEditorToolkit::OnTogglePinPreview()
@@ -1028,19 +1022,19 @@ void FVoxelGraphEditorToolkit::OnTogglePinPreview()
 	{
 		const bool bIsPreviewing = SelectedPin->bIsDiffing;
 
-		if (WorldGenerator->PreviewedPin.Get())
+		if (Generator->PreviewedPin.Get())
 		{
-			ensure(!bIsPreviewing || SelectedPin == WorldGenerator->PreviewedPin.Get());
-			ensure(WorldGenerator->PreviewedPin.Get()->bIsDiffing);
-			WorldGenerator->PreviewedPin.Get()->bIsDiffing = false;
-			WorldGenerator->PreviewedPin.SetPin(nullptr);
+			ensure(!bIsPreviewing || SelectedPin == Generator->PreviewedPin.Get());
+			ensure(Generator->PreviewedPin.Get()->bIsDiffing);
+			Generator->PreviewedPin.Get()->bIsDiffing = false;
+			Generator->PreviewedPin.SetPin(nullptr);
 		}
 
 		ensure(!SelectedPin->bIsDiffing);
 		if (!bIsPreviewing)
 		{
 			SelectedPin->bIsDiffing = true;
-			WorldGenerator->PreviewedPin.SetPin(SelectedPin);
+			Generator->PreviewedPin.SetPin(SelectedPin);
 		}
 		
 		VoxelGraphEditor->NotifyGraphChanged();
@@ -1092,11 +1086,11 @@ void FVoxelGraphEditorToolkit::DeleteSelectedNodes()
 					VoxelNode->MarkPendingKill();
 				}
 
-				auto* PreviewedPin = WorldGenerator->PreviewedPin.Get();
+				auto* PreviewedPin = Generator->PreviewedPin.Get();
 				if (PreviewedPin && PreviewedPin->GetOwningNode() == VoxelGraphNode)
 				{
 					// Clear previewed pin if we delete the owning node
-					WorldGenerator->PreviewedPin = {};
+					Generator->PreviewedPin = {};
 					// Clear since we're not previewing it anymore
 					PreviewedPin->bIsDiffing = false;
 				}
@@ -1104,11 +1098,11 @@ void FVoxelGraphEditorToolkit::DeleteSelectedNodes()
 				FBlueprintEditorUtils::RemoveNode(NULL, VoxelGraphNode, true);
 
 				// Make sure Voxel is updated to match graph
-				WorldGenerator->CompileVoxelNodesFromGraphNodes();
+				Generator->CompileVoxelNodesFromGraphNodes();
 
 				// Remove this node from the list of all VoxelNodes
-				WorldGenerator->AllNodes.Remove(VoxelNode);
-				WorldGenerator->MarkPackageDirty();
+				Generator->AllNodes.Remove(VoxelNode);
+				Generator->MarkPackageDirty();
 			}
 			else
 			{
@@ -1246,8 +1240,8 @@ void FVoxelGraphEditorToolkit::PasteNodesHere(const FVector2D& Location)
 {
 	// Undo/Redo support
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Paste Voxel Node"));
-	WorldGenerator->VoxelGraph->Modify();
-	WorldGenerator->Modify();
+	Generator->VoxelGraph->Modify();
+	Generator->Modify();
 
 	// Clear the selection set (newly pasted stuff will be selected)
 	VoxelGraphEditor->ClearSelectionSet();
@@ -1258,7 +1252,7 @@ void FVoxelGraphEditorToolkit::PasteNodesHere(const FVector2D& Location)
 
 	// Import the nodes
 	TSet<UEdGraphNode*> PastedNodes;
-	FEdGraphUtilities::ImportNodesFromText(WorldGenerator->VoxelGraph, TextToImport, /*out*/ PastedNodes);
+	FEdGraphUtilities::ImportNodesFromText(Generator->VoxelGraph, TextToImport, /*out*/ PastedNodes);
 
 	//Average position of nodes so we can move them while still maintaining relative distances to each other
 	FVector2D AvgNodePosition(0.0f, 0.0f);
@@ -1284,8 +1278,8 @@ void FVoxelGraphEditorToolkit::PasteNodesHere(const FVector2D& Location)
 			if (auto* VoxelNode = VoxelGraphNode->VoxelNode)
 			{
 				PastedVoxelNodes.Add(VoxelNode);
-				WorldGenerator->AllNodes.Add(VoxelNode);
-				VoxelNode->Graph = WorldGenerator;
+				Generator->AllNodes.Add(VoxelNode);
+				VoxelNode->Graph = Generator;
 			}
 		}
 
@@ -1302,7 +1296,7 @@ void FVoxelGraphEditorToolkit::PasteNodesHere(const FVector2D& Location)
 	}
 
 	// Force new pasted VoxelNodes to have same connections as graph nodes
-	WorldGenerator->CompileVoxelNodesFromGraphNodes();
+	Generator->CompileVoxelNodesFromGraphNodes();
 
 	// Post copy for local variables
 	for (auto* Node : PastedVoxelNodes)
@@ -1313,8 +1307,8 @@ void FVoxelGraphEditorToolkit::PasteNodesHere(const FVector2D& Location)
 	// Update UI
 	VoxelGraphEditor->NotifyGraphChanged();
 
-	WorldGenerator->PostEditChange();
-	WorldGenerator->MarkPackageDirty();
+	Generator->PostEditChange();
+	Generator->MarkPackageDirty();
 }
 
 bool FVoxelGraphEditorToolkit::CanPasteNodes() const
@@ -1322,7 +1316,7 @@ bool FVoxelGraphEditorToolkit::CanPasteNodes() const
 	FString ClipboardContent;
 	FPlatformApplicationMisc::ClipboardPaste(ClipboardContent);
 
-	return FEdGraphUtilities::CanImportNodesFromText(WorldGenerator->VoxelGraph, ClipboardContent);
+	return FEdGraphUtilities::CanImportNodesFromText(Generator->VoxelGraph, ClipboardContent);
 }
 
 void FVoxelGraphEditorToolkit::DuplicateNodes()
@@ -1450,7 +1444,7 @@ void FVoxelGraphEditorToolkit::OnSelectLocalVariableUsages()
 			{
 				UVoxelNode* CurrentSelectedNode = GraphNode->VoxelNode;
 				UVoxelLocalVariableDeclaration* Declaration = Cast<UVoxelLocalVariableDeclaration>(CurrentSelectedNode);
-				for (UVoxelNode* Node : WorldGenerator->AllNodes)
+				for (UVoxelNode* Node : Generator->AllNodes)
 				{
 					auto* Usage = Cast<UVoxelLocalVariableUsage>(Node);
 					if (Usage && Usage->Declaration == Declaration)
@@ -1495,13 +1489,13 @@ void FVoxelGraphEditorToolkit::OnConvertRerouteToVariables()
 				int UsageIndex = -OutputPins.Num() / 2;
 				for (auto* OutputPin : OutputPins)
 				{
-					auto* Usage = WorldGenerator->ConstructNewNode<UVoxelLocalVariableUsage>(FVector2D(GraphNode->NodePosX + 50, GraphNode->NodePosY + 50 * UsageIndex));
+					auto* Usage = Generator->ConstructNewNode<UVoxelLocalVariableUsage>(FVector2D(GraphNode->NodePosX + 50, GraphNode->NodePosY + 50 * UsageIndex));
 					Usages.Add(Usage);
 					UsageIndex++;
 				}
 
 				// Spawn declaration AFTER usages so that it gets renamed
-				auto* Declaration = WorldGenerator->ConstructNewNode<UVoxelLocalVariableDeclaration>(FVector2D(GraphNode->NodePosX - 50, GraphNode->NodePosY));
+				auto* Declaration = Generator->ConstructNewNode<UVoxelLocalVariableDeclaration>(FVector2D(GraphNode->NodePosX - 50, GraphNode->NodePosY));
 				Declaration->SetCategory(FVoxelPinCategory::FromString(GraphNode->GetInputPin()->PinType.PinCategory));
 				Declaration->GraphNode->ReconstructNode();
 
@@ -1584,7 +1578,7 @@ void FVoxelGraphEditorToolkit::OnConvertVariablesToReroute()
 				}
 				DeclarationGraphNode->DestroyNode();
 
-				for(UVoxelNode* Node : WorldGenerator->AllNodes)
+				for(UVoxelNode* Node : Generator->AllNodes)
 				{
 					auto* Usage = Cast<UVoxelLocalVariableUsage>(Node);
 					if (Usage && Usage->Declaration == Declaration)
@@ -1617,7 +1611,7 @@ void FVoxelGraphEditorToolkit::ReconstructNode()
 			Node->ReconstructNode();
 		}
 	}
-	WorldGenerator->CompileVoxelNodesFromGraphNodes();
+	Generator->CompileVoxelNodesFromGraphNodes();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1636,7 +1630,7 @@ void FVoxelGraphEditorToolkit::RecreateNodes()
 			Node->ReconstructNode();
 		}
 
-		WorldGenerator->CompileVoxelNodesFromGraphNodes();
+		Generator->CompileVoxelNodesFromGraphNodes();
 
 		GraphTab->ClearContent();
 		VoxelGraphEditor = CreateGraphEditorWidget(false);
@@ -1656,13 +1650,13 @@ void FVoxelGraphEditorToolkit::CompileToCpp()
 
 void FVoxelGraphEditorToolkit::ToggleAutomaticPreview()
 {
-	WorldGenerator->Modify();
-	WorldGenerator->bAutomaticPreview = !WorldGenerator->bAutomaticPreview;
+	Generator->Modify();
+	Generator->bAutomaticPreview = !Generator->bAutomaticPreview;
 }
 
 bool FVoxelGraphEditorToolkit::IsToggleAutomaticPreviewChecked() const
 {
-	return WorldGenerator->bAutomaticPreview;
+	return Generator->bAutomaticPreview;
 }
 
 void FVoxelGraphEditorToolkit::UpdatePreview(EVoxelGraphPreviewFlags Flags)
@@ -1678,14 +1672,14 @@ void FVoxelGraphEditorToolkit::UpdatePreview(EVoxelGraphPreviewFlags Flags)
 void FVoxelGraphEditorToolkit::UpdateVoxelWorlds()
 {
 	IVoxelEditorModule* VoxelEditorModule = &FModuleManager::LoadModuleChecked<IVoxelEditorModule>("VoxelEditor");
-	VoxelEditorModule->RefreshVoxelWorlds(WorldGenerator);
+	VoxelEditorModule->RefreshVoxelWorlds(Generator);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 void FVoxelGraphEditorToolkit::ClearNodesMessages()
 {
-	FVoxelGraphErrorReporter::ClearNodesMessages(WorldGenerator);
+	FVoxelGraphErrorReporter::ClearNodesMessages(Generator);
 	ClearMessages(true, EVoxelGraphNodeMessageType::Info);
 }
 
@@ -1693,16 +1687,8 @@ void FVoxelGraphEditorToolkit::ClearNodesMessages()
 
 void FVoxelGraphEditorToolkit::ShowAxisDependencies()
 {
-	FVoxelGraphErrorReporter::ClearNodesMessages(WorldGenerator);
+	FVoxelGraphErrorReporter::ClearNodesMessages(Generator);
 	
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelGraphEditorToolkit::ImportExposedVariablesValues()
-{
-	FVoxelGraphImportExposedVariablesValues::Import(WorldGenerator);
-	VoxelGraphEditor->NotifyGraphChanged();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1726,7 +1712,7 @@ void FVoxelGraphEditorToolkit::SelectNodeAndZoomToFit(TWeakObjectPtr<const UVoxe
 {
 	if (Node.IsValid() && Node->Graph)
 	{
-		if (Node->Graph == WorldGenerator)
+		if (Node->Graph == Generator)
 		{
 			SelectNodesAndZoomToFit({ Node->GraphNode });
 		}

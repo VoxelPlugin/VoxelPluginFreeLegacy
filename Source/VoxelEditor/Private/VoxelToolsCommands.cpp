@@ -19,7 +19,7 @@ void FVoxelToolsCommands::RegisterCommands()
 	UI_COMMAND(FlattenTool, "Flatten", "Progressively flatten an area", EUserInterfaceActionType::RadioButton, FInputChord(EKeys::Five));
 	UI_COMMAND(LevelTool, "Level", "Quickly block out flat surfaces. Stamps a cylinder.", EUserInterfaceActionType::RadioButton, FInputChord(EKeys::Six));
 	UI_COMMAND(MeshTool, "Mesh", "Smoothly or progressively stamps any mesh", EUserInterfaceActionType::RadioButton, FInputChord(EKeys::Three));
-	UI_COMMAND(RevertTool, "Revert", "Reverts edits to the world generator (shift) or a specific history position", EUserInterfaceActionType::RadioButton, FInputChord(EKeys::Eight));
+	UI_COMMAND(RevertTool, "Revert", "Reverts edits to the generator (shift) or a specific history position", EUserInterfaceActionType::RadioButton, FInputChord(EKeys::Eight));
 	UI_COMMAND(SmoothTool, "Smooth", "Very useful with voxels. Shift makes it slower.", EUserInterfaceActionType::RadioButton, FInputChord(EKeys::Two));
 	UI_COMMAND(SphereTool, "Sphere", "Add/remove spheres", EUserInterfaceActionType::RadioButton, FInputChord(EKeys::Four));
 	UI_COMMAND(SurfaceTool, "Surface", "Main sculpt tool to smoothly edit the voxels, optionally with masks", EUserInterfaceActionType::RadioButton, FInputChord(EKeys::One));

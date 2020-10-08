@@ -9,7 +9,7 @@
  * To change a definition, add it to VoxelUserDefinitions.h
  */
 
-// Enable this to enable double precision in world generators and voxel graphs
+// Enable this to enable double precision in generators and voxel graphs
 #ifndef VOXEL_DOUBLE_PRECISION
 #define VOXEL_DOUBLE_PRECISION 0
 #endif
@@ -62,7 +62,7 @@
 
 
 // Enables recording detailed mesher stats (eg profiles every GetValue call)
-// In my tests, adds a cost < 5% of the total generation time with a flat world generator,
+// In my tests, adds a cost < 5% of the total generation time with a flat generator,
 // which is the worst cast for this as no time is spent generating values with it.
 // Should be cheap enough to leave on
 // NOTE: stats are recorded all the time and can only ever be cleared by the user! They are relatively small so should have no impact on memory,

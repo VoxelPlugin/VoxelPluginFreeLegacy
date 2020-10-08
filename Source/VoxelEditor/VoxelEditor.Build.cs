@@ -16,7 +16,9 @@ public class VoxelEditor : ModuleRules
 #endif
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
+        PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private"));
+
+        PrivateIncludePaths.Add(Path.Combine(EngineDirectory, "Source/Editor/PropertyEditor/Private"));
 
         DynamicallyLoadedModuleNames.AddRange(
             new string[] {

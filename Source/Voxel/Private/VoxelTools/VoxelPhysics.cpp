@@ -6,7 +6,7 @@
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelDataAccelerator.h"
 #include "VoxelRender/IVoxelLODManager.h"
-#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
+#include "VoxelGenerators/VoxelEmptyGenerator.h"
 #include "VoxelDebug/VoxelDebugUtilities.h"
 
 #include "VoxelWorld.h"

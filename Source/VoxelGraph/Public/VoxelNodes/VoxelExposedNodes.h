@@ -14,8 +14,11 @@ class VOXELGRAPH_API UVoxelExposedNode : public UVoxelNodeHelper
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Parameter Settings", meta = (DisplayName = "Name"))
-	FName UniqueName = "";
+	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
+	FString DisplayName;
+
+	UPROPERTY(VisibleAnywhere, Category = "Parameter Settings")
+	FName UniqueName;
 
 	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
 	FString Category;
@@ -23,16 +26,22 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
 	FString Tooltip;
 
+	// Lowest values on top
 	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
 	int32 Priority;
-
+	
 	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
-	TMap<FName, FString> CustomMetaData = { {"UIMin", ""}, {"UIMax", ""} };
+	FString UIMin;
+	
+	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
+	FString UIMax;
+	
+	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
+	TMap<FName, FString> CustomMetaData;
 
 	//~ Begin UVoxelExposedNode Interface
-#if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object);
-#endif
+	virtual FName GetParameterPropertyName() const { ensure(false); return {}; }
+	virtual TMap<FName, FString> GetMetaData() const;
 	//~ End UVoxelExposedNode Interface
 
 	//~ Begin UVoxelNode Interface
@@ -41,7 +50,25 @@ public:
 	virtual bool CanRenameNode() const override;
 	virtual FString GetEditableName() const override;
 	virtual void SetEditableName(const FString& NewName) override;
+	virtual void ApplyParameters(const TMap<FName, FString>& Parameters) override;
+	virtual void GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const override;
 	//~ End UVoxelNode Interface
+
+public:
+	struct FDummy
+	{
+		static UScriptStruct* Get() { return nullptr; }
+	};
+	
+	template<typename T>
+	T GetParameter() const
+	{
+		T Temp{};
+		const void* Result = GetParameterInternal(static_cast<void*>(&Temp), TChooseClass<TOr<TIsFundamentalType<T>, TIsPointer<T>>::Value, FDummy, TBaseStructure<T>>::Result::Get());
+		check(Result);
+		
+		return *static_cast<const T*>(Result);
+	}
 
 protected:
 	//~ Begin UObject Interface
@@ -49,26 +76,8 @@ protected:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 	virtual void PostEditImport() override;
+	virtual void PostLoad() override;
 	//~ End UObject Interface
-
-	template<typename T>
-	static bool TryImportObject(FProperty* Property, UObject* Object, T*& NodeAsset)
-	{
-		if (auto* ObjectProp = UE_25_SWITCH(Cast, CastField)<FSoftObjectProperty>(Property))
-		{
-			auto* AssetPtr = ObjectProp->ContainerPtrToValuePtr<const TSoftObjectPtr<UObject>>(Object);
-			if (AssetPtr)
-			{
-				auto* Asset = AssetPtr->LoadSynchronous();
-				if (!Asset || Asset->IsA<T>())
-				{
-					NodeAsset = Cast<T>(Asset);
-					return true;
-				}
-			}
-		}
-		return false;
-	}
 
 private:
 	// Only allow renaming on creation, else the name is wrong (GetTitle never called)
@@ -76,27 +85,5 @@ private:
 	bool bCanBeRenamed = true;
 
 	void MakeNameUnique();
-};
-
-UCLASS(Abstract)
-class VOXELGRAPH_API UVoxelOptionallyExposedNode : public UVoxelExposedNode
-{
-	GENERATED_BODY()
-
-public:
-	// If false, this node is a constant
-	// If true, you can change it to configure your graph
-	UPROPERTY(EditAnywhere, Category = "Parameter Settings")
-	bool bExposeToBP;
-	
-	//~ Begin UVoxelNode Interface
-	virtual FText GetTitle() const override;
-	virtual FLinearColor GetColor()	const override;
-	virtual void SetEditableName(const FString& NewName) override;
-	//~ End UVoxelNode Interface
-
-	//~ Begin UVoxelOptionallyExposedNode Interface
-	virtual FString GetValueString() const { unimplemented(); return {}; }
-	virtual FLinearColor GetNotExposedColor() const { unimplemented(); return FColor::Black; }
-	//~ End UVoxelOptionallyExposedNode Interface
+	const void* GetParameterInternal(void* Temp, UScriptStruct* Struct) const;
 };

@@ -59,11 +59,6 @@ void UVoxelNode_BiomeMapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReport
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_BiomeMapSampler::TryImportFromProperty(FProperty* Property, UObject* Object)
-{
-	return TryImportObject(Property, Object, Texture);
-}
-
 void UVoxelNode_BiomeMapSampler::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	if (PropertyChangedEvent.Property && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)

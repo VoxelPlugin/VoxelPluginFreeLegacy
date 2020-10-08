@@ -8,7 +8,7 @@
 
 // Float parameter
 UCLASS(DisplayName = "float parameter", meta = (Keywords = "constant"))
-class VOXELGRAPH_API UVoxelNode_FloatParameter : public UVoxelOptionallyExposedNode
+class VOXELGRAPH_API UVoxelNode_FloatParameter : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
@@ -18,20 +18,17 @@ public:
 	float Value;
 
 	UVoxelNode_FloatParameter();
-	
-	//~ Begin UVoxelOptionallyExposedNode Interface
-	virtual FString GetValueString() const override;
-	virtual FLinearColor GetNotExposedColor() const override;
-	//~ End UVoxelOptionallyExposedNode Interface
 
-#if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
-#endif
+	auto GetValue() const { return Value; }
+	
+	//~ Begin UVoxelExposedNode Interface
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Value); }
+	//~ End UVoxelExposedNode Interface
 };
 
 // Int parameter
 UCLASS(DisplayName = "int parameter", meta = (Keywords = "constant"))
-class VOXELGRAPH_API UVoxelNode_IntParameter : public UVoxelOptionallyExposedNode
+class VOXELGRAPH_API UVoxelNode_IntParameter : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
@@ -42,19 +39,16 @@ public:
 
 	UVoxelNode_IntParameter();
 
-	//~ Begin UVoxelOptionallyExposedNode Interface
-	virtual FString GetValueString() const override;
-	virtual FLinearColor GetNotExposedColor() const override;
-	//~ End UVoxelOptionallyExposedNode Interface
+	auto GetValue() const { return Value; }
 
-#if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
-#endif
+	//~ Begin UVoxelExposedNode Interface
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Value); }
+	//~ End UVoxelExposedNode Interface
 };
 
 // Color parameter
 UCLASS(DisplayName = "color parameter")
-class VOXELGRAPH_API UVoxelNode_ColorParameter : public UVoxelOptionallyExposedNode
+class VOXELGRAPH_API UVoxelNode_ColorParameter : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
@@ -65,19 +59,14 @@ public:
 
 	UVoxelNode_ColorParameter();
 
-	//~ Begin UVoxelOptionallyExposedNode Interface
-	virtual FString GetValueString() const override;
-	virtual FLinearColor GetNotExposedColor() const override;
-	//~ End UVoxelOptionallyExposedNode Interface
-
-#if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
-#endif
+	//~ Begin UVoxelExposedNode Interface
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Color); }
+	//~ End UVoxelExposedNode Interface
 };
 
 // Bool parameter
 UCLASS(DisplayName = "bool parameter", meta = (Keywords = "constant"))
-class VOXELGRAPH_API UVoxelNode_BoolParameter : public UVoxelOptionallyExposedNode
+class VOXELGRAPH_API UVoxelNode_BoolParameter : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
@@ -88,12 +77,9 @@ public:
 
 	UVoxelNode_BoolParameter();
 
-	//~ Begin UVoxelOptionallyExposedNode Interface
-	virtual FString GetValueString() const override;
-	virtual FLinearColor GetNotExposedColor() const override;
-	//~ End UVoxelOptionallyExposedNode Interface
+	auto GetValue() const { return Value; }
 
-#if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
-#endif
+	//~ Begin UVoxelExposedNode Interface
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Value); }
+	//~ End UVoxelExposedNode Interface
 };

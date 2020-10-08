@@ -14,9 +14,9 @@ class TVoxelDataItemWrapper;
 
 class IVoxelWorldInterface;
 
-class UVoxelWorldGenerator;
+class UVoxelGeneratorCache;
 class UVoxelLineBatchComponent;
-class UVoxelWorldGeneratorCache;
+class UVoxelGeneratorInstanceWrapper;
 
 class FVoxelData;
 
@@ -26,7 +26,7 @@ struct FVoxelDataItemConstructionInfo
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	UVoxelWorldGenerator* Generator = nullptr;
+	UVoxelGeneratorInstanceWrapper* Generator = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	FVoxelIntBox Bounds;
@@ -42,11 +42,19 @@ struct FVoxelDataItemConstructionInfo
 		return
 			Generator == Other.Generator &&
 			Bounds == Other.Bounds &&
-			Parameters == Other.Parameters;
+			Parameters == Other.Parameters &&
+			Mask == Other.Mask;
 	}
 	friend uint32 GetTypeHash(const FVoxelDataItemConstructionInfo& Info)
 	{
-		return HashCombine(HashCombine(GetTypeHash(Info.Generator), GetTypeHash(Info.Bounds)), GetTypeHash(Info.Parameters.Num()));
+		return
+			HashCombine(
+				HashCombine(
+					HashCombine(
+						GetTypeHash(Info.Generator),
+						GetTypeHash(Info.Bounds)),
+					GetTypeHash(Info.Parameters.Num())),
+				GetTypeHash(Info.Mask));
 	}
 };
 
@@ -90,6 +98,9 @@ public:
 		FVector Position, 
 		FLinearColor Color = FLinearColor::Green);
 
+	UFUNCTION(BlueprintCallable, Category = "Voxel Placeable Item Manager")
+	UVoxelGeneratorCache* GetGeneratorCache() const;
+
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Voxel Placeable Item Manager")
 	void OnGenerate();
@@ -107,14 +118,22 @@ public:
 	void Clear();
 	void ApplyToData(
 		FVoxelData& Data, 
-		const UVoxelWorldGeneratorCache& Cache, 
 		TMap<FVoxelDataItemConstructionInfo, FVoxelDataItemPtr>* OutItems = nullptr);
 
 	const TArray<FVoxelDataItemConstructionInfo>& GetDataItemInfos() const { return DataItemInfos; }
 
+	void SetExternalGeneratorCache(UVoxelGeneratorCache* NewCache)
+	{
+		GeneratorCache = NewCache;
+	}
+
 private:
-	UPROPERTY()
+	// Transient as otherwise it's serialized in the graph preview settings	
+	UPROPERTY(Transient)
 	TArray<FVoxelDataItemConstructionInfo> DataItemInfos;
+
+	UPROPERTY(Transient)
+	UVoxelGeneratorCache* GeneratorCache = nullptr;
 
 public:
 	struct FDebugLine

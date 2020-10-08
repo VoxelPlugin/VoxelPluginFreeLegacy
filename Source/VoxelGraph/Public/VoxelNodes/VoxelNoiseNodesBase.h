@@ -14,7 +14,7 @@
 
 class FVoxelCppConstructor;
 class IVoxelNoiseNodeHelper;
-struct FVoxelWorldGeneratorInit;
+struct FVoxelGeneratorInit;
 
 UCLASS(Abstract)
 class VOXELGRAPH_API UVoxelNode_NoiseNode : public UVoxelNodeWithContext // For LOD for octaves

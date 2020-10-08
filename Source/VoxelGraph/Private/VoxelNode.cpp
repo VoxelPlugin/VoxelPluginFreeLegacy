@@ -100,6 +100,23 @@ void UVoxelNode::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 	{
 		ErrorReporter.AddMessageToNode(this, "outdated node, please right click and press Reconstruct Node", EVoxelGraphNodeMessageType::Error);
 	}
+#if WITH_EDITOR
+	for (TFieldIterator<FProperty> It(GetClass()); It; ++It)
+	{
+		auto* Property = *It;
+		if (Property->HasMetaData(STATIC_FNAME("NonNull")))
+		{
+			auto* ObjectProperty = UE_25_SWITCH(Cast, CastField)<FObjectProperty>(Property);
+			if (ensure(ObjectProperty))
+			{
+				if (!*ObjectProperty->ContainerPtrToValuePtr<UObject*>(this))
+				{
+					ErrorReporter.AddMessageToNode(this, FString::Printf(TEXT("%s is null"), *Property->GetDisplayNameText().ToString()), EVoxelGraphNodeMessageType::Error);
+				}
+			}
+		}
+	}
+#endif
 }
 
 #if WITH_EDITOR

@@ -23,7 +23,7 @@ public:
 	virtual bool IsCompact() const { return false; }
 	virtual FLinearColor GetNodeBodyColor() const { return FLinearColor::White; }
 
-	/** Add an input pin to this node and recompile the WorldGenerator */
+	/** Add an input pin to this node and recompile the generator */
 	virtual void AddInputPin() {}
 	/** Checks whether an input can be added to this node */
 	virtual bool CanAddInputPin() const { return false; }

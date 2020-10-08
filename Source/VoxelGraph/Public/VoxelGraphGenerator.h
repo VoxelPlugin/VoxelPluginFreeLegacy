@@ -3,22 +3,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/EngineTypes.h"
-#include "VoxelIntBox.h"
 #include "VoxelMinimal.h"
+#include "VoxelTexture.h"
 #include "VoxelGraphOutputs.h"
 #include "VoxelAxisDependencies.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
-#include "VoxelTexture.h"
+#include "VoxelGenerators/VoxelGenerator.h"
+
+#include "Engine/EngineTypes.h"
 #include "EdGraph/EdGraphPin.h"
-#include "VoxelEditorDelegatesInterface.h"
 #include "VoxelGraphGenerator.generated.h"
 
 class UEdGraph;
 class UVoxelNode;
 class UTexture2D;
-class UVoxelGraphPreviewSettings;
+class UVoxelExposedNode;
 class UVoxelGraphOutputsConfig;
+class UVoxelGraphPreviewSettings;
 class FVoxelGraphGeneratorInstance;
 struct FVoxelCompiledGraphs;
 
@@ -36,10 +36,10 @@ enum class EVoxelGraphGeneratorDebugLevel : uint8
 };
 
 /**
- * A graph world generator
+ * A graph generator
  */
 UCLASS(BlueprintType, HideCategories = (Object), HideDropdown)
-class VOXELGRAPH_API UVoxelGraphGenerator : public UVoxelTransformableWorldGenerator, public IVoxelEditorDelegatesInterface
+class VOXELGRAPH_API UVoxelGraphGenerator : public UVoxelTransformableGenerator
 {
 	GENERATED_BODY()
 
@@ -144,35 +144,16 @@ public:
 	UVoxelGraphPreviewSettings* PreviewSettings;
 
 public:
-	UPROPERTY(Transient)
-	TMap<FName, float> FloatParameters;
-
-	UPROPERTY(Transient)
-	TMap<FName, int32> IntParameters;
-	
-	UPROPERTY(Transient)
-	TMap<FName, bool> BoolParameters;
-	
-	UPROPERTY(Transient)
-	TMap<FName, FLinearColor> ColorParameters;
-	
-	UPROPERTY(Transient)
-	TMap<FName, FVoxelFloatTexture> VoxelTextureParameters;
-
-	void ClearParametersOverrides();
-
-	float GetFloatParameter(const FName& Name, float DefaultValue) const;
-	int32 GetIntParameter(const FName& Name, int32 DefaultValue) const;
-	bool GetBoolParameter(const FName& Name, bool DefaultValue) const;
-	FLinearColor GetColorParameter(const FName& Name, FLinearColor DefaultValue) const;
-	FVoxelFloatTexture GetTextureParameter(const FName& Name) const;
+	TMap<FName, FString> TransientParameters;
 
 public:
 
-	//~ Begin UVoxelWorldGenerator Interface
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
-	//~ End UVoxelWorldGenerator Interface
+	//~ Begin UVoxelGenerator Interface
+	virtual void ApplyParameters(const TMap<FName, FString>& Parameters) override;
+	virtual void GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance(const TMap<FName, FString>& Parameters) override;;
+	//~ End UVoxelGenerator Interface
 
 #if WITH_EDITOR
 	//~ Begin UObject Interface 
@@ -180,11 +161,6 @@ public:
 	void PostLoad() override;
 	void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 	//~ End UObject Interface
-	
-	//~ Begin IVoxelEditorDelegatesInterface Interface
-	virtual void OnPreBeginPIE(bool bIsSimulating) override;
-	virtual void OnEndPIE(bool bIsSimulating) override;
-	//~ End IVoxelEditorDelegatesInterface Interface
 	
 	// Create a new node of NewNodeClass
 	UVoxelNode* ConstructNewNode(UClass* NewNodeClass, const FVector2D& Position, bool bSelectNewNode = true);

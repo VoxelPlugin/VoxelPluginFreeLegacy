@@ -6,7 +6,7 @@
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelDataOctree.h"
 #include "VoxelUtilities/VoxelOctreeUtilities.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
+#include "VoxelGenerators/VoxelGeneratorInstance.inl"
 
 #include "Async/ParallelFor.h"
 
@@ -53,7 +53,7 @@ void FVoxelData::CacheBounds(const FVoxelIntBox& Bounds, bool bMultiThreaded)
 		DataHolder.CreateData(*this, [&](T* RESTRICT DataPtr)
 		{
 			TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
-			Leaf.GetFromGeneratorAndAssets(*WorldGenerator, QueryZone, 0);
+			Leaf.GetFromGeneratorAndAssets(*Generator, QueryZone, 0);
 		});
 
 	}, !bMultiThreaded);
@@ -120,7 +120,7 @@ FORCEINLINE T FVoxelData::GetCustomOutput(T DefaultValue, FName Name, v_flt X, v
 	ClampToWorld(X, Y, Z);
 
 	auto& Node = FVoxelOctreeUtilities::GetBottomNode(GetOctree(), int32(X), int32(Y), int32(Z));
-	return Node.GetCustomOutput<T>(*WorldGenerator, DefaultValue, Name, X, Y, Z, LOD);
+	return Node.GetCustomOutput<T>(*Generator, DefaultValue, Name, X, Y, Z, LOD);
 }
 
 template<typename ... TArgs, typename F>
@@ -204,7 +204,7 @@ FORCEINLINE T FVoxelData::Get(int32 X, int32 Y, int32 Z, int32 LOD) const
 	ClampToWorld(X, Y, Z);
 
 	auto& Node = FVoxelOctreeUtilities::GetBottomNode(GetOctree(), int32(X), int32(Y), int32(Z));
-	return Node.Get<T>(*WorldGenerator, X, Y, Z, LOD);
+	return Node.Get<T>(*Generator, X, Y, Z, LOD);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -274,7 +274,7 @@ inline void FVoxelDataItemsUtilities::AddItemToLeafData<FVoxelAssetItem>(
 	// If something is still dirty, merge manually
 	if (Leaf.Values.IsDirty() || Leaf.Materials.IsDirty())
 	{
-		FVoxelDataUtilities::AddAssetItemToLeafData(Data, Leaf, *Item.WorldGenerator, Item.Bounds, Item.LocalToWorld, Leaf.Values.IsDirty(), Leaf.Materials.IsDirty());
+		FVoxelDataUtilities::AddAssetItemToLeafData(Data, Leaf, *Item.Generator, Item.Bounds, Item.LocalToWorld, Leaf.Values.IsDirty(), Leaf.Materials.IsDirty());
 	}
 }
 
@@ -475,7 +475,7 @@ void FVoxelDataUtilities::MigrateLeafDataToNewGenerator(
 	OldGeneratorData.SetNumUninitialized(Bounds.Count());
 	{
 		TVoxelQueryZone<T> QueryZone(Bounds, OldGeneratorData.GetData());
-		Leaf.GetFromGeneratorAndAssets<T>(*Data.WorldGenerator, QueryZone, 0);
+		Leaf.GetFromGeneratorAndAssets<T>(*Data.Generator, QueryZone, 0);
 	}
 
 	// Switch back to the new generator, and query the new data
@@ -485,7 +485,7 @@ void FVoxelDataUtilities::MigrateLeafDataToNewGenerator(
 	NewGeneratorData.SetNumUninitialized(Bounds.Count());
 	{
 		TVoxelQueryZone<T> QueryZone(Bounds, NewGeneratorData.GetData());
-		Leaf.GetFromGeneratorAndAssets<T>(*Data.WorldGenerator, QueryZone, 0);
+		Leaf.GetFromGeneratorAndAssets<T>(*Data.Generator, QueryZone, 0);
 	}
 
 	// Update all the data that was the same as the old generator to the new generator

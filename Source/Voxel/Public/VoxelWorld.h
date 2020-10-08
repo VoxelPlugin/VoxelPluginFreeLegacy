@@ -11,7 +11,8 @@
 #include "VoxelEnums.h"
 #include "VoxelIntBox.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorInit.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelWorldInterface.h"
 #include "VoxelEditorDelegatesInterface.h"
 #include "VoxelRender/VoxelMeshConfig.h"
@@ -19,15 +20,16 @@
 #include "VoxelWorldCreateInfo.h"
 #include "VoxelWorld.generated.h"
 
-class UVoxelWorldGeneratorCache;
-class UVoxelLineBatchComponent;
 class UVoxelSpawnerConfig;
+class UVoxelGeneratorCache;
 class UVoxelWorldSaveObject;
 class UVoxelWorldRootComponent;
+class UVoxelLineBatchComponent;
 class UVoxelMultiplayerInterface;
 class UVoxelPlaceableItemManager;
 class UVoxelMaterialCollectionBase;
 class UVoxelProceduralMeshComponent;
+class UVoxelPlaceableItemActorHelper;
 class IVoxelPool;
 class IVoxelRenderer;
 class IVoxelLODManager;
@@ -38,7 +40,6 @@ class IVoxelSpawnerManager;
 class FVoxelMultiplayerManager;
 class FVoxelInstancedMeshManager;
 class FVoxelToolRenderingManager;
-struct FVoxelWorldGeneratorInit;
 struct FVoxelLODDynamicSettings;
 struct FVoxelUncompressedWorldSave;
 struct FVoxelRendererDynamicSettings;
@@ -159,13 +160,14 @@ public:
 
 	// Generator of this world
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
-	FVoxelWorldGeneratorPicker WorldGenerator;
+	FVoxelGeneratorPicker Generator;
 
 	// Will be automatically created if not set
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", Instanced, meta = (Recreate))
 	UVoxelPlaceableItemManager* PlaceableItemManager = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - General", meta = (Recreate))
+	VOXEL_DEPRECATED(1.2, "Seeds are now regular generator parameters")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General", meta = (DisplayName = "Seeds (DEPRECATED)"))
 	TMap<FName, int32> Seeds;
 		
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General")
@@ -240,7 +242,7 @@ public:
 	
 	//////////////////////////////////////////////////////////////////////////////
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (Recreate /* also used by world generator */))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (Recreate /* also used by generator */))
 	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
 
 	// Only used if Material Config = RGB
@@ -599,7 +601,6 @@ public:
 
 public:
 	AVoxelWorld();
-	~AVoxelWorld();
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
@@ -618,7 +619,7 @@ public:
 	FVoxelEventManager& GetEventManager() const { return *EventManager; }
 	FVoxelToolRenderingManager& GetToolRenderingManager() const { return *ToolRenderingManager; }
 
-	const UVoxelWorldGeneratorCache& GetWorldGeneratorCache() const { return *WorldGeneratorCache; }
+	const UVoxelGeneratorCache& GetGeneratorCache() const { return *GeneratorCache; }
 	
 	const TVoxelSharedPtr<FGameThreadTasks>& GetGameThreadTasks() const { return GameThreadTasks; }
 	const TVoxelSharedPtr<FVoxelData>& GetDataSharedPtr() const { return Data; }
@@ -628,15 +629,14 @@ public:
 	const TVoxelSharedRef<FVoxelRendererDynamicSettings>& GetRendererDynamicSettings() const { return RendererDynamicSettings; }
 	EVoxelPlayType GetPlayType() const { return PlayType; }
 	
-	FVoxelWorldGeneratorInit GetInitStruct() const;
 	FVoxelIntBox GetWorldBounds() const;
 	FIntVector GetWorldOffset() const { return *WorldOffset; }
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
-	void SetWorldGeneratorObject(UVoxelWorldGenerator* NewGenerator);
+	void SetGeneratorObject(UVoxelGenerator* NewGenerator);
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
-	void SetWorldGeneratorClass(TSubclassOf<UVoxelWorldGenerator> NewGeneratorClass);
+	void SetGeneratorClass(TSubclassOf<UVoxelGenerator> NewGeneratorClass);
 
 	// Set the render octree depth
 	UFUNCTION(BlueprintCallable, Category = "Voxel|World Size")
@@ -704,10 +704,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
 	void AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor = true);
 
-	// The world generator cache allows to reuse voxel world objects
+	// The generator cache allows to reuse generator objects
 	// This is required for DataItemActors to allow for smaller update when moving them
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General", DisplayName = "Get World Generator Cache")
-	UVoxelWorldGeneratorCache* K2_GetWorldGeneratorCache() const { return WorldGeneratorCache; }
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General", DisplayName = "Get Generator Cache")
+	UVoxelGeneratorCache* K2_GetGeneratorCache() const { return GeneratorCache; }
+
+	// Used to init generators
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
+	FVoxelGeneratorInit GetGeneratorInit() const;
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Multiplayer")
 	UVoxelMultiplayerInterface* CreateMultiplayerInterfaceInstance();
@@ -754,7 +758,10 @@ private:
 	mutable UVoxelMultiplayerInterface* MultiplayerInterfaceInstance;
 
 	UPROPERTY(Transient)
-	UVoxelWorldGeneratorCache* WorldGeneratorCache = nullptr;	
+	UVoxelGeneratorCache* GeneratorCache = nullptr;
+
+	UPROPERTY(Transient)
+	UVoxelPlaceableItemActorHelper* PlaceableItemActorHelper = nullptr;
 	
 	UPROPERTY()
 	bool bIsToggled = false;

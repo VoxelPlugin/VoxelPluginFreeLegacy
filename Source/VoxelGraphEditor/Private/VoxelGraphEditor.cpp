@@ -87,9 +87,9 @@ inline TArray<FVoxelPin> CreateVoxelPinsFromGraphPin(UEdGraphPin& Pin)
 	return Result;
 }
 
-UEdGraph* FVoxelGraphEditor::CreateNewVoxelGraph(UVoxelGraphGenerator* InVoxelWorldGenerator)
+UEdGraph* FVoxelGraphEditor::CreateNewVoxelGraph(UVoxelGraphGenerator* InGenerator)
 {
-	return CastChecked<UVoxelEdGraph>(FBlueprintEditorUtils::CreateNewGraph(InVoxelWorldGenerator, NAME_None, UVoxelEdGraph::StaticClass(), UVoxelGraphSchema::StaticClass()));
+	return CastChecked<UVoxelEdGraph>(FBlueprintEditorUtils::CreateNewGraph(InGenerator, NAME_None, UVoxelEdGraph::StaticClass(), UVoxelGraphSchema::StaticClass()));
 }
 
 void FVoxelGraphEditor::CreateVoxelGraphNode(UEdGraph* VoxelGraph, UVoxelNode* InVoxelNode, bool bSelectNewNode)
@@ -101,15 +101,15 @@ void FVoxelGraphEditor::CreateVoxelGraphNode(UEdGraph* VoxelGraph, UVoxelNode* I
 	NodeCreator.Finalize();
 }
 
-void FVoxelGraphEditor::CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* WorldGenerator)
+void FVoxelGraphEditor::CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* Generator)
 {
-	WorldGenerator->Modify();
+	Generator->Modify();
 	{
-		WorldGenerator->FirstNode = nullptr;
-		WorldGenerator->AllNodes.Empty();
+		Generator->FirstNode = nullptr;
+		Generator->AllNodes.Empty();
 
 		TArray<UVoxelNode*> AllNodes;
-		for (auto& Node : WorldGenerator->VoxelGraph->Nodes)
+		for (auto& Node : Generator->VoxelGraph->Nodes)
 		{
 			UVoxelGraphNode* GraphNode = Cast<UVoxelGraphNode>(Node);
 			if (GraphNode && GraphNode->VoxelNode)
@@ -166,14 +166,14 @@ void FVoxelGraphEditor::CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* Wo
 							{
 								check(NewOtherPins.Num() == 1);
 								auto NewOtherPin = NewOtherPins[0];
-								WorldGenerator->FirstNode = CastChecked<UVoxelGraphNode>(NewOtherPin->GetOwningNode())->VoxelNode;
-								WorldGenerator->FirstNodePinId = NewOtherPin->PinId;
+								Generator->FirstNode = CastChecked<UVoxelGraphNode>(NewOtherPin->GetOwningNode())->VoxelNode;
+								Generator->FirstNodePinId = NewOtherPin->PinId;
 							}
 						}
 						else
 						{
-							WorldGenerator->FirstNode = CastChecked<UVoxelGraphNode>(OtherPin->GetOwningNode())->VoxelNode;
-							WorldGenerator->FirstNodePinId = OtherPin->PinId;
+							Generator->FirstNode = CastChecked<UVoxelGraphNode>(OtherPin->GetOwningNode())->VoxelNode;
+							Generator->FirstNodePinId = OtherPin->PinId;
 						}
 					}
 				}
@@ -181,16 +181,16 @@ void FVoxelGraphEditor::CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* Wo
 		}
 
 		AllNodes.Remove(nullptr);
-		WorldGenerator->AllNodes = AllNodes;
+		Generator->AllNodes = AllNodes;
 	}
-	WorldGenerator->PostEditChange();
+	Generator->PostEditChange();
 
-	UpdatePreview(WorldGenerator, EVoxelGraphPreviewFlags::UpdateTextures);
+	UpdatePreview(Generator, EVoxelGraphPreviewFlags::UpdateTextures);
 }
 
-void FVoxelGraphEditor::UpdatePreview(UVoxelGraphGenerator* WorldGenerator, EVoxelGraphPreviewFlags Flags)
+void FVoxelGraphEditor::UpdatePreview(UVoxelGraphGenerator* Generator, EVoxelGraphPreviewFlags Flags)
 {
-	if (auto Editor = FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(WorldGenerator->VoxelGraph))
+	if (auto Editor = FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(Generator->VoxelGraph))
 	{
 		Editor->TriggerUpdatePreview(Flags);
 	}
@@ -220,17 +220,17 @@ void FVoxelGraphEditor::DebugNodes(UEdGraph* DebugGraph, const TSet<FVoxelCompil
 	}
 }
 
-void FVoxelGraphEditor::AddMessages(const UVoxelGraphGenerator* WorldGenerator, const TArray<FVoxelGraphMessage>& Messages)
+void FVoxelGraphEditor::AddMessages(const UVoxelGraphGenerator* Generator, const TArray<FVoxelGraphMessage>& Messages)
 {
-	if (auto Editor = FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(WorldGenerator->VoxelGraph))
+	if (auto Editor = FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(Generator->VoxelGraph))
 	{
 		Editor->AddMessages(Messages);
 	}
 }
 
-void FVoxelGraphEditor::ClearMessages(const UVoxelGraphGenerator* WorldGenerator, bool bClearAll, EVoxelGraphNodeMessageType MessagesToClear)
+void FVoxelGraphEditor::ClearMessages(const UVoxelGraphGenerator* Generator, bool bClearAll, EVoxelGraphNodeMessageType MessagesToClear)
 {
-	if (auto Editor = FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(WorldGenerator->VoxelGraph))
+	if (auto Editor = FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(Generator->VoxelGraph))
 	{
 		Editor->ClearMessages(bClearAll, MessagesToClear);
 	}

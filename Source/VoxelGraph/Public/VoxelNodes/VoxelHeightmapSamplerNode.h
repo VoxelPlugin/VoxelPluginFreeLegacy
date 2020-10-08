@@ -42,8 +42,6 @@ public:
 	//~ End UVoxelNode Interface
 
 	//~ Begin UVoxelExposedNode Interface
-#if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
-#endif
+	virtual FName GetParameterPropertyName() const override { return bFloatHeightmap ? GET_OWN_MEMBER_NAME(HeightmapFloat) : GET_OWN_MEMBER_NAME(HeightmapUINT16); }
 	//~ End UVoxelExposedNode Interface
 };

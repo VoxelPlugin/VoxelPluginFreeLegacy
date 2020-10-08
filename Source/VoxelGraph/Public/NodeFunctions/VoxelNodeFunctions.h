@@ -12,7 +12,7 @@
 #include "VoxelUtilities/VoxelRangeUtilities.h"
 #include "VoxelUtilities/VoxelIntVectorUtilities.h"
 #include "VoxelUtilities/VoxelRichCurveUtilities.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 #include "Curves/RichCurve.h"
 #include "VoxelGraphGlobals.h"
@@ -958,39 +958,39 @@ namespace FVoxelNodeFunctions
 	VOXELGRAPH_API v_flt GetPreviousGeneratorValue(
 		v_flt X, v_flt Y, v_flt Z,
 		const FVoxelContext& Context,
-		const FVoxelWorldGeneratorInstance* DefaultGenerator);
+		const FVoxelGeneratorInstance* DefaultGenerator);
 	VOXELGRAPH_API TVoxelRange<v_flt> GetPreviousGeneratorValue(
 		TVoxelRange<v_flt> X,
 		TVoxelRange<v_flt> Y,
 		TVoxelRange<v_flt> Z,
 		const FVoxelContextRange& Context,
-		const FVoxelWorldGeneratorInstance* DefaultGenerator);
+		const FVoxelGeneratorInstance* DefaultGenerator);
 
 	VOXELGRAPH_API FVoxelMaterial GetPreviousGeneratorMaterial(
 		v_flt X, v_flt Y, v_flt Z,
 		const FVoxelContext& Context,
-		const FVoxelWorldGeneratorInstance* DefaultGenerator);
+		const FVoxelGeneratorInstance* DefaultGenerator);
 
 	VOXELGRAPH_API v_flt GetPreviousGeneratorCustomOutput(
 		const FName& Name,
 		v_flt X, v_flt Y, v_flt Z,
 		const FVoxelContext& Context,
-		const FVoxelWorldGeneratorInstance* DefaultGenerator);
+		const FVoxelGeneratorInstance* DefaultGenerator);
 	VOXELGRAPH_API TVoxelRange<v_flt> GetPreviousGeneratorCustomOutput(
 		const FName& Name,
 		TVoxelRange<v_flt> X,
 		TVoxelRange<v_flt> Y,
 		TVoxelRange<v_flt> Z,
 		const FVoxelContextRange& Context,
-		const FVoxelWorldGeneratorInstance* DefaultGenerator);
+		const FVoxelGeneratorInstance* DefaultGenerator);
 
-	VOXELGRAPH_API v_flt GetWorldGeneratorCustomOutput(
-		const FVoxelWorldGeneratorInstance& WorldGenerator,
+	VOXELGRAPH_API v_flt GetGeneratorCustomOutput(
+		const FVoxelGeneratorInstance& Generator,
 		const FName& Name,
 		v_flt X, v_flt Y, v_flt Z,
 		const FVoxelContext& Context);
-	VOXELGRAPH_API TVoxelRange<v_flt> GetWorldGeneratorCustomOutput(
-		const FVoxelWorldGeneratorInstance& WorldGenerator,
+	VOXELGRAPH_API TVoxelRange<v_flt> GetGeneratorCustomOutput(
+		const FVoxelGeneratorInstance& Generator,
 		const FName& Name,
 		TVoxelRange<v_flt> X, TVoxelRange<v_flt> Y, TVoxelRange<v_flt> Z,
 		const FVoxelContextRange& Context);
@@ -1180,12 +1180,12 @@ namespace FVoxelNodeFunctions
 		OutR = OutG = OutB = TVoxelRange<v_flt>::Union(0, V);
 	}
 
-	VOXELGRAPH_API TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>> CreateWorldGeneratorArray(const TArray<FVoxelWorldGeneratorPicker>& WorldGenerators);
+	VOXELGRAPH_API TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>> CreateGeneratorArray(const TArray<FVoxelGeneratorPicker>& Generators);
 
-	VOXELGRAPH_API void ComputeWorldGeneratorsMerge(
+	VOXELGRAPH_API void ComputeGeneratorsMerge(
 		EVoxelMaterialConfig MaterialConfig,
 		float Tolerance,
-		const TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>>& InInstances,
+		const TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>>& InInstances,
 		const TArray<FName>& FloatOutputsNames,
 		const FVoxelContext& Context,
 		v_flt X, v_flt Y, v_flt Z,
@@ -1199,8 +1199,8 @@ namespace FVoxelNodeFunctions
 		TArray<v_flt, TInlineAllocator<128>>& OutFloatOutputs,
 		int32& NumGeneratorsQueried);
 	
-	VOXELGRAPH_API void ComputeWorldGeneratorsMergeRange(
-		const TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>>& InInstances,
+	VOXELGRAPH_API void ComputeGeneratorsMergeRange(
+		const TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>>& InInstances,
 		const TArray<FName>& FloatOutputsNames,
 		const FVoxelContextRange& Context,
 		TVoxelRange<v_flt> X,

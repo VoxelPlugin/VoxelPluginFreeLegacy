@@ -25,7 +25,7 @@ public:
 	void CreateInputPin();
 	/** Create a new output pin for this node */
 	void CreateOutputPin();
-	/** Remove a specific input pin from this node and recompile the WorldGenerator */
+	/** Remove a specific input pin from this node and recompile the generator */
 	void RemoveInputPin(UEdGraphPin* InGraphPin);
 
 public:
@@ -79,6 +79,6 @@ public:
 	// End of UObject interface
 
 private:
-	/** Make sure the voxel node is owned by the World Generator */
+	/** Make sure the voxel node is owned by the generator */
 	void ResetVoxelNodeOwner();
 };

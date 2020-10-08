@@ -106,7 +106,7 @@ namespace FVoxelDataUtilities
 
 	// Note: will set the entire Data as dirty!
 	template<typename T>
-	void OverrideWorldGeneratorValue(FVoxelData& Data, T Value);
+	void OverrideGeneratorValue(FVoxelData& Data, T Value);
 
 	template<typename T>
 	void ScaleWorldData(const FVoxelData& SourceData, FVoxelData& DestData, const FVoxelVector& Scale);

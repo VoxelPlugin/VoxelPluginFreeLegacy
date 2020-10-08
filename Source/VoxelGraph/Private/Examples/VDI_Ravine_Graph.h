@@ -14,6 +14,5 @@ class UVDI_Ravine_Graph : public UVoxelGraphGeneratorHelper
 public:
 	
 	UVDI_Ravine_Graph();
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 };

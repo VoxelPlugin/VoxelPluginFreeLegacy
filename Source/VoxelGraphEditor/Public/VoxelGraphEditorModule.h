@@ -17,5 +17,5 @@ public:
 	virtual TSharedRef<IVoxelGraphEditorToolkit> CreateVoxelGraphEditor(
 		const EToolkitMode::Type Mode, 
 		const TSharedPtr<IToolkitHost>& InitToolkitHost, 
-		UVoxelGraphGenerator* WorldGenerator) = 0;
+		UVoxelGraphGenerator* Generator) = 0;
 };

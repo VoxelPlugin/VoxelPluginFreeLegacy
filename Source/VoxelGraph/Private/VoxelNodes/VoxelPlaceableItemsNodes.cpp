@@ -23,20 +23,6 @@ UVoxelNode_DataItemSample::UVoxelNode_DataItemSample()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-UVoxelNode_DataItemParameters::UVoxelNode_DataItemParameters()
-{
-}
-
-void UVoxelNode_DataItemParameters::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
-{
-	Super::LogErrors(ErrorReporter);
-
-	if (!Config)
-	{
-		ErrorReporter.AddMessageToNode(this, "Missing data item config", EVoxelGraphNodeMessageType::Error);
-	}
-}
-
 int32 UVoxelNode_DataItemParameters::GetOutputPinsCount() const
 {
 	return Config ? Config->Parameters.Num() : 0;

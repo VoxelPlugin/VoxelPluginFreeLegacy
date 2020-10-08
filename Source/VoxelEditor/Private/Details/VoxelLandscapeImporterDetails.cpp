@@ -11,11 +11,6 @@
 #include "DetailLayoutBuilder.h"
 #include "Misc/MessageDialog.h"
 
-TSharedRef<IDetailCustomization> FVoxelLandscapeImporterDetails::MakeInstance()
-{
-	return MakeShareable(new FVoxelLandscapeImporterDetails());
-}
-
 void FVoxelLandscapeImporterDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	TArray<TWeakObjectPtr<UObject>> Objects;

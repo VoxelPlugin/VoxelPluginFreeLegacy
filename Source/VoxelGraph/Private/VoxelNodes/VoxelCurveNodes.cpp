@@ -20,22 +20,6 @@ FText UVoxelNode_Curve::GetTitle() const
 	return FText::Format(VOXEL_LOCTEXT("Float Curve: {0}"), Super::GetTitle());
 }
 
-void UVoxelNode_Curve::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
-{
-	Super::LogErrors(ErrorReporter);
-	if (!Curve)
-	{
-		ErrorReporter.AddMessageToNode(this, "invalid curve", EVoxelGraphNodeMessageType::Error);
-	}
-}
-
-#if WITH_EDITOR
-bool UVoxelNode_Curve::TryImportFromProperty(FProperty* Property, UObject* Object)
-{
-	return TryImportObject(Property, Object, Curve);
-}
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -55,19 +39,3 @@ FText UVoxelNode_CurveColor::GetTitle() const
 {
 	return FText::Format(VOXEL_LOCTEXT("Color Curve: {0}"), Super::GetTitle());
 }
-
-void UVoxelNode_CurveColor::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
-{
-	Super::LogErrors(ErrorReporter);
-	if (!Curve)
-	{
-		ErrorReporter.AddMessageToNode(this, "invalid color curve", EVoxelGraphNodeMessageType::Error);
-	}
-}
-
-#if WITH_EDITOR
-bool UVoxelNode_CurveColor::TryImportFromProperty(FProperty* Property, UObject* Object)
-{
-	return TryImportObject(Property, Object, Curve);
-}
-#endif

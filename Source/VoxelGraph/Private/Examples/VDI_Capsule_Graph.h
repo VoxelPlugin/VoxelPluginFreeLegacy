@@ -12,8 +12,13 @@ class UVDI_Capsule_Graph : public UVoxelGraphGeneratorHelper
 	GENERATED_BODY()
 	
 public:
+	// Relative to the radius
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Noise Amplitude", UIMax="2", UIMin="0"))
+	float Noise_Amplitude = 1.0;
+	// 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Seed"))
+	int32 Seed = 1443;
 	
 	UVDI_Capsule_Graph();
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 };

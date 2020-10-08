@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelNodeHelper.h"
 #include "VoxelNodeHelperMacros.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelGraphAssetNodes.generated.h"
 
 UCLASS(Abstract, Category = "Graph Asset")
@@ -16,9 +16,9 @@ class VOXELGRAPH_API UVoxelGraphAssetNode : public UVoxelNodeWithContext
 public:
 	UVoxelGraphAssetNode() = default;
 
-	// World generator to sample from when not used as an asset. Useful to preview. Not used when compiled to C++
+	// Generator to sample from when not used as an asset. Useful to preview. Not used when compiled to C++
 	UPROPERTY(EditAnywhere, Category = "Preview", meta = (ReconstructNode))
-	FVoxelWorldGeneratorPicker DefaultWorldGenerator;
+	FVoxelGeneratorPicker DefaultGenerator;
 
 	//~ Begin UVoxelNode Interface
 	virtual int32 GetMaxInputPins() const override;

@@ -99,7 +99,7 @@ namespace FVoxelMesherUtilities
 
 		if (UVConfig == EVoxelUVConfig::PackWorldUpInUVs)
 		{
-			const FVector WorldUp = Data.WorldGenerator->GetUpVector(
+			const FVector WorldUp = Data.Generator->GetUpVector(
 				v_flt(ChunkPosition.X) + IntersectionPoint.X,
 				v_flt(ChunkPosition.Y) + IntersectionPoint.Y,
 				v_flt(ChunkPosition.Z) + IntersectionPoint.Z).GetSafeNormal();

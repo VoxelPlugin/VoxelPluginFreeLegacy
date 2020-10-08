@@ -3,7 +3,7 @@
 #include "VoxelEdGraph.h"
 #include "VoxelGraphGenerator.h"
 
-UVoxelGraphGenerator* UVoxelEdGraph::GetWorldGenerator() const
+UVoxelGraphGenerator* UVoxelEdGraph::GetGenerator() const
 {
 	return CastChecked<UVoxelGraphGenerator>(GetOuter());
 }

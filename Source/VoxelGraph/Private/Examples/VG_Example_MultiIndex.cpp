@@ -12,10 +12,10 @@ class FVG_Example_MultiIndexInstance : public TVoxelGraphGeneratorInstanceHelper
 public:
 	struct FParams
 	{
-		const FName Layer_2;
-		const FName Layer_3;
 		const FName Layer_0;
 		const FName Layer_1;
+		const FName Layer_2;
+		const FName Layer_3;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -61,7 +61,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -137,7 +137,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of Make Seeds
 			FVoxelGraphSeed Variable_5; // Make Seeds output 0
@@ -319,10 +319,10 @@ public:
 		{
 			FBufferConstant() {}
 			
-			int32 Variable_6; // Get Material Collection Index: Layer_1 output 0
-			int32 Variable_7; // Get Material Collection Index: Layer_2 output 0
-			int32 Variable_8; // Get Material Collection Index: Layer_3 output 0
-			int32 Variable_0; // Get Material Collection Index: Layer_0 output 0
+			int32 Variable_6; // Get Material Collection Index: Layer 1 output 0
+			int32 Variable_7; // Get Material Collection Index: Layer 2 output 0
+			int32 Variable_8; // Get Material Collection Index: Layer 3 output 0
+			int32 Variable_0; // Get Material Collection Index: Layer 0 output 0
 		};
 		
 		struct FBufferX
@@ -344,7 +344,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -369,7 +369,7 @@ public:
 					///////////// Then init constant nodes /////////////
 					////////////////////////////////////////////////////
 					
-					// Init of Get Material Collection Index: Layer_1
+					// Init of Get Material Collection Index: Layer 1
 					if (InitStruct.MaterialCollection)
 					{
 						Get_Material_Collection_Index__Layer_1_0_Index = InitStruct.MaterialCollection->GetMaterialIndex(Params.Layer_1);
@@ -379,7 +379,7 @@ public:
 						Get_Material_Collection_Index__Layer_1_0_Index = -1;
 					}
 					
-					// Init of Get Material Collection Index: Layer_2
+					// Init of Get Material Collection Index: Layer 2
 					if (InitStruct.MaterialCollection)
 					{
 						Get_Material_Collection_Index__Layer_2_0_Index = InitStruct.MaterialCollection->GetMaterialIndex(Params.Layer_2);
@@ -389,7 +389,7 @@ public:
 						Get_Material_Collection_Index__Layer_2_0_Index = -1;
 					}
 					
-					// Init of Get Material Collection Index: Layer_3
+					// Init of Get Material Collection Index: Layer 3
 					if (InitStruct.MaterialCollection)
 					{
 						Get_Material_Collection_Index__Layer_3_0_Index = InitStruct.MaterialCollection->GetMaterialIndex(Params.Layer_3);
@@ -399,7 +399,7 @@ public:
 						Get_Material_Collection_Index__Layer_3_0_Index = -1;
 					}
 					
-					// Init of Get Material Collection Index: Layer_0
+					// Init of Get Material Collection Index: Layer 0
 					if (InitStruct.MaterialCollection)
 					{
 						Get_Material_Collection_Index__Layer_0_0_Index = InitStruct.MaterialCollection->GetMaterialIndex(Params.Layer_0);
@@ -421,16 +421,16 @@ public:
 			//////////////// Compute constants /////////////////
 			////////////////////////////////////////////////////
 			{
-				// Get Material Collection Index: Layer_1
+				// Get Material Collection Index: Layer 1
 				BufferConstant.Variable_6 = Get_Material_Collection_Index__Layer_1_0_Index;
 				
-				// Get Material Collection Index: Layer_2
+				// Get Material Collection Index: Layer 2
 				BufferConstant.Variable_7 = Get_Material_Collection_Index__Layer_2_0_Index;
 				
-				// Get Material Collection Index: Layer_3
+				// Get Material Collection Index: Layer 3
 				BufferConstant.Variable_8 = Get_Material_Collection_Index__Layer_3_0_Index;
 				
-				// Get Material Collection Index: Layer_0
+				// Get Material Collection Index: Layer 0
 				BufferConstant.Variable_0 = Get_Material_Collection_Index__Layer_0_0_Index;
 				
 			}
@@ -476,7 +476,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of Make Seeds
 			FVoxelGraphSeed Make_Seeds_1_Temp_0; // Make Seeds output 0
@@ -706,7 +706,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -774,7 +774,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -845,7 +845,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -949,7 +949,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1012,10 +1012,10 @@ public:
 			Object)
 		, Params(FParams
 		{
-			*Object.Layer_2.GetAssetName(),
-			*Object.Layer_3.GetAssetName(),
 			*Object.Layer_0.GetAssetName(),
-			*Object.Layer_1.GetAssetName()
+			*Object.Layer_1.GetAssetName(),
+			*Object.Layer_2.GetAssetName(),
+			*Object.Layer_3.GetAssetName()
 		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
@@ -1024,7 +1024,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1137,13 +1137,7 @@ UVG_Example_MultiIndex::UVG_Example_MultiIndex()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVG_Example_MultiIndex::GetDefaultSeeds() const
-{
-	return {
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVG_Example_MultiIndex::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVG_Example_MultiIndex::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVG_Example_MultiIndexInstance>(*this);
@@ -1155,7 +1149,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVG_Example_MultiInde
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VG_Example_MultiIndex. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VG_Example_MultiIndex. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

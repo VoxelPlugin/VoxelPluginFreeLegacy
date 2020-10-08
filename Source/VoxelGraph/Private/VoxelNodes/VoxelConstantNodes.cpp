@@ -5,7 +5,7 @@
 #include "VoxelContext.h"
 #include "NodeFunctions/VoxelNodeFunctions.h"
 #include "VoxelGraphGenerator.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
+#include "VoxelGenerators/VoxelGeneratorInit.h"
 
 UVoxelNode_LOD::UVoxelNode_LOD()
 {

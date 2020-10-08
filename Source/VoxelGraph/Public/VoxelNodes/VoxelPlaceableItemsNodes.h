@@ -35,7 +35,7 @@ class VOXELGRAPH_API UVoxelNode_DataItemParameters : public UVoxelNodeWithContex
 	GENERATED_VOXELNODE_BODY()
 	
 public:
-	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
+	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode, NonNull))
 	UVoxelGraphDataItemConfig* Config;
 
 	// If no parameters are provided these will be used
@@ -43,10 +43,9 @@ public:
 	TMap<FName, float> PreviewValues;
 
 public:
-	UVoxelNode_DataItemParameters();
+	UVoxelNode_DataItemParameters() = default;
 
 	//~ Begin UVoxelNode Interface
-	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 	virtual int32 GetOutputPinsCount() const override;
 	virtual FName GetOutputPinName(int32 PinIndex) const override;
 	EVoxelPinCategory GetOutputPinCategory(int32 PinIndex) const override;

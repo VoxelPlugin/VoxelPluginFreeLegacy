@@ -39,17 +39,17 @@ public:
 	virtual void CreateVoxelGraphNode(UEdGraph* VoxelGraph, UVoxelNode* VoxelNode, bool bSelectNewNode) = 0;
 
 	// Compiles voxel nodes from graph nodes.
-	virtual void CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* WorldGenerator) = 0;
+	virtual void CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* Generator) = 0;
 
-	virtual void UpdatePreview(UVoxelGraphGenerator* WorldGenerator, EVoxelGraphPreviewFlags Flags) = 0;
+	virtual void UpdatePreview(UVoxelGraphGenerator* Generator, EVoxelGraphPreviewFlags Flags) = 0;
 
 	virtual void SelectNodesAndZoomToFit(UEdGraph* Graph, const TArray<UEdGraphNode*>& Nodes) = 0;
 	virtual void RefreshNodesMessages(UEdGraph* Graph) = 0;
 
 	virtual void DebugNodes(UEdGraph* DebugGraph, const TSet<FVoxelCompilationNode*>& Nodes) = 0;
 
-	virtual void AddMessages(const UVoxelGraphGenerator* WorldGenerator, const TArray<FVoxelGraphMessage>& Messages) = 0;
-	virtual void ClearMessages(const UVoxelGraphGenerator* WorldGenerator, bool bClearAll, EVoxelGraphNodeMessageType MessagesToClear) = 0;
+	virtual void AddMessages(const UVoxelGraphGenerator* Generator, const TArray<FVoxelGraphMessage>& Messages) = 0;
+	virtual void ClearMessages(const UVoxelGraphGenerator* Generator, bool bClearAll, EVoxelGraphNodeMessageType MessagesToClear) = 0;
 	
 public:
 	// Sets the voxel graph editor implementation

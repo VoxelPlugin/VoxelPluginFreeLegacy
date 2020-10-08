@@ -24,7 +24,7 @@ void FVoxelSpawnerOutputNameCustomization::CustomizeHeader(
 		while (!OutputsHandle.IsValid() && ensure(ParentHandle->GetParentHandle().IsValid()))
 		{
 			ParentHandle = ParentHandle->GetParentHandle().ToSharedRef();
-			OutputsHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelSpawnerConfig, WorldGeneratorOutputs));
+			OutputsHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelSpawnerConfig, GeneratorOutputs));
 		}
 	}
 
@@ -60,7 +60,7 @@ void FVoxelSpawnerOutputNameCustomization::CustomizeHeader(
 		.ValueContent()
 		.MaxDesiredWidth(250.f)
 		[
-			FVoxelEditorUtilities::CreateText(VOXEL_LOCTEXT("Invalid World Generator Outputs"), FSlateColor(FColor::Red))
+			FVoxelEditorUtilities::CreateText(VOXEL_LOCTEXT("Invalid Generator Outputs"), FSlateColor(FColor::Red))
 		];
 		return;
 	}

@@ -13,7 +13,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelRenderer);
 
@@ -36,7 +36,7 @@ FVoxelDefaultRenderer::FVoxelDefaultRenderer(const FVoxelRendererSettings& Setti
 TVoxelSharedRef<FVoxelDefaultRenderer> FVoxelDefaultRenderer::Create(const FVoxelRendererSettings& Settings)
 {
 	TVoxelSharedRef<FVoxelDefaultRenderer> Renderer = MakeShareable(new FVoxelDefaultRenderer(Settings));
-	Renderer->OnMaterialInstanceCreated.AddThreadSafeSP(Settings.Data->WorldGenerator, &FVoxelWorldGeneratorInstance::SetupMaterialInstance);
+	Renderer->OnMaterialInstanceCreated.AddThreadSafeSP(Settings.Data->Generator, &FVoxelGeneratorInstance::SetupMaterialInstance);
 	return Renderer;
 }
 

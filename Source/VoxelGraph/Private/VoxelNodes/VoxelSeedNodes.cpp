@@ -2,7 +2,8 @@
 
 #include "VoxelNodes/VoxelSeedNodes.h"
 #include "VoxelNodes/VoxelNodeColors.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
+#include "CppTranslation/VoxelVariables.h"
+#include "VoxelGenerators/VoxelGeneratorInit.h"
 #include "VoxelGraphGlobals.h"
 
 UVoxelSeedNode::UVoxelSeedNode()
@@ -17,26 +18,7 @@ UVoxelSeedNode::UVoxelSeedNode()
 UVoxelNode_Seed::UVoxelNode_Seed()
 {
 	SetOutputs(EC::Seed);
-}
-
-FText UVoxelNode_Seed::GetTitle() const
-{
-	return FText::FromName(Name);
-}
-
-bool UVoxelNode_Seed::CanRenameNode() const
-{
-	return true;
-}
-
-FString UVoxelNode_Seed::GetEditableName() const
-{
-	return Name.IsNone() ? "" : Name.ToString();
-}
-
-void UVoxelNode_Seed::SetEditableName(const FString& NewName)
-{
-	Name = *NewName;
+	SetColor(FVoxelNodeColors::SeedNode);
 }
 
 
@@ -49,6 +31,17 @@ UVoxelNode_AddSeeds::UVoxelNode_AddSeeds()
 	SetInputs(EC::Seed);
 	SetOutputs(EC::Seed);
 	SetInputsCount(1, MAX_VOXELNODE_PINS);
+}
+
+void UVoxelNode_Seed::PostLoad()
+{
+	Super::PostLoad();
+
+	if (!Name_DEPRECATED.IsNone())
+	{
+		DisplayName = Name_DEPRECATED.ToString();
+		UniqueName = Name_DEPRECATED;
+	}
 }
 
 

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelNodeHelper.h"
+#include "VoxelExposedNodes.h"
 #include "VoxelNodeHelperMacros.h"
 #include "VoxelSeedNodes.generated.h"
 
@@ -18,7 +19,7 @@ public:
 
 // Seed parameter
 UCLASS(DisplayName = "Seed", Category = "Seed")
-class VOXELGRAPH_API UVoxelNode_Seed : public UVoxelSeedNode
+class VOXELGRAPH_API UVoxelNode_Seed : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
@@ -27,17 +28,18 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	int32 DefaultValue = 1443;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	FName Name = "SeedName";
+	UPROPERTY()
+	FName Name_DEPRECATED = "SeedName";
 
 	UVoxelNode_Seed();
 
-	//~ Begin UVoxelNode Interface
-	virtual FText GetTitle() const override;
-	virtual bool CanRenameNode() const override;
-	virtual FString GetEditableName() const override;
-	virtual void SetEditableName(const FString& NewName) override;
-	//~ End UVoxelNode Interface
+	//~ Begin UVoxelExposedNode Interface
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(DefaultValue); }
+	//~ End UVoxelExposedNode Interface
+
+	//~ Begin UObject Interface
+	virtual void PostLoad() override;
+	//~ End UObject Interface
 };
 
 // Combine seeds by hashing them

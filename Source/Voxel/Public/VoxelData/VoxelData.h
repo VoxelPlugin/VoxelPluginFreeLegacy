@@ -17,8 +17,8 @@ class FVoxelDataLockInfo;
 class FVoxelDataOctreeBase;
 class FVoxelDataOctreeLeaf;
 class FVoxelDataOctreeParent;
-class FVoxelWorldGeneratorInstance;
-class FVoxelTransformableWorldGeneratorInstance;
+class FVoxelGeneratorInstance;
+class FVoxelTransformableGeneratorInstance;
 
 struct FVoxelDataItem;
 struct FVoxelAssetItem;
@@ -75,19 +75,19 @@ struct VOXEL_API FVoxelDataSettings
 {
 	const int32 Depth;
 	const FVoxelIntBox WorldBounds;
-	const TVoxelSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator;
+	const TVoxelSharedRef<FVoxelGeneratorInstance> Generator;
 	const bool bEnableMultiplayer;
 	const bool bEnableUndoRedo;
 
 	FVoxelDataSettings(const AVoxelWorld* World, EVoxelPlayType PlayType);
 	FVoxelDataSettings(
 		int32 Depth,
-		const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& WorldGenerator,
+		const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator,
 		bool bEnableMultiplayer,
 		bool bEnableUndoRedo);
 	FVoxelDataSettings(
 		const FVoxelIntBox& WorldBounds,
-		const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& WorldGenerator,
+		const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator,
 		bool bEnableMultiplayer,
 		bool bEnableUndoRedo);
 };
@@ -367,7 +367,7 @@ namespace FVoxelDataUtilities
 	VOXEL_API void AddAssetItemToLeafData(
 		const FVoxelData& Data,
 		FVoxelDataOctreeLeaf& Leaf,
-		const FVoxelTransformableWorldGeneratorInstance& WorldGenerator, 
+		const FVoxelTransformableGeneratorInstance& Generator, 
 		const FVoxelIntBox& Bounds,
 		const FTransform& LocalToWorld,
 		bool bModifyValues,

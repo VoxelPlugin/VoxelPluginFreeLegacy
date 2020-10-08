@@ -205,7 +205,7 @@ void FVoxelDataAssetEditorToolkit::CreateInternalWidgets()
 		PreviewSettings = PropertyModule.CreateDetailView(Args);
 		PreviewSettings->RegisterInstancedCustomPropertyLayout(
 			AVoxelWorld::StaticClass(),
-			FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldDetails::MakeDataAssetEditorInstance));
+			FOnGetDetailCustomizationInstance::CreateLambda([]() { return MakeShared<FVoxelWorldDetails>(true); }));
 		PreviewSettings->SetObject(&Manager->GetVoxelWorld());
 		PreviewSettings->OnFinishedChangingProperties().AddLambda([=](const FPropertyChangedEvent& Event)
 		{

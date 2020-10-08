@@ -14,6 +14,5 @@ class UVG_Example_FastCraters : public UVoxelGraphGeneratorHelper
 public:
 	
 	UVG_Example_FastCraters();
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 };

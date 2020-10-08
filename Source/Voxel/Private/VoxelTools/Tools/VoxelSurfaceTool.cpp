@@ -4,8 +4,8 @@
 #include "VoxelWorld.h"
 #include "VoxelMessages.h"
 #include "VoxelUtilities/VoxelExampleUtilities.h"
+#include "VoxelGenerators/VoxelGeneratorTools.h"
 #include "VoxelTools/Impl/VoxelSurfaceEditToolsImpl.inl"
-#include "VoxelTools/VoxelWorldGeneratorTools.h"
 #include "VoxelTools/VoxelSurfaceTools.h"
 #include "VoxelTools/VoxelSurfaceToolsImpl.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
@@ -224,7 +224,7 @@ FVoxelIntBoxWithValidity UVoxelSurfaceTool::DoEdit()
 
 bool UVoxelSurfaceTool::ShouldUseMask() const
 {
-	return bUseMask && (Mask.Type == EVoxelSurfaceToolMaskType::Texture ? Mask.Texture != nullptr : Mask.WorldGenerator.IsValid());
+	return bUseMask && (Mask.Type == EVoxelSurfaceToolMaskType::Texture ? Mask.Texture != nullptr : Mask.Generator.IsValid());
 }
 
 void UVoxelSurfaceTool::GetStrengths(float& OutSignedSculptStrength, float& OutSignedPaintStrength) const

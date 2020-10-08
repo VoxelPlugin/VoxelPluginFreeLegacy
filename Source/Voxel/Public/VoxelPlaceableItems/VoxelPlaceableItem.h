@@ -7,10 +7,10 @@
 
 class AVoxelWorld;
 class FVoxelObjectArchive;
-class FVoxelWorldGeneratorInstance;
-class FVoxelTransformableWorldGeneratorInstance;
+class FVoxelGeneratorInstance;
+class FVoxelTransformableGeneratorInstance;
 
-struct FVoxelWorldGeneratorInit;
+struct FVoxelGeneratorInit;
 struct FVoxelObjectArchiveEntry;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -19,7 +19,7 @@ struct FVoxelObjectArchiveEntry;
 
 struct FVoxelAssetItem
 {
-	TVoxelSharedPtr<FVoxelTransformableWorldGeneratorInstance> WorldGenerator;
+	TVoxelSharedPtr<FVoxelTransformableGeneratorInstance> Generator;
 	FVoxelIntBox Bounds;
 	FTransform LocalToWorld;
 	// Assets are sorted by priority
@@ -40,7 +40,7 @@ struct FVoxelDisableEditsBoxItem
 
 struct FVoxelDataItem
 {
-	TVoxelSharedPtr<FVoxelWorldGeneratorInstance> WorldGenerator;
+	TVoxelSharedPtr<FVoxelGeneratorInstance> Generator;
 	FVoxelIntBox Bounds;
 	TArray<v_flt> Data;
 	uint32 Mask = 0;
@@ -71,7 +71,7 @@ namespace FVoxelPlaceableItemVersion
 
 struct FVoxelPlaceableItemLoadInfo
 {
-	const FVoxelWorldGeneratorInit* WorldGeneratorInit = nullptr;
+	const FVoxelGeneratorInit* GeneratorInit = nullptr;
 	const TArray<FVoxelObjectArchiveEntry>* Objects = nullptr;
 };
 

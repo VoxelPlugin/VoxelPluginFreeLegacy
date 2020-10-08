@@ -4,12 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "VoxelAssets/VoxelDataAsset.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
+#include "VoxelGenerators/VoxelGeneratorHelpers.h"
 
-class FVoxelDataAssetInstance : public TVoxelWorldGeneratorInstanceHelper<FVoxelDataAssetInstance, UVoxelDataAsset>
+class FVoxelDataAssetInstance : public TVoxelGeneratorInstanceHelper<FVoxelDataAssetInstance, UVoxelDataAsset>
 {
 public:
-	using Super = TVoxelWorldGeneratorInstanceHelper<FVoxelDataAssetInstance, UVoxelDataAsset>;
+	using Super = TVoxelGeneratorInstanceHelper<FVoxelDataAssetInstance, UVoxelDataAsset>;
 	
 	const TVoxelSharedRef<const FVoxelDataAssetData> Data;
 	const bool bSubtractiveAsset;
@@ -26,8 +26,8 @@ public:
 	{
 	}
 
-	//~ Begin FVoxelWorldGeneratorInstance Interface
-	virtual void Init(const FVoxelWorldGeneratorInit& InitStruct) override
+	//~ Begin FVoxelGeneratorInstance Interface
+	virtual void Init(const FVoxelGeneratorInit& InitStruct) override
 	{
 		if (InitStruct.RenderType == EVoxelRenderType::Cubic)
 		{
@@ -75,7 +75,7 @@ public:
 	{
 		return FVector::UpVector;
 	}
-	//~ End FVoxelWorldGeneratorInstance Interface
+	//~ End FVoxelGeneratorInstance Interface
 
 private:
 	FORCEINLINE FVoxelIntBox GetLocalBounds() const

@@ -13,10 +13,9 @@ class UVG_Example_Craters : public UVoxelGraphGeneratorHelper
 	
 public:
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Radius = 200.000000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Radius"))
+	float Radius = 200.0;
 	
 	UVG_Example_Craters();
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 };

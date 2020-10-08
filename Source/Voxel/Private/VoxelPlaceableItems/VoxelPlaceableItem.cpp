@@ -1,8 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
+#include "VoxelGenerators/VoxelGeneratorInit.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.h"
 #include "VoxelMessages.h"
 #include "VoxelObjectArchive.h"
 
@@ -28,13 +28,13 @@ void FVoxelPlaceableItemsUtilities::SerializeItems(
 		// Might not be in game thread!
 		for (auto& Item : AssetItems)
 		{
-			TSoftObjectPtr<UVoxelWorldGenerator> WorldGenerator = Item.WorldGenerator->Object;
-			if (!ensure(!WorldGenerator.IsNull()))
+			TSoftObjectPtr<UVoxelGenerator> Generator = Item.Generator->Object;
+			if (!ensure(!Generator.IsNull()))
 			{
-				LOG_VOXEL(Error, TEXT("Invalid Object pointer on a world generator instance of class %s"), *Item.WorldGenerator->Class->GetName());
+				LOG_VOXEL(Error, TEXT("Invalid Object pointer on a generator instance of class %s"), *Item.Generator->Class->GetName());
 			}
 
-			Ar << WorldGenerator;
+			Ar << Generator;
 			Ar << Item.Bounds;
 			Ar << Item.LocalToWorld;
 			Ar << Item.Priority;
@@ -46,26 +46,26 @@ void FVoxelPlaceableItemsUtilities::SerializeItems(
 		AssetItems.Empty(NumAssetItems);
 		for (int32 Index = 0; Index < NumAssetItems; Index++)
 		{
-			TSoftObjectPtr<UVoxelTransformableWorldGenerator> WorldGenerator;
+			TSoftObjectPtr<UVoxelTransformableGenerator> Generator;
 			FVoxelIntBox Bounds;
 			FTransform LocalToWorld;
 			int32 Priority = 0;
 			
-			Ar << WorldGenerator;
+			Ar << Generator;
 			Ar << Bounds;
 			Ar << LocalToWorld;
 			Ar << Priority;
 
-			auto* LoadedWorldGenerator = WorldGenerator.LoadSynchronous();
+			auto* LoadedGenerator = Generator.LoadSynchronous();
 			
-			if (!ensure(LoadedWorldGenerator))
+			if (!ensure(LoadedGenerator))
 			{
-				LOG_VOXEL(Error, TEXT("Failed to load %s as VoxelTransformableWorldGenerator"), *WorldGenerator.ToString());
+				LOG_VOXEL(Error, TEXT("Failed to load %s as VoxelTransformableGenerator"), *Generator.ToString());
 				continue;
 			}
 
-			const auto Instance = LoadedWorldGenerator->GetTransformableInstance();
-			Instance->Init(ensure(LoadInfo.WorldGeneratorInit) ? *LoadInfo.WorldGeneratorInit : FVoxelWorldGeneratorInit());
+			const auto Instance = LoadedGenerator->GetTransformableInstance();
+			Instance->Init(ensure(LoadInfo.GeneratorInit) ? *LoadInfo.GeneratorInit : FVoxelGeneratorInit());
 			AssetItems.Emplace(FVoxelAssetItem{ Instance, Bounds, LocalToWorld, Priority });
 		}
 	}

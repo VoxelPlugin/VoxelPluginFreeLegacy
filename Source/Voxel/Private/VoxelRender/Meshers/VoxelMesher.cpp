@@ -311,7 +311,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesher::CreateFullChunk()
 
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("InitArea");
-		Data.WorldGenerator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
+		Data.Generator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
 	}
 
 	LockData();
@@ -358,7 +358,7 @@ void FVoxelMesher::CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vert
 
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("InitArea");
-		Data.WorldGenerator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
+		Data.Generator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
 	}
 
 	LockData();

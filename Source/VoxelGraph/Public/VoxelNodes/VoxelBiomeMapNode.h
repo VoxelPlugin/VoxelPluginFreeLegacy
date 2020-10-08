@@ -49,7 +49,7 @@ public:
 
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 #if WITH_EDITOR
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Texture); }
 };

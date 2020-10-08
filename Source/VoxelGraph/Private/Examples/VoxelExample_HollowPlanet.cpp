@@ -12,12 +12,13 @@ class FVoxelExample_HollowPlanetInstance : public TVoxelGraphGeneratorInstanceHe
 public:
 	struct FParams
 	{
-		const bool Use_IQ_Noise;
-		const float Noise_Bias;
 		const float Intersection_Smoothness;
+		const float Noise_Bias;
 		const float Noise_Frequency;
 		const float Noise_Scale;
 		const float Radius;
+		const int32 Seed;
+		const bool Use_IQ_Noise;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -43,7 +44,7 @@ public:
 			FBufferConstant() {}
 			
 			v_flt Variable_11; // Radius = 250.0 output 0
-			bool Variable_22; // Use IQ Noise = true output 0
+			bool Variable_22; // Use IQ Noise = True output 0
 			v_flt Variable_16; // Noise Bias = 0.2 output 0
 			v_flt Variable_17; // Intersection Smoothness = 10.0 output 0
 			v_flt Variable_19; // Noise Frequency = 4.0 output 0
@@ -72,7 +73,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -86,9 +87,9 @@ public:
 					//////// First compute all seeds in case they are used by constant nodes ////////
 					/////////////////////////////////////////////////////////////////////////////////
 					
-					// Init of Seed
-					FVoxelGraphSeed Variable_20; // Seed output 0
-					Variable_20 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 1443;
+					// Init of Seed = 1443
+					FVoxelGraphSeed Variable_20; // Seed = 1443 output 0
+					Variable_20 = Params.Seed;
 					
 					
 					////////////////////////////////////////////////////
@@ -110,7 +111,7 @@ public:
 				// Radius = 250.0
 				BufferConstant.Variable_11 = Params.Radius;
 				
-				// Use IQ Noise = true
+				// Use IQ Noise = True
 				BufferConstant.Variable_22 = Params.Use_IQ_Noise;
 				
 				// Noise Bias = 0.2
@@ -169,11 +170,11 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
-			// Init of Seed
-			FVoxelGraphSeed Variable_20; // Seed output 0
-			Variable_20 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 1443;
+			// Init of Seed = 1443
+			FVoxelGraphSeed Variable_20; // Seed = 1443 output 0
+			Variable_20 = Params.Seed;
 			
 			// Init of 3D IQ Noise
 			_3D_IQ_Noise_0_Noise.SetSeed(Variable_20);
@@ -541,7 +542,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -609,7 +610,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -681,7 +682,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -749,7 +750,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -824,7 +825,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -963,8 +964,8 @@ public:
 				_3D_IQ_Noise_1_Temp_2 = { -1.779903f, 1.388687f };
 				_3D_IQ_Noise_1_Temp_3 = { -1.667376f, 1.695596f };
 				
-				// Use IQ Noise = true
-				FVoxelBoolRange Variable_17; // Use IQ Noise = true output 0
+				// Use IQ Noise = True
+				FVoxelBoolRange Variable_17; // Use IQ Noise = True output 0
 				Variable_17 = Params.Use_IQ_Noise;
 				
 				// Switch (float)
@@ -1018,7 +1019,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1105,12 +1106,13 @@ public:
 			Object)
 		, Params(FParams
 		{
-			Object.Use_IQ_Noise,
-			Object.Noise_Bias,
 			Object.Intersection_Smoothness,
+			Object.Noise_Bias,
 			Object.Noise_Frequency,
 			Object.Noise_Scale,
-			Object.Radius
+			Object.Radius,
+			Object.Seed,
+			Object.Use_IQ_Noise
 		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
@@ -1119,7 +1121,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1232,14 +1234,7 @@ UVoxelExample_HollowPlanet::UVoxelExample_HollowPlanet()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVoxelExample_HollowPlanet::GetDefaultSeeds() const
-{
-	return {
-		{ "Seed", 1443 },
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_HollowPlanet::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelExample_HollowPlanet::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVoxelExample_HollowPlanetInstance>(*this);
@@ -1251,7 +1246,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_HollowP
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_HollowPlanet. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_HollowPlanet. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 
