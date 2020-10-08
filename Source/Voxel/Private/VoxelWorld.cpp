@@ -1,8 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelWorld.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorCache.h"
+#include "VoxelGenerators/VoxelGenerator.h"
+#include "VoxelGenerators/VoxelGeneratorCache.h"
 #include "IVoxelPool.h"
 #include "VoxelSettings.h"
 #include "VoxelDefaultPool.h"
@@ -22,8 +22,7 @@
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
-#include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActor.h"
-#include "VoxelPlaceableItems/Actors/VoxelDataItemActor.h"
+#include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActorHelper.h"
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
@@ -228,11 +227,6 @@ AVoxelWorld::AVoxelWorld()
 #endif
 }
 
-AVoxelWorld::~AVoxelWorld()
-{
-
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -300,18 +294,6 @@ void AVoxelWorld::DestroyWorld()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelWorldGeneratorInit AVoxelWorld::GetInitStruct() const
-{
-	return FVoxelWorldGeneratorInit(
-		Seeds,
-		VoxelSize,
-		FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(RenderOctreeDepth),
-		RenderType,
-		MaterialConfig,
-		MaterialCollection,
-		this);
-}
-
 FVoxelIntBox AVoxelWorld::GetWorldBounds() const
 {
 	if (bUseCustomWorldBounds)
@@ -331,14 +313,14 @@ FVoxelIntBox AVoxelWorld::GetWorldBounds() const
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void AVoxelWorld::SetWorldGeneratorObject(UVoxelWorldGenerator* NewGenerator)
+void AVoxelWorld::SetGeneratorObject(UVoxelGenerator* NewGenerator)
 {
-	WorldGenerator = NewGenerator;
+	Generator = NewGenerator;
 }
 
-void AVoxelWorld::SetWorldGeneratorClass(TSubclassOf<UVoxelWorldGenerator> NewGeneratorClass)
+void AVoxelWorld::SetGeneratorClass(TSubclassOf<UVoxelGenerator> NewGeneratorClass)
 {
-	WorldGenerator = NewGeneratorClass.Get();
+	Generator = NewGeneratorClass.Get();
 }
 
 void AVoxelWorld::SetRenderOctreeDepth(int32 NewDepth)
@@ -434,6 +416,17 @@ void AVoxelWorld::AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
+FVoxelGeneratorInit AVoxelWorld::GetGeneratorInit() const
+{
+	return FVoxelGeneratorInit(
+		VoxelSize,
+		FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(RenderOctreeDepth),
+		RenderType,
+		MaterialConfig,
+		MaterialCollection,
+		this);
+}
 
 UVoxelMultiplayerInterface* AVoxelWorld::CreateMultiplayerInterfaceInstance()
 {
@@ -915,9 +908,9 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 	bIsLoaded = false;
 	TimeOfCreation = FPlatformTime::Seconds();
 
-	if (!WorldGenerator.IsValid())
+	if (!Generator.IsValid())
 	{
-		FVoxelMessages::Error("Invalid World Generator!", this);
+		FVoxelMessages::Error("Invalid generator!", this);
 	}
 
 	// Setup root
@@ -934,9 +927,9 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 	UpdateDynamicLODSettings();
 	UpdateDynamicRendererSettings();
 
-	ensure(!WorldGeneratorCache);
-	WorldGeneratorCache = NewObject<UVoxelWorldGeneratorCache>(this);
-	WorldGeneratorCache->SetWorldGeneratorInit(GetInitStruct());
+	ensure(!GeneratorCache);
+	GeneratorCache = NewObject<UVoxelGeneratorCache>(this);
+	GeneratorCache->SetGeneratorInit(GetGeneratorInit());
 	
 	GameThreadTasks = MakeVoxelShared<FGameThreadTasks>();
 
@@ -1012,152 +1005,20 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 			// This lets objects adds new items without having to specify a custom class
 			PlaceableItemManager = NewObject<UVoxelPlaceableItemManager>();
 		}
+		PlaceableItemManager->SetExternalGeneratorCache(GeneratorCache);
 		PlaceableItemManager->Clear();
 		PlaceableItemManager->Generate();
+		PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
 
 		// Do that after Clear/Generate
 		ApplyPlaceableItems();
 
 		// Let events add other items
 		OnGenerateWorld.Broadcast();
-		
-		using FItemInfo = FVoxelDataItemConstructionInfo;
-		using FItemPtr = TVoxelWeakPtr<const TVoxelDataItemWrapper<FVoxelDataItem>>;
-		
-		TMap<AVoxelDataItemActor*, TArray<FItemInfo>> ActorsToItemInfos;
-		for (TActorIterator<AVoxelDataItemActor> ActorItr(GetWorld()); ActorItr; ++ActorItr)
-		{
-			auto* Actor = *ActorItr;
 
-			auto& ItemInfos = PlaceableItemManager->GetDataItemInfos();
-			const int32 PreviousNum = ItemInfos.Num();
-			Actor->CallAddItemToWorld(this);
-			const int32 NewNum = ItemInfos.Num();
-
-			auto& ActorItemInfos = ActorsToItemInfos.FindOrAdd(Actor);
-			for (int32 Index = PreviousNum; Index < NewNum; Index++)
-			{
-				ActorItemInfos.Add(ItemInfos[Index]);
-			}
-		}
-
-		TMap<FItemInfo, FItemPtr> GlobalItemInfoToItemPtr;
-		PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache, &GlobalItemInfoToItemPtr);
-
-		for (auto& ActorIt : ActorsToItemInfos)
-		{
-			AVoxelDataItemActor* const Actor = ActorIt.Key;
-			TArray<FItemInfo>& ActorItemInfos = ActorIt.Value;
-			if (ActorItemInfos.Num() == 0)
-			{
-				continue;
-			}
-			
-			const auto ItemInfoToItemPtr = MakeShared<TMap<FItemInfo, FItemPtr>>();
-			for (auto& ItemInfo : ActorItemInfos)
-			{
-				FItemPtr* ItemPtrPtr = GlobalItemInfoToItemPtr.Find(ItemInfo);
-				if (ensure(ItemPtrPtr) && ensure(ItemPtrPtr->IsValid()))
-				{
-					ItemInfoToItemPtr->Add(ItemInfo, *ItemPtrPtr);
-				}
-			}
-
-			Actor->OnRefresh.RemoveAll(this);
-			Actor->OnRefresh.AddWeakLambda(this, [this, ItemInfoToItemPtr, Actor]()
-			{
-				if (!IsCreated() || !ensure(PlaceableItemManager))
-				{
-					return;
-				}
-				
-				TArray<FVoxelIntBox> BoundsToUpdate;
-				{
-					// Find which items to add/remove
-					TSet<FItemInfo> ItemInfosToAdd;
-					TSet<FItemInfo> ItemInfosToRemove;
-					{
-						PlaceableItemManager->Clear();
-						Actor->CallAddItemToWorld(this);
-
-						TSet<FItemInfo> PreviousItemInfos;
-						TSet<FItemInfo> NewItemInfos;
-
-						for (auto& It : *ItemInfoToItemPtr)
-						{
-							PreviousItemInfos.Add(It.Key);
-						}
-						NewItemInfos.Append(PlaceableItemManager->GetDataItemInfos());
-
-						ItemInfosToAdd = NewItemInfos.Difference(PreviousItemInfos);
-						ItemInfosToRemove = PreviousItemInfos.Difference(NewItemInfos);
-					}
-
-					// Remove the items that aren't here anymore
-					for (const auto& ItemInfoToRemove : ItemInfosToRemove)
-					{
-						FItemPtr ItemPtr;
-						if (!ensure(ItemInfoToItemPtr->RemoveAndCopyValue(ItemInfoToRemove, ItemPtr)))
-						{
-							continue;
-						}
-						
-						BoundsToUpdate.Add(ItemInfoToRemove.Bounds);
-
-						FVoxelWriteScopeLock Lock(*Data, ItemInfoToRemove.Bounds, FUNCTION_FNAME);
-						FString Error;
-						if (!ensure(Data->RemoveItem(ItemPtr, Error)))
-						{
-							LOG_VOXEL(Error, TEXT("Failed to remove data item for %s: %s"), *Actor->GetName(), *Error);
-						}
-					}
-					
-					// Add the new ones
-					{
-						PlaceableItemManager->Clear();
-
-						for (auto& ItemInfoToAdd : ItemInfosToAdd)
-						{
-							PlaceableItemManager->AddDataItem(ItemInfoToAdd);
-						}
-
-						TMap<FItemInfo, FItemPtr> NewItemInfoToPtr;
-						PlaceableItemManager->ApplyToData(*Data, *WorldGeneratorCache, &NewItemInfoToPtr);
-
-						for (auto& NewIt : NewItemInfoToPtr)
-						{
-							const FItemInfo& ItemInfo = NewIt.Key;
-							const FItemPtr& ItemPtr = NewIt.Value;
-							ensure(ItemPtr.IsValid());
-
-							BoundsToUpdate.Add(ItemInfo.Bounds);
-							ItemInfoToItemPtr->Add(ItemInfo, ItemPtr);
-						}
-					}
-				}
-
-				if (BoundsToUpdate.Num() > 0)
-				{
-					LODManager->UpdateBounds(BoundsToUpdate);
-					
-					if (!Data->IsCurrentFrameEmpty())
-					{
-						// Save the frame for the eventual asset item merge/remove edits
-						// Dummy frame, doesn't really store anything interesting
-						Data->SaveFrame(FVoxelIntBox(BoundsToUpdate));
-					}
-
-
-#if WITH_EDITOR
-					IVoxelWorldEditor::GetVoxelWorldEditor()->RegisterTransaction(this, "Applying voxel data item");
-#endif
-				}
-					
-				PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
-			});
-		}
-		
-		PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
+		ensure(!PlaceableItemActorHelper);
+		PlaceableItemActorHelper = NewObject<UVoxelPlaceableItemActorHelper>(this);
+		PlaceableItemActorHelper->Initialize();
 	}
 
 	if (PlayType == EVoxelPlayType::Preview)
@@ -1205,10 +1066,19 @@ void AVoxelWorld::DestroyWorldInternal()
 	GameThreadTasks->Flush();
 	GameThreadTasks.Reset();
 
-	// Clear world generator cache to avoid keeping instances alive
-	WorldGeneratorCache->ClearCache();
-	WorldGeneratorCache->MarkPendingKill();
-	WorldGeneratorCache = nullptr;
+	// Clear generator cache to avoid keeping instances alive
+	if (ensure(GeneratorCache))
+	{
+		GeneratorCache->ClearCache();
+		GeneratorCache->MarkPendingKill();
+		GeneratorCache = nullptr;
+	}
+
+	if (PlaceableItemActorHelper)
+	{
+		PlaceableItemActorHelper->MarkPendingKill();
+		PlaceableItemActorHelper = nullptr;
+	}
 
 	DestroyVoxelComponents();
 

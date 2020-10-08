@@ -13,22 +13,24 @@ class UVoxelExample_Planet : public UVoxelGraphGeneratorHelper
 	
 public:
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Frequency = 2.000000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Frequency"))
+	float Frequency = 2.0;
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Radius = 1000.000000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Noise Seed"))
+	int32 Noise_Seed = 1443;
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	TSoftObjectPtr<UCurveFloat> PlanetCurve = TSoftObjectPtr<UCurveFloat>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/Planet/VoxelExample_Planet_Curve.VoxelExample_Planet_Curve"));
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Noise Strength"))
+	float Noise_Strength = 0.02;
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="PlanetColorCurve"))
 	TSoftObjectPtr<UCurveLinearColor> PlanetColorCurve = TSoftObjectPtr<UCurveLinearColor>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/Planet/VoxelExample_Planet_ColorCurve.VoxelExample_Planet_ColorCurve"));
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Noise_Strength = 0.020000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="PlanetCurve"))
+	TSoftObjectPtr<UCurveFloat> PlanetCurve = TSoftObjectPtr<UCurveFloat>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/Planet/VoxelExample_Planet_Curve.VoxelExample_Planet_Curve"));
+	// 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Radius"))
+	float Radius = 1000.0;
 	
 	UVoxelExample_Planet();
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 };

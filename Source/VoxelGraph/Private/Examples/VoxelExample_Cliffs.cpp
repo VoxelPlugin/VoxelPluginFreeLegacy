@@ -17,10 +17,13 @@ public:
 		const float Overhangs;
 		const float Base_Shape_Frequency;
 		const float Base_Shape_Offset;
-		const float Sides_Noise_Frequency;
+		const int32 Base_Shape_Seed;
+		const int32 Sides_Noise_Seed;
+		const int32 Top_Noise_Seed;
 		const float Sides_Noise_Amplitude;
-		const float Top_Noise_Scale;
+		const float Sides_Noise_Frequency;
 		const float Top_Noise_Frequency;
+		const float Top_Noise_Scale;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -79,7 +82,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -93,17 +96,17 @@ public:
 					//////// First compute all seeds in case they are used by constant nodes ////////
 					/////////////////////////////////////////////////////////////////////////////////
 					
-					// Init of Base Shape Seed
-					FVoxelGraphSeed Variable_31; // Base Shape Seed output 0
-					Variable_31 = InitStruct.Seeds.Contains(STATIC_FNAME("Base Shape Seed")) ? InitStruct.Seeds[STATIC_FNAME("Base Shape Seed")] : 3323;
+					// Init of Base Shape Seed = 3323
+					FVoxelGraphSeed Variable_31; // Base Shape Seed = 3323 output 0
+					Variable_31 = Params.Base_Shape_Seed;
 					
-					// Init of Sides Noise Seed
-					FVoxelGraphSeed Variable_34; // Sides Noise Seed output 0
-					Variable_34 = InitStruct.Seeds.Contains(STATIC_FNAME("Sides Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Sides Noise Seed")] : 2647;
+					// Init of Sides Noise Seed = 2647
+					FVoxelGraphSeed Variable_34; // Sides Noise Seed = 2647 output 0
+					Variable_34 = Params.Sides_Noise_Seed;
 					
-					// Init of Top Noise Seed
-					FVoxelGraphSeed Variable_36; // Top Noise Seed output 0
-					Variable_36 = InitStruct.Seeds.Contains(STATIC_FNAME("Top Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Top Noise Seed")] : 12932;
+					// Init of Top Noise Seed = 12932
+					FVoxelGraphSeed Variable_36; // Top Noise Seed = 12932 output 0
+					Variable_36 = Params.Top_Noise_Seed;
 					
 					
 					////////////////////////////////////////////////////
@@ -196,19 +199,19 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
-			// Init of Top Noise Seed
-			FVoxelGraphSeed Variable_36; // Top Noise Seed output 0
-			Variable_36 = InitStruct.Seeds.Contains(STATIC_FNAME("Top Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Top Noise Seed")] : 12932;
+			// Init of Top Noise Seed = 12932
+			FVoxelGraphSeed Variable_36; // Top Noise Seed = 12932 output 0
+			Variable_36 = Params.Top_Noise_Seed;
 			
-			// Init of Base Shape Seed
-			FVoxelGraphSeed Variable_31; // Base Shape Seed output 0
-			Variable_31 = InitStruct.Seeds.Contains(STATIC_FNAME("Base Shape Seed")) ? InitStruct.Seeds[STATIC_FNAME("Base Shape Seed")] : 3323;
+			// Init of Base Shape Seed = 3323
+			FVoxelGraphSeed Variable_31; // Base Shape Seed = 3323 output 0
+			Variable_31 = Params.Base_Shape_Seed;
 			
-			// Init of Sides Noise Seed
-			FVoxelGraphSeed Variable_34; // Sides Noise Seed output 0
-			Variable_34 = InitStruct.Seeds.Contains(STATIC_FNAME("Sides Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Sides Noise Seed")] : 2647;
+			// Init of Sides Noise Seed = 2647
+			FVoxelGraphSeed Variable_34; // Sides Noise Seed = 2647 output 0
+			Variable_34 = Params.Sides_Noise_Seed;
 			
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_0_Noise.SetSeed(Variable_31);
@@ -656,7 +659,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -724,7 +727,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -796,7 +799,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -864,7 +867,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -940,7 +943,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1166,7 +1169,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1274,10 +1277,13 @@ public:
 			Object.Overhangs,
 			Object.Base_Shape_Frequency,
 			Object.Base_Shape_Offset,
-			Object.Sides_Noise_Frequency,
+			Object.Base_Shape_Seed,
+			Object.Sides_Noise_Seed,
+			Object.Top_Noise_Seed,
 			Object.Sides_Noise_Amplitude,
-			Object.Top_Noise_Scale,
-			Object.Top_Noise_Frequency
+			Object.Sides_Noise_Frequency,
+			Object.Top_Noise_Frequency,
+			Object.Top_Noise_Scale
 		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
@@ -1286,7 +1292,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1399,16 +1405,7 @@ UVoxelExample_Cliffs::UVoxelExample_Cliffs()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVoxelExample_Cliffs::GetDefaultSeeds() const
-{
-	return {
-		{ "Base Shape Seed", 3323 },
-		{ "Sides Noise Seed", 2647 },
-		{ "Top Noise Seed", 12932 },
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Cliffs::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelExample_Cliffs::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVoxelExample_CliffsInstance>(*this);
@@ -1420,7 +1417,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Cliffs:
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Cliffs. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Cliffs. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

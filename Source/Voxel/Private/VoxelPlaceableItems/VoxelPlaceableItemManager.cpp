@@ -1,9 +1,11 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
+
 #include "VoxelDebug/VoxelDebugUtilities.h"
 #include "VoxelDebug/VoxelLineBatchComponent.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorCache.h"
+#include "VoxelGenerators/VoxelGeneratorCache.h"
+#include "VoxelGenerators/VoxelGeneratorInstanceWrapper.h"
 #include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelWorld.h"
 #include "VoxelMessages.h"
@@ -13,6 +15,11 @@ void UVoxelPlaceableItemManager::AddDataItem(FVoxelDataItemConstructionInfo Info
 	if (!Info.Generator)
 	{
 		FVoxelMessages::Error(FUNCTION_ERROR("Generator is null!"));
+		return;
+	}
+	if (!Info.Generator->IsValid())
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Generator is invalid!"));
 		return;
 	}
 	if (!Info.Bounds.IsValid())
@@ -33,6 +40,20 @@ void UVoxelPlaceableItemManager::DrawDebugPoint(FVector Position, FLinearColor C
 	DebugPoints.Add({ Position, Color });
 }
 
+UVoxelGeneratorCache* UVoxelPlaceableItemManager::GetGeneratorCache() const
+{
+	if (!GeneratorCache)
+	{
+		auto* This = const_cast<UVoxelPlaceableItemManager*>(this);
+		This->GeneratorCache = NewObject<UVoxelGeneratorCache>(This);
+	}
+	return GeneratorCache;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 void UVoxelPlaceableItemManager::Generate()
 {
 	OnGenerate();
@@ -44,27 +65,30 @@ void UVoxelPlaceableItemManager::Clear()
 	DebugLines.Reset();
 	DebugPoints.Reset();
 
+	if (GeneratorCache && GeneratorCache->GetOuter() == this)
+	{
+		// Only clear if it's our own cache
+		GeneratorCache->ClearCache();
+	}
+
 	OnClear();
 }
 
 void UVoxelPlaceableItemManager::ApplyToData(
 	FVoxelData& Data,
-	const UVoxelWorldGeneratorCache& Cache,
 	TMap<FVoxelDataItemConstructionInfo, FVoxelDataItemPtr>* OutItems)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
 	for (auto& Info : DataItemInfos)
 	{
-		if (!ensure(Info.Generator))
+		if (!ensure(Info.Generator) || !ensure(Info.Generator->IsValid()))
 		{
 			continue;
 		}
 		
-		const auto Instance = Cache.CreateWorldGeneratorInstance(*Info.Generator);
-
 		FVoxelWriteScopeLock Lock(Data, Info.Bounds, FUNCTION_FNAME); // TODO No lock on start
-		const auto ItemPtr = Data.AddItem<FVoxelDataItem>(Instance, Info.Bounds, TArray<v_flt>(Info.Parameters), uint32(Info.Mask));
+		const auto ItemPtr = Data.AddItem<FVoxelDataItem>(Info.Generator->Instance, Info.Bounds, TArray<v_flt>(Info.Parameters), uint32(Info.Mask));
 		ensure(ItemPtr.IsValid());
 		
 		if (OutItems)
@@ -73,6 +97,10 @@ void UVoxelPlaceableItemManager::ApplyToData(
 		}
 	}
 }
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelPlaceableItemManager::DrawDebug(const IVoxelWorldInterface& VoxelWorldInterface, UVoxelLineBatchComponent& LineBatchComponent)
 {

@@ -8,7 +8,7 @@
 #include "VoxelSpawnerConfig.generated.h"
 
 class UVoxelSpawner;
-class FVoxelWorldGeneratorInstance;
+class FVoxelGeneratorInstance;
 class UVoxelSpawnerConfig;
 class UVoxelSpawnerOutputsConfig;
 
@@ -82,7 +82,7 @@ struct FVoxelSpawnerDensity
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	float Constant = 1.f;
 	
-	// Your world generator needs to have a float output named like this
+	// Your generator needs to have a float output named like this
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	FVoxelSpawnerOutputName GeneratorOutputName;
 
@@ -127,22 +127,8 @@ enum class EVoxelSpawnerType
 {
 	// Will line trace the voxel geometry to find spawning locations. Works with any kind of world/shapes
 	Ray,
-	// These spawners uses a height output from the world generator to spawn, allowing for large spawn distance.
+	// These spawners uses a height output from the generator to spawn, allowing for large spawn distance.
 	Height
-};
-
-USTRUCT()
-struct FVoxelSpawnerConfigSpawnerSeed
-{
-	GENERATED_BODY()
-	
-	// Name referencing to the voxel world seed map
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	FName SeedName = "FoliageSeed";
-
-	// Seed if SeedName is not found in the voxel world seed map
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	uint32 DefaultSeed = 1337;
 };
 
 USTRUCT()
@@ -200,7 +186,7 @@ public:
 
 	// Seed for this spawner. Note that changing this is not required to get unique results per spawner.
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-	FVoxelSpawnerConfigSpawnerSeed Seed;
+	int32 Seed = 1337;
 	
 public:
 	// Controls the spawning pattern
@@ -386,7 +372,7 @@ public:
 	EVoxelSpawnerConfigRayWorldType WorldType;
 	
 	UPROPERTY(EditAnywhere, Category = "Config")
-	UVoxelSpawnerOutputsConfig* WorldGeneratorOutputs;
+	UVoxelSpawnerOutputsConfig* GeneratorOutputs;
 	
 	UPROPERTY(EditAnywhere, Category = "Config", AdvancedDisplay)
 	FVoxelSpawnerConfigFiveWayBlendSetup FiveWayBlendSetup;

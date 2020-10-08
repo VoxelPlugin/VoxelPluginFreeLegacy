@@ -768,7 +768,7 @@ void FVoxelSphereToolsImpl::RevertSphereToGenerator(TData& InData, const FVoxelV
 
 			TVoxelStaticArray<Type, VOXELS_PER_DATA_CHUNK> Values;
 			TVoxelQueryZone<Type> QueryZone(Leaf.GetBounds(), Values);
-			Leaf.GetFromGeneratorAndAssets<Type>(*Data.WorldGenerator, QueryZone, 0);
+			Leaf.GetFromGeneratorAndAssets<Type>(*Data.Generator, QueryZone, 0);
 
 			const FIntVector Min = Leaf.GetMin();
 

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelEnums.h"
 #include "Engine/EngineTypes.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelGenerators/VoxelGenerator.h"
 #include "VoxelHeightmapAsset.generated.h"
 
 class UTexture2D;
@@ -29,7 +29,7 @@ enum class EVoxelHeightmapImporterMaterialConfig : uint8
  * Asset that holds 2D information.
  */
 UCLASS(Abstract, BlueprintType)
-class VOXEL_API UVoxelHeightmapAsset : public UVoxelTransformableWorldGeneratorWithBounds 
+class VOXEL_API UVoxelHeightmapAsset : public UVoxelTransformableGeneratorWithBounds 
 {
 	GENERATED_BODY()
 
@@ -47,17 +47,17 @@ public:
 	float HeightOffset = 0;
 
 	// If false, will have meshes on the sides. If true, will extend infinitely.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap World Generator Settings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap Generator Settings")
 	bool bInfiniteExtent = false;
 
 	// Additional thickness in voxels below the heightmap
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap World Generator Settings", meta = (EditCondition = "!bInfiniteExtent"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap Generator Settings", meta = (EditCondition = "!bInfiniteExtent"))
 	float AdditionalThickness = 0;
 
 	// Higher precision can improve render quality, but voxel values are lower (hardness not constant)
 	// Set this to the max delta height you can have between 2 adjacent pixels, in voxels
 	// Need to be increased if the shadows/normals aren't nice, and decreased if the edit speed isn't coherent
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap World Generator Settings", meta = (ClampMin = 1))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heightmap Generator Settings", meta = (ClampMin = 1))
 	float Precision = 4;
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Heightmap Asset")
@@ -137,11 +137,11 @@ public:
 
 	TVoxelSharedRef<TVoxelHeightmapAssetInstance<float>> GetInstanceImpl();
 	
-	//~ Begin UVoxelWorldGenerator Interface
-	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	//~ Begin UVoxelGenerator Interface
+	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 	virtual FVoxelIntBox GetBounds() const override;
-	//~ End UVoxelWorldGenerator Interface
+	//~ End UVoxelGenerator Interface
 
 private:
 	TVoxelSharedPtr<TVoxelHeightmapAssetData<float>> Data;
@@ -190,11 +190,11 @@ public:
 
 	TVoxelSharedRef<TVoxelHeightmapAssetInstance<uint16>> GetInstanceImpl();
 	
-	//~ Begin UVoxelWorldGenerator Interface
-	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	//~ Begin UVoxelGenerator Interface
+	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 	virtual FVoxelIntBox GetBounds() const override;
-	//~ End UVoxelWorldGenerator Interface
+	//~ End UVoxelGenerator Interface
 
 private:
 	TVoxelSharedPtr<TVoxelHeightmapAssetData<uint16>> Data;

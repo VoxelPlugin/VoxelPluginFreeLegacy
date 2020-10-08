@@ -12,11 +12,12 @@ class FVoxelExample_FloatingIslandOnionInstance : public TVoxelGraphGeneratorIns
 public:
 	struct FParams
 	{
-		const float Top_Noise_Frequency;
-		const float Perturb_Frequency;
-		const float Perturb_Amplitude;
-		const float Top_Noise_Height;
 		const float Height;
+		const float Perturb_Amplitude;
+		const float Perturb_Frequency;
+		const int32 Seed;
+		const float Top_Noise_Frequency;
+		const float Top_Noise_Height;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -70,7 +71,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -84,9 +85,9 @@ public:
 					//////// First compute all seeds in case they are used by constant nodes ////////
 					/////////////////////////////////////////////////////////////////////////////////
 					
-					// Init of Seed
-					FVoxelGraphSeed Variable_18; // Seed output 0
-					Variable_18 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 1337;
+					// Init of Seed = 1337
+					FVoxelGraphSeed Variable_18; // Seed = 1337 output 0
+					Variable_18 = Params.Seed;
 					
 					// Init of HASH
 					FVoxelGraphSeed Variable_19; // HASH output 0
@@ -169,11 +170,11 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
-			// Init of Seed
-			FVoxelGraphSeed Variable_18; // Seed output 0
-			Variable_18 = InitStruct.Seeds.Contains(STATIC_FNAME("Seed")) ? InitStruct.Seeds[STATIC_FNAME("Seed")] : 1337;
+			// Init of Seed = 1337
+			FVoxelGraphSeed Variable_18; // Seed = 1337 output 0
+			Variable_18 = Params.Seed;
 			
 			// Init of HASH
 			FVoxelGraphSeed Variable_19; // HASH output 0
@@ -583,7 +584,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -651,7 +652,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -723,7 +724,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -791,7 +792,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -868,7 +869,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -996,7 +997,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 2D Gradient Perturb Fractal
 			_2D_Gradient_Perturb_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
@@ -1164,11 +1165,12 @@ public:
 			Object)
 		, Params(FParams
 		{
-			Object.Top_Noise_Frequency,
-			Object.Perturb_Frequency,
+			Object.Height,
 			Object.Perturb_Amplitude,
-			Object.Top_Noise_Height,
-			Object.Height
+			Object.Perturb_Frequency,
+			Object.Seed,
+			Object.Top_Noise_Frequency,
+			Object.Top_Noise_Height
 		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
@@ -1177,7 +1179,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1290,14 +1292,7 @@ UVoxelExample_FloatingIslandOnion::UVoxelExample_FloatingIslandOnion()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVoxelExample_FloatingIslandOnion::GetDefaultSeeds() const
-{
-	return {
-		{ "Seed", 1337 },
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_FloatingIslandOnion::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelExample_FloatingIslandOnion::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVoxelExample_FloatingIslandOnionInstance>(*this);
@@ -1309,7 +1304,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Floatin
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_FloatingIslandOnion. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_FloatingIslandOnion. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

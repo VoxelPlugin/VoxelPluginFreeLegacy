@@ -242,7 +242,6 @@ struct VOXEL_API FVoxelColorTexture
 		: Texture(Texture)
 	{
 	}
-	
 
 	TVoxelTexture<FColor> Texture;
 };

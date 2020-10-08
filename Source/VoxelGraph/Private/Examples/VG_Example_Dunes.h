@@ -12,23 +12,22 @@ class UVG_Example_Dunes : public UVoxelGraphGeneratorHelper
 	GENERATED_BODY()
 	
 public:
-	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Dune_Frequency = 0.002000;
-	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Noise_Frequency = 0.001000;
-	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Height = 75.000000;
 	// The direction of the noise. Will be normalized
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Direction_X = 0.400000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Direction X"))
+	float Direction_X = 0.4;
 	// The direction of the noise. Will be normalized
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Direction_Y = 1.000000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Direction Y"))
+	float Direction_Y = 1.0;
+	// 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Dune Frequency"))
+	float Dune_Frequency = 0.002;
+	// 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Height"))
+	float Height = 75.0;
+	// 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Noise Frequency"))
+	float Noise_Frequency = 0.001;
 	
 	UVG_Example_Dunes();
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 };

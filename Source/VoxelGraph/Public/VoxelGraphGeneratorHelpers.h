@@ -7,8 +7,8 @@
 #include "VoxelMinimal.h"
 #include "VoxelContext.h"
 #include "VoxelGraphConstants.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
+#include "VoxelGenerators/VoxelGeneratorHelpers.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.inl"
 #include "VoxelGraphGeneratorHelpers.generated.h"
 
 // See https://godbolt.org/z/4IzS-b
@@ -24,16 +24,16 @@ struct FVoxelGraphOutputsInit
 };
 
 template<typename TChild, typename UWorldObject>
-class TVoxelGraphGeneratorInstanceHelper : public TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>
+class TVoxelGraphGeneratorInstanceHelper : public TVoxelTransformableGeneratorInstanceHelper<TChild, UWorldObject>
 {
 public:
-	using FVoxelWorldGeneratorInstance::TOutputFunctionPtr;
-	using FVoxelWorldGeneratorInstance::TRangeOutputFunctionPtr;
-	using FVoxelTransformableWorldGeneratorInstance::TOutputFunctionPtr_Transform;
-	using FVoxelTransformableWorldGeneratorInstance::TRangeOutputFunctionPtr_Transform;
+	using FVoxelGeneratorInstance::TOutputFunctionPtr;
+	using FVoxelGeneratorInstance::TRangeOutputFunctionPtr;
+	using FVoxelTransformableGeneratorInstance::TOutputFunctionPtr_Transform;
+	using FVoxelTransformableGeneratorInstance::TRangeOutputFunctionPtr_Transform;
 	
-	using FVoxelWorldGeneratorInstance::FCustomFunctionPtrs;
-	using FVoxelTransformableWorldGeneratorInstance::FCustomFunctionPtrs_Transform;
+	using FVoxelGeneratorInstance::FCustomFunctionPtrs;
+	using FVoxelTransformableGeneratorInstance::FCustomFunctionPtrs_Transform;
 
 	DEPRECATED_VOXEL_GRAPH_FUNCTION()
 	TVoxelGraphGeneratorInstanceHelper(
@@ -45,7 +45,7 @@ public:
 		const FCustomFunctionPtrs_Transform& CustomFunctionPtrs_Transform,
 		
 		bool bEnableRangeAnalysis)
-		: TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>(nullptr, CustomFunctionPtrs, CustomFunctionPtrs_Transform)
+		: TVoxelTransformableGeneratorInstanceHelper<TChild, UWorldObject>(nullptr, CustomFunctionPtrs, CustomFunctionPtrs_Transform)
 		, bEnableRangeAnalysis(bEnableRangeAnalysis)
 		, CustomOutputsNames(FName())
 	{
@@ -76,7 +76,7 @@ public:
 		const FCustomFunctionPtrs_Transform& CustomFunctionPtrs_Transform,
 		
 		UWorldObject& Object)
-		: TVoxelTransformableWorldGeneratorInstanceHelper<TChild, UWorldObject>(&Object, CustomFunctionPtrs, CustomFunctionPtrs_Transform)
+		: TVoxelTransformableGeneratorInstanceHelper<TChild, UWorldObject>(&Object, CustomFunctionPtrs, CustomFunctionPtrs_Transform)
 		, bEnableRangeAnalysis(Object.bEnableRangeAnalysis)
 		, CustomOutputsNames(FName())
 	{
@@ -261,8 +261,8 @@ public:
 	}
 
 public:
-	//~ Begin FVoxelWorldGeneratorInstance Interface
-	virtual void Init(const FVoxelWorldGeneratorInit& InitStruct) override final
+	//~ Begin FVoxelGeneratorInstance Interface
+	virtual void Init(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		bInit = true;
 		MaterialConfig = InitStruct.MaterialConfig;
@@ -327,10 +327,10 @@ public:
 			Outputs.template Get<v_flt, FVoxelGraphOutputsIndices::UpVectorYIndex>(),
 			Outputs.template Get<v_flt, FVoxelGraphOutputsIndices::UpVectorZIndex>()).GetSafeNormal();
 	}
-	//~ End FVoxelWorldGeneratorInstance Interface
+	//~ End FVoxelGeneratorInstance Interface
 
 public:
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) = 0;
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) = 0;
 
 protected:
 	template<typename T>
@@ -389,12 +389,16 @@ private:
 };
 
 UCLASS(Abstract)
-class VOXELGRAPH_API UVoxelGraphGeneratorHelper : public UVoxelTransformableWorldGenerator
+class VOXELGRAPH_API UVoxelGraphGeneratorHelper : public UVoxelTransformableGenerator
 {
 	GENERATED_BODY()
 
 public:
 	// Range analysis gives a pretty significant speed-up. You should not disable it
-	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Misc")
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Misc", meta = (HideInGenerator))
 	bool bEnableRangeAnalysis = true;
+
+protected:
+	DEPRECATED_VOXEL_GRAPH_FUNCTION()
+	virtual TMap<FName, int32> GetDefaultSeeds() const { return {}; }
 };

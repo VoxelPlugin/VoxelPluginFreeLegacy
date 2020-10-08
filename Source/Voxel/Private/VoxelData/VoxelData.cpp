@@ -12,7 +12,7 @@
 #include "VoxelEnums.h"
 #include "VoxelWorld.h"
 #include "VoxelQueryZone.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
+#include "VoxelGenerators/VoxelGeneratorHelpers.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 
 #include "Misc/ScopeLock.h"
@@ -39,11 +39,11 @@ DEFINE_STAT(STAT_NumVoxelDataItems);
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-inline auto CreateWorldGenerator(const AVoxelWorld* World)
+inline auto CreateGenerator(const AVoxelWorld* World)
 {
-	auto WorldGeneratorInstance = World->WorldGenerator.GetInstance(true);
-	WorldGeneratorInstance->Init(World->GetInitStruct());
-	return WorldGeneratorInstance;
+	auto GeneratorInstance = World->Generator.GetInstance(true);
+	GeneratorInstance->Init(World->GetGeneratorInit());
+	return GeneratorInstance;
 }
 
 inline int32 ClampDataDepth(int32 Depth)
@@ -54,7 +54,7 @@ inline int32 ClampDataDepth(int32 Depth)
 FVoxelDataSettings::FVoxelDataSettings(const AVoxelWorld* World, EVoxelPlayType PlayType)
 	: Depth(ClampDataDepth(FVoxelUtilities::ConvertDepth<RENDER_CHUNK_SIZE, DATA_CHUNK_SIZE>(World->RenderOctreeDepth)))
 	, WorldBounds(World->GetWorldBounds())
-	, WorldGenerator(CreateWorldGenerator(World))
+	, Generator(CreateGenerator(World))
 	, bEnableMultiplayer(false)
 	, bEnableUndoRedo(PlayType == EVoxelPlayType::Game ? World->bEnableUndoRedo : true)
 {
@@ -62,12 +62,12 @@ FVoxelDataSettings::FVoxelDataSettings(const AVoxelWorld* World, EVoxelPlayType 
 
 FVoxelDataSettings::FVoxelDataSettings(
 	int32 Depth, 
-	const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& WorldGenerator,
+	const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator,
 	bool bEnableMultiplayer,
 	bool bEnableUndoRedo)
 	: Depth(ClampDataDepth(Depth))
 	, WorldBounds(FVoxelUtilities::GetBoundsFromDepth<DATA_CHUNK_SIZE>(this->Depth))
-	, WorldGenerator(WorldGenerator)
+	, Generator(Generator)
 	, bEnableMultiplayer(bEnableMultiplayer)
 	, bEnableUndoRedo(bEnableUndoRedo)
 {
@@ -76,12 +76,12 @@ FVoxelDataSettings::FVoxelDataSettings(
 
 FVoxelDataSettings::FVoxelDataSettings(
 	const FVoxelIntBox& WorldBounds, 
-	const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& WorldGenerator, 
+	const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator, 
 	bool bEnableMultiplayer, 
 	bool bEnableUndoRedo)
 	: Depth(ClampDataDepth(FVoxelUtilities::GetOctreeDepthContainingBounds<DATA_CHUNK_SIZE>(WorldBounds)))
 	, WorldBounds(WorldBounds)
-	, WorldGenerator(WorldGenerator)
+	, Generator(Generator)
 	, bEnableMultiplayer(bEnableMultiplayer)
 	, bEnableUndoRedo(bEnableUndoRedo)
 {
@@ -93,7 +93,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 ///////////////////////////////////////////////////////////////////////////////
 
 FVoxelData::FVoxelData(const FVoxelDataSettings& Settings)
-	: IVoxelData(Settings.Depth, Settings.WorldBounds, Settings.bEnableMultiplayer, Settings.bEnableUndoRedo, Settings.WorldGenerator)
+	: IVoxelData(Settings.Depth, Settings.WorldBounds, Settings.bEnableMultiplayer, Settings.bEnableUndoRedo, Settings.Generator)
 	, Octree(MakeUnique<FVoxelDataOctreeParent>(Depth))
 {
 	check(Depth > 0);
@@ -120,7 +120,7 @@ TVoxelSharedRef<FVoxelData> FVoxelData::Create(const FVoxelDataSettings& Setting
 
 TVoxelSharedRef<FVoxelData> FVoxelData::Clone() const
 {
-	return MakeShareable(new FVoxelData(FVoxelDataSettings(WorldBounds, WorldGenerator, bEnableMultiplayer, bEnableUndoRedo)));
+	return MakeShareable(new FVoxelData(FVoxelDataSettings(WorldBounds, Generator, bEnableMultiplayer, bEnableUndoRedo)));
 }
 
 FVoxelData::~FVoxelData()
@@ -407,7 +407,7 @@ void FVoxelData::Get(TVoxelQueryZone<T>& GlobalQueryZone, int32 LOD) const
 			}
 		}
 		
-		InOctree.GetFromGeneratorAndAssets<T>(*WorldGenerator, QueryZone, LOD);
+		InOctree.GetFromGeneratorAndAssets<T>(*Generator, QueryZone, LOD);
 	});
 
 	// Handle data outside of the world bounds
@@ -475,11 +475,11 @@ TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FVoxelIntBox& InBounds,
 
 			if (!Asset.Bounds.Intersect(QueryBounds)) continue;
 
-			const auto AssetRangeFlt = Asset.WorldGenerator->GetValueRange_Transform(
+			const auto AssetRangeFlt = Asset.Generator->GetValueRange_Transform(
 				Asset.LocalToWorld,
 				Asset.Bounds.Overlap(QueryBounds),
 				LOD,
-				FVoxelItemStack(ItemHolder, *WorldGenerator, Index));
+				FVoxelItemStack(ItemHolder, *Generator, Index));
 			const auto AssetRange = TVoxelRange<FVoxelValue>(AssetRangeFlt);
 
 			if (!Range.IsSet())
@@ -499,7 +499,7 @@ TVoxelRange<FVoxelValue> FVoxelData::GetValueRange(const FVoxelIntBox& InBounds,
 		}
 		
 		// Note: need to query individual bounds as ItemHolder might be different
-		const auto GeneratorRangeFlt = WorldGenerator->GetValueRange(QueryBounds, LOD, FVoxelItemStack(ItemHolder));
+		const auto GeneratorRangeFlt = Generator->GetValueRange(QueryBounds, LOD, FVoxelItemStack(ItemHolder));
 		const auto GeneratorRange = TVoxelRange<FVoxelValue>(GeneratorRangeFlt);
 		if (!Range.IsSet())
 		{
@@ -540,13 +540,13 @@ TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultVa
 
 			if (!Asset.Bounds.Intersect(InBounds)) continue;
 
-			const auto AssetRange = Asset.WorldGenerator->GetCustomOutputRange_Transform(
+			const auto AssetRange = Asset.Generator->GetCustomOutputRange_Transform(
 				Asset.LocalToWorld,
 				DefaultValue,
 				Name,
 				InBounds,
 				LOD,
-				FVoxelItemStack(ItemHolder, *WorldGenerator, Index));
+				FVoxelItemStack(ItemHolder, *Generator, Index));
 
 			if (!Range.IsSet())
 			{
@@ -565,7 +565,7 @@ TVoxelRange<v_flt> FVoxelData::GetCustomOutputRange(TVoxelRange<v_flt> DefaultVa
 		}
 		
 		// Note: need to query individual bounds as ItemHolder might be different
-		const auto GeneratorRange = WorldGenerator->GetCustomOutputRange(DefaultValue, Name, QueryBounds, LOD, FVoxelItemStack(ItemHolder));
+		const auto GeneratorRange = Generator->GetCustomOutputRange(DefaultValue, Name, QueryBounds, LOD, FVoxelItemStack(ItemHolder));
 		if (!Range.IsSet())
 		{
 			return GeneratorRange;
@@ -620,7 +620,7 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxel
 					const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
 					const FVoxelValue Value = Leaf.Values.Get(Index);
 					// Empty stack: items not loaded when loading in LoadFromSave
-					const FVoxelValue GeneratorValue = WorldGenerator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
+					const FVoxelValue GeneratorValue = Generator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
 
 					if (GeneratorValue == Value)
 					{
@@ -722,7 +722,7 @@ bool FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSaveImpl& Save, const
 							{
 								// Use the generator value, ignoring all assets and items as they are not loaded
 								// The same is done when checking on save
-								Value = WorldGenerator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
+								Value = Generator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
 							}
 						});
 
@@ -975,13 +975,13 @@ bool FVoxelData::IsCurrentFrameEmpty()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-class FVoxelDataWorldGeneratorInstance_AddAssetItem : public TVoxelWorldGeneratorInstanceHelper<FVoxelDataWorldGeneratorInstance_AddAssetItem, UVoxelWorldGenerator>
+class FVoxelDataGeneratorInstance_AddAssetItem : public TVoxelGeneratorInstanceHelper<FVoxelDataGeneratorInstance_AddAssetItem, UVoxelGenerator>
 {
 public:
-	using Super = TVoxelWorldGeneratorInstanceHelper<FVoxelDataWorldGeneratorInstance_AddAssetItem, UVoxelWorldGenerator>;
+	using Super = TVoxelGeneratorInstanceHelper<FVoxelDataGeneratorInstance_AddAssetItem, UVoxelGenerator>;
 	
 	const FVoxelData& Data;
-	explicit FVoxelDataWorldGeneratorInstance_AddAssetItem(const FVoxelData& Data)
+	explicit FVoxelDataGeneratorInstance_AddAssetItem(const FVoxelData& Data)
 		: Super(nullptr)
 		, Data(Data)
 	{
@@ -1007,7 +1007,7 @@ public:
 void FVoxelDataUtilities::AddAssetItemToLeafData(
 	const FVoxelData& Data,
 	FVoxelDataOctreeLeaf& Leaf, 
-	const FVoxelTransformableWorldGeneratorInstance& WorldGenerator, 
+	const FVoxelTransformableGeneratorInstance& Generator, 
 	const FVoxelIntBox& Bounds,
 	const FTransform& LocalToWorld, 
 	bool bModifyValues, 
@@ -1025,8 +1025,8 @@ void FVoxelDataUtilities::AddAssetItemToLeafData(
 	const FVoxelIntBox LeafBounds = Leaf.GetBounds();
 	const FVoxelIntBox BoundsToEdit = LeafBounds.Overlap(Bounds);
 	
-	const FVoxelDataWorldGeneratorInstance_AddAssetItem PtrWorldGenerator(Data);
-	const FVoxelItemStack ItemStack(Leaf.GetItemHolder(), PtrWorldGenerator, 0);
+	const FVoxelDataGeneratorInstance_AddAssetItem PtrGenerator(Data);
+	const FVoxelItemStack ItemStack(Leaf.GetItemHolder(), PtrGenerator, 0);
 
 	TArray<FVoxelValue> ValuesBuffer;
 	TArray<FVoxelMaterial> MaterialsBuffer;
@@ -1040,7 +1040,7 @@ void FVoxelDataUtilities::AddAssetItemToLeafData(
 		Leaf.GetData<T>().SetIsDirty(true, Data);
 		
 		TVoxelQueryZone<T> QueryZone(BoundsToEdit, Buffer.GetData());
-		WorldGenerator.Get_Transform<T>(
+		Generator.Get_Transform<T>(
 			LocalToWorld,
 			QueryZone,
 			0,

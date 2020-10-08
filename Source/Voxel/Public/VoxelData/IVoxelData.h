@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
 
-class FVoxelWorldGeneratorInstance;
+class FVoxelGeneratorInstance;
 
 class IVoxelDataOctreeMemory
 {
@@ -37,19 +37,19 @@ public:
 	const FVoxelIntBox WorldBounds;
 	const bool bEnableMultiplayer;
 	const bool bEnableUndoRedo;
-	const TVoxelSharedRef<FVoxelWorldGeneratorInstance> WorldGenerator;
+	const TVoxelSharedRef<FVoxelGeneratorInstance> Generator;
 
 	IVoxelData(
 		int32 Depth,
 		const FVoxelIntBox& WorldBounds,
 		bool bEnableMultiplayer,
 		bool bEnableUndoRedo,
-		const TVoxelSharedRef<FVoxelWorldGeneratorInstance>& VoxelWorldGeneratorInstance)
+		const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator)
 		: Depth(Depth)
 		, WorldBounds(WorldBounds)
 		, bEnableMultiplayer(bEnableMultiplayer)
 		, bEnableUndoRedo(bEnableUndoRedo)
-		, WorldGenerator(VoxelWorldGeneratorInstance)
+		, Generator(Generator)
 	{
 	}
 };

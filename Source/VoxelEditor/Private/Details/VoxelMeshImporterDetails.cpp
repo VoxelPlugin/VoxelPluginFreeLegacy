@@ -9,11 +9,6 @@
 #include "VoxelEditorDetailsUtilities.h"
 #include "DetailLayoutBuilder.h"
 
-TSharedRef<IDetailCustomization> FVoxelMeshImporterDetails::MakeInstance()
-{
-	return MakeShareable(new FVoxelMeshImporterDetails());
-}
-
 void FVoxelMeshImporterDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	FVoxelEditorUtilities::EnableRealtime();

@@ -6,26 +6,26 @@
 #include "VoxelRange.h"
 
 class FVoxelPlaceableItemHolder;
-class FVoxelWorldGeneratorInstance;
+class FVoxelGeneratorInstance;
 
 struct VOXEL_API FVoxelItemStack
 {
 public:
 	const FVoxelPlaceableItemHolder& ItemHolder;
-	const FVoxelWorldGeneratorInstance* const WorldGenerator;
-	const int32 Depth; // Index in VoxelAssetItem array, -1 if world generator
+	const FVoxelGeneratorInstance* const Generator;
+	const int32 Depth; // Index in VoxelAssetItem array, -1 if generator
 	const TArray<v_flt>* const CustomData; // Use this to send custom data to a generator
 
 	explicit FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const TArray<v_flt>* CustomData = nullptr)
 		: ItemHolder(ItemHolder)
-		, WorldGenerator(nullptr)
+		, Generator(nullptr)
 		, Depth(-1)
 		, CustomData(CustomData)
 	{
 	}
-	FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const FVoxelWorldGeneratorInstance& WorldGenerator, int32 Depth, const TArray<v_flt>* CustomData = nullptr)
+	FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const FVoxelGeneratorInstance& Generator, int32 Depth, const TArray<v_flt>* CustomData = nullptr)
 		: ItemHolder(ItemHolder)
-		, WorldGenerator(&WorldGenerator)
+		, Generator(&Generator)
 		, Depth(Depth)
 		, CustomData(CustomData)
 	{
@@ -45,11 +45,11 @@ public:
 	template<typename ...TArgs>
 	FORCEINLINE FVoxelItemStack GetNextStack(TArgs... Args) const
 	{
-		return { ItemHolder, *WorldGenerator, GetNextDepth(Args...), CustomData };
+		return { ItemHolder, *Generator, GetNextDepth(Args...), CustomData };
 	}
 	FORCEINLINE FVoxelItemStack WithCustomData(const TArray<v_flt>* InCustomData) const
 	{
-		return { ItemHolder, *WorldGenerator, Depth, InCustomData };
+		return { ItemHolder, *Generator, Depth, InCustomData };
 	}
 	FORCEINLINE bool IsEmpty() const
 	{

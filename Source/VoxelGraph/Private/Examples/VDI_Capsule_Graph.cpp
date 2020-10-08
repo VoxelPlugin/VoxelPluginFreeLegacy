@@ -12,6 +12,8 @@ class FVDI_Capsule_GraphInstance : public TVoxelGraphGeneratorInstanceHelper<FVD
 public:
 	struct FParams
 	{
+		const float Noise_Amplitude;
+		const int32 Seed;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -36,13 +38,14 @@ public:
 		{
 			FBufferConstant() {}
 			
+			v_flt Variable_14; // Noise Amplitude = 1.0 output 0
 		};
 		
 		struct FBufferX
 		{
 			FBufferX() {}
 			
-			v_flt Variable_8; // X output 0
+			v_flt Variable_16; // XYZ.X output 0
 			v_flt Variable_0; // Data Item Parameters output 0
 			v_flt Variable_1; // Data Item Parameters output 1
 			v_flt Variable_2; // Data Item Parameters output 2
@@ -50,14 +53,15 @@ public:
 			v_flt Variable_4; // Data Item Parameters output 4
 			v_flt Variable_5; // Data Item Parameters output 5
 			v_flt Variable_6; // Data Item Parameters output 6
-			v_flt Variable_15; // * output 0
+			v_flt Variable_13; // * output 0
+			v_flt Variable_12; // * output 0
 		};
 		
 		struct FBufferXY
 		{
 			FBufferXY() {}
 			
-			v_flt Variable_9; // Y output 0
+			v_flt Variable_17; // XYZ.Y output 0
 		};
 		
 		FLocalComputeStruct_LocalValue(const FParams& InParams)
@@ -65,7 +69,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -78,6 +82,10 @@ public:
 					/////////////////////////////////////////////////////////////////////////////////
 					//////// First compute all seeds in case they are used by constant nodes ////////
 					/////////////////////////////////////////////////////////////////////////////////
+					
+					// Init of Seed = 1443
+					FVoxelGraphSeed Variable_15; // Seed = 1443 output 0
+					Variable_15 = Params.Seed;
 					
 					
 					////////////////////////////////////////////////////
@@ -96,6 +104,9 @@ public:
 			//////////////// Compute constants /////////////////
 			////////////////////////////////////////////////////
 			{
+				// Noise Amplitude = 1.0
+				BufferConstant.Variable_14 = Params.Noise_Amplitude;
+				
 			}
 		}
 		void ComputeX(const FVoxelContext& Context, FBufferX& BufferX) const
@@ -134,10 +145,14 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
+			// Init of Seed = 1443
+			FVoxelGraphSeed Variable_15; // Seed = 1443 output 0
+			Variable_15 = Params.Seed;
+			
 			// Init of 3D Gradient Perturb
-			_3D_Gradient_Perturb_0_Noise.SetSeed(FVoxelGraphSeed(1337));
+			_3D_Gradient_Perturb_0_Noise.SetSeed(Variable_15);
 			_3D_Gradient_Perturb_0_Noise.SetInterpolation(EVoxelNoiseInterpolation::Quintic);
 			
 		}
@@ -148,8 +163,8 @@ public:
 		
 		void Function0_X_Compute(const FVoxelContext& Context, FBufferX& BufferX) const
 		{
-			// X
-			BufferX.Variable_8 = Context.GetLocalX();
+			// XYZ.X
+			BufferX.Variable_16 = Context.GetLocalX();
 			
 			// Data Item Parameters
 			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 7)
@@ -174,28 +189,31 @@ public:
 			}
 			
 			// 1 / X
-			v_flt Variable_14; // 1 / X output 0
-			Variable_14 = FVoxelNodeFunctions::OneOverX(BufferX.Variable_6);
+			v_flt Variable_11; // 1 / X output 0
+			Variable_11 = FVoxelNodeFunctions::OneOverX(BufferX.Variable_6);
 			
 			// *
-			BufferX.Variable_15 = Variable_14 * v_flt(0.2f);
+			BufferX.Variable_13 = BufferX.Variable_6 * BufferConstant.Variable_14;
+			
+			// *
+			BufferX.Variable_12 = Variable_11 * v_flt(0.2f);
 			
 		}
 		
 		void Function0_XYWithCache_Compute(const FVoxelContext& Context, FBufferX& BufferX, FBufferXY& BufferXY) const
 		{
-			// Y
-			BufferXY.Variable_9 = Context.GetLocalY();
+			// XYZ.Y
+			BufferXY.Variable_17 = Context.GetLocalY();
 			
 		}
 		
 		void Function0_XYWithoutCache_Compute(const FVoxelContext& Context, FBufferX& BufferX, FBufferXY& BufferXY) const
 		{
-			// X
-			BufferX.Variable_8 = Context.GetLocalX();
+			// XYZ.X
+			BufferX.Variable_16 = Context.GetLocalX();
 			
-			// Y
-			BufferXY.Variable_9 = Context.GetLocalY();
+			// XYZ.Y
+			BufferXY.Variable_17 = Context.GetLocalY();
 			
 			// Data Item Parameters
 			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 7)
@@ -220,49 +238,52 @@ public:
 			}
 			
 			// 1 / X
-			v_flt Variable_14; // 1 / X output 0
-			Variable_14 = FVoxelNodeFunctions::OneOverX(BufferX.Variable_6);
+			v_flt Variable_11; // 1 / X output 0
+			Variable_11 = FVoxelNodeFunctions::OneOverX(BufferX.Variable_6);
 			
 			// *
-			BufferX.Variable_15 = Variable_14 * v_flt(0.2f);
+			BufferX.Variable_13 = BufferX.Variable_6 * BufferConstant.Variable_14;
+			
+			// *
+			BufferX.Variable_12 = Variable_11 * v_flt(0.2f);
 			
 		}
 		
 		void Function0_XYZWithCache_Compute(const FVoxelContext& Context, const FBufferX& BufferX, const FBufferXY& BufferXY, FOutputs& Outputs) const
 		{
-			// Z
-			v_flt Variable_10; // Z output 0
-			Variable_10 = Context.GetLocalZ();
+			// XYZ.Z
+			v_flt Variable_18; // XYZ.Z output 0
+			Variable_18 = Context.GetLocalZ();
 			
 			// 3D Gradient Perturb
-			v_flt Variable_11; // 3D Gradient Perturb output 0
-			v_flt Variable_12; // 3D Gradient Perturb output 1
-			v_flt Variable_13; // 3D Gradient Perturb output 2
-			Variable_11 = BufferX.Variable_8;
-			Variable_12 = BufferXY.Variable_9;
-			Variable_13 = Variable_10;
-			_3D_Gradient_Perturb_0_Noise.GradientPerturb_3D(Variable_11, Variable_12, Variable_13, BufferX.Variable_15, BufferX.Variable_6);
+			v_flt Variable_8; // 3D Gradient Perturb output 0
+			v_flt Variable_9; // 3D Gradient Perturb output 1
+			v_flt Variable_10; // 3D Gradient Perturb output 2
+			Variable_8 = BufferX.Variable_16;
+			Variable_9 = BufferXY.Variable_17;
+			Variable_10 = Variable_18;
+			_3D_Gradient_Perturb_0_Noise.GradientPerturb_3D(Variable_8, Variable_9, Variable_10, BufferX.Variable_12, BufferX.Variable_13);
 			
 			// Capsule SDF
 			v_flt Variable_7; // Capsule SDF output 0
-			Variable_7 = FVoxelSDFNodeFunctions::Capsule(Variable_11, Variable_12, Variable_13, BufferX.Variable_0, BufferX.Variable_1, BufferX.Variable_2, BufferX.Variable_3, BufferX.Variable_4, BufferX.Variable_5, BufferX.Variable_6);
+			Variable_7 = FVoxelSDFNodeFunctions::Capsule(Variable_8, Variable_9, Variable_10, BufferX.Variable_0, BufferX.Variable_1, BufferX.Variable_2, BufferX.Variable_3, BufferX.Variable_4, BufferX.Variable_5, BufferX.Variable_6);
 			
 			Outputs.Value = Variable_7;
 		}
 		
 		void Function0_XYZWithoutCache_Compute(const FVoxelContext& Context, FOutputs& Outputs) const
 		{
-			// Z
-			v_flt Variable_10; // Z output 0
-			Variable_10 = Context.GetLocalZ();
+			// XYZ.X
+			v_flt Variable_16; // XYZ.X output 0
+			Variable_16 = Context.GetLocalX();
 			
-			// X
-			v_flt Variable_8; // X output 0
-			Variable_8 = Context.GetLocalX();
+			// XYZ.Y
+			v_flt Variable_17; // XYZ.Y output 0
+			Variable_17 = Context.GetLocalY();
 			
-			// Y
-			v_flt Variable_9; // Y output 0
-			Variable_9 = Context.GetLocalY();
+			// XYZ.Z
+			v_flt Variable_18; // XYZ.Z output 0
+			Variable_18 = Context.GetLocalZ();
 			
 			// Data Item Parameters
 			v_flt Variable_0; // Data Item Parameters output 0
@@ -294,25 +315,29 @@ public:
 			}
 			
 			// 1 / X
-			v_flt Variable_14; // 1 / X output 0
-			Variable_14 = FVoxelNodeFunctions::OneOverX(Variable_6);
+			v_flt Variable_11; // 1 / X output 0
+			Variable_11 = FVoxelNodeFunctions::OneOverX(Variable_6);
 			
 			// *
-			v_flt Variable_15; // * output 0
-			Variable_15 = Variable_14 * v_flt(0.2f);
+			v_flt Variable_13; // * output 0
+			Variable_13 = Variable_6 * BufferConstant.Variable_14;
+			
+			// *
+			v_flt Variable_12; // * output 0
+			Variable_12 = Variable_11 * v_flt(0.2f);
 			
 			// 3D Gradient Perturb
-			v_flt Variable_11; // 3D Gradient Perturb output 0
-			v_flt Variable_12; // 3D Gradient Perturb output 1
-			v_flt Variable_13; // 3D Gradient Perturb output 2
-			Variable_11 = Variable_8;
-			Variable_12 = Variable_9;
-			Variable_13 = Variable_10;
-			_3D_Gradient_Perturb_0_Noise.GradientPerturb_3D(Variable_11, Variable_12, Variable_13, Variable_15, Variable_6);
+			v_flt Variable_8; // 3D Gradient Perturb output 0
+			v_flt Variable_9; // 3D Gradient Perturb output 1
+			v_flt Variable_10; // 3D Gradient Perturb output 2
+			Variable_8 = Variable_16;
+			Variable_9 = Variable_17;
+			Variable_10 = Variable_18;
+			_3D_Gradient_Perturb_0_Noise.GradientPerturb_3D(Variable_8, Variable_9, Variable_10, Variable_12, Variable_13);
 			
 			// Capsule SDF
 			v_flt Variable_7; // Capsule SDF output 0
-			Variable_7 = FVoxelSDFNodeFunctions::Capsule(Variable_11, Variable_12, Variable_13, Variable_0, Variable_1, Variable_2, Variable_3, Variable_4, Variable_5, Variable_6);
+			Variable_7 = FVoxelSDFNodeFunctions::Capsule(Variable_8, Variable_9, Variable_10, Variable_0, Variable_1, Variable_2, Variable_3, Variable_4, Variable_5, Variable_6);
 			
 			Outputs.Value = Variable_7;
 		}
@@ -360,7 +385,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -428,7 +453,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -500,7 +525,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -568,7 +593,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -619,13 +644,14 @@ public:
 		{
 			FBufferConstant() {}
 			
+			TVoxelRange<v_flt> Variable_14; // Noise Amplitude = 1.0 output 0
 		};
 		
 		struct FBufferX
 		{
 			FBufferX() {}
 			
-			TVoxelRange<v_flt> Variable_8; // X output 0
+			TVoxelRange<v_flt> Variable_15; // XYZ.X output 0
 			TVoxelRange<v_flt> Variable_0; // Data Item Parameters output 0
 			TVoxelRange<v_flt> Variable_1; // Data Item Parameters output 1
 			TVoxelRange<v_flt> Variable_2; // Data Item Parameters output 2
@@ -633,14 +659,15 @@ public:
 			TVoxelRange<v_flt> Variable_4; // Data Item Parameters output 4
 			TVoxelRange<v_flt> Variable_5; // Data Item Parameters output 5
 			TVoxelRange<v_flt> Variable_6; // Data Item Parameters output 6
-			TVoxelRange<v_flt> Variable_15; // * output 0
+			TVoxelRange<v_flt> Variable_13; // * output 0
+			TVoxelRange<v_flt> Variable_12; // * output 0
 		};
 		
 		struct FBufferXY
 		{
 			FBufferXY() {}
 			
-			TVoxelRange<v_flt> Variable_9; // Y output 0
+			TVoxelRange<v_flt> Variable_16; // XYZ.Y output 0
 		};
 		
 		FLocalComputeStruct_LocalValueRangeAnalysis(const FParams& InParams)
@@ -648,7 +675,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -679,6 +706,9 @@ public:
 			//////////////// Compute constants /////////////////
 			////////////////////////////////////////////////////
 			{
+				// Noise Amplitude = 1.0
+				BufferConstant.Variable_14 = Params.Noise_Amplitude;
+				
 			}
 		}
 		void ComputeXYZWithoutCache(const FVoxelContextRange& Context, FOutputs& Outputs) const
@@ -701,7 +731,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 3D Gradient Perturb
 			_3D_Gradient_Perturb_1_Noise.SetSeed(FVoxelGraphSeed(1337));
@@ -715,17 +745,17 @@ public:
 		
 		void Function0_XYZWithoutCache_Compute(const FVoxelContextRange& Context, FOutputs& Outputs) const
 		{
-			// Z
-			TVoxelRange<v_flt> Variable_10; // Z output 0
-			Variable_10 = Context.GetLocalZ();
+			// XYZ.Z
+			TVoxelRange<v_flt> Variable_17; // XYZ.Z output 0
+			Variable_17 = Context.GetLocalZ();
 			
-			// X
-			TVoxelRange<v_flt> Variable_8; // X output 0
-			Variable_8 = Context.GetLocalX();
+			// XYZ.X
+			TVoxelRange<v_flt> Variable_15; // XYZ.X output 0
+			Variable_15 = Context.GetLocalX();
 			
-			// Y
-			TVoxelRange<v_flt> Variable_9; // Y output 0
-			Variable_9 = Context.GetLocalY();
+			// XYZ.Y
+			TVoxelRange<v_flt> Variable_16; // XYZ.Y output 0
+			Variable_16 = Context.GetLocalY();
 			
 			// Data Item Parameters
 			TVoxelRange<v_flt> Variable_0; // Data Item Parameters output 0
@@ -757,24 +787,28 @@ public:
 			}
 			
 			// 1 / X
-			TVoxelRange<v_flt> Variable_14; // 1 / X output 0
-			Variable_14 = FVoxelNodeFunctions::OneOverX(Variable_6);
+			TVoxelRange<v_flt> Variable_11; // 1 / X output 0
+			Variable_11 = FVoxelNodeFunctions::OneOverX(Variable_6);
 			
 			// *
-			TVoxelRange<v_flt> Variable_15; // * output 0
-			Variable_15 = Variable_14 * TVoxelRange<v_flt>(0.2f);
+			TVoxelRange<v_flt> Variable_13; // * output 0
+			Variable_13 = Variable_6 * BufferConstant.Variable_14;
+			
+			// *
+			TVoxelRange<v_flt> Variable_12; // * output 0
+			Variable_12 = Variable_11 * TVoxelRange<v_flt>(0.2f);
 			
 			// 3D Gradient Perturb
-			TVoxelRange<v_flt> Variable_11; // 3D Gradient Perturb output 0
-			TVoxelRange<v_flt> Variable_12; // 3D Gradient Perturb output 1
-			TVoxelRange<v_flt> Variable_13; // 3D Gradient Perturb output 2
-			Variable_11 = TVoxelRange<v_flt>::FromList(Variable_8.Min - 2 * Variable_6.Max, Variable_8.Max + 2 * Variable_6.Max);
-			Variable_12 = TVoxelRange<v_flt>::FromList(Variable_9.Min - 2 * Variable_6.Max, Variable_9.Max + 2 * Variable_6.Max);
-			Variable_13 = TVoxelRange<v_flt>::FromList(Variable_10.Min - 2 * Variable_6.Max, Variable_10.Max + 2 * Variable_6.Max);
+			TVoxelRange<v_flt> Variable_8; // 3D Gradient Perturb output 0
+			TVoxelRange<v_flt> Variable_9; // 3D Gradient Perturb output 1
+			TVoxelRange<v_flt> Variable_10; // 3D Gradient Perturb output 2
+			Variable_8 = TVoxelRange<v_flt>::FromList(Variable_15.Min - 2 * Variable_13.Max, Variable_15.Max + 2 * Variable_13.Max);
+			Variable_9 = TVoxelRange<v_flt>::FromList(Variable_16.Min - 2 * Variable_13.Max, Variable_16.Max + 2 * Variable_13.Max);
+			Variable_10 = TVoxelRange<v_flt>::FromList(Variable_17.Min - 2 * Variable_13.Max, Variable_17.Max + 2 * Variable_13.Max);
 			
 			// Capsule SDF
 			TVoxelRange<v_flt> Variable_7; // Capsule SDF output 0
-			Variable_7 = FVoxelSDFNodeFunctions::Capsule(Variable_11, Variable_12, Variable_13, Variable_0, Variable_1, Variable_2, Variable_3, Variable_4, Variable_5, Variable_6);
+			Variable_7 = FVoxelSDFNodeFunctions::Capsule(Variable_8, Variable_9, Variable_10, Variable_0, Variable_1, Variable_2, Variable_3, Variable_4, Variable_5, Variable_6);
 			
 			Outputs.Value = Variable_7;
 		}
@@ -815,6 +849,11 @@ public:
 				}
 			},
 			Object)
+		, Params(FParams
+		{
+			Object.Noise_Amplitude,
+			Object.Seed
+		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
 		, LocalUpVectorXUpVectorYUpVectorZ(Params)
@@ -822,7 +861,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -935,13 +974,7 @@ UVDI_Capsule_Graph::UVDI_Capsule_Graph()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVDI_Capsule_Graph::GetDefaultSeeds() const
-{
-	return {
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVDI_Capsule_Graph::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVDI_Capsule_Graph::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVDI_Capsule_GraphInstance>(*this);
@@ -953,7 +986,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVDI_Capsule_Graph::G
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VDI_Capsule_Graph. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VDI_Capsule_Graph. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

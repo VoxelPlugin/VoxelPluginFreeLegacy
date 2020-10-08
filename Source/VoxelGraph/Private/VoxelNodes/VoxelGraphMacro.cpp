@@ -227,3 +227,20 @@ void UVoxelGraphMacroNode::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 		ErrorReporter.AddMessageToNode(this, "outdated macro", EVoxelGraphNodeMessageType::Error);
 	}
 }
+
+void UVoxelGraphMacroNode::ApplyParameters(const TMap<FName, FString>& Parameters)
+{
+	// This might have unwanted behavior
+	if (Macro)
+	{
+		Macro->ApplyParameters(Parameters);
+	}
+}
+
+void UVoxelGraphMacroNode::GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const
+{
+	if (Macro)
+	{
+		Macro->GetParameters(OutParameters);
+	}
+}

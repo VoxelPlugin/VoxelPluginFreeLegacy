@@ -9,11 +9,12 @@
 #include "VoxelNode.generated.h"
 
 class UVoxelNode;
+class UEdGraphNode;
+class UVoxelGraphGenerator;
 class FVoxelComputeNode;
 class FVoxelCompilationNode;
-class UEdGraphNode;
 class FVoxelGraphErrorReporter;
-class UVoxelGraphGenerator;
+struct FVoxelGeneratorParameter;
 
 UCLASS(Abstract)
 class VOXELGRAPH_API UVoxelGraphNodeInterface : public UEdGraphNode
@@ -135,6 +136,9 @@ public:
 	
 
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter);
+
+	virtual void ApplyParameters(const TMap<FName, FString>& Parameters) {}
+	virtual void GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const {}
 
 	virtual bool CanUserDeleteNode() const { return true; }
 	virtual bool CanDuplicateNode() const { return true; }

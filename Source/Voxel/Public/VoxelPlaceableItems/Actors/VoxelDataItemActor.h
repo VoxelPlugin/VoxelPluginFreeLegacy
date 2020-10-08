@@ -48,12 +48,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel Data Item Actor")
 	void ScheduleRefresh();
 
-#if WITH_EDITOR
 	//~ Begin UObject Interface
+#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void PostEditMove(bool bFinished) override;
-	//~ End UObject Interface
 #endif
+	virtual void Destroyed() override;
+	//~ End UObject Interface
 
 private:
 	FTimerHandle RefreshTimerHandle;

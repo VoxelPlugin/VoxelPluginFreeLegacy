@@ -8,7 +8,7 @@
 #include "VoxelPlaceableItemsUtilities.generated.h"
 
 class AVoxelWorld;
-class UVoxelWorldGenerator;
+class UVoxelGenerator;
 
 USTRUCT(BlueprintType)
 struct FVoxelPerlinWormsSettings

@@ -179,7 +179,7 @@ bool FVoxelDataAssetEditorManager::IsDirty() const
 void FVoxelDataAssetEditorManager::CreateWorld()
 {
 	check(!World->IsCreated());
-	World->SetWorldGeneratorObject(DataAsset);
+	World->SetGeneratorObject(DataAsset);
 	World->CreateInEditor();
 	UVoxelDataTools::SetBoxAsDirty(World, DataAsset->GetBounds(), true, DataAsset->GetData()->HasMaterials());
 }

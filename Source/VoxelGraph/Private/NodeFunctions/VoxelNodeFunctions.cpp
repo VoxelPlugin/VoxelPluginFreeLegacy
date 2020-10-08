@@ -1,9 +1,9 @@
 // Copyright 2020 Phyronnaz
 
 #include "NodeFunctions/VoxelNodeFunctions.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
-#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.inl"
+#include "VoxelGenerators/VoxelEmptyGenerator.h"
 #include "VoxelMessages.h"
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveLinearColor.h"
@@ -198,7 +198,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetCurveValue(const FVoxelRichCurve& Vox
 v_flt FVoxelNodeFunctions::GetPreviousGeneratorValue(
 	v_flt X, v_flt Y, v_flt Z, 
 	const FVoxelContext& Context,
-	const FVoxelWorldGeneratorInstance* DefaultGenerator)
+	const FVoxelGeneratorInstance* DefaultGenerator)
 {
 	if (Context.Items.IsEmpty())
 	{
@@ -223,7 +223,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorValue(
 	TVoxelRange<v_flt> Y,
 	TVoxelRange<v_flt> Z, 
 	const FVoxelContextRange& Context,
-	const FVoxelWorldGeneratorInstance* DefaultGenerator)
+	const FVoxelGeneratorInstance* DefaultGenerator)
 {
 	const FVoxelIntBox Bounds = FVoxelRangeUtilities::BoundsFromRanges(X, Y, Z);
 	if (Context.Items.IsEmpty())
@@ -254,7 +254,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorValue(
 FVoxelMaterial FVoxelNodeFunctions::GetPreviousGeneratorMaterial(
 	v_flt X, v_flt Y, v_flt Z,
 	const FVoxelContext& Context,
-	const FVoxelWorldGeneratorInstance* DefaultGenerator)
+	const FVoxelGeneratorInstance* DefaultGenerator)
 {
 	if (Context.Items.IsEmpty())
 	{
@@ -278,7 +278,7 @@ v_flt FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	const FName& Name, 
 	v_flt X, v_flt Y, v_flt Z,
 	const FVoxelContext& Context,
-	const FVoxelWorldGeneratorInstance* DefaultGenerator)
+	const FVoxelGeneratorInstance* DefaultGenerator)
 {
 	if (Context.Items.IsEmpty())
 	{
@@ -311,7 +311,7 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	TVoxelRange<v_flt> Y,
 	TVoxelRange<v_flt> Z,
 	const FVoxelContextRange& Context,
-	const FVoxelWorldGeneratorInstance* DefaultGenerator)
+	const FVoxelGeneratorInstance* DefaultGenerator)
 {
 	const FVoxelIntBox Bounds = FVoxelRangeUtilities::BoundsFromRanges(X, Y, Z);
 	if (Context.Items.IsEmpty())
@@ -346,15 +346,15 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetPreviousGeneratorCustomOutput(
 	}
 }
 
-v_flt FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
-	const FVoxelWorldGeneratorInstance& WorldGenerator,
+v_flt FVoxelNodeFunctions::GetGeneratorCustomOutput(
+	const FVoxelGeneratorInstance& Generator,
 	const FName& Name,
 	v_flt X, v_flt Y, v_flt Z,
 	const FVoxelContext& Context)
 {
-	if (const auto Ptr = WorldGenerator.CustomPtrs.Float.FindRef(Name))
+	if (const auto Ptr = Generator.CustomPtrs.Float.FindRef(Name))
 	{
-		return (WorldGenerator.*Ptr)(X, Y, Z, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder));
+		return (Generator.*Ptr)(X, Y, Z, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder));
 	}
 	else
 	{
@@ -362,8 +362,8 @@ v_flt FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 	}
 }
 
-TVoxelRange<v_flt> FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
-	const FVoxelWorldGeneratorInstance& WorldGenerator,
+TVoxelRange<v_flt> FVoxelNodeFunctions::GetGeneratorCustomOutput(
+	const FVoxelGeneratorInstance& Generator,
 	const FName& Name,
 	TVoxelRange<v_flt> X,
 	TVoxelRange<v_flt> Y,
@@ -371,9 +371,9 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 	const FVoxelContextRange& Context)
 {
 	const FVoxelIntBox Bounds = FVoxelRangeUtilities::BoundsFromRanges(X, Y, Z);
-	if (const auto Ptr = WorldGenerator.CustomPtrs.FloatRange.FindRef(Name))
+	if (const auto Ptr = Generator.CustomPtrs.FloatRange.FindRef(Name))
 	{
-		return TVoxelRange<v_flt>((WorldGenerator.*Ptr)(Bounds, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder)));
+		return TVoxelRange<v_flt>((Generator.*Ptr)(Bounds, Context.LOD, FVoxelItemStack(Context.Items.ItemHolder)));
 	}
 	else
 	{
@@ -385,11 +385,11 @@ TVoxelRange<v_flt> FVoxelNodeFunctions::GetWorldGeneratorCustomOutput(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-inline void ShowWorldGeneratorMergeError()
+inline void ShowGeneratorMergeError()
 {
 	const auto Show = []()
 	{
-		FVoxelMessages::Error("More than 4 recursive calls to World Generator Merge, exiting. Make sure you don't have recursive World Generator Merge nodes.");
+		FVoxelMessages::Error("More than 4 recursive calls to Generator Merge, exiting. Make sure you don't have recursive Generator Merge nodes.");
 	};
 
 	if (IsInGameThread())
@@ -405,7 +405,7 @@ inline void ShowWorldGeneratorMergeError()
 	}
 }
 
-TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>> FVoxelNodeFunctions::CreateWorldGeneratorArray(const TArray<FVoxelWorldGeneratorPicker>& WorldGenerators)
+TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>> FVoxelNodeFunctions::CreateGeneratorArray(const TArray<FVoxelGeneratorPicker>& Generators)
 {
 	thread_local int32 RecursionDepth = 0;
 	struct FDepthGuard { FDepthGuard() { RecursionDepth++; } ~FDepthGuard() { RecursionDepth--; } } DepthGuard;
@@ -413,26 +413,26 @@ TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>> FVoxelNodeFunctions::Creat
 	check(RecursionDepth > 0);
 	if (RecursionDepth > 4)
 	{
-		ShowWorldGeneratorMergeError();
-		return { MakeVoxelShared<FVoxelEmptyWorldGeneratorInstance>() };
+		ShowGeneratorMergeError();
+		return { MakeVoxelShared<FVoxelEmptyGeneratorInstance>() };
 	}
 
-	TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>> Result;
-	for (auto& Picker : WorldGenerators)
+	TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>> Result;
+	for (auto& Picker : Generators)
 	{
 		Result.Add(Picker.GetInstance(true));
 	}
 	if (Result.Num() == 0)
 	{
-		Result.Add(MakeVoxelShared<FVoxelEmptyWorldGeneratorInstance>());
+		Result.Add(MakeVoxelShared<FVoxelEmptyGeneratorInstance>());
 	}
 	return Result;
 }
 
-void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
+void FVoxelNodeFunctions::ComputeGeneratorsMerge(
 	const EVoxelMaterialConfig MaterialConfig, 
 	const float Tolerance,
-	const TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>>& InInstances,
+	const TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>>& InInstances,
 	const TArray<FName>& FloatOutputsNames,
 	const FVoxelContext& Context, 
 	v_flt X, v_flt Y, v_flt Z,
@@ -454,11 +454,11 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 	check(RecursionDepth > 0);
 	if (RecursionDepth > 4)
 	{
-		static TSet<TVoxelWeakPtr<FVoxelWorldGeneratorInstance>> StaticInstances;
+		static TSet<TVoxelWeakPtr<FVoxelGeneratorInstance>> StaticInstances;
 		if (!StaticInstances.Contains(InInstances[0]))
 		{
 			StaticInstances.Add(InInstances[0]);
-			ShowWorldGeneratorMergeError();
+			ShowGeneratorMergeError();
 		}
 		OutValue = 0;
 		OutMaterial = FVoxelMaterial::Default();
@@ -492,7 +492,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 		Alpha3 /= AlphaSum;
 	}
 
-	TArray<const FVoxelWorldGeneratorInstance*, TFixedAllocator<4>> Instances;
+	TArray<const FVoxelGeneratorInstance*, TFixedAllocator<4>> Instances;
 	TArray<float, TFixedAllocator<4>> Alphas;
 
 	int32 BestIndex = 0;
@@ -586,7 +586,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 
 	if (bComputeValue) 
 	{
-		OutValue = GetFloatOutput([&](const FVoxelWorldGeneratorInstance& Instance) { return Instance.GetValue(X, Y, Z, Context.LOD, Items); });
+		OutValue = GetFloatOutput([&](const FVoxelGeneratorInstance& Instance) { return Instance.GetValue(X, Y, Z, Context.LOD, Items); });
 	}
 	if (bComputeMaterial)
 	{
@@ -598,7 +598,7 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 	{
 		if (ComputeFloatOutputs[Index]) 
 		{
-			OutFloatOutputs[Index] = GetFloatOutput([&](const FVoxelWorldGeneratorInstance& Instance)
+			OutFloatOutputs[Index] = GetFloatOutput([&](const FVoxelGeneratorInstance& Instance)
 			{
 				const auto Ptr = Instance.CustomPtrs.Float.FindRef(FloatOutputsNames[Index]);
 				if (Ptr)
@@ -614,8 +614,8 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMerge(
 	}
 }
 
-void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
-	const TArray<TVoxelSharedPtr<FVoxelWorldGeneratorInstance>>& InInstances,
+void FVoxelNodeFunctions::ComputeGeneratorsMergeRange(
+	const TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>>& InInstances,
 	const TArray<FName>& FloatOutputsNames,
 	const FVoxelContextRange& Context, 
 	const TVoxelRange<v_flt> X,
@@ -634,11 +634,11 @@ void FVoxelNodeFunctions::ComputeWorldGeneratorsMergeRange(
 	check(RecursionDepth > 0);
 	if (RecursionDepth > 4)
 	{
-		static TSet<TVoxelWeakPtr<FVoxelWorldGeneratorInstance>> StaticInstances;
+		static TSet<TVoxelWeakPtr<FVoxelGeneratorInstance>> StaticInstances;
 		if (!StaticInstances.Contains(InInstances[0]))
 		{
 			StaticInstances.Add(InInstances[0]);
-			ShowWorldGeneratorMergeError();
+			ShowGeneratorMergeError();
 		}
 		OutValue = 0;
 		OutFloatOutputs.SetNum(FloatOutputsNames.Num());

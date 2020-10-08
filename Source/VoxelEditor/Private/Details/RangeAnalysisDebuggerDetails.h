@@ -12,12 +12,8 @@ class SButton;
 class FRangeAnalysisDebuggerDetails : public IDetailCustomization
 {
 public:
-	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
-	static TSharedRef<IDetailCustomization> MakeInstance();
+	FRangeAnalysisDebuggerDetails() = default;
 
-	FRangeAnalysisDebuggerDetails();
-
-private:
 	/** IDetailCustomization interface */
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 

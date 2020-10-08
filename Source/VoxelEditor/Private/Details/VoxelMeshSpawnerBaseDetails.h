@@ -10,8 +10,6 @@
 class FVoxelMeshSpawnerBaseDetails : public IDetailCustomization
 {
 public:
-	static TSharedRef<IDetailCustomization> MakeInstance();
-
 	FVoxelMeshSpawnerBaseDetails() = default;
 
 private:

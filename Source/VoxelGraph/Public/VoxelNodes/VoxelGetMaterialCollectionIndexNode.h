@@ -29,5 +29,6 @@ class VOXELGRAPH_API UVoxelNode_GetMaterialCollectionIndex : public UVoxelAssetP
 	virtual UClass* GetAssetClass() const override;
 	virtual void SetAsset(UObject* Object) override;
 	virtual bool ShouldFilterAsset(const FAssetData& Asset) const override;
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Material); }
 	//~ End UVoxelAssetPickerNode Interface
 };

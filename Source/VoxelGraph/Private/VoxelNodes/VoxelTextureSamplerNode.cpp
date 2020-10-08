@@ -40,13 +40,6 @@ void UVoxelNode_TextureSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporte
 	}
 }
 
-#if WITH_EDITOR
-bool UVoxelNode_TextureSampler::TryImportFromProperty(FProperty* Property, UObject* Object)
-{
-	return TryImportObject(Property, Object, Texture);
-}
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -71,11 +64,6 @@ FText UVoxelNode_VoxelTextureSampler::GetTitle() const
 }
 
 #if WITH_EDITOR
-bool UVoxelNode_VoxelTextureSampler::TryImportFromProperty(FProperty* Property, UObject* Object)
-{
-	return false;
-}
-
 void UVoxelNode_VoxelTextureSampler::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);

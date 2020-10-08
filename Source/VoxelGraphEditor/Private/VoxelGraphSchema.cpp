@@ -18,7 +18,7 @@
 #include "VoxelNodes/VoxelTextureSamplerNode.h"
 #include "VoxelNodes/VoxelCurveNodes.h"
 #include "VoxelNodes/VoxelMathNodes.h"
-#include "VoxelNodes/VoxelWorldGeneratorSamplerNodes.h"
+#include "VoxelNodes/VoxelGeneratorSamplerNodes.h"
 
 #include "VoxelGraphNodes/VoxelGraphNode_Knot.h"
 #include "VoxelGraphNodes/VoxelGraphNode.h"
@@ -46,11 +46,11 @@
 UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
 	check(VoxelNodeClass);
-	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
+	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New voxel node"));
 
-	UVoxelNode* NewNode = WorldGenerator->ConstructNewNode(VoxelNodeClass, Location, bSelectNewNode);
+	UVoxelNode* NewNode = Generator->ConstructNewNode(VoxelNodeClass, Location, bSelectNewNode);
 	NewNode->GraphNode->ReconstructNode();
 
 	// Autowire before combining if not vector
@@ -72,7 +72,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGra
 	}
 	
 	// Else the voxel pin arrays are invalid
-	WorldGenerator->CompileVoxelNodesFromGraphNodes();
+	Generator->CompileVoxelNodesFromGraphNodes();
 
 	return NewNode->GraphNode;
 }
@@ -82,11 +82,11 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGra
 UEdGraphNode* FVoxelGraphSchemaAction_NewMacroNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
 	check(Macro);
-	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
+	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New macro node"));
 
-	UVoxelGraphMacroNode* NewNode = WorldGenerator->ConstructNewNode<UVoxelGraphMacroNode>(Location, bSelectNewNode);
+	UVoxelGraphMacroNode* NewNode = Generator->ConstructNewNode<UVoxelGraphMacroNode>(Location, bSelectNewNode);
 	NewNode->Macro = Macro;
 	NewNode->GraphNode->ReconstructNode();
 
@@ -109,7 +109,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewMacroNode::PerformAction(UEdGraph* Pare
 	}
 
 	// Else the voxel pin arrays are invalid
-	WorldGenerator->CompileVoxelNodesFromGraphNodes();
+	Generator->CompileVoxelNodesFromGraphNodes();
 
 	return NewNode->GraphNode;
 }
@@ -118,11 +118,11 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewMacroNode::PerformAction(UEdGraph* Pare
 
 UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableDeclaration::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
-	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
+	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New local variable declaration"));
 
-	UVoxelLocalVariableDeclaration* Declaration = WorldGenerator->ConstructNewNode<UVoxelLocalVariableDeclaration>(Location, bSelectNewNode);
+	UVoxelLocalVariableDeclaration* Declaration = Generator->ConstructNewNode<UVoxelLocalVariableDeclaration>(Location, bSelectNewNode);
 	Declaration->SetCategory(PinCategory);
 
 	if (!DefaultName.IsNone())
@@ -134,7 +134,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableDeclaration::PerformAction
 	Declaration->GraphNode->AutowireNewNode(FromPin);
 
 	// Else the voxel pin arrays are invalid
-	WorldGenerator->CompileVoxelNodesFromGraphNodes();
+	Generator->CompileVoxelNodesFromGraphNodes();
 
 	return Declaration->GraphNode;
 }
@@ -144,11 +144,11 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableDeclaration::PerformAction
 UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableUsage::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
 	check(Declaration);
-	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
+	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New local variable usage"));
 
-	UVoxelLocalVariableUsage* Usage = WorldGenerator->ConstructNewNode<UVoxelLocalVariableUsage>(Location, bSelectNewNode);
+	UVoxelLocalVariableUsage* Usage = Generator->ConstructNewNode<UVoxelLocalVariableUsage>(Location, bSelectNewNode);
 	Usage->Declaration = Declaration;
 	Usage->DeclarationGuid = Declaration->VariableGuid;
 
@@ -156,7 +156,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableUsage::PerformAction(UEdGr
 	Usage->GraphNode->AutowireNewNode(FromPin);
 
 	// Else the voxel pin arrays are invalid
-	WorldGenerator->CompileVoxelNodesFromGraphNodes();
+	Generator->CompileVoxelNodesFromGraphNodes();
 
 	return Usage->GraphNode;
 }
@@ -165,17 +165,17 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableUsage::PerformAction(UEdGr
 
 UEdGraphNode* FVoxelGraphSchemaAction_NewSetterNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
-	UVoxelGraphGenerator* WorldGenerator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetWorldGenerator();
+	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New setter node"));
 
-	UVoxelNode_SetNode* NewNode = WorldGenerator->ConstructNewNode<UVoxelNode_SetNode>(Location, bSelectNewNode);
+	UVoxelNode_SetNode* NewNode = Generator->ConstructNewNode<UVoxelNode_SetNode>(Location, bSelectNewNode);
 	NewNode->SetIndex(Index);
 	NewNode->GraphNode->ReconstructNode();
 	NewNode->GraphNode->AutowireNewNode(FromPin);
 
 	// Else the voxel pin arrays are invalid
-	WorldGenerator->CompileVoxelNodesFromGraphNodes();
+	Generator->CompileVoxelNodesFromGraphNodes();
 
 	return NewNode->GraphNode;
 }
@@ -330,7 +330,7 @@ bool UVoxelGraphSchema::TryCreateConnection(UEdGraphPin* A, UEdGraphPin* B) cons
 
 	if (bModified)
 	{
-		CastChecked<UVoxelEdGraph>(A->GetOwningNode()->GetGraph())->GetWorldGenerator()->CompileVoxelNodesFromGraphNodes();
+		CastChecked<UVoxelEdGraph>(A->GetOwningNode()->GetGraph())->GetGenerator()->CompileVoxelNodesFromGraphNodes();
 	}
 
 	return bModified;
@@ -390,7 +390,7 @@ void UVoxelGraphSchema::TrySetDefaultValue(
 
 	Super::TrySetDefaultValue(Pin, DefaultValue);
 
-	CastChecked<UVoxelEdGraph>(Pin.GetOwningNode()->GetGraph())->GetWorldGenerator()->CompileVoxelNodesFromGraphNodes();
+	CastChecked<UVoxelEdGraph>(Pin.GetOwningNode()->GetGraph())->GetGenerator()->CompileVoxelNodesFromGraphNodes();
 }
 
 bool UVoxelGraphSchema::CreateAutomaticConversionNodeAndConnections(UEdGraphPin* PinA, UEdGraphPin* PinB) const
@@ -411,7 +411,7 @@ bool UVoxelGraphSchema::CreateAutomaticConversionNodeAndConnections(UEdGraphPin*
 		UEdGraphNode* ANode = PinA->GetOwningNode();
 		UEdGraphNode* BNode = PinB->GetOwningNode();
 		UVoxelEdGraph* Graph = CastChecked<UVoxelEdGraph>(ANode->GetGraph());
-		UVoxelGraphGenerator* WorldGenerator = Graph->GetWorldGenerator();
+		UVoxelGraphGenerator* Generator = Graph->GetGenerator();
 
 		// Since we'll be adding a node, make sure to modify the graph itself.
 		Graph->Modify();
@@ -419,11 +419,11 @@ bool UVoxelGraphSchema::CreateAutomaticConversionNodeAndConnections(UEdGraphPin*
 		FVector2D Position((ANode->NodePosX + BNode->NodePosX) / 2, (ANode->NodePosY + BNode->NodePosY) / 2);
 		if (AType == EVoxelPinCategory::Int)
 		{
-			ConvertNode = WorldGenerator->ConstructNewNode<UVoxelNode_FloatOfInt>(Position, false);
+			ConvertNode = Generator->ConstructNewNode<UVoxelNode_FloatOfInt>(Position, false);
 		}
 		else
 		{
-			ConvertNode = WorldGenerator->ConstructNewNode<UVoxelNode_Round>(Position, false);
+			ConvertNode = Generator->ConstructNewNode<UVoxelNode_Round>(Position, false);
 		}
 
 		UVoxelGraphNode* ConvertGraphNode = CastChecked<UVoxelGraphNode>(ConvertNode->GraphNode);
@@ -648,7 +648,7 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 
 void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, const FVector2D& GraphPosition, UEdGraph* Graph) const
 {
-	auto* WorldGenerator = CastChecked<UVoxelEdGraph>(Graph)->GetWorldGenerator();
+	auto* Generator = CastChecked<UVoxelEdGraph>(Graph)->GetGenerator();
 	FStreamableManager AssetLoader;
 	for(auto& AssetData : Assets)
 	{
@@ -656,7 +656,7 @@ void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, c
 		UObject* Asset = AssetLoader.LoadSynchronous(AssetRef);
 		if (Asset->IsA<UVoxelHeightmapAsset>())
 		{
-			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_HeightmapSampler>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_HeightmapSampler>(GraphPosition);
 			if (Asset->IsA<UVoxelHeightmapAssetFloat>())
 			{
 				Node->bFloatHeightmap = true;
@@ -671,43 +671,43 @@ void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, c
 		}
 		else if (Asset->IsA<UVoxelDataAsset>())
 		{
-			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_DataAssetSampler>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_DataAssetSampler>(GraphPosition);
 			Node->Asset = CastChecked<UVoxelDataAsset>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UTexture2D>())
 		{
-			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_TextureSampler>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_TextureSampler>(GraphPosition);
 			Node->Texture = CastChecked<UTexture2D>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UCurveFloat>())
 		{
-			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_Curve>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_Curve>(GraphPosition);
 			Node->Curve = CastChecked<UCurveFloat>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UCurveLinearColor>())
 		{
-			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_CurveColor>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_CurveColor>(GraphPosition);
 			Node->Curve = CastChecked<UCurveLinearColor>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UVoxelGraphMacro>())
 		{
-			auto* Node = WorldGenerator->ConstructNewNode<UVoxelGraphMacroNode>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelGraphMacroNode>(GraphPosition);
 			Node->Macro = CastChecked<UVoxelGraphMacro>(Asset);
 			Node->GraphNode->ReconstructNode();
 			Node->SetEditableName(Asset->GetName());
 		}
-		else if (Asset->IsA<UVoxelWorldGenerator>())
+		else if (Asset->IsA<UVoxelGenerator>())
 		{
-			auto* Node = WorldGenerator->ConstructNewNode<UVoxelNode_GetWorldGeneratorValue>(GraphPosition);
-			Node->WorldGenerator = CastChecked<UVoxelWorldGenerator>(Asset);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_GetGeneratorValue>(GraphPosition);
+			Node->Generator = CastChecked<UVoxelGenerator>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 	}
-	WorldGenerator->CompileVoxelNodesFromGraphNodes();
+	Generator->CompileVoxelNodesFromGraphNodes();
 }
 
 void UVoxelGraphSchema::GetAssetsGraphHoverMessage(const TArray<FAssetData>& Assets, const UEdGraph* HoverGraph, FString& OutTooltipText, bool& OutOkIcon) const
@@ -742,10 +742,10 @@ void UVoxelGraphSchema::GetAssetsGraphHoverMessage(const TArray<FAssetData>& Ass
 			OutOkIcon = true;
 			OutTooltipText = "Add Macro node";
 		}
-		else if (Asset->IsA<UVoxelWorldGenerator>())
+		else if (Asset->IsA<UVoxelGenerator>())
 		{
 			OutOkIcon = true;
-			OutTooltipText = "Add World Generator Sampler node";
+			OutTooltipText = "Add Generator Sampler node";
 		}
 	}
 }
@@ -757,7 +757,7 @@ void UVoxelGraphSchema::CreateDefaultNodesForGraph(UEdGraph& Graph) const
 	StartNodeCreator.Finalize();
 	SetNodeMetaData(StartNode, FNodeMetadata::DefaultGraphNode);
 	
-	UVoxelGraphMacro* Macro = Cast<UVoxelGraphMacro>(CastChecked<UVoxelEdGraph>(&Graph)->GetWorldGenerator());
+	UVoxelGraphMacro* Macro = Cast<UVoxelGraphMacro>(CastChecked<UVoxelEdGraph>(&Graph)->GetGenerator());
 	if (Macro)
 	{
 		UVoxelGraphMacroInputNode* InputNode = Macro->ConstructNewNode<UVoxelGraphMacroInputNode>(FVector2D(-100, 0));
@@ -777,7 +777,7 @@ void UVoxelGraphSchema::BreakNodeLinks(UEdGraphNode& TargetNode) const
 {
 	Super::BreakNodeLinks(TargetNode);
 
-	CastChecked<UVoxelEdGraph>(TargetNode.GetGraph())->GetWorldGenerator()->CompileVoxelNodesFromGraphNodes();
+	CastChecked<UVoxelEdGraph>(TargetNode.GetGraph())->GetGenerator()->CompileVoxelNodesFromGraphNodes();
 }
 
 void UVoxelGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotifcation) const
@@ -787,10 +787,10 @@ void UVoxelGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNot
 	auto OldLinkedTo = TargetPin.LinkedTo;
 	Super::BreakPinLinks(TargetPin, bSendsNodeNotifcation);
 
-	// if this would notify the node then we need to compile the World Generator
+	// if this would notify the node then we need to compile the generator
 	if (bSendsNodeNotifcation)
 	{
-		CastChecked<UVoxelEdGraph>(TargetPin.GetOwningNode()->GetGraph())->GetWorldGenerator()->CompileVoxelNodesFromGraphNodes();
+		CastChecked<UVoxelEdGraph>(TargetPin.GetOwningNode()->GetGraph())->GetGenerator()->CompileVoxelNodesFromGraphNodes();
 	}	
 
 	auto AK = Cast<UVoxelGraphNode_Knot>(TargetPin.GetOwningNode());
@@ -828,7 +828,7 @@ void UVoxelGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphP
 	NewKnot->PropagatePinType();
 
 	// Recompile
-	CastChecked<UVoxelEdGraph>(PinA->GetOwningNode()->GetGraph())->GetWorldGenerator()->CompileVoxelNodesFromGraphNodes();
+	CastChecked<UVoxelEdGraph>(PinA->GetOwningNode()->GetGraph())->GetGenerator()->CompileVoxelNodesFromGraphNodes();
 }
 
 const FPinConnectionResponse UVoxelGraphSchema::CanCreateConnection(const UEdGraphPin* PinA, const UEdGraphPin* PinB) const
@@ -1029,12 +1029,12 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 	if (CurrentGraph)
 	{
 		auto* Graph = CastChecked<UVoxelEdGraph>(CurrentGraph);
-		auto* WorldGenerator = Graph->GetWorldGenerator();
+		auto* Generator = Graph->GetGenerator();
 
 		// Local variables usage
 		if (!FromPin || FromPin->Direction == EGPD_Input)
 		{
-			for (auto& Node : WorldGenerator->AllNodes)
+			for (auto& Node : Generator->AllNodes)
 			{
 				auto* Declaration = Cast<UVoxelLocalVariableDeclaration>(Node);
 				if (Declaration && (!FromPin || Declaration->GetCategory() == Category))
@@ -1056,7 +1056,7 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 
 		// Setter nodes
 		{
-			auto Outputs = WorldGenerator->GetOutputs();
+			auto Outputs = Generator->GetOutputs();
 			for (auto It : Outputs)
 			{
 				auto Output = It.Value;

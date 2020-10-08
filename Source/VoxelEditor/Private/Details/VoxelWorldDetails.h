@@ -12,9 +12,6 @@ class SButton;
 class FVoxelWorldDetails : public IDetailCustomization
 {
 public:
-	static TSharedRef<IDetailCustomization> MakeInstance();
-	static TSharedRef<IDetailCustomization> MakeDataAssetEditorInstance();
-	
 	const bool bIsDataAssetEditor;
 	
 	explicit FVoxelWorldDetails(bool bIsDataAssetEditor = false)

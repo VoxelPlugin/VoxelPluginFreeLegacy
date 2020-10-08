@@ -14,16 +14,19 @@ public:
 	{
 		const float Bottom_Noise_Frequency;
 		const float Bottom_Noise_Scale;
+		const int32 Bottom_Noise_Seed;
+		const int32 Global_Height_Seed;
+		const int32 Top_Noise_Seed;
 		const float Top_Noise_Frequency;
 		const float Top_Noise_Scale;
 		const float Bottom_Top_Merge_Smoothness;
-		const float Global_Height_Offset;
 		const float Global_Height_Merge_Smoothness;
 		const float Global_Height_Noise_Frequency;
 		const float Global_Height_Noise_Scale;
+		const float Global_Height_Offset;
 		const float Cave_Height;
-		const float Cave_Walls_Smoothness;
 		const float Cave_Radius;
+		const float Cave_Walls_Smoothness;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -87,7 +90,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -101,17 +104,17 @@ public:
 					//////// First compute all seeds in case they are used by constant nodes ////////
 					/////////////////////////////////////////////////////////////////////////////////
 					
-					// Init of Top Noise Seed
-					FVoxelGraphSeed Variable_29; // Top Noise Seed output 0
-					Variable_29 = InitStruct.Seeds.Contains(STATIC_FNAME("Top Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Top Noise Seed")] : 3022;
+					// Init of Top Noise Seed = 3022
+					FVoxelGraphSeed Variable_29; // Top Noise Seed = 3022 output 0
+					Variable_29 = Params.Top_Noise_Seed;
 					
-					// Init of Bottom Noise Seed
-					FVoxelGraphSeed Variable_30; // Bottom Noise Seed output 0
-					Variable_30 = InitStruct.Seeds.Contains(STATIC_FNAME("Bottom Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Bottom Noise Seed")] : 3024;
+					// Init of Bottom Noise Seed = 3024
+					FVoxelGraphSeed Variable_30; // Bottom Noise Seed = 3024 output 0
+					Variable_30 = Params.Bottom_Noise_Seed;
 					
-					// Init of Global Height Seed
-					FVoxelGraphSeed Variable_32; // Global Height Seed output 0
-					Variable_32 = InitStruct.Seeds.Contains(STATIC_FNAME("Global Height Seed")) ? InitStruct.Seeds[STATIC_FNAME("Global Height Seed")] : 1447;
+					// Init of Global Height Seed = 1447
+					FVoxelGraphSeed Variable_32; // Global Height Seed = 1447 output 0
+					Variable_32 = Params.Global_Height_Seed;
 					
 					
 					////////////////////////////////////////////////////
@@ -213,19 +216,19 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
-			// Init of Bottom Noise Seed
-			FVoxelGraphSeed Variable_30; // Bottom Noise Seed output 0
-			Variable_30 = InitStruct.Seeds.Contains(STATIC_FNAME("Bottom Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Bottom Noise Seed")] : 3024;
+			// Init of Bottom Noise Seed = 3024
+			FVoxelGraphSeed Variable_30; // Bottom Noise Seed = 3024 output 0
+			Variable_30 = Params.Bottom_Noise_Seed;
 			
-			// Init of Global Height Seed
-			FVoxelGraphSeed Variable_32; // Global Height Seed output 0
-			Variable_32 = InitStruct.Seeds.Contains(STATIC_FNAME("Global Height Seed")) ? InitStruct.Seeds[STATIC_FNAME("Global Height Seed")] : 1447;
+			// Init of Global Height Seed = 1447
+			FVoxelGraphSeed Variable_32; // Global Height Seed = 1447 output 0
+			Variable_32 = Params.Global_Height_Seed;
 			
-			// Init of Top Noise Seed
-			FVoxelGraphSeed Variable_29; // Top Noise Seed output 0
-			Variable_29 = InitStruct.Seeds.Contains(STATIC_FNAME("Top Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("Top Noise Seed")] : 3022;
+			// Init of Top Noise Seed = 3022
+			FVoxelGraphSeed Variable_29; // Top Noise Seed = 3022 output 0
+			Variable_29 = Params.Top_Noise_Seed;
 			
 			// Init of 2D IQ Noise
 			_2D_IQ_Noise_0_Noise.SetSeed(Variable_32);
@@ -897,7 +900,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -965,7 +968,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1037,7 +1040,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1105,7 +1108,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1185,7 +1188,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1425,7 +1428,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1630,16 +1633,19 @@ public:
 		{
 			Object.Bottom_Noise_Frequency,
 			Object.Bottom_Noise_Scale,
+			Object.Bottom_Noise_Seed,
+			Object.Global_Height_Seed,
+			Object.Top_Noise_Seed,
 			Object.Top_Noise_Frequency,
 			Object.Top_Noise_Scale,
 			Object.Bottom_Top_Merge_Smoothness,
-			Object.Global_Height_Offset,
 			Object.Global_Height_Merge_Smoothness,
 			Object.Global_Height_Noise_Frequency,
 			Object.Global_Height_Noise_Scale,
+			Object.Global_Height_Offset,
 			Object.Cave_Height,
-			Object.Cave_Walls_Smoothness,
-			Object.Cave_Radius
+			Object.Cave_Radius,
+			Object.Cave_Walls_Smoothness
 		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
@@ -1648,7 +1654,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1761,16 +1767,7 @@ UVoxelExample_Cave::UVoxelExample_Cave()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVoxelExample_Cave::GetDefaultSeeds() const
-{
-	return {
-		{ "Top Noise Seed", 3022 },
-		{ "Bottom Noise Seed", 3024 },
-		{ "Global Height Seed", 1447 },
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Cave::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelExample_Cave::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVoxelExample_CaveInstance>(*this);
@@ -1782,7 +1779,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Cave::G
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Cave. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Cave. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

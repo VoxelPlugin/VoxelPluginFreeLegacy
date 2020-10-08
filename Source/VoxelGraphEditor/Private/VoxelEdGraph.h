@@ -14,5 +14,5 @@ class UVoxelEdGraph : public UEdGraph
 	GENERATED_BODY()
 
 public:
-	UVoxelGraphGenerator* GetWorldGenerator() const;
+	UVoxelGraphGenerator* GetGenerator() const;
 };

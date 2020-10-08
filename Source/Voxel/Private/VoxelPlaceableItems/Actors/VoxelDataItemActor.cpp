@@ -73,3 +73,10 @@ void AVoxelDataItemActor::PostEditMove(bool bFinished)
 	ScheduleRefresh();
 }
 #endif
+
+void AVoxelDataItemActor::Destroyed()
+{
+	OnRefresh.Broadcast();
+	
+	Super::Destroyed();
+}

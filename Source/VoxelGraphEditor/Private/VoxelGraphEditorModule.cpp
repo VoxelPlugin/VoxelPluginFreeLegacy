@@ -124,10 +124,10 @@ public:
 		return true;
 	}
 
-	virtual TSharedRef<IVoxelGraphEditorToolkit> CreateVoxelGraphEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, UVoxelGraphGenerator* WorldGenerator) override
+	virtual TSharedRef<IVoxelGraphEditorToolkit> CreateVoxelGraphEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, UVoxelGraphGenerator* Generator) override
 	{
 		TSharedRef<FVoxelGraphEditorToolkit> NewVoxelEditor(new FVoxelGraphEditorToolkit());
-		NewVoxelEditor->InitVoxelEditor(Mode, InitToolkitHost, WorldGenerator);
+		NewVoxelEditor->InitVoxelEditor(Mode, InitToolkitHost, Generator);
 		return NewVoxelEditor;
 	}
 

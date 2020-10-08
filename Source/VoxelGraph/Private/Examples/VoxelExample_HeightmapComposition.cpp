@@ -15,12 +15,12 @@ public:
 		const float Depth;
 		const bool Flip_X;
 		const bool Flip_Y;
-		const float Size_X;
-		const float Size_Y;
 		const TVoxelHeightmapAssetSamplerWrapper<uint16> heightmap_x0_y0;
 		const TVoxelHeightmapAssetSamplerWrapper<uint16> heightmap_x0_y1;
 		const TVoxelHeightmapAssetSamplerWrapper<uint16> heightmap_x1_y0;
 		const TVoxelHeightmapAssetSamplerWrapper<uint16> heightmap_x1_y1;
+		const float Size_X;
+		const float Size_Y;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -46,8 +46,8 @@ public:
 			FBufferConstant() {}
 			
 			v_flt Variable_6; // Size Y = 512.0 output 0
-			bool Variable_11; // Flip X = false output 0
-			bool Variable_12; // Flip Y = true output 0
+			bool Variable_11; // Flip X = False output 0
+			bool Variable_12; // Flip Y = True output 0
 			v_flt Variable_5; // Size X = 512.0 output 0
 			v_flt Variable_26; // Depth = 300.0 output 0
 		};
@@ -67,10 +67,10 @@ public:
 			FBufferXY() {}
 			
 			bool Variable_8; // < output 0
-			v_flt Variable_0; // Heightmap: heightmap_x0_y0 output 0
-			v_flt Variable_1; // Heightmap: heightmap_x0_y1 output 0
-			v_flt Variable_2; // Heightmap: heightmap_x1_y0 output 0
-			v_flt Variable_3; // Heightmap: heightmap_x1_y1 output 0
+			v_flt Variable_0; // Heightmap: heightmap x0 y0 output 0
+			v_flt Variable_1; // Heightmap: heightmap x0 y1 output 0
+			v_flt Variable_2; // Heightmap: heightmap x1 y0 output 0
+			v_flt Variable_3; // Heightmap: heightmap x1 y1 output 0
 			v_flt Variable_20; // Box SDF output 0
 		};
 		
@@ -79,7 +79,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -114,10 +114,10 @@ public:
 				// Size Y = 512.0
 				BufferConstant.Variable_6 = Params.Size_Y;
 				
-				// Flip X = false
+				// Flip X = False
 				BufferConstant.Variable_11 = Params.Flip_X;
 				
-				// Flip Y = true
+				// Flip Y = True
 				BufferConstant.Variable_12 = Params.Flip_Y;
 				
 				// Size X = 512.0
@@ -163,11 +163,11 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
-		void Function1_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function1_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -227,24 +227,24 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x0_y0
-					FVoxelMaterial Heightmap__heightmap_x0_y0_0_Temp_1; // Heightmap: heightmap_x0_y0 output 1
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+					// Heightmap: heightmap x0 y0
+					FVoxelMaterial Heightmap__heightmap_x0_y0_0_Temp_1; // Heightmap: heightmap x0 y0 output 1
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_2; // Heightmap: heightmap x0 y0 output 2
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_3; // Heightmap: heightmap x0 y0 output 3
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_4; // Heightmap: heightmap x0 y0 output 4
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_5; // Heightmap: heightmap x0 y0 output 5
 					BufferXY.Variable_0 = Params.heightmap_x0_y0.GetHeight(BufferX.Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_0, BufferConstant.Variable_5, BufferConstant.Variable_6);
 				}
 				else
 				{
-					// Heightmap: heightmap_x0_y1
-					FVoxelMaterial Heightmap__heightmap_x0_y1_0_Temp_1; // Heightmap: heightmap_x0_y1 output 1
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+					// Heightmap: heightmap x0 y1
+					FVoxelMaterial Heightmap__heightmap_x0_y1_0_Temp_1; // Heightmap: heightmap x0 y1 output 1
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_2; // Heightmap: heightmap x0 y1 output 2
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_3; // Heightmap: heightmap x0 y1 output 3
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_4; // Heightmap: heightmap x0 y1 output 4
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_5; // Heightmap: heightmap x0 y1 output 5
 					BufferXY.Variable_1 = Params.heightmap_x0_y1.GetHeight(BufferX.Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_1, BufferConstant.Variable_5, BufferConstant.Variable_6);
@@ -258,24 +258,24 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x1_y0
-					FVoxelMaterial Heightmap__heightmap_x1_y0_0_Temp_1; // Heightmap: heightmap_x1_y0 output 1
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+					// Heightmap: heightmap x1 y0
+					FVoxelMaterial Heightmap__heightmap_x1_y0_0_Temp_1; // Heightmap: heightmap x1 y0 output 1
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_2; // Heightmap: heightmap x1 y0 output 2
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_3; // Heightmap: heightmap x1 y0 output 3
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_4; // Heightmap: heightmap x1 y0 output 4
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_5; // Heightmap: heightmap x1 y0 output 5
 					BufferXY.Variable_2 = Params.heightmap_x1_y0.GetHeight(BufferX.Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_2, BufferConstant.Variable_5, BufferConstant.Variable_6);
 				}
 				else
 				{
-					// Heightmap: heightmap_x1_y1
-					FVoxelMaterial Heightmap__heightmap_x1_y1_0_Temp_1; // Heightmap: heightmap_x1_y1 output 1
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+					// Heightmap: heightmap x1 y1
+					FVoxelMaterial Heightmap__heightmap_x1_y1_0_Temp_1; // Heightmap: heightmap x1 y1 output 1
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_2; // Heightmap: heightmap x1 y1 output 2
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_3; // Heightmap: heightmap x1 y1 output 3
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_4; // Heightmap: heightmap x1 y1 output 4
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_5; // Heightmap: heightmap x1 y1 output 5
 					BufferXY.Variable_3 = Params.heightmap_x1_y1.GetHeight(BufferX.Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_3, BufferConstant.Variable_5, BufferConstant.Variable_6);
@@ -325,24 +325,24 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x0_y0
-					FVoxelMaterial Heightmap__heightmap_x0_y0_0_Temp_1; // Heightmap: heightmap_x0_y0 output 1
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+					// Heightmap: heightmap x0 y0
+					FVoxelMaterial Heightmap__heightmap_x0_y0_0_Temp_1; // Heightmap: heightmap x0 y0 output 1
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_2; // Heightmap: heightmap x0 y0 output 2
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_3; // Heightmap: heightmap x0 y0 output 3
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_4; // Heightmap: heightmap x0 y0 output 4
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_5; // Heightmap: heightmap x0 y0 output 5
 					BufferXY.Variable_0 = Params.heightmap_x0_y0.GetHeight(BufferX.Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_0, BufferConstant.Variable_5, BufferConstant.Variable_6);
 				}
 				else
 				{
-					// Heightmap: heightmap_x0_y1
-					FVoxelMaterial Heightmap__heightmap_x0_y1_0_Temp_1; // Heightmap: heightmap_x0_y1 output 1
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+					// Heightmap: heightmap x0 y1
+					FVoxelMaterial Heightmap__heightmap_x0_y1_0_Temp_1; // Heightmap: heightmap x0 y1 output 1
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_2; // Heightmap: heightmap x0 y1 output 2
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_3; // Heightmap: heightmap x0 y1 output 3
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_4; // Heightmap: heightmap x0 y1 output 4
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_5; // Heightmap: heightmap x0 y1 output 5
 					BufferXY.Variable_1 = Params.heightmap_x0_y1.GetHeight(BufferX.Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_1, BufferConstant.Variable_5, BufferConstant.Variable_6);
@@ -356,24 +356,24 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x1_y0
-					FVoxelMaterial Heightmap__heightmap_x1_y0_0_Temp_1; // Heightmap: heightmap_x1_y0 output 1
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+					// Heightmap: heightmap x1 y0
+					FVoxelMaterial Heightmap__heightmap_x1_y0_0_Temp_1; // Heightmap: heightmap x1 y0 output 1
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_2; // Heightmap: heightmap x1 y0 output 2
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_3; // Heightmap: heightmap x1 y0 output 3
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_4; // Heightmap: heightmap x1 y0 output 4
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_5; // Heightmap: heightmap x1 y0 output 5
 					BufferXY.Variable_2 = Params.heightmap_x1_y0.GetHeight(BufferX.Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_2, BufferConstant.Variable_5, BufferConstant.Variable_6);
 				}
 				else
 				{
-					// Heightmap: heightmap_x1_y1
-					FVoxelMaterial Heightmap__heightmap_x1_y1_0_Temp_1; // Heightmap: heightmap_x1_y1 output 1
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+					// Heightmap: heightmap x1 y1
+					FVoxelMaterial Heightmap__heightmap_x1_y1_0_Temp_1; // Heightmap: heightmap x1 y1 output 1
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_2; // Heightmap: heightmap x1 y1 output 2
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_3; // Heightmap: heightmap x1 y1 output 3
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_4; // Heightmap: heightmap x1 y1 output 4
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_5; // Heightmap: heightmap x1 y1 output 5
 					BufferXY.Variable_3 = Params.heightmap_x1_y1.GetHeight(BufferX.Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_3, BufferConstant.Variable_5, BufferConstant.Variable_6);
@@ -453,26 +453,26 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x0_y0
-					v_flt Variable_0; // Heightmap: heightmap_x0_y0 output 0
-					FVoxelMaterial Heightmap__heightmap_x0_y0_0_Temp_1; // Heightmap: heightmap_x0_y0 output 1
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-					v_flt Heightmap__heightmap_x0_y0_0_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+					// Heightmap: heightmap x0 y0
+					v_flt Variable_0; // Heightmap: heightmap x0 y0 output 0
+					FVoxelMaterial Heightmap__heightmap_x0_y0_0_Temp_1; // Heightmap: heightmap x0 y0 output 1
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_2; // Heightmap: heightmap x0 y0 output 2
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_3; // Heightmap: heightmap x0 y0 output 3
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_4; // Heightmap: heightmap x0 y0 output 4
+					v_flt Heightmap__heightmap_x0_y0_0_Temp_5; // Heightmap: heightmap x0 y0 output 5
 					Variable_0 = Params.heightmap_x0_y0.GetHeight(Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_0, BufferConstant.Variable_5, BufferConstant.Variable_6);
 				}
 				else
 				{
-					// Heightmap: heightmap_x0_y1
-					v_flt Variable_1; // Heightmap: heightmap_x0_y1 output 0
-					FVoxelMaterial Heightmap__heightmap_x0_y1_0_Temp_1; // Heightmap: heightmap_x0_y1 output 1
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-					v_flt Heightmap__heightmap_x0_y1_0_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+					// Heightmap: heightmap x0 y1
+					v_flt Variable_1; // Heightmap: heightmap x0 y1 output 0
+					FVoxelMaterial Heightmap__heightmap_x0_y1_0_Temp_1; // Heightmap: heightmap x0 y1 output 1
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_2; // Heightmap: heightmap x0 y1 output 2
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_3; // Heightmap: heightmap x0 y1 output 3
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_4; // Heightmap: heightmap x0 y1 output 4
+					v_flt Heightmap__heightmap_x0_y1_0_Temp_5; // Heightmap: heightmap x0 y1 output 5
 					Variable_1 = Params.heightmap_x0_y1.GetHeight(Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_1, BufferConstant.Variable_5, BufferConstant.Variable_6);
@@ -486,26 +486,26 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x1_y0
-					v_flt Variable_2; // Heightmap: heightmap_x1_y0 output 0
-					FVoxelMaterial Heightmap__heightmap_x1_y0_0_Temp_1; // Heightmap: heightmap_x1_y0 output 1
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-					v_flt Heightmap__heightmap_x1_y0_0_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+					// Heightmap: heightmap x1 y0
+					v_flt Variable_2; // Heightmap: heightmap x1 y0 output 0
+					FVoxelMaterial Heightmap__heightmap_x1_y0_0_Temp_1; // Heightmap: heightmap x1 y0 output 1
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_2; // Heightmap: heightmap x1 y0 output 2
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_3; // Heightmap: heightmap x1 y0 output 3
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_4; // Heightmap: heightmap x1 y0 output 4
+					v_flt Heightmap__heightmap_x1_y0_0_Temp_5; // Heightmap: heightmap x1 y0 output 5
 					Variable_2 = Params.heightmap_x1_y0.GetHeight(Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_2, BufferConstant.Variable_5, BufferConstant.Variable_6);
 				}
 				else
 				{
-					// Heightmap: heightmap_x1_y1
-					v_flt Variable_3; // Heightmap: heightmap_x1_y1 output 0
-					FVoxelMaterial Heightmap__heightmap_x1_y1_0_Temp_1; // Heightmap: heightmap_x1_y1 output 1
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-					v_flt Heightmap__heightmap_x1_y1_0_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+					// Heightmap: heightmap x1 y1
+					v_flt Variable_3; // Heightmap: heightmap x1 y1 output 0
+					FVoxelMaterial Heightmap__heightmap_x1_y1_0_Temp_1; // Heightmap: heightmap x1 y1 output 1
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_2; // Heightmap: heightmap x1 y1 output 2
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_3; // Heightmap: heightmap x1 y1 output 3
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_4; // Heightmap: heightmap x1 y1 output 4
+					v_flt Heightmap__heightmap_x1_y1_0_Temp_5; // Heightmap: heightmap x1 y1 output 5
 					Variable_3 = Params.heightmap_x1_y1.GetHeight(Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_3, BufferConstant.Variable_5, BufferConstant.Variable_6);
@@ -648,8 +648,8 @@ public:
 			FBufferConstant() {}
 			
 			v_flt Variable_6; // Size Y = 512.0 output 0
-			bool Variable_11; // Flip X = false output 0
-			bool Variable_12; // Flip Y = true output 0
+			bool Variable_11; // Flip X = False output 0
+			bool Variable_12; // Flip Y = True output 0
 			v_flt Variable_5; // Size X = 512.0 output 0
 		};
 		
@@ -667,10 +667,10 @@ public:
 			FBufferXY() {}
 			
 			bool Variable_8; // < output 0
-			FVoxelMaterial Variable_0; // Heightmap: heightmap_x0_y0 output 1
-			FVoxelMaterial Variable_1; // Heightmap: heightmap_x0_y1 output 1
-			FVoxelMaterial Variable_2; // Heightmap: heightmap_x1_y0 output 1
-			FVoxelMaterial Variable_3; // Heightmap: heightmap_x1_y1 output 1
+			FVoxelMaterial Variable_0; // Heightmap: heightmap x0 y0 output 1
+			FVoxelMaterial Variable_1; // Heightmap: heightmap x0 y1 output 1
+			FVoxelMaterial Variable_2; // Heightmap: heightmap x1 y0 output 1
+			FVoxelMaterial Variable_3; // Heightmap: heightmap x1 y1 output 1
 		};
 		
 		FLocalComputeStruct_LocalMaterial(const FParams& InParams)
@@ -678,7 +678,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -713,10 +713,10 @@ public:
 				// Size Y = 512.0
 				BufferConstant.Variable_6 = Params.Size_Y;
 				
-				// Flip X = false
+				// Flip X = False
 				BufferConstant.Variable_11 = Params.Flip_X;
 				
-				// Flip Y = true
+				// Flip Y = True
 				BufferConstant.Variable_12 = Params.Flip_Y;
 				
 				// Size X = 512.0
@@ -759,11 +759,11 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
-		void Function1_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function1_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -823,24 +823,24 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x0_y0
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_0; // Heightmap: heightmap_x0_y0 output 0
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+					// Heightmap: heightmap x0 y0
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_0; // Heightmap: heightmap x0 y0 output 0
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_2; // Heightmap: heightmap x0 y0 output 2
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_3; // Heightmap: heightmap x0 y0 output 3
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_4; // Heightmap: heightmap x0 y0 output 4
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_5; // Heightmap: heightmap x0 y0 output 5
 					BufferXY.Variable_0 = Params.heightmap_x0_y0.GetMaterial(BufferX.Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_0);
 				}
 				else
 				{
-					// Heightmap: heightmap_x0_y1
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_0; // Heightmap: heightmap_x0_y1 output 0
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+					// Heightmap: heightmap x0 y1
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_0; // Heightmap: heightmap x0 y1 output 0
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_2; // Heightmap: heightmap x0 y1 output 2
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_3; // Heightmap: heightmap x0 y1 output 3
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_4; // Heightmap: heightmap x0 y1 output 4
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_5; // Heightmap: heightmap x0 y1 output 5
 					BufferXY.Variable_1 = Params.heightmap_x0_y1.GetMaterial(BufferX.Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_1);
@@ -854,24 +854,24 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x1_y0
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_0; // Heightmap: heightmap_x1_y0 output 0
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+					// Heightmap: heightmap x1 y0
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_0; // Heightmap: heightmap x1 y0 output 0
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_2; // Heightmap: heightmap x1 y0 output 2
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_3; // Heightmap: heightmap x1 y0 output 3
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_4; // Heightmap: heightmap x1 y0 output 4
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_5; // Heightmap: heightmap x1 y0 output 5
 					BufferXY.Variable_2 = Params.heightmap_x1_y0.GetMaterial(BufferX.Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_2);
 				}
 				else
 				{
-					// Heightmap: heightmap_x1_y1
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_0; // Heightmap: heightmap_x1_y1 output 0
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+					// Heightmap: heightmap x1 y1
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_0; // Heightmap: heightmap x1 y1 output 0
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_2; // Heightmap: heightmap x1 y1 output 2
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_3; // Heightmap: heightmap x1 y1 output 3
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_4; // Heightmap: heightmap x1 y1 output 4
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_5; // Heightmap: heightmap x1 y1 output 5
 					BufferXY.Variable_3 = Params.heightmap_x1_y1.GetMaterial(BufferX.Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_3);
@@ -921,24 +921,24 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x0_y0
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_0; // Heightmap: heightmap_x0_y0 output 0
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+					// Heightmap: heightmap x0 y0
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_0; // Heightmap: heightmap x0 y0 output 0
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_2; // Heightmap: heightmap x0 y0 output 2
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_3; // Heightmap: heightmap x0 y0 output 3
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_4; // Heightmap: heightmap x0 y0 output 4
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_5; // Heightmap: heightmap x0 y0 output 5
 					BufferXY.Variable_0 = Params.heightmap_x0_y0.GetMaterial(BufferX.Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_0);
 				}
 				else
 				{
-					// Heightmap: heightmap_x0_y1
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_0; // Heightmap: heightmap_x0_y1 output 0
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+					// Heightmap: heightmap x0 y1
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_0; // Heightmap: heightmap x0 y1 output 0
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_2; // Heightmap: heightmap x0 y1 output 2
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_3; // Heightmap: heightmap x0 y1 output 3
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_4; // Heightmap: heightmap x0 y1 output 4
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_5; // Heightmap: heightmap x0 y1 output 5
 					BufferXY.Variable_1 = Params.heightmap_x0_y1.GetMaterial(BufferX.Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_1);
@@ -952,24 +952,24 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x1_y0
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_0; // Heightmap: heightmap_x1_y0 output 0
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+					// Heightmap: heightmap x1 y0
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_0; // Heightmap: heightmap x1 y0 output 0
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_2; // Heightmap: heightmap x1 y0 output 2
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_3; // Heightmap: heightmap x1 y0 output 3
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_4; // Heightmap: heightmap x1 y0 output 4
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_5; // Heightmap: heightmap x1 y0 output 5
 					BufferXY.Variable_2 = Params.heightmap_x1_y0.GetMaterial(BufferX.Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_2);
 				}
 				else
 				{
-					// Heightmap: heightmap_x1_y1
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_0; // Heightmap: heightmap_x1_y1 output 0
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+					// Heightmap: heightmap x1 y1
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_0; // Heightmap: heightmap x1 y1 output 0
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_2; // Heightmap: heightmap x1 y1 output 2
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_3; // Heightmap: heightmap x1 y1 output 3
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_4; // Heightmap: heightmap x1 y1 output 4
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_5; // Heightmap: heightmap x1 y1 output 5
 					BufferXY.Variable_3 = Params.heightmap_x1_y1.GetMaterial(BufferX.Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYWithoutCache_Compute(Context, BufferX, BufferXY, BufferXY.Variable_3);
@@ -1049,26 +1049,26 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x0_y0
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_0; // Heightmap: heightmap_x0_y0 output 0
-					FVoxelMaterial Variable_0; // Heightmap: heightmap_x0_y0 output 1
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-					v_flt Heightmap__heightmap_x0_y0_1_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+					// Heightmap: heightmap x0 y0
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_0; // Heightmap: heightmap x0 y0 output 0
+					FVoxelMaterial Variable_0; // Heightmap: heightmap x0 y0 output 1
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_2; // Heightmap: heightmap x0 y0 output 2
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_3; // Heightmap: heightmap x0 y0 output 3
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_4; // Heightmap: heightmap x0 y0 output 4
+					v_flt Heightmap__heightmap_x0_y0_1_Temp_5; // Heightmap: heightmap x0 y0 output 5
 					Variable_0 = Params.heightmap_x0_y0.GetMaterial(Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_0);
 				}
 				else
 				{
-					// Heightmap: heightmap_x0_y1
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_0; // Heightmap: heightmap_x0_y1 output 0
-					FVoxelMaterial Variable_1; // Heightmap: heightmap_x0_y1 output 1
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-					v_flt Heightmap__heightmap_x0_y1_1_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+					// Heightmap: heightmap x0 y1
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_0; // Heightmap: heightmap x0 y1 output 0
+					FVoxelMaterial Variable_1; // Heightmap: heightmap x0 y1 output 1
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_2; // Heightmap: heightmap x0 y1 output 2
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_3; // Heightmap: heightmap x0 y1 output 3
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_4; // Heightmap: heightmap x0 y1 output 4
+					v_flt Heightmap__heightmap_x0_y1_1_Temp_5; // Heightmap: heightmap x0 y1 output 5
 					Variable_1 = Params.heightmap_x0_y1.GetMaterial(Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_1);
@@ -1082,26 +1082,26 @@ public:
 					v_flt Variable_10; // + output 0
 					Variable_10 = Variable_15 + BufferConstant.Variable_6;
 					
-					// Heightmap: heightmap_x1_y0
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_0; // Heightmap: heightmap_x1_y0 output 0
-					FVoxelMaterial Variable_2; // Heightmap: heightmap_x1_y0 output 1
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-					v_flt Heightmap__heightmap_x1_y0_1_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+					// Heightmap: heightmap x1 y0
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_0; // Heightmap: heightmap x1 y0 output 0
+					FVoxelMaterial Variable_2; // Heightmap: heightmap x1 y0 output 1
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_2; // Heightmap: heightmap x1 y0 output 2
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_3; // Heightmap: heightmap x1 y0 output 3
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_4; // Heightmap: heightmap x1 y0 output 4
+					v_flt Heightmap__heightmap_x1_y0_1_Temp_5; // Heightmap: heightmap x1 y0 output 5
 					Variable_2 = Params.heightmap_x1_y0.GetMaterial(Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_2);
 				}
 				else
 				{
-					// Heightmap: heightmap_x1_y1
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_0; // Heightmap: heightmap_x1_y1 output 0
-					FVoxelMaterial Variable_3; // Heightmap: heightmap_x1_y1 output 1
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-					v_flt Heightmap__heightmap_x1_y1_1_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+					// Heightmap: heightmap x1 y1
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_0; // Heightmap: heightmap x1 y1 output 0
+					FVoxelMaterial Variable_3; // Heightmap: heightmap x1 y1 output 1
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_2; // Heightmap: heightmap x1 y1 output 2
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_3; // Heightmap: heightmap x1 y1 output 3
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_4; // Heightmap: heightmap x1 y1 output 4
+					v_flt Heightmap__heightmap_x1_y1_1_Temp_5; // Heightmap: heightmap x1 y1 output 5
 					Variable_3 = Params.heightmap_x1_y1.GetMaterial(Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 					
 					Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_3);
@@ -1175,7 +1175,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1243,7 +1243,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1295,8 +1295,8 @@ public:
 			FBufferConstant() {}
 			
 			TVoxelRange<v_flt> Variable_6; // Size Y = 512.0 output 0
-			FVoxelBoolRange Variable_11; // Flip X = false output 0
-			FVoxelBoolRange Variable_12; // Flip Y = true output 0
+			FVoxelBoolRange Variable_11; // Flip X = False output 0
+			FVoxelBoolRange Variable_12; // Flip Y = True output 0
 			TVoxelRange<v_flt> Variable_5; // Size X = 512.0 output 0
 			TVoxelRange<v_flt> Variable_31; // Depth = 300.0 output 0
 		};
@@ -1317,10 +1317,10 @@ public:
 			
 			FVoxelBoolRange Variable_8; // < output 0
 			FVoxelBoolRange Variable_19; // 4x Flow Merge.Is Single bool output 0
-			TVoxelRange<v_flt> Variable_0; // Heightmap: heightmap_x0_y0 output 0
-			TVoxelRange<v_flt> Variable_1; // Heightmap: heightmap_x0_y1 output 0
-			TVoxelRange<v_flt> Variable_2; // Heightmap: heightmap_x1_y0 output 0
-			TVoxelRange<v_flt> Variable_3; // Heightmap: heightmap_x1_y1 output 0
+			TVoxelRange<v_flt> Variable_0; // Heightmap: heightmap x0 y0 output 0
+			TVoxelRange<v_flt> Variable_1; // Heightmap: heightmap x0 y1 output 0
+			TVoxelRange<v_flt> Variable_2; // Heightmap: heightmap x1 y0 output 0
+			TVoxelRange<v_flt> Variable_3; // Heightmap: heightmap x1 y1 output 0
 			TVoxelRange<v_flt> Variable_21; // 4x Flow Merge.Range Union output 0
 			TVoxelRange<v_flt> Variable_22; // 4x Flow Merge.Range Union output 0
 			TVoxelRange<v_flt> Variable_20; // 4x Flow Merge.Range Union output 0
@@ -1332,7 +1332,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1367,10 +1367,10 @@ public:
 				// Size Y = 512.0
 				BufferConstant.Variable_6 = Params.Size_Y;
 				
-				// Flip X = false
+				// Flip X = False
 				BufferConstant.Variable_11 = Params.Flip_X;
 				
-				// Flip Y = true
+				// Flip Y = True
 				BufferConstant.Variable_12 = Params.Flip_Y;
 				
 				// Size X = 512.0
@@ -1400,11 +1400,11 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
-		void Function1_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function1_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1470,26 +1470,26 @@ public:
 							TVoxelRange<v_flt> Variable_10; // + output 0
 							Variable_10 = Variable_15 + BufferConstant.Variable_6;
 							
-							// Heightmap: heightmap_x0_y0
-							TVoxelRange<v_flt> Variable_0; // Heightmap: heightmap_x0_y0 output 0
-							FVoxelMaterialRange Heightmap__heightmap_x0_y0_2_Temp_1; // Heightmap: heightmap_x0_y0 output 1
-							TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-							TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-							TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-							TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+							// Heightmap: heightmap x0 y0
+							TVoxelRange<v_flt> Variable_0; // Heightmap: heightmap x0 y0 output 0
+							FVoxelMaterialRange Heightmap__heightmap_x0_y0_2_Temp_1; // Heightmap: heightmap x0 y0 output 1
+							TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_2; // Heightmap: heightmap x0 y0 output 2
+							TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_3; // Heightmap: heightmap x0 y0 output 3
+							TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_4; // Heightmap: heightmap x0 y0 output 4
+							TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_5; // Heightmap: heightmap x0 y0 output 5
 							Variable_0 = Params.heightmap_x0_y0.GetHeightRange(Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 							
 							Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_0, BufferConstant.Variable_5, BufferConstant.Variable_6);
 						}
 						else
 						{
-							// Heightmap: heightmap_x0_y1
-							TVoxelRange<v_flt> Variable_1; // Heightmap: heightmap_x0_y1 output 0
-							FVoxelMaterialRange Heightmap__heightmap_x0_y1_2_Temp_1; // Heightmap: heightmap_x0_y1 output 1
-							TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-							TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-							TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-							TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+							// Heightmap: heightmap x0 y1
+							TVoxelRange<v_flt> Variable_1; // Heightmap: heightmap x0 y1 output 0
+							FVoxelMaterialRange Heightmap__heightmap_x0_y1_2_Temp_1; // Heightmap: heightmap x0 y1 output 1
+							TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_2; // Heightmap: heightmap x0 y1 output 2
+							TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_3; // Heightmap: heightmap x0 y1 output 3
+							TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_4; // Heightmap: heightmap x0 y1 output 4
+							TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_5; // Heightmap: heightmap x0 y1 output 5
 							Variable_1 = Params.heightmap_x0_y1.GetHeightRange(Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 							
 							Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_1, BufferConstant.Variable_5, BufferConstant.Variable_6);
@@ -1503,26 +1503,26 @@ public:
 							TVoxelRange<v_flt> Variable_10; // + output 0
 							Variable_10 = Variable_15 + BufferConstant.Variable_6;
 							
-							// Heightmap: heightmap_x1_y0
-							TVoxelRange<v_flt> Variable_2; // Heightmap: heightmap_x1_y0 output 0
-							FVoxelMaterialRange Heightmap__heightmap_x1_y0_2_Temp_1; // Heightmap: heightmap_x1_y0 output 1
-							TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-							TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-							TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-							TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+							// Heightmap: heightmap x1 y0
+							TVoxelRange<v_flt> Variable_2; // Heightmap: heightmap x1 y0 output 0
+							FVoxelMaterialRange Heightmap__heightmap_x1_y0_2_Temp_1; // Heightmap: heightmap x1 y0 output 1
+							TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_2; // Heightmap: heightmap x1 y0 output 2
+							TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_3; // Heightmap: heightmap x1 y0 output 3
+							TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_4; // Heightmap: heightmap x1 y0 output 4
+							TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_5; // Heightmap: heightmap x1 y0 output 5
 							Variable_2 = Params.heightmap_x1_y0.GetHeightRange(Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 							
 							Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_2, BufferConstant.Variable_5, BufferConstant.Variable_6);
 						}
 						else
 						{
-							// Heightmap: heightmap_x1_y1
-							TVoxelRange<v_flt> Variable_3; // Heightmap: heightmap_x1_y1 output 0
-							FVoxelMaterialRange Heightmap__heightmap_x1_y1_2_Temp_1; // Heightmap: heightmap_x1_y1 output 1
-							TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-							TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-							TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-							TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+							// Heightmap: heightmap x1 y1
+							TVoxelRange<v_flt> Variable_3; // Heightmap: heightmap x1 y1 output 0
+							FVoxelMaterialRange Heightmap__heightmap_x1_y1_2_Temp_1; // Heightmap: heightmap x1 y1 output 1
+							TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_2; // Heightmap: heightmap x1 y1 output 2
+							TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_3; // Heightmap: heightmap x1 y1 output 3
+							TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_4; // Heightmap: heightmap x1 y1 output 4
+							TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_5; // Heightmap: heightmap x1 y1 output 5
 							Variable_3 = Params.heightmap_x1_y1.GetHeightRange(Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 							
 							Function1_XYZWithoutCache_Compute(Context, Outputs, Variable_3, BufferConstant.Variable_5, BufferConstant.Variable_6);
@@ -1541,22 +1541,22 @@ public:
 						TVoxelRange<v_flt> Variable_9; // + output 0
 						Variable_9 = Variable_13 + BufferConstant.Variable_5;
 						
-						// Heightmap: heightmap_x0_y0
-						TVoxelRange<v_flt> Variable_0; // Heightmap: heightmap_x0_y0 output 0
-						FVoxelMaterialRange Heightmap__heightmap_x0_y0_2_Temp_1; // Heightmap: heightmap_x0_y0 output 1
-						TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-						TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-						TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-						TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+						// Heightmap: heightmap x0 y0
+						TVoxelRange<v_flt> Variable_0; // Heightmap: heightmap x0 y0 output 0
+						FVoxelMaterialRange Heightmap__heightmap_x0_y0_2_Temp_1; // Heightmap: heightmap x0 y0 output 1
+						TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_2; // Heightmap: heightmap x0 y0 output 2
+						TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_3; // Heightmap: heightmap x0 y0 output 3
+						TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_4; // Heightmap: heightmap x0 y0 output 4
+						TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_5; // Heightmap: heightmap x0 y0 output 5
 						Variable_0 = Params.heightmap_x0_y0.GetHeightRange(Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 						
-						// Heightmap: heightmap_x0_y1
-						TVoxelRange<v_flt> Variable_1; // Heightmap: heightmap_x0_y1 output 0
-						FVoxelMaterialRange Heightmap__heightmap_x0_y1_2_Temp_1; // Heightmap: heightmap_x0_y1 output 1
-						TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-						TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-						TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-						TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+						// Heightmap: heightmap x0 y1
+						TVoxelRange<v_flt> Variable_1; // Heightmap: heightmap x0 y1 output 0
+						FVoxelMaterialRange Heightmap__heightmap_x0_y1_2_Temp_1; // Heightmap: heightmap x0 y1 output 1
+						TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_2; // Heightmap: heightmap x0 y1 output 2
+						TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_3; // Heightmap: heightmap x0 y1 output 3
+						TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_4; // Heightmap: heightmap x0 y1 output 4
+						TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_5; // Heightmap: heightmap x0 y1 output 5
 						Variable_1 = Params.heightmap_x0_y1.GetHeightRange(Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 						
 						// 4x Flow Merge.Range Union
@@ -1567,22 +1567,22 @@ public:
 					}
 					else
 					{
-						// Heightmap: heightmap_x1_y0
-						TVoxelRange<v_flt> Variable_2; // Heightmap: heightmap_x1_y0 output 0
-						FVoxelMaterialRange Heightmap__heightmap_x1_y0_2_Temp_1; // Heightmap: heightmap_x1_y0 output 1
-						TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-						TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-						TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-						TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+						// Heightmap: heightmap x1 y0
+						TVoxelRange<v_flt> Variable_2; // Heightmap: heightmap x1 y0 output 0
+						FVoxelMaterialRange Heightmap__heightmap_x1_y0_2_Temp_1; // Heightmap: heightmap x1 y0 output 1
+						TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_2; // Heightmap: heightmap x1 y0 output 2
+						TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_3; // Heightmap: heightmap x1 y0 output 3
+						TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_4; // Heightmap: heightmap x1 y0 output 4
+						TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_5; // Heightmap: heightmap x1 y0 output 5
 						Variable_2 = Params.heightmap_x1_y0.GetHeightRange(Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 						
-						// Heightmap: heightmap_x1_y1
-						TVoxelRange<v_flt> Variable_3; // Heightmap: heightmap_x1_y1 output 0
-						FVoxelMaterialRange Heightmap__heightmap_x1_y1_2_Temp_1; // Heightmap: heightmap_x1_y1 output 1
-						TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-						TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-						TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-						TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+						// Heightmap: heightmap x1 y1
+						TVoxelRange<v_flt> Variable_3; // Heightmap: heightmap x1 y1 output 0
+						FVoxelMaterialRange Heightmap__heightmap_x1_y1_2_Temp_1; // Heightmap: heightmap x1 y1 output 1
+						TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_2; // Heightmap: heightmap x1 y1 output 2
+						TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_3; // Heightmap: heightmap x1 y1 output 3
+						TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_4; // Heightmap: heightmap x1 y1 output 4
+						TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_5; // Heightmap: heightmap x1 y1 output 5
 						Variable_3 = Params.heightmap_x1_y1.GetHeightRange(Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 						
 						// 4x Flow Merge.Range Union
@@ -1603,40 +1603,40 @@ public:
 				TVoxelRange<v_flt> Variable_9; // + output 0
 				Variable_9 = Variable_13 + BufferConstant.Variable_5;
 				
-				// Heightmap: heightmap_x1_y1
-				TVoxelRange<v_flt> Variable_3; // Heightmap: heightmap_x1_y1 output 0
-				FVoxelMaterialRange Heightmap__heightmap_x1_y1_2_Temp_1; // Heightmap: heightmap_x1_y1 output 1
-				TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_2; // Heightmap: heightmap_x1_y1 output 2
-				TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_3; // Heightmap: heightmap_x1_y1 output 3
-				TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_4; // Heightmap: heightmap_x1_y1 output 4
-				TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_5; // Heightmap: heightmap_x1_y1 output 5
+				// Heightmap: heightmap x1 y1
+				TVoxelRange<v_flt> Variable_3; // Heightmap: heightmap x1 y1 output 0
+				FVoxelMaterialRange Heightmap__heightmap_x1_y1_2_Temp_1; // Heightmap: heightmap x1 y1 output 1
+				TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_2; // Heightmap: heightmap x1 y1 output 2
+				TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_3; // Heightmap: heightmap x1 y1 output 3
+				TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_4; // Heightmap: heightmap x1 y1 output 4
+				TVoxelRange<v_flt> Heightmap__heightmap_x1_y1_2_Temp_5; // Heightmap: heightmap x1 y1 output 5
 				Variable_3 = Params.heightmap_x1_y1.GetHeightRange(Variable_13, Variable_15, EVoxelSamplerMode::Clamp);
 				
-				// Heightmap: heightmap_x0_y1
-				TVoxelRange<v_flt> Variable_1; // Heightmap: heightmap_x0_y1 output 0
-				FVoxelMaterialRange Heightmap__heightmap_x0_y1_2_Temp_1; // Heightmap: heightmap_x0_y1 output 1
-				TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_2; // Heightmap: heightmap_x0_y1 output 2
-				TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_3; // Heightmap: heightmap_x0_y1 output 3
-				TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_4; // Heightmap: heightmap_x0_y1 output 4
-				TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_5; // Heightmap: heightmap_x0_y1 output 5
+				// Heightmap: heightmap x0 y1
+				TVoxelRange<v_flt> Variable_1; // Heightmap: heightmap x0 y1 output 0
+				FVoxelMaterialRange Heightmap__heightmap_x0_y1_2_Temp_1; // Heightmap: heightmap x0 y1 output 1
+				TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_2; // Heightmap: heightmap x0 y1 output 2
+				TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_3; // Heightmap: heightmap x0 y1 output 3
+				TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_4; // Heightmap: heightmap x0 y1 output 4
+				TVoxelRange<v_flt> Heightmap__heightmap_x0_y1_2_Temp_5; // Heightmap: heightmap x0 y1 output 5
 				Variable_1 = Params.heightmap_x0_y1.GetHeightRange(Variable_9, Variable_15, EVoxelSamplerMode::Clamp);
 				
-				// Heightmap: heightmap_x1_y0
-				TVoxelRange<v_flt> Variable_2; // Heightmap: heightmap_x1_y0 output 0
-				FVoxelMaterialRange Heightmap__heightmap_x1_y0_2_Temp_1; // Heightmap: heightmap_x1_y0 output 1
-				TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_2; // Heightmap: heightmap_x1_y0 output 2
-				TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_3; // Heightmap: heightmap_x1_y0 output 3
-				TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_4; // Heightmap: heightmap_x1_y0 output 4
-				TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_5; // Heightmap: heightmap_x1_y0 output 5
+				// Heightmap: heightmap x1 y0
+				TVoxelRange<v_flt> Variable_2; // Heightmap: heightmap x1 y0 output 0
+				FVoxelMaterialRange Heightmap__heightmap_x1_y0_2_Temp_1; // Heightmap: heightmap x1 y0 output 1
+				TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_2; // Heightmap: heightmap x1 y0 output 2
+				TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_3; // Heightmap: heightmap x1 y0 output 3
+				TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_4; // Heightmap: heightmap x1 y0 output 4
+				TVoxelRange<v_flt> Heightmap__heightmap_x1_y0_2_Temp_5; // Heightmap: heightmap x1 y0 output 5
 				Variable_2 = Params.heightmap_x1_y0.GetHeightRange(Variable_13, Variable_10, EVoxelSamplerMode::Clamp);
 				
-				// Heightmap: heightmap_x0_y0
-				TVoxelRange<v_flt> Variable_0; // Heightmap: heightmap_x0_y0 output 0
-				FVoxelMaterialRange Heightmap__heightmap_x0_y0_2_Temp_1; // Heightmap: heightmap_x0_y0 output 1
-				TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_2; // Heightmap: heightmap_x0_y0 output 2
-				TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_3; // Heightmap: heightmap_x0_y0 output 3
-				TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_4; // Heightmap: heightmap_x0_y0 output 4
-				TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_5; // Heightmap: heightmap_x0_y0 output 5
+				// Heightmap: heightmap x0 y0
+				TVoxelRange<v_flt> Variable_0; // Heightmap: heightmap x0 y0 output 0
+				FVoxelMaterialRange Heightmap__heightmap_x0_y0_2_Temp_1; // Heightmap: heightmap x0 y0 output 1
+				TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_2; // Heightmap: heightmap x0 y0 output 2
+				TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_3; // Heightmap: heightmap x0 y0 output 3
+				TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_4; // Heightmap: heightmap x0 y0 output 4
+				TVoxelRange<v_flt> Heightmap__heightmap_x0_y0_2_Temp_5; // Heightmap: heightmap x0 y0 output 5
 				Variable_0 = Params.heightmap_x0_y0.GetHeightRange(Variable_9, Variable_10, EVoxelSamplerMode::Clamp);
 				
 				// 4x Flow Merge.Range Union
@@ -1733,12 +1733,12 @@ public:
 			Object.Depth,
 			Object.Flip_X,
 			Object.Flip_Y,
-			Object.Size_X,
-			Object.Size_Y,
 			TVoxelHeightmapAssetSamplerWrapper<uint16>(Object.heightmap_x0_y0.LoadSynchronous()),
 			TVoxelHeightmapAssetSamplerWrapper<uint16>(Object.heightmap_x0_y1.LoadSynchronous()),
 			TVoxelHeightmapAssetSamplerWrapper<uint16>(Object.heightmap_x1_y0.LoadSynchronous()),
-			TVoxelHeightmapAssetSamplerWrapper<uint16>(Object.heightmap_x1_y1.LoadSynchronous())
+			TVoxelHeightmapAssetSamplerWrapper<uint16>(Object.heightmap_x1_y1.LoadSynchronous()),
+			Object.Size_X,
+			Object.Size_Y
 		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
@@ -1747,7 +1747,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1860,13 +1860,7 @@ UVoxelExample_HeightmapComposition::UVoxelExample_HeightmapComposition()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVoxelExample_HeightmapComposition::GetDefaultSeeds() const
-{
-	return {
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_HeightmapComposition::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelExample_HeightmapComposition::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVoxelExample_HeightmapCompositionInstance>(*this);
@@ -1878,7 +1872,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Heightm
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_HeightmapComposition. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_HeightmapComposition. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

@@ -8,17 +8,17 @@
 #include "VoxelUtilities/VoxelSDFUtilities.h"
 #include "VoxelUtilities/VoxelRangeUtilities.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
+#include "VoxelGenerators/VoxelGeneratorInstance.inl"
 
 namespace FVoxelUtilities
 {
 	/**
 	 * Get the distance to data items
 	 * See https://wiki.voxelplugin.com/Voxel_Data_Items
-	 * @param	ItemHolder		The item holder passed to the world generator
-	 * @param	X				The current X coordinate. Should be the one passed to the world generator to avoid issues with spatial hashing
-	 * @param	Y				The current Y coordinate. Should be the one passed to the world generator to avoid issues with spatial hashing
-	 * @param	Z				The current Z coordinate. Should be the one passed to the world generator to avoid issues with spatial hashing
+	 * @param	ItemHolder		The item holder passed to the generator
+	 * @param	X				The current X coordinate. Should be the one passed to the generator to avoid issues with spatial hashing
+	 * @param	Y				The current Y coordinate. Should be the one passed to the generator to avoid issues with spatial hashing
+	 * @param	Z				The current Z coordinate. Should be the one passed to the generator to avoid issues with spatial hashing
 	 * @param	Smoothness		The smoothness of the union/intersection. Should be >= 0
 	 * @param	Default			The default value to return if no 
 	 * @param	Mask			Use uint32(-1) to match any items
@@ -43,7 +43,7 @@ namespace FVoxelUtilities
 		const auto GetItemDistance = [&](const FVoxelDataItem& Item)
 		{
 			const auto Stack = FVoxelItemStack::Empty.WithCustomData(&Item.Data);
-			return Item.WorldGenerator->GetValue(X, Y, Z, 0, Stack) * (bInvertDataItemDistances ? -1 : 1);
+			return Item.Generator->GetValue(X, Y, Z, 0, Stack) * (bInvertDataItemDistances ? -1 : 1);
 		};
 		
 		auto& DataItems = ItemHolder.GetDataItems();
@@ -121,7 +121,7 @@ namespace FVoxelUtilities
 		const auto GetItemDistance = [&](const FVoxelDataItem& Item)
 		{
 			const auto Stack = FVoxelItemStack::Empty.WithCustomData(&Item.Data);
-			auto Range = Item.WorldGenerator->GetValueRange(Bounds, 0, Stack);
+			auto Range = Item.Generator->GetValueRange(Bounds, 0, Stack);
 			if (bInvertDataItemDistances)
 			{
 				Range = -Range;
@@ -196,10 +196,10 @@ namespace FVoxelUtilities
 	 * Combine an existing generator value (must be a distance) to the data item distances
 	 * See https://wiki.voxelplugin.com/Voxel_Data_Items
 	 * @param	GeneratorValue	The existing value to combine with the data items
-	 * @param	ItemHolder		The item holder passed to the world generator
-	 * @param	X				The current X coordinate. Should be the one passed to the world generator to avoid issues with spatial hashing
-	 * @param	Y				The current Y coordinate. Should be the one passed to the world generator to avoid issues with spatial hashing
-	 * @param	Z				The current Z coordinate. Should be the one passed to the world generator to avoid issues with spatial hashing
+	 * @param	ItemHolder		The item holder passed to the generator
+	 * @param	X				The current X coordinate. Should be the one passed to the generator to avoid issues with spatial hashing
+	 * @param	Y				The current Y coordinate. Should be the one passed to the generator to avoid issues with spatial hashing
+	 * @param	Z				The current Z coordinate. Should be the one passed to the generator to avoid issues with spatial hashing
 	 * @param	Smoothness		The smoothness of the union/intersection. Should be >= 0
 	 * @param	Mask			Use uint32(-1) to match any items
 	 * @param	CombineMode		How to combine data items

@@ -162,9 +162,9 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
 	
-	if (!Settings.WorldGenerator.IsValid())
+	if (!Settings.Generator.IsValid())
 	{
-		FVoxelMessages::Error(FUNCTION_ERROR("Invalid World Generator"));
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid generator"));
 		return {};
 	}
 
@@ -172,8 +172,7 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	VoxelWorld->RenderOctreeDepth = Settings.RenderOctreeDepth;
 	VoxelWorld->VoxelSize = Settings.VoxelSize;
 	VoxelWorld->RenderType = Settings.RenderType;
-	VoxelWorld->WorldGenerator = Settings.WorldGenerator;
-	VoxelWorld->Seeds = Settings.Seeds;
+	VoxelWorld->Generator = Settings.Generator;
 
 	const auto Pool = FVoxelDefaultPool::Create(Settings.ThreadCount, true, {}, {});
 	const auto Data = FVoxelData::Create(FVoxelDataSettings(VoxelWorld, EVoxelPlayType::Game));
@@ -268,8 +267,7 @@ FVoxelCookingSettings UVoxelCookingLibrary::MakeVoxelCookingSettingsFromVoxelWor
 	Settings.RenderOctreeDepth = World->RenderOctreeDepth;
 	Settings.VoxelSize = World->VoxelSize;
 	Settings.RenderType = World->RenderType;
-	Settings.WorldGenerator = World->WorldGenerator;
-	Settings.Seeds = World->Seeds;
+	Settings.Generator = World->Generator;
 
 	return Settings;
 }

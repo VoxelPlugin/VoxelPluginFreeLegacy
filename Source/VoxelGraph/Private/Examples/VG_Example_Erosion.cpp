@@ -12,13 +12,13 @@ class FVG_Example_ErosionInstance : public TVoxelGraphGeneratorInstanceHelper<FV
 public:
 	struct FParams
 	{
-		const float Valleys_Height;
-		const float Erosion_Strength;
-		const FName Rocks;
 		const float Erosion_Material_Offset;
 		const float Erosion_Material_Strength;
-		const FName Snow;
+		const float Erosion_Strength;
 		const float Height;
+		const FName Rocks;
+		const FName Snow;
+		const float Valleys_Height;
 	};
 	
 	class FLocalComputeStruct_LocalValue
@@ -68,7 +68,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -149,7 +149,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_0_Noise.SetSeed(FVoxelGraphSeed(1337));
@@ -501,7 +501,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -614,7 +614,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 2D Perlin Noise Fractal
 			_2D_Perlin_Noise_Fractal_1_Noise.SetSeed(FVoxelGraphSeed(1337));
@@ -949,7 +949,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1017,7 +1017,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1088,7 +1088,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1274,7 +1274,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1337,13 +1337,13 @@ public:
 			Object)
 		, Params(FParams
 		{
-			Object.Valleys_Height,
-			Object.Erosion_Strength,
-			*Object.Rocks.GetAssetName(),
 			Object.Erosion_Material_Offset,
 			Object.Erosion_Material_Strength,
+			Object.Erosion_Strength,
+			Object.Height,
+			*Object.Rocks.GetAssetName(),
 			*Object.Snow.GetAssetName(),
-			Object.Height
+			Object.Valleys_Height
 		})
 		, LocalValue(Params)
 		, LocalMaterial(Params)
@@ -1352,7 +1352,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1465,13 +1465,7 @@ UVG_Example_Erosion::UVG_Example_Erosion()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVG_Example_Erosion::GetDefaultSeeds() const
-{
-	return {
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVG_Example_Erosion::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVG_Example_Erosion::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVG_Example_ErosionInstance>(*this);
@@ -1483,7 +1477,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVG_Example_Erosion::
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VG_Example_Erosion. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VG_Example_Erosion. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

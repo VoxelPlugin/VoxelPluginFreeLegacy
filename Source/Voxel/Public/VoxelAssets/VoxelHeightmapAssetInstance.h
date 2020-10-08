@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelAssets/VoxelHeightmapAsset.h"
 #include "VoxelAssets/VoxelHeightmapAssetSamplerWrapper.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
+#include "VoxelGenerators/VoxelGeneratorHelpers.h"
 
 template<typename T>
 struct TVoxelHeightmapAssetSelector;
@@ -23,10 +23,10 @@ struct TVoxelHeightmapAssetSelector<uint16>
 };
 
 template<typename T>
-class TVoxelHeightmapAssetInstance : public TVoxelWorldGeneratorInstanceHelper<TVoxelHeightmapAssetInstance<T>, typename TVoxelHeightmapAssetSelector<T>::Type>
+class TVoxelHeightmapAssetInstance : public TVoxelGeneratorInstanceHelper<TVoxelHeightmapAssetInstance<T>, typename TVoxelHeightmapAssetSelector<T>::Type>
 {
 public:
-	using Super = TVoxelWorldGeneratorInstanceHelper<TVoxelHeightmapAssetInstance<T>, typename TVoxelHeightmapAssetSelector<T>::Type>;
+	using Super = TVoxelGeneratorInstanceHelper<TVoxelHeightmapAssetInstance<T>, typename TVoxelHeightmapAssetSelector<T>::Type>;
 	
 	const TVoxelHeightmapAssetSamplerWrapper<T> Wrapper;
 	const float Precision;
@@ -43,7 +43,7 @@ public:
 	{
 	}
 
-	//~ Begin FVoxelWorldGeneratorInstance Interface
+	//~ Begin FVoxelGeneratorInstance Interface
 	FORCEINLINE v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		if (bInfiniteExtent || WorldBounds.ContainsFloat(X, Y, Z)) // Note: it's safe to access outside the bounds
@@ -121,5 +121,5 @@ public:
 	{
 		return FVector::UpVector;
 	}
-	//~ End FVoxelWorldGeneratorInstance Interface
+	//~ End FVoxelGeneratorInstance Interface
 };

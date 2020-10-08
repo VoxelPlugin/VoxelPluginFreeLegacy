@@ -10,11 +10,6 @@
 #include "DetailLayoutBuilder.h"
 #include "DetailCategoryBuilder.h"
 
-TSharedRef<IDetailCustomization> FVoxelAssetActorDetails::MakeInstance()
-{
-	return MakeShareable(new FVoxelAssetActorDetails());
-}
-
 void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	FVoxelEditorUtilities::EnableRealtime();
@@ -49,7 +44,7 @@ void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayou
 			return AssetActor.IsValid()
 				&& AssetActor->GetWorld()
 				&& AssetActor->GetWorld()->WorldType == EWorldType::Editor
-				&& AssetActor->WorldGenerator.IsValid()
+				&& AssetActor->Generator.IsValid()
 				&& AssetActor->PreviewWorld;
 		}));
 
@@ -73,7 +68,7 @@ void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayou
 		TAttribute<bool>::Create([=]()
 		{
 			return AssetActor.IsValid()
-				&& AssetActor->WorldGenerator.IsValid()
+				&& AssetActor->Generator.IsValid()
 				&& AssetActor->PreviewWorld
 				&& AssetActor->PreviewWorld->IsCreated();
 		}));

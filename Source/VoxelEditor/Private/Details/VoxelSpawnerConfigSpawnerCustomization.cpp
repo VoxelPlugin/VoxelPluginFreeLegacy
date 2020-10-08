@@ -150,35 +150,7 @@ void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IProp
 
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bSave));
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bDoNotDespawn));
-
-	AdvancedGroup.AddWidgetRow()
-	.NameContent()
-	[
-		GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Seed)->CreatePropertyNameWidget()
-	]
-	.ValueContent()
-	[
-		SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		[
-			SNew(SBox)
-			.MinDesiredWidth(FDetailWidgetRow::DefaultValueMinWidth)
-			[
-				GET_CHILD_PROPERTY_IMPL(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Seed), FVoxelSpawnerConfigSpawnerSeed, SeedName)->CreatePropertyValueWidget()
-			]
-		]
-		+ SHorizontalBox::Slot()
-		.Padding(5.f, 0.f, 0.f, 0.f)
-		.AutoWidth()
-		[
-			SNew(SBox)
-			.MinDesiredWidth(FDetailWidgetRow::DefaultValueMinWidth)
-			[
-				GET_CHILD_PROPERTY_IMPL(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Seed), FVoxelSpawnerConfigSpawnerSeed, DefaultSeed)->CreatePropertyValueWidget()
-			]
-		]
-	];
+	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Seed));
 
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, RandomGenerator));
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Guid));

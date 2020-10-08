@@ -153,4 +153,7 @@ public:
 	virtual FString GetInputPinDefaultValue(int32 PinIndex) const override;
 	
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
+
+	virtual void ApplyParameters(const TMap<FName, FString>& Parameters) override;
+	virtual void GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const override;
 };

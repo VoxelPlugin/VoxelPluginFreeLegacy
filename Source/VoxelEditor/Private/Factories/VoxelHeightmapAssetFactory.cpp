@@ -93,11 +93,6 @@ bool UVoxelHeightmapAssetUINT16Factory::ConfigureProperties()
 	class FVoxelHeightmapFactoryDetails : public IDetailCustomization
 	{
 	public:
-		static TSharedRef<IDetailCustomization> MakeInstance()
-		{
-			return MakeShared<FVoxelHeightmapFactoryDetails>();
-		}
-
 		FVoxelHeightmapFactoryDetails() = default;
 
 	private:
@@ -115,7 +110,7 @@ bool UVoxelHeightmapAssetUINT16Factory::ConfigureProperties()
 	FDetailsViewArgs DetailsViewArgs(false, false, false, FDetailsViewArgs::HideNameArea);
 
 	auto DetailsPanel = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
-	FOnGetDetailCustomizationInstance LayoutDelegateDetails = FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelHeightmapFactoryDetails::MakeInstance);
+	FOnGetDetailCustomizationInstance LayoutDelegateDetails = FOnGetDetailCustomizationInstance::CreateLambda([]() { return MakeShared<FVoxelHeightmapFactoryDetails>(); });
 	DetailsPanel->RegisterInstancedCustomPropertyLayout(UVoxelHeightmapAssetUINT16Factory::StaticClass(), LayoutDelegateDetails);
 	DetailsPanel->SetIsPropertyVisibleDelegate(FIsPropertyVisible::CreateLambda([&](const FPropertyAndParent& Property)
 	{

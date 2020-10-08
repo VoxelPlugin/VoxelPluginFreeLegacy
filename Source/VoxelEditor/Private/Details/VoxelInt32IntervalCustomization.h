@@ -8,10 +8,5 @@
 class FVoxelInt32IntervalCustomization : public FMathStructCustomization
 {
 public:
-	static TSharedRef<class IPropertyTypeCustomization> MakeInstance()
-	{
-		return MakeShareable(new FVoxelInt32IntervalCustomization());
-	}
-
 	virtual void GetSortedChildren(TSharedRef<IPropertyHandle> StructPropertyHandle, TArray<TSharedRef<IPropertyHandle>>& OutChildren) override;
 };

@@ -76,7 +76,7 @@ FORCEINLINE T TVoxelDataAccelerator<TData>::GetCustomOutput(T DefaultValue, FNam
 	return GetImpl(X, Y, Z,
 	               [&](const FVoxelDataOctreeBase& Octree)
 	               {
-		               return Octree.GetCustomOutput<T>(*Data.WorldGenerator, DefaultValue, Name, X, Y, Z, LOD);
+		               return Octree.GetCustomOutput<T>(*Data.Generator, DefaultValue, Name, X, Y, Z, LOD);
 	               });
 }
 
@@ -97,7 +97,7 @@ FORCEINLINE v_flt TVoxelDataAccelerator<TData>::GetFloatValue(v_flt X, v_flt Y, 
 		               else
 		               {
 			               if (bIsGeneratorValue) *bIsGeneratorValue = true;
-			               return Octree.GetFromGeneratorAndAssets<v_flt, v_flt>(*Data.WorldGenerator, X, Y, Z, LOD);
+			               return Octree.GetFromGeneratorAndAssets<v_flt, v_flt>(*Data.Generator, X, Y, Z, LOD);
 		               }
 	               });
 }
@@ -112,7 +112,7 @@ FORCEINLINE T TVoxelDataAccelerator<TData>::Get(int32 X, int32 Y, int32 Z, int32
 	return GetImpl(X, Y, Z,
 	               [&](const FVoxelDataOctreeBase& Octree)
 	               {
-		               return Octree.Get<T>(*Data.WorldGenerator, X, Y, Z, LOD);
+		               return Octree.Get<T>(*Data.Generator, X, Y, Z, LOD);
 	               });
 }
 

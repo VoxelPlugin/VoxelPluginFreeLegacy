@@ -6,10 +6,10 @@
 #include "VoxelMessages.h"
 #include "VoxelObjectArchive.h"
 #include "VoxelFeedbackContext.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorHelpers.h"
-#include "VoxelWorldGenerators/VoxelTransformableWorldGeneratorHelper.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.inl"
-#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
+#include "VoxelGenerators/VoxelGeneratorHelpers.h"
+#include "VoxelGenerators/VoxelTransformableGeneratorHelper.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.inl"
+#include "VoxelGenerators/VoxelEmptyGenerator.h"
 
 #include "Serialization/BufferArchive.h"
 #include "Serialization/MemoryReader.h"
@@ -298,10 +298,10 @@ TVoxelRange<float> FVoxelVDBAssetData::GetValueRange(const FVoxelIntBox& Bounds)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-class FVoxelVDBAssetInstance : public TVoxelWorldGeneratorInstanceHelper<FVoxelVDBAssetInstance, UVoxelVDBAsset>
+class FVoxelVDBAssetInstance : public TVoxelGeneratorInstanceHelper<FVoxelVDBAssetInstance, UVoxelVDBAsset>
 {
 public:
-	using Super = TVoxelWorldGeneratorInstanceHelper<FVoxelVDBAssetInstance, UVoxelVDBAsset>;
+	using Super = TVoxelGeneratorInstanceHelper<FVoxelVDBAssetInstance, UVoxelVDBAsset>;
 	
 	const TVoxelSharedPtr<const FVoxelVDBAssetData> Data;
 
@@ -312,7 +312,7 @@ public:
 	{
 	}
 
-	//~ Begin FVoxelWorldGeneratorInstance Interface
+	//~ Begin FVoxelGeneratorInstance Interface
 	v_flt GetValueImpl(v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelItemStack& Items) const
 	{
 		return Data->GetValue(X, Y, Z);
@@ -331,7 +331,7 @@ public:
 	{
 		return FVector::UpVector;
 	}
-	//~ End FVoxelWorldGeneratorInstance Interface
+	//~ End FVoxelGeneratorInstance Interface
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -343,15 +343,15 @@ FVoxelIntBox UVoxelVDBAsset::GetBounds() const
 	return Bounds;
 }
 
-TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelVDBAsset::GetInstance()
+TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelVDBAsset::GetInstance()
 {
 	return GetInstanceImpl();
 }
 
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelVDBAsset::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelVDBAsset::GetTransformableInstance()
 {
 	const bool bSubtractiveAsset = false;
-	return MakeVoxelShared<TVoxelTransformableWorldGeneratorHelper<FVoxelVDBAssetInstance>>(GetInstanceImpl(), bSubtractiveAsset);
+	return MakeVoxelShared<TVoxelTransformableGeneratorHelper<FVoxelVDBAssetInstance>>(GetInstanceImpl(), bSubtractiveAsset);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

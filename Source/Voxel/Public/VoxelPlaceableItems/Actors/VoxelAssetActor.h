@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
 #include "VoxelMinimal.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActor.h"
 #include "VoxelTools/VoxelAssetTools.h"
 #include "Components/PrimitiveComponent.h"
@@ -43,11 +43,7 @@ class VOXEL_API AVoxelAssetActor : public AVoxelPlaceableItemActor, public IVoxe
 
 public:	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Asset Actor Settings")
-	FVoxelTransformableWorldGeneratorPicker WorldGenerator;
-
-	// Overrides the voxel world seeds
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Asset Actor Settings")
-	TMap<FName, int32> Seeds;
+	FVoxelTransformableGeneratorPicker Generator;
 
 	// Higher priority assets will be on top
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Asset Actor Settings")

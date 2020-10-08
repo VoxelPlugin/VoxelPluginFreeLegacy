@@ -59,15 +59,6 @@ inline FString GetVoxelWorldSaveFilePath(AVoxelWorld& World, bool bIsLoad)
 	}
 }
 
-TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
-{
-	return MakeShareable(new FVoxelWorldDetails(false));
-}
-TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeDataAssetEditorInstance()
-{
-	return MakeShareable(new FVoxelWorldDetails(true));
-}
-
 void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	FVoxelEditorUtilities::EnableRealtime();
@@ -135,9 +126,8 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 	if (bIsDataAssetEditor)
 	{
 		DetailLayout.HideCategory("Voxel - Save");
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, WorldGenerator));
+		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, Generator));
 		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bCreateWorldAutomatically));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, Seeds));
 		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bUseCameraIfNoInvokersFound));
 		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bEnableUndoRedo));
 		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bEnableCustomWorldRebasing));
@@ -246,31 +236,6 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 				return true;
 			});
 	};
-
-	FVoxelEditorUtilities::AddButtonToCategory(
-		DetailLayout,
-		"Voxel - General",
-		VOXEL_LOCTEXT("FillSeedFromGenerator"),
-		VOXEL_LOCTEXT("Fill Seeds From Generator"),
-		VOXEL_LOCTEXT("Fill Seeds"),
-		false,
-		CreateWorldsDelegate([](AVoxelWorld& World)
-		{
-			auto* WorldGenerator = World.WorldGenerator.GetWorldGenerator();
-			if (WorldGenerator)
-			{
-				World.Seeds = WorldGenerator->GetDefaultSeeds();
-				if (World.IsCreated())
-				{
-					World.Toggle();
-					World.Toggle();
-				}
-			}
-			else
-			{
-				FVoxelMessages::Error("Can't fill seeds: Invalid World Generator!", &World);
-			}
-		}));
 
 	bool bIsBPEditor = false;
 	bool bIsEditor = false;

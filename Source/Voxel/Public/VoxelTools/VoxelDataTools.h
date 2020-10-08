@@ -12,7 +12,7 @@
 
 class FVoxelData;
 class AVoxelWorld;
-class UVoxelWorldGenerator;
+class UVoxelGenerator;
 class UVoxelHeightmapAsset;
 template<typename T>
 struct TVoxelHeightmapAssetSamplerWrapper;
@@ -409,7 +409,7 @@ public:
 	static void CompressIntoHeightmapImpl(FVoxelData& Data, TVoxelHeightmapAssetSamplerWrapper<T>& Wrapper, bool bCheckAllLeaves);
 
 	/**
-	 * If the voxel world world generator is a heightmap or if an heightmap asset is provided,
+	 * If the voxel generator is a heightmap or if an heightmap asset is provided,
 	 * will update the heightmap to the max Z surface in the voxel world
 	 * Will not edit the data: RoundToGenerator should be called after for best results
 	 */

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelGenerators/VoxelGenerator.h"
 #include "VoxelDataAsset.generated.h"
 
 class AVoxelWorld;
@@ -27,7 +27,7 @@ enum class EVoxelDataAssetImportSource
  * A Data Asset stores the values of every voxel inside it
  */
 UCLASS(HideDropdown, BlueprintType)
-class VOXEL_API UVoxelDataAsset : public UVoxelTransformableWorldGeneratorWithBounds
+class VOXEL_API UVoxelDataAsset : public UVoxelTransformableGeneratorWithBounds
 {
 	GENERATED_BODY()
 
@@ -77,10 +77,10 @@ public:
 public:
 	UVoxelDataAsset();
 
-	//~ Begin UVoxelWorldGenerator Interface
-	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override final;
-	//~ End UVoxelWorldGenerator Interface
+	//~ Begin UVoxelGenerator Interface
+	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override final;
+	//~ End UVoxelGenerator Interface
 
 public:
 	TVoxelSharedRef<const FVoxelDataAssetData> GetData();

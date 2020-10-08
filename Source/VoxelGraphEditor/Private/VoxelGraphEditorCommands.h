@@ -39,9 +39,6 @@ public:
 	TSharedPtr<FUICommandInfo> ShowStats;
 	TSharedPtr<FUICommandInfo> ShowValues;
 
-	// Menu
-	TSharedPtr<FUICommandInfo> ImportExposedVariablesValues;
-
 	// Adds an input to the node
 	TSharedPtr<FUICommandInfo> AddInput;
 
@@ -76,8 +73,6 @@ public:
 
 		UI_COMMAND(ShowStats, "Show Stats", "Show statistics about the previewed voxel. Click the graph preview to change the previewed voxel.", EUserInterfaceActionType::ToggleButton, FInputChord());
 		UI_COMMAND(ShowValues, "Show Values", "Show the values of all the nodes on the previewed voxel. Click the graph preview to change the previewed voxel.", EUserInterfaceActionType::ToggleButton, FInputChord());
-
-		UI_COMMAND(ImportExposedVariablesValues, "Import exposed variables values", "Import exposed variable values from a class", EUserInterfaceActionType::Button, FInputChord());
 
 		UI_COMMAND(AddInput, "Add Input", "Adds an input to the node", EUserInterfaceActionType::Button, FInputChord());
 		UI_COMMAND(DeleteInput, "Delete Input", "Removes an input from the node", EUserInterfaceActionType::Button, FInputChord());

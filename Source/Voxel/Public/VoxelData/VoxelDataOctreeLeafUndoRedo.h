@@ -10,7 +10,7 @@
 
 class IVoxelData;
 class FVoxelDataOctreeLeaf;
-class FVoxelWorldGeneratorInstance;
+class FVoxelGeneratorInstance;
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel UndoRedo Memory"), STAT_VoxelUndoRedoMemory, STATGROUP_VoxelMemory, VOXEL_API);
 

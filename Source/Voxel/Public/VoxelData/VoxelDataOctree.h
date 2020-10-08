@@ -67,13 +67,13 @@ public:
 
 public:
 	template<typename T>
-	T Get(const FVoxelWorldGeneratorInstance& WorldGenerator, int32 X, int32 Y, int32 Z, int32 LOD) const;
+	T Get(const FVoxelGeneratorInstance& Generator, int32 X, int32 Y, int32 Z, int32 LOD) const;
 	template<typename T>
-	T GetCustomOutput(const FVoxelWorldGeneratorInstance& WorldGenerator, T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
+	T GetCustomOutput(const FVoxelGeneratorInstance& Generator, T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
 	template<typename T, typename U = int32>
-	T GetFromGeneratorAndAssets(const FVoxelWorldGeneratorInstance& WorldGenerator, U X, U Y, U Z, int32 LOD) const;
+	T GetFromGeneratorAndAssets(const FVoxelGeneratorInstance& Generator, U X, U Y, U Z, int32 LOD) const;
 	template<typename T>
-	void GetFromGeneratorAndAssets(const FVoxelWorldGeneratorInstance& WorldGenerator, TVoxelQueryZone<T>& QueryZone, int32 LOD) const;
+	void GetFromGeneratorAndAssets(const FVoxelGeneratorInstance& Generator, TVoxelQueryZone<T>& QueryZone, int32 LOD) const;
 
 public:
 #if DO_THREADSAFE_CHECKS
@@ -133,7 +133,7 @@ public:
 			DataHolder.CreateData(Data, [&](T* RESTRICT DataPtr)
 			{
 				TVoxelQueryZone<T> QueryZone(GetBounds(), DataPtr);
-				GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+				GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);
 			});
 		}
 		DataHolder.PrepareForWrite(Data);
@@ -337,7 +337,7 @@ FORCEINLINE bool FVoxelDataOctreeBase::IsLeafOrHasNoChildren() const
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-T FVoxelDataOctreeBase::Get(const FVoxelWorldGeneratorInstance& WorldGenerator, int32 X, int32 Y, int32 Z, int32 LOD) const
+T FVoxelDataOctreeBase::Get(const FVoxelGeneratorInstance& Generator, int32 X, int32 Y, int32 Z, int32 LOD) const
 {
 	checkVoxelSlow(IsLeafOrHasNoChildren());
 	ensureThreadSafe(IsLockedForRead());
@@ -349,5 +349,5 @@ T FVoxelDataOctreeBase::Get(const FVoxelWorldGeneratorInstance& WorldGenerator, 
 			return Data.Get(FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(GetMin(), X, Y, Z));
 		}
 	}
-	return GetFromGeneratorAndAssets<T>(WorldGenerator, X, Y, Z, LOD);
+	return GetFromGeneratorAndAssets<T>(Generator, X, Y, Z, LOD);
 }

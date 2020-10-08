@@ -13,13 +13,15 @@ class UVoxelExample_IQNoise : public UVoxelGraphGeneratorHelper
 	
 public:
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Height = 500.000000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Frequency"))
+	float Frequency = 0.001;
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Frequency = 0.001000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Height"))
+	float Height = 500.0;
+	// 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Seed"))
+	int32 Seed = 1443;
 	
 	UVoxelExample_IQNoise();
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 };

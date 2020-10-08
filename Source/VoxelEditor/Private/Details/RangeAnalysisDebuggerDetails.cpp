@@ -9,16 +9,6 @@
 #include "DetailCategoryBuilder.h"
 #include "DetailWidgetRow.h"
 
-TSharedRef<IDetailCustomization> FRangeAnalysisDebuggerDetails::MakeInstance()
-{
-	return MakeShareable(new FRangeAnalysisDebuggerDetails());
-}
-
-FRangeAnalysisDebuggerDetails::FRangeAnalysisDebuggerDetails()
-{
-
-}
-
 void FRangeAnalysisDebuggerDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	TArray<TWeakObjectPtr<UObject>> Objects;

@@ -4,7 +4,7 @@
 #include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActor.h"
 #include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelGenerators/VoxelGenerator.h"
 #include "VoxelWorld.h"
 #include "EngineUtils.h"
 
@@ -71,7 +71,7 @@ bool UActorFactoryVoxelAssetActor::CanCreateActorFrom(const FAssetData& AssetDat
 	{
 		return false;
 	}
-	if (Class->IsChildOf(UVoxelTransformableWorldGenerator::StaticClass()))
+	if (Class->IsChildOf(UVoxelTransformableGenerator::StaticClass()))
 	{
 		return true;
 	}
@@ -82,7 +82,7 @@ UObject* UActorFactoryVoxelAssetActor::GetAssetFromActorInstance(AActor* ActorIn
 {
 	check(ActorInstance->IsA(NewActorClass));
 	AVoxelAssetActor* AssetActor = CastChecked<AVoxelAssetActor>(ActorInstance);
-	return AssetActor->WorldGenerator.GetObject();
+	return AssetActor->Generator.GetObject();
 }
 
 void UActorFactoryVoxelAssetActor::InitActor(UObject* Asset, AActor* NewActor)
@@ -93,9 +93,9 @@ void UActorFactoryVoxelAssetActor::InitActor(UObject* Asset, AActor* NewActor)
 	}
 
 	AVoxelAssetActor* AssetActor = CastChecked<AVoxelAssetActor>(NewActor);
-	if (auto* Generator = Cast<UVoxelTransformableWorldGenerator>(Asset))
+	if (auto* Generator = Cast<UVoxelTransformableGenerator>(Asset))
 	{
-		AssetActor->WorldGenerator = Generator;
-		AssetActor->bOverrideAssetBounds = !Asset->IsA<UVoxelTransformableWorldGeneratorWithBounds>();
+		AssetActor->Generator = Generator;
+		AssetActor->bOverrideAssetBounds = !Asset->IsA<UVoxelTransformableGeneratorWithBounds>();
 	}
 }

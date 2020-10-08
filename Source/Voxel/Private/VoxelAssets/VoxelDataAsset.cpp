@@ -3,8 +3,8 @@
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
 #include "VoxelAssets/VoxelDataAssetInstance.h"
-#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
-#include "VoxelWorldGenerators/VoxelTransformableWorldGeneratorHelper.h"
+#include "VoxelGenerators/VoxelEmptyGenerator.h"
+#include "VoxelGenerators/VoxelTransformableGeneratorHelper.h"
 #include "VoxelUtilities/VoxelSerializationUtilities.h"
 #include "VoxelFeedbackContext.h"
 #include "VoxelMessages.h"
@@ -18,14 +18,14 @@ UVoxelDataAsset::UVoxelDataAsset()
 	Data = MakeVoxelShared<FVoxelDataAssetData>();
 }
 
-TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelDataAsset::GetInstance()
+TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelDataAsset::GetInstance()
 {
 	return GetInstanceImpl();
 }
 
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelDataAsset::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelDataAsset::GetTransformableInstance()
 {
-	return MakeVoxelShared<TVoxelTransformableWorldGeneratorHelper<FVoxelDataAssetInstance>>(GetInstanceImpl(), bSubtractiveAsset);
+	return MakeVoxelShared<TVoxelTransformableGeneratorHelper<FVoxelDataAssetInstance>>(GetInstanceImpl(), bSubtractiveAsset);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

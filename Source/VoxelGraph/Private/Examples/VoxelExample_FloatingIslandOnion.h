@@ -13,22 +13,24 @@ class UVoxelExample_FloatingIslandOnion : public UVoxelGraphGeneratorHelper
 	
 public:
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Top_Noise_Frequency = 0.002000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Height"))
+	float Height = 200.0;
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Perturb_Frequency = 0.010000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Perturb Amplitude"))
+	float Perturb_Amplitude = 50.0;
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Perturb_Amplitude = 50.000000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Perturb Frequency"))
+	float Perturb_Frequency = 0.01;
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Top_Noise_Height = 500.000000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Seed"))
+	int32 Seed = 1337;
 	// 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="No Category")
-	float Height = 200.000000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Top Noise Frequency"))
+	float Top_Noise_Frequency = 0.002;
+	// 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="Top Noise Height"))
+	float Top_Noise_Height = 500.0;
 	
 	UVoxelExample_FloatingIslandOnion();
-	virtual TMap<FName, int32> GetDefaultSeeds() const override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
 };

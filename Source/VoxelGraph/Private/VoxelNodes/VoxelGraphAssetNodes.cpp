@@ -1,10 +1,10 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelNodes/VoxelGraphAssetNodes.h"
-#include "VoxelNodes/VoxelWorldGeneratorSamplerNodes.h"
+#include "VoxelNodes/VoxelGeneratorSamplerNodes.h"
 #include "CppTranslation/VoxelVariables.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInit.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorInstance.h"
+#include "VoxelGenerators/VoxelGeneratorInit.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.h"
 #include "NodeFunctions/VoxelNodeFunctions.h"
 #include "VoxelTools/VoxelHardnessHandler.h"
 #include "VoxelGraphGenerator.h"

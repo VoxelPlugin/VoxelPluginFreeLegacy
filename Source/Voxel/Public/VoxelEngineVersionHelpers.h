@@ -31,14 +31,18 @@
 
 #if ENGINE_MINOR_VERSION >= 24
 #define UE_24_SWITCH(Before, AfterOrEqual) AfterOrEqual
+#define UE_24_ONLY(...) __VA_ARGS__
 #else
 #define UE_24_SWITCH(Before, AfterOrEqual) Before
+#define UE_24_ONLY(...)
 #endif
 
 #if ENGINE_MINOR_VERSION >= 25
 #define UE_25_SWITCH(Before, AfterOrEqual) AfterOrEqual
+#define UE_25_ONLY(...) __VA_ARGS__
 #else
 #define UE_25_SWITCH(Before, AfterOrEqual) Before
+#define UE_25_ONLY(...)
 #endif
 
 #if ENGINE_MINOR_VERSION >= 26
@@ -56,7 +60,11 @@ using FSoftObjectProperty = USoftObjectProperty;
 using FIntProperty = UIntProperty;
 using FFloatProperty = UFloatProperty;
 using FBoolProperty = UBoolProperty;
+using FObjectProperty = UObjectProperty;
+using FStructProperty = UStructProperty;
 using FArrayProperty = UArrayProperty;
+using FMapProperty = UMapProperty;
+using FSetProperty = USetProperty;
 
 #define LAYOUT_FIELD(Type, Name) Type Name
 #define DECLARE_TYPE_LAYOUT(...)

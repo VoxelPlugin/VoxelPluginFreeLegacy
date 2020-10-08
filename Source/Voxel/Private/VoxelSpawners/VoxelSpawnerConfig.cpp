@@ -8,7 +8,7 @@
 #if WITH_EDITOR
 bool UVoxelSpawnerConfig::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent)
 {
-	if (Object == WorldGeneratorOutputs)
+	if (Object == GeneratorOutputs)
 	{
 		return true;
 	}
@@ -91,8 +91,7 @@ void UVoxelSpawnerConfig::PostLoad()
 			
 			NewSpawner.bSave = Spawner.Advanced.bSave;
 			NewSpawner.bDoNotDespawn = Spawner.Advanced.bDoNotDespawn;
-			NewSpawner.Seed.SeedName = Spawner.Advanced.SeedName;
-			NewSpawner.Seed.DefaultSeed = Spawner.Advanced.DefaultSeed;
+			NewSpawner.Seed = Spawner.Advanced.DefaultSeed;
 			NewSpawner.RandomGenerator = Spawner.Advanced.RandomGenerator;
 			NewSpawner.Guid = Spawner.Advanced.Guid;
 			NewSpawner.bComputeDensityFirst_HeightOnly = false;
@@ -118,8 +117,7 @@ void UVoxelSpawnerConfig::PostLoad()
 			
 			NewSpawner.bSave = Spawner.Advanced.bSave;
 			NewSpawner.bDoNotDespawn = Spawner.Advanced.bDoNotDespawn;
-			NewSpawner.Seed.SeedName = Spawner.Advanced.SeedName;
-			NewSpawner.Seed.DefaultSeed = Spawner.Advanced.DefaultSeed;
+			NewSpawner.Seed = Spawner.Advanced.DefaultSeed;
 			NewSpawner.RandomGenerator = Spawner.Advanced.RandomGenerator;
 			NewSpawner.Guid = Spawner.Advanced.Guid;
 			NewSpawner.bComputeDensityFirst_HeightOnly = Spawner.Advanced.bComputeDensityFirst;

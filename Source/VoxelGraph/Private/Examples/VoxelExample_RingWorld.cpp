@@ -12,29 +12,29 @@ class FVoxelExample_RingWorldInstance : public TVoxelGraphGeneratorInstanceHelpe
 public:
 	struct FParams
 	{
-		const float Scale;
 		const float Radius;
 		const float RingEdgesHardness;
-		const float Width_in_Degrees;
+		const float Scale;
 		const float Thickness;
+		const float Width_in_Degrees;
 		const float RiverDepth;
 		const float RiverWidth;
-		const FVoxelRichCurve RingMainShapeCurve;
-		const FVoxelRichCurve RiverDepthCurve;
-		const FVoxelRichCurve MoutainsMaskCurve;
-		const float PlainsNoiseHeight;
-		const FColor MountainsColorLowLow;
-		const FColor PlainsColorLow;
-		const FVoxelRichCurve PlainsNoiseStrengthCurve;
-		const float PlainsNoiseFrequency;
-		const FColor RiverColor;
 		const FColor BeachColor;
-		const FColor MountainsColorLowHigh;
-		const FColor RingOuterColor;
-		const FColor PlainsColorHigh;
 		const FColor MountainsColorHigh;
-		const float MountainsNoiseHeight;
+		const FColor MountainsColorLowHigh;
+		const FColor MountainsColorLowLow;
+		const FVoxelRichCurve MoutainsMaskCurve;
+		const FColor PlainsColorHigh;
+		const FColor PlainsColorLow;
+		const float PlainsNoiseFrequency;
+		const float PlainsNoiseHeight;
+		const FVoxelRichCurve PlainsNoiseStrengthCurve;
+		const FVoxelRichCurve RingMainShapeCurve;
+		const FColor RingOuterColor;
+		const FColor RiverColor;
+		const FVoxelRichCurve RiverDepthCurve;
 		const float MountainsNoiseFrequency;
+		const float MountainsNoiseHeight;
 		const float BaseNoiseFrquency;
 		const float BaseNoiseHeight;
 		const float BaseHeight;
@@ -104,7 +104,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -243,7 +243,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 2D Simplex Noise
 			_2D_Simplex_Noise_0_Noise.SetSeed(FVoxelGraphSeed(1000));
@@ -1073,7 +1073,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -1104,8 +1104,8 @@ public:
 			//////////////// Compute constants /////////////////
 			////////////////////////////////////////////////////
 			{
-				// MountainsColorLowHigh = 0.13,0.14,0.14,1
-				FColor Variable_36; // MountainsColorLowHigh = 0.13,0.14,0.14,1 output 0
+				// MountainsColorLowHigh
+				FColor Variable_36; // MountainsColorLowHigh output 0
 				Variable_36 = Params.MountainsColorLowHigh;
 				
 				// RingEdgesHardness = 10.0
@@ -1115,23 +1115,23 @@ public:
 				v_flt Variable_23; // Width in Degrees = 50.0 output 0
 				Variable_23 = Params.Width_in_Degrees;
 				
-				// RingOuterColor = 0.0052,0,9.9e-05,1
-				FColor Variable_80; // RingOuterColor = 0.0052,0,9.9e-05,1 output 0
+				// RingOuterColor
+				FColor Variable_80; // RingOuterColor output 0
 				Variable_80 = Params.RingOuterColor;
 				
-				// PlainsColorHigh = 0.1,0.18,0.042,1
-				FColor Variable_40; // PlainsColorHigh = 0.1,0.18,0.042,1 output 0
+				// PlainsColorHigh
+				FColor Variable_40; // PlainsColorHigh output 0
 				Variable_40 = Params.PlainsColorHigh;
 				
 				// MountainsNoiseFrequency = 0.2
 				BufferConstant.Variable_31 = Params.MountainsNoiseFrequency;
 				
-				// MountainsColorHigh = 1,1,1,1
-				FColor Variable_33; // MountainsColorHigh = 1,1,1,1 output 0
+				// MountainsColorHigh
+				FColor Variable_33; // MountainsColorHigh output 0
 				Variable_33 = Params.MountainsColorHigh;
 				
-				// MountainsColorLowLow = 0.036,0.023,0.017,1
-				FColor Variable_34; // MountainsColorLowLow = 0.036,0.023,0.017,1 output 0
+				// MountainsColorLowLow
+				FColor Variable_34; // MountainsColorLowLow output 0
 				Variable_34 = Params.MountainsColorLowLow;
 				
 				// RiverWidth = 1.0
@@ -1140,16 +1140,16 @@ public:
 				// PlainsNoiseFrequency = 0.2
 				BufferConstant.Variable_39 = Params.PlainsNoiseFrequency;
 				
-				// PlainsColorLow = 0.041,0.073,0.017,1
-				FColor Variable_43; // PlainsColorLow = 0.041,0.073,0.017,1 output 0
+				// PlainsColorLow
+				FColor Variable_43; // PlainsColorLow output 0
 				Variable_43 = Params.PlainsColorLow;
 				
-				// RiverColor = 0,0,1,1
-				FColor Variable_47; // RiverColor = 0,0,1,1 output 0
+				// RiverColor
+				FColor Variable_47; // RiverColor output 0
 				Variable_47 = Params.RiverColor;
 				
-				// BeachColor = 0.99,0.83,0.28,1
-				FColor Variable_66; // BeachColor = 0.99,0.83,0.28,1 output 0
+				// BeachColor
+				FColor Variable_66; // BeachColor output 0
 				Variable_66 = Params.BeachColor;
 				
 				// Scale = 10.0
@@ -1250,7 +1250,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			// Init of 2D Simplex Noise
 			_2D_Simplex_Noise_2_Noise.SetSeed(FVoxelGraphSeed(1000));
@@ -2300,7 +2300,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -2368,7 +2368,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -2456,7 +2456,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -2681,7 +2681,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -2944,29 +2944,29 @@ public:
 			Object)
 		, Params(FParams
 		{
-			Object.Scale,
 			Object.Radius,
 			Object.RingEdgesHardness,
-			Object.Width_in_Degrees,
+			Object.Scale,
 			Object.Thickness,
+			Object.Width_in_Degrees,
 			Object.RiverDepth,
 			Object.RiverWidth,
-			FVoxelRichCurve(Object.RingMainShapeCurve.LoadSynchronous()),
-			FVoxelRichCurve(Object.RiverDepthCurve.LoadSynchronous()),
-			FVoxelRichCurve(Object.MoutainsMaskCurve.LoadSynchronous()),
-			Object.PlainsNoiseHeight,
-			Object.MountainsColorLowLow,
-			Object.PlainsColorLow,
-			FVoxelRichCurve(Object.PlainsNoiseStrengthCurve.LoadSynchronous()),
-			Object.PlainsNoiseFrequency,
-			Object.RiverColor,
 			Object.BeachColor,
-			Object.MountainsColorLowHigh,
-			Object.RingOuterColor,
-			Object.PlainsColorHigh,
 			Object.MountainsColorHigh,
-			Object.MountainsNoiseHeight,
+			Object.MountainsColorLowHigh,
+			Object.MountainsColorLowLow,
+			FVoxelRichCurve(Object.MoutainsMaskCurve.LoadSynchronous()),
+			Object.PlainsColorHigh,
+			Object.PlainsColorLow,
+			Object.PlainsNoiseFrequency,
+			Object.PlainsNoiseHeight,
+			FVoxelRichCurve(Object.PlainsNoiseStrengthCurve.LoadSynchronous()),
+			FVoxelRichCurve(Object.RingMainShapeCurve.LoadSynchronous()),
+			Object.RingOuterColor,
+			Object.RiverColor,
+			FVoxelRichCurve(Object.RiverDepthCurve.LoadSynchronous()),
 			Object.MountainsNoiseFrequency,
+			Object.MountainsNoiseHeight,
 			Object.BaseNoiseFrquency,
 			Object.BaseNoiseHeight,
 			Object.BaseHeight
@@ -2978,7 +2978,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -3091,13 +3091,7 @@ UVoxelExample_RingWorld::UVoxelExample_RingWorld()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVoxelExample_RingWorld::GetDefaultSeeds() const
-{
-	return {
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_RingWorld::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelExample_RingWorld::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVoxelExample_RingWorldInstance>(*this);
@@ -3109,7 +3103,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_RingWor
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_RingWorld. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_RingWorld. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

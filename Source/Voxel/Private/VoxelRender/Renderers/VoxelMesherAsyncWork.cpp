@@ -35,7 +35,7 @@ FVoxelMesherAsyncWork::~FVoxelMesherAsyncWork()
 {
 }
 
-static void ShowWorldGeneratorError(TVoxelWeakPtr<const FVoxelData> Data)
+static void ShowGeneratorError(TVoxelWeakPtr<const FVoxelData> Data)
 {
 	static TSet<TVoxelWeakPtr<const FVoxelData>> IgnoredDatas;
 	if (!IgnoredDatas.Contains(Data))
@@ -43,7 +43,7 @@ static void ShowWorldGeneratorError(TVoxelWeakPtr<const FVoxelData> Data)
 		const auto Result = FMessageDialog::Open(
 			EAppMsgType::YesNo,
 			VOXEL_LOCTEXT(
-				"Error: The world generator is returning different values for the same position/LOD.\n"
+				"Error: The generator is returning different values for the same position/LOD.\n"
 				"Please check your code.\n"
 				"If you're using a voxel graph, this is an internal error, please report it to the developer.\n"
 				"Hide future errors?"));
@@ -81,7 +81,7 @@ void FVoxelMesherAsyncWork::DoWork()
 		}
 		else
 		{
-			AsyncTask(ENamedThreads::GameThread, [Data = MakeVoxelWeakPtr(PinnedRenderer->Settings.Data)]() { ShowWorldGeneratorError(Data); });
+			AsyncTask(ENamedThreads::GameThread, [Data = MakeVoxelWeakPtr(PinnedRenderer->Settings.Data)]() { ShowGeneratorError(Data); });
 			Chunk = Mesher->CreateEmptyChunk();
 		}
 	}

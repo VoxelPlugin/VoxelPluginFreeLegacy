@@ -8,7 +8,7 @@
 #include "VoxelNodeHelperMacros.h"
 #include "VoxelGraphErrorReporter.h"
 
-#include "VoxelWorldGenerators/VoxelWorldGeneratorPicker.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 
 #include "VoxelNodes/VoxelExecNodes.h"
 #include "VoxelNodes/VoxelExposedNodes.h"
@@ -112,15 +112,15 @@ class VOXELGRAPH_API UVoxelNode_SetDoubleIndex : public UVoxelNode_MaterialSette
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-UCLASS(DisplayName = "World Generator Sampler", NotPlaceable)
+UCLASS(DisplayName = "Generator Sampler", NotPlaceable)
 class VOXELGRAPH_API UVoxelNode_WorldGeneratorSampler : public UVoxelExposedNode
 {
 	GENERATED_BODY()
-	DEPRECATED_VOXELNODE("use Get World Generator Value / Get World Generator Material instead")
+	DEPRECATED_VOXELNODE("use Get Generator Value / Get Generator Material instead")
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-	FVoxelWorldGeneratorPicker WorldGenerator;
+	FVoxelGeneratorPicker WorldGenerator;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	TArray<FName> Seeds;

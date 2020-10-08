@@ -30,19 +30,3 @@ FText UVoxelNode_DataAssetSampler::GetTitle() const
 {
 	return FText::Format(VOXEL_LOCTEXT("Data Asset: {0}"), Super::GetTitle());
 }
-
-void UVoxelNode_DataAssetSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
-{
-	Super::LogErrors(ErrorReporter);
-	if (!Asset)
-	{
-		ErrorReporter.AddMessageToNode(this, "invalid asset", EVoxelGraphNodeMessageType::Error);
-	}
-}
-
-#if WITH_EDITOR
-bool UVoxelNode_DataAssetSampler::TryImportFromProperty(FProperty* Property, UObject* Object)
-{
-	return TryImportObject(Property, Object, Asset);
-}
-#endif

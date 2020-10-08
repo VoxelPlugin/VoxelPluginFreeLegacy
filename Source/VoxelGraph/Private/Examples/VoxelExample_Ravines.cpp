@@ -12,8 +12,9 @@ class FVoxelExample_RavinesInstance : public TVoxelGraphGeneratorInstanceHelper<
 public:
 	struct FParams
 	{
-		const float Bottom_Transition_Smoothness;
 		const float _3D_Noise_Frequency;
+		const int32 _3D_Noise_Seed;
+		const float Bottom_Transition_Smoothness;
 		const float Height;
 		const float Top_Transition_Smoothness;
 	};
@@ -65,7 +66,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -79,9 +80,9 @@ public:
 					//////// First compute all seeds in case they are used by constant nodes ////////
 					/////////////////////////////////////////////////////////////////////////////////
 					
-					// Init of 3D Noise Seed
-					FVoxelGraphSeed Variable_12; // 3D Noise Seed output 0
-					Variable_12 = InitStruct.Seeds.Contains(STATIC_FNAME("3D Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("3D Noise Seed")] : 1443;
+					// Init of 3D Noise Seed = 1443
+					FVoxelGraphSeed Variable_12; // 3D Noise Seed = 1443 output 0
+					Variable_12 = Params._3D_Noise_Seed;
 					
 					
 					////////////////////////////////////////////////////
@@ -151,11 +152,11 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
-			// Init of 3D Noise Seed
-			FVoxelGraphSeed Variable_12; // 3D Noise Seed output 0
-			Variable_12 = InitStruct.Seeds.Contains(STATIC_FNAME("3D Noise Seed")) ? InitStruct.Seeds[STATIC_FNAME("3D Noise Seed")] : 1443;
+			// Init of 3D Noise Seed = 1443
+			FVoxelGraphSeed Variable_12; // 3D Noise Seed = 1443 output 0
+			Variable_12 = Params._3D_Noise_Seed;
 			
 			// Init of 3D Perlin Noise Fractal
 			_3D_Perlin_Noise_Fractal_0_Noise.SetSeed(Variable_12);
@@ -481,7 +482,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -549,7 +550,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -621,7 +622,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -689,7 +690,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -763,7 +764,7 @@ public:
 		{
 		}
 		
-		void Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Init(const FVoxelGeneratorInit& InitStruct)
 		{
 			////////////////////////////////////////////////////
 			//////////////////// Init nodes ////////////////////
@@ -872,7 +873,7 @@ public:
 		//////////////////////////// Init functions ///////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		
-		void Function0_XYZWithoutCache_Init(const FVoxelWorldGeneratorInit& InitStruct)
+		void Function0_XYZWithoutCache_Init(const FVoxelGeneratorInit& InitStruct)
 		{
 		}
 		
@@ -1007,8 +1008,9 @@ public:
 			Object)
 		, Params(FParams
 		{
-			Object.Bottom_Transition_Smoothness,
 			Object._3D_Noise_Frequency,
+			Object._3D_Noise_Seed,
+			Object.Bottom_Transition_Smoothness,
 			Object.Height,
 			Object.Top_Transition_Smoothness
 		})
@@ -1019,7 +1021,7 @@ public:
 	{
 	}
 	
-	virtual void InitGraph(const FVoxelWorldGeneratorInit& InitStruct) override final
+	virtual void InitGraph(const FVoxelGeneratorInit& InitStruct) override final
 	{
 		LocalValue.Init(InitStruct);
 		LocalMaterial.Init(InitStruct);
@@ -1132,14 +1134,7 @@ UVoxelExample_Ravines::UVoxelExample_Ravines()
 	bEnableRangeAnalysis = true;
 }
 
-TMap<FName, int32> UVoxelExample_Ravines::GetDefaultSeeds() const
-{
-	return {
-		{ "3D Noise Seed", 1443 },
-		};
-}
-
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Ravines::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelExample_Ravines::GetTransformableInstance()
 {
 #if VOXEL_GRAPH_GENERATED_VERSION == 1
 	return MakeVoxelShared<FVoxelExample_RavinesInstance>(*this);
@@ -1151,7 +1146,7 @@ TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelExample_Ravines
 	EMIT_CUSTOM_WARNING("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Ravines. You need to update the plugin.");
 	FVoxelMessages::Warning("Generated voxel graph is more recent than the Voxel Plugin version: VoxelExample_Ravines. You need to update the plugin.");
 #endif
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 #endif
 }
 

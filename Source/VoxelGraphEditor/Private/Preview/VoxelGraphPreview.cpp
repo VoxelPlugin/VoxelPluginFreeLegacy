@@ -14,7 +14,7 @@
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 #include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
-#include "VoxelWorldGenerators/VoxelWorldGeneratorCache.h"
+#include "VoxelGenerators/VoxelGeneratorCache.h"
 #include "VoxelWorldInterface.h"
 
 #include "SVoxelGraphPreview.h"
@@ -27,16 +27,16 @@
 #include "Kismet/KismetMathLibrary.h"
 
 FVoxelGraphPreview::FVoxelGraphPreview(
-		UVoxelGraphGenerator* WorldGenerator,
+		UVoxelGraphGenerator* Generator,
 		const TSharedPtr<SVoxelGraphPreview>& Preview,
 		const TSharedPtr<SVoxelGraphPreviewViewport>& PreviewViewport,
 		const TSharedPtr<FAdvancedPreviewScene>& PreviewScene)
-	: WorldGenerator(WorldGenerator)
+	: Generator(Generator)
 	, Preview(Preview)
 	, PreviewViewport(PreviewViewport)
 	, PreviewScene(PreviewScene)
 {
-	check(WorldGenerator && WorldGenerator->PreviewSettings);
+	check(Generator && Generator->PreviewSettings);
 	
 	PreviewScene->SetLightBrightness(0.f);
 	PreviewScene->SetFloorVisibility(false, true);
@@ -102,7 +102,7 @@ void FVoxelGraphPreview::UpdateMaterialParameters()
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	const UVoxelGraphPreviewSettings& Settings = *WorldGenerator->PreviewSettings;
+	const UVoxelGraphPreviewSettings& Settings = *Generator->PreviewSettings;
 	const auto Wrapper = FVoxelGraphPreviewSettingsWrapper(Settings);
 
 	if (Settings.bHeightmapMode)

@@ -127,10 +127,6 @@ public:
 	// Used to preview placeable items
 	UPROPERTY(EditAnywhere, Category = "Voxel World Settings", Instanced, meta = (Automatic, UpdateItems))
 	UVoxelPlaceableItemManager* PlaceableItemManager = nullptr;
-		
-	// Seeds used by seed nodes
-	UPROPERTY(EditAnywhere, Category = "Voxel World Settings")
-	mutable TMap<FName, int32> Seeds;
 
 	// Value returned by the Voxel Size node
 	UPROPERTY(EditAnywhere, Category = "Voxel World Settings", AdvancedDisplay)

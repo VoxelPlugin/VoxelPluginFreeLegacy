@@ -195,8 +195,6 @@ public:
 	
 	void ShowAxisDependencies();
 
-	void ImportExposedVariablesValues();
-
 	void UndoGraphAction();
 	void RedoGraphAction();
 
@@ -206,7 +204,7 @@ public:
 
 private:
 	// The Voxel asset being inspected
-	UVoxelGraphGenerator* WorldGenerator = nullptr;
+	UVoxelGraphGenerator* Generator = nullptr;
 
 	// Command list for this editor
 	TSharedPtr<FUICommandList> GraphEditorCommands;

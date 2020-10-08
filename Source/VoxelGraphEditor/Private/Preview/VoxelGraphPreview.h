@@ -25,7 +25,7 @@ class FVoxelGraphPreview
 {
 public:
 	FVoxelGraphPreview(
-		UVoxelGraphGenerator* WorldGenerator,
+		UVoxelGraphGenerator* Generator,
 		const TSharedPtr<SVoxelGraphPreview>& Preview,
 		const TSharedPtr<SVoxelGraphPreviewViewport>& PreviewViewport,
 		const TSharedPtr<FAdvancedPreviewScene>& PreviewScene);
@@ -34,7 +34,7 @@ public:
 	void AddReferencedObjects(FReferenceCollector& Collector);
 
 private:
-	UVoxelGraphGenerator* const WorldGenerator;
+	UVoxelGraphGenerator* const Generator;
 	TSharedPtr<SVoxelGraphPreview> const Preview;
 	TSharedPtr<SVoxelGraphPreviewViewport> const PreviewViewport;
 	TSharedPtr<FAdvancedPreviewScene> const PreviewScene;

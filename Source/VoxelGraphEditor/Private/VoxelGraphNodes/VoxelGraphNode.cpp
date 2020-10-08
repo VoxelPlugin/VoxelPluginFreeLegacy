@@ -33,7 +33,7 @@ void UVoxelGraphNode::SetVoxelNode(UVoxelNode* InNode)
 
 void UVoxelGraphNode::PostCopyNode()
 {
-	// Make sure the VoxelNode goes back to being owned by the WorldGenerator after copying.
+	// Make sure the VoxelNode goes back to being owned by the generator after copying.
 	ResetVoxelNodeOwner();
 }
 
@@ -85,7 +85,7 @@ void UVoxelGraphNode::AddInputPin()
 
 	VoxelNode->OnInputPinCountModified();
 
-	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(GetGraph())->GetWorldGenerator();
+	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(GetGraph())->GetGenerator();
 	Generator->CompileVoxelNodesFromGraphNodes();
 
 	// Refresh the current graph, so the pins can be updated
@@ -134,7 +134,7 @@ void UVoxelGraphNode::RemoveInputPin(UEdGraphPin* InGraphPin)
 
 	VoxelNode->OnInputPinCountModified();
 
-	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(GetGraph())->GetWorldGenerator();
+	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(GetGraph())->GetGenerator();
 	Generator->CompileVoxelNodesFromGraphNodes();
 
 	// Refresh the current graph, so the pins can be updated
@@ -797,7 +797,7 @@ void UVoxelGraphNode::PostLoad()
 
 void UVoxelGraphNode::PostEditImport()
 {
-	// Make sure this VoxelNode is owned by the WorldGenerator it's being pasted into.
+	// Make sure this VoxelNode is owned by the generator it's being pasted into.
 	ResetVoxelNodeOwner();
 }
 
@@ -815,11 +815,11 @@ void UVoxelGraphNode::ResetVoxelNodeOwner()
 {
 	if (VoxelNode)
 	{
-		UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(GetGraph())->GetWorldGenerator();
+		UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(GetGraph())->GetGenerator();
 
 		if (VoxelNode->GetOuter() != Generator)
 		{
-			// Ensures VoxelNode is owned by the WorldGenerator
+			// Ensures VoxelNode is owned by the generator
 			VoxelNode->Rename(NULL, Generator, REN_DontCreateRedirectors);
 		}
 

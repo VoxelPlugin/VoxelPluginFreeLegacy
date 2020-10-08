@@ -21,7 +21,7 @@
 #include "IVoxelPool.h"
 #include "VoxelDefaultPool.h"
 #include "VoxelMessages.h"
-#include "VoxelUtilities/VoxelWorldGeneratorUtilities.h"
+#include "VoxelUtilities/VoxelGeneratorUtilities.h"
 
 #include "Async/Async.h"
 #include "Engine/StaticMesh.h"
@@ -599,9 +599,9 @@ float UVoxelBlueprintLibrary::GetFloatOutput(AVoxelWorld* World, FName Name, flo
 	
 	auto& Data = World->GetData();
 
-	if (!Data.WorldGenerator->GetOutputsPtrMap<v_flt>().Contains(Name))
+	if (!Data.Generator->GetOutputsPtrMap<v_flt>().Contains(Name))
 	{
-		FVoxelMessages::Error(FUNCTION_ERROR(FVoxelUtilities::GetMissingWorldGeneratorOutputErrorString<v_flt>(Name, *Data.WorldGenerator)));
+		FVoxelMessages::Error(FUNCTION_ERROR(FVoxelUtilities::GetMissingGeneratorOutputErrorString<v_flt>(Name, *Data.Generator)));
 		return 0;
 	}
 
@@ -615,9 +615,9 @@ int32 UVoxelBlueprintLibrary::GetIntOutput(AVoxelWorld* World, FName Name, float
 	
 	auto& Data = World->GetData();
 
-	if (!Data.WorldGenerator->GetOutputsPtrMap<int32>().Contains(Name))
+	if (!Data.Generator->GetOutputsPtrMap<int32>().Contains(Name))
 	{
-		FVoxelMessages::Error(FUNCTION_ERROR(FVoxelUtilities::GetMissingWorldGeneratorOutputErrorString<int32>(Name, *Data.WorldGenerator)));
+		FVoxelMessages::Error(FUNCTION_ERROR(FVoxelUtilities::GetMissingGeneratorOutputErrorString<int32>(Name, *Data.Generator)));
 		return 0;
 	}
 

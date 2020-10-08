@@ -13,11 +13,13 @@
 
 #include "VoxelMessages.h"
 #include "VoxelNode.h"
-#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
+#include "VoxelGenerators/VoxelEmptyGenerator.h"
+#include "VoxelGenerators/VoxelGeneratorParameters.h"
 
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphSchema.h"
 #include "Engine/Texture2D.h"
+#include "Misc/ScopeExit.h"
 #include "Misc/MessageDialog.h"
 
 #define VOXEL_GRAPH_THUMBNAIL_RES 128
@@ -118,97 +120,64 @@ void UVoxelGraphGenerator::SetPreviewTexture(const TArray<FColor>& Colors, int32
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-void UVoxelGraphGenerator::ClearParametersOverrides()
-{
-	FloatParameters.Reset();
-	IntParameters.Reset();
-	BoolParameters.Reset();
-	ColorParameters.Reset();
-	VoxelTextureParameters.Reset();
-}
-
-float UVoxelGraphGenerator::GetFloatParameter(const FName& Name, float DefaultValue) const
-{
-	const auto* Value = FloatParameters.Find(Name);
-	return Value ? *Value : DefaultValue;
-}
-
-int32 UVoxelGraphGenerator::GetIntParameter(const FName& Name, int32 DefaultValue) const
-{
-	const auto* Value = IntParameters.Find(Name);
-	return Value ? *Value : DefaultValue;
-}
-
-bool UVoxelGraphGenerator::GetBoolParameter(const FName& Name, bool DefaultValue) const
-{
-	const auto* Value = BoolParameters.Find(Name);
-	return Value ? *Value : DefaultValue;
-}
-
-FLinearColor UVoxelGraphGenerator::GetColorParameter(const FName& Name, FLinearColor DefaultValue) const
-{
-	const auto* Value = ColorParameters.Find(Name);
-	return Value ? *Value : DefaultValue;
-}
-
-FVoxelFloatTexture UVoxelGraphGenerator::GetTextureParameter(const FName& Name) const
-{
-	const auto* Value = VoxelTextureParameters.Find(Name);
-	return Value ? *Value : FVoxelFloatTexture();
-}
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-
-/////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////
-
-TMap<FName, int32> UVoxelGraphGenerator::GetDefaultSeeds() const
+void UVoxelGraphGenerator::ApplyParameters(const TMap<FName, FString>& Parameters)
 {
-	TMap<FName, TArray<UVoxelNode_Seed*>> NameToSeedNodes;
-
-	for(auto* Node : AllNodes)
+	for (auto* Node : AllNodes)
 	{
-		if (auto* SeedNode = Cast<UVoxelNode_Seed>(Node))
-		{
-			NameToSeedNodes.FindOrAdd(SeedNode->Name).Add(SeedNode);
-		}
+		Node->ApplyParameters(Parameters);
+	}
+}
+
+void UVoxelGraphGenerator::GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const
+{
+	for (auto* Node : AllNodes)
+	{
+		Node->GetParameters(OutParameters);
 	}
 	
-	TMap<FName, int32> Result;
-	for (auto& It : NameToSeedNodes)
+	TMap<FName, FVoxelGeneratorParameter> NamesToParameters;
+	for (auto& Parameter : OutParameters)
 	{
-		check(It.Value.Num() > 0);
-		const FName Name = It.Key;
-		const auto& SeedNodes = It.Value;
-		const int32 Seed = SeedNodes[0]->DefaultValue;
-		for (auto* SeedNode : SeedNodes)
+		auto* ExistingParameter = NamesToParameters.Find(Parameter.Id);
+		if (!ExistingParameter)
 		{
-			if (SeedNode->DefaultValue != Seed)
-			{
-				FVoxelGraphErrorReporter ErrorReporter(this);
-				ErrorReporter.AddError("Seeds have the same name, but different default values! Name: " + Name.ToString());
-				for (auto* Node : SeedNodes)
-				{
-					ErrorReporter.AddMessageToNode(Node, "Seed: " + LexToString(Node->DefaultValue), EVoxelGraphNodeMessageType::Info);
-				}
-				ErrorReporter.Apply(false);
-				FVoxelMessages::Error("Voxel Graph Error: GetDefaultSeeds failed!", this);
-				return {};
-			}
+			NamesToParameters.Add(Parameter.Id, Parameter);
+			continue;
 		}
-		Result.Add(Name, Seed);
+
+		if (ExistingParameter->Name != Parameter.Name)
+		{
+			FVoxelMessages::Error(FString::Printf(
+				TEXT("Parameters with same Unique Name but different Display Name: %s vs %s for %s"),
+				*Parameter.Name,
+				*ExistingParameter->Name,
+				*Parameter.Id.ToString()));
+		}
+		if (ExistingParameter->Type != Parameter.Type)
+		{
+			FVoxelMessages::Error(FString::Printf(
+				TEXT("Parameters with same Unique Name but different type: %s vs %s for %s"),
+				*Parameter.Type.ToString(),
+				*ExistingParameter->Type.ToString(),
+				*Parameter.Id.ToString()));
+		}
 	}
-	return Result;
 }
 
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance()
+{
+	return GetTransformableInstance({});
+}
+
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance(const TMap<FName, FString>& Parameters)
 {
 	FVoxelMessages::Info("Running Voxel Graphs require Voxel Plugin Pro");
-	return MakeVoxelShared<FVoxelTransformableEmptyWorldGeneratorInstance>();
+	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -253,18 +222,6 @@ void UVoxelGraphGenerator::PostEditChangeProperty(struct FPropertyChangedEvent& 
 			UpdateSetterNodes();
 		}
 	}
-}
-
-/////////////////////////////////////////////////////////////////////////////////
-
-void UVoxelGraphGenerator::OnPreBeginPIE(bool bIsSimulating)
-{
-	ClearParametersOverrides();
-}
-
-void UVoxelGraphGenerator::OnEndPIE(bool bIsSimulating)
-{
-	ClearParametersOverrides();
 }
 
 /////////////////////////////////////////////////////////////////////////////////

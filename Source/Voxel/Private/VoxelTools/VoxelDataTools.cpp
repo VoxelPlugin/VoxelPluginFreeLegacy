@@ -225,7 +225,7 @@ bool UVoxelDataTools::LoadFromSave(const AVoxelWorld* World, const FVoxelUncompr
 	TArray<FVoxelIntBox> BoundsToUpdate;
 	auto& Data = World->GetData();
 	
-	const FVoxelWorldGeneratorInit WorldInit = World->GetInitStruct();
+	const FVoxelGeneratorInit WorldInit = World->GetGeneratorInit();
 	const FVoxelPlaceableItemLoadInfo LoadInfo{ &WorldInit, &Objects };
 
 	const bool bSuccess = Data.LoadFromSave(Save, LoadInfo, &BoundsToUpdate);
@@ -635,7 +635,7 @@ void UVoxelDataTools::CompressIntoHeightmapImpl(FVoxelData& Data, TVoxelHeightma
 					DataHolder.CreateData(Data, [&](FVoxelValue* RESTRICT DataPtr)
 					{
 						TVoxelQueryZone<FVoxelValue> QueryZone(Leaf.GetBounds(), DataPtr);
-						Leaf.GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+						Leaf.GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);
 					});
 					// Reduce memory usage
 					DataHolder.Compress(Data);
@@ -826,9 +826,9 @@ void UVoxelDataTools::CompressIntoHeightmap(
 	bool bCheckAllLeaves = false;
 	if (!HeightmapAsset)
 	{
-		if (World->WorldGenerator.IsObject()) // We don't want to edit the default object otherwise
+		if (World->Generator.IsObject()) // We don't want to edit the default object otherwise
 		{
-			HeightmapAsset = Cast<UVoxelHeightmapAsset>(World->WorldGenerator.Object);
+			HeightmapAsset = Cast<UVoxelHeightmapAsset>(World->Generator.Object);
 		}
 	}
 	else 
@@ -880,7 +880,7 @@ void UVoxelDataTools::CompressIntoHeightmap(
 	}
 	else
 	{
-		FVoxelMessages::Error(FUNCTION_ERROR("World Generator is not an heightmap!"));
+		FVoxelMessages::Error(FUNCTION_ERROR("Generator is not an heightmap!"));
 	}
 }
 
@@ -921,7 +921,7 @@ void UVoxelDataTools::RoundToGeneratorImpl(FVoxelData& Data, const FVoxelIntBox&
 			{
 				const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(LeafBounds.Min, X, Y, Z);
 				const FVoxelValue Value = Leaf.GetData<FVoxelValue>().Get(Index);
-				const FVoxelValue GeneratorValue = Data.WorldGenerator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
+				const FVoxelValue GeneratorValue = Data.Generator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
 
 				if (Value == GeneratorValue) return;
 				if (Value.IsEmpty() != GeneratorValue.IsEmpty()) return;
@@ -929,7 +929,7 @@ void UVoxelDataTools::RoundToGeneratorImpl(FVoxelData& Data, const FVoxelIntBox&
 				const auto CheckNeighbor = [&](int32 DX, int32 DY, int32 DZ)
 				{
 					const FVoxelValue OtherValue = OctreeAccelerator.GetValue(X + DX, Y + DY, Z + DZ, 0);
-					const FVoxelValue OtherGeneratorValue = Data.WorldGenerator->Get<FVoxelValue>(X + DX, Y + DY, Z + DZ, 0, FVoxelItemStack::Empty);
+					const FVoxelValue OtherGeneratorValue = Data.Generator->Get<FVoxelValue>(X + DX, Y + DY, Z + DZ, 0, FVoxelItemStack::Empty);
 					return OtherValue.IsEmpty() == OtherGeneratorValue.IsEmpty();
 				};
 

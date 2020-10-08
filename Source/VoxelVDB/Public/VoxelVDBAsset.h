@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelRange.h"
 #include "VoxelContainers/VoxelStaticArray.h"
-#include "VoxelWorldGenerators/VoxelWorldGenerator.h"
+#include "VoxelGenerators/VoxelGenerator.h"
 #include "VoxelVDBAsset.generated.h"
 
 class UVoxelVDBAsset;
@@ -118,7 +118,7 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 
 UCLASS(HideDropdown, BlueprintType)
-class VOXELVDB_API UVoxelVDBAsset : public UVoxelTransformableWorldGeneratorWithBounds
+class VOXELVDB_API UVoxelVDBAsset : public UVoxelTransformableGeneratorWithBounds
 {
 	GENERATED_BODY()
 		
@@ -136,11 +136,11 @@ public:
 	TMap<FName, FVoxelVDBImportChannelConfig> ChannelConfigs;
 	
 public:
-	//~ Begin UVoxelWorldGenerator Interface
+	//~ Begin UVoxelGenerator Interface
 	virtual FVoxelIntBox GetBounds() const override;
-	virtual TVoxelSharedRef<FVoxelWorldGeneratorInstance> GetInstance() override;
-	virtual TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> GetTransformableInstance() override final;
-	//~ End UVoxelWorldGenerator Interface
+	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance() override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override final;
+	//~ End UVoxelGenerator Interface
 
 public:
 	TVoxelSharedRef<const FVoxelVDBAssetData> GetData();

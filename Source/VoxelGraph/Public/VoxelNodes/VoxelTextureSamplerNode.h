@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelEnums.h"
+#include "VoxelTexture.h"
 #include "VoxelExposedNodes.h"
 #include "VoxelTextureSamplerNode.generated.h"
 
@@ -34,11 +35,9 @@ public:
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 	//~ End UVoxelNode Interface
 
-#if WITH_EDITOR
 	//~ Begin UVoxelExposedNode Interface
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Texture); }
 	//~ End UVoxelExposedNode Interface
-#endif
 };
 
 // Voxel Texture sampler. Inputs are in the texture dimension, not between 0 and 1
@@ -57,18 +56,22 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Texture settings")
 	EVoxelSamplerMode Mode = EVoxelSamplerMode::Tile;
 
+	// For parameters to work
+	UPROPERTY()
+	FVoxelFloatTexture Texture;
+
 	UVoxelNode_VoxelTextureSampler();
 
 	//~ Begin UVoxelNode Interface
 	virtual EVoxelPinCategory GetInputPinCategory(int32 PinIndex) const override;
 	virtual FText GetTitle() const override;
-	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override {}
 	//~ End UVoxelNode Interface
 
-#if WITH_EDITOR
 	//~ Begin UVoxelExposedNode Interface
-	virtual bool TryImportFromProperty(FProperty* Property, UObject* Object) override;
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Texture); }
 	//~ End UVoxelExposedNode Interface
+	
+#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 };

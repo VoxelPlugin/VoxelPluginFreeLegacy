@@ -6,7 +6,7 @@
 #include "VoxelVector.h"
 #include "VoxelMessages.h"
 #include "VoxelWorldInterface.h"
-#include "VoxelUtilities/VoxelWorldGeneratorUtilities.h"
+#include "VoxelUtilities/VoxelGeneratorUtilities.h"
 
 #include "Async/Async.h"
 #include "TimerManager.h"

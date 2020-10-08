@@ -100,7 +100,7 @@ bool FVoxelDataUtilities::CheckIfSameAsGenerator(const FVoxelData& Data, FVoxelD
 		{
 			for (int32 Z = 0; Z < DATA_CHUNK_SIZE; Z++)
 			{
-				const T GeneratorValue = Leaf.GetFromGeneratorAndAssets<T>(*Data.WorldGenerator, Min.X + X, Min.Y + Y, Min.Z + Z, 0);
+				const T GeneratorValue = Leaf.GetFromGeneratorAndAssets<T>(*Data.Generator, Min.X + X, Min.Y + Y, Min.Z + Z, 0);
 				const T Value = DataHolder.Get(FVoxelDataOctreeUtilities::IndexFromCoordinates(X, Y, Z));
 				if (Value != GeneratorValue)
 				{
@@ -135,7 +135,7 @@ void FVoxelDataUtilities::SetEntireDataAsDirtyAndCopyFrom(const FVoxelData& Sour
 				DataHolder.CreateData(DestData, [&](T* RESTRICT DataPtr)
 				{
 					TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
-					SourceBottomNode.GetFromGeneratorAndAssets(*SourceData.WorldGenerator, QueryZone, 0); // Note: make sure to use the source world generator!
+					SourceBottomNode.GetFromGeneratorAndAssets(*SourceData.Generator, QueryZone, 0); // Note: make sure to use the source generator!
 				});
 				DataHolder.Compress(DestData); // To save memory
 			};
@@ -200,7 +200,7 @@ void FVoxelDataUtilities::CopyDirtyChunksFrom(const FVoxelData& SourceData, FVox
 }
 
 template<typename T>
-void FVoxelDataUtilities::OverrideWorldGeneratorValue(FVoxelData& Data, T Value)
+void FVoxelDataUtilities::OverrideGeneratorValue(FVoxelData& Data, T Value)
 {
 	FVoxelOctreeUtilities::IterateEntireTree(Data.GetOctree(), [&](FVoxelDataOctreeBase& Tree)
 	{

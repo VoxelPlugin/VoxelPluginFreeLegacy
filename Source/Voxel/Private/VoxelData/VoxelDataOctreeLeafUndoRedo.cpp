@@ -96,7 +96,7 @@ void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOc
 			DataHolder.CreateData(Data, [&](T* RESTRICT DataPtr)
 			{
 				TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
-				Leaf.GetFromGeneratorAndAssets(*Data.WorldGenerator, QueryZone, 0);
+				Leaf.GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);
 			});
 		}
 		DataHolder.PrepareForWrite(Data);

@@ -6,8 +6,8 @@
 #include "VoxelMessages.h"
 #include "VoxelFeedbackContext.h"
 #include "VoxelUtilities/VoxelSerializationUtilities.h"
-#include "VoxelWorldGenerators/VoxelEmptyWorldGenerator.h"
-#include "VoxelWorldGenerators/VoxelTransformableWorldGeneratorHelper.h"
+#include "VoxelGenerators/VoxelEmptyGenerator.h"
+#include "VoxelGenerators/VoxelTransformableGeneratorHelper.h"
 
 #include "Serialization/LargeMemoryReader.h"
 #include "Serialization/LargeMemoryWriter.h"
@@ -258,14 +258,14 @@ TVoxelSharedRef<TVoxelHeightmapAssetInstance<float>> UVoxelHeightmapAssetFloat::
 	return MakeVoxelShared<TVoxelHeightmapAssetInstance<float>>(*this);
 }
 
-TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelHeightmapAssetFloat::GetInstance()
+TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelHeightmapAssetFloat::GetInstance()
 {
 	return GetInstanceImpl();
 }
 
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelHeightmapAssetFloat::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelHeightmapAssetFloat::GetTransformableInstance()
 {
-	return MakeVoxelShared<TVoxelTransformableWorldGeneratorHelper<TVoxelHeightmapAssetInstance<float>>>(GetInstanceImpl(), false);
+	return MakeVoxelShared<TVoxelTransformableGeneratorHelper<TVoxelHeightmapAssetInstance<float>>>(GetInstanceImpl(), false);
 }
 
 FVoxelIntBox UVoxelHeightmapAssetFloat::GetBounds() const
@@ -306,14 +306,14 @@ TVoxelSharedRef<TVoxelHeightmapAssetInstance<uint16>> UVoxelHeightmapAssetUINT16
 	return MakeVoxelShared<TVoxelHeightmapAssetInstance<uint16>>(*this);
 }
 
-TVoxelSharedRef<FVoxelWorldGeneratorInstance> UVoxelHeightmapAssetUINT16::GetInstance()
+TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelHeightmapAssetUINT16::GetInstance()
 {
 	return GetInstanceImpl();
 }
 
-TVoxelSharedRef<FVoxelTransformableWorldGeneratorInstance> UVoxelHeightmapAssetUINT16::GetTransformableInstance()
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelHeightmapAssetUINT16::GetTransformableInstance()
 {
-	return MakeVoxelShared<TVoxelTransformableWorldGeneratorHelper<TVoxelHeightmapAssetInstance<uint16>>>(GetInstanceImpl(), false);
+	return MakeVoxelShared<TVoxelTransformableGeneratorHelper<TVoxelHeightmapAssetInstance<uint16>>>(GetInstanceImpl(), false);
 }
 
 FVoxelIntBox UVoxelHeightmapAssetUINT16::GetBounds() const
