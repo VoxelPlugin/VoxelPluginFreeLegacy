@@ -78,6 +78,17 @@ public:
 	FOnTeleported OnTeleported;
 
 public:
+	// Implement this to select which voxel worlds to consider
+	UFUNCTION(BlueprintNativeEvent, Category = "Voxel")
+	bool ShouldUseVoxelWorld(AVoxelWorld* VoxelWorld);
+
+	virtual bool ShouldUseVoxelWorld_Implementation(AVoxelWorld* VoxelWorld)
+	{
+		// Use all voxel worlds by default
+		return true;
+	}
+
+public:
 	// True if we are currently inside the voxel world surface
 	UPROPERTY(BlueprintReadOnly, Category = "Voxel")
 	bool bIsInsideSurface = false;
@@ -95,8 +106,8 @@ private:
 		bool bInsideSurface = false;
 		TOptional<FIntVector> ClosestSafeLocation;
 	};
-	TFuture<FAsyncResult> AsyncResult;
-	TWeakObjectPtr<AVoxelWorld> PendingVoxelWorld;
+	TFuture<TArray<FAsyncResult>> AsyncResult;
+	TArray<TWeakObjectPtr<AVoxelWorld>> PendingVoxelWorlds;
 
 	void StartAsyncTask();
 

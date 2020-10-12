@@ -47,20 +47,37 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		return;
 	}
 
-	FAsyncResult Result = AsyncResult.Get();
-	AVoxelWorld* VoxelWorld = PendingVoxelWorld.Get();
-
-	AsyncResult = {};
-	PendingVoxelWorld = {};
+	const TArray<FAsyncResult> Results = AsyncResult.Get();
+	const TArray<TWeakObjectPtr<AVoxelWorld>> VoxelWorlds = MoveTemp(PendingVoxelWorlds);
 	
-	if (!VoxelWorld || !VoxelWorld->IsCreated())
+	AsyncResult.Reset();
+	PendingVoxelWorlds.Reset();
+	
+	if (!ensure(Results.Num() == VoxelWorlds.Num()) || !ensure(Results.Num() > 0))
 	{
-		LOG_VOXEL(Warning, TEXT("NoClippingComponent: Clearing task result as voxel world is now invalid"));
-		VoxelWorld = nullptr;
-		Result.ClosestSafeLocation.Reset();
+		return;
 	}
 
-	if (!Result.bInsideSurface)
+	FAsyncResult WorstResult;
+	TWeakObjectPtr<AVoxelWorld> WorstVoxelWorld;
+	for (int32 Index = 0; Index < Results.Num(); Index++)
+	{
+		const FAsyncResult& Result = Results[Index];
+		const TWeakObjectPtr<AVoxelWorld>& VoxelWorld = VoxelWorlds[Index];
+
+		if (!Result.bInsideSurface)
+		{
+			continue;
+		}
+
+		WorstResult = Result;
+		WorstVoxelWorld = VoxelWorld;
+
+		// TODO smarter selection when we are inside multiple voxel worlds?
+		break;
+	}
+	
+	if (!WorstResult.bInsideSurface)
 	{
 		// We're safe
 		if (bIsInsideSurface)
@@ -70,13 +87,20 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		}
 		return;
 	}
+	
+	if (!WorstVoxelWorld.IsValid() || !WorstVoxelWorld->IsCreated())
+	{
+		LOG_VOXEL(Warning, TEXT("NoClippingComponent: Clearing task result as voxel world is now invalid"));
+		WorstVoxelWorld = nullptr;
+		WorstResult.ClosestSafeLocation.Reset();
+	}
 
 	// We're not safe!
-	if (Result.ClosestSafeLocation)
+	if (WorstResult.ClosestSafeLocation)
 	{
 		// We found a safe location: teleport there
 		
-		const FVector NewPosition = VoxelWorld->LocalToGlobal(Result.ClosestSafeLocation.GetValue());
+		const FVector NewPosition = WorstVoxelWorld->LocalToGlobal(WorstResult.ClosestSafeLocation.GetValue());
 		const FVector Delta = NewPosition - GetComponentLocation();
 
 		AActor& Owner = *GetOwner();
@@ -123,36 +147,46 @@ void UVoxelNoClippingComponent::StartAsyncTask()
 	{
 		return;
 	}
-	ensure(!PendingVoxelWorld.IsValid());
+	ensure(PendingVoxelWorlds.Num() == 0);
 
-	AVoxelWorld* VoxelWorld = nullptr;
-	FVoxelVector Location{ ForceInit };
-
-	for (auto* It : TActorRange<AVoxelWorld>(GetWorld()))
+	struct FVoxelWorldInfo
 	{
-		if (!It->IsCreated())
+		AVoxelWorld* VoxelWorld = nullptr;
+		TVoxelSharedPtr<FVoxelData> Data;
+		FVoxelVector Location{ ForceInit };
+	};
+	TArray<FVoxelWorldInfo> VoxelWorldInfos;
+
+	for (auto* VoxelWorld : TActorRange<AVoxelWorld>(GetWorld()))
+	{
+		if (!VoxelWorld->IsCreated() || !ShouldUseVoxelWorld(VoxelWorld))
 		{
 			continue;
 		}
 
-		Location = It->GlobalToLocalFloat(GetComponentLocation());
-		if (It->GetWorldBounds().ContainsFloat(Location))
+		const auto Location = VoxelWorld->GlobalToLocalFloat(GetComponentLocation());
+		if (VoxelWorld->GetWorldBounds().ContainsFloat(Location))
 		{
-			if (VoxelWorld)
-			{
-				FVoxelMessages::Warning("Multiple voxel worlds are overlapping NoClippingComponent!", GetOwner());
-			}
-			VoxelWorld = It;
+			VoxelWorldInfos.Add(FVoxelWorldInfo{ VoxelWorld, VoxelWorld->GetDataSharedPtr(), Location });
 		}
 	}
 
-	if (VoxelWorld)
+	if (VoxelWorldInfos.Num() > 0)
 	{
-		PendingVoxelWorld = VoxelWorld;
-
-		AsyncResult = Async(EAsyncExecution::TaskGraph, [Data = VoxelWorld->GetDataSharedPtr(), Location, SearchRange = SearchRange]()
+		PendingVoxelWorlds.Reset();
+		for (auto& It : VoxelWorldInfos)
 		{
-			return AsyncTask(*Data, Location, SearchRange);
+			PendingVoxelWorlds.Add(It.VoxelWorld);
+		}
+
+		AsyncResult = Async(EAsyncExecution::TaskGraph, [VoxelWorldInfos, SearchRange = SearchRange]()
+		{
+			TArray<FAsyncResult> Results;
+			for (auto& It : VoxelWorldInfos)
+			{
+				Results.Add(AsyncTask(*It.Data, It.Location, SearchRange));
+			}
+			return Results;
 		});
 	}
 	else

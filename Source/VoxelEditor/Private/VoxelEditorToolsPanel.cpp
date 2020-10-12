@@ -458,8 +458,9 @@ void FVoxelEditorToolsPanel::Tick(FEditorViewportClient* ViewportClient, float D
 						MousePosition = Geometry.Size / 2;
 					}
 
-					const float DPIScaleFactor = FPlatformApplicationMisc::GetDPIScaleFactorAtPoint(MousePosition.X, MousePosition.Y);
-					MousePosition *= DPIScaleFactor;
+					// Make sure to use the window scale factor and not the scale under the cursor,
+					// as the window DPI scale is uniform
+					MousePosition *= ViewportClient->GetDPIScale();
 					
 					TickData.MousePosition = FVector2D(MousePosition);
 					TickData.CameraViewDirection = SceneView->ViewMatrices.GetInvViewMatrix().TransformVector(FVector(0, 0, 1));
