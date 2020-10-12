@@ -133,7 +133,7 @@ FVoxelIntBoxWithValidity UVoxelSurfaceTool::DoEdit()
 	{
 		if (bSculpt)
 		{
-			Voxels = UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, BoundsToDoEditsIn, SharedConfig->bMultiThreaded, SharedConfig->ComputeDevice);
+			Voxels = UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, BoundsToDoEditsIn, SharedConfig->bMultiThreaded, SharedConfig->GetComputeDevice());
 		}
 		else
 		{

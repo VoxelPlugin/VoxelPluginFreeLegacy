@@ -153,6 +153,13 @@ public:
 	UMaterialInterface* PlaneMaterial = nullptr;
 
 public:
+	EVoxelComputeDevice GetComputeDevice() const
+	{
+		// Dedicated servers can't use the GPU
+		return IsRunningDedicatedServer() ? EVoxelComputeDevice::CPU : ComputeDevice;
+	}
+
+public:
 	UPROPERTY(BlueprintAssignable)
 	FVoxelTool_OnBoundsUpdated OnBoundsUpdated;
 
