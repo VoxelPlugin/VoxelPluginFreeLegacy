@@ -5,19 +5,21 @@
 #include "CoreMinimal.h"
 #include "VoxelSharedPtr.h"
 
-struct FVoxelCancelCounter
+class FVoxelCancelCounter
 {
-	const TVoxelSharedRef<FThreadSafeCounter64> Counter;
-	const int64 Threshold;
-
+public:
 	explicit FVoxelCancelCounter(const TVoxelSharedRef<FThreadSafeCounter64>& Counter)
 		: Counter(Counter)
 		, Threshold(Counter->GetValue())
 	{
 	}
 
-	inline bool IsCanceled() const
+	bool IsCanceled() const
 	{
 		return Counter->GetValue() > Threshold;
 	}
+
+private:
+	const TVoxelSharedRef<FThreadSafeCounter64> Counter;
+	const int64 Threshold;
 };
