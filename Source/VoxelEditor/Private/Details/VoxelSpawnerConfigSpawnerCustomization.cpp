@@ -162,6 +162,8 @@ void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IProp
 	if (Type == EVoxelSpawnerType::Height)
 	{
 		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bComputeDensityFirst_HeightOnly));
+		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bCheckIfFloating_HeightOnly));
+		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bCheckIfCovered_HeightOnly));
 	}
 }
 
