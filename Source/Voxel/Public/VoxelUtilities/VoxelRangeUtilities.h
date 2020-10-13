@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelRange.h"
+#include "VoxelIntBox.h"
 
 #include <cmath>
 
