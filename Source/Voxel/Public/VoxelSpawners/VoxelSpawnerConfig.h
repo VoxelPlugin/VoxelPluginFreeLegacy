@@ -203,6 +203,14 @@ public:
 	// - for sphere worlds: Length(X, Y, Z) = Height
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Compute Density First"))
 	bool bComputeDensityFirst_HeightOnly = false;
+
+	// If true, will not spawn height instances if they are now floating due to user edits or additional 3D noise in the generator
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Check If Floating"))
+	bool bCheckIfFloating_HeightOnly = true;
+
+	// If true, will not spawn height instances if they are now covered due to user edits or additional 3D noise in the generator
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Check If Covered"))
+	bool bCheckIfCovered_HeightOnly = true;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
