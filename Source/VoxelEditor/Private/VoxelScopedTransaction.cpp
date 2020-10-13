@@ -33,16 +33,13 @@ TUniquePtr<FChange> FVoxelEditChange::Execute(UObject* Object)
 	if (ensure(VoxelWorld) && VoxelWorld->GetDataSharedPtr() == DataWeakPtr.Pin())
 	{
 		TArray<FVoxelIntBox> UpdatedBounds;
-		if (UpdatedBounds.Num() > 0)
+		if (bIsUndo)
 		{
-			if (bIsUndo)
-			{
-				ensure(UVoxelBlueprintLibrary::Undo(VoxelWorld, UpdatedBounds));
-			}
-			else
-			{
-				ensure(UVoxelBlueprintLibrary::Redo(VoxelWorld, UpdatedBounds));
-			}
+			ensure(UVoxelBlueprintLibrary::Undo(VoxelWorld, UpdatedBounds));
+		}
+		else
+		{
+			ensure(UVoxelBlueprintLibrary::Redo(VoxelWorld, UpdatedBounds));
 		}
 	}
 
