@@ -1008,6 +1008,7 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 		PlaceableItemManager->SetExternalGeneratorCache(GeneratorCache);
 		PlaceableItemManager->Clear();
 		PlaceableItemManager->Generate();
+		PlaceableItemManager->ApplyToData(GetData());
 		PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
 
 		// Do that after Clear/Generate

@@ -53,7 +53,7 @@ class FAssetTypeActions_VoxelLandscapeMaterialCollection : public FAssetTypeActi
 public:
 	using FAssetTypeActions_VoxelBase::FAssetTypeActions_VoxelBase;
 
-	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Landcape Material Collection"); }
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Landscape Material Collection"); }
 	virtual FColor GetTypeColor() const override { return FColor(0, 192, 0); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelLandscapeMaterialCollection::StaticClass(); }
 };
