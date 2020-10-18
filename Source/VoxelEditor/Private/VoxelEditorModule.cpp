@@ -27,7 +27,9 @@
 #include "VoxelMessages.h"
 #include "VoxelBoolVector.h"
 #include "VoxelMessagesEditor.h"
+#include "VoxelEditorDelegates.h"
 #include "VoxelOpenAssetsOnStartup.h"
+#include "VoxelConvertLandscapeMaterial.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "VoxelNodes/VoxelOptimizationNodes.h"
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
@@ -207,12 +209,15 @@ public:
 	virtual void StartupModule() override
 	{
 		UVoxelOpenAssetsOnStartup::Init();
+		FVoxelConvertLandscapeMaterial::Init();
 		
 		// Voxel World Editor
 		if (!IVoxelWorldEditor::GetVoxelWorldEditor())
 		{
 			IVoxelWorldEditor::SetVoxelWorldEditor(MakeShared<FVoxelWorldEditor>());
 		}
+
+		FVoxelEditorDelegates::FixVoxelLandscapeMaterial.AddStatic(&FVoxelConvertLandscapeMaterial::ConvertMaterial);
 
 		// Destroy global pool on end PIE
 		FEditorDelegates::EndPIE.AddLambda([](bool bIsSimulating)
@@ -499,6 +504,7 @@ private:
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelInstancedMaterialCollectionTemplates>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelInstancedMaterialCollection>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelInstancedMaterialCollectionInstance>();
+		RegisterAssetTypeAction<FAssetTypeActions_VoxelLandscapeMaterialCollection>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelDataAsset>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelSpawnerConfig>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelAssetSpawner>();

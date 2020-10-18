@@ -78,9 +78,6 @@ private:
 	
 	float TimeUntilNextGC = 0;
 
-	bool bClick = false;
-	bool bAlternativeMode = false;
-
 	float BrushSizeDelta = 0.f;
 	float FalloffDelta = 0.f;
 	float StrengthDelta = 0.f;

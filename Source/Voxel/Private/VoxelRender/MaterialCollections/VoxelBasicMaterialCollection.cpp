@@ -35,7 +35,7 @@ UMaterialInterface* UVoxelBasicMaterialCollection::GetVoxelMaterial(const FVoxel
 	return MaterialInterface;
 }
 
-UMaterialInterface* UVoxelBasicMaterialCollection::GetVoxelMaterialForPreview(uint8 Index) const
+UMaterialInterface* UVoxelBasicMaterialCollection::GetIndexMaterial(uint8 Index) const
 {
 	for (const auto& Layer : Layers)
 	{
@@ -47,12 +47,12 @@ UMaterialInterface* UVoxelBasicMaterialCollection::GetVoxelMaterialForPreview(ui
 	return nullptr;
 }
 
-TMap<int32, UMaterialInterface*> UVoxelBasicMaterialCollection::GetVoxelMaterials() const
+TArray<UVoxelMaterialCollectionBase::FMaterialInfo> UVoxelBasicMaterialCollection::GetMaterials() const
 {
-	TMap<int32, UMaterialInterface*> Result;
+	TArray<FMaterialInfo> Result;
 	for (const auto& Layer : Layers)
 	{
-		Result.Add(Layer.LayerIndex, Layer.LayerMaterial);
+		Result.Add(FMaterialInfo{ Layer.LayerIndex, FName(), Layer.LayerMaterial });
 	}
 	return Result;
 }

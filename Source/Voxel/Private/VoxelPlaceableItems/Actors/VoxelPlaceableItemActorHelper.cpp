@@ -64,7 +64,7 @@ void UVoxelPlaceableItemActorHelper::OnActorUpdated(TWeakObjectPtr<AVoxelDataIte
 	FActorData& ActorData = ActorsData[Actor];
 
 	AVoxelWorld& VoxelWorld = GetVoxelWorld();
-	if (!ensure(VoxelWorld.IsCreated())) return;
+	if (!ensure(VoxelWorld.IsCreated()) || !ensure(IsValid(&VoxelWorld))) return;
 
 	if (!ensure(VoxelWorld.PlaceableItemManager)) return;
 	UVoxelPlaceableItemManager& PlaceableItemManager = *VoxelWorld.PlaceableItemManager;

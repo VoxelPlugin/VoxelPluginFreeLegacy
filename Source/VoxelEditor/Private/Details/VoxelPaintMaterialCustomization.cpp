@@ -323,8 +323,9 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 	
 	const auto Thumbnail = MakeShared<FAssetThumbnail>(nullptr, 64, 64, CustomizationUtils.GetThumbnailPool());
 
-	const auto Asset = MakeShared<TWeakObjectPtr<UObject>>();
-	const auto Assets = MakeShared<TMap<TWeakObjectPtr<UObject>, int32>>();
+	const auto SelectedMaterial = MakeShared<UVoxelMaterialCollectionBase::FMaterialInfo>();
+	const auto AssetsToMaterials = MakeShared<TMap<TWeakObjectPtr<UObject>, UVoxelMaterialCollectionBase::FMaterialInfo>>();
+	const auto IndicesToMaterials = MakeShared<TMap<uint8, UVoxelMaterialCollectionBase::FMaterialInfo>>();
 	
 	const auto OnChanged = FSimpleDelegate::CreateLambda([=]()
 	{
@@ -336,10 +337,16 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 			return;
 		}
 
-		Assets->Reset();
-		for (auto& It : MaterialCollection->GetVoxelMaterials())
+		AssetsToMaterials->Reset();
+		for (auto& MaterialInfo : MaterialCollection->GetMaterials())
 		{
-			Assets->Add(It.Value, It.Key);
+			if (MaterialInfo.Material.IsValid() && MaterialInfo.Name.IsNone())
+			{
+				// Fixup name if needed
+				MaterialInfo.Name = MaterialInfo.Material->GetFName();
+			}
+			AssetsToMaterials->Add(MaterialInfo.Material, MaterialInfo);
+			IndicesToMaterials->Add(MaterialInfo.Index, MaterialInfo);
 		}
 		
 		void* Data = nullptr;
@@ -349,8 +356,8 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 		}
 		
 		auto& Channel = *static_cast<FVoxelPaintMaterial_MaterialCollectionChannel*>(Data);
-		*Asset = MaterialCollection->GetVoxelMaterialForPreview(Channel);
-		Thumbnail->SetAsset(Asset->Get());
+		*SelectedMaterial = IndicesToMaterials->FindRef(Channel);
+		Thumbnail->SetAsset(SelectedMaterial->Material.Get());
 	});
 	OnChanged.Execute();
 
@@ -370,20 +377,27 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 			PickerConfig.bAllowDragging = false;
 			PickerConfig.bAllowNullSelection = false;
 			PickerConfig.InitialAssetViewType = EAssetViewType::Tile;
-			PickerConfig.InitialAssetSelection = Asset->Get();
-			for (auto& It : *Assets)
+			PickerConfig.InitialAssetSelection = SelectedMaterial->Material.Get();
+			PickerConfig.Filter.ObjectPaths.Add("FAKE"); // Remove all real results, we add our own assets below
+			PickerConfig.OnGetCustomSourceAssets = FOnGetCustomSourceAssets::CreateLambda([=](const FARFilter& SourceFilter, TArray<FAssetData>& AddedAssets)
 			{
-				if (It.Key.IsValid())
+				for (auto& It : *AssetsToMaterials)
 				{
-					PickerConfig.Filter.ObjectPaths.Add(*It.Key->GetPathName());
+					if (It.Key.IsValid())
+					{
+						FAssetData AssetData(It.Key.Get());
+						AssetData.AssetName = It.Value.Name;
+						AddedAssets.Add(AssetData);
+					}
 				}
-			}
+			});
+			
 			PickerConfig.OnAssetSelected.BindLambda([=](const FAssetData& AssetData)
 			{
 				auto* NewAsset = AssetData.GetAsset();
-				if (int32* Index = Assets->Find(NewAsset))
+				if (auto* Info = AssetsToMaterials->Find(NewAsset))
 				{
-					ChannelHandle->SetValue(FVoxelUtilities::ClampToUINT8(*Index));
+					ChannelHandle->SetValue(Info->Index);
 					OnClose->ExecuteIfBound();
 				}
 
@@ -410,7 +424,7 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 				.Font( FEditorStyle::GetFontStyle( "PropertyWindow.NormalFont" ) )
 				.Text_Lambda([=]()
 				{
-					return FText::FromName(Asset->IsValid() ? Asset->Get()->GetFName() : FName());
+					return FText::FromName(SelectedMaterial->Name);
 				})
 			]
 		];

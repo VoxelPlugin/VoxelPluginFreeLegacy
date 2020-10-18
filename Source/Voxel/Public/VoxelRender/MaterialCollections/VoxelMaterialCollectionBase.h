@@ -27,30 +27,25 @@ public:
 		unimplemented();
 		return nullptr;
 	}
-	virtual UMaterialInterface* GetVoxelMaterialForPreview(uint8 Index) const
+	
+	UFUNCTION(BlueprintPure, Category = "Voxel|Material Collection")
+	virtual UMaterialInterface* GetIndexMaterial(uint8 Index) const
 	{
 		return nullptr;
 	}
-	// Used by paint material customization. Some materials might be null.
-	virtual TMap<int32, UMaterialInterface*> GetVoxelMaterials() const
-	{
-		return {};
-	}
-	// Get the material index from a material name
-	virtual int32 GetMaterialIndex(FName Name) const
-	{
-		return -1;	
-	}
-	// Called before the material collection is used (can be at runtime when dynamic renderer settings change)
-	virtual void InitializeCollection()
-	{
-	}
-	//~ End UVoxelMaterialCollectionBase Interface
 
-public:
-	UFUNCTION(BlueprintPure, Category = "Voxel|Material Collection")
-	UMaterialInterface* GetIndexMaterial(uint8 Index) const
+	struct FMaterialInfo
 	{
-		return GetVoxelMaterialForPreview(Index);
-	}
+		uint8 Index = 0;
+		FName Name;
+		TWeakObjectPtr<UMaterialInterface> Material;
+	};
+	// Used by paint material customization. Some materials might be null.
+	virtual TArray<FMaterialInfo> GetMaterials() const { return {}; }
+	
+	// Get the material index from a material name
+	virtual int32 GetMaterialIndex(FName Name) const { return -1; }
+	// Called before the material collection is used (can be at runtime when dynamic renderer settings change)
+	virtual void InitializeCollection() {}
+	//~ End UVoxelMaterialCollectionBase Interface
 };

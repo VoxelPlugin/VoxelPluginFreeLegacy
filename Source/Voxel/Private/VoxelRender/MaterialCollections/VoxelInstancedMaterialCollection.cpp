@@ -150,17 +150,17 @@ int32 UVoxelInstancedMaterialCollection::GetMaterialIndex(FName Name) const
 	return -1;
 }
 
-TMap<int32, UMaterialInterface*> UVoxelInstancedMaterialCollection::GetVoxelMaterials() const
+TArray<UVoxelMaterialCollectionBase::FMaterialInfo> UVoxelInstancedMaterialCollection::GetMaterials() const
 {
-	TMap<int32, UMaterialInterface*> Result;
+	TArray<FMaterialInfo> Result;
 	for (const auto& Layer : Layers)
 	{
-		Result.Add(Layer.LayerIndex, Layer.LayerMaterialInstance);
+		Result.Add(FMaterialInfo{ Layer.LayerIndex, FName(), Layer.LayerMaterialInstance });
 	}
 	return Result;
 }
 
-UMaterialInterface* UVoxelInstancedMaterialCollection::GetVoxelMaterialForPreview(uint8 Index) const
+UMaterialInterface* UVoxelInstancedMaterialCollection::GetIndexMaterial(uint8 Index) const
 {
 	for (const auto& Layer : Layers)
 	{
