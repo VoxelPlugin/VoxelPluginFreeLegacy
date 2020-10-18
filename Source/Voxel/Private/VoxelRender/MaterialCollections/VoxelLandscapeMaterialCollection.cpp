@@ -111,6 +111,7 @@ void UVoxelLandscapeMaterialCollection::PostEditChangeProperty(FPropertyChangedE
 			if (This.IsValid())
 			{
 				This->PostEditChange();
+				This->InitializeCollection();
 			}
 		});
 

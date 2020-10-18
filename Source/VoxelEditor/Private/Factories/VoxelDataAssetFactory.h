@@ -46,9 +46,17 @@ class UVoxelDataAssetFromMagicaVoxFactory : public UFactory, public FReimportHan
 	GENERATED_BODY()
 
 public:
+	// If false, the material index will be set to the palette index (Single Index material config)
+	// If true, the palette will be read and the color will be imported instead (RGB material config)
+	// If you're not sure, leave to true
+	UPROPERTY(EditAnywhere, Category = "Import configuration")
+	bool bUsePalette = true;
+
+public:
 	UVoxelDataAssetFromMagicaVoxFactory();
 
 	// UFactory interface
+	virtual bool ConfigureProperties() override;
 	virtual bool FactoryCanImport(const FString& Filename) override;
 	virtual UObject* FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled) override;
 	// End of UFactory interface

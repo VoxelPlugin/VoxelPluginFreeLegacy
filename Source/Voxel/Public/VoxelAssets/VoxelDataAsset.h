@@ -23,6 +23,15 @@ enum class EVoxelDataAssetImportSource
 	Mesh
 };
 
+USTRUCT()
+struct FVoxelDataAssetImportSettings_MagicaVox
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, Category = "Import")
+	bool bUsePalette = false;
+};
+
 /**
  * A Data Asset stores the values of every voxel inside it
  */
@@ -55,11 +64,14 @@ public:
 	float CompressedSizeInMB = 0;
 
 public:
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Import")
+	UPROPERTY(VisibleAnywhere, Category = "Import")
 	EVoxelDataAssetImportSource Source;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Import")
+	UPROPERTY(VisibleAnywhere, Category = "Import")
 	TArray<FString> Paths;
+
+	UPROPERTY(VisibleAnywhere, Category = "Import")
+	FVoxelDataAssetImportSettings_MagicaVox ImportSettings_MagicaVox; 
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data Asset")
