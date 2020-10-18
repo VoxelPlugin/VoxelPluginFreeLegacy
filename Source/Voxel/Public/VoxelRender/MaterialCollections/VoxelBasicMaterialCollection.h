@@ -36,8 +36,8 @@ public:
 	//~ Begin UVoxelMaterialCollectionBase Interface
 	virtual int32 GetMaxMaterialIndices() const override;
 	virtual UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const override;
-	virtual UMaterialInterface* GetVoxelMaterialForPreview(uint8 Index) const override;
-	virtual TMap<int32, UMaterialInterface*> GetVoxelMaterials() const override;
+	virtual UMaterialInterface* GetIndexMaterial(uint8 Index) const override;
+	virtual TArray<FMaterialInfo> GetMaterials() const override;
 	virtual int32 GetMaterialIndex(FName Name) const override;
 	//~ End UVoxelMaterialCollectionBase Interface
 

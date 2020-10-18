@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AssetTypeActions_VoxelBase.h"
 #include "VoxelRender/MaterialCollections/VoxelBasicMaterialCollection.h"
+#include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 
 class FAssetTypeActions_VoxelBasicMaterialCollection : public FAssetTypeActions_VoxelBase
@@ -45,4 +46,14 @@ public:
 	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Instanced Material Collection Instance"); }
 	virtual FColor GetTypeColor() const override { return FColor(0, 192, 0); }
 	virtual UClass* GetSupportedClass() const override { return UVoxelInstancedMaterialCollectionInstance::StaticClass(); }
+};
+
+class FAssetTypeActions_VoxelLandscapeMaterialCollection : public FAssetTypeActions_VoxelBase
+{
+public:
+	using FAssetTypeActions_VoxelBase::FAssetTypeActions_VoxelBase;
+
+	virtual FText GetName() const override { return VOXEL_LOCTEXT("Voxel Landcape Material Collection"); }
+	virtual FColor GetTypeColor() const override { return FColor(0, 192, 0); }
+	virtual UClass* GetSupportedClass() const override { return UVoxelLandscapeMaterialCollection::StaticClass(); }
 };

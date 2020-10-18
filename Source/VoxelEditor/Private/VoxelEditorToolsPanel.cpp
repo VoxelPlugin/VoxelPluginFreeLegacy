@@ -440,8 +440,12 @@ void FVoxelEditorToolsPanel::Tick(FEditorViewportClient* ViewportClient, float D
 			if (Viewport && SceneView)
 			{
 				TMap<FName, bool> Keys;
-				Keys.Add(FVoxelToolKeys::AlternativeMode, bAlternativeMode);
+				Keys.Add(FVoxelToolKeys::AlternativeMode,
+					ViewportClient->Viewport->KeyState(EKeys::LeftShift) ||
+					ViewportClient->Viewport->KeyState(EKeys::RightShift));
 
+				const bool bClick = ViewportClient->Viewport->KeyState(EKeys::LeftMouseButton);
+				
 				FVoxelToolTickData TickData;
 				{
 					auto* SceneViewport = static_cast<FSceneViewport*>(Viewport);
@@ -517,26 +521,10 @@ bool FVoxelEditorToolsPanel::InputKey(FEditorViewportClient* ViewportClient, FVi
 	
 	if (Key == EKeys::LeftMouseButton)
 	{
-		if (Event == EInputEvent::IE_Pressed)
-		{
-			bClick = true;
-		}
-		else if (Event == EInputEvent::IE_Released)
-		{
-			bClick = false;
-		}
 		return true;
 	}
 	else if (Key == EKeys::LeftShift || Key == EKeys::RightShift)
 	{
-		if (Event == EInputEvent::IE_Pressed)
-		{
-			bAlternativeMode = true;
-		}
-		else if (Event == EInputEvent::IE_Released)
-		{
-			bAlternativeMode = false;
-		}
 		return true;
 	}
 	else 

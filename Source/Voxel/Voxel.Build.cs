@@ -22,6 +22,8 @@ public class Voxel : ModuleRules
 
         // For raytracing
         PrivateIncludePaths.Add(EngineDirectory + "/Shaders/Shared");
+        // For HLSL translator
+        PrivateIncludePaths.Add(EngineDirectory + "/Source/Runtime/Engine/Private");
 
         PublicDependencyModuleNames.AddRange(
             new string[]
