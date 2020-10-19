@@ -106,7 +106,7 @@ void FVoxelModule::StartupModule()
 			}
 		};
 
-		constexpr int32 LatestVoxelPluginVersion = 1;
+		constexpr int32 LatestVoxelPluginVersion = 2;
 		if (VoxelPluginVersion < LatestVoxelPluginVersion)
 		{
 			const auto Close = [=]()
@@ -116,7 +116,7 @@ void FVoxelModule::StartupModule()
 
 			FVoxelMessages::FNotification Notification;
 			Notification.UniqueId = OBJECT_LINE_ID();
-			Notification.Message = "Voxel Plugin has been updated to 1.1!";
+			Notification.Message = "Voxel Plugin has been updated to 1.2!";
 			Notification.Duration = 1e6f;
 			Notification.OnClose = FSimpleDelegate::CreateLambda(Close);
 			
