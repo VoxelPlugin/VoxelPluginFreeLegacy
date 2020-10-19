@@ -19,11 +19,39 @@ public:
 class FVoxelMaterialCompiler : public FProxyMaterialCompiler
 {
 public:
-	using FProxyMaterialCompiler::FProxyMaterialCompiler;
+	static TSet<FMaterialCompiler*>& GetVoxelCompilers()
+	{
+		static TSet<FMaterialCompiler*> Set;
+		return Set;
+	}
+	
+	FVoxelMaterialCompiler(FMaterialCompiler* InCompiler)
+		: FProxyMaterialCompiler(InCompiler)
+	{
+		GetVoxelCompilers().Add(this);
+	}
+	~FVoxelMaterialCompiler()
+	{
+		ensure(GetVoxelCompilers().Contains(this));
+		GetVoxelCompilers().Remove(this);
+	}
+
+	FMaterialCompiler* GetBaseCompiler() const
+	{
+		if (GetVoxelCompilers().Contains(Compiler))
+		{
+			// Can happen in recursive calls
+			return static_cast<FVoxelMaterialCompiler*>(Compiler)->GetBaseCompiler();
+		}
+		else
+		{
+			return Compiler;
+		}
+	}
 
 	virtual int32 StaticTerrainLayerWeight(FName ParameterName, int32 Default) override
 	{
-		auto* HLSLCompiler = static_cast<FHLSLCompilerChild*>(Compiler);
+		FHLSLCompilerChild* HLSLCompiler = static_cast<FHLSLCompilerChild*>(GetBaseCompiler());
 		auto& TerrainLayerWeightParameters = HLSLCompiler->GetStaticParameters().TerrainLayerWeightParameters;
 
 		TArray<int32> VoxelIndices;
