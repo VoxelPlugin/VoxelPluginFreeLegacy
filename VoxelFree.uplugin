@@ -1,7 +1,7 @@
 ﻿{
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "Free-Beta-7be536e6-2020-10-19",
+	"VersionName": "Free-Beta-cb8b9127-2020-10-20",
 	"FriendlyName": "Voxel Plugin Free",
 	"Description": "Create fully volumetric, entirely destructible & infinite worlds",
 	"Category": "Terrain",
@@ -113,7 +113,8 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android"
+				"Android",
+				"Mac"
 			]
 		}
 	],
