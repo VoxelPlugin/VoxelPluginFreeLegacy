@@ -54,7 +54,7 @@ protected:
 	static VectorRegister ValCoord2D(VectorRegisterInt seed, VectorRegisterInt x, VectorRegisterInt y);
 	
 protected:
-#if VOXEL_DEBUG
+#if VOXEL_DEBUG || PLATFORM_MAC // Remove this if you're working on OSX, this is just to work on the epic build servers
 #define DECLARE_LUT(Name, Size) const TVoxelStaticArray<v_flt, Size> Name =
 #else
 #define DECLARE_LUT(Name, Size) static constexpr v_flt Name[Size] =
