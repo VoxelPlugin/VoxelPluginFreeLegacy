@@ -63,11 +63,11 @@ public:
 public:
 	int32 NumChunks() const
 	{
-		return Save.Chunks.Num();
+		return Save.Chunks64.Num();
 	}
 	FIntVector GetChunkPosition(int32 ChunkIndex) const
 	{
-		return Save.Chunks[ChunkIndex].Position;
+		return Save.Chunks64[ChunkIndex].Position;
 	}
 	bool GetError() const
 	{

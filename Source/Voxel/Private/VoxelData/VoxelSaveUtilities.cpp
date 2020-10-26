@@ -23,7 +23,7 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 	check(Depth >= 0);
 	OutSave.Guid = FGuid::NewGuid();
 	OutSave.Depth = Depth;
-	OutSave.Chunks.Empty(ChunksToSave.Num());
+	OutSave.Chunks64.Empty(ChunksToSave.Num());
 
 	{
 		uint32 NumValueBuffers = 0;
@@ -59,12 +59,12 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 			}
 		}
 		
-		OutSave.ValueBuffers.Empty(NumValueBuffers * VOXELS_PER_DATA_CHUNK);
-		OutSave.SingleValues.Empty(NumSingleValues);
+		OutSave.ValueBuffers64.Empty(NumValueBuffers * VOXELS_PER_DATA_CHUNK);
+		OutSave.SingleValues64.Empty(NumSingleValues);
 		
-		OutSave.MaterialsIndices.Empty(NumMaterialsIndices);
-		OutSave.MaterialBuffers.Empty(NumMaterialBuffers * VOXELS_PER_DATA_CHUNK);
-		OutSave.SingleMaterials.Empty(NumSingleMaterials);
+		OutSave.MaterialsIndices64.Empty(NumMaterialsIndices);
+		OutSave.MaterialBuffers64.Empty(NumMaterialBuffers * VOXELS_PER_DATA_CHUNK);
+		OutSave.SingleMaterials64.Empty(NumSingleMaterials);
 	}
 
 	for (auto& Chunk : ChunksToSave)
@@ -76,14 +76,14 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 		{
 			if (Chunk.Values->DataPtr)
 			{
-				NewChunk.ValuesIndex = OutSave.ValueBuffers.AddUninitialized(VOXELS_PER_DATA_CHUNK);
-				FMemory::Memcpy(&OutSave.ValueBuffers[NewChunk.ValuesIndex], Chunk.Values->DataPtr, sizeof(FVoxelValue) * VOXELS_PER_DATA_CHUNK);
+				NewChunk.ValuesIndex = OutSave.ValueBuffers64.AddUninitialized(VOXELS_PER_DATA_CHUNK);
+				FMemory::Memcpy(&OutSave.ValueBuffers64[NewChunk.ValuesIndex], Chunk.Values->DataPtr, sizeof(FVoxelValue) * VOXELS_PER_DATA_CHUNK);
 			}
 			else
 			{
 				check(Chunk.Values->bIsSingleValue);
 				
-				NewChunk.ValuesIndex = OutSave.SingleValues.Add(Chunk.Values->SingleValue);
+				NewChunk.ValuesIndex = OutSave.SingleValues64.Add(Chunk.Values->SingleValue);
 				NewChunk.bSingleValue = true;
 			}
 		}
@@ -102,14 +102,14 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 				{
 					if (auto& DataPtr = Chunk.Materials->Channels_DataPtr[Channel])
 					{
-						const int32 Index = OutSave.MaterialBuffers.AddUninitialized(VOXELS_PER_DATA_CHUNK);
-						FMemory::Memcpy(&OutSave.MaterialBuffers[Index], DataPtr, sizeof(uint8) * VOXELS_PER_DATA_CHUNK);
+						const int32 Index = OutSave.MaterialBuffers64.AddUninitialized(VOXELS_PER_DATA_CHUNK);
+						FMemory::Memcpy(&OutSave.MaterialBuffers64[Index], DataPtr, sizeof(uint8) * VOXELS_PER_DATA_CHUNK);
 
 						MaterialIndices.GetRaw(Channel) = Index;
 					}
 					else
 					{
-						MaterialIndices.GetRaw(Channel) = OutSave.SingleMaterials.Add(Chunk.Materials->Channels_SingleValue[Channel]);
+						MaterialIndices.GetRaw(Channel) = OutSave.SingleMaterials64.Add(Chunk.Materials->Channels_SingleValue[Channel]);
 						MaterialIndices.GetRaw(Channel) |= FVoxelUncompressedWorldSaveImpl::MaterialIndexSingleValueFlag;
 					}
 				}
@@ -120,7 +120,7 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 				
 				for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
 				{
-					MaterialIndices.GetRaw(Channel) = OutSave.MaterialBuffers.AddUninitialized(VOXELS_PER_DATA_CHUNK);
+					MaterialIndices.GetRaw(Channel) = OutSave.MaterialBuffers64.AddUninitialized(VOXELS_PER_DATA_CHUNK);
 				}
 
 				for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
@@ -129,40 +129,44 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 					
 					for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
 					{
-						OutSave.MaterialBuffers[MaterialIndices.GetRaw(Channel) + Index] = Material.GetRaw(Channel);
+						OutSave.MaterialBuffers64[MaterialIndices.GetRaw(Channel) + Index] = Material.GetRaw(Channel);
 					}
 				}
 			}
 			
-			NewChunk.MaterialsIndex = OutSave.MaterialsIndices.Add(MaterialIndices); 
+			NewChunk.MaterialsIndex = OutSave.MaterialsIndices64.Add(MaterialIndices); 
 		}
 		else
 		{
 			NewChunk.MaterialsIndex = -1;
 		}
 
-		OutSave.Chunks.Add(NewChunk);
+		OutSave.Chunks64.Add(NewChunk);
 	}
 
-	ensure(OutSave.Chunks.GetSlack() == 0);
+	ensureVoxelSlow(OutSave.Chunks64.GetSlack() == 0);
 	
-	ensure(OutSave.ValueBuffers.GetSlack() == 0);
-	ensure(OutSave.MaterialBuffers.GetSlack() == 0);
+	ensureVoxelSlow(OutSave.ValueBuffers64.GetSlack() == 0);
+	ensureVoxelSlow(OutSave.MaterialBuffers64.GetSlack() == 0);
 
-	ensure(OutSave.SingleValues.GetSlack() == 0);
-	ensure(OutSave.SingleMaterials.GetSlack() == 0);
+	ensureVoxelSlow(OutSave.SingleValues64.GetSlack() == 0);
+	ensureVoxelSlow(OutSave.SingleMaterials64.GetSlack() == 0);
 
-	ensure(OutSave.MaterialsIndices.GetSlack() == 0);
+	ensureVoxelSlow(OutSave.MaterialsIndices64.GetSlack() == 0);
 
 	ChunksToSave.Empty();
-	
-	FMemoryWriter Writer(OutSave.PlaceableItems);
+
+	// TODO 64 bit
+	TArray<uint8> PlaceableItems;
+	FMemoryWriter Writer(PlaceableItems);
 	{
 		FVoxelObjectArchive Archive = FVoxelObjectArchive::MakeWriter(Writer);
 		FVoxelPlaceableItemsUtilities::SerializeItems(Archive, {}, AssetItems);
 		OutObjects = Archive.GetWriterObjects();
 	}
-	OutSave.PlaceableItems.Shrink();
+	
+	OutSave.PlaceableItems64 = MoveTemp(PlaceableItems);
+	OutSave.PlaceableItems64.Shrink();
 
 	OutSave.UpdateAllocatedSize();
 }
@@ -185,26 +189,26 @@ void FVoxelSaveLoader::ExtractChunk(
 	OutValues.ClearData(Memory);
 	OutMaterials.ClearData(Memory);
 	
-	auto& Chunk = Save.Chunks[ChunkIndex];
+	auto& Chunk = Save.Chunks64[ChunkIndex];
 	if (Chunk.ValuesIndex >= 0)
 	{
 		if (Chunk.bSingleValue)
 		{
-			 OutValues.SetSingleValue(Save.SingleValues[Chunk.ValuesIndex]);
+			 OutValues.SetSingleValue(Save.SingleValues64[Chunk.ValuesIndex]);
 		}
 		else
 		{
 			OutValues.CreateData(Memory, [&](FVoxelValue* RESTRICT DataPtr)
 			{
-				check(Save.ValueBuffers.Num() >= Chunk.ValuesIndex + VOXELS_PER_DATA_CHUNK);
-				FMemory::Memcpy(DataPtr, &Save.ValueBuffers[Chunk.ValuesIndex], sizeof(FVoxelValue) * VOXELS_PER_DATA_CHUNK);
+				check(Save.ValueBuffers64.Num() >= Chunk.ValuesIndex + VOXELS_PER_DATA_CHUNK);
+				FMemory::Memcpy(DataPtr, &Save.ValueBuffers64[Chunk.ValuesIndex], sizeof(FVoxelValue) * VOXELS_PER_DATA_CHUNK);
 			});
 		}
 		OutValues.SetIsDirty(true, Memory);
 	}
 	if (Chunk.MaterialsIndex >= 0)
 	{
-		const auto& MaterialIndices = Save.MaterialsIndices[Chunk.MaterialsIndex];
+		const auto& MaterialIndices = Save.MaterialsIndices64[Chunk.MaterialsIndex];
 
 		bool bHasAnySingleValue = false;
 		for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
@@ -224,15 +228,15 @@ void FVoxelSaveLoader::ExtractChunk(
 				const int32 ChannelIndex = MaterialIndices.GetRaw(Channel);
 				if (ChannelIndex & FVoxelUncompressedWorldSaveImpl::MaterialIndexSingleValueFlag)
 				{
-					OutMaterials.Channels_SingleValue[Channel] = Save.SingleMaterials[ChannelIndex & (~FVoxelUncompressedWorldSaveImpl::MaterialIndexSingleValueFlag)];
+					OutMaterials.Channels_SingleValue[Channel] = Save.SingleMaterials64[ChannelIndex & (~FVoxelUncompressedWorldSaveImpl::MaterialIndexSingleValueFlag)];
 				}
 				else
 				{
 					uint8* RESTRICT& DataPtr = OutMaterials.Channels_DataPtr[Channel];
 					OutMaterials.Channels_Allocate(DataPtr, Memory);
 					
-					check(Save.MaterialBuffers.Num() >= ChannelIndex + VOXELS_PER_DATA_CHUNK);
-					FMemory::Memcpy(DataPtr, &Save.MaterialBuffers[ChannelIndex], sizeof(uint8) * VOXELS_PER_DATA_CHUNK);
+					check(Save.MaterialBuffers64.Num() >= ChannelIndex + VOXELS_PER_DATA_CHUNK);
+					FMemory::Memcpy(DataPtr, &Save.MaterialBuffers64[ChannelIndex], sizeof(uint8) * VOXELS_PER_DATA_CHUNK);
 				}
 			}
 		}
@@ -244,7 +248,7 @@ void FVoxelSaveLoader::ExtractChunk(
 				{
 					for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
 					{
-						DataPtr[Index].GetRaw(Channel) = Save.MaterialBuffers[MaterialIndices.GetRaw(Channel) + Index];
+						DataPtr[Index].GetRaw(Channel) = Save.MaterialBuffers64[MaterialIndices.GetRaw(Channel) + Index];
 					}
 				}
 			});
@@ -258,7 +262,7 @@ void FVoxelSaveLoader::GetPlaceableItems(const FVoxelPlaceableItemLoadInfo& Load
 	VOXEL_FUNCTION_COUNTER();
 	ensure(IsInGameThread());
 
-	FMemoryReader Reader(Save.PlaceableItems);
+	FLargeMemoryReader Reader(Save.PlaceableItems64.GetData(), Save.PlaceableItems64.Num());
 
 	if (Save.Version < FVoxelSaveVersion::ProperlySerializePlaceableItemsObjects)
 	{
