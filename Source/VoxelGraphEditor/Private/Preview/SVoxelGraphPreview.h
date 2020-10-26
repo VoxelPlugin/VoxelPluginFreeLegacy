@@ -61,5 +61,5 @@ private:
 	};
 	TArray<FPoint> DebugPoints;
 
-	static constexpr float Size = 100.f;
+	const float Size = 100.f;
 };

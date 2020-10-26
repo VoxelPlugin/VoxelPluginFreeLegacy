@@ -1,9 +1,10 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelData/VoxelSave.h"
-#include "VoxelUtilities/VoxelSerializationUtilities.h"
+#include "VoxelUtilities/VoxelSerializationUtilities.inl"
 #include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelMessages.h"
+#include "Misc/ScopeExit.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelUncompressedSavesMemory);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelCompressedSavesMemory);
@@ -67,10 +68,10 @@ void FVoxelUncompressedWorldSaveImpl::UpdateAllocatedSize() const
 {
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, AllocatedSize);
 	AllocatedSize =
-		Chunks.GetAllocatedSize() +
-		ValueBuffers.GetAllocatedSize() +
-		MaterialBuffers.GetAllocatedSize() +
-		PlaceableItems.GetAllocatedSize();
+		Chunks64.GetAllocatedSize() +
+		ValueBuffers64.GetAllocatedSize() +
+		MaterialBuffers64.GetAllocatedSize() +
+		PlaceableItems64.GetAllocatedSize();
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelUncompressedSavesMemory, AllocatedSize);
 }
 
@@ -139,179 +140,224 @@ bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 		uint32 MaterialConfigFlag = GVoxelMaterialConfigFlag;
 		Ar << MaterialConfigFlag;
 
-		// Serialize buffers
-		if (Version >= FVoxelSaveVersion::StoreMaterialChannelsIndividuallyAndRemoveFoliage)
+		if (Version >= FVoxelSaveVersion::Use64BitArrays)
 		{
 			// Serialize value buffers
-			FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers, ValueConfigFlag, SerializationVersion);
-			FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues, ValueConfigFlag, SerializationVersion);
+			FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers64, ValueConfigFlag, SerializationVersion);
+			FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues64, ValueConfigFlag, SerializationVersion);
 
 			// Serialize material buffers
-			FVoxelSerializationUtilities::SerializeMaterials(Ar, MaterialsIndices, MaterialConfigFlag);
-			MaterialBuffers.BulkSerialize(Ar);
-			SingleMaterials.BulkSerialize(Ar);
+			FVoxelSerializationUtilities::SerializeMaterials(Ar, MaterialsIndices64, MaterialConfigFlag);
+			MaterialBuffers64.BulkSerialize(Ar);
+			SingleMaterials64.BulkSerialize(Ar);
 
 			// Serialize chunks indices
 			// Note: make sure to not use BulkSerialize as data isn't aligned
-			Ar << Chunks;
+			Ar << Chunks64;
+
+			// Serialize placeable items
+			Ar << PlaceableItems64;
 		}
 		else
 		{
-			TNoGrowArray<FVoxelMaterial> OldMaterialBuffers;
-			TNoGrowArray<FVoxelMaterial> OldSingleMaterials;
-			
-			// Serialize value buffers
-			FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers, ValueConfigFlag, SerializationVersion);
+			TNoGrowArray<FVoxelValue> ValueBuffers;
+			TNoGrowArray<FVoxelValue> SingleValues;
 
-			// Serialize material buffers
-			FVoxelSerializationUtilities::SerializeMaterials(Ar, OldMaterialBuffers, MaterialConfigFlag, SerializationVersion);
+			TNoGrowArray<TVoxelMaterialStorage<uint32>> MaterialsIndices;
+			TNoGrowArray<uint8> MaterialBuffers;
+			TNoGrowArray<uint8> SingleMaterials;
 
-			// Serialize foliage buffers
-			if (Version >= FVoxelSaveVersion::FoliagePaint)
+			TNoGrowArray<FVoxelChunkSave> Chunks;
+
+			TArray<uint8> PlaceableItems;
+
+			ON_SCOPE_EXIT
 			{
-				TArray<FVoxelFoliage> FoliageBuffers;
-				FoliageBuffers.BulkSerialize(Ar);
-			}
-
-			// Serialize single values buffers
-			if (Version >= FVoxelSaveVersion::SingleValues)
-			{
-				FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues, ValueConfigFlag, SerializationVersion);
-				FVoxelSerializationUtilities::SerializeMaterials(Ar, OldSingleMaterials, MaterialConfigFlag, SerializationVersion);
-
-				TArray<FVoxelFoliage> SingleFoliage;
-				SingleFoliage.BulkSerialize(Ar);
-			}
-
-			// Serialize chunks indices
-			struct FVoxelChunkSaveWithSingleMaterial
-			{
-				FIntVector Position;
-
-				int32 ValuesIndex = -1;
-				int32 MaterialsIndex = -1;
-
-				bool bSingleValue = false;
-				// Makes life easier when loading legacy files
-				bool bSingleMaterial_Unused = false;
+				ValueBuffers64 = MoveTemp(ValueBuffers);
+				SingleValues64 = MoveTemp(SingleValues);
+				
+				MaterialsIndices64 = MoveTemp(MaterialsIndices);
+				MaterialBuffers64 = MoveTemp(MaterialBuffers);
+				SingleMaterials64 = MoveTemp(SingleMaterials);
+				
+				Chunks64 = MoveTemp(Chunks);
+				
+				PlaceableItems64 = MoveTemp(PlaceableItems);
 			};
-			TNoGrowArray<FVoxelChunkSaveWithSingleMaterial> NewChunks;
+
+			if (Version >= FVoxelSaveVersion::StoreMaterialChannelsIndividuallyAndRemoveFoliage)
 			{
-				TArray<FVoxelChunkSave32Bits> OldChunks;
-				if (Version < FVoxelSaveVersion::FoliagePaint)
-				{
-					TArray<FVoxelChunkSaveWithoutFoliage> ChunksWithoutFoliage;
-					if (Version == FVoxelSaveVersion::BeforeCustomVersionWasAdded)
-					{
-						Ar << ChunksWithoutFoliage;
-					}
-					else
-					{
-						ChunksWithoutFoliage.BulkSerialize(Ar);
-					}
-					OldChunks = TArray<FVoxelChunkSave32Bits>(ChunksWithoutFoliage);
-				}
-				else
-				{
-					OldChunks.BulkSerialize(Ar);
-				}
+				// Serialize value buffers
+				FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers, ValueConfigFlag, SerializationVersion);
+				FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues, ValueConfigFlag, SerializationVersion);
 
-				NewChunks.Empty(OldChunks.Num());
-				for (auto& OldChunk : OldChunks)
-				{
-					constexpr int32 SingleValueIndexFlag = 1 << 30;
+				// Serialize material buffers
+				FVoxelSerializationUtilities::SerializeMaterials(Ar, MaterialsIndices, MaterialConfigFlag);
+				MaterialBuffers.BulkSerialize(Ar);
+				SingleMaterials.BulkSerialize(Ar);
 
-					FVoxelChunkSaveWithSingleMaterial& NewChunk = NewChunks.Emplace_GetRef();
-
-					NewChunk.Position = OldChunk.Position;
-
-					if (OldChunk.ValuesIndex != -1)
-					{
-						NewChunk.ValuesIndex = OldChunk.ValuesIndex & (~SingleValueIndexFlag);
-						NewChunk.bSingleValue = OldChunk.ValuesIndex & SingleValueIndexFlag;
-					}
-					if (OldChunk.MaterialsIndex != -1)
-					{
-						NewChunk.MaterialsIndex = OldChunk.MaterialsIndex & (~SingleValueIndexFlag);
-						NewChunk.bSingleMaterial_Unused = OldChunk.MaterialsIndex & SingleValueIndexFlag;
-					}
-				}
-				ensure(NewChunks.GetSlack() == 0);
+				// Serialize chunks indices
+				// Note: make sure to not use BulkSerialize as data isn't aligned
+				Ar << Chunks;
 			}
-
-			// Fixup material indices, as they are now referencing the MaterialsIndices array and not MaterialBuffers/SingleMaterials
+			else
 			{
-				check(OldMaterialBuffers.Num() % VOXELS_PER_DATA_CHUNK == 0);
+				TNoGrowArray<FVoxelMaterial> OldMaterialBuffers;
+				TNoGrowArray<FVoxelMaterial> OldSingleMaterials;
 
-				MaterialsIndices.Empty(OldMaterialBuffers.Num() / VOXELS_PER_DATA_CHUNK + OldSingleMaterials.Num());
-				MaterialBuffers.Empty(OldMaterialBuffers.Num() * FVoxelMaterial::NumChannels);
-				SingleMaterials.Empty(OldSingleMaterials.Num() * FVoxelMaterial::NumChannels);
+				// Serialize value buffers
+				FVoxelSerializationUtilities::SerializeValues(Ar, ValueBuffers, ValueConfigFlag, SerializationVersion);
 
-				Chunks.Empty(NewChunks.Num());
+				// Serialize material buffers
+				FVoxelSerializationUtilities::SerializeMaterials(Ar, OldMaterialBuffers, MaterialConfigFlag, SerializationVersion);
 
-				// Fixup chunks
-				for (auto& Chunk : NewChunks)
+				// Serialize foliage buffers
+				if (Version >= FVoxelSaveVersion::FoliagePaint)
 				{
-					if (Chunk.MaterialsIndex != -1)
+					TArray<FVoxelFoliage> FoliageBuffers;
+					FoliageBuffers.BulkSerialize(Ar);
+				}
+
+				// Serialize single values buffers
+				if (Version >= FVoxelSaveVersion::SingleValues)
+				{
+					FVoxelSerializationUtilities::SerializeValues(Ar, SingleValues, ValueConfigFlag, SerializationVersion);
+					FVoxelSerializationUtilities::SerializeMaterials(Ar, OldSingleMaterials, MaterialConfigFlag, SerializationVersion);
+
+					TArray<FVoxelFoliage> SingleFoliage;
+					SingleFoliage.BulkSerialize(Ar);
+				}
+
+				// Serialize chunks indices
+				struct FVoxelChunkSaveWithSingleMaterial
+				{
+					FIntVector Position;
+
+					int32 ValuesIndex = -1;
+					int32 MaterialsIndex = -1;
+
+					bool bSingleValue = false;
+					// Makes life easier when loading legacy files
+					bool bSingleMaterial_Unused = false;
+				};
+				TNoGrowArray<FVoxelChunkSaveWithSingleMaterial> NewChunks;
+				{
+					TArray<FVoxelChunkSave32Bits> OldChunks;
+					if (Version < FVoxelSaveVersion::FoliagePaint)
 					{
-						if (Chunk.bSingleMaterial_Unused)
+						TArray<FVoxelChunkSaveWithoutFoliage> ChunksWithoutFoliage;
+						if (Version == FVoxelSaveVersion::BeforeCustomVersionWasAdded)
 						{
-							const int32 OldIndex = Chunk.MaterialsIndex;
-
-							Chunk.MaterialsIndex = MaterialsIndices.AddUninitialized(1);
-							auto& MaterialIndices = MaterialsIndices[Chunk.MaterialsIndex];
-
-							const FVoxelMaterial& Material = OldSingleMaterials[OldIndex];
-
-							for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
-							{
-								MaterialIndices.GetRaw(Channel) = SingleMaterials.Add(Material.GetRaw(Channel)) | MaterialIndexSingleValueFlag;
-							}
+							Ar << ChunksWithoutFoliage;
 						}
 						else
 						{
-							check(Chunk.MaterialsIndex % VOXELS_PER_DATA_CHUNK == 0);
+							ChunksWithoutFoliage.BulkSerialize(Ar);
+						}
+						OldChunks = TArray<FVoxelChunkSave32Bits>(ChunksWithoutFoliage);
+					}
+					else
+					{
+						OldChunks.BulkSerialize(Ar);
+					}
 
-							const int32 OldIndex = Chunk.MaterialsIndex;
+					NewChunks.Empty(OldChunks.Num());
+					for (auto& OldChunk : OldChunks)
+					{
+						constexpr int32 SingleValueIndexFlag = 1 << 30;
 
-							Chunk.MaterialsIndex = MaterialsIndices.AddUninitialized(1);
-							auto& MaterialIndices = MaterialsIndices[Chunk.MaterialsIndex];
+						FVoxelChunkSaveWithSingleMaterial& NewChunk = NewChunks.Emplace_GetRef();
 
-							for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
+						NewChunk.Position = OldChunk.Position;
+
+						if (OldChunk.ValuesIndex != -1)
+						{
+							NewChunk.ValuesIndex = OldChunk.ValuesIndex & (~SingleValueIndexFlag);
+							NewChunk.bSingleValue = OldChunk.ValuesIndex & SingleValueIndexFlag;
+						}
+						if (OldChunk.MaterialsIndex != -1)
+						{
+							NewChunk.MaterialsIndex = OldChunk.MaterialsIndex & (~SingleValueIndexFlag);
+							NewChunk.bSingleMaterial_Unused = OldChunk.MaterialsIndex & SingleValueIndexFlag;
+						}
+					}
+					ensureVoxelSlow(NewChunks.GetSlack() == 0);
+				}
+
+				// Fixup material indices, as they are now referencing the MaterialsIndices array and not MaterialBuffers/SingleMaterials
+				{
+					check(OldMaterialBuffers.Num() % VOXELS_PER_DATA_CHUNK == 0);
+
+					MaterialsIndices.Empty(OldMaterialBuffers.Num() / VOXELS_PER_DATA_CHUNK + OldSingleMaterials.Num());
+					MaterialBuffers.Empty(OldMaterialBuffers.Num() * FVoxelMaterial::NumChannels);
+					SingleMaterials.Empty(OldSingleMaterials.Num() * FVoxelMaterial::NumChannels);
+
+					Chunks.Empty(NewChunks.Num());
+
+					// Fixup chunks
+					for (auto& Chunk : NewChunks)
+					{
+						if (Chunk.MaterialsIndex != -1)
+						{
+							if (Chunk.bSingleMaterial_Unused)
 							{
-								MaterialIndices.GetRaw(Channel) = MaterialBuffers.AddUninitialized(VOXELS_PER_DATA_CHUNK);
-							}
+								const int32 OldIndex = Chunk.MaterialsIndex;
 
-							for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
-							{
-								const FVoxelMaterial& Material = OldMaterialBuffers[OldIndex + Index];
+								Chunk.MaterialsIndex = MaterialsIndices.AddUninitialized(1);
+								auto& MaterialIndices = MaterialsIndices[Chunk.MaterialsIndex];
+
+								const FVoxelMaterial& Material = OldSingleMaterials[OldIndex];
 
 								for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
 								{
-									MaterialBuffers[MaterialIndices.GetRaw(Channel) + Index] = Material.GetRaw(Channel);
+									MaterialIndices.GetRaw(Channel) = SingleMaterials.Add(Material.GetRaw(Channel)) | MaterialIndexSingleValueFlag;
+								}
+							}
+							else
+							{
+								check(Chunk.MaterialsIndex % VOXELS_PER_DATA_CHUNK == 0);
+
+								const int32 OldIndex = Chunk.MaterialsIndex;
+
+								Chunk.MaterialsIndex = MaterialsIndices.AddUninitialized(1);
+								auto& MaterialIndices = MaterialsIndices[Chunk.MaterialsIndex];
+
+								for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
+								{
+									MaterialIndices.GetRaw(Channel) = MaterialBuffers.AddUninitialized(VOXELS_PER_DATA_CHUNK);
+								}
+
+								for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
+								{
+									const FVoxelMaterial& Material = OldMaterialBuffers[OldIndex + Index];
+
+									for (int32 Channel = 0; Channel < FVoxelMaterial::NumChannels; Channel++)
+									{
+										MaterialBuffers[MaterialIndices.GetRaw(Channel) + Index] = Material.GetRaw(Channel);
+									}
 								}
 							}
 						}
+						FVoxelChunkSave NewChunk;
+						NewChunk.Position = Chunk.Position;
+						NewChunk.ValuesIndex = Chunk.ValuesIndex;
+						NewChunk.MaterialsIndex = Chunk.MaterialsIndex;
+						NewChunk.bSingleValue = Chunk.bSingleValue;
+						Chunks.Add(NewChunk);
 					}
-					FVoxelChunkSave NewChunk;
-					NewChunk.Position = Chunk.Position;
-					NewChunk.ValuesIndex = Chunk.ValuesIndex;
-					NewChunk.MaterialsIndex = Chunk.MaterialsIndex;
-					NewChunk.bSingleValue = Chunk.bSingleValue;
-					Chunks.Add(NewChunk);
+
+					ensureVoxelSlow(MaterialsIndices.GetSlack() == 0);
+					ensureVoxelSlow(MaterialBuffers.GetSlack() == 0);
+					ensureVoxelSlow(SingleMaterials.GetSlack() == 0);
+					ensureVoxelSlow(Chunks.GetSlack() == 0);
 				}
-
-				ensure(MaterialsIndices.GetSlack() == 0);
-				ensure(MaterialBuffers.GetSlack() == 0);
-				ensure(SingleMaterials.GetSlack() == 0);
-				ensure(Chunks.GetSlack() == 0);
 			}
-		}
 
-		// Serialize placeable items
-		if (Version >= FVoxelSaveVersion::PlaceableItemsInSave)
-		{
-			Ar << PlaceableItems;
+			// Serialize placeable items
+			if (Version >= FVoxelSaveVersion::PlaceableItemsInSave)
+			{
+				Ar << PlaceableItems;
+			}
 		}
 		
 		if (Ar.IsLoading() && Ar.IsError())

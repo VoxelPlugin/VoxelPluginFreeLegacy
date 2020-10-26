@@ -32,6 +32,7 @@ namespace FVoxelSaveVersion
 		SHARED_StoreSpawnerMatricesRelativeToComponent,
 		StoreMaterialChannelsIndividuallyAndRemoveFoliage,
 		ProperlySerializePlaceableItemsObjects,
+		Use64BitArrays,
 		
 		// -----<new versions can be added above this line>-------------------------------------------------
 		VersionPlusOne,
@@ -62,11 +63,11 @@ public:
 
 	bool HasValues() const
 	{
-		return ValueBuffers.Num() > 0;
+		return ValueBuffers64.Num() > 0;
 	}
 	bool HasMaterials() const
 	{
-		return MaterialBuffers.Num() > 0;
+		return MaterialBuffers64.Num() > 0;
 	}
 
 	/**
@@ -91,7 +92,7 @@ public:
 	template<typename T>
 	void ApplyCustomFixes(T Lambda)
 	{
-		Lambda(UserFlags, ValueBuffers, MaterialBuffers);
+		Lambda(UserFlags, ValueBuffers64, MaterialBuffers64);
 	}
 	void SetUserFlags(uint64 InUserFlags)
 	{
@@ -148,16 +149,16 @@ private:
 	int32 Depth = -1;
 	uint64 UserFlags = 0;
 	
-	TNoGrowArray<FVoxelValue> ValueBuffers;
-	TNoGrowArray<FVoxelValue> SingleValues;
+	TNoGrowArray64<FVoxelValue> ValueBuffers64;
+	TNoGrowArray64<FVoxelValue> SingleValues64;
 	
-	TNoGrowArray<TVoxelMaterialStorage<uint32>> MaterialsIndices;
-	TNoGrowArray<uint8> MaterialBuffers;
-	TNoGrowArray<uint8> SingleMaterials;
+	TNoGrowArray64<TVoxelMaterialStorage<uint32>> MaterialsIndices64;
+	TNoGrowArray64<uint8> MaterialBuffers64;
+	TNoGrowArray64<uint8> SingleMaterials64;
 	
-	TNoGrowArray<FVoxelChunkSave> Chunks;
+	TNoGrowArray64<FVoxelChunkSave> Chunks64;
 	
-	TArray<uint8> PlaceableItems;
+	TArray64<uint8> PlaceableItems64;
 
 	mutable int64 AllocatedSize = 0;
 
