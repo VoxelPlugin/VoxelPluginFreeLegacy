@@ -34,4 +34,5 @@ private:
 	
 	void OnActorSpawned(AActor* Actor);
 	void OnActorUpdated(TWeakObjectPtr<AVoxelDataItemActor> Actor);
+	void OnLevelAddedToWorld(ULevel* InLevel, UWorld* InWorld);
 };

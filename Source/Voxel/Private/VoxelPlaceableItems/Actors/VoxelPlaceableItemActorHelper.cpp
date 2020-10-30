@@ -16,6 +16,7 @@ void UVoxelPlaceableItemActorHelper::Initialize()
 	}
 
 	GetWorld()->AddOnActorSpawnedHandler(FOnActorSpawned::FDelegate::CreateUObject(this, &UVoxelPlaceableItemActorHelper::OnActorSpawned));
+	FWorldDelegates::LevelAddedToWorld.Add(FWorldDelegates::FOnLevelChanged::FDelegate::CreateUObject(this, &UVoxelPlaceableItemActorHelper::OnLevelAddedToWorld));
 }
 
 AVoxelWorld& UVoxelPlaceableItemActorHelper::GetVoxelWorld() const
@@ -29,6 +30,8 @@ AVoxelWorld& UVoxelPlaceableItemActorHelper::GetVoxelWorld() const
 
 void UVoxelPlaceableItemActorHelper::AddActor(AVoxelDataItemActor& Actor)
 {
+	ensure(!ActorsData.Contains(&Actor));
+	
 	AVoxelWorld& VoxelWorld = GetVoxelWorld();
 	if (!ensure(VoxelWorld.IsCreated())) return;
 
@@ -51,6 +54,28 @@ void UVoxelPlaceableItemActorHelper::OnActorSpawned(AActor* Actor)
 	if (auto* DataItemActor = Cast<AVoxelDataItemActor>(Actor))
 	{
 		AddActor(*DataItemActor);
+	}
+}
+
+// When the engine streams levels in, the order of initialization of actors is not deterministic, and no spawn nor construct events are
+// broadcast for the new actors. Therefore, if a data item actor and a voxel world are in the same streaming level but the
+// data item actor is created after the voxel world, both Initialize() and AddOnActorSpawnedHandler() will miss the item actor
+// When a new level is streamed in, we need to reparse actors to find the new ones
+void UVoxelPlaceableItemActorHelper::OnLevelAddedToWorld(ULevel* InLevel, UWorld* InWorld)
+{
+	// Maybe we should filter for actors in our same level, but this is consistent with Initialize()
+	if (InWorld != GetWorld())
+	{
+		return;
+	}
+	
+	for (TActorIterator<AVoxelDataItemActor> ActorItr(GetWorld()); ActorItr; ++ActorItr)
+	{
+		auto* Actor = *ActorItr;
+		if (!ActorsData.Contains(Actor))
+		{
+			AddActor(*Actor);
+		}
 	}
 }
 
