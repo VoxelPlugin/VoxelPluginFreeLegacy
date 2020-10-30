@@ -301,6 +301,7 @@ void FVoxelData::ClearData()
 		{
 			Leaf.GetData<FVoxelValue>().ClearData(*this);
 			Leaf.GetData<FVoxelMaterial>().ClearData(*this);
+			Leaf.CustomChannels.ClearData(*this);
 		});
 
 		ensure(GetDirtyMemory().Values.GetValue() == 0);

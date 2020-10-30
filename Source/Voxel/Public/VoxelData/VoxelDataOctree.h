@@ -11,6 +11,7 @@
 #include "VoxelSharedMutex.h"
 #include "VoxelUtilities/VoxelMiscUtilities.h"
 #include "VoxelData/VoxelDataOctreeLeafData.h"
+#include "VoxelData/VoxelDataOctreeLeafCustomChannels.h"
 #include "VoxelData/VoxelDataOctreeLeafUndoRedo.h"
 #include "VoxelData/VoxelDataOctreeLeafMultiplayer.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
@@ -117,9 +118,11 @@ public:
 
 	TVoxelDataOctreeLeafData<FVoxelValue> Values;
 	TVoxelDataOctreeLeafData<FVoxelMaterial> Materials;
-
+	
 	TUniquePtr<FVoxelDataOctreeLeafUndoRedo> UndoRedo;
 	TUniquePtr<FVoxelDataOctreeLeafMultiplayer> Multiplayer;
+
+	FVoxelDataOctreeLeafCustomChannels CustomChannels;
 
 public:
 	template<typename TIn>

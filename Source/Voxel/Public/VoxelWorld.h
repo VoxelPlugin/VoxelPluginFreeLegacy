@@ -368,7 +368,7 @@ public:
 	bool bRenderWorld = true;
 
 	// Will destroy any intermediate render data to free up memory
-	// Does not support any kind of updates
+	// Does not support any kind of updates INCLUDING LOD updates: your LODs will be frozen!
 	// Note: if MergeChunks is true, chunk meshes memory won't be cleared as it can't know if a new mesh will be added to the cluster
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bStaticWorld = false;
