@@ -56,21 +56,12 @@ void AVoxelWorldEditorControls::Tick(float DeltaTime)
 
 UVoxelInvokerEditorComponent::UVoxelInvokerEditorComponent()
 {
+	bEditorOnlyInvoker = true;
+	
 	bUseForLOD = true;
 	LODToSet = 0;
 	LODRange = 10000;
 
 	bUseForCollisions = false;
 	bUseForNavmesh = false;
-}
-
-void UVoxelInvokerEditorComponent::OnRegister()
-{
-	Super::OnRegister();
-
-	if (GetWorld()->WorldType != EWorldType::Editor &&
-		GetWorld()->WorldType != EWorldType::EditorPreview)
-	{
-		DisableInvoker();
-	}
 }

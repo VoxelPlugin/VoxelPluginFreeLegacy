@@ -527,7 +527,7 @@ void FVoxelDebugManager::Tick(float DeltaTime)
 		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, CollisionsColor, TEXT("Invokers Collisions Bounds"));
 		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, NavmeshColor, TEXT("Invokers Navmesh Bounds"));
 		
-		for (auto& Invoker : UVoxelInvokerComponentBase::GetInvokers(World->GetWorld()))
+		for (auto& Invoker : UVoxelInvokerComponentBase::GetInvokers(World))
 		{
 			if (Invoker.IsValid())
 			{

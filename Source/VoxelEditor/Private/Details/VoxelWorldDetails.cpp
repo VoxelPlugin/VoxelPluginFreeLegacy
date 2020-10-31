@@ -5,16 +5,14 @@
 #include "VoxelStaticWorld.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
-#include "VoxelRender/VoxelProcMeshBuffers.h"
-#include "VoxelRender/VoxelMaterialInterface.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelTools/VoxelDataTools.inl"
 #include "VoxelEditorDetailsUtilities.h"
-#include "VoxelMessages.h"
 #include "VoxelFeedbackContext.h"
 #include "VoxelScopedTransaction.h"
 
 #include "Modules/ModuleManager.h"
+#include "VoxelCreateStaticMeshFromProcMesh.h"
 
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Framework/Application/SlateApplication.h"
@@ -25,8 +23,6 @@
 #include "DetailCategoryBuilder.h"
 #include "AssetRegistryModule.h"
 #include "Editor.h"
-#include "RawMesh.h"
-#include "PhysicsEngine/BodySetup.h"
 
 // The sort order is being silly, so force set it
 #include "Editor/PropertyEditor/Private/DetailCategoryBuilderImpl.h"

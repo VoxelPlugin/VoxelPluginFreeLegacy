@@ -8,6 +8,9 @@
 #include "VoxelWorldInterface.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
 
+#include "EngineUtils.h"
+#include "Lightmass/LightmassImportanceVolume.h"
+
 DECLARE_DWORD_COUNTER_STAT(TEXT("Voxel Chunk Updates"), STAT_VoxelChunkUpdates, STATGROUP_VoxelCounters);
 
 static TAutoConsoleVariable<int32> CVarFreezeLODs(
@@ -18,13 +21,11 @@ static TAutoConsoleVariable<int32> CVarFreezeLODs(
 
 TVoxelSharedRef<FVoxelDefaultLODManager> FVoxelDefaultLODManager::Create(
 	const FVoxelLODSettings& LODSettings,
-	TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
 	const TVoxelSharedRef<FVoxelLODDynamicSettings>& DynamicSettings)
 {
 	TVoxelSharedRef<FVoxelDefaultLODManager> Result = MakeShareable(
 		new FVoxelDefaultLODManager(
 			LODSettings,
-			VoxelWorldInterface,
 			DynamicSettings));
 
 	UVoxelInvokerComponentBase::OnForceRefreshInvokers.AddThreadSafeSP(Result, &FVoxelDefaultLODManager::ClearInvokerComponents);
@@ -33,10 +34,8 @@ TVoxelSharedRef<FVoxelDefaultLODManager> FVoxelDefaultLODManager::Create(
 
 FVoxelDefaultLODManager::FVoxelDefaultLODManager(
 	const FVoxelLODSettings& LODSettings,
-	TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
 	const TVoxelSharedRef<FVoxelLODDynamicSettings>& DynamicSettings)
 	: IVoxelLODManager(LODSettings) 
-	, VoxelWorldInterface(VoxelWorldInterface)
 	, DynamicSettings(DynamicSettings)
 	, Task(TUniquePtr<FVoxelRenderOctreeAsyncBuilder, TVoxelAsyncWorkDelete<FVoxelRenderOctreeAsyncBuilder>>(
 		new FVoxelRenderOctreeAsyncBuilder(LODSettings.OctreeDepth, LODSettings.WorldBounds)))
@@ -190,16 +189,35 @@ void FVoxelDefaultLODManager::UpdateInvokers()
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	if (!VoxelWorldInterface.IsValid())
+	auto* VoxelWorldInterface = Settings.VoxelWorldInterface.Get();
+	if (!VoxelWorldInterface)
 	{
 		return;
 	}
-
 	ensure(SortedInvokerComponents.Num() == InvokerComponentsInfos.Num());
+
+	auto* World = VoxelWorldInterface->GetWorld();
+	if (World->WorldType == EWorldType::Editor)
+	{
+		// For static lighting, we need to fixup lightmass importance volumes
+		for (TActorIterator<ALightmassImportanceVolume> It(World); It; ++It)
+		{
+			auto* Volume = *It;
+			if (!Volume->FindComponentByClass(UVoxelVolumeInvokerComponent::StaticClass()))
+			{
+				auto* Component = NewObject<UVoxelVolumeInvokerComponent>(Volume, NAME_None, RF_Transient);
+				Component->bEditorOnlyInvoker = true;
+				Component->AttachToComponent(Volume->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+				Component->RegisterComponent();
+				
+				checkVoxelSlow(Volume->FindComponentByClass(UVoxelVolumeInvokerComponent::StaticClass()));
+			}
+		}
+	}
 	
 	bool bNeedUpdate = false;
 	
-	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> NewSortedInvokerComponents = UVoxelInvokerComponentBase::GetInvokers(Settings.World.Get());
+	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> NewSortedInvokerComponents = UVoxelInvokerComponentBase::GetInvokers(VoxelWorldInterface);
 	NewSortedInvokerComponents.Sort([](auto& A, auto& B) { return A.Get() < B.Get(); });
 	
 	if (SortedInvokerComponents != NewSortedInvokerComponents)
@@ -214,10 +232,10 @@ void FVoxelDefaultLODManager::UpdateInvokers()
 	const uint64 SquaredDistanceThreshold = FMath::Square(FMath::Max(DynamicSettings->InvokerDistanceThreshold / Settings.VoxelSize, 0.f)); // Truncate
 	for (const auto& InvokerComponent : NewSortedInvokerComponents)
 	{
-		FVoxelInvokerSettings InvokerSettings = InvokerComponent->GetInvokerSettings(VoxelWorldInterface.Get());
+		FVoxelInvokerSettings InvokerSettings = InvokerComponent->GetInvokerSettings(VoxelWorldInterface);
 		InvokerSettings.bUseForLOD &= InvokerComponent->IsLocalInvoker();
 
-		const FIntVector InvokerPosition = InvokerComponent->GetInvokerVoxelPosition(VoxelWorldInterface.Get());
+		const FIntVector InvokerPosition = InvokerComponent->GetInvokerVoxelPosition(VoxelWorldInterface);
 		
 		FVoxelInvokerInfo Info;
 		Info.LocalPosition = InvokerPosition;

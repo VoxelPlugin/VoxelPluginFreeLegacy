@@ -29,7 +29,6 @@ FVoxelLODSettings::FVoxelLODSettings(
 	, MinDelayBetweenLODUpdates(InWorld->MinDelayBetweenLODUpdates)
 	, bEnableTransitions(InWorld->bEnableTransitions)
 	, bInvertTransitions(InWorld->RenderType == EVoxelRenderType::SurfaceNets)
-
-	, World(InWorld->GetWorld())
+	, VoxelWorldInterface(InWorld)
 {
 }

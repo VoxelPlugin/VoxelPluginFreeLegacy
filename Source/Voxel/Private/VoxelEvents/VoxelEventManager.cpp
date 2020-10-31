@@ -24,7 +24,6 @@ static TAutoConsoleVariable<int32> CVarShowEventsBounds(
 FVoxelEventManagerSettings::FVoxelEventManagerSettings(const AVoxelWorld* InWorld, EVoxelPlayType PlayType)
 	: UpdateRate(FMath::Max(SMALL_NUMBER, InWorld->EventsTickRate))
 	, VoxelWorldInterface(InWorld)
-	, World(InWorld->GetWorld())
 	, WorldBounds(InWorld->GetWorldBounds())
 {
 }
@@ -174,7 +173,7 @@ void FVoxelEventManager::Update()
 
 	if (!Settings.VoxelWorldInterface.IsValid()) return;
 
-	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> NewInvokerComponents = UVoxelInvokerComponentBase::GetInvokers(Settings.World.Get());
+	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> NewInvokerComponents = UVoxelInvokerComponentBase::GetInvokers(Settings.VoxelWorldInterface.Get());
 	NewInvokerComponents.RemoveAllSwap([](auto& Invoker) { return !Invoker->bUseForEvents; });
 	NewInvokerComponents.Sort([](auto& A, auto& B) { return A.Get() < B.Get(); });
 

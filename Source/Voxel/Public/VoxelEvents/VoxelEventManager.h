@@ -23,7 +23,6 @@ struct VOXEL_API FVoxelEventManagerSettings
 {
 	const float UpdateRate;
 	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
-	const TWeakObjectPtr<UWorld> World;
 	const FVoxelIntBox WorldBounds;
 
 	FVoxelEventManagerSettings(const AVoxelWorld* World, EVoxelPlayType PlayType);

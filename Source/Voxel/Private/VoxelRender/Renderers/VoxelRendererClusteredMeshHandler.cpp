@@ -255,12 +255,15 @@ FVoxelRendererClusteredMeshHandler::FClusterRef FVoxelRendererClusteredMeshHandl
 	int32 LOD, 
 	const FIntVector& Position)
 {
-	const int32 Divisor = FMath::Clamp<uint64>(uint64(Renderer.Settings.ChunksClustersSize) << LOD, 1, MAX_int32);
-	const FIntVector Key = FVoxelUtilities::DivideFloor(Position, Divisor);
+	const int32 ClusterSize = FMath::Clamp<uint64>(uint64(Renderer.Settings.ChunksClustersSize) << LOD, 1, MAX_int32);
+	// Try to not split chunks on the origin
+	const FIntVector QueryPosition = Position + ClusterSize / 2;
+	const FIntVector Key = FVoxelUtilities::DivideFloor(QueryPosition, ClusterSize);
+	
 	auto& ClusterRef = ClustersMap[LOD].FindOrAdd(Key);
 	if (!GetCluster(ClusterRef))
 	{
-		ClusterRef.ClusterId = Clusters.Add(FCluster::Create(LOD, Key * Divisor));
+		ClusterRef.ClusterId = Clusters.Add(FCluster::Create(LOD, Key * ClusterSize));
 		ClusterRef.UniqueId = Clusters[ClusterRef.ClusterId].UniqueId;
 	}
 	check(GetCluster(ClusterRef));

@@ -10,17 +10,20 @@
 #include "VoxelRender/IVoxelProceduralMeshComponent_PhysicsCallbackHandler.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelWorldRootComponent.h"
-#include "VoxelMessages.h"
+#include "VoxelEditorDelegates.h"
 #include "VoxelMinimal.h"
 #include "IVoxelPool.h"
+#include "VoxelWorld.h"
 
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "AI/NavigationSystemHelpers.h"
 #include "AI/NavigationSystemBase.h"
 #include "Async/Async.h"
+#include "EngineUtils.h"
 #include "DrawDebugHelpers.h"
 #include "Materials/Material.h"
+#include "Lightmass/LightmassImportanceVolume.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelPhysicsTriangleMeshesMemory);
 
@@ -29,6 +32,30 @@ static TAutoConsoleVariable<int32> CVarShowCollisionsUpdates(
 	0,
 	TEXT("If true, will show the chunks that finished updating collisions"),
 	ECVF_Default);
+
+static TAutoConsoleVariable<int32> CVarShowStaticMeshComponents(
+	TEXT("voxel.renderer.ShowStaticMeshComponents"),
+	0,
+	TEXT("Will show the proc meshes static mesh components used for static lighting"),
+	ECVF_Default);
+
+static FAutoConsoleCommandWithWorld UpdateStaticMeshComponentsCmd(
+	TEXT("voxel.renderer.UpdateStaticMeshComponents"),
+	TEXT("Will update all the proc meshes static mesh components used for static lighting"),
+	MakeLambdaDelegate([](UWorld* World)
+	{
+		for (TActorIterator<AVoxelWorld> It(World); It; ++It)
+		{
+			const auto Components = (*It)->GetComponents();
+			for (auto* Component : Components)
+			{
+				if (auto* ProcMesh = Cast<UVoxelProceduralMeshComponent>(Component))
+				{
+					ProcMesh->UpdateStaticMeshComponent();
+				}
+			}
+		}
+	}));
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -300,6 +327,7 @@ void UVoxelProceduralMeshComponent::FinishSectionsUpdates()
 		{
 			bNeedToComputeCollisions = true;
 			bNeedToComputeNavigation = true;
+			bNeedToRebuildStaticMesh = true;
 		}
 		else
 		{
@@ -335,6 +363,80 @@ void UVoxelProceduralMeshComponent::FinishSectionsUpdates()
 	}
 
 	LastFinishSectionsUpdatesTime = FPlatformTime::Seconds();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelProceduralMeshComponent::UpdateStaticMeshComponent()
+{
+	if (!ensure(FVoxelEditorDelegates::CreateStaticMeshFromProcMesh.IsBound()))
+	{
+		return;
+	}
+
+	// Only update components that are needed, else it takes forever to export
+	bool bNeedToHaveStaticMesh = false;
+	for (TObjectIterator<ALightmassImportanceVolume> LightmassIt; LightmassIt; ++LightmassIt)
+	{
+		ALightmassImportanceVolume* Volume = *LightmassIt;
+		if (Volume->GetBounds().GetBox().Intersect(Bounds.GetBox()))
+		{
+			bNeedToHaveStaticMesh = true;
+			break;
+		}
+	}
+
+	if (!bNeedToHaveStaticMesh)
+	{
+		if (StaticMeshComponent)
+		{
+			StaticMeshComponent->DestroyComponent();
+			StaticMeshComponent = nullptr;
+		}
+		return;
+	}
+
+	if (bNeedToRebuildStaticMesh)
+	{
+		bNeedToRebuildStaticMesh = false;
+
+		const bool bRecomputeNormals = false;
+		const bool bAllowTransientMaterials = true;
+		UStaticMesh* StaticMesh = FVoxelEditorDelegates::CreateStaticMeshFromProcMesh.Execute(this, [this]()
+		{
+			return NewObject<UStaticMesh>(this, NAME_None, RF_Transient);
+		}, bRecomputeNormals, bAllowTransientMaterials);
+
+		if (!StaticMesh)
+		{
+			if (StaticMeshComponent)
+			{
+				StaticMeshComponent->DestroyComponent();
+				StaticMeshComponent = nullptr;
+			}
+			return;
+		}
+
+		if (!StaticMeshComponent)
+		{
+			StaticMeshComponent = NewObject<UStaticMeshComponent>(GetOwner(), NAME_None, RF_Transient);
+			StaticMeshComponent->LightmapType = ELightmapType::ForceVolumetric;
+			StaticMeshComponent->CastShadow = CastShadow;
+			StaticMeshComponent->SetMobility(EComponentMobility::Static);
+			StaticMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			StaticMeshComponent->RegisterComponent();
+		}
+
+		StaticMeshComponent->SetStaticMesh(StaticMesh);
+	}
+
+	if (StaticMeshComponent)
+	{
+		StaticMeshComponent->SetVisibility(CVarShowStaticMeshComponents.GetValueOnAnyThread() != 0);
+		StaticMeshComponent->SetWorldTransform(GetComponentTransform());
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -561,6 +663,12 @@ void UVoxelProceduralMeshComponent::OnComponentDestroyed(bool bDestroyingHierarc
 	
 	// Clear memory
 	ProcMeshSections.Reset();
+
+	if (StaticMeshComponent)
+	{
+		StaticMeshComponent->DestroyComponent();
+		StaticMeshComponent = nullptr;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
