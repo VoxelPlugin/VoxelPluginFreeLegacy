@@ -30,6 +30,7 @@
 #include "VoxelEditorDelegates.h"
 #include "VoxelOpenAssetsOnStartup.h"
 #include "VoxelConvertLandscapeMaterial.h"
+#include "VoxelCreateStaticMeshFromProcMesh.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "VoxelNodes/VoxelOptimizationNodes.h"
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
@@ -210,6 +211,7 @@ public:
 	{
 		UVoxelOpenAssetsOnStartup::Init();
 		FVoxelConvertLandscapeMaterial::Init();
+		FVoxelCreateStaticMeshFromProcMesh::Init();
 		
 		// Voxel World Editor
 		if (!IVoxelWorldEditor::GetVoxelWorldEditor())
@@ -218,6 +220,7 @@ public:
 		}
 
 		FVoxelEditorDelegates::FixVoxelLandscapeMaterial.AddStatic(&FVoxelConvertLandscapeMaterial::ConvertMaterial);
+		FVoxelEditorDelegates::CreateStaticMeshFromProcMesh.BindStatic(&FVoxelCreateStaticMeshFromProcMesh::Create);
 
 		// Destroy global pool on end PIE
 		FEditorDelegates::EndPIE.AddLambda([](bool bIsSimulating)

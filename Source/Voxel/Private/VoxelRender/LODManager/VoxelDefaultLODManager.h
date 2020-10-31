@@ -40,7 +40,6 @@ class FVoxelDefaultLODManager : public IVoxelLODManager, public FVoxelTickable, 
 public:
 	static TVoxelSharedRef<FVoxelDefaultLODManager> Create(
 		const FVoxelLODSettings& LODSettings,
-		TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
 		const TVoxelSharedRef<FVoxelLODDynamicSettings>& DynamicSettings);
 	~FVoxelDefaultLODManager();
 
@@ -62,10 +61,8 @@ public:
 private:
 	FVoxelDefaultLODManager(
 		const FVoxelLODSettings& LODSettings,
-		TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface,
 		const TVoxelSharedRef<FVoxelLODDynamicSettings>& DynamicSettings);
 
-	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
 	const TVoxelSharedRef<FVoxelLODDynamicSettings> DynamicSettings;
 	
 	TUniquePtr<FVoxelRenderOctreeAsyncBuilder, TVoxelAsyncWorkDelete<FVoxelRenderOctreeAsyncBuilder>> Task;

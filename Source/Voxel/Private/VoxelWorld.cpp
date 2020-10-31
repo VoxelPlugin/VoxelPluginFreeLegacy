@@ -254,7 +254,7 @@ void AVoxelWorld::CreateWorld(FVoxelWorldCreateInfo Info)
 	
 	PlayType = EVoxelPlayType::Game;
 	CreateWorldInternal(Info);
-	if (bUseCameraIfNoInvokersFound && UVoxelInvokerComponentBase::GetInvokers(GetWorld()).Num() == 0)
+	if (bUseCameraIfNoInvokersFound && UVoxelInvokerComponentBase::GetInvokers(this).Num() == 0)
 	{
 		const auto NetMode = GetWorld()->GetNetMode();
 		if (NetMode != ENetMode::NM_Standalone)
@@ -879,7 +879,6 @@ TVoxelSharedRef<IVoxelLODManager> AVoxelWorld::CreateLODManager() const
 			PlayType,
 			Renderer.ToSharedRef(),
 			Pool.ToSharedRef()),
-		this,
 		LODDynamicSettings);
 }
 

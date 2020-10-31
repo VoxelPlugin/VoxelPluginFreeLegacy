@@ -113,6 +113,8 @@ public:
 	void ClearSections(EVoxelProcMeshSectionUpdate Update);
 	void FinishSectionsUpdates();
 
+	void UpdateStaticMeshComponent();
+
 	template<typename F>
 	inline void IterateSectionsSettings(F Lambda)
 	{
@@ -170,9 +172,13 @@ private:
 	
 private:
 	UPROPERTY(Transient)
-	UBodySetup* BodySetup;
+	UBodySetup* BodySetup = nullptr;
 	UPROPERTY(Transient)
-	UBodySetup* BodySetupBeingCooked;
+	UBodySetup* BodySetupBeingCooked = nullptr;
+	
+	UPROPERTY(Transient)
+	UStaticMeshComponent* StaticMeshComponent = nullptr;
+	bool bNeedToRebuildStaticMesh = false;
 	
 	IVoxelAsyncPhysicsCooker* AsyncCooker = nullptr;
 	FVoxelProceduralMeshComponentMemoryUsage MemoryUsage;

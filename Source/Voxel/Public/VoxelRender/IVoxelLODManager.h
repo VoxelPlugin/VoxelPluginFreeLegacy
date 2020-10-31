@@ -11,6 +11,7 @@ class IVoxelRenderer;
 class IVoxelPool;
 class FVoxelDebugManager;
 class AVoxelWorld;
+class AVoxelWorldInterface;
 class FVoxelData;
 
 // Fired once per chunk
@@ -33,9 +34,9 @@ struct FVoxelLODSettings
 	const bool bEnableTransitions;
 	const bool bInvertTransitions;
 
-	const TWeakObjectPtr<UWorld> World;
+	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
 
-	// If Data isn't null, it's Depth and WorldBounds will be used
+	// If Data isn't null, its Depth and WorldBounds will be used
 	FVoxelLODSettings(
 		const AVoxelWorld* World,
 		EVoxelPlayType PlayType,

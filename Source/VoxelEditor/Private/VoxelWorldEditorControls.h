@@ -42,8 +42,4 @@ class VOXELEDITOR_API UVoxelInvokerEditorComponent : public UVoxelSimpleInvokerC
 
 public:
 	UVoxelInvokerEditorComponent();
-	
-	//~ Begin UActorComponent Interface
-	virtual void OnRegister() override;
-	//~ End UActorComponent Interface
 };

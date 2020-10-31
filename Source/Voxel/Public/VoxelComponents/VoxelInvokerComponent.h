@@ -18,6 +18,12 @@ class VOXEL_API UVoxelInvokerComponentBase : public USceneComponent
 	GENERATED_BODY()
 		
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker")
+	bool bIsInvokerEnabled = true;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker", AdvancedDisplay)
+	bool bEditorOnlyInvoker = false;
+	
 	// Whether or not this invoker will be used to trigger voxel events
 	// Example of voxel events include:
 	// - foliage spawning
@@ -31,18 +37,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker|Priority")
 	bool bUseForPriorities = true;
 
-protected:
-	// Whether to enable the invoker when spawned
-	// If not, you'll need to call EnableInvoker
-	UPROPERTY(EditDefaultsOnly, Category = "Voxel Invoker")
-	bool bStartsEnabled = true;
-
 public:
 	// Is this invoker local? If false, bUseForLOD will always be considered as false
 	// Useful for multiplayer, to only compute the LOD for the local player
 	// Defaults to Cast<APawn>(GetOwner())->IsLocallyControlled()
 	UFUNCTION(BlueprintNativeEvent, Category = "Voxel|Invoker")
 	bool IsLocalInvoker() const;
+	
+	// Lets you specify on which voxel worlds to use this invoker
+	UFUNCTION(BlueprintNativeEvent, Category = "Voxel|Invoker")
+	bool ShouldUseInvoker(AVoxelWorldInterface* VoxelWorld) const;
+	bool ShouldUseInvoker(const AVoxelWorldInterface* VoxelWorld) const;
 
 	// Used to detect if the invoker has moved
 	// Also used for events
@@ -59,34 +64,28 @@ public:
 public:
 	//~ Begin UVoxelInvokerComponentBase Interface
 	virtual bool IsLocalInvoker_Implementation() const;
+	virtual bool ShouldUseInvoker_Implementation(AVoxelWorldInterface* VoxelWorld) const;
 	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const;
 	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const;
 	//~ End UVoxelInvokerComponentBase Interface
-
-public:
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Invoker")
-	void EnableInvoker();
-	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Invoker")
-	void DisableInvoker();
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Invoker")
-	bool IsInvokerEnabled() const;
 
 protected:
 	//~ Begin UActorComponent Interface
 	virtual void OnRegister() override;
 	virtual void OnUnregister() override;
 	//~ End UActorComponent Interface
-
-private:
-	bool bIsInvokerEnabled = false;
+	//
+	//~ Begin UObject Interface
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+	//~ End UObject Interface
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Invoker")
 	static void RefreshAllVoxelInvokers();
 	
-	static const TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>>& GetInvokers(UWorld* World);
+	static TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> GetInvokers(const AVoxelWorldInterface* VoxelWorld);
 	static FSimpleMulticastDelegate OnForceRefreshInvokers;
 
 private:
@@ -181,13 +180,14 @@ protected:
 	//~ End UVoxelSimpleInvokerComponent Interface
 };
 
-UCLASS(Within = VoxelLODVolume)
-class VOXEL_API UVoxelLODVolumeInvokerComponent : public UVoxelInvokerComponentBase
+// Add this to a volume to set the LOD of the voxels in a volume, or always enable collision/navmesh in a volume
+UCLASS(ClassGroup = Voxel, meta = (BlueprintSpawnableComponent))
+class VOXEL_API UVoxelVolumeInvokerComponent : public UVoxelInvokerComponentBase
 {
 	GENERATED_BODY()
 
 public:
-	UVoxelLODVolumeInvokerComponent();
+	UVoxelVolumeInvokerComponent();
 
 	// Will set the LOD in the volume to a fixed value
 	// Note that the displayed LOD might have a higher resolution than this if another invoker is close
@@ -228,7 +228,7 @@ public:
 	AVoxelLODVolume();
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Voxel")
-	UVoxelLODVolumeInvokerComponent* InvokerComponent;
+	UVoxelVolumeInvokerComponent* InvokerComponent;
 
 protected:
 	//~ Begin UObject Interface
