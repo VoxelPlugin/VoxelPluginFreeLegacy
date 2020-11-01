@@ -367,6 +367,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (Recreate))
 	bool bRenderWorld = true;
 
+	// If true, will create static meshes for proc meshes that are overlapping lightmass importance volumes
+	// allowing to have static lighting through volumetric lightmaps
+	// You can toggle static meshes using voxel.renderer.ShowStaticMeshComponents 1
+	// and force an update using voxel.renderer.UpdateStaticMeshComponents
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
+	bool bContributesToStaticLighting = true;
+
 	// Will destroy any intermediate render data to free up memory
 	// Does not support any kind of updates INCLUDING LOD updates: your LODs will be frozen!
 	// Note: if MergeChunks is true, chunk meshes memory won't be cleared as it can't know if a new mesh will be added to the cluster
@@ -680,7 +687,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "Voxel Position to World Float"))
 	FVector LocalToGlobalFloatBP(const FVector& Position) const;
 	virtual FVector LocalToGlobalFloat(const FVoxelVector& Position) const override final;
-
+	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "Voxel Bounds to World"))
+	virtual FBox LocalToGlobalBounds(const FVoxelIntBox& Bounds) const override final;
+	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "World Bounds to Voxel"))
+	virtual FVoxelIntBox GlobalToLocalBounds(const FBox& Bounds) const override;
+	
 	/**
 	 * Get the 8 neighbors in voxel space of GlobalPosition
 	 * @param	GlobalPosition	The position in world space

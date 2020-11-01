@@ -382,6 +382,34 @@ FVector AVoxelWorld::LocalToGlobalFloat(const FVoxelVector& Position) const
 	return GetTransform().TransformPosition((VoxelSize * (Position + *WorldOffset)).ToFloat());
 }
 
+FBox AVoxelWorld::LocalToGlobalBounds(const FVoxelIntBox& Bounds) const
+{
+	return Bounds.ApplyTransformFloatImpl([&](const FIntVector& Position) { return LocalToGlobal(Position); });
+}
+
+FVoxelIntBox AVoxelWorld::GlobalToLocalBounds(const FBox& Bounds) const
+{
+	FVoxelIntBoxWithValidity Result;
+	
+	FVector Vertices[8] = 
+	{
+		FVector(Bounds.Min),
+		FVector(Bounds.Min.X, Bounds.Min.Y, Bounds.Max.Z),
+		FVector(Bounds.Min.X, Bounds.Max.Y, Bounds.Min.Z),
+		FVector(Bounds.Max.X, Bounds.Min.Y, Bounds.Min.Z),
+		FVector(Bounds.Max.X, Bounds.Max.Y, Bounds.Min.Z),
+		FVector(Bounds.Max.X, Bounds.Min.Y, Bounds.Max.Z),
+		FVector(Bounds.Min.X, Bounds.Max.Y, Bounds.Max.Z),
+		FVector(Bounds.Max)
+	};
+	for (auto& Vertex : Vertices)
+	{
+		Result += GlobalToLocal(Vertex);
+	}
+
+	return Result.GetBox();
+}
+
 TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition) const
 {
 	return TArray<FIntVector>(FVoxelUtilities::GetNeighbors(GlobalToLocalFloat(GlobalPosition)));

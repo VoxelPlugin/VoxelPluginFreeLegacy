@@ -28,6 +28,7 @@ struct FVoxelLODSettings
 	const FVoxelIntBox WorldBounds;
 	const bool bConstantLOD;
 	const bool bStaticWorld;
+	const bool bContributesToStaticLighting;
 	const float MinDelayBetweenLODUpdates;
 	// Update invokers positions 10 times per seconds: used for LOD updates, but also for chunk updates priority
 	const float MinDelayBetweenInvokersUpdates = 0.1;

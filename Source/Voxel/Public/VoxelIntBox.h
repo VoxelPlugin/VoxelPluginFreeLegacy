@@ -166,6 +166,10 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return FString::Printf(TEXT("(%d/%d, %d/%d, %d/%d)"), Min.X, Max.X, Min.Y, Max.Y, Min.Z, Max.Z);
 	}
+	FBox ToFBox() const
+	{
+		return FBox(FVector(Min), FVector(Max));
+	}
 
 	FORCEINLINE bool IsValid() const
 	{
@@ -612,20 +616,42 @@ struct VOXEL_API FVoxelIntBox
 	template<EInverseTransform Inverse = EInverseTransform::False>
 	FVoxelIntBox ApplyTransform(const FTransform& Transform, int32 MaxBorderSize = 1) const
 	{
+		return ApplyTransformImpl([&](const FIntVector& Position)
+		{
+			return Inverse == EInverseTransform::True
+				? Transform.InverseTransformPosition(FVector(Position))
+				: Transform.TransformPosition(FVector(Position));
+		}, MaxBorderSize);
+	}
+	template<typename T>
+	FVoxelIntBox ApplyTransformImpl(T GetNewPosition, int32 MaxBorderSize = 1) const
+	{
 		const auto Corners = GetCorners(MaxBorderSize);
 
 		FIntVector NewMin(MAX_int32);
 		FIntVector NewMax(MIN_int32);
 		for (int32 Index = 0; Index < 8; Index++)
 		{
-			const FVector P = 
-				Inverse == EInverseTransform::True 
-				? Transform.InverseTransformPosition(FVector(Corners[Index])) 
-				: Transform.TransformPosition(FVector(Corners[Index]));
+			const FVoxelVector P = GetNewPosition(Corners[Index]);
 			NewMin = FVoxelUtilities::ComponentMin(NewMin, FVoxelUtilities::FloorToInt(P));
 			NewMax = FVoxelUtilities::ComponentMax(NewMax, FVoxelUtilities::CeilToInt(P));
 		}
 		return FVoxelIntBox(NewMin, NewMax + MaxBorderSize);
+	}
+	template<typename T>
+	FBox ApplyTransformFloatImpl(T GetNewPosition, int32 MaxBorderSize = 1) const
+	{
+		const auto Corners = GetCorners(MaxBorderSize);
+		
+		FVoxelVector NewMin = GetNewPosition(Corners[0]);
+		FVoxelVector NewMax = NewMin;
+		for (int32 Index = 1; Index < 8; Index++)
+		{
+			const FVoxelVector P = GetNewPosition(Corners[Index]);
+			NewMin = FVoxelUtilities::ComponentMin(NewMin, P);
+			NewMax = FVoxelUtilities::ComponentMax(NewMax, P);
+		}
+		return FBox(NewMin.ToFloat(), NewMax.ToFloat() + MaxBorderSize);
 	}
 };
 

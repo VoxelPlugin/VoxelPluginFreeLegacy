@@ -196,10 +196,10 @@ void FVoxelDefaultLODManager::UpdateInvokers()
 	}
 	ensure(SortedInvokerComponents.Num() == InvokerComponentsInfos.Num());
 
-	auto* World = VoxelWorldInterface->GetWorld();
-	if (World->WorldType == EWorldType::Editor)
+	if (Settings.bContributesToStaticLighting)
 	{
 		// For static lighting, we need to fixup lightmass importance volumes
+		auto* World = VoxelWorldInterface->GetWorld();
 		for (TActorIterator<ALightmassImportanceVolume> It(World); It; ++It)
 		{
 			auto* Volume = *It;

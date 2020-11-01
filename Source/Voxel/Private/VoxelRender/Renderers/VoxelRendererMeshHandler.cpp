@@ -274,6 +274,11 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 				NewMesh->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&Root->BodyInstance);
 				NewMesh->BodyInstance.SetObjectType(Root->BodyInstance.GetObjectType());
 				NewMesh->SetGenerateOverlapEvents(Root->GetGenerateOverlapEvents());
+				NewMesh->RuntimeVirtualTextures = Root->RuntimeVirtualTextures;
+				NewMesh->VirtualTextureLodBias = Root->VirtualTextureLodBias;
+				NewMesh->VirtualTextureCullMips = Root->VirtualTextureCullMips;
+				NewMesh->VirtualTextureMinCoverage = Root->VirtualTextureMinCoverage;
+				NewMesh->VirtualTextureRenderPassType = Root->VirtualTextureRenderPassType;
 			}
 			NewMesh->RegisterComponent();
 			NewMesh->SetRelativeScale3D(FVector::OneVector * Settings.VoxelSize);

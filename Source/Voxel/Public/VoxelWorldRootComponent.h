@@ -22,10 +22,16 @@ public:
 	virtual UBodySetup* GetBodySetup() override final;
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override final;
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
+	virtual TArray<URuntimeVirtualTexture*> const& GetRuntimeVirtualTextures() const override;
 	//~ End UPrimitiveComponent Interface
 
 	// Only need to tick when created
 	void TickWorldRoot();
+
+public:
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
 public:
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX

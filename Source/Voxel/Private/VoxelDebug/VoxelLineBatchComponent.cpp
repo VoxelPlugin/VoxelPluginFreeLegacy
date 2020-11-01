@@ -2,6 +2,7 @@
 
 #include "VoxelDebug/VoxelLineBatchComponent.h"
 #include "VoxelMinimal.h"
+#include "VoxelWorld.h"
 
 #include "PrimitiveViewRelevance.h"
 #include "PrimitiveSceneProxy.h"
@@ -141,8 +142,15 @@ FBoxSphereBounds UVoxelLineBatchComponent::CalcBounds(const FTransform& LocalToW
 
 	if (!bCalculateAccurateBounds)
 	{
-		const FVector BoxExtent(HALF_WORLD_MAX);
-		return FBoxSphereBounds(FVector::ZeroVector, BoxExtent, BoxExtent.Size());
+		if (auto* VoxelWorld = Cast<AVoxelWorld>(GetOwner()))
+		{
+			return VoxelWorld->LocalToGlobalBounds(VoxelWorld->GetWorldBounds());
+		}
+		else
+		{
+			const FVector BoxExtent(HALF_WORLD_MAX);
+			return FBoxSphereBounds(FVector::ZeroVector, BoxExtent, BoxExtent.Size());
+		}
 	}
 
 	FBox BBox(ForceInit);

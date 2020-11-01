@@ -2,6 +2,8 @@
 
 #include "VoxelWorldRootComponent.h"
 #include "VoxelMinimal.h"
+#include "VoxelWorld.h"
+
 #include "PhysXIncludes.h"
 #include "PrimitiveSceneProxy.h"
 #include "Engine/Engine.h"
@@ -70,6 +72,13 @@ FBoxSphereBounds UVoxelWorldRootComponent::CalcBounds(const FTransform& LocalToW
 	return LocalBounds.TransformBy(LocalToWorld);
 }
 
+TArray<URuntimeVirtualTexture*> const& UVoxelWorldRootComponent::GetRuntimeVirtualTextures() const
+{
+	// Disable RVT support on that component
+	static TArray<URuntimeVirtualTexture*> Textures;
+	return Textures;
+}
+
 void UVoxelWorldRootComponent::TickWorldRoot()
 {
 	VOXEL_FUNCTION_COUNTER();
@@ -82,6 +91,45 @@ void UVoxelWorldRootComponent::TickWorldRoot()
 	}
 #endif
 }
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+#if WITH_EDITOR
+void UVoxelWorldRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	auto* VoxelWorld = Cast<AVoxelWorld>(GetOwner());
+	if (!VoxelWorld || 
+		!VoxelWorld->IsCreated() || 
+		!PropertyChangedEvent.Property)
+	{
+		return;
+	}
+
+	const FName PropertyName = PropertyChangedEvent.Property->GetFName();
+
+	static TArray<FName> RecreateRenderProperties =
+	{
+		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, RuntimeVirtualTextures),
+		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, VirtualTextureLodBias),
+		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, VirtualTextureCullMips),
+		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, VirtualTextureMinCoverage),
+		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, VirtualTextureRenderPassType),
+	};
+
+	if (RecreateRenderProperties.Contains(PropertyName))
+	{
+		VoxelWorld->RecreateRender();
+	}
+}
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 void UVoxelWorldRootComponent::UpdateConvexCollision(

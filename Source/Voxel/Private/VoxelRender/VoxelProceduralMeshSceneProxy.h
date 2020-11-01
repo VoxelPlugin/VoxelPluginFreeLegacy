@@ -61,7 +61,8 @@ public:
 	//~ Begin FPrimitiveSceneProxy Interface
 	virtual void CreateRenderThreadResources() override;
 	ONLY_UE_24_AND_HIGHER(virtual) void DestroyRenderThreadResources() ONLY_UE_24_AND_HIGHER(override);
-	
+
+	virtual void DrawStaticElements(FStaticPrimitiveDrawInterface* PDI) override;
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override;
 
 #if RHI_RAYTRACING
@@ -107,8 +108,8 @@ private:
 	double CreateSceneProxyTime = 0;
 	mutable bool bLoggedTime = false;
 
-	FMeshBatch& DrawSection(
-		FMeshElementCollector& Collector,
+	void DrawSection(
+		FMeshBatch& Mesh,
 		const FVoxelProcMeshProxySection& Section, 
 		const FMaterialRenderProxy* MaterialRenderProxy,
 		bool bEnableTessellation,

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelVector.h"
+#include "VoxelIntBox.h"
 #include "GameFramework/Actor.h"
 #include "VoxelWorldInterface.generated.h"
 
@@ -26,6 +27,9 @@ public:
 
 	virtual FVector LocalToGlobal(const FIntVector& Position) const { unimplemented(); return {}; }
 	virtual FVector LocalToGlobalFloat(const FVoxelVector& Position) const { unimplemented(); return {}; }
+	
+	virtual FBox LocalToGlobalBounds(const FVoxelIntBox& Bounds) const { unimplemented(); return {}; }
+	virtual FVoxelIntBox GlobalToLocalBounds(const FBox& Bounds) const { unimplemented(); return {}; }
 };
 #endif
 

@@ -83,6 +83,7 @@ private:
 	bool bClearProcMeshBuffersOnFinishUpdate = false;
 	// Distance field bias
 	float DistanceFieldSelfShadowBias = 0.f;
+	bool bContributesToStaticLighting = false;
 	
 public:
 	UVoxelProceduralMeshComponent();
