@@ -26,6 +26,7 @@ FVoxelLODSettings::FVoxelLODSettings(
 	, bStaticWorld(PlayType == EVoxelPlayType::Game
 		? InWorld->bStaticWorld
 		: false)
+	, bContributesToStaticLighting(InWorld->bContributesToStaticLighting)
 	, MinDelayBetweenLODUpdates(InWorld->MinDelayBetweenLODUpdates)
 	, bEnableTransitions(InWorld->bEnableTransitions)
 	, bInvertTransitions(InWorld->RenderType == EVoxelRenderType::SurfaceNets)

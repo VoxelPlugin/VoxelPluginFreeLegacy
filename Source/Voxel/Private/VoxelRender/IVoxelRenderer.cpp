@@ -66,6 +66,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, bSRGBColors(InWorld->bSRGBColors)
 
 	, bRenderWorld(InWorld->bRenderWorld)
+	, bContributesToStaticLighting(InWorld->bContributesToStaticLighting)
 
 	, MeshUpdatesBudget(InPlayType == EVoxelPlayType::Game
 		? FMath::Max(0.001f, InWorld->MeshUpdatesBudget)

@@ -89,6 +89,7 @@ struct FVoxelRendererSettingsBase
 	const bool bInterpolateUVs;
 	const bool bSRGBColors;
 	const bool bRenderWorld;
+	const bool bContributesToStaticLighting;
 
 	const float MeshUpdatesBudget;
 

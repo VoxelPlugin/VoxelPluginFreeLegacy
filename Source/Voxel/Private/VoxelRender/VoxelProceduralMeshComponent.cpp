@@ -116,6 +116,7 @@ void UVoxelProceduralMeshComponent::Init(
 	bCleanCollisionMesh = RendererSettings.bCleanCollisionMeshes;
 	bClearProcMeshBuffersOnFinishUpdate = RendererSettings.bStaticWorld && !RendererSettings.bRenderWorld; // We still need the buffers if we are rendering!
 	DistanceFieldSelfShadowBias = RendererSettings.DistanceFieldSelfShadowBias;
+	bContributesToStaticLighting = RendererSettings.bContributesToStaticLighting;
 }
 
 void UVoxelProceduralMeshComponent::ClearInit()
@@ -371,8 +372,19 @@ void UVoxelProceduralMeshComponent::FinishSectionsUpdates()
 
 void UVoxelProceduralMeshComponent::UpdateStaticMeshComponent()
 {
-	if (!ensure(FVoxelEditorDelegates::CreateStaticMeshFromProcMesh.IsBound()))
+	const auto DestroyStaticMesh = [&]()
 	{
+		if (StaticMeshComponent)
+		{
+			StaticMeshComponent->DestroyComponent();
+			StaticMeshComponent = nullptr;
+		}
+	};
+	
+	if (!ensure(FVoxelEditorDelegates::CreateStaticMeshFromProcMesh.IsBound()) ||
+		!bContributesToStaticLighting)
+	{
+		DestroyStaticMesh();
 		return;
 	}
 
@@ -390,11 +402,7 @@ void UVoxelProceduralMeshComponent::UpdateStaticMeshComponent()
 
 	if (!bNeedToHaveStaticMesh)
 	{
-		if (StaticMeshComponent)
-		{
-			StaticMeshComponent->DestroyComponent();
-			StaticMeshComponent = nullptr;
-		}
+		DestroyStaticMesh();
 		return;
 	}
 
@@ -411,11 +419,7 @@ void UVoxelProceduralMeshComponent::UpdateStaticMeshComponent()
 
 		if (!StaticMesh)
 		{
-			if (StaticMeshComponent)
-			{
-				StaticMeshComponent->DestroyComponent();
-				StaticMeshComponent = nullptr;
-			}
+			DestroyStaticMesh();
 			return;
 		}
 
