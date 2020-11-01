@@ -147,8 +147,8 @@ public:
 	FVoxelSpawnerDensity Density;
 
 	// Final Density = Density * DensityMultiplier. Use this to eg paint an Erase Foliage channel.
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Density Multiplier"))
-	FVoxelSpawnerDensity DensityMultiplier_RayOnly;
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	FVoxelSpawnerDensity DensityMultiplier;
 
 	// The name of the custom graph output used to determine the height
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "Height Graph Output Name"))
@@ -410,5 +410,4 @@ protected:
 	void SetReadOnlyPropertiesFromEditorOnly();
 	void SetEditorOnlyPropertiesFromReadOnly();
 	void FixGuids();
-	void FixSpawnerDensityTypes();
 };

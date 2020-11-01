@@ -308,7 +308,7 @@ void FVoxelProceduralMeshSceneProxy::DestroyRenderThreadResources()
 
 void FVoxelProceduralMeshSceneProxy::DrawStaticElements(FStaticPrimitiveDrawInterface* PDI)
 {
-	VOXEL_RENDER_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	if (RuntimeVirtualTextureMaterialTypes.Num() == 0)
 	{
