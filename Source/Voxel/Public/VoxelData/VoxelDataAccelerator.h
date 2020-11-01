@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
+#include "VoxelRange.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
 
@@ -42,6 +43,12 @@ public:
 public:
 	template<typename T>
 	T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
+
+	template<typename T>
+	FORCEINLINE v_flt GetCustomOutput(T DefaultValue, FName Name, const FVoxelVector& P, int32 LOD) const
+	{
+		return GetCustomOutput(DefaultValue, Name, P.X, P.Y, P.Z, LOD);
+	}
 
 public:
 	v_flt GetFloatValue(v_flt X, v_flt Y, v_flt Z, int32 LOD, bool* bIsGeneratorValue = nullptr) const;

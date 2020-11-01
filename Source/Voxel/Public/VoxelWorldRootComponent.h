@@ -7,7 +7,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "VoxelWorldRootComponent.generated.h"
 
-UCLASS(editinlinenew)
+UCLASS(editinlinenew, ShowCategories = (VirtualTexture))
 class VOXEL_API UVoxelWorldRootComponent : public UPrimitiveComponent
 {
 	GENERATED_BODY()

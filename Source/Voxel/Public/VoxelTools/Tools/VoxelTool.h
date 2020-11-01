@@ -214,8 +214,8 @@ public:
 	DECLARE_DYNAMIC_DELEGATE_TwoParams(FDoEditDynamicOverride, FVector, Position, FVector, Normal);
 	DECLARE_DELEGATE_TwoParams(FDoEditOverride, FVector /* Position */, FVector /* Normal */);
 	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", DisplayName = "AdvancedTick", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "DoEditOverride"))
-	void K2_AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", DisplayName = "AdvancedTick", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "DoEditOverride", WorldContext = "WorldContextObject"))
+	void K2_AdvancedTick(UObject* WorldContextObject, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride);
 	void AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditOverride& DoEditOverride = {});
 
 	/**

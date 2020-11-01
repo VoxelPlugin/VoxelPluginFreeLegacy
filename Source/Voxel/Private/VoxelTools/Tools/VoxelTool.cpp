@@ -64,14 +64,20 @@ void UVoxelTool::DisableTool()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelTool::K2_AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride)
+void UVoxelTool::K2_AdvancedTick(UObject* WorldContextObject, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride)
 {
+	if (!WorldContextObject)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid WorldContextObject!"));
+		return;
+	}
+	
 	FDoEditOverride DoEditOverrideCpp;
 	if (DoEditOverride.IsBound())
 	{
 		DoEditOverrideCpp.BindLambda([&](FVector Position, FVector Normal) { DoEditOverride.Execute(Position, Normal); });
 	}
-	AdvancedTick(World, TickData, DoEditOverrideCpp);
+	AdvancedTick(WorldContextObject->GetWorld(), TickData, DoEditOverrideCpp);
 }
 
 void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditOverride& DoEditOverride)

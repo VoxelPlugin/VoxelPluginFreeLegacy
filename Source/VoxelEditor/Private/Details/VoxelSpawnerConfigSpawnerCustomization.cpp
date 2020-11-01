@@ -155,10 +155,8 @@ void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IProp
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, RandomGenerator));
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Guid));
 	
-	if (Type == EVoxelSpawnerType::Ray)
-	{
-		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, DensityMultiplier_RayOnly));
-	}
+	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, DensityMultiplier));
+
 	if (Type == EVoxelSpawnerType::Height)
 	{
 		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bComputeDensityFirst_HeightOnly));

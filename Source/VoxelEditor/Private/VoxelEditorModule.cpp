@@ -75,6 +75,7 @@
 #include "Details/VoxelGraphOutputCustomization.h"
 #include "Details/VoxelInt32IntervalCustomization.h"
 #include "Details/VoxelBoolVectorCustomization.h"
+#include "Details/VoxelLandscapeCollectionDetails.h"
 
 #include "VoxelImporters/VoxelMeshImporter.h"
 #include "VoxelImporters/VoxelLandscapeImporter.h"
@@ -450,12 +451,13 @@ private:
 
 	void RegisterCustomClassLayouts()
 	{
-		RegisterCustomClassLayout<FVoxelWorldDetails            , AVoxelWorld                          >();
-		RegisterCustomClassLayout<FVoxelLandscapeImporterDetails, AVoxelLandscapeImporter              >();
-		RegisterCustomClassLayout<FVoxelMeshImporterDetails     , AVoxelMeshImporter                   >();
-		RegisterCustomClassLayout<FVoxelAssetActorDetails       , AVoxelAssetActor                     >();
-		RegisterCustomClassLayout<FRangeAnalysisDebuggerDetails , UVoxelNode_RangeAnalysisDebuggerFloat>();
-		RegisterCustomClassLayout<FVoxelMeshSpawnerBaseDetails  , UVoxelMeshSpawnerBase                >();
+		RegisterCustomClassLayout<FVoxelWorldDetails              , AVoxelWorld                          >();
+		RegisterCustomClassLayout<FVoxelLandscapeImporterDetails  , AVoxelLandscapeImporter              >();
+		RegisterCustomClassLayout<FVoxelMeshImporterDetails       , AVoxelMeshImporter                   >();
+		RegisterCustomClassLayout<FVoxelAssetActorDetails         , AVoxelAssetActor                     >();
+		RegisterCustomClassLayout<FRangeAnalysisDebuggerDetails   , UVoxelNode_RangeAnalysisDebuggerFloat>();
+		RegisterCustomClassLayout<FVoxelMeshSpawnerBaseDetails    , UVoxelMeshSpawnerBase                >();
+		RegisterCustomClassLayout<FVoxelLandscapeCollectionDetails, UVoxelLandscapeMaterialCollection    >();
 
 		RegisterCustomPropertyLayout<FVoxelGeneratorPickerCustomization					       , FVoxelGeneratorPicker                        >();
 		RegisterCustomPropertyLayout<FVoxelGeneratorPickerCustomization					       , FVoxelTransformableGeneratorPicker           >();

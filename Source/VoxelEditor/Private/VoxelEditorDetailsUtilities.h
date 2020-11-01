@@ -20,6 +20,7 @@ namespace FVoxelEditorUtilities
 
 	TSharedRef<SButton> CreateButton(
 		const FText& Text,
+		const FText& ToolTip,
 		const FOnClicked& OnClicked,
 		const TAttribute<bool>& IsEnabled = true);
 
@@ -29,9 +30,23 @@ namespace FVoxelEditorUtilities
 		const FText& FilterString,
 		const FText& TextLeftToButton,
 		const FText& ButtonText,
+		const FText& ButtonToolTip,
 		bool bForAdvanced,
 		const FOnClicked& OnClicked,
 		const TAttribute<bool>& IsEnabled = true);
+
+	inline void AddButtonToCategory(
+		IDetailLayoutBuilder& DetailLayout,
+		const FName& CategoryName,
+		const FText& FilterString,
+		const FText& TextLeftToButton,
+		const FText& ButtonText,
+		bool bForAdvanced,
+		const FOnClicked& OnClicked,
+		const TAttribute<bool>& IsEnabled = true)
+	{
+		AddButtonToCategory(DetailLayout, CategoryName, FilterString, TextLeftToButton, ButtonText, {}, bForAdvanced, OnClicked, IsEnabled);
+	}
 
 	void AddPropertyToCategory(
 		IDetailLayoutBuilder& DetailLayout,

@@ -1,6 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelMessages.h"
+#include "VoxelMinimal.h"
+
 #include "Logging/MessageLog.h"
 #include "Misc/UObjectToken.h"
 #include "Misc/MessageDialog.h"
@@ -45,4 +47,12 @@ void FVoxelMessages::ShowNotification(const FNotification& Notification)
 	{
 		ShowNotificationDelegate.Broadcast(Notification);
 	}
+}
+
+void FVoxelMessages::ShowNotification(const FString& Text)
+{
+	FNotification Notification;
+	Notification.UniqueId = UNIQUE_ID();
+	Notification.Message = Text;
+	ShowNotification(Notification);
 }

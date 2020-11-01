@@ -34,7 +34,6 @@ void UVoxelSpawnerConfig::PostEditChangeProperty(FPropertyChangedEvent & Propert
 	SetReadOnlyPropertiesFromEditorOnly();
 	SetEditorOnlyPropertiesFromReadOnly();
 	FixGuids();
-	FixSpawnerDensityTypes();
 }
 #endif
 
@@ -84,7 +83,7 @@ void UVoxelSpawnerConfig::PostLoad()
 			NewSpawner.Spawner = Spawner.Spawner;
 			NewSpawner.SpawnerType = EVoxelSpawnerType::Ray;
 			NewSpawner.Density = Spawner.Density;
-			NewSpawner.DensityMultiplier_RayOnly = Spawner.DensityMultiplier;
+			NewSpawner.DensityMultiplier = Spawner.DensityMultiplier;
 			NewSpawner.HeightGraphOutputName_HeightOnly = "";
 			NewSpawner.LOD = Group.LOD;
 			NewSpawner.GenerationDistanceInChunks = Group.GenerationDistanceInChunks;
@@ -110,7 +109,7 @@ void UVoxelSpawnerConfig::PostLoad()
 			NewSpawner.Spawner = Spawner.Spawner;
 			NewSpawner.SpawnerType = EVoxelSpawnerType::Height;
 			NewSpawner.Density = Spawner.Density;
-			NewSpawner.DensityMultiplier_RayOnly = {};
+			NewSpawner.DensityMultiplier = {};
 			NewSpawner.HeightGraphOutputName_HeightOnly = Group.HeightGraphOutputName;
 			NewSpawner.LOD = FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(Group.ChunkSize);
 			NewSpawner.GenerationDistanceInChunks = Group.GenerationDistanceInChunks;
@@ -129,7 +128,6 @@ void UVoxelSpawnerConfig::PostLoad()
 
 	SetEditorOnlyPropertiesFromReadOnly();
 	FixGuids();
-	FixSpawnerDensityTypes();
 }
 
 void UVoxelSpawnerConfig::SetReadOnlyPropertiesFromEditorOnly()
@@ -167,19 +165,6 @@ void UVoxelSpawnerConfig::FixGuids()
 			Guids.Add(Spawner.Guid, &bAlreadyInSet);
 			if (!bAlreadyInSet) break;
 			Spawner.Guid = FGuid::NewGuid();
-		}
-	}
-}
-
-void UVoxelSpawnerConfig::FixSpawnerDensityTypes()
-{
-	for (auto& Spawner : Spawners)
-	{
-		if (Spawner.SpawnerType == EVoxelSpawnerType::Height && 
-			Spawner.Density.Type != EVoxelSpawnerDensityType::Constant && 
-			Spawner.Density.Type != EVoxelSpawnerDensityType::GeneratorOutput)
-		{
-			Spawner.Density.Type = EVoxelSpawnerDensityType::Constant;
 		}
 	}
 }

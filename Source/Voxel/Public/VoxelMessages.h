@@ -39,6 +39,7 @@ public:
 	static void LogMessage(const TSharedRef<FTokenizedMessage>& Message, EVoxelShowNotification ShouldShow);
 	static void LogMessage(const FText& Message, EMessageSeverity::Type Severity, EVoxelShowNotification ShouldShow, const UObject* Object = nullptr);
 	static void ShowNotification(const FNotification& Notification);
+	static void ShowNotification(const FString& Text);
 	
 public:
 	template<EVoxelShowNotification ShouldShow = EVoxelShowNotification::Show>

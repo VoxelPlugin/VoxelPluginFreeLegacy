@@ -74,6 +74,10 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
 	UMaterialInterface* Material = nullptr;
+
+	// Add elements to this to reduce permutations
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Layers")
+	TMap<FName, bool> LayersToIgnore;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Layers")
 	TArray<FVoxelLandscapeMaterialCollectionLayer> Layers;
@@ -96,8 +100,13 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 	// End UObject Interface
+	
+#if WITH_EDITOR
+	void BuildAllPermutations();
+#endif
 
 private:
+	FVoxelLandscapeMaterialCollectionPermutation MakePermutation(const FVoxelMaterialIndices& Indices) const;
 	UMaterialInstanceConstant* FindOrAddPermutation(const FVoxelLandscapeMaterialCollectionPermutation& Permutation) const;
 	
 #if WITH_EDITOR

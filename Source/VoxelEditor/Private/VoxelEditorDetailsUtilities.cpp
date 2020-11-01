@@ -65,10 +65,12 @@ TSharedRef<STextBlock> FVoxelEditorUtilities::CreateText(const FText& Text, TAtt
 
 TSharedRef<SButton> FVoxelEditorUtilities::CreateButton(
 	const FText& Text, 
+	const FText& ToolTip,
 	const FOnClicked& OnClicked, 
 	const TAttribute<bool>& IsEnabled)
 {
 	return SNew(SButton)
+		.ToolTipText(ToolTip)
 		.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
@@ -85,6 +87,7 @@ void FVoxelEditorUtilities::AddButtonToCategory(
 	const FText& FilterString, 
 	const FText& TextLeftToButton, 
 	const FText& ButtonText,
+	const FText& ButtonToolTip,
 	bool bForAdvanced,
 	const FOnClicked& OnClicked, 
 	const TAttribute<bool>& IsEnabled)
@@ -99,7 +102,7 @@ void FVoxelEditorUtilities::AddButtonToCategory(
 	.MinDesiredWidth(125.0f)
 	.MaxDesiredWidth(125.0f)
 	[
-		CreateButton(ButtonText, OnClicked, IsEnabled)
+		CreateButton(ButtonText, ButtonToolTip, OnClicked, IsEnabled)
 	];
 }
 
