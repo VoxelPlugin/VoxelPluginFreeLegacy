@@ -25,7 +25,7 @@ struct FVoxelToolAxes
 	static constexpr const TCHAR* Strength = TEXT("Strength");
 };
 
-USTRUCT(BlueprintType)
+USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelTool.MakeVoxelToolTickData"))
 struct FVoxelToolTickData
 {
 	GENERATED_BODY()
@@ -264,6 +264,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (DeterminesOutputType = "ToolClass"))
 	static UVoxelTool* MakeVoxelTool(TSubclassOf<UVoxelTool> ToolClass);
+	
+	UFUNCTION(BlueprintPure, Category = "Voxel|Tools", meta=(Keywords="construct build", NativeMakeFunc))
+	static FVoxelToolTickData MakeVoxelToolTickData(
+		APlayerController* PlayerController, 
+		bool bEdit,
+		const TMap<FName, bool>& Keys,
+		const TMap<FName, float>& Axes,
+		FVector2D MousePosition = FVector2D(500, 500),
+		FVector CameraDirection = FVector::ForwardVector,
+		ECollisionChannel CollisionChannel = ECC_Visibility);
 
 public:
 	UFUNCTION(BlueprintPure, Category = "Voxel|Tools|Tick Data")
