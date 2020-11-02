@@ -215,22 +215,14 @@ void UVoxelTool::SimpleTick(
 		return;
 	}
 
-	FVoxelToolTickData TickData;
-	TickData.MousePosition = ScreenPosition;
-	TickData.CameraViewDirection = PlayerCameraManager->GetCameraRotation().Vector();
-	TickData.bEdit = bEdit;
-	TickData.Keys = Keys;
-	TickData.Axes = Axes;
-	TickData.CollisionChannel = CollisionChannel;
-
-	const auto Deproject = [PlayerController = MakeWeakObjectPtr(PlayerController)](
-		const FVector2D& InScreenPosition,
-		FVector& OutWorldPosition,
-		FVector& OutWorldDirection)
-	{
-		return UGameplayStatics::DeprojectScreenToWorld(PlayerController.Get(), InScreenPosition, OutWorldPosition, OutWorldDirection);
-	};
-	TickData.Init(Deproject);
+	const auto TickData = MakeVoxelToolTickData(
+		PlayerController,
+		bEdit,
+		Keys,
+		Axes,
+		ScreenPosition,
+		PlayerCameraManager->GetCameraRotation().Vector(),
+		CollisionChannel);
 
 	AdvancedTick(PlayerController->GetWorld(), TickData, DoEditOverride);
 }
@@ -326,6 +318,41 @@ UVoxelTool* UVoxelTool::MakeVoxelTool(TSubclassOf<UVoxelTool> ToolClass)
 
 	Tool->SharedConfig = NewObject<UVoxelToolSharedConfig>(Tool);
 	return Tool;
+}
+
+FVoxelToolTickData UVoxelTool::MakeVoxelToolTickData(
+	APlayerController* PlayerController, 
+	bool bEdit, 
+	const TMap<FName, bool>& Keys, 
+	const TMap<FName, float>& Axes, 
+	FVector2D MousePosition, 
+	FVector CameraDirection,
+	ECollisionChannel CollisionChannel)
+{
+	if (!PlayerController)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("PlayerController is null"));
+		return {};
+	}
+
+	FVoxelToolTickData TickData;
+	TickData.MousePosition = MousePosition;
+	TickData.CameraViewDirection = CameraDirection;
+	TickData.bEdit = bEdit;
+	TickData.Keys = Keys;
+	TickData.Axes = Axes;
+	TickData.CollisionChannel = CollisionChannel;
+
+	const auto Deproject = [PlayerController = MakeWeakObjectPtr(PlayerController)](
+		const FVector2D& InScreenPosition,
+		FVector& OutWorldPosition,
+		FVector& OutWorldDirection)
+	{
+		return UGameplayStatics::DeprojectScreenToWorld(PlayerController.Get(), InScreenPosition, OutWorldPosition, OutWorldDirection);
+	};
+	TickData.Init(Deproject);
+
+	return TickData;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
