@@ -70,13 +70,13 @@ public:
 
 public:
 	static bool SetGeneratorParameterImpl(
-		TVoxelGeneratorPicker<UVoxelGenerator>& Picker,
+		FVoxelGeneratorPicker& Picker,
 		FName Name,
 		FProperty& Property,
 		void* Data,
 		const FString& FunctionName);
 	static bool CheckIsValidParameterName(
-		TVoxelGeneratorPicker<UVoxelGenerator> GeneratorPicker,
+		FVoxelGeneratorPicker GeneratorPicker,
 		FName Name,
 		FProperty& Property,
 		const FString& FunctionName);
@@ -116,7 +116,7 @@ private:
 	
 	DECLARE_FUNCTION(execSetGeneratorParameterImpl)
 	{
-        P_GET_STRUCT_REF(TVoxelGeneratorPicker<UVoxelGenerator>, Picker);
+        P_GET_STRUCT_REF(FVoxelGeneratorPicker, Picker);
         P_GET_STRUCT(FName, Name);
         
         Stack.StepCompiledIn<FStructProperty>(nullptr);

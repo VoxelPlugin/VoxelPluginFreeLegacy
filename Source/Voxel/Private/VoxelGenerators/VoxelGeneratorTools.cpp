@@ -43,7 +43,7 @@ UVoxelTransformableGeneratorInstanceWrapper* UVoxelGeneratorTools::MakeTransform
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-bool UVoxelGeneratorTools::SetGeneratorParameterImpl(TVoxelGeneratorPicker<UVoxelGenerator>& Picker, FName Name, FProperty& Property, void* Data, const FString& FunctionName)
+bool UVoxelGeneratorTools::SetGeneratorParameterImpl(FVoxelGeneratorPicker& Picker, FName Name, FProperty& Property, void* Data, const FString& FunctionName)
 {
 	if (!CheckIsValidParameterName(Picker, Name, Property, FunctionName))
 	{
@@ -58,7 +58,7 @@ bool UVoxelGeneratorTools::SetGeneratorParameterImpl(TVoxelGeneratorPicker<UVoxe
 }
 
 bool UVoxelGeneratorTools::CheckIsValidParameterName(
-	TVoxelGeneratorPicker<UVoxelGenerator> GeneratorPicker,
+	FVoxelGeneratorPicker GeneratorPicker,
 	FName Name,
 	FProperty& Property,
 	const FString& FunctionName)
@@ -212,7 +212,7 @@ void UVoxelGeneratorTools::CreateFloatTextureFromGenerator(
 	const auto Instance = SetupGenerator<float>(__FUNCTION__, Generator, OutputName, SizeX, SizeY);
 	if (!Instance) return;
 
-	OutTexture.Texture = CreateTextureFromGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+	OutTexture = CreateTextureFromGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 }
 
 void UVoxelGeneratorTools::CreateFloatTextureFromGeneratorAsync(
@@ -241,7 +241,7 @@ void UVoxelGeneratorTools::CreateFloatTextureFromGeneratorAsync(
 		OutTexture,
 		[=](FVoxelFloatTexture& Texture)
 		{
-			Texture.Texture = CreateTextureFromGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+			Texture = CreateTextureFromGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 		});
 }
 
@@ -264,7 +264,7 @@ void UVoxelGeneratorTools::CreateColorTextureFromGenerator(
 	const auto Instance = SetupGenerator<FColor>(__FUNCTION__, Generator, OutputName, SizeX, SizeY);
 	if (!Instance) return;
 
-	OutTexture.Texture = CreateTextureFromGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+	OutTexture = CreateTextureFromGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 }
 
 void UVoxelGeneratorTools::CreateColorTextureFromGeneratorAsync(
@@ -293,6 +293,6 @@ void UVoxelGeneratorTools::CreateColorTextureFromGeneratorAsync(
 		OutTexture,
 		[=](FVoxelColorTexture& Texture)
 		{
-			Texture.Texture = CreateTextureFromGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+			Texture = CreateTextureFromGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 		});
 }

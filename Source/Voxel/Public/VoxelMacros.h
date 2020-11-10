@@ -83,7 +83,7 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #endif
 
 #ifndef UNIQUE_ID
-#define UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 Id = 0; return ++Id; }()
+#define UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 __UniqueId = 0; return ++__UniqueId; }()
 #endif
 
 #ifndef OBJECT_LINE_ID

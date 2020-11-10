@@ -34,7 +34,7 @@ void UVoxelNode_TextureSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporte
 	Super::LogErrors(ErrorReporter);
 	
 	FString Error;
-	if (!FVoxelTextureUtilities::CanCreateFromTexture(Texture, Error))
+	if (!FVoxelTextureHelpers::CanCreateFromTexture(Texture, Error))
 	{
 		ErrorReporter.AddMessageToNode(this, Error, EVoxelGraphNodeMessageType::Error);
 	}

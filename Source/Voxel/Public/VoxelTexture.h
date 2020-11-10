@@ -58,28 +58,33 @@ namespace FVoxelUtilities
 template<typename T>
 struct TVoxelTexture
 {
-	inline int32 GetSizeX() const
+	uint64 GetUniqueId() const
+	{
+		return DataPtr->Id;
+	}
+	
+	int32 GetSizeX() const
 	{
 		return DataPtr->SizeX;
 	}
-	inline int32 GetSizeY() const
+	int32 GetSizeY() const
 	{
 		return DataPtr->SizeY;
 	}
-	inline const TArray<T>& GetTextureData() const
+	const TArray<T>& GetTextureData() const
 	{
 		return DataPtr->TextureData;
 	}
-	inline T GetMin() const
+	T GetMin() const
 	{
 		return DataPtr->Min;
 	}
-	inline T GetMax() const
+	T GetMax() const
 	{
 		return DataPtr->Max;
 	}
 	
-	inline T SampleRaw(int32 X, int32 Y, EVoxelSamplerMode Mode) const
+	T SampleRaw(int32 X, int32 Y, EVoxelSamplerMode Mode) const
 	{
 		if (Mode == EVoxelSamplerMode::Clamp)
 		{
@@ -94,12 +99,12 @@ struct TVoxelTexture
 		return GetTextureData()[X + GetSizeX() * Y];
 	}
 	template<typename U>
-	inline U Sample(int32 X, int32 Y, EVoxelSamplerMode Mode) const
+	U Sample(int32 X, int32 Y, EVoxelSamplerMode Mode) const
 	{
 		return U(SampleRaw(X, Y, Mode));
 	}
 	template<typename U>
-	inline U Sample(v_flt X, v_flt Y, EVoxelSamplerMode Mode) const
+	U Sample(v_flt X, v_flt Y, EVoxelSamplerMode Mode) const
 	{
 		const int32 MinX = FMath::FloorToInt(X);
 		const int32 MinY = FMath::FloorToInt(Y);
@@ -122,6 +127,8 @@ struct TVoxelTexture
 public:
 	struct FTextureData
 	{
+		const uint64 Id = UNIQUE_ID();
+		
 		FTextureData() = default;
 		~FTextureData()
 		{
@@ -195,53 +202,131 @@ public:
 
 private:
 	TVoxelSharedRef<const FTextureData> DataPtr;
+
+	friend class FVoxelTextureHelpers;
 };
 
 // TODO: function to clear render target cache
 
-namespace FVoxelTextureUtilities
+class VOXEL_API FVoxelTextureHelpers
 {
-	VOXEL_API TVoxelTexture<FColor> CreateFromTexture_Color(UTexture* Texture);
-	VOXEL_API TVoxelTexture<float> CreateFromTexture_Float(UTexture* Texture, EVoxelRGBA Channel);
+public:
+	static TVoxelTexture<FColor> CreateFromTexture_Color(UTexture* Texture);
+	static TVoxelTexture<float> CreateFromTexture_Float(UTexture* Texture, EVoxelRGBA Channel);
 	
-	VOXEL_API bool CanCreateFromTexture(UTexture* Texture, FString& OutError);
-	VOXEL_API void FixTexture(UTexture* Texture);
+	static bool CanCreateFromTexture(UTexture* Texture, FString& OutError);
+	static void FixTexture(UTexture* Texture);
 
-	VOXEL_API void ClearCache();
-	VOXEL_API void ClearCache(UTexture* Texture);
+	static void ClearCache();
+	static void ClearCache(UTexture* Texture);
 
-	VOXEL_API void CreateOrUpdateUTexture2D(const TVoxelTexture<float>& Texture, UTexture2D*& InOutTexture);
-	VOXEL_API void CreateOrUpdateUTexture2D(const TVoxelTexture<FColor>& Texture, UTexture2D*& InOutTexture);
+	static void CreateOrUpdateUTexture2D(const TVoxelTexture<float>& Texture, UTexture2D*& InOutTexture);
+	static void CreateOrUpdateUTexture2D(const TVoxelTexture<FColor>& Texture, UTexture2D*& InOutTexture);
 
-	VOXEL_API TVoxelTexture<FColor> CreateColorTextureFromFloatTexture(const TVoxelTexture<float>& Texture, EVoxelRGBA Channel, bool bNormalize);
+	static TVoxelTexture<FColor> CreateColorTextureFromFloatTexture(const TVoxelTexture<float>& Texture, EVoxelRGBA Channel, bool bNormalize);
 
-	VOXEL_API TVoxelTexture<float> Normalize(const TVoxelTexture<float>& Texture);
+	static TVoxelTexture<float> Normalize(const TVoxelTexture<float>& Texture);
+
+public:
+	template<typename T>
+	static bool GetTextureById(uint64 Id, TVoxelTexture<T>& OutTexture);
+	template<typename T>
+	static void AddTextureToIdCache(const TVoxelTexture<T>& Texture);
+
+	static void ClearIdCache();
 };
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelFloatTexture
+struct VOXEL_API FVoxelTextureStructBase
 {
 	GENERATED_BODY()
 
-	FVoxelFloatTexture() = default;
-	FVoxelFloatTexture(const TVoxelTexture<float>& Texture)
-		: Texture(Texture)
+	UPROPERTY(VisibleAnywhere, Category = "Voxel")
+	uint64 Id = 0;
+};
+
+template<typename T>
+struct TVoxelTextureStructBase : FVoxelTextureStructBase
+{
+	TVoxelTextureStructBase() = default;
+	TVoxelTextureStructBase(const TVoxelTexture<T>& NewTexture)
 	{
+		Set(NewTexture);
 	}
 	
-	TVoxelTexture<float> Texture;
+	const TVoxelTexture<T>& Get() const
+	{
+		if (Texture.GetUniqueId() != Id)
+		{
+			LoadTexture();
+		}
+		return Texture;
+	}
+	void Set(const TVoxelTexture<T>& NewTexture)
+	{
+		Id = NewTexture.GetUniqueId();
+		Texture = NewTexture;
+		SaveTexture();
+	}
+
+	const TVoxelTexture<T>* operator->() const
+	{
+		return &Get();
+	}
+	const TVoxelTexture<T>& operator*() const
+	{
+		return Get();
+	}
+
+private:
+	mutable TVoxelTexture<T> Texture;
+	
+	void SaveTexture() const;
+	void LoadTexture() const;
+};
+
+template<>
+VOXEL_API void TVoxelTextureStructBase<float>::SaveTexture() const;
+
+template<>
+VOXEL_API void TVoxelTextureStructBase<FColor>::SaveTexture() const;
+
+template<>
+VOXEL_API void TVoxelTextureStructBase<float>::LoadTexture() const;
+
+template<>
+VOXEL_API void TVoxelTextureStructBase<FColor>::LoadTexture() const;
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+USTRUCT(BlueprintType)
+struct VOXEL_API FVoxelFloatTexture
+#if CPP
+	: TVoxelTextureStructBase<float>
+#else
+	: public FVoxelTextureStructBase
+#endif
+{
+	GENERATED_BODY()
+
+	using TVoxelTextureStructBase<float>::TVoxelTextureStructBase;
 };
 
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelColorTexture
+#if CPP
+	: TVoxelTextureStructBase<FColor>
+#else
+	: public FVoxelTextureStructBase
+#endif
 {
 	GENERATED_BODY()
-
-	FVoxelColorTexture() = default;
-	FVoxelColorTexture(const TVoxelTexture<FColor>& Texture)
-		: Texture(Texture)
-	{
-	}
-
-	TVoxelTexture<FColor> Texture;
+	
+	using TVoxelTextureStructBase<FColor>::TVoxelTextureStructBase;
 };

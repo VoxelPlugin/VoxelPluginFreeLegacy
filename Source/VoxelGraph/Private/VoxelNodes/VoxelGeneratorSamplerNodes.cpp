@@ -6,6 +6,7 @@
 #include "VoxelGraphGenerator.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.inl"
 #include "NodeFunctions/VoxelNodeFunctions.h"
+#include "NodeFunctions/VoxelGeneratorVariableHelper.h"
 
 
 ///////////////////////////////////////////////////////////////////////////////

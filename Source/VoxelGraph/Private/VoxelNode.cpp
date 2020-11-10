@@ -106,7 +106,7 @@ void UVoxelNode::LogErrors(FVoxelGraphErrorReporter& ErrorReporter)
 		auto* Property = *It;
 		if (Property->HasMetaData(STATIC_FNAME("NonNull")))
 		{
-			auto* ObjectProperty = UE_25_SWITCH(Cast, CastField)<FObjectProperty>(Property);
+			auto* ObjectProperty = CastField<FObjectProperty>(Property);
 			if (ensure(ObjectProperty))
 			{
 				if (!*ObjectProperty->ContainerPtrToValuePtr<UObject*>(this))

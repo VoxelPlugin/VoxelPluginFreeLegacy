@@ -230,10 +230,12 @@ public:
 			{
 				IVoxelPool::DestroyGlobalPool();
 			}
+			// Don't use huge amount of memory
+			FVoxelTextureHelpers::ClearIdCache();
 		});
 		
 		// Clear texture cache on reimport
-		FReimportManager::Instance()->OnPostReimport().AddLambda([](UObject*, bool) { FVoxelTextureUtilities::ClearCache(); });
+		FReimportManager::Instance()->OnPostReimport().AddLambda([](UObject*, bool) { FVoxelTextureHelpers::ClearCache(); });
 		
 		// Global commands
 		FVoxelEditorCommands::Register();
