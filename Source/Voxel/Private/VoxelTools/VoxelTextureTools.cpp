@@ -12,9 +12,9 @@ enum class EMinMax : uint8
 template<EMinMax MinMax>
 FVoxelFloatTexture MinMaxImpl(const FVoxelFloatTexture& Texture, const float Radius)
 {
-	VOXEL_TOOL_FUNCTION_COUNTER(Texture.Texture.GetSizeX() * Texture.Texture.GetSizeY());
+	VOXEL_TOOL_FUNCTION_COUNTER(Texture->GetSizeX() * Texture->GetSizeY());
 	
-	auto& Data = Texture.Texture;
+	auto& Data = *Texture;
 	const int32 SizeX = Data.GetSizeX();
 	const int32 SizeY = Data.GetSizeY();
 	

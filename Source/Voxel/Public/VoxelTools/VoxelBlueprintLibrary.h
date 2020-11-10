@@ -700,7 +700,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
 	static UTexture2D* CreateOrUpdateTextureFromVoxelFloatTexture(FVoxelFloatTexture VoxelTexture, UPARAM(ref) UTexture2D*& Texture)
 	{
-		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
+		FVoxelTextureHelpers::CreateOrUpdateUTexture2D(*VoxelTexture, Texture);
 		return Texture;
 	}
 	/**
@@ -716,7 +716,7 @@ public:
 	static UTexture2D* CreateTextureFromVoxelFloatTexture(FVoxelFloatTexture VoxelTexture)
 	{
 		UTexture2D* Texture = nullptr;
-		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
+		FVoxelTextureHelpers::CreateOrUpdateUTexture2D(*VoxelTexture, Texture);
 		return Texture;
 	}
 	/**
@@ -725,7 +725,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
 	static FVoxelFloatTexture CreateVoxelFloatTextureFromTextureChannel(UTexture2D* Texture, EVoxelRGBA Channel)
 	{
-		return { FVoxelTextureUtilities::CreateFromTexture_Float(Texture, Channel) };
+		return { FVoxelTextureHelpers::CreateFromTexture_Float(Texture, Channel) };
 	}
 	
 public:
@@ -742,7 +742,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
 	static UTexture2D* CreateOrUpdateTextureFromVoxelColorTexture(FVoxelColorTexture VoxelTexture, UPARAM(ref) UTexture2D*& Texture)
 	{
-		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
+		FVoxelTextureHelpers::CreateOrUpdateUTexture2D(*VoxelTexture, Texture);
 		return Texture;
 	}
 	/**
@@ -758,7 +758,7 @@ public:
 	static UTexture2D* CreateTextureFromVoxelColorTexture(FVoxelColorTexture VoxelTexture)
 	{
 		UTexture2D* Texture = nullptr;
-		FVoxelTextureUtilities::CreateOrUpdateUTexture2D(VoxelTexture.Texture, Texture);
+		FVoxelTextureHelpers::CreateOrUpdateUTexture2D(*VoxelTexture, Texture);
 		return Texture;
 	}
 	/**
@@ -768,29 +768,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Voxel Texture")
 	static FVoxelColorTexture CreateVoxelColorTextureFromVoxelFloatTexture(FVoxelFloatTexture Texture, EVoxelRGBA Channel, bool bNormalize = true)
 	{
-		return { FVoxelTextureUtilities::CreateColorTextureFromFloatTexture(Texture.Texture, Channel, bNormalize) };
+		return { FVoxelTextureHelpers::CreateColorTextureFromFloatTexture(*Texture, Channel, bNormalize) };
 	}
 
 public:
 	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Texture")
 	static FIntPoint GetVoxelFloatTextureSize(FVoxelFloatTexture Texture)
 	{
-		return { Texture.Texture.GetSizeX(), Texture.Texture.GetSizeY() };
+		return { Texture->GetSizeX(), Texture->GetSizeY() };
 	}
 	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Texture")
 	static FIntPoint GetVoxelColorTextureSize(FVoxelColorTexture Texture)
 	{
-		return { Texture.Texture.GetSizeX(), Texture.Texture.GetSizeY() };
+		return { Texture->GetSizeX(), Texture->GetSizeY() };
 	}
 	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Texture")
 	static bool IsVoxelFloatTextureValid(FVoxelFloatTexture Texture)
 	{
-		return FMath::Max(Texture.Texture.GetSizeX(), Texture.Texture.GetSizeY()) > 1;
+		return FMath::Max(Texture->GetSizeX(), Texture->GetSizeY()) > 1;
 	}
 	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Texture")
 	static bool IsVoxelColorTextureValid(FVoxelFloatTexture Texture)
 	{
-		return FMath::Max(Texture.Texture.GetSizeX(), Texture.Texture.GetSizeY()) > 1;
+		return FMath::Max(Texture->GetSizeX(), Texture->GetSizeY()) > 1;
 	}
 	
 public:

@@ -539,7 +539,7 @@ namespace FVoxelNodeFunctions
 	}
 	inline TVoxelRange<v_flt> Atan2(const TVoxelRange<v_flt>& Y, const TVoxelRange<v_flt>& X)
 	{
-		return { -PI / 2, PI / 2 };
+		return { -PI, PI };
 	}
 
 	template<typename T>

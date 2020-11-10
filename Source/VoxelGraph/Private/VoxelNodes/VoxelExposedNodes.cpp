@@ -38,21 +38,15 @@ FLinearColor UVoxelExposedNode::GetColor() const
 
 FText UVoxelExposedNode::GetTitle() const
 {
-	const FName PropertyName = GetParameterPropertyName();
-	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
-	if (!ensure(Property))
-	{
-		return FText::FromString(DisplayName);
-	}
-
-	if (Property->IsA<FFloatProperty>() ||
-		Property->IsA<FIntProperty>() ||
-		Property->IsA<FBoolProperty>())
+	auto& Property = GetParameterProperty();
+	if (Property.IsA<FFloatProperty>() ||
+		Property.IsA<FIntProperty>() ||
+		Property.IsA<FBoolProperty>())
 	{
 		FString Value;
-		Property->ExportTextItem(Value, Property->ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
+		Property.ExportTextItem(Value, Property.ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
 		
-		if (Property->IsA<FFloatProperty>())
+		if (Property.IsA<FFloatProperty>())
 		{
 			Value = FString::SanitizeFloat(FCString::Atof(*Value));
 		}
@@ -95,17 +89,12 @@ void UVoxelExposedNode::ApplyParameters(const TMap<FName, FString>& Parameters)
 	{
 		return;
 	}
-
-	const FName PropertyName = GetParameterPropertyName();
-	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
-	if (!ensure(Property))
-	{
-		return;
-	}
+	
+	auto& Property = GetParameterProperty();
 
 	Modify();
 
-	if (!ensure(Property->ImportText(**NewValuePtr, Property->ContainerPtrToValuePtr<void>(this), PPF_None, this)))
+	if (!ensure(Property.ImportText(**NewValuePtr, Property.ContainerPtrToValuePtr<void>(this), PPF_None, this)))
 	{
 		return;
 	}
@@ -120,19 +109,14 @@ void UVoxelExposedNode::ApplyParameters(const TMap<FName, FString>& Parameters)
 
 void UVoxelExposedNode::GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const
 {
-	const FName PropertyName = GetParameterPropertyName();
-	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
-	if (!ensure(Property))
-	{
-		return;
-	}
+	auto& Property = GetParameterProperty();
 
 	FString DefaultValue;
-	Property->ExportTextItem(DefaultValue, Property->ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
+	Property.ExportTextItem(DefaultValue, Property.ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
 
 	OutParameters.Add(FVoxelGeneratorParameter(
 		UniqueName,
-		FVoxelGeneratorParameterType(*Property),
+		FVoxelGeneratorParameterType(Property),
 		DisplayName,
 		Category,
 		Tooltip,
@@ -213,26 +197,27 @@ void UVoxelExposedNode::MakeNameUnique()
 	}
 }
 
-const void* UVoxelExposedNode::GetParameterInternal(void* Temp, UScriptStruct* Struct) const
+FProperty& UVoxelExposedNode::GetParameterProperty() const
 {
 	const FName PropertyName = GetParameterPropertyName();
 	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
-	if (!ensure(Property)) return Temp;
 
-	if (auto* StructProperty = UE_25_SWITCH(Cast, CastField)<FStructProperty>(Property))
+	if (ensure(Property))
 	{
-		ensure(StructProperty->Struct == Struct);
+		return *Property;
+	}
+	else
+	{
+		return *GetClass()->FindPropertyByName(GET_MEMBER_NAME_STATIC(UVoxelExposedNode, Priority));
+	}
+}
+
+const FString* UVoxelExposedNode::GetParameterOverride() const
+{
+	if (!Graph)
+	{
+		return nullptr;
 	}
 	
-	const void* Default = Property->ContainerPtrToValuePtr<void>(this);
-
-	auto* Parameter = Graph->TransientParameters.Find(UniqueName);
-	if (!Parameter) return Default;
-
-	if (!ensure(Property->ImportText(**Parameter, Temp, PPF_None, GetTransientPackage())))
-	{
-		return Default;
-	}
-
-	return Temp;
+	return Graph->TransientParameters.Find(UniqueName);
 }

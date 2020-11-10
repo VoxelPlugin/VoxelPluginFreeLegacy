@@ -12,8 +12,37 @@
 class UVoxelGeneratorInstanceWrapper;
 class UVoxelTransformableGeneratorInstanceWrapper;
 
+#if CPP
+class IVoxelGeneratorCache
+{
+public:
+	virtual ~IVoxelGeneratorCache() = default;
+	
+	virtual TVoxelSharedRef<FVoxelGeneratorInstance> MakeNativeGeneratorInstance(FVoxelGeneratorPicker Picker) const = 0;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> MakeNativeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker) const = 0;
+};
+#endif
+
+class VOXEL_API FVoxelEmptyGeneratorCache : public IVoxelGeneratorCache
+{
+public:
+	const FVoxelGeneratorInit& GeneratorInit;
+
+	explicit FVoxelEmptyGeneratorCache(const FVoxelGeneratorInit& GeneratorInit)
+		: GeneratorInit(GeneratorInit)
+	{
+	}
+	
+	virtual TVoxelSharedRef<FVoxelGeneratorInstance> MakeNativeGeneratorInstance(FVoxelGeneratorPicker Picker) const override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> MakeNativeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker) const override;
+};
+
 UCLASS(BlueprintType)
-class VOXEL_API UVoxelGeneratorCache : public UObject
+class VOXEL_API UVoxelGeneratorCache
+	: public UObject
+#if CPP
+	, public IVoxelGeneratorCache
+#endif
 {
 public:
 	GENERATED_BODY()
@@ -36,22 +65,30 @@ public:
 	UVoxelTransformableGeneratorInstanceWrapper* MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker) const;
 
 public:
-	void SetGeneratorInit(const FVoxelGeneratorInit& NewInit)
-	{
-		GeneratorInit = NewInit;
-	}
-	void ClearCache()
-	{
-		Cache.Reset();
-	}
+	virtual TVoxelSharedRef<FVoxelGeneratorInstance> MakeNativeGeneratorInstance(FVoxelGeneratorPicker Picker) const override;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> MakeNativeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker) const override;
+
+public:
+	void SetGeneratorInit(const FVoxelGeneratorInit& NewInit);
+	void ClearCache();
+	
+	static void AddReferencedObjects(UObject* InThis, FReferenceCollector& Collector);
 
 private:
 	UPROPERTY()
 	FVoxelGeneratorInit GeneratorInit;
+
+	struct FCache
+	{
+		UVoxelGeneratorInstanceWrapper* Wrapper = nullptr;
+		TVoxelSharedPtr<FVoxelGeneratorInstance> Instance;
+	};
+	struct FTransformableCache
+	{
+		UVoxelTransformableGeneratorInstanceWrapper* Wrapper = nullptr;
+		TVoxelSharedPtr<FVoxelTransformableGeneratorInstance> Instance;
+	};
 	
-	UPROPERTY()
-	mutable TMap<FVoxelGeneratorPicker, UVoxelGeneratorInstanceWrapper*> Cache;
-	
-	UPROPERTY()
-	mutable TMap<FVoxelTransformableGeneratorPicker, UVoxelTransformableGeneratorInstanceWrapper*> TransformableCache;
+	mutable TMap<FVoxelGeneratorPicker, FCache> Cache;
+	mutable TMap<FVoxelTransformableGeneratorPicker, FTransformableCache> TransformableCache;
 };

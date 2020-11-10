@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Templates/Casts.h"
 #include "Launch/Resources/Version.h"
 
 #if ENGINE_MINOR_VERSION < 24
@@ -65,6 +66,17 @@ using FStructProperty = UStructProperty;
 using FArrayProperty = UArrayProperty;
 using FMapProperty = UMapProperty;
 using FSetProperty = USetProperty;
+
+template<typename To, typename From>
+To* CastField(From* Src)
+{
+	return Cast<To>(Src);
+}
+template<typename To, typename From>
+To* CastFieldChecked(From* Src)
+{
+	return CastChecked<To>(Src);
+}
 
 #define LAYOUT_FIELD(Type, Name) Type Name
 #define DECLARE_TYPE_LAYOUT(...)

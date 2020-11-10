@@ -27,35 +27,35 @@ void UVoxelErosion::Initialize()
 
 	FlushRenderingCommands();
 
-	if (RainMapInit.Texture.GetSizeX() == RealSize &&
-		RainMapInit.Texture.GetSizeY() == RealSize)
+	if (RainMapInit->GetSizeX() == RealSize &&
+		RainMapInit->GetSizeY() == RealSize)
 	{
-		CopyTextureToRHI(RainMapInit.Texture, RainMap);
+		CopyTextureToRHI(*RainMapInit, RainMap);
 	}
 	else
 	{
 		FVoxelMessages::Error(
 			FString::Printf(
 				TEXT("Voxel Erosion Init: RainMapInit has size (%d, %d), but should have size (%d, %d)"),
-				RainMapInit.Texture.GetSizeX(),
-				RainMapInit.Texture.GetSizeY(),
+				RainMapInit->GetSizeX(),
+				RainMapInit->GetSizeY(),
 				RealSize,
 				RealSize),
 			this);
 	}
 	
-	if (HeightmapInit.Texture.GetSizeX() == RealSize &&
-		HeightmapInit.Texture.GetSizeY() == RealSize)
+	if (HeightmapInit->GetSizeX() == RealSize &&
+		HeightmapInit->GetSizeY() == RealSize)
 	{
-		CopyTextureToRHI(HeightmapInit.Texture, TerrainHeight);
+		CopyTextureToRHI(*HeightmapInit, TerrainHeight);
 	}
 	else
 	{
 		FVoxelMessages::Error(
 			FString::Printf(
 				TEXT("Voxel Erosion Init: HeightmapInit has size (%d, %d), but should have size (%d, %d)"),
-				HeightmapInit.Texture.GetSizeX(),
-				HeightmapInit.Texture.GetSizeY(),
+				HeightmapInit->GetSizeX(),
+				HeightmapInit->GetSizeY(),
 				RealSize,
 				RealSize),
 			this);

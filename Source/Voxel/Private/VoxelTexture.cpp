@@ -11,7 +11,12 @@ DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTextureMemory);
 static FAutoConsoleCommand CmdClearCache(
     TEXT("voxel.texture.ClearCache"),
     TEXT("Clears the voxel textures memory cache"),
-    FConsoleCommandDelegate::CreateStatic(&FVoxelTextureUtilities::ClearCache));
+    FConsoleCommandDelegate::CreateStatic(&FVoxelTextureHelpers::ClearCache));
+
+static FAutoConsoleCommand CmdClearIdCache(
+    TEXT("voxel.texture.ClearCIdache"),
+    TEXT("Clears the voxel textures id cache, used for serialization"),
+    FConsoleCommandDelegate::CreateStatic(&FVoxelTextureHelpers::ClearIdCache));
 
 struct FVoxelTextureCacheKey
 {
@@ -138,7 +143,7 @@ inline void ExtractTextureData(UTexture* Texture, int32& OutSizeX, int32& OutSiz
 	OutData.SetNum(1);
 }
 
-TVoxelTexture<FColor> FVoxelTextureUtilities::CreateFromTexture_Color(UTexture* Texture)
+TVoxelTexture<FColor> FVoxelTextureHelpers::CreateFromTexture_Color(UTexture* Texture)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -168,7 +173,7 @@ TVoxelTexture<FColor> FVoxelTextureUtilities::CreateFromTexture_Color(UTexture* 
 	return TVoxelTexture<FColor>(Data.ToSharedRef());
 }
 
-TVoxelTexture<float> FVoxelTextureUtilities::CreateFromTexture_Float(UTexture* Texture, EVoxelRGBA Channel)
+TVoxelTexture<float> FVoxelTextureHelpers::CreateFromTexture_Float(UTexture* Texture, EVoxelRGBA Channel)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -214,7 +219,7 @@ TVoxelTexture<float> FVoxelTextureUtilities::CreateFromTexture_Float(UTexture* T
 	return TVoxelTexture<float>(Data.ToSharedRef());
 }
 
-bool FVoxelTextureUtilities::CanCreateFromTexture(UTexture* Texture, FString& OutError)
+bool FVoxelTextureHelpers::CanCreateFromTexture(UTexture* Texture, FString& OutError)
 {
 	if (!Texture)
 	{
@@ -264,7 +269,7 @@ bool FVoxelTextureUtilities::CanCreateFromTexture(UTexture* Texture, FString& Ou
 	return false;
 }
 
-void FVoxelTextureUtilities::FixTexture(UTexture* Texture)
+void FVoxelTextureHelpers::FixTexture(UTexture* Texture)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -280,7 +285,7 @@ void FVoxelTextureUtilities::FixTexture(UTexture* Texture)
 	Texture->MarkPackageDirty();
 }
 
-void FVoxelTextureUtilities::ClearCache()
+void FVoxelTextureHelpers::ClearCache()
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -288,7 +293,7 @@ void FVoxelTextureUtilities::ClearCache()
 	GetVoxelTextureCacheMap<float>().Empty();
 }
 
-void FVoxelTextureUtilities::ClearCache(UTexture* Texture)
+void FVoxelTextureHelpers::ClearCache(UTexture* Texture)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -300,7 +305,7 @@ void FVoxelTextureUtilities::ClearCache(UTexture* Texture)
 	GetVoxelTextureCacheMap<float>().Remove(FVoxelTextureCacheKey(Texture, EVoxelRGBA::A));
 }
 
-void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<float>& Texture, UTexture2D*& InOutTexture)
+void FVoxelTextureHelpers::CreateOrUpdateUTexture2D(const TVoxelTexture<float>& Texture, UTexture2D*& InOutTexture)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -328,7 +333,7 @@ void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<float>
 	InOutTexture->UpdateResource();
 }
 
-void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<FColor>& Texture, UTexture2D*& InOutTexture)
+void FVoxelTextureHelpers::CreateOrUpdateUTexture2D(const TVoxelTexture<FColor>& Texture, UTexture2D*& InOutTexture)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -356,7 +361,7 @@ void FVoxelTextureUtilities::CreateOrUpdateUTexture2D(const TVoxelTexture<FColor
 	InOutTexture->UpdateResource();
 }
 
-TVoxelTexture<FColor> FVoxelTextureUtilities::CreateColorTextureFromFloatTexture(const TVoxelTexture<float>& Texture, EVoxelRGBA Channel, bool bNormalize)
+TVoxelTexture<FColor> FVoxelTextureHelpers::CreateColorTextureFromFloatTexture(const TVoxelTexture<float>& Texture, EVoxelRGBA Channel, bool bNormalize)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -401,7 +406,7 @@ TVoxelTexture<FColor> FVoxelTextureUtilities::CreateColorTextureFromFloatTexture
 	return TVoxelTexture<FColor>(Data);
 }
 
-TVoxelTexture<float> FVoxelTextureUtilities::Normalize(const TVoxelTexture<float>& Texture)
+TVoxelTexture<float> FVoxelTextureHelpers::Normalize(const TVoxelTexture<float>& Texture)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
@@ -419,4 +424,90 @@ TVoxelTexture<float> FVoxelTextureUtilities::Normalize(const TVoxelTexture<float
 	}
 
 	return TVoxelTexture<float>(Data);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+inline auto& GetVoxelTextureIdCacheMap()
+{
+	check(IsInGameThread());
+	static TMap<uint64, TVoxelTexture<T>> Map;
+	return Map;
+}
+
+template<typename T>
+bool FVoxelTextureHelpers::GetTextureById(uint64 Id, TVoxelTexture<T>& OutTexture)
+{
+	auto& Map = GetVoxelTextureIdCacheMap<T>();
+
+	TVoxelTexture<T>* Texture = Map.Find(Id);
+	if (!Texture)
+	{
+		return false;
+	}
+
+	ensure(Texture->GetUniqueId() == Id);
+	OutTexture = *Texture;
+	return true;
+}
+
+template<typename T>
+void FVoxelTextureHelpers::AddTextureToIdCache(const TVoxelTexture<T>& Texture)
+{
+	auto& Map = GetVoxelTextureIdCacheMap<T>();
+	const uint64 Id = Texture.GetUniqueId();
+
+	if (TVoxelTexture<T>* ExistingTexture = Map.Find(Id))
+	{
+		ensure(ExistingTexture->GetUniqueId() == Id);
+		ensure(ExistingTexture->DataPtr == Texture.DataPtr);
+		return;
+	}
+
+	Map.Add(Id, Texture);
+}
+
+void FVoxelTextureHelpers::ClearIdCache()
+{
+	GetVoxelTextureIdCacheMap<float>().Empty();
+	GetVoxelTextureIdCacheMap<FColor>().Empty();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<>
+void TVoxelTextureStructBase<float>::SaveTexture() const
+{
+	FVoxelTextureHelpers::AddTextureToIdCache(Texture);
+}
+
+template<>
+void TVoxelTextureStructBase<FColor>::SaveTexture() const
+{
+	FVoxelTextureHelpers::AddTextureToIdCache(Texture);
+}
+
+template<>
+void TVoxelTextureStructBase<float>::LoadTexture() const
+{
+	if (!FVoxelTextureHelpers::GetTextureById(Id, Texture))
+	{
+		FVoxelMessages::Error("Failed to serialize voxel float texture by Id! Voxel textures can only be serialized during the same play session");
+		Texture = {};
+	}
+}
+
+template<>
+void TVoxelTextureStructBase<FColor>::LoadTexture() const
+{
+	if (!FVoxelTextureHelpers::GetTextureById(Id, Texture))
+	{
+		FVoxelMessages::Error("Failed to serialize voxel color texture by Id! Voxel textures can only be serialized during the same play session");
+		Texture = {};
+	}
 }

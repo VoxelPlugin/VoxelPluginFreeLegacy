@@ -15,13 +15,16 @@ enum class EVoxelGeneratorPickerType : uint8
 	Object
 };
 
-template<typename TGenerator>
+template<typename TGenerator, bool bWeakPtr>
 struct TVoxelGeneratorPicker
 {
 public:
 	using UGenerator = TGenerator;
 	using FGeneratorInstance = typename TChooseClass<TIsSame<UGenerator, UVoxelGenerator>::Value, FVoxelGeneratorInstance, FVoxelTransformableGeneratorInstance>::Result;
-	
+	template<typename T>
+	using TPtr = typename TChooseClass<bWeakPtr, TWeakObjectPtr<T>, T*>::Result;
+
+public:
 	TVoxelGeneratorPicker() = default;
 	TVoxelGeneratorPicker(TYPE_OF_NULLPTR) {}
 	TVoxelGeneratorPicker(UClass* InClass)
@@ -46,22 +49,29 @@ public:
 		: TVoxelGeneratorPicker(InObject.LoadSynchronous())
 	{
 	}
-
-	template<typename TOther>
-	TVoxelGeneratorPicker(TVoxelGeneratorPicker<TOther> Picker)
+	
+public:
+	template<typename TOther, bool bOtherWeakPtr>
+	TVoxelGeneratorPicker(const TVoxelGeneratorPicker<TOther, bOtherWeakPtr>& Picker)
 	{
+		// TWeakObjectPtr casts: so we support bWeakPtr being false or true
+		
 		Type = Picker.Type;
 		Class = Picker.Class.Get();
-		Object = Cast<UGenerator>(Picker.Object);
+		Object = Cast<UGenerator>(TWeakObjectPtr<TOther>(Picker.Object).Get());
+		Parameters = Picker.Parameters;
+#if WITH_EDITORONLY_DATA
+		EditorData = TWeakObjectPtr<UObject>(Picker.EditorData).Get();
+#endif
 	}
 	
 public:
 	EVoxelGeneratorPickerType Type = EVoxelGeneratorPickerType::Class;
 	TSubclassOf<UGenerator> Class;
-	UGenerator* Object = nullptr;
+	TPtr<UGenerator> Object = nullptr;
 	TMap<FName, FString> Parameters;
 #if WITH_EDITORONLY_DATA
-	UObject* EditorData = nullptr;
+	TPtr<UObject> EditorData = nullptr;
 #endif
 	
 	// Might return nullptr!
@@ -92,7 +102,7 @@ public:
 	bool IsClass() const { return Type == EVoxelGeneratorPickerType::Class; }
 	bool IsObject() const { return Type == EVoxelGeneratorPickerType::Object; }
 
-	bool operator==(const TVoxelGeneratorPicker<UGenerator>& Other) const
+	bool operator==(const TVoxelGeneratorPicker& Other) const
 	{
 		// We ignore editor data here
 		return
@@ -102,21 +112,31 @@ public:
 	}
 };
 
-template<typename TGenerator>
-uint32 GetTypeHash(const TVoxelGeneratorPicker<TGenerator>& Key)
+template<typename TGenerator, bool bWeakPtr>
+uint32 GetTypeHash(const TVoxelGeneratorPicker<TGenerator, bWeakPtr>& Key)
 {
 	return HashCombine(GetTypeHash(Key.GetObject()), GetTypeHash(Key.Parameters.Num()));
 }
 
+struct FVoxelWeakGeneratorPicker : TVoxelGeneratorPicker<UVoxelGenerator, true>
+{
+	using TVoxelGeneratorPicker<UVoxelGenerator, true>::TVoxelGeneratorPicker;
+};
+
+struct FVoxelWeakTransformableGeneratorPicker : TVoxelGeneratorPicker<UVoxelTransformableGenerator, true>
+{
+	using TVoxelGeneratorPicker<UVoxelTransformableGenerator, true>::TVoxelGeneratorPicker;
+};
+
 USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelGeneratorTools.MakeGeneratorPickerFromObject"))
 struct VOXEL_API FVoxelGeneratorPicker
 #if CPP
-	: TVoxelGeneratorPicker<UVoxelGenerator>
+	: TVoxelGeneratorPicker<UVoxelGenerator, false>
 #endif
 {
 	GENERATED_BODY()
 	
-	using TVoxelGeneratorPicker<UVoxelGenerator>::TVoxelGeneratorPicker;
+	using TVoxelGeneratorPicker<UVoxelGenerator, false>::TVoxelGeneratorPicker;
 	
 	// Will default to EmptyGenerator if null
 	TVoxelSharedRef<FGeneratorInstance> GetInstance(bool bSilent) const;
@@ -144,12 +164,12 @@ struct VOXEL_API FVoxelGeneratorPicker
 USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelGeneratorTools.MakeTransformableGeneratorPickerFromObject"))
 struct FVoxelTransformableGeneratorPicker
 #if CPP
-	: TVoxelGeneratorPicker<UVoxelTransformableGenerator>
+	: TVoxelGeneratorPicker<UVoxelTransformableGenerator, false>
 #endif
 {
 	GENERATED_BODY()
 	
-	using TVoxelGeneratorPicker<UVoxelTransformableGenerator>::TVoxelGeneratorPicker;
+	using TVoxelGeneratorPicker<UVoxelTransformableGenerator, false>::TVoxelGeneratorPicker;
 	
 	// Will default to EmptyGenerator if null
 	TVoxelSharedRef<FGeneratorInstance> GetInstance(bool bSilent) const;

@@ -7,17 +7,17 @@
 #include "VoxelMinimal.h"
 #include "VoxelGeneratorInit.generated.h"
 
+class IVoxelGeneratorCache;
 class AVoxelWorld;
+class UVoxelGeneratorCache;
 class UVoxelMaterialCollectionBase;
 
 USTRUCT(BlueprintType)
-struct FVoxelGeneratorInit
+struct VOXEL_API FVoxelGeneratorInit
 {
 	GENERATED_BODY()
 
-	VOXEL_DEPRECATED(1.2, "Seeds are now regular generator parameters")
-	TMap<FName, int32> Seeds;
-
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
 	float VoxelSize = 100;
 
@@ -52,6 +52,18 @@ struct FVoxelGeneratorInit
 		, World(World)
 	{
 	}
+
+	const IVoxelGeneratorCache& GetGeneratorCache() const;
+
+private:
+	mutable TWeakObjectPtr<const UVoxelGeneratorCache> GeneratorCache;
+	mutable TVoxelSharedPtr<const IVoxelGeneratorCache> GeneratorCacheFallback;
+
+	friend class UVoxelGeneratorCache;
+
+public:
+	VOXEL_DEPRECATED(1.2, "Seeds are now regular generator parameters")
+	TMap<FName, int32> Seeds;
 };
 
 VOXEL_DEPRECATED(1.2, "Use FVoxelGeneratorInit instead of FVoxelWorldGeneratorInit.")

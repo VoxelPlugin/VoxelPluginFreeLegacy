@@ -111,26 +111,26 @@ FVoxelGeneratorParameterType::FVoxelGeneratorParameterType(FProperty& Property)
 	{
 		PropertyType = EVoxelGeneratorParameterPropertyType::Object;
 
-		auto* ObjectProperty = UE_25_SWITCH(Cast, CastField)<FObjectProperty>(&Property);
+		auto* ObjectProperty = CastField<FObjectProperty>(&Property);
 		PropertyClass = ObjectProperty->PropertyClass->GetFName();
 	}
 	else if (Property.IsA<FSoftObjectProperty>())
 	{
 		PropertyType = EVoxelGeneratorParameterPropertyType::Object;
 
-		auto* ObjectProperty = UE_25_SWITCH(Cast, CastField)<FSoftObjectProperty>(&Property);
+		auto* ObjectProperty = CastField<FSoftObjectProperty>(&Property);
 		PropertyClass = ObjectProperty->PropertyClass->GetFName();
 	}
 	else if (Property.IsA<FStructProperty>())
 	{
 		PropertyType = EVoxelGeneratorParameterPropertyType::Struct;
 
-		auto* ObjectProperty = UE_25_SWITCH(Cast, CastField)<FStructProperty>(&Property);
+		auto* ObjectProperty = CastField<FStructProperty>(&Property);
 		PropertyClass = ObjectProperty->Struct->GetFName();
 	}
 	else if (Property.IsA<FArrayProperty>())
 	{
-		auto* ArrayProperty = UE_25_SWITCH(Cast, CastField)<FArrayProperty>(&Property);
+		auto* ArrayProperty = CastField<FArrayProperty>(&Property);
 		
 		ContainerType = EVoxelGeneratorParameterContainerType::Array;
 		
@@ -142,7 +142,7 @@ FVoxelGeneratorParameterType::FVoxelGeneratorParameterType(FProperty& Property)
 	}
 	else if (Property.IsA<FSetProperty>())
 	{
-		auto* SetProperty = UE_25_SWITCH(Cast, CastField)<FSetProperty>(&Property);
+		auto* SetProperty = CastField<FSetProperty>(&Property);
 		
 		ContainerType = EVoxelGeneratorParameterContainerType::Set;
 		
@@ -154,7 +154,7 @@ FVoxelGeneratorParameterType::FVoxelGeneratorParameterType(FProperty& Property)
 	}
 	else if (Property.IsA<FMapProperty>())
 	{
-		auto* MapProperty = UE_25_SWITCH(Cast, CastField)<FMapProperty>(&Property);
+		auto* MapProperty = CastField<FMapProperty>(&Property);
 		
 		ContainerType = EVoxelGeneratorParameterContainerType::Map;
 		

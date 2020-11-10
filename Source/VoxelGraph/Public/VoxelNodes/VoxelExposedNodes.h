@@ -6,6 +6,7 @@
 #include "VoxelMinimal.h"
 #include "VoxelNodeHelper.h"
 #include "VoxelNodeHelperMacros.h"
+#include "VoxelGenerators/VoxelGeneratorParametersUtilities.h"
 #include "VoxelExposedNodes.generated.h"
 
 UCLASS(Abstract, Category = "Parameters")
@@ -55,19 +56,10 @@ public:
 	//~ End UVoxelNode Interface
 
 public:
-	struct FDummy
-	{
-		static UScriptStruct* Get() { return nullptr; }
-	};
-	
 	template<typename T>
-	T GetParameter() const
+	auto GetParameter() const
 	{
-		T Temp{};
-		const void* Result = GetParameterInternal(static_cast<void*>(&Temp), TChooseClass<TOr<TIsFundamentalType<T>, TIsPointer<T>>::Value, FDummy, TBaseStructure<T>>::Result::Get());
-		check(Result);
-		
-		return *static_cast<const T*>(Result);
+		return FVoxelGeneratorParametersUtilities::GetParameter<T>(GetParameterProperty(), this, GetParameterOverride());
 	}
 
 protected:
@@ -85,5 +77,7 @@ private:
 	bool bCanBeRenamed = true;
 
 	void MakeNameUnique();
-	const void* GetParameterInternal(void* Temp, UScriptStruct* Struct) const;
+	
+	FProperty& GetParameterProperty() const;
+	const FString* GetParameterOverride() const;
 };

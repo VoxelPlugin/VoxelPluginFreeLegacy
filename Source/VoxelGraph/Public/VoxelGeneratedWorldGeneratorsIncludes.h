@@ -20,6 +20,7 @@
 #include "NodeFunctions/VoxelMathNodeFunctions.h"
 #include "NodeFunctions/VoxelDeprecatedNodeFunctions.h"
 #include "NodeFunctions/VoxelPlaceableItemsNodeFunctions.h"
+#include "NodeFunctions/VoxelGeneratorVariableHelper.h"
 
 #include "VoxelContext.h"
 #include "VoxelMessages.h"
