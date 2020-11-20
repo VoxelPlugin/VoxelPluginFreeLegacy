@@ -17,14 +17,18 @@ void FVoxelTextureUtilities::UpdateColorTexture(UTexture2D*& Texture, const FInt
 		{
 			return;
 		}
+		// TODO why not TC_VectorDisplacementmap
 		Texture->CompressionSettings = TC_HDR;
 		Texture->SRGB = false;
 	}
 	FTexture2DMipMap& Mip = Texture->PlatformData->Mips[0];
 	{
 		void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
-		FMemory::Memcpy(Data, Colors.GetData(), Colors.Num() * sizeof(FColor));
+		if (ensure(Data))
+		{
+			FMemory::Memcpy(Data, Colors.GetData(), Colors.Num() * sizeof(FColor));
+		}
+		Mip.BulkData.Unlock();
 	}
-	Mip.BulkData.Unlock();
 	Texture->UpdateResource();
 }

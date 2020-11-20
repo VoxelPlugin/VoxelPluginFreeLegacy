@@ -111,7 +111,7 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	TVoxelQueryZone<FVoxelValue> QueryZone(GetBoundsToCheckIsEmptyOn(), FIntVector(SN_EXTENDED_CHUNK_SIZE), LOD, CachedValues);
-	MESHER_TIME_VALUES(SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE, Data.Get<FVoxelValue>(QueryZone, LOD));
+	MESHER_TIME_INLINE_VALUES(SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE, Data.Get<FVoxelValue>(QueryZone, LOD));
 
 	Accelerator = MakeUnique<FVoxelConstDataAccelerator>(Data, GetBoundsToLock());
 
@@ -225,7 +225,7 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 									{
 										const float cmid = (c1 + c2) * 0.5f;
 										const FIntVector MidPosition = (MinPosition + MaxPosition) / 2;
-										const FVoxelValue MidValue = MESHER_TIME_RETURN_VALUES(1, Accelerator->Get<FVoxelValue>(MidPosition + ChunkPosition, LOD));
+										const FVoxelValue MidValue = MESHER_TIME_INLINE_VALUES(1, Accelerator->Get<FVoxelValue>(MidPosition + ChunkPosition, LOD));
 										if (MinValue.IsEmpty() != MidValue.IsEmpty())//intersection is between c1 and cmid
 										{
 											c2 = cmid;
@@ -444,15 +444,15 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 					}
 					if (TVertex::bComputeNormal)
 					{
-						Vertex.SetNormal(MESHER_TIME_RETURN(Normals, GetNormal(VoxelFloats, Offset)));
+						Vertex.SetNormal(MESHER_TIME_INLINE(Normals, GetNormal(VoxelFloats, Offset)));
 					}
 					if (TVertex::bComputeMaterial)
 					{
-						Vertex.SetMaterial(MESHER_TIME_RETURN_MATERIALS(1, Accelerator->GetMaterial(MaterialPositions[VoxelIndex] * Step + ChunkPosition, LOD)));
+						Vertex.SetMaterial(MESHER_TIME_INLINE_MATERIALS(1, Accelerator->GetMaterial(MaterialPositions[VoxelIndex] * Step + ChunkPosition, LOD)));
 					}
 					if (TVertex::bComputeTextureCoordinate)
 					{
-						Vertex.SetTextureCoordinate(MESHER_TIME_RETURN(UVs, FVoxelMesherUtilities::GetUVs(*this, FinalPosition)));
+						Vertex.SetTextureCoordinate(MESHER_TIME_INLINE(UVs, FVoxelMesherUtilities::GetUVs(*this, FinalPosition)));
 					}
 					Vertices.Add(Vertex);
 				}
@@ -550,7 +550,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelSurfaceNetMesher::CreateFullChunkImpl(FVo
 
 	FVoxelMesherUtilities::SanitizeMesh(Indices, Vertices);
 
-	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
+	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
 		LOD,
 		MoveTemp(Indices),

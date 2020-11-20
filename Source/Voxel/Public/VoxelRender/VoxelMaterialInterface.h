@@ -12,6 +12,8 @@ class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class FVoxelMaterialInterface;
 
+// This code is a bit complex to handle material reinstancing when they are recompiled
+// Reinstancing reconstructs the object in-place, invaliding any weak pointer to it, but keeping the raw pointer the same
 class VOXEL_API FVoxelMaterialInterfaceManager : public FGCObject
 {
 public:
@@ -32,6 +34,7 @@ public:
 	
 	TVoxelSharedRef<FVoxelMaterialInterface> DefaultMaterial() const;
 	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterial(UMaterialInterface* MaterialInterface);
+	// Will handle Parent being an instance
 	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterialInstance(UMaterialInterface* Parent);
 
 protected:
@@ -99,11 +102,14 @@ public:
 
 	// Will be null if the asset is force deleted
 	UMaterialInterface* GetMaterial() const;
-
+	// If true, it's a material instance the plugin created & we can set parameters on it
+	bool IsMaterialInstance() const { return bIsInstance; }
+	
 private:
 	const FVoxelMaterialInterfaceManager::FMaterialReference Reference;
-
-	explicit FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference);
+	const bool bIsInstance;
+	
+	FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference, bool bIsInstance);
 
 	friend class FVoxelMaterialInterfaceManager;
 };

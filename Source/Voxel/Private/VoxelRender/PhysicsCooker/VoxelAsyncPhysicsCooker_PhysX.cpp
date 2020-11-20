@@ -194,12 +194,6 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateTriMesh()
 		}
 	}
 
-	if (Indices.Num() < 3)
-	{
-		// If less than 3 triangles the cooking is likely to fail
-		return;
-	}
-
 	physx::PxTriangleMesh* TriangleMesh = nullptr;
 
 	constexpr bool bFlipNormals = true; // Always true due to the order of the vertices (clock wise vs not)

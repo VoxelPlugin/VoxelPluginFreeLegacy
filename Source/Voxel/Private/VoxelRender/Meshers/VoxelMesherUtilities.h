@@ -26,7 +26,8 @@ namespace FVoxelMesherUtilities
 		const FVoxelRendererSettings& Settings,
 		int32 LOD,
 		TArray<uint32>&& Indices,
-		TArray<FVoxelMesherVertex>&& Vertices);
+		TArray<FVoxelMesherVertex>&& Vertices,
+		TArray<FColor>* TextureData = nullptr);
 
 	inline FVector GetTranslatedTransvoxel(const FVector& Vertex, const FVector& Normal, uint8 TransitionsMask, uint8 LOD)
 	{

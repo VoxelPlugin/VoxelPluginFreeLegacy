@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "VoxelContainers/VoxelStaticArray.h"
+#include "VoxelContainers/VoxelStaticBitArray.h"
 #include "VoxelUtilities/VoxelMiscUtilities.h"
 
 class IVoxelData;
@@ -64,7 +64,7 @@ public:
 		auto& AlreadyModifiedT = FVoxelUtilities::TValuesMaterialsSelector<T>::Get(AlreadyModified);
 		if (!AlreadyModifiedT.Test(Index))
 		{
-			AlreadyModifiedT.Set(Index);
+			AlreadyModifiedT.Set(Index, true);
 			FVoxelUtilities::TValuesMaterialsSelector<T>::Get(*CurrentFrame).Emplace(Index, Value);
 		}
 	}

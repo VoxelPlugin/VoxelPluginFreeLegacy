@@ -273,7 +273,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicMesher::CreateFullChunkImpl(FVoxelMe
 
 	UnlockData();
 	
-	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
+	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
 		LOD,
 		MoveTemp(Indices),
@@ -300,7 +300,7 @@ void FVoxelCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<
 	}
 
 	TVoxelQueryZone<FVoxelValue> QueryZone(GetBoundsToCheckIsEmptyOn(), FIntVector(CUBIC_CHUNK_SIZE_WITH_NEIGHBORS), LOD, CachedValues);
-	MESHER_TIME_VALUES(CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS, Data.Get<FVoxelValue>(QueryZone, LOD));
+	MESHER_TIME_INLINE_VALUES(CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS, Data.Get<FVoxelValue>(QueryZone, LOD));
 	
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("Iteration");
@@ -326,7 +326,7 @@ void FVoxelCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<
 					FVoxelMaterial Material;
 					if (T::bComputeMaterial)
 					{
-						Material = MESHER_TIME_RETURN_MATERIALS(1, Accelerator->GetMaterial(
+						Material = MESHER_TIME_INLINE_MATERIALS(1, Accelerator->GetMaterial(
 							X + ChunkPosition.X,
 							Y + ChunkPosition.Y,
 							Z + ChunkPosition.Z,
@@ -393,7 +393,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicTransitionsMesher::CreateFullChunkIm
 
 	UnlockData();
 
-	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
+	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
 		LOD,
 		MoveTemp(Indices),
@@ -439,12 +439,12 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 			// "Other Side" is the name of neighbor we are creating transitions for
 			// "Other Side" neighbor has a higher resolution than us (their LOD = our LOD - 1)
 			
-			const FVoxelValue BigValue = MESHER_TIME_RETURN_VALUES(1, GetValue<Direction>(Step, LX * Step, LY * Step, 0));
+			const FVoxelValue BigValue = MESHER_TIME_INLINE_VALUES(1, GetValue<Direction>(Step, LX * Step, LY * Step, 0));
 			if (!BigValue.IsEmpty())
 			{
 				// First case: the big voxel is full
 				
-				const FVoxelValue BigOtherSideValue = MESHER_TIME_RETURN_VALUES(1, GetValue<Direction>(Step, LX * Step, LY * Step, -Step));
+				const FVoxelValue BigOtherSideValue = MESHER_TIME_INLINE_VALUES(1, GetValue<Direction>(Step, LX * Step, LY * Step, -Step));
 				// Face is already created by low res normal mesher
 				if (BigOtherSideValue.IsEmpty())
 				{
@@ -477,7 +477,7 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 				// The new faces are facing outwards, same direction as the transitions
 				constexpr EVoxelDirectionFlag::Type FaceDirection = Direction;
 				
-				const auto Material = MESHER_TIME_RETURN_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, 0));
+				const auto Material = MESHER_TIME_INLINE_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, 0));
 				Add2DFace<Direction, FaceDirection>(Step, Material, LX, LY, Vertices, Indices);
 			}
 			else
@@ -525,7 +525,7 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 				// which is low res to high res (ie us to other)
 				constexpr EVoxelDirectionFlag::Type FaceDirection = InverseVoxelDirection<Direction>();
 				
-				const auto Material = MESHER_TIME_RETURN_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, -HalfStep));
+				const auto Material = MESHER_TIME_INLINE_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, -HalfStep));
 				if (AreBothFull & 0x1)
 				{
 					Add2DFace<Direction, FaceDirection>(HalfStep, Material, 2 * LX + 0, 2 * LY + 0, Vertices, Indices);

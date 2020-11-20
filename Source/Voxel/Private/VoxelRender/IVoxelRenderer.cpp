@@ -36,7 +36,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, UVScale(InWorld->UVScale)
 	, NormalConfig(InWorld->NormalConfig)
 	, MaterialConfig(InWorld->MaterialConfig)
-	, bHardColorTransitions(InWorld->bHardColorTransitions)
+	, bHardColorTransitions(InWorld->bHardColorTransitions && InWorld->RenderType != EVoxelRenderType::Cubic)
 
 	, BoundsExtension(InWorld->BoundsExtension)
 
@@ -82,6 +82,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, bStaticWorld(InPlayType == EVoxelPlayType::Game
 		? InWorld->bStaticWorld
 		: false)
+	, bGreedyCubicMesher(InWorld->MaterialConfig == EVoxelMaterialConfig::RGB && InWorld->bGreedyCubicMesher)
 
 	, PriorityDuration(InWorld->PriorityDuration)
 	, DynamicSettings(InWorld->GetRendererDynamicSettings())

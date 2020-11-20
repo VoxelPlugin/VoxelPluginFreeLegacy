@@ -28,28 +28,22 @@ struct FVoxelScopedMesherTime
 };
 
 #define MESHER_TIME_SCOPE(Time) FVoxelScopedMesherTime LocalScope(Times.Time);
-#define MESHER_TIME(Time, X) { FVoxelScopedMesherTime LocalScope(Times.Time); X; }
-#define MESHER_TIME_RETURN(Time, X) [&]() { FVoxelScopedMesherTime LocalScope(Times.Time); return X; }()
+#define MESHER_TIME_INLINE(Time, X) [&]() { FVoxelScopedMesherTime LocalScope(Times.Time); return X; }()
 
 #define MESHER_TIME_SCOPE_VALUES(Count) FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count;
-#define MESHER_TIME_VALUES(Count, X) { FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count; X; }
-#define MESHER_TIME_RETURN_VALUES(Count, X) [&]() { FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count; return X; }()
+#define MESHER_TIME_INLINE_VALUES(Count, X) [&]() { FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count; return X; }()
 
 #define MESHER_TIME_SCOPE_MATERIALS(Count) FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count;
-#define MESHER_TIME_MATERIALS(Count, X) { FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count; X; }
-#define MESHER_TIME_RETURN_MATERIALS(Count, X) [&]() { FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count; return X; }()
+#define MESHER_TIME_INLINE_MATERIALS(Count, X) [&]() { FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count; return X; }()
 #else
 #define MESHER_TIME_SCOPE(Time)
-#define MESHER_TIME(Time, X) X
-#define MESHER_TIME_RETURN(Time, X) X
+#define MESHER_TIME_INLINE(Time, X) X
 
 #define MESHER_TIME_SCOPE_VALUES(Count)
-#define MESHER_TIME_VALUES(Count, X) X
-#define MESHER_TIME_RETURN_VALUES(Count, X) X
+#define MESHER_TIME_INLINE_VALUES(Count, X) X
 
 #define MESHER_TIME_SCOPE_MATERIALS(Count)
-#define MESHER_TIME_MATERIALS(Count, X) X
-#define MESHER_TIME_RETURN_MATERIALS(Count, X) X
+#define MESHER_TIME_INLINE_MATERIALS(Count, X) X
 #endif
 
 // All times are in cycles
