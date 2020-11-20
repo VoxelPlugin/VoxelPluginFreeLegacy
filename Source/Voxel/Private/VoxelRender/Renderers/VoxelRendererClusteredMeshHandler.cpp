@@ -354,7 +354,7 @@ void FVoxelRendererClusteredMeshHandler::FlushActionQueue(double MaxTime)
 				{
 					// Not enough meshes to render the built mesh, allocate new ones
 					auto* NewMesh = GetNewMesh(Action.ChunkId, Cluster.Position, Cluster.LOD);
-					if (!ensure(NewMesh)) return;
+					if (!ensureVoxelSlow(NewMesh)) return;
 					Cluster.Meshes.Add(NewMesh);
 				}
 

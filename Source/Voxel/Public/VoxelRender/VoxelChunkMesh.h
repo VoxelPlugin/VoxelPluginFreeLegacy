@@ -24,6 +24,8 @@ struct VOXEL_API FVoxelChunkMeshBuffers
 	TArray<FColor> Colors;
 	TArray<TArray<FVector2D>> TextureCoordinates;
 
+	TArray<FColor> TextureData;
+
 	FBox Bounds;
 	FGuid Guid; // Use to avoid rebuilding collisions when the mesh didn't change
 
@@ -33,7 +35,7 @@ struct VOXEL_API FVoxelChunkMeshBuffers
 		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
 	}
 
-	inline int32 GetNumVertices() const
+	int32 GetNumVertices() const
 	{
 		return Positions.Num();
 	}
@@ -52,44 +54,44 @@ private:
 struct FVoxelChunkMesh
 {
 public:
-	inline bool IsSingle() const
+	bool IsSingle() const
 	{
 		return bSingleBuffers;
 	}
-	inline bool IsEmpty() const
+	bool IsEmpty() const
 	{
 		return bSingleBuffers ? SingleBuffers->Indices.Num() == 0 : Map.Num() == 0;
 	}
 
-	inline TVoxelSharedPtr<const FVoxelChunkMeshBuffers> GetSingleBuffers() const
+	TVoxelSharedPtr<const FVoxelChunkMeshBuffers> GetSingleBuffers() const
 	{
 		ensure(IsSingle());
 		ensure(SingleBuffers.IsValid());
 		return SingleBuffers;
 	}
-	inline TVoxelSharedPtr<const FDistanceFieldVolumeData> GetDistanceFieldVolumeData() const
+	TVoxelSharedPtr<const FDistanceFieldVolumeData> GetDistanceFieldVolumeData() const
 	{
 		return DistanceFieldVolumeData;
 	}
-	inline TVoxelSharedPtr<const FVoxelChunkMeshBuffers> FindBuffer(const FVoxelMaterialIndices& MaterialIndices) const
+	TVoxelSharedPtr<const FVoxelChunkMeshBuffers> FindBuffer(const FVoxelMaterialIndices& MaterialIndices) const
 	{
 		ensure(!IsSingle());
 		return Map.FindRef(MaterialIndices);
 	}
 
 public:
-	inline void SetIsSingle(bool bIsSingle)
+	void SetIsSingle(bool bIsSingle)
 	{
 		bSingleBuffers = bIsSingle;
 	}
-	inline FVoxelChunkMeshBuffers& CreateSingleBuffers()
+	FVoxelChunkMeshBuffers& CreateSingleBuffers()
 	{
 		ensure(IsSingle());
 		ensure(!SingleBuffers.IsValid());
 		SingleBuffers = MakeVoxelShared<FVoxelChunkMeshBuffers>();
 		return *SingleBuffers;
 	}
-	inline FVoxelChunkMeshBuffers& FindOrAddBuffer(FVoxelMaterialIndices MaterialIndices, bool& bOutAdded)
+	FVoxelChunkMeshBuffers& FindOrAddBuffer(FVoxelMaterialIndices MaterialIndices, bool& bOutAdded)
 	{
 		ensure(!IsSingle());
 		auto* BufferPtr = Map.Find(MaterialIndices);
@@ -104,8 +106,9 @@ public:
 public:
 	void BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data, const FVoxelRendererSettingsBase& Settings);
 	
+public:
 	template<typename T>
-	inline void IterateBuffers(T Lambda)
+	void IterateBuffers(T Lambda)
 	{
 		if (bSingleBuffers)
 		{
@@ -120,7 +123,7 @@ public:
 		}
 	}
 	template<typename T>
-	inline void IterateBuffers(T Lambda) const
+	void IterateBuffers(T Lambda) const
 	{
 		if (bSingleBuffers)
 		{
@@ -136,7 +139,7 @@ public:
 	}
 	
 	template<typename T>
-	inline void IterateMaterials(T Lambda) const
+	void IterateMaterials(T Lambda) const
 	{
 		ensure(!IsSingle());
 		for (auto& It : Map)

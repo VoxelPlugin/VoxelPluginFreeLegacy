@@ -93,7 +93,8 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	const FVoxelRendererSettings& Settings, 
 	int32 LOD,
 	TArray<uint32>&& Indices, 
-	TArray<FVoxelMesherVertex>&& Vertices)
+	TArray<FVoxelMesherVertex>&& Vertices,
+	TArray<FColor>* TextureData)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
@@ -103,6 +104,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	{
 		if (Settings.bHardColorTransitions)
 		{
+			ensure(!TextureData);
 			VOXEL_ASYNC_SCOPE_COUNTER("Hard Color Transitions");
 			
 			// Add new vertices as needed
@@ -188,9 +190,15 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 		{
 			AddVertexToBuffer(Vertex, Buffers, Settings, EVoxelMaterialConfig::RGB);
 		}
+
+		if (TextureData)
+		{
+			Buffers.TextureData = MoveTemp(*TextureData);
+		}
 	}
 	else if (Settings.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
 	{
+		ensure(!TextureData);
 		Chunk->SetIsSingle(false);
 
 		TVoxelStaticArray<TMap<int32, int32>, 256> IndicesMaps{ ForceInit };
@@ -245,6 +253,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	}
 	else
 	{
+		ensure(!TextureData);
 		check(Settings.MaterialConfig == EVoxelMaterialConfig::MultiIndex);
 		Chunk->SetIsSingle(false);
 

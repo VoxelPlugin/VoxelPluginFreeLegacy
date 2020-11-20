@@ -4,6 +4,7 @@
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelRender/Meshers/VoxelMarchingCubeMesher.h"
 #include "VoxelRender/Meshers/VoxelCubicMesher.h"
+#include "VoxelRender/Meshers/VoxelGreedyCubicMesher.h"
 #include "VoxelRender/Meshers/VoxelSurfaceNetMesher.h"
 #include "VoxelRender/VoxelChunkMesh.h"
 
@@ -152,7 +153,14 @@ TUniquePtr<FVoxelMesherBase> FVoxelMesherAsyncWork::GetMesher(
 		}
 		else
 		{
-			return MakeUnique<FVoxelCubicMesher>(LOD, ChunkPosition, Settings);
+			if (Settings.bGreedyCubicMesher)
+			{
+				return MakeUnique<FVoxelGreedyCubicMesher>(LOD, ChunkPosition, Settings);
+			}
+			else
+			{
+				return MakeUnique<FVoxelCubicMesher>(LOD, ChunkPosition, Settings);
+			}
 		}
 	}
 	case EVoxelRenderType::SurfaceNets:

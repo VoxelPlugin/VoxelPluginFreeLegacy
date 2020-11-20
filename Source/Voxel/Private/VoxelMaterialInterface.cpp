@@ -60,8 +60,16 @@ TVoxelSharedRef<FVoxelMaterialInterface> FVoxelMaterialInterfaceManager::CreateM
 
 	UMaterialInstanceDynamic* Instance = GetInstanceFromPool();
 	check(Instance);
-	
-	FMaterialInstanceResource::SetParent(*Instance, Parent);
+
+	if (auto* ParentInstance = Cast<UMaterialInstanceDynamic>(Parent))
+	{
+		FMaterialInstanceResource::SetParent(*Instance, ParentInstance->Parent);
+		Instance->CopyParameterOverrides(ParentInstance);
+	}
+	else
+	{
+		FMaterialInstanceResource::SetParent(*Instance, Parent);
+	}
 
 	return CreateMaterialImpl(Instance, true);
 }
@@ -213,7 +221,7 @@ TVoxelSharedRef<FVoxelMaterialInterface> FVoxelMaterialInterfaceManager::CreateM
 
 	MaterialInfo->ReferenceCount++;
 	
-	return TVoxelSharedRef<FVoxelMaterialInterface>(new FVoxelMaterialInterface(Reference));
+	return TVoxelSharedRef<FVoxelMaterialInterface>(new FVoxelMaterialInterface(Reference, bIsInstance));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -273,8 +281,9 @@ void FVoxelMaterialInterfaceManager::ClearInstancePool()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelMaterialInterface::FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference)
+FVoxelMaterialInterface::FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference, bool bIsInstance)
 	: Reference(Reference)
+	, bIsInstance(bIsInstance)
 {
 }
 

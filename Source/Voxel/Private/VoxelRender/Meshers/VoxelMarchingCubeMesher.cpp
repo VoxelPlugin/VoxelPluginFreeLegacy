@@ -339,12 +339,12 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(F
 
 	TArray<FVoxelMesherVertex> MesherVertices = FMarchingCubeHelpers::CreateMesherVertices(Vertices);
 
-	MESHER_TIME_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
-	MESHER_TIME(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
+	MESHER_TIME_INLINE_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
+	MESHER_TIME_INLINE(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
 
 	UnlockData();
 
-	MESHER_TIME(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
+	MESHER_TIME_INLINE(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
 
 	if (CVarEnableUniqueUVs.GetValueOnAnyThread() != 0)
 	{
@@ -411,7 +411,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(F
 		}
 	}
 
-	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
+	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
 		LOD,
 		MoveTemp(Indices),
@@ -452,7 +452,7 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 		BoundsToQuery = BoundsToQuery.Extend(1);
 	}
 	TVoxelQueryZone<FVoxelValue> QueryZone(BoundsToQuery, FIntVector(DataSize), LOD, CachedValues);
-	MESHER_TIME_VALUES(DataSize * DataSize * DataSize, Data.Get<FVoxelValue>(QueryZone, LOD));
+	MESHER_TIME_INLINE_VALUES(DataSize * DataSize * DataSize, Data.Get<FVoxelValue>(QueryZone, LOD));
 	
 	Accelerator = MakeUnique<FVoxelConstDataAccelerator>(Data, GetBoundsToLock());
 
@@ -640,7 +640,7 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 										checkError((Max + Min) % 2 == 0);
 										const int32 Middle = (Max + Min) / 2;
 
-										FVoxelValue ValueAtMiddle = MESHER_TIME_RETURN_VALUES(1, Accelerator->Get<FVoxelValue>(
+										FVoxelValue ValueAtMiddle = MESHER_TIME_INLINE_VALUES(1, Accelerator->Get<FVoxelValue>(
 											(bIsAlongX ? Middle : PositionA.X) + ChunkPosition.X,
 											(bIsAlongY ? Middle : PositionA.Y) + ChunkPosition.Y,
 											(bIsAlongZ ? Middle : PositionA.Z) + ChunkPosition.Z, LOD));
@@ -985,7 +985,7 @@ bool FVoxelMarchingCubeTransitionsMesher::CreateGeometryForDirection(FVoxelMeshe
 								checkError((Max + Min) % 2 == 0);
 								const int32 Middle = (Max + Min) / 2;
 
-								FVoxelValue ValueAtMiddle = MESHER_TIME_RETURN_VALUES(1, GetValue<Direction>(
+								FVoxelValue ValueAtMiddle = MESHER_TIME_INLINE_VALUES(1, GetValue<Direction>(
 									bIsAlongX ? Middle : PositionA.X,
 									bIsAlongY ? Middle : PositionA.Y,
 									bIsLowResChunk ? LOD : HalfLOD));
@@ -1103,12 +1103,12 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 
 	TArray<FVoxelMesherVertex> MesherVertices = FMarchingCubeHelpers::CreateMesherVertices(Vertices);
 
-	MESHER_TIME_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
-	MESHER_TIME(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
+	MESHER_TIME_INLINE_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
+	MESHER_TIME_INLINE(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
 
 	UnlockData();
 
-	MESHER_TIME(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
+	MESHER_TIME_INLINE(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
 
 	// Can't translate if we don't have valid normals
 	if (Settings.NormalConfig != EVoxelNormalConfig::FlatNormal &&
@@ -1128,7 +1128,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 	// Important: sanitize AFTER translating!
 	FVoxelMesherUtilities::SanitizeMesh(Indices, MesherVertices);
 
-	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(Settings, LOD, MoveTemp(Indices), MoveTemp(MesherVertices)));
+	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(Settings, LOD, MoveTemp(Indices), MoveTemp(MesherVertices)));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

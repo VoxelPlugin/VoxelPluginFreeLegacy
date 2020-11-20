@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
-#include "VoxelUtilities/VoxelBaseUtilities.h"
 
 template<typename T, uint32 Size, uint32 Alignment = alignof(T)>
 class alignas(Alignment) TVoxelStaticArray
@@ -123,39 +122,4 @@ template<typename T, uint32 Size, uint32 Alignment>
 struct TIsContiguousContainer<TVoxelStaticArray<T, Size, Alignment>>
 {
 	enum { Value = true };
-};
-
-template<uint32 Size>
-class TVoxelStaticBitArray
-{
-public:
-	TVoxelStaticBitArray() = default;
-	TVoxelStaticBitArray(EForceInit)
-	{
-		Clear();
-	}
-
-	void Clear()
-	{
-		Array.Memzero();
-	}
-
-	FORCEINLINE void Set(uint32 Index)
-	{
-		checkVoxelSlow(Index < Size);
-		Array[Index / 32] |= (1u << (Index % 32));
-	}
-	FORCEINLINE void Clear(uint32 Index)
-	{
-		checkVoxelSlow(Index < Size);
-		Array[Index / 32] &= ~(1u << (Index % 32));
-	}
-	FORCEINLINE bool Test(uint32 Index) const
-	{
-		checkVoxelSlow(Index < Size);
-		return Array[Index / 32] & (1u << (Index % 32));
-	}
-
-private:
-	TVoxelStaticArray<uint32, FVoxelUtilities::DivideCeil(Size, 32)> Array;
 };

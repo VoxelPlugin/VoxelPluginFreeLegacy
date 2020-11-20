@@ -8,6 +8,7 @@ DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelProcMeshMemory_Positions);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelProcMeshMemory_Colors);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelProcMeshMemory_Adjacency);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelProcMeshMemory_UVs_Tangents);
+DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelProcMeshMemory_TextureData);
 
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Num Voxel Proc Mesh Buffers"), STAT_NumVoxelProcMeshBuffers, STATGROUP_VoxelCounters);
 
@@ -24,6 +25,7 @@ FVoxelProcMeshBuffers::~FVoxelProcMeshBuffers()
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_Colors, LastAllocatedSize_Colors);
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_Adjacency, LastAllocatedSize_Adjacency);
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_UVs_Tangents, LastAllocatedSize_UVs_Tangents);
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_TextureData, LastAllocatedSize_TextureData);
 
 	DEC_DWORD_STAT(STAT_NumVoxelProcMeshBuffers);
 }
@@ -35,7 +37,8 @@ uint32 FVoxelProcMeshBuffers::GetAllocatedSize() const
 			VertexBuffers.PositionVertexBuffer.GetNumVertices() * VertexBuffers.PositionVertexBuffer.GetStride() +
 			VertexBuffers.ColorVertexBuffer.GetNumVertices() * VertexBuffers.ColorVertexBuffer.GetStride() +
 			IndexBuffer.GetAllocatedSize() +
-			AdjacencyIndexBuffer.GetAllocatedSize();
+			AdjacencyIndexBuffer.GetAllocatedSize() + 
+			TextureData.GetAllocatedSize();
 }
 
 void FVoxelProcMeshBuffers::UpdateStats()
@@ -68,4 +71,9 @@ void FVoxelProcMeshBuffers::UpdateStats()
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_UVs_Tangents, LastAllocatedSize_UVs_Tangents);
 	LastAllocatedSize_UVs_Tangents = VertexBuffers.StaticMeshVertexBuffer.GetResourceSize();
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_UVs_Tangents, LastAllocatedSize_UVs_Tangents);
+
+	
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_TextureData, LastAllocatedSize_TextureData);
+	LastAllocatedSize_TextureData = TextureData.GetAllocatedSize();
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_TextureData, LastAllocatedSize_TextureData);
 }

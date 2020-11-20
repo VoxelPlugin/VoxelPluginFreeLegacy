@@ -45,6 +45,7 @@ struct FVoxelRendererDynamicSettings
 	TVoxelStaticArray<FLODData, 32> LODData{ ForceInit };
 };
 
+// Doesn't keep alive anything important
 struct FVoxelRendererSettingsBase
 {
 	const float VoxelSize;
@@ -101,6 +102,7 @@ struct FVoxelRendererSettingsBase
 	const bool bDoNotMergeCollisionsAndNavmesh;
 
 	const bool bStaticWorld;
+	const bool bGreedyCubicMesher;
 
 	const float PriorityDuration;
 

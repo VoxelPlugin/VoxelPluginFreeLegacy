@@ -16,6 +16,7 @@ DECLARE_VOXEL_MEMORY_STAT(TEXT("Positions"), STAT_VoxelProcMeshMemory_Positions,
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Colors"), STAT_VoxelProcMeshMemory_Colors, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Adjacency"), STAT_VoxelProcMeshMemory_Adjacency, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
 DECLARE_VOXEL_MEMORY_STAT(TEXT("UVs & Tangents"), STAT_VoxelProcMeshMemory_UVs_Tangents, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Texture Data"), STAT_VoxelProcMeshMemory_TextureData, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
 
 struct VOXEL_API FVoxelProcMeshBuffers
 {
@@ -33,12 +34,14 @@ struct VOXEL_API FVoxelProcMeshBuffers
 	FVoxelRawStaticIndexBuffer AdjacencyIndexBuffer{ bNeedsCPUAccess };
 	/** Local bounds of this section */
 	FBox LocalBounds = FBox(ForceInit);
+	
+	TNoGrowArray<FColor> TextureData;
 
-	inline int32 GetNumVertices() const
+	int32 GetNumVertices() const
 	{
 		return VertexBuffers.PositionVertexBuffer.GetNumVertices();
 	}
-	inline int32 GetNumIndices() const
+	int32 GetNumIndices() const
 	{
 		return IndexBuffer.GetNumIndices();
 	}
@@ -56,6 +59,7 @@ private:
 	int32 LastAllocatedSize_Colors = 0;
 	int32 LastAllocatedSize_Adjacency = 0;
 	int32 LastAllocatedSize_UVs_Tangents = 0;
+	int32 LastAllocatedSize_TextureData = 0;
 	mutable TVoxelWeakPtr<FVoxelProcMeshBuffersRenderData> RenderData;
 
 	friend class FVoxelProcMeshBuffersRenderData;

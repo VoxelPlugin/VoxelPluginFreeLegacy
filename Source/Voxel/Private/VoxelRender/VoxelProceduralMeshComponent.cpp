@@ -20,9 +20,11 @@
 #include "AI/NavigationSystemHelpers.h"
 #include "AI/NavigationSystemBase.h"
 #include "Async/Async.h"
+#include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "DrawDebugHelpers.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Lightmass/LightmassImportanceVolume.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelPhysicsTriangleMeshesMemory);
@@ -227,6 +229,68 @@ void UVoxelProceduralMeshComponent::SetProcMeshSection(int32 Index, FVoxelProcMe
 	}
 
 	Buffers->UpdateStats();
+
+	const auto SetupTextureData = [&Settings, this](const TNoGrowArray<FColor>& TextureData)
+	{
+		const int32 Size = FMath::CeilToInt(FMath::Sqrt(TextureData.Num()));
+		
+		UTexture2D* Texture = UTexture2D::CreateTransient(Size, Size);
+		if (!ensure(Texture))
+		{
+			return;
+		}
+
+		{
+			Texture->CompressionSettings = TC_VectorDisplacementmap;
+			Texture->SRGB = false;
+			Texture->Filter = TF_Nearest;
+			
+			FTexture2DMipMap& Mip = Texture->PlatformData->Mips[0];
+			{
+				void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
+				if (ensure(Data))
+				{
+					FMemory::Memcpy(Data, TextureData.GetData(), TextureData.Num() * sizeof(FColor));
+
+					// Clear the end of the texture
+					const int32 Num = Size * Size - TextureData.Num();
+					if (Num != 0)
+					{
+						check(Num > 0);
+						FMemory::Memzero(static_cast<FColor*>(Data) + TextureData.Num(), Num * sizeof(FColor));
+					}
+				}
+				Mip.BulkData.Unlock();
+			}
+			Texture->UpdateResource();
+		}
+		
+		if (!Settings.Material->IsMaterialInstance())
+		{
+			Settings.Material = FVoxelMaterialInterfaceManager::Get().CreateMaterialInstance(Settings.Material->GetMaterial());
+			ensure(Settings.Material->IsMaterialInstance());
+		}
+
+		auto* MaterialInstance = Cast<UMaterialInstanceDynamic>(Settings.Material->GetMaterial());
+		if (!ensure(MaterialInstance))
+		{
+			return;
+		}
+
+		MaterialInstance->SetTextureParameterValue(STATIC_FNAME("ColorTexture"), Texture);
+		MaterialInstance->SetScalarParameterValue(STATIC_FNAME("ColorTextureSize"), Size);
+
+		if (auto* VoxelWorld = Cast<AVoxelWorld>(GetOwner()))
+		{
+			VoxelWorld->DebugTextures.Remove(nullptr);
+			VoxelWorld->DebugTextures.Add(Texture);
+		}
+	};
+	
+	if (Buffers->TextureData.Num() > 0)
+	{
+		SetupTextureData(Buffers->TextureData);
+	}
 
 	ProcMeshSections[Index].Settings = Settings;
 

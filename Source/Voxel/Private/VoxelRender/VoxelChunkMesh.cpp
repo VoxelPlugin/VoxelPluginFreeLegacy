@@ -133,6 +133,7 @@ void FVoxelChunkMeshBuffers::UpdateStats()
 	LastAllocatedSize += Tangents.GetAllocatedSize();
 	LastAllocatedSize += Colors.GetAllocatedSize();
 	for (auto& T : TextureCoordinates) LastAllocatedSize += T.GetAllocatedSize();
+	LastAllocatedSize += TextureData.GetAllocatedSize();
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelChunkMeshMemory, LastAllocatedSize);
 }
 

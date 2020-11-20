@@ -83,6 +83,7 @@ private:
 	bool bClearProcMeshBuffersOnFinishUpdate = false;
 	// Distance field bias
 	float DistanceFieldSelfShadowBias = 0.f;
+	// If true will create a static mesh component when baking lighting
 	bool bContributesToStaticLighting = false;
 	
 public:
