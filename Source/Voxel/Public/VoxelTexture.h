@@ -127,7 +127,7 @@ struct TVoxelTexture
 public:
 	struct FTextureData
 	{
-		const uint64 Id = UNIQUE_ID();
+		const uint64 Id = VOXEL_UNIQUE_ID();
 		
 		FTextureData() = default;
 		~FTextureData()

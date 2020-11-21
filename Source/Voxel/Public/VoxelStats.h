@@ -139,28 +139,16 @@ struct FVoxelMemoryCounterStaticRef
 	static FVoxelMemoryCounterStaticRef StaticRef ## StatName(Get ## StatName ## StaticName(), FVoxelMemoryCounterRef{ &VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName), &VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName) }); \
 	DEFINE_STAT(StatName ## _Stat)
 
-#define INC_VOXEL_MEMORY_STAT_BY_IMPL(StatName, Amount) \
+#define INC_VOXEL_MEMORY_STAT_BY(StatName, Amount) \
 	INC_MEMORY_STAT_BY(StatName ## _Stat, Amount) \
 	VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName).Set(FMath::Max<uint64>( \
 		VOXEL_MEMORY_PEAK_COUNTER_NAME(StatName).GetValue(), \
 		Amount + VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName).Add(Amount))); // Max is not atomic, but w/e should be fine anyways
 
-#define DEC_VOXEL_MEMORY_STAT_BY_IMPL(StatName, Amount) \
+#define DEC_VOXEL_MEMORY_STAT_BY(StatName, Amount) \
 	DEC_MEMORY_STAT_BY(StatName ## _Stat, Amount); \
 	VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName).Subtract(Amount); \
 	ensureVoxelSlowNoSideEffects(VOXEL_MEMORY_USAGE_COUNTER_NAME(StatName).GetValue() >= 0);
-
-///////////////////////////////////////////////////////////////////////////////
-
-DECLARE_VOXEL_MEMORY_STAT(TEXT("Total Voxel Memory"), STAT_TotalVoxelMemory, STATGROUP_VoxelMemory, VOXEL_API);
-
-#define INC_VOXEL_MEMORY_STAT_BY(StatName, Amount) \
-	INC_VOXEL_MEMORY_STAT_BY_IMPL(StatName, Amount) \
-	INC_VOXEL_MEMORY_STAT_BY_IMPL(STAT_TotalVoxelMemory, Amount)
-
-#define DEC_VOXEL_MEMORY_STAT_BY(StatName, Amount) \
-	DEC_VOXEL_MEMORY_STAT_BY_IMPL(StatName, Amount) \
-	DEC_VOXEL_MEMORY_STAT_BY_IMPL(STAT_TotalVoxelMemory, Amount)
 
 #else
 #define DECLARE_VOXEL_MEMORY_STAT(Name, StatName, Group, API) DECLARE_MEMORY_STAT_EXTERN(Name, StatName ## _Stat, Group, API)

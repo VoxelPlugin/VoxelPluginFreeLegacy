@@ -52,7 +52,7 @@ private:
 			int32 LOD,
 			const FIntVector& Position)
 		{
-			return FChunkInfo(UNIQUE_ID(), LOD, Position);
+			return FChunkInfo(VOXEL_UNIQUE_ID(), LOD, Position);
 		}
 
 	private:

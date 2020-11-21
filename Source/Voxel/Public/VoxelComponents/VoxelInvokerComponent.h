@@ -219,7 +219,7 @@ protected:
 
 // Volume with a voxel invoker
 // Sets the LOD of the voxels in a volume, or always enable collision/navmesh in a volume
-UCLASS(hidecategories=(Advanced, Attachment, Collision, Volume), DisplayName = "Voxel LOD Volume")
+UCLASS(Blueprintable, hidecategories=(Advanced, Attachment, Collision, Volume), DisplayName = "Voxel LOD Volume")
 class VOXEL_API AVoxelLODVolume : public AVolume
 {
 	GENERATED_BODY()

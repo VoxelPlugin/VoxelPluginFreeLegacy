@@ -446,6 +446,7 @@ public:
 		{
 			if (Source.Main_DataPtr)
 			{
+				Main_Allocate(Memory);
 				FMemory::Memcpy(Main_DataPtr, Source.Main_DataPtr, Main_MemorySize);
 			}
 		}

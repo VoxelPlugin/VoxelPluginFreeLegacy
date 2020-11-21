@@ -133,6 +133,49 @@ protected:
 
 	// The handle of this delegate
 	FDelegateHandle Handle;
+
+	struct FThreadChecker
+	{
+		uint32 ThreadId = 0;
+		
+		FThreadChecker()
+		{
+			ThreadId = FPlatformTLS::GetCurrentThreadId();
+		}
+		~FThreadChecker()
+		{
+			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
+		}
+
+		FThreadChecker(const FThreadChecker& Other)
+			: ThreadId(Other.ThreadId)
+		{
+			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
+		}
+		FThreadChecker(FThreadChecker&& Other)
+			: ThreadId(Other.ThreadId)
+		{
+			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
+		}
+
+		FThreadChecker& operator=(const FThreadChecker& Other)
+		{
+			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
+			ensure(ThreadId == Other.ThreadId);
+			
+			ThreadId = Other.ThreadId;
+			return *this;
+		}
+		FThreadChecker& operator=(FThreadChecker&& Other)
+		{
+			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
+			ensure(ThreadId == Other.ThreadId);
+			
+			ThreadId = Other.ThreadId;
+			return *this;
+		}
+	};
+	typename TChooseClass<SPMode == ESPMode::NotThreadSafe, FThreadChecker, bool>::Result ThreadChecker;
 };
 
 template <class UserClass, ESPMode SPMode, typename... ParamTypes, typename FunctorType, typename... VarTypes>

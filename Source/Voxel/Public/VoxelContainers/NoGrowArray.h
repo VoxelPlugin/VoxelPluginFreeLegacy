@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 
+// TNoGrowArray will ensure if a grow allocation is made
+// This is useful to detect incorrect Reserve
+
 template<typename T>
 class TNoGrowAllocator : public T
 {
@@ -35,3 +38,25 @@ using TNoGrowArray = TArray<T, TNoGrowAllocator<TAllocator>>;
 
 template<typename T, typename TAllocator = FDefaultAllocator64>
 using TNoGrowArray64 = TArray<T, TNoGrowAllocator<TAllocator>>;
+
+template<typename T, typename TAllocator>
+TArray<T, TAllocator>& FromNoGrowArray(TNoGrowArray<T, TAllocator>& Array)
+{
+	return reinterpret_cast<TArray<T, TAllocator>&>(Array);
+}
+template<typename T, typename TAllocator>
+const TArray<T, TAllocator>& FromNoGrowArray(const TNoGrowArray<T, TAllocator>& Array)
+{
+	return reinterpret_cast<const TArray<T, TAllocator>&>(Array);
+}
+
+template<typename T, typename TAllocator>
+TNoGrowArray<T, TAllocator>& ToNoGrowArray(TArray<T, TAllocator>& Array)
+{
+	return reinterpret_cast<TNoGrowArray<T, TAllocator>&>(Array);
+}
+template<typename T, typename TAllocator>
+const TNoGrowArray<T, TAllocator>& ToNoGrowArray(const TArray<T, TAllocator>& Array)
+{
+	return reinterpret_cast<const TNoGrowArray<T, TAllocator>&>(Array);
+}

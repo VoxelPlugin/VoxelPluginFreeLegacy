@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "IPhysXCooking.h"
+#include "VoxelWorldRootComponent.h"
 #include "VoxelAsyncPhysicsCooker.h"
 
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
@@ -28,8 +29,7 @@ private:
 	
 private:
 	void CreateTriMesh();
-	void CreateConvexMesh();
-	void DecomposeMeshToHulls();
+	void CreateSimpleCollision();
 	EPhysXMeshCookFlags GetCookFlags() const;
 
 	IPhysXCooking* const PhysXCooking;
@@ -37,11 +37,9 @@ private:
 
 	struct FCookResult
 	{
-		FBox ConvexBounds;
-		TArray<FKConvexElem> ConvexElems;
-		TArray<physx::PxConvexMesh*> ConvexMeshes;
-		TArray<physx::PxTriangleMesh*> TriangleMeshes;
+		FVoxelSimpleCollisionData SimpleCollisionData;
 
+	    TArray<physx::PxTriangleMesh*> TriangleMeshes;
 		uint64 TriangleMeshesMemoryUsage = 0;
 	};
 	FCookResult CookResult;

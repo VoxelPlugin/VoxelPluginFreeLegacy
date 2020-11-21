@@ -25,7 +25,7 @@ extern TAutoConsoleVariable<int32> CVarLogActionQueue;
 class IVoxelRendererMeshHandler : public IVoxelProceduralMeshComponent_PhysicsCallbackHandler
 {
 public:
-	DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FChunkId);
+	DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FChunkId);
 	
 	IVoxelRenderer& Renderer;
 

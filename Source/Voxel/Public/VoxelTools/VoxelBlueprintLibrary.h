@@ -38,7 +38,6 @@ struct FVoxelToolRenderingRef
 UENUM(BlueprintType)
 enum class EVoxelMemoryUsageType : uint8
 {
-	Total,
 	VoxelsDirtyValuesData,
 	VoxelsDirtyMaterialsData,
 	VoxelsCachedValuesData,
@@ -428,6 +427,17 @@ public:
 	// Is the global voxel thread pool created?
 	UFUNCTION(BlueprintPure, Category = "Voxel|Threads")
 	static bool IsWorldVoxelPoolCreated(UWorld* World);
+	
+public:
+	/**
+	 * FVoxelTexturePool helpers
+	 */
+	
+public:
+	// Will compact the texture pool used by the greedy mesher, reducing fragmentation & memory usage
+	// @see stat VoxelTexturePool
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Texture Pool", meta = (DefaultToSelf = "World"))
+	static void CompactVoxelTexturePool(AVoxelWorld* World);
 
 public:
 	/**

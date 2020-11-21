@@ -60,6 +60,12 @@
 #define ENABLE_TESSELLATION (!PLATFORM_ANDROID && !PLATFORM_SWITCH)
 #endif
 
+// Make UVoxelProceduralMeshComponent inherit from UModelComponent instead of UPrimitiveComponent
+// to make unreal foliage painting in editor work.
+// Huge hack, should disable if you don't use unreal in-editor foliage painting
+#ifndef VOXEL_ENABLE_FOLIAGE_PAINT_HACK
+#define VOXEL_ENABLE_FOLIAGE_PAINT_HACK 1
+#endif
 
 // Enables recording detailed mesher stats (eg profiles every GetValue call)
 // In my tests, adds a cost < 5% of the total generation time with a flat generator,

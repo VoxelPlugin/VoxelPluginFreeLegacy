@@ -5,6 +5,7 @@
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelChunkMesh.h"
 #include "VoxelData/VoxelDataIncludes.h"
+#include "VoxelIntBox.inl"
 
 FVoxelIntBox FVoxelGreedyCubicMesher::GetBoundsToCheckIsEmptyOn() const
 {
@@ -22,7 +23,21 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelGreedyCubicMesher::CreateFullChunkImpl(FV
 	TArray<uint32> Indices;
 
 	TArray<FColor> TextureData;
-	CreateGeometryTemplate(Times, Indices, Vertices, &TextureData);
+	TArray<FVoxelIntBox> CollisionCubes;
+	CreateGeometryTemplate(Times, Indices, Vertices, &TextureData, &CollisionCubes);
+
+	TArray<FBox> ActualCollisionCubes;
+	if (CollisionCubes.Num() > 0)
+    {
+		VOXEL_ASYNC_SCOPE_COUNTER("Build ActualCollisionCubes");
+
+        ActualCollisionCubes.Reserve(CollisionCubes.Num());
+        for (auto& Cube : CollisionCubes)
+        {
+			// Shift as cubic cubes are shifted
+            ActualCollisionCubes.Add(Cube.Scale(Step).ToFBox().ShiftBy(FVector(-0.5f)));
+        }
+    }
 
 	UnlockData();
 	
@@ -31,7 +46,8 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelGreedyCubicMesher::CreateFullChunkImpl(FV
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(Vertices),
-		&TextureData));
+		&TextureData,
+		&ActualCollisionCubes));
 }
 
 
@@ -46,7 +62,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryImpl(FVoxelMesherTimes& Times, TArra
 		}
 	};
 	
-	CreateGeometryTemplate(Times, Indices, reinterpret_cast<TArray<FVertex>&>(Vertices), nullptr);
+	CreateGeometryTemplate(Times, Indices, reinterpret_cast<TArray<FVertex>&>(Vertices), nullptr, nullptr);
 
 	UnlockData();
 }
@@ -56,7 +72,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryImpl(FVoxelMesherTimes& Times, TArra
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices, TArray<FColor>* TextureData)
+void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices, TArray<FColor>* TextureData, TArray<FVoxelIntBox>* CollisionCubes)
 {
 	if (TextureData)
 	{
@@ -80,6 +96,14 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 			ValuesBitArray.Set(Index, !Values[Index].IsEmpty());
 		}
 	}
+	
+	const auto GetValue = [&](int32 X, int32 Y, int32 Z)
+	{
+		checkVoxelSlow(-1 <= X && X < RENDER_CHUNK_SIZE + 1);
+		checkVoxelSlow(-1 <= Y && Y < RENDER_CHUNK_SIZE + 1);
+		checkVoxelSlow(-1 <= Z && Z < RENDER_CHUNK_SIZE + 1);
+		return ValuesBitArray.Test((X + 1) + (Y + 1) * (RENDER_CHUNK_SIZE + 2) + (Z + 1) * (RENDER_CHUNK_SIZE + 2) * (RENDER_CHUNK_SIZE + 2));
+	};
 
 	TVoxelStaticArray<TVoxelStaticBitArray<NumVoxels>, 6> FacesBitArrays;
 	FacesBitArrays.Memzero();
@@ -87,10 +111,6 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("Find faces");
 
-		const auto GetValue = [&](int32 X, int32 Y, int32 Z)
-		{
-			return ValuesBitArray.Test((X + 1) + (Y + 1) * (RENDER_CHUNK_SIZE + 2) + (Z + 1) * (RENDER_CHUNK_SIZE + 2) * (RENDER_CHUNK_SIZE + 2));
-		};
 		const auto GetFaceIndex = [&](int32 X, int32 Y, int32 Z)
 		{
 			return X + Y * RENDER_CHUNK_SIZE + Z * RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE;
@@ -129,7 +149,89 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 			AddFace(Times, Direction, Quad, Step, Indices, Vertices, TextureData);
 		}
 	}
+
+	// If Indices is empty, then we don't need to create any collision for this chunk (it's entirely inside the surface)
+	if (CollisionCubes && Settings.bSimpleCubicCollision && Indices.Num() > 0)
+	{
+		VOXEL_ASYNC_SCOPE_COUNTER("CollisionCubes");
+
+		{
+			TVoxelStaticBitArray<NumVoxels> BitArray;
+			{
+				VOXEL_ASYNC_SCOPE_COUNTER("Copy");
+				for (int32 Z = 0; Z < RENDER_CHUNK_SIZE; Z++)
+				{
+					for (int32 Y = 0; Y < RENDER_CHUNK_SIZE; Y++)
+					{
+						for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
+						{
+							BitArray.Set(X + RENDER_CHUNK_SIZE * Y + RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * Z, GetValue(X, Y, Z));
+						}
+					}
+				}
+			}
+
+			GreedyMeshing3D<RENDER_CHUNK_SIZE>(BitArray, *CollisionCubes);
+		}
+
+		{
+		    VOXEL_ASYNC_SCOPE_COUNTER("Cull");
+			
+			// Remove all useless cubes that are completely inside the surface
+			CollisionCubes->RemoveAllSwap([&](const FVoxelIntBox& Cube)
+            {
+#if VOXEL_DEBUG
+                Cube.Iterate([&](int32 X, int32 Y, int32 Z)
+                {
+                    ensure(GetValue(X, Y, Z));
+                });
+#endif
+
+                for (int32 X = Cube.Min.X; X < Cube.Max.X; X++)
+                {
+                    for (int32 Y = Cube.Min.Y; Y < Cube.Max.Y; Y++)
+                    {
+                        if (!GetValue(X, Y, Cube.Min.Z - 1) ||
+                            !GetValue(X, Y, Cube.Max.Z))
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                for (int32 X = Cube.Min.X; X < Cube.Max.X; X++)
+                {
+                    for (int32 Z = Cube.Min.Z; Z < Cube.Max.Z; Z++)
+                    {
+                        if (!GetValue(X, Cube.Min.Y - 1, Z) ||
+                            !GetValue(X, Cube.Max.Y, Z))
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                for (int32 Y = Cube.Min.Y; Y < Cube.Max.Y; Y++)
+                {
+                    for (int32 Z = Cube.Min.Z; Z < Cube.Max.Z; Z++)
+                    {
+                        if (!GetValue(Cube.Min.X - 1, Y, Z) ||
+                            !GetValue(Cube.Max.X, Y, Z))
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+				return true;
+			});
+		}
+	}
 }
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 template<uint32 GridSize, typename Allocator>
 FORCEINLINE void FVoxelGreedyCubicMesher::GreedyMeshing2D(TVoxelStaticBitArray<GridSize * GridSize * GridSize>& InFaces, TArray<FCubicQuad, Allocator>& OutQuads)
@@ -139,7 +241,7 @@ FORCEINLINE void FVoxelGreedyCubicMesher::GreedyMeshing2D(TVoxelStaticBitArray<G
 	for (uint32 Layer = 0; Layer < GridSize; Layer++)
 	{
 		static_assert(((GridSize * GridSize) % TVoxelStaticBitArray<GridSize * GridSize * GridSize>::NumBitsPerWord) == 0, "");
-		auto& Faces = reinterpret_cast<TVoxelStaticBitArray<GridSize * GridSize>&>(*(InFaces.GetData() + Layer * GridSize * GridSize / InFaces.NumBitsPerWord));
+        auto& Faces = reinterpret_cast<TVoxelStaticBitArray<GridSize * GridSize>&>(*(InFaces.GetData() + Layer * GridSize * GridSize / InFaces.NumBitsPerWord));
 		
 		const auto TestAndClear = [&](uint32 X, uint32 Y)
 		{
@@ -199,6 +301,95 @@ FORCEINLINE void FVoxelGreedyCubicMesher::GreedyMeshing2D(TVoxelStaticBitArray<G
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<uint32 GridSize, typename Allocator>
+void FVoxelGreedyCubicMesher::GreedyMeshing3D(TVoxelStaticBitArray<GridSize * GridSize * GridSize>& Data, TArray<FVoxelIntBox, Allocator>& OutCubes)
+{
+	VOXEL_ASYNC_FUNCTION_COUNTER();
+
+	const auto TestAndClear = [&](uint32 X, uint32 Y, uint32 Z)
+	{
+		checkVoxelSlow(X < GridSize);
+		checkVoxelSlow(Y < GridSize);
+		checkVoxelSlow(Z < GridSize);
+		
+		return Data.TestAndClear(X + Y * GridSize + Z * GridSize * GridSize);
+	};
+	const auto TestAndClearLine = [&](uint32 X, uint32 SizeX, uint32 Y, uint32 Z)
+	{
+		checkVoxelSlow(X + SizeX <= GridSize);
+		checkVoxelSlow(Y < GridSize);
+		checkVoxelSlow(Z < GridSize);
+		
+		return Data.TestAndClearRange(X + Y * GridSize + Z * GridSize * GridSize, SizeX);
+	};
+	const auto TestAndClearBlock = [&](uint32 X, uint32 SizeX, uint32 Y, uint32 SizeY, uint32 Z)
+	{
+		checkVoxelSlow(X + SizeX <= GridSize);
+		checkVoxelSlow(Y + SizeY <= GridSize);
+		checkVoxelSlow(Z < GridSize);
+
+		for (uint32 Index = 0; Index < SizeY; Index++)
+		{
+			if (!Data.TestRange(X + (Y + Index) * GridSize + Z * GridSize * GridSize, SizeX))
+			{
+				return false;
+			}
+		}
+		for (uint32 Index = 0; Index < SizeY; Index++)
+		{
+			Data.SetRange(X + (Y + Index) * GridSize + Z * GridSize * GridSize, SizeX, false);
+		}
+		return true;
+	};
+	
+	for (uint32 X = 0; X < GridSize; X++)
+	{
+		for (uint32 Y = 0; Y < GridSize; Y++)
+		{
+			for (uint32 Z = 0; Z < GridSize;)
+			{
+				if (!Data.Test(X + Y * GridSize + Z * GridSize * GridSize))
+				{
+					Z++;
+					continue;
+				}
+
+				uint32 SizeX = 1;
+				while (X + SizeX < GridSize && TestAndClear(X + SizeX, Y, Z))
+				{
+					SizeX++;
+				}
+
+				uint32 SizeY = 1;
+				while (Y + SizeY < GridSize && TestAndClearLine(X, SizeX, Y + SizeY, Z))
+				{
+					SizeY++;
+				}
+
+				uint32 SizeZ = 1;
+				while (Z + SizeZ < GridSize && TestAndClearBlock(X, SizeX, Y, SizeY, Z + SizeZ))
+				{
+					SizeZ++;
+				}
+
+				const auto Min = FIntVector(X, Y, Z);
+				const auto Max = Min + FIntVector(SizeX, SizeY, SizeZ);
+				OutCubes.Add(FVoxelIntBox(Min, Max));
+
+				Z += SizeZ;
+			}
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 template<typename T>
 FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 	FVoxelMesherTimes& Times,
@@ -256,7 +447,7 @@ FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 			Position[YAxis] = Quad.StartY + Y;
 			Position[ZAxis] = Quad.Layer;
 
-			Position += ChunkPosition;
+			Position = Position * Step + ChunkPosition;
 
 			return MESHER_TIME_INLINE_MATERIALS(1, Accelerator->GetMaterial(Position, LOD));
 		};

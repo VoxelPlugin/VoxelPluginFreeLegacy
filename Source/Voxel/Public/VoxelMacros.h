@@ -37,7 +37,11 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #define ENGINE_API
 #undef VOXEL_DEBUG
 #define VOXEL_DEBUG 1
+// This is defined in the generated.h. It lets you use GetOuterASomeOuter. Resharper/intellisense are confused when it's used, so define it for them
+#define INTELLISENSE_DECLARE_WITHIN(Name) DECLARE_WITHIN(Name)
 #error "Compiler defined as parser"
+#else
+#define INTELLISENSE_DECLARE_WITHIN(Name)
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -82,10 +86,6 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #define STATIC_FSTRING(String) ([]() -> const FString& { static const FString StaticString = String; return StaticString; }())
 #endif
 
-#ifndef UNIQUE_ID
-#define UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 __UniqueId = 0; return ++__UniqueId; }()
-#endif
-
 #ifndef OBJECT_LINE_ID
 #define OBJECT_LINE_ID() ((uint64)this + __LINE__)
 #endif
@@ -111,3 +111,48 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #endif
 
 #define VOXEL_DEPRECATED(Version, Message) UE_DEPRECATED(0, Message " If this is a C++ voxel graph, you should compile it to C++ again.")
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+struct __FVoxelUniqueIdProxy
+{
+	uint64 Value;
+
+	explicit __FVoxelUniqueIdProxy(uint64 Value)
+		: Value(Value)
+	{
+	}
+
+	operator uint64() const { return Value; }
+};
+#define VOXEL_UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 __UniqueId = 0; return __FVoxelUniqueIdProxy(++__UniqueId); }()
+
+// UniqueClass: to forbid copying ids from different classes
+template<typename UniqueClass>
+class TVoxelUniqueId
+{
+public:
+	TVoxelUniqueId() = default;
+	TVoxelUniqueId(__FVoxelUniqueIdProxy Id)
+		: Id(Id)
+	{
+		ensureVoxelSlow(IsValid());
+	}
+
+	bool IsValid() const { return Id != 0; }
+
+	bool operator==(const TVoxelUniqueId& Other) const { return Id == Other.Id; }
+	bool operator!=(const TVoxelUniqueId& Other) const { return Id != Other.Id; }
+
+	friend uint32 GetTypeHash(TVoxelUniqueId InId)
+	{
+	    return uint32(InId.Id);
+	}
+
+private:
+	uint64 Id = 0;
+};
+
+#define DECLARE_UNIQUE_VOXEL_ID(Name) using Name = TVoxelUniqueId<class Name##_Unique>;

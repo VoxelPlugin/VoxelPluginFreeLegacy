@@ -16,7 +16,7 @@ class FVoxelMesherBase;
 class VOXEL_API FVoxelMesherAsyncWork : public FVoxelAsyncWork
 {
 public:
-	const uint64 TaskId = UNIQUE_ID();
+	const uint64 TaskId = VOXEL_UNIQUE_ID();
 	
 	const uint64 ChunkId;
 	const int32 LOD;

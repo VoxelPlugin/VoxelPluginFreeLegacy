@@ -13,7 +13,7 @@ class UStaticMesh;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 
-DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
+DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
 
 UENUM(BlueprintType)
 enum class EVoxelToolAlignment : uint8

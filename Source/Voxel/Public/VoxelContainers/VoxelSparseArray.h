@@ -64,7 +64,7 @@ private:
 	friend class TVoxelTypedSparseArray;
 };
 
-#define DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(Name) using Name = TVoxelTypedSparseArrayId<class Name##_Unique>;
+#define DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(Name) using Name = TVoxelTypedSparseArrayId<class Name##_Unique>;
 
 template<typename InKeyType, typename InElementType, typename InAllocator = FDefaultSparseArrayAllocator>
 class TVoxelTypedSparseArray

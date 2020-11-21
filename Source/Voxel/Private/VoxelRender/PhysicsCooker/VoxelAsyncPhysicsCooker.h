@@ -26,6 +26,7 @@ public:
 	const ECollisionTraceFlag CollisionTraceFlag;
 	const FVoxelPriorityHandler PriorityHandler;
 	const bool bCleanCollisionMesh;
+	const bool bSimpleCubicCollision;
 	const int32 NumConvexHullsPerAxis;
 	const TArray<TVoxelSharedPtr<const FVoxelProcMeshBuffers>> Buffers;
 	const FTransform LocalToRoot;

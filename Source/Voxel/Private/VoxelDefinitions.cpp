@@ -48,8 +48,6 @@ FVoxelMemoryCounterStaticRef::FVoxelMemoryCounterStaticRef(const TCHAR* Name, co
 }
 #endif
 
-DEFINE_VOXEL_MEMORY_STAT(STAT_TotalVoxelMemory);
-
 static FFeedbackContext* GVoxelFeedbackContext = nullptr;
 
 void SetVoxelFeedbackContext(class FFeedbackContext& FeedbackContext)

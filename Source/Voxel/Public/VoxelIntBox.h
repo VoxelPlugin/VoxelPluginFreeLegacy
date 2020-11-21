@@ -145,7 +145,7 @@ struct VOXEL_API FVoxelIntBox
 			int64(Max.Y) - int64(Min.Y) < MAX_int32 &&
 			int64(Max.Z) - int64(Min.Z) < MAX_int32;
 	}
-	
+ 
 	/**
 	 * Get the corners that are inside the box (max - 1)
 	 */
@@ -175,7 +175,7 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return Min.X < Max.X && Min.Y < Max.Y && Min.Z < Max.Z;
 	}
-	
+ 
 	template<typename T>
 	FORCEINLINE bool ContainsTemplate(T X, T Y, T Z) const
 	{
@@ -223,10 +223,10 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return ContainsTemplate(Other);
 	}
-	
+ 
 	template<typename T>
 	bool Contains(T X, T Y, T Z) const = delete;
-	
+ 
 	template<typename T>
 	FORCEINLINE FIntVector Clamp(T P) const
 	{
@@ -342,56 +342,7 @@ struct VOXEL_API FVoxelIntBox
 	}
 
 	// union(return value, Other) = this
-	TArray<FVoxelIntBox, TFixedAllocator<6>> Difference(const FVoxelIntBox& Other) const
-	{
-		if (!Intersect(Other))
-		{
-			return { *this };
-		}
-
-		TArray<FVoxelIntBox, TFixedAllocator<6>> OutBoxes;
-		
-		if (Min.Z < Other.Min.Z)
-		{
-			// Add bottom
-			OutBoxes.Emplace(Min, FIntVector(Max.X, Max.Y, Other.Min.Z));
-		}
-		if (Other.Max.Z < Max.Z)
-		{
-			// Add top
-			OutBoxes.Emplace(FIntVector(Min.X, Min.Y, Other.Max.Z), Max);
-		}
-
-		const int32 MinZ = FMath::Max(Min.Z, Other.Min.Z);
-		const int32 MaxZ = FMath::Min(Max.Z, Other.Max.Z);
-
-		if (Min.X < Other.Min.X)
-		{
-			// Add X min
-			OutBoxes.Emplace(FIntVector(Min.X, Min.Y, MinZ), FIntVector(Other.Min.X, Max.Y, MaxZ));
-		}
-		if (Other.Max.X < Max.X)
-		{
-			// Add X max
-			OutBoxes.Emplace(FIntVector(Other.Max.X, Min.Y, MinZ), FIntVector(Max.X, Max.Y, MaxZ));
-		}
-		
-		const int32 MinX = FMath::Max(Min.X, Other.Min.X);
-		const int32 MaxX = FMath::Min(Max.X, Other.Max.X);
-
-		if (Min.Y < Other.Min.Y)
-		{
-			// Add Y min
-			OutBoxes.Emplace(FIntVector(MinX, Min.Y, MinZ), FIntVector(MaxX, Other.Min.Y, MaxZ));
-		}
-		if (Other.Max.Y < Max.Y)
-		{
-			// Add Y max
-			OutBoxes.Emplace(FIntVector(MinX, Other.Max.Y, MinZ), FIntVector(MaxX, Max.Y, MaxZ));
-		}
-
-		return OutBoxes;
-	}
+	TArray<FVoxelIntBox, TFixedAllocator<6>> Difference(const FVoxelIntBox& Other) const;
 
 	FORCEINLINE uint64 ComputeSquaredDistanceFromBoxToPoint(const FIntVector& Point) const
 	{
@@ -486,6 +437,10 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return { FVoxelUtilities::FloorToInt(FVoxelVector(Min) * S), FVoxelUtilities::CeilToInt(FVoxelVector(Max) * S) };
 	}
+	FORCEINLINE FVoxelIntBox Scale(int32 S) const
+	{
+		return { Min * S, Max * S };
+	}
 	FORCEINLINE FVoxelIntBox Scale(const FVoxelVector& S) const
 	{
 		return SafeConstruct(FVoxelVector(Min) * S, FVoxelVector(Max) * S);
@@ -575,7 +530,16 @@ struct VOXEL_API FVoxelIntBox
 			}
 		}
 	}
-	
+
+	template<typename T>
+	FORCEINLINE void IterateBorders(T Lambda) const
+	{
+		IterateBorders_TrueForAll([&](int32 X, int32 Y, int32 Z) { Lambda(X, Y, Z); return true; });
+	}
+
+	template<typename T>
+	bool IterateBorders_TrueForAll(T Lambda) const;
+
 	template<typename T>
 	FORCEINLINE void ParallelSplit(T Lambda, bool bForceSingleThread = false) const
 	{
