@@ -7,6 +7,7 @@
 #include "VoxelDefaultPool.h"
 #include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelDebug/VoxelDebugManager.h"
+#include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelWorldRootComponent.h"
 
@@ -177,6 +178,7 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	const auto Pool = FVoxelDefaultPool::Create(Settings.ThreadCount, true, {}, {});
 	const auto Data = FVoxelData::Create(FVoxelDataSettings(VoxelWorld, EVoxelPlayType::Game));
 	const auto DebugManager = FVoxelDebugManager::Create(FVoxelDebugManagerSettings(VoxelWorld, EVoxelPlayType::Game, Pool, Data));
+	const auto TexturePool = FVoxelTexturePool::Create(FVoxelTexturePoolSettings(VoxelWorld, EVoxelPlayType::Game));
 
 	if (Save)
 	{
@@ -190,6 +192,7 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 		Data,
 		Pool,
 		nullptr,
+		TexturePool,
 		DebugManager,
 		false));
 

@@ -38,6 +38,12 @@ static TAutoConsoleVariable<int32> CVarShowMeshSections(
 	TEXT("If true, will assign a unique color to each mesh section"),
 	ECVF_Default);
 
+static TAutoConsoleVariable<int32> CVarShowCollisionCubes(
+	TEXT("voxel.collision.ShowCubes"),
+	0,
+	TEXT("If true, will show the collision cubes in cubic mode"),
+	ECVF_Default);
+
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelMeshDistanceFieldMemory);
 
 DECLARE_DWORD_COUNTER_STAT(TEXT("Num Voxel Draw Calls"), STAT_NumVoxelDrawCalls, STATGROUP_VoxelCounters);
@@ -165,6 +171,7 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 	, LOD(Component->LOD)
 	, DebugChunkId(Component->DebugChunkId)
 	, WeakToolRenderingManager(Component->ToolRenderingManager)
+	, bUseStaticPath(Component->bUseStaticPath)
 	, CollisionResponse(Component->GetCollisionResponseToChannels())
 	, CollisionTraceFlag(Component->CollisionTraceFlag)
 {
@@ -330,27 +337,36 @@ void FVoxelProceduralMeshSceneProxy::DrawStaticElements(FStaticPrimitiveDrawInte
 			// Will happen in force delete
 			continue;
 		}
-
+		
 		auto* MaterialProxy = Material->GetRenderProxy();
 
 		FMeshBatch MeshBatch;
 		DrawSection(MeshBatch, Section, MaterialProxy, true, false);
 
-		// Runtime virtual texture mesh elements.
-		MeshBatch.CastShadow = 0;
-		MeshBatch.bUseAsOccluder = 0;
-		MeshBatch.bUseForDepthPass = 0;
-		MeshBatch.bUseForMaterial = 0;
-		MeshBatch.bDitheredLODTransition = 0;
-		MeshBatch.bRenderToVirtualTexture = 1;
-
 		// Else the virtual texture check fails in RuntimeVirtualTextureRender.cpp:338
+		// and the static mesh isn't rendered at all
 		MeshBatch.LODIndex = 0;
 
-		for (ERuntimeVirtualTextureMaterialType MaterialType : RuntimeVirtualTextureMaterialTypes)
+		if (bUseStaticPath)
 		{
-			MeshBatch.RuntimeVirtualTextureMaterialType = uint32(MaterialType);
 			PDI->DrawMesh(MeshBatch, FLT_MAX);
+		}
+
+		if (RuntimeVirtualTextureMaterialTypes.Num() > 0)
+		{
+			// Runtime virtual texture mesh elements.
+			MeshBatch.CastShadow = 0;
+			MeshBatch.bUseAsOccluder = 0;
+			MeshBatch.bUseForDepthPass = 0;
+			MeshBatch.bUseForMaterial = 0;
+			MeshBatch.bDitheredLODTransition = 0;
+			MeshBatch.bRenderToVirtualTexture = 1;
+
+			for (ERuntimeVirtualTextureMaterialType MaterialType : RuntimeVirtualTextureMaterialTypes)
+			{
+				MeshBatch.RuntimeVirtualTextureMaterialType = uint32(MaterialType);
+				PDI->DrawMesh(MeshBatch, FLT_MAX);
+			}
 		}
 	}
 }
@@ -381,6 +397,24 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 			if (VisibilityMap & (1 << ViewIndex))
 			{
 				RenderBounds(Collector.GetPDI(ViewIndex), EngineShowFlags, GetBounds(), IsSelected());
+			}
+		}
+	}
+
+	if (CVarShowCollisionCubes.GetValueOnAnyThread() != 0)
+	{
+		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
+		{
+			if (VisibilityMap & (1 << ViewIndex))
+			{
+				for (auto& Section : Sections)
+				{
+					for (auto& Cube : Section.Buffers->CollisionCubes)
+					{
+						// TODO transform lines and not the entire box
+						DrawWireBox(Collector.GetPDI(ViewIndex), Cube.TransformBy(GetLocalToWorld()), FLinearColor::Red, 0);
+					}
+				}
 			}
 		}
 	}
@@ -462,8 +496,11 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 			
 			auto* MaterialProxy = Material->GetRenderProxy();
 
+			bool bUseStaticPathThisFrame = bUseStaticPath && !IsRichView(ViewFamily);
 			if (CVarShowMeshSections.GetValueOnRenderThread() != 0)
 			{
+				bUseStaticPathThisFrame = false;
+				
 				uint32 Hash = 0;
 				for (auto& Guid : Section.Buffers->Guids)
 				{
@@ -471,6 +508,11 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 				}
 				MaterialProxy = new FColoredMaterialRenderProxy(GEngine->LevelColorationLitMaterial->GetRenderProxy(), reinterpret_cast<FColor&>(Hash));
 				Collector.RegisterOneFrameMaterialProxy(MaterialProxy);
+			}
+
+			if (bUseStaticPathThisFrame)
+			{
+				continue;
 			}
 			
 			for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
@@ -609,16 +651,33 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingMa
 
 FPrimitiveViewRelevance FVoxelProceduralMeshSceneProxy::GetViewRelevance(const FSceneView* View) const
 {
+	VOXEL_ASYNC_FUNCTION_COUNTER();
+
 	FPrimitiveViewRelevance Result;
 	Result.bDrawRelevance = IsShown(View);
 	Result.bShadowRelevance = IsShadowCast(View);
+
+	if (bUseStaticPath &&
+		!IsRichView(*View->Family) &&
+		!FVoxelDebugManager::ShowCollisionAndNavmeshDebug() && 
+		CVarShowMeshSections.GetValueOnRenderThread() == 0)
+	{
+		Result.bStaticRelevance = true;
+	}
+	else
+	{
+		Result.bStaticRelevance = false;
+	}
+	
 	Result.bDynamicRelevance = true;
+	
 	Result.bRenderInMainPass = ShouldRenderInMainPass();
 	Result.bUsesLightingChannels = GetLightingChannelMask() != GetDefaultLightingChannelMask();
 	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
 	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 	MaterialRelevance.SetPrimitiveViewRelevance(Result);
 	Result.bVelocityRelevance = IsMovable() && Result.UE_25_SWITCH(bOpaqueRelevance, bOpaque) && Result.bRenderInMainPass;
+	
 	return Result;
 }
 

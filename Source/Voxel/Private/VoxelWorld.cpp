@@ -10,6 +10,7 @@
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelRender/VoxelToolRendering.h"
+#include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/LODManager/VoxelDefaultLODManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
@@ -794,7 +795,7 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 	bDisableComponentUnregister = false;
 }
 
-bool AVoxelWorld::CanEditChange(const UProperty* InProperty) const
+bool AVoxelWorld::CanEditChange(const FProperty* InProperty) const
 {
 	check(InProperty);
 	
@@ -844,12 +845,6 @@ TVoxelSharedRef<FVoxelDebugManager> AVoxelWorld::CreateDebugManager() const
 {
 	VOXEL_FUNCTION_COUNTER();
 	return FVoxelDebugManager::Create(FVoxelDebugManagerSettings(this, PlayType, Pool.ToSharedRef(), Data.ToSharedRef()));
-}
-
-TVoxelSharedRef<FVoxelData> AVoxelWorld::CreateData() const
-{
-	VOXEL_FUNCTION_COUNTER();
-	return FVoxelData::Create(FVoxelDataSettings(this, PlayType), DataOctreeInitialSubdivisionDepth);
 }
 
 TVoxelSharedRef<IVoxelPool> AVoxelWorld::CreatePool() const
@@ -911,6 +906,18 @@ TVoxelSharedRef<IVoxelPool> AVoxelWorld::CreatePool() const
 	}
 }
 
+TVoxelSharedRef<FVoxelTexturePool> AVoxelWorld::CreateTexturePool() const
+{
+	VOXEL_FUNCTION_COUNTER();
+	return FVoxelTexturePool::Create(FVoxelTexturePoolSettings(this, PlayType));
+}
+
+TVoxelSharedRef<FVoxelData> AVoxelWorld::CreateData() const
+{
+	VOXEL_FUNCTION_COUNTER();
+	return FVoxelData::Create(FVoxelDataSettings(this, PlayType), DataOctreeInitialSubdivisionDepth);
+}
+
 TVoxelSharedRef<IVoxelRenderer> AVoxelWorld::CreateRenderer() const
 {
 	VOXEL_FUNCTION_COUNTER();
@@ -921,6 +928,7 @@ TVoxelSharedRef<IVoxelRenderer> AVoxelWorld::CreateRenderer() const
 		Data.ToSharedRef(),
 		Pool.ToSharedRef(),
 		ToolRenderingManager.ToSharedRef(),
+		TexturePool.ToSharedRef(),
 		DebugManager.ToSharedRef(),
 		false));
 }
@@ -1014,6 +1022,7 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 		Data = CreateData();
 	}
 	Pool = CreatePool();
+	TexturePool = CreateTexturePool();
 	DebugManager = CreateDebugManager();
 	EventManager = CreateEventManager();
 	ToolRenderingManager = CreateToolRenderingManager();
@@ -1098,9 +1107,12 @@ void AVoxelWorld::DestroyWorldInternal()
 
 	bIsCreated = false;
 	bIsLoaded = false;
+
+	DebugTextures.Reset();
 	
-	Data.Reset();
 	Pool.Reset();
+	TexturePool.Reset();
+	Data.Reset();
 	
 	DebugManager->Destroy();
 	FVoxelUtilities::DeleteTickable(GetWorld(), DebugManager);
@@ -1354,6 +1366,9 @@ void AVoxelWorld::RecreateRender()
 
 	DestroyVoxelComponents();
 
+	DebugTextures.Reset();
+
+	TexturePool = CreateTexturePool();
 	Renderer = CreateRenderer();
 	LODManager = CreateLODManager();
 	

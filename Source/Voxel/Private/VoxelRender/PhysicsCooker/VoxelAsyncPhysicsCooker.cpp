@@ -40,7 +40,7 @@ static FAutoConsoleCommand CmdClearTotalCollisionCookingTime(
 
 IVoxelAsyncPhysicsCooker::IVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component)
 	: FVoxelAsyncWork(STATIC_FNAME("AsyncPhysicsCooker"), Component->PriorityDuration)
-	, UniqueId(UNIQUE_ID())
+	, UniqueId(VOXEL_UNIQUE_ID())
 	, Component(Component)
 	, PhysicsCallbackHandler(Component->PhysicsCallbackHandler)
 	, LOD(Component->LOD)
@@ -50,6 +50,7 @@ IVoxelAsyncPhysicsCooker::IVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent
 		: Component->CollisionTraceFlag)
 	, PriorityHandler(Component->PriorityHandler)
 	, bCleanCollisionMesh(Component->bCleanCollisionMesh)
+    , bSimpleCubicCollision(Component->bSimpleCubicCollision)
 	, NumConvexHullsPerAxis(Component->NumConvexHullsPerAxis)
 	, Buffers([&]()
 		{

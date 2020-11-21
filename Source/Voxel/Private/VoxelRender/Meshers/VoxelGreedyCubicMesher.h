@@ -24,6 +24,9 @@ protected:
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
 	
+	template<typename T>
+	void CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices, TArray<FColor>* TextureData, TArray<FVoxelIntBox>* CollisionCubes);
+	
 	struct FCubicQuad
 	{
 		uint32 Layer;
@@ -32,13 +35,14 @@ private:
 		uint32 SizeX;
 		uint32 SizeY;
 	};
-	
-	template<typename T>
-	void CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices, TArray<FColor>* TextureData);
 
-	template<uint32 Size, typename Allocator>
-	void GreedyMeshing2D(TVoxelStaticBitArray<Size * Size * Size>& InFaces, TArray<FCubicQuad, Allocator>& OutQuads);
+	template<uint32 GridSize, typename Allocator>
+	void GreedyMeshing2D(TVoxelStaticBitArray<GridSize * GridSize * GridSize>& InFaces, TArray<FCubicQuad, Allocator>& OutQuads);
 
+	template<uint32 GridSize, typename Allocator>
+	void GreedyMeshing3D(TVoxelStaticBitArray<GridSize * GridSize * GridSize>& Data, TArray<FVoxelIntBox, Allocator>& OutCubes);
+
+public:
 	template<typename T>
 	void AddFace(
 		FVoxelMesherTimes& Times, 

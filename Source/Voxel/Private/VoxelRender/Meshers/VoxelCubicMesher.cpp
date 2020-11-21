@@ -477,7 +477,11 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 				// The new faces are facing outwards, same direction as the transitions
 				constexpr EVoxelDirectionFlag::Type FaceDirection = Direction;
 				
-				const auto Material = MESHER_TIME_INLINE_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, 0));
+				FVoxelMaterial Material = MESHER_TIME_INLINE_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, 0));
+				if (Settings.bGreedyCubicMesher)
+				{
+					Material.CubicColor_SetUseTextureFalse();
+				}
 				Add2DFace<Direction, FaceDirection>(Step, Material, LX, LY, Vertices, Indices);
 			}
 			else

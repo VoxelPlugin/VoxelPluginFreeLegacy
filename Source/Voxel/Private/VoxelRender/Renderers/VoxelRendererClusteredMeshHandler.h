@@ -23,7 +23,7 @@ public:
 	//~ End IVoxelRendererMeshHandler Interface
 
 private:
-	DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FClusterId);
+	DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FClusterId);
 	
 	struct FClusterBuiltData
 	{
@@ -58,7 +58,7 @@ private:
 			int32 LOD,
 			const FIntVector& Position)
 		{
-			return FCluster(UNIQUE_ID(), LOD, Position);
+			return FCluster(VOXEL_UNIQUE_ID(), LOD, Position);
 		}
 
 	private:
@@ -110,7 +110,7 @@ private:
 			int32 LOD,
 			const FIntVector& Position)
 		{
-			return FChunkInfo(UNIQUE_ID(), LOD, Position);
+			return FChunkInfo(VOXEL_UNIQUE_ID(), LOD, Position);
 		}
 
 	private:

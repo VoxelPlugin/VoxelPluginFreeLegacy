@@ -4,9 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelIntBox.h"
 #include "StaticMeshResources.h"
 #include "VoxelRawStaticIndexBuffer.h"
 
+class FVoxelTexturePoolTextureData;
+struct FVoxelRendererMemory;
+struct FVoxelChunkMeshSection;
 class FVoxelProcMeshBuffersRenderData;
 
 DECLARE_STATS_GROUP(TEXT("Voxel Proc Mesh Memory"), STATGROUP_VoxelProcMeshMemory, STATCAT_Advanced);
@@ -15,8 +19,7 @@ DECLARE_VOXEL_MEMORY_STAT(TEXT("Indices"), STAT_VoxelProcMeshMemory_Indices, STA
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Positions"), STAT_VoxelProcMeshMemory_Positions, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Colors"), STAT_VoxelProcMeshMemory_Colors, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Adjacency"), STAT_VoxelProcMeshMemory_Adjacency, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
-DECLARE_VOXEL_MEMORY_STAT(TEXT("UVs & Tangents"), STAT_VoxelProcMeshMemory_UVs_Tangents, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
-DECLARE_VOXEL_MEMORY_STAT(TEXT("Texture Data"), STAT_VoxelProcMeshMemory_TextureData, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("UVs & Tangents"), STAT_VoxelProcMeshMemory_UVsAndTangents, STATGROUP_VoxelProcMeshMemory, VOXEL_API);
 
 struct VOXEL_API FVoxelProcMeshBuffers
 {
@@ -35,7 +38,8 @@ struct VOXEL_API FVoxelProcMeshBuffers
 	/** Local bounds of this section */
 	FBox LocalBounds = FBox(ForceInit);
 	
-	TNoGrowArray<FColor> TextureData;
+	TArray<FBox> CollisionCubes;
+	TVoxelSharedPtr<FVoxelTexturePoolTextureData> TextureData;
 
 	int32 GetNumVertices() const
 	{
@@ -45,8 +49,8 @@ struct VOXEL_API FVoxelProcMeshBuffers
 	{
 		return IndexBuffer.GetNumIndices();
 	}
-	
-	FVoxelProcMeshBuffers();
+
+	explicit FVoxelProcMeshBuffers(const TVoxelSharedRef<FVoxelRendererMemory>& Memory, const TArray<FVoxelChunkMeshSection>& SourceSections);
 	~FVoxelProcMeshBuffers();
 
 	uint32 GetAllocatedSize() const;
@@ -58,8 +62,11 @@ private:
 	int32 LastAllocatedSize_Positions = 0;
 	int32 LastAllocatedSize_Colors = 0;
 	int32 LastAllocatedSize_Adjacency = 0;
-	int32 LastAllocatedSize_UVs_Tangents = 0;
-	int32 LastAllocatedSize_TextureData = 0;
+	int32 LastAllocatedSize_UVsAndTangents = 0;
+
+	TVoxelSharedRef<FVoxelRendererMemory> Memory;
+	TOptional<int32> LOD;
+	
 	mutable TVoxelWeakPtr<FVoxelProcMeshBuffersRenderData> RenderData;
 
 	friend class FVoxelProcMeshBuffersRenderData;

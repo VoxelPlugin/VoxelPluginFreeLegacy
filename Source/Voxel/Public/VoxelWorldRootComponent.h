@@ -3,9 +3,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 #include "PhysicsEngine/BodySetup.h" // Can't forward decl anything with uobjects generated constructors...
 #include "Components/PrimitiveComponent.h"
 #include "VoxelWorldRootComponent.generated.h"
+
+DECLARE_UNIQUE_VOXEL_ID(FVoxelProcMeshComponentId);
+
+struct FVoxelSimpleCollisionData
+{
+	FBox Bounds;
+	TArray<FKBoxElem> BoxElems;
+	TArray<FKConvexElem> ConvexElems;
+	TArray<physx::PxConvexMesh*> ConvexMeshes;
+};
 
 UCLASS(editinlinenew, ShowCategories = (VirtualTexture))
 class VOXEL_API UVoxelWorldRootComponent : public UPrimitiveComponent
@@ -35,7 +46,7 @@ public:
 
 public:
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	void UpdateConvexCollision(uint64 Id, const FBox& Bounds, TArray<FKConvexElem>&& ConvexElements, TArray<physx::PxConvexMesh*>&& ConvexMeshes);
+	void UpdateSimpleCollision(FVoxelProcMeshComponentId Id, FVoxelSimpleCollisionData&& SimpleCollision);
 	void SetCookedTriMeshes(const TArray<physx::PxTriangleMesh*>& TriMeshes);
 #endif
 
@@ -49,16 +60,14 @@ private:
 	FCriticalSection BodySetupLock;
 	
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	struct FConvexElements
+	struct FSimpleCollisionDataRef
 	{
-		const FBox Bounds;
-		const TArray<FKConvexElem> ConvexElements;
-		const TArray<physx::PxConvexMesh*> ConvexMeshes;
+		const FVoxelSimpleCollisionData Data;
 
-		FConvexElements(const FBox& InBounds, TArray<FKConvexElem>&& InConvexElements, TArray<physx::PxConvexMesh*>&& InConvexMeshes);
-		~FConvexElements();
+		FSimpleCollisionDataRef(FVoxelSimpleCollisionData&& Data);
+		~FSimpleCollisionDataRef();
 	};
-	TMap<uint64, TUniquePtr<FConvexElements>> Elements;
+	TMap<FVoxelProcMeshComponentId, TUniquePtr<FSimpleCollisionDataRef>> ProcMeshesSimpleCollision;
 
 	bool bRebuildQueued = false;
 	

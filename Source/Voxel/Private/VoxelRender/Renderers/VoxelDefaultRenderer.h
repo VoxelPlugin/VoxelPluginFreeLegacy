@@ -31,6 +31,7 @@ public:
 	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) override;
 
 	virtual int32 GetTaskCount() const override;
+	virtual bool AreChunksDithering() const override;
 	
 	virtual void RecomputeMeshPositions() override;
 	virtual void ApplyNewMaterials() override;

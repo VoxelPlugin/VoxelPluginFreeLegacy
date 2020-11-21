@@ -20,6 +20,7 @@
 #include "VoxelWorldCreateInfo.h"
 #include "VoxelWorld.generated.h"
 
+class FVoxelTexturePool;
 class UVoxelSpawnerConfig;
 class UVoxelGeneratorCache;
 class UVoxelWorldSaveObject;
@@ -377,6 +378,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bContributesToStaticLighting = false;
 
+	// If true, will try to use the static path when possible. Using the static path is much cheaper on the render thread
+	// Should always be on unless you see some issues
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
+	bool bUseStaticPath = false;
+	
 	// Will destroy any intermediate render data to free up memory
 	// Does not support any kind of updates INCLUDING LOD updates: your LODs will be frozen!
 	// Note: if MergeChunks is true, chunk meshes memory won't be cleared as it can't know if a new mesh will be added to the cluster
@@ -388,6 +394,10 @@ public:
 	// Only works with the RGB Material config
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bGreedyCubicMesher = false;
+
+	// The size of the textures in the pool used by the greedy cubic mesher to store the colors
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 64, UIMin = 128, UIMax = 2048))
+	int32 TexturePoolTextureSize = 512;
 	
 	// If true, the mesh indices will be sorted to improve GPU cache performance. Adds a cost to the async mesh building. If you don't see any perf difference, leave it off
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
@@ -520,6 +530,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Collisions", meta = (Recreate, EditCondition = bEnableCollisions))
 	bool bUseCCD = false;
 
+	// If true and the greedy cubic mesher is enabled, will use cubes as simple collision
+	// Cubes will be created greedily, so they'll be as large as possible
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Collisions", meta = (Recreate, EditCondition = bEnableCollisions))
+	bool bSimpleCubicCollision = true;
+
 	// Number of convex hulls to create per chunk per axis for simple collisions
 	// More hulls = more precise collisions, but much more expensive physics
 	// You can check the result in the Player Collision view
@@ -616,8 +631,9 @@ public:
 	float MultiplayerSyncRate = 15;
 
 	//////////////////////////////////////////////////////////////////////////////
-	UPROPERTY(VisibleAnywhere, Category = "Voxel - Debug")
-	TArray<TWeakObjectPtr<UTexture>> DebugTextures;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel - Debug")
+	mutable TArray<TWeakObjectPtr<UTexture>> DebugTextures;
 	
 public:
 	AVoxelWorld();
@@ -632,6 +648,7 @@ public:
 	
 public:
 	IVoxelPool& GetPool() const { return *Pool; }
+	FVoxelTexturePool& GetTexturePool() const { return *TexturePool; }
 	FVoxelData& GetData() const { return *Data; }
 	IVoxelLODManager& GetLODManager() const { return *LODManager; }
 	IVoxelRenderer& GetRenderer() const { return *Renderer; }
@@ -769,7 +786,7 @@ public:
 #if WITH_EDITOR
 	virtual void PreEditChange(FProperty* PropertyThatWillChange) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	virtual bool CanEditChange(const UProperty* InProperty) const override;
+	virtual bool CanEditChange(const FProperty* InProperty) const override;
 #endif // WITH_EDITOR
 	//~ End UObject Interface
 
@@ -805,8 +822,9 @@ private:
 
 private:	
 	TVoxelSharedPtr<FVoxelDebugManager> DebugManager;
-	TVoxelSharedPtr<FVoxelData> Data;
 	TVoxelSharedPtr<IVoxelPool> Pool;
+	TVoxelSharedPtr<FVoxelTexturePool> TexturePool;
+	TVoxelSharedPtr<FVoxelData> Data;
 	TVoxelSharedPtr<IVoxelRenderer> Renderer;
 	TVoxelSharedPtr<IVoxelLODManager> LODManager;
 	TVoxelSharedPtr<FVoxelEventManager> EventManager;
@@ -822,8 +840,9 @@ private:
 	void OnWorldLoadedCallback();
 
 	TVoxelSharedRef<FVoxelDebugManager> CreateDebugManager() const;
-	TVoxelSharedRef<FVoxelData> CreateData() const;
 	TVoxelSharedRef<IVoxelPool> CreatePool() const;
+	TVoxelSharedRef<FVoxelTexturePool> CreateTexturePool() const;
+	TVoxelSharedRef<FVoxelData> CreateData() const;
 	TVoxelSharedRef<IVoxelRenderer> CreateRenderer() const;
 	TVoxelSharedRef<IVoxelLODManager> CreateLODManager() const;
 	TVoxelSharedPtr<FVoxelEventManager> CreateEventManager() const;

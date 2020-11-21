@@ -6,6 +6,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
 #include "VoxelRender/VoxelToolRendering.h"
+#include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/IVoxelProceduralMeshComponent_PhysicsCallbackHandler.h"
 #include "VoxelDebug/VoxelDebugManager.h"
@@ -29,6 +30,9 @@
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelPhysicsTriangleMeshesMemory);
 
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Num Collision Cubes"), STAT_NumCollisionCubes, STATGROUP_VoxelCounters);
+	
+	
 static TAutoConsoleVariable<int32> CVarShowCollisionsUpdates(
 	TEXT("voxel.renderer.ShowCollisionsUpdates"),
 	0,
@@ -96,29 +100,33 @@ void UVoxelProceduralMeshComponent::Init(
 {
 	ensure(InPhysicsCallbackHandler.IsValid());
 
-	if (UniqueId != 0)
+	if (UniqueId.IsValid())
 	{
 		// Make sure we don't have any convex collision left
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-		UpdateConvexMeshes({}, {}, {});
+		UpdateSimpleCollision({});
 #endif
 	}
 	
 	bInit = true;
-	UniqueId = UNIQUE_ID();
+	UniqueId = VOXEL_UNIQUE_ID();
 	LOD = InDebugLOD;
 	DebugChunkId = InDebugChunkId;
 	PriorityHandler = InPriorityHandler;
 	PhysicsCallbackHandler = InPhysicsCallbackHandler;
 	Pool = RendererSettings.Pool;
 	ToolRenderingManager = RendererSettings.ToolRenderingManager;
+	TexturePool = RendererSettings.TexturePool;
+	RendererMemory = RendererSettings.Memory;
 	PriorityDuration = RendererSettings.PriorityDuration;
 	CollisionTraceFlag = RendererSettings.CollisionTraceFlag;
+	bSimpleCubicCollision = RendererSettings.bSimpleCubicCollision;
 	NumConvexHullsPerAxis = RendererSettings.NumConvexHullsPerAxis;
 	bCleanCollisionMesh = RendererSettings.bCleanCollisionMeshes;
 	bClearProcMeshBuffersOnFinishUpdate = RendererSettings.bStaticWorld && !RendererSettings.bRenderWorld; // We still need the buffers if we are rendering!
 	DistanceFieldSelfShadowBias = RendererSettings.DistanceFieldSelfShadowBias;
 	bContributesToStaticLighting = RendererSettings.bContributesToStaticLighting;
+	bUseStaticPath = RendererSettings.bUseStaticPath;
 }
 
 void UVoxelProceduralMeshComponent::ClearInit()
@@ -127,9 +135,29 @@ void UVoxelProceduralMeshComponent::ClearInit()
 	bInit = false;
 }
 
+#if WITH_EDITOR && VOXEL_ENABLE_FOLIAGE_PAINT_HACK
+class FStaticLightingSystem
+{
+public:
+	static void SetModel(UModelComponent* Component)
+	{
+		static UModel* DummyModel = []()
+		{
+			auto* Memory = FMemory::Malloc(sizeof(UModel), alignof(UModel));
+			FMemory::Memzero(Memory, sizeof(UModel));
+			return reinterpret_cast<UModel*>(Memory);
+		}();
+		Component->Model = DummyModel;
+	}
+};
+#endif
 
 UVoxelProceduralMeshComponent::UVoxelProceduralMeshComponent()
 {
+#if WITH_EDITOR && VOXEL_ENABLE_FOLIAGE_PAINT_HACK
+	// Create a dummy model for foliage painting to work
+	FStaticLightingSystem::SetModel(this);
+#endif
 
 	Mobility = EComponentMobility::Movable;
 	
@@ -152,6 +180,9 @@ UVoxelProceduralMeshComponent::~UVoxelProceduralMeshComponent()
 		AsyncCooker->CancelAndAutodelete();
 		AsyncCooker = nullptr;
 	}
+
+	ensure(CollisionMemory == 0);
+	ensure(NumCollisionCubes == 0);
 
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelPhysicsTriangleMeshesMemory, MemoryUsage.TriangleMeshes);
 }
@@ -227,76 +258,31 @@ void UVoxelProceduralMeshComponent::SetProcMeshSection(int32 Index, FVoxelProcMe
 	{
 		return;
 	}
-
+	FVoxelProcMeshSection& Section = ProcMeshSections[Index];
+	
 	Buffers->UpdateStats();
-
-	const auto SetupTextureData = [&Settings, this](const TNoGrowArray<FColor>& TextureData)
+	
+	Section.TexturePoolEntry = nullptr;
+	if (Buffers->TextureData.IsValid())
 	{
-		const int32 Size = FMath::CeilToInt(FMath::Sqrt(TextureData.Num()));
-		
-		UTexture2D* Texture = UTexture2D::CreateTransient(Size, Size);
-		if (!ensure(Texture))
-		{
-			return;
-		}
-
-		{
-			Texture->CompressionSettings = TC_VectorDisplacementmap;
-			Texture->SRGB = false;
-			Texture->Filter = TF_Nearest;
-			
-			FTexture2DMipMap& Mip = Texture->PlatformData->Mips[0];
-			{
-				void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
-				if (ensure(Data))
-				{
-					FMemory::Memcpy(Data, TextureData.GetData(), TextureData.Num() * sizeof(FColor));
-
-					// Clear the end of the texture
-					const int32 Num = Size * Size - TextureData.Num();
-					if (Num != 0)
-					{
-						check(Num > 0);
-						FMemory::Memzero(static_cast<FColor*>(Data) + TextureData.Num(), Num * sizeof(FColor));
-					}
-				}
-				Mip.BulkData.Unlock();
-			}
-			Texture->UpdateResource();
-		}
-		
 		if (!Settings.Material->IsMaterialInstance())
 		{
 			Settings.Material = FVoxelMaterialInterfaceManager::Get().CreateMaterialInstance(Settings.Material->GetMaterial());
 			ensure(Settings.Material->IsMaterialInstance());
 		}
 
-		auto* MaterialInstance = Cast<UMaterialInstanceDynamic>(Settings.Material->GetMaterial());
-		if (!ensure(MaterialInstance))
+		const auto PinnedTexturePool = TexturePool.Pin();
+		if (ensure(PinnedTexturePool.IsValid()))
 		{
-			return;
+			Section.TexturePoolEntry = PinnedTexturePool->AddEntry(Buffers->TextureData.ToSharedRef(), Settings.Material.ToSharedRef());
 		}
-
-		MaterialInstance->SetTextureParameterValue(STATIC_FNAME("ColorTexture"), Texture);
-		MaterialInstance->SetScalarParameterValue(STATIC_FNAME("ColorTextureSize"), Size);
-
-		if (auto* VoxelWorld = Cast<AVoxelWorld>(GetOwner()))
-		{
-			VoxelWorld->DebugTextures.Remove(nullptr);
-			VoxelWorld->DebugTextures.Add(Texture);
-		}
-	};
-	
-	if (Buffers->TextureData.Num() > 0)
-	{
-		SetupTextureData(Buffers->TextureData);
 	}
 
-	ProcMeshSections[Index].Settings = Settings;
+	Section.Settings = Settings;
 
 	// Due to InitResources etc, we must make sure we are the only component using this buffers, hence the TUniquePtr
 	// However the buffer is shared between the component and the proxy
-	ProcMeshSections[Index].Buffers = MakeShareable(Buffers.Release());
+	Section.Buffers = MakeShareable(Buffers.Release());
 
 	if (Update == EVoxelProcMeshSectionUpdate::UpdateNow)
 	{
@@ -718,7 +704,7 @@ void UVoxelProceduralMeshComponent::OnComponentDestroyed(bool bDestroyingHierarc
 	{
 		// Clear convex collisions
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-		UpdateConvexMeshes({}, {}, {}, true);
+		UpdateSimpleCollision({}, true);
 #endif
 	}
 	
@@ -737,6 +723,8 @@ void UVoxelProceduralMeshComponent::OnComponentDestroyed(bool bDestroyingHierarc
 		StaticMeshComponent->DestroyComponent();
 		StaticMeshComponent = nullptr;
 	}
+	
+	UpdateCollisionStats();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -830,10 +818,12 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 	else
 	{
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-		UpdateConvexMeshes({}, {}, {});
+		UpdateSimpleCollision({});
 #endif
 		FinishCollisionUpdate();
 	}
+
+	UpdateCollisionStats();
 }
 
 void UVoxelProceduralMeshComponent::FinishCollisionUpdate()
@@ -859,20 +849,16 @@ void UVoxelProceduralMeshComponent::FinishCollisionUpdate()
 }
 
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-void UVoxelProceduralMeshComponent::UpdateConvexMeshes(
-	const FBox& ConvexBounds,
-	TArray<FKConvexElem>&& ConvexElements,
-	TArray<physx::PxConvexMesh*>&& ConvexMeshes,
-	bool bCanFail)
+void UVoxelProceduralMeshComponent::UpdateSimpleCollision(FVoxelSimpleCollisionData&& SimpleCollisionData, bool bCanFail)
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	ensure(UniqueId != 0);
-	ensure(ConvexElements.Num() == ConvexMeshes.Num());
+	ensure(UniqueId.IsValid());
+	ensure(SimpleCollisionData.ConvexElems.Num() == SimpleCollisionData.ConvexMeshes.Num());
 	
 	if (CollisionTraceFlag == ECollisionTraceFlag::CTF_UseComplexAsSimple)
 	{
-		ensure(ConvexElements.Num() == 0);
+		ensure(SimpleCollisionData.ConvexElems.Num() == 0);
 		return;
 	}
 
@@ -886,7 +872,7 @@ void UVoxelProceduralMeshComponent::UpdateConvexMeshes(
 
 	ensure(Root->CollisionTraceFlag == CollisionTraceFlag);
 
-	Root->UpdateConvexCollision(UniqueId, ConvexBounds, MoveTemp(ConvexElements), MoveTemp(ConvexMeshes));
+	Root->UpdateSimpleCollision(UniqueId, MoveTemp(SimpleCollisionData));
 }
 #endif
 
@@ -926,4 +912,26 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 	AsyncCooker = nullptr;
 	
 	FinishCollisionUpdate();
+}
+
+void UVoxelProceduralMeshComponent::UpdateCollisionStats()
+{
+	RendererMemory->CollisionMemory.Subtract(CollisionMemory);
+	CollisionMemory = 0;
+	
+	DEC_DWORD_STAT_BY(STAT_NumCollisionCubes, NumCollisionCubes);
+	NumCollisionCubes = 0;
+
+	for (auto& Section : ProcMeshSections)
+	{
+		if (Section.Settings.bEnableCollisions)
+		{
+			auto& Buffers = *Section.Buffers;
+			CollisionMemory += Buffers.IndexBuffer.GetAllocatedSize();
+			CollisionMemory += Buffers.VertexBuffers.PositionVertexBuffer.GetNumVertices() * Buffers.VertexBuffers.PositionVertexBuffer.GetStride();
+			NumCollisionCubes += Buffers.CollisionCubes.Num();
+		}
+	}
+	RendererMemory->CollisionMemory.Add(CollisionMemory);
+	INC_DWORD_STAT_BY(STAT_NumCollisionCubes, NumCollisionCubes);
 }

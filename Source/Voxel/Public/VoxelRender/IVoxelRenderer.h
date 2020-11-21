@@ -18,6 +18,7 @@ struct FVoxelMaterialIndices;
 class FInvokerPositionsArray;
 class IVoxelPool;
 class FVoxelData;
+class FVoxelTexturePool;
 class FVoxelDebugManager;
 class FVoxelToolRenderingManager;
 class UMaterialInterface;
@@ -43,6 +44,21 @@ struct FVoxelRendererDynamicSettings
 	};
 	
 	TVoxelStaticArray<FLODData, 32> LODData{ ForceInit };
+};
+
+struct FVoxelRendererMemory
+{
+	struct FLODStats
+	{
+		FThreadSafeCounter64 Indices;
+		FThreadSafeCounter64 Positions;
+		FThreadSafeCounter64 Colors;
+		FThreadSafeCounter64 Adjacency;
+		FThreadSafeCounter64 UVsAndTangents;
+	};
+	TVoxelStaticArray<FLODStats, 32> LODs{ ForceInit };
+
+	FThreadSafeCounter64 CollisionMemory;
 };
 
 // Doesn't keep alive anything important
@@ -91,6 +107,7 @@ struct FVoxelRendererSettingsBase
 	const bool bSRGBColors;
 	const bool bRenderWorld;
 	const bool bContributesToStaticLighting;
+	const bool bUseStaticPath;
 
 	const float MeshUpdatesBudget;
 
@@ -103,10 +120,13 @@ struct FVoxelRendererSettingsBase
 
 	const bool bStaticWorld;
 	const bool bGreedyCubicMesher;
+	const bool bSimpleCubicCollision;
 
 	const float PriorityDuration;
 
 	const TVoxelSharedRef<FVoxelRendererDynamicSettings> DynamicSettings;
+
+	const TVoxelSharedRef<FVoxelRendererMemory> Memory = MakeVoxelShared<FVoxelRendererMemory>();
 
 	// If Data isn't null, it's Depth and WorldBounds will be used, and WorldOffset will be set to 0
 	FVoxelRendererSettingsBase(
@@ -137,9 +157,11 @@ private:
 
 struct FVoxelRendererSettings : FVoxelRendererSettingsBase
 {
+	// SharedPtr ones might be null in asset actors
 	const TVoxelSharedRef<const FVoxelData> Data;
 	const TVoxelSharedRef<IVoxelPool> Pool;
-	const TVoxelSharedPtr<FVoxelToolRenderingManager> ToolRenderingManager; // No tools in asset actors
+	const TVoxelSharedPtr<FVoxelToolRenderingManager> ToolRenderingManager;
+	const TVoxelSharedRef<FVoxelTexturePool> TexturePool;
 	const TVoxelSharedRef<FVoxelDebugManager> DebugManager;
 
 	FVoxelRendererSettings(
@@ -149,6 +171,7 @@ struct FVoxelRendererSettings : FVoxelRendererSettingsBase
 		const TVoxelSharedRef<const FVoxelData>& Data,
 		const TVoxelSharedRef<IVoxelPool>& Pool,
 		const TVoxelSharedPtr<FVoxelToolRenderingManager>& ToolRenderingManager,
+		const TVoxelSharedRef<FVoxelTexturePool>& TexturePool,
 		const TVoxelSharedRef<FVoxelDebugManager>& DebugManager,
 		bool bUseDataSettings);
 };
@@ -173,6 +196,7 @@ public:
 	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) = 0;
 
 	virtual int32 GetTaskCount() const = 0;
+	virtual bool AreChunksDithering() const = 0;
 
 	virtual void RecomputeMeshPositions() = 0;
 	virtual void ApplyNewMaterials() = 0;

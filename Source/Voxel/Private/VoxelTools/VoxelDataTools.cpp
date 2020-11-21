@@ -127,7 +127,7 @@ inline bool CheckSave(const FVoxelData& Data, const T& Save)
 	}
 	if (Save.GetDepth() > Data.Depth)
 	{
-		FVoxelMessages::Warning("LoadFromSave: Save depth is bigger than world depth, the save data outside world bounds will be ignored");
+		LOG_VOXEL(Warning, TEXT("LoadFromSave: Save depth is bigger than world depth, the save data outside world bounds will be ignored"));
 	}
 	return true;
 }

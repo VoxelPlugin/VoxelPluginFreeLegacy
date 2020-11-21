@@ -1,9 +1,17 @@
 ﻿# Voxel Plugin
 
 **Voxel Plugin** allows to create fully volumetric, entirely destructible, infinite worlds in **Unreal Engine**.
-It is compatible with 4.23, 4.24 and 4.25.
+It is compatible with 4.23, 4.24, 4.25 and 4.26.
 
 **TRAILER**: https://youtu.be/LKg9rU1dXEk
+
+## Installation 
+
+The recommended way to install the plugin beta is to use pre-built binaries.
+
+- Download the plugin for your engine version here: https://drive.google.com/drive/folders/1qzTSk_vdp-niSOmi3syL0yOAGiftvx3x
+- Create a `Plugins` folder under your project folder
+- Copy the plugin to it, so you have `YourProject/Plugins/VoxelFree/`
 
 ## Links
 
@@ -14,13 +22,5 @@ It is compatible with 4.23, 4.24 and 4.25.
 - Twitter: https://twitter.com/voxelplugin
 - Youtube: http://youtube.com/voxelplugin
 - UE Forums: https://forums.unrealengine.com/community/released-projects/125045-voxel-plugin
-
-## Binaries
-
-If you don't want to build from source, you can grab the plugin binaries here: https://drive.google.com/drive/folders/1qzTSk_vdp-niSOmi3syL0yOAGiftvx3x
-
-## Installation
-
-Follow https://wiki.voxelplugin.com/Quick_Start#Using_the_Beta_.2F_Building_from_source
 
 ![](https://i.imgur.com/ZLNNTBQ.jpg)

@@ -94,7 +94,8 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	int32 LOD,
 	TArray<uint32>&& Indices, 
 	TArray<FVoxelMesherVertex>&& Vertices,
-	TArray<FColor>* TextureData)
+	TArray<FColor>* TextureData,
+	TArray<FBox>* CollisionCubes)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
@@ -195,10 +196,14 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 		{
 			Buffers.TextureData = MoveTemp(*TextureData);
 		}
+		if (CollisionCubes)
+		{
+			Buffers.CollisionCubes = MoveTemp(*CollisionCubes);
+		}
 	}
 	else if (Settings.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
 	{
-		ensure(!TextureData);
+		ensure(!TextureData && !CollisionCubes);
 		Chunk->SetIsSingle(false);
 
 		TVoxelStaticArray<TMap<int32, int32>, 256> IndicesMaps{ ForceInit };
@@ -253,7 +258,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	}
 	else
 	{
-		ensure(!TextureData);
+		ensure(!TextureData && !CollisionCubes);
 		check(Settings.MaterialConfig == EVoxelMaterialConfig::MultiIndex);
 		Chunk->SetIsSingle(false);
 

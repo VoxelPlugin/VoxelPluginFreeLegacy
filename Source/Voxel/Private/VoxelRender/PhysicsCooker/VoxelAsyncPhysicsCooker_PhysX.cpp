@@ -64,7 +64,7 @@ bool FVoxelAsyncPhysicsCooker_PhysX::Finalize(UBodySetup& BodySetup, FVoxelProce
 	}
 	
 	// TODO a bit hacky?
-	Component->UpdateConvexMeshes(CookResult.ConvexBounds, MoveTemp(CookResult.ConvexElems), MoveTemp(CookResult.ConvexMeshes));
+	Component->UpdateSimpleCollision(MoveTemp(CookResult.SimpleCollisionData));
 	
 	OutMemoryUsage.TriangleMeshes = CookResult.TriangleMeshesMemoryUsage;
 
@@ -75,8 +75,7 @@ void FVoxelAsyncPhysicsCooker_PhysX::CookMesh()
 {
 	if (CollisionTraceFlag != ECollisionTraceFlag::CTF_UseComplexAsSimple)
 	{
-		DecomposeMeshToHulls();
-		CreateConvexMesh();
+		CreateSimpleCollision();
 	}
 	if (CollisionTraceFlag != ECollisionTraceFlag::CTF_UseSimpleAsComplex)
 	{
@@ -221,137 +220,160 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateTriMesh()
 	}
 }
 
-void FVoxelAsyncPhysicsCooker_PhysX::CreateConvexMesh()
-{
-	VOXEL_ASYNC_FUNCTION_COUNTER();
-
-	for (auto& Element : CookResult.ConvexElems)
-	{
-		CookResult.ConvexMeshes.AddZeroed();
-		const EPhysXCookingResult Result = PhysXCooking->CreateConvex(PhysXFormat, GetCookFlags(), Element.VertexData, CookResult.ConvexMeshes.Last());
-		switch (Result)
-		{
-		case EPhysXCookingResult::Failed:
-		{
-			LOG_VOXEL(Warning, TEXT("Failed to cook convex"));
-			ErrorCounter.Increment();
-			break;
-		}
-		case EPhysXCookingResult::SucceededWithInflation:
-		{
-			LOG_VOXEL(Warning, TEXT("Cook convex failed but succeeded with inflation"));
-			break;
-		}
-		case EPhysXCookingResult::Succeeded: break;
-		default: ensure(false);
-		}
-	}
-}
-
-void FVoxelAsyncPhysicsCooker_PhysX::DecomposeMeshToHulls()
+void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	if (Buffers.Num() == 1 && Buffers[0]->GetNumVertices() < 4) return;
-
-	auto& ConvexElems = CookResult.ConvexElems;
 	
-	FBox Box(ForceInit);
-	for(auto& Buffer : Buffers)
+	CookResult.SimpleCollisionData.Bounds = FBox(ForceInit);
+
+	if (bSimpleCubicCollision)
 	{
-		auto& PositionBuffer = Buffer->VertexBuffers.PositionVertexBuffer;
-		for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
-		{
-			Box += PositionBuffer.VertexPosition(Index);
+	    VOXEL_ASYNC_SCOPE_COUNTER("BoxElems");
+        TArray<FKBoxElem>& BoxElems = CookResult.SimpleCollisionData.BoxElems;
+        for (auto& Buffer : Buffers)
+        {
+            for (FBox Cube : Buffer->CollisionCubes)
+            {
+                Cube = Cube.TransformBy(LocalToRoot);
+                CookResult.SimpleCollisionData.Bounds += Cube;
+
+                FKBoxElem& BoxElem = BoxElems.Emplace_GetRef();
+
+				BoxElem.Center = Cube.GetCenter();
+				BoxElem.X = Cube.GetExtent().X * 2;
+				BoxElem.Y = Cube.GetExtent().Y * 2;
+				BoxElem.Z = Cube.GetExtent().Z * 2;
+			}
 		}
 	}
+	else
+    {
+		VOXEL_ASYNC_SCOPE_COUNTER("ConvexElems");
+        TArray<FKConvexElem>& ConvexElems = CookResult.SimpleCollisionData.ConvexElems;
 
-	const int32 ChunkSize = RENDER_CHUNK_SIZE << LOD;
-	const FIntVector Size =
-		FVoxelUtilities::ComponentMax(
-			FIntVector(1),
-			FVoxelUtilities::CeilToInt(Box.GetSize() / ChunkSize * NumConvexHullsPerAxis));
-	
-	if (!ensure(Size.GetMax() <= 64)) return;
+        FBox Box(ForceInit);
+        for (auto& Buffer : Buffers)
+        {
+            auto& PositionBuffer = Buffer->VertexBuffers.PositionVertexBuffer;
+            for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
+            {
+                Box += PositionBuffer.VertexPosition(Index);
+            }
+        }
 
-	ConvexElems.SetNum(Size.X * Size.Y * Size.Z);
+        const int32 ChunkSize = RENDER_CHUNK_SIZE << LOD;
+        const FIntVector Size =
+            FVoxelUtilities::ComponentMax(
+                FIntVector(1),
+                FVoxelUtilities::CeilToInt(Box.GetSize() / ChunkSize * NumConvexHullsPerAxis));
 
-	for (auto& Buffer : Buffers)
-	{
-		auto& PositionBuffer = Buffer->VertexBuffers.PositionVertexBuffer;
-		for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
-		{
-			const FVector Vertex = PositionBuffer.VertexPosition(Index);
-			
-			FIntVector MainPosition;
-			const auto Lambda = [&](int32 OffsetX, int32 OffsetY, int32 OffsetZ)
-			{
-				const FVector Offset = FVector(OffsetX, OffsetY, OffsetZ) * (1 << LOD); // 1 << LOD: should be max distance between the vertices
-				FIntVector Position = FVoxelUtilities::FloorToInt((Vertex + Offset - Box.Min) / ChunkSize * NumConvexHullsPerAxis);
-				Position = FVoxelUtilities::Clamp(Position, FIntVector(0), Size - 1);
+        if (!ensure(Size.GetMax() <= 64)) return;
 
-				// Avoid adding too many duplicates by checking we're not in the center
-				if (OffsetX == 0 && OffsetY == 0 && OffsetZ == 0)
-				{
-					MainPosition = Position;
-				}
-				else
-				{
-					if (Position == MainPosition)
-					{
-						return;
-					}
-				}
-				ConvexElems[Position.X + Size.X * Position.Y + Size.X * Size.Y * Position.Z].VertexData.Add(Vertex);
-			};
-			Lambda(0, 0, 0);
-			// Iterate possible neighbors to avoid holes between hulls
-			Lambda(+1, 0, 0);
-			Lambda(-1, 0, 0);
-			Lambda(0, +1, 0);
-			Lambda(0, -1, 0);
-			Lambda(0, 0, +1);
-			Lambda(0, 0, -1);
-		}
-	}
+        ConvexElems.SetNum(Size.X * Size.Y * Size.Z);
 
-	constexpr int32 Threshold = 8;
+        for (auto& Buffer : Buffers)
+        {
+            auto& PositionBuffer = Buffer->VertexBuffers.PositionVertexBuffer;
+            for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
+            {
+                const FVector Vertex = PositionBuffer.VertexPosition(Index);
 
-	// Merge the hulls until they are big enough
-	// This moves the vertices to the end
-	for (int32 Index = 0; Index < ConvexElems.Num() - 1; Index++)
-	{
-		auto& Element = ConvexElems[Index];
-		if (Element.VertexData.Num() < Threshold)
-		{
-			ConvexElems[Index + 1].VertexData.Append(Element.VertexData);
-			Element.VertexData.Reset();
-		}
-	}
+                FIntVector MainPosition;
+                const auto Lambda = [&](int32 OffsetX, int32 OffsetY, int32 OffsetZ)
+                {
+                    const FVector Offset = FVector(OffsetX, OffsetY, OffsetZ) * (1 << LOD); // 1 << LOD: should be max distance between the vertices
+                    FIntVector Position = FVoxelUtilities::FloorToInt((Vertex + Offset - Box.Min) / ChunkSize * NumConvexHullsPerAxis);
+                    Position = FVoxelUtilities::Clamp(Position, FIntVector(0), Size - 1);
 
-	// Remove all empty hulls
-	ConvexElems.RemoveAll([](auto& Element) { return Element.VertexData.Num() == 0; });
-	if(!ensure(ConvexElems.Num() > 0)) return;
+                    // Avoid adding too many duplicates by checking we're not in the center
+                    if (OffsetX == 0 && OffsetY == 0 && OffsetZ == 0)
+                    {
+                        MainPosition = Position;
+                    }
+                    else
+                    {
+                        if (Position == MainPosition)
+                        {
+                            return;
+                        }
+                    }
+                    ConvexElems[Position.X + Size.X * Position.Y + Size.X * Size.Y * Position.Z].VertexData.Add(Vertex);
+                };
+                Lambda(0, 0, 0);
+                // Iterate possible neighbors to avoid holes between hulls
+                Lambda(+1, 0, 0);
+                Lambda(-1, 0, 0);
+                Lambda(0, +1, 0);
+                Lambda(0, -1, 0);
+                Lambda(0, 0, +1);
+                Lambda(0, 0, -1);
+            }
+        }
 
-	// Then merge backwards while the last hull isn't big enough
-	while (ConvexElems.Last().VertexData.Num() < Threshold && ConvexElems.Num() > 1)
-	{
-		ConvexElems[ConvexElems.Num() - 2].VertexData.Append(ConvexElems.Last().VertexData);
-		ConvexElems.Pop();
-	}
+        constexpr int32 Threshold = 8;
 
-	CookResult.ConvexBounds = FBox(ForceInit);
-	for (auto& Element : ConvexElems)
-	{
-		ensure(Element.VertexData.Num() >= 4);
-		for (auto& Vertex : Element.VertexData)
-		{
-			// Transform from component space to root component space, as the root is going to hold the convex meshes
-			Vertex = LocalToRoot.TransformPosition(Vertex);
-		}
-		Element.UpdateElemBox();
-		CookResult.ConvexBounds += Element.ElemBox;
-	}
+        // Merge the hulls until they are big enough
+        // This moves the vertices to the end
+        for (int32 Index = 0; Index < ConvexElems.Num() - 1; Index++)
+        {
+            auto& Element = ConvexElems[Index];
+            if (Element.VertexData.Num() < Threshold)
+            {
+                ConvexElems[Index + 1].VertexData.Append(Element.VertexData);
+                Element.VertexData.Reset();
+            }
+        }
+
+        // Remove all empty hulls
+        ConvexElems.RemoveAll([](auto& Element) { return Element.VertexData.Num() == 0; });
+        if (!ensure(ConvexElems.Num() > 0)) return;
+
+        // Then merge backwards while the last hull isn't big enough
+        while (ConvexElems.Last().VertexData.Num() < Threshold && ConvexElems.Num() > 1)
+        {
+            ConvexElems[ConvexElems.Num() - 2].VertexData.Append(ConvexElems.Last().VertexData);
+            ConvexElems.Pop();
+        }
+
+		// Finally, create the physx data
+	    for (auto& Element : ConvexElems)
+	    {
+			VOXEL_ASYNC_SCOPE_COUNTER("CreateConvex");
+            physx::PxConvexMesh*& Mesh = CookResult.SimpleCollisionData.ConvexMeshes.Add_GetRef(nullptr);
+		    const EPhysXCookingResult Result = PhysXCooking->CreateConvex(PhysXFormat, GetCookFlags(), Element.VertexData, Mesh);
+		    switch (Result)
+		    {
+		    case EPhysXCookingResult::Failed:
+		    {
+			    LOG_VOXEL(Warning, TEXT("Failed to cook convex"));
+			    ErrorCounter.Increment();
+			    break;
+		    }
+		    case EPhysXCookingResult::SucceededWithInflation:
+		    {
+			    LOG_VOXEL(Warning, TEXT("Cook convex failed but succeeded with inflation"));
+			    break;
+		    }
+		    case EPhysXCookingResult::Succeeded: break;
+		    default: ensure(false);
+		    }
+	    }
+
+		// And update bounds
+        for (auto& Element : ConvexElems)
+        {
+            ensure(Element.VertexData.Num() >= 4);
+            for (auto& Vertex : Element.VertexData)
+            {
+                // Transform from component space to root component space, as the root is going to hold the convex meshes
+                Vertex = LocalToRoot.TransformPosition(Vertex);
+            }
+            Element.UpdateElemBox();
+            CookResult.SimpleCollisionData.Bounds += Element.ElemBox;
+        }
+    }
 }
 
 EPhysXMeshCookFlags FVoxelAsyncPhysicsCooker_PhysX::GetCookFlags() const

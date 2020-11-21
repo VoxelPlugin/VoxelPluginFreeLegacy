@@ -97,6 +97,7 @@ private:
 	const int32 LOD;
 	const uint32 DebugChunkId;
 	const TVoxelWeakPtr<const FVoxelToolRenderingManager> WeakToolRenderingManager;
+	const bool bUseStaticPath;
 	
 	const FCollisionResponseContainer CollisionResponse;
 	const ECollisionTraceFlag CollisionTraceFlag;

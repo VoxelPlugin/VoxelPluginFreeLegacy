@@ -9,26 +9,27 @@
 #include "Engine/Engine.h"
 #include "Materials/Material.h"
 
+static TAutoConsoleVariable<int32> CVarShowWireframeCollision(
+	TEXT("voxel.collision.DrawWireframe"),
+	0,
+	TEXT("If true, will show the collision as wireframe in the player collision view"),
+	ECVF_Default);
+
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-UVoxelWorldRootComponent::FConvexElements::FConvexElements(
-	const FBox& Bounds,
-	TArray<FKConvexElem>&& InConvexElements,
-	TArray<physx::PxConvexMesh*>&& InConvexMeshes)
-	: Bounds(Bounds)
-	, ConvexElements(MoveTemp(InConvexElements))
-	, ConvexMeshes(MoveTemp(InConvexMeshes))
+UVoxelWorldRootComponent::FSimpleCollisionDataRef::FSimpleCollisionDataRef(FVoxelSimpleCollisionData&& Data)
+	: Data(MoveTemp(Data))
 {
-	ensure(Bounds.IsValid);
-	ensure(ConvexElements.Num() == ConvexMeshes.Num());
-	for (auto* ConvexMesh : ConvexMeshes)
+	ensure(Data.Bounds.IsValid);
+	ensure(Data.ConvexElems.Num() == Data.ConvexMeshes.Num());
+	for (auto* ConvexMesh : Data.ConvexMeshes)
 	{
 		ConvexMesh->acquireReference();
 	}
 }
 
-UVoxelWorldRootComponent::FConvexElements::~FConvexElements()
+UVoxelWorldRootComponent::FSimpleCollisionDataRef::~FSimpleCollisionDataRef()
 {
-	for (auto* ConvexMesh : ConvexMeshes)
+	for (auto* ConvexMesh : Data.ConvexMeshes)
 	{
 		ConvexMesh->release();
 	}
@@ -50,7 +51,7 @@ UVoxelWorldRootComponent::UVoxelWorldRootComponent()
 UVoxelWorldRootComponent::~UVoxelWorldRootComponent()
 {
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	ensure(Elements.Num() == 0);
+	ensure(ProcMeshesSimpleCollision.Num() == 0);
 #endif
 }
 
@@ -132,25 +133,20 @@ void UVoxelWorldRootComponent::PostEditChangeProperty(FPropertyChangedEvent& Pro
 ///////////////////////////////////////////////////////////////////////////////
 
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-void UVoxelWorldRootComponent::UpdateConvexCollision(
-	uint64 Id,
-	const FBox& InBounds,
-	TArray<FKConvexElem>&& ConvexElements,
-	TArray<physx::PxConvexMesh*>&& ConvexMeshes)
+void UVoxelWorldRootComponent::UpdateSimpleCollision(FVoxelProcMeshComponentId Id, FVoxelSimpleCollisionData&& SimpleCollision)
 {
 	ensure(CollisionTraceFlag != CTF_UseComplexAsSimple);
-	ensure(ConvexElements.Num() == ConvexMeshes.Num());
 
-	if (ConvexElements.Num() == 0)
+	if (SimpleCollision.BoxElems.Num() == 0 && SimpleCollision.ConvexElems.Num() == 0)
 	{
-		if (Elements.Remove(Id) == 1)
+		if (ProcMeshesSimpleCollision.Remove(Id) == 1)
 		{
 			bRebuildQueued = true;
 		}
 		return;
 	}
 
-	Elements.Add(Id, MakeUnique<FConvexElements>(InBounds, MoveTemp(ConvexElements), MoveTemp(ConvexMeshes)));
+	ProcMeshesSimpleCollision.Add(Id, MakeUnique<FSimpleCollisionDataRef>(MoveTemp(SimpleCollision)));
 	bRebuildQueued = true;
 }
 
@@ -162,9 +158,9 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
 	{
 		VOXEL_SCOPE_COUNTER("Update bounds");
 		FBox LocalBox(ForceInit);
-		for (auto& It : Elements)
+		for (auto& It : ProcMeshesSimpleCollision)
 		{
-			LocalBox += It.Value->Bounds;
+			LocalBox += It.Value->Data.Bounds;
 		}
 		LocalBounds = LocalBox.IsValid ? FBoxSphereBounds(LocalBox) : FBoxSphereBounds(ForceInit); // fallback to reset box sphere bounds
 		UpdateBounds();
@@ -174,44 +170,57 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
 	GetBodySetup();
 
 	// Note: we do not need to call ClearPhysicsMeshes, as we are setting the convex meshes manually & handling the ref count ourselves
-	
-	auto& ConvexElements = BodySetup->AggGeom.ConvexElems;
 
+    TArray<FKBoxElem>& BoxElems = BodySetup->AggGeom.BoxElems;
+    TArray<FKConvexElem>& ConvexElems = BodySetup->AggGeom.ConvexElems;
+
+	int32 NumBoxElements = 0;
 	int32 NumConvexElements = 0;
-	{
-		VOXEL_SCOPE_COUNTER("Count");
-		for(auto& It : Elements)
-		{
-			NumConvexElements += It.Value->ConvexElements.Num();
-		}
+    {
+        VOXEL_SCOPE_COUNTER("Count");
+        for (auto& It : ProcMeshesSimpleCollision)
+        {
+            const FVoxelSimpleCollisionData& Data = It.Value->Data;
+            NumBoxElements += Data.BoxElems.Num();
+            NumConvexElements += Data.ConvexElems.Num();
+        }
+    }
+
+    if (NumBoxElements == 0 && NumConvexElements == 0) 
+    {
+        return;
 	}
-	if (NumConvexElements == 0) return;
 
 	{
 		VOXEL_SCOPE_COUNTER("Lock");
 		BodySetupLock.Lock();
 	}
 
-	ConvexElements.Reset();
+	BoxElems.Reset();
+	ConvexElems.Reset();
 	{
 		VOXEL_SCOPE_COUNTER("Reserve");
-		ConvexElements.Reserve(NumConvexElements);
+		BoxElems.Reserve(NumBoxElements);
+		ConvexElems.Reserve(NumConvexElements);
 	}
 	
 	{
-		VOXEL_SCOPE_COUNTER("Create");
-		for(auto& It : Elements)
-		{
-			auto& Part = *It.Value;
-			for (int32 Index = 0; Index < Part.ConvexMeshes.Num(); Index++)
-			{
-				auto& NewElement = *new (ConvexElements) FKConvexElem();
-				// No need to copy the vertices
-				NewElement.ElemBox = Part.ConvexElements[Index].ElemBox;
-				NewElement.SetConvexMesh(Part.ConvexMeshes[Index]);
-			}
-		}
-	}
+        VOXEL_SCOPE_COUNTER("Create");
+        for (auto& It : ProcMeshesSimpleCollision)
+        {
+            const FVoxelSimpleCollisionData& Data = It.Value->Data;
+
+			BoxElems.Append(Data.BoxElems);
+
+            for (int32 Index = 0; Index < Data.ConvexMeshes.Num(); Index++)
+            {
+                FKConvexElem& NewElement = ConvexElems.Emplace_GetRef();
+                // No need to copy the vertices
+                NewElement.ElemBox = Data.ConvexElems[Index].ElemBox;
+                NewElement.SetConvexMesh(Data.ConvexMeshes[Index]);
+            }
+        }
+    }
 	{
 		VOXEL_SCOPE_COUNTER("Unlock");
 		BodySetupLock.Unlock();
@@ -328,6 +337,8 @@ public:
 
 		const FTransform GeomTransform(GetLocalToWorld());
 
+		const bool bDrawSolid = CVarShowWireframeCollision.GetValueOnRenderThread() == 0;
+
 		FScopeLock Lock(&Component->BodySetupLock);
 		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 		{
@@ -337,7 +348,7 @@ public:
 				SimpleCollisionColor,
 				SolidMaterialInstance,
 				true,
-				true,
+				bDrawSolid,
 				DrawsVelocity(),
 				ViewIndex,
 				Collector);

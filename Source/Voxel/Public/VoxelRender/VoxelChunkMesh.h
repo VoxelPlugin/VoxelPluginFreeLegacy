@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelIntBox.h"
 #include "VoxelRender/VoxelProcMeshTangent.h"
 #include "VoxelRender/VoxelMaterialIndices.h"
 
@@ -25,6 +26,7 @@ struct VOXEL_API FVoxelChunkMeshBuffers
 	TArray<TArray<FVector2D>> TextureCoordinates;
 
 	TArray<FColor> TextureData;
+	TArray<FBox> CollisionCubes;
 
 	FBox Bounds;
 	FGuid Guid; // Use to avoid rebuilding collisions when the mesh didn't change

@@ -52,7 +52,7 @@ void FVoxelMessages::ShowNotification(const FNotification& Notification)
 void FVoxelMessages::ShowNotification(const FString& Text)
 {
 	FNotification Notification;
-	Notification.UniqueId = UNIQUE_ID();
+	Notification.UniqueId = VOXEL_UNIQUE_ID();
 	Notification.Message = Text;
 	ShowNotification(Notification);
 }

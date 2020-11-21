@@ -16,7 +16,7 @@ struct FVoxelToolRendering
 	TVoxelSharedPtr<FVoxelMaterialInterface> Material;
 };
 
-DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
+DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
 
 class FVoxelToolRenderingManager : public TVoxelSharedFromThis<FVoxelToolRenderingManager>
 {

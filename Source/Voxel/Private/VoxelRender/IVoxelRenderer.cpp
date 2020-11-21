@@ -67,6 +67,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 
 	, bRenderWorld(InWorld->bRenderWorld)
 	, bContributesToStaticLighting(InWorld->bContributesToStaticLighting)
+	, bUseStaticPath(InWorld->bUseStaticPath)
 
 	, MeshUpdatesBudget(InPlayType == EVoxelPlayType::Game
 		? FMath::Max(0.001f, InWorld->MeshUpdatesBudget)
@@ -83,6 +84,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 		? InWorld->bStaticWorld
 		: false)
 	, bGreedyCubicMesher(InWorld->MaterialConfig == EVoxelMaterialConfig::RGB && InWorld->bGreedyCubicMesher)
+    , bSimpleCubicCollision(bGreedyCubicMesher && InWorld->bSimpleCubicCollision)
 
 	, PriorityDuration(InWorld->PriorityDuration)
 	, DynamicSettings(InWorld->GetRendererDynamicSettings())
@@ -96,12 +98,14 @@ FVoxelRendererSettings::FVoxelRendererSettings(
 	const TVoxelSharedRef<const FVoxelData>& Data,
 	const TVoxelSharedRef<IVoxelPool>& Pool,
 	const TVoxelSharedPtr<FVoxelToolRenderingManager>& ToolRenderingManager,
+	const TVoxelSharedRef<FVoxelTexturePool>& TexturePool,
 	const TVoxelSharedRef<FVoxelDebugManager>& DebugManager,
 	bool bUseDataSettings)
 	: FVoxelRendererSettingsBase(World, PlayType, RootComponent, bUseDataSettings ? &Data.Get() : nullptr)
 	, Data(Data)
 	, Pool(Pool)
 	, ToolRenderingManager(ToolRenderingManager)
+	, TexturePool(TexturePool)
 	, DebugManager(DebugManager)
 {
 

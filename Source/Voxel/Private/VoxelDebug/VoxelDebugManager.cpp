@@ -247,6 +247,14 @@ static FAutoConsoleCommandWithWorldAndArgs RoundToGeneratorCmd(
 			if (World.GetData().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
+static FAutoConsoleCommandWithWorldAndArgs CompactTexturePoolCmd(
+	TEXT("voxel.texturepool.compact"),
+	TEXT("Reallocate all the entries, reducing fragmentation & saving memory"),
+	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+		{
+			UVoxelBlueprintLibrary::CompactVoxelTexturePool(&World);
+		}));
+
 static bool GShowCollisionAndNavmeshDebug = false;
 
 static FAutoConsoleCommandWithWorldAndArgs ShowCollisionAndNavmeshDebugCmd(

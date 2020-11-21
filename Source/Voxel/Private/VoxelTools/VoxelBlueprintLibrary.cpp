@@ -8,6 +8,7 @@
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelDataUtilities.h"
 #include "VoxelData/VoxelDataUtilities.inl"
+#include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/IVoxelLODManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
@@ -62,8 +63,6 @@ float UVoxelBlueprintLibrary::GetMemoryUsageInMB(EVoxelMemoryUsageType Type)
 #define CASE(X) return X.GetValue() / double(1 << 20);
 	switch (Type)
 	{
-	case EVoxelMemoryUsageType::Total:
-		CASE(STAT_TotalVoxelMemory_MemoryUsage);
 	case EVoxelMemoryUsageType::VoxelsDirtyValuesData:
 		CASE(STAT_VoxelDataOctreeDirtyValuesMemory_MemoryUsage);
 	case EVoxelMemoryUsageType::VoxelsDirtyMaterialsData:
@@ -87,7 +86,7 @@ float UVoxelBlueprintLibrary::GetMemoryUsageInMB(EVoxelMemoryUsageType Type)
 	case EVoxelMemoryUsageType::MeshesColors:
 		CASE(STAT_VoxelProcMeshMemory_Colors_MemoryUsage);
 	case EVoxelMemoryUsageType::MeshesUVsAndTangents:
-		CASE(STAT_VoxelProcMeshMemory_UVs_Tangents_MemoryUsage);
+		CASE(STAT_VoxelProcMeshMemory_UVsAndTangents_MemoryUsage);
 	case EVoxelMemoryUsageType::DataAssets:
 		CASE(STAT_VoxelDataAssetMemory_MemoryUsage);
 	case EVoxelMemoryUsageType::HeightmapAssets:
@@ -113,8 +112,6 @@ float UVoxelBlueprintLibrary::GetPeakMemoryUsageInMB(EVoxelMemoryUsageType Type)
 #define CASE(X) return X.GetValue() / double(1 << 20);
 	switch (Type)
 	{
-	case EVoxelMemoryUsageType::Total:
-		CASE(STAT_TotalVoxelMemory_MemoryPeak);
 	case EVoxelMemoryUsageType::VoxelsDirtyValuesData:
 		CASE(STAT_VoxelDataOctreeDirtyValuesMemory_MemoryPeak);
 	case EVoxelMemoryUsageType::VoxelsDirtyMaterialsData:
@@ -138,7 +135,7 @@ float UVoxelBlueprintLibrary::GetPeakMemoryUsageInMB(EVoxelMemoryUsageType Type)
 	case EVoxelMemoryUsageType::MeshesColors:
 		CASE(STAT_VoxelProcMeshMemory_Colors_MemoryPeak);
 	case EVoxelMemoryUsageType::MeshesUVsAndTangents:
-		CASE(STAT_VoxelProcMeshMemory_UVs_Tangents_MemoryPeak);
+		CASE(STAT_VoxelProcMeshMemory_UVsAndTangents_MemoryPeak);
 	case EVoxelMemoryUsageType::DataAssets:
 		CASE(STAT_VoxelDataAssetMemory_MemoryPeak);
 	case EVoxelMemoryUsageType::HeightmapAssets:
@@ -203,18 +200,7 @@ float UVoxelBlueprintLibrary::GetEstimatedCollisionsMemoryUsageInMB(AVoxelWorld*
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 
-	uint64 MemoryUsage = 0;
-	for (auto* Component : World->GetComponents())
-	{
-		auto* ProcMeshComponent = Cast<UVoxelProceduralMeshComponent>(Component);
-		if (!ProcMeshComponent) continue;
-		ProcMeshComponent->IterateSections([&](auto& Settings, const FVoxelProcMeshBuffers& Buffers)
-		{
-			MemoryUsage += Buffers.IndexBuffer.GetAllocatedSize();
-			MemoryUsage += Buffers.VertexBuffers.PositionVertexBuffer.GetNumVertices() * Buffers.VertexBuffers.PositionVertexBuffer.GetStride();
-		});
-	}
-	return MemoryUsage / double(1 << 20);
+	return World->GetRenderer().Settings.Memory->CollisionMemory.GetValue() / double(1 << 20);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1079,6 +1065,16 @@ void UVoxelBlueprintLibrary::DestroyWorldVoxelThreadPool(UWorld* World)
 bool UVoxelBlueprintLibrary::IsWorldVoxelPoolCreated(UWorld* World)
 {
 	return IVoxelPool::GetWorldPool(World).IsValid();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelBlueprintLibrary::CompactVoxelTexturePool(AVoxelWorld* World)
+{
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	World->GetTexturePool().Compact();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -7,6 +7,7 @@
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/LODManager/VoxelFixedResolutionLODManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
@@ -336,6 +337,7 @@ void AVoxelAssetActor::CreatePreview()
 		Data.ToSharedRef(),
 		StaticPool.ToSharedRef(),
 		nullptr,
+		FVoxelTexturePool::Create(FVoxelTexturePoolSettings(PreviewWorld, EVoxelPlayType::Preview)),
 		DebugManager.ToSharedRef(),
 		true));
 	
