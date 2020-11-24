@@ -4,20 +4,23 @@
 
 #include "CoreMinimal.h"
 #include "Factories/Factory.h"
-#include "Engine/EngineTypes.h"
-#include "VoxelDataAssetFactory.generated.h"
+#include "VoxelDataAssetFromMeshImporterFactory.generated.h"
 
 class AVoxelMeshImporter;
 
 UCLASS()
-class UVoxelDataAssetFactory : public UFactory
+class UVoxelDataAssetFromMeshImporterFactory : public UFactory
 {
 	GENERATED_BODY()
 
 public:
-	UVoxelDataAssetFactory();
+	UPROPERTY()
+	AVoxelMeshImporter* MeshImporter;
+
+	UVoxelDataAssetFromMeshImporterFactory();
 
 	// UFactory interface
 	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
+	virtual FString GetDefaultNewAssetName() const override;
 	// End of UFactory interface
 };

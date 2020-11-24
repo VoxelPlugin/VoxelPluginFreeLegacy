@@ -3,7 +3,7 @@
 #include "VoxelMeshImporterDetails.h"
 #include "VoxelImporters/VoxelMeshImporter.h"
 
-#include "Factories/VoxelDataAssetFactory.h"
+#include "Factories/VoxelDataAssetFromMeshImporterFactory.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 
 #include "VoxelEditorDetailsUtilities.h"

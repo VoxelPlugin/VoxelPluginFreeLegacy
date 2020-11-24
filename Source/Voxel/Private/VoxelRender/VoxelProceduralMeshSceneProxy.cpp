@@ -317,11 +317,6 @@ void FVoxelProceduralMeshSceneProxy::DrawStaticElements(FStaticPrimitiveDrawInte
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
-	if (RuntimeVirtualTextureMaterialTypes.Num() == 0)
-	{
-		return;
-	}
-
 	for (const auto& Section : Sections)
 	{
 		VOXEL_SLOW_SCOPE_COUNTER("Render Section");
