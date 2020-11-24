@@ -6,6 +6,7 @@
 #include "VoxelStats.h"
 #include "VoxelDebug.h"
 #include "VoxelMacros.h"
+#include "VoxelHelpers.h"
 #include "VoxelSharedPtr.h"
 #include "VoxelDefinitions.h"
 #include "VoxelDelegateHelpers.h"

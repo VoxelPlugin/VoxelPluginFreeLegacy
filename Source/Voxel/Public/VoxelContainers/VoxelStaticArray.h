@@ -107,7 +107,7 @@ public:
 		(*this)[Index] = Arg;
 		SetFromVariadicArgs<Index + 1>(Args...);
 	}
-	template<int32 Index>
+	template<int32 Index = 0>
 	FORCEINLINE void SetFromVariadicArgs(T Arg)
 	{
 		static_assert(Index == Size - 1, "");

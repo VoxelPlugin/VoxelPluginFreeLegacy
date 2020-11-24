@@ -19,8 +19,7 @@
 #include "VoxelEvents/VoxelEventManager.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
 #include "VoxelAssets/VoxelHeightmapAssetData.h"
-#include "IVoxelPool.h"
-#include "VoxelDefaultPool.h"
+#include "VoxelThreadPool.h"
 #include "VoxelMessages.h"
 #include "VoxelUtilities/VoxelGeneratorUtilities.h"
 
@@ -976,95 +975,14 @@ void UVoxelBlueprintLibrary::SetToolRenderingEnabled(AVoxelWorld* World, FVoxelT
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelBlueprintLibrary::CreateGlobalVoxelThreadPool(
-	const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
-	const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides,
-	int32 NumberOfThreads,
-	bool bConstantPriorities)
+void UVoxelBlueprintLibrary::SetNumberOfVoxelThreads(int32 Number)
 {
-	VOXEL_FUNCTION_COUNTER();
-	
-	if (IsGlobalVoxelPoolCreated())
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("Global pool already created"));
-		return;
-	}
-	
-	const auto Pool = FVoxelDefaultPool::Create(
-		FMath::Max(1, NumberOfThreads),
-		bConstantPriorities,
-		PriorityCategoriesOverrides,
-		PriorityOffsetsOverrides);
-	IVoxelPool::SetGlobalPool(Pool, __FUNCTION__);
+	CVarVoxelThreadingNumThreads->Set(Number);
 }
 
-void UVoxelBlueprintLibrary::DestroyGlobalVoxelThreadPool()
+int32 UVoxelBlueprintLibrary::GetNumberOfVoxelThreads()
 {
-	VOXEL_FUNCTION_COUNTER();
-	
-	if (!IsGlobalVoxelPoolCreated())
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("Global pool not created"));
-		return;
-	}
-	IVoxelPool::DestroyGlobalPool();
-}
-
-bool UVoxelBlueprintLibrary::IsGlobalVoxelPoolCreated()
-{
-	return IVoxelPool::GetGlobalPool().IsValid();
-}
-
-void UVoxelBlueprintLibrary::CreateWorldVoxelThreadPool(
-	UWorld* World,
-	const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
-	const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides, 
-	int32 NumberOfThreads, 
-	bool bConstantPriorities)
-{
-	VOXEL_FUNCTION_COUNTER();
-	
-	if (!World)
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("World is NULL"));
-		return;
-	}
-	
-	if (IsWorldVoxelPoolCreated(World))
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("Pool already created for this world"));
-		return;
-	}
-	
-	const auto Pool = FVoxelDefaultPool::Create(
-		FMath::Max(1, NumberOfThreads),
-		bConstantPriorities,
-		PriorityCategoriesOverrides,
-		PriorityOffsetsOverrides);
-	IVoxelPool::SetWorldPool(World, Pool, __FUNCTION__);
-}
-
-void UVoxelBlueprintLibrary::DestroyWorldVoxelThreadPool(UWorld* World)
-{
-	VOXEL_FUNCTION_COUNTER();
-	
-	if (!World)
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("World is NULL"));
-		return;
-	}
-	
-	if (!IsWorldVoxelPoolCreated(World))
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("No voxel pool created for this world"));
-		return;
-	}
-	IVoxelPool::DestroyWorldPool(World);
-}
-
-bool UVoxelBlueprintLibrary::IsWorldVoxelPoolCreated(UWorld* World)
-{
-	return IVoxelPool::GetWorldPool(World).IsValid();
+	return CVarVoxelThreadingNumThreads.GetValueOnGameThread();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

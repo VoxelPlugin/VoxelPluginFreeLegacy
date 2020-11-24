@@ -4,7 +4,7 @@
 #include "VoxelRender/LODManager/VoxelRenderOctree.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelIntBox.h"
-#include "IVoxelPool.h"
+#include "VoxelPool.h"
 #include "VoxelWorldInterface.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
 
@@ -348,7 +348,7 @@ void FVoxelDefaultLODManager::UpdateLODs()
 	OctreeSettings.VisibleChunksNavmeshMaxLOD = DynamicSettings->VisibleChunksNavmeshMaxLOD;
 
 	Task->Init(OctreeSettings, Octree);
-	Settings.Pool->QueueTask(EVoxelTaskType::RenderOctree, Task.Get());
+	Settings.Pool->QueueTask(Task.Get());
 	bAsyncTaskWorking = true;
 }
 

@@ -13,7 +13,7 @@
 #include "VoxelWorldRootComponent.h"
 #include "VoxelEditorDelegates.h"
 #include "VoxelMinimal.h"
-#include "IVoxelPool.h"
+#include "VoxelPool.h"
 #include "VoxelWorld.h"
 
 #include "PhysicsEngine/PhysicsSettings.h"
@@ -118,7 +118,6 @@ void UVoxelProceduralMeshComponent::Init(
 	ToolRenderingManager = RendererSettings.ToolRenderingManager;
 	TexturePool = RendererSettings.TexturePool;
 	RendererMemory = RendererSettings.Memory;
-	PriorityDuration = RendererSettings.PriorityDuration;
 	CollisionTraceFlag = RendererSettings.CollisionTraceFlag;
 	bSimpleCubicCollision = RendererSettings.bSimpleCubicCollision;
 	NumConvexHullsPerAxis = RendererSettings.NumConvexHullsPerAxis;
@@ -811,7 +810,7 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 			AsyncCooker = IVoxelAsyncPhysicsCooker::CreateCooker(this);
 			if (ensure(AsyncCooker))
 			{
-				PoolPtr->QueueTask(EVoxelTaskType::CollisionCooking, AsyncCooker);
+				PoolPtr->QueueTask(AsyncCooker);
 			}
 		}
 	}
@@ -916,6 +915,13 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 
 void UVoxelProceduralMeshComponent::UpdateCollisionStats()
 {
+	if (!RendererMemory)
+	{
+		ensure(CollisionMemory == 0);
+		ensure(NumCollisionCubes == 0);
+		return;
+	}
+	
 	RendererMemory->CollisionMemory.Subtract(CollisionMemory);
 	CollisionMemory = 0;
 	

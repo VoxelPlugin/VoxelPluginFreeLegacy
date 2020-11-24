@@ -17,9 +17,6 @@ struct FVoxelCookingSettings
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	int32 ThreadCount = 2;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	int32 RenderOctreeDepth = 5;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
@@ -67,7 +64,7 @@ public:
 	}
 	
 	UFUNCTION(BlueprintPure, Category = "Voxel|Cooking", meta = (DefaultToSelf = "World"))
-	static FVoxelCookingSettings MakeVoxelCookingSettingsFromVoxelWorld(AVoxelWorld* World, int32 ThreadCount = 2);
+	static FVoxelCookingSettings MakeVoxelCookingSettingsFromVoxelWorld(AVoxelWorld* World);
 
 public:
 	// Loads collision cooked with CookVoxelData

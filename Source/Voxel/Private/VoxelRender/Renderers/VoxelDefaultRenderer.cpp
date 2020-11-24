@@ -2,7 +2,7 @@
 
 #include "VoxelDefaultRenderer.h"
 #include "VoxelMessages.h"
-#include "IVoxelPool.h"
+#include "VoxelPool.h"
 #include "VoxelRender/VoxelMesherAsyncWork.h"
 #include "VoxelRender/Renderers/VoxelRendererMeshHandler.h"
 #include "VoxelRender/Renderers/VoxelRendererBasicMeshHandler.h"
@@ -733,7 +733,6 @@ void FVoxelDefaultRenderer::Tick(float)
 
 	UpdateAllocatedSize();
 	
-	Settings.DebugManager->ReportMeshTaskCount(TaskCount.GetValue());
 	Settings.DebugManager->ReportMeshTasksCallbacksQueueNum(TasksCallbacksQueue.Num());
 }
 
@@ -797,14 +796,24 @@ void FVoxelDefaultRenderer::StartTask(FChunk& Chunk)
 			return;
 		}
 	}
-
+	
+	const auto TaskType =
+		Chunk.Settings.bVisible
+		? Chunk.Settings.bEnableCollisions
+		? EVoxelTaskType::VisibleCollisionsChunksMeshing
+		: EVoxelTaskType::VisibleChunksMeshing
+		: Chunk.Settings.bEnableCollisions
+		? EVoxelTaskType::CollisionsChunksMeshing
+		: EVoxelTaskType::ChunksMeshing;
+	
 	Task = TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>>(new FVoxelMesherAsyncWork(
 		*this,
 		Chunk.Id,
 		Chunk.LOD,
 		Chunk.Bounds,
 		MainOrTransitions == EMainOrTransitions::Transitions,
-		MainOrTransitions == EMainOrTransitions::Transitions ? Chunk.Settings.TransitionsMask : 0));
+		MainOrTransitions == EMainOrTransitions::Transitions ? Chunk.Settings.TransitionsMask : 0,
+		TaskType));
 	QueuedTasks[Chunk.Settings.bVisible][Chunk.Settings.bEnableCollisions].Emplace(Task.Get());
 }
 

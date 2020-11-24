@@ -143,17 +143,13 @@ public:
 	const TFunction<void(FVoxelData&)> Function;
 	
 	explicit FVoxelToolAsyncWork(FName Name, AVoxelWorld& World, TFunction<void(FVoxelData&)>&& Function)
-		: FVoxelAsyncWork(Name, 1e9, true)
+		: FVoxelAsyncWork(Name, EVoxelTaskType::AsyncEditFunctions, EPriority::Null, true)
 		, Data(World.GetDataSharedPtr())
 		, Function(MoveTemp(Function))
 	{
 	}
 
 	//~ Begin IVoxelQueuedWork Interface
-	virtual uint32 GetPriority() const override
-	{
-		return 0;
-	}
 	virtual void DoWork() override
 	{
 		const auto PinnedData = Data.Pin();

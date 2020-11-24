@@ -9,7 +9,7 @@ FVoxelLODSettings::FVoxelLODSettings(
 	const AVoxelWorld* InWorld,
 	EVoxelPlayType PlayType,
 	const TVoxelSharedRef<IVoxelRenderer>& Renderer,
-	const TVoxelSharedRef<IVoxelPool>& Pool,
+	const TVoxelSharedRef<FVoxelPool>& Pool,
 	const FVoxelData* Data)
 	: Renderer(Renderer)
 	, Pool(Pool)

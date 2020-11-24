@@ -9,7 +9,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
-#include "IVoxelPool.h"
+#include "VoxelPool.h"
 #include "VoxelAsyncWork.h"
 
 #include "Async/Async.h"
@@ -48,7 +48,7 @@ private:
 		FVoxelRendererBasicMeshHandler& Handler,
 		const TVoxelSharedRef<FThreadSafeCounter>& UpdateIndexPtr,
 		FVoxelChunkMeshesToBuild&& MeshesToBuild)
-		: FVoxelAsyncWork(STATIC_FNAME("FVoxelBasicMeshMergeWork"), 1e9, true)
+		: FVoxelAsyncWork(STATIC_FNAME("FVoxelBasicMeshMergeWork"), EVoxelTaskType::MeshMerge, EPriority::Null, true)
 		, ChunkInfoRef(Ref)
 		, Position(Position)
 		, RendererSettings(static_cast<const FVoxelRendererSettingsBase&>(Handler.Renderer.Settings))
@@ -60,10 +60,6 @@ private:
 	}
 	~FVoxelBasicMeshMergeWork() = default;
 
-	virtual uint32 GetPriority() const override
-	{
-		return 0;
-	}
 	virtual void DoWork() override
 	{
 		if (UpdateIndexPtr->GetValue() > UpdateIndex)
@@ -144,7 +140,7 @@ void FVoxelRendererBasicMeshHandler::ApplyAction(const FAction& Action)
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelBasicMeshMergeWork::Create(*this, { Action.ChunkId, ChunkInfo.UniqueId }, MoveTemp(MeshesToBuild));
-		Renderer.Settings.Pool->QueueTask(EVoxelTaskType::MeshMerge, Task);
+		Renderer.Settings.Pool->QueueTask(Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;

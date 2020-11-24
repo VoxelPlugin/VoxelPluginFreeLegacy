@@ -16,7 +16,7 @@
 
 struct FVoxelMaterialIndices;
 class FInvokerPositionsArray;
-class IVoxelPool;
+class FVoxelPool;
 class FVoxelData;
 class FVoxelTexturePool;
 class FVoxelDebugManager;
@@ -122,8 +122,6 @@ struct FVoxelRendererSettingsBase
 	const bool bGreedyCubicMesher;
 	const bool bSimpleCubicCollision;
 
-	const float PriorityDuration;
-
 	const TVoxelSharedRef<FVoxelRendererDynamicSettings> DynamicSettings;
 
 	const TVoxelSharedRef<FVoxelRendererMemory> Memory = MakeVoxelShared<FVoxelRendererMemory>();
@@ -159,7 +157,7 @@ struct FVoxelRendererSettings : FVoxelRendererSettingsBase
 {
 	// SharedPtr ones might be null in asset actors
 	const TVoxelSharedRef<const FVoxelData> Data;
-	const TVoxelSharedRef<IVoxelPool> Pool;
+	const TVoxelSharedRef<FVoxelPool> Pool;
 	const TVoxelSharedPtr<FVoxelToolRenderingManager> ToolRenderingManager;
 	const TVoxelSharedRef<FVoxelTexturePool> TexturePool;
 	const TVoxelSharedRef<FVoxelDebugManager> DebugManager;
@@ -169,7 +167,7 @@ struct FVoxelRendererSettings : FVoxelRendererSettingsBase
 		EVoxelPlayType PlayType,
 		UPrimitiveComponent* RootComponent,
 		const TVoxelSharedRef<const FVoxelData>& Data,
-		const TVoxelSharedRef<IVoxelPool>& Pool,
+		const TVoxelSharedRef<FVoxelPool>& Pool,
 		const TVoxelSharedPtr<FVoxelToolRenderingManager>& ToolRenderingManager,
 		const TVoxelSharedRef<FVoxelTexturePool>& TexturePool,
 		const TVoxelSharedRef<FVoxelDebugManager>& DebugManager,

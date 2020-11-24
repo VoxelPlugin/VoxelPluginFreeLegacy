@@ -3,9 +3,8 @@
 #include "VoxelWorld.h"
 #include "VoxelGenerators/VoxelGenerator.h"
 #include "VoxelGenerators/VoxelGeneratorCache.h"
-#include "IVoxelPool.h"
 #include "VoxelSettings.h"
-#include "VoxelDefaultPool.h"
+#include "VoxelPool.h"
 #include "VoxelWorldRootComponent.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/IVoxelLODManager.h"
@@ -633,14 +632,22 @@ void AVoxelWorld::PostLoad()
 		ProcMeshClass = UVoxelProceduralMeshComponent::StaticClass();
 	}
 
-	FVoxelDefaultPool::FixPriorityCategories(PriorityCategories);
-	FVoxelDefaultPool::FixPriorityOffsets(PriorityOffsets);
+	FVoxelPool::FixPriorityCategories(PriorityCategories);
+	FVoxelPool::FixPriorityOffsets(PriorityOffsets);
 
 	SetRenderOctreeDepth(RenderOctreeDepth);
 
 	if (int32(UVConfig) >= int32(EVoxelUVConfig::Max))
 	{
 		UVConfig = EVoxelUVConfig::GlobalUVs;
+	}
+
+	if (NumberOfThreads_DEPRECATED != 0)
+	{
+		FVoxelMessages::Warning(FString::Printf(
+			TEXT(
+				"NumberOfThreads is now set globally in the project settings instead of per voxel world. "
+				"The value on the voxel world (%d) will be ignored."), NumberOfThreads_DEPRECATED), this);
 	}
 }
 
@@ -727,11 +734,11 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 		}
 		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, PriorityCategories))
 		{
-			FVoxelDefaultPool::FixPriorityCategories(PriorityCategories);
+			FVoxelPool::FixPriorityCategories(PriorityCategories);
 		}
 		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, PriorityOffsets))
 		{
-			FVoxelDefaultPool::FixPriorityOffsets(PriorityOffsets);
+			FVoxelPool::FixPriorityOffsets(PriorityOffsets);
 		}
 		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialConfig))
 		{
@@ -847,63 +854,10 @@ TVoxelSharedRef<FVoxelDebugManager> AVoxelWorld::CreateDebugManager() const
 	return FVoxelDebugManager::Create(FVoxelDebugManagerSettings(this, PlayType, Pool.ToSharedRef(), Data.ToSharedRef()));
 }
 
-TVoxelSharedRef<IVoxelPool> AVoxelWorld::CreatePool() const
+TVoxelSharedRef<FVoxelPool> AVoxelWorld::CreatePool() const
 {
 	VOXEL_FUNCTION_COUNTER();
-
-	const auto CreateOwnPool = [&](int32 InNumberOfThreads, bool bInConstantPriorities)
-	{
-		return FVoxelDefaultPool::Create(
-			FMath::Max(1, InNumberOfThreads),
-			bInConstantPriorities,
-			PriorityCategories,
-			PriorityOffsets);
-	};
-	
-	if (PlayType == EVoxelPlayType::Preview)
-	{
-		return CreateOwnPool(NumberOfThreadsForPreview, true);
-	}
-	else
-	{
-		if (bCreateGlobalPool)
-		{
-			const auto ExistingPool = IVoxelPool::GetPoolForWorld(GetWorld());
-			if (!ExistingPool.IsValid())
-			{
-				const auto NewPool = CreateOwnPool(NumberOfThreads, bConstantPriorities);
-				IVoxelPool::SetWorldPool(GetWorld(), NewPool, GetName());
-				return NewPool;
-			}
-			else
-			{
-				FVoxelMessages::Warning(
-					"CreateGlobalPool = true but global or world pool is already created! Using existing one, NumberOfThreads will be ignored.\n"
-					"Consider setting CreateGlobalPool to false and calling CreateWorldVoxelThreadPool at BeginPlay (for instance in your level blueprint).",
-					this);
-				return ExistingPool.ToSharedRef();
-			}
-		}
-		else
-		{
-			const auto ExistingPool = IVoxelPool::GetPoolForWorld(GetWorld());
-			if (ExistingPool.IsValid())
-			{
-				return ExistingPool.ToSharedRef();
-			}
-			else
-			{
-				FVoxelMessages::Warning(
-						"CreateGlobalPool = false but global pool isn't created! Creating it with default setting NumberOfThreads = 2. "
-						"You need to call CreateWorldVoxelThreadPool at BeginPlay (for instance in your level blueprint).",
-					this);
-				
-				const auto NewPool = CreateOwnPool(NumberOfThreads, bConstantPriorities);
-				IVoxelPool::SetWorldPool(GetWorld(), NewPool, GetName());
-				return NewPool;
-			}
-		}
-	}
+	return FVoxelPool::Create(PriorityCategories, PriorityOffsets);
 }
 
 TVoxelSharedRef<FVoxelTexturePool> AVoxelWorld::CreateTexturePool() const

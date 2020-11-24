@@ -18,18 +18,20 @@ FVoxelMesherAsyncWork::FVoxelMesherAsyncWork(
 	const int32 LOD,
 	const FVoxelIntBox& Bounds,
 	const bool bIsTransitionTask,
-	const uint8 TransitionsMask)
-	: FVoxelAsyncWork(STATIC_FNAME("FVoxelMesherAsyncWork"), Renderer.Settings.PriorityDuration)
+	const uint8 TransitionsMask,
+	EVoxelTaskType TaskType)
+	: FVoxelAsyncWork(STATIC_FNAME("FVoxelMesherAsyncWork"), TaskType, EPriority::InvokersDistance)
 	, ChunkId(ChunkId)
 	, LOD(LOD)
 	, ChunkPosition(Bounds.Min)
 	, bIsTransitionTask(bIsTransitionTask)
 	, TransitionsMask(TransitionsMask)
 	, Renderer(Renderer.AsShared())
-	, PriorityHandler(Bounds, Renderer.GetInvokersPositionsForPriorities())
 {
 	check(IsInGameThread());
 	ensure(!bIsTransitionTask || TransitionsMask != 0);
+
+	PriorityHandler = FVoxelPriorityHandler(Bounds, Renderer.GetInvokersPositionsForPriorities());
 }
 
 FVoxelMesherAsyncWork::~FVoxelMesherAsyncWork()
@@ -115,11 +117,6 @@ void FVoxelMesherAsyncWork::PostDoWork()
 		RendererPtr->QueueChunkCallback_AnyThread(TaskId, ChunkId, bIsTransitionTask);
 		FVoxelUtilities::DeleteOnGameThread_AnyThread(RendererPtr);
 	}
-}
-
-uint32 FVoxelMesherAsyncWork::GetPriority() const
-{
-	return PriorityHandler.GetPriority();
 }
 
 TUniquePtr<FVoxelMesherBase> FVoxelMesherAsyncWork::GetMesher(

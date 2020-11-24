@@ -65,12 +65,15 @@ struct FVoxelPriorityHandler
 	{
 	}
 
-	inline uint32 GetPriority() const
+	uint32 GetPriority() const
 	{
+		FInvokerPositionsArray* Positions = InvokersPositions.Get();
+		checkVoxelSlow(Positions);
+		
 		uint64 Distance = MAX_uint64;
-		for (int32 Index = 0; Index < InvokersPositions->GetNum(); Index++)
+		for (int32 Index = 0; Index < Positions->GetNum(); Index++)
 		{
-			const FIntVector Position = InvokersPositions->Get(Index);
+			const FIntVector Position = Positions->Get(Index);
 			Distance = FMath::Min(Distance, Bounds.ComputeSquaredDistanceFromBoxToPoint(Position));
 		}
 		return MAX_uint32 - uint32(FMath::Sqrt(Distance));

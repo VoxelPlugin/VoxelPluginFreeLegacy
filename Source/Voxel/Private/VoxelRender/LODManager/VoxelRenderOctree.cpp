@@ -25,7 +25,7 @@ static TAutoConsoleVariable<int32> CVarLogRenderOctreeBuildTime(
 ///////////////////////////////////////////////////////////////////////////////
 
 FVoxelRenderOctreeAsyncBuilder::FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth, const FVoxelIntBox& WorldBounds)
-	: FVoxelAsyncWork(STATIC_FNAME("Render Octree Build"), 1e9)
+	: FVoxelAsyncWork(STATIC_FNAME("Render Octree Build"), EVoxelTaskType::RenderOctree, EPriority::Null)
 	, OctreeDepth(OctreeDepth)
 	, WorldBounds(WorldBounds)
 {
@@ -179,11 +179,6 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 	}
 
 	LOG_TIME_IMPL("Total time working", WorkStartTime);
-}
-
-uint32 FVoxelRenderOctreeAsyncBuilder::GetPriority() const
-{
-	return 0;
 }
 
 #undef LOG_TIME

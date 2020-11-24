@@ -17,7 +17,7 @@ class FVoxelData;
 class FVoxelDebugManager;
 class IVoxelRenderer;
 class FVoxelFixedResolutionLODManager;
-class IVoxelPool;
+class FVoxelPool;
 
 UENUM()
 enum class EVoxelAssetActorPreviewUpdateType
@@ -150,10 +150,5 @@ public:
 	//~ Begin IVoxelEditorDelegatesInterface Interface
 	virtual void OnPrepareToCleanseEditorObject(UObject* Object) override;
 	//~ End IVoxelEditorDelegatesInterface Interface
-#endif
-
-public:
-#if WITH_EDITOR
-	static TVoxelSharedPtr<IVoxelPool> StaticPool;
 #endif
 };

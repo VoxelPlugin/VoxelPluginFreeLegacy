@@ -34,7 +34,8 @@ public:
 		int32 LOD,
 		const FVoxelIntBox& Bounds,
 		bool bIsTransitionTask,
-		uint8 TransitionsMask);
+		uint8 TransitionsMask,
+		EVoxelTaskType TaskType);
 
 	static void CreateGeometry_AnyThread(
 		const FVoxelDefaultRenderer& Renderer,
@@ -50,7 +51,6 @@ private:
 	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override final;
 	virtual void PostDoWork() override final;
-	virtual uint32 GetPriority() const override final;
 	//~ End FVoxelAsyncWork Interface
 
 	static TUniquePtr<FVoxelMesherBase> GetMesher(
@@ -62,7 +62,6 @@ private:
 	
 	
 	const TVoxelWeakPtr<FVoxelDefaultRenderer> Renderer;
-	const FVoxelPriorityHandler PriorityHandler;
 
 	template<typename T>
 	friend struct TVoxelAsyncWorkDelete;

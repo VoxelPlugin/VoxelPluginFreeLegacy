@@ -12,7 +12,7 @@
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelMessages.h"
 #include "VoxelWorld.h"
-#include "IVoxelPool.h"
+#include "VoxelPool.h"
 #include "VoxelThreadPool.h"
 
 #include "Engine/Engine.h"
@@ -291,21 +291,6 @@ static FAutoConsoleCommandWithWorld RebaseOntoCameraCmd(
 		}
 	}));
 
-static FAutoConsoleCommand CmdDestroyGlobalThreadPool(
-    TEXT("voxel.threading.DestroyGlobalPool"),
-    TEXT("Destroy the global thread pool"),
-    FConsoleCommandDelegate::CreateStatic(&IVoxelPool::DestroyGlobalPool));
-
-static FAutoConsoleCommandWithWorld CmdDestroyWorldThreadPool(
-    TEXT("voxel.threading.DestroyWorldPool"),
-    TEXT("Destroy the current world thread pool"),
-	FConsoleCommandWithWorldDelegate::CreateStatic(&IVoxelPool::DestroyWorldPool));
-
-static FAutoConsoleCommand CmdLogThreadPoolStats(
-    TEXT("voxel.threading.LogStats"),
-    TEXT(""),
-	FConsoleCommandDelegate::CreateLambda([](){ FVoxelQueuedThreadPoolStats::Get().LogTimes(); }));
-
 static FAutoConsoleCommand CmdLogMemoryStats(
     TEXT("voxel.LogMemoryStats"),
     TEXT(""),
@@ -320,6 +305,46 @@ static FAutoConsoleCommand CmdLogSecondsPerCycles(
     TEXT("voxel.debug.LogSecondsPerCycles"),
     TEXT(""),
     FConsoleCommandDelegate::CreateStatic(&LogSecondsPerCycles));
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+bool FVoxelGlobalDebugManager::Tick(float DeltaTime)
+{
+	const int32 PoolTaskCount = GVoxelThreadPool->GetTotalNumTasks();
+
+	const int32 MesherTaskCount =
+		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::ChunksMeshing) +
+		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::VisibleChunksMeshing) +
+		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::CollisionsChunksMeshing) +
+		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::VisibleCollisionsChunksMeshing) +
+		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::MeshMerge);
+
+	const int32 FoliageTaskCount =
+		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::FoliageBuild) +
+		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::HISMBuild);
+
+	const int32 EditTaskCount = GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::AsyncEditFunctions);
+
+	const int32 LODTaskCount = GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::RenderOctree);
+	
+	if (PoolTaskCount > 0)
+	{
+		const FString Message = FString::Printf(TEXT("Voxel tasks: %d (mesher: %d; foliage: %d; edits: %d; LOD: %d) %d threads"),
+			PoolTaskCount,
+			MesherTaskCount,
+			FoliageTaskCount,
+			EditTaskCount,
+			LODTaskCount,
+			CVarVoxelThreadingNumThreads.GetValueOnGameThread());
+		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DeltaTime * 1.5f, FColor::White, Message);
+	}
+
+	return true;
+}
+
+FVoxelGlobalDebugManager* GVoxelDebugManager = nullptr;
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -340,7 +365,7 @@ inline float GetBoundsThickness(const FVoxelIntBox& Bounds)
 FVoxelDebugManagerSettings::FVoxelDebugManagerSettings(
 	const AVoxelWorld* World,
 	EVoxelPlayType PlayType,
-	const TVoxelSharedRef<IVoxelPool>& Pool,
+	const TVoxelSharedRef<FVoxelPool>& Pool,
 	const TVoxelSharedRef<FVoxelData>& Data,
 	bool bDisabled)
 	: VoxelWorld(const_cast<AVoxelWorld*>(World))
@@ -404,11 +429,6 @@ void FVoxelDebugManager::ReportMultiplayerSyncedChunks(TFunction<TArray<FVoxelIn
 	}
 }
 
-void FVoxelDebugManager::ReportMeshTaskCount(int32 InTaskCount)
-{
-	MeshTaskCount = InTaskCount;
-}
-
 void FVoxelDebugManager::ReportMeshTasksCallbacksQueueNum(int32 Num)
 {
 	MeshTasksCallbacksQueueNum = Num;
@@ -419,11 +439,6 @@ void FVoxelDebugManager::ReportMeshActionQueueNum(int32 Num)
 	MeshActionQueueNum = Num;
 }
 
-void FVoxelDebugManager::ReportFoliageTaskCount(int32 TaskCount)
-{
-	FoliageTaskCount.Set(TaskCount);
-}
-				
 void FVoxelDebugManager::ReportChunkEmptyState(const FVoxelIntBox& Bounds, bool bIsEmpty)
 {
 	ChunksEmptyStates.Emplace(FChunkEmptyState{ Bounds, bIsEmpty });
@@ -494,15 +509,6 @@ void FVoxelDebugManager::Tick(float DeltaTime)
 	}
 	if (!World->bDisableOnScreenMessages)
 	{
-		const int32 PoolTaskCount = Settings.Pool->GetNumTasks();
-		if (PoolTaskCount > 0)
-		{
-			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Total tasks remaining: %d"), PoolTaskCount));
-		}
-		if (MeshTaskCount > 0)
-		{
-			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Mesh tasks remaining: %d"), MeshTaskCount));
-		}
 		if (MeshTasksCallbacksQueueNum > 0)
 		{
 			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Mesh tasks callbacks queued: %d"), MeshTasksCallbacksQueueNum));
@@ -510,10 +516,6 @@ void FVoxelDebugManager::Tick(float DeltaTime)
 		if (MeshActionQueueNum > 0)
 		{
 			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Mesh actions queued: %d"), MeshActionQueueNum));
-		}
-		if (FoliageTaskCount.GetValue() > 0)
-		{
-			GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DebugDT, FColor::White, FString::Printf(TEXT("Foliage tasks remaining: %d"), FoliageTaskCount.GetValue()));
 		}
 	}
 	if (!CVarFreezeDebug.GetValueOnGameThread())

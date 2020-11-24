@@ -26,7 +26,7 @@ class UBodySetup;
 class UMaterialInterface;
 class UVoxelProceduralMeshComponent;
 class AVoxelWorld;
-class IVoxelPool;
+class FVoxelPool;
 class IVoxelProceduralMeshComponent_PhysicsCallbackHandler;
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Physics Triangle Meshes Memory"), STAT_VoxelPhysicsTriangleMeshesMemory, STATGROUP_VoxelMemory, VOXEL_API);
@@ -84,15 +84,13 @@ private:
 	// Will be triggered by the async cooker on an async thread, and then will trigger us on game thread
 	TVoxelWeakPtr<IVoxelProceduralMeshComponent_PhysicsCallbackHandler> PhysicsCallbackHandler;
 	// Weak ptr else the pool stays created until GC
-	TVoxelWeakPtr<IVoxelPool> Pool;
+	TVoxelWeakPtr<FVoxelPool> Pool;
 	// Used to show tools overlays
 	TVoxelWeakPtr<const FVoxelToolRenderingManager> ToolRenderingManager;
 	// Used to render texture data in the greedy cubic mesher
 	TVoxelWeakPtr<FVoxelTexturePool> TexturePool;
 	// Track collision memory
 	TVoxelSharedPtr<FVoxelRendererMemory> RendererMemory;
-	// For cooking tasks
-	float PriorityDuration = 0;
 	// Collisions settings
 	ECollisionTraceFlag CollisionTraceFlag = ECollisionTraceFlag::CTF_UseDefault;
 	// If true, will use cubes given by the greedy mesher for simple collision
