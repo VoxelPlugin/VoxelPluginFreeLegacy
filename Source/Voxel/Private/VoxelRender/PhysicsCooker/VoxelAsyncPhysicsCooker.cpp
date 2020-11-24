@@ -39,7 +39,7 @@ static FAutoConsoleCommand CmdClearTotalCollisionCookingTime(
 ///////////////////////////////////////////////////////////////////////////////
 
 IVoxelAsyncPhysicsCooker::IVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component)
-	: FVoxelAsyncWork(STATIC_FNAME("AsyncPhysicsCooker"), Component->PriorityDuration)
+	: FVoxelAsyncWork(STATIC_FNAME("AsyncPhysicsCooker"), EVoxelTaskType::CollisionCooking, EPriority::InvokersDistance)
 	, UniqueId(VOXEL_UNIQUE_ID())
 	, Component(Component)
 	, PhysicsCallbackHandler(Component->PhysicsCallbackHandler)
@@ -48,7 +48,6 @@ IVoxelAsyncPhysicsCooker::IVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent
 		Component->CollisionTraceFlag == ECollisionTraceFlag::CTF_UseDefault
 		? ECollisionTraceFlag(UPhysicsSettings::Get()->DefaultShapeComplexity)
 		: Component->CollisionTraceFlag)
-	, PriorityHandler(Component->PriorityHandler)
 	, bCleanCollisionMesh(Component->bCleanCollisionMesh)
     , bSimpleCubicCollision(Component->bSimpleCubicCollision)
 	, NumConvexHullsPerAxis(Component->NumConvexHullsPerAxis)
@@ -70,6 +69,8 @@ IVoxelAsyncPhysicsCooker::IVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent
 	check(IsInGameThread());
 	ensure(CollisionTraceFlag != ECollisionTraceFlag::CTF_UseDefault);
 	ensure(Buffers.Num() > 0);
+
+	PriorityHandler = Component->PriorityHandler;
 }
 
 IVoxelAsyncPhysicsCooker* IVoxelAsyncPhysicsCooker::CreateCooker(UVoxelProceduralMeshComponent* Component)
@@ -110,9 +111,4 @@ void IVoxelAsyncPhysicsCooker::PostDoWork()
 		Pinned->CookerCallback(UniqueId, Component);
 		FVoxelUtilities::DeleteOnGameThread_AnyThread(Pinned);
 	}
-}
-
-uint32 IVoxelAsyncPhysicsCooker::GetPriority() const
-{
-	return PriorityHandler.GetPriority();
 }

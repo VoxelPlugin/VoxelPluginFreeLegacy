@@ -86,7 +86,6 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, bGreedyCubicMesher(InWorld->MaterialConfig == EVoxelMaterialConfig::RGB && InWorld->bGreedyCubicMesher)
     , bSimpleCubicCollision(bGreedyCubicMesher && InWorld->bSimpleCubicCollision)
 
-	, PriorityDuration(InWorld->PriorityDuration)
 	, DynamicSettings(InWorld->GetRendererDynamicSettings())
 {
 }
@@ -96,7 +95,7 @@ FVoxelRendererSettings::FVoxelRendererSettings(
 	EVoxelPlayType PlayType,
 	UPrimitiveComponent* RootComponent,
 	const TVoxelSharedRef<const FVoxelData>& Data,
-	const TVoxelSharedRef<IVoxelPool>& Pool,
+	const TVoxelSharedRef<FVoxelPool>& Pool,
 	const TVoxelSharedPtr<FVoxelToolRenderingManager>& ToolRenderingManager,
 	const TVoxelSharedRef<FVoxelTexturePool>& TexturePool,
 	const TVoxelSharedRef<FVoxelDebugManager>& DebugManager,

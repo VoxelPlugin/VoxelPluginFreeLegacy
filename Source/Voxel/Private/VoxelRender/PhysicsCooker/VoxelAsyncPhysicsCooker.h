@@ -24,7 +24,6 @@ public:
 	
 	const int32 LOD;
 	const ECollisionTraceFlag CollisionTraceFlag;
-	const FVoxelPriorityHandler PriorityHandler;
 	const bool bCleanCollisionMesh;
 	const bool bSimpleCubicCollision;
 	const int32 NumConvexHullsPerAxis;
@@ -46,6 +45,5 @@ protected:
 	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override;
 	virtual void PostDoWork() override;
-	virtual uint32 GetPriority() const override;
 	//~ End FVoxelAsyncWork Interface
 };

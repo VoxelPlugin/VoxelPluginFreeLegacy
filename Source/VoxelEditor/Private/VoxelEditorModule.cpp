@@ -12,6 +12,7 @@
 #include "EditorSupportDelegates.h"
 #include "LevelEditor.h"
 #include "EngineUtils.h"
+#include "Containers/Ticker.h"
 #include "MessageLogModule.h"
 #include "EditorReimportHandler.h"
 #include "Framework/Commands/Commands.h"
@@ -21,7 +22,7 @@
 #include "WorkspaceMenuStructureModule.h"
 
 #include "VoxelGraphGenerator.h"
-#include "IVoxelPool.h"
+#include "VoxelPool.h"
 #include "VoxelWorld.h"
 #include "VoxelTexture.h"
 #include "VoxelMessages.h"
@@ -226,10 +227,6 @@ public:
 		// Destroy global pool on end PIE
 		FEditorDelegates::EndPIE.AddLambda([](bool bIsSimulating)
 		{
-			if (IVoxelPool::GetGlobalPool())
-			{
-				IVoxelPool::DestroyGlobalPool();
-			}
 			// Don't use huge amount of memory
 			FVoxelTextureHelpers::ClearIdCache();
 		});
@@ -250,8 +247,23 @@ public:
 		IVoxelEditorDelegatesInterface::BindEditorDelegatesDelegate.AddStatic(&BindEditorDelegates);
 
 		// Blueprint errors
-		FVoxelMessages::LogMessageDelegate.AddStatic(&FVoxelMessagesEditor::LogMessage);
-		FVoxelMessages::ShowNotificationDelegate.AddStatic(&FVoxelMessagesEditor::ShowNotification);
+		// Delay them by one frame to work on startup
+		FVoxelMessages::LogMessageDelegate.AddLambda([](const TSharedRef<FTokenizedMessage>& Message, EVoxelShowNotification ShowNotification)
+		{
+			FTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=](float)
+			{
+				FVoxelMessagesEditor::LogMessage(Message, ShowNotification);
+				return false;
+			}));
+		});
+		FVoxelMessages::ShowNotificationDelegate.AddStatic([](const FVoxelMessages::FNotification& Notification)
+		{
+			FTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=](float)
+			{
+				FVoxelMessagesEditor::ShowNotification(Notification);
+				return false;
+			}));
+		});
 
 		FMessageLogModule& MessageLogModule = FModuleManager::LoadModuleChecked<FMessageLogModule>("MessageLog");
 		FMessageLogInitializationOptions InitOptions;

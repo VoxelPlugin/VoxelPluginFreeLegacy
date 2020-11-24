@@ -6,9 +6,10 @@
 #include "VoxelIntBox.h"
 #include "VoxelMinimal.h"
 #include "VoxelTickable.h"
+#include "Containers/Ticker.h"
 
 enum class EVoxelPlayType;
-class IVoxelPool;
+class FVoxelPool;
 class FVoxelData;
 class AVoxelWorld;
 class UVoxelProceduralMeshComponent;
@@ -16,17 +17,27 @@ class UVoxelProceduralMeshComponent;
 struct FVoxelDebugManagerSettings
 {
 	const TWeakObjectPtr<AVoxelWorld> VoxelWorld;
-	const TVoxelSharedRef<IVoxelPool> Pool;
+	const TVoxelSharedRef<FVoxelPool> Pool;
 	const TVoxelSharedRef<FVoxelData> Data;
 	const bool bDisabled;
 	
 	FVoxelDebugManagerSettings(
 		const AVoxelWorld* World,
 		EVoxelPlayType PlayType,
-		const TVoxelSharedRef<IVoxelPool>& Pool,
+		const TVoxelSharedRef<FVoxelPool>& Pool,
 		const TVoxelSharedRef<FVoxelData>& Data,
 		bool bDisabled = false);
 };
+
+class VOXEL_API FVoxelGlobalDebugManager : public FTickerObjectBase
+{
+public:
+	//~ Begin FTickerObjectBase Interface
+	virtual bool Tick(float DeltaTime) override;
+	//~ End FTickerObjectBase Interface
+};
+
+extern VOXEL_API FVoxelGlobalDebugManager* GVoxelDebugManager;
 
 class VOXEL_API FVoxelDebugManager : public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDebugManager>
 {
@@ -40,12 +51,10 @@ public:
 	void ReportUpdatedChunks(TFunction<TArray<FVoxelIntBox>()> InUpdatedChunks);
 	void ReportRenderChunks(TFunction<TArray<FVoxelIntBox>()> InRenderChunks);
 	void ReportMultiplayerSyncedChunks(TFunction<TArray<FVoxelIntBox>()> InMultiplayerSyncedChunks);
-
-	void ReportMeshTaskCount(int32 TaskCount);
+	
 	void ReportMeshTasksCallbacksQueueNum(int32 Num);
 	void ReportMeshActionQueueNum(int32 Num);
-	void ReportFoliageTaskCount(int32 TaskCount);
-	
+
 	void ReportChunkEmptyState(const FVoxelIntBox& Bounds, bool bIsEmpty);
 	void ClearChunksEmptyStates();
 
@@ -66,11 +75,8 @@ private:
 	TArray<FVoxelIntBox> RenderChunks;
 	TArray<FVoxelIntBox> MultiplayerSyncedChunks;
 
-	int32 MeshTaskCount = 0;
 	int32 MeshTasksCallbacksQueueNum = 0;
 	int32 MeshActionQueueNum = 0;
-	FThreadSafeCounter FoliageTaskCount;
-
 	struct FChunkEmptyState
 	{
 		FVoxelIntBox Bounds;

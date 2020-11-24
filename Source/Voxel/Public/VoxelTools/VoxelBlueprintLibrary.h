@@ -382,51 +382,20 @@ public:
 
 public:
 	/**
-	 * IVoxelPool helpers
+	 * FVoxelPool helpers
 	 */
 	
 public:
 	/**
-	 * Create the global voxel thread pool. Must not be already created.
-	 * CreateWorldVoxelThreadPool is preferred, as pools will be per level
-	 * @param	NumberOfThreads		At least 1
-	 * @param	bConstantPriorities	If true won't recompute the tasks priorities once added. Useful if you have many tasks, but will give bad task scheduling when moving fast
+	 * Number of threads allocated for the voxel background processing. Setting it too high may impact performance
+	 * The threads are shared across all voxel worlds
+	 * Can be set using voxel.threading.NumThreads
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads", meta = (AdvancedDisplay = "PriorityCategoriesOverrides, PriorityOffsetsOverrides"))
-	static void CreateGlobalVoxelThreadPool(
-		const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
-		const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides,
-		int32 NumberOfThreads = 2,
-		bool bConstantPriorities = false);
-
-	// Destroy the global voxel thread pool
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads")
-	static void DestroyGlobalVoxelThreadPool();
-
-	// Is the global voxel thread pool created?
-	UFUNCTION(BlueprintPure, Category = "Voxel|Threads")
-	static bool IsGlobalVoxelPoolCreated();
+	static void SetNumberOfVoxelThreads(int32 Number);
 	
-	/**
-	 * Create the voxel thread pool for a specific world. Must not be already created.
-	 * @param	NumberOfThreads		At least 1
-	 * @param	bConstantPriorities	If true won't recompute the tasks priorities once added. Useful if you have many tasks, but will give bad task scheduling when moving fast
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads", meta = (AdvancedDisplay = "PriorityCategoriesOverrides, PriorityOffsetsOverrides"))
-	static void CreateWorldVoxelThreadPool(
-		UWorld* World,
-		const TMap<EVoxelTaskType, int32>& PriorityCategoriesOverrides,
-		const TMap<EVoxelTaskType, int32>& PriorityOffsetsOverrides,
-		int32 NumberOfThreads = 2,
-		bool bConstantPriorities = false);
-
-	// Destroy the world voxel thread pool
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Threads")
-	static void DestroyWorldVoxelThreadPool(UWorld* World);
-
-	// Is the global voxel thread pool created?
 	UFUNCTION(BlueprintPure, Category = "Voxel|Threads")
-	static bool IsWorldVoxelPoolCreated(UWorld* World);
+	static int32 GetNumberOfVoxelThreads();
 	
 public:
 	/**

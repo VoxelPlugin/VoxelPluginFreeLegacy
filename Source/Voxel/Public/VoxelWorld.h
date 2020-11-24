@@ -31,7 +31,7 @@ class UVoxelPlaceableItemManager;
 class UVoxelMaterialCollectionBase;
 class UVoxelProceduralMeshComponent;
 class UVoxelPlaceableItemActorHelper;
-class IVoxelPool;
+class FVoxelPool;
 class IVoxelRenderer;
 class IVoxelLODManager;
 class FVoxelData;
@@ -136,9 +136,6 @@ public:
 
 	//////////////////////////////////////////////////////////////////////////////
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Preview", meta = (Recreate, ClampMin = 1))
-	int32 NumberOfThreadsForPreview = 2;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Preview", meta = (Recreate))
 	bool bEnableFoliageInEditor = true;
 
@@ -563,13 +560,8 @@ public:
 	
 	//////////////////////////////////////////////////////////////////////////////
 
-	// If you have more than one voxel world, set this to false and call CreateGlobalVoxelThreadPool at BeginPlay (for instance in your level blueprint)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Performance")
-	bool bCreateGlobalPool = true;
-
-	// Number of threads allocated for the voxel background processing. Setting it too high may impact performance
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Performance", meta = (Recreate, ClampMin = 1, EditCondition = "bCreateGlobalPool"))
-	int32 NumberOfThreads = 2;
+	UPROPERTY()
+	int32 NumberOfThreads_DEPRECATED;
 
 	// Async tasks are sorted based on 2 values:
 	// - first, their priority category
@@ -586,20 +578,6 @@ public:
 	// Most values are in voxel
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Performance", meta = (Recreate, EditCondition = "bCreateGlobalPool"))
 	TMap<EVoxelTaskType, int32> PriorityOffsets;
-
-	// If true, won't recompute task priorities once they are queued
-	// If false, will recompute task priorities with the new voxel invoker positions every PriorityDuration seconds
-	// True: useful if you have many tasks
-	// False: useful if you want precise task scheduling, eg if you are moving relatively fast
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Performance", meta = (Recreate, EditCondition = "bCreateGlobalPool"))
-	bool bConstantPriorities = false;
-
-	// Only used if ConstantPriorities is false
-	// Time, in seconds, during which a task priority is valid and does not need to be recomputed
-	// Lowering this will increase async cost to recompute priorities, but will lead to more precise scheduling
-	// Increasing this will decreasing async cost to recompute priorities, but might lead to imprecise scheduling if the invokers are moving fast
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Performance", meta = (RecreateRender, ClampMin = 0, EditCondition = "!bConstantPriorities"))
-	float PriorityDuration = 0.5;
 
 	// Max time in milliseconds to spend on mesh updates per tick
 	// If this is too low world will generate very slowly
@@ -647,7 +625,7 @@ public:
 	void DestroyWorld();
 	
 public:
-	IVoxelPool& GetPool() const { return *Pool; }
+	FVoxelPool& GetPool() const { return *Pool; }
 	FVoxelTexturePool& GetTexturePool() const { return *TexturePool; }
 	FVoxelData& GetData() const { return *Data; }
 	IVoxelLODManager& GetLODManager() const { return *LODManager; }
@@ -661,7 +639,7 @@ public:
 	const TVoxelSharedPtr<FGameThreadTasks>& GetGameThreadTasks() const { return GameThreadTasks; }
 	const TVoxelSharedPtr<FVoxelData>& GetDataSharedPtr() const { return Data; }
 	const TVoxelSharedPtr<IVoxelLODManager>& GetLODManagerSharedPtr() const { return LODManager; }
-	const TVoxelSharedPtr<IVoxelPool>& GetPoolSharedPtr() const { return Pool; }
+	const TVoxelSharedPtr<FVoxelPool>& GetPoolSharedPtr() const { return Pool; }
 	const TVoxelSharedRef<FIntVector>& GetWorldOffsetPtr() const { return WorldOffset; }
 	const TVoxelSharedRef<FVoxelRendererDynamicSettings>& GetRendererDynamicSettings() const { return RendererDynamicSettings; }
 	EVoxelPlayType GetPlayType() const { return PlayType; }
@@ -822,7 +800,7 @@ private:
 
 private:	
 	TVoxelSharedPtr<FVoxelDebugManager> DebugManager;
-	TVoxelSharedPtr<IVoxelPool> Pool;
+	TVoxelSharedPtr<FVoxelPool> Pool;
 	TVoxelSharedPtr<FVoxelTexturePool> TexturePool;
 	TVoxelSharedPtr<FVoxelData> Data;
 	TVoxelSharedPtr<IVoxelRenderer> Renderer;
@@ -840,7 +818,7 @@ private:
 	void OnWorldLoadedCallback();
 
 	TVoxelSharedRef<FVoxelDebugManager> CreateDebugManager() const;
-	TVoxelSharedRef<IVoxelPool> CreatePool() const;
+	TVoxelSharedRef<FVoxelPool> CreatePool() const;
 	TVoxelSharedRef<FVoxelTexturePool> CreateTexturePool() const;
 	TVoxelSharedRef<FVoxelData> CreateData() const;
 	TVoxelSharedRef<IVoxelRenderer> CreateRenderer() const;

@@ -8,7 +8,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
-#include "IVoxelPool.h"
+#include "VoxelPool.h"
 #include "VoxelAsyncWork.h"
 
 #include "Async/Async.h"
@@ -46,7 +46,7 @@ private:
 		FVoxelRendererClusteredMeshHandler& Handler,
 		const TVoxelSharedRef<FThreadSafeCounter>& UpdateIndexPtr,
 		const TMap<uint64, TVoxelSharedPtr<const FVoxelChunkMeshesToBuild>>& MeshesToBuild)
-		: FVoxelAsyncWork(STATIC_FNAME("FVoxelClusteredMeshMergeWork"), 1e9, true)
+		: FVoxelAsyncWork(STATIC_FNAME("FVoxelClusteredMeshMergeWork"), EVoxelTaskType::MeshMerge, EPriority::Null, true)
 		, ClusterRef(ClusterRef)
 		, Position(Position)
 		, RendererSettings(static_cast<const FVoxelRendererSettingsBase&>(Handler.Renderer.Settings))
@@ -58,10 +58,6 @@ private:
 	}
 	~FVoxelClusteredMeshMergeWork() = default;
 
-	virtual uint32 GetPriority() const override
-	{
-		return 0;
-	}
 	virtual void DoWork() override
 	{
 		if (UpdateIndexPtr->GetValue() > UpdateIndex)
@@ -169,7 +165,7 @@ void FVoxelRendererClusteredMeshHandler::ApplyAction(const FAction& Action)
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelClusteredMeshMergeWork::Create(*this, { ChunkInfo.ClusterId, Cluster.UniqueId });
-		Renderer.Settings.Pool->QueueTask(EVoxelTaskType::MeshMerge, Task);
+		Renderer.Settings.Pool->QueueTask(Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;
@@ -204,7 +200,7 @@ void FVoxelRendererClusteredMeshHandler::ApplyAction(const FAction& Action)
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelClusteredMeshMergeWork::Create(*this, { ChunkInfo.ClusterId, Cluster.UniqueId });
-		Renderer.Settings.Pool->QueueTask(EVoxelTaskType::MeshMerge, Task);
+		Renderer.Settings.Pool->QueueTask(Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;

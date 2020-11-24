@@ -69,7 +69,6 @@ public:
 private:
 	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override;
-	virtual uint32 GetPriority() const override;
 	//~ End FVoxelAsyncWork Interface
 
 private:

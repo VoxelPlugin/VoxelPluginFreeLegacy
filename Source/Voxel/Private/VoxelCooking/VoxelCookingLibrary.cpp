@@ -4,11 +4,12 @@
 
 #include "VoxelWorld.h"
 #include "VoxelMessages.h"
-#include "VoxelDefaultPool.h"
+#include "VoxelPool.h"
 #include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
+#include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelWorldRootComponent.h"
 
 #include "HAL/Event.h"
@@ -77,7 +78,7 @@ public:
 	FVoxelCookingTaskData& TaskData;
 
 	FVoxelCookingTask(const FIntVector& ChunkPosition, FVoxelCookingTaskData& TaskData)
-		: IVoxelQueuedWork(STATIC_FNAME("Cooking Task"), 0)
+		: IVoxelQueuedWork(STATIC_FNAME("Cooking Task"), EVoxelTaskType::ChunksMeshing, EPriority::Null)
 		, ChunkPosition(ChunkPosition)
 		, TaskData(TaskData)
 	{
@@ -151,10 +152,6 @@ public:
 	{
 		check(false);
 	}
-	virtual uint32 GetPriority() const override
-	{
-		return 0;
-	}
 };
 #endif
 
@@ -175,7 +172,7 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	VoxelWorld->RenderType = Settings.RenderType;
 	VoxelWorld->Generator = Settings.Generator;
 
-	const auto Pool = FVoxelDefaultPool::Create(Settings.ThreadCount, true, {}, {});
+	const auto Pool = FVoxelPool::Create({}, {});
 	const auto Data = FVoxelData::Create(FVoxelDataSettings(VoxelWorld, EVoxelPlayType::Game));
 	const auto DebugManager = FVoxelDebugManager::Create(FVoxelDebugManagerSettings(VoxelWorld, EVoxelPlayType::Game, Pool, Data));
 	const auto TexturePool = FVoxelTexturePool::Create(FVoxelTexturePoolSettings(VoxelWorld, EVoxelPlayType::Game));
@@ -224,7 +221,7 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 			{
 				const FIntVector ChunkPosition = FIntVector(X, Y, Z);
 				auto* Task = new FVoxelCookingTask(ChunkPosition, TaskData);
-				Pool->QueueTask({}, Task);
+				Pool->QueueTask(Task);
 			}
 		}
 	}
@@ -241,7 +238,7 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	const double GameThreadTime = EndTime - StartTime;
 	const double MeshingTime = TaskData.MeshingTime.GetValue() * FPlatformTime::GetSecondsPerCycle64();
 	const double CollisionTime = TaskData.CollisionTime.GetValue() * FPlatformTime::GetSecondsPerCycle64();
-	const double OverheadTime = GameThreadTime - (MeshingTime + CollisionTime) / Settings.ThreadCount;
+	const double OverheadTime = GameThreadTime - (MeshingTime + CollisionTime) / UVoxelBlueprintLibrary::GetNumberOfVoxelThreads();
 	
 	LOG_VOXEL(Log, TEXT("VOXEL COOKING: Game Thread time: %fs"), GameThreadTime);
 	LOG_VOXEL(Log, TEXT("VOXEL COOKING: Async Thread meshing time: %fs"), MeshingTime);
@@ -257,7 +254,7 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	return CookedData;
 }
 
-FVoxelCookingSettings UVoxelCookingLibrary::MakeVoxelCookingSettingsFromVoxelWorld(AVoxelWorld* World, int32 ThreadCount)
+FVoxelCookingSettings UVoxelCookingLibrary::MakeVoxelCookingSettingsFromVoxelWorld(AVoxelWorld* World)
 {
 	if (!World)
 	{
@@ -266,7 +263,6 @@ FVoxelCookingSettings UVoxelCookingLibrary::MakeVoxelCookingSettingsFromVoxelWor
 	}
 
 	FVoxelCookingSettings  Settings;
-	Settings.ThreadCount = ThreadCount;
 	Settings.RenderOctreeDepth = World->RenderOctreeDepth;
 	Settings.VoxelSize = World->VoxelSize;
 	Settings.RenderType = World->RenderType;

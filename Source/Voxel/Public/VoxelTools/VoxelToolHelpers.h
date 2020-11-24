@@ -35,10 +35,6 @@ class VOXEL_API FVoxelLatentActionAsyncWork : public FVoxelAsyncWorkWithWait
 public:
 	explicit FVoxelLatentActionAsyncWork(FName Name);
 
-	//~ Begin IVoxelQueuedWork Interface
-	virtual uint32 GetPriority() const override;
-	//~ End IVoxelQueuedWork Interface
-
 	//~ Begin FVoxelLatentActionAsyncWork Interface
 	// Called on the game thread
 	virtual bool IsValid() const = 0;

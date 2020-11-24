@@ -8,7 +8,7 @@
 #include "VoxelMinimal.h"
 
 class IVoxelRenderer;
-class IVoxelPool;
+class FVoxelPool;
 class FVoxelDebugManager;
 class AVoxelWorld;
 class AVoxelWorldInterface;
@@ -21,7 +21,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdate, FVoxelIntBox);
 struct FVoxelLODSettings
 {
 	const TVoxelSharedRef<IVoxelRenderer> Renderer;
-	const TVoxelSharedRef<IVoxelPool> Pool;
+	const TVoxelSharedRef<FVoxelPool> Pool;
 
 	const float VoxelSize;
 	const int32 OctreeDepth;
@@ -42,7 +42,7 @@ struct FVoxelLODSettings
 		const AVoxelWorld* World,
 		EVoxelPlayType PlayType,
 		const TVoxelSharedRef<IVoxelRenderer>& Renderer,
-		const TVoxelSharedRef<IVoxelPool>& Pool,
+		const TVoxelSharedRef<FVoxelPool>& Pool,
 		const FVoxelData* Data = nullptr);
 };
 

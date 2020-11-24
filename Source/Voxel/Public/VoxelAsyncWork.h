@@ -8,8 +8,8 @@
 class VOXEL_API FVoxelAsyncWork : public IVoxelQueuedWork
 {
 public:
-	FORCEINLINE FVoxelAsyncWork(FName Name, double PriorityDuration, bool bAutoDelete = false)
-		: IVoxelQueuedWork(Name, PriorityDuration)
+	FORCEINLINE FVoxelAsyncWork(FName Name, EVoxelTaskType TaskType, EPriority Priority, bool bAutoDelete = false)
+		: IVoxelQueuedWork(Name, TaskType, Priority)
 		, bAutodelete(bAutoDelete)
 	{
 	}
@@ -95,7 +95,7 @@ struct TVoxelAsyncWorkDelete
 class VOXEL_API FVoxelAsyncWorkWithWait : public FVoxelAsyncWork
 {
 public:
-	FVoxelAsyncWorkWithWait(FName Name, double PriorityDuration, bool bAutoDelete = false);
+	FVoxelAsyncWorkWithWait(FName Name, EVoxelTaskType TaskType, EPriority Priority, bool bAutoDelete = false);
 
 	//~ Begin IVoxelQueuedWork Interface
 	virtual void PostDoWork() override final;

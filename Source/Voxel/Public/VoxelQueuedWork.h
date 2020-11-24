@@ -3,27 +3,52 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
+#include "VoxelPriorityHandler.h"
 #include "Misc/IQueuedWork.h"
 
 class IVoxelQueuedWork : public IQueuedWork
 {
 public:
-	// Used for performance reporting and debugging
+	enum class EPriority
+	{
+		Null,
+		InvokersDistance
+	};
+	
 	const FName Name;
-	// Number of seconds a priority can be cached before being recomputed
-	const double PriorityDuration;
+	const EVoxelTaskType TaskType;
+	const EPriority Priority;
 
-	FORCEINLINE IVoxelQueuedWork(FName Name, double PriorityDuration)
+	FORCEINLINE IVoxelQueuedWork(FName Name, EVoxelTaskType TaskType, EPriority Priority)
 		: Name(Name)
-		, PriorityDuration(PriorityDuration)
+		, TaskType(TaskType)
+		, Priority(Priority)
 	{
 	}
-
-	IVoxelQueuedWork(const IVoxelQueuedWork&) = delete;
-	IVoxelQueuedWork& operator=(const IVoxelQueuedWork&) = delete;
+	UE_NONCOPYABLE(IVoxelQueuedWork);
 	
-	// Called to determine which thread to process next
-	// Voxel works are usually quite long, so it's worth it to compute all the priorities
-	// Must be thread safe
-	virtual uint32 GetPriority() const = 0;
+	FORCEINLINE uint32 GetPriority() const
+	{
+		if (Priority == EPriority::Null)
+		{
+			return 0;
+		}
+		else
+		{
+			return PriorityHandler.GetPriority();
+		}
+	}
+
+	// If true, Abandon will be called instead of DoThreadedWork if possible
+	bool ShouldAbandon() const { return bShouldAbandon; }
+
+protected:
+	bool bShouldAbandon = false;
+	FVoxelPriorityHandler PriorityHandler;
+
+private:
+	int32 PriorityOffset = 0;
+	
+	friend class FVoxelThreadPool;
 };

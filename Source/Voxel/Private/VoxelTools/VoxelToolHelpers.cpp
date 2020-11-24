@@ -2,19 +2,14 @@
 
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelRender/IVoxelLODManager.h"
-#include "IVoxelPool.h"
+#include "VoxelPool.h"
 
 #include "Engine/Engine.h"
 #include "Async/Async.h"
 
 FVoxelLatentActionAsyncWork::FVoxelLatentActionAsyncWork(FName Name)
-	: FVoxelAsyncWorkWithWait(Name, 1e9)
+	: FVoxelAsyncWorkWithWait(Name, EVoxelTaskType::AsyncEditFunctions, EPriority::Null)
 {
-}
-
-uint32 FVoxelLatentActionAsyncWork::GetPriority() const
-{
-	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -81,7 +76,7 @@ void FVoxelToolHelpers::StartAsyncEditTask(AVoxelWorld* World, IVoxelQueuedWork*
 {
 	if (World)
 	{
-		World->GetPool().QueueTask(EVoxelTaskType::AsyncEditFunctions, Work);
+		World->GetPool().QueueTask(Work);
 	}
 	else
 	{

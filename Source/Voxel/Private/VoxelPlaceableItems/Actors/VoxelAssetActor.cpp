@@ -13,7 +13,7 @@
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelGenerators/VoxelEmptyGenerator.h"
 #include "VoxelWorld.h"
-#include "VoxelDefaultPool.h"
+#include "VoxelPool.h"
 #include "VoxelMessages.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 
@@ -287,11 +287,6 @@ void AVoxelAssetActor::CreatePreview()
 	// Do that now as sometimes this is called before AVoxelWorld::BeginPlay
 	PreviewWorld->UpdateDynamicRendererSettings();
 
-	if (!StaticPool.IsValid())
-	{
-		StaticPool = FVoxelDefaultPool::Create(8, true, {}, {});
-	}
-
 	PrimitiveComponent->SetWorldTransform(PreviewWorld->GetTransform());
 	const FVoxelIntBox Bounds = AddItemToData(PreviewWorld, nullptr);
 
@@ -322,11 +317,13 @@ void AVoxelAssetActor::CreatePreview()
 		AddItemToData(PreviewWorld, Data.Get());
 		MergeMode = RealMergeMode;
 	}
+
+	const auto Pool = FVoxelPool::Create({}, {});
 	
 	DebugManager = FVoxelDebugManager::Create(FVoxelDebugManagerSettings(
 		PreviewWorld,
 		EVoxelPlayType::Preview,
-		StaticPool.ToSharedRef(),
+		Pool,
 		Data.ToSharedRef(),
 		true));
 
@@ -335,7 +332,7 @@ void AVoxelAssetActor::CreatePreview()
 		EVoxelPlayType::Preview,
 		PrimitiveComponent,
 		Data.ToSharedRef(),
-		StaticPool.ToSharedRef(),
+		Pool,
 		nullptr,
 		FVoxelTexturePool::Create(FVoxelTexturePoolSettings(PreviewWorld, EVoxelPlayType::Preview)),
 		DebugManager.ToSharedRef(),
@@ -345,7 +342,7 @@ void AVoxelAssetActor::CreatePreview()
 		FVoxelLODSettings(PreviewWorld,
 			EVoxelPlayType::Preview,
 			Renderer.ToSharedRef(),
-			StaticPool.ToSharedRef(),
+			Pool,
 			Data.Get()));
 
 	while (!LODManager->Initialize(FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD), MaxPreviewChunks) && ensure(PreviewLOD < 24))
@@ -442,8 +439,4 @@ void AVoxelAssetActor::OnPrepareToCleanseEditorObject(UObject* Object)
 {
 	DestroyPreview();
 }
-#endif
-
-#if WITH_EDITOR
-TVoxelSharedPtr<IVoxelPool> AVoxelAssetActor::StaticPool;
 #endif
