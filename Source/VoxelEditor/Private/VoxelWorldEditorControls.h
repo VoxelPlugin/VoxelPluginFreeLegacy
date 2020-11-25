@@ -23,6 +23,7 @@ public:
 #if WITH_EDITOR
 	virtual bool ShouldTickIfViewportsOnly() const override final { return true; }
 	virtual bool IsEditorOnly() const override final { return true; }
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 	//~ End AActor interface
 

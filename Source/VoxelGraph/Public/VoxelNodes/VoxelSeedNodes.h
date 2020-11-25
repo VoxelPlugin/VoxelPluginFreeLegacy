@@ -29,7 +29,7 @@ public:
 	int32 DefaultValue = 1443;
 
 	UPROPERTY()
-	FName Name_DEPRECATED = "SeedName";
+	FName Name_DEPRECATED;
 
 	UVoxelNode_Seed();
 
