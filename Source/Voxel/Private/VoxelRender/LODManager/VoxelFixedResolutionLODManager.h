@@ -11,7 +11,12 @@ class FVoxelFixedResolutionLODManager : public IVoxelLODManager
 public:
 	static TVoxelSharedRef<FVoxelFixedResolutionLODManager> Create(const FVoxelLODSettings& LODSettings);
 
-	bool Initialize(int32 ChunkLOD, int32 MaxChunks);
+	bool Initialize(
+		int32 ChunkLOD,
+		int32 MaxChunks,
+		bool bVisible,
+		bool bEnableCollisions,
+		bool bEnableNavmesh);
 
 	virtual int32 UpdateBounds(const FVoxelIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final { return 0; }
 	virtual int32 UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final { return 0; }

@@ -326,17 +326,18 @@ bool FVoxelGlobalDebugManager::Tick(float DeltaTime)
 		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::HISMBuild);
 
 	const int32 EditTaskCount = GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::AsyncEditFunctions);
-
 	const int32 LODTaskCount = GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::RenderOctree);
+	const int32 CollisionTaskCount = GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::CollisionCooking);
 	
 	if (PoolTaskCount > 0)
 	{
-		const FString Message = FString::Printf(TEXT("Voxel tasks: %d (mesher: %d; foliage: %d; edits: %d; LOD: %d) %d threads"),
+		const FString Message = FString::Printf(TEXT("Voxel tasks: %d (mesher: %d; foliage: %d; edits: %d; LOD: %d; Collision: %d) %d threads"),
 			PoolTaskCount,
 			MesherTaskCount,
 			FoliageTaskCount,
 			EditTaskCount,
 			LODTaskCount,
+			CollisionTaskCount,
 			CVarVoxelThreadingNumThreads.GetValueOnGameThread());
 		GEngine->AddOnScreenDebugMessage(OBJECT_LINE_ID(), DeltaTime * 1.5f, FColor::White, Message);
 	}

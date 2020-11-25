@@ -30,6 +30,9 @@ struct FVoxelDataAssetImportSettings_MagicaVox
 
 	UPROPERTY(VisibleAnywhere, Category = "Import")
 	bool bUsePalette = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "Import")
+	int32 ModelIndex = 0;
 };
 
 /**

@@ -303,30 +303,26 @@ public:
 	{
 		return
 			(uint32(GetR()) << 0) |
-			(uint32(GetG()) << 8);
+			(uint32(GetG()) << 8) |
+			(uint32(GetB()) << 16);
 	}
 	FORCEINLINE void CubicColor_SetTextureDataIndex(int32 Index)
 	{
-		const uint16 Value = FVoxelUtilities::ClampToUINT16(Index);
-		ensureVoxelSlow(Value == Index);
-		SetR((Value >> 0) & 0xFF);
-		SetG((Value >> 8) & 0xFF);
+		SetR((Index >> 0) & 0xFF);
+		SetG((Index >> 8) & 0xFF);
+		SetB((Index >> 16) & 0xFF);
+		ensureVoxelSlow(CubicColor_GetTextureDataIndex() == Index);
 	}
 	
 	FORCEINLINE int32 CubicColor_GetQuadWidth() const
 	{
 		ensureVoxelSlow(GetA() != 255);
-		return
-			(uint32(GetB()) << 0) |
-			(uint32(GetA()) << 8);
+		return GetA();
 	}
 	FORCEINLINE void CubicColor_SetQuadWidth(int32 Index)
 	{
-		const uint16 Value = FVoxelUtilities::ClampToUINT16(Index);
-		ensureVoxelSlow(Value == Index);
-		SetB((Value >> 0) & 0xFF);
-		SetA((Value >> 8) & 0xFF);
-		ensureVoxelSlow(GetA() != 255);
+		SetA(FVoxelUtilities::ClampToUINT8(Index));
+		ensureVoxelSlow(CubicColor_GetQuadWidth() == Index);
 	}
 
 public:

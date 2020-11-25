@@ -85,6 +85,7 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 		: false)
 	, bGreedyCubicMesher(InWorld->MaterialConfig == EVoxelMaterialConfig::RGB && InWorld->bGreedyCubicMesher)
     , bSimpleCubicCollision(bGreedyCubicMesher && InWorld->bSimpleCubicCollision)
+	, SimpleCubicCollisionLODBias(FMath::Clamp(InWorld->SimpleCubicCollisionLODBias, 0, 4))
 
 	, DynamicSettings(InWorld->GetRendererDynamicSettings())
 {
