@@ -136,6 +136,46 @@ FVoxelIntBox AVoxelAssetActor::AddItemToData(
 	return WorldBounds;
 }
 
+void AVoxelAssetActor::ClampTransform()
+{
+	const bool bForceRound = PreviewWorld->RenderType == EVoxelRenderType::Cubic;
+	
+	if (bRoundAssetPosition || bForceRound)
+	{
+		const FVector WorldLocation = PreviewWorld->GetActorLocation();
+		const float VoxelSize = PreviewWorld->VoxelSize;
+
+		FVector Position = GetActorLocation();
+		Position -= WorldLocation;
+		Position /= VoxelSize;
+
+		Position.X = FMath::RoundToInt(Position.X);
+		Position.Y = FMath::RoundToInt(Position.Y);
+		Position.Z = FMath::RoundToInt(Position.Z);
+
+		Position *= VoxelSize;
+		Position += WorldLocation;
+
+		SetActorLocation(Position);
+	}
+	
+	if (bRoundAssetRotation || bForceRound)
+	{
+		const FRotator WorldRotation = PreviewWorld->GetActorRotation();
+		FRotator Rotation = GetActorRotation();
+
+		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation).Inverse()).Rotator();
+
+		Rotation.Pitch = FMath::RoundToInt(Rotation.Pitch / 90) * 90;
+		Rotation.Yaw = FMath::RoundToInt(Rotation.Yaw / 90) * 90;
+		Rotation.Roll = FMath::RoundToInt(Rotation.Roll / 90) * 90;
+		
+		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation)).Rotator();
+		
+		SetActorRotation(Rotation);
+	}
+}
+
 #if WITH_EDITOR
 void AVoxelAssetActor::UpdatePreview()
 {
@@ -327,16 +367,25 @@ void AVoxelAssetActor::CreatePreview()
 		Data.ToSharedRef(),
 		true));
 
-	Renderer = FVoxelDefaultRenderer::Create(FVoxelRendererSettings(
+	auto RendererSettings = FVoxelRendererSettings(
 		PreviewWorld,
 		EVoxelPlayType::Preview,
 		PrimitiveComponent,
 		Data.ToSharedRef(),
 		Pool,
 		nullptr,
-		FVoxelTexturePool::Create(FVoxelTexturePoolSettings(PreviewWorld, EVoxelPlayType::Preview)),
+		// Reuse the voxel world texture pool if possible, to avoid having one texture per asset actor
+		PreviewWorld->IsCreated()
+		? PreviewWorld->GetTexturePoolSharedPtr().ToSharedRef()
+		: FVoxelTexturePool::Create(FVoxelTexturePoolSettings(PreviewWorld, EVoxelPlayType::Preview)),
 		DebugManager.ToSharedRef(),
-		true));
+		true);
+
+	// Aggressive merge settings
+	RendererSettings.bMergeChunks = true;
+	RendererSettings.ChunksClustersSize = 256;
+	
+	Renderer = FVoxelDefaultRenderer::Create(RendererSettings);
 	
 	LODManager = FVoxelFixedResolutionLODManager::Create(
 		FVoxelLODSettings(PreviewWorld,
@@ -345,7 +394,12 @@ void AVoxelAssetActor::CreatePreview()
 			Pool,
 			Data.Get()));
 
-	while (!LODManager->Initialize(FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD), MaxPreviewChunks) && ensure(PreviewLOD < 24))
+	while (ensure(PreviewLOD < 24) && !LODManager->Initialize(
+		FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD),
+		MaxPreviewChunks,
+		true,
+		false,
+		false))
 	{
 		PreviewLOD++;
 	}
@@ -387,46 +441,6 @@ void AVoxelAssetActor::UpdateBox()
 	Box->SetWorldTransform(PreviewWorld->GetTransform());
 	Box->SetBoxExtent(FVector(Bounds.Size()) / 2 * PreviewWorld->VoxelSize * PreviewWorld->GetActorScale3D());
 	Box->SetWorldLocation(PreviewWorld->LocalToGlobalFloat(Bounds.GetCenter()));
-}
-
-void AVoxelAssetActor::ClampTransform()
-{
-	const bool bForceRound = PreviewWorld->RenderType == EVoxelRenderType::Cubic;
-	
-	if (bRoundAssetPosition || bForceRound)
-	{
-		const FVector WorldLocation = PreviewWorld->GetActorLocation();
-		const float VoxelSize = PreviewWorld->VoxelSize;
-
-		FVector Position = GetActorLocation();
-		Position -= WorldLocation;
-		Position /= VoxelSize;
-
-		Position.X = FMath::RoundToInt(Position.X);
-		Position.Y = FMath::RoundToInt(Position.Y);
-		Position.Z = FMath::RoundToInt(Position.Z);
-
-		Position *= VoxelSize;
-		Position += WorldLocation;
-
-		SetActorLocation(Position);
-	}
-	
-	if (bRoundAssetRotation || bForceRound)
-	{
-		const FRotator WorldRotation = PreviewWorld->GetActorRotation();
-		FRotator Rotation = GetActorRotation();
-
-		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation).Inverse()).Rotator();
-
-		Rotation.Pitch = FMath::RoundToInt(Rotation.Pitch / 90) * 90;
-		Rotation.Yaw = FMath::RoundToInt(Rotation.Yaw / 90) * 90;
-		Rotation.Roll = FMath::RoundToInt(Rotation.Roll / 90) * 90;
-		
-		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation)).Rotator();
-		
-		SetActorRotation(Rotation);
-	}
 }
 #endif
 

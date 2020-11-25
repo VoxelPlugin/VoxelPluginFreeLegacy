@@ -3,8 +3,10 @@
 #include "Factories/VoxelDataAssetFromMagicaVoxFactory.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
+#include "VoxelImporters/VoxelMagicaVoxImporter.h"
 
 #include "Editor.h"
+#include "AssetRegistryModule.h"
 #include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "Widgets/SWindow.h"
@@ -13,6 +15,7 @@
 #include "Widgets/Layout/SUniformGridPanel.h"
 #include "Widgets/Input/SButton.h"
 #include "Framework/SlateDelegates.h"
+#include "Misc/FeedbackContext.h"
 
 UVoxelDataAssetFromMagicaVoxFactory::UVoxelDataAssetFromMagicaVoxFactory()
 {
@@ -115,8 +118,42 @@ bool UVoxelDataAssetFromMagicaVoxFactory::FactoryCanImport(const FString& Filena
 
 UObject* UVoxelDataAssetFromMagicaVoxFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
-	FVoxelMessages::Info("Importing MagicaVox assets requires Voxel Plugin Pro");
-	return nullptr;
+	ensure(Flags & RF_Transactional);
+
+	FString Error;
+	const auto Scene = FVoxelMagicaVoxScene::LoadScene(Filename, Error);
+	if (!Scene)
+	{
+		Warn->Logf(ELogVerbosity::Error, TEXT("Failed to load scene: %s"), *Error);
+		return nullptr;
+	}
+
+	TArray<UVoxelDataAsset*> Assets;
+	auto* SceneAsset = Scene->Import(InParent, InName, Flags, bUsePalette, Assets);
+	if (!SceneAsset)
+	{
+		return nullptr;
+	}
+
+	SceneAsset->ImportPath = Filename;
+	for (int32 ModelIndex = 0; ModelIndex < Assets.Num(); ModelIndex++)
+	{
+		auto* Asset = Assets[ModelIndex];
+		if (!Asset)
+		{
+			continue;
+		}
+
+		Asset->Paths = { Filename };
+		Asset->Source = EVoxelDataAssetImportSource::MagicaVox;
+		Asset->ImportSettings_MagicaVox.bUsePalette = bUsePalette;
+		Asset->ImportSettings_MagicaVox.ModelIndex = ModelIndex;
+
+		FAssetRegistryModule::AssetCreated(Asset);
+		Asset->MarkPackageDirty();
+	}
+	
+	return SceneAsset;
 }
 
 bool UVoxelDataAssetFromMagicaVoxFactory::CanReimport(UObject* Obj, TArray<FString>& OutFilenames)
@@ -130,6 +167,10 @@ bool UVoxelDataAssetFromMagicaVoxFactory::CanReimport(UObject* Obj, TArray<FStri
 			return true;
 		}
 	}
+	if (auto* Scene = Cast<UVoxelMagicaVoxScene>(Obj))
+	{
+		return true;
+	}
 	return false;
 }
 
@@ -140,12 +181,40 @@ void UVoxelDataAssetFromMagicaVoxFactory::SetReimportPaths(UObject* Obj, const T
 		Asset->Paths = NewReimportPaths;
 		ensure(Asset->Paths.Num() == 1);
 	}
+	if (auto* Scene = Cast<UVoxelMagicaVoxScene>(Obj))
+	{
+		if (ensure(NewReimportPaths.Num() == 1))
+		{
+			Scene->ImportPath = NewReimportPaths[0];
+		}
+	}
 }
 
 EReimportResult::Type UVoxelDataAssetFromMagicaVoxFactory::Reimport(UObject* Obj)
 {
-	FVoxelMessages::Info("Converting meshes to voxels requires Voxel Plugin Pro");
-	return EReimportResult::Failed;
+	auto* Asset = Cast<UVoxelDataAsset>(Obj);
+	if (!Asset)
+	{
+		return EReimportResult::Failed;
+	}
+
+	FString Error;
+	const auto Scene = FVoxelMagicaVoxScene::LoadScene(Asset->Paths[0], Error);
+	if (!Scene)
+	{
+		return EReimportResult::Failed;
+	}
+
+	const FVoxelDataAssetImportSettings_MagicaVox& ImportSettings = Asset->ImportSettings_MagicaVox;
+		
+	const auto Data = MakeVoxelShared<FVoxelDataAssetData>();
+	if (!Scene->ImportModel(*Data, ImportSettings.ModelIndex, ImportSettings.bUsePalette))
+	{
+		return EReimportResult::Failed;
+	}
+	Asset->SetData(Data);
+	
+	return EReimportResult::Succeeded;
 }
 
 int32 UVoxelDataAssetFromMagicaVoxFactory::GetPriority() const

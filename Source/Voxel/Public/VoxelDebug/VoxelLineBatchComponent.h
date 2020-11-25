@@ -29,15 +29,18 @@ public:
 
 	UVoxelLineBatchComponent();
 
-	//~ Begin UPrimitiveComponent Interface.
+	//~ Begin UPrimitiveComponent Interface
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
-	//~ End UPrimitiveComponent Interface.
+#if WITH_EDITOR
+	virtual bool IgnoreBoundsForEditorFocus() const override { return true; }
+#endif
+	//~ End UPrimitiveComponent Interface
 
-	//~ Begin UActorComponent Interface.
+	//~ Begin UActorComponent Interface
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void ApplyWorldOffset(const FVector& InOffset, bool bWorldShift) override;
-	//~ End UActorComponent Interface.
+	//~ End UActorComponent Interface
 
 	// Clear all batched lines, points and meshes
 	void Flush();

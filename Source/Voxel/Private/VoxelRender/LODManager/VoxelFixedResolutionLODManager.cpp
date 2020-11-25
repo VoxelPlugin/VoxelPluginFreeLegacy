@@ -11,7 +11,12 @@ TVoxelSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager
 	return MakeShareable(new FVoxelFixedResolutionLODManager(LODSettings));
 }
 
-bool FVoxelFixedResolutionLODManager::Initialize(int32 ChunkLOD, int32 MaxChunks)
+bool FVoxelFixedResolutionLODManager::Initialize(
+	int32 ChunkLOD,
+	int32 MaxChunks,
+	bool bVisible,
+	bool bEnableCollisions,
+	bool bEnableNavmesh)
 {
 	TArray<FVoxelChunkUpdate> ChunkUpdates;
 	
@@ -47,7 +52,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(int32 ChunkLOD, int32 MaxChunks
 							ChunkLOD,
 							ChunkBounds,
 							{},
-							FVoxelChunkSettings::VisibleWithCollisions(),
+							FVoxelChunkSettings{ bVisible, bEnableCollisions, bEnableNavmesh, 0 },
 							{}
 						});
 				}

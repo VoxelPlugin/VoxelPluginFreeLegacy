@@ -64,67 +64,68 @@ struct FVoxelRendererMemory
 // Doesn't keep alive anything important
 struct FVoxelRendererSettingsBase
 {
-	const float VoxelSize;
-	const TVoxelSharedRef<FIntVector> WorldOffset;
+	float VoxelSize;
+	TVoxelSharedRef<FIntVector> WorldOffset;
 
 	// Always valid
-	UClass* const ProcMeshClass;
-	const bool bCastFarShadow;
+	UClass* ProcMeshClass;
+	bool bCastFarShadow;
 
-	const EVoxelPlayType PlayType;
+	EVoxelPlayType PlayType;
 
-	const TWeakObjectPtr<UWorld> World;
-	const TWeakObjectPtr<UPrimitiveComponent> RootComponent;
+	TWeakObjectPtr<UWorld> World;
+	TWeakObjectPtr<UPrimitiveComponent> RootComponent;
 
-	const EVoxelUVConfig UVConfig;
-	const float UVScale;
-	const EVoxelNormalConfig NormalConfig;
-	const EVoxelMaterialConfig MaterialConfig;
-	const bool bHardColorTransitions;
+	EVoxelUVConfig UVConfig;
+	float UVScale;
+	EVoxelNormalConfig NormalConfig;
+	EVoxelMaterialConfig MaterialConfig;
+	bool bHardColorTransitions;
 	
-	const float BoundsExtension;
+	float BoundsExtension;
 
-	const ECollisionTraceFlag CollisionTraceFlag;
-	const int32 NumConvexHullsPerAxis;
-	const bool bCleanCollisionMeshes;
+	ECollisionTraceFlag CollisionTraceFlag;
+	int32 NumConvexHullsPerAxis;
+	bool bCleanCollisionMeshes;
 
-	const EVoxelRenderType RenderType;
-	const uint32 RenderSharpness;
-	const bool bCreateMaterialInstances;
-	const bool bDitherChunks;
-	const float ChunksDitheringDuration;
-	const bool bOptimizeIndices;
+	EVoxelRenderType RenderType;
+	uint32 RenderSharpness;
+	bool bCreateMaterialInstances;
+	bool bDitherChunks;
+	float ChunksDitheringDuration;
+	bool bOptimizeIndices;
 
-	const int32 MaxDistanceFieldLOD;
-	const int32 DistanceFieldBoundsExtension;
-	const int32 DistanceFieldResolutionDivisor;
-	const float DistanceFieldSelfShadowBias;
+	int32 MaxDistanceFieldLOD;
+	int32 DistanceFieldBoundsExtension;
+	int32 DistanceFieldResolutionDivisor;
+	float DistanceFieldSelfShadowBias;
 	
-	const bool bOneMaterialPerCubeSide;
-	const bool bHalfPrecisionCoordinates;
-	const bool bInterpolateColors;
-	const bool bInterpolateUVs;
-	const bool bSRGBColors;
-	const bool bRenderWorld;
-	const bool bContributesToStaticLighting;
-	const bool bUseStaticPath;
+	bool bOneMaterialPerCubeSide;
+	bool bHalfPrecisionCoordinates;
+	bool bInterpolateColors;
+	bool bInterpolateUVs;
+	bool bSRGBColors;
+	bool bRenderWorld;
+	bool bContributesToStaticLighting;
+	bool bUseStaticPath;
 
-	const float MeshUpdatesBudget;
+	float MeshUpdatesBudget;
 
-	const TArray<uint8> HolesMaterials;
-	const TMap<uint8, FVoxelMeshConfig> MaterialsMeshConfigs;
+	TArray<uint8> HolesMaterials;
+	TMap<uint8, FVoxelMeshConfig> MaterialsMeshConfigs;
 
-	const bool bMergeChunks;
-	const int32 ChunksClustersSize;
-	const bool bDoNotMergeCollisionsAndNavmesh;
+	bool bMergeChunks;
+	int32 ChunksClustersSize;
+	bool bDoNotMergeCollisionsAndNavmesh;
 
-	const bool bStaticWorld;
-	const bool bGreedyCubicMesher;
-	const bool bSimpleCubicCollision;
+	bool bStaticWorld;
+	bool bGreedyCubicMesher;
+	bool bSimpleCubicCollision;
+	int32 SimpleCubicCollisionLODBias;
 
-	const TVoxelSharedRef<FVoxelRendererDynamicSettings> DynamicSettings;
+	TVoxelSharedRef<FVoxelRendererDynamicSettings> DynamicSettings;
 
-	const TVoxelSharedRef<FVoxelRendererMemory> Memory = MakeVoxelShared<FVoxelRendererMemory>();
+	TVoxelSharedRef<FVoxelRendererMemory> Memory = MakeVoxelShared<FVoxelRendererMemory>();
 
 	// If Data isn't null, it's Depth and WorldBounds will be used, and WorldOffset will be set to 0
 	FVoxelRendererSettingsBase(

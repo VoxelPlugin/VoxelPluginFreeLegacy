@@ -817,7 +817,7 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 	else
 	{
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-		UpdateSimpleCollision({});
+		UpdateSimpleCollision({}, true);
 #endif
 		FinishCollisionUpdate();
 	}

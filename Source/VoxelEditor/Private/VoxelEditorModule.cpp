@@ -47,6 +47,7 @@
 #include "AssetTools/AssetTypeActions_VoxelGraphMacro.h"
 #include "AssetTools/AssetTypeActions_VoxelWorldSaveObject.h"
 #include "AssetTools/AssetTypeActions_VoxelMaterialCollection.h"
+#include "AssetTools/AssetTypeActions_VoxelMagicaVoxScene.h"
 
 #include "Thumbnails/VoxelGraphGeneratorThumbnailRenderer.h"
 #include "Thumbnails/VoxelSpawnersThumbnailRenderer.h"
@@ -535,6 +536,7 @@ private:
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphMacro>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphOutputsConfig>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphDataItemConfig>();
+		RegisterAssetTypeAction<FAssetTypeActions_VoxelMagicaVoxScene>();
 	}
 
 	void UnregisterAssetTools()

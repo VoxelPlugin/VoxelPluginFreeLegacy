@@ -155,25 +155,76 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("CollisionCubes");
 
+		FVoxelUtilities::TStaticSwitch<5>::Switch(Settings.SimpleCubicCollisionLODBias, [&](auto SimpleCubicCollisionLODBias)
 		{
-			TVoxelStaticBitArray<NumVoxels> BitArray;
+			constexpr int32 CollisionDivider = 1 << SimpleCubicCollisionLODBias;
+			constexpr int32 CollisionChunkSize = RENDER_CHUNK_SIZE / CollisionDivider;
+			constexpr int32 CollisionNumVoxels = CollisionChunkSize * CollisionChunkSize * CollisionChunkSize;
+		
+			TVoxelStaticBitArray<CollisionNumVoxels> BitArray;
 			{
 				VOXEL_ASYNC_SCOPE_COUNTER("Copy");
-				for (int32 Z = 0; Z < RENDER_CHUNK_SIZE; Z++)
+				for (int32 Z = 0; Z < CollisionChunkSize; Z++)
 				{
-					for (int32 Y = 0; Y < RENDER_CHUNK_SIZE; Y++)
+					for (int32 Y = 0; Y < CollisionChunkSize; Y++)
 					{
-						for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
+						for (int32 X = 0; X < CollisionChunkSize; X++)
 						{
-							BitArray.Set(X + RENDER_CHUNK_SIZE * Y + RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * Z, GetValue(X, Y, Z));
+							bool bValue = false;
+							for (int32 I = 0; I < CollisionDivider; I++)
+							{
+								for (int32 J = 0; J < CollisionDivider; J++)
+								{
+									for (int32 K = 0; K < CollisionDivider; K++)
+									{
+										bValue |= GetValue(I + CollisionDivider * X, J + CollisionDivider * Y, K + CollisionDivider * Z);
+										if (bValue) break;
+									}
+									if (bValue) break;
+								}
+								if (bValue) break;
+							}
+							BitArray.Set(X + CollisionChunkSize * Y + CollisionChunkSize * CollisionChunkSize * Z, bValue);
 						}
 					}
 				}
 			}
 
-			GreedyMeshing3D<RENDER_CHUNK_SIZE>(BitArray, *CollisionCubes);
-		}
+			GreedyMeshing3D<CollisionChunkSize>(BitArray, *CollisionCubes);
+		});
+		
+		const int32 CollisionDivider = 1 << Settings.SimpleCubicCollisionLODBias;
+		// TODO: shrink collision cubes while they have sides that are entirely empty instead
+		if (CollisionDivider != 1)
+		{
+			VOXEL_ASYNC_SCOPE_COUNTER("Bounds");
 
+			FVoxelIntBoxWithValidity CollisionBounds;
+			for (int32 Z = 0; Z < RENDER_CHUNK_SIZE; Z++)
+			{
+				for (int32 Y = 0; Y < RENDER_CHUNK_SIZE; Y++)
+				{
+					for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
+					{
+						if (GetValue(X, Y, Z))
+						{
+							CollisionBounds += FVoxelIntBox(FIntVector{ X, Y, Z });
+						}
+					}
+				}
+			}
+
+			if (ensure(CollisionBounds.IsValid()))
+			{
+				for (auto& Cube : *CollisionCubes)
+				{
+					Cube = Cube.Scale(CollisionDivider);
+					Cube = Cube.Overlap(CollisionBounds.GetBox());
+				}
+				CollisionCubes->RemoveAllSwap([&](const FVoxelIntBox& Cube) { return !Cube.IsValid(); });
+			}
+		}
+		else
 		{
 		    VOXEL_ASYNC_SCOPE_COUNTER("Cull");
 			
@@ -459,8 +510,11 @@ FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 		}
 		else
 		{
-			// TODO don't allocate texture data if all colors are the same
+			const int32 TextureDataNumBefore = TextureData->Num();
+			
 			bool bMaterialSet = false;
+			bool bSingleColor = true;
+			FVoxelMaterial FirstMaterial;
 			for (uint32 Y = 0; Y < Quad.SizeY; Y++)
 			{
 				for (uint32 X = 0; X < Quad.SizeX; X++)
@@ -470,13 +524,27 @@ FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 					if (!bMaterialSet)
 					{
 						bMaterialSet = true;
+						FirstMaterial = Material;
 						Vertex.Material = Material;
 						Vertex.Material.CubicColor_SetQuadWidth(Quad.SizeX);
 						Vertex.Material.CubicColor_SetTextureDataIndex(TextureData->Num());
 					}
+					
+					if (Material.GetColor() != FirstMaterial.GetColor())
+					{
+						bSingleColor = false;
+					}
 
 					TextureData->Add(Material.GetColor());
 				}
+			}
+
+			if (bSingleColor)
+			{
+				// We don't need the texture data - remove it
+				TextureData->SetNum(TextureDataNumBefore, false);
+				Vertex.Material = FirstMaterial;
+				Vertex.Material.CubicColor_SetUseTextureFalse();
 			}
 		}
 	}

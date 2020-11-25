@@ -394,7 +394,7 @@ public:
 
 	// The size of the textures in the pool used by the greedy cubic mesher to store the colors
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 64, UIMin = 128, UIMax = 2048))
-	int32 TexturePoolTextureSize = 512;
+	int32 TexturePoolTextureSize = 1024;
 	
 	// If true, the mesh indices will be sorted to improve GPU cache performance. Adds a cost to the async mesh building. If you don't see any perf difference, leave it off
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
@@ -532,6 +532,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Collisions", meta = (Recreate, EditCondition = bEnableCollisions))
 	bool bSimpleCubicCollision = true;
 
+	// Will use a lower LOD for cubic collisions, making them much faster to simulate at the cost of accuracy
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Collisions", meta = (Recreate, ClampMin = 0, ClampMax = 4, EditCondition = bEnableCollisions))
+	int32 SimpleCubicCollisionLODBias = 0;
+	
 	// Number of convex hulls to create per chunk per axis for simple collisions
 	// More hulls = more precise collisions, but much more expensive physics
 	// You can check the result in the Player Collision view
@@ -635,11 +639,12 @@ public:
 	FVoxelToolRenderingManager& GetToolRenderingManager() const { return *ToolRenderingManager; }
 
 	const UVoxelGeneratorCache& GetGeneratorCache() const { return *GeneratorCache; }
-	
 	const TVoxelSharedPtr<FGameThreadTasks>& GetGameThreadTasks() const { return GameThreadTasks; }
+	
+	const TVoxelSharedPtr<FVoxelPool>& GetPoolSharedPtr() const { return Pool; }
+	const TVoxelSharedPtr<FVoxelTexturePool>& GetTexturePoolSharedPtr() const { return TexturePool; }
 	const TVoxelSharedPtr<FVoxelData>& GetDataSharedPtr() const { return Data; }
 	const TVoxelSharedPtr<IVoxelLODManager>& GetLODManagerSharedPtr() const { return LODManager; }
-	const TVoxelSharedPtr<FVoxelPool>& GetPoolSharedPtr() const { return Pool; }
 	const TVoxelSharedRef<FIntVector>& GetWorldOffsetPtr() const { return WorldOffset; }
 	const TVoxelSharedRef<FVoxelRendererDynamicSettings>& GetRendererDynamicSettings() const { return RendererDynamicSettings; }
 	EVoxelPlayType GetPlayType() const { return PlayType; }

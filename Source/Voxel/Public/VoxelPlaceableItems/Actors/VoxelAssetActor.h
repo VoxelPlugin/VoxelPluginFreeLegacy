@@ -34,6 +34,12 @@ UCLASS()
 class VOXEL_API UAssetActorPrimitiveComponent : public UPrimitiveComponent
 {
 	GENERATED_BODY()
+
+	//~ Begin UPrimitiveComponent Interface
+#if WITH_EDITOR
+	virtual bool IgnoreBoundsForEditorFocus() const override { return true; }
+#endif
+	//~ End UPrimitiveComponent Interface
 };
 
 UCLASS(HideCategories = ("Tick", "Replication", "Input", "Actor", "Rendering", "HOLD", "LOD", "Cooking", "Collision"))
@@ -65,7 +71,6 @@ public:
 	EVoxelAssetMergeMode MergeMode = EVoxelAssetMergeMode::InnerValuesAndInnerMaterials;
 
 public:
-#if WITH_EDITORONLY_DATA
 	// The lower, the better looking but the slower
 	UPROPERTY(EditAnywhere, Category = "Preview Settings", meta = (ClampMin = "0", ClampMax = "24", UIMin = "0", UIMax = "10"))
 	int32 PreviewLOD = 0;
@@ -87,7 +92,6 @@ public:
 	// Be careful: might freeze Unreal if too high!
 	UPROPERTY(EditAnywhere, Category = "Preview Settings", AdvancedDisplay)
 	uint32 MaxPreviewChunks = 1024;
-#endif
 
 public:
 	AVoxelAssetActor();
@@ -101,6 +105,7 @@ public:
 	FVoxelIntBox AddItemToData(
 		AVoxelWorld* VoxelWorld, 
 		FVoxelData* VoxelWorldData) const;
+	void ClampTransform();
 	
 #if WITH_EDITOR
 	void UpdatePreview();
@@ -142,7 +147,6 @@ private:
 	void CreatePreview();
 	void DestroyPreview();
 	void UpdateBox();
-	void ClampTransform();
 #endif
 	
 public:
