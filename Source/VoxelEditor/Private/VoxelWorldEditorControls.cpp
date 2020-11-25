@@ -1,6 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelWorldEditorControls.h"
+#include "VoxelUtilities/VoxelConfigUtilities.h"
 
 #include "LevelEditorViewport.h"
 #include "Editor.h"
@@ -9,7 +10,13 @@ AVoxelWorldEditorControls::AVoxelWorldEditorControls()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	RootComponent = Invoker = CreateDefaultSubobject<UVoxelInvokerEditorComponent>(FName("Editor Invoker"));
+	Invoker = CreateDefaultSubobject<UVoxelInvokerEditorComponent>(FName("Editor Invoker"));
+	RootComponent = Invoker;
+
+	if (!HasAnyFlags(RF_ClassDefaultObject))
+	{
+		FVoxelConfigUtilities::LoadConfig(Invoker, "VoxelWorldEditorControls");
+	}
 }
 
 void AVoxelWorldEditorControls::Tick(float DeltaTime)
@@ -49,6 +56,18 @@ void AVoxelWorldEditorControls::Tick(float DeltaTime)
 		Destroy();
 	}
 }
+
+#if WITH_EDITOR
+void AVoxelWorldEditorControls::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	if (PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
+	{
+		FVoxelConfigUtilities::SaveConfig(Invoker, "VoxelWorldEditorControls");
+	}
+}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
