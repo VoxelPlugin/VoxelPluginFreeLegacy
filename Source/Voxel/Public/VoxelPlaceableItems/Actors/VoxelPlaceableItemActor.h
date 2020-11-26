@@ -14,11 +14,11 @@ class VOXEL_API AVoxelPlaceableItemActor : public AActor
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, CallInEditor, Category = "Placeable Item Actor Settings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, CallInEditor, Category = "Placeable Item Actor")
 	AVoxelWorld* PreviewWorld;
 
 	// If true, will only affect PreviewWorld. If false, will affect all the voxel worlds spawned into the scene
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, CallInEditor, Category = "Placeable Item Actor Settings")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, CallInEditor, Category = "Placeable Item Actor")
 	bool bOnlyImportIntoPreviewWorld = true;
 
 public:

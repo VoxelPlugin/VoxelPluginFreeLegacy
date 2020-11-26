@@ -253,12 +253,13 @@ void AVoxelMagicaVoxSceneActor::ApplyVoxelSize()
 		{
 			// Transforms in magica voxel are centered
 			// Make sure to do it in local space (hence the TransformVector), as else it will do the wrong thing when there's a rotation!
-			Transform.AddToTranslation(Transform.TransformVector(-FVector(Asset->GetSize()) / 2));
+			Transform.AddToTranslation(Transform.TransformVector(-FVector(FVoxelUtilities::DivideFloor(Asset->GetSize(), 2))));
 		}
-
 		Transform.SetTranslation(Transform.GetTranslation() * VoxelSize);
+
 		Actor->SetActorTransform(Transform * GetTransform());
 		Actor->ClampTransform();
+		Actor->MarkPackageDirty();
 	}
 
 	// Make sure to do that AFTER fixing up the transforms
@@ -340,7 +341,7 @@ void AVoxelMagicaVoxSceneActor::SetScene(UVoxelMagicaVoxScene* Scene)
 
 	if (SceneBounds.IsValid())
 	{
-		VoxelWorld->SetRenderOctreeDepth(FVoxelUtilities::GetDepthFromBounds<RENDER_CHUNK_SIZE>(SceneBounds.GetBox()));
+		VoxelWorld->SetRenderOctreeDepth(FVoxelUtilities::GetOctreeDepthContainingBounds<RENDER_CHUNK_SIZE>(SceneBounds.GetBox()));
 		if (FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(VoxelWorld->RenderOctreeDepth) <= 2048)
 		{
 			VoxelWorld->MaxLOD = 0;
