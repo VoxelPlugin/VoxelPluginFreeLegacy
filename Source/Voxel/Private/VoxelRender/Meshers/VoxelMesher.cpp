@@ -76,6 +76,11 @@ struct FVoxelMesherStats
 
 		double TotalDistanceFieldsTime = 0;
 		
+		double TotalFindFacesTime = 0;
+		double TotalGreedyMeshingTime = 0;
+		double TotalAddFacesTime = 0;
+		double TotalCollisionCubesTime = 0;
+		
 		const auto Print = [&](const TArray<FChunkStats>& Stats)
 		{
 			struct FMean
@@ -116,6 +121,11 @@ struct FVoxelMesherStats
 
 				Mean.ValuesAccesses += Stat.Times._ValuesAccesses;
 				Mean.MaterialsAccesses += Stat.Times._MaterialsAccesses;
+
+				TotalFindFacesTime += FPlatformTime::ToSeconds64(Stat.Times.FindFaces);
+				TotalGreedyMeshingTime += FPlatformTime::ToSeconds64(Stat.Times.GreedyMeshing);
+				TotalAddFacesTime += FPlatformTime::ToSeconds64(Stat.Times.AddFaces);
+				TotalCollisionCubesTime += FPlatformTime::ToSeconds64(Stat.Times.CollisionCubes);
 				
 				GlobalTotalTime += Stat.Time;
 			}
@@ -195,6 +205,21 @@ struct FVoxelMesherStats
 		LOG_VOXEL(Log, TEXT("------------------------------"));
 		LOG_VOXEL(Log, TEXT("Values: %llu reads in %fs, avg %.1fns/voxel"), TotalValuesAccesses, TotalValuesTime, TotalValuesTime / TotalValuesAccesses * 1e9);
 		LOG_VOXEL(Log, TEXT("Materials: %llu reads in %fs, avg %.1fns/voxel"), TotalMaterialsAccesses, TotalMaterialsTime, TotalMaterialsTime / TotalMaterialsAccesses * 1e9);
+
+		if (TotalFindFacesTime != 0 ||
+			TotalAddFacesTime != 0 ||
+			TotalCollisionCubesTime != 0)
+		{
+			LOG_VOXEL(Log, TEXT("###############################################################################"));
+			LOG_VOXEL(Log, TEXT("################################# Cubic Stats #################################"));
+			LOG_VOXEL(Log, TEXT("###############################################################################"));
+			LOG_VOXEL(Log, TEXT("Values Time: %fs (%3.2f%% of total time)"), TotalValuesTime, 100 * TotalValuesTime / TotalTime);
+			LOG_VOXEL(Log, TEXT("Materials Time: %fs (%3.2f%% of total time)"), TotalMaterialsTime, 100 * TotalMaterialsTime / TotalTime);
+			LOG_VOXEL(Log, TEXT("Find Faces Time: %fs (%3.2f%% of total time)"), TotalFindFacesTime, 100 * TotalFindFacesTime / TotalTime);
+			LOG_VOXEL(Log, TEXT("Greedy Meshing Time: %fs (%3.2f%% of total time)"), TotalGreedyMeshingTime, 100 * TotalGreedyMeshingTime / TotalTime);
+			LOG_VOXEL(Log, TEXT("Add Faces Time: %fs (%3.2f%% of total time)"), TotalAddFacesTime, 100 * TotalAddFacesTime / TotalTime);
+			LOG_VOXEL(Log, TEXT("Collision Cubes Time: %fs (%3.2f%% of total time)"), TotalCollisionCubesTime, 100 * TotalCollisionCubesTime / TotalTime);
+		}
 	}
 };
 

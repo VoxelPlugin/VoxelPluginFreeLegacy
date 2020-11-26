@@ -845,6 +845,12 @@ void AVoxelWorld::OnWorldLoadedCallback()
 {
 	LOG_VOXEL(Log, TEXT("%s took %fs to generate"), *GetName(), FPlatformTime::Seconds() - TimeOfCreation);
 	bIsLoaded = true;
+
+	if (bSimulatePhysicsOnceLoaded)
+	{
+		WorldRoot->BodyInstance.SetInstanceSimulatePhysics(true);
+	}
+	
 	OnWorldLoaded.Broadcast();
 }
 
@@ -935,7 +941,9 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 	{
 		FVoxelMessages::Error("Simulate physics requires using Simple collisions (either 'Simple And Complex' or 'Use Simple Collision As Complex')", this);
 	}
-
+	bSimulatePhysicsOnceLoaded = WorldRoot->BodyInstance.bSimulatePhysics;
+	WorldRoot->BodyInstance.bSimulatePhysics = false;
+	
 	GetLineBatchComponent().Flush();
 
 	*WorldOffset = FIntVector::ZeroValue;

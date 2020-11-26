@@ -57,6 +57,11 @@ struct FVoxelMesherTimes
 	uint64 Normals = 0;
 	uint64 UVs = 0;
 	uint64 CreateChunk = 0;
+
+	uint64 FindFaces = 0;
+	uint64 AddFaces = 0;
+	uint64 GreedyMeshing = 0;
+	uint64 CollisionCubes = 0;
 	
 	uint64 FinishCreatingChunk = 0;
 	uint64 DistanceField = 0;

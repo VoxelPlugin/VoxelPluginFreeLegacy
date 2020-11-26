@@ -6,11 +6,17 @@
 #include "Engine/DeveloperSettings.h"
 #include "VoxelSettings.generated.h"
 
-/**
- * Usage example: In DefaultEngine.ini
- * [/Script/Voxel.VoxelSettings]
- * bDisableAutoPreview=True
- */
+UENUM(BlueprintType)
+enum class EVoxelThreadPriority : uint8
+{
+	Normal,
+	AboveNormal,
+	BelowNormal,
+	Highest,
+	Lowest,
+	SlightlyBelowNormal,
+	TimeCritical
+};
 
 UCLASS(config=Engine, defaultconfig, meta=(DisplayName="Voxel Plugin"))
 class VOXEL_API UVoxelSettings : public UDeveloperSettings
@@ -27,13 +33,18 @@ public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Performance", meta = (ClampMin = 1, ConsoleVariable = "voxel.threading.NumThreads"))
 	int32 NumberOfThreads;
 
-	// Only used if ConstantPriorities is false
 	// Time, in seconds, during which a task priority is valid and does not need to be recomputed
 	// Lowering this will increase async cost to recompute priorities, but will lead to more precise scheduling
 	// Increasing this will decreasing async cost to recompute priorities, but might lead to imprecise scheduling if the invokers are moving fast
 	// Can be set using voxel.threading.PriorityDuration
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Performance", meta = (ClampMin = 0, ConsoleVariable = "voxel.threading.PriorityDuration", EditCondition = "!bConstantPriorities"))
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Performance", meta = (ClampMin = 0, ConsoleVariable = "voxel.threading.PriorityDuration"))
 	float PriorityDuration;
+
+	// The priority of the voxel threads
+	// Changing this requires a restart
+	// Can be set using voxel.threading.ThreadPriority
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Performance", meta = (ConsoleVariable = "voxel.threading.ThreadPriority", ConfigRestartRequired = true))
+	EVoxelThreadPriority ThreadPriority;
 
 public:
     UPROPERTY(Config, EditAnywhere, Category="Config")

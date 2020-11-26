@@ -795,6 +795,7 @@ private:
 	
 	bool bIsCreated = false;
 	bool bIsLoaded = false;
+	bool bSimulatePhysicsOnceLoaded = false;
 	EVoxelPlayType PlayType = EVoxelPlayType::Game;
 	double TimeOfCreation = 0;
 

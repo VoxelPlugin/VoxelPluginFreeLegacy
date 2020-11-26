@@ -110,6 +110,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 	
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("Find faces");
+		MESHER_TIME_SCOPE(FindFaces);
 
 		const auto GetFaceIndex = [&](int32 X, int32 Y, int32 Z)
 		{
@@ -141,9 +142,10 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 	for (int32 Direction = 0; Direction < 6; Direction++)
 	{
 		TArray<FCubicQuad, TFixedAllocator<NumVoxels>> Quads;
-		GreedyMeshing2D<RENDER_CHUNK_SIZE>(FacesBitArrays[Direction], Quads);
+		MESHER_TIME_INLINE(GreedyMeshing, GreedyMeshing2D<RENDER_CHUNK_SIZE>(FacesBitArrays[Direction], Quads));
 		
 		VOXEL_ASYNC_SCOPE_COUNTER("Add faces");
+		MESHER_TIME_SCOPE(AddFaces);
 		for (auto& Quad : Quads)
 		{
 			AddFace(Times, Direction, Quad, Step, Indices, Vertices, TextureData);
@@ -154,6 +156,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 	if (CollisionCubes && Settings.bSimpleCubicCollision && Indices.Num() > 0)
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("CollisionCubes");
+		MESHER_TIME_SCOPE(CollisionCubes);
 
 		FVoxelUtilities::TStaticSwitch<5>::Switch(Settings.SimpleCubicCollisionLODBias, [&](auto SimpleCubicCollisionLODBias)
 		{
