@@ -1,6 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelTools/VoxelPhysicsPartSpawner.h"
+#include "VoxelTools/VoxelPhysics.h"
 #include "VoxelData/VoxelDataUtilities.h"
 #include "VoxelWorld.h"
 #include "VoxelWorldRootComponent.h"

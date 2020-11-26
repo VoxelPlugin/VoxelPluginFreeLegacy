@@ -203,14 +203,15 @@ void AVoxelAssetActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (bSpawnNewVoxelWorld)
+	if (bSpawnNewVoxelWorld && PreviewWorld)
 	{
 		FActorSpawnParameters SpawnParameters;
 		SpawnParameters.Owner = this;
 		SpawnParameters.bDeferConstruction = true;
 		SpawnParameters.Template = PreviewWorld;
-		auto* VoxelWorld = GetWorld()->SpawnActor<AVoxelWorld>(SpawnParameters);
-
+		auto* VoxelWorld = GetWorld()->SpawnActor<AVoxelWorld>(PreviewWorld->GetClass(), SpawnParameters);
+		if (!ensure(VoxelWorld)) return;
+		
 		// Attach to ourselves
 		VoxelWorld->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
 		VoxelWorld->SetActorRelativeTransform(FTransform::Identity);
