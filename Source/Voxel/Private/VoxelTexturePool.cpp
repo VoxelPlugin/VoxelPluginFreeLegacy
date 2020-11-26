@@ -436,7 +436,7 @@ void FVoxelTexturePool::FEntry::CopyDataToTexture(bool bJustClearData) const
 
 			if (!TextureRHI)
 			{
-				ensure(GIsRequestingExit);
+				ensure(UE_24_SWITCH(GIsRequestingExit, IsEngineExitRequested()));
 				return;
 			}
 

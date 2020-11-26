@@ -13,6 +13,7 @@ class UStaticMesh;
 class UMaterialInterface;
 class FVoxelData;
 class AVoxelWorld;
+struct FVoxelFloatingPart;
 
 USTRUCT(BlueprintType)
 struct FVoxelPositionValueMaterial
