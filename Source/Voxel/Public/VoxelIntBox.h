@@ -458,6 +458,10 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return FVoxelIntBox(Min + Position, Max + Position);
 	}
+	FORCEINLINE FVoxelIntBox ShiftBy(const FIntVector& Offset) const
+	{
+		return Translate(Offset);
+	}
 	
 	FORCEINLINE FVoxelIntBox RemoveTranslation() const
 	{

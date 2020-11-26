@@ -13,6 +13,7 @@
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelGenerators/VoxelEmptyGenerator.h"
 #include "VoxelWorld.h"
+#include "VoxelWorldRootComponent.h"
 #include "VoxelPool.h"
 #include "VoxelMessages.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
@@ -42,6 +43,10 @@ void AVoxelAssetActor::AddItemToWorld(AVoxelWorld* World)
 {
 	check(World);
 
+	if (bSpawnNewVoxelWorld)
+	{
+		return;
+	}
 	if (World->GetPlayType() != EVoxelPlayType::Game)
 	{
 		return;
@@ -194,16 +199,51 @@ void AVoxelAssetActor::UpdatePreview()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#if WITH_EDITOR
 void AVoxelAssetActor::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	if (bSpawnNewVoxelWorld)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.Owner = this;
+		SpawnParameters.bDeferConstruction = true;
+		SpawnParameters.Template = PreviewWorld;
+		auto* VoxelWorld = GetWorld()->SpawnActor<AVoxelWorld>(SpawnParameters);
+
+		// Attach to ourselves
+		VoxelWorld->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+		VoxelWorld->SetActorRelativeTransform(FTransform::Identity);
+
+		// Setup physics
+		VoxelWorld->GetWorldRoot().BodyInstance.SetInstanceSimulatePhysics(bSimulatePhysics);
+		if (bSimulatePhysics && VoxelWorld->CollisionTraceFlag == CTF_UseComplexAsSimple)
+		{
+			VoxelWorld->CollisionTraceFlag = CTF_UseSimpleAndComplex;
+		}
+
+		// Setup LOD
+		const FVoxelIntBox ItemBounds = AddItemToData(VoxelWorld, nullptr);
+		VoxelWorld->SetRenderOctreeDepth(FVoxelUtilities::GetOctreeDepthContainingBounds<RENDER_CHUNK_SIZE>(ItemBounds));
+		VoxelWorld->MaxLOD = 0;
+		VoxelWorld->bConstantLOD = true;
+
+		// Finish spawning & create world
+		VoxelWorld->bCreateWorldAutomatically = false;
+		VoxelWorld->FinishSpawning({}, true);
+		VoxelWorld->CreateWorld();
+
+		AddItemToData(VoxelWorld, &VoxelWorld->GetData());
+	}
+
+#if WITH_EDITOR
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	PrimaryActorTick.SetTickFunctionEnable(false);
+#endif
 }
 
+#if WITH_EDITOR
 void AVoxelAssetActor::BeginDestroy()
 {
 	Super::BeginDestroy();
@@ -384,6 +424,9 @@ void AVoxelAssetActor::CreatePreview()
 	// Aggressive merge settings
 	RendererSettings.bMergeChunks = true;
 	RendererSettings.ChunksClustersSize = 256;
+
+	// We do want collision to be able to place items on top of asset actors, but only complex one is needed
+	RendererSettings.CollisionTraceFlag = CTF_UseComplexAsSimple;
 	
 	Renderer = FVoxelDefaultRenderer::Create(RendererSettings);
 	
@@ -398,7 +441,7 @@ void AVoxelAssetActor::CreatePreview()
 		FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD),
 		MaxPreviewChunks,
 		true,
-		false,
+		true,
 		false))
 	{
 		PreviewLOD++;

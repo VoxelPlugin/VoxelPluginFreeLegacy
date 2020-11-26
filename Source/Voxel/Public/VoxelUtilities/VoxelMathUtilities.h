@@ -43,13 +43,6 @@ namespace FVoxelUtilities
 	}
 
 	template<uint32 ChunkSize>
-	inline int32 GetDepthFromBounds(const FVoxelIntBox& Bounds)
-	{
-		CHECK_CHUNK_SIZE();
-		return GetDepthFromSize<ChunkSize>(Bounds.Size().GetMax());
-	}
-
-	template<uint32 ChunkSize>
 	inline FVoxelIntBox GetBoundsFromDepth(int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
@@ -74,7 +67,7 @@ namespace FVoxelUtilities
 		return FVoxelIntBox(Position, Position + FIntVector(ChunkSize << Depth));
 	}
 
-	// Valid for root node only
+	// Valid only to compute the depth of the root node (or of the entire tree_
 	template<uint32 ChunkSize>
 	inline int32 GetOctreeDepthContainingBounds(const FVoxelIntBox& Bounds)
 	{

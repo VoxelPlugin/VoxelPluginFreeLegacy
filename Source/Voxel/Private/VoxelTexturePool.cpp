@@ -434,8 +434,9 @@ void FVoxelTexturePool::FEntry::CopyDataToTexture(bool bJustClearData) const
 			const FTexture2DRHIRef TextureRHI = Resource->GetTexture2DRHI();
 			const uint8* const EndData = Data + Slot.Num * sizeof(FColor);
 
-			if (!ensure(TextureRHI))
+			if (!TextureRHI)
 			{
+				ensure(GIsRequestingExit);
 				return;
 			}
 

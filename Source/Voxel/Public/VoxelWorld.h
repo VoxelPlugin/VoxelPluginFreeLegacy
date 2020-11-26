@@ -172,7 +172,7 @@ public:
 	bool bCreateWorldAutomatically = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General", meta = (DisplayName = "Use camera if no invokers found"))
-	bool bUseCameraIfNoInvokersFound = false;
+	bool bUseCameraIfNoInvokersFound = true;
 	
 	// Keep all the changes in memory to enable undo/redo. Can be expensive
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General", meta = (Recreate))

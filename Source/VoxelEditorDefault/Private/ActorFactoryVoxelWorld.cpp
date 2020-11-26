@@ -20,7 +20,6 @@ void UActorFactoryVoxelWorld::PostSpawnActor(UObject* Asset, AActor* NewActor)
 
 	AVoxelWorld* VoxelWorld = CastChecked<AVoxelWorld>(NewActor);
 	VoxelWorld->bCreateWorldAutomatically = true;
-	VoxelWorld->bUseCameraIfNoInvokersFound = true;
 	VoxelWorld->SetGeneratorClass(UVoxelFlatGenerator::StaticClass());
 	VoxelWorld->MaterialConfig = EVoxelMaterialConfig::RGB;
 	VoxelWorld->MaterialCollection = FVoxelExampleUtilities::LoadExampleObject<UVoxelMaterialCollectionBase>(TEXT("/Voxel/Examples/Materials/Quixel/MC_Quixel"));
