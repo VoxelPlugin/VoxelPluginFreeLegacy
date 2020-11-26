@@ -27,7 +27,7 @@ TAutoConsoleVariable<int32> CVarVoxelThreadingNumThreads(
 
 TAutoConsoleVariable<int32> CVarVoxelThreadingThreadPriority(
 	TEXT("voxel.threading.ThreadPriority"),
-	0,
+	2,
 	TEXT(
 		"0: Normal"
 		"1: AboveNormal"

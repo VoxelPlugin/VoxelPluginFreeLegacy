@@ -61,13 +61,13 @@ void FVoxelDataOctreeBase::GetFromGeneratorAndAssets(const FVoxelGeneratorInstan
 	for (int32 Index = Assets.Num() - 1; Index >= 0; Index--)
 	{
 		auto& Asset = *Assets[Index];
-		if (QueryZone.Bounds.Contains(Asset.Bounds))
+		if (Asset.Bounds.Contains(QueryZone.Bounds))
 		{
 			VOXEL_SLOW_SCOPE_COUNTER("Query Asset");
 			Asset.Generator->Get_Transform<T>(Asset.LocalToWorld, QueryZone, LOD, FVoxelItemStack(*ItemHolder, Generator, Index));
 			return;
 		}
-		if (QueryZone.Bounds.Intersect(Asset.Bounds))
+		if (Asset.Bounds.Intersect(QueryZone.Bounds))
 		{
 			break;
 		}

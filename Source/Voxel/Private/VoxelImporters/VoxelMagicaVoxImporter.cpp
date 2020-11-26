@@ -239,15 +239,6 @@ void AVoxelMagicaVoxSceneActor::ApplyVoxelSize()
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	if (VoxelWorld && VoxelWorld->VoxelSize != VoxelSize)
-	{
-		VoxelWorld->VoxelSize = VoxelSize;
-#if WITH_EDITOR
-		FPropertyChangedEvent PropertyChangedEvent(AVoxelWorld::StaticClass()->FindPropertyByName(GET_MEMBER_NAME_STATIC(AVoxelWorld, VoxelSize)));
-		VoxelWorld->PostEditChangeProperty(PropertyChangedEvent);
-#endif
-	}
-	
 	for (auto It = ActorTransforms.CreateIterator(); It; ++It)
 	{
 		AVoxelAssetActor* Actor = It.Key();
@@ -268,6 +259,17 @@ void AVoxelMagicaVoxSceneActor::ApplyVoxelSize()
 		Transform.SetTranslation(Transform.GetTranslation() * VoxelSize);
 		Actor->SetActorTransform(Transform * GetTransform());
 		Actor->ClampTransform();
+	}
+
+	// Make sure to do that AFTER fixing up the transforms
+	// Else updates are triggered with the wrong settings
+	if (VoxelWorld && VoxelWorld->VoxelSize != VoxelSize)
+	{
+		VoxelWorld->VoxelSize = VoxelSize;
+#if WITH_EDITOR
+		FPropertyChangedEvent PropertyChangedEvent(AVoxelWorld::StaticClass()->FindPropertyByName(GET_MEMBER_NAME_STATIC(AVoxelWorld, VoxelSize)));
+		VoxelWorld->PostEditChangeProperty(PropertyChangedEvent);
+#endif
 	}
 }
 

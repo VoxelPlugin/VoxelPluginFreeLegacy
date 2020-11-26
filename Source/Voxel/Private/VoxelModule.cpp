@@ -12,6 +12,7 @@
 #include "ShaderCore.h"
 #include "Misc/PackageName.h"
 #include "Misc/MessageDialog.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Modules/ModuleManager.h"
 
 void FVoxelModule::StartupModule()
@@ -30,6 +31,8 @@ void FVoxelModule::StartupModule()
 	GVoxelDebugManager = new FVoxelGlobalDebugManager();
 
 	FVoxelStartupPopup::OnModuleStartup();
+	
+	ApplyCVarSettingsFromIni(TEXT("/Script/Voxel.VoxelSettings"), *GEngineIni, ECVF_SetByProjectSetting);
 	
 	{
 		const auto Plugin = IPluginManager::Get().FindPlugin(VOXEL_PLUGIN_NAME);
