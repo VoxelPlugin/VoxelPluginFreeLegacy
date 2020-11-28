@@ -1648,14 +1648,16 @@ void AVoxelWorld::OnApplyObjectToActor(UObject* Object, AActor* Actor)
 		return;
 	}
 
-	if (auto* CastedObject = Cast<UMaterialInterface>(Object))
+	auto* Material = Cast<UMaterialInterface>(Object);
+	if (!Material || Material->GetMaterial()->MaterialDomain != MD_Surface)
 	{
-		MarkPackageDirty();
-		
-		VoxelMaterial = CastedObject;
-		MaterialConfig = EVoxelMaterialConfig::RGB;
-		RecreateRender();
+		return;
 	}
+	
+	VoxelMaterial = Material;
+	MaterialConfig = EVoxelMaterialConfig::RGB;
+	RecreateRender();
+	MarkPackageDirty();
 }
 
 void IVoxelWorldEditor::SetVoxelWorldEditor(TSharedPtr<IVoxelWorldEditor> InVoxelWorldEditor)

@@ -770,7 +770,7 @@ void FVoxelProceduralMeshSceneProxy::DrawSection(
 	bool bEnableTessellation,
 	bool bWireframe) const
 {
-	VOXEL_RENDER_FUNCTION_COUNTER();
+	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	check(MaterialRenderProxy);
 	check(Section.RenderData.IsValid());

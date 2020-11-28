@@ -4,7 +4,6 @@
 #include "VoxelMinimal.h"
 #include "VoxelWorld.h"
 
-#include "PhysXIncludes.h"
 #include "PrimitiveSceneProxy.h"
 #include "Engine/Engine.h"
 #include "Materials/Material.h"
@@ -14,27 +13,6 @@ static TAutoConsoleVariable<int32> CVarShowWireframeCollision(
 	0,
 	TEXT("If true, will show the collision as wireframe in the player collision view"),
 	ECVF_Default);
-
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-UVoxelWorldRootComponent::FSimpleCollisionDataRef::FSimpleCollisionDataRef(FVoxelSimpleCollisionData&& Data)
-	: Data(MoveTemp(Data))
-{
-	ensure(Data.Bounds.IsValid);
-	ensure(Data.ConvexElems.Num() == Data.ConvexMeshes.Num());
-	for (auto* ConvexMesh : Data.ConvexMeshes)
-	{
-		ConvexMesh->acquireReference();
-	}
-}
-
-UVoxelWorldRootComponent::FSimpleCollisionDataRef::~FSimpleCollisionDataRef()
-{
-	for (auto* ConvexMesh : Data.ConvexMeshes)
-	{
-		ConvexMesh->release();
-	}
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -78,6 +56,15 @@ TArray<URuntimeVirtualTexture*> const& UVoxelWorldRootComponent::GetRuntimeVirtu
 	// Disable RVT support on that component
 	static TArray<URuntimeVirtualTexture*> Textures;
 	return Textures;
+}
+
+void UVoxelWorldRootComponent::OnDestroyPhysicsState()
+{
+	Super::OnDestroyPhysicsState();
+	
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
+	ProcMeshesSimpleCollision.Reset();
+#endif
 }
 
 void UVoxelWorldRootComponent::TickWorldRoot()
@@ -146,7 +133,7 @@ void UVoxelWorldRootComponent::UpdateSimpleCollision(FVoxelProcMeshComponentId I
 		return;
 	}
 
-	ProcMeshesSimpleCollision.Add(Id, MakeUnique<FSimpleCollisionDataRef>(MoveTemp(SimpleCollision)));
+	ProcMeshesSimpleCollision.Add(Id, MakeUnique<FVoxelSimpleCollisionData>(MoveTemp(SimpleCollision)));
 	bRebuildQueued = true;
 }
 
@@ -160,7 +147,7 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
 		FBox LocalBox(ForceInit);
 		for (auto& It : ProcMeshesSimpleCollision)
 		{
-			LocalBox += It.Value->Data.Bounds;
+			LocalBox += It.Value->Bounds;
 		}
 		LocalBounds = LocalBox.IsValid ? FBoxSphereBounds(LocalBox) : FBoxSphereBounds(ForceInit); // fallback to reset box sphere bounds
 		UpdateBounds();
@@ -180,7 +167,7 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
         VOXEL_SCOPE_COUNTER("Count");
         for (auto& It : ProcMeshesSimpleCollision)
         {
-            const FVoxelSimpleCollisionData& Data = It.Value->Data;
+            const FVoxelSimpleCollisionData& Data = *It.Value;
             NumBoxElements += Data.BoxElems.Num();
             NumConvexElements += Data.ConvexElems.Num();
         }
@@ -208,7 +195,7 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
         VOXEL_SCOPE_COUNTER("Create");
         for (auto& It : ProcMeshesSimpleCollision)
         {
-            const FVoxelSimpleCollisionData& Data = It.Value->Data;
+            const FVoxelSimpleCollisionData& Data = *It.Value;
 
 			BoxElems.Append(Data.BoxElems);
 
@@ -217,7 +204,7 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
                 FKConvexElem& NewElement = ConvexElems.Emplace_GetRef();
                 // No need to copy the vertices
                 NewElement.ElemBox = Data.ConvexElems[Index].ElemBox;
-                NewElement.SetConvexMesh(Data.ConvexMeshes[Index]);
+                NewElement.SetConvexMesh(Data.ConvexMeshes[Index].Get());
             }
         }
     }
