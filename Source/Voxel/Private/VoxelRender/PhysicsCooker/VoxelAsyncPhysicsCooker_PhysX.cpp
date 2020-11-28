@@ -338,11 +338,13 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
         }
 
 		// Finally, create the physx data
-	    for (auto& Element : ConvexElems)
+	    for (FKConvexElem& Element : ConvexElems)
 	    {
 			VOXEL_ASYNC_SCOPE_COUNTER("CreateConvex");
-            physx::PxConvexMesh*& Mesh = CookResult.SimpleCollisionData.ConvexMeshes.Add_GetRef(nullptr);
+	    	
+			PxConvexMesh* Mesh = nullptr;
 		    const EPhysXCookingResult Result = PhysXCooking->CreateConvex(PhysXFormat, GetCookFlags(), Element.VertexData, Mesh);
+	    	
 		    switch (Result)
 		    {
 		    case EPhysXCookingResult::Failed:
@@ -359,6 +361,8 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
 		    case EPhysXCookingResult::Succeeded: break;
 		    default: ensure(false);
 		    }
+
+	    	CookResult.SimpleCollisionData.ConvexMeshes.Add(Mesh);
 	    }
 
 		// And update bounds
