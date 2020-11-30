@@ -242,14 +242,17 @@ FVoxelMesherStats FVoxelMesherStats::Singleton;
 FVoxelMesherBase::FVoxelMesherBase(
 	int32 LOD,
 	const FIntVector& ChunkPosition,
-	const FVoxelRendererSettings& Settings,
+	const IVoxelRenderer& Renderer,
+	const FVoxelData& Data,
 	bool bIsTransitions)
 	: LOD(LOD)
 	, Step(1 << LOD)
 	, Size(RENDER_CHUNK_SIZE << LOD)
 	, ChunkPosition(ChunkPosition)
-	, Settings(Settings)
-	, Data(*Settings.Data)
+	, Settings(Renderer.Settings)
+	, DynamicSettings(*Renderer.DynamicSettings)
+	, Data(Data)
+	, Renderer(Renderer)
 	, bIsTransitions(bIsTransitions)
 {
 }
@@ -277,7 +280,7 @@ bool FVoxelMesherBase::IsEmpty() const
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("DebugIsEmpty");
 		const FVoxelIntBox BoundsCopy(Bounds.Min, Bounds.Max - FIntVector(Step));
-		AsyncTask(ENamedThreads::GameThread, [WeakDebug = MakeVoxelWeakPtr(Settings.DebugManager), BoundsCopy, bIsEmpty]
+		AsyncTask(ENamedThreads::GameThread, [WeakDebug = MakeVoxelWeakPtr(Renderer.GetSubsystem<FVoxelDebugManager>()), BoundsCopy, bIsEmpty]
 			{
 				auto Debug = WeakDebug.Pin();
 				if (Debug.IsValid())
@@ -325,8 +328,9 @@ void FVoxelMesherBase::FinishCreatingChunk(FVoxelChunkMesh& Chunk) const
 FVoxelMesher::FVoxelMesher(
 	int32 LOD,
 	const FIntVector& ChunkPosition,
-	const FVoxelRendererSettings& Settings)
-	: FVoxelMesherBase(LOD, ChunkPosition, Settings, false)
+	const IVoxelRenderer& Renderer,
+	const FVoxelData& Data)
+	: FVoxelMesherBase(LOD, ChunkPosition, Renderer, Data, false)
 {
 }
 
@@ -371,7 +375,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesher::CreateFullChunk()
 		}
 
 		const double EndTime = FPlatformTime::Seconds();
-		FVoxelMesherStats::Report(Settings.World, LOD, EndTime - StartTime, Times, false, false);
+		FVoxelMesherStats::Report(Settings.World.Get(), LOD, EndTime - StartTime, Times, false, false);
 	}
 	
 	return Chunk;
@@ -410,9 +414,10 @@ void FVoxelMesher::CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vert
 FVoxelTransitionsMesher::FVoxelTransitionsMesher(
 	int32 LOD,
 	const FIntVector& ChunkPosition,
-	const FVoxelRendererSettings& Settings,
+	const IVoxelRenderer& Renderer,
+	const FVoxelData& Data,
 	uint8 TransitionsMask)
-	: FVoxelMesherBase(LOD, ChunkPosition, Settings, true)
+	: FVoxelMesherBase(LOD, ChunkPosition, Renderer, Data, true)
 	, TransitionsMask(TransitionsMask)
 	, HalfLOD(LOD - 1)
 	, HalfStep(Step / 2)

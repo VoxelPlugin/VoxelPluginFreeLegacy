@@ -354,7 +354,7 @@ bool AVoxelAssetActor::CanEditChange(const FProperty* InProperty) const
 #if WITH_EDITOR
 bool AVoxelAssetActor::IsPreviewCreated() const
 {
-	return Data.IsValid();
+	return Runtime.IsValid();
 }
 
 void AVoxelAssetActor::CreatePreview()
@@ -365,12 +365,10 @@ void AVoxelAssetActor::CreatePreview()
 	if (!ensure(Generator.IsValid())) return;
 	if (!ensure(!IsPreviewCreated())) return;
 
-	// Do that now as sometimes this is called before AVoxelWorld::BeginPlay
-	PreviewWorld->UpdateDynamicRendererSettings();
-
 	PrimitiveComponent->SetWorldTransform(PreviewWorld->GetTransform());
 	const FVoxelIntBox Bounds = AddItemToData(PreviewWorld, nullptr);
 
+	TVoxelSharedPtr<FVoxelData> Data;
 	{
 		bool bIsGeneratorSubtractive = bSubtractiveAsset;
 		if (bImportAsReference)
@@ -399,46 +397,24 @@ void AVoxelAssetActor::CreatePreview()
 		MergeMode = RealMergeMode;
 	}
 
-	const auto Pool = FVoxelPool::Create({}, {});
-	
-	DebugManager = FVoxelDebugManager::Create(FVoxelDebugManagerSettings(
-		PreviewWorld,
-		EVoxelPlayType::Preview,
-		Pool,
-		Data.ToSharedRef(),
-		true));
-
-	auto RendererSettings = FVoxelRendererSettings(
-		PreviewWorld,
-		EVoxelPlayType::Preview,
-		PrimitiveComponent,
-		Data.ToSharedRef(),
-		Pool,
-		nullptr,
-		// Reuse the voxel world texture pool if possible, to avoid having one texture per asset actor
-		PreviewWorld->IsCreated()
-		? PreviewWorld->GetTexturePoolSharedPtr().ToSharedRef()
-		: FVoxelTexturePool::Create(FVoxelTexturePoolSettings(PreviewWorld, EVoxelPlayType::Preview)),
-		DebugManager.ToSharedRef(),
-		true);
-
+	FVoxelRuntimeSettings Settings;
+	Settings.SetFromRuntime(*PreviewWorld);
+	Settings.ConfigurePreview();
+	Settings.DataOverride = Data;
+	Settings.bDisableDebugManager = true;
 	// Aggressive merge settings
-	RendererSettings.bMergeChunks = true;
-	RendererSettings.ChunksClustersSize = 256;
-
+	Settings.bMergeChunks = true;
+	Settings.ChunksClustersSize = 256;
 	// We do want collision to be able to place items on top of asset actors, but only complex one is needed
-	RendererSettings.CollisionTraceFlag = CTF_UseComplexAsSimple;
+	Settings.CollisionTraceFlag = CTF_UseComplexAsSimple;
+	Settings.LODSubsystem = FVoxelFixedResolutionLODManager::StaticClass();
 	
-	Renderer = FVoxelDefaultRenderer::Create(RendererSettings);
-	
-	LODManager = FVoxelFixedResolutionLODManager::Create(
-		FVoxelLODSettings(PreviewWorld,
-			EVoxelPlayType::Preview,
-			Renderer.ToSharedRef(),
-			Pool,
-			Data.Get()));
+	Runtime = FVoxelRuntime::Create(Settings);
+	Runtime->DynamicSettings->SetFromRuntime(*PreviewWorld);
+	Runtime->DynamicSettings->ConfigurePreview();
 
-	while (ensure(PreviewLOD < 24) && !LODManager->Initialize(
+	auto& LODManager = *Runtime->GetSubsystemChecked<FVoxelFixedResolutionLODManager>();
+	while (ensure(PreviewLOD < 24) && !LODManager.Initialize(
 		FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD),
 		MaxPreviewChunks,
 		true,
@@ -453,16 +429,7 @@ void AVoxelAssetActor::DestroyPreview()
 {
 	if (!ensure(IsPreviewCreated())) return;
 	
-	Data.Reset();
-
-	DebugManager->Destroy();
-	FVoxelUtilities::DeleteTickable(GetWorld(), DebugManager);
-
-	Renderer->Destroy();
-	FVoxelUtilities::DeleteTickable(GetWorld(), Renderer);
-
-	LODManager->Destroy();
-	FVoxelUtilities::DeleteTickable(GetWorld(), LODManager);
+	Runtime.Reset();
 
 	auto Components = GetComponents(); // need a copy as we are modifying it when destroying comps
 	for (auto& Component : Components)

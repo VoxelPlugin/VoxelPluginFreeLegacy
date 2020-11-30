@@ -64,6 +64,12 @@ struct FVoxelPriorityHandler
 		, InvokersPositions(InvokersPositions)
 	{
 	}
+	template<typename T>
+	FVoxelPriorityHandler(const FVoxelIntBox& Bounds, const T& Subsystem)
+		: Bounds(Bounds)
+		, InvokersPositions(Subsystem.RuntimeData->InvokersPositionsForPriorities)
+	{
+	}
 
 	uint32 GetPriority() const
 	{

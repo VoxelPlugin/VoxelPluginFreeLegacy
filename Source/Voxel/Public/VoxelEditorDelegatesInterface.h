@@ -3,19 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/Interface.h"
-#include "VoxelEditorDelegatesInterface.generated.h"
 
-UINTERFACE(BlueprintType)
-class VOXEL_API UVoxelEditorDelegatesInterface : public UInterface
+class VOXEL_API IVoxelEditorDelegatesInterface
 {
-	GENERATED_BODY()
-};
-
-class VOXEL_API IVoxelEditorDelegatesInterface : public IInterface
-{
-	GENERATED_BODY()
-	
 public:
 #if WITH_EDITOR
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FBindEditorDelegates, IVoxelEditorDelegatesInterface*, UObject*);
@@ -26,6 +16,7 @@ public:
 		BindEditorDelegatesDelegate.Broadcast(this, Self);
 	}
 	
+	virtual ~IVoxelEditorDelegatesInterface() = default;
 	virtual void OnPreSaveWorld(uint32 SaveFlags, UWorld* World) {}
 	virtual void OnPreBeginPIE(bool bIsSimulating) {}
 	virtual void OnEndPIE(bool bIsSimulating) {}

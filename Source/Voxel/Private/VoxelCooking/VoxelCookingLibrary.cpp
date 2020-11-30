@@ -166,32 +166,21 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 		return {};
 	}
 
-	AVoxelWorld* VoxelWorld = NewObject<AVoxelWorld>();
-	VoxelWorld->RenderOctreeDepth = Settings.RenderOctreeDepth;
-	VoxelWorld->VoxelSize = Settings.VoxelSize;
-	VoxelWorld->RenderType = Settings.RenderType;
-	VoxelWorld->Generator = Settings.Generator;
+	FVoxelRuntimeSettings RuntimeSettings;
+	RuntimeSettings.RenderOctreeDepth = Settings.RenderOctreeDepth;
+	RuntimeSettings.VoxelSize = Settings.VoxelSize;
+	RuntimeSettings.RenderType = Settings.RenderType;
+	RuntimeSettings.Generator = Settings.Generator;
 
-	const auto Pool = FVoxelPool::Create({}, {});
-	const auto Data = FVoxelData::Create(FVoxelDataSettings(VoxelWorld, EVoxelPlayType::Game));
-	const auto DebugManager = FVoxelDebugManager::Create(FVoxelDebugManagerSettings(VoxelWorld, EVoxelPlayType::Game, Pool, Data));
-	const auto TexturePool = FVoxelTexturePool::Create(FVoxelTexturePoolSettings(VoxelWorld, EVoxelPlayType::Game));
-
+	const auto Runtime = FVoxelRuntime::Create(RuntimeSettings);
+	const auto Data = Runtime->GetSubsystemChecked<FVoxelDataSubsystem>()->GetDataPtr();
+	const auto Pool = Runtime->GetSubsystemChecked<FVoxelPool>();
+	const auto Renderer = Runtime->GetSubsystemChecked<IVoxelRenderer>();
+	
 	if (Save)
 	{
 		Data->LoadFromSave(*Save, {});
 	}
-
-	const auto Renderer = FVoxelDefaultRenderer::Create(FVoxelRendererSettings(
-		VoxelWorld,
-		EVoxelPlayType::Game,
-		nullptr,
-		Data,
-		Pool,
-		nullptr,
-		TexturePool,
-		DebugManager,
-		false));
 
 	const FIntVector Min = Data->WorldBounds.Min;
 	const FIntVector Max = Data->WorldBounds.Max;
@@ -247,9 +236,6 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 #else
 	ensure(false);
 #endif
-	
-	Renderer->Destroy();
-	DebugManager->Destroy();
 	
 	return CookedData;
 }

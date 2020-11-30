@@ -1,41 +1,34 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelPool.h"
-#include "VoxelMinimal.h"
 #include "VoxelThreadPool.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
-FVoxelPool::FVoxelPool(
-	const TMap<EVoxelTaskType, int32>& InPriorityCategories,
-	const TMap<EVoxelTaskType, int32>& InPriorityOffsets)
-{
-	for (int32 Index = 0; Index < 256; Index++)
-	{
-		const_cast<TVoxelStaticArray<uint32, 256>&>(PriorityCategories)[Index] = InPriorityCategories.FindRef(EVoxelTaskType(Index));
-		const_cast<TVoxelStaticArray<uint32, 256>&>(PriorityOffsets)[Index] = InPriorityOffsets.FindRef(EVoxelTaskType(Index));
-	}
-}
+DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelPoolSubsystemProxy);
 
-TVoxelSharedRef<FVoxelPool> FVoxelPool::Create(
-	const TMap<EVoxelTaskType, int32>& PriorityCategories,
-	const TMap<EVoxelTaskType, int32>& PriorityOffsets)
+void FVoxelPool::Create()
 {
-	auto FixedPriorityCategories = PriorityCategories;
-	auto FixedPriorityOffsets = PriorityOffsets;
+	Super::Create();
+	
+	auto FixedPriorityCategories = Settings.PriorityCategories;
+	auto FixedPriorityOffsets = Settings.PriorityOffsets;
 	FixPriorityCategories(FixedPriorityCategories);
 	FixPriorityOffsets(FixedPriorityOffsets);
 	
-	return MakeShareable(new FVoxelPool(
-		FixedPriorityCategories,
-		FixedPriorityOffsets));
+	for (int32 Index = 0; Index < 256; Index++)
+	{
+		PriorityCategories[Index] = FixedPriorityCategories.FindRef(EVoxelTaskType(Index));
+		PriorityOffsets[Index] = FixedPriorityOffsets.FindRef(EVoxelTaskType(Index));
+	}
 }
 
-void FVoxelPool::QueueTask(IVoxelQueuedWork* Task)
+void FVoxelPool::QueueTask(IVoxelQueuedWork* Task) const
 {
 	const EVoxelTaskType Type = Task->TaskType;
 	GVoxelThreadPool->AddQueuedWorks(TVoxelStaticArray<IVoxelQueuedWork*, 1>{ Task }, PriorityCategories[uint8(Type)], PriorityOffsets[uint8(Type)], Type);
 }
 
-void FVoxelPool::QueueTasks(EVoxelTaskType Type, const TArray<IVoxelQueuedWork*>& Tasks)
+void FVoxelPool::QueueTasks(EVoxelTaskType Type, const TArray<IVoxelQueuedWork*>& Tasks) const
 {
 	GVoxelThreadPool->AddQueuedWorks(Tasks, PriorityCategories[uint8(Type)], PriorityOffsets[uint8(Type)], Type);
 }

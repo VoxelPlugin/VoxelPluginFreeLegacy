@@ -43,6 +43,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelGreedyCubicMesher::CreateFullChunkImpl(FV
 	
 	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		DynamicSettings,
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(Vertices),

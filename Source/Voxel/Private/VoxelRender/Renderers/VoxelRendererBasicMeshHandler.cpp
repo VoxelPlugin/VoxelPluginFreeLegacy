@@ -35,7 +35,7 @@ public:
 private:
 	const FVoxelRendererBasicMeshHandler::FChunkInfoRef ChunkInfoRef;
 	const FIntVector Position;
-	const FVoxelRendererSettingsBase RendererSettings;
+	const FVoxelRuntimeSettings Settings;
 	const TVoxelWeakPtr<FVoxelRendererBasicMeshHandler> Handler;
 
 	const FVoxelChunkMeshesToBuild MeshesToBuild;
@@ -51,8 +51,8 @@ private:
 		: FVoxelAsyncWork(STATIC_FNAME("FVoxelBasicMeshMergeWork"), EVoxelTaskType::MeshMerge, EPriority::Null, true)
 		, ChunkInfoRef(Ref)
 		, Position(Position)
-		, RendererSettings(static_cast<const FVoxelRendererSettingsBase&>(Handler.Renderer.Settings))
-		, Handler(StaticCastVoxelSharedRef<FVoxelRendererBasicMeshHandler>(Handler.AsShared()))
+		, Settings(Handler.Renderer.Settings)
+		, Handler(StaticCastSharedRef<FVoxelRendererBasicMeshHandler>(Handler.AsShared()))
 		, MeshesToBuild(MoveTemp(MeshesToBuild))
 		, UpdateIndexPtr(UpdateIndexPtr)
 		, UpdateIndex(UpdateIndexPtr->GetValue())
@@ -67,7 +67,7 @@ private:
 			// Canceled
 			return;
 		}
-		auto BuiltMeshes = FVoxelRenderUtilities::BuildMeshes_AnyThread(MeshesToBuild, RendererSettings, Position, *UpdateIndexPtr, UpdateIndex);
+		auto BuiltMeshes = FVoxelRenderUtilities::BuildMeshes_AnyThread(MeshesToBuild, Settings, Position, *UpdateIndexPtr, UpdateIndex);
 		if (!BuiltMeshes.IsValid())
 		{
 			// Canceled
@@ -78,7 +78,6 @@ private:
 		{
 			// Queue callback
 			HandlerPinned->MeshMergeCallback(ChunkInfoRef, UpdateIndex, MoveTemp(BuiltMeshes));
-			FVoxelUtilities::DeleteOnGameThread_AnyThread(HandlerPinned);
 		}
 	}
 };
@@ -130,17 +129,16 @@ void FVoxelRendererBasicMeshHandler::ApplyAction(const FAction& Action)
 		FVoxelChunkMeshesToBuild MeshesToBuild = FVoxelRenderUtilities::GetMeshesToBuild(
 			ChunkInfo.LOD,
 			ChunkInfo.Position,
-			Renderer.Settings,
+			Renderer,
 			Action.UpdateChunk().InitialCall.ChunkSettings,
 			*ChunkInfo.Materials,
 			MainChunk,
 			TransitionChunk,
-			Renderer.OnMaterialInstanceCreated,
 			ChunkInfo.DitheringInfo);
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelBasicMeshMergeWork::Create(*this, { Action.ChunkId, ChunkInfo.UniqueId }, MoveTemp(MeshesToBuild));
-		Renderer.Settings.Pool->QueueTask(Task);
+		Renderer.GetSubsystemChecked<FVoxelPool>()->QueueTask(Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;
@@ -189,7 +187,7 @@ void FVoxelRendererBasicMeshHandler::Tick(double MaxTime)
 	FlushBuiltDataQueue();
 	FlushActionQueue(MaxTime);
 
-	Renderer.Settings.DebugManager->ReportMeshActionQueueNum(ActionQueue.Num());
+	Renderer.GetSubsystemChecked<FVoxelDebugManager>()->ReportMeshActionQueueNum(ActionQueue.Num());
 }
 
 void FVoxelRendererBasicMeshHandler::FlushBuiltDataQueue()

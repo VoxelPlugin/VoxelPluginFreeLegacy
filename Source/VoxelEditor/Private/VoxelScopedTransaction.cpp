@@ -59,7 +59,7 @@ FVoxelDataSwapChange::FVoxelDataSwapChange(const TVoxelSharedRef<FVoxelData>& Da
 TUniquePtr<FChange> FVoxelDataSwapChange::Execute(UObject* Object)
 {
 	auto* VoxelWorld = Cast<AVoxelWorld>(Object);
-	if (!ensure(VoxelWorld))
+	if (!ensure(VoxelWorld) || !ensure(VoxelWorld->IsCreated()))
 	{
 		return nullptr;
 	}
@@ -73,14 +73,7 @@ TUniquePtr<FChange> FVoxelDataSwapChange::Execute(UObject* Object)
 	Info.DataOverride_Raw = Data;
 	VoxelWorld->CreateWorld(Info);
 	
-	if (!ensure(NewData.IsValid()))
-	{
-		return nullptr;
-	}
-	else
-	{
-		return MakeUnique<FVoxelDataSwapChange>(NewData.ToSharedRef(), Name);
-	}
+	return MakeUnique<FVoxelDataSwapChange>(NewData, Name);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -102,7 +95,7 @@ FVoxelScopedTransaction::FVoxelScopedTransaction(AVoxelWorld* World, FName Name,
 		else
 		{
 			check(ChangeType == EVoxelChangeType::DataSwap);
-			GUndo->StoreUndo(World, MakeUnique<FVoxelDataSwapChange>(World->GetDataSharedPtr().ToSharedRef(), Name));
+			GUndo->StoreUndo(World, MakeUnique<FVoxelDataSwapChange>(World->GetDataSharedPtr(), Name));
 		}
 	}
 }

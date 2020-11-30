@@ -66,7 +66,16 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 	//	World->UpdateCollisionProfile();
 	//	World->PostEditChange();
 	//}
-		
+
+	const auto HideRuntimeProperty = [&](FName Name)
+	{
+		DetailLayout.HideProperty(Name, AVoxelRuntimeActor::StaticClass());
+	};
+	const auto GetRuntimeProperty = [&](FName Name)
+	{
+		return DetailLayout.GetProperty(Name, AVoxelRuntimeActor::StaticClass());
+	};
+	
 	// Material config specific setup
 	if (Objects.Num() == 1)
 	{
@@ -74,18 +83,18 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		switch (World->MaterialConfig)
 		{
 		case EVoxelMaterialConfig::RGB:
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialCollection));
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, LODMaterialCollections));
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, MaterialCollection));
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, LODMaterialCollections));
 			if (World->RGBHardness != EVoxelRGBHardness::FourWayBlend && World->RGBHardness != EVoxelRGBHardness::FiveWayBlend)
 			{
-				DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialsHardness));
+				HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, MaterialsHardness));
 			}
 			break;
 		case EVoxelMaterialConfig::SingleIndex:
 		case EVoxelMaterialConfig::MultiIndex:
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, VoxelMaterial));
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, LODMaterials));
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, RGBHardness));
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, VoxelMaterial));
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, LODMaterials));
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, RGBHardness));
 			break;
 		default:
 			ensure(false);
@@ -98,7 +107,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 			break;
 		case EVoxelUVConfig::PackWorldUpInUVs:
 		case EVoxelUVConfig::PerVoxelUVs:
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, UVScale));
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, UVScale));
 			break;
 		default:
 			ensure(false);
@@ -112,9 +121,9 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 				Properties.Pin()->ForceRefresh();
 			}
 		});
-		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, MaterialConfig))->SetOnPropertyValueChanged(RefreshDelegate);
-		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, UVConfig))->SetOnPropertyValueChanged(RefreshDelegate);
-		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, RGBHardness))->SetOnPropertyValueChanged(RefreshDelegate);
+		GetRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, MaterialConfig))->SetOnPropertyValueChanged(RefreshDelegate);
+		GetRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, UVConfig))->SetOnPropertyValueChanged(RefreshDelegate);
+		GetRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, RGBHardness))->SetOnPropertyValueChanged(RefreshDelegate);
 	}
 
 	DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, EditorOnly_NewScale));
@@ -122,16 +131,16 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 	if (bIsDataAssetEditor)
 	{
 		DetailLayout.HideCategory("Voxel - Save");
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, Generator));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bCreateWorldAutomatically));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bUseCameraIfNoInvokersFound));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bEnableUndoRedo));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bEnableCustomWorldRebasing));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bMergeAssetActors));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bMergeDisableEditsBoxes));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, ProcMeshClass));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bRenderWorld));
-		DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(AVoxelWorld, bStaticWorld));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, Generator));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bCreateWorldAutomatically));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bUseCameraIfNoInvokersFound));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bEnableUndoRedo));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bEnableCustomWorldRebasing));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bMergeAssetActors));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bMergeDisableEditsBoxes));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, ProcMeshClass));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bRenderWorld));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bStaticWorld));
 		DetailLayout.HideCategory("Voxel - Spawners");
 		DetailLayout.HideCategory("Physics");
 		DetailLayout.HideCategory("Voxel - Collisions");
@@ -191,6 +200,8 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		SortCategory("Voxel - Performance", Order++, true);
 		SortCategory("Voxel - Multiplayer", Order++, true);
 		SortCategory("Voxel - Bake", Order++, true);
+		SortCategory("Voxel - Debug", Order++, true);
+		SortCategory("Voxel - Subsystems", Order++, true);
 		SortCategory("Replication", Order++, true);
 		SortCategory("Input", Order++, true);
 		SortCategory("Actor", Order++, true);

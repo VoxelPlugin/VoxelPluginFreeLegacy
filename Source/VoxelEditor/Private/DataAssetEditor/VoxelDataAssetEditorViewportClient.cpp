@@ -35,7 +35,7 @@ TSharedRef<FVoxelDataAssetEditorViewportClient> FVoxelDataAssetEditorViewportCli
 		DataAssetEditorViewport));
 
 	check(VoxelWorld.IsCreated());
-	VoxelWorld.GetRenderer().OnWorldLoaded.AddSP(Result, &FVoxelDataAssetEditorViewportClient::ScheduleUpdateThumbnail);
+	VoxelWorld.GetRuntime().RuntimeData->OnWorldLoaded.AddSP(Result, &FVoxelDataAssetEditorViewportClient::ScheduleUpdateThumbnail);
 
 	return Result;
 }

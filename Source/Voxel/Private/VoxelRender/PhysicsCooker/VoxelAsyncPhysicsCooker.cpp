@@ -109,6 +109,5 @@ void IVoxelAsyncPhysicsCooker::PostDoWork()
 	if (Pinned.IsValid())
 	{
 		Pinned->CookerCallback(UniqueId, Component);
-		FVoxelUtilities::DeleteOnGameThread_AnyThread(Pinned);
 	}
 }

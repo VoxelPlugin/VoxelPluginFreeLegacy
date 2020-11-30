@@ -33,7 +33,7 @@ public:
 private:
 	const FVoxelRendererClusteredMeshHandler::FClusterRef ClusterRef;
 	const FIntVector Position;
-	const FVoxelRendererSettingsBase RendererSettings;
+	const FVoxelRuntimeSettings Settings;
 	const TVoxelWeakPtr<FVoxelRendererClusteredMeshHandler> Handler;
 
 	const TMap<uint64, TVoxelSharedPtr<const FVoxelChunkMeshesToBuild>> MeshesToBuild;
@@ -49,8 +49,8 @@ private:
 		: FVoxelAsyncWork(STATIC_FNAME("FVoxelClusteredMeshMergeWork"), EVoxelTaskType::MeshMerge, EPriority::Null, true)
 		, ClusterRef(ClusterRef)
 		, Position(Position)
-		, RendererSettings(static_cast<const FVoxelRendererSettingsBase&>(Handler.Renderer.Settings))
-		, Handler(StaticCastVoxelSharedRef<FVoxelRendererClusteredMeshHandler>(Handler.AsShared()))
+		, Settings(Handler.Renderer.Settings)
+		, Handler(StaticCastSharedRef<FVoxelRendererClusteredMeshHandler>(Handler.AsShared()))
 		, MeshesToBuild(MeshesToBuild)
 		, UpdateIndexPtr(UpdateIndexPtr)
 		, UpdateIndex(UpdateIndexPtr->GetValue())
@@ -78,7 +78,7 @@ private:
 				}
 			}
 		}
-		auto BuiltMeshes = FVoxelRenderUtilities::BuildMeshes_AnyThread(RealMap, RendererSettings, Position, *UpdateIndexPtr, UpdateIndex);
+		auto BuiltMeshes = FVoxelRenderUtilities::BuildMeshes_AnyThread(RealMap, Settings, Position, *UpdateIndexPtr, UpdateIndex);
 		if (!BuiltMeshes.IsValid())
 		{
 			// Canceled
@@ -89,7 +89,6 @@ private:
 		{
 			// Queue callback
 			HandlerPinned->MeshMergeCallback(ClusterRef, UpdateIndex, MoveTemp(BuiltMeshes));
-			FVoxelUtilities::DeleteOnGameThread_AnyThread(HandlerPinned);
 		}
 	}
 };
@@ -153,19 +152,18 @@ void FVoxelRendererClusteredMeshHandler::ApplyAction(const FAction& Action)
 		FVoxelChunkMeshesToBuild MeshesToBuild = FVoxelRenderUtilities::GetMeshesToBuild(
 			ChunkInfo.LOD,
 			ChunkInfo.Position,
-			Renderer.Settings,
+			Renderer,
 			Action.UpdateChunk().InitialCall.ChunkSettings,
 			*Cluster.Materials,
 			MainChunk,
 			TransitionChunk,
-			Renderer.OnMaterialInstanceCreated,
 			{});
 
 		Cluster.ChunkMeshesToBuild.FindOrAdd(ChunkInfo.UniqueId) = MakeVoxelShared<FVoxelChunkMeshesToBuild>(MoveTemp(MeshesToBuild));
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelClusteredMeshMergeWork::Create(*this, { ChunkInfo.ClusterId, Cluster.UniqueId });
-		Renderer.Settings.Pool->QueueTask(Task);
+		Renderer.GetSubsystemChecked<FVoxelPool>()->QueueTask(Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;
@@ -200,7 +198,7 @@ void FVoxelRendererClusteredMeshHandler::ApplyAction(const FAction& Action)
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelClusteredMeshMergeWork::Create(*this, { ChunkInfo.ClusterId, Cluster.UniqueId });
-		Renderer.Settings.Pool->QueueTask(Task);
+		Renderer.GetSubsystemChecked<FVoxelPool>()->QueueTask(Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;
@@ -244,7 +242,7 @@ void FVoxelRendererClusteredMeshHandler::Tick(double MaxTime)
 	FlushBuiltDataQueue();
 	FlushActionQueue(MaxTime);
 
-	Renderer.Settings.DebugManager->ReportMeshActionQueueNum(ActionQueue.Num());
+	Renderer.GetSubsystemChecked<FVoxelDebugManager>()->ReportMeshActionQueueNum(ActionQueue.Num());
 }
 
 FVoxelRendererClusteredMeshHandler::FClusterRef FVoxelRendererClusteredMeshHandler::FindOrCreateCluster(

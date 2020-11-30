@@ -13,22 +13,8 @@ DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelProcMeshMemory_UVsAndTangents);
 
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Num Voxel Proc Mesh Buffers"), STAT_NumVoxelProcMeshBuffers, STATGROUP_VoxelCounters);
 
-FVoxelProcMeshBuffers::FVoxelProcMeshBuffers(const TVoxelSharedRef<FVoxelRendererMemory>& Memory, const TArray<FVoxelChunkMeshSection>& SourceSections)
-	: Memory(Memory)
+FVoxelProcMeshBuffers::FVoxelProcMeshBuffers()
 {
-	for (auto& Section : SourceSections)
-	{
-		if (!LOD.IsSet())
-		{
-			LOD = Section.LOD;
-		}
-		else if (!ensure(LOD.GetValue() == Section.LOD))
-		{
-			LOD = {};
-			break;
-		}
-	}
-	
 	INC_DWORD_STAT(STAT_NumVoxelProcMeshBuffers);
 }
 
@@ -37,11 +23,7 @@ FVoxelProcMeshBuffers::~FVoxelProcMeshBuffers()
 	DEC_DWORD_STAT(STAT_NumVoxelProcMeshBuffers);
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory, LastAllocatedSize);
 
-	auto& LODStats = Memory->LODs[LOD.Get(31)];
-	
 #define UPDATE(Name) \
-	LODStats.Name.Subtract(LastAllocatedSize_ ## Name); \
-	ensure(LODStats.Name.GetValue() >= 0); \
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_ ##  Name, LastAllocatedSize_ ## Name);
 	
 	UPDATE(Indices);
@@ -71,15 +53,10 @@ void FVoxelProcMeshBuffers::UpdateStats()
 	LastAllocatedSize = GetAllocatedSize();
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory, LastAllocatedSize);
 
-	auto& LODStats = Memory->LODs[LOD.Get(31)];
-
 #define UPDATE(Name, Size) \
-	LODStats.Name.Subtract(LastAllocatedSize_ ## Name); \
-	ensure(LODStats.Name.GetValue() >= 0); \
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_ ## Name, LastAllocatedSize_ ## Name); \
 	LastAllocatedSize_ ## Name = Size; \
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelProcMeshMemory_ ## Name, LastAllocatedSize_ ## Name); \
-	LODStats.Name.Add(LastAllocatedSize_ ## Name); \
 
 	UPDATE(Indices, IndexBuffer.GetAllocatedSize());
 	UPDATE(Positions, VertexBuffers.PositionVertexBuffer.GetNumVertices() * VertexBuffers.PositionVertexBuffer.GetStride());

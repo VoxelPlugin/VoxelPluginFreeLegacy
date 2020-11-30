@@ -3,31 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelIntBox.h"
-#include "VoxelMinimal.h"
 #include "VoxelTickable.h"
 #include "Containers/Ticker.h"
-
-enum class EVoxelPlayType;
-class FVoxelPool;
-class FVoxelData;
-class AVoxelWorld;
-class UVoxelProceduralMeshComponent;
-
-struct FVoxelDebugManagerSettings
-{
-	const TWeakObjectPtr<AVoxelWorld> VoxelWorld;
-	const TVoxelSharedRef<FVoxelPool> Pool;
-	const TVoxelSharedRef<FVoxelData> Data;
-	const bool bDisabled;
-	
-	FVoxelDebugManagerSettings(
-		const AVoxelWorld* World,
-		EVoxelPlayType PlayType,
-		const TVoxelSharedRef<FVoxelPool>& Pool,
-		const TVoxelSharedRef<FVoxelData>& Data,
-		bool bDisabled = false);
-};
+#include "VoxelSubsystem.h"
+#include "VoxelDebugManager.generated.h"
 
 class VOXEL_API FVoxelGlobalDebugManager : public FTickerObjectBase
 {
@@ -39,13 +18,21 @@ public:
 
 extern VOXEL_API FVoxelGlobalDebugManager* GVoxelDebugManager;
 
-class VOXEL_API FVoxelDebugManager : public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDebugManager>
+UCLASS()
+class VOXEL_API UVoxelDebugSubsystemProxy : public UVoxelStaticSubsystemProxy
+{
+	GENERATED_BODY()
+	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelDebugManager);
+};
+
+class VOXEL_API FVoxelDebugManager : public IVoxelSubsystem, public FVoxelTickable
 {
 public:
-	const FVoxelDebugManagerSettings Settings;
-
-	static TVoxelSharedRef<FVoxelDebugManager> Create(const FVoxelDebugManagerSettings& Settings);
-	void Destroy();
+	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelDebugSubsystemProxy);
+	
+	//~ Begin IVoxelSubsystem Interface
+	virtual void Destroy() override;
+	//~ End IVoxelSubsystem Interface
 
 public:
 	void ReportUpdatedChunks(TFunction<TArray<FVoxelIntBox>()> InUpdatedChunks);
@@ -69,8 +56,6 @@ protected:
 	//~ End FVoxelTickable Interface
 
 private:
-	explicit FVoxelDebugManager(const FVoxelDebugManagerSettings& Settings);
-
 	TArray<FVoxelIntBox> UpdatedChunks;
 	TArray<FVoxelIntBox> RenderChunks;
 	TArray<FVoxelIntBox> MultiplayerSyncedChunks;

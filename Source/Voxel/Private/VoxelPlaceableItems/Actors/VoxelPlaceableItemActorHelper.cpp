@@ -166,7 +166,7 @@ void UVoxelPlaceableItemActorHelper::OnActorUpdated(TWeakObjectPtr<AVoxelDataIte
 
 	if (BoundsToUpdate.Num() > 0)
 	{
-		VoxelWorld.GetLODManager().UpdateBounds(BoundsToUpdate);
+		VoxelWorld.GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(BoundsToUpdate);
 
 		if (!Data.IsCurrentFrameEmpty())
 		{

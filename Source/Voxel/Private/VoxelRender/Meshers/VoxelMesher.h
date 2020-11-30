@@ -6,10 +6,12 @@
 #include "VoxelIntBox.h"
 #include "VoxelMinimal.h"
 
-struct FVoxelRendererSettings;
 struct FVoxelChunkMesh;
 class FVoxelData;
+class IVoxelRenderer;
 class FVoxelDataLockInfo;
+class FVoxelRuntimeSettings;
+class FVoxelRuntimeDynamicSettings;
 
 #if ENABLE_MESHER_STATS
 struct FVoxelScopedMesherTime
@@ -74,14 +76,17 @@ public:
 	const int32 Step;
 	const int32 Size;
 	const FIntVector ChunkPosition;
-	const FVoxelRendererSettings& Settings;
+	const FVoxelRuntimeSettings& Settings;
+	const FVoxelRuntimeDynamicSettings& DynamicSettings;
 	const FVoxelData& Data;
+	const IVoxelRenderer& Renderer;
 	const bool bIsTransitions;
 
 	FVoxelMesherBase(
 		int32 LOD,
 		const FIntVector& ChunkPosition,
-		const FVoxelRendererSettings& Settings,
+		const IVoxelRenderer& Renderer,
+		const FVoxelData& Data,
 		bool bIsTransitions);
 	virtual ~FVoxelMesherBase();
 
@@ -113,7 +118,8 @@ public:
 	FVoxelMesher(
 		int32 LOD,
 		const FIntVector& ChunkPosition,
-		const FVoxelRendererSettings& Settings);
+		const IVoxelRenderer& Renderer,
+		const FVoxelData& Data);
 
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunk() override final;
 	virtual void CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vertices) override final;
@@ -135,7 +141,8 @@ public:
 	FVoxelTransitionsMesher(
 		int32 LOD,
 		const FIntVector& ChunkPosition,
-		const FVoxelRendererSettings& Settings,
+		const IVoxelRenderer& Renderer,
+		const FVoxelData& Data,
 		uint8 TransitionsMask);
 
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunk() override final;

@@ -7,7 +7,7 @@
 FORCEINLINE int32 AddVertexToBuffer(
 	const FVoxelMesherVertex& Vertex,
 	FVoxelChunkMeshBuffers& Buffer, 
-	const FVoxelRendererSettings& Settings,
+	const FVoxelRuntimeSettings& Settings,
 	EVoxelMaterialConfig MaterialConfig,
 	const FColor* Color = nullptr,
 	const FVector2D* UV = nullptr)
@@ -56,7 +56,7 @@ FORCEINLINE int32 AddVertexToBuffer(
 inline void ReserveBuffer(
 	FVoxelChunkMeshBuffers& Buffer,
 	int32 Num,
-	const FVoxelRendererSettings& Settings,
+	const FVoxelRuntimeSettings& Settings,
 	EVoxelMaterialConfig MaterialConfig)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
@@ -90,7 +90,8 @@ inline void ReserveBuffer(
 }
 
 TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
-	const FVoxelRendererSettings& Settings, 
+	const FVoxelRuntimeSettings& Settings, 
+	const FVoxelRuntimeDynamicSettings& DynamicSettings,
 	int32 LOD,
 	TArray<uint32>&& Indices, 
 	TArray<FVoxelMesherVertex>&& Vertices,
@@ -262,7 +263,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 		check(Settings.MaterialConfig == EVoxelMaterialConfig::MultiIndex);
 		Chunk->SetIsSingle(false);
 
-		const int32 MaxMaterialIndices = FMath::Clamp(Settings.DynamicSettings->LODData[LOD].MaxMaterialIndices.GetValue(), 1, 6);
+		const int32 MaxMaterialIndices = FMath::Clamp(DynamicSettings.GetLODMaterialSettings(LOD).MaxMaterialIndices.GetValue(), 1, 6);
 
 		constexpr int32 StaticMaxMaterialIndices = 6;
 		

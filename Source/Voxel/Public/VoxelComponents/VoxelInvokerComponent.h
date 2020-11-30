@@ -9,7 +9,7 @@
 #include "VoxelInvokerSettings.h"
 #include "VoxelInvokerComponent.generated.h"
 
-class AVoxelWorldInterface;
+class AVoxelWorld;
 
 // Voxel Invokers are used to configure the voxel world LOD, collisions and navmesh
 UCLASS(Abstract, Blueprintable, ClassGroup = Voxel)
@@ -46,27 +46,27 @@ public:
 	
 	// Lets you specify on which voxel worlds to use this invoker
 	UFUNCTION(BlueprintNativeEvent, Category = "Voxel|Invoker")
-	bool ShouldUseInvoker(AVoxelWorldInterface* VoxelWorld) const;
-	bool ShouldUseInvoker(const AVoxelWorldInterface* VoxelWorld) const;
+	bool ShouldUseInvoker(AVoxelWorld* VoxelWorld) const;
+	bool ShouldUseInvoker(const AVoxelWorld* VoxelWorld) const;
 
 	// Used to detect if the invoker has moved
 	// Also used for events
 	UFUNCTION(BlueprintNativeEvent, Category = "Voxel|Invoker")
-	FIntVector GetInvokerVoxelPosition(AVoxelWorldInterface* VoxelWorld) const;
-	FIntVector GetInvokerVoxelPosition(const AVoxelWorldInterface* VoxelWorld) const;
+	FIntVector GetInvokerVoxelPosition(AVoxelWorld* VoxelWorld) const;
+	FIntVector GetInvokerVoxelPosition(const AVoxelWorld* VoxelWorld) const;
 
 	// Get the invoker settings
 	// All the bounds are in voxel space
 	UFUNCTION(BlueprintNativeEvent, Category = "Voxel|Invoker")
-	FVoxelInvokerSettings GetInvokerSettings(AVoxelWorldInterface* VoxelWorld) const;
-	FVoxelInvokerSettings GetInvokerSettings(const AVoxelWorldInterface* VoxelWorld) const;
+	FVoxelInvokerSettings GetInvokerSettings(AVoxelWorld* VoxelWorld) const;
+	FVoxelInvokerSettings GetInvokerSettings(const AVoxelWorld* VoxelWorld) const;
 
 public:
 	//~ Begin UVoxelInvokerComponentBase Interface
 	virtual bool IsLocalInvoker_Implementation() const;
-	virtual bool ShouldUseInvoker_Implementation(AVoxelWorldInterface* VoxelWorld) const;
-	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const;
-	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const;
+	virtual bool ShouldUseInvoker_Implementation(AVoxelWorld* VoxelWorld) const;
+	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const;
+	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const;
 	//~ End UVoxelInvokerComponentBase Interface
 
 protected:
@@ -85,7 +85,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Invoker")
 	static void RefreshAllVoxelInvokers();
 	
-	static TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> GetInvokers(const AVoxelWorldInterface* VoxelWorld);
+	static TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> GetInvokers(const AVoxelWorld* VoxelWorld);
 	static FSimpleMulticastDelegate OnForceRefreshInvokers;
 
 private:
@@ -135,8 +135,8 @@ public:
 
 public:
 	//~ Begin UVoxelInvokerComponentBase Interface
-	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const override;
-	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const override;
+	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const override;
+	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const override;
 	//~ End UVoxelInvokerComponentBase Interface
 
 protected:
@@ -212,8 +212,8 @@ public:
 protected:
 	//~ Begin UVoxelInvokerComponentBase Interface
 	virtual bool IsLocalInvoker_Implementation() const override;
-	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const override;
-	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const override;
+	virtual FIntVector GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const override;
+	virtual FVoxelInvokerSettings GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const override;
 	//~ End UVoxelInvokerComponentBase Interface
 };
 

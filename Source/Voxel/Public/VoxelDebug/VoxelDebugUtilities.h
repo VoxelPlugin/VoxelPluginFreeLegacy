@@ -10,7 +10,6 @@
 
 class FVoxelData;
 class AVoxelWorld;
-class AVoxelWorldInterface;
 class IVoxelWorldInterface;
 class UVoxelLineBatchComponent;
 
@@ -30,7 +29,7 @@ public:
 		FLinearColor Color = FLinearColor::Red);
 
 	static void DrawDebugIntBox(
-		const AVoxelWorldInterface* World,
+		const AVoxelWorld* World,
 		FVoxelIntBox Box,
 		float Lifetime = 1,
 		float Thickness = 0,
@@ -57,7 +56,7 @@ public:
 
 	struct FDrawDataOctreeSettings
 	{
-		AVoxelWorld* World = nullptr;
+		const AVoxelWorld* World = nullptr;
 		float Lifetime = 0;
 		bool bShowSingle = false;
 		bool bShowCached = false;

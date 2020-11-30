@@ -3,7 +3,8 @@
 #include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
 #include "VoxelMessages.h"
-#include "VoxelWorld.h"
+#include "VoxelRuntimeActor.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -23,16 +24,7 @@ DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTexturePool_UsedData);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTexturePool_WastedData);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTexturePool_TextureData);
 
-FVoxelTexturePoolSettings::FVoxelTexturePoolSettings(const AVoxelWorld* World, EVoxelPlayType PlayType)
-	: DebugVoxelWorld(World)
-	, TextureSize(FMath::Clamp(World->TexturePoolTextureSize, 128, 16384))
-{
-}
-
-TVoxelSharedRef<FVoxelTexturePool> FVoxelTexturePool::Create(const FVoxelTexturePoolSettings& Settings)
-{
-	return MakeShareable(new FVoxelTexturePool(Settings));
-}
+DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelTexturePoolSubsystemProxy);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -51,7 +43,7 @@ TVoxelSharedRef<FVoxelTexturePoolEntry> FVoxelTexturePool::AddEntry(
 	Entry->AllocateSlot(*this);
 	
 	const FEntryId EntryId = Entries.Add(Entry);
-	return MakeShareable(new FVoxelTexturePoolEntry(EntryId, Entry->Id, AsShared()));
+	return MakeShareable(new FVoxelTexturePoolEntry(EntryId, Entry->Id, SharedThis(this)));
 }
 
 void FVoxelTexturePool::RemoveEntry(FEntryId EntryId, FEntryUniqueId UniqueId)
@@ -242,13 +234,14 @@ FVoxelTexturePool::FTextureSlotRef FVoxelTexturePool::AllocateSlot(int32 Size, F
 	ensure(IsInGameThread());
 	ensure(EntryId.IsValid());
 
-	if (Size > FMath::Square(Settings.TextureSize))
+	if (Size > FMath::Square(Settings.TexturePoolTextureSize))
 	{
 		FVoxelMessages::Error(FString::Printf(
 			TEXT("The voxel world texture pool texture size is too small: tried to allocate %d values, but textures are max %dx%d!"),
 			Size,
-			Settings.TextureSize,
-			Settings.TextureSize));
+			Settings.TexturePoolTextureSize,
+			Settings.TexturePoolTextureSize),
+			Settings.Owner.Get());
 		return {};
 	}
 
@@ -309,12 +302,12 @@ FVoxelTexturePool::FTextureSlotRef FVoxelTexturePool::AllocateSlot(int32 Size, F
 	NewTextureInfo->Texture = NewTexture;
 	TextureInfos.Add(NewTextureInfo);
 
-	if (Size < FMath::Square(Settings.TextureSize))
+	if (Size < FMath::Square(Settings.TexturePoolTextureSize))
 	{
 		// Add free slot
 		FTextureSlot FreeSlot;
 		FreeSlot.StartIndex = Size;
-		FreeSlot.Num = FMath::Square(Settings.TextureSize) - Size;
+		FreeSlot.Num = FMath::Square(Settings.TexturePoolTextureSize) - Size;
 		NewTextureInfo->FreeSlots.Add(FreeSlot);
 		INC_DWORD_STAT(STAT_VoxelTexturePool_FreeSlots);
 		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, sizeof(FColor) * FreeSlot.Num);
@@ -342,7 +335,7 @@ UTexture2D* FVoxelTexturePool::CreateTexture() const
 	VOXEL_FUNCTION_COUNTER();
 	ensure(IsInGameThread());
 	
-	UTexture2D* Texture = UTexture2D::CreateTransient(Settings.TextureSize, Settings.TextureSize);
+	UTexture2D* Texture = UTexture2D::CreateTransient(Settings.TexturePoolTextureSize, Settings.TexturePoolTextureSize);
 	if (!ensure(Texture))
 	{
 		return nullptr;
@@ -355,15 +348,15 @@ UTexture2D* FVoxelTexturePool::CreateTexture() const
 	FTexture2DMipMap& Mip = Texture->PlatformData->Mips[0];
 	{
 		void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
-		FMemory::Memzero(Data, sizeof(FColor) * FMath::Square(Settings.TextureSize));
+		FMemory::Memzero(Data, sizeof(FColor) * FMath::Square(Settings.TexturePoolTextureSize));
 		Mip.BulkData.Unlock();
 	}
 	Texture->UpdateResource();
 
-	if (auto* VoxelWorld = Settings.DebugVoxelWorld.Get())
+	if (auto* Runtime = Settings.Runtime.Get())
 	{
-		VoxelWorld->DebugTextures.Remove(nullptr);
-		VoxelWorld->DebugTextures.Add(Texture);
+		Runtime->DebugTextures.Remove(nullptr);
+		Runtime->DebugTextures.Add(Texture);
 	}
 	
 	return Texture;

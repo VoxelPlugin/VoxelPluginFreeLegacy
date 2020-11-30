@@ -13,11 +13,7 @@
 #include "VoxelAssetActor.generated.h"
 
 class UBoxComponent;
-class FVoxelData;
-class FVoxelDebugManager;
-class IVoxelRenderer;
-class FVoxelFixedResolutionLODManager;
-class FVoxelPool;
+class FVoxelRuntime;
 
 UENUM()
 enum class EVoxelAssetActorPreviewUpdateType
@@ -147,10 +143,7 @@ protected:
 
 private:
 #if WITH_EDITOR
-	TVoxelSharedPtr<FVoxelData> Data;
-	TVoxelSharedPtr<IVoxelRenderer> Renderer;
-	TVoxelSharedPtr<FVoxelFixedResolutionLODManager> LODManager;
-	TVoxelSharedPtr<FVoxelDebugManager> DebugManager;
+	TVoxelSharedPtr<FVoxelRuntime> Runtime;
 
 	bool IsPreviewCreated() const;
 	void CreatePreview();

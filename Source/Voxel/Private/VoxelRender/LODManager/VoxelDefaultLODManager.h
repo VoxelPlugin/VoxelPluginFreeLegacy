@@ -4,53 +4,38 @@
 
 #include "CoreMinimal.h"
 #include "VoxelTickable.h"
-#include "VoxelRender/IVoxelLODManager.h"
-#include "VoxelInvokerSettings.h"
-#include "VoxelMinimal.h"
 #include "VoxelAsyncWork.h"
+#include "VoxelInvokerSettings.h"
+#include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelDefaultLODManager.generated.h"
 
-class FVoxelRenderOctreeAsyncBuilder;
 class FVoxelRenderOctree;
 class UVoxelInvokerComponentBase;
-class AVoxelWorldInterface;
+class FVoxelRenderOctreeAsyncBuilder;
 
-struct FVoxelLODDynamicSettings
+UCLASS()
+class UVoxelDefaultLODSubsystemProxy : public UVoxelLODSubsystemProxy
 {
-	int32 MinLOD;
-	int32 MaxLOD;
-
-	// In world space
-	float InvokerDistanceThreshold;
-	
-	int32 ChunksCullingLOD;
-
-	bool bEnableRender;
-
-	bool bEnableCollisions;
-	bool bComputeVisibleChunksCollisions;
-	int32 VisibleChunksCollisionsMaxLOD;
-	
-	bool bEnableNavmesh;
-	bool bComputeVisibleChunksNavmesh;
-	int32 VisibleChunksNavmeshMaxLOD;
+	GENERATED_BODY()
+	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelDefaultLODManager);
 };
 
-class FVoxelDefaultLODManager : public IVoxelLODManager, public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDefaultLODManager>
+class FVoxelDefaultLODManager : public IVoxelLODManager, public FVoxelTickable
 {
 public:
-	static TVoxelSharedRef<FVoxelDefaultLODManager> Create(
-		const FVoxelLODSettings& LODSettings,
-		const TVoxelSharedRef<FVoxelLODDynamicSettings>& DynamicSettings);
-	~FVoxelDefaultLODManager();
-
-	//~ Begin IVoxelLODManager Interface
+	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelDefaultLODSubsystemProxy);
+	
+	//~ Begin IVoxelSubsystem Interface
+	virtual void Create() override;
+	virtual void Destroy() override;
+	//~ End IVoxelSubsystem Interface
+	
+	//~ Begin IVoxelLODManager Interface	
 	virtual int32 UpdateBounds(const FVoxelIntBox& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final;
 	virtual int32 UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate) override final;
 
 	virtual void ForceLODsUpdate() override final;
 	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const override final;
-
-	virtual void Destroy() override final;
 	//~ End IVoxelLODManager Interface
 
 	//~ Begin FVoxelTickable Interface
@@ -59,14 +44,7 @@ public:
 	//~ End FVoxelTickable Interface
 
 private:
-	FVoxelDefaultLODManager(
-		const FVoxelLODSettings& LODSettings,
-		const TVoxelSharedRef<FVoxelLODDynamicSettings>& DynamicSettings);
-
-	const TVoxelSharedRef<FVoxelLODDynamicSettings> DynamicSettings;
-	
-	TUniquePtr<FVoxelRenderOctreeAsyncBuilder, TVoxelAsyncWorkDelete<FVoxelRenderOctreeAsyncBuilder>> Task;
-	
+	TVoxelAsyncWorkPtr<FVoxelRenderOctreeAsyncBuilder> Task;
 	TVoxelSharedPtr<FVoxelRenderOctree> Octree;
 
 	struct FVoxelInvokerInfo

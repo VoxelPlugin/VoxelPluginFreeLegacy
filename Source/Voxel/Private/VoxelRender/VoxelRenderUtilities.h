@@ -13,7 +13,8 @@ struct FVoxelChunkMeshBuffers;
 struct FVoxelChunkMaterials;
 struct FVoxelChunkSettings;
 struct FVoxelProcMeshBuffers;
-struct FVoxelRendererSettingsBase;
+class IVoxelRenderer;
+class FVoxelRuntimeSettings;
 class UMaterialInstanceDynamic;
 class UVoxelProceduralMeshComponent;
 
@@ -76,10 +77,10 @@ namespace FVoxelRenderUtilities
 		UMaterialInstanceDynamic* MaterialInstance,
 		int32 LOD,
 		const FIntVector& Position,
-		const FVoxelRendererSettingsBase& Settings);
+		const FVoxelRuntimeSettings& Settings);
 	
-	void StartMeshDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRendererSettingsBase& Settings, const FDitheringInfo& DitheringInfo);
-	void ResetDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRendererSettingsBase& Settings);
+	void StartMeshDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRuntimeSettings& Settings, const FDitheringInfo& DitheringInfo);
+	void ResetDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRuntimeSettings& Settings);
 
 	// For surface nets
 	void SetMeshTransitionsMask(UVoxelProceduralMeshComponent& Mesh, uint8 TransitionMask);
@@ -88,14 +89,14 @@ namespace FVoxelRenderUtilities
 	void ShowMesh(UVoxelProceduralMeshComponent& Mesh);
 
 	TUniquePtr<FVoxelProcMeshBuffers> MergeSections_AnyThread(
-		const FVoxelRendererSettingsBase& RendererSettings,
+		const FVoxelRuntimeSettings& RendererSettings,
 		const TArray<FVoxelChunkMeshSection>& Sections, 
 		const FIntVector& CenterPosition,
 		const FThreadSafeCounter& CancelCounter = FThreadSafeCounter(),
 		int32 CancelThreshold = 0);
 	TUniquePtr<FVoxelBuiltChunkMeshes> BuildMeshes_AnyThread(
 		const FVoxelChunkMeshesToBuild& ChunkMeshesToBuild,
-		const FVoxelRendererSettingsBase& RendererSettings,
+		const FVoxelRuntimeSettings& RendererSettings,
 		const FIntVector& Position,
 		const FThreadSafeCounter& CancelCounter = FThreadSafeCounter(),
 		int32 CancelThreshold = 0);
@@ -103,11 +104,10 @@ namespace FVoxelRenderUtilities
 	FVoxelChunkMeshesToBuild GetMeshesToBuild(
 		int32 LOD, 
 		const FIntVector& Position,
-		const FVoxelRendererSettingsBase& RendererSettings, 
+		const IVoxelRenderer& Renderer, 
 		const FVoxelChunkSettings& ChunkSettings,
 		FVoxelChunkMaterials& ChunkMaterials, 
 		const FVoxelChunkMesh& MainChunk, 
 		const FVoxelChunkMesh* TransitionChunk,
-		const FVoxelOnMaterialInstanceCreated& OnMaterialInstanceCreated,
 		const FDitheringInfo& DitheringInfo); // DitheringInfo to apply to newly spawned materials
 };

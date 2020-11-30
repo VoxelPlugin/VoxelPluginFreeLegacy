@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "VoxelVector.h"
 #include "VoxelIntBox.h"
-#include "GameFramework/Actor.h"
 #include "VoxelWorldInterface.generated.h"
 
 UENUM(BlueprintType)
@@ -16,30 +15,17 @@ enum class EVoxelWorldCoordinatesRounding : uint8
 	RoundDown
 };
 
-#if CPP
 class IVoxelWorldInterface
 {
 public:
 	virtual ~IVoxelWorldInterface() = default;
 
-	virtual FIntVector GlobalToLocal(const FVector& Position, EVoxelWorldCoordinatesRounding Rounding = EVoxelWorldCoordinatesRounding::RoundToNearest) const { unimplemented(); return {}; }
-	virtual FVoxelVector GlobalToLocalFloat(const FVector& Position) const { unimplemented(); return {}; }
+	virtual FIntVector GlobalToLocal(const FVector& Position, EVoxelWorldCoordinatesRounding Rounding = EVoxelWorldCoordinatesRounding::RoundToNearest) const = 0;
+	virtual FVoxelVector GlobalToLocalFloat(const FVector& Position) const = 0;
 
-	virtual FVector LocalToGlobal(const FIntVector& Position) const { unimplemented(); return {}; }
-	virtual FVector LocalToGlobalFloat(const FVoxelVector& Position) const { unimplemented(); return {}; }
+	virtual FVector LocalToGlobal(const FIntVector& Position) const = 0;
+	virtual FVector LocalToGlobalFloat(const FVoxelVector& Position) const = 0;
 	
-	virtual FBox LocalToGlobalBounds(const FVoxelIntBox& Bounds) const { unimplemented(); return {}; }
-	virtual FVoxelIntBox GlobalToLocalBounds(const FBox& Bounds) const { unimplemented(); return {}; }
-};
-#endif
-
-// AActor so we can keep a weak ptr to it
-UCLASS(Abstract)
-class VOXEL_API AVoxelWorldInterface
-	: public AActor
-#if CPP
-	, public IVoxelWorldInterface
-#endif
-{
-	GENERATED_BODY()
+	virtual FBox LocalToGlobalBounds(const FVoxelIntBox& Bounds) const = 0;
+	virtual FVoxelIntBox GlobalToLocalBounds(const FBox& Bounds) const = 0;
 };

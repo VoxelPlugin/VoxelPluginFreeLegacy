@@ -552,6 +552,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelSurfaceNetMesher::CreateFullChunkImpl(FVo
 
 	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		DynamicSettings,
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(reinterpret_cast<TArray<FVoxelMesherVertex>&>(Vertices))));

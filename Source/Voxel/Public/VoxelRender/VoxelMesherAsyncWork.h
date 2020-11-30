@@ -5,13 +5,14 @@
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
 #include "VoxelMinimal.h"
-#include "VoxelPriorityHandler.h"
 #include "VoxelAsyncWork.h"
 
-struct FVoxelRendererSettings;
-struct FVoxelChunkMesh;
-class FVoxelDefaultRenderer;
+class FVoxelData;
+class IVoxelRenderer;
 class FVoxelMesherBase;
+class FVoxelDefaultRenderer;
+class FVoxelRuntimeSettings;
+struct FVoxelChunkMesh;
 
 class VOXEL_API FVoxelMesherAsyncWork : public FVoxelAsyncWork
 {
@@ -38,9 +39,10 @@ public:
 		EVoxelTaskType TaskType);
 
 	static void CreateGeometry_AnyThread(
-		const FVoxelDefaultRenderer& Renderer,
-		int32 LOD,
 		const FIntVector& ChunkPosition,
+		const IVoxelRenderer& Renderer,
+		const FVoxelData& Data,
+		int32 LOD,
 		TArray<uint32>& OutIndices,
 		TArray<FVector>& OutVertices);
 
@@ -54,9 +56,10 @@ private:
 	//~ End FVoxelAsyncWork Interface
 
 	static TUniquePtr<FVoxelMesherBase> GetMesher(
-		const FVoxelRendererSettings& Settings,
-		int32 LOD,
 		const FIntVector& ChunkPosition,
+		const IVoxelRenderer& Renderer,
+		const FVoxelData& Data,
+		int32 LOD,
 		bool bIsTransitionTask,
 		uint8 TransitionsMask);
 	
