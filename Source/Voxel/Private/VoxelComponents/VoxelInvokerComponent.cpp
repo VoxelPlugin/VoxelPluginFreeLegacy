@@ -1,26 +1,27 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelComponents/VoxelInvokerComponent.h"
-#include "VoxelWorldInterface.h"
+#include "VoxelWorld.h"
 #include "VoxelMessages.h"
+
 #include "GameFramework/Pawn.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/BrushComponent.h"
 
-bool UVoxelInvokerComponentBase::ShouldUseInvoker(const AVoxelWorldInterface* VoxelWorld) const
+bool UVoxelInvokerComponentBase::ShouldUseInvoker(const AVoxelWorld* VoxelWorld) const
 {
-	return ShouldUseInvoker(const_cast<AVoxelWorldInterface*>(VoxelWorld));
+	return ShouldUseInvoker(const_cast<AVoxelWorld*>(VoxelWorld));
 }
 
-FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition(const AVoxelWorldInterface* VoxelWorld) const
+FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition(const AVoxelWorld* VoxelWorld) const
 {
-	return GetInvokerVoxelPosition(const_cast<AVoxelWorldInterface*>(VoxelWorld));
+	return GetInvokerVoxelPosition(const_cast<AVoxelWorld*>(VoxelWorld));
 }
 
-FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings(const AVoxelWorldInterface* VoxelWorld) const
+FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings(const AVoxelWorld* VoxelWorld) const
 {
-	return GetInvokerSettings(const_cast<AVoxelWorldInterface*>(VoxelWorld));
+	return GetInvokerSettings(const_cast<AVoxelWorld*>(VoxelWorld));
 }
 
 bool UVoxelInvokerComponentBase::IsLocalInvoker_Implementation() const
@@ -29,17 +30,17 @@ bool UVoxelInvokerComponentBase::IsLocalInvoker_Implementation() const
 	return !Owner || Owner->IsLocallyControlled();
 }
 
-bool UVoxelInvokerComponentBase::ShouldUseInvoker_Implementation(AVoxelWorldInterface* VoxelWorld) const
+bool UVoxelInvokerComponentBase::ShouldUseInvoker_Implementation(AVoxelWorld* VoxelWorld) const
 {
 	return true;
 }
 
-FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const
+FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const
 {
 	return FIntVector(0);
 }
 
-FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
+FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const
 {
 	return {};
 }
@@ -85,7 +86,7 @@ void UVoxelInvokerComponentBase::RefreshAllVoxelInvokers()
 	OnForceRefreshInvokers.Broadcast();
 }
 
-TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> UVoxelInvokerComponentBase::GetInvokers(const AVoxelWorldInterface* VoxelWorld)
+TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> UVoxelInvokerComponentBase::GetInvokers(const AVoxelWorld* VoxelWorld)
 {
 	if (!ensure(VoxelWorld))
 	{
@@ -121,12 +122,12 @@ TMap<TWeakObjectPtr<UWorld>, TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>>>
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntVector UVoxelSimpleInvokerComponent::GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const
+FIntVector UVoxelSimpleInvokerComponent::GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const
 {
 	return VoxelWorld->GlobalToLocal(GetInvokerGlobalPosition());
 }
 
-FVoxelInvokerSettings UVoxelSimpleInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
+FVoxelInvokerSettings UVoxelSimpleInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const
 {
 	const FVector InvokerGlobalPosition = GetInvokerGlobalPosition();
 	const auto GetVoxelBounds = [&](float Distance)
@@ -204,12 +205,12 @@ bool UVoxelVolumeInvokerComponent::IsLocalInvoker_Implementation() const
 	return true;
 }
 
-FIntVector UVoxelVolumeInvokerComponent::GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const
+FIntVector UVoxelVolumeInvokerComponent::GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const
 {
 	return VoxelWorld->GlobalToLocal(GetComponentLocation());
 }
 
-FVoxelInvokerSettings UVoxelVolumeInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
+FVoxelInvokerSettings UVoxelVolumeInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const
 {
 	auto* Volume = Cast<AVolume>(GetOwner());
 	if (!Volume)

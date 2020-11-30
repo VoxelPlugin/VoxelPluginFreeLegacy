@@ -8,8 +8,9 @@
 #include "VoxelDirection.h"
 #include "VoxelRender/VoxelProcMeshTangent.h"
 
-struct FVoxelRendererSettings;
 struct FVoxelChunkMesh;
+class FVoxelRuntimeSettings;
+class FVoxelRuntimeDynamicSettings;
 
 struct FVoxelMesherVertex
 {
@@ -23,7 +24,8 @@ struct FVoxelMesherVertex
 namespace FVoxelMesherUtilities
 {
 	TVoxelSharedPtr<FVoxelChunkMesh> CreateChunkFromVertices(
-		const FVoxelRendererSettings& Settings,
+		const FVoxelRuntimeSettings& Settings,
+		const FVoxelRuntimeDynamicSettings& DynamicSettings,
 		int32 LOD,
 		TArray<uint32>&& Indices,
 		TArray<FVoxelMesherVertex>&& Vertices,

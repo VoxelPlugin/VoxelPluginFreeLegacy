@@ -96,7 +96,7 @@ void UVoxelProceduralMeshComponent::Init(
 	uint32 InDebugChunkId,
 	const FVoxelPriorityHandler& InPriorityHandler,
 	const TVoxelWeakPtr<IVoxelProceduralMeshComponent_PhysicsCallbackHandler>& InPhysicsCallbackHandler,
-	const FVoxelRendererSettings& RendererSettings)
+	const IVoxelRenderer& Renderer)
 {
 	ensure(InPhysicsCallbackHandler.IsValid());
 
@@ -114,18 +114,18 @@ void UVoxelProceduralMeshComponent::Init(
 	DebugChunkId = InDebugChunkId;
 	PriorityHandler = InPriorityHandler;
 	PhysicsCallbackHandler = InPhysicsCallbackHandler;
-	Pool = RendererSettings.Pool;
-	ToolRenderingManager = RendererSettings.ToolRenderingManager;
-	TexturePool = RendererSettings.TexturePool;
-	RendererMemory = RendererSettings.Memory;
-	CollisionTraceFlag = RendererSettings.CollisionTraceFlag;
-	bSimpleCubicCollision = RendererSettings.bSimpleCubicCollision;
-	NumConvexHullsPerAxis = RendererSettings.NumConvexHullsPerAxis;
-	bCleanCollisionMesh = RendererSettings.bCleanCollisionMeshes;
-	bClearProcMeshBuffersOnFinishUpdate = RendererSettings.bStaticWorld && !RendererSettings.bRenderWorld; // We still need the buffers if we are rendering!
-	DistanceFieldSelfShadowBias = RendererSettings.DistanceFieldSelfShadowBias;
-	bContributesToStaticLighting = RendererSettings.bContributesToStaticLighting;
-	bUseStaticPath = RendererSettings.bUseStaticPath;
+	Pool = Renderer.GetSubsystemChecked<FVoxelPool>();
+	ToolRenderingManager = Renderer.GetSubsystemChecked<FVoxelToolRenderingManager>();
+	TexturePool = Renderer.GetSubsystemChecked<FVoxelTexturePool>();
+	VoxelRuntimeData = Renderer.RuntimeData;
+	CollisionTraceFlag = Renderer.Settings.CollisionTraceFlag;
+	bSimpleCubicCollision = Renderer.Settings.bSimpleCubicCollision;
+	NumConvexHullsPerAxis = Renderer.Settings.NumConvexHullsPerAxis;
+	bCleanCollisionMesh = Renderer.Settings.bCleanCollisionMeshes;
+	bClearProcMeshBuffersOnFinishUpdate = Renderer.Settings.bStaticWorld && !Renderer.Settings.bRenderWorld; // We still need the buffers if we are rendering!
+	DistanceFieldSelfShadowBias = Renderer.Settings.DistanceFieldSelfShadowBias;
+	bContributesToStaticLighting = Renderer.Settings.bContributesToStaticLighting;
+	bUseStaticPath = Renderer.Settings.bUseStaticPath;
 }
 
 void UVoxelProceduralMeshComponent::ClearInit()
@@ -190,48 +190,52 @@ UVoxelProceduralMeshComponent::~UVoxelProceduralMeshComponent()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-bool UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen()
+bool UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen(const AVoxelWorld* VoxelWorld)
 {
-	return bAreCollisionsFrozen;
+	FFreezeCollisionData::FWorldData& Data = FreezeCollisionData.WorldData.FindOrAdd(VoxelWorld);
+	return Data.bFrozen;
 }
 
-void UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(bool bFrozen)
+void UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(const AVoxelWorld* VoxelWorld, bool bFrozen)
 {
 	VOXEL_FUNCTION_COUNTER();
-	if (bFrozen != bAreCollisionsFrozen)
+
+	FFreezeCollisionData::FWorldData& Data = FreezeCollisionData.WorldData.FindOrAdd(VoxelWorld);
+	
+	if (bFrozen == Data.bFrozen)
 	{
-		if (bFrozen)
-		{
-			bAreCollisionsFrozen = true;
+		return;
+	}
 
-			OnFreezeVoxelCollisionChanged.Broadcast(true);
-		}
-		else
-		{
-			bAreCollisionsFrozen = false;
+	if (bFrozen)
+	{
+		Data.bFrozen = true;
+		Data.OnFreezeVoxelCollisionChanged.Broadcast(true);
+	}
+	else
+	{
+		Data.bFrozen = false;
 
-			for (auto& Component : PendingCollisions)
+		for (auto& Component : Data.PendingCollisions)
+		{
+			if (Component.IsValid())
 			{
-				if (Component.IsValid())
-				{
-					Component->UpdateCollision();
-				}
+				Component->UpdateCollision();
 			}
-			PendingCollisions.Reset();
-
-			OnFreezeVoxelCollisionChanged.Broadcast(false);
 		}
+		Data.PendingCollisions.Reset();
+
+		Data.OnFreezeVoxelCollisionChanged.Broadcast(false);
 	}
 }
 
-void UVoxelProceduralMeshComponent::AddOnFreezeVoxelCollisionChanged(const FOnFreezeVoxelCollisionChanged::FDelegate& NewDelegate)
+void UVoxelProceduralMeshComponent::AddOnFreezeVoxelCollisionChanged(const AVoxelWorld* VoxelWorld, const FOnFreezeVoxelCollisionChanged::FDelegate& NewDelegate)
 {
-	OnFreezeVoxelCollisionChanged.Add(NewDelegate);
+	FFreezeCollisionData::FWorldData& Data = FreezeCollisionData.WorldData.FindOrAdd(VoxelWorld);
+	Data.OnFreezeVoxelCollisionChanged.Add(NewDelegate);
 }
 
-bool UVoxelProceduralMeshComponent::bAreCollisionsFrozen = false;
-TSet<TWeakObjectPtr<UVoxelProceduralMeshComponent>> UVoxelProceduralMeshComponent::PendingCollisions;
-FOnFreezeVoxelCollisionChanged UVoxelProceduralMeshComponent::OnFreezeVoxelCollisionChanged;
+UVoxelProceduralMeshComponent::FFreezeCollisionData UVoxelProceduralMeshComponent::FreezeCollisionData;
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -780,9 +784,10 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 		return;
 	}
 
-	if (bAreCollisionsFrozen)
+	auto* ThisFreezeCollisionData = FreezeCollisionData.WorldData.Find(GetOwner());
+	if (ThisFreezeCollisionData && ThisFreezeCollisionData->bFrozen)
 	{
-		PendingCollisions.Add(this);
+		ThisFreezeCollisionData->PendingCollisions.Add(this);
 		return;
 	}
 
@@ -915,16 +920,14 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 
 void UVoxelProceduralMeshComponent::UpdateCollisionStats()
 {
-	if (!RendererMemory)
+	const auto PinnedData = VoxelRuntimeData.Pin();
+
+	if (PinnedData)
 	{
-		ensure(CollisionMemory == 0);
-		ensure(NumCollisionCubes == 0);
-		return;
+		PinnedData->CollisionMemory.Subtract(CollisionMemory);
 	}
-	
-	RendererMemory->CollisionMemory.Subtract(CollisionMemory);
 	CollisionMemory = 0;
-	
+
 	DEC_DWORD_STAT_BY(STAT_NumCollisionCubes, NumCollisionCubes);
 	NumCollisionCubes = 0;
 
@@ -938,6 +941,10 @@ void UVoxelProceduralMeshComponent::UpdateCollisionStats()
 			NumCollisionCubes += Buffers.CollisionCubes.Num();
 		}
 	}
-	RendererMemory->CollisionMemory.Add(CollisionMemory);
+	
+	if (PinnedData)
+	{
+		PinnedData->CollisionMemory.Add(CollisionMemory);
+	}
 	INC_DWORD_STAT_BY(STAT_NumCollisionCubes, NumCollisionCubes);
 }

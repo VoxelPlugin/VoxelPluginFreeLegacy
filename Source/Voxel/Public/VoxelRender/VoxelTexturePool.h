@@ -3,9 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelMinimal.h"
+#include "VoxelSubsystem.h"
 #include "VoxelContainers/VoxelSparseArray.h"
 #include "UObject/GCObject.h"
+#include "VoxelTexturePool.generated.h"
 
 enum class EVoxelPlayType;
 class AVoxelWorld;
@@ -39,29 +40,20 @@ private:
 	const TArray<FColor> Data;
 };
 
-struct VOXEL_API FVoxelTexturePoolSettings
+UCLASS()
+class VOXEL_API UVoxelTexturePoolSubsystemProxy : public UVoxelStaticSubsystemProxy
 {
-	const TWeakObjectPtr<const AVoxelWorld> DebugVoxelWorld;
-	const int32 TextureSize = 512;
-
-	explicit FVoxelTexturePoolSettings(const AVoxelWorld* World, EVoxelPlayType PlayType);
+	GENERATED_BODY()
+	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelTexturePool);
 };
 
-class VOXEL_API FVoxelTexturePool : public FGCObject, public TVoxelSharedFromThis<FVoxelTexturePool>
+class VOXEL_API FVoxelTexturePool : public IVoxelSubsystem, public FGCObject
 {
 public:
+	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelTexturePoolSubsystemProxy);
 	DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FEntryId);
 	DECLARE_UNIQUE_VOXEL_ID(FEntryUniqueId);
 	
-	const FVoxelTexturePoolSettings Settings;
-
-	static TVoxelSharedRef<FVoxelTexturePool> Create(const FVoxelTexturePoolSettings& Settings);
-	
-private:
-	explicit FVoxelTexturePool(const FVoxelTexturePoolSettings& Settings)
-		: Settings(Settings)
-	{
-	}
 
 public:
 	TVoxelSharedRef<FVoxelTexturePoolEntry> AddEntry(

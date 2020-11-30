@@ -230,7 +230,7 @@ bool UVoxelDataTools::LoadFromSave(const AVoxelWorld* World, const FVoxelUncompr
 
 	const bool bSuccess = Data.LoadFromSave(Save, LoadInfo, &BoundsToUpdate);
 
-	World->GetLODManager().UpdateBounds(BoundsToUpdate);
+	World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(BoundsToUpdate);
 
 	return bSuccess;
 }

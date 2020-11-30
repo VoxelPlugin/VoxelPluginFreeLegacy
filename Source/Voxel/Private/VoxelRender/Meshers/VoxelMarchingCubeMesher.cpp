@@ -413,6 +413,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(F
 
 	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		DynamicSettings,
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(MesherVertices)));
@@ -1128,7 +1129,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 	// Important: sanitize AFTER translating!
 	FVoxelMesherUtilities::SanitizeMesh(Indices, MesherVertices);
 
-	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(Settings, LOD, MoveTemp(Indices), MoveTemp(MesherVertices)));
+	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(Settings, DynamicSettings, LOD, MoveTemp(Indices), MoveTemp(MesherVertices)));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

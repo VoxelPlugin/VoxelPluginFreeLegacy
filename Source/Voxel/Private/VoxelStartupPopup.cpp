@@ -3,19 +3,18 @@
 #include "VoxelStartupPopup.h"
 #include "VoxelMinimal.h"
 #include "VoxelMessages.h"
+#include "VoxelUtilities/VoxelSystemUtilities.h"
 
 #include "Misc/MessageDialog.h"
 #include "Misc/ConfigCacheIni.h"
-#include "Containers/Ticker.h"
 #include "HAL/PlatformProcess.h"
 
 void FVoxelStartupPopup::OnModuleStartup()
 {
-	FTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([](float)
+	FVoxelUtilities::DelayedCall([]()
 	{
 		FVoxelStartupPopup().ShowPopup();
-		return false;
-	}));
+	});
 }
 
 void FVoxelStartupPopup::ShowPopup()

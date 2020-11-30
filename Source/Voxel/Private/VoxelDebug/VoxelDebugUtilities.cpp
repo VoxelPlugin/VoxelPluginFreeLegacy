@@ -38,13 +38,13 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 }
 
 void UVoxelDebugUtilities::DrawDebugIntBox(
-	const AVoxelWorldInterface* World,
+	const AVoxelWorld* World,
 	FVoxelIntBox Box,
 	float Lifetime,
 	float Thickness,
 	FLinearColor Color)
 {
-	DrawDebugIntBox(Cast<AVoxelWorld>(const_cast<AVoxelWorldInterface*>(World)), Box, FTransform(), Lifetime, Thickness, Color);
+	DrawDebugIntBox(const_cast<AVoxelWorld*>(World), Box, FTransform(), Lifetime, Thickness, Color);
 }
 
 void UVoxelDebugUtilities::DrawDebugIntBox(

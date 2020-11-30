@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
-#include "VoxelEnums.h"
-#include "VoxelContainers/VoxelStaticArray.h"
+#include "VoxelSubsystem.h"
+#include "VoxelPool.generated.h"
 
 class IVoxelQueuedWork;
 
@@ -47,24 +47,28 @@ namespace EVoxelTaskType_DefaultPriorityOffsets
 	};
 }
 
-class VOXEL_API FVoxelPool
+UCLASS()
+class VOXEL_API UVoxelPoolSubsystemProxy : public UVoxelStaticSubsystemProxy
+{
+	GENERATED_BODY()
+	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelPool);
+};
+
+class VOXEL_API FVoxelPool : public IVoxelSubsystem
 {
 public:
-	static TVoxelSharedRef<FVoxelPool> Create(
-		const TMap<EVoxelTaskType, int32>& PriorityCategories,
-		const TMap<EVoxelTaskType, int32>& PriorityOffsets);
+	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelPoolSubsystemProxy);
 
-public:
-	void QueueTask(IVoxelQueuedWork* Task);
-	void QueueTasks(EVoxelTaskType Type, const TArray<IVoxelQueuedWork*>& Tasks);
+	//~ Begin IVoxelSubsystem Interface
+	virtual void Create() override;
+	//~ End IVoxelSubsystem Interface
+	
+	void QueueTask(IVoxelQueuedWork* Task) const;
+	void QueueTasks(EVoxelTaskType Type, const TArray<IVoxelQueuedWork*>& Tasks) const;
 	
 private:
-	const TVoxelStaticArray<uint32, 256> PriorityCategories;
-	const TVoxelStaticArray<uint32, 256> PriorityOffsets;
-
-	explicit FVoxelPool(
-		const TMap<EVoxelTaskType, int32>& PriorityCategories,
-		const TMap<EVoxelTaskType, int32>& PriorityOffsets);
+	TVoxelStaticArray<uint32, 256> PriorityCategories;
+	TVoxelStaticArray<uint32, 256> PriorityOffsets;
 
 public:
 	static void FixPriorityCategories(TMap<EVoxelTaskType, int32>& PriorityCategories);

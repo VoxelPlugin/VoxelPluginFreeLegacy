@@ -9,8 +9,8 @@
 #include "VoxelRender/VoxelMaterialIndices.h"
 
 class FVoxelData;
+class FVoxelRuntimeSettings;
 class FDistanceFieldVolumeData;
-struct FVoxelRendererSettingsBase;
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Chunk Mesh Memory"), STAT_VoxelChunkMeshMemory, STATGROUP_VoxelMemory, VOXEL_API);
 
@@ -106,7 +106,7 @@ public:
 	}
 	
 public:
-	void BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data, const FVoxelRendererSettingsBase& Settings);
+	void BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data, const FVoxelRuntimeSettings& Settings);
 	
 public:
 	template<typename T>

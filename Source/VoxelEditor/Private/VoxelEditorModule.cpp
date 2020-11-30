@@ -88,6 +88,7 @@
 #include "VoxelDebugEditor.h"
 #include "VoxelScopedTransaction.h"
 #include "VoxelWorldEditorControls.h"
+#include "VoxelUtilities/VoxelSystemUtilities.h"
 
 const FVector2D Icon14x14(14.0f, 14.0f);
 const FVector2D Icon16x16(16.0f, 16.0f);
@@ -251,19 +252,17 @@ public:
 		// Delay them by one frame to work on startup
 		FVoxelMessages::LogMessageDelegate.AddLambda([](const TSharedRef<FTokenizedMessage>& Message, EVoxelShowNotification ShowNotification)
 		{
-			FTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=](float)
+			FVoxelUtilities::DelayedCall([=]()
 			{
 				FVoxelMessagesEditor::LogMessage(Message, ShowNotification);
-				return false;
-			}));
+			});
 		});
 		FVoxelMessages::ShowNotificationDelegate.AddStatic([](const FVoxelMessages::FNotification& Notification)
 		{
-			FTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=](float)
+			FVoxelUtilities::DelayedCall([=]()
 			{
 				FVoxelMessagesEditor::ShowNotification(Notification);
-				return false;
-			}));
+			});
 		});
 
 		FMessageLogModule& MessageLogModule = FModuleManager::LoadModuleChecked<FMessageLogModule>("MessageLog");

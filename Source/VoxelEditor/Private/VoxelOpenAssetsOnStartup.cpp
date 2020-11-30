@@ -3,22 +3,21 @@
 #include "VoxelOpenAssetsOnStartup.h"
 #include "VoxelMinimal.h"
 #include "VoxelUtilities/VoxelConfigUtilities.h"
+#include "VoxelUtilities/VoxelSystemUtilities.h"
 
 #include "Editor.h"
 #include "Engine/World.h"
 #include "GameMapsSettings.h"
-#include "Containers/Ticker.h"
 #include "ContentBrowserModule.h"
 #include "Toolkits/AssetEditorManager.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 
 void UVoxelOpenAssetsOnStartup::Init()
 {
-	FTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=](float)
+	FVoxelUtilities::DelayedCall([]()
 	{
 		GetMutableDefault<UVoxelOpenAssetsOnStartup>()->ActualInit();
-		return false;
-	}));
+	});
 }
 
 void UVoxelOpenAssetsOnStartup::ActualInit()

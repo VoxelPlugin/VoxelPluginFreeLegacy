@@ -7,10 +7,10 @@
 #include "VoxelRender/Meshers/VoxelGreedyCubicMesher.h"
 #include "VoxelRender/Meshers/VoxelSurfaceNetMesher.h"
 #include "VoxelRender/VoxelChunkMesh.h"
+#include "VoxelData/VoxelDataSubsystem.h"
 
 #include "Async/Async.h"
 #include "Misc/MessageDialog.h"
-#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 FVoxelMesherAsyncWork::FVoxelMesherAsyncWork(
 	FVoxelDefaultRenderer& Renderer,
@@ -31,7 +31,7 @@ FVoxelMesherAsyncWork::FVoxelMesherAsyncWork(
 	check(IsInGameThread());
 	ensure(!bIsTransitionTask || TransitionsMask != 0);
 
-	PriorityHandler = FVoxelPriorityHandler(Bounds, Renderer.GetInvokersPositionsForPriorities());
+	PriorityHandler = FVoxelPriorityHandler(Bounds, Renderer);
 }
 
 FVoxelMesherAsyncWork::~FVoxelMesherAsyncWork()
@@ -62,14 +62,19 @@ void FVoxelMesherAsyncWork::DoWork()
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
-	auto PinnedRenderer = Renderer.Pin();
+	const auto PinnedRenderer = Renderer.Pin();
 	if (IsCanceled()) return;
 	if (!ensure(PinnedRenderer.IsValid())) return; // Either we're canceled, or the renderer is valid
 
+	const auto DataSubsystem = PinnedRenderer->GetSubsystem<FVoxelDataSubsystem>();
+	if (IsCanceled()) return;
+	if (!DataSubsystem.IsValid()) return; // Happens when the renderer is still canceling tasks
+
 	const auto Mesher = GetMesher(
-		PinnedRenderer->Settings,
-		LOD,
 		ChunkPosition,
+		*PinnedRenderer,
+		DataSubsystem->GetData(),
+		LOD,
 		bIsTransitionTask,
 		TransitionsMask);
 
@@ -84,7 +89,7 @@ void FVoxelMesherAsyncWork::DoWork()
 		}
 		else
 		{
-			AsyncTask(ENamedThreads::GameThread, [Data = MakeVoxelWeakPtr(PinnedRenderer->Settings.Data)]() { ShowGeneratorError(Data); });
+			AsyncTask(ENamedThreads::GameThread, [Data = MakeVoxelWeakPtr(DataSubsystem->GetDataPtr())]() { ShowGeneratorError(Data); });
 			Chunk = Mesher->CreateEmptyChunk();
 		}
 	}
@@ -103,8 +108,6 @@ void FVoxelMesherAsyncWork::DoWork()
 		Buffers.Indices = MoveTemp(Indices);
 		Buffers.Positions = MoveTemp(Vertices);
 	}
-	
-	FVoxelUtilities::DeleteOnGameThread_AnyThread(PinnedRenderer);
 }
 
 void FVoxelMesherAsyncWork::PostDoWork()
@@ -115,48 +118,48 @@ void FVoxelMesherAsyncWork::PostDoWork()
 	if (ensure(RendererPtr.IsValid()))
 	{
 		RendererPtr->QueueChunkCallback_AnyThread(TaskId, ChunkId, bIsTransitionTask);
-		FVoxelUtilities::DeleteOnGameThread_AnyThread(RendererPtr);
 	}
 }
 
 TUniquePtr<FVoxelMesherBase> FVoxelMesherAsyncWork::GetMesher(
-	const FVoxelRendererSettings& Settings,
-	int32 LOD,
 	const FIntVector& ChunkPosition,
+	const IVoxelRenderer& Renderer,
+	const FVoxelData& Data,
+	int32 LOD,
 	bool bIsTransitionTask,
 	uint8 TransitionsMask)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
-	switch (Settings.RenderType)
+	switch (Renderer.Settings.RenderType)
 	{
 	default:
 	case EVoxelRenderType::MarchingCubes:
 	{
 		if (bIsTransitionTask)
 		{
-			return MakeUnique<FVoxelMarchingCubeTransitionsMesher>(LOD, ChunkPosition, Settings, TransitionsMask);
+			return MakeUnique<FVoxelMarchingCubeTransitionsMesher>(LOD, ChunkPosition, Renderer, Data, TransitionsMask);
 		}
 		else
 		{
-			return MakeUnique<FVoxelMarchingCubeMesher>(LOD, ChunkPosition, Settings);
+			return MakeUnique<FVoxelMarchingCubeMesher>(LOD, ChunkPosition, Renderer, Data);
 		}
 	}
 	case EVoxelRenderType::Cubic:
 	{
 		if (bIsTransitionTask)
 		{
-			return MakeUnique<FVoxelCubicTransitionsMesher>(LOD, ChunkPosition, Settings, TransitionsMask);
+			return MakeUnique<FVoxelCubicTransitionsMesher>(LOD, ChunkPosition, Renderer, Data, TransitionsMask);
 		}
 		else
 		{
-			if (Settings.bGreedyCubicMesher)
+			if (Renderer.Settings.bGreedyCubicMesher)
 			{
-				return MakeUnique<FVoxelGreedyCubicMesher>(LOD, ChunkPosition, Settings);
+				return MakeUnique<FVoxelGreedyCubicMesher>(LOD, ChunkPosition, Renderer, Data);
 			}
 			else
 			{
-				return MakeUnique<FVoxelCubicMesher>(LOD, ChunkPosition, Settings);
+				return MakeUnique<FVoxelCubicMesher>(LOD, ChunkPosition, Renderer, Data);
 			}
 		}
 	}
@@ -169,19 +172,20 @@ TUniquePtr<FVoxelMesherBase> FVoxelMesherAsyncWork::GetMesher(
 		}
 		else
 		{
-			return MakeUnique<FVoxelSurfaceNetMesher>(LOD, ChunkPosition, Settings);
+			return MakeUnique<FVoxelSurfaceNetMesher>(LOD, ChunkPosition, Renderer, Data);
 		}
 	}
 	}
 }
 
 void FVoxelMesherAsyncWork::CreateGeometry_AnyThread(
-	const FVoxelDefaultRenderer& Renderer, 
-	int32 LOD, 
-	const FIntVector& ChunkPosition, 
-	TArray<uint32>& OutIndices, 
+	const FIntVector& ChunkPosition,
+	const IVoxelRenderer& Renderer,
+	const FVoxelData& Data,
+	int32 LOD,
+	TArray<uint32>& OutIndices,
 	TArray<FVector>& OutVertices)
 {
-	const auto Mesher = GetMesher(Renderer.Settings, LOD, ChunkPosition, false, 0);
+	const auto Mesher = GetMesher(ChunkPosition, Renderer, Data, LOD, false, 0);
 	Mesher->CreateGeometry(OutIndices, OutVertices);
 }

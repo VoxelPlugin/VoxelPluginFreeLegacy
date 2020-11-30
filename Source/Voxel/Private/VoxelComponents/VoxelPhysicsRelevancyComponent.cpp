@@ -57,8 +57,8 @@ void UVoxelPhysicsRelevancyComponent::TickComponent(float DeltaTime, ELevelTick 
 		if (World->IsCreated())
 		{
 			auto LocalPosition = World->GlobalToLocal(Position);
-			auto& LODManager = World->GetLODManager();
-			if (LODManager.Settings.WorldBounds.Contains(LocalPosition))
+			auto& LODManager = *World->GetSubsystemChecked<IVoxelLODManager>();
+			if (LODManager.Settings.GetWorldBounds().Contains(LocalPosition))
 			{
 				uint8 LOD;
 				if (LODManager.AreCollisionsEnabled(LocalPosition, LOD) && LOD <= MaxVoxelChunksLODForPhysics)

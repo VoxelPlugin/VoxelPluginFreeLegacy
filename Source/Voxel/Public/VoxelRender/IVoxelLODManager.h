@@ -3,60 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelEnums.h"
-#include "VoxelIntBox.h"
-#include "VoxelMinimal.h"
-
-class IVoxelRenderer;
-class FVoxelPool;
-class FVoxelDebugManager;
-class AVoxelWorld;
-class AVoxelWorldInterface;
-class FVoxelData;
+#include "VoxelSubsystem.h"
 
 // Fired once per chunk
 DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdateFinished, FVoxelIntBox);
 DECLARE_MULTICAST_DELEGATE_OneParam(FVoxelOnChunkUpdate, FVoxelIntBox);
 
-struct FVoxelLODSettings
-{
-	const TVoxelSharedRef<IVoxelRenderer> Renderer;
-	const TVoxelSharedRef<FVoxelPool> Pool;
-
-	const float VoxelSize;
-	const int32 OctreeDepth;
-	const FVoxelIntBox WorldBounds;
-	const bool bConstantLOD;
-	const bool bStaticWorld;
-	const bool bContributesToStaticLighting;
-	const float MinDelayBetweenLODUpdates;
-	// Update invokers positions 10 times per seconds: used for LOD updates, but also for chunk updates priority
-	const float MinDelayBetweenInvokersUpdates = 0.1;
-	const bool bEnableTransitions;
-	const bool bInvertTransitions;
-
-	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
-
-	// If Data isn't null, its Depth and WorldBounds will be used
-	FVoxelLODSettings(
-		const AVoxelWorld* World,
-		EVoxelPlayType PlayType,
-		const TVoxelSharedRef<IVoxelRenderer>& Renderer,
-		const TVoxelSharedRef<FVoxelPool>& Pool,
-		const FVoxelData* Data = nullptr);
-};
-
-class VOXEL_API IVoxelLODManager
+class VOXEL_API IVoxelLODManager : public IVoxelSubsystem
 {
 public:
+	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelLODSubsystemProxy);
+	
 	FVoxelOnChunkUpdate OnChunkUpdate;
-	const FVoxelLODSettings Settings;
-
-	explicit IVoxelLODManager(const FVoxelLODSettings& Settings)
-		: Settings(Settings)
-	{
-	}
-	virtual ~IVoxelLODManager() = default;
 
 	//~ Begin IVoxelLODManager Interface
 	// Both specializations are used, and we don't want to allocate single element arrays or to do lots of virtual calls
@@ -66,18 +24,16 @@ public:
 
 	virtual void ForceLODsUpdate() = 0;
 	virtual bool AreCollisionsEnabled(const FIntVector& Position, uint8& OutLOD) const = 0;
-
-	virtual void Destroy() = 0;
 	//~ End IVoxelLODManager Interface
 	
 public:
-	inline int32 UpdateBounds(const FVoxelIntBox& Bounds, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate)
+	int32 UpdateBounds(const FVoxelIntBox& Bounds, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate)
 	{
 		FVoxelOnChunkUpdateFinished MulticastDelegate;
 		MulticastDelegate.Add(FinishDelegate);
 		return UpdateBounds(Bounds, MulticastDelegate);
 	}
-	inline int32 UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate)
+	int32 UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate)
 	{
 		FVoxelOnChunkUpdateFinished MulticastDelegate;
 		MulticastDelegate.Add(FinishDelegate);
@@ -85,7 +41,7 @@ public:
 	}
 
 	template<typename T>
-	inline int32 UpdateBounds_OnAllFinished(const T& Bounds, const FSimpleDelegate& AllFinishedDelegate, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate = {})
+	int32 UpdateBounds_OnAllFinished(const T& Bounds, const FSimpleDelegate& AllFinishedDelegate, const FVoxelOnChunkUpdateFinished::FDelegate& FinishDelegate = {})
 	{
 		TVoxelSharedRef<int32> Count = MakeVoxelShared<int32>(0);
 		*Count = UpdateBounds(

@@ -73,13 +73,13 @@ private:
 
 struct VOXEL_API FVoxelDataSettings
 {
-	const int32 Depth;
-	const FVoxelIntBox WorldBounds;
-	const TVoxelSharedRef<FVoxelGeneratorInstance> Generator;
-	const bool bEnableMultiplayer;
-	const bool bEnableUndoRedo;
+	int32 Depth = -1;
+	FVoxelIntBox WorldBounds;
+	TVoxelSharedPtr<FVoxelGeneratorInstance> Generator;
+	bool bEnableMultiplayer = false;
+	bool bEnableUndoRedo = false;
 
-	FVoxelDataSettings(const AVoxelWorld* World, EVoxelPlayType PlayType);
+	FVoxelDataSettings() = default;
 	FVoxelDataSettings(
 		int32 Depth,
 		const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator,

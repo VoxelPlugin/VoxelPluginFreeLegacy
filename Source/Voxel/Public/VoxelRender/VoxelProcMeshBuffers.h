@@ -9,7 +9,6 @@
 #include "VoxelRawStaticIndexBuffer.h"
 
 class FVoxelTexturePoolTextureData;
-struct FVoxelRendererMemory;
 struct FVoxelChunkMeshSection;
 class FVoxelProcMeshBuffersRenderData;
 
@@ -50,7 +49,7 @@ struct VOXEL_API FVoxelProcMeshBuffers
 		return IndexBuffer.GetNumIndices();
 	}
 
-	explicit FVoxelProcMeshBuffers(const TVoxelSharedRef<FVoxelRendererMemory>& Memory, const TArray<FVoxelChunkMeshSection>& SourceSections);
+	FVoxelProcMeshBuffers();
 	~FVoxelProcMeshBuffers();
 
 	uint32 GetAllocatedSize() const;
@@ -64,9 +63,6 @@ private:
 	int32 LastAllocatedSize_Adjacency = 0;
 	int32 LastAllocatedSize_UVsAndTangents = 0;
 
-	TVoxelSharedRef<FVoxelRendererMemory> Memory;
-	TOptional<int32> LOD;
-	
 	mutable TVoxelWeakPtr<FVoxelProcMeshBuffersRenderData> RenderData;
 
 	friend class FVoxelProcMeshBuffersRenderData;

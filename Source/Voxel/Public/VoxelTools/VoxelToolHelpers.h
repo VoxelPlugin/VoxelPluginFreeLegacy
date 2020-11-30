@@ -133,7 +133,7 @@ public:
 	const int32 OutputLink;
 	const FWeakObjectPtr CallbackTarget;
 	
-	const TUniquePtr<TWork, TVoxelAsyncWorkDelete<TWork>> Work;
+	const TVoxelAsyncWorkPtr<TWork> Work;
 	const TFunction<void(TWork&)> GameThreadCallback;
 	const FName Name;
 

@@ -92,6 +92,15 @@ struct TVoxelAsyncWorkDelete
 	}
 };
 
+template<typename T>
+using TVoxelAsyncWorkPtr = TUniquePtr<T, TVoxelAsyncWorkDelete<T>>;
+
+template<typename T, typename... TArgs>
+TVoxelAsyncWorkPtr<T> MakeVoxelAsyncWork(TArgs&&... Args)
+{
+	return TVoxelAsyncWorkPtr<T>(new T(Forward<TArgs>(Args)...));
+}
+
 class VOXEL_API FVoxelAsyncWorkWithWait : public FVoxelAsyncWork
 {
 public:

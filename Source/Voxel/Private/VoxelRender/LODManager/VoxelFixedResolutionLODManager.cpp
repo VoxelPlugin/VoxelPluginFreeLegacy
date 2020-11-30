@@ -4,12 +4,9 @@
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelChunkToUpdate.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
-TVoxelSharedRef<FVoxelFixedResolutionLODManager> FVoxelFixedResolutionLODManager::Create(
-	const FVoxelLODSettings& LODSettings)
-{	
-	return MakeShareable(new FVoxelFixedResolutionLODManager(LODSettings));
-}
+DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelFixedResolutionLODSubsystemProxy);
 
 bool FVoxelFixedResolutionLODManager::Initialize(
 	int32 ChunkLOD,
@@ -21,7 +18,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(
 	TArray<FVoxelChunkUpdate> ChunkUpdates;
 	
 	const int32 ChunkSize = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(ChunkLOD);
-	const FVoxelIntBox& WorldBounds = Settings.WorldBounds;
+	const FVoxelIntBox WorldBounds = Settings.GetWorldBounds();
 
 	const FIntVector Min = FVoxelUtilities::FloorToInt(FVector(WorldBounds.Min) / ChunkSize) * ChunkSize;
 	const FIntVector Max = FVoxelUtilities::CeilToInt(FVector(WorldBounds.Max) / ChunkSize) * ChunkSize;
@@ -60,7 +57,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(
 		}
 	}
 
-	Settings.Renderer->UpdateLODs(1, ChunkUpdates);
+	GetSubsystemChecked<IVoxelRenderer>()->UpdateLODs(1, ChunkUpdates);
 
 	return true;
 }

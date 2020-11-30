@@ -51,15 +51,6 @@ inline int32 ClampDataDepth(int32 Depth)
 	return FMath::Max(1, FVoxelUtilities::ClampDepth<DATA_CHUNK_SIZE>(Depth));
 }
 
-FVoxelDataSettings::FVoxelDataSettings(const AVoxelWorld* World, EVoxelPlayType PlayType)
-	: Depth(ClampDataDepth(FVoxelUtilities::ConvertDepth<RENDER_CHUNK_SIZE, DATA_CHUNK_SIZE>(World->RenderOctreeDepth)))
-	, WorldBounds(World->GetWorldBounds())
-	, Generator(CreateGenerator(World))
-	, bEnableMultiplayer(false)
-	, bEnableUndoRedo(PlayType == EVoxelPlayType::Game ? World->bEnableUndoRedo : true)
-{
-}
-
 FVoxelDataSettings::FVoxelDataSettings(
 	int32 Depth, 
 	const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator,
@@ -93,7 +84,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 ///////////////////////////////////////////////////////////////////////////////
 
 FVoxelData::FVoxelData(const FVoxelDataSettings& Settings)
-	: IVoxelData(Settings.Depth, Settings.WorldBounds, Settings.bEnableMultiplayer, Settings.bEnableUndoRedo, Settings.Generator)
+	: IVoxelData(Settings.Depth, Settings.WorldBounds, Settings.bEnableMultiplayer, Settings.bEnableUndoRedo, Settings.Generator.ToSharedRef())
 	, Octree(MakeUnique<FVoxelDataOctreeParent>(Depth))
 {
 	check(Depth > 0);

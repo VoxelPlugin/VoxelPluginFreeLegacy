@@ -3,14 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelEnums.h"
-#include "VoxelIntBox.h"
-#include "VoxelMinimal.h"
 #include "VoxelTickable.h"
+#include "VoxelSubsystem.h"
+#include "VoxelEventManager.generated.h"
 
 struct FVoxelChunkMesh;
 class AVoxelWorld;
-class AVoxelWorldInterface;
 class UVoxelInvokerComponentBase;
 
 DECLARE_DELEGATE_OneParam(FChunkDelegate, FVoxelIntBox);
@@ -18,15 +16,6 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FChunkMulticastDelegate, FVoxelIntBox);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnMeshCreatedDelegate, int32, const FVoxelIntBox&, const FVoxelChunkMesh&);
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Events Memory"), STAT_VoxelEventsMemory, STATGROUP_VoxelMemory, VOXEL_API);
-
-struct VOXEL_API FVoxelEventManagerSettings
-{
-	const float UpdateRate;
-	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
-	const FVoxelIntBox WorldBounds;
-
-	FVoxelEventManagerSettings(const AVoxelWorld* World, EVoxelPlayType PlayType);
-};
 
 struct FVoxelEventHandle
 {
@@ -53,18 +42,24 @@ namespace EVoxelEventFlags
 	};
 }
 
-class VOXEL_API FVoxelEventManager : public FVoxelTickable, public TVoxelSharedFromThis<FVoxelEventManager>
+UCLASS()
+class VOXEL_API UVoxelEventSubsystemProxy : public UVoxelStaticSubsystemProxy
+{
+	GENERATED_BODY()
+	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelEventManager);
+};
+
+class VOXEL_API FVoxelEventManager : public IVoxelSubsystem, public FVoxelTickable
 {
 public:
-	FVoxelEventManagerSettings Settings;
+	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelEventSubsystemProxy);
 
-	static TVoxelSharedRef<FVoxelEventManager> Create(const FVoxelEventManagerSettings& Settings);
-	void Destroy();
 	~FVoxelEventManager();
 
-private:
-	explicit FVoxelEventManager(const FVoxelEventManagerSettings& Settings);
-	UE_NONCOPYABLE(FVoxelEventManager);
+	//~ Begin IVoxelSubsystem Interface
+	virtual void Create() override;
+	virtual void Destroy() override;
+	//~ End IVoxelSubsystem Interface
 	
 public:
 	FVoxelEventHandle BindEvent(

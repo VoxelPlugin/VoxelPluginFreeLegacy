@@ -44,7 +44,7 @@ void FVoxelRenderUtilities::InitializeMaterialInstance(
 	UMaterialInstanceDynamic* MaterialInstance,
 	int32 LOD,
 	const FIntVector& Position,
-	const FVoxelRendererSettingsBase& Settings)
+	const FVoxelRuntimeSettings& Settings)
 {
 	VOXEL_FUNCTION_COUNTER();
 
@@ -71,7 +71,7 @@ inline void IterateDynamicMaterials(UVoxelProceduralMeshComponent& Mesh, T Lambd
 
 inline void SetMaterialDithering(
 	UMaterialInstanceDynamic& Material,
-	const FVoxelRendererSettingsBase& Settings,
+	const FVoxelRuntimeSettings& Settings,
 	const FVoxelRenderUtilities::FDitheringInfo& DitheringInfo)
 {
 	if (Settings.RenderType == EVoxelRenderType::SurfaceNets)
@@ -102,7 +102,7 @@ inline void SetMaterialDithering(
 
 void FVoxelRenderUtilities::StartMeshDithering(
 	UVoxelProceduralMeshComponent& Mesh, 
-	const FVoxelRendererSettingsBase& Settings, 
+	const FVoxelRuntimeSettings& Settings, 
 	const FDitheringInfo& DitheringInfo)
 {
 	VOXEL_FUNCTION_COUNTER();
@@ -112,7 +112,7 @@ void FVoxelRenderUtilities::StartMeshDithering(
 	});
 }
 
-void FVoxelRenderUtilities::ResetDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRendererSettingsBase& Settings)
+void FVoxelRenderUtilities::ResetDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRuntimeSettings& Settings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	IterateDynamicMaterials(Mesh, [&](UMaterialInstanceDynamic& Material)
@@ -173,7 +173,7 @@ void FVoxelRenderUtilities::ShowMesh(UVoxelProceduralMeshComponent& Mesh)
 #define CHECK_CANCEL() if (CancelCounter.GetValue() > CancelThreshold) return {};
 
 TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread(
-	const FVoxelRendererSettingsBase& RendererSettings,
+	const FVoxelRuntimeSettings& RendererSettings,
 	const TArray<FVoxelChunkMeshSection>& Sections,
 	const FIntVector& CenterPosition,
 	const FThreadSafeCounter& CancelCounter, 
@@ -183,7 +183,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 
 	const bool bShowMainChunks = CVarShowTransitions.GetValueOnAnyThread() == 0;
 
-	auto ProcMeshBuffersPtr = MakeUnique<FVoxelProcMeshBuffers>(RendererSettings.Memory, Sections);
+	auto ProcMeshBuffersPtr = MakeUnique<FVoxelProcMeshBuffers>();
 	auto& ProcMeshBuffers = *ProcMeshBuffersPtr;
 
 	int32 NumVertices = 0;
@@ -476,7 +476,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 
 TUniquePtr<FVoxelBuiltChunkMeshes> FVoxelRenderUtilities::BuildMeshes_AnyThread(
 	const FVoxelChunkMeshesToBuild& ChunkMeshesToBuild,
-	const FVoxelRendererSettingsBase& RendererSettings,
+	const FVoxelRuntimeSettings& RendererSettings,
 	const FIntVector& Position,
 	const FThreadSafeCounter& CancelCounter,
 	int32 CancelThreshold)
@@ -507,15 +507,16 @@ TUniquePtr<FVoxelBuiltChunkMeshes> FVoxelRenderUtilities::BuildMeshes_AnyThread(
 FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 	int32 LOD,
 	const FIntVector& Position,
-	const FVoxelRendererSettingsBase& RendererSettings,
+	const IVoxelRenderer& Renderer, 
 	const FVoxelChunkSettings& ChunkSettings,
 	FVoxelChunkMaterials& ChunkMaterials,
 	const FVoxelChunkMesh& MainChunk,
 	const FVoxelChunkMesh* TransitionChunk,
-	const FVoxelOnMaterialInstanceCreated& OnMaterialInstanceCreated,
 	const FDitheringInfo& DitheringInfo)
 {
 	VOXEL_FUNCTION_COUNTER();
+
+	const FVoxelRuntimeSettings& Settings = Renderer.Settings;
 	
 	FVoxelChunkMeshesToBuild Meshes;
 
@@ -524,18 +525,18 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 			LOD,
 			Position,
 			false, // Set below
-			RendererSettings.RenderType == EVoxelRenderType::MarchingCubes && 
+			Settings.RenderType == EVoxelRenderType::MarchingCubes && 
 			// Don't translate if the transition chunk isn't built 
 			TransitionChunk && 
 			// No valid normals for these, so can't translate
-			RendererSettings.NormalConfig != EVoxelNormalConfig::FlatNormal && 
-			RendererSettings.NormalConfig != EVoxelNormalConfig::NoNormal,
+			Settings.NormalConfig != EVoxelNormalConfig::FlatNormal && 
+			Settings.NormalConfig != EVoxelNormalConfig::NoNormal,
 			ChunkSettings.TransitionsMask);
-	const auto DefaultMeshConfig = FVoxelMeshConfig().CopyFrom(*RendererSettings.ProcMeshClass->GetDefaultObject<UVoxelProceduralMeshComponent>());
+	const auto DefaultMeshConfig = FVoxelMeshConfig().CopyFrom(*Settings.ProcMeshClass->GetDefaultObject<UVoxelProceduralMeshComponent>());
 
 	const auto CreateMaterialInstance = [&](UMaterialInterface* Interface) -> TVoxelSharedRef<FVoxelMaterialInterface>
 	{
-		if (!RendererSettings.bCreateMaterialInstances)
+		if (!Settings.bCreateMaterialInstances)
 		{
 			return FVoxelMaterialInterfaceManager::Get().CreateMaterial(Interface);
 		}
@@ -548,11 +549,11 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 				MaterialInstanceObject,
 				LOD,
 				Position,
-				RendererSettings);
-			OnMaterialInstanceCreated.Broadcast(LOD, FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD), MaterialInstanceObject);
+				Settings);
+			Renderer.OnMaterialInstanceCreated.Broadcast(LOD, FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD), MaterialInstanceObject);
 			if (DitheringInfo.bIsValid)
 			{
-				SetMaterialDithering(*MaterialInstanceObject, RendererSettings, DitheringInfo);
+				SetMaterialDithering(*MaterialInstanceObject, Settings, DitheringInfo);
 			}
 		}
 
@@ -563,7 +564,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 	{
 		const auto CreateMaterial = [&]()
 		{
-			return CreateMaterialInstance(RendererSettings.GetVoxelMaterial(LOD));
+			return CreateMaterialInstance(Renderer.GetVoxelMaterial(LOD));
 		};
 		const auto MaterialInstance = ChunkMaterials.FindOrAddSingle(CreateMaterial);
 
@@ -613,7 +614,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 
 		const auto ShouldSkip = [&](const FVoxelMaterialIndices& Indices)
 		{
-			for (uint8 HoleMaterial : RendererSettings.HolesMaterials)
+			for (uint8 HoleMaterial : Settings.HolesMaterials)
 			{
 				for (int32 Index = 0; Index < Indices.NumIndices; Index++)
 				{
@@ -635,13 +636,13 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 
 			const auto CreateMaterial = [&]()
 			{
-				return CreateMaterialInstance(RendererSettings.GetVoxelMaterial(LOD, Material));
+				return CreateMaterialInstance(Renderer.GetVoxelMaterial(LOD, Material));
 			};
 			const auto MaterialInstance = ChunkMaterials.FindOrAddMultiple(Material, CreateMaterial);
 
 			// Note: we only use the first index to determine the mesh settings to use
 			// This might lead to unwanted behavior in blendings
-			auto* MaterialMeshConfig = RendererSettings.MaterialsMeshConfigs.Find(Material.SortedIndices[0]);
+			auto* MaterialMeshConfig = Settings.MaterialsMeshConfigs.Find(Material.SortedIndices[0]);
 			auto& MeshConfig = MaterialMeshConfig ? *MaterialMeshConfig : DefaultMeshConfig;
 			auto& SectionMap = Meshes.FindOrAdd(MeshConfig);
 

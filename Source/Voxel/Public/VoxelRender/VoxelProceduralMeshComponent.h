@@ -11,10 +11,10 @@
 #include "Components/ModelComponent.h"
 #include "VoxelProceduralMeshComponent.generated.h"
 
-struct FVoxelRendererMemory;
+class IVoxelRenderer;
+class FVoxelRuntimeData;
 struct FKConvexElem;
 struct FVoxelProcMeshBuffers;
-struct FVoxelRendererSettings;
 struct FMaterialRelevance;
 struct FVoxelSimpleCollisionData;
 class FVoxelTexturePool;
@@ -68,7 +68,7 @@ public:
 		uint32 InDebugChunkId,
 		const FVoxelPriorityHandler& InPriorityHandler,
 		const TVoxelWeakPtr<IVoxelProceduralMeshComponent_PhysicsCallbackHandler>& InPhysicsCallbackHandler,
-		const FVoxelRendererSettings& RendererSettings);
+		const IVoxelRenderer& Renderer);
 	void ClearInit();
 	
 private:
@@ -90,7 +90,7 @@ private:
 	// Used to render texture data in the greedy cubic mesher
 	TVoxelWeakPtr<FVoxelTexturePool> TexturePool;
 	// Track collision memory
-	TVoxelSharedPtr<FVoxelRendererMemory> RendererMemory;
+	TVoxelWeakPtr<FVoxelRuntimeData> VoxelRuntimeData;
 	// Collisions settings
 	ECollisionTraceFlag CollisionTraceFlag = ECollisionTraceFlag::CTF_UseDefault;
 	// If true, will use cubes given by the greedy mesher for simple collision
@@ -117,17 +117,25 @@ public:
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Voxel|Collisions")
-	static bool AreVoxelCollisionsFrozen();
+	static bool AreVoxelCollisionsFrozen(const AVoxelWorld* VoxelWorld);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Collisions")
-	static void SetVoxelCollisionsFrozen(bool bFrozen);
+	static void SetVoxelCollisionsFrozen(const AVoxelWorld* VoxelWorld, bool bFrozen);
 
-	static void AddOnFreezeVoxelCollisionChanged(const FOnFreezeVoxelCollisionChanged::FDelegate& NewDelegate);
+	static void AddOnFreezeVoxelCollisionChanged(const AVoxelWorld* VoxelWorld, const FOnFreezeVoxelCollisionChanged::FDelegate& NewDelegate);
 	
 private:
-	static bool bAreCollisionsFrozen;
-	static TSet<TWeakObjectPtr<UVoxelProceduralMeshComponent>> PendingCollisions;
-	static FOnFreezeVoxelCollisionChanged OnFreezeVoxelCollisionChanged;
+	struct FFreezeCollisionData
+	{
+		struct FWorldData
+		{
+			bool bFrozen = false;
+			TSet<TWeakObjectPtr<UVoxelProceduralMeshComponent>> PendingCollisions;
+			FOnFreezeVoxelCollisionChanged OnFreezeVoxelCollisionChanged;
+		};
+		TMap<TWeakObjectPtr<const AActor>, FWorldData> WorldData;
+	};
+	static FFreezeCollisionData FreezeCollisionData;
 
 public:
 	void SetDistanceFieldData(const TVoxelSharedPtr<const FDistanceFieldVolumeData>& InDistanceFieldData);

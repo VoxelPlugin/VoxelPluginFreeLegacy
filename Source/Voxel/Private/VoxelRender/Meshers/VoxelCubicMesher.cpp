@@ -275,6 +275,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicMesher::CreateFullChunkImpl(FVoxelMe
 	
 	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		DynamicSettings,
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(reinterpret_cast<TArray<FVoxelMesherVertex>&>(Vertices))));
@@ -395,6 +396,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicTransitionsMesher::CreateFullChunkIm
 
 	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
+		DynamicSettings,
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(reinterpret_cast<TArray<FVoxelMesherVertex>&>(Vertices))));

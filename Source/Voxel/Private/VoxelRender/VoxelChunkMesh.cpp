@@ -142,7 +142,7 @@ void FVoxelChunkMeshBuffers::UpdateStats()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data, const FVoxelRendererSettingsBase& Settings)
+void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data, const FVoxelRuntimeSettings& Settings)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	

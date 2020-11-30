@@ -97,7 +97,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 		bool bShowPlane = false;
 		if (ToolBaseConfig.Alignment == EVoxelToolAlignment::Surface)
 		{
-			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(TickData.bEdit);
+			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(VoxelWorld, TickData.bEdit);
 
 			// No need to override position/normal
 		}
@@ -135,7 +135,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 				ViewportSpaceMovement.LastClickNormal = bAirMode ? FVector::UpVector : Parameters.Normal;
 			}
 
-			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(false);
+			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(VoxelWorld, false);
 			
 			// Override position/normal
 			CurrentPosition = FMath::RayPlaneIntersection(TickData.GetRayOrigin(), TickData.GetRayDirection(), ViewportSpaceMovement.LastClickPlane);
@@ -214,8 +214,8 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 			// Without that, you can get a continuous stream of edits when keeping click pressed
 			// without moving the mouse, which is unexpected when using stride
 			// Not needed in viewport space movement
-			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(false);
-			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(true);
+			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(VoxelWorld, false);
+			UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(VoxelWorld, true);
 		}
 	}
 	else
@@ -309,7 +309,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 		// Tool material overlay on the voxel world
 		if (ToolBaseConfig.OverlayMaterial)
 		{
-			auto& ToolRenderingManager = VoxelWorld->GetToolRenderingManager();
+			auto& ToolRenderingManager = *VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
 			if (!ToolRenderingId.IsValid() || !ToolRenderingManager.IsValidTool(ToolRenderingId))
 			{
 				ToolRenderingId = ToolRenderingManager.CreateTool(true);
@@ -333,7 +333,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 		else if (ToolRenderingId.IsValid())
 		{
 			// Some tools can enabled/disable overlay
-			auto& ToolRenderingManager = VoxelWorld->GetToolRenderingManager();
+			auto& ToolRenderingManager = *VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
 			ToolRenderingManager.RemoveTool(ToolRenderingId);
 			ToolRenderingId.Reset();
 
@@ -405,7 +405,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 			{
 				PendingFrameBounds += ModifiedBounds;
 
-				NumPendingUpdates += VoxelWorld->GetLODManager().UpdateBounds_OnAllFinished(
+				NumPendingUpdates += VoxelWorld->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds_OnAllFinished(
 					ModifiedBounds.GetBox(),
 					FSimpleDelegate::CreateWeakLambda(this, [this, ModifiedBounds = ModifiedBounds.GetBox(), OldVoxelWorld = VoxelWorld]()
 					{
@@ -472,7 +472,7 @@ void UVoxelToolBase::SetToolOverlayBounds(const FBox& Bounds)
 {
 	if (ensure(VoxelWorld) && ensure(VoxelWorld->IsCreated()))
 	{
-		VoxelWorld->GetToolRenderingManager().EditTool(ToolRenderingId, [&](FVoxelToolRendering& Tool)
+		VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>()->EditTool(ToolRenderingId, [&](FVoxelToolRendering& Tool)
 		{
 			Tool.WorldBounds = Bounds;
 		});
@@ -576,7 +576,7 @@ void UVoxelToolBase::ClearVoxelWorld()
 		
 		if (ToolRenderingId.IsValid())
 		{
-			auto& ToolRenderingManager = VoxelWorld->GetToolRenderingManager();
+			auto& ToolRenderingManager = *VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
 			if (ToolRenderingManager.IsValidTool(ToolRenderingId)) // Could be invalid if the voxel world was toggled off & on
 			{
 				ToolRenderingManager.RemoveTool(ToolRenderingId);
@@ -596,7 +596,7 @@ void UVoxelToolBase::ClearVoxelWorld()
 	}
 	StaticMeshActors.Empty();
 
-	UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(false);
+	UVoxelProceduralMeshComponent::SetVoxelCollisionsFrozen(VoxelWorld, false);
 }
 
 void UVoxelToolBase::ApplyPendingFrameBounds()
