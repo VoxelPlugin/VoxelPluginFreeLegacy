@@ -152,7 +152,8 @@ public:
 	virtual void ApplyParameters(const TMap<FName, FString>& Parameters) override;
 	virtual void GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const override;
 	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance() override;
-	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance(const TMap<FName, FString>& Parameters) override;;
+	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance(const TMap<FName, FString>& Parameters) override;
+	virtual FVoxelGeneratorOutputs GetGeneratorOutputs() const override;
 	//~ End UVoxelGenerator Interface
 
 #if WITH_EDITOR

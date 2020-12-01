@@ -3,48 +3,24 @@
 #include "Details/VoxelSpawnerConfigSpawnerCustomization.h"
 #include "VoxelMinimal.h"
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
-
-#include "DetailWidgetRow.h"
-#include "DetailLayoutBuilder.h"
-#include "IDetailChildrenBuilder.h"
-#include "IDetailGroup.h"
-#include "IPropertyUtilities.h"
-#include "PropertyCustomizationHelpers.h"
-
-#include "Widgets/SBoxPanel.h"
-#include "Widgets/Text/STextBlock.h"
-#include "Widgets/Layout/SBox.h"
+#include "VoxelEditorDetailsIncludes.h"
 
 #define GET_CHILD_PROPERTY_IMPL(PropertyHandle, Class, Property) PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(Class, Property)).ToSharedRef()
 #define GET_CHILD_PROPERTY(Class, Property) GET_CHILD_PROPERTY_IMPL(PropertyHandle, Class, Property)
 
 void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-	const auto& SpawnerTypeEnum = *StaticEnum<EVoxelSpawnerType>();
-	
-	const auto TypeHandle = GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, SpawnerType);
-	
-	EVoxelSpawnerType Type;
+	void* Address = nullptr;
+	if (!ensure(PropertyHandle->GetValueData(Address) == FPropertyAccess::Success) || !ensure(Address))
 	{
-		FString TypeString;
-		if (!ensure(TypeHandle->GetValueAsFormattedString(TypeString) == FPropertyAccess::Success)) return;
-
-		const int64 TypeValue = SpawnerTypeEnum.GetValueByNameString(TypeString);
-		if (!ensure(TypeValue != -1)) return;
-
-		Type = EVoxelSpawnerType(TypeValue);
+		return;
 	}
+	FVoxelSpawnerConfigSpawner& Spawner = *static_cast<FVoxelSpawnerConfigSpawner*>(Address);
+	
+	GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, SpawnerType)->SetOnPropertyValueChanged(FVoxelEditorUtilities::MakeRefreshDelegate(CustomizationUtils));
 
-	const FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([&CustomizationUtils]()
-	{
-		auto Utilities = CustomizationUtils.GetPropertyUtilities();
-		if (Utilities.IsValid())
-		{
-			Utilities->ForceRefresh();
-		}
-	});
-	TypeHandle->SetOnPropertyValueChanged(RefreshDelegate);
-
+	const auto ArrayHandle = PropertyHandle->GetParentHandle()->AsArray();
+	
 	IDetailGroup& Group = ChildBuilder.AddGroup(TEXT("Spawner Config"), PropertyHandle->GetPropertyDisplayName());
 	Group.HeaderRow()
 	.NameContent()
@@ -60,7 +36,7 @@ void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IProp
 			SNew(SBox)
 			.MinDesiredWidth(FDetailWidgetRow::DefaultValueMinWidth)
 			[
-				TypeHandle->CreatePropertyValueWidget()
+				GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Spawner)->CreatePropertyValueWidget()
 			]
 		]
 	    + SHorizontalBox::Slot()
@@ -70,16 +46,16 @@ void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IProp
 		.Padding(2.0f, 1.0f)
 		[
 			PropertyCustomizationHelpers::MakeInsertDeleteDuplicateButton(
-				FExecuteAction::CreateLambda([=]() { PropertyHandle->GetParentHandle()->AsArray()->Insert(PropertyHandle->GetIndexInArray()); }),
-				FExecuteAction::CreateLambda([=]() { PropertyHandle->GetParentHandle()->AsArray()->DeleteItem(PropertyHandle->GetIndexInArray()); }), 
-				FExecuteAction::CreateLambda([=]() { PropertyHandle->GetParentHandle()->AsArray()->DuplicateItem(PropertyHandle->GetIndexInArray()); }))
+				MakeWeakPtrDelegate(ArrayHandle, [=]() { ArrayHandle->Insert(PropertyHandle->GetIndexInArray()); }),
+				MakeWeakPtrDelegate(ArrayHandle, [=]() { ArrayHandle->DeleteItem(PropertyHandle->GetIndexInArray()); }), 
+				MakeWeakPtrDelegate(ArrayHandle, [=]() { ArrayHandle->DuplicateItem(PropertyHandle->GetIndexInArray()); }))
 		]
 	];
 
-	Group.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Spawner));
+	Group.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, SpawnerType));
 	Group.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, Density));
 	
-	if (Type == EVoxelSpawnerType::Height)
+	if (Spawner.SpawnerType == EVoxelSpawnerType::Height)
 	{
 		Group.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, HeightGraphOutputName_HeightOnly));
 	}
@@ -157,7 +133,7 @@ void FVoxelSpawnerConfigSpawnerCustomization::CustomizeChildren(TSharedRef<IProp
 	
 	AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, DensityMultiplier));
 
-	if (Type == EVoxelSpawnerType::Height)
+	if (Spawner.SpawnerType == EVoxelSpawnerType::Height)
 	{
 		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bComputeDensityFirst_HeightOnly));
 		AdvancedGroup.AddPropertyRow(GET_CHILD_PROPERTY(FVoxelSpawnerConfigSpawner, bCheckIfFloating_HeightOnly));

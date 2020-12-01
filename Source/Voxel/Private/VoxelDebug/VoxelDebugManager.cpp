@@ -14,7 +14,6 @@
 #include "VoxelWorld.h"
 #include "VoxelPool.h"
 #include "VoxelThreadPool.h"
-#include "VoxelData/VoxelDataSubsystem.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 #include "Engine/Engine.h"
@@ -138,7 +137,7 @@ inline FConsoleCommandWithWorldAndArgsDelegate CreateCommandWithVoxelWorldDelega
 static FAutoConsoleCommandWithWorldAndArgs ClearChunksEmptyStatesCmd(
 	TEXT("voxel.renderer.ClearChunksEmptyStates"),
 	TEXT("Clear the empty states debug"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World) { World.GetSubsystemChecked<FVoxelDebugManager>()->ClearChunksEmptyStates(); }));
+	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World) { World.GetSubsystemChecked<FVoxelDebugManager>().ClearChunksEmptyStates(); }));
 
 static FAutoConsoleCommandWithWorldAndArgs UpdateAllCmd(
 	TEXT("voxel.renderer.UpdateAll"),
@@ -153,7 +152,7 @@ static FAutoConsoleCommandWithWorldAndArgs RecomputeMeshPositionsCmd(
 static FAutoConsoleCommandWithWorldAndArgs ForceLODsUpdateCmd(
 	TEXT("voxel.renderer.ForceLODUpdate"),
 	TEXT("Update the LODs"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World) { World.GetSubsystemChecked<IVoxelLODManager>()->ForceLODsUpdate(); }));
+	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World) { World.GetSubsystemChecked<IVoxelLODManager>().ForceLODsUpdate(); }));
 
 static FAutoConsoleCommandWithWorldAndArgs CacheAllValuesCmd(
 	TEXT("voxel.data.CacheAllValues"),
@@ -209,7 +208,7 @@ static FAutoConsoleCommandWithWorldAndArgs RoundVoxelsCmd(
 	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::RoundVoxels(&World, FVoxelIntBox::Infinite);
-			if (World.GetData().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
+			if (World.GetSubsystemChecked<FVoxelData>().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
 static FAutoConsoleCommandWithWorldAndArgs ClearUnusedMaterialsCmd(
@@ -218,7 +217,7 @@ static FAutoConsoleCommandWithWorldAndArgs ClearUnusedMaterialsCmd(
 	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::ClearUnusedMaterials(&World, FVoxelIntBox::Infinite);
-			if (World.GetData().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
+			if (World.GetSubsystemChecked<FVoxelData>().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
 static FAutoConsoleCommandWithWorldAndArgs RegenerateAllSpawnersCmd(
@@ -236,7 +235,7 @@ static FAutoConsoleCommandWithWorldAndArgs CompressIntoHeightmapCmd(
 		{
 			UVoxelDataTools::CompressIntoHeightmap(&World);
 			UVoxelBlueprintLibrary::UpdateBounds(&World, FVoxelIntBox::Infinite);
-			if (World.GetData().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
+			if (World.GetSubsystemChecked<FVoxelData>().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
 static FAutoConsoleCommandWithWorldAndArgs RoundToGeneratorCmd(
@@ -246,7 +245,7 @@ static FAutoConsoleCommandWithWorldAndArgs RoundToGeneratorCmd(
 		{
 			UVoxelDataTools::RoundToGenerator(&World, FVoxelIntBox::Infinite);
 			UVoxelBlueprintLibrary::UpdateBounds(&World, FVoxelIntBox::Infinite);
-			if (World.GetData().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
+			if (World.GetSubsystemChecked<FVoxelData>().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
 static FAutoConsoleCommandWithWorldAndArgs CompactTexturePoolCmd(
@@ -277,7 +276,7 @@ static FAutoConsoleCommandWithWorldAndArgs ShowCollisionAndNavmeshDebugCmd(
 				GShowCollisionAndNavmeshDebug = true;
 			}
 
-			World.GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(FVoxelIntBox::Infinite);
+			World.GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(FVoxelIntBox::Infinite);
 		}));
 
 static FAutoConsoleCommandWithWorld RebaseOntoCameraCmd(
@@ -603,7 +602,7 @@ void FVoxelDebugManager::Tick(float DeltaTime)
 		DirtyColor
 	};
 	
-	FVoxelData& Data = GetSubsystemChecked<FVoxelDataSubsystem>()->GetData();
+	FVoxelData& Data = GetSubsystemChecked<FVoxelData>();
 	
 	if (CVarShowValuesState.GetValueOnGameThread())
 	{

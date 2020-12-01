@@ -384,6 +384,14 @@ inline auto MakeWeakObjectPtrDelegate(T* Ptr, TLambda Lambda)
 }
 
 template<typename TClass, ESPMode Mode, typename TLambda>
+inline auto MakeWeakPtrDelegate(const TSharedPtr<TClass, Mode>& Object, TLambda Lambda)
+{
+	typename TDelegateFromLambda<TLambda>::Type Delegate;
+	TDelegateFromLambda<TLambda>::template TDelegateImpl<TClass, Mode, TLambda>::Create(Delegate, Object, MoveTemp(Lambda));
+	return Delegate;
+}
+
+template<typename TClass, ESPMode Mode, typename TLambda>
 inline auto MakeWeakPtrDelegate(const TSharedRef<TClass, Mode>& Object, TLambda Lambda)
 {
 	typename TDelegateFromLambda<TLambda>::Type Delegate;

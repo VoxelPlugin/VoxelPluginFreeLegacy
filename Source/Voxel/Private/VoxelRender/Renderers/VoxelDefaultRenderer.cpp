@@ -13,7 +13,6 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelData/VoxelDataSubsystem.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 
@@ -45,7 +44,7 @@ void FVoxelDefaultRenderer::Create()
 {
 	Super::Create();
 	
-	const auto Data = InitializeDependency<FVoxelDataSubsystem>();
+	auto& Data = GetSubsystemChecked<FVoxelData>();
 	
 	if (Settings.bMergeChunks)
 	{
@@ -64,7 +63,7 @@ void FVoxelDefaultRenderer::Create()
 	}
 	MeshHandler->Init();
 	
-	OnMaterialInstanceCreated.AddThreadSafeSP(Data->GetData().Generator, &FVoxelGeneratorInstance::SetupMaterialInstance);
+	OnMaterialInstanceCreated.AddThreadSafeSP(Data.Generator, &FVoxelGeneratorInstance::SetupMaterialInstance);
 	RuntimeData->OnWorldOffsetChanged.AddThreadSafeSP(MeshHandler.Get(), &IVoxelRendererMeshHandler::RecomputeMeshPositions);
 }
 
@@ -168,7 +167,7 @@ int32 FVoxelDefaultRenderer::UpdateChunks(
 		}
 	}
 
-	GetSubsystemChecked<FVoxelDebugManager>()->ReportUpdatedChunks([&]()
+	GetSubsystemChecked<FVoxelDebugManager>().ReportUpdatedChunks([&]()
 		{
 			TArray<FVoxelIntBox> UpdatedChunks;
 			UpdatedChunks.Reserve(ChunksToUpdate.Num());
@@ -630,7 +629,7 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 		}
 	}
 
-	GetSubsystemChecked<FVoxelDebugManager>()->ReportRenderChunks([&]()
+	GetSubsystemChecked<FVoxelDebugManager>().ReportRenderChunks([&]()
 		{
 			TArray<FVoxelIntBox> Result;
 			Result.Reserve(ChunksMap.Num());
@@ -708,13 +707,13 @@ void FVoxelDefaultRenderer::CreateGeometry_AnyThread(
 	TArray<uint32>& OutIndices,
 	TArray<FVector>& OutVertices) const
 {
-	const auto DataSubsystem = GetSubsystem<FVoxelDataSubsystem>();
-	if (!ensure(DataSubsystem))
+	const auto Data = GetSubsystem<FVoxelData>();
+	if (!ensure(Data))
 	{
 		return;
 	}
 	
-	FVoxelMesherAsyncWork::CreateGeometry_AnyThread(ChunkPosition, *this, DataSubsystem->GetData(), LOD, OutIndices, OutVertices);
+	FVoxelMesherAsyncWork::CreateGeometry_AnyThread(ChunkPosition, *this, *Data, LOD, OutIndices, OutVertices);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -750,7 +749,7 @@ void FVoxelDefaultRenderer::Tick(float)
 
 	UpdateAllocatedSize();
 
-	GetSubsystemChecked<FVoxelDebugManager>()->ReportMeshTasksCallbacksQueueNum(TasksCallbacksQueue.Num());
+	GetSubsystemChecked<FVoxelDebugManager>().ReportMeshTasksCallbacksQueueNum(TasksCallbacksQueue.Num());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1320,7 +1319,7 @@ void FVoxelDefaultRenderer::FlushQueuedTasks()
 				: bHasCollisions
 				? EVoxelTaskType::CollisionsChunksMeshing
 				: EVoxelTaskType::ChunksMeshing;
-			GetSubsystemChecked<FVoxelPool>()->QueueTasks(TaskType, Tasks);
+			GetSubsystemChecked<FVoxelPool>().QueueTasks(TaskType, Tasks);
 			Tasks.Reset();
 		}
 	};

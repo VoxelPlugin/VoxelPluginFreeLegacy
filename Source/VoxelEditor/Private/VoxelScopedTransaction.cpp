@@ -2,6 +2,7 @@
 
 #include "VoxelScopedTransaction.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
+#include "VoxelData/VoxelData.h"
 #include "VoxelWorld.h"
 #include "Editor.h"
 
@@ -30,7 +31,7 @@ TUniquePtr<FChange> FVoxelEditChange::Execute(UObject* Object)
 	auto* VoxelWorld = Cast<AVoxelWorld>(Object);
 
 	// Check that the world wasn't recreated since
-	if (ensure(VoxelWorld) && VoxelWorld->GetDataSharedPtr() == DataWeakPtr.Pin())
+	if (ensure(VoxelWorld) && VoxelWorld->GetSubsystem<FVoxelData>() == DataWeakPtr.Pin())
 	{
 		TArray<FVoxelIntBox> UpdatedBounds;
 		if (bIsUndo)
@@ -64,7 +65,7 @@ TUniquePtr<FChange> FVoxelDataSwapChange::Execute(UObject* Object)
 		return nullptr;
 	}
 
-	const auto NewData = VoxelWorld->GetDataSharedPtr();
+	const auto NewData = VoxelWorld->GetSubsystemChecked<FVoxelData>().AsShared();
 
 	VoxelWorld->DestroyWorld();
 	
@@ -90,12 +91,12 @@ FVoxelScopedTransaction::FVoxelScopedTransaction(AVoxelWorld* World, FName Name,
 
 		if (ChangeType == EVoxelChangeType::Edit)
 		{
-			GUndo->StoreUndo(World, MakeUnique<FVoxelEditChange>(World->GetDataSharedPtr(), Name, true));
+			GUndo->StoreUndo(World, MakeUnique<FVoxelEditChange>(World->GetSubsystemChecked<FVoxelData>().AsShared(), Name, true));
 		}
 		else
 		{
 			check(ChangeType == EVoxelChangeType::DataSwap);
-			GUndo->StoreUndo(World, MakeUnique<FVoxelDataSwapChange>(World->GetDataSharedPtr(), Name));
+			GUndo->StoreUndo(World, MakeUnique<FVoxelDataSwapChange>(World->GetSubsystemChecked<FVoxelData>().AsShared(), Name));
 		}
 	}
 }

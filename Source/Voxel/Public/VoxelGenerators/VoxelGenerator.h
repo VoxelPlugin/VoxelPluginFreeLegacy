@@ -11,6 +11,11 @@ class FVoxelGeneratorInstance;
 class FVoxelTransformableGeneratorInstance;
 struct FVoxelGeneratorParameter;
 
+struct FVoxelGeneratorOutputs
+{
+	TArray<FName> FloatOutputs;
+};
+
 /**
  * A UVoxelGenerator is used to create a FVoxelGeneratorInstance
  */
@@ -26,6 +31,8 @@ public:
 	
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance(const TMap<FName, FString>& Parameters);
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance();
+
+	virtual FVoxelGeneratorOutputs GetGeneratorOutputs() const;
 	//~ End UVoxelGenerator Interface
 
 protected:

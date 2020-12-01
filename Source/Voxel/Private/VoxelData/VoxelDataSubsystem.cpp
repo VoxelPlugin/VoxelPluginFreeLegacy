@@ -22,7 +22,7 @@ void FVoxelDataSubsystem::Create()
 		DataSettings.Depth = FVoxelUtilities::ConvertDepth<RENDER_CHUNK_SIZE, DATA_CHUNK_SIZE>(Settings.RenderOctreeDepth);
 		DataSettings.WorldBounds = Settings.GetWorldBounds();
 
-		DataSettings.Generator = FVoxelGeneratorPicker(Settings.Generator).GetInstance(true);
+		DataSettings.Generator = FVoxelGeneratorPicker(Settings.Generator).GetInstance();
 		DataSettings.Generator->Init(Settings.GetGeneratorInit());
 
 		DataSettings.bEnableMultiplayer = Settings.bEnableMultiplayer;

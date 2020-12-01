@@ -115,7 +115,7 @@ FVoxelIntBoxWithValidity UVoxelFlattenTool::DoEdit()
 		LastClickFlattenNormal = FlattenNormal;
 	}
 
-	auto& Data = GetVoxelWorld()->GetData();
+	auto& Data = GetVoxelWorld()->GetSubsystemChecked<FVoxelData>();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);

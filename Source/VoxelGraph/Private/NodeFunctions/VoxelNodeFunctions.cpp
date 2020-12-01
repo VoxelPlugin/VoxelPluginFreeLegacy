@@ -420,7 +420,7 @@ TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>> FVoxelNodeFunctions::CreateGene
 	TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>> Result;
 	for (auto& Picker : Generators)
 	{
-		Result.Add(Picker.GetInstance(true));
+		Result.Add(Picker.GetInstance());
 	}
 	if (Result.Num() == 0)
 	{

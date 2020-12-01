@@ -456,7 +456,7 @@ bool UVoxelBlueprintLibrary::Undo(AVoxelWorld* World, TArray<FVoxelIntBox>& OutU
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	if (!Data.bEnableUndoRedo)
 	{
@@ -475,7 +475,7 @@ bool UVoxelBlueprintLibrary::Undo(AVoxelWorld* World, TArray<FVoxelIntBox>& OutU
 		return false;
 	}
 	
-	World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(OutUpdatedBounds);
+	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(OutUpdatedBounds);
 	return true;
 }
 
@@ -490,7 +490,7 @@ bool UVoxelBlueprintLibrary::Redo(AVoxelWorld* World, TArray<FVoxelIntBox>& OutU
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	if (!Data.bEnableUndoRedo)
 	{
@@ -509,7 +509,7 @@ bool UVoxelBlueprintLibrary::Redo(AVoxelWorld* World, TArray<FVoxelIntBox>& OutU
 		return false;
 	}
 	
-	World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(OutUpdatedBounds);
+	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(OutUpdatedBounds);
 	return true;
 }
 
@@ -524,7 +524,7 @@ void UVoxelBlueprintLibrary::SaveFrame(AVoxelWorld* World)
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	if (!Data.bEnableUndoRedo)
 	{
@@ -540,7 +540,7 @@ void UVoxelBlueprintLibrary::ClearFrames(AVoxelWorld* World)
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	if (!Data.bEnableUndoRedo)
 	{
@@ -555,7 +555,7 @@ int32 UVoxelBlueprintLibrary::GetHistoryPosition(AVoxelWorld* World)
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	if (!Data.bEnableUndoRedo)
 	{
@@ -572,7 +572,7 @@ FVector UVoxelBlueprintLibrary::GetNormal(AVoxelWorld* World, FIntVector Positio
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	const auto& Data = World->GetData();
+	const auto& Data = World->GetSubsystemChecked<FVoxelData>();
 	FVoxelReadScopeLock Lock(Data, FVoxelIntBox(Position - FIntVector(1), Position + FIntVector(2)), "GetNormal");
 	return FVoxelDataUtilities::GetGradientFromGetValue<int32>(FVoxelDataUtilities::MakeFloatData(Data), Position.X, Position.Y, Position.Z, 0);
 }
@@ -582,7 +582,7 @@ float UVoxelBlueprintLibrary::GetFloatOutput(AVoxelWorld* World, FName Name, flo
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	if (!Data.Generator->GetOutputsPtrMap<v_flt>().Contains(Name))
 	{
@@ -598,7 +598,7 @@ int32 UVoxelBlueprintLibrary::GetIntOutput(AVoxelWorld* World, FName Name, float
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	if (!Data.Generator->GetOutputsPtrMap<int32>().Contains(Name))
 	{
@@ -613,7 +613,7 @@ FVoxelIntBox UVoxelBlueprintLibrary::GetBounds(AVoxelWorld* World)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
-	return World->GetData().WorldBounds;
+	return World->GetSubsystemChecked<FVoxelData>().WorldBounds;
 }
 
 void UVoxelBlueprintLibrary::ClearAllData(AVoxelWorld* World, bool bUpdateRender)
@@ -621,11 +621,11 @@ void UVoxelBlueprintLibrary::ClearAllData(AVoxelWorld* World, bool bUpdateRender
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	World->GetData().ClearData();
+	World->GetSubsystemChecked<FVoxelData>().ClearData();
 
 	if (bUpdateRender)
 	{
-		World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(FVoxelIntBox::Infinite);
+		World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(FVoxelIntBox::Infinite);
 	}
 }
 
@@ -634,7 +634,7 @@ void UVoxelBlueprintLibrary::ClearValueData(AVoxelWorld* World, bool bUpdateRend
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	{
 		FVoxelWriteScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
@@ -643,7 +643,7 @@ void UVoxelBlueprintLibrary::ClearValueData(AVoxelWorld* World, bool bUpdateRend
 	
 	if (bUpdateRender)
 	{
-		World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(FVoxelIntBox::Infinite);
+		World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(FVoxelIntBox::Infinite);
 	}
 }
 
@@ -652,7 +652,7 @@ void UVoxelBlueprintLibrary::ClearMaterialData(AVoxelWorld* World, bool bUpdateR
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	{
 		FVoxelWriteScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
@@ -661,7 +661,7 @@ void UVoxelBlueprintLibrary::ClearMaterialData(AVoxelWorld* World, bool bUpdateR
 		
 	if (bUpdateRender)
 	{
-		World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(FVoxelIntBox::Infinite);
+		World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(FVoxelIntBox::Infinite);
 	}
 }
 
@@ -670,10 +670,10 @@ bool UVoxelBlueprintLibrary::HasValueData(AVoxelWorld* World)
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	FVoxelReadScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
-	return FVoxelDataUtilities::HasData<FVoxelValue>(World->GetData());
+	return FVoxelDataUtilities::HasData<FVoxelValue>(World->GetSubsystemChecked<FVoxelData>());
 }
 
 bool UVoxelBlueprintLibrary::HasMaterialData(AVoxelWorld* World)
@@ -681,7 +681,7 @@ bool UVoxelBlueprintLibrary::HasMaterialData(AVoxelWorld* World)
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 	
 	FVoxelReadScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 	return FVoxelDataUtilities::HasData<FVoxelMaterial>(Data);
@@ -691,7 +691,7 @@ void UVoxelBlueprintLibrary::ClearDirtyData(AVoxelWorld* World, bool bUpdateRend
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	TArray<FVoxelIntBox> OutBoundsToUpdate;
 
@@ -702,7 +702,7 @@ void UVoxelBlueprintLibrary::ClearDirtyData(AVoxelWorld* World, bool bUpdateRend
 
 	if (bUpdateRender)
 	{
-		World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(OutBoundsToUpdate);
+		World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(OutBoundsToUpdate);
 	}
 }
 
@@ -710,7 +710,7 @@ void UVoxelBlueprintLibrary::ScaleData(AVoxelWorld* World, const FVector& Scale)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	auto& SourceData = World->GetData();
+	auto& SourceData = World->GetSubsystemChecked<FVoxelData>();
 	const auto DestData = SourceData.Clone();
 
 	{
@@ -735,7 +735,7 @@ void UVoxelBlueprintLibrary::UpdatePosition(AVoxelWorld* World, FIntVector Posit
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(FVoxelIntBox(Position));
+	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(FVoxelIntBox(Position));
 }
 
 void UVoxelBlueprintLibrary::UpdateBounds(AVoxelWorld* World, FVoxelIntBox Bounds)
@@ -743,14 +743,14 @@ void UVoxelBlueprintLibrary::UpdateBounds(AVoxelWorld* World, FVoxelIntBox Bound
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	CHECK_BOUNDS_ARE_VALID_VOID();
-	World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(Bounds);
+	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(Bounds);
 }
 
 void UVoxelBlueprintLibrary::UpdateAll(AVoxelWorld* World)
 {
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(FVoxelIntBox::Infinite);
+	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(FVoxelIntBox::Infinite);
 }
 
 void UVoxelBlueprintLibrary::ApplyLODSettings(AVoxelWorld* World)
@@ -758,7 +758,7 @@ void UVoxelBlueprintLibrary::ApplyLODSettings(AVoxelWorld* World)
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	World->GetRuntime().DynamicSettings->SetFromRuntime(*World);
-	World->GetSubsystemChecked<IVoxelLODManager>()->ForceLODsUpdate();
+	World->GetSubsystemChecked<IVoxelLODManager>().ForceLODsUpdate();
 }
 
 bool UVoxelBlueprintLibrary::AreCollisionsEnabled(AVoxelWorld* World, FVector InPosition, int32& LOD, bool bConvertToVoxelSpace /*= true*/)
@@ -769,7 +769,7 @@ bool UVoxelBlueprintLibrary::AreCollisionsEnabled(AVoxelWorld* World, FVector In
 	LOD = 0;
 	const FVoxelVector Position = FVoxelToolHelpers::GetRealPosition(World, InPosition, bConvertToVoxelSpace);
 
-	auto& LODManager = *World->GetSubsystemChecked<IVoxelLODManager>();
+	auto& LODManager = World->GetSubsystemChecked<IVoxelLODManager>();
 	if (!LODManager.Settings.GetWorldBounds().ContainsFloat(Position))
 	{
 		return false;
@@ -788,12 +788,12 @@ bool UVoxelBlueprintLibrary::AreCollisionsEnabled(AVoxelWorld* World, FVector In
 
 int32 UVoxelBlueprintLibrary::GetTaskCount(AVoxelWorld* World)
 {
-	return World && World->IsCreated() ? FMath::Max(World->GetSubsystemChecked<IVoxelRenderer>()->GetTaskCount(), 0) : 0;
+	return World && World->IsCreated() ? FMath::Max(World->GetSubsystemChecked<IVoxelRenderer>().GetTaskCount(), 0) : 0;
 }
 
 bool UVoxelBlueprintLibrary::IsVoxelWorldMeshLoading(AVoxelWorld* World)
 {
-	return World && World->IsCreated() && World->GetSubsystemChecked<IVoxelRenderer>()->GetTaskCount() > 0;
+	return World && World->IsCreated() && World->GetSubsystemChecked<IVoxelRenderer>().GetTaskCount() > 0;
 }
 
 bool UVoxelBlueprintLibrary::IsVoxelWorldFoliageLoading(AVoxelWorld* World)
@@ -808,7 +808,7 @@ void UVoxelBlueprintLibrary::ApplyNewMaterials(AVoxelWorld* World)
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
 	World->GetRuntime().DynamicSettings->SetFromRuntime(*World);
-	World->GetSubsystemChecked<IVoxelRenderer>()->ApplyNewMaterials();
+	World->GetSubsystemChecked<IVoxelRenderer>().ApplyNewMaterials();
 }
 
 void UVoxelBlueprintLibrary::RecreateRender(AVoxelWorld* World)
@@ -834,7 +834,7 @@ void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)
 
 	FVoxelScopedFastSaveLoad FastSaveScope;
 
-	const bool bDataIsDirty = World->GetData().IsDirty();
+	const bool bDataIsDirty = World->GetSubsystemChecked<FVoxelData>().IsDirty();
 	
 	FVoxelWorldCreateInfo Info;
 	if (bSaveData)
@@ -843,7 +843,7 @@ void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)
 		UVoxelDataTools::GetSave(World, Info.SaveOverride);
 
 		// Clear dirty flag to avoid popup
-		World->GetData().ClearDirtyFlag();
+		World->GetSubsystemChecked<FVoxelData>().ClearDirtyFlag();
 	}
 
 	World->RecreateAll(Info);
@@ -851,7 +851,7 @@ void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)
 	if (bSaveData && bDataIsDirty)
 	{
 		// Set back dirty flag
-		World->GetData().MarkAsDirty();
+		World->GetSubsystemChecked<FVoxelData>().MarkAsDirty();
 	}
 }
 
@@ -879,7 +879,7 @@ void UVoxelBlueprintLibrary::BindVoxelChunkEvents(
 		OnDeactivate.ExecuteIfBound(Bounds);
 	};
 
-	World->GetSubsystemChecked<FVoxelEventManager>()->BindEvent(
+	World->GetSubsystemChecked<FVoxelEventManager>().BindEvent(
 		bFireExistingOnes,
 		FMath::Max(1, ChunkSize),
 		FMath::Max(0, ActivationDistanceInChunks),
@@ -902,7 +902,7 @@ void UVoxelBlueprintLibrary::BindVoxelGenerationEvent(
 		OnGenerate.ExecuteIfBound(Bounds);
 	};
 
-	World->GetSubsystemChecked<FVoxelEventManager>()->BindGenerationEvent(
+	World->GetSubsystemChecked<FVoxelEventManager>().BindGenerationEvent(
 		bFireExistingOnes,
 		FMath::Max(1, ChunkSize),
 		FMath::Max(0, GenerationDistanceInChunks),
@@ -918,7 +918,7 @@ bool UVoxelBlueprintLibrary::IsValidRef(AVoxelWorld* World, FVoxelToolRenderingR
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 	
-	return Ref.Id.IsValid() && World->GetSubsystemChecked<FVoxelToolRenderingManager>()->IsValidTool(Ref.Id);
+	return Ref.Id.IsValid() && World->GetSubsystemChecked<FVoxelToolRenderingManager>().IsValidTool(Ref.Id);
 }
 
 FVoxelToolRenderingRef UVoxelBlueprintLibrary::CreateToolRendering(AVoxelWorld* World)
@@ -926,12 +926,12 @@ FVoxelToolRenderingRef UVoxelBlueprintLibrary::CreateToolRendering(AVoxelWorld* 
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 
-	return { World->GetSubsystemChecked<FVoxelToolRenderingManager>()->CreateTool() };
+	return { World->GetSubsystemChecked<FVoxelToolRenderingManager>().CreateTool() };
 }
 
 #define CHECK_TOOL_RENDERING_REF() \
 	if (!Ref.Id.IsValid()) { FVoxelMessages::Error(FUNCTION_ERROR("Unitilialized tool rendering reference")); return; } \
-	if (!World->GetSubsystemChecked<FVoxelToolRenderingManager>()->IsValidTool(Ref.Id))  { FVoxelMessages::Error(FUNCTION_ERROR("Outdated tool rendering reference")); return; }
+	if (!World->GetSubsystemChecked<FVoxelToolRenderingManager>().IsValidTool(Ref.Id))  { FVoxelMessages::Error(FUNCTION_ERROR("Outdated tool rendering reference")); return; }
 
 void UVoxelBlueprintLibrary::DestroyToolRendering(AVoxelWorld* World, FVoxelToolRenderingRef Ref)
 {
@@ -939,7 +939,7 @@ void UVoxelBlueprintLibrary::DestroyToolRendering(AVoxelWorld* World, FVoxelTool
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	CHECK_TOOL_RENDERING_REF();
 
-	World->GetSubsystemChecked<FVoxelToolRenderingManager>()->RemoveTool(Ref.Id);
+	World->GetSubsystemChecked<FVoxelToolRenderingManager>().RemoveTool(Ref.Id);
 }
 
 void UVoxelBlueprintLibrary::SetToolRenderingMaterial(AVoxelWorld* World, FVoxelToolRenderingRef Ref, UMaterialInterface* Material)
@@ -948,7 +948,7 @@ void UVoxelBlueprintLibrary::SetToolRenderingMaterial(AVoxelWorld* World, FVoxel
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	CHECK_TOOL_RENDERING_REF();
 
-	World->GetSubsystemChecked<FVoxelToolRenderingManager>()->EditTool(Ref.Id, [&](auto& Tool) { Tool.Material = FVoxelMaterialInterfaceManager::Get().CreateMaterial(Material); });
+	World->GetSubsystemChecked<FVoxelToolRenderingManager>().EditTool(Ref.Id, [&](auto& Tool) { Tool.Material = FVoxelMaterialInterfaceManager::Get().CreateMaterial(Material); });
 }
 
 void UVoxelBlueprintLibrary::SetToolRenderingBounds(AVoxelWorld* World, FVoxelToolRenderingRef Ref, FBox Bounds)
@@ -957,7 +957,7 @@ void UVoxelBlueprintLibrary::SetToolRenderingBounds(AVoxelWorld* World, FVoxelTo
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	CHECK_TOOL_RENDERING_REF();
 
-	World->GetSubsystemChecked<FVoxelToolRenderingManager>()->EditTool(Ref.Id, [&](auto& Tool) { Tool.WorldBounds = Bounds; });
+	World->GetSubsystemChecked<FVoxelToolRenderingManager>().EditTool(Ref.Id, [&](auto& Tool) { Tool.WorldBounds = Bounds; });
 }
 
 void UVoxelBlueprintLibrary::SetToolRenderingEnabled(AVoxelWorld* World, FVoxelToolRenderingRef Ref, bool bEnabled)
@@ -966,7 +966,7 @@ void UVoxelBlueprintLibrary::SetToolRenderingEnabled(AVoxelWorld* World, FVoxelT
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	CHECK_TOOL_RENDERING_REF();
 
-	World->GetSubsystemChecked<FVoxelToolRenderingManager>()->EditTool(Ref.Id, [&](auto& Tool) { Tool.bEnabled = bEnabled; });
+	World->GetSubsystemChecked<FVoxelToolRenderingManager>().EditTool(Ref.Id, [&](auto& Tool) { Tool.bEnabled = bEnabled; });
 }
 
 #undef CHECK_TOOL_RENDERING_REF
@@ -992,7 +992,7 @@ int32 UVoxelBlueprintLibrary::GetNumberOfVoxelThreads()
 void UVoxelBlueprintLibrary::CompactVoxelTexturePool(AVoxelWorld* World)
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetSubsystemChecked<FVoxelTexturePool>()->Compact();
+	World->GetSubsystemChecked<FVoxelTexturePool>().Compact();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -57,7 +57,7 @@ void UVoxelPhysicsRelevancyComponent::TickComponent(float DeltaTime, ELevelTick 
 		if (World->IsCreated())
 		{
 			auto LocalPosition = World->GlobalToLocal(Position);
-			auto& LODManager = *World->GetSubsystemChecked<IVoxelLODManager>();
+			auto& LODManager = World->GetSubsystemChecked<IVoxelLODManager>();
 			if (LODManager.Settings.GetWorldBounds().Contains(LocalPosition))
 			{
 				uint8 LOD;

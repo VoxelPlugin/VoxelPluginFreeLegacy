@@ -1,71 +1,90 @@
 // Copyright 2020 Phyronnaz
 
 #include "Details/VoxelSpawnerOutputNameCustomization.h"
-#include "VoxelMinimal.h"
-#include "VoxelEditorDetailsUtilities.h"
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
-#include "VoxelSpawners/VoxelSpawnerOutputsConfig.h"
-
-#include "DetailWidgetRow.h"
-#include "DetailLayoutBuilder.h"
-#include "IPropertyUtilities.h"
-#include "Widgets/Input/SComboBox.h"
+#include "VoxelEditorDetailsIncludes.h"
+#include "VoxelEditorDetailsUtilities.h"
 
 void FVoxelSpawnerOutputNameCustomization::CustomizeHeader(
 	const TSharedRef<IPropertyHandle> PropertyHandle, 
 	FDetailWidgetRow& HeaderRow, 
 	IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
+	const bool bIsDensityOutput = PropertyHandle->HasMetaData(STATIC_FNAME("DensityOutput"));
 	NameHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelSpawnerOutputName, Name)).ToSharedRef();
-
-	TSharedPtr<IPropertyHandle> OutputsHandle;
+	
+	const auto SetupDefault = [&]()
 	{
-		auto ParentHandle = PropertyHandle;
-		while (!OutputsHandle.IsValid() && ensure(ParentHandle->GetParentHandle().IsValid()))
-		{
-			ParentHandle = ParentHandle->GetParentHandle().ToSharedRef();
-			OutputsHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelSpawnerConfig, GeneratorOutputs));
-		}
-	}
-
-	if (!ensure(OutputsHandle.IsValid()))
-	{
-		return;
-	}
-
-	const FSimpleDelegate RefreshDelegate = FSimpleDelegate::CreateLambda([&CustomizationUtils]()
-	{
-		auto Utilities = CustomizationUtils.GetPropertyUtilities();
-		if (Utilities.IsValid())
-		{
-			Utilities->ForceRefresh();
-		}
-	});
-	OutputsHandle->SetOnPropertyValueChanged(RefreshDelegate);
-
-	UObject* OutputsObject = nullptr;
-	if (!ensure(OutputsHandle->GetValue(OutputsObject) == FPropertyAccess::Success))
-	{
-		return;
-	}
-
-	UVoxelSpawnerOutputsConfig* Outputs = Cast<UVoxelSpawnerOutputsConfig>(OutputsObject);
-	if (!Outputs)
-	{
-		HeaderRow
-		.NameContent()
+		HeaderRow.NameContent()
 		[
 			PropertyHandle->CreatePropertyNameWidget()
 		]
 		.ValueContent()
-		.MaxDesiredWidth(250.f)
 		[
-			FVoxelEditorUtilities::CreateText(VOXEL_LOCTEXT("Invalid Generator Outputs"), FSlateColor(FColor::Red))
+			NameHandle->CreatePropertyValueWidget()
 		];
+	};
+	
+	if (PropertyHandle->GetNumPerObjectValues() > 1)
+	{
+		SetupDefault();
 		return;
 	}
 
-	const TArray<FName> ValidOutputNames = Outputs->GetFloatOutputs();
+	TSharedPtr<IPropertyHandle> GeneratorHandle;
+	{
+		TSharedPtr<IPropertyHandle> ParentHandle = PropertyHandle;
+		while (ParentHandle.IsValid())
+		{
+			const auto UseMainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelSpawnerDensity, bUseMainGenerator));
+			if (bIsDensityOutput && UseMainGeneratorHandle)
+			{
+				UseMainGeneratorHandle->SetOnPropertyValueChanged(FVoxelEditorUtilities::MakeRefreshDelegate(CustomizationUtils));
+
+				bool bUseMainGenerator = false;
+				if (ensure(UseMainGeneratorHandle->GetValue(bUseMainGenerator) == FPropertyAccess::Success) && !bUseMainGenerator)
+				{
+					GeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelSpawnerDensity, CustomGenerator));
+					if (ensure(GeneratorHandle))
+					{
+						break;
+					}
+				}
+			}
+			const auto MainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelSpawnerCollection, MainGeneratorForDropdowns));
+			if (MainGeneratorHandle)
+			{
+				GeneratorHandle = MainGeneratorHandle;
+				break;
+			}
+			
+			ParentHandle = ParentHandle->GetParentHandle();
+		}
+	}
+
+	if (!GeneratorHandle.IsValid())
+	{
+		SetupDefault();
+		return;
+	}
+
+	GeneratorHandle->SetOnPropertyValueChanged(FVoxelEditorUtilities::MakeRefreshDelegate(CustomizationUtils));
+
+	void* Address = nullptr;
+	if (!ensure(GeneratorHandle->GetValueData(Address) == FPropertyAccess::Success))
+	{
+		return;
+	}
+
+	FVoxelGeneratorPicker& Picker = *static_cast<FVoxelGeneratorPicker*>(Address);
+	if (!Picker.IsValid())
+	{
+		SetupDefault();
+		return;
+	}
+
+	const auto Outputs = Picker.GetGenerator()->GetGeneratorOutputs();
+	const TArray<FName> ValidOutputNames = Outputs.FloatOutputs;
 
 	FName Value;
 	if (!ensure(NameHandle->GetValue(Value) == FPropertyAccess::Success))
@@ -109,7 +128,7 @@ void FVoxelSpawnerOutputNameCustomization::CustomizeHeader(
 	];
 }
 
-void FVoxelSpawnerOutputNameCustomization::HandleComboBoxSelectionChanged(TSharedPtr<FName> NewSelection, ESelectInfo::Type SelectInfo)
+void FVoxelSpawnerOutputNameCustomization::HandleComboBoxSelectionChanged(TSharedPtr<FName> NewSelection, ESelectInfo::Type SelectInfo) const
 {
 	if (ensure(NewSelection.IsValid()) && ensure(NameHandle.IsValid()) && ensure(ComboBoxText.IsValid()))
 	{

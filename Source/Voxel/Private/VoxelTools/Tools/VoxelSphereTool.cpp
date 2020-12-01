@@ -54,7 +54,7 @@ FVoxelIntBoxWithValidity UVoxelSphereTool::DoEdit()
 	}
 	const auto BoundsToCache = GetBoundsToCache(Bounds);
 
-	FVoxelData& Data = World.GetData();
+	FVoxelData& Data = World.GetSubsystemChecked<FVoxelData>();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);

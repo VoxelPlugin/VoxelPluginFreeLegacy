@@ -162,7 +162,7 @@ namespace FVoxelUtilities
 			}
 		}
 
-#if VOXEL_DEBUG
+#if VOXEL_DEBUG && 0 // Happens pretty often
 		float Sum = 0.f;
 		for (int32 Index = 0; Index < NumChannels; Index++)
 		{

@@ -7,18 +7,17 @@
 #include "VoxelIntBox.h"
 #include "VoxelPlaceableItemManager.generated.h"
 
-struct FVoxelDataItem;
-
 template<typename T>
 class TVoxelDataItemWrapper;
 
 class IVoxelWorldInterface;
-
 class UVoxelGeneratorCache;
 class UVoxelLineBatchComponent;
 class UVoxelGeneratorInstanceWrapper;
 
 class FVoxelData;
+class FVoxelGeneratorCache;
+struct FVoxelDataItem;
 
 USTRUCT(BlueprintType)
 struct FVoxelDataItemConstructionInfo
@@ -99,7 +98,11 @@ public:
 		FLinearColor Color = FLinearColor::Green);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel Placeable Item Manager")
-	UVoxelGeneratorCache* GetGeneratorCache() const;
+	UVoxelGeneratorCache* GetGeneratorCache() const
+	{
+		ensure(GeneratorCache); // SetGeneratorCache should have been called
+		return GeneratorCache;
+	}
 
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Voxel Placeable Item Manager")
@@ -122,10 +125,7 @@ public:
 
 	const TArray<FVoxelDataItemConstructionInfo>& GetDataItemInfos() const { return DataItemInfos; }
 
-	void SetExternalGeneratorCache(UVoxelGeneratorCache* NewCache)
-	{
-		GeneratorCache = NewCache;
-	}
+	void SetGeneratorCache(const TVoxelSharedRef<FVoxelGeneratorCache>& NewGeneratorCache);
 
 private:
 	// Transient as otherwise it's serialized in the graph preview settings	

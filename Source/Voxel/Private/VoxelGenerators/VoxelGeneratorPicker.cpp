@@ -6,34 +6,54 @@
 
 #include "UObject/Package.h"
 
-TVoxelSharedRef<FVoxelGeneratorInstance> FVoxelGeneratorPicker::GetInstance(bool bSilent) const
+inline void CheckOutputs(const UVoxelGenerator& Generator, const FVoxelGeneratorInstance& Instance)
+{
+#if !UE_BUILD_SHIPPING
+	VOXEL_FUNCTION_COUNTER();
+
+	FVoxelGeneratorOutputs Outputs = Generator.GetGeneratorOutputs();
+	const auto Order = [](FName A, FName B) {return A.FastLess(B); };
+
+	TArray<FName> FloatOutputs;
+	Instance.GetOutputsPtrMap<v_flt>().GenerateKeyArray(FloatOutputs);
+	FloatOutputs.Sort(Order);
+	Outputs.FloatOutputs.Sort(Order);
+	ensure(FloatOutputs == Outputs.FloatOutputs);
+#endif
+}
+
+TVoxelSharedRef<FVoxelGeneratorInstance> FVoxelGeneratorPicker::GetInstance() const
 {
 	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
 
 	auto* Generator = GetGenerator();
 	if (Generator)
 	{
-		return Generator->GetInstance(Parameters);
+		const auto Instance = Generator->GetInstance(Parameters);
+		CheckOutputs(*Generator, *Instance);
+		return Instance;
 	}
 	else
 	{
-		FVoxelMessages::CondError(!bSilent, FUNCTION_ERROR("Invalid generator"));
 		return MakeVoxelShared<FVoxelEmptyGeneratorInstance>();
 	}
 }
 
-TVoxelSharedRef<FVoxelTransformableGeneratorInstance> FVoxelTransformableGeneratorPicker::GetInstance(bool bSilent) const
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> FVoxelTransformableGeneratorPicker::GetInstance() const
 {
 	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
 	
 	auto* Generator = GetGenerator();
 	if (Generator)
 	{
-		return Generator->GetTransformableInstance(Parameters);
+		const auto Instance = Generator->GetTransformableInstance(Parameters);
+		CheckOutputs(*Generator, *Instance);
+		return Instance;
 	}
 	else
 	{
-		FVoxelMessages::CondError(!bSilent, FUNCTION_ERROR("Invalid generator"));
 		return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 	}
 }

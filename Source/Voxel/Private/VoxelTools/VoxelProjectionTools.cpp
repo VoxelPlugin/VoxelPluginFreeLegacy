@@ -446,7 +446,7 @@ FVoxelSurfaceEditsVoxels UVoxelProjectionTools::CreateSurfaceVoxelsFromHitsWithE
 		Bounds = Bounds + Hits[Index].VoxelPosition;
 	}
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 	FVoxelReadScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
 	const FVoxelConstDataAccelerator Accelerator(Data, Bounds);
 

@@ -158,7 +158,7 @@ void UVoxelDebugUtilities::DebugVoxelsInsideBounds(
 
 				if (bDebugDensities)
 				{
-					auto& Data = World->GetData();
+					auto& Data = World->GetSubsystemChecked<FVoxelData>();
 					FVoxelReadScopeLock Lock(Data, FVoxelIntBox(X, Y, Z), "DebugVoxelsInsideBox");
 					float Value = Data.GetValue(X, Y, Z, 0).ToFloat();
 					DrawDebugString(World->GetWorld(), World->LocalToGlobal(FIntVector(X, Y, Z)), LexToString(Value), nullptr, TextColor.ToFColor(false), Lifetime);
@@ -245,7 +245,7 @@ void UVoxelDebugUtilities::DrawDataOctree(
 		DirtyColor
 	};
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	FVoxelReadScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 

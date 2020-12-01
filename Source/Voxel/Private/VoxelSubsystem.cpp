@@ -20,19 +20,30 @@ IVoxelSubsystem::~IVoxelSubsystem()
 {
 	ensure(IsInGameThread());
 	ensure(bCreateCalled);
+	ensure(bPostCreateCalled);
 	ensure(bDestroyCalled);
 }
 
 void IVoxelSubsystem::Create()
 {
 	ensure(!bCreateCalled);
+	ensure(!bPostCreateCalled);
 	ensure(!bDestroyCalled);
 	bCreateCalled = true;
+}
+
+void IVoxelSubsystem::PostCreate()
+{
+	ensure(bCreateCalled);
+	ensure(!bPostCreateCalled);
+	ensure(!bDestroyCalled);
+	bPostCreateCalled = true;
 }
 
 void IVoxelSubsystem::Destroy()
 {
 	ensure(bCreateCalled);
+	ensure(bPostCreateCalled);
 	ensure(!bDestroyCalled);
 	bDestroyCalled = true;
 }

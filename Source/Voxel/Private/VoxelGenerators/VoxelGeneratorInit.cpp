@@ -3,16 +3,17 @@
 #include "VoxelGenerators/VoxelGeneratorInit.h"
 #include "VoxelGenerators/VoxelGeneratorCache.h"
 
-const IVoxelGeneratorCache& FVoxelGeneratorInit::GetGeneratorCache() const
+FVoxelGeneratorCache& FVoxelGeneratorInit::GetGeneratorCache() const
 {
-	if (auto* Cache = GeneratorCache.Get())
+	if (!GeneratorCache)
 	{
-		return *Cache;
+		GeneratorCache = FVoxelGeneratorCache::Create(*this);
 	}
-	
-	if (!GeneratorCacheFallback)
-	{
-		GeneratorCacheFallback = MakeVoxelShared<FVoxelEmptyGeneratorCache>(*this);
-	}
-	return *GeneratorCacheFallback;
+	return *GeneratorCache;
+}
+
+void FVoxelGeneratorInit::AddReferencedObjects(FReferenceCollector& Collector)
+{
+	Collector.AddReferencedObject(MaterialCollection);
+	Collector.AddReferencedObject(World);
 }

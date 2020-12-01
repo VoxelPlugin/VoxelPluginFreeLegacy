@@ -91,7 +91,7 @@ FVoxelIntBoxWithValidity UVoxelTrimTool::DoEdit()
 	}
 	const auto BoundsToCache = GetBoundsToCache(Bounds);
 
-	auto& Data = World.GetData();
+	auto& Data = World.GetSubsystemChecked<FVoxelData>();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);

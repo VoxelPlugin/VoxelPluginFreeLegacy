@@ -260,37 +260,33 @@ public:
 	template<typename T>
 	TVoxelSharedPtr<T> GetSubsystem() const
 	{
-		ensureMsgf(!bIsInit, TEXT("Use InitializeDependency instead!"));
-		FScopeLock Lock(&CriticalSection);
-		return StaticCastSharedPtr<T>(SubsystemsMap.FindRef(T::ProxyClass::StaticClass()));
+		const auto Subsystem = GetSubsystemImpl<T>();
+		if (bIsInit && Subsystem)
+		{
+			// This will happen if GetSubsystem is called in a subsystem Create
+			const_cast<FVoxelRuntime*>(this)->InitializeSubsystem(Subsystem);
+		}
+		return GetTypedSubsystem<T>(Subsystem);
 	}
 	template<typename T>
-	TVoxelSharedRef<T> GetSubsystemChecked() const
+	T& GetSubsystemChecked() const
 	{
 		// Unsafe to do in async threads
 		check(IsInGameThread());
-		return GetSubsystem<T>().ToSharedRef();
+		return GetSubsystem<T>().ToSharedRef().Get();
 	}
 	
 	template<typename T>
-	TVoxelSharedRef<T> InitializeDependency()
-	{
-		check(bIsInit);
-		const auto Subsystem = SubsystemsMap.FindRef(T::ProxyClass::StaticClass());
-		InitializeSubsystem(Subsystem);
-		return StaticCastSharedRef<T>(Subsystem.ToSharedRef());
-	}
-	template<typename T>
 	void RecreateSubsystem()
 	{
-		RecreateSubsystem(GetSubsystem<T>());
+		RecreateSubsystem(GetSubsystemImpl<T>());
 	}
 
 private:
-	// The lock is needed for RecreateSubsystem
-	mutable FCriticalSection CriticalSection;
 	TSet<TVoxelSharedPtr<IVoxelSubsystem>> AllSubsystems;
-	TMap<UClass*, TVoxelSharedPtr<IVoxelSubsystem>> SubsystemsMap;
+	// The lock is needed for RecreateSubsystem
+	mutable FCriticalSection SubsystemsMapSection;
+	TMap<UClass*, TVoxelSharedPtr<IVoxelSubsystem>> SubsystemsMap_NeedsLock;
 
 	bool bIsInit = false;
 	TSet<TVoxelSharedPtr<IVoxelSubsystem>> InitializedSubsystems;
@@ -299,4 +295,33 @@ private:
 	void InitializeSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& Subsystem);
 	void RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsystem);
 	TVoxelSharedPtr<IVoxelSubsystem> AddSubsystem(UClass* Class);
+
+	template<typename T>
+	TVoxelSharedPtr<IVoxelSubsystem> GetSubsystemImpl() const
+	{
+		FScopeLock Lock(&SubsystemsMapSection);
+		return SubsystemsMap_NeedsLock.FindRef(GetSubsystemProxyClass<T>());
+	}
+	
+	template<typename T>
+	static FORCEINLINE typename TEnableIf<TIsDerivedFrom<T, IVoxelSubsystem>::IsDerived, UClass*>::Type GetSubsystemProxyClass()
+	{
+		return T::ProxyClass::StaticClass();
+	}
+	template<typename T>
+	static FORCEINLINE typename TEnableIf<!TIsDerivedFrom<T, IVoxelSubsystem>::IsDerived, UClass*>::Type GetSubsystemProxyClass()
+	{
+		return GetSubsystemProxyClass<typename T::SubsystemClass>();
+	}
+	
+	template<typename T>
+	static FORCEINLINE typename TEnableIf<TIsDerivedFrom<T, IVoxelSubsystem>::IsDerived, TVoxelSharedPtr<T>>::Type GetTypedSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& Subsystem)
+	{
+		return StaticCastSharedPtr<T>(Subsystem);
+	}
+	template<typename T>
+	static FORCEINLINE typename TEnableIf<!TIsDerivedFrom<T, IVoxelSubsystem>::IsDerived, TVoxelSharedPtr<T>>::Type GetTypedSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& Subsystem)
+	{
+		return Subsystem ? T::GetFromSubsystem(static_cast<typename T::SubsystemClass&>(*Subsystem)) : nullptr;
+	}
 };

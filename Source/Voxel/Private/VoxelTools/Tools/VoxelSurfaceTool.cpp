@@ -118,7 +118,7 @@ FVoxelIntBoxWithValidity UVoxelSurfaceTool::DoEdit()
 	// Don't cache the entire column
 	const auto BoundsToCache = GetBoundsToCache(BoundsToDoEditsIn);
 
-	FVoxelData& Data = GetVoxelWorld()->GetData();
+	FVoxelData& Data = GetVoxelWorld()->GetSubsystemChecked<FVoxelData>();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsWhereEditsHappen.Union(BoundsToCache), FUNCTION_FNAME);

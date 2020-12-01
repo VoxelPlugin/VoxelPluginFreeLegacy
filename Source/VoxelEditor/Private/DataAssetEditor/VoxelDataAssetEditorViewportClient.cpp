@@ -109,7 +109,7 @@ void FVoxelDataAssetEditorViewportClient::Tick(float DeltaSeconds)
 	World->Tick(LEVELTICK_All, DeltaSeconds);
 	Panel.Tick(this, DeltaSeconds);
 
-	if (VoxelWorld.GetData().IsDirty())
+	if (VoxelWorld.GetSubsystemChecked<FVoxelData>().IsDirty())
 	{
 		DataAsset.MarkPackageDirty();
 	}

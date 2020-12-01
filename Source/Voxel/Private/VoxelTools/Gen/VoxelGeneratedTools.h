@@ -54,7 +54,7 @@
 #define GENERATED_TOOL_CALL(Type, ...) \
 	GENERATED_TOOL_PREFIX(Type) \
 	EditedBounds = Bounds; \
-	auto& WorldData = VoxelWorld->GetData(); \
+	auto& WorldData = VoxelWorld->GetSubsystemChecked<FVoxelData>(); \
 	{ \
 		FVoxelWriteScopeLock Lock(WorldData, Bounds, FUNCTION_FNAME); \
 		auto Data = TVoxelDataImpl<FModifiedVoxel##Type>(WorldData, bMultiThreaded, bRecordModified##Type##s); \
@@ -93,7 +93,7 @@
 #define GENERATED_TOOL_CALL_CPP(Type, ...) \
 	GENERATED_TOOL_PREFIX(Type) \
 	if (OutEditedBounds) *OutEditedBounds = Bounds; \
-	auto& WorldData = VoxelWorld->GetData(); \
+	auto& WorldData = VoxelWorld->GetSubsystemChecked<FVoxelData>(); \
 	{ \
 		FVoxelWriteScopeLock Lock(WorldData, Bounds, FUNCTION_FNAME); \
 		auto Data = TVoxelDataImpl<FModifiedVoxel##Type>(WorldData, bMultiThreaded, OutModified##Type##s != nullptr); \
@@ -144,7 +144,7 @@ public:
 	
 	explicit FVoxelToolAsyncWork(FName Name, AVoxelWorld& World, TFunction<void(FVoxelData&)>&& Function)
 		: FVoxelAsyncWork(Name, EVoxelTaskType::AsyncEditFunctions, EPriority::Null, true)
-		, Data(World.GetDataSharedPtr())
+		, Data(World.GetSubsystemChecked<FVoxelData>().AsShared())
 		, Function(MoveTemp(Function))
 	{
 	}

@@ -7,10 +7,9 @@
 #include "VoxelMinimal.h"
 #include "VoxelGeneratorInit.generated.h"
 
-class IVoxelGeneratorCache;
 class AVoxelWorld;
-class UVoxelGeneratorCache;
 class UVoxelMaterialCollectionBase;
+class FVoxelGeneratorCache;
 
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelGeneratorInit
@@ -53,13 +52,13 @@ public:
 	{
 	}
 
-	const IVoxelGeneratorCache& GetGeneratorCache() const;
+	FVoxelGeneratorCache& GetGeneratorCache() const;
+	void AddReferencedObjects(FReferenceCollector& Collector);
 
 private:
-	mutable TWeakObjectPtr<const UVoxelGeneratorCache> GeneratorCache;
-	mutable TVoxelSharedPtr<const IVoxelGeneratorCache> GeneratorCacheFallback;
+	mutable TVoxelSharedPtr<FVoxelGeneratorCache> GeneratorCache;
 
-	friend class UVoxelGeneratorCache;
+	friend class FVoxelGeneratorCache;
 
 public:
 	VOXEL_DEPRECATED(1.2, "Seeds are now regular generator parameters")

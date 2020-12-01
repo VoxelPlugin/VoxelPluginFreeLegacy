@@ -57,7 +57,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(
 		}
 	}
 
-	GetSubsystemChecked<IVoxelRenderer>()->UpdateLODs(1, ChunkUpdates);
+	GetSubsystemChecked<IVoxelRenderer>().UpdateLODs(1, ChunkUpdates);
 
 	return true;
 }
