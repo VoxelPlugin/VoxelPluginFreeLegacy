@@ -313,7 +313,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 							EAppMsgType::YesNoCancel, 
 							VOXEL_LOCTEXT("This will clear all the voxel world edits! Do you want to continue?")))
 						{
-							World.GetData().ClearData();
+							World.GetSubsystemChecked<FVoxelData>().ClearData();
 							World.Toggle();
 							World.Toggle();
 						}
@@ -381,7 +381,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 
 							FVoxelScopedTransaction Transaction(&World, "Setting values as dirty", EVoxelChangeType::DataSwap);
 							UVoxelDataTools::SetBoxAsDirty(&World, FVoxelIntBox::Infinite, true, false);
-							World.GetData().MarkAsDirty();
+							World.GetSubsystemChecked<FVoxelData>().MarkAsDirty();
 						}
 					}
 				}));
@@ -406,7 +406,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 
 							FVoxelScopedTransaction Transaction(&World, "Setting materials as dirty", EVoxelChangeType::DataSwap);
 							UVoxelDataTools::SetBoxAsDirty(&World, FVoxelIntBox::Infinite, false, true);
-							World.GetData().MarkAsDirty();
+							World.GetSubsystemChecked<FVoxelData>().MarkAsDirty();
 						}
 					}
 				}));

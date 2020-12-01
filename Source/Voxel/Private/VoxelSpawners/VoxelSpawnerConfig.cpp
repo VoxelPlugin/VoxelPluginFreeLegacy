@@ -6,9 +6,14 @@
 #include "VoxelUtilities/VoxelMathUtilities.h"
 
 #if WITH_EDITOR
-bool UVoxelSpawnerConfig::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent)
+bool FVoxelSpawnerDensity::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const
 {
-	if (Object == GeneratorOutputs)
+	return Type == EVoxelSpawnerDensityType::GeneratorOutput && !bUseMainGenerator && CustomGenerator.GetObject() == Object;
+}
+
+bool UVoxelSpawnerCollection::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const
+{
+	if (Object == MainGeneratorForDropdowns.GetObject())
 	{
 		return true;
 	}
@@ -23,11 +28,19 @@ bool UVoxelSpawnerConfig::NeedsToRebuild(UObject* Object, const FPropertyChanged
 		{
 			return true;
 		}
+		if (Spawner.Density.NeedsToRebuild(Object, PropertyChangedEvent))
+		{
+			return true;
+		}
+		if (Spawner.DensityMultiplier.NeedsToRebuild(Object, PropertyChangedEvent))
+		{
+			return true;
+		}
 	}
 	return false;
 }
 
-void UVoxelSpawnerConfig::PostEditChangeProperty(FPropertyChangedEvent & PropertyChangedEvent)
+void UVoxelSpawnerCollection::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
@@ -37,100 +50,15 @@ void UVoxelSpawnerConfig::PostEditChangeProperty(FPropertyChangedEvent & Propert
 }
 #endif
 
-void UVoxelSpawnerConfig::PostLoad()
+void UVoxelSpawnerCollection::PostLoad()
 {
 	Super::PostLoad();
-
-	{
-		const auto UpgradeDensityGraphOutputNameToDensityStruct = [&](auto& Groups)
-		{
-			for (auto& Group : Groups)
-			{
-				for (auto& Spawner : Group.Spawners)
-				{
-					if (!Spawner.DensityGraphOutputName_DEPRECATED.IsNone())
-					{
-						if (FName(Spawner.DensityGraphOutputName_DEPRECATED) == STATIC_FNAME("Constant 0"))
-						{
-							Spawner.Density.Type = EVoxelSpawnerDensityType::Constant;
-							Spawner.Density.Constant = 0.f;
-						}
-						else if (FName(Spawner.DensityGraphOutputName_DEPRECATED) == STATIC_FNAME("Constant 1"))
-						{
-							Spawner.Density.Type = EVoxelSpawnerDensityType::Constant;
-							Spawner.Density.Constant = 1.f;
-						}
-						else
-						{
-							Spawner.Density.Type = EVoxelSpawnerDensityType::GeneratorOutput;
-							Spawner.Density.GeneratorOutputName = Spawner.DensityGraphOutputName_DEPRECATED;
-						}
-					}
-				}
-			}
-		};
-
-		UpgradeDensityGraphOutputNameToDensityStruct(HeightSpawners_DEPRECATED);
-		UpgradeDensityGraphOutputNameToDensityStruct(RaySpawners_DEPRECATED);
-	}
-
-	for (const FVoxelSpawnerConfigRayGroup& Group : RaySpawners_DEPRECATED)
-	{
-		for (const FVoxelSpawnerConfigElement_Ray& Spawner : Group.Spawners)
-		{
-			FVoxelSpawnerConfigSpawner NewSpawner;
-			
-			NewSpawner.Spawner = Spawner.Spawner;
-			NewSpawner.SpawnerType = EVoxelSpawnerType::Ray;
-			NewSpawner.Density = Spawner.Density;
-			NewSpawner.DensityMultiplier = Spawner.DensityMultiplier;
-			NewSpawner.HeightGraphOutputName_HeightOnly = "";
-			NewSpawner.LOD = Group.LOD;
-			NewSpawner.GenerationDistanceInChunks = Group.GenerationDistanceInChunks;
-			
-			NewSpawner.bSave = Spawner.Advanced.bSave;
-			NewSpawner.bDoNotDespawn = Spawner.Advanced.bDoNotDespawn;
-			NewSpawner.Seed = Spawner.Advanced.DefaultSeed;
-			NewSpawner.RandomGenerator = Spawner.Advanced.RandomGenerator;
-			NewSpawner.Guid = Spawner.Advanced.Guid;
-			NewSpawner.bComputeDensityFirst_HeightOnly = false;
-
-			Spawners.Add(NewSpawner);
-		}
-	}
-	RaySpawners_DEPRECATED.Reset();
-
-	for (const FVoxelSpawnerConfigHeightGroup& Group : HeightSpawners_DEPRECATED)
-	{
-		for (const FVoxelSpawnerConfigElement_Height& Spawner : Group.Spawners)
-		{
-			FVoxelSpawnerConfigSpawner NewSpawner;
-			
-			NewSpawner.Spawner = Spawner.Spawner;
-			NewSpawner.SpawnerType = EVoxelSpawnerType::Height;
-			NewSpawner.Density = Spawner.Density;
-			NewSpawner.DensityMultiplier = {};
-			NewSpawner.HeightGraphOutputName_HeightOnly = Group.HeightGraphOutputName;
-			NewSpawner.LOD = FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(Group.ChunkSize);
-			NewSpawner.GenerationDistanceInChunks = Group.GenerationDistanceInChunks;
-			
-			NewSpawner.bSave = Spawner.Advanced.bSave;
-			NewSpawner.bDoNotDespawn = Spawner.Advanced.bDoNotDespawn;
-			NewSpawner.Seed = Spawner.Advanced.DefaultSeed;
-			NewSpawner.RandomGenerator = Spawner.Advanced.RandomGenerator;
-			NewSpawner.Guid = Spawner.Advanced.Guid;
-			NewSpawner.bComputeDensityFirst_HeightOnly = Spawner.Advanced.bComputeDensityFirst;
-
-			Spawners.Add(NewSpawner);
-		}
-	}
-	HeightSpawners_DEPRECATED.Reset();
 
 	SetEditorOnlyPropertiesFromReadOnly();
 	FixGuids();
 }
 
-void UVoxelSpawnerConfig::SetReadOnlyPropertiesFromEditorOnly()
+void UVoxelSpawnerCollection::SetReadOnlyPropertiesFromEditorOnly()
 {
 	for (auto& Spawner : Spawners)
 	{
@@ -140,7 +68,7 @@ void UVoxelSpawnerConfig::SetReadOnlyPropertiesFromEditorOnly()
 	}
 }
 
-void UVoxelSpawnerConfig::SetEditorOnlyPropertiesFromReadOnly()
+void UVoxelSpawnerCollection::SetEditorOnlyPropertiesFromReadOnly()
 {
 	for (auto& Spawner : Spawners)
 	{
@@ -148,7 +76,8 @@ void UVoxelSpawnerConfig::SetEditorOnlyPropertiesFromReadOnly()
 		Spawner.GenerationDistanceInVoxels_EditorOnly = Spawner.GenerationDistanceInChunks * Spawner.ChunkSize_EditorOnly;
 	}
 }
-void UVoxelSpawnerConfig::FixGuids()
+
+void UVoxelSpawnerCollection::FixGuids()
 {
 	TSet<FGuid> Guids;
 
@@ -168,3 +97,22 @@ void UVoxelSpawnerConfig::FixGuids()
 		}
 	}
 }
+
+#if WITH_EDITOR
+bool UVoxelSpawnerConfig::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const
+{
+	for (auto& Collection : Collections)
+	{
+		if (Object == Collection)
+		{
+			return true;
+		}
+		if (Collection && Collection->NeedsToRebuild(Object, PropertyChangedEvent))
+		{
+			return true;
+		}
+	}
+
+	return Super::NeedsToRebuild(Object, PropertyChangedEvent);
+}
+#endif

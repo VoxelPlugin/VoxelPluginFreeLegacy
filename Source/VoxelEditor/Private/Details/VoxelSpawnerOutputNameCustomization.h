@@ -18,5 +18,5 @@ private:
 	TSharedPtr<STextBlock> ComboBoxText;
 	TSharedPtr<IPropertyHandle> NameHandle;
 	
-	void HandleComboBoxSelectionChanged(TSharedPtr<FName> NewSelection, ESelectInfo::Type SelectInfo);
+	void HandleComboBoxSelectionChanged(TSharedPtr<FName> NewSelection, ESelectInfo::Type SelectInfo) const;
 };

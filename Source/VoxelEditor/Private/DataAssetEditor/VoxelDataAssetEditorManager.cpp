@@ -47,7 +47,7 @@ FVoxelDataAssetEditorManager::FVoxelDataAssetEditorManager(UVoxelDataAsset* Data
 
 FVoxelDataAssetEditorManager::~FVoxelDataAssetEditorManager()
 {
-	World->GetData().ClearDirtyFlag(); // Avoid annoying save popup from the voxel world
+	World->GetSubsystemChecked<FVoxelData>().ClearDirtyFlag(); // Avoid annoying save popup from the voxel world
 	World->DestroyWorld();
 
 	check(DataAsset->VoxelWorldTemplate);
@@ -70,7 +70,7 @@ void FVoxelDataAssetEditorManager::Save(bool bShowDebug)
 {
 	FVoxelScopedSlowTask Progress(6);
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 	
 	Progress.EnterProgressFrame(1, VOXEL_LOCTEXT("Rounding voxels"));
 	if (GetDefault<UVoxelSettings>()->bRoundBeforeSaving)
@@ -173,7 +173,7 @@ void FVoxelDataAssetEditorManager::RecreateWorld()
 
 bool FVoxelDataAssetEditorManager::IsDirty() const
 {
-	return ensure(World->IsCreated()) && World->GetData().IsDirty();
+	return ensure(World->IsCreated()) && World->GetSubsystemChecked<FVoxelData>().IsDirty();
 }
 
 void FVoxelDataAssetEditorManager::CreateWorld()

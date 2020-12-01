@@ -55,7 +55,7 @@ void UVoxelAssetTools::ImportAssetAsReference(
 	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Transform, Bounds, bConvertToVoxelSpace);
 	if (!AssetInstance) return;
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	{
 		FVoxelWriteScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
@@ -166,7 +166,7 @@ void UVoxelAssetTools::ImportModifierAsset(
 	CHECK_BOUNDS_ARE_VALID_VOID();
 	CHECK_BOUNDS_ARE_32BITS_VOID();
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 	{
 		FVoxelWriteScopeLock Lock(Data, bLockEntireWorld ? FVoxelIntBox::Infinite : Bounds, FUNCTION_FNAME);
 		ImportModifierAssetImpl(Data, Bounds, Transform, *AssetInstance, bModifyValues, bModifyMaterials);

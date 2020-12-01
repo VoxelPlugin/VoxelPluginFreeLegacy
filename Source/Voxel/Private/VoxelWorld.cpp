@@ -296,16 +296,6 @@ FIntVector AVoxelWorld::GetWorldOffset() const
 	return Runtime.IsValid() ? Runtime->RuntimeData->WorldOffset : FIntVector::ZeroValue;
 }
 
-FVoxelData& AVoxelWorld::GetData() const
-{
-	return GetSubsystemChecked<FVoxelDataSubsystem>()->GetData();
-}
-
-TVoxelSharedRef<FVoxelData> AVoxelWorld::GetDataSharedPtr() const
-{
-	return GetSubsystemChecked<FVoxelDataSubsystem>()->GetDataPtr();
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -437,6 +427,18 @@ void AVoxelWorld::AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor)
 	SetOffset(GetWorldOffset() - OffsetInVoxels);
 }
 
+UVoxelGeneratorCache* AVoxelWorld::GetGeneratorCache() const
+{
+	CHECK_VOXELWORLD_IS_CREATED_IMPL(this, nullptr);
+	
+	if (!GeneratorCache)
+	{
+		GeneratorCache = NewObject<UVoxelGeneratorCache>();
+		GeneratorCache->GeneratorCache = GetSubsystemChecked<FVoxelGeneratorCache>().AsShared();
+	}
+	return GeneratorCache;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -474,7 +476,7 @@ void AVoxelWorld::SetCollisionResponseToChannel(ECollisionChannel Channel, EColl
 	{
 		GetWorldRoot().SetCollisionResponseToChannel(Channel, NewResponse);
 
-		GetSubsystemChecked<IVoxelRenderer>()->ApplyToAllMeshes([&](UVoxelProceduralMeshComponent& MeshComponent)
+		GetSubsystemChecked<IVoxelRenderer>().ApplyToAllMeshes([&](UVoxelProceduralMeshComponent& MeshComponent)
 		{
 			MeshComponent.SetCollisionResponseToChannel(Channel, NewResponse);
 		});
@@ -527,7 +529,7 @@ void AVoxelWorld::Tick(float DeltaTime)
 		WorldRoot->TickWorldRoot();
 		GameThreadTasks->Flush();
 #if WITH_EDITOR
-		if (PlayType == EVoxelPlayType::Preview && GetData().IsDirty())
+		if (PlayType == EVoxelPlayType::Preview && GetSubsystemChecked<FVoxelData>().IsDirty())
 		{
 			MarkPackageDirty();
 		}
@@ -745,7 +747,7 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 				if (Result == EAppReturnType::Yes)
 				{
 					UVoxelBlueprintLibrary::ClearMaterialData(this);
-					GetData().MarkAsDirty();
+					GetSubsystemChecked<FVoxelData>().MarkAsDirty();
 				}
 			}
 		}
@@ -771,17 +773,17 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 			else if (Property->HasMetaData("UpdateAll"))
 			{
 				GetRuntime().DynamicSettings->SetFromRuntime(*this);
-				GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(FVoxelIntBox::Infinite);
+				GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(FVoxelIntBox::Infinite);
 			}
 			else if (Property->HasMetaData("UpdateLODs"))
 			{
 				GetRuntime().DynamicSettings->SetFromRuntime(*this);
-				GetSubsystemChecked<IVoxelLODManager>()->ForceLODsUpdate();
+				GetSubsystemChecked<IVoxelLODManager>().ForceLODsUpdate();
 			}
 			else if (Property->HasMetaData("UpdateRenderer"))
 			{
 				GetRuntime().DynamicSettings->SetFromRuntime(*this);
-				GetSubsystemChecked<IVoxelRenderer>()->ApplyNewMaterials();
+				GetSubsystemChecked<IVoxelRenderer>().ApplyNewMaterials();
 			}
 		}
 	}
@@ -877,10 +879,6 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 	
 	GetLineBatchComponent().Flush();
 
-	ensure(!GeneratorCache);
-	GeneratorCache = NewObject<UVoxelGeneratorCache>(this);
-	GeneratorCache->SetGeneratorInit(GetGeneratorInit());
-
 	ensure(!GameThreadTasks);
 	GameThreadTasks = MakeVoxelShared<FGameThreadTasks>();
 
@@ -900,7 +898,7 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 			{
 				if (Info.DataOverride->IsCreated())
 				{
-					RuntimeSettings.DataOverride = Info.DataOverride->GetDataSharedPtr();
+					RuntimeSettings.DataOverride = Info.DataOverride->GetSubsystemChecked<FVoxelData>().AsShared();
 				}
 				else
 				{
@@ -933,8 +931,7 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 	{
 		OnMaxFoliageInstancesReached.Broadcast();
 	});
-
-
+	
 	if (SpawnerConfig)
 	{
 		FVoxelMessages::Info("Spawners are only available in Voxel Plugin Pro", this);
@@ -971,10 +968,10 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 			// This lets objects adds new items without having to specify a custom class
 			PlaceableItemManager = NewObject<UVoxelPlaceableItemManager>();
 		}
-		PlaceableItemManager->SetExternalGeneratorCache(GeneratorCache);
+		PlaceableItemManager->SetGeneratorCache(GetSubsystemChecked<FVoxelGeneratorCache>().AsShared());
 		PlaceableItemManager->Clear();
 		PlaceableItemManager->Generate();
-		PlaceableItemManager->ApplyToData(GetData());
+		PlaceableItemManager->ApplyToData(GetSubsystemChecked<FVoxelData>());
 		PlaceableItemManager->DrawDebug(*this, GetLineBatchComponent());
 
 		// Do that after Clear/Generate
@@ -1015,10 +1012,10 @@ void AVoxelWorld::DestroyWorldInternal()
 	GameThreadTasks->Flush();
 	GameThreadTasks.Reset();
 
-	// Clear generator cache to avoid keeping instances alive
-	if (ensure(GeneratorCache))
+	if (GeneratorCache) // Could be null, lazily created
 	{
-		GeneratorCache->ClearCache();
+		// Reset to avoid keeping instances alive
+		GeneratorCache->GeneratorCache.Reset();
 		GeneratorCache->MarkPendingKill();
 		GeneratorCache = nullptr;
 	}
@@ -1072,7 +1069,7 @@ void AVoxelWorld::LoadFromSaveObject()
 		FVoxelMessages::Error("Invalid Save Object!", this);
 		return;
 	}
-	if (Save.Const().GetDepth() > GetData().Depth)
+	if (Save.Const().GetDepth() > GetSubsystemChecked<FVoxelData>().Depth)
 	{
 		LOG_VOXEL(Warning, TEXT("Save Object depth is bigger than world depth, the save data outside world bounds will be ignored"));
 	}
@@ -1085,7 +1082,7 @@ void AVoxelWorld::LoadFromSaveObject()
 
 		if (Result != EAppReturnType::Yes)
 		{
-			GetData().ClearData();
+			GetSubsystemChecked<FVoxelData>().ClearData();
 			PlayType = EVoxelPlayType::Game; // Hack
 			DestroyWorldInternal();
 		}
@@ -1244,7 +1241,7 @@ void AVoxelWorld::SaveData()
 		return;
 	}
 	check(IsCreated());
-	if (GetData().IsDirty() && GetTransientPackage() != nullptr)
+	if (GetSubsystemChecked<FVoxelData>().IsDirty() && GetTransientPackage() != nullptr)
 	{
 		if (!SaveObject && ensure(IVoxelWorldEditor::GetVoxelWorldEditor()))
 		{
@@ -1255,7 +1252,7 @@ void AVoxelWorld::SaveData()
 			if (Result == EAppReturnType::No)
 			{
 				// Clear dirty flag so we don't get more annoying popups
-				GetData().ClearDirtyFlag();
+				GetSubsystemChecked<FVoxelData>().ClearDirtyFlag();
 				return;
 			}
 			
@@ -1288,7 +1285,7 @@ void AVoxelWorld::SaveData()
 			Info.CheckBoxState = ECheckBoxState::Checked;
 			FSlateNotificationManager::Get().AddNotification(Info);
 
-			GetData().ClearDirtyFlag();
+			GetSubsystemChecked<FVoxelData>().ClearDirtyFlag();
 		}
 		else
 		{
@@ -1324,7 +1321,7 @@ inline bool CanLoad(const FVoxelData& Data)
 void AVoxelWorld::LoadFromSaveObjectEditor()
 {
 	check(SaveObject);
-	if (!CanLoad(GetData()))
+	if (!CanLoad(GetSubsystemChecked<FVoxelData>()))
 	{
 		return;
 	}
@@ -1384,7 +1381,7 @@ bool AVoxelWorld::SaveToFile(const FString& Path, FText& Error)
 
 bool AVoxelWorld::LoadFromFile(const FString& Path, FText& Error)
 {
-	if (!CanLoad(GetData()))
+	if (!CanLoad(GetSubsystemChecked<FVoxelData>()))
 	{
 		Error = VOXEL_LOCTEXT("Canceled");
 		return false;

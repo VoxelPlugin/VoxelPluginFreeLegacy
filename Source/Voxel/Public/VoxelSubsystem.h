@@ -68,10 +68,17 @@ class VOXEL_API UVoxelDynamicSubsystemProxy : public UVoxelSubsystemProxy
 	using ProxyClass = InProxyClass; \
 	using Super::Super; \
 	virtual UClass* GetProxyClass() const override { static_assert(TIsSame<VOXEL_THIS_TYPE, ProxyClass::SubsystemClass>::Value, ""); return ProxyClass::StaticClass(); } \
-	auto AsShared() { return StaticCastSharedRef<VOXEL_THIS_TYPE>(this->Super::AsShared()); } \
-	auto AsShared() const { return StaticCastSharedRef<const VOXEL_THIS_TYPE>(this->Super::AsShared()); } \
-	static UClass* StaticClass() { return ProxyClass::StaticClass(); }
+	FORCEINLINE auto AsShared() { return StaticCastSharedRef<VOXEL_THIS_TYPE>(this->Super::AsShared()); } \
+	FORCEINLINE auto AsShared() const { return StaticCastSharedRef<const VOXEL_THIS_TYPE>(this->Super::AsShared()); } \
+	FORCEINLINE static UClass* StaticClass() { return ProxyClass::StaticClass(); }
 
+#define VOXEL_SUBSYSTEM_FWD(InSubsystemClass, Getter) \
+	using SubsystemClass = InSubsystemClass; \
+	FORCEINLINE static decltype(auto) GetFromSubsystem(const SubsystemClass& Subsystem) \
+	{ \
+		return Subsystem.Getter(); \
+	}
+	
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -121,26 +128,23 @@ public:
 		}
 	}
 	template<typename T>
-	TVoxelSharedRef<T> GetSubsystemChecked() const
+	T& GetSubsystemChecked() const
 	{
 		return WeakRuntime.Pin()->GetSubsystemChecked<T>();
-	}
-	
-	template<typename T>
-	TVoxelSharedRef<T> InitializeDependency()
-	{
-		return WeakRuntime.Pin()->InitializeDependency<T>();
 	}
 
 protected:
 	//~ Begin IVoxelSubsystem Interface
 	virtual void Create();
+	// Called once every subsystem is created
+	virtual void PostCreate();
 	virtual void Destroy();
 	virtual UClass* GetProxyClass() const = 0;
 	//~ End IVoxelSubsystem Interface
 
 private:
 	bool bCreateCalled = false;
+	bool bPostCreateCalled = false;
 	bool bDestroyCalled = false;
 	
 	template<typename T>

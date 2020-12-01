@@ -40,14 +40,7 @@
 #include "AssetTools/AssetTypeActions_VoxelDataAsset.h"
 #include "AssetTools/AssetTypeActions_VoxelHeightmapAsset.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphGenerator.h"
-#include "AssetTools/AssetTypeActions_VoxelGraphOutputsConfig.h"
-#include "AssetTools/AssetTypeActions_VoxelGraphDataItemConfig.h"
-#include "AssetTools/AssetTypeActions_VoxelSpawnerConfig.h"
-#include "AssetTools/AssetTypeActions_VoxelSpawners.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphMacro.h"
-#include "AssetTools/AssetTypeActions_VoxelWorldSaveObject.h"
-#include "AssetTools/AssetTypeActions_VoxelMaterialCollection.h"
-#include "AssetTools/AssetTypeActions_VoxelMagicaVoxScene.h"
 
 #include "Thumbnails/VoxelGraphGeneratorThumbnailRenderer.h"
 #include "Thumbnails/VoxelSpawnersThumbnailRenderer.h"
@@ -83,11 +76,12 @@
 #include "VoxelImporters/VoxelLandscapeImporter.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
 
-#include "Factories/VoxelWorldSaveObjectFactory.h"
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelDebugEditor.h"
 #include "VoxelScopedTransaction.h"
 #include "VoxelWorldEditorControls.h"
+#include "Factories/VoxelFactories.h"
+#include "VoxelImporters/VoxelMagicaVoxImporter.h"
 #include "VoxelUtilities/VoxelSystemUtilities.h"
 
 const FVector2D Icon14x14(14.0f, 14.0f);
@@ -511,31 +505,50 @@ private:
 	{
 		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 
-		auto Action = MakeShared<T>(VoxelAssetCategoryBit);
+		const auto Action = MakeShared<T>(VoxelAssetCategoryBit);
+		AssetTools.RegisterAssetTypeActions(Action);
+		RegisteredAssetTypeActions.Add(Action);
+	}
+	template<typename T>
+	void RegisterAssetTypeAction(const FText& Name, FColor Color)
+	{
+		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
+
+		const auto Action = MakeShared<FAssetTypeActions_Voxel>(VoxelAssetCategoryBit, Name, Color, T::StaticClass());
 		AssetTools.RegisterAssetTypeActions(Action);
 		RegisteredAssetTypeActions.Add(Action);
 	}
 
 	void RegisterAssetTools()
 	{
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelWorldSaveObject>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelBasicMaterialCollection>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelInstancedMaterialCollectionTemplates>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelInstancedMaterialCollection>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelInstancedMaterialCollectionInstance>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelLandscapeMaterialCollection>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelDataAsset>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelSpawnerConfig>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelAssetSpawner>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelMeshSpawner>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelMeshSpawnerGroup>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelSpawnerGroup>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelHeightmapAsset>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphGenerator>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphMacro>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphOutputsConfig>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphDataItemConfig>();
-		RegisterAssetTypeAction<FAssetTypeActions_VoxelMagicaVoxScene>();
+
+		const FColor Orange = FColor(255, 140, 0);
+		const FColor DarkGreen = FColor(0, 192, 0);
+		const FColor LightGreen = FColor(128, 255, 128);
+		const FColor Blue = FColor(0, 175, 255);
+
+		RegisterAssetTypeAction<UVoxelWorldSaveObject>(VOXEL_LOCTEXT("Voxel World Save Object"), Orange);
+		RegisterAssetTypeAction<UVoxelMagicaVoxScene >(VOXEL_LOCTEXT("Voxel Magica Vox Scene"), Orange);
+
+		RegisterAssetTypeAction<UVoxelBasicMaterialCollection             >(VOXEL_LOCTEXT("Voxel Basic Material Collection"              ), DarkGreen);
+		RegisterAssetTypeAction<UVoxelInstancedMaterialCollectionTemplates>(VOXEL_LOCTEXT("Voxel Instanced Material Collection Templates"), DarkGreen);
+		RegisterAssetTypeAction<UVoxelInstancedMaterialCollection         >(VOXEL_LOCTEXT("Voxel Instanced Material Collection"          ), DarkGreen);
+		RegisterAssetTypeAction<UVoxelInstancedMaterialCollectionInstance >(VOXEL_LOCTEXT("Voxel Instanced Material Collection Instance" ), DarkGreen);
+		RegisterAssetTypeAction<UVoxelLandscapeMaterialCollection         >(VOXEL_LOCTEXT("Voxel Landscape Material Collection"          ), DarkGreen);
+
+		RegisterAssetTypeAction<UVoxelSpawnerConfig    >(VOXEL_LOCTEXT("Voxel Spawner Config"    ), LightGreen);
+		RegisterAssetTypeAction<UVoxelSpawnerCollection>(VOXEL_LOCTEXT("Voxel Spawner Collection"), LightGreen);
+		RegisterAssetTypeAction<UVoxelMeshSpawner      >(VOXEL_LOCTEXT("Voxel Mesh Spawner"      ), LightGreen);
+		RegisterAssetTypeAction<UVoxelMeshSpawnerGroup >(VOXEL_LOCTEXT("Voxel Mesh Spawner Group"), LightGreen);
+		RegisterAssetTypeAction<UVoxelAssetSpawner     >(VOXEL_LOCTEXT("Voxel Asset Spawner"     ), LightGreen);
+		RegisterAssetTypeAction<UVoxelSpawnerGroup     >(VOXEL_LOCTEXT("Voxel Spawner Group"     ), LightGreen);
+
+		RegisterAssetTypeAction<UVoxelGraphOutputsConfig >(VOXEL_LOCTEXT("Voxel Graph Outputs Config"  ), Blue);
+		RegisterAssetTypeAction<UVoxelGraphDataItemConfig>(VOXEL_LOCTEXT("Voxel Graph Data Item Config"), Blue);
 	}
 
 	void UnregisterAssetTools()

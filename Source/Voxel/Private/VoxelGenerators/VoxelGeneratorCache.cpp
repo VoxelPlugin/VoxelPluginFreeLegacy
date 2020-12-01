@@ -5,39 +5,69 @@
 #include "VoxelGenerators/VoxelGeneratorInstance.h"
 #include "VoxelGenerators/VoxelGeneratorInstanceWrapper.h"
 #include "VoxelMessages.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
-TVoxelSharedRef<FVoxelGeneratorInstance> FVoxelEmptyGeneratorCache::MakeNativeGeneratorInstance(FVoxelGeneratorPicker Picker) const
-{
-	const auto Instance = Picker.GetInstance(false);
-	Instance->Init(GeneratorInit);
-	return Instance;
-}
+DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelGeneratorCacheSubsystemProxy);
 
-TVoxelSharedRef<FVoxelTransformableGeneratorInstance> FVoxelEmptyGeneratorCache::MakeNativeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker) const
+void FVoxelGeneratorCacheSubsystem::Create()
 {
-	const auto Instance = Picker.GetInstance(false);
-	Instance->Init(GeneratorInit);
-	return Instance;
+	Super::Create();
+
+	GeneratorCache = FVoxelGeneratorCache::Create(Settings.GetGeneratorInit());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-UVoxelGeneratorInstanceWrapper* UVoxelGeneratorCache::MakeGeneratorInstance(FVoxelGeneratorPicker Picker) const
+TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorCache::Create(const FVoxelGeneratorInit& Init)
 {
-	if (!Picker.IsValid())
+	ensure(!Init.GeneratorCache.IsValid());
+	const TVoxelSharedRef<FVoxelGeneratorCache> Result = MakeShareable(new FVoxelGeneratorCache());
+	Result->GeneratorInit = Init;
+	Result->GeneratorInit.GeneratorCache = Result;
+	OnGeneratorRecompiled.AddThreadSafeSP(Result, &FVoxelGeneratorCache::OnGeneratorRecompiledImpl);
+	return Result;
+}
+
+FVoxelGeneratorCache::FOnGeneratorRecompiled FVoxelGeneratorCache::OnGeneratorRecompiled;
+
+void FVoxelGeneratorCache::OnGeneratorRecompiledImpl(UVoxelGenerator* Generator)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+
+	for (auto It = Cache.CreateIterator(); It; ++It)
 	{
-		FVoxelMessages::Error(FUNCTION_ERROR("Invalid generator"));
-		return nullptr;
+		if (It.Key().GetGenerator() == Generator)
+		{
+			It.RemoveCurrent();
+		}
 	}
+	for (auto It = TransformableCache.CreateIterator(); It; ++It)
+	{
+		if (It.Key().GetGenerator() == Generator)
+		{
+			It.RemoveCurrent();
+		}
+	}
+}
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelGeneratorInstanceWrapper* FVoxelGeneratorCache::K2_MakeGeneratorInstance(FVoxelGeneratorPicker Picker)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+	
 	auto& Entry = Cache.FindOrAdd(Picker);
 	
 	if (!Entry.Instance)
 	{
 		ensure(!Entry.Wrapper);
-		Entry.Instance = Picker.GetInstance(false);
+		Entry.Instance = Picker.GetInstance();
 		Entry.Instance->Init(GeneratorInit);
 	}
 	
@@ -50,20 +80,17 @@ UVoxelGeneratorInstanceWrapper* UVoxelGeneratorCache::MakeGeneratorInstance(FVox
 	return Entry.Wrapper;
 }
 
-UVoxelTransformableGeneratorInstanceWrapper* UVoxelGeneratorCache::MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker) const
+UVoxelTransformableGeneratorInstanceWrapper* FVoxelGeneratorCache::K2_MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker)
 {
-	if (!Picker.IsValid())
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("Invalid generator"));
-		return nullptr;
-	}
-
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+	
 	auto& Entry = TransformableCache.FindOrAdd(Picker);
 	
 	if (!Entry.Instance)
 	{
 		ensure(!Entry.Wrapper);
-		Entry.Instance = Picker.GetInstance(false);
+		Entry.Instance = Picker.GetInstance();
 		Entry.Instance->Init(GeneratorInit);
 	}
 	
@@ -80,26 +107,32 @@ UVoxelTransformableGeneratorInstanceWrapper* UVoxelGeneratorCache::MakeTransform
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelGeneratorCache::MakeNativeGeneratorInstance(FVoxelGeneratorPicker Picker) const
+TVoxelSharedRef<FVoxelGeneratorInstance> FVoxelGeneratorCache::MakeGeneratorInstance(FVoxelGeneratorPicker Picker)
 {
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+	
 	auto& Entry = Cache.FindOrAdd(Picker);
 	
 	if (!Entry.Instance)
 	{
-		Entry.Instance = Picker.GetInstance(false);
+		Entry.Instance = Picker.GetInstance();
 		Entry.Instance->Init(GeneratorInit);
 	}
 	
 	return Entry.Instance.ToSharedRef();
 }
 
-TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGeneratorCache::MakeNativeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker) const
+TVoxelSharedRef<FVoxelTransformableGeneratorInstance> FVoxelGeneratorCache::MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker)
 {
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+	
 	auto& Entry = TransformableCache.FindOrAdd(Picker);
 	
 	if (!Entry.Instance)
 	{
-		Entry.Instance = Picker.GetInstance(false);
+		Entry.Instance = Picker.GetInstance();
 		Entry.Instance->Init(GeneratorInit);
 	}
 	
@@ -110,29 +143,52 @@ TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGeneratorCache::Make
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelGeneratorCache::SetGeneratorInit(const FVoxelGeneratorInit& NewInit)
+void FVoxelGeneratorCache::AddReferencedObjects(FReferenceCollector& Collector)
 {
-	ensure(!NewInit.GeneratorCache.IsValid());
-	GeneratorInit = NewInit;
-	GeneratorInit.GeneratorCache = this;
-}
-
-void UVoxelGeneratorCache::ClearCache()
-{
-	Cache.Reset();
-}
-
-void UVoxelGeneratorCache::AddReferencedObjects(UObject* InThis, FReferenceCollector& Collector)
-{
-	Super::AddReferencedObjects(InThis, Collector);
-
-	auto* This = CastChecked<UVoxelGeneratorCache>(InThis);
-	for (auto& It : This->Cache)
+	VOXEL_ASYNC_FUNCTION_COUNTER();
+	
+	GeneratorInit.AddReferencedObjects(Collector);
+	
+	for (auto& It : Cache)
 	{
 		Collector.AddReferencedObject(It.Value.Wrapper);
 	}
-	for (auto& It : This->TransformableCache)
+	for (auto& It : TransformableCache)
 	{
 		Collector.AddReferencedObject(It.Value.Wrapper);
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+UVoxelGeneratorInstanceWrapper* UVoxelGeneratorCache::MakeGeneratorInstance(FVoxelGeneratorPicker Picker) const
+{
+	if (!Picker.IsValid())
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid generator"));
+		return nullptr;
+	}
+	if (!ensure(GeneratorCache))
+	{
+		return nullptr;
+	}
+
+	return GeneratorCache->K2_MakeGeneratorInstance(Picker);
+}
+
+UVoxelTransformableGeneratorInstanceWrapper* UVoxelGeneratorCache::MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker) const
+{
+	if (!Picker.IsValid())
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invalid generator"));
+		return nullptr;
+	}
+	if (!ensure(GeneratorCache))
+	{
+		return nullptr;
+	}
+
+	return GeneratorCache->K2_MakeTransformableGeneratorInstance(Picker);
 }

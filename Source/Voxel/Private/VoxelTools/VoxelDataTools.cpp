@@ -133,7 +133,7 @@ inline bool CheckSave(const FVoxelData& Data, const T& Save)
 }
 
 #define CHECK_SAVE() \
-if (!CheckSave(World->GetData(), Save)) \
+if (!CheckSave(World->GetSubsystemChecked<FVoxelData>(), Save)) \
 { \
 	return false; \
 }
@@ -146,7 +146,7 @@ void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSave& O
 void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxelObjectArchiveEntry>& OutObjects)
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetData().GetSave(OutSave, OutObjects);
+	World->GetSubsystemChecked<FVoxelData>().GetSave(OutSave, OutObjects);
 }
 
 void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorldSave& OutSave)
@@ -158,7 +158,7 @@ void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorl
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	FVoxelUncompressedWorldSaveImpl Save;
-	World->GetData().GetSave(Save, OutObjects);
+	World->GetSubsystemChecked<FVoxelData>().GetSave(Save, OutObjects);
 	UVoxelSaveUtilities::CompressVoxelSave(Save, OutSave);
 }
 
@@ -223,14 +223,14 @@ bool UVoxelDataTools::LoadFromSave(const AVoxelWorld* World, const FVoxelUncompr
 	CHECK_SAVE();
 
 	TArray<FVoxelIntBox> BoundsToUpdate;
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 	
 	const FVoxelGeneratorInit WorldInit = World->GetGeneratorInit();
 	const FVoxelPlaceableItemLoadInfo LoadInfo{ &WorldInit, &Objects };
 
 	const bool bSuccess = Data.LoadFromSave(Save, LoadInfo, &BoundsToUpdate);
 
-	World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(BoundsToUpdate);
+	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(BoundsToUpdate);
 
 	return bSuccess;
 }
@@ -490,7 +490,7 @@ FVoxelDataMemoryUsageInMB UVoxelDataTools::GetDataMemoryUsageInMB(AVoxelWorld* W
 
 	constexpr double OneMB = double(1 << 20);
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 
 	FVoxelDataMemoryUsageInMB MemoryUsage;
 
@@ -820,7 +820,7 @@ void UVoxelDataTools::CompressIntoHeightmap(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 	FVoxelWriteScopeLock Lock(Data, FVoxelIntBox::Infinite, "");
 
 	bool bCheckAllLeaves = false;

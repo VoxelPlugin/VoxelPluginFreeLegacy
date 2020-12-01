@@ -68,7 +68,7 @@ TVoxelDataAccelerator<TData>::~TVoxelDataAccelerator()
 
 template<typename TData>
 template<typename T>
-FORCEINLINE T TVoxelDataAccelerator<TData>::GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const
+FORCEINLINE T TVoxelDataAccelerator<TData>::GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelGeneratorInstance* GeneratorOverride) const
 {
 	// Clamp to world, to avoid un-editable border
 	Data.ClampToWorld(X, Y, Z);
@@ -76,7 +76,7 @@ FORCEINLINE T TVoxelDataAccelerator<TData>::GetCustomOutput(T DefaultValue, FNam
 	return GetImpl(X, Y, Z,
 	               [&](const FVoxelDataOctreeBase& Octree)
 	               {
-		               return Octree.GetCustomOutput<T>(*Data.Generator, DefaultValue, Name, X, Y, Z, LOD);
+		               return Octree.GetCustomOutput<T>(GeneratorOverride ? *GeneratorOverride : *Data.Generator, DefaultValue, Name, X, Y, Z, LOD);
 	               });
 }
 

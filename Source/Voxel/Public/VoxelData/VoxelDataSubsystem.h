@@ -20,8 +20,7 @@ class FVoxelDataSubsystem : public IVoxelSubsystem
 public:
 	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelDataSubsystemProxy);
 
-	FVoxelData& GetData() const { return *Data; }
-	TVoxelSharedRef<FVoxelData> GetDataPtr() const { return Data.ToSharedRef(); }
+	TVoxelSharedPtr<FVoxelData> GetData() const { return Data; }
 
 	//~ Begin IVoxelSubsystem Interface
 	virtual void Create() override;

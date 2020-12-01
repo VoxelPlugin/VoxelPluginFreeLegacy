@@ -173,9 +173,9 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	RuntimeSettings.Generator = Settings.Generator;
 
 	const auto Runtime = FVoxelRuntime::Create(RuntimeSettings);
-	const auto Data = Runtime->GetSubsystemChecked<FVoxelDataSubsystem>()->GetDataPtr();
-	const auto Pool = Runtime->GetSubsystemChecked<FVoxelPool>();
-	const auto Renderer = Runtime->GetSubsystemChecked<IVoxelRenderer>();
+	const auto Data = Runtime->GetSubsystemChecked<FVoxelData>().AsShared();
+	const auto Pool = Runtime->GetSubsystemChecked<FVoxelPool>().AsShared();
+	const auto Renderer = Runtime->GetSubsystemChecked<IVoxelRenderer>().AsShared();
 	
 	if (Save)
 	{

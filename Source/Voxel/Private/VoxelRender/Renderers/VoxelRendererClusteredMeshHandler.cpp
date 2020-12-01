@@ -163,7 +163,7 @@ void FVoxelRendererClusteredMeshHandler::ApplyAction(const FAction& Action)
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelClusteredMeshMergeWork::Create(*this, { ChunkInfo.ClusterId, Cluster.UniqueId });
-		Renderer.GetSubsystemChecked<FVoxelPool>()->QueueTask(Task);
+		Renderer.GetSubsystemChecked<FVoxelPool>().QueueTask(Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;
@@ -198,7 +198,7 @@ void FVoxelRendererClusteredMeshHandler::ApplyAction(const FAction& Action)
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelClusteredMeshMergeWork::Create(*this, { ChunkInfo.ClusterId, Cluster.UniqueId });
-		Renderer.GetSubsystemChecked<FVoxelPool>()->QueueTask(Task);
+		Renderer.GetSubsystemChecked<FVoxelPool>().QueueTask(Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;
@@ -242,7 +242,7 @@ void FVoxelRendererClusteredMeshHandler::Tick(double MaxTime)
 	FlushBuiltDataQueue();
 	FlushActionQueue(MaxTime);
 
-	Renderer.GetSubsystemChecked<FVoxelDebugManager>()->ReportMeshActionQueueNum(ActionQueue.Num());
+	Renderer.GetSubsystemChecked<FVoxelDebugManager>().ReportMeshActionQueueNum(ActionQueue.Num());
 }
 
 FVoxelRendererClusteredMeshHandler::FClusterRef FVoxelRendererClusteredMeshHandler::FindOrCreateCluster(

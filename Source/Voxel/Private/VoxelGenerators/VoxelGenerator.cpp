@@ -1,8 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelGenerators/VoxelGenerator.h"
-
-#include "VoxelGenerators/VoxelGeneratorInstance.h"
+#include "VoxelGenerators/VoxelGeneratorInstance.inl"
 #include "VoxelGenerators/VoxelGeneratorParameters.h"
 #include "VoxelMessages.h"
 
@@ -86,6 +85,19 @@ TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelGenerator::GetInstance()
 {
 	unimplemented();
 	return TVoxelSharedPtr<FVoxelGeneratorInstance>().ToSharedRef();
+}
+
+FVoxelGeneratorOutputs UVoxelGenerator::GetGeneratorOutputs() const
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	FVoxelGeneratorOutputs Outputs;
+
+	// Kinda slow
+	const auto Instance = const_cast<UVoxelGenerator*>(this)->GetInstance();
+	Instance->GetOutputsPtrMap<v_flt>().GenerateKeyArray(Outputs.FloatOutputs);
+
+	return Outputs;
 }
 
 TMap<FName, FString> UVoxelGenerator::ApplyParametersInternal(const TMap<FName, FString>& Parameters)

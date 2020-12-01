@@ -373,46 +373,53 @@ TVoxelSharedRef<FVoxelRuntime> FVoxelRuntime::Create(const FVoxelRuntimeSettings
 	check(IsInGameThread());
 	
 	const auto Runtime = FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRuntime>(Settings);
-	const TGuardValue<bool> InitGuard(Runtime->bIsInit, true);
-
-	// Add static subsystems
 	{
-		TArray<UClass*> Classes;
-		GetDerivedClasses(UVoxelStaticSubsystemProxy::StaticClass(), Classes);
+		const TGuardValue<bool> InitGuard(Runtime->bIsInit, true);
 
-		for (auto* Class : Classes)
+		// Add static subsystems
 		{
-			if (!Class->HasAnyClassFlags(CLASS_Abstract))
+			TArray<UClass*> Classes;
+			GetDerivedClasses(UVoxelStaticSubsystemProxy::StaticClass(), Classes);
+
+			for (auto* Class : Classes)
 			{
-				Runtime->AddSubsystem(Class);
+				if (!Class->HasAnyClassFlags(CLASS_Abstract))
+				{
+					Runtime->AddSubsystem(Class);
+				}
 			}
 		}
-	}
 
-	// Add dynamic subsystems
-	{
-		const auto AddMainSubsystem = [&](UClass* Class, UClass* DefaultClass)
+		// Add dynamic subsystems
 		{
-			if (!Class || Class->HasAnyClassFlags(CLASS_Abstract))
+			const auto AddMainSubsystem = [&](UClass* Class, UClass* DefaultClass)
 			{
-				Class = DefaultClass;
-			}
+				if (!Class || Class->HasAnyClassFlags(CLASS_Abstract))
+				{
+					Class = DefaultClass;
+				}
 
-			Runtime->AddSubsystem(Class);
-		};
+				Runtime->AddSubsystem(Class);
+			};
 
-		AddMainSubsystem(Settings.RendererSubsystem, UVoxelDefaultRendererSubsystemProxy::StaticClass());
-		AddMainSubsystem(Settings.LODSubsystem, UVoxelDefaultLODSubsystemProxy::StaticClass());
+			AddMainSubsystem(Settings.RendererSubsystem, UVoxelDefaultRendererSubsystemProxy::StaticClass());
+			AddMainSubsystem(Settings.LODSubsystem, UVoxelDefaultLODSubsystemProxy::StaticClass());
+		}
+
+		for (auto& Subsystem : Runtime->AllSubsystems)
+		{
+			ensure(Runtime->SubsystemsBeingInitialized.Num() == 0);
+			Runtime->InitializeSubsystem(Subsystem);
+			ensure(Runtime->SubsystemsBeingInitialized.Num() == 0);
+		}
+		ensure(Runtime->InitializedSubsystems.Num() == Runtime->AllSubsystems.Num());
+		// Note: we can't clear InitializedSubsystems, due to RecreateSubsystem
 	}
-
+	
 	for (auto& Subsystem : Runtime->AllSubsystems)
 	{
-		ensure(Runtime->SubsystemsBeingInitialized.Num() == 0);
-		Runtime->InitializeSubsystem(Subsystem);
-		ensure(Runtime->SubsystemsBeingInitialized.Num() == 0);
+		Subsystem->PostCreate();
 	}
-	ensure(Runtime->InitializedSubsystems.Num() == Runtime->AllSubsystems.Num());
-	// Note: we can't clear InitializedSubsystems, due to RecreateSubsystem
 	
 	return Runtime;
 }
@@ -427,10 +434,6 @@ FVoxelRuntime::~FVoxelRuntime()
 		Subsystem->Destroy();
 		ensure(Subsystem->bDestroyCalled);
 	}
-
-	AllSubsystems.Reset();
-	SubsystemsMap.Reset();
-	InitializedSubsystems.Reset();
 }
 
 FVoxelRuntime::FVoxelRuntime(const FVoxelRuntimeSettings& Settings)
@@ -442,7 +445,6 @@ void FVoxelRuntime::InitializeSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& 
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
-	
 	check(bIsInit);
 	check(Subsystem);
 	
@@ -466,42 +468,47 @@ void FVoxelRuntime::RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsys
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
-
+	
 	if (!OldSubsystem)
 	{
 		// Allowed: useful to recreate subsystems whose class didn't want to be created
 		return;
 	}
-	
-	FScopeLock Lock(&CriticalSection);
 
 	OldSubsystem->Destroy();
 	AllSubsystems.Remove(OldSubsystem);
 
-	for (auto It = SubsystemsMap.CreateIterator(); It; ++It)
 	{
-		if (It.Value() == OldSubsystem)
+		FScopeLock Lock(&SubsystemsMapSection);
+		for (auto It = SubsystemsMap_NeedsLock.CreateIterator(); It; ++It)
 		{
-			It.RemoveCurrent();
+			if (It.Value() == OldSubsystem)
+			{
+				It.RemoveCurrent();
+			}
 		}
 	}
 	
 	UClass* Class = OldSubsystem->GetProxyClass();
 	OldSubsystem.Reset();
 
-	check(!bIsInit);
-	const TGuardValue<bool> InitGuard(bIsInit, true);
-
-	const auto NewSubsystem = AddSubsystem(Class);
-	if (!NewSubsystem)
+	TVoxelSharedPtr<IVoxelSubsystem> NewSubsystem;
 	{
-		// ShouldCreateSubsystem returned false
-		return;
-	}
+		check(!bIsInit);
+		const TGuardValue<bool> InitGuard(bIsInit, true);
 
-	ensure(SubsystemsBeingInitialized.Num() == 0);
-	InitializeSubsystem(NewSubsystem);
-	ensure(SubsystemsBeingInitialized.Num() == 0);
+		NewSubsystem = AddSubsystem(Class);
+		if (!NewSubsystem)
+		{
+			// ShouldCreateSubsystem returned false
+			return;
+		}
+
+		ensure(SubsystemsBeingInitialized.Num() == 0);
+		InitializeSubsystem(NewSubsystem);
+		ensure(SubsystemsBeingInitialized.Num() == 0);
+	}
+	NewSubsystem->PostCreate();
 }
 
 TVoxelSharedPtr<IVoxelSubsystem> FVoxelRuntime::AddSubsystem(UClass* Class)
@@ -522,13 +529,16 @@ TVoxelSharedPtr<IVoxelSubsystem> FVoxelRuntime::AddSubsystem(UClass* Class)
 	AllSubsystems.Add(Subsystem);
 
 	// Add to the whole hierarchy so that we can query using parent classes
-	for (UClass* ClassIt = Class;
-		ClassIt != UVoxelStaticSubsystemProxy::StaticClass() &&
-		ClassIt != UVoxelDynamicSubsystemProxy::StaticClass();
-		ClassIt = ClassIt->GetSuperClass())
 	{
-		ensure(!SubsystemsMap.Contains(ClassIt));
-		SubsystemsMap.Add(ClassIt, Subsystem);
+		FScopeLock Lock(&SubsystemsMapSection);
+		for (UClass* ClassIt = Class;
+			ClassIt != UVoxelStaticSubsystemProxy::StaticClass() &&
+			ClassIt != UVoxelDynamicSubsystemProxy::StaticClass();
+			ClassIt = ClassIt->GetSuperClass())
+		{
+			ensure(!SubsystemsMap_NeedsLock.Contains(ClassIt));
+			SubsystemsMap_NeedsLock.Add(ClassIt, Subsystem);
+		}
 	}
 
 	return Subsystem;

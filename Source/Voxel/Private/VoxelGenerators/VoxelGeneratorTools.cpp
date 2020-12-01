@@ -20,7 +20,7 @@ UVoxelGeneratorInstanceWrapper* UVoxelGeneratorTools::MakeGeneratorInstance(FVox
 	}
 
 	auto* Instance = NewObject<UVoxelGeneratorInstanceWrapper>();
-	Instance->Instance = GeneratorPicker.GetInstance(true);
+	Instance->Instance = GeneratorPicker.GetInstance();
 	Instance->Instance->Init(GeneratorInit);
 	return Instance;
 }
@@ -34,7 +34,7 @@ UVoxelTransformableGeneratorInstanceWrapper* UVoxelGeneratorTools::MakeTransform
 	}
 
 	auto* Instance = NewObject<UVoxelTransformableGeneratorInstanceWrapper>();
-	Instance->Instance = GeneratorPicker.GetInstance(true);
+	Instance->Instance = GeneratorPicker.GetInstance();
 	Instance->Instance->Init(GeneratorInit);
 	return Instance;
 }

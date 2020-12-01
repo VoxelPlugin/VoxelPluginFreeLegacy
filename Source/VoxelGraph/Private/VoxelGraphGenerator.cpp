@@ -13,6 +13,7 @@
 
 #include "VoxelMessages.h"
 #include "VoxelNode.h"
+#include "VoxelGenerators/VoxelGeneratorCache.h"
 #include "VoxelGenerators/VoxelEmptyGenerator.h"
 #include "VoxelGenerators/VoxelGeneratorParameters.h"
 
@@ -178,6 +179,23 @@ TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetT
 {
 	FVoxelMessages::Info("Running Voxel Graphs require Voxel Plugin Pro");
 	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
+}
+
+FVoxelGeneratorOutputs UVoxelGraphGenerator::GetGeneratorOutputs() const
+{
+	FVoxelGeneratorOutputs GeneratorOutputs;
+	GeneratorOutputs.FloatOutputs.Add(STATIC_FNAME("Value"));
+	if (Outputs)
+	{
+		for (auto& Output : Outputs->Outputs)
+		{
+			if (Output.Category == EVoxelDataPinCategory::Float)
+			{
+				GeneratorOutputs.FloatOutputs.Add(Output.Name);
+			}
+		}
+	}
+	return GeneratorOutputs;
 }
 
 /////////////////////////////////////////////////////////////////////////////////

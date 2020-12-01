@@ -7,7 +7,7 @@
 #include "VoxelRender/Meshers/VoxelGreedyCubicMesher.h"
 #include "VoxelRender/Meshers/VoxelSurfaceNetMesher.h"
 #include "VoxelRender/VoxelChunkMesh.h"
-#include "VoxelData/VoxelDataSubsystem.h"
+#include "VoxelData/VoxelData.h"
 
 #include "Async/Async.h"
 #include "Misc/MessageDialog.h"
@@ -66,14 +66,14 @@ void FVoxelMesherAsyncWork::DoWork()
 	if (IsCanceled()) return;
 	if (!ensure(PinnedRenderer.IsValid())) return; // Either we're canceled, or the renderer is valid
 
-	const auto DataSubsystem = PinnedRenderer->GetSubsystem<FVoxelDataSubsystem>();
+	const auto Data = PinnedRenderer->GetSubsystem<FVoxelData>();
 	if (IsCanceled()) return;
-	if (!DataSubsystem.IsValid()) return; // Happens when the renderer is still canceling tasks
+	if (!Data.IsValid()) return; // Happens when the renderer is still canceling tasks
 
 	const auto Mesher = GetMesher(
 		ChunkPosition,
 		*PinnedRenderer,
-		DataSubsystem->GetData(),
+		*Data,
 		LOD,
 		bIsTransitionTask,
 		TransitionsMask);
@@ -89,7 +89,7 @@ void FVoxelMesherAsyncWork::DoWork()
 		}
 		else
 		{
-			AsyncTask(ENamedThreads::GameThread, [Data = MakeVoxelWeakPtr(DataSubsystem->GetDataPtr())]() { ShowGeneratorError(Data); });
+			AsyncTask(ENamedThreads::GameThread, [Data = MakeVoxelWeakPtr(Data)]() { ShowGeneratorError(Data); });
 			Chunk = Mesher->CreateEmptyChunk();
 		}
 	}

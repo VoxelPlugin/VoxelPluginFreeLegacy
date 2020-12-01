@@ -8,8 +8,9 @@
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
 #include "VoxelSharedMutex.h"
-#include "VoxelData/IVoxelData.h"
 #include "HAL/ConsoleManager.h"
+#include "VoxelData/IVoxelData.h"
+#include "VoxelData/VoxelDataSubsystem.h"
 
 class AVoxelWorld;
 class FVoxelData;
@@ -101,6 +102,8 @@ private:
 	explicit FVoxelData(const FVoxelDataSettings& Settings);
 
 public:
+	VOXEL_SUBSYSTEM_FWD(FVoxelDataSubsystem, GetData);
+	
 	static TVoxelSharedRef<FVoxelData> Create(const FVoxelDataSettings& Settings, int32 DataOctreeInitialSubdivisionDepth = 0);
 	// Clone without keeping the voxel data
 	TVoxelSharedRef<FVoxelData> Clone() const;

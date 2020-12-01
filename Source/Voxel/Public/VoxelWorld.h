@@ -146,11 +146,8 @@ public:
 public:
 	FVoxelIntBox GetWorldBounds() const;
 	FIntVector GetWorldOffset() const;
-	const UVoxelGeneratorCache& GetGeneratorCache() const { return *GeneratorCache; }
 	const TVoxelSharedPtr<FGameThreadTasks>& GetGameThreadTasks() const { return GameThreadTasks; }
 	FVoxelRuntime& GetRuntime() const { return *Runtime; }
-	FVoxelData& GetData() const;
-	TVoxelSharedRef<FVoxelData> GetDataSharedPtr() const;
 	EVoxelPlayType GetPlayType() const { return PlayType; }
 
 	template<typename T>
@@ -159,7 +156,7 @@ public:
 		return GetRuntime().GetSubsystem<T>();
 	}
 	template<typename T>
-	TVoxelSharedRef<T> GetSubsystemChecked() const
+	T& GetSubsystemChecked() const
 	{
 		return GetRuntime().GetSubsystemChecked<T>();
 	}
@@ -244,8 +241,8 @@ public:
 
 	// The generator cache allows to reuse generator objects
 	// This is required for DataItemActors to allow for smaller update when moving them
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General", DisplayName = "Get Generator Cache")
-	UVoxelGeneratorCache* K2_GetGeneratorCache() const { return GeneratorCache; }
+	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
+	UVoxelGeneratorCache* GetGeneratorCache() const;
 
 	// Used to init generators
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
@@ -297,7 +294,7 @@ private:
 	mutable UVoxelMultiplayerInterface* MultiplayerInterfaceInstance;
 
 	UPROPERTY(Transient)
-	UVoxelGeneratorCache* GeneratorCache = nullptr;
+	mutable UVoxelGeneratorCache* GeneratorCache = nullptr;
 
 	UPROPERTY(Transient)
 	UVoxelPlaceableItemActorHelper* PlaceableItemActorHelper = nullptr;

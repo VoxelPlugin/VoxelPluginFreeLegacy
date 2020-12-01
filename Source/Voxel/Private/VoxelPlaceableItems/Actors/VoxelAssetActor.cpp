@@ -57,7 +57,7 @@ void AVoxelAssetActor::AddItemToWorld(AVoxelWorld* World)
 		return;
 	}
 
-	AddItemToData(World, &World->GetData());
+	AddItemToData(World, &World->GetSubsystemChecked<FVoxelData>());
 }
 
 int32 AVoxelAssetActor::GetPriority() const
@@ -104,7 +104,7 @@ FVoxelIntBox AVoxelAssetActor::AddItemToData(
 		return WorldBounds;
 	}
 
-	auto AssetInstance = Generator.GetInstance(false);
+	auto AssetInstance = Generator.GetInstance();
 	AssetInstance->Init(VoxelWorld->GetGeneratorInit());
 	
 	if (bImportAsReference)
@@ -234,7 +234,7 @@ void AVoxelAssetActor::BeginPlay()
 		VoxelWorld->FinishSpawning({}, true);
 		VoxelWorld->CreateWorld();
 
-		AddItemToData(VoxelWorld, &VoxelWorld->GetData());
+		AddItemToData(VoxelWorld, &VoxelWorld->GetSubsystemChecked<FVoxelData>());
 	}
 
 #if WITH_EDITOR
@@ -413,7 +413,7 @@ void AVoxelAssetActor::CreatePreview()
 	Runtime->DynamicSettings->SetFromRuntime(*PreviewWorld);
 	Runtime->DynamicSettings->ConfigurePreview();
 
-	auto& LODManager = *Runtime->GetSubsystemChecked<FVoxelFixedResolutionLODManager>();
+	auto& LODManager = Runtime->GetSubsystemChecked<FVoxelFixedResolutionLODManager>();
 	while (ensure(PreviewLOD < 24) && !LODManager.Initialize(
 		FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD),
 		MaxPreviewChunks,

@@ -40,16 +40,6 @@ void UVoxelPlaceableItemManager::DrawDebugPoint(FVector Position, FLinearColor C
 	DebugPoints.Add({ Position, Color });
 }
 
-UVoxelGeneratorCache* UVoxelPlaceableItemManager::GetGeneratorCache() const
-{
-	if (!GeneratorCache)
-	{
-		auto* This = const_cast<UVoxelPlaceableItemManager*>(this);
-		This->GeneratorCache = NewObject<UVoxelGeneratorCache>(This);
-	}
-	return GeneratorCache;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -64,12 +54,6 @@ void UVoxelPlaceableItemManager::Clear()
 	DataItemInfos.Reset();
 	DebugLines.Reset();
 	DebugPoints.Reset();
-
-	if (GeneratorCache && GeneratorCache->GetOuter() == this)
-	{
-		// Only clear if it's our own cache
-		GeneratorCache->ClearCache();
-	}
 
 	OnClear();
 }
@@ -96,6 +80,15 @@ void UVoxelPlaceableItemManager::ApplyToData(
 			OutItems->Add(Info, ItemPtr);
 		}
 	}
+}
+
+void UVoxelPlaceableItemManager::SetGeneratorCache(const TVoxelSharedRef<FVoxelGeneratorCache>& NewGeneratorCache)
+{
+	if (!GeneratorCache)
+	{
+		GeneratorCache = NewObject<UVoxelGeneratorCache>(this);
+	}
+	GeneratorCache->GeneratorCache = NewGeneratorCache;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

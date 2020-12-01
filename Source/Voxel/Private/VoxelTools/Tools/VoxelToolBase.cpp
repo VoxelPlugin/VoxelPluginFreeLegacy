@@ -309,7 +309,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 		// Tool material overlay on the voxel world
 		if (ToolBaseConfig.OverlayMaterial)
 		{
-			auto& ToolRenderingManager = *VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
+			auto& ToolRenderingManager = VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
 			if (!ToolRenderingId.IsValid() || !ToolRenderingManager.IsValidTool(ToolRenderingId))
 			{
 				ToolRenderingId = ToolRenderingManager.CreateTool(true);
@@ -333,7 +333,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 		else if (ToolRenderingId.IsValid())
 		{
 			// Some tools can enabled/disable overlay
-			auto& ToolRenderingManager = *VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
+			auto& ToolRenderingManager = VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
 			ToolRenderingManager.RemoveTool(ToolRenderingId);
 			ToolRenderingId.Reset();
 
@@ -405,7 +405,7 @@ void UVoxelToolBase::CallTool(AVoxelWorld* InVoxelWorld, const FVoxelToolTickDat
 			{
 				PendingFrameBounds += ModifiedBounds;
 
-				NumPendingUpdates += VoxelWorld->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds_OnAllFinished(
+				NumPendingUpdates += VoxelWorld->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds_OnAllFinished(
 					ModifiedBounds.GetBox(),
 					FSimpleDelegate::CreateWeakLambda(this, [this, ModifiedBounds = ModifiedBounds.GetBox(), OldVoxelWorld = VoxelWorld]()
 					{
@@ -472,7 +472,7 @@ void UVoxelToolBase::SetToolOverlayBounds(const FBox& Bounds)
 {
 	if (ensure(VoxelWorld) && ensure(VoxelWorld->IsCreated()))
 	{
-		VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>()->EditTool(ToolRenderingId, [&](FVoxelToolRendering& Tool)
+		VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>().EditTool(ToolRenderingId, [&](FVoxelToolRendering& Tool)
 		{
 			Tool.WorldBounds = Bounds;
 		});
@@ -576,7 +576,7 @@ void UVoxelToolBase::ClearVoxelWorld()
 		
 		if (ToolRenderingId.IsValid())
 		{
-			auto& ToolRenderingManager = *VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
+			auto& ToolRenderingManager = VoxelWorld->GetSubsystemChecked<FVoxelToolRenderingManager>();
 			if (ToolRenderingManager.IsValidTool(ToolRenderingId)) // Could be invalid if the voxel world was toggled off & on
 			{
 				ToolRenderingManager.RemoveTool(ToolRenderingId);
@@ -608,7 +608,7 @@ void UVoxelToolBase::ApplyPendingFrameBounds()
 	
 	if (ensure(VoxelWorld) && ensure(VoxelWorld->IsCreated()))
 	{
-		auto& Data = VoxelWorld->GetData();
+		auto& Data = VoxelWorld->GetSubsystemChecked<FVoxelData>();
 		if (Data.bEnableUndoRedo)
 		{
 			Data.SaveFrame(PendingFrameBounds.GetBox());

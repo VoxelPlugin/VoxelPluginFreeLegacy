@@ -41,7 +41,7 @@ DEFINE_STAT(STAT_NumVoxelDataItems);
 
 inline auto CreateGenerator(const AVoxelWorld* World)
 {
-	auto GeneratorInstance = World->Generator.GetInstance(true);
+	auto GeneratorInstance = World->Generator.GetInstance();
 	GeneratorInstance->Init(World->GetGeneratorInit());
 	return GeneratorInstance;
 }

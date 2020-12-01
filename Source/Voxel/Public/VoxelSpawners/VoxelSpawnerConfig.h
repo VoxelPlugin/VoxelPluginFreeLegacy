@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelMinimal.h"
 #include "VoxelEnums.h"
+#include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelSpawnerConfig.generated.h"
 
 class UVoxelSpawner;
@@ -28,11 +28,11 @@ struct FVoxelSpawnerOutputName
 	{
 	}
 
-	inline operator FName() const
+	operator FName() const
 	{
 		return Name;
 	}
-	inline bool IsNone() const
+	bool IsNone() const
 	{
 		return Name.IsNone();
 	}
@@ -45,15 +45,15 @@ enum class EVoxelSpawnerDensityType : uint8
 	Constant,
 	// Use a generator output
 	GeneratorOutput,
-	// Use one of the material RGBA channels. Only for Ray Spawners.
+	// Use one of the material RGBA channels
 	MaterialRGBA,
-	// Use the material UV channels. Only for Ray Spawners.
+	// Use the material UV channels
 	MaterialUVs,
-	// Use a five way blend strength. Only for Ray Spawners.
+	// Use a five way blend strength
 	MaterialFiveWayBlend,
-	// Use a single index channel. Only for Ray Spawners.
+	// Use a single index channel
 	SingleIndex,
-	// Use a multi index channel. Only for Ray Spawners.
+	// Use a multi index channel
 	MultiIndex
 };
 
@@ -81,9 +81,16 @@ struct FVoxelSpawnerDensity
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	float Constant = 1.f;
+
+	// Whether to use the voxel world generator, or a custom one
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	bool bUseMainGenerator = true;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	FVoxelGeneratorPicker CustomGenerator;
 	
 	// Your generator needs to have a float output named like this
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DensityOutput))
 	FVoxelSpawnerOutputName GeneratorOutputName;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (DisplayName = "RGBA Channel"))
@@ -107,6 +114,14 @@ struct FVoxelSpawnerDensity
 	// Transform to apply to the density
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	EVoxelSpawnerDensityTransform Transform = EVoxelSpawnerDensityTransform::Identity;
+
+public:
+	// Only set if bUseMainGenerator = false
+	TVoxelSharedPtr<FVoxelGeneratorInstance> GeneratorInstance;
+	
+#if WITH_EDITOR
+	bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const;
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -217,142 +232,6 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-USTRUCT()
-struct FVoxelSpawnerConfigElementAdvanced_Height
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	bool bSave = true;
-
-	UPROPERTY()
-	bool bDoNotDespawn = false;
-	
-	UPROPERTY()
-	FName SeedName = "FoliageSeed";
-
-	UPROPERTY()
-	uint32 DefaultSeed = 1337;
-
-	UPROPERTY()
-	EVoxelSpawnerConfigElementRandomGenerator RandomGenerator = EVoxelSpawnerConfigElementRandomGenerator::Halton;
-		
-	UPROPERTY()
-	bool bComputeDensityFirst = false;
-
-	UPROPERTY()
-	FGuid Guid;
-};
-
-USTRUCT()
-struct FVoxelSpawnerConfigElementAdvanced_Ray
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	bool bSave = true;
-
-	UPROPERTY()
-	bool bDoNotDespawn = false;
-
-	UPROPERTY()
-	FName SeedName = "FoliageSeed";
-
-	UPROPERTY()
-	uint32 DefaultSeed = 1337;
-
-	UPROPERTY()
-	EVoxelSpawnerConfigElementRandomGenerator RandomGenerator = EVoxelSpawnerConfigElementRandomGenerator::Halton;
-
-	UPROPERTY()
-	FGuid Guid;
-};
-
-USTRUCT()
-struct FVoxelSpawnerConfigElement_Height
-{
-	GENERATED_BODY()
-	
-	UPROPERTY()
-	UVoxelSpawner* Spawner = nullptr;
-
-	UPROPERTY()
-	FVoxelSpawnerDensity Density;
-	
-	UPROPERTY()
-	FVoxelSpawnerOutputName DensityGraphOutputName_DEPRECATED;
-
-	UPROPERTY()
-	FVoxelSpawnerConfigElementAdvanced_Height Advanced;
-};
-
-USTRUCT()
-struct FVoxelSpawnerConfigElement_Ray
-{
-	GENERATED_BODY()
-	
-	UPROPERTY()
-	UVoxelSpawner* Spawner = nullptr;
-
-	UPROPERTY()
-	FVoxelSpawnerDensity Density;
-
-	UPROPERTY()
-	FVoxelSpawnerDensity DensityMultiplier;
-	
-	UPROPERTY()
-	FVoxelSpawnerOutputName DensityGraphOutputName_DEPRECATED;
-
-	UPROPERTY()
-	FVoxelSpawnerConfigElementAdvanced_Ray Advanced;
-};
-
-USTRUCT()
-struct FVoxelSpawnerConfigHeightGroup
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	FVoxelSpawnerOutputName HeightGraphOutputName = "Height";
-
-	UPROPERTY()
-	uint32 ChunkSize = 32;
-
-	UPROPERTY()
-	uint32 GenerationDistanceInChunks = 2;
-
-	UPROPERTY()
-	uint32 GenerationDistanceInVoxels_EditorOnly = 0;
-
-	UPROPERTY()
-	TArray<FVoxelSpawnerConfigElement_Height> Spawners;
-};
-
-USTRUCT()
-struct FVoxelSpawnerConfigRayGroup
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	uint32 LOD = 0;
-
-	UPROPERTY()
-	uint32 ChunkSize_EditorOnly = 32;
-	
-	UPROPERTY()
-	uint32 GenerationDistanceInChunks = 2;
-
-	UPROPERTY()
-	uint32 GenerationDistanceInVoxels_EditorOnly = 0;
-	
-	UPROPERTY()
-	TArray<FVoxelSpawnerConfigElement_Ray> Spawners;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
 UENUM()
 enum class EVoxelSpawnerConfigRayWorldType : uint8
 {
@@ -371,7 +250,37 @@ struct FVoxelSpawnerConfigFiveWayBlendSetup
 };
 
 UCLASS()
-class VOXEL_API UVoxelSpawnerConfig : public UObject
+class VOXEL_API UVoxelSpawnerCollection : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	// The voxel world generator, used to autocomplete the generator output dropdowns in the UI
+	UPROPERTY(EditAnywhere, Category = "Spawners")
+	FVoxelGeneratorPicker MainGeneratorForDropdowns;
+	
+	UPROPERTY(EditAnywhere, Category = "Spawners")
+	TArray<FVoxelSpawnerConfigSpawner> Spawners;
+	
+#if WITH_EDITOR
+	virtual bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const;
+#endif
+	
+protected:
+	//~ Begin UObject Interface
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+	virtual void PostLoad() override;
+	//~ Enmd UObject Interface
+	
+	void SetReadOnlyPropertiesFromEditorOnly();
+	void SetEditorOnlyPropertiesFromReadOnly();
+	void FixGuids();
+};
+
+UCLASS()
+class VOXEL_API UVoxelSpawnerConfig : public UVoxelSpawnerCollection
 {
 	GENERATED_BODY()
 
@@ -379,35 +288,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Config")
 	EVoxelSpawnerConfigRayWorldType WorldType;
 	
-	UPROPERTY(EditAnywhere, Category = "Config")
-	UVoxelSpawnerOutputsConfig* GeneratorOutputs;
-	
 	UPROPERTY(EditAnywhere, Category = "Config", AdvancedDisplay)
 	FVoxelSpawnerConfigFiveWayBlendSetup FiveWayBlendSetup;
-
-public:
-	UPROPERTY(EditAnywhere, Category = "Spawners")
-	TArray<FVoxelSpawnerConfigSpawner> Spawners;
-
-public:
-	UPROPERTY()
-	TArray<FVoxelSpawnerConfigRayGroup> RaySpawners_DEPRECATED;
 	
-	UPROPERTY()
-	TArray<FVoxelSpawnerConfigHeightGroup> HeightSpawners_DEPRECATED;
+	UPROPERTY(EditAnywhere, Category = "Collections")
+	TArray<UVoxelSpawnerCollection*> Collections;
 	
-public:
 #if WITH_EDITOR
-	bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent);
+	virtual bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const override;
 #endif
-	
-protected:
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
-	virtual void PostLoad() override;
-	
-	void SetReadOnlyPropertiesFromEditorOnly();
-	void SetEditorOnlyPropertiesFromReadOnly();
-	void FixGuids();
 };

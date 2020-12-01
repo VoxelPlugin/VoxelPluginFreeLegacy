@@ -22,7 +22,7 @@ FVoxelLatentActionAsyncWork_WithWorld::FVoxelLatentActionAsyncWork_WithWorld(
 	TFunction<void(FVoxelData&)> Function)
 	: FVoxelLatentActionAsyncWork(Name)
 	, World(World)
-	, Data(World->GetDataSharedPtr())
+	, Data(World->GetSubsystemChecked<FVoxelData>().AsShared())
 	, Function(MoveTemp(Function))
 {
 }
@@ -69,14 +69,14 @@ bool FVoxelLatentActionAsyncWork_WithoutWorld::IsValid() const
 void FVoxelToolHelpers::UpdateWorld(AVoxelWorld* World, const FVoxelIntBox& Bounds)
 {
 	check(World);
-	World->GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(Bounds);
+	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(Bounds);
 }
 
 void FVoxelToolHelpers::StartAsyncEditTask(AVoxelWorld* World, IVoxelQueuedWork* Work)
 {
 	if (World)
 	{
-		World->GetSubsystemChecked<FVoxelPool>()->QueueTask(Work);
+		World->GetSubsystemChecked<FVoxelPool>().QueueTask(Work);
 	}
 	else
 	{

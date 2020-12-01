@@ -139,7 +139,7 @@ struct VOXEL_API FVoxelGeneratorPicker
 	using TVoxelGeneratorPicker<UVoxelGenerator, false>::TVoxelGeneratorPicker;
 	
 	// Will default to EmptyGenerator if null
-	TVoxelSharedRef<FGeneratorInstance> GetInstance(bool bSilent) const;
+	TVoxelSharedRef<FGeneratorInstance> GetInstance() const;
 	
 #if !CPP
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
@@ -172,7 +172,7 @@ struct FVoxelTransformableGeneratorPicker
 	using TVoxelGeneratorPicker<UVoxelTransformableGenerator, false>::TVoxelGeneratorPicker;
 	
 	// Will default to EmptyGenerator if null
-	TVoxelSharedRef<FGeneratorInstance> GetInstance(bool bSilent) const;
+	TVoxelSharedRef<FGeneratorInstance> GetInstance() const;
 
 #if !CPP
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")

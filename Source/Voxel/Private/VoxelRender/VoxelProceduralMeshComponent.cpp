@@ -114,9 +114,9 @@ void UVoxelProceduralMeshComponent::Init(
 	DebugChunkId = InDebugChunkId;
 	PriorityHandler = InPriorityHandler;
 	PhysicsCallbackHandler = InPhysicsCallbackHandler;
-	Pool = Renderer.GetSubsystemChecked<FVoxelPool>();
-	ToolRenderingManager = Renderer.GetSubsystemChecked<FVoxelToolRenderingManager>();
-	TexturePool = Renderer.GetSubsystemChecked<FVoxelTexturePool>();
+	Pool = Renderer.GetSubsystemChecked<FVoxelPool>().AsShared();
+	ToolRenderingManager = Renderer.GetSubsystemChecked<FVoxelToolRenderingManager>().AsShared();
+	TexturePool = Renderer.GetSubsystemChecked<FVoxelTexturePool>().AsShared();
 	VoxelRuntimeData = Renderer.RuntimeData;
 	CollisionTraceFlag = Renderer.Settings.CollisionTraceFlag;
 	bSimpleCubicCollision = Renderer.Settings.bSimpleCubicCollision;

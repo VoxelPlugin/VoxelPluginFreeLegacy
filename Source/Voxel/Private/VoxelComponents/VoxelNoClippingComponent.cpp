@@ -167,7 +167,7 @@ void UVoxelNoClippingComponent::StartAsyncTask()
 		const auto Location = VoxelWorld->GlobalToLocalFloat(GetComponentLocation());
 		if (VoxelWorld->GetWorldBounds().ContainsFloat(Location))
 		{
-			VoxelWorldInfos.Add(FVoxelWorldInfo{ VoxelWorld, VoxelWorld->GetDataSharedPtr(), Location });
+			VoxelWorldInfos.Add(FVoxelWorldInfo{ VoxelWorld, VoxelWorld->GetSubsystemChecked<FVoxelData>().AsShared(), Location });
 		}
 	}
 

@@ -5,5 +5,5 @@
 
 void FVoxelGeneratorVariableHelper::Init(const FVoxelGeneratorInit& InitStruct) const
 {
-	Generator = InitStruct.GetGeneratorCache().MakeNativeGeneratorInstance(Picker);
+	Generator = InitStruct.GetGeneratorCache().MakeGeneratorInstance(Picker);
 }

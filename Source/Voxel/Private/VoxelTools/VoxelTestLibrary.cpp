@@ -9,7 +9,7 @@ FVoxelTestValues UVoxelTestLibrary::ReadValues(AVoxelWorld* World, FVoxelIntBox 
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 
-	auto& Data = World->GetData();
+	auto& Data = World->GetSubsystemChecked<FVoxelData>();
 	
 	FVoxelReadScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
 	return { MakeSharedCopy(Data.GetValues(Bounds)) };

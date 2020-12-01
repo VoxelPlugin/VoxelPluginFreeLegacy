@@ -43,7 +43,7 @@ void UVoxelPlaceableItemActorHelper::AddActor(AVoxelDataItemActor& Actor)
 	PlaceableItemManager.Clear();
 	Actor.CallAddItemToWorld(&VoxelWorld);
 
-	PlaceableItemManager.ApplyToData(VoxelWorld.GetData(), &ActorData.Items);
+	PlaceableItemManager.ApplyToData(VoxelWorld.GetSubsystemChecked<FVoxelData>(), &ActorData.Items);
 	PlaceableItemManager.DrawDebug(VoxelWorld, VoxelWorld.GetLineBatchComponent());
 
 	Actor.OnRefresh.AddUObject(this, &UVoxelPlaceableItemActorHelper::OnActorUpdated, MakeWeakObjectPtr(&Actor));
@@ -94,7 +94,7 @@ void UVoxelPlaceableItemActorHelper::OnActorUpdated(TWeakObjectPtr<AVoxelDataIte
 	if (!ensure(VoxelWorld.PlaceableItemManager)) return;
 	UVoxelPlaceableItemManager& PlaceableItemManager = *VoxelWorld.PlaceableItemManager;
 
-	FVoxelData& Data = VoxelWorld.GetData();
+	FVoxelData& Data = VoxelWorld.GetSubsystemChecked<FVoxelData>();
 
 	TArray<FVoxelIntBox> BoundsToUpdate;
 	{
@@ -166,7 +166,7 @@ void UVoxelPlaceableItemActorHelper::OnActorUpdated(TWeakObjectPtr<AVoxelDataIte
 
 	if (BoundsToUpdate.Num() > 0)
 	{
-		VoxelWorld.GetSubsystemChecked<IVoxelLODManager>()->UpdateBounds(BoundsToUpdate);
+		VoxelWorld.GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(BoundsToUpdate);
 
 		if (!Data.IsCurrentFrameEmpty())
 		{

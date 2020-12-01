@@ -412,7 +412,7 @@ if (!FVoxelUtilities::CountIs32Bits(Bounds.Size())) \
 ///////////////////////////////////////////////////////////////////////////////
 
 #define VOXEL_TOOL_HELPER_BODY(InLockType, InUpdateRender, ...) \
-	auto& Data = World->GetData(); \
+	auto& Data = World->GetSubsystemChecked<FVoxelData>(); \
 	{ \
 		TVoxelScopeLock<EVoxelLockType::InLockType> Lock(Data, Bounds, FUNCTION_FNAME); \
 		__VA_ARGS__; \

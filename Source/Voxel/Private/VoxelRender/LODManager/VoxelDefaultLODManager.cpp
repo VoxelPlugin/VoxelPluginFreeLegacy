@@ -73,7 +73,7 @@ int32 FVoxelDefaultLODManager::UpdateBounds(const FVoxelIntBox& Bounds, const FV
 	TArray<uint64> ChunksToUpdate;
 	Octree->GetChunksToUpdateForBounds(GetBoundsToUpdate(Bounds), ChunksToUpdate, OnChunkUpdate);
 	
-	return GetSubsystemChecked<IVoxelRenderer>()->UpdateChunks(Bounds, ChunksToUpdate, FinishDelegate);
+	return GetSubsystemChecked<IVoxelRenderer>().UpdateChunks(Bounds, ChunksToUpdate, FinishDelegate);
 }
 
 int32 FVoxelDefaultLODManager::UpdateBounds(const TArray<FVoxelIntBox>& Bounds, const FVoxelOnChunkUpdateFinished& FinishDelegate)
@@ -93,7 +93,7 @@ int32 FVoxelDefaultLODManager::UpdateBounds(const TArray<FVoxelIntBox>& Bounds, 
 		GlobalBounds = GlobalBounds + BoundsToUpdate;
 		Octree->GetChunksToUpdateForBounds(GetBoundsToUpdate(BoundsToUpdate), ChunksToUpdate, OnChunkUpdate);
 	}
-	return GetSubsystemChecked<IVoxelRenderer>()->UpdateChunks(GlobalBounds, ChunksToUpdate, FinishDelegate);
+	return GetSubsystemChecked<IVoxelRenderer>().UpdateChunks(GlobalBounds, ChunksToUpdate, FinishDelegate);
 }
 
 void FVoxelDefaultLODManager::ForceLODsUpdate()
@@ -161,7 +161,7 @@ void FVoxelDefaultLODManager::Tick(float DeltaTime)
 			Octree = Task->NewOctree;
 
 			INC_DWORD_STAT_BY(STAT_VoxelChunkUpdates, Task->ChunkUpdates.Num());
-			GetSubsystemChecked<IVoxelRenderer>()->UpdateLODs(Octree->UpdateIndex, Task->ChunkUpdates);
+			GetSubsystemChecked<IVoxelRenderer>().UpdateLODs(Octree->UpdateIndex, Task->ChunkUpdates);
 
 			if (Settings.bStaticWorld)
 			{
@@ -351,7 +351,7 @@ void FVoxelDefaultLODManager::UpdateLODs()
 	OctreeSettings.VisibleChunksNavmeshMaxLOD = DynamicSettings->VisibleChunksNavmeshMaxLOD;
 
 	Task->Init(OctreeSettings, Octree);
-	GetSubsystemChecked<FVoxelPool>()->QueueTask(Task.Get());
+	GetSubsystemChecked<FVoxelPool>().QueueTask(Task.Get());
 	bAsyncTaskWorking = true;
 }
 
