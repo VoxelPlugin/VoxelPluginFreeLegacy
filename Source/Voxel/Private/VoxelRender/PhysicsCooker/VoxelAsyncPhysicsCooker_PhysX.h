@@ -13,15 +13,12 @@ class IPhysXCooking;
 
 class FVoxelAsyncPhysicsCooker_PhysX : public IVoxelAsyncPhysicsCooker
 {
+	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelAsyncPhysicsCooker_PhysX)
+
 public:
 	explicit FVoxelAsyncPhysicsCooker_PhysX(UVoxelProceduralMeshComponent* Component);
 
 private:
-	~FVoxelAsyncPhysicsCooker_PhysX() = default;
-
-	template<typename T>
-	friend struct TVoxelAsyncWorkDelete;
-
 	//~ Begin IVoxelAsyncPhysicsCooker Interface
 	virtual bool Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage) override;
 	virtual void CookMesh() override;

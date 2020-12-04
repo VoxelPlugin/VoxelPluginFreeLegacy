@@ -95,6 +95,14 @@ struct TVoxelAsyncWorkDelete
 template<typename T>
 using TVoxelAsyncWorkPtr = TUniquePtr<T, TVoxelAsyncWorkDelete<T>>;
 
+#define GENERATED_VOXEL_ASYNC_WORK_BODY(Type) \
+	protected: \
+		void __Dummy##Type(const Type&); \
+		~Type() = default; \
+		\
+		template<typename T> \
+		friend struct TVoxelAsyncWorkDelete; \
+
 template<typename T, typename... TArgs>
 TVoxelAsyncWorkPtr<T> MakeVoxelAsyncWork(TArgs&&... Args)
 {
