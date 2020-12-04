@@ -15,14 +15,10 @@ class IPhysXCooking;
 
 class FVoxelAsyncPhysicsCooker_Chaos : public IVoxelAsyncPhysicsCooker
 {
+	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelAsyncPhysicsCooker_Chaos)
+
 public:
 	explicit FVoxelAsyncPhysicsCooker_Chaos(UVoxelProceduralMeshComponent* Component);
-
-private:
-	~FVoxelAsyncPhysicsCooker_Chaos() = default;
-
-	template<typename T>
-	friend struct TVoxelAsyncWorkDelete;
 
 protected:
 	//~ Begin IVoxelAsyncPhysicsCooker Interface

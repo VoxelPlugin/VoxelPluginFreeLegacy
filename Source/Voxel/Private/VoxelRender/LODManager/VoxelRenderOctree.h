@@ -45,6 +45,8 @@ struct FVoxelRenderOctreeSettings
 
 class FVoxelRenderOctreeAsyncBuilder : public FVoxelAsyncWork
 {
+	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelRenderOctreeAsyncBuilder)
+
 public:
 	TArray<FVoxelChunkUpdate> ChunkUpdates;
 
@@ -55,12 +57,6 @@ public:
 	TVoxelSharedPtr<FVoxelRenderOctree> OctreeToDelete;
 
 	FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth, const FVoxelIntBox& WorldBounds);
-
-private:
-	~FVoxelRenderOctreeAsyncBuilder() = default;
-
-	template<typename T>
-	friend struct TVoxelAsyncWorkDelete;
 
 public:
 	void Init(const FVoxelRenderOctreeSettings& OctreeSettings, TVoxelSharedPtr<FVoxelRenderOctree> Octree);

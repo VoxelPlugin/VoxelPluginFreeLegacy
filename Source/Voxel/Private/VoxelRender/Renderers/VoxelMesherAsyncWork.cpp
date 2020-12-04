@@ -34,10 +34,6 @@ FVoxelMesherAsyncWork::FVoxelMesherAsyncWork(
 	PriorityHandler = FVoxelPriorityHandler(Bounds, Renderer);
 }
 
-FVoxelMesherAsyncWork::~FVoxelMesherAsyncWork()
-{
-}
-
 static void ShowGeneratorError(TVoxelWeakPtr<const FVoxelData> Data)
 {
 	static TSet<TVoxelWeakPtr<const FVoxelData>> IgnoredDatas;

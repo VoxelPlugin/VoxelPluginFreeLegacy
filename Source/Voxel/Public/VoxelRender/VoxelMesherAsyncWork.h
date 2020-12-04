@@ -16,6 +16,8 @@ struct FVoxelChunkMesh;
 
 class VOXEL_API FVoxelMesherAsyncWork : public FVoxelAsyncWork
 {
+	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelMesherAsyncWork)
+	
 public:
 	const uint64 TaskId = VOXEL_UNIQUE_ID();
 	
@@ -47,9 +49,6 @@ public:
 		TArray<FVector>& OutVertices);
 
 private:
-	// Important: do not allow public delete
-	virtual ~FVoxelMesherAsyncWork() override;
-	
 	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override final;
 	virtual void PostDoWork() override final;
@@ -63,9 +62,5 @@ private:
 		bool bIsTransitionTask,
 		uint8 TransitionsMask);
 	
-	
 	const TVoxelWeakPtr<FVoxelDefaultRenderer> Renderer;
-
-	template<typename T>
-	friend struct TVoxelAsyncWorkDelete;
 };
