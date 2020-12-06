@@ -3,17 +3,33 @@
 #include "VoxelGenerators/VoxelGeneratorInit.h"
 #include "VoxelGenerators/VoxelGeneratorCache.h"
 
-FVoxelGeneratorCache& FVoxelGeneratorInit::GetGeneratorCache() const
+FVoxelGeneratorInit::FVoxelGeneratorInit(
+	float VoxelSize, 
+	uint32 WorldSize, 
+	EVoxelRenderType RenderType, 
+	EVoxelMaterialConfig MaterialConfig, 
+	const UVoxelMaterialCollectionBase* MaterialCollection, 
+	const TWeakObjectPtr<const AVoxelWorld>& World)
+	: VoxelSize(VoxelSize)
+	, WorldSize(WorldSize)
+	, RenderType(RenderType)
+	, MaterialConfig(MaterialConfig)
+	, MaterialCollection(MaterialCollection)
+	, World(World)
 {
-	if (!GeneratorCache)
+}
+
+TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorInit::GetGeneratorCache() const
+{
+	TVoxelSharedPtr<FVoxelGeneratorCache> PinnedGeneratorCache = GeneratorCache.Pin();
+	if (!ensure(PinnedGeneratorCache))
 	{
-		GeneratorCache = FVoxelGeneratorCache::Create(*this);
+		PinnedGeneratorCache = FVoxelGeneratorCache::Create(*this);
 	}
-	return *GeneratorCache;
+	return PinnedGeneratorCache.ToSharedRef();
 }
 
 void FVoxelGeneratorInit::AddReferencedObjects(FReferenceCollector& Collector)
 {
 	Collector.AddReferencedObject(MaterialCollection);
-	Collector.AddReferencedObject(World);
 }

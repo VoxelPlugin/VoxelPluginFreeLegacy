@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelGCObject.h"
 #include "VoxelSubsystem.h"
-#include "UObject/GCObject.h"
 #include "Templates/SubclassOf.h"
 #include "VoxelGenerators/VoxelGeneratorInit.h"
 #include "VoxelGenerators/VoxelGeneratorPicker.h"
@@ -30,6 +30,7 @@ public:
 
 	//~ Begin IVoxelSubsystem Interface
 	virtual void Create() override;
+	virtual void PreDestructor() override;
 	//~ End IVoxelSubsystem Interface
 	
 private:
@@ -41,7 +42,7 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 
 #if CPP
-class VOXEL_API FVoxelGeneratorCache : public FGCObject, public TVoxelSharedFromThis<FVoxelGeneratorCache>
+class VOXEL_API FVoxelGeneratorCache : public FVoxelGCObject, public TVoxelSharedFromThis<FVoxelGeneratorCache>
 {
 public:
 	VOXEL_SUBSYSTEM_FWD(FVoxelGeneratorCacheSubsystem, GetCache);
@@ -63,9 +64,10 @@ private:
 	void OnGeneratorRecompiledImpl(UVoxelGenerator* Generator);
 	
 protected:
-	//~ Begin FGCObject Interface
+	//~ Begin FVoxelGCObject Interface
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
-	//~ End FGCObject Interface
+	virtual FString GetReferencerName() const override { return "FVoxelGeneratorCache"; }
+	//~ End FVoxelGCObject Interface
 	
 private:
 	FVoxelGeneratorCache() = default;

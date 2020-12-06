@@ -103,6 +103,8 @@ void FVoxelMesherAsyncWork::DoWork()
 
 		Buffers.Indices = MoveTemp(Indices);
 		Buffers.Positions = MoveTemp(Vertices);
+
+		Mesher->FinishCreatingChunk(*Chunk);
 	}
 }
 

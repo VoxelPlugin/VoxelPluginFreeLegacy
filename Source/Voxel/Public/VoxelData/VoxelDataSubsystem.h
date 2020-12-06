@@ -24,6 +24,7 @@ public:
 
 	//~ Begin IVoxelSubsystem Interface
 	virtual void Create() override;
+	virtual void PreDestructor() override;
 	//~ End IVoxelSubsystem Interface
 
 private:

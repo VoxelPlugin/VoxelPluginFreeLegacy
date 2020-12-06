@@ -3,14 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Input/Reply.h"
 #include "IDetailCustomization.h"
-#include "Widgets/Input/SButton.h"
 
-class FVoxelMeshSpawnerBaseDetails : public IDetailCustomization
+class FVoxelMeshSpawnerDetails : public IDetailCustomization
 {
 public:
-	FVoxelMeshSpawnerBaseDetails() = default;
+	FVoxelMeshSpawnerDetails() = default;
 
 private:
 	/** IDetailCustomization interface */

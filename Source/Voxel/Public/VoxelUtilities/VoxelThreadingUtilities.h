@@ -26,6 +26,8 @@ namespace FVoxelUtilities
 	template<typename T>
 	void DeleteTickable(T* Ptr)
 	{
+		Ptr->OnDeleteTickable();
+		
 		// There is a bug in 4.23/24 where FTickableGameObject gets added to a set of deleted tickable objects on destruction
 		// This set is then checked in the next frame before adding a new tickable to see if it has been deleted
 		// See Engine/Source/Runtime/Engine/Private/Tickable.cpp:107
@@ -46,7 +48,7 @@ namespace FVoxelUtilities
 		}
 	}
 
-	template<typename T, bool bIsTickable>
+	template<typename T>
 	struct TGameThreadDeleter
 	{
 		void operator()(T* Object) const
@@ -55,14 +57,21 @@ namespace FVoxelUtilities
 			
 			FVoxelUtilities::RunOnGameThread([=]()
 			{
-				if (bIsTickable)
-				{
-					FVoxelUtilities::DeleteTickable(Object);
-				}
-				else
-				{
-					delete Object;
-				}
+				delete Object;
+			});
+		}
+	};
+
+	template<typename T>
+	struct TGameThreadTickableDeleter
+	{
+		void operator()(T* Object) const
+		{
+			if (!Object) return;
+			
+			FVoxelUtilities::RunOnGameThread([=]()
+			{
+				FVoxelUtilities::DeleteTickable(Object);
 			});
 		}
 	};
@@ -70,12 +79,12 @@ namespace FVoxelUtilities
 	template<typename T,  typename... TArgs>
 	static TVoxelSharedRef<T> MakeGameThreadDeleterPtr(TArgs&&... Args)
 	{
-		return TVoxelSharedPtr<T>(new T(Forward<TArgs>(Args)...), TGameThreadDeleter<T, false>()).ToSharedRef();
+		return TVoxelSharedPtr<T>(new T(Forward<TArgs>(Args)...), TGameThreadDeleter<T>()).ToSharedRef();
 	}
 	template<typename T,  typename... TArgs>
 	static TVoxelSharedRef<T> MakeGameThreadTickableDeleterPtr(TArgs&&... Args)
 	{
-		return TVoxelSharedPtr<T>(new T(Forward<TArgs>(Args)...), TGameThreadDeleter<T, true>()).ToSharedRef();
+		return TVoxelSharedPtr<T>(new T(Forward<TArgs>(Args)...), TGameThreadTickableDeleter<T>()).ToSharedRef();
 	}
 
 	template<typename TGetPerThreadData, typename TLambda>

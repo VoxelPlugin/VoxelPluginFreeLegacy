@@ -1007,6 +1007,8 @@ void AVoxelWorld::DestroyWorldInternal()
 	bIsLoaded = false;
 
 	DebugTextures.Reset();
+
+	Runtime->Destroy();
 	Runtime.Reset();
 
 	GameThreadTasks->Flush();
@@ -1020,6 +1022,12 @@ void AVoxelWorld::DestroyWorldInternal()
 		GeneratorCache = nullptr;
 	}
 
+	if (PlaceableItemManager)
+	{
+		// Reset to avoid keeping instances alive
+		PlaceableItemManager->ResetGeneratorCache();
+	}
+	
 	if (PlaceableItemActorHelper)
 	{
 		PlaceableItemActorHelper->MarkPendingKill();

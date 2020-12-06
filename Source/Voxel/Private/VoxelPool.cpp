@@ -25,12 +25,12 @@ void FVoxelPool::Create()
 void FVoxelPool::QueueTask(IVoxelQueuedWork* Task) const
 {
 	const EVoxelTaskType Type = Task->TaskType;
-	GVoxelThreadPool->AddQueuedWorks(TVoxelStaticArray<IVoxelQueuedWork*, 1>{ Task }, PriorityCategories[uint8(Type)], PriorityOffsets[uint8(Type)], Type);
+	GVoxelThreadPool->AddQueuedWorks(TVoxelStaticArray<IVoxelQueuedWork*, 1>{ Task }, PriorityCategories[uint8(Type)], PriorityOffsets[uint8(Type)], PoolId, Type);
 }
 
 void FVoxelPool::QueueTasks(EVoxelTaskType Type, const TArray<IVoxelQueuedWork*>& Tasks) const
 {
-	GVoxelThreadPool->AddQueuedWorks(Tasks, PriorityCategories[uint8(Type)], PriorityOffsets[uint8(Type)], Type);
+	GVoxelThreadPool->AddQueuedWorks(Tasks, PriorityCategories[uint8(Type)], PriorityOffsets[uint8(Type)], PoolId, Type);
 }
 
 void FVoxelPool::FixPriorityCategories(TMap<EVoxelTaskType, int32>& PriorityCategories)

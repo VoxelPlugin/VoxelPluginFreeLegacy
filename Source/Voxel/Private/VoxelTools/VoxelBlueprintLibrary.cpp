@@ -21,6 +21,7 @@
 #include "VoxelAssets/VoxelHeightmapAssetData.h"
 #include "VoxelThreadPool.h"
 #include "VoxelMessages.h"
+#include "VoxelPool.h"
 #include "VoxelUtilities/VoxelGeneratorUtilities.h"
 
 #include "Async/Async.h"
@@ -788,12 +789,32 @@ bool UVoxelBlueprintLibrary::AreCollisionsEnabled(AVoxelWorld* World, FVector In
 
 int32 UVoxelBlueprintLibrary::GetTaskCount(AVoxelWorld* World)
 {
-	return World && World->IsCreated() ? FMath::Max(World->GetSubsystemChecked<IVoxelRenderer>().GetTaskCount(), 0) : 0;
+	if (!World || !World->IsCreated())
+	{
+		return 0;
+	}
+
+	const auto PoolId = World->GetSubsystemChecked<FVoxelPool>().PoolId;
+	return GVoxelThreadPool->GetCountersForPool(PoolId).GetTotalNumTasks();
 }
 
 bool UVoxelBlueprintLibrary::IsVoxelWorldMeshLoading(AVoxelWorld* World)
 {
-	return World && World->IsCreated() && World->GetSubsystemChecked<IVoxelRenderer>().GetTaskCount() > 0;
+	if (!World || !World->IsCreated())
+	{
+		return false;
+	}
+
+	const auto PoolId = World->GetSubsystemChecked<FVoxelPool>().PoolId;
+	const auto PoolCounters = GVoxelThreadPool->GetCountersForPool(PoolId);
+	return
+		PoolCounters.GetNumTasksForType(EVoxelTaskType::ChunksMeshing) > 0 ||
+		PoolCounters.GetNumTasksForType(EVoxelTaskType::CollisionsChunksMeshing) > 0 ||
+		PoolCounters.GetNumTasksForType(EVoxelTaskType::VisibleChunksMeshing) > 0 ||
+		PoolCounters.GetNumTasksForType(EVoxelTaskType::VisibleCollisionsChunksMeshing) > 0 ||
+		PoolCounters.GetNumTasksForType(EVoxelTaskType::CollisionCooking) > 0 ||
+		PoolCounters.GetNumTasksForType(EVoxelTaskType::MeshMerge) > 0 ||
+		PoolCounters.GetNumTasksForType(EVoxelTaskType::RenderOctree) > 0;
 }
 
 bool UVoxelBlueprintLibrary::IsVoxelWorldFoliageLoading(AVoxelWorld* World)

@@ -19,31 +19,29 @@ IVoxelSubsystem::IVoxelSubsystem(FVoxelRuntime& Runtime)
 IVoxelSubsystem::~IVoxelSubsystem()
 {
 	ensure(IsInGameThread());
-	ensure(bCreateCalled);
-	ensure(bPostCreateCalled);
-	ensure(bDestroyCalled);
+	ensure(State == EState::Last);
 }
 
 void IVoxelSubsystem::Create()
 {
-	ensure(!bCreateCalled);
-	ensure(!bPostCreateCalled);
-	ensure(!bDestroyCalled);
-	bCreateCalled = true;
-}
-
-void IVoxelSubsystem::PostCreate()
-{
-	ensure(bCreateCalled);
-	ensure(!bPostCreateCalled);
-	ensure(!bDestroyCalled);
-	bPostCreateCalled = true;
+	ensure(State == EState::Before_Create);
+	State = EState::Create;
 }
 
 void IVoxelSubsystem::Destroy()
 {
-	ensure(bCreateCalled);
-	ensure(bPostCreateCalled);
-	ensure(!bDestroyCalled);
-	bDestroyCalled = true;
+	ensure(State == EState::Before_Destroy);
+	State = EState::Destroy;
+}
+
+void IVoxelSubsystem::PostCreate()
+{
+	ensure(State == EState::Before_PostCreate);
+	State = EState::PostCreate;
+}
+
+void IVoxelSubsystem::PreDestructor()
+{
+	ensure(State == EState::Before_PreDestructor);
+	State = EState::PreDestructor;
 }

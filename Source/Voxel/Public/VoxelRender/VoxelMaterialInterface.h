@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelGCObject.h"
 #include "Containers/Queue.h"
-#include "UObject/GCObject.h"
-#include "UObject/WeakObjectPtr.h"
+
 
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
@@ -14,7 +14,7 @@ class FVoxelMaterialInterface;
 
 // This code is a bit complex to handle material reinstancing when they are recompiled
 // Reinstancing reconstructs the object in-place, invaliding any weak pointer to it, but keeping the raw pointer the same
-class VOXEL_API FVoxelMaterialInterfaceManager : public FGCObject
+class VOXEL_API FVoxelMaterialInterfaceManager : public FVoxelGCObject
 {
 public:
 	static FVoxelMaterialInterfaceManager& Get()
@@ -38,9 +38,10 @@ public:
 	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterialInstance(UMaterialInterface* Parent);
 
 protected:
-	//~ Begin FGCObject Interface
+	//~ Begin FVoxelGCObject Interface
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
-	//~ End FGCObject Interface
+	virtual FString GetReferencerName() const override { return "FVoxelMaterialInterfaceManager"; }
+	//~ End FVoxelGCObject Interface
 	
 private:
 	TVoxelSharedPtr<FVoxelMaterialInterface> DefaultMaterialPtr;

@@ -212,10 +212,9 @@ void FVoxelRuntimeSettings::Fixup()
 	HISMChunkSize = FMath::Max(32, HISMChunkSize);
 }
 
-FVoxelIntBox FVoxelRuntimeSettings::GetWorldBounds() const
-{
-	return GetWorldBounds(bUseCustomWorldBounds, CustomWorldBounds, RenderOctreeDepth);
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 FVoxelIntBox FVoxelRuntimeSettings::GetWorldBounds(bool bUseCustomWorldBounds, const FVoxelIntBox& CustomWorldBounds, int32 RenderOctreeDepth)
 {
@@ -230,6 +229,15 @@ FVoxelIntBox FVoxelRuntimeSettings::GetWorldBounds(bool bUseCustomWorldBounds, c
 	{
 		return FVoxelUtilities::GetBoundsFromDepth<RENDER_CHUNK_SIZE>(RenderOctreeDepth);
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelIntBox FVoxelRuntimeSettings::GetWorldBounds() const
+{
+	return GetWorldBounds(bUseCustomWorldBounds, CustomWorldBounds, RenderOctreeDepth);
 }
 
 FVoxelGeneratorInit FVoxelRuntimeSettings::GetGeneratorInit() const
@@ -429,10 +437,25 @@ FVoxelRuntime::~FVoxelRuntime()
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
 
+	if (!ensure(bIsDestroyed))
+	{
+		Destroy();
+	}
+}
+
+void FVoxelRuntime::Destroy()
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+
+	ensure(!bIsDestroyed);
+	bIsDestroyed = true;
+	
 	for (auto& Subsystem : AllSubsystems)
 	{
+		ensure(Subsystem->State == IVoxelSubsystem::EState::Before_Destroy);
 		Subsystem->Destroy();
-		ensure(Subsystem->bDestroyCalled);
+		ensure(Subsystem->State == IVoxelSubsystem::EState::Destroy);
 	}
 }
 
@@ -456,9 +479,9 @@ void FVoxelRuntime::InitializeSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& 
 	checkf(!SubsystemsBeingInitialized.Contains(Subsystem), TEXT("Recursive dependencies!"));
 	SubsystemsBeingInitialized.Add(Subsystem);
 	
-	ensure(!Subsystem->bCreateCalled);
+	ensure(Subsystem->State == IVoxelSubsystem::EState::Before_Create);
 	Subsystem->Create();
-	ensure(Subsystem->bCreateCalled);
+	ensure(Subsystem->State == IVoxelSubsystem::EState::Create);
 
 	SubsystemsBeingInitialized.Remove(Subsystem);
 	InitializedSubsystems.Add(Subsystem);

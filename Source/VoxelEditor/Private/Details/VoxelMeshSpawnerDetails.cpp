@@ -1,11 +1,11 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelMeshSpawnerBaseDetails.h"
+#include "VoxelMeshSpawnerDetails.h"
 #include "VoxelSpawners/VoxelMeshSpawner.h"
 
 #include "DetailLayoutBuilder.h"
 
-void FVoxelMeshSpawnerBaseDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
+void FVoxelMeshSpawnerDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	DetailLayout.EditCategory("General Settings", FText(), ECategoryPriority::Important);
 	DetailLayout.EditCategory("Actor Settings", FText(), ECategoryPriority::Important);
@@ -19,12 +19,12 @@ void FVoxelMeshSpawnerBaseDetails::CustomizeDetails(IDetailLayoutBuilder& Detail
 	DetailLayout.GetObjectsBeingCustomized(Objects);
 	if (Objects.Num() == 1)
 	{
-		auto* MeshSpawner = CastChecked<UVoxelMeshSpawnerBase>(Objects[0]);
+		auto* MeshSpawner = CastChecked<UVoxelMeshSpawner>(Objects[0]);
 		switch (MeshSpawner->InstanceRandom)
 		{
 		case EVoxelMeshSpawnerInstanceRandom::Random:
 		case EVoxelMeshSpawnerInstanceRandom::VoxelMaterial:
-			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(UVoxelMeshSpawnerBase, ColorOutputName));
+			DetailLayout.HideProperty(GET_MEMBER_NAME_STATIC(UVoxelMeshSpawner, ColorOutputName));
 			break;
 		case EVoxelMeshSpawnerInstanceRandom::ColorOutput:
 			break;
@@ -37,6 +37,6 @@ void FVoxelMeshSpawnerBaseDetails::CustomizeDetails(IDetailLayoutBuilder& Detail
 		{
 			DetailLayout.ForceRefreshDetails();
 		});
-		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(UVoxelMeshSpawnerBase, InstanceRandom))->SetOnPropertyValueChanged(RefreshDelegate);
+		DetailLayout.GetProperty(GET_MEMBER_NAME_STATIC(UVoxelMeshSpawner, InstanceRandom))->SetOnPropertyValueChanged(RefreshDelegate);
 	}
 }

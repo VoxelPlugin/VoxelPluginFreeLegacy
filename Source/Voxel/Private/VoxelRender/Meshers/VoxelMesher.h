@@ -94,6 +94,7 @@ public:
 	virtual void CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vertices) = 0;
 	
 	TVoxelSharedPtr<FVoxelChunkMesh> CreateEmptyChunk() const;
+	void FinishCreatingChunk(FVoxelChunkMesh& Chunk) const;
 
 protected:
 	virtual FVoxelIntBox GetBoundsToCheckIsEmptyOn() const = 0;
@@ -106,7 +107,6 @@ private:
 
 	void LockData();
 	bool IsEmpty() const;
-	void FinishCreatingChunk(FVoxelChunkMesh& Chunk) const;
 
 	friend class FVoxelMesher;
 	friend class FVoxelTransitionsMesher;

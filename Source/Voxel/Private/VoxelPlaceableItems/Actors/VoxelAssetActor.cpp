@@ -428,7 +428,8 @@ void AVoxelAssetActor::CreatePreview()
 void AVoxelAssetActor::DestroyPreview()
 {
 	if (!ensure(IsPreviewCreated())) return;
-	
+
+	Runtime->Destroy();
 	Runtime.Reset();
 
 	auto Components = GetComponents(); // need a copy as we are modifying it when destroying comps
