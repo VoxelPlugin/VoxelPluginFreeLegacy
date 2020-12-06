@@ -6,10 +6,8 @@
 #include "Factories/Factory.h"
 #include "VoxelData/VoxelSave.h"
 #include "VoxelNodes/VoxelGraphMacro.h"
-#include "VoxelSpawners/VoxelAssetSpawner.h"
 #include "VoxelSpawners/VoxelMeshSpawner.h"
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
-#include "VoxelSpawners/VoxelSpawnerGroup.h"
 #include "VoxelRender/MaterialCollections/VoxelBasicMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
@@ -72,27 +70,6 @@ class UVoxelMeshSpawnerFactory : public UVoxelFactory
 {
 	GENERATED_BODY()
 	GENERATED_VOXEL_FACTORY_BODY(UVoxelMeshSpawner)
-};
-
-UCLASS()
-class UVoxelMeshSpawnerGroupFactory : public UVoxelFactory
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_FACTORY_BODY(UVoxelMeshSpawnerGroup)
-};
-
-UCLASS()
-class UVoxelAssetSpawnerFactory : public UVoxelFactory
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_FACTORY_BODY(UVoxelAssetSpawner)
-};
-
-UCLASS()
-class UVoxelSpawnerGroupFactory : public UVoxelFactory
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_FACTORY_BODY(UVoxelSpawnerGroup)
 };
 
 ///////////////////////////////////////////////////////////////////////////////

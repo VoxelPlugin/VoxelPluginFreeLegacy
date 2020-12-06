@@ -11,8 +11,8 @@ struct FVoxelChunkMesh;
 class AVoxelWorld;
 class UVoxelInvokerComponentBase;
 
-DECLARE_DELEGATE_OneParam(FChunkDelegate, FVoxelIntBox);
-DECLARE_MULTICAST_DELEGATE_OneParam(FChunkMulticastDelegate, FVoxelIntBox);
+DECLARE_DELEGATE_OneParam(FChunkDelegate, const FVoxelIntBox&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FChunkMulticastDelegate, const FVoxelIntBox&);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnMeshCreatedDelegate, int32, const FVoxelIntBox&, const FVoxelChunkMesh&);
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Events Memory"), STAT_VoxelEventsMemory, STATGROUP_VoxelMemory, VOXEL_API);

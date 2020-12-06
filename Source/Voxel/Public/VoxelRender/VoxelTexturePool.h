@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelGCObject.h"
 #include "VoxelSubsystem.h"
 #include "VoxelContainers/VoxelSparseArray.h"
-#include "UObject/GCObject.h"
 #include "VoxelTexturePool.generated.h"
 
 enum class EVoxelPlayType;
@@ -47,7 +47,7 @@ class VOXEL_API UVoxelTexturePoolSubsystemProxy : public UVoxelStaticSubsystemPr
 	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelTexturePool);
 };
 
-class VOXEL_API FVoxelTexturePool : public IVoxelSubsystem, public FGCObject
+class VOXEL_API FVoxelTexturePool : public IVoxelSubsystem, public FVoxelGCObject
 {
 public:
 	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelTexturePoolSubsystemProxy);
@@ -66,9 +66,14 @@ public:
 	void Compact();
 
 protected:
-	// Begin FGCObject Interface
+	// Begin FVoxelGCObject Interface
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
-	// End FGCObject Interface
+	virtual FString GetReferencerName() const override { return "FVoxelTexturePool"; }
+	// End FVoxelGCObject Interface
+
+	//~ Begin IVoxelSubsystem Interface
+	virtual void PreDestructor() override;
+	//~ End IVoxelSubsystem Interface
 	
 private:
 	struct FTextureSlot

@@ -32,3 +32,10 @@ void FVoxelDataSubsystem::Create()
 		Data = FVoxelData::Create(DataSettings, Settings.DataOctreeInitialSubdivisionDepth);
 	}
 }
+
+void FVoxelDataSubsystem::PreDestructor()
+{
+	Super::PreDestructor();
+
+	Data.Reset();
+}

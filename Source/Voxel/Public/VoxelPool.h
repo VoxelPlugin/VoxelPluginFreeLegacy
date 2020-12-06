@@ -9,6 +9,8 @@
 
 class IVoxelQueuedWork;
 
+DECLARE_UNIQUE_VOXEL_ID(FVoxelPoolId);
+
 namespace EVoxelTaskType_DefaultPriorityCategories
 {
 	enum Type : int32
@@ -59,6 +61,8 @@ class VOXEL_API FVoxelPool : public IVoxelSubsystem
 public:
 	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelPoolSubsystemProxy);
 
+	const FVoxelPoolId PoolId = VOXEL_UNIQUE_ID();
+	
 	//~ Begin IVoxelSubsystem Interface
 	virtual void Create() override;
 	//~ End IVoxelSubsystem Interface

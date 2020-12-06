@@ -126,7 +126,8 @@ public:
 	const TArray<FVoxelDataItemConstructionInfo>& GetDataItemInfos() const { return DataItemInfos; }
 
 	void SetGeneratorCache(const TVoxelSharedRef<FVoxelGeneratorCache>& NewGeneratorCache);
-
+	void ResetGeneratorCache();
+	
 private:
 	// Transient as otherwise it's serialized in the graph preview settings	
 	UPROPERTY(Transient)

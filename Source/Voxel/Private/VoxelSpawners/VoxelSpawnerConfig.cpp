@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
-#include "VoxelSpawners/VoxelSpawner.h"
+#include "VoxelSpawners/VoxelMeshSpawner.h"
 #include "VoxelSpawners/VoxelSpawnerOutputsConfig.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
 

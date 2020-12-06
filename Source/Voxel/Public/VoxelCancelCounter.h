@@ -8,8 +8,29 @@
 class FVoxelCancelCounter
 {
 public:
-	explicit FVoxelCancelCounter(const TVoxelSharedRef<FThreadSafeCounter64>& Counter)
-		: Counter(Counter)
+	FVoxelCancelCounter() = default;
+
+	void Cancel() const
+	{
+		Counter->Increment();
+	}
+	
+private:
+	TVoxelSharedRef<FThreadSafeCounter> Counter = MakeVoxelShared<FThreadSafeCounter>();
+
+	friend class FVoxelCancelTracker;
+};
+
+class FVoxelCancelTracker
+{
+public:
+	FVoxelCancelTracker()
+		: Counter(MakeVoxelShared<FThreadSafeCounter>())
+		, Threshold(-1)
+	{
+	}
+	FVoxelCancelTracker(const FVoxelCancelCounter& InCounter)
+		: Counter(InCounter.Counter)
 		, Threshold(Counter->GetValue())
 	{
 	}
@@ -20,6 +41,6 @@ public:
 	}
 
 private:
-	const TVoxelSharedRef<FThreadSafeCounter64> Counter;
-	const int64 Threshold;
+	TVoxelSharedRef<FThreadSafeCounter> Counter;
+	int64 Threshold;
 };

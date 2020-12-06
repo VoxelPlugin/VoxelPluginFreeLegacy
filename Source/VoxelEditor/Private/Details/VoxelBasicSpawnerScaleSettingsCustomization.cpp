@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelBasicSpawnerScaleSettingsCustomization.h"
-#include "VoxelSpawners/VoxelBasicSpawner.h"
+#include "VoxelSpawners/VoxelMeshSpawner.h"
 
 #include "PropertyHandle.h"
 #include "DetailWidgetRow.h"

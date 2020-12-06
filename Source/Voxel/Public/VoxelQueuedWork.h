@@ -7,6 +7,8 @@
 #include "VoxelPriorityHandler.h"
 #include "Misc/IQueuedWork.h"
 
+DECLARE_UNIQUE_VOXEL_ID(FVoxelPoolId);
+
 class IVoxelQueuedWork : public IQueuedWork
 {
 public:
@@ -49,6 +51,8 @@ protected:
 
 private:
 	int32 PriorityOffset = 0;
+	FVoxelPoolId PoolId;
 	
+	friend class FVoxelThread;
 	friend class FVoxelThreadPool;
 };

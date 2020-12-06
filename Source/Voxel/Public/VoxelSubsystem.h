@@ -113,6 +113,8 @@ public:
 	explicit IVoxelSubsystem(FVoxelRuntime& Runtime);
 	virtual ~IVoxelSubsystem();
 	UE_NONCOPYABLE(IVoxelSubsystem);
+	
+	void OnDeleteTickable() { PreDestructor(); }
 
 	template<typename T>
 	TVoxelSharedPtr<T> GetSubsystem() const
@@ -136,16 +138,33 @@ public:
 protected:
 	//~ Begin IVoxelSubsystem Interface
 	virtual void Create();
+	virtual void Destroy();
+
 	// Called once every subsystem is created
 	virtual void PostCreate();
-	virtual void Destroy();
+	// Called before the destructor is called. Used to clean up GC objects, as the destructor is delayed due to the tickable bug
+	virtual void PreDestructor();
+	
 	virtual UClass* GetProxyClass() const = 0;
 	//~ End IVoxelSubsystem Interface
 
 private:
-	bool bCreateCalled = false;
-	bool bPostCreateCalled = false;
-	bool bDestroyCalled = false;
+	enum class EState
+	{
+		Init,
+		Create,
+		PostCreate,
+		Destroy,
+		PreDestructor,
+		
+		Before_Create = Init,
+		Before_PostCreate = Create,
+		Before_Destroy = PostCreate,
+		Before_PreDestructor = Destroy,
+
+		Last = PreDestructor,
+	};
+	EState State = EState::Init;
 	
 	template<typename T>
 	friend struct TDeleter;

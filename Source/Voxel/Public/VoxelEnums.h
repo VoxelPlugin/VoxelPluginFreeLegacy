@@ -206,5 +206,7 @@ enum class EVoxelTaskType : uint8
 	MeshMerge,
 	// The render octree is used to determine the LODs to display
 	// Should be done as fast as possible to start meshing tasks 
-	RenderOctree
+	RenderOctree,
+	
+	Max UMETA(Hidden)
 };

@@ -57,19 +57,22 @@ public:
 	// Final priority is 64 bits: PriorityCategory in upper bits, and GetPriority in lower bits
 	// Use PriorityCategory to make some type of tasks have a higher priority than other
 	template<typename Array>
-	void AddQueuedWorks(const Array& InQueuedWorks, uint32 PriorityCategory, int32 PriorityOffset, EVoxelTaskType Type)
+	void AddQueuedWorks(const Array& InQueuedWorks, uint32 PriorityCategory, int32 PriorityOffset, FVoxelPoolId PoolId, EVoxelTaskType Type)
 	{
 		VOXEL_FUNCTION_COUNTER();
 		check(IsInGameThread());
 
-#if VOXEL_DEBUG
+		{
+			FScopeLock Lock(&CountersSection);
+			GlobalCounters.Add(Type, InQueuedWorks.Num());
+			PoolsCounters.FindOrAdd(PoolId).Add(Type, InQueuedWorks.Num());
+		}
+
 		for (auto* InQueuedWork : InQueuedWorks)
 		{
-			check(InQueuedWork->TaskType == Type);
+			ensureVoxelSlow(InQueuedWork->TaskType == Type);
+			InQueuedWork->PoolId = PoolId;
 		}
-#endif
-		GlobalTaskCounter.Add(InQueuedWorks.Num());
-		TaskCounters[uint8(Type)].Add(InQueuedWorks.Num());
 
 		FVoxelScopeLockWithStats Lock(CriticalSection);
 
@@ -102,15 +105,6 @@ public:
 
 	void AbandonAllTasks();
 	
-	int32 GetTotalNumTasks() const
-	{
-		return GlobalTaskCounter.GetValue();
-	}
-	int32 GetNumTasksForType(EVoxelTaskType Type) const
-	{
-		return TaskCounters[uint8(Type)].GetValue();
-	}
-
 private:
 	TUniquePtr<FVoxelThread> CreateThread();
 	void AbandonWork(IVoxelQueuedWork& Work);
@@ -155,9 +149,6 @@ private:
 	};
 private:
 	const TVoxelSharedRef<const uint32> IsAlive = MakeVoxelShared<uint32>();
-
-	FThreadSafeCounter GlobalTaskCounter;
-	TVoxelStaticArray<FThreadSafeCounter, 256> TaskCounters{ ForceInit };
 	
 	FCriticalSection CriticalSection;
 	// All the threads
@@ -179,4 +170,49 @@ private:
 public:
 	void LogTimes() const;
 	void ClearTimes();
+
+public:
+	class FTaskCounters
+	{
+	public:
+		int32 GetTotalNumTasks() const
+		{
+			return Total;
+		}
+		int32 GetNumTasksForType(EVoxelTaskType Type) const
+		{
+			return PerType[int32(Type)];
+		}
+
+		void Add(EVoxelTaskType Type, int32 Count)
+		{
+			Total += Count;
+			PerType[int32(Type)] += Count;
+		}
+		void Decrement(EVoxelTaskType Type)
+		{
+			ensure(Total-- >= 0);
+			ensure(PerType[int32(Type)]-- >= 0);
+		}
+
+	private:
+		int32 Total = 0;
+		TVoxelStaticArray<int32, int32(EVoxelTaskType::Max)> PerType{ ForceInit };
+	};
+
+	FTaskCounters GetGlobalCounters() const
+	{
+		FScopeLock Lock(&CountersSection);
+		return GlobalCounters;
+	}
+	FTaskCounters GetCountersForPool(FVoxelPoolId PoolId) const
+	{
+		FScopeLock Lock(&CountersSection);
+		return PoolsCounters.FindRef(PoolId);
+	}
+
+private:
+	mutable FCriticalSection CountersSection;
+	FTaskCounters GlobalCounters;
+	TMap<FVoxelPoolId, FTaskCounters> PoolsCounters;
 };

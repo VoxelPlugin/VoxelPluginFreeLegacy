@@ -62,7 +62,7 @@
 #include "Details/VoxelGeneratorPickerCustomization.h"
 #include "Details/RangeAnalysisDebuggerDetails.h"
 #include "Details/VoxelPaintMaterialCustomization.h"
-#include "Details/VoxelMeshSpawnerBaseDetails.h"
+#include "Details/VoxelMeshSpawnerDetails.h"
 #include "Details/VoxelBasicSpawnerScaleSettingsCustomization.h"
 #include "Details/VoxelSpawnerOutputNameCustomization.h"
 #include "Details/VoxelSpawnerDensityCustomization.h"
@@ -280,9 +280,6 @@ public:
 		ThumbnailManager.RegisterCustomRenderer(UVoxelDataAsset       ::StaticClass(), UVoxelDataAssetThumbnailRenderer       ::StaticClass());
 		ThumbnailManager.RegisterCustomRenderer(UVoxelHeightmapAsset  ::StaticClass(), UVoxelHeightmapAssetThumbnailRenderer  ::StaticClass());
 		ThumbnailManager.RegisterCustomRenderer(UVoxelMeshSpawner     ::StaticClass(), UVoxelMeshSpawnerThumbnailRenderer     ::StaticClass());
-		ThumbnailManager.RegisterCustomRenderer(UVoxelMeshSpawnerGroup::StaticClass(), UVoxelMeshSpawnerGroupThumbnailRenderer::StaticClass());
-		ThumbnailManager.RegisterCustomRenderer(UVoxelAssetSpawner    ::StaticClass(), UVoxelAssetSpawnerThumbnailRenderer    ::StaticClass());
-		ThumbnailManager.RegisterCustomRenderer(UVoxelSpawnerGroup    ::StaticClass(), UVoxelSpawnerGroupThumbnailRenderer    ::StaticClass());
 
 		// Icons
 		{
@@ -387,9 +384,6 @@ public:
 			ThumbnailManager.UnregisterCustomRenderer(UVoxelDataAsset::StaticClass());
 			ThumbnailManager.UnregisterCustomRenderer(UVoxelHeightmapAsset::StaticClass());
 			ThumbnailManager.UnregisterCustomRenderer(UVoxelMeshSpawner::StaticClass());
-			ThumbnailManager.UnregisterCustomRenderer(UVoxelMeshSpawnerGroup::StaticClass());
-			ThumbnailManager.UnregisterCustomRenderer(UVoxelAssetSpawner::StaticClass());
-			ThumbnailManager.UnregisterCustomRenderer(UVoxelSpawnerGroup::StaticClass());
 		}
 
 		UnregisterPlacementModeExtensions();
@@ -464,7 +458,7 @@ private:
 		RegisterCustomClassLayout<FVoxelMeshImporterDetails       , AVoxelMeshImporter                   >();
 		RegisterCustomClassLayout<FVoxelAssetActorDetails         , AVoxelAssetActor                     >();
 		RegisterCustomClassLayout<FRangeAnalysisDebuggerDetails   , UVoxelNode_RangeAnalysisDebuggerFloat>();
-		RegisterCustomClassLayout<FVoxelMeshSpawnerBaseDetails    , UVoxelMeshSpawnerBase                >();
+		RegisterCustomClassLayout<FVoxelMeshSpawnerDetails        , UVoxelMeshSpawner                    >();
 		RegisterCustomClassLayout<FVoxelLandscapeCollectionDetails, UVoxelLandscapeMaterialCollection    >();
 
 		RegisterCustomPropertyLayout<FVoxelGeneratorPickerCustomization					       , FVoxelGeneratorPicker                        >();
@@ -543,9 +537,6 @@ private:
 		RegisterAssetTypeAction<UVoxelSpawnerConfig    >(VOXEL_LOCTEXT("Voxel Spawner Config"    ), LightGreen);
 		RegisterAssetTypeAction<UVoxelSpawnerCollection>(VOXEL_LOCTEXT("Voxel Spawner Collection"), LightGreen);
 		RegisterAssetTypeAction<UVoxelMeshSpawner      >(VOXEL_LOCTEXT("Voxel Mesh Spawner"      ), LightGreen);
-		RegisterAssetTypeAction<UVoxelMeshSpawnerGroup >(VOXEL_LOCTEXT("Voxel Mesh Spawner Group"), LightGreen);
-		RegisterAssetTypeAction<UVoxelAssetSpawner     >(VOXEL_LOCTEXT("Voxel Asset Spawner"     ), LightGreen);
-		RegisterAssetTypeAction<UVoxelSpawnerGroup     >(VOXEL_LOCTEXT("Voxel Spawner Group"     ), LightGreen);
 
 		RegisterAssetTypeAction<UVoxelGraphOutputsConfig >(VOXEL_LOCTEXT("Voxel Graph Outputs Config"  ), Blue);
 		RegisterAssetTypeAction<UVoxelGraphDataItemConfig>(VOXEL_LOCTEXT("Voxel Graph Data Item Config"), Blue);

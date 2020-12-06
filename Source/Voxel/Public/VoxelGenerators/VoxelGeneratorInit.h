@@ -32,8 +32,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
 	const UVoxelMaterialCollectionBase* MaterialCollection = nullptr;
 
+	// Can be null. Needs to be a weak pointer, else the GC freaks out when exiting the map with an alive generator cache pointing to this 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
-	const AVoxelWorld* World = nullptr; // Can be null
+	TWeakObjectPtr<const AVoxelWorld> World;
 
 	FVoxelGeneratorInit() = default;
 	FVoxelGeneratorInit(
@@ -42,21 +43,13 @@ public:
 		EVoxelRenderType RenderType,
 		EVoxelMaterialConfig MaterialConfig,
 		const UVoxelMaterialCollectionBase* MaterialCollection,
-		const AVoxelWorld* World)
-		: VoxelSize(VoxelSize)
-		, WorldSize(WorldSize)
-		, RenderType(RenderType)
-		, MaterialConfig(MaterialConfig)
-		, MaterialCollection(MaterialCollection)
-		, World(World)
-	{
-	}
+		const TWeakObjectPtr<const AVoxelWorld>& World);
 
-	FVoxelGeneratorCache& GetGeneratorCache() const;
+	TVoxelSharedRef<FVoxelGeneratorCache> GetGeneratorCache() const;
 	void AddReferencedObjects(FReferenceCollector& Collector);
 
 private:
-	mutable TVoxelSharedPtr<FVoxelGeneratorCache> GeneratorCache;
+	TVoxelWeakPtr<FVoxelGeneratorCache> GeneratorCache;
 
 	friend class FVoxelGeneratorCache;
 

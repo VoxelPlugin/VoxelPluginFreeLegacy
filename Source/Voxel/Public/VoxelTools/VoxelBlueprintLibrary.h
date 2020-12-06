@@ -9,11 +9,10 @@
 #include "VoxelIntBox.h"
 #include "VoxelPaintMaterial.h"
 #include "VoxelTexture.h"
-#include "VoxelSpawners/VoxelInstancedMeshSettings.h"
-#include "VoxelSpawners/VoxelSpawner.h"
 #include "VoxelRender/VoxelToolRendering.h"
 #include "VoxelUtilities/VoxelMaterialUtilities.h"
-
+#include "VoxelSpawners/VoxelSpawnerSave.h"
+#include "VoxelSpawners/VoxelInstancedMeshSettings.h"
 #include "VoxelBlueprintLibrary.generated.h"
 
 enum class EVoxelTaskType : uint8;
@@ -304,7 +303,7 @@ public:
 	 */
 	
 public:
-	// Number of mesh processing tasks not finished
+	// Number of processing tasks not finished
 	UFUNCTION(BlueprintPure, Category = "Voxel|Render", meta = (DefaultToSelf = "World"))
 	static int32 GetTaskCount(AVoxelWorld* World);
 

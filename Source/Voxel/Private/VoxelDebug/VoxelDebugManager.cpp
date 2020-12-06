@@ -313,22 +313,26 @@ static FAutoConsoleCommand CmdLogSecondsPerCycles(
 
 bool FVoxelGlobalDebugManager::Tick(float DeltaTime)
 {
-	const int32 PoolTaskCount = GVoxelThreadPool->GetTotalNumTasks();
+	VOXEL_FUNCTION_COUNTER();
+	
+	const auto Counters = GVoxelThreadPool->GetGlobalCounters();
+	
+	const int32 PoolTaskCount = Counters.GetTotalNumTasks();
 
 	const int32 MesherTaskCount =
-		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::ChunksMeshing) +
-		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::VisibleChunksMeshing) +
-		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::CollisionsChunksMeshing) +
-		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::VisibleCollisionsChunksMeshing) +
-		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::MeshMerge);
+		Counters.GetNumTasksForType(EVoxelTaskType::ChunksMeshing) +
+		Counters.GetNumTasksForType(EVoxelTaskType::VisibleChunksMeshing) +
+		Counters.GetNumTasksForType(EVoxelTaskType::CollisionsChunksMeshing) +
+		Counters.GetNumTasksForType(EVoxelTaskType::VisibleCollisionsChunksMeshing) +
+		Counters.GetNumTasksForType(EVoxelTaskType::MeshMerge);
 
 	const int32 FoliageTaskCount =
-		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::FoliageBuild) +
-		GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::HISMBuild);
+		Counters.GetNumTasksForType(EVoxelTaskType::FoliageBuild) +
+		Counters.GetNumTasksForType(EVoxelTaskType::HISMBuild);
 
-	const int32 EditTaskCount = GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::AsyncEditFunctions);
-	const int32 LODTaskCount = GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::RenderOctree);
-	const int32 CollisionTaskCount = GVoxelThreadPool->GetNumTasksForType(EVoxelTaskType::CollisionCooking);
+	const int32 EditTaskCount = Counters.GetNumTasksForType(EVoxelTaskType::AsyncEditFunctions);
+	const int32 LODTaskCount = Counters.GetNumTasksForType(EVoxelTaskType::RenderOctree);
+	const int32 CollisionTaskCount = Counters.GetNumTasksForType(EVoxelTaskType::CollisionCooking);
 	
 	if (PoolTaskCount > 0)
 	{

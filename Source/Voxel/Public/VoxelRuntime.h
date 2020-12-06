@@ -172,10 +172,18 @@ public:
 	void Fixup();
 
 public:
-	FVoxelIntBox GetWorldBounds() const;
 	static FVoxelIntBox GetWorldBounds(bool bUseCustomWorldBounds, const FVoxelIntBox& CustomWorldBounds, int32 RenderOctreeDepth);
 
+public:
+	FVoxelIntBox GetWorldBounds() const;
 	FVoxelGeneratorInit GetGeneratorInit() const;
+	
+	// TransformsOffset is used to reduce precision errors
+	FIntVector ComputeSpawnersTransformsOffset(const FVoxelIntBox& Bounds) const
+	{
+		return FVoxelUtilities::DivideFloor(Bounds.Min, HISMChunkSize) * HISMChunkSize;
+	}
+	
 };
 
 class VOXEL_API FVoxelRuntimeDynamicSettings
@@ -256,6 +264,8 @@ public:
 	
 	explicit FVoxelRuntime(const FVoxelRuntimeSettings& Settings);
 	~FVoxelRuntime();
+
+	void Destroy();
 	
 	template<typename T>
 	TVoxelSharedPtr<T> GetSubsystem() const
@@ -291,6 +301,8 @@ private:
 	bool bIsInit = false;
 	TSet<TVoxelSharedPtr<IVoxelSubsystem>> InitializedSubsystems;
 	TSet<TVoxelSharedPtr<IVoxelSubsystem>> SubsystemsBeingInitialized;
+
+	bool bIsDestroyed = false;
 	
 	void InitializeSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& Subsystem);
 	void RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsystem);
@@ -299,6 +311,7 @@ private:
 	template<typename T>
 	TVoxelSharedPtr<IVoxelSubsystem> GetSubsystemImpl() const
 	{
+		VOXEL_ASYNC_FUNCTION_COUNTER();
 		FScopeLock Lock(&SubsystemsMapSection);
 		return SubsystemsMap_NeedsLock.FindRef(GetSubsystemProxyClass<T>());
 	}

@@ -7,10 +7,9 @@
 #include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelSpawnerConfig.generated.h"
 
-class UVoxelSpawner;
-class FVoxelGeneratorInstance;
+class UVoxelMeshSpawner;
 class UVoxelSpawnerConfig;
-class UVoxelSpawnerOutputsConfig;
+class FVoxelGeneratorInstance;
 
 USTRUCT()
 struct FVoxelSpawnerOutputName
@@ -152,7 +151,7 @@ struct FVoxelSpawnerConfigSpawner
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-	UVoxelSpawner* Spawner = nullptr;
+	UVoxelMeshSpawner* Spawner = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	EVoxelSpawnerType SpawnerType = EVoxelSpawnerType::Ray;
@@ -208,8 +207,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	EVoxelSpawnerConfigElementRandomGenerator RandomGenerator = EVoxelSpawnerConfigElementRandomGenerator::Halton;
 
-	// Unique ID used when saving spawners to disk
-	UPROPERTY(VisibleAnywhere, Category = "Voxel")
+	// Unique ID used when saving spawners to disk, and as unique seed
+	UPROPERTY(EditAnywhere, Category = "Voxel")
 	FGuid Guid;
 		
 	// Controls whether to compute the density or the height first. Try both and see which is faster
@@ -297,4 +296,10 @@ public:
 #if WITH_EDITOR
 	virtual bool NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const override;
 #endif
+};
+
+struct FVoxelSpawnerThreadSafeConfig
+{
+	EVoxelSpawnerConfigRayWorldType WorldType = EVoxelSpawnerConfigRayWorldType::Flat;
+	FVoxelSpawnerConfigFiveWayBlendSetup FiveWayBlendSetup;
 };

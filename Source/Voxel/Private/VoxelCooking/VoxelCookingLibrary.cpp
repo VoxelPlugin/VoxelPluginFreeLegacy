@@ -18,6 +18,7 @@
 #include "IPhysXCookingModule.h"
 
 #include "PhysXIncludes.h"
+#include "Misc/ScopeExit.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "Interface_CollisionDataProviderCore.h"
 #include "Engine/Private/PhysicsEngine/PhysXSupport.h" // For FPhysXInputStream
@@ -176,6 +177,11 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	const auto Data = Runtime->GetSubsystemChecked<FVoxelData>().AsShared();
 	const auto Pool = Runtime->GetSubsystemChecked<FVoxelPool>().AsShared();
 	const auto Renderer = Runtime->GetSubsystemChecked<IVoxelRenderer>().AsShared();
+
+	ON_SCOPE_EXIT
+	{
+		Runtime->Destroy();
+	};
 	
 	if (Save)
 	{

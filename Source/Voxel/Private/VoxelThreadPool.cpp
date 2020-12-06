@@ -110,6 +110,7 @@ uint32 FVoxelThread::Run()
 		{
 			const FName Name = LocalQueuedWork->Name;
 			const EVoxelTaskType Type = LocalQueuedWork->TaskType;
+			const FVoxelPoolId PoolId = LocalQueuedWork->PoolId;
 
 			const double StartTime = FPlatformTime::Seconds();
 
@@ -118,8 +119,11 @@ uint32 FVoxelThread::Run()
 
 			const double EndTime = FPlatformTime::Seconds();
 
-			ensure(ThreadPool.GlobalTaskCounter.Decrement() >= 0);
-			ensure(ThreadPool.TaskCounters[uint8(Type)].Decrement() >= 0);
+			{
+				FScopeLock Lock(&ThreadPool.CountersSection);
+				ThreadPool.GlobalCounters.Decrement(Type);
+				ThreadPool.PoolsCounters[PoolId].Decrement(Type);
+			}
 
 			{
 				FScopeLock Lock(&ThreadPool.StatsSection);
@@ -207,8 +211,12 @@ TUniquePtr<FVoxelThread> FVoxelThreadPool::CreateThread()
 
 void FVoxelThreadPool::AbandonWork(IVoxelQueuedWork& Work)
 {
-	ensure(TaskCounters[uint8(Work.TaskType)].Decrement() >= 0);
-	ensure(GlobalTaskCounter.Decrement() >= 0);
+	{
+		FScopeLock Lock(&CountersSection);
+		GlobalCounters.Decrement(Work.TaskType);
+		PoolsCounters[Work.PoolId].Decrement(Work.TaskType);
+	}
+
 	Work.Abandon();
 }
 
