@@ -58,63 +58,70 @@ public:
 	bool bShowFlowMergeAndFunctionsWarnings = true;
 	
 public:
-	UPROPERTY(EditAnywhere, Category = "Automatic compilation", meta= (DisplayName = "Compile to C++ on Save"))
+	// If enabled, will use the compiled to C++ graph instead of the graph VM, even if the graph is used directly
+	UPROPERTY(EditAnywhere, Category = "Compilation", meta = (DisplayName = "Use C++ class instead of graph"))
+	bool bUseCppClassInsteadOfGraph = false;
+
+	// The class to use instead of the graph
+	UPROPERTY(EditAnywhere, Category = "Compilation", meta = (DisplayName = "Generated C++ class", EditCondition = "bUseCppClassInsteadOfGraph"))
+	TSoftClassPtr<UVoxelGenerator> GeneratedCppClass;
+	
+	UPROPERTY(EditAnywhere, Category = "Compilation", AdvancedDisplay, meta = (DisplayName = "Compile to C++ on Save"))
 	bool bCompileToCppOnSave = false;
 
 	// Relative to project directory
-	UPROPERTY(EditAnywhere, Category = "Automatic compilation", meta = (FilePathFilter = "h", EditCondition = bCompileToCppOnSave))
+	UPROPERTY(EditAnywhere, Category = "Compilation", AdvancedDisplay, meta = (FilePathFilter = "h"))
 	FFilePath SaveLocation;
 
-#if WITH_EDITORONLY_DATA
-	UPROPERTY()
-	FString LastSavePath;
-#endif
+	// If true, SaveLocation is relative to the plugin directory
+	UPROPERTY(EditAnywhere, Category = "Compilation", AdvancedDisplay)
+	bool bBuiltinPluginGenerator = false;
 
 public:
 	// Range analysis gives a pretty significant speed-up. You should not disable it
-	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Range Analysis")
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Config")
 	bool bEnableRangeAnalysis = true;
 
 public:
-	// Will show the nodes functions. If DetailedErrors is false, will only show TargetToDebug
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (Refresh))
-	bool bShowFunctions = false;
-
-	// Show errors callstacks
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (Refresh))
-	bool bDetailedErrors = false;
-
 	// Can be enabled in Window->Debug Graph
 	UPROPERTY(EditAnywhere, Category = "Debug", meta = (Refresh))
 	bool bEnableDebugGraph = false;
+	
+	// Will show the nodes functions. If DetailedErrors is false, will only show TargetToDebug
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (Refresh))
+	bool bShowFunctions = false;
 
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
+	// Show errors callstacks
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (Refresh))
+	bool bDetailedErrors = false;
+
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	bool bShowPinsIds = false;
 
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	bool bShowAxisDependencies = false;
 
 	// The level of compilation to debug
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	EVoxelGraphGeneratorDebugLevel DebugLevel;
 
 	// The target to debug, if DebugLevel is below or equal to Target
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	FString TargetToDebug = "Value";
 
 	// The function to debug, if DebugLevel is below or equal to Function
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	int32 FunctionToDebug = 0;
 
 	// The axis to debug, if DebugLevel is Axis
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	EVoxelFunctionAxisDependencies AxisDependenciesToDebug;
 
 	// Increase this if your macro nodes are overlapping in the debug graph
-	UPROPERTY(EditAnywhere, Category = "Debug", AdvancedDisplay, meta = (EditCondition = bEnableDebugGraph, Refresh))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	float NodesDepthScaleFactor = 1;
 	
-	UPROPERTY(EditAnywhere, Category = "Debug", AdvancedDisplay, meta = (EditCondition = bEnableDebugGraph, Refresh))
+	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = "Debug", meta = (EditCondition = bEnableDebugGraph, Refresh))
 	bool bHideDataNodes = false;
 
 public:

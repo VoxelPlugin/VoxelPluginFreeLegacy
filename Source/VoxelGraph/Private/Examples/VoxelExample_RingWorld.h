@@ -35,25 +35,25 @@ public:
 	float RiverWidth = 1.0;
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="BeachColor"))
-	FColor BeachColor = FColor(253, 213, 72, 255);
+	FLinearColor BeachColor = FLinearColor(0.989583, 0.833626, 0.282215, 1.000000);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="MountainsColorHigh"))
-	FColor MountainsColorHigh = FColor(255, 255, 255, 255);
+	FLinearColor MountainsColorHigh = FLinearColor(1.000000, 1.000000, 1.000000, 1.000000);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="MountainsColorLowHigh"))
-	FColor MountainsColorLowHigh = FColor(33, 34, 35, 255);
+	FLinearColor MountainsColorLowHigh = FLinearColor(0.129469, 0.136312, 0.140625, 1.000000);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="MountainsColorLowLow"))
-	FColor MountainsColorLowLow = FColor(9, 5, 4, 255);
+	FLinearColor MountainsColorLowLow = FLinearColor(0.036458, 0.023406, 0.017120, 1.000000);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Curves", meta=(DisplayName="MoutainsMaskCurve"))
 	TSoftObjectPtr<UCurveFloat> MoutainsMaskCurve = TSoftObjectPtr<UCurveFloat>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/RingWorld/MoutainsMaskCurve.MoutainsMaskCurve"));
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="PlainsColorHigh"))
-	FColor PlainsColorHigh = FColor(26, 47, 10, 255);
+	FLinearColor PlainsColorHigh = FLinearColor(0.104616, 0.184475, 0.042311, 1.000000);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="PlainsColorLow"))
-	FColor PlainsColorLow = FColor(10, 18, 4, 255);
+	FLinearColor PlainsColorLow = FLinearColor(0.041351, 0.072917, 0.016724, 1.000000);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="PlainsNoiseFrequency"))
 	float PlainsNoiseFrequency = 0.2;
@@ -68,10 +68,10 @@ public:
 	TSoftObjectPtr<UCurveFloat> RingMainShapeCurve = TSoftObjectPtr<UCurveFloat>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/RingWorld/RingMainShapeCurve.RingMainShapeCurve"));
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="RingOuterColor"))
-	FColor RingOuterColor = FColor(1, 0, 0, 255);
+	FLinearColor RingOuterColor = FLinearColor(0.005208, 0.000000, 0.000099, 1.000000);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="RiverColor"))
-	FColor RiverColor = FColor(0, 0, 255, 255);
+	FLinearColor RiverColor = FLinearColor(0.000000, 0.000000, 1.000000, 1.000000);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Curves", meta=(DisplayName="RiverDepthCurve"))
 	TSoftObjectPtr<UCurveFloat> RiverDepthCurve = TSoftObjectPtr<UCurveFloat>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/RingWorld/RiverDepthCurve.RiverDepthCurve"));
