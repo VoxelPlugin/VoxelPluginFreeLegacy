@@ -14,6 +14,7 @@
 #include "VoxelWorld.h"
 #include "VoxelPool.h"
 #include "VoxelThreadPool.h"
+#include "VoxelUtilities/VoxelConsoleUtilities.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 #include "Engine/Engine.h"
@@ -113,145 +114,124 @@ static TAutoConsoleVariable<int32> CVarShowPlaceableItemsChunks(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-template<typename T>
-inline FConsoleCommandWithWorldAndArgsDelegate CreateCommandWithVoxelWorldDelegate(T Lambda)
-{
-	return FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([=](const TArray<FString>& Args, UWorld* World)
-	{
-		for (TActorIterator<AVoxelWorld> It(World); It; ++It)
-		{
-			if (It->IsCreated())
-			{
-				Lambda(**It, Args);
-			}
-		}
-	});
-}
-
-template<typename T>
-inline FConsoleCommandWithWorldAndArgsDelegate CreateCommandWithVoxelWorldDelegateNoArgs(T Lambda)
-{
-	return CreateCommandWithVoxelWorldDelegate([&](AVoxelWorld& World, const TArray<FString>& Args) { Lambda(World); });
-}
-
-static FAutoConsoleCommandWithWorldAndArgs ClearChunksEmptyStatesCmd(
+static FAutoConsoleCommandWithWorld ClearChunksEmptyStatesCmd(
 	TEXT("voxel.renderer.ClearChunksEmptyStates"),
 	TEXT("Clear the empty states debug"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World) { World.GetSubsystemChecked<FVoxelDebugManager>().ClearChunksEmptyStates(); }));
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World) { World.GetSubsystemChecked<FVoxelDebugManager>().ClearChunksEmptyStates(); }));
 
-static FAutoConsoleCommandWithWorldAndArgs UpdateAllCmd(
+static FAutoConsoleCommandWithWorld UpdateAllCmd(
 	TEXT("voxel.renderer.UpdateAll"),
 	TEXT("Update all the chunks in all the voxel world in the scene"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World) { UVoxelBlueprintLibrary::UpdateBounds(&World, FVoxelIntBox::Infinite); }));
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World) { UVoxelBlueprintLibrary::UpdateBounds(&World, FVoxelIntBox::Infinite); }));
 
-static FAutoConsoleCommandWithWorldAndArgs RecomputeMeshPositionsCmd(
+static FAutoConsoleCommandWithWorld RecomputeMeshPositionsCmd(
 	TEXT("voxel.renderer.RecomputeMeshPositions"),
 	TEXT("Recompute the positions of all the meshes in all the voxel world in the scene"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World) { World.GetRuntime().RuntimeData->OnWorldOffsetChanged.Broadcast(); }));
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World) { World.GetRuntime().RuntimeData->OnWorldOffsetChanged.Broadcast(); }));
 
-static FAutoConsoleCommandWithWorldAndArgs ForceLODsUpdateCmd(
+static FAutoConsoleCommandWithWorld ForceLODsUpdateCmd(
 	TEXT("voxel.renderer.ForceLODUpdate"),
 	TEXT("Update the LODs"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World) { World.GetSubsystemChecked<IVoxelLODManager>().ForceLODsUpdate(); }));
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World) { World.GetSubsystemChecked<IVoxelLODManager>().ForceLODsUpdate(); }));
 
-static FAutoConsoleCommandWithWorldAndArgs CacheAllValuesCmd(
+static FAutoConsoleCommandWithWorld CacheAllValuesCmd(
 	TEXT("voxel.data.CacheAllValues"),
 	TEXT("Cache all values"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::CacheValues(&World, FVoxelIntBox::Infinite);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs CacheAllMaterialsCmd(
+static FAutoConsoleCommandWithWorld CacheAllMaterialsCmd(
 	TEXT("voxel.data.CacheAllMaterials"),
 	TEXT("Cache all materials"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::CacheMaterials(&World, FVoxelIntBox::Infinite);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs ClearAllCachedValuesCmd(
+static FAutoConsoleCommandWithWorld ClearAllCachedValuesCmd(
 	TEXT("voxel.data.ClearAllCachedValues"),
 	TEXT("Clear all cached values"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::ClearCachedValues(&World, FVoxelIntBox::Infinite);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs ClearAllCachedMaterialsCmd(
+static FAutoConsoleCommandWithWorld ClearAllCachedMaterialsCmd(
 	TEXT("voxel.data.ClearAllCachedMaterials"),
 	TEXT("Clear all cached materials"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::ClearCachedMaterials(&World, FVoxelIntBox::Infinite);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs CheckForSingleValuesCmd(
+static FAutoConsoleCommandWithWorld CheckForSingleValuesCmd(
 	TEXT("voxel.data.CheckForSingleValues"),
 	TEXT("Check if values in a chunk are all the same, and if so only store one"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::CheckForSingleValues(&World, FVoxelIntBox::Infinite);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs CheckForSingleMaterialsCmd(
+static FAutoConsoleCommandWithWorld CheckForSingleMaterialsCmd(
 	TEXT("voxel.data.CheckForSingleMaterials"),
 	TEXT("Check if materials in a chunk are all the same, and if so only store one"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::CheckForSingleMaterials(&World, FVoxelIntBox::Infinite);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs RoundVoxelsCmd(
+static FAutoConsoleCommandWithWorld RoundVoxelsCmd(
 	TEXT("voxel.data.RoundVoxels"),
 	TEXT("Round all voxels that do not impact the surface nor the normals"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::RoundVoxels(&World, FVoxelIntBox::Infinite);
 			if (World.GetSubsystemChecked<FVoxelData>().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs ClearUnusedMaterialsCmd(
+static FAutoConsoleCommandWithWorld ClearUnusedMaterialsCmd(
 	TEXT("voxel.data.ClearUnusedMaterials"),
 	TEXT("Will clear all materials that do not affect the surface to improve compression"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::ClearUnusedMaterials(&World, FVoxelIntBox::Infinite);
 			if (World.GetSubsystemChecked<FVoxelData>().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs RegenerateAllSpawnersCmd(
+static FAutoConsoleCommandWithWorld RegenerateAllSpawnersCmd(
 	TEXT("voxel.spawners.RegenerateAll"),
 	TEXT("Regenerate all spawners that can be regenerated"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelBlueprintLibrary::RegenerateSpawners(&World, FVoxelIntBox::Infinite);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs CompressIntoHeightmapCmd(
+static FAutoConsoleCommandWithWorld CompressIntoHeightmapCmd(
 	TEXT("voxel.data.CompressIntoHeightmap"),
 	TEXT("Update the heightmap to match the voxel world data"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::CompressIntoHeightmap(&World);
 			UVoxelBlueprintLibrary::UpdateBounds(&World, FVoxelIntBox::Infinite);
 			if (World.GetSubsystemChecked<FVoxelData>().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs RoundToGeneratorCmd(
+static FAutoConsoleCommandWithWorld RoundToGeneratorCmd(
 	TEXT("voxel.data.RoundToGenerator"),
 	TEXT("Set the voxels back to the generator value if all the voxels in a radius of 2 have the same sign as the generator"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelDataTools::RoundToGenerator(&World, FVoxelIntBox::Infinite);
 			UVoxelBlueprintLibrary::UpdateBounds(&World, FVoxelIntBox::Infinite);
 			if (World.GetSubsystemChecked<FVoxelData>().bEnableUndoRedo) UVoxelBlueprintLibrary::SaveFrame(&World);
 		}));
 
-static FAutoConsoleCommandWithWorldAndArgs CompactTexturePoolCmd(
+static FAutoConsoleCommandWithWorld CompactTexturePoolCmd(
 	TEXT("voxel.texturepool.compact"),
 	TEXT("Reallocate all the entries, reducing fragmentation & saving memory"),
-	CreateCommandWithVoxelWorldDelegateNoArgs([](AVoxelWorld& World)
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelBlueprintLibrary::CompactVoxelTexturePool(&World);
 		}));
@@ -261,7 +241,7 @@ static bool GShowCollisionAndNavmeshDebug = false;
 static FAutoConsoleCommandWithWorldAndArgs ShowCollisionAndNavmeshDebugCmd(
 	TEXT("voxel.renderer.ShowCollisionAndNavmeshDebug"),
 	TEXT("If true, will show chunks used for collisions/navmesh and will color all chunks according to their usage"),
-	CreateCommandWithVoxelWorldDelegate([](AVoxelWorld& World, const TArray<FString>& Args)
+	FVoxelUtilities::CreateVoxelWorldCommandWithArgs([](AVoxelWorld& World, const TArray<FString>& Args)
 		{
 			if (Args.Num() == 0)
 			{

@@ -4,16 +4,17 @@
 #include "VoxelSpawners/VoxelHierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelSpawners/VoxelSpawnerActor.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
+#include "Engine/CollisionProfile.h"
 
 FVoxelInstancedMeshSettings::FVoxelInstancedMeshSettings()
 {
-	BodyInstance.SetCollisionProfileName("BlockAll");
+	BodyInstance.SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 }
 
 FVoxelSpawnerActorSettings::FVoxelSpawnerActorSettings()
 {
 	ActorClass = AVoxelMeshSpawnerActor::StaticClass();
-	BodyInstance.SetCollisionProfileName("BlockAll");
+	BodyInstance.SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 }
 
 FVoxelInstancedMeshAndActorSettings::FVoxelInstancedMeshAndActorSettings(

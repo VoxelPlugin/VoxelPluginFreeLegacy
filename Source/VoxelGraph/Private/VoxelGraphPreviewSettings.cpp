@@ -59,7 +59,7 @@ void UVoxelGraphPreviewSettings::PostEditChangeProperty(FPropertyChangedEvent& P
 	// Don't let the previewed voxel go out of the bounds
 	PreviewedVoxel = Wrapper.Bounds.Clamp(PreviewedVoxel);
 
-	if (Graph && PropertyChangedEvent.MemberProperty)
+	if (PropertyChangedEvent.MemberProperty)
 	{
 		const bool bAutomatic = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("Automatic"));
 		const bool bUpdateItems = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("UpdateItems"));
@@ -82,7 +82,7 @@ void UVoxelGraphPreviewSettings::PostEditChangeProperty(FPropertyChangedEvent& P
 				Flags |= EVoxelGraphPreviewFlags::UpdatePlaceableItems;
 			}
 
-			IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, Flags);
+			IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(GetOuterUVoxelGraphGenerator(), Flags);
 		}
 	}
 }

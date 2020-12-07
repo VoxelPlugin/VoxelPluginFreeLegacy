@@ -14,11 +14,12 @@ void UVoxelGenerator::ApplyParameters(const TMap<FName, FString>& Parameters)
 	ApplyParametersInternal(Parameters);
 }
 
-void UVoxelGenerator::GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const
+TArray<FVoxelGeneratorParameter> UVoxelGenerator::GetParameters() const
 {
 	VOXEL_FUNCTION_COUNTER();
 
 	TSet<FName> AllIds;
+	TArray<FVoxelGeneratorParameter> Parameters;
 	
 	int32 Priority = 0;
 	for (TFieldIterator<FProperty> It(GetClass()); It; ++It)
@@ -65,12 +66,14 @@ void UVoxelGenerator::GetParameters(TArray<FVoxelGeneratorParameter>& OutParamet
 		FString DefaultValue;
 		Property->ExportTextItem(DefaultValue, Property->ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
 		
-		OutParameters.Add(FVoxelGeneratorParameter(Id, Type, Name, Category, ToolTip, Priority++, MetaData, DefaultValue));
+		Parameters.Add(FVoxelGeneratorParameter(Id, Type, Name, Category, ToolTip, Priority++, MetaData, DefaultValue));
 
 		bool bIsInSet = false;
 		AllIds.Add(Id, &bIsInSet);
 		ensureMsgf(!bIsInSet, TEXT("%s"), *Id.ToString());
 	}
+
+	return Parameters;
 }
 
 TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelGenerator::GetInstance(const TMap<FName, FString>& Parameters)

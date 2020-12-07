@@ -21,8 +21,9 @@ enum class EVoxelGeneratorParameterPropertyType : uint8
 	Float,
 	Int,
 	Bool,
+	Name,
 	Object,
-	Struct,
+	Struct
 };
 
 USTRUCT(BlueprintType)

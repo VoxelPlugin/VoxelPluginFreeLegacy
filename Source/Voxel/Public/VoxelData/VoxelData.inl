@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelData/VoxelDataOctree.h"
+#include "VoxelData/VoxelDataOctree.inl"
 #include "VoxelUtilities/VoxelOctreeUtilities.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.inl"
 
@@ -114,13 +114,13 @@ FORCEINLINE bool FVoxelData::IsEmpty(const FVoxelIntBox& Bounds, int32 LOD) cons
 }
 
 template<typename T>
-FORCEINLINE T FVoxelData::GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const
+FORCEINLINE T FVoxelData::GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelGeneratorQueryData& QueryData) const
 {
 	// Clamp to world, to avoid un-editable border
 	ClampToWorld(X, Y, Z);
 
 	auto& Node = FVoxelOctreeUtilities::GetBottomNode(GetOctree(), int32(X), int32(Y), int32(Z));
-	return Node.GetCustomOutput<T>(*Generator, DefaultValue, Name, X, Y, Z, LOD);
+	return Node.GetCustomOutput<T>(*Generator, DefaultValue, Name, X, Y, Z, LOD, QueryData);
 }
 
 template<typename ... TArgs, typename F>

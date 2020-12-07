@@ -526,6 +526,10 @@ void AVoxelWorld::Tick(float DeltaTime)
 
 	if (IsCreated())
 	{
+		if (bRegenerateFoliageOnNextFrame)
+		{
+			UVoxelBlueprintLibrary::RecreateSpawners(this);
+		}
 		WorldRoot->TickWorldRoot();
 		GameThreadTasks->Flush();
 #if WITH_EDITOR
@@ -535,6 +539,8 @@ void AVoxelWorld::Tick(float DeltaTime)
 		}
 #endif
 	}
+
+	bRegenerateFoliageOnNextFrame = false;
 }
 
 void AVoxelWorld::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)

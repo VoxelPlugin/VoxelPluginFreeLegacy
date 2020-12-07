@@ -29,6 +29,7 @@ public class VoxelGraphEditor : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "Voxel",
+                "VoxelEditor",
                 "VoxelGraph",
                 "KismetWidgets",
                 "AdvancedPreviewScene",
@@ -47,14 +48,10 @@ public class VoxelGraphEditor : ModuleRules
                 "MessageLog",
                 "AppFramework",
                 "PropertyEditor",
+                "Landscape",
 #if UE_4_24_OR_LATER
                 "ToolMenus"
 #endif
-            });
-
-        PrivateIncludePathModuleNames.AddRange(
-            new string[] {
-                "VoxelEditor"
             });
     }
 }

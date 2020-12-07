@@ -95,18 +95,10 @@ FVoxelProcMeshBuffersRenderData::FVoxelProcMeshBuffersRenderData(
 		Initializer.bFastBuild = true;
 		Initializer.bAllowUpdate = false;
 
-#if ENGINE_MINOR_VERSION < 24
-		Initializer.PositionVertexBuffer = VertexBuffers.PositionVertexBuffer.VertexBufferRHI;
-		Initializer.BaseVertexIndex = 0;
-		Initializer.VertexBufferStride = VertexBuffers.PositionVertexBuffer.GetStride();
-		Initializer.VertexBufferByteOffset = 0;
-		Initializer.VertexBufferElementType = VET_Float3;
-#else
 		FRayTracingGeometrySegment Segment;
 		Segment.VertexBuffer = VertexBuffers.PositionVertexBuffer.VertexBufferRHI;
 		Segment.NumPrimitives = Initializer.TotalPrimitiveCount;
 		Initializer.Segments.Add(Segment);
-#endif
 
 		RayTracingGeometry.SetInitializer(Initializer);
 		RayTracingGeometry.InitResource();
@@ -256,10 +248,6 @@ FVoxelProceduralMeshSceneProxy::FVoxelProceduralMeshSceneProxy(UVoxelProceduralM
 
 FVoxelProceduralMeshSceneProxy::~FVoxelProceduralMeshSceneProxy()
 {
-#if ENGINE_MINOR_VERSION <= 23
-	DestroyRenderThreadResources();
-#endif
-	
 	for (auto& Section : Sections)
 	{
 		check(!Section.RenderData.IsValid());

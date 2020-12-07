@@ -21,6 +21,10 @@ public:
 	{
 		RETURN_QUICK_DECLARE_CYCLE_STAT(FVoxelTickable, STATGROUP_Tickables);
 	}
+	virtual bool IsTickableInEditor() const final override
+	{
+		return true;
+	}
 
 	void StopTicking()
 	{

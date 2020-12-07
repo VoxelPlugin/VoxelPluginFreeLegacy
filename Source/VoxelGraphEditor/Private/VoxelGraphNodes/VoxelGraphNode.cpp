@@ -557,114 +557,6 @@ void UVoxelGraphNode::PrepareForCopying()
 	}
 }
 
-#if ENGINE_MINOR_VERSION < 24
-void UVoxelGraphNode::GetContextMenuActions(const FGraphNodeContextMenuBuilder& Context) const
-{
-	if (Context.Pin)
-	{
-		if (VoxelNode)
-		{
-			// If on an input that can be deleted, show option
-			if (Context.Pin->Direction == EGPD_Input) 
-			{
-				const int32 MinPins = VoxelNode->GetMinInputPins();
-				const int32 MaxPins = VoxelNode->GetMaxInputPins();
-				if (MinPins != MaxPins && MinPins < VoxelNode->InputPinCount) 
-				{
-					Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().DeleteInput);
-				}
-			}
-			// Preview
-			if (Context.Pin->Direction == EGPD_Output && FVoxelPinCategory::FromString(Context.Pin->PinType.PinCategory) == EVoxelPinCategory::Float)
-			{
-				Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().TogglePinPreview);
-			}
-			if (CanSplitPin_Voxel(*Context.Pin))
-			{
-				Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().SplitPin);
-			}
-			if (CanCombinePin(*Context.Pin))
-			{
-				Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().CombinePin);
-			}
-		}
-	}
-	else if (Context.Node)
-	{		
-		// Add a 'Convert to Local Variables' option to reroute nodes
-		if (auto* Knot = Cast<UVoxelGraphNode_Knot>(this))
-		{
-			EVoxelPinCategory Category = FVoxelPinCategory::FromString(Knot->GetInputPin()->PinType.PinCategory);
-			if (Category != EVoxelPinCategory::Exec && 
-				Category != EVoxelPinCategory::Wildcard && 
-				Category != EVoxelPinCategory::Vector)
-			{
-				Context.MenuBuilder->BeginSection("MaterialEditorMenu1");
-				{
-					Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().ConvertRerouteToVariables);
-				}
-				Context.MenuBuilder->EndSection();
-			}
-		}
-
-		if (VoxelNode)
-		{		
-			// Add local variables selection & conversion to reroute nodes
-			if (VoxelNode->IsA(UVoxelLocalVariableBase::StaticClass()))
-			{
-				Context.MenuBuilder->BeginSection("MaterialEditorMenu1");
-				{
-					if (VoxelNode->IsA(UVoxelLocalVariableDeclaration::StaticClass()))
-					{
-						Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().SelectLocalVariableUsages);
-					}
-					if (VoxelNode->IsA(UVoxelLocalVariableUsage::StaticClass()))
-					{
-						Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().SelectLocalVariableDeclaration);
-					}
-					Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().ConvertVariablesToReroute);
-				}
-				Context.MenuBuilder->EndSection();
-			}
-		}
-
-
-		Context.MenuBuilder->BeginSection("VoxelGraphNodeEdit");
-		{
-			Context.MenuBuilder->AddMenuEntry(FGenericCommands::Get().Delete);
-			Context.MenuBuilder->AddMenuEntry(FGenericCommands::Get().Cut);
-			Context.MenuBuilder->AddMenuEntry(FGenericCommands::Get().Copy);
-			Context.MenuBuilder->AddMenuEntry(FGenericCommands::Get().Duplicate);
-		}
-		Context.MenuBuilder->EndSection();
-		
-		Context.MenuBuilder->BeginSection("VoxelGraphNodeMisc");
-		{
-			Context.MenuBuilder->AddMenuEntry(FVoxelGraphEditorCommands::Get().ReconstructNode);
-		}
-		Context.MenuBuilder->EndSection();
-
-		Context.MenuBuilder->AddSubMenu(VOXEL_LOCTEXT("Alignment"), FText(), FNewMenuDelegate::CreateLambda([](FMenuBuilder& InMenuBuilder) {
-
-			InMenuBuilder.BeginSection("EdGraphSchemaAlignment", VOXEL_LOCTEXT("Align"));
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesTop);
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesMiddle);
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesBottom);
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesLeft);
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesCenter);
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().AlignNodesRight);
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().StraightenConnections);
-			InMenuBuilder.EndSection();
-
-			InMenuBuilder.BeginSection("EdGraphSchemaDistribution", VOXEL_LOCTEXT("Distribution"));
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().DistributeNodesHorizontally);
-			InMenuBuilder.AddMenuEntry(FGraphEditorCommands::Get().DistributeNodesVertically);
-			InMenuBuilder.EndSection();
-		}));
-	}
-}
-#endif
-
 FText UVoxelGraphNode::GetTooltipText() const
 {
 	if (VoxelNode)
@@ -704,11 +596,7 @@ void UVoxelGraphNode::JumpToDefinition() const
 {
 	if (auto* Macro = Cast<UVoxelGraphMacroNode>(VoxelNode))
 	{
-#if ENGINE_MINOR_VERSION < 24
-		FAssetEditorManager::Get().OpenEditorForAsset(Macro->Macro);
-#else
 		GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Macro->Macro);
-#endif
 	}
 	else if (auto* Usage = Cast<UVoxelLocalVariableUsage>(VoxelNode))
 	{

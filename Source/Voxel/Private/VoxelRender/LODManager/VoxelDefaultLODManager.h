@@ -40,7 +40,6 @@ public:
 
 	//~ Begin FVoxelTickable Interface
 	virtual void Tick(float DeltaTime) override;
-	virtual bool IsTickableInEditor() const override { return true; }
 	//~ End FVoxelTickable Interface
 
 private:

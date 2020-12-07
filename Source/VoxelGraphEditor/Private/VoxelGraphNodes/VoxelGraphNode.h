@@ -59,9 +59,6 @@ public:
 	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
 	virtual FLinearColor GetNodeTitleColor() const override;
 	virtual void PrepareForCopying() override;
-#if ENGINE_MINOR_VERSION < 24
-	virtual void GetContextMenuActions(const FGraphNodeContextMenuBuilder& Context) const override;
-#endif
 	virtual FText GetTooltipText() const override;
 	virtual FString GetDocumentationExcerptName() const override;
 	virtual bool CanUserDeleteNode() const override;

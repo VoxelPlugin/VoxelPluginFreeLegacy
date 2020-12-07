@@ -11,6 +11,7 @@ FString FVoxelGeneratorParameterTerminalType::ToString_Terminal() const
 	case EVoxelGeneratorParameterPropertyType::Float: return TEXT("float");
 	case EVoxelGeneratorParameterPropertyType::Int: return TEXT("int");
 	case EVoxelGeneratorParameterPropertyType::Bool: return TEXT("bool");
+	case EVoxelGeneratorParameterPropertyType::Name: return TEXT("name");
 	case EVoxelGeneratorParameterPropertyType::Object: return FString::Printf(TEXT("%s (object)"), *PropertyClass.ToString());
 	case EVoxelGeneratorParameterPropertyType::Struct: return FString::Printf(TEXT("%s (struct)"), *PropertyClass.ToString());
 	}
@@ -43,6 +44,14 @@ bool FVoxelGeneratorParameterTerminalType::CanBeAssignedFrom_Terminal(const FVox
 		switch (Other.PropertyType)
 		{
 		case EVoxelGeneratorParameterPropertyType::Bool: return true;
+		default: return false;
+		}
+	}
+	case EVoxelGeneratorParameterPropertyType::Name:
+	{
+		switch (Other.PropertyType)
+		{
+		case EVoxelGeneratorParameterPropertyType::Name: return true;
 		default: return false;
 		}
 	}
@@ -106,6 +115,10 @@ FVoxelGeneratorParameterType::FVoxelGeneratorParameterType(FProperty& Property)
 	else if (Property.IsA<FBoolProperty>())
 	{
 		PropertyType = EVoxelGeneratorParameterPropertyType::Bool;
+	}
+	else if (Property.IsA<FNameProperty>())
+	{
+		PropertyType = EVoxelGeneratorParameterPropertyType::Name;
 	}
 	else if (Property.IsA<FObjectProperty>())
 	{

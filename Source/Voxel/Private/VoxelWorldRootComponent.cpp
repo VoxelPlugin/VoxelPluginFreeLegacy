@@ -247,7 +247,6 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
 	}
 }
 
-#if ENGINE_MINOR_VERSION >= 24
 class UMRMeshComponent
 {
 public:
@@ -256,7 +255,6 @@ public:
 		Body->FinishCreatingPhysicsMeshes_PhysX(ConvexMeshes, ConvexMeshesNegX, TriMeshes);
 	}
 };
-#endif
 
 void UVoxelWorldRootComponent::SetCookedTriMeshes(const TArray<physx::PxTriangleMesh*>& TriMeshes)
 {
@@ -265,11 +263,7 @@ void UVoxelWorldRootComponent::SetCookedTriMeshes(const TArray<physx::PxTriangle
 	// Create body setup
 	GetBodySetup();
 
-#if ENGINE_MINOR_VERSION < 24
-	BodySetup->FinishCreatingPhysicsMeshes({}, {}, TriMeshes);
-#else
 	UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetup, {}, {}, TriMeshes);
-#endif
 }
 #endif
 

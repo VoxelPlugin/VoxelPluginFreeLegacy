@@ -90,18 +90,9 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	FVoxelConfigUtilities::LoadConfig(&ToolManager->GetSharedConfig(), ToolConfigSectionName);
 
 	const auto IsPropertyVisibleDelegate = MakeWeakPtrDelegate(this, [=](const FPropertyAndParent& PropertyAndParent)
-		{
-#if ENGINE_MINOR_VERSION < 24
-			TArray<const FProperty*> ParentProperties;
-			if (PropertyAndParent.ParentProperty)
-			{
-				ParentProperties.Add(PropertyAndParent.ParentProperty);
-			}
-#else
-			const auto& ParentProperties = PropertyAndParent.ParentProperties;
-#endif
-			return IsPropertyVisible(PropertyAndParent.Property, ParentProperties);
-		});
+	{
+		return IsPropertyVisible(PropertyAndParent.Property, PropertyAndParent.ParentProperties);
+	});
 
 	SharedConfigDetailsPanel = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 	SharedConfigDetailsPanel->SetObject(&ToolManager->GetSharedConfig());

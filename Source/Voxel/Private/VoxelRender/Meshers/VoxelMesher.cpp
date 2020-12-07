@@ -109,23 +109,23 @@ struct FVoxelMesherStats
 				Mean.TotalTime += Stat.Time;
 				Mean.Count++;
 
-				Mean.ValuesTime += FPlatformTime::ToSeconds64(Stat.Times._Values);
-				Mean.MaterialsTime += FPlatformTime::ToSeconds64(Stat.Times._Materials);
+				Mean.ValuesTime += Stat.Times.Values.Seconds();
+				Mean.MaterialsTime += Stat.Times.Materials.Seconds();
 
-				Mean.NormalsTime += FPlatformTime::ToSeconds64(Stat.Times.Normals);
-				Mean.UVsTime += FPlatformTime::ToSeconds64(Stat.Times.UVs);
-				Mean.CreateChunkTime += FPlatformTime::ToSeconds64(Stat.Times.CreateChunk);
+				Mean.NormalsTime += Stat.Times.Normals.Seconds();
+				Mean.UVsTime += Stat.Times.UVs.Seconds();
+				Mean.CreateChunkTime += Stat.Times.CreateChunk.Seconds();
 				
-				Mean.FinishCreatingChunkTime += FPlatformTime::ToSeconds64(Stat.Times.FinishCreatingChunk);
-				Mean.DistanceFieldTime += FPlatformTime::ToSeconds64(Stat.Times.DistanceField);
+				Mean.FinishCreatingChunkTime += Stat.Times.FinishCreatingChunk.Seconds();
+				Mean.DistanceFieldTime += Stat.Times.DistanceField.Seconds();
 
-				Mean.ValuesAccesses += Stat.Times._ValuesAccesses;
-				Mean.MaterialsAccesses += Stat.Times._MaterialsAccesses;
+				Mean.ValuesAccesses += Stat.Times.Values.Count;
+				Mean.MaterialsAccesses += Stat.Times.Materials.Count;
 
-				TotalFindFacesTime += FPlatformTime::ToSeconds64(Stat.Times.FindFaces);
-				TotalGreedyMeshingTime += FPlatformTime::ToSeconds64(Stat.Times.GreedyMeshing);
-				TotalAddFacesTime += FPlatformTime::ToSeconds64(Stat.Times.AddFaces);
-				TotalCollisionCubesTime += FPlatformTime::ToSeconds64(Stat.Times.CollisionCubes);
+				TotalFindFacesTime += Stat.Times.FindFaces.Seconds();
+				TotalGreedyMeshingTime += Stat.Times.GreedyMeshing.Seconds();
+				TotalAddFacesTime += Stat.Times.AddFaces.Seconds();
+				TotalCollisionCubesTime += Stat.Times.CollisionCubes.Seconds();
 				
 				GlobalTotalTime += Stat.Time;
 			}
@@ -363,13 +363,13 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesher::CreateFullChunk()
 		if (Chunk.IsValid())
 		{
 			{
-				MESHER_TIME_SCOPE(FinishCreatingChunk)
+				MESHER_TIME_SCOPE(FinishCreatingChunk);
 				FinishCreatingChunk(*Chunk);
 			}
 
 			if (LOD <= Settings.MaxDistanceFieldLOD)
 			{
-				MESHER_TIME_SCOPE(DistanceField)
+				MESHER_TIME_SCOPE(DistanceField);
 				Chunk->BuildDistanceField(LOD, ChunkPosition, Data, Settings);
 			}
 		}
@@ -449,7 +449,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelTransitionsMesher::CreateFullChunk()
 
 		if (Chunk.IsValid())
 		{
-			MESHER_TIME_SCOPE(FinishCreatingChunk)
+			MESHER_TIME_SCOPE(FinishCreatingChunk);
 			FinishCreatingChunk(*Chunk);
 		}
 		

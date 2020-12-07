@@ -308,6 +308,8 @@ private:
 	EVoxelPlayType PlayType = EVoxelPlayType::Game;
 	double TimeOfCreation = 0;
 
+	bool bRegenerateFoliageOnNextFrame = false;
+
 #if WITH_EDITOR
 	// Temporary variable set in PreEditChange to avoid re-registering proc meshes
 	bool bDisableComponentUnregister = false;

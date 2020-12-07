@@ -1,18 +1,23 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelConvertLandscapeMaterial.h"
+
+#include "AssetRegistryModule.h"
 #include "VoxelMinimal.h"
-#include "VoxelUtilities/VoxelConfigUtilities.h"
 #include "VoxelRender/VoxelMaterialExpressions.h"
+#include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
+#include "VoxelSpawners/VoxelMeshSpawner.h"
+#include "VoxelSpawners/VoxelSpawnerConfig.h"
 
 #include "Editor.h"
 #include "Materials/Material.h"
-#include "Containers/Ticker.h"
 #include "ContentBrowserModule.h"
+#include "IContentBrowserSingleton.h"
 #include "ScopedTransaction.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Framework/Notifications/NotificationManager.h"
+#include "Subsystems/AssetEditorSubsystem.h"
 
 void FVoxelConvertLandscapeMaterial::Init()
 {
@@ -54,6 +59,7 @@ void FVoxelConvertLandscapeMaterial::Init()
 
 		return Extender;
 	}));
+
 }
 
 void FVoxelConvertLandscapeMaterial::ConvertMaterial(UMaterial* Material)

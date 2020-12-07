@@ -139,7 +139,7 @@ public:
 		{
 			if (ensure(Object->GetClass()->FindPropertyByName(PropertyName)))
 			{
-				ChildrenBuilder.AddExternalObjectProperty({ Object.Get() }, PropertyName UE_24_ONLY(, FAddPropertyParams()));
+				ChildrenBuilder.AddExternalObjectProperty({ Object.Get() }, PropertyName, FAddPropertyParams());
 			}
 		}
 	}
@@ -164,7 +164,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 	TArray<FVoxelGeneratorParameter> Parameters;
 	if (auto* Generator = Picker.GetGenerator())
 	{
-		Generator->GetParameters(Parameters);
+		Parameters = Generator->GetParameters();
 	}
 
 	TMap<FName, FVoxelGeneratorParameter> NameToParameter;
@@ -477,7 +477,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 		{
 			for (auto& Parameter : CategoryIt.Value)
 			{
-				ChildBuilder.AddExternalObjectProperty({ BlueprintInstance }, Parameter.Id UE_24_ONLY(, FAddPropertyParams()));
+				ChildBuilder.AddExternalObjectProperty({ BlueprintInstance }, Parameter.Id, FAddPropertyParams());
 			}
 		}
 		else
@@ -564,6 +564,10 @@ FEdGraphTerminalType FVoxelGeneratorPickerCustomization::GetParameterTerminalPin
 	case EVoxelGeneratorParameterPropertyType::Bool:
 	{
 		return Make(UEdGraphSchema_K2::PC_Boolean, NAME_None, nullptr);
+	}
+	case EVoxelGeneratorParameterPropertyType::Name:
+	{
+		return Make(UEdGraphSchema_K2::PC_Name, NAME_None, nullptr);
 	}
 	case EVoxelGeneratorParameterPropertyType::Object:
 	{

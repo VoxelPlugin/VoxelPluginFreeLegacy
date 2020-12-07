@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
-#include "VoxelMinimal.h"
+#include "VoxelStatHelpers.h"
 
 struct FVoxelChunkMesh;
 class FVoxelData;
@@ -14,59 +14,41 @@ class FVoxelRuntimeSettings;
 class FVoxelRuntimeDynamicSettings;
 
 #if ENABLE_MESHER_STATS
-struct FVoxelScopedMesherTime
-{
-	const uint64 StartCycle = FPlatformTime::Cycles64();
-	uint64& Cycles;
+#define MESHER_TIME_SCOPE(Time) VOXEL_SCOPED_STAT(Times.Time, 1)
+#define MESHER_TIME_INLINE(Time, Expr) VOXEL_INLINE_STAT(Times.Time, 1, Expr)
 
-	FORCEINLINE explicit FVoxelScopedMesherTime(uint64& Cycles)
-		: Cycles(Cycles)
-	{
-	}
-	FORCEINLINE ~FVoxelScopedMesherTime()
-	{
-		Cycles += FPlatformTime::Cycles64() - StartCycle;
-	}
-};
+#define MESHER_TIME_SCOPE_VALUES(Count) VOXEL_SCOPED_STAT(Times.Values, Count)
+#define MESHER_TIME_INLINE_VALUES(Count, Expr) VOXEL_INLINE_STAT(Times.Values, Count, Expr)
 
-#define MESHER_TIME_SCOPE(Time) FVoxelScopedMesherTime LocalScope(Times.Time);
-#define MESHER_TIME_INLINE(Time, X) [&]() { FVoxelScopedMesherTime LocalScope(Times.Time); return X; }()
-
-#define MESHER_TIME_SCOPE_VALUES(Count) FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count;
-#define MESHER_TIME_INLINE_VALUES(Count, X) [&]() { FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count; return X; }()
-
-#define MESHER_TIME_SCOPE_MATERIALS(Count) FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count;
-#define MESHER_TIME_INLINE_MATERIALS(Count, X) [&]() { FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count; return X; }()
+#define MESHER_TIME_SCOPE_MATERIALS(Count) VOXEL_SCOPED_STAT(Times.Materials, Count)
+#define MESHER_TIME_INLINE_MATERIALS(Count, Expr) VOXEL_INLINE_STAT(Times.Materials, Count, Expr)
 #else
 #define MESHER_TIME_SCOPE(Time)
-#define MESHER_TIME_INLINE(Time, X) X
+#define MESHER_TIME_INLINE(Time, Expr) Expr
 
 #define MESHER_TIME_SCOPE_VALUES(Count)
-#define MESHER_TIME_INLINE_VALUES(Count, X) X
+#define MESHER_TIME_INLINE_VALUES(Count, Expr) Expr
 
 #define MESHER_TIME_SCOPE_MATERIALS(Count)
-#define MESHER_TIME_INLINE_MATERIALS(Count, X) X
+#define MESHER_TIME_INLINE_MATERIALS(Count, Expr) Expr
 #endif
 
-// All times are in cycles
 struct FVoxelMesherTimes
 {
-	uint64 _Values = 0;
-	uint64 _Materials = 0;
-	uint64 _ValuesAccesses = 0;
-	uint64 _MaterialsAccesses = 0;
+	FVoxelStatEntry Values;
+	FVoxelStatEntry Materials;
 
-	uint64 Normals = 0;
-	uint64 UVs = 0;
-	uint64 CreateChunk = 0;
+	FVoxelStatEntry Normals;
+	FVoxelStatEntry UVs;
+	FVoxelStatEntry CreateChunk;
 
-	uint64 FindFaces = 0;
-	uint64 AddFaces = 0;
-	uint64 GreedyMeshing = 0;
-	uint64 CollisionCubes = 0;
+	FVoxelStatEntry FindFaces;
+	FVoxelStatEntry AddFaces;
+	FVoxelStatEntry GreedyMeshing;
+	FVoxelStatEntry CollisionCubes;
 	
-	uint64 FinishCreatingChunk = 0;
-	uint64 DistanceField = 0;
+	FVoxelStatEntry FinishCreatingChunk;
+	FVoxelStatEntry DistanceField;
 };
 
 class FVoxelMesherBase

@@ -18,6 +18,7 @@
 #include "NodeFunctions/VoxelNodeFunctions.h"
 #include "NodeFunctions/VoxelSDFNodeFunctions.h"
 #include "NodeFunctions/VoxelMathNodeFunctions.h"
+#include "NodeFunctions/VoxelFoliageNodeFunctions.h"
 #include "NodeFunctions/VoxelDeprecatedNodeFunctions.h"
 #include "NodeFunctions/VoxelPlaceableItemsNodeFunctions.h"
 #include "NodeFunctions/VoxelGeneratorVariableHelper.h"

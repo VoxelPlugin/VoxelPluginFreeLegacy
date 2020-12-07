@@ -11,9 +11,6 @@
 #include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelGeneratorCache.generated.h"
 
-class UVoxelGeneratorInstanceWrapper;
-class UVoxelTransformableGeneratorInstanceWrapper;
-
 UCLASS()
 class VOXEL_API UVoxelGeneratorCacheSubsystemProxy : public UVoxelStaticSubsystemProxy
 {
@@ -50,12 +47,12 @@ public:
 	static TVoxelSharedRef<FVoxelGeneratorCache> Create(const FVoxelGeneratorInit& Init);
 	
 public:
+	TVoxelSharedRef<FVoxelGeneratorInstance> MakeGeneratorInstance(FVoxelGeneratorPicker Picker);
+	TVoxelSharedRef<FVoxelTransformableGeneratorInstance> MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker);
+	
 	UVoxelGeneratorInstanceWrapper* K2_MakeGeneratorInstance(FVoxelGeneratorPicker Picker);
 	UVoxelTransformableGeneratorInstanceWrapper* K2_MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker);
 	
-	TVoxelSharedRef<FVoxelGeneratorInstance> MakeGeneratorInstance(FVoxelGeneratorPicker Picker);
-	TVoxelSharedRef<FVoxelTransformableGeneratorInstance> MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker);
-
 public:
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnGeneratorRecompiled, UVoxelGenerator*);
 	static FOnGeneratorRecompiled OnGeneratorRecompiled;
@@ -73,21 +70,31 @@ private:
 	FVoxelGeneratorCache() = default;
 	
 	FVoxelGeneratorInit GeneratorInit;
-
-	struct FCache
-	{
-		UVoxelGeneratorInstanceWrapper* Wrapper = nullptr;
-		TVoxelSharedPtr<FVoxelGeneratorInstance> Instance;
-	};
-	struct FTransformableCache
-	{
-		UVoxelTransformableGeneratorInstanceWrapper* Wrapper = nullptr;
-		TVoxelSharedPtr<FVoxelTransformableGeneratorInstance> Instance;
-	};
 	
-	TMap<FVoxelGeneratorPicker, FCache> Cache;
-	TMap<FVoxelTransformableGeneratorPicker, FTransformableCache> TransformableCache;
+	TMap<FVoxelGeneratorPicker, TVoxelSharedPtr<FVoxelGeneratorInstance>> Cache;
+	TMap<FVoxelTransformableGeneratorPicker, TVoxelSharedPtr<FVoxelTransformableGeneratorInstance>> TransformableCache;
+	
+	TMap<TVoxelWeakPtr<FVoxelGeneratorInstance>, UVoxelGeneratorInstanceWrapper*> WrapperCache;
+	TMap<TVoxelWeakPtr<FVoxelTransformableGeneratorInstance>, UVoxelTransformableGeneratorInstanceWrapper*> WrapperTransformableCache;
+
+	template<typename T>
+	auto& GetCache();
+	
+	template<typename T>
+	auto& GetWrapperCache();
+	
+	template<typename T>
+	TVoxelSharedRef<typename T::FInstance> MakeGeneratorInstanceImpl(T Picker);
+	
+	template<typename T>
+	typename T::UWrapper* K2_MakeGeneratorInstanceImpl(T Picker);
 };
+
+template<> inline auto& FVoxelGeneratorCache::GetCache<FVoxelGeneratorPicker>() { return Cache; }
+template<> inline auto& FVoxelGeneratorCache::GetCache<FVoxelTransformableGeneratorPicker>() { return TransformableCache; }
+
+template<> inline auto& FVoxelGeneratorCache::GetWrapperCache<FVoxelGeneratorPicker>() { return WrapperCache; }
+template<> inline auto& FVoxelGeneratorCache::GetWrapperCache<FVoxelTransformableGeneratorPicker>() { return WrapperTransformableCache; }
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -45,7 +45,7 @@ void UVoxelLineBatchComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			if (Line.RemainingLifeTime <= 0.0f)
 			{
 				// The line has expired, remove it.
-				BatchedLines.RemoveAtSwap(LineIndex--);
+				BatchedLines.RemoveAtSwap(LineIndex--, 1, false);
 				bDirty = true;
 			}
 		}
@@ -61,7 +61,7 @@ void UVoxelLineBatchComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			if (Pt.RemainingLifeTime <= 0.0f)
 			{
 				// The point has expired, remove it.
-				BatchedPoints.RemoveAtSwap(PtIndex--);
+				BatchedPoints.RemoveAtSwap(PtIndex--, 1, false);
 				bDirty = true;
 			}
 		}
@@ -77,7 +77,7 @@ void UVoxelLineBatchComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			if (Mesh.RemainingLifeTime <= 0.0f)
 			{
 				// The mesh has expired, remove it.
-				BatchedMeshes.RemoveAtSwap(MeshIndex--);
+				BatchedMeshes.RemoveAtSwap(MeshIndex--, 1, false);
 				bDirty = true;
 			}
 		}

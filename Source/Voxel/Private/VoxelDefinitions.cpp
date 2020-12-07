@@ -69,7 +69,8 @@ FVoxelScopedSlowTask::FVoxelScopedSlowTask(float InAmountOfWork, const FText& In
 FVoxelIntBox const FVoxelIntBox::Infinite = FVoxelIntBox(FIntVector(MIN_int32 + 1024), FIntVector(MAX_int32 - 1024));
 
 const FVoxelPlaceableItemHolder EmptyVoxelPlaceableItemHolder;
-FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(EmptyVoxelPlaceableItemHolder);
+const FVoxelGeneratorQueryData FVoxelGeneratorQueryData::Empty;
+const FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(EmptyVoxelPlaceableItemHolder);
 
 const FVoxelVector FVoxelVector::ZeroVector(0.0f, 0.0f, 0.0f);
 const FVoxelVector FVoxelVector::OneVector(1.0f, 1.0f, 1.0f);

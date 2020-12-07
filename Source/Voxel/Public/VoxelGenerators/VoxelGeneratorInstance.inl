@@ -294,7 +294,7 @@ FORCEINLINE TVoxelRange<v_flt> FVoxelItemStack::GetValueRange(const FVoxelIntBox
 				*this);
 		}
 		
-		const auto NextStack = FVoxelItemStack(ItemHolder, *Generator, Depth - 1, CustomData);
+		const auto NextStack = FVoxelItemStack(ItemHolder, *Generator, Depth - 1, QueryData);
 		for (auto& SubBounds : Bounds.Difference(Asset.Bounds))
 		{
 			const auto NextRange = NextStack.GetValueRange(SubBounds, LOD);
