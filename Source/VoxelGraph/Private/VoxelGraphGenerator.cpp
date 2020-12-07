@@ -182,7 +182,20 @@ TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetT
 
 TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance(const TMap<FName, FString>& Parameters)
 {
-	FVoxelMessages::Info("Running Voxel Graphs require Voxel Plugin Pro");
+	if (bUseCppClassInsteadOfGraph)
+	{
+		auto* Class = GeneratedCppClass.Get();
+		if (Class && Class->GetDefaultObject<UVoxelTransformableGenerator>())
+		{
+			return Class->GetDefaultObject<UVoxelTransformableGenerator>()->GetTransformableInstance(Parameters);
+		}
+		else
+		{
+			FVoxelMessages::Error("'Use C++ class instead of graph' is true, but 'Generated C++ class' is invalid!");
+		}
+	}
+	
+	FVoxelMessages::Info("Running Voxel Graphs require Voxel Plugin Pro. If the graph was compiled to C++, enable 'Use C++ class instead of graph' in the graph settings to use it");
 	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
 }
 
@@ -231,14 +244,6 @@ void UVoxelGraphGenerator::PostEditChangeProperty(struct FPropertyChangedEvent& 
 
 	if (PropertyChangedEvent.MemberProperty && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
-		if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphGenerator, SaveLocation))
-		{
-			if (!SaveLocation.FilePath.IsEmpty())
-			{
-				SaveLocation.FilePath = FPaths::ConvertRelativePathToFull(SaveLocation.FilePath);
-				FPaths::MakePathRelativeTo(SaveLocation.FilePath, *FPaths::ProjectDir());
-			}
-		}
 		if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphGenerator, Outputs))
 		{
 			BindUpdateSetterNodes();
