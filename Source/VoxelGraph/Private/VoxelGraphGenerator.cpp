@@ -134,15 +134,16 @@ void UVoxelGraphGenerator::ApplyParameters(const TMap<FName, FString>& Parameter
 	}
 }
 
-void UVoxelGraphGenerator::GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const
+TArray<FVoxelGeneratorParameter> UVoxelGraphGenerator::GetParameters() const
 {
+	TArray<FVoxelGeneratorParameter> Parameters;
 	for (auto* Node : AllNodes)
 	{
-		Node->GetParameters(OutParameters);
+		Node->GetParameters(Parameters);
 	}
 	
 	TMap<FName, FVoxelGeneratorParameter> NamesToParameters;
-	for (auto& Parameter : OutParameters)
+	for (auto& Parameter : Parameters)
 	{
 		auto* ExistingParameter = NamesToParameters.Find(Parameter.Id);
 		if (!ExistingParameter)
@@ -168,6 +169,10 @@ void UVoxelGraphGenerator::GetParameters(TArray<FVoxelGeneratorParameter>& OutPa
 				*Parameter.Id.ToString()));
 		}
 	}
+
+	TArray<FVoxelGeneratorParameter> UniqueParameters;
+	NamesToParameters.GenerateValueArray(UniqueParameters);
+	return UniqueParameters;
 }
 
 TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance()

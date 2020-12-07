@@ -7,6 +7,7 @@
 #include "VoxelRange.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
+#include "VoxelItemStack.h"
 
 class FVoxelData;
 class FVoxelDataOctreeLeaf;
@@ -43,7 +44,13 @@ public:
 
 public:
 	template<typename T>
-	T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelGeneratorInstance* GeneratorOverride = nullptr) const;
+	T GetCustomOutput(
+		T DefaultValue,
+		FName Name,
+		v_flt X, v_flt Y, v_flt Z,
+		int32 LOD,
+		const FVoxelGeneratorQueryData& QueryData = FVoxelGeneratorQueryData::Empty,
+		const FVoxelGeneratorInstance* GeneratorOverride = nullptr) const;
 
 	template<typename T>
 	FORCEINLINE v_flt GetCustomOutput(T DefaultValue, FName Name, const FVoxelVector& P, int32 LOD) const

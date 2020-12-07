@@ -16,6 +16,8 @@
 #include "VoxelData/VoxelDataOctreeLeafMultiplayer.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
 
+class FVoxelGeneratorQueryData;
+
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Data Octrees Memory"), STAT_VoxelDataOctreesMemory, STATGROUP_VoxelMemory, VOXEL_API);
 DECLARE_DWORD_ACCUMULATOR_STAT_EXTERN(TEXT("Voxel Data Octrees Count"), STAT_VoxelDataOctreesCount, STATGROUP_VoxelCounters, VOXEL_API);
 
@@ -70,7 +72,13 @@ public:
 	template<typename T>
 	T Get(const FVoxelGeneratorInstance& Generator, int32 X, int32 Y, int32 Z, int32 LOD) const;
 	template<typename T>
-	T GetCustomOutput(const FVoxelGeneratorInstance& Generator, T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
+	T GetCustomOutput(
+		const FVoxelGeneratorInstance& Generator,
+		T DefaultValue,
+		FName Name,
+		v_flt X, v_flt Y, v_flt Z,
+		int32 LOD,
+		const FVoxelGeneratorQueryData& QueryData) const;
 	template<typename T, typename U = int32>
 	T GetFromGeneratorAndAssets(const FVoxelGeneratorInstance& Generator, U X, U Y, U Z, int32 LOD) const;
 	template<typename T>

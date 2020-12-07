@@ -8,7 +8,7 @@
 
 inline void CheckOutputs(const UVoxelGenerator& Generator, const FVoxelGeneratorInstance& Instance)
 {
-#if !UE_BUILD_SHIPPING
+#if VOXEL_DEBUG
 	VOXEL_FUNCTION_COUNTER();
 
 	FVoxelGeneratorOutputs Outputs = Generator.GetGeneratorOutputs();
@@ -18,7 +18,7 @@ inline void CheckOutputs(const UVoxelGenerator& Generator, const FVoxelGenerator
 	Instance.GetOutputsPtrMap<v_flt>().GenerateKeyArray(FloatOutputs);
 	FloatOutputs.Sort(Order);
 	Outputs.FloatOutputs.Sort(Order);
-	ensure(FloatOutputs == Outputs.FloatOutputs);
+	ensure(FloatOutputs == Outputs.FloatOutputs); // Will fail if a graph failed to compile
 #endif
 }
 

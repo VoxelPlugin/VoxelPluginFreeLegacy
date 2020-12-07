@@ -69,8 +69,7 @@ bool UVoxelGeneratorTools::CheckIsValidParameterName(
 		return false;
 	}
 
-	TArray<FVoxelGeneratorParameter> Parameters;
-	GeneratorPicker.GetGenerator()->GetParameters(Parameters);
+	const TArray<FVoxelGeneratorParameter> Parameters = GeneratorPicker.GetGenerator()->GetParameters();
 
 	const FVoxelGeneratorParameterType Type(Property);
 	for (auto& It : Parameters)

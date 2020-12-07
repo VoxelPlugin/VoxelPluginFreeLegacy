@@ -38,10 +38,8 @@
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveLinearColor.h"
 
-#if ENGINE_MINOR_VERSION >= 24
 #include "ToolMenu.h"
 #include "ToolMenuSection.h"
-#endif
 
 UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
 {
@@ -336,13 +334,7 @@ bool UVoxelGraphSchema::TryCreateConnection(UEdGraphPin* A, UEdGraphPin* B) cons
 	return bModified;
 }
 
-void UVoxelGraphSchema::TrySetDefaultValue(
-	UEdGraphPin& Pin,
-	const FString& NewDefaultValue
-#if ENGINE_MINOR_VERSION >= 24
-	, bool bMarkAsModified
-#endif
-) const
+void UVoxelGraphSchema::TrySetDefaultValue(UEdGraphPin& Pin, const FString& NewDefaultValue, bool bMarkAsModified) const
 {
 	FString DefaultValue = NewDefaultValue;
 
@@ -508,28 +500,6 @@ int32 UVoxelGraphSchema::GetNodeSelectionCount(const UEdGraph* Graph) const
 	return FVoxelGraphEditorUtilities::GetNumberOfSelectedNodes(Graph);
 }
 
-#if ENGINE_MINOR_VERSION < 24
-void UVoxelGraphSchema::GetContextMenuActions(const UEdGraph* CurrentGraph, const UEdGraphNode* InGraphNode, const UEdGraphPin* InGraphPin, FMenuBuilder* MenuBuilder, bool bIsDebugging) const
-{	
-	if (InGraphPin != NULL)
-	{
-		MenuBuilder->BeginSection("EdGraphSchemaPinActions", VOXEL_LOCTEXT("Pin Actions"));
-		{
-			if (!bIsDebugging)
-			{
-				// Break pin links
-				if (InGraphPin->LinkedTo.Num() > 0)
-				{
-					MenuBuilder->AddMenuEntry(FGraphEditorCommands::Get().BreakPinLinks);
-				}
-			}
-		}
-		MenuBuilder->EndSection();
-	}
-
-	Super::GetContextMenuActions(CurrentGraph, InGraphNode, InGraphPin, MenuBuilder, bIsDebugging);
-}
-#else
 void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContextMenuContext* Context) const
 {
 	const UEdGraph* CurrentGraph = Context->Graph;
@@ -644,7 +614,6 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 		}
 	}
 }
-#endif
 
 void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, const FVector2D& GraphPosition, UEdGraph* Graph) const
 {

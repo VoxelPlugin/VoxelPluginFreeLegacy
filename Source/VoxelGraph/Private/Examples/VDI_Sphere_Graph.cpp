@@ -146,12 +146,12 @@ public:
 		void Function0_X_Compute(const FVoxelContext& Context, FBufferX& BufferX) const
 		{
 			// Data Item Parameters
-			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 4)
+			if (Context.Items.QueryData.DataItemParameters.Num() == 4)
 			{
-				BufferX.Variable_0 = (*Context.Items.CustomData).GetData()[0];
-				BufferX.Variable_1 = (*Context.Items.CustomData).GetData()[1];
-				BufferX.Variable_2 = (*Context.Items.CustomData).GetData()[2];
-				BufferX.Variable_3 = (*Context.Items.CustomData).GetData()[3];
+				BufferX.Variable_0 = Context.Items.QueryData.DataItemParameters.GetData()[0];
+				BufferX.Variable_1 = Context.Items.QueryData.DataItemParameters.GetData()[1];
+				BufferX.Variable_2 = Context.Items.QueryData.DataItemParameters.GetData()[2];
+				BufferX.Variable_3 = Context.Items.QueryData.DataItemParameters.GetData()[3];
 			}
 			else
 			{
@@ -183,12 +183,12 @@ public:
 		void Function0_XYWithoutCache_Compute(const FVoxelContext& Context, FBufferX& BufferX, FBufferXY& BufferXY) const
 		{
 			// Data Item Parameters
-			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 4)
+			if (Context.Items.QueryData.DataItemParameters.Num() == 4)
 			{
-				BufferX.Variable_0 = (*Context.Items.CustomData).GetData()[0];
-				BufferX.Variable_1 = (*Context.Items.CustomData).GetData()[1];
-				BufferX.Variable_2 = (*Context.Items.CustomData).GetData()[2];
-				BufferX.Variable_3 = (*Context.Items.CustomData).GetData()[3];
+				BufferX.Variable_0 = Context.Items.QueryData.DataItemParameters.GetData()[0];
+				BufferX.Variable_1 = Context.Items.QueryData.DataItemParameters.GetData()[1];
+				BufferX.Variable_2 = Context.Items.QueryData.DataItemParameters.GetData()[2];
+				BufferX.Variable_3 = Context.Items.QueryData.DataItemParameters.GetData()[3];
 			}
 			else
 			{
@@ -258,12 +258,12 @@ public:
 			v_flt Variable_1; // Data Item Parameters output 1
 			v_flt Variable_2; // Data Item Parameters output 2
 			v_flt Variable_3; // Data Item Parameters output 3
-			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 4)
+			if (Context.Items.QueryData.DataItemParameters.Num() == 4)
 			{
-				Variable_0 = (*Context.Items.CustomData).GetData()[0];
-				Variable_1 = (*Context.Items.CustomData).GetData()[1];
-				Variable_2 = (*Context.Items.CustomData).GetData()[2];
-				Variable_3 = (*Context.Items.CustomData).GetData()[3];
+				Variable_0 = Context.Items.QueryData.DataItemParameters.GetData()[0];
+				Variable_1 = Context.Items.QueryData.DataItemParameters.GetData()[1];
+				Variable_2 = Context.Items.QueryData.DataItemParameters.GetData()[2];
+				Variable_3 = Context.Items.QueryData.DataItemParameters.GetData()[3];
 			}
 			else
 			{
@@ -721,12 +721,12 @@ public:
 			TVoxelRange<v_flt> Variable_1; // Data Item Parameters output 1
 			TVoxelRange<v_flt> Variable_2; // Data Item Parameters output 2
 			TVoxelRange<v_flt> Variable_3; // Data Item Parameters output 3
-			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 4)
+			if (Context.Items.QueryData.DataItemParameters.Num() == 4)
 			{
-				Variable_0 = (*Context.Items.CustomData).GetData()[0];
-				Variable_1 = (*Context.Items.CustomData).GetData()[1];
-				Variable_2 = (*Context.Items.CustomData).GetData()[2];
-				Variable_3 = (*Context.Items.CustomData).GetData()[3];
+				Variable_0 = Context.Items.QueryData.DataItemParameters.GetData()[0];
+				Variable_1 = Context.Items.QueryData.DataItemParameters.GetData()[1];
+				Variable_2 = Context.Items.QueryData.DataItemParameters.GetData()[2];
+				Variable_3 = Context.Items.QueryData.DataItemParameters.GetData()[3];
 			}
 			else
 			{

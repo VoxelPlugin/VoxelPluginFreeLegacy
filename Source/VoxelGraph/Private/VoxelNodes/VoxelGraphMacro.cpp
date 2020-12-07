@@ -241,6 +241,9 @@ void UVoxelGraphMacroNode::GetParameters(TArray<FVoxelGeneratorParameter>& OutPa
 {
 	if (Macro)
 	{
-		Macro->GetParameters(OutParameters);
+		for (auto* Node : Macro->AllNodes)
+		{
+			Node->GetParameters(OutParameters);
+		}
 	}
 }

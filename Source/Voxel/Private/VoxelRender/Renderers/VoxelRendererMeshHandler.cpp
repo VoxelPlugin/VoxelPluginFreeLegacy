@@ -328,16 +328,9 @@ void IVoxelRendererMeshHandler::RemoveMesh(UVoxelProceduralMeshComponent& Mesh)
 		Mesh.ClearInit();
 
 		// Set world location to 0 to avoid precision issues, as SetRelativeLocation calls MoveComponent :(
-#if ENGINE_MINOR_VERSION < 24
-		check(!Mesh.bAbsoluteLocation);
-		Mesh.bAbsoluteLocation = true;
-		Mesh.SetWorldLocationAndRotationNoPhysics(FVector::ZeroVector, FRotator::ZeroRotator);
-		Mesh.bAbsoluteLocation = false;
-#else
 		Mesh.SetUsingAbsoluteLocation(true);
 		Mesh.SetWorldLocationAndRotationNoPhysics(FVector::ZeroVector, FRotator::ZeroRotator);
 		Mesh.SetUsingAbsoluteLocation(false);
-#endif
 	}
 
 	if (UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen(Renderer.Settings.VoxelWorld.Get()))

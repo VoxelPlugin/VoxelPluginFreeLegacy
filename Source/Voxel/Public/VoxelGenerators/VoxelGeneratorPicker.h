@@ -8,6 +8,9 @@
 #include "VoxelGenerators/VoxelGenerator.h"
 #include "VoxelGeneratorPicker.generated.h"
 
+class UVoxelGeneratorInstanceWrapper;
+class UVoxelTransformableGeneratorInstanceWrapper;
+
 UENUM(BlueprintType)
 enum class EVoxelGeneratorPickerType : uint8
 {
@@ -19,8 +22,12 @@ template<typename TGenerator, bool bWeakPtr>
 struct TVoxelGeneratorPicker
 {
 public:
+	static constexpr bool bIsTransformable = TIsSame<TGenerator, UVoxelTransformableGenerator>::Value;
+	
 	using UGenerator = TGenerator;
-	using FGeneratorInstance = typename TChooseClass<TIsSame<UGenerator, UVoxelGenerator>::Value, FVoxelGeneratorInstance, FVoxelTransformableGeneratorInstance>::Result;
+	using FInstance = typename TChooseClass<bIsTransformable, FVoxelTransformableGeneratorInstance, FVoxelGeneratorInstance>::Result;
+	using UWrapper = typename TChooseClass<bIsTransformable, UVoxelTransformableGeneratorInstanceWrapper, UVoxelGeneratorInstanceWrapper>::Result;
+
 	template<typename T>
 	using TPtr = typename TChooseClass<bWeakPtr, TWeakObjectPtr<T>, T*>::Result;
 
@@ -139,7 +146,7 @@ struct VOXEL_API FVoxelGeneratorPicker
 	using TVoxelGeneratorPicker<UVoxelGenerator, false>::TVoxelGeneratorPicker;
 	
 	// Will default to EmptyGenerator if null
-	TVoxelSharedRef<FGeneratorInstance> GetInstance() const;
+	TVoxelSharedRef<FInstance> GetInstance() const;
 	
 #if !CPP
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
@@ -172,7 +179,7 @@ struct FVoxelTransformableGeneratorPicker
 	using TVoxelGeneratorPicker<UVoxelTransformableGenerator, false>::TVoxelGeneratorPicker;
 	
 	// Will default to EmptyGenerator if null
-	TVoxelSharedRef<FGeneratorInstance> GetInstance() const;
+	TVoxelSharedRef<FInstance> GetInstance() const;
 
 #if !CPP
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")

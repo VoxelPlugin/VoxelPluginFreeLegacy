@@ -13,11 +13,11 @@ class VOXEL_API UVoxelLineBatchComponent : public UPrimitiveComponent
 
 public:
 	// Buffer of lines to draw. No support for depth priority
-	TArray<struct FBatchedLine> BatchedLines;
+	TArray<FBatchedLine> BatchedLines;
 	// Buffer or points to draw
-	TArray<struct FBatchedPoint> BatchedPoints;
+	TArray<FBatchedPoint> BatchedPoints;
 	// Buffer of simple meshes to draw
-	TArray<struct FBatchedMesh> BatchedMeshes;
+	TArray<FBatchedMesh> BatchedMeshes;
 	
 	// Default time that lines/points will draw for
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")

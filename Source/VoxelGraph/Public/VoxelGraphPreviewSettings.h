@@ -64,10 +64,11 @@ enum class EVoxelGraphMaterialPreviewType : uint8
 	UV3
 };
 
-UCLASS()
+UCLASS(Within=VoxelGraphGenerator)
 class VOXELGRAPH_API UVoxelGraphPreviewSettings : public UObject
 {
 	GENERATED_BODY()
+	INTELLISENSE_DECLARE_WITHIN(UVoxelGraphGenerator);
 
 public:
 	UVoxelGraphPreviewSettings();
@@ -219,10 +220,6 @@ public:
 	// Simulate querying a chunk at a specific LOD, eg to check fractal noise settings
 	UPROPERTY(EditAnywhere, Category = "Misc", meta = (ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, DisplayName = "LOD to preview"))
 	int32 LODToPreview = 0;
-	
-public:
-	UPROPERTY()
-	class UVoxelGraphGenerator* Graph;
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

@@ -3,19 +3,6 @@
 #include "VoxelGraphOutputsConfig.h"
 #include "CppTranslation/VoxelVariables.h"
 
-TArray<FName> UVoxelGraphOutputsConfig::GetFloatOutputs() const
-{
-	TArray<FName> Result;
-	for (auto& Output : Outputs)
-	{
-		if (Output.Category == EVoxelDataPinCategory::Float) 
-		{
-			Result.Add(Output.Name);
-		}
-	}
-	return Result;
-}
-
 #if WITH_EDITOR
 void UVoxelGraphOutputsConfig::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 {

@@ -27,7 +27,7 @@ class VOXEL_API UVoxelGenerator : public UObject
 public:
 	//~ Begin UVoxelGenerator Interface
 	virtual void ApplyParameters(const TMap<FName, FString>& Parameters);
-	virtual void GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const;
+	virtual TArray<FVoxelGeneratorParameter> GetParameters() const;
 	
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance(const TMap<FName, FString>& Parameters);
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance();

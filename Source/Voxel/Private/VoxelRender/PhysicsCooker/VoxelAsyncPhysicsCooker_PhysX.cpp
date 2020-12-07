@@ -34,7 +34,6 @@ FVoxelAsyncPhysicsCooker_PhysX::FVoxelAsyncPhysicsCooker_PhysX(UVoxelProceduralM
 {
 }
 
-#if ENGINE_MINOR_VERSION >= 24
 class UMRMeshComponent
 {
 public:
@@ -43,7 +42,6 @@ public:
 		Body.FinishCreatingPhysicsMeshes_PhysX(ConvexMeshes, ConvexMeshesNegX, TriMeshes);
 	}
 };
-#endif
 
 bool FVoxelAsyncPhysicsCooker_PhysX::Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage)
 {
@@ -56,11 +54,7 @@ bool FVoxelAsyncPhysicsCooker_PhysX::Finalize(UBodySetup& BodySetup, FVoxelProce
 
 	{
 		VOXEL_SCOPE_COUNTER("FinishCreatingPhysicsMeshes");
-#if ENGINE_MINOR_VERSION < 24
-		BodySetup.FinishCreatingPhysicsMeshes({}, {}, CookResult.TriangleMeshes);
-#else
 		UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetup, {}, {}, CookResult.TriangleMeshes);
-#endif
 	}
 	
 	// TODO a bit hacky?

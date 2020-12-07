@@ -33,11 +33,7 @@ void UVoxelOpenAssetsOnStartup::ActualInit()
 				continue;
 			}
 
-#if ENGINE_MINOR_VERSION < 24
-			FAssetEditorManager::Get().OpenEditorForAsset(It.Key.ToString());
-#else
 			GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(It.Key.ToString());
-#endif
 		}
 	}
 	

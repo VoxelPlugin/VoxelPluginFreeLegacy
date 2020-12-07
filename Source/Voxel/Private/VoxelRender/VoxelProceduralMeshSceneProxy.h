@@ -60,7 +60,7 @@ public:
 
 	//~ Begin FPrimitiveSceneProxy Interface
 	virtual void CreateRenderThreadResources() override;
-	ONLY_UE_24_AND_HIGHER(virtual) void DestroyRenderThreadResources() ONLY_UE_24_AND_HIGHER(override);
+	virtual void DestroyRenderThreadResources() override;
 
 	virtual void DrawStaticElements(FStaticPrimitiveDrawInterface* PDI) override;
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override;

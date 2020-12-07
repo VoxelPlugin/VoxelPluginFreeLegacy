@@ -278,7 +278,6 @@ void FVoxelGraphEditorToolkit::CreateInternalWidgets()
 	if (!Generator->PreviewSettings)
 	{
 		Generator->PreviewSettings = NewObject<UVoxelGraphPreviewSettings>(Generator);
-		Generator->PreviewSettings->Graph = Generator;
 	}
 
 	// Needed for undo/redo
@@ -1718,11 +1717,7 @@ void FVoxelGraphEditorToolkit::SelectNodeAndZoomToFit(TWeakObjectPtr<const UVoxe
 		}
 		else
 		{
-#if ENGINE_MINOR_VERSION < 24
-			if (ensure(FAssetEditorManager::Get().OpenEditorForAsset(Node->Graph)))
-#else
 			if (ensure(GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Node->Graph)))
-#endif
 			{
 				auto NewEditor = FVoxelGraphEditorUtilities::GetIVoxelEditorForGraph(Node->Graph->VoxelGraph);
 				if (ensure(NewEditor.IsValid()))

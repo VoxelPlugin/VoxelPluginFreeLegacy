@@ -2,7 +2,6 @@
 
 #include "VoxelSpawners/VoxelSpawnerConfig.h"
 #include "VoxelSpawners/VoxelMeshSpawner.h"
-#include "VoxelSpawners/VoxelSpawnerOutputsConfig.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
 
 #if WITH_EDITOR

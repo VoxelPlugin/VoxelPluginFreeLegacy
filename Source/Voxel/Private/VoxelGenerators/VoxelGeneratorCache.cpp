@@ -64,86 +64,24 @@ void FVoxelGeneratorCache::OnGeneratorRecompiledImpl(UVoxelGenerator* Generator)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-UVoxelGeneratorInstanceWrapper* FVoxelGeneratorCache::K2_MakeGeneratorInstance(FVoxelGeneratorPicker Picker)
-{
-	VOXEL_FUNCTION_COUNTER();
-	check(IsInGameThread());
-	
-	auto& Entry = Cache.FindOrAdd(Picker);
-	
-	if (!Entry.Instance)
-	{
-		ensure(!Entry.Wrapper);
-		Entry.Instance = Picker.GetInstance();
-		Entry.Instance->Init(GeneratorInit);
-	}
-	
-	if (!Entry.Wrapper)
-	{
-		Entry.Wrapper = NewObject<UVoxelGeneratorInstanceWrapper>();
-		Entry.Wrapper->Instance = Entry.Instance;
-	}
-	
-	return Entry.Wrapper;
-}
-
-UVoxelTransformableGeneratorInstanceWrapper* FVoxelGeneratorCache::K2_MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker)
-{
-	VOXEL_FUNCTION_COUNTER();
-	check(IsInGameThread());
-	
-	auto& Entry = TransformableCache.FindOrAdd(Picker);
-	
-	if (!Entry.Instance)
-	{
-		ensure(!Entry.Wrapper);
-		Entry.Instance = Picker.GetInstance();
-		Entry.Instance->Init(GeneratorInit);
-	}
-	
-	if (!Entry.Wrapper)
-	{
-		Entry.Wrapper = NewObject<UVoxelTransformableGeneratorInstanceWrapper>();
-		Entry.Wrapper->Instance = Entry.Instance;
-	}
-	
-	return Entry.Wrapper;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
 TVoxelSharedRef<FVoxelGeneratorInstance> FVoxelGeneratorCache::MakeGeneratorInstance(FVoxelGeneratorPicker Picker)
 {
-	VOXEL_FUNCTION_COUNTER();
-	check(IsInGameThread());
-	
-	auto& Entry = Cache.FindOrAdd(Picker);
-	
-	if (!Entry.Instance)
-	{
-		Entry.Instance = Picker.GetInstance();
-		Entry.Instance->Init(GeneratorInit);
-	}
-	
-	return Entry.Instance.ToSharedRef();
+	return MakeGeneratorInstanceImpl(Picker);
 }
 
 TVoxelSharedRef<FVoxelTransformableGeneratorInstance> FVoxelGeneratorCache::MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker)
 {
-	VOXEL_FUNCTION_COUNTER();
-	check(IsInGameThread());
-	
-	auto& Entry = TransformableCache.FindOrAdd(Picker);
-	
-	if (!Entry.Instance)
-	{
-		Entry.Instance = Picker.GetInstance();
-		Entry.Instance->Init(GeneratorInit);
-	}
-	
-	return Entry.Instance.ToSharedRef();
+	return MakeGeneratorInstanceImpl(Picker);
+}
+
+UVoxelGeneratorInstanceWrapper* FVoxelGeneratorCache::K2_MakeGeneratorInstance(FVoxelGeneratorPicker Picker)
+{
+	return K2_MakeGeneratorInstanceImpl(Picker);
+}
+
+UVoxelTransformableGeneratorInstanceWrapper* FVoxelGeneratorCache::K2_MakeTransformableGeneratorInstance(FVoxelTransformableGeneratorPicker Picker)
+{
+	return K2_MakeGeneratorInstanceImpl(Picker);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -155,15 +93,55 @@ void FVoxelGeneratorCache::AddReferencedObjects(FReferenceCollector& Collector)
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	GeneratorInit.AddReferencedObjects(Collector);
+
+	WrapperCache.Remove(nullptr);
+	WrapperTransformableCache.Remove(nullptr);
 	
-	for (auto& It : Cache)
+	for (auto& It : WrapperCache)
 	{
-		Collector.AddReferencedObject(It.Value.Wrapper);
+		Collector.AddReferencedObject(It.Value);
 	}
-	for (auto& It : TransformableCache)
+	for (auto& It : WrapperTransformableCache)
 	{
-		Collector.AddReferencedObject(It.Value.Wrapper);
+		Collector.AddReferencedObject(It.Value);
 	}
+}
+
+template<typename T>
+TVoxelSharedRef<typename T::FInstance> FVoxelGeneratorCache::MakeGeneratorInstanceImpl(T Picker)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+
+	if (auto* Instance = GetCache<T>().Find(Picker))
+	{
+		return Instance->ToSharedRef();
+	}
+	
+	const auto Instance = Picker.GetInstance();
+	Instance->Init(GeneratorInit);
+	GetCache<T>().Add(Picker, Instance);
+	
+	return Instance;
+}
+
+template<typename T>
+typename T::UWrapper* FVoxelGeneratorCache::K2_MakeGeneratorInstanceImpl(T Picker)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+
+	const auto Instance = MakeGeneratorInstanceImpl(Picker);
+
+	auto*& Wrapper = GetWrapperCache<T>().FindOrAdd(Instance);
+	
+	if (!Wrapper)
+	{
+		Wrapper = NewObject<typename T::UWrapper>();
+		Wrapper->Instance = Instance;
+	}
+	
+	return Wrapper;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

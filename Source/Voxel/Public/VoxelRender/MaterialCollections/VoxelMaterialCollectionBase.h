@@ -43,7 +43,7 @@ public:
 	// Used by paint material customization. Some materials might be null.
 	virtual TArray<FMaterialInfo> GetMaterials() const { return {}; }
 	
-	// Get the material index from a material name
+	// Get the material index from a material or a layer name
 	virtual int32 GetMaterialIndex(FName Name) const { return -1; }
 	// Called before the material collection is used (can be at runtime when dynamic renderer settings change)
 	virtual void InitializeCollection() {}

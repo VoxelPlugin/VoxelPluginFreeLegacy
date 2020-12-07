@@ -19,9 +19,9 @@ public:
 	virtual TSharedPtr<SWidget> GetInlineContent() const override;
 
 	/** Mode Toolbar Palettes **/
-	virtual void GetToolPaletteNames(TArray<FName>& InPaletteName) const UE_24_SWITCH(,override);
-	virtual void BuildToolPalette(FName PaletteName, FToolBarBuilder& ToolbarBuilder) UE_24_SWITCH(,override);
-	virtual void OnToolPaletteChanged(FName PaletteName) UE_24_SWITCH(,override);
+	virtual void GetToolPaletteNames(TArray<FName>& InPaletteName) const override;
+	virtual void BuildToolPalette(FName PaletteName, FToolBarBuilder& ToolbarBuilder) override;
+	virtual void OnToolPaletteChanged(FName PaletteName) override;
 
 	/** Modes Panel Header Information **/
 	virtual FText GetActiveToolDisplayName() const UE_25_SWITCH(,override);

@@ -42,7 +42,10 @@ namespace FVoxelUtilities
 		};
 		const auto GetItemDistance = [&](const FVoxelDataItem& Item)
 		{
-			const auto Stack = FVoxelItemStack::Empty.WithCustomData(&Item.Data);
+			FVoxelGeneratorQueryData QueryData;
+			QueryData.DataItemParameters = Item.Data;
+			
+			const auto Stack = FVoxelItemStack::Empty.WithQueryData(QueryData);
 			return Item.Generator->GetValue(X, Y, Z, 0, Stack) * (bInvertDataItemDistances ? -1 : 1);
 		};
 		
@@ -120,7 +123,10 @@ namespace FVoxelUtilities
 		};
 		const auto GetItemDistance = [&](const FVoxelDataItem& Item)
 		{
-			const auto Stack = FVoxelItemStack::Empty.WithCustomData(&Item.Data);
+			FVoxelGeneratorQueryData QueryData;
+			QueryData.DataItemParameters = Item.Data;
+			
+			const auto Stack = FVoxelItemStack::Empty.WithQueryData(QueryData);
 			auto Range = Item.Generator->GetValueRange(Bounds, 0, Stack);
 			if (bInvertDataItemDistances)
 			{

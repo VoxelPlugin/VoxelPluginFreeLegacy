@@ -7,6 +7,7 @@
 #include "VoxelIntBox.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
+#include "VoxelItemStack.h"
 #include "VoxelSharedMutex.h"
 #include "HAL/ConsoleManager.h"
 #include "VoxelData/IVoxelData.h"
@@ -207,7 +208,7 @@ public:
 	bool IsEmpty(const FVoxelIntBox& Bounds, int32 LOD) const;
 
 	template<typename T>
-	T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
+	T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelGeneratorQueryData& QueryData = FVoxelGeneratorQueryData::Empty) const;
 
 	template<typename T, typename U>
 	FORCEINLINE T GetCustomOutput(T DefaultValue, FName Name, const U& P, int32 LOD) const

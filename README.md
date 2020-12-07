@@ -1,7 +1,7 @@
 ﻿# Voxel Plugin
 
 **Voxel Plugin** allows to create fully volumetric, entirely destructible, infinite worlds in **Unreal Engine**.
-It is compatible with 4.23, 4.24, 4.25 and 4.26.
+It is compatible with 4.24, 4.25 and 4.26.
 
 **TRAILER**: https://youtu.be/LKg9rU1dXEk
 
