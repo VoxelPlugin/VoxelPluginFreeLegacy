@@ -246,14 +246,14 @@ public:
 		// Delay them by one frame to work on startup
 		FVoxelMessages::LogMessageDelegate.AddLambda([](const TSharedRef<FTokenizedMessage>& Message, EVoxelShowNotification ShowNotification)
 		{
-			FVoxelUtilities::DelayedCall([=]()
+			FVoxelSystemUtilities::DelayedCall([=]()
 			{
 				FVoxelMessagesEditor::LogMessage(Message, ShowNotification);
 			});
 		});
 		FVoxelMessages::ShowNotificationDelegate.AddStatic([](const FVoxelMessages::FNotification& Notification)
 		{
-			FVoxelUtilities::DelayedCall([=]()
+			FVoxelSystemUtilities::DelayedCall([=]()
 			{
 				FVoxelMessagesEditor::ShowNotification(Notification);
 			});
@@ -283,7 +283,8 @@ public:
 
 		// Icons
 		{
-			FString ContentDir = IPluginManager::Get().FindPlugin(VOXEL_PLUGIN_NAME)->GetContentDir() + "/";
+			IPlugin& Plugin = FVoxelSystemUtilities::GetPlugin();
+			FString ContentDir = Plugin.GetContentDir() + "/";
 
 			StyleSet = MakeShareable(new FSlateStyleSet("VoxelStyle"));
 			StyleSet->SetContentRoot(FPaths::EngineContentDir() / TEXT("Editor/Slate"));

@@ -7,8 +7,8 @@
 #include "VoxelThreadPool.h"
 #include "VoxelStartupPopup.h"
 #include "VoxelDebug/VoxelDebugManager.h"
+#include "VoxelUtilities/VoxelSystemUtilities.h"
 
-#include "Interfaces/IPluginManager.h"
 #include "ShaderCore.h"
 #include "Misc/PackageName.h"
 #include "Misc/MessageDialog.h"
@@ -35,13 +35,13 @@ void FVoxelModule::StartupModule()
 	ApplyCVarSettingsFromIni(TEXT("/Script/Voxel.VoxelSettings"), *GEngineIni, ECVF_SetByProjectSetting);
 	
 	{
-		const auto Plugin = IPluginManager::Get().FindPlugin(VOXEL_PLUGIN_NAME);
+		IPlugin& Plugin = FVoxelSystemUtilities::GetPlugin();
 
 		// This is needed to correctly share content across Pro and Free
-		FPackageName::UnRegisterMountPoint(TEXT("/") VOXEL_PLUGIN_NAME TEXT("/"), Plugin->GetContentDir());
-		FPackageName::RegisterMountPoint("/Voxel/", Plugin->GetContentDir());
+		FPackageName::UnRegisterMountPoint(TEXT("/") VOXEL_PLUGIN_NAME TEXT("/"), Plugin.GetContentDir());
+		FPackageName::RegisterMountPoint("/Voxel/", Plugin.GetContentDir());
 
-		const FString PluginBaseDir = Plugin.IsValid() ? FPaths::ConvertRelativePathToFull(Plugin->GetBaseDir()) : "";
+		const FString PluginBaseDir = FPaths::ConvertRelativePathToFull(Plugin.GetBaseDir());
 
 		const FString PluginShaderDir = FPaths::Combine(PluginBaseDir, TEXT("Shaders"));
 		AddShaderSourceDirectoryMapping(TEXT("/Plugin/Voxel"), PluginShaderDir);

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 class UMaterial;
+class UVoxelGenerator;
 class UVoxelProceduralMeshComponent;
 
 struct VOXEL_API FVoxelEditorDelegates
@@ -21,4 +22,7 @@ struct VOXEL_API FVoxelEditorDelegates
 		bool /* bAllowTransientMaterials */);
 	
 	static FCreateStaticMeshFromProcMesh CreateStaticMeshFromProcMesh;
+	
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnVoxelGraphUpdated, UVoxelGenerator*);
+	static FOnVoxelGraphUpdated OnVoxelGraphUpdated;
 };

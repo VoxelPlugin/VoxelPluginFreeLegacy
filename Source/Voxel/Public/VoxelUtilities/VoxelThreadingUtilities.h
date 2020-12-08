@@ -37,7 +37,7 @@ namespace FVoxelUtilities
 		// Fixed by https://github.com/EpicGames/UnrealEngine/commit/70d70e56f2df9ba6941b91d9893ba6c6e99efc4c
 		if (ENGINE_MINOR_VERSION < 25)
 		{
-			FVoxelUtilities::DelayedCall([=]()
+			FVoxelSystemUtilities::DelayedCall([=]()
 			{
 				delete Ptr;
 			}, 1.f);

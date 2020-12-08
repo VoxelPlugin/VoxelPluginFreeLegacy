@@ -5,6 +5,7 @@
 #include "VoxelPool.h"
 #include "VoxelMessages.h"
 #include "VoxelSettings.h"
+#include "VoxelEditorDelegates.h"
 #include "VoxelWorldRootComponent.h"
 
 #include "VoxelComponents/VoxelInvokerComponent.h"
@@ -214,6 +215,12 @@ AVoxelWorld::AVoxelWorld()
 		}
 
 		TryRefreshMaterials(Object, PropertyChangedEvent);
+		TryRefreshFoliage(Object, PropertyChangedEvent);
+	});
+
+	FVoxelEditorDelegates::OnVoxelGraphUpdated.AddWeakLambda(this, [=](UVoxelGenerator* Object)
+	{
+		FPropertyChangedEvent PropertyChangedEvent(nullptr);
 		TryRefreshFoliage(Object, PropertyChangedEvent);
 	});
 #endif

@@ -14,7 +14,7 @@
 
 void UVoxelOpenAssetsOnStartup::Init()
 {
-	FVoxelUtilities::DelayedCall([]()
+	FVoxelSystemUtilities::DelayedCall([]()
 	{
 		GetMutableDefault<UVoxelOpenAssetsOnStartup>()->ActualInit();
 	});
