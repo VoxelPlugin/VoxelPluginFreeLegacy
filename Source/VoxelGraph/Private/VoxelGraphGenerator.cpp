@@ -7,6 +7,7 @@
 #include "VoxelGraphOutputsConfig.h"
 #include "VoxelGraphConstants.h"
 #include "VoxelGraphErrorReporter.h"
+#include "VoxelEditorDelegates.h"
 
 #include "VoxelNodes/VoxelExecNodes.h"
 #include "VoxelNodes/VoxelSeedNodes.h"

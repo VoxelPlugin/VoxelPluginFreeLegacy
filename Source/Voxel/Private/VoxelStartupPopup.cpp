@@ -11,7 +11,7 @@
 
 void FVoxelStartupPopup::OnModuleStartup()
 {
-	FVoxelUtilities::DelayedCall([]()
+	FVoxelSystemUtilities::DelayedCall([]()
 	{
 		FVoxelStartupPopup().ShowPopup();
 	});
