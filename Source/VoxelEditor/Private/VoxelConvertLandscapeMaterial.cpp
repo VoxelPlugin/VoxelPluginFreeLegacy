@@ -4,19 +4,22 @@
 
 #include "AssetRegistryModule.h"
 #include "VoxelMinimal.h"
+#include "VoxelSpawners/VoxelFoliage.h"
+#include "VoxelSpawners/VoxelFoliageCollection.h"
 #include "VoxelRender/VoxelMaterialExpressions.h"
 #include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
-#include "VoxelSpawners/VoxelMeshSpawner.h"
-#include "VoxelSpawners/VoxelSpawnerConfig.h"
 
 #include "Editor.h"
 #include "Materials/Material.h"
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
+#include "KismetCompilerModule.h"
 #include "ScopedTransaction.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Framework/Notifications/NotificationManager.h"
+#include "Kismet2/KismetEditorUtilities.h"
+#include "Misc/MessageDialog.h"
 #include "Subsystems/AssetEditorSubsystem.h"
 
 void FVoxelConvertLandscapeMaterial::Init()

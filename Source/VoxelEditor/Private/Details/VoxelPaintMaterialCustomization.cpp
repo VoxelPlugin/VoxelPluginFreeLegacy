@@ -1,23 +1,13 @@
 // Copyright 2020 Phyronnaz
 
 #include "Details/VoxelPaintMaterialCustomization.h"
-
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
+#include "VoxelEditorDetailsIncludes.h"
 #include "VoxelEditorDetailsUtilities.h"
 
-#include "Materials/MaterialInterface.h"
-#include "PropertyHandle.h"
-#include "DetailWidgetRow.h"
-#include "IDetailChildrenBuilder.h"
-#include "IPropertyUtilities.h"
-#include "IDetailGroup.h"
-#include "IDetailPropertyRow.h"
-#include "Widgets/Input/SComboBox.h"
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
-
-#define GET_CHILD_PROPERTY(PropertyHandle, Class, Property) PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(Class, Property)).ToSharedRef()
 
 void FVoxelPaintMaterialCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
@@ -479,5 +469,3 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 		]
 	];
 }
-
-#undef GET_CHILD_PROPERTY

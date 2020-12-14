@@ -2,13 +2,7 @@
 
 #include "Details/VoxelGraphOutputCustomization.h"
 #include "VoxelGraphOutputs.h"
-#include "VoxelMinimal.h"
-
-#include "PropertyHandle.h"
-#include "DetailWidgetRow.h"
-#include "Widgets/Layout/SSpacer.h"
-
-#define GET_CHILD_PROPERTY(PropertyHandle, Class, Property) PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(Class, Property)).ToSharedRef()
+#include "VoxelEditorDetailsIncludes.h"
 
 void FVoxelGraphOutputCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
@@ -27,5 +21,3 @@ void FVoxelGraphOutputCustomization::CustomizeHeader(TSharedRef<IPropertyHandle>
 		CategoryHandle->CreatePropertyValueWidget()
 	];
 }
-
-#undef GET_CHILD_PROPERTY

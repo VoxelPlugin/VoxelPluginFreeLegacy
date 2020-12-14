@@ -3,12 +3,7 @@
 #include "Details/VoxelBoolVectorCustomization.h"
 #include "VoxelMinimal.h"
 #include "VoxelBoolVector.h"
-
-#include "DetailWidgetRow.h"
-#include "DetailLayoutBuilder.h"
-#include "Widgets/Text/STextBlock.h"
-
-#define GET_CHILD_PROPERTY(PropertyHandle, Class, Property) PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(Class, Property)).ToSharedRef()
+#include "VoxelEditorDetailsIncludes.h"
 
 void FVoxelBoolVectorCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
@@ -86,5 +81,3 @@ void FVoxelBoolVectorCustomization::CustomizeChildren(TSharedRef<IPropertyHandle
 {
 	
 }
-
-#undef GET_CHILD_PROPERTY

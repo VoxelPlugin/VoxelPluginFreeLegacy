@@ -17,7 +17,7 @@ class VOXEL_API UVoxelSubsystemProxy : public UObject
 public:
 	using SubsystemClass = IVoxelSubsystem;
 
-	virtual TVoxelSharedRef<IVoxelSubsystem> GetSubsystem(FVoxelRuntime& Runtime) const;
+	virtual TVoxelSharedRef<IVoxelSubsystem> GetSubsystem(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings) const;
 };
 
 // Any class deriving from this will be created if ShouldCreateSubsystem returns true
@@ -27,7 +27,7 @@ class VOXEL_API UVoxelStaticSubsystemProxy : public UVoxelSubsystemProxy
 	GENERATED_BODY()
 
 public:
-	virtual bool ShouldCreateSubsystem(const FVoxelRuntime& Runtime) const
+	virtual bool ShouldCreateSubsystem(const FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings) const
 	{
 		return true;
 	}
@@ -49,13 +49,13 @@ class VOXEL_API UVoxelDynamicSubsystemProxy : public UVoxelSubsystemProxy
 	public: \
 	VOXEL_FWD_DECLARE_CLASS(InSubsystemClass) \
 	using SubsystemClass = InSubsystemClass; \
-	virtual TVoxelSharedRef<IVoxelSubsystem> GetSubsystem(FVoxelRuntime& Runtime) const override;
+	virtual TVoxelSharedRef<IVoxelSubsystem> GetSubsystem(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings) const override;
 
 #define DEFINE_VOXEL_SUBSYSTEM_PROXY(Class) \
-	TVoxelSharedRef<IVoxelSubsystem> Class::GetSubsystem(FVoxelRuntime& Runtime) const \
+	TVoxelSharedRef<IVoxelSubsystem> Class::GetSubsystem(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings) const \
 	{ \
 		static_assert(TIsSame<Class, SubsystemClass::ProxyClass>::Value, ""); \
-		return FVoxelUtilities::MakeGameThreadTickableDeleterPtr<SubsystemClass>(Runtime); \
+		return FVoxelUtilities::MakeGameThreadTickableDeleterPtr<SubsystemClass>(Runtime, Settings); \
 	}
 
 #define GENERATED_ABSTRACT_VOXEL_SUBSYSTEM_PROXY_BODY(InSubsystemClass) \
@@ -106,11 +106,11 @@ class VOXEL_API IVoxelSubsystem : public TVoxelSharedFromThis<IVoxelSubsystem>
 {
 public:
 	const FVoxelRuntimeSettings Settings;
-	const TVoxelSharedRef<FVoxelRuntimeDynamicSettings> DynamicSettings;
 	const TVoxelSharedRef<FVoxelRuntimeData> RuntimeData;
+	const TVoxelSharedRef<FVoxelRuntimeDynamicSettings> DynamicSettings;
 	const TVoxelWeakPtr<FVoxelRuntime> WeakRuntime;
 
-	explicit IVoxelSubsystem(FVoxelRuntime& Runtime);
+	IVoxelSubsystem(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings);
 	virtual ~IVoxelSubsystem();
 	UE_NONCOPYABLE(IVoxelSubsystem);
 	

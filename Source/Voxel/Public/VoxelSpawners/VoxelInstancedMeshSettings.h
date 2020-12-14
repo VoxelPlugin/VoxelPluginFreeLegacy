@@ -4,28 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
-#include "Engine/EngineTypes.h"
-#include "UObject/WeakObjectPtr.h"
-#include "Templates/SubclassOf.h"
+#include "VoxelInterval.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "Components/PrimitiveComponent.h"
+#include "VoxelSpawners/VoxelFoliageActor.h"
 #include "VoxelInstancedMeshSettings.generated.h"
 
-class UVoxelHierarchicalInstancedStaticMeshComponent;
 class UStaticMesh;
-class AVoxelSpawnerActor;
-
-USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelInt32Interval
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	int32 Min = 0;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	int32 Max = 0;
-};
+class UVoxelHierarchicalInstancedStaticMeshComponent;
 
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelInstancedMeshSettings
@@ -101,45 +87,23 @@ public:
 	TSubclassOf<UVoxelHierarchicalInstancedStaticMeshComponent> HISMTemplate;
 };
 
-USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelSpawnerActorSettings
+USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelBlueprintLibrary.MakeInstancedMeshKey", HasNativeBreak="Voxel.VoxelBlueprintLibrary.BreakInstancedMeshKey"))
+struct FVoxelInstancedMeshKey
 {
 	GENERATED_BODY()
-
-	FVoxelSpawnerActorSettings();
-
-public:
-	// Actor to spawn to replace the instanced mesh. After spawn, the SetStaticMesh event will be called on the actor with Mesh as argument
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Settings")
-	TSubclassOf<AVoxelSpawnerActor> ActorClass;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Settings", meta = (ShowOnlyInnerProperties))
-	FBodyInstance BodyInstance;
-	
-	// Set the lifespan of this actor. When it expires the object will be destroyed.
-	// Set to 0 to disable
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Settings", meta = (ClampMin = 0))
-	float Lifespan = 5.f;
-};
-
-struct FVoxelInstancedMeshAndActorSettings
-{
-	FVoxelInstancedMeshAndActorSettings() = default;
-	FVoxelInstancedMeshAndActorSettings(
-		TWeakObjectPtr<UStaticMesh> Mesh, 
-		const TMap<int32, UMaterialInterface*>& SectionMaterials, 
-		FVoxelInstancedMeshSettings MeshSettings, 
-		FVoxelSpawnerActorSettings ActorSettings);
-	
+		
+	UPROPERTY(EditAnywhere, Category = "Voxel")
 	TWeakObjectPtr<UStaticMesh> Mesh;
-	// Index in the array = mesh section index
-	TArray<TWeakObjectPtr<UMaterialInterface>> MaterialsOverrides;
-	FVoxelInstancedMeshSettings MeshSettings;
-	FVoxelSpawnerActorSettings ActorSettings;
+	
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	TSubclassOf<AVoxelFoliageActor> ActorClass;
 
-	TMap<int32, UMaterialInterface*> GetSectionsMaterials() const;
-	void SetSectionsMaterials(const TMap<int32, UMaterialInterface*>& SectionMaterials);
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	TArray<TWeakObjectPtr<UMaterialInterface>> Materials;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel")
+	FVoxelInstancedMeshSettings InstanceSettings;
 };
 
-VOXEL_API bool operator==(const FVoxelInstancedMeshAndActorSettings& A, const FVoxelInstancedMeshAndActorSettings& B);
-VOXEL_API uint32 GetTypeHash(const FVoxelInstancedMeshAndActorSettings& Settings);
+VOXEL_API bool operator==(const FVoxelInstancedMeshKey& A, const FVoxelInstancedMeshKey& B);
+VOXEL_API uint32 GetTypeHash(const FVoxelInstancedMeshKey& Settings);

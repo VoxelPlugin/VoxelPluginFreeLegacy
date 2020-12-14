@@ -16,6 +16,7 @@ enum class EVoxelRenderType : uint8;
 enum class EVoxelRGBHardness : uint8;
 enum class EVoxelNormalConfig : uint8;
 enum class EVoxelMaterialConfig : uint8;
+enum class EVoxelFoliageWorldType : uint8;
 
 struct FVoxelGeneratorInit;
 
@@ -27,7 +28,7 @@ class AVoxelWorld;
 class AVoxelRuntimeActor;
 
 class UMaterialInterface;
-class UVoxelSpawnerConfig;
+class UVoxelFoliageCollection;
 class UVoxelPlaceableItemManager;
 class UVoxelMultiplayerInterface;
 class UVoxelProceduralMeshComponent;
@@ -36,6 +37,7 @@ class UVoxelMaterialCollectionBase;
 class UVoxelLODSubsystemProxy;
 class UVoxelRendererSubsystemProxy;
 
+// Note: We don't store settings on the runtime, as subsystems can each have different settings when they are recreated
 class VOXEL_API FVoxelRuntimeSettings
 {
 public:
@@ -131,7 +133,10 @@ public:
 	float BoundsExtension;
 	
 public:
-	TWeakObjectPtr<UVoxelSpawnerConfig> SpawnerConfig;
+	TArray<TWeakObjectPtr<UVoxelFoliageCollection>> FoliageCollections;
+	EVoxelFoliageWorldType FoliageWorldType;
+	bool bIsFourWayBlend;
+
 	int32 HISMChunkSize;
 	int32 SpawnersCollisionDistanceInVoxel;
 	int64 MaxNumberOfFoliageInstances;
@@ -256,13 +261,12 @@ public:
 class VOXEL_API FVoxelRuntime : public TVoxelSharedFromThis<FVoxelRuntime>
 {
 public:
-	const FVoxelRuntimeSettings Settings;
-	const TVoxelSharedRef<FVoxelRuntimeDynamicSettings> DynamicSettings = MakeVoxelShared<FVoxelRuntimeDynamicSettings>();
 	const TVoxelSharedRef<FVoxelRuntimeData> RuntimeData = MakeVoxelShared<FVoxelRuntimeData>();
+	const TVoxelSharedRef<FVoxelRuntimeDynamicSettings> DynamicSettings = MakeVoxelShared<FVoxelRuntimeDynamicSettings>();
 
 	static TVoxelSharedRef<FVoxelRuntime> Create(const FVoxelRuntimeSettings& Settings);
 	
-	explicit FVoxelRuntime(const FVoxelRuntimeSettings& Settings);
+	FVoxelRuntime() = default;
 	~FVoxelRuntime();
 
 	void Destroy();
@@ -287,16 +291,21 @@ public:
 	}
 	
 	template<typename T>
-	void RecreateSubsystem()
+	void RecreateSubsystem(const FVoxelRuntimeSettings& Settings)
 	{
-		RecreateSubsystem(GetSubsystemImpl<T>());
+		RecreateSubsystem(GetSubsystemImpl<T>(), Settings);
 	}
 
 private:
 	TSet<TVoxelSharedPtr<IVoxelSubsystem>> AllSubsystems;
+
 	// The lock is needed for RecreateSubsystem
-	mutable FCriticalSection SubsystemsMapSection;
-	TMap<UClass*, TVoxelSharedPtr<IVoxelSubsystem>> SubsystemsMap_NeedsLock;
+	// We lock for the entire Recreate
+	// We never lock GetSubsystemImpl on the game thread since Recreate always runs on the game thread
+	// It also avoids recursive locks
+	mutable FCriticalSection RecreateSection;
+	
+	TMap<UClass*, TVoxelSharedPtr<IVoxelSubsystem>> SubsystemsMap;
 
 	bool bIsInit = false;
 	TSet<TVoxelSharedPtr<IVoxelSubsystem>> InitializedSubsystems;
@@ -305,15 +314,21 @@ private:
 	bool bIsDestroyed = false;
 	
 	void InitializeSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& Subsystem);
-	void RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsystem);
-	TVoxelSharedPtr<IVoxelSubsystem> AddSubsystem(UClass* Class);
+	void RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsystem, const FVoxelRuntimeSettings& Settings);
+	TVoxelSharedPtr<IVoxelSubsystem> AddSubsystem(UClass* Class, const FVoxelRuntimeSettings& Settings);
 
 	template<typename T>
 	TVoxelSharedPtr<IVoxelSubsystem> GetSubsystemImpl() const
 	{
 		VOXEL_ASYNC_FUNCTION_COUNTER();
-		FScopeLock Lock(&SubsystemsMapSection);
-		return SubsystemsMap_NeedsLock.FindRef(GetSubsystemProxyClass<T>());
+
+		const bool bNeedLock = !IsInGameThread();
+
+		if (bNeedLock) RecreateSection.Lock();
+		const auto Result = SubsystemsMap.FindRef(GetSubsystemProxyClass<T>());
+		if (bNeedLock) RecreateSection.Unlock();
+
+		return Result;
 	}
 	
 	template<typename T>
