@@ -394,7 +394,7 @@ TArray<AVoxelWorld*> UVoxelBlueprintLibrary::GetAllVoxelWorldsOverlappingActor(A
 ///////////////////////////////////////////////////////////////////////////////
 
 void UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorsInArea(
-	TArray<AVoxelSpawnerActor*>& OutActors, 
+	TArray<AVoxelFoliageActor*>& OutActors, 
 	AVoxelWorld* World,
 	FVoxelIntBox Bounds, 
 	EVoxelSpawnerActorSpawnType SpawnType)
@@ -402,7 +402,7 @@ void UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorsInArea(
 	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
 
-AVoxelSpawnerActor* UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorByInstanceIndex(
+AVoxelFoliageActor* UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorByInstanceIndex(
 	AVoxelWorld* World, 
 	UVoxelHierarchicalInstancedStaticMeshComponent* Component, 
 	int32 InstanceIndex)
@@ -412,15 +412,43 @@ AVoxelSpawnerActor* UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorByInstanceInde
 }
 
 void UVoxelBlueprintLibrary::AddInstances(
-	AVoxelWorld* const World, 
-	UStaticMesh* const Mesh,
+	AVoxelWorld* World,
+	UStaticMesh* Mesh,
 	const TArray<FTransform>& Transforms,
-	const TArray<FLinearColor>& Colors,
-	FVoxelInstancedMeshSettings InstanceSettings,
-	FVoxelSpawnerActorSettings ActorSettings,
-	const FVector FloatingDetectionOffset)
+	FVoxelInstancedMeshKey MeshKey,
+	FVector FloatingDetectionOffset)
 {
 	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
+}
+
+FVoxelInstancedMeshKey UVoxelBlueprintLibrary::MakeInstancedMeshKey(
+	UStaticMesh* Mesh, 
+	TSubclassOf<AVoxelFoliageActor> ActorClass, 
+	TArray<UMaterialInterface*> Materials, 
+	FVoxelInstancedMeshSettings InstanceSettings)
+{
+	FVoxelInstancedMeshKey Key;
+	Key.Mesh = Mesh;
+	Key.ActorClass = ActorClass;
+	Key.Materials = TArray<TWeakObjectPtr<UMaterialInterface>>(Materials);
+	Key.InstanceSettings = InstanceSettings;
+	return Key;
+}
+
+void UVoxelBlueprintLibrary::BreakInstancedMeshKey(
+	FVoxelInstancedMeshKey Key, 
+	UStaticMesh*& Mesh, 
+	TSubclassOf<AVoxelFoliageActor>& ActorClass, 
+	TArray<UMaterialInterface*>& Materials, 
+	FVoxelInstancedMeshSettings& InstanceSettings)
+{
+	Mesh = Key.Mesh.Get();
+	ActorClass = Key.ActorClass;
+	for (const TWeakObjectPtr<UMaterialInterface>& Material : Key.Materials)
+	{
+		Materials.Add(Material.Get());
+	}
+	InstanceSettings = Key.InstanceSettings;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

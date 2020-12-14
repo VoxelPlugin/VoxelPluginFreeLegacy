@@ -210,3 +210,10 @@ enum class EVoxelTaskType : uint8
 	
 	Max UMETA(Hidden)
 };
+
+UENUM()
+enum class EVoxelFoliageWorldType : uint8
+{
+	Flat,
+	Sphere
+};

@@ -7,13 +7,12 @@
 #include "VoxelMessages.h"
 #include "VoxelPriorityHandler.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
-#include "VoxelSpawners/VoxelSpawnerConfig.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelRender/LODManager/VoxelDefaultLODManager.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
+#include "VoxelSpawners/VoxelFoliageCollection.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
-
 #include "UObject/UObjectHash.h"
 
 FVoxelRuntimeSettings::FVoxelRuntimeSettings()
@@ -24,7 +23,7 @@ FVoxelRuntimeSettings::FVoxelRuntimeSettings()
 
 void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 {
-#define SET(Name) Name = InRuntime.Name
+#define SET(Name) Name = decltype(Name)(InRuntime.Name)
 
 	Owner = const_cast<AVoxelRuntimeActor*>(&InRuntime);
 	World = InRuntime.GetWorld();
@@ -105,7 +104,9 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(bDoNotMergeCollisionsAndNavmesh);
 	SET(BoundsExtension);
 
-	SET(SpawnerConfig);
+	SET(FoliageCollections);
+	SET(FoliageWorldType);
+	SET(bIsFourWayBlend);
 	SET(HISMChunkSize);
 	SET(SpawnersCollisionDistanceInVoxel);
 	SET(MaxNumberOfFoliageInstances);
@@ -153,7 +154,7 @@ void FVoxelRuntimeSettings::ConfigurePreview()
 
 	if (VoxelWorld.IsValid() && !VoxelWorld->bEnableFoliageInEditor)
 	{
-		SpawnerConfig = nullptr;
+		FoliageCollections.Reset();
 	}
 
 	Fixup();
@@ -380,7 +381,7 @@ TVoxelSharedRef<FVoxelRuntime> FVoxelRuntime::Create(const FVoxelRuntimeSettings
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
 	
-	const auto Runtime = FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRuntime>(Settings);
+	const auto Runtime = FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRuntime>();
 	{
 		const TGuardValue<bool> InitGuard(Runtime->bIsInit, true);
 
@@ -393,7 +394,7 @@ TVoxelSharedRef<FVoxelRuntime> FVoxelRuntime::Create(const FVoxelRuntimeSettings
 			{
 				if (!Class->HasAnyClassFlags(CLASS_Abstract))
 				{
-					Runtime->AddSubsystem(Class);
+					Runtime->AddSubsystem(Class, Settings);
 				}
 			}
 		}
@@ -407,7 +408,7 @@ TVoxelSharedRef<FVoxelRuntime> FVoxelRuntime::Create(const FVoxelRuntimeSettings
 					Class = DefaultClass;
 				}
 
-				Runtime->AddSubsystem(Class);
+				Runtime->AddSubsystem(Class, Settings);
 			};
 
 			AddMainSubsystem(Settings.RendererSubsystem, UVoxelDefaultRendererSubsystemProxy::StaticClass());
@@ -459,11 +460,6 @@ void FVoxelRuntime::Destroy()
 	}
 }
 
-FVoxelRuntime::FVoxelRuntime(const FVoxelRuntimeSettings& Settings)
-	: Settings(Settings)
-{
-}
-
 void FVoxelRuntime::InitializeSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& Subsystem)
 {
 	VOXEL_FUNCTION_COUNTER();
@@ -487,7 +483,7 @@ void FVoxelRuntime::InitializeSubsystem(const TVoxelSharedPtr<IVoxelSubsystem>& 
 	InitializedSubsystems.Add(Subsystem);
 }
 
-void FVoxelRuntime::RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsystem)
+void FVoxelRuntime::RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsystem, const FVoxelRuntimeSettings& Settings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
@@ -497,18 +493,17 @@ void FVoxelRuntime::RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsys
 		// Allowed: useful to recreate subsystems whose class didn't want to be created
 		return;
 	}
-
+	
+	FScopeLock Lock(&RecreateSection);
+	
 	OldSubsystem->Destroy();
 	AllSubsystems.Remove(OldSubsystem);
 
+	for (auto It = SubsystemsMap.CreateIterator(); It; ++It)
 	{
-		FScopeLock Lock(&SubsystemsMapSection);
-		for (auto It = SubsystemsMap_NeedsLock.CreateIterator(); It; ++It)
+		if (It.Value() == OldSubsystem)
 		{
-			if (It.Value() == OldSubsystem)
-			{
-				It.RemoveCurrent();
-			}
+			It.RemoveCurrent();
 		}
 	}
 	
@@ -520,7 +515,7 @@ void FVoxelRuntime::RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsys
 		check(!bIsInit);
 		const TGuardValue<bool> InitGuard(bIsInit, true);
 
-		NewSubsystem = AddSubsystem(Class);
+		NewSubsystem = AddSubsystem(Class, Settings);
 		if (!NewSubsystem)
 		{
 			// ShouldCreateSubsystem returned false
@@ -534,7 +529,7 @@ void FVoxelRuntime::RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsys
 	NewSubsystem->PostCreate();
 }
 
-TVoxelSharedPtr<IVoxelSubsystem> FVoxelRuntime::AddSubsystem(UClass* Class)
+TVoxelSharedPtr<IVoxelSubsystem> FVoxelRuntime::AddSubsystem(UClass* Class, const FVoxelRuntimeSettings& Settings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
@@ -543,25 +538,22 @@ TVoxelSharedPtr<IVoxelSubsystem> FVoxelRuntime::AddSubsystem(UClass* Class)
 	const bool bStaticSubsystem = Class->IsChildOf<UVoxelStaticSubsystemProxy>();
 	check(bStaticSubsystem || Class->IsChildOf<UVoxelDynamicSubsystemProxy>());
 	
-	if (bStaticSubsystem && !Class->GetDefaultObject<UVoxelStaticSubsystemProxy>()->ShouldCreateSubsystem(*this))
+	if (bStaticSubsystem && !Class->GetDefaultObject<UVoxelStaticSubsystemProxy>()->ShouldCreateSubsystem(*this, Settings))
 	{
 		return nullptr;
 	}
 
-	const TVoxelSharedRef<IVoxelSubsystem> Subsystem = Class->GetDefaultObject<UVoxelSubsystemProxy>()->GetSubsystem(*this);
+	const TVoxelSharedRef<IVoxelSubsystem> Subsystem = Class->GetDefaultObject<UVoxelSubsystemProxy>()->GetSubsystem(*this, Settings);
 	AllSubsystems.Add(Subsystem);
 
 	// Add to the whole hierarchy so that we can query using parent classes
+	for (UClass* ClassIt = Class;
+		ClassIt != UVoxelStaticSubsystemProxy::StaticClass() &&
+		ClassIt != UVoxelDynamicSubsystemProxy::StaticClass();
+		ClassIt = ClassIt->GetSuperClass())
 	{
-		FScopeLock Lock(&SubsystemsMapSection);
-		for (UClass* ClassIt = Class;
-			ClassIt != UVoxelStaticSubsystemProxy::StaticClass() &&
-			ClassIt != UVoxelDynamicSubsystemProxy::StaticClass();
-			ClassIt = ClassIt->GetSuperClass())
-		{
-			ensure(!SubsystemsMap_NeedsLock.Contains(ClassIt));
-			SubsystemsMap_NeedsLock.Add(ClassIt, Subsystem);
-		}
+		ensure(!SubsystemsMap.Contains(ClassIt));
+		SubsystemsMap.Add(ClassIt, Subsystem);
 	}
 
 	return Subsystem;

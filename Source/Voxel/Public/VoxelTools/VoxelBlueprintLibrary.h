@@ -17,7 +17,7 @@
 
 enum class EVoxelTaskType : uint8;
 class UVoxelHierarchicalInstancedStaticMeshComponent;
-class AVoxelSpawnerActor;
+class AVoxelFoliageActor;
 class AVoxelWorld;
 class APlayerState;
 class AController;
@@ -148,15 +148,15 @@ public:
 	
 public:
 	// Will replace instanced static mesh instances by actors
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Foliage", meta = (DefaultToSelf = "World"))
 	static void SpawnVoxelSpawnerActorsInArea(
-		TArray<AVoxelSpawnerActor*>& OutActors, 
+		TArray<AVoxelFoliageActor*>& OutActors, 
 		AVoxelWorld* World,
 		FVoxelIntBox Bounds,
 		EVoxelSpawnerActorSpawnType SpawnType = EVoxelSpawnerActorSpawnType::OnlyFloating);
 
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
-	static AVoxelSpawnerActor* SpawnVoxelSpawnerActorByInstanceIndex(
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Foliage", meta = (DefaultToSelf = "World"))
+	static AVoxelFoliageActor* SpawnVoxelSpawnerActorByInstanceIndex(
 		AVoxelWorld* World,
 		UVoxelHierarchicalInstancedStaticMeshComponent* Component,
 		int32 InstanceIndex);
@@ -169,15 +169,29 @@ public:
 	 * @param Colors					The colors to send to the instance material (use GetVoxelMaterialFromPerInstanceRandom to get it)
 	 * @param FloatingDetectionOffset	Increase this if your foliage is enabling physics too soon
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World", AdvancedDisplay = "FloatingDetectionOffset"))
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Foliage", meta = (DefaultToSelf = "World", AdvancedDisplay = "FloatingDetectionOffset"))
 	static void AddInstances(
 		AVoxelWorld* World,
 		UStaticMesh* Mesh,
 		const TArray<FTransform>& Transforms,
-		const TArray<FLinearColor>& Colors,
-		FVoxelInstancedMeshSettings InstanceSettings,
-		FVoxelSpawnerActorSettings ActorSettings,
+		FVoxelInstancedMeshKey MeshKey,
 		FVector FloatingDetectionOffset = FVector(0, 0, -10));
+	
+	UFUNCTION(BlueprintPure, Category="Voxel|Foliage", meta=(Keywords="construct build", NativeMakeFunc))
+	static FVoxelInstancedMeshKey MakeInstancedMeshKey(
+		UStaticMesh* Mesh,
+		TSubclassOf<AVoxelFoliageActor> ActorClass,
+		TArray<UMaterialInterface*> Materials,
+		FVoxelInstancedMeshSettings InstanceSettings);
+	
+	UFUNCTION(BlueprintPure, Category="Voxel|Foliage", meta=(NativeBreakFunc))
+	static void BreakInstancedMeshKey(
+		FVoxelInstancedMeshKey Key,
+		UStaticMesh*& Mesh,
+		TSubclassOf<AVoxelFoliageActor>& ActorClass,
+		TArray<UMaterialInterface*>& Materials,
+		FVoxelInstancedMeshSettings& InstanceSettings);
+
 	
 public:
 	/**

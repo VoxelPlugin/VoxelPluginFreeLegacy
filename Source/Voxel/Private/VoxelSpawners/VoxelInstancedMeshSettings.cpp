@@ -2,62 +2,12 @@
 
 #include "VoxelSpawners/VoxelInstancedMeshSettings.h"
 #include "VoxelSpawners/VoxelHierarchicalInstancedStaticMeshComponent.h"
-#include "VoxelSpawners/VoxelSpawnerActor.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 #include "Engine/CollisionProfile.h"
 
 FVoxelInstancedMeshSettings::FVoxelInstancedMeshSettings()
 {
 	BodyInstance.SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
-}
-
-FVoxelSpawnerActorSettings::FVoxelSpawnerActorSettings()
-{
-	ActorClass = AVoxelMeshSpawnerActor::StaticClass();
-	BodyInstance.SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
-}
-
-FVoxelInstancedMeshAndActorSettings::FVoxelInstancedMeshAndActorSettings(
-	TWeakObjectPtr<UStaticMesh> Mesh,
-	const TMap<int32, UMaterialInterface*>& SectionMaterials,
-	FVoxelInstancedMeshSettings MeshSettings,
-	FVoxelSpawnerActorSettings ActorSettings)
-	: Mesh(Mesh)
-	, MeshSettings(MeshSettings)
-	, ActorSettings(ActorSettings)
-{
-	SetSectionsMaterials(SectionMaterials);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-TMap<int32, UMaterialInterface*> FVoxelInstancedMeshAndActorSettings::GetSectionsMaterials() const
-{
-	TMap<int32, UMaterialInterface*> SectionsMaterials;
-	for (int32 Index = 0; Index < MaterialsOverrides.Num(); Index++)
-	{
-		const TWeakObjectPtr<UMaterialInterface> Material = MaterialsOverrides[Index];
-		if (Material.IsValid())
-		{
-			SectionsMaterials.Add(Index, Material.Get());
-		}
-	}
-	return SectionsMaterials;
-}
-
-void FVoxelInstancedMeshAndActorSettings::SetSectionsMaterials(const TMap<int32, UMaterialInterface*>& SectionMaterials)
-{
-	MaterialsOverrides.Reset();
-	for (auto& It : SectionMaterials)
-	{
-		if (It.Key >= MaterialsOverrides.Num())
-		{
-			MaterialsOverrides.SetNum(It.Key + 1);
-		}
-		MaterialsOverrides[It.Key] = It.Value;
-	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -108,7 +58,7 @@ inline uint32 GetTypeHash(const FBodyInstance& A)
 	return FFoliageTypeCustomizationHelpers::GetTypeHashBody(A);
 }
 
-inline uint32 GetTypeHash(TArray<TWeakObjectPtr<UMaterialInterface>> Materials)
+inline uint32 GetTypeHash(const TArray<TWeakObjectPtr<UMaterialInterface>>& Materials)
 {
 	uint32 Hash = Materials.Num();
 	for (auto& Material : Materials)
@@ -141,21 +91,13 @@ inline bool operator==(const FVoxelInstancedMeshSettings& A, const FVoxelInstanc
 		A.HISMTemplate                   == B.HISMTemplate;
 }
 
-inline bool operator==(const FVoxelSpawnerActorSettings& A, const FVoxelSpawnerActorSettings& B)
-{
-	return
-		A.ActorClass       == B.ActorClass       &&
-		A.BodyInstance == B.BodyInstance &&
-		A.Lifespan         == B.Lifespan;
-}
-
-bool operator==(const FVoxelInstancedMeshAndActorSettings& A, const FVoxelInstancedMeshAndActorSettings& B)
+bool operator==(const FVoxelInstancedMeshKey& A, const FVoxelInstancedMeshKey& B)
 {
 	return
 		A.Mesh               == B.Mesh               &&
-		A.MaterialsOverrides == B.MaterialsOverrides &&
-		A.MeshSettings       == B.MeshSettings       &&
-		A.ActorSettings      == B.ActorSettings;
+		A.ActorClass	     == B.ActorClass	     &&
+		A.Materials			 == B.Materials			 &&
+		A.InstanceSettings   == B.InstanceSettings;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -184,22 +126,13 @@ inline uint32 GetTypeHash(const FVoxelInstancedMeshSettings& Settings)
 		0;
 }
 
-inline uint32 GetTypeHash(const FVoxelSpawnerActorSettings& Settings)
-{
-	return
-		HASH(ActorClass)
-		HASH(BodyInstance)
-		HASH(Lifespan)
-		0;
-}
-
-uint32 GetTypeHash(const FVoxelInstancedMeshAndActorSettings& Settings)
+uint32 GetTypeHash(const FVoxelInstancedMeshKey& Settings)
 {
 	return
 		HASH(Mesh)
-		HASH(MaterialsOverrides)
-		HASH(MeshSettings)
-		HASH(ActorSettings)
+		HASH(ActorClass)
+		HASH(Materials)
+		HASH(InstanceSettings)
 		0;
 }
 #undef HASH

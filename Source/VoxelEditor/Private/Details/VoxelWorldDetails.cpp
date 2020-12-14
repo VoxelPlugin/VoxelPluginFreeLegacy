@@ -141,7 +141,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, ProcMeshClass));
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bRenderWorld));
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bStaticWorld));
-		DetailLayout.HideCategory("Voxel - Spawners");
+		DetailLayout.HideCategory("Voxel - Foliage");
 		DetailLayout.HideCategory("Physics");
 		DetailLayout.HideCategory("Voxel - Collisions");
 		DetailLayout.HideCategory("Voxel - Navmesh");
@@ -192,7 +192,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		SortCategory("Voxel - World Size", Order++, false);
 		SortCategory("Voxel - Rendering", Order++, false);
 		SortCategory("Voxel - Materials", Order++, false);
-		SortCategory("Voxel - Spawners", Order++, true);
+		SortCategory("Voxel - Foliage", Order++, true);
 		SortCategory("Physics", Order++, true, "Voxel - Physics");
 		SortCategory("Voxel - Collisions", Order++, true);
 		SortCategory("Voxel - Navmesh", Order++, true);

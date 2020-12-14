@@ -30,7 +30,8 @@
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 
-#include "VoxelSpawners/VoxelSpawnerConfig.h"
+#include "VoxelSpawners/VoxelFoliage.h"
+#include "VoxelSpawners/VoxelFoliageCollection.h"
 
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -896,14 +897,8 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 	GameThreadTasks = MakeVoxelShared<FGameThreadTasks>();
 
 	{
-		FVoxelRuntimeSettings RuntimeSettings;
-		RuntimeSettings.SetFromRuntime(*this);
-
-		if (PlayType == EVoxelPlayType::Preview)
-		{
-			RuntimeSettings.ConfigurePreview();
-		}
-
+		FVoxelRuntimeSettings RuntimeSettings = GetRuntimeSettings();
+		
 		if (Info.bOverrideData)
 		{
 			ensure(!(Info.DataOverride && Info.DataOverride_Raw));
@@ -945,9 +940,9 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 		OnMaxFoliageInstancesReached.Broadcast();
 	});
 	
-	if (SpawnerConfig)
+	if (FoliageCollections.Num() > 0)
 	{
-		FVoxelMessages::Info("Spawners are only available in Voxel Plugin Pro", this);
+		FVoxelMessages::Info("FoliageCollections are only available in Voxel Plugin Pro", this);
 	}
 	if (bEnableMultiplayer)
 	{
@@ -1170,11 +1165,12 @@ void AVoxelWorld::RecreateRender()
 	check(IsCreated());
 
 	Runtime->DynamicSettings->SetFromRuntime(*this);
+	const FVoxelRuntimeSettings RuntimeSettings = GetRuntimeSettings();
 
 	
-	Runtime->RecreateSubsystem<IVoxelLODManager>();
-	Runtime->RecreateSubsystem<IVoxelRenderer>();
-	Runtime->RecreateSubsystem<FVoxelTexturePool>();
+	Runtime->RecreateSubsystem<IVoxelLODManager>(RuntimeSettings);
+	Runtime->RecreateSubsystem<IVoxelRenderer>(RuntimeSettings);
+	Runtime->RecreateSubsystem<FVoxelTexturePool>(RuntimeSettings);
 
 	DestroyVoxelComponents();
 	DebugTextures.Reset();
@@ -1182,10 +1178,6 @@ void AVoxelWorld::RecreateRender()
 
 void AVoxelWorld::RecreateSpawners()
 {
-	if (SpawnerConfig)
-	{
-		FVoxelMessages::Info("Spawners are only available in Voxel Plugin Pro", this);
-	}
 }
 
 void AVoxelWorld::RecreateAll(const FVoxelWorldCreateInfo& Info)
@@ -1194,6 +1186,19 @@ void AVoxelWorld::RecreateAll(const FVoxelWorldCreateInfo& Info)
 
 	DestroyWorldInternal();
 	CreateWorldInternal(Info);
+}
+
+FVoxelRuntimeSettings AVoxelWorld::GetRuntimeSettings() const
+{
+	FVoxelRuntimeSettings RuntimeSettings;
+	RuntimeSettings.SetFromRuntime(*this);
+
+	if (PlayType == EVoxelPlayType::Preview)
+	{
+		RuntimeSettings.ConfigurePreview();
+	}
+
+	return RuntimeSettings;
 }
 
 #if WITH_EDITOR

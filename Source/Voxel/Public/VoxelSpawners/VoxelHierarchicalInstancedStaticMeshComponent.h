@@ -13,7 +13,6 @@
 struct FVoxelSpawnerTransform;
 struct FVoxelSpawnerTransforms;
 struct FVoxelHISMBuiltData;
-struct FVoxelInstancedMeshAndActorSettings;
 class FVoxelPool;
 class FVoxelConstDataAccelerator;
 class FVoxelInstancedMeshManager;

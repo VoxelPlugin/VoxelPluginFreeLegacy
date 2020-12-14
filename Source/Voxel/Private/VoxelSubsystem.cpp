@@ -2,16 +2,16 @@
 
 #include "VoxelSubsystem.h"
 
-TVoxelSharedRef<IVoxelSubsystem> UVoxelSubsystemProxy::GetSubsystem(FVoxelRuntime& Runtime) const
+TVoxelSharedRef<IVoxelSubsystem> UVoxelSubsystemProxy::GetSubsystem(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings) const
 {
 	check(false);
 	return TVoxelSharedPtr<IVoxelSubsystem>().ToSharedRef();
 }
 
-IVoxelSubsystem::IVoxelSubsystem(FVoxelRuntime& Runtime)
-	: Settings(Runtime.Settings)
-	, DynamicSettings(Runtime.DynamicSettings)
+IVoxelSubsystem::IVoxelSubsystem(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings)
+	: Settings(Settings)
 	, RuntimeData(Runtime.RuntimeData)
+	, DynamicSettings(Runtime.DynamicSettings)
 	, WeakRuntime(Runtime.AsShared())
 {
 }

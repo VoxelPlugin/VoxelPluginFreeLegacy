@@ -337,6 +337,8 @@ public:
 	void RecreateSpawners();
 	void RecreateAll(const FVoxelWorldCreateInfo& Info);
 
+	FVoxelRuntimeSettings GetRuntimeSettings() const;
+
 #if WITH_EDITOR
 	FSimpleMulticastDelegate OnPropertyChanged;
 	FSimpleMulticastDelegate OnPropertyChanged_Interactive;

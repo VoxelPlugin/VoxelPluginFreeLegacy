@@ -6,8 +6,7 @@
 #include "Factories/Factory.h"
 #include "VoxelData/VoxelSave.h"
 #include "VoxelNodes/VoxelGraphMacro.h"
-#include "VoxelSpawners/VoxelMeshSpawner.h"
-#include "VoxelSpawners/VoxelSpawnerConfig.h"
+#include "VoxelSpawners/VoxelFoliageCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelBasicMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
@@ -38,7 +37,7 @@ public:
 	{
 		Super::PostInitProperties();
 
-		if (GetClass() != StaticClass())
+		if (!GetClass()->HasAnyClassFlags(CLASS_Abstract))
 		{
 			ensure(!SupportedClass);
 			SupportedClass = GetSupportedClass_Voxel();
@@ -66,28 +65,10 @@ class UVoxelWorldSaveObjectFactory : public UVoxelFactory
 ///////////////////////////////////////////////////////////////////////////////
 
 UCLASS()
-class UVoxelMeshSpawnerFactory : public UVoxelFactory
+class UVoxelFoliageCollectionFactory : public UVoxelFactory
 {
 	GENERATED_BODY()
-	GENERATED_VOXEL_FACTORY_BODY(UVoxelMeshSpawner)
-};
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-UCLASS()
-class UVoxelSpawnerConfigFactory : public UVoxelFactory
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_FACTORY_BODY(UVoxelSpawnerConfig)
-};
-
-UCLASS()
-class UVoxelSpawnerCollectionFactory : public UVoxelFactory
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_FACTORY_BODY(UVoxelSpawnerCollection)
+	GENERATED_VOXEL_FACTORY_BODY(UVoxelFoliageCollection)
 };
 
 ///////////////////////////////////////////////////////////////////////////////
