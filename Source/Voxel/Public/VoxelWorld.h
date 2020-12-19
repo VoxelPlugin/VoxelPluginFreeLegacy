@@ -178,7 +178,7 @@ public:
 public:
 	// Is this world created?
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
-	inline bool IsCreated() const { return bIsCreated; }
+	inline bool IsCreated() const { return Runtime.IsValid(); }
 
 	// Has the VoxelRenderer finished loading?
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
@@ -302,7 +302,6 @@ private:
 	UPROPERTY()
 	bool bIsToggled = false;
 	
-	bool bIsCreated = false;
 	bool bIsLoaded = false;
 	bool bSimulatePhysicsOnceLoaded = false;
 	EVoxelPlayType PlayType = EVoxelPlayType::Game;

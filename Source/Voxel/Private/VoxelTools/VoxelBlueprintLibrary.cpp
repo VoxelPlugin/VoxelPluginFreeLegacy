@@ -15,7 +15,7 @@
 #include "VoxelRender/VoxelChunkMesh.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
-#include "VoxelSpawners/VoxelHierarchicalInstancedStaticMeshComponent.h"
+#include "VoxelFoliage/VoxelHierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelEvents/VoxelEventManager.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
 #include "VoxelAssets/VoxelHeightmapAssetData.h"
@@ -419,36 +419,6 @@ void UVoxelBlueprintLibrary::AddInstances(
 	FVector FloatingDetectionOffset)
 {
 	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
-}
-
-FVoxelInstancedMeshKey UVoxelBlueprintLibrary::MakeInstancedMeshKey(
-	UStaticMesh* Mesh, 
-	TSubclassOf<AVoxelFoliageActor> ActorClass, 
-	TArray<UMaterialInterface*> Materials, 
-	FVoxelInstancedMeshSettings InstanceSettings)
-{
-	FVoxelInstancedMeshKey Key;
-	Key.Mesh = Mesh;
-	Key.ActorClass = ActorClass;
-	Key.Materials = TArray<TWeakObjectPtr<UMaterialInterface>>(Materials);
-	Key.InstanceSettings = InstanceSettings;
-	return Key;
-}
-
-void UVoxelBlueprintLibrary::BreakInstancedMeshKey(
-	FVoxelInstancedMeshKey Key, 
-	UStaticMesh*& Mesh, 
-	TSubclassOf<AVoxelFoliageActor>& ActorClass, 
-	TArray<UMaterialInterface*>& Materials, 
-	FVoxelInstancedMeshSettings& InstanceSettings)
-{
-	Mesh = Key.Mesh.Get();
-	ActorClass = Key.ActorClass;
-	for (const TWeakObjectPtr<UMaterialInterface>& Material : Key.Materials)
-	{
-		Materials.Add(Material.Get());
-	}
-	InstanceSettings = Key.InstanceSettings;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

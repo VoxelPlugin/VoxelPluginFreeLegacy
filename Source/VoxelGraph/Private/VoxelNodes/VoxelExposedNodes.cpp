@@ -199,7 +199,7 @@ void UVoxelExposedNode::MakeNameUnique()
 
 FProperty& UVoxelExposedNode::GetParameterProperty() const
 {
-	const FName PropertyName = GetParameterPropertyName();
+	const FName PropertyName = GetParameterPropertyNameInternal();
 	FProperty* Property = GetClass()->FindPropertyByName(PropertyName);
 
 	if (ensure(Property))

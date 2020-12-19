@@ -11,7 +11,7 @@
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelRender/LODManager/VoxelDefaultLODManager.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
-#include "VoxelSpawners/VoxelFoliageCollection.h"
+#include "VoxelFoliage/VoxelFoliageCollection.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 #include "UObject/UObjectHash.h"
 
@@ -427,7 +427,7 @@ TVoxelSharedRef<FVoxelRuntime> FVoxelRuntime::Create(const FVoxelRuntimeSettings
 	
 	for (auto& Subsystem : Runtime->AllSubsystems)
 	{
-		Subsystem->PostCreate();
+		Subsystem->PostCreate(nullptr);
 	}
 	
 	return Runtime;
@@ -508,7 +508,6 @@ void FVoxelRuntime::RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsys
 	}
 	
 	UClass* Class = OldSubsystem->GetProxyClass();
-	OldSubsystem.Reset();
 
 	TVoxelSharedPtr<IVoxelSubsystem> NewSubsystem;
 	{
@@ -526,7 +525,7 @@ void FVoxelRuntime::RecreateSubsystem(TVoxelSharedPtr<IVoxelSubsystem> OldSubsys
 		InitializeSubsystem(NewSubsystem);
 		ensure(SubsystemsBeingInitialized.Num() == 0);
 	}
-	NewSubsystem->PostCreate();
+	NewSubsystem->PostCreate(OldSubsystem.Get());
 }
 
 TVoxelSharedPtr<IVoxelSubsystem> FVoxelRuntime::AddSubsystem(UClass* Class, const FVoxelRuntimeSettings& Settings)

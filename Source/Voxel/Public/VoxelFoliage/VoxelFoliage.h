@@ -3,29 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelDistance.h"
-#include "VoxelSpawners/VoxelFoliageDensity.h"
-#include "VoxelSpawners/VoxelInstancedMeshSettings.h"
-#include "VoxelGenerators/VoxelGeneratorOutputPicker.h"
+#include "VoxelFoliage/VoxelFoliageDensity.h"
+#include "VoxelFoliage/VoxelFoliageSpawnSettings.h"
+#include "VoxelFoliage/VoxelInstancedMeshSettings.h"
 #include "VoxelFoliage.generated.h"
-
-UENUM()
-enum class EVoxelFoliageSpawnType
-{
-	// Will line trace the voxel geometry to find spawning locations. Works with any kind of world/shapes
-	Ray,
-	// These spawners uses a height output from the generator to spawn, allowing for large spawn distance.
-	Height
-};
-
-UENUM()
-enum class EVoxelFoliageRandomGenerator : uint8
-{
-	// Evenly distributed points
-	Sobol,
-	// More uneven points than Sobol. Unreal uses Halton to spawn grass in the default Landscape system
-	Halton
-};
 
 UENUM()
 enum class EVoxelFoliageRotation : uint8
@@ -67,82 +48,33 @@ struct VOXEL_API FVoxelFoliageScale
 	FVoxelFloatInterval ScaleZ = { 1.0f, 1.0f };
 };
 
-UCLASS(Abstract, Blueprintable, EditInlineNew)
+UCLASS(Blueprintable, EditInlineNew)
 class VOXEL_API UVoxelFoliage : public UObject
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
-	UStaticMesh* StaticMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
-	TArray<UMaterialInterface*> Materials;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
-	TSubclassOf<AVoxelFoliageActor> ActorClass;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage", meta = (ShowOnlyInnerProperties, DisplayName = "Mesh Settings"))
+	FVoxelInstancedMeshKey MeshKey;
 	
 	// Used to autocomplete generator output names
-	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
-	FVoxelGeneratorPicker MainGeneratorForDropdowns;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
-	FVoxelInstancedMeshSettings InstancedMeshSettings;
+	UPROPERTY(EditAnywhere, Category = "Voxel Foliage", meta = (DisplayName = "Generator (for autocomplete only)"))
+	FVoxelGeneratorPicker OutputPickerGenerator;
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn")
-	EVoxelFoliageSpawnType SpawnType = EVoxelFoliageSpawnType::Ray;
-	
-	// Average distance between the instances
-	// Num Instances = Area in voxels / Square(DistanceBetweenInstancesInVoxel)
-	// Not a density because the values would be too small to store in a float
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn")
-	FVoxelDistance DistanceBetweenInstances = FVoxelDistance::Voxels(10);
-	
-	// Chunk size
-	// SpawnType = Height: make that as big as possible
-	// SpawnType = Ray: bigger values will improve performance at the cost of accuracy, as a lower resolution mesh will be used
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (DisplayName = "Chunk Size", ClampMin = 32))
-	int32 ChunkSize = 32;
-
-	// Generation distance
-	UPROPERTY(EditAnywhere, BlueprintReadWrite,  Category = "Spawn", meta = (DisplayName = "Generation Distance"))
-	FVoxelDistance GenerationDistance = FVoxelDistance::Voxels(32);
-
 	// The final density will be the multiplication of all of these
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn")
 	TArray<FVoxelFoliageDensity> Densities;
-	
-	// Controls the spawning pattern
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn")
-	EVoxelFoliageRandomGenerator RandomGenerator = EVoxelFoliageRandomGenerator::Halton;
 
-	// Will spawn foliage on the entire map, with no distance limit
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Spawn")
-	bool bInfiniteGenerationDistance = false;
-
-	// The name of the custom graph output used to determine the height
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn|Height", meta = (DisplayName = "Height Graph Output Name (height only)"))
-	FVoxelGeneratorOutputPicker HeightGraphOutputName_HeightOnly = "Height";
-		
-	// Controls whether to compute the density or the height first. Try both and see which is faster
-	// If false, the following are true when querying the density:
-	// - for flat worlds: Z = Height
-	// - for sphere worlds: Length(X, Y, Z) = Height
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Spawn|Height", meta = (DisplayName = "Compute Density First (height only)"))
-	bool bComputeDensityFirst_HeightOnly = false;
-
-	// If true, will not spawn height instances if they are now floating due to user edits or additional 3D noise in the generator
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Spawn|Height", meta = (DisplayName = "Check If Floating (height only)"))
-	bool bCheckIfFloating_HeightOnly = true;
-
-	// If true, will not spawn height instances if they are now covered due to user edits or additional 3D noise in the generator
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Spawn|Height", meta = (DisplayName = "Check If Covered (height only)"))
-	bool bCheckIfCovered_HeightOnly = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (ShowOnlyInnerProperties))
+	FVoxelFoliageSpawnSettings SpawnSettings;
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Placement - Slope", meta = (InlineEditConditionToggle))
+	bool bEnableSlopeRestriction = true;
+	
 	// Min/max angle between object up vector and generator up vector in degrees
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Placement - Slope", meta = (UIMin = 0, ClampMin = 0, UIMax = 180, ClampMax = 180))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Placement - Slope", meta = (EditCondition = "bEnableSlopeRestriction", UIMin = 0, ClampMin = 0, UIMax = 180, ClampMax = 180))
 	FVoxelFloatInterval GroundSlopeAngle = { 0, 90 };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Placement - Height", meta = (InlineEditConditionToggle))
@@ -199,12 +131,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Save")
 	bool bDoNotDespawn = false;
 
+	// Also used as a seed
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Save")
 	FGuid Guid;
-
-public:
-	UFUNCTION(BlueprintCallable, Category = "Voxel Foliage")
-	FVoxelInstancedMeshKey GetMeshKey() const;
 
 public:
 	//~ Begin UObject Interface

@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelSpawners/VoxelInstancedMeshSettings.h"
-#include "VoxelSpawners/VoxelHierarchicalInstancedStaticMeshComponent.h"
+#include "VoxelFoliage/VoxelInstancedMeshSettings.h"
+#include "VoxelFoliage/VoxelHierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 #include "Engine/CollisionProfile.h"
 
@@ -91,7 +91,7 @@ inline bool operator==(const FVoxelInstancedMeshSettings& A, const FVoxelInstanc
 		A.HISMTemplate                   == B.HISMTemplate;
 }
 
-bool operator==(const FVoxelInstancedMeshKey& A, const FVoxelInstancedMeshKey& B)
+bool operator==(const FVoxelInstancedMeshWeakKey& A, const FVoxelInstancedMeshWeakKey& B)
 {
 	return
 		A.Mesh               == B.Mesh               &&
@@ -126,7 +126,7 @@ inline uint32 GetTypeHash(const FVoxelInstancedMeshSettings& Settings)
 		0;
 }
 
-uint32 GetTypeHash(const FVoxelInstancedMeshKey& Settings)
+uint32 GetTypeHash(const FVoxelInstancedMeshWeakKey& Settings)
 {
 	return
 		HASH(Mesh)

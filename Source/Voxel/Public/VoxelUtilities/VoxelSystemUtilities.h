@@ -3,8 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelLogTable.h"
 #include "Interfaces/IPluginManager.h"
+
+class FVoxelLogTable;
 
 namespace FVoxelSystemUtilities
 {
@@ -14,7 +15,7 @@ namespace FVoxelSystemUtilities
 	struct FTable
 	{
 		FString Title;
-		FVoxelLogTable Table;
+		TSharedPtr<FVoxelLogTable> Table;
 	};
 	VOXEL_API void WriteTables(const FString& BaseName, const TArray<FTable>& Tables);
 

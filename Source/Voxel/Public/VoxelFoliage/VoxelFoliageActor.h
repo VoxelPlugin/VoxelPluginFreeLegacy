@@ -9,7 +9,7 @@
 class UVoxelPhysicsRelevancyComponent;
 class UStaticMeshComponent;
 
-UCLASS(Abstract)
+UCLASS()
 class VOXEL_API AVoxelFoliageActor : public AActor
 {
 	GENERATED_BODY()

@@ -8,17 +8,16 @@
 #include "VoxelGeneratorSamplerNodes.h"
 #include "VoxelGeneratorMergeNode.generated.h"
 
-class UVoxelGraphOutputsConfig;
-
 UCLASS(DisplayName = "Generator Merge", Category = "Generator")
 class VOXELGRAPH_API UVoxelNode_GeneratorMerge : public UVoxelNode_GeneratorSamplerBase
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Generators)
 
 public:	
 	UPROPERTY(EditAnywhere, Category = "Config")
-	UVoxelGraphOutputsConfig* Outputs;
+	TArray<FName> Outputs;
 
 	UPROPERTY(EditAnywhere, Category = "Config")
 	EVoxelMaterialConfig MaterialConfig;
@@ -38,6 +37,4 @@ public:
 	virtual EVoxelPinCategory GetOutputPinCategory(int32 PinIndex) const override;
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 	//~ End UVoxelNode Interface
-
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Generators); }
 };

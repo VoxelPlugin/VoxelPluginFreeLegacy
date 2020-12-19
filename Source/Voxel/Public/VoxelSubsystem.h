@@ -110,6 +110,7 @@ public:
 	const TVoxelSharedRef<FVoxelRuntimeDynamicSettings> DynamicSettings;
 	const TVoxelWeakPtr<FVoxelRuntime> WeakRuntime;
 
+	// This constructor should only be used to use the subsystem as a placeholder/empty subsystem
 	IVoxelSubsystem(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings);
 	virtual ~IVoxelSubsystem();
 	UE_NONCOPYABLE(IVoxelSubsystem);
@@ -141,7 +142,7 @@ protected:
 	virtual void Destroy();
 
 	// Called once every subsystem is created
-	virtual void PostCreate();
+	virtual void PostCreate(const IVoxelSubsystem* OldSubsystem);
 	// Called before the destructor is called. Used to clean up GC objects, as the destructor is delayed due to the tickable bug
 	virtual void PreDestructor();
 	

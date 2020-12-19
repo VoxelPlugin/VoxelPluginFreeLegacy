@@ -12,6 +12,7 @@ class VOXELGRAPH_API UVoxelNode_FloatParameter : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Value)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
@@ -20,10 +21,6 @@ public:
 	UVoxelNode_FloatParameter();
 
 	auto GetValue() const { return Value; }
-	
-	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Value); }
-	//~ End UVoxelExposedNode Interface
 };
 
 // Int parameter
@@ -32,6 +29,7 @@ class VOXELGRAPH_API UVoxelNode_IntParameter : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Value)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
@@ -40,10 +38,6 @@ public:
 	UVoxelNode_IntParameter();
 
 	auto GetValue() const { return Value; }
-
-	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Value); }
-	//~ End UVoxelExposedNode Interface
 };
 
 // Color parameter
@@ -52,16 +46,13 @@ class VOXELGRAPH_API UVoxelNode_ColorParameter : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Color)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	FLinearColor Color = FLinearColor(0, 0, 0, 1);
 
 	UVoxelNode_ColorParameter();
-
-	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Color); }
-	//~ End UVoxelExposedNode Interface
 };
 
 // Bool parameter
@@ -70,6 +61,7 @@ class VOXELGRAPH_API UVoxelNode_BoolParameter : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Value)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
@@ -78,8 +70,4 @@ public:
 	UVoxelNode_BoolParameter();
 
 	auto GetValue() const { return Value; }
-
-	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Value); }
-	//~ End UVoxelExposedNode Interface
 };

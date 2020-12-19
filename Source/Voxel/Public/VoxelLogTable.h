@@ -54,6 +54,10 @@ public:
 		}
 		FRow& AddNanoseconds(const FString& Title, double Value)
 		{
+			if (!FMath::IsFinite(Value))
+			{
+				Value = 0;
+			}
 			return Add(Title, FString::Printf(TEXT("%0.3fns"), Value), Value);
 		}
 
@@ -62,7 +66,14 @@ public:
 
 		static double GetPercent(double A, double B)
 		{
-			return 100 * A / double(B);
+			if (B == 0)
+			{
+				return 0;
+			}
+			else
+			{
+				return 100 * A / double(B);
+			}
 		}
 
 		friend FVoxelLogTable;

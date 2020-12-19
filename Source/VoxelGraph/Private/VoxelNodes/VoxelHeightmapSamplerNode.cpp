@@ -35,3 +35,8 @@ void UVoxelNode_HeightmapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 		ErrorReporter.AddMessageToNode(this, "invalid heightmap", EVoxelGraphNodeMessageType::Error);
 	}
 }
+
+UVoxelHeightmapAsset* UVoxelNode_HeightmapSampler::GetParameter() const
+{
+	return GetParameterInternal<UVoxelHeightmapAsset>();
+}

@@ -32,4 +32,10 @@ struct FVoxelDistance
 	{
 		return Type == EVoxelDistanceType::Voxels ? Distance : (Distance / VoxelSize);
 	}
+
+	friend bool operator==(const FVoxelDistance& Lhs, const FVoxelDistance& Rhs)
+	{
+		return Lhs.Type == Rhs.Type
+			&& Lhs.Distance == Rhs.Distance;
+	}
 };

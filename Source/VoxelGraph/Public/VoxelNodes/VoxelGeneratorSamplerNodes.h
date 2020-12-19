@@ -24,6 +24,7 @@ UCLASS(Abstract)
 class VOXELGRAPH_API UVoxelNode_SingleGeneratorSamplerBase : public UVoxelNode_GeneratorSamplerBase
 {
 	GENERATED_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Generator)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Config")
@@ -35,10 +36,6 @@ public:
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 	virtual FText GetTitle() const override;
 	//~ End UVoxelNode Interface
-
-	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Generator); }
-	//~ End UVoxelExposedNode Interface
 };
 
 UCLASS(DisplayName = "Get Generator Value")

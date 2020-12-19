@@ -44,7 +44,7 @@ class VOXEL_API FVoxelGeneratorCache : public FVoxelGCObject, public TVoxelShare
 public:
 	VOXEL_SUBSYSTEM_FWD(FVoxelGeneratorCacheSubsystem, GetCache);
 	
-	static TVoxelSharedRef<FVoxelGeneratorCache> Create(const FVoxelGeneratorInit& Init);
+	static TVoxelSharedRef<FVoxelGeneratorCache> Create(const FVoxelGeneratorInit& Init, TVoxelWeakPtr<IVoxelSpawnerManagerBase> SpawnerManager = nullptr);
 	
 public:
 	TVoxelSharedRef<FVoxelGeneratorInstance> MakeGeneratorInstance(FVoxelGeneratorPicker Picker);

@@ -2,7 +2,7 @@
 
 #include "VoxelData/VoxelDataSubsystem.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelGenerators/VoxelGeneratorInit.h"
+#include "VoxelGenerators/VoxelGeneratorCache.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 
@@ -22,8 +22,7 @@ void FVoxelDataSubsystem::Create()
 		DataSettings.Depth = FVoxelUtilities::ConvertDepth<RENDER_CHUNK_SIZE, DATA_CHUNK_SIZE>(Settings.RenderOctreeDepth);
 		DataSettings.WorldBounds = Settings.GetWorldBounds();
 
-		DataSettings.Generator = FVoxelGeneratorPicker(Settings.Generator).GetInstance();
-		DataSettings.Generator->Init(Settings.GetGeneratorInit());
+		DataSettings.Generator = GetSubsystemChecked<FVoxelGeneratorCache>().MakeGeneratorInstance(Settings.Generator);
 
 		DataSettings.bEnableMultiplayer = Settings.bEnableMultiplayer;
 		DataSettings.bEnableUndoRedo = Settings.bEnableUndoRedo;

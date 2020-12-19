@@ -13,6 +13,7 @@ struct FVoxelGeneratorParameter;
 
 struct FVoxelGeneratorOutputs
 {
+	TArray<FName> IntOutputs;
 	TArray<FName> FloatOutputs;
 };
 

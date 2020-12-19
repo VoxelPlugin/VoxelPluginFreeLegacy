@@ -23,6 +23,7 @@ class VOXELGRAPH_API UVoxelNode_Seed : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(DefaultValue)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
@@ -32,10 +33,6 @@ public:
 	FName Name_DEPRECATED;
 
 	UVoxelNode_Seed();
-
-	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(DefaultValue); }
-	//~ End UVoxelExposedNode Interface
 
 	//~ Begin UObject Interface
 	virtual void PostLoad() override;

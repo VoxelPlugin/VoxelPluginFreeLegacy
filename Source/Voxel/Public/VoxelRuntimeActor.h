@@ -17,6 +17,7 @@
 class UVoxelLODSubsystemProxy;
 class UVoxelRendererSubsystemProxy;
 
+class UVoxelFoliageBiomeType;
 class UVoxelFoliageCollection;
 class UVoxelMultiplayerInterface;
 class UVoxelPlaceableItemManager;

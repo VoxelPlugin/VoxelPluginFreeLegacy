@@ -57,6 +57,7 @@ public class VoxelEditor : ModuleRules
                 "KismetCompiler",
                 "ApplicationCore",
                 "EngineSettings",
+                "ToolMenus",
 #if UE_4_26_OR_LATER
                 "DeveloperSettings",
 #endif

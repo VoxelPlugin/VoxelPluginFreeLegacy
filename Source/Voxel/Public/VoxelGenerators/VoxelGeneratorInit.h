@@ -10,6 +10,7 @@
 class AVoxelWorld;
 class UVoxelMaterialCollectionBase;
 class FVoxelGeneratorCache;
+class IVoxelSpawnerManagerBase;
 
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelGeneratorInit
@@ -46,10 +47,13 @@ public:
 		const TWeakObjectPtr<const AVoxelWorld>& World);
 
 	TVoxelSharedRef<FVoxelGeneratorCache> GetGeneratorCache() const;
+	TVoxelSharedPtr<IVoxelSpawnerManagerBase> GetSpawnerManager() const;
+	
 	void AddReferencedObjects(FReferenceCollector& Collector);
 
 private:
 	TVoxelWeakPtr<FVoxelGeneratorCache> GeneratorCache;
+	TVoxelWeakPtr<IVoxelSpawnerManagerBase> SpawnerManager;
 
 	friend class FVoxelGeneratorCache;
 
