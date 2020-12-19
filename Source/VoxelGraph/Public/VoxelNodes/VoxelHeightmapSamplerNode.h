@@ -7,6 +7,7 @@
 #include "VoxelEnums.h"
 #include "VoxelHeightmapSamplerNode.generated.h"
 
+class UVoxelHeightmapAsset;
 class UVoxelHeightmapAssetFloat;
 class UVoxelHeightmapAssetUINT16;
 
@@ -42,6 +43,9 @@ public:
 	//~ End UVoxelNode Interface
 
 	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return bFloatHeightmap ? GET_OWN_MEMBER_NAME(HeightmapFloat) : GET_OWN_MEMBER_NAME(HeightmapUINT16); }
+	virtual FName GetParameterPropertyNameInternal() const override { return bFloatHeightmap ? GET_OWN_MEMBER_NAME(HeightmapFloat) : GET_OWN_MEMBER_NAME(HeightmapUINT16); }
+
+	virtual UVoxelHeightmapAsset* GetParameter() const;
+
 	//~ End UVoxelExposedNode Interface
 };

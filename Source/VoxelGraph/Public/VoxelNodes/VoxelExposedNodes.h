@@ -41,7 +41,7 @@ public:
 	TMap<FName, FString> CustomMetaData;
 
 	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const { ensure(false); return {}; }
+	virtual FName GetParameterPropertyNameInternal() const { ensure(false); return {}; }
 	virtual TMap<FName, FString> GetMetaData() const;
 	//~ End UVoxelExposedNode Interface
 
@@ -57,7 +57,7 @@ public:
 
 public:
 	template<typename T>
-	auto GetParameter() const
+	auto GetParameterInternal() const
 	{
 		return FVoxelGeneratorParametersUtilities::GetParameter<T>(GetParameterProperty(), this, GetParameterOverride());
 	}
@@ -81,3 +81,12 @@ private:
 	FProperty& GetParameterProperty() const;
 	const FString* GetParameterOverride() const;
 };
+
+#define GENERATED_EXPOSED_VOXELNODE_BODY(Parameter) \
+	public: \
+	virtual FName GetParameterPropertyNameInternal() const override { return GET_OWN_MEMBER_NAME(Parameter); } \
+	auto GetParameter() const \
+	{ \
+		return GetParameterInternal<TRemovePointer<TDecay<decltype(Parameter)>::Type>::Type>(); \
+	} \
+	private:

@@ -44,8 +44,11 @@ class VOXELGRAPH_API UVoxelGraphGenerator : public UVoxelTransformableGenerator
 	GENERATED_BODY()
 
 public:
+	UPROPERTY()
+	UVoxelGraphOutputsConfig* Outputs_DEPRECATED;
+	
 	UPROPERTY(EditAnywhere, Category = "Config")
-	UVoxelGraphOutputsConfig* Outputs;
+	TArray<FVoxelGraphOutput> CustomOutputs;
 	
 	TMap<uint32, FVoxelGraphOutput> GetOutputs() const;
 	TArray<FVoxelGraphPermutationArray> GetPermutations() const;
@@ -165,9 +168,9 @@ public:
 
 #if WITH_EDITOR
 	//~ Begin UObject Interface 
-	void PostInitProperties() override;
-	void PostLoad() override;
-	void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostInitProperties() override;
+	virtual void PostLoad() override;
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 	//~ End UObject Interface
 	
 	// Create a new node of NewNodeClass
@@ -199,5 +202,4 @@ private:
 
 private:
 	void UpdateSetterNodes();
-	void BindUpdateSetterNodes();
 };

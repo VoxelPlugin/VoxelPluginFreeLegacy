@@ -5,9 +5,10 @@
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
 #include "VoxelInterval.h"
+#include "Engine/StaticMesh.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "Components/PrimitiveComponent.h"
-#include "VoxelSpawners/VoxelFoliageActor.h"
+#include "VoxelFoliage/VoxelFoliageActor.h"
 #include "VoxelInstancedMeshSettings.generated.h"
 
 class UStaticMesh;
@@ -87,23 +88,52 @@ public:
 	TSubclassOf<UVoxelHierarchicalInstancedStaticMeshComponent> HISMTemplate;
 };
 
-USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelBlueprintLibrary.MakeInstancedMeshKey", HasNativeBreak="Voxel.VoxelBlueprintLibrary.BreakInstancedMeshKey"))
+USTRUCT(BlueprintType)
 struct FVoxelInstancedMeshKey
 {
 	GENERATED_BODY()
 		
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	TWeakObjectPtr<UStaticMesh> Mesh;
+	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
+	UStaticMesh* Mesh = nullptr;
 	
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
 	TSubclassOf<AVoxelFoliageActor> ActorClass;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
-	TArray<TWeakObjectPtr<UMaterialInterface>> Materials;
+	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
+	TArray<UMaterialInterface*> Materials;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel")
+	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
 	FVoxelInstancedMeshSettings InstanceSettings;
 };
 
-VOXEL_API bool operator==(const FVoxelInstancedMeshKey& A, const FVoxelInstancedMeshKey& B);
-VOXEL_API uint32 GetTypeHash(const FVoxelInstancedMeshKey& Settings);
+struct FVoxelInstancedMeshWeakKey
+{
+	TWeakObjectPtr<UStaticMesh> Mesh;
+	TSubclassOf<AVoxelFoliageActor> ActorClass;
+	TArray<TWeakObjectPtr<UMaterialInterface>> Materials;
+	FVoxelInstancedMeshSettings InstanceSettings;
+
+	FVoxelInstancedMeshWeakKey() = default;
+	FVoxelInstancedMeshWeakKey(const FVoxelInstancedMeshKey& Key)
+		: Mesh(Key.Mesh)
+		, ActorClass(Key.ActorClass)
+		, Materials(Key.Materials)
+		, InstanceSettings(Key.InstanceSettings)
+	{
+	}
+	operator FVoxelInstancedMeshKey() const
+	{
+		FVoxelInstancedMeshKey Result;
+		Result.Mesh = Mesh.Get();
+		Result.ActorClass = ActorClass;
+		for (const TWeakObjectPtr<UMaterialInterface>& Material : Materials)
+		{
+			Result.Materials.Add(Material.Get());
+		}
+		Result.InstanceSettings = InstanceSettings;
+		return Result;
+	}
+};
+
+VOXEL_API bool operator==(const FVoxelInstancedMeshWeakKey& A, const FVoxelInstancedMeshWeakKey& B);
+VOXEL_API uint32 GetTypeHash(const FVoxelInstancedMeshWeakKey& Settings);

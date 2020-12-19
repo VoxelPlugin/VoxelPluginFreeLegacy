@@ -98,6 +98,7 @@ FVoxelGeneratorOutputs UVoxelGenerator::GetGeneratorOutputs() const
 
 	// Kinda slow
 	const auto Instance = const_cast<UVoxelGenerator*>(this)->GetInstance();
+	Instance->GetOutputsPtrMap<int32>().GenerateKeyArray(Outputs.IntOutputs);
 	Instance->GetOutputsPtrMap<v_flt>().GenerateKeyArray(Outputs.FloatOutputs);
 
 	return Outputs;

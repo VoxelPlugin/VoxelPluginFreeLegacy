@@ -28,6 +28,7 @@ class AVoxelWorld;
 class AVoxelRuntimeActor;
 
 class UMaterialInterface;
+class UVoxelFoliageBiomeType;
 class UVoxelFoliageCollection;
 class UVoxelPlaceableItemManager;
 class UVoxelMultiplayerInterface;

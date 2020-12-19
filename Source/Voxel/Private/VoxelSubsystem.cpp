@@ -34,7 +34,7 @@ void IVoxelSubsystem::Destroy()
 	State = EState::Destroy;
 }
 
-void IVoxelSubsystem::PostCreate()
+void IVoxelSubsystem::PostCreate(const IVoxelSubsystem* OldSubsystem)
 {
 	ensure(State == EState::Before_PostCreate);
 	State = EState::PostCreate;

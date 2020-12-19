@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/Blueprint.h"
 #include "Engine/StaticMesh.h"
-#include "VoxelSpawners/VoxelFoliage.h"
+#include "VoxelFoliage/VoxelFoliage.h"
 #include "ThumbnailRendering/BlueprintThumbnailRenderer.h"
 #include "ThumbnailRendering/StaticMeshThumbnailRenderer.h"
 #include "VoxelFoliageThumbnailRenderer.generated.h"
@@ -65,6 +65,6 @@ private:
 			return nullptr;
 		}
 
-		return CDO->StaticMesh;
+		return CDO->MeshKey.Mesh;
 	}
 };

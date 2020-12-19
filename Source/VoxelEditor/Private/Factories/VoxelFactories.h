@@ -6,11 +6,11 @@
 #include "Factories/Factory.h"
 #include "VoxelData/VoxelSave.h"
 #include "VoxelNodes/VoxelGraphMacro.h"
-#include "VoxelSpawners/VoxelFoliageCollection.h"
+#include "VoxelFoliage/VoxelFoliageBiome.h"
+#include "VoxelFoliage/VoxelFoliageCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelBasicMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
-#include "VoxelGraphOutputsConfig.h"
 #include "VoxelGraphDataItemConfig.h"
 #include "VoxelFactories.generated.h"
 
@@ -27,11 +27,18 @@ public:
 	}
 
 	virtual UClass* GetSupportedClass_Voxel() const { ensure(false); return nullptr; }
+	virtual void SetupObject_Voxel(UObject* Object) const {}
 
 	//~ Begin UFactory Interface
 	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
 	{
-		return NewObject<UObject>(InParent, Class, Name, Flags);
+		UObject* Object = NewObject<UObject>(InParent, Class, Name, Flags);
+		if (Object)
+		{
+			SetupObject_Voxel(Object);
+			Object->PostEditChange();
+		}
+		return Object;
 	}
 	virtual void PostInitProperties() override
 	{
@@ -47,7 +54,8 @@ public:
 };
 
 #define GENERATED_VOXEL_FACTORY_BODY(Class) \
-	virtual UClass* GetSupportedClass_Voxel() const override { return Class::StaticClass(); }
+	public: \
+		virtual UClass* GetSupportedClass_Voxel() const override { return Class::StaticClass(); }
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -69,6 +77,28 @@ class UVoxelFoliageCollectionFactory : public UVoxelFactory
 {
 	GENERATED_BODY()
 	GENERATED_VOXEL_FACTORY_BODY(UVoxelFoliageCollection)
+};
+
+UCLASS()
+class UVoxelFoliageBiomeTypeFactory : public UVoxelFactory
+{
+	GENERATED_BODY()
+	GENERATED_VOXEL_FACTORY_BODY(UVoxelFoliageBiomeType)
+};
+
+UCLASS()
+class UVoxelFoliageBiomeFactory : public UVoxelFactory
+{
+	GENERATED_BODY()
+	GENERATED_VOXEL_FACTORY_BODY(UVoxelFoliageBiome)
+
+	UPROPERTY()
+	UVoxelFoliageBiomeType* Type = nullptr;
+	
+	virtual void SetupObject_Voxel(UObject* Object) const override
+	{
+		CastChecked<UVoxelFoliageBiome>(Object)->Type = Type;
+	}
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,13 +143,6 @@ class UVoxelLandscapeMaterialCollectionFactory : public UVoxelFactory
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-
-UCLASS()
-class UVoxelGraphOutputsConfigFactory : public UVoxelFactory
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_FACTORY_BODY(UVoxelGraphOutputsConfig)
-};
 
 UCLASS()
 class UVoxelGraphMacroAssetFactory : public UVoxelFactory

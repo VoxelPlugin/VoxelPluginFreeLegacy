@@ -44,3 +44,29 @@ private:
 	TVoxelSharedRef<FThreadSafeCounter> Counter;
 	int64 Threshold;
 };
+
+class FVoxelCancelTrackerGroup
+{
+public:
+	FVoxelCancelTrackerGroup() = default;
+
+	void AddTracker(const FVoxelCancelTracker& Tracker)
+	{
+		Trackers.Add(Tracker);
+	}
+	
+	bool IsCanceled() const
+	{
+		for (const FVoxelCancelTracker& Tracker : Trackers)
+		{
+			if (!Tracker.IsCanceled())
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+private:
+	TArray<FVoxelCancelTracker> Trackers;
+};

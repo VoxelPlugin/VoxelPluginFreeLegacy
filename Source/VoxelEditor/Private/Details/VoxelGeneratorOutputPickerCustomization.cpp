@@ -1,7 +1,7 @@
 // Copyright 2020 Phyronnaz
 
 #include "Details/VoxelGeneratorOutputPickerCustomization.h"
-#include "VoxelSpawners/VoxelFoliage.h"
+#include "VoxelFoliage/VoxelFoliage.h"
 #include "VoxelEditorDetailsIncludes.h"
 #include "VoxelEditorDetailsUtilities.h"
 
@@ -51,7 +51,7 @@ void FVoxelGeneratorOutputPickerCustomization::CustomizeHeader(
 					}
 				}
 			}
-			const auto MainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelFoliage, MainGeneratorForDropdowns));
+			const auto MainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelFoliage, OutputPickerGenerator));
 			if (MainGeneratorHandle)
 			{
 				GeneratorHandle = MainGeneratorHandle;
@@ -83,8 +83,15 @@ void FVoxelGeneratorOutputPickerCustomization::CustomizeHeader(
 		return;
 	}
 
+	FString OutputType = PropertyHandle->GetMetaData("OutputType");
+	if (OutputType.IsEmpty())
+	{
+		OutputType = "float";
+	}
+	ensure(OutputType == "int" || OutputType == "float");
+	
 	const auto Outputs = Picker.GetGenerator()->GetGeneratorOutputs();
-	const TArray<FName> ValidOutputNames = Outputs.FloatOutputs;
+	const TArray<FName> ValidOutputNames = OutputType == "int" ? Outputs.IntOutputs : Outputs.FloatOutputs;
 
 	FName Value;
 	if (!ensure(NameHandle->GetValue(Value) == FPropertyAccess::Success))

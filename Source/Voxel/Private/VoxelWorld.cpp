@@ -30,8 +30,7 @@
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 
-#include "VoxelSpawners/VoxelFoliage.h"
-#include "VoxelSpawners/VoxelFoliageCollection.h"
+#include "VoxelFoliage/VoxelFoliage.h"
 
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -221,6 +220,11 @@ AVoxelWorld::AVoxelWorld()
 
 	FVoxelEditorDelegates::OnVoxelGraphUpdated.AddWeakLambda(this, [=](UVoxelGenerator* Object)
 	{
+		if (!Object || !IsCreated())
+		{
+			return;
+		}
+		
 		FPropertyChangedEvent PropertyChangedEvent(nullptr);
 		TryRefreshFoliage(Object, PropertyChangedEvent);
 	});
@@ -872,7 +876,6 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 
 	LOG_VOXEL(Log, TEXT("Loading world"));
 
-	bIsCreated = true;
 	bIsLoaded = false;
 	TimeOfCreation = FPlatformTime::Seconds();
 
@@ -1011,7 +1014,6 @@ void AVoxelWorld::DestroyWorldInternal()
 
 	LOG_VOXEL(Log, TEXT("Unloading world"));
 
-	bIsCreated = false;
 	bIsLoaded = false;
 
 	DebugTextures.Reset();

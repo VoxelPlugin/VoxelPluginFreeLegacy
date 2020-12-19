@@ -29,6 +29,12 @@ struct TGetProperty<bool>
 	using Type = FBoolProperty;
 };
 
+template<>
+struct TGetProperty<FName>
+{
+	using Type = FNameProperty;
+};
+
 struct FVoxelGeneratorParametersUtilities
 {
 	template<typename T>
@@ -113,6 +119,26 @@ struct FVoxelGeneratorParametersUtilities
 		
 		return Cast<T>(Temp);
 	}
+	template<typename T>
+	static T GetArrayParameter(FProperty& Property, const UObject* This, const FString* Override)
+	{
+		const T& Default = *Property.ContainerPtrToValuePtr<T>(This);
+
+		if (!Override)
+		{
+			return Default;
+		}
+
+		T Temp;
+		Property.InitializeValue_InContainer(&Temp);
+		
+		if (!ensure(Property.ImportText(**Override, &Temp, PPF_None, GetTransientPackage())))
+		{
+			return Default;
+		}
+		
+		return Temp;
+	}
 
 public:
 	// Default to structs as there's no way to differentiate them
@@ -126,7 +152,16 @@ public:
 	};
 
 	template<typename T>
-	struct TChooseParameter<T, typename TEnableIf<TIsFundamentalType<T>::Value>::Type>
+	struct TChooseParameter<T, typename TEnableIf<TIsTArray<T>::Value>::Type>
+	{
+		static T GetParameter(FProperty& Property, const UObject* This, const FString* Override)
+		{
+			return GetArrayParameter<T>(Property, This, Override);
+		}
+	};
+
+	template<typename T>
+	struct TChooseParameter<T, typename TEnableIf<TOr<TIsFundamentalType<T>, TIsSame<T, FName>>::Value>::Type>
 	{
 		static T GetParameter(FProperty& Property, const UObject* This, const FString* Override)
 		{

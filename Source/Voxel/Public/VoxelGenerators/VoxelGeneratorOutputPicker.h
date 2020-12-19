@@ -31,4 +31,9 @@ struct FVoxelGeneratorOutputPicker
 	{
 		return Name.IsNone();
 	}
+
+	friend bool operator==(const FVoxelGeneratorOutputPicker& Lhs, const FVoxelGeneratorOutputPicker& Rhs)
+	{
+		return Lhs.Name == Rhs.Name;
+	}
 };

@@ -1,14 +1,9 @@
 // Copyright 2020 Phyronnaz
 
-#include "VoxelSpawners/VoxelFoliage.h"
+#include "VoxelFoliage/VoxelFoliage.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
-
-FVoxelInstancedMeshKey UVoxelFoliage::GetMeshKey() const
-{
-	return UVoxelBlueprintLibrary::MakeInstancedMeshKey(StaticMesh, ActorClass, Materials, InstancedMeshSettings);	
-}
 
 void UVoxelFoliage::PostDuplicate(bool bDuplicateForPIE)
 {
@@ -26,11 +21,12 @@ void UVoxelFoliage::PreEditChange(FProperty* PropertyAboutToChange)
 	Super::PreEditChange(PropertyAboutToChange);
 
 	if (PropertyAboutToChange && 
-		PropertyAboutToChange->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelFoliage, StaticMesh) && 
-		StaticMesh)
+		PropertyAboutToChange->GetFName() == GET_MEMBER_NAME_STATIC(FVoxelInstancedMeshKey, Mesh) && 
+		MeshKey.Mesh)
 	{
-		const TArray<FStaticMaterial>& StaticMaterials = StaticMesh->StaticMaterials;
-
+		const TArray<FStaticMaterial>& StaticMaterials = MeshKey.Mesh->StaticMaterials;
+		TArray<UMaterialInterface*>& Materials = MeshKey.Materials;
+		
 		if (StaticMaterials.Num() >= Materials.Num())
 		{
 			bool bNoChange = true;
@@ -55,19 +51,19 @@ void UVoxelFoliage::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	if (StaticMesh)
+	if (MeshKey.Mesh)
 	{
-		const TArray<FStaticMaterial>& StaticMaterials = StaticMesh->StaticMaterials;
-		if (Materials.Num() < StaticMaterials.Num())
+		const TArray<FStaticMaterial>& StaticMaterials = MeshKey.Mesh->StaticMaterials;
+		if (MeshKey.Materials.Num() < StaticMaterials.Num())
 		{
-			Materials.SetNum(StaticMaterials.Num());
+			MeshKey.Materials.SetNum(StaticMaterials.Num());
 		}
 
 		for (int32 Index = 0; Index < StaticMaterials.Num(); Index++)
 		{
-			if (!Materials[Index])
+			if (!MeshKey.Materials[Index])
 			{
-				Materials[Index] = StaticMaterials[Index].MaterialInterface;
+				MeshKey.Materials[Index] = StaticMaterials[Index].MaterialInterface;
 			}
 		}
 	}
@@ -77,11 +73,15 @@ void UVoxelFoliage::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 #if WITH_EDITOR
 bool UVoxelFoliage::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const
 {
-	if (StaticMesh == Object)
+	if (Object == this)
 	{
 		return true;
 	}
-	if (Object == MainGeneratorForDropdowns.GetObject())
+	if (MeshKey.Mesh == Object)
+	{
+		return true;
+	}
+	if (Object == OutputPickerGenerator.GetObject())
 	{
 		return true;
 	}

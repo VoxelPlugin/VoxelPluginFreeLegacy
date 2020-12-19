@@ -150,6 +150,12 @@ public:
 	bool operator==(const TVoxelUniqueId& Other) const { return Id == Other.Id; }
 	bool operator!=(const TVoxelUniqueId& Other) const { return Id != Other.Id; }
 
+	bool operator<(const TVoxelUniqueId& Other) const { return Id < Other.Id; }
+	bool operator>(const TVoxelUniqueId& Other) const { return Id > Other.Id; }
+
+	bool operator<=(const TVoxelUniqueId& Other) const { return Id <= Other.Id; }
+	bool operator>=(const TVoxelUniqueId& Other) const { return Id >= Other.Id; }
+
 	friend uint32 GetTypeHash(TVoxelUniqueId InId)
 	{
 	    return uint32(InId.Id);
@@ -159,4 +165,4 @@ private:
 	uint64 Id = 0;
 };
 
-#define DECLARE_UNIQUE_VOXEL_ID(Name) using Name = TVoxelUniqueId<class Name##_Unique>;
+#define DECLARE_UNIQUE_VOXEL_ID(Name) using Name = TVoxelUniqueId<class __Name##_Unique>;

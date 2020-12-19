@@ -6,7 +6,7 @@
 #include "VoxelMinimal.h"
 #include "VoxelEnums.h"
 #include "VoxelIntBox.h"
-#include "VoxelSpawners/VoxelInstancedMeshSettings.h"
+#include "VoxelFoliage/VoxelInstancedMeshSettings.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelHierarchicalInstancedStaticMeshComponent.generated.h"
 
@@ -45,7 +45,7 @@ private:
 		
 public:
 	UVoxelHierarchicalInstancedStaticMeshComponent(const FObjectInitializer& ObjectInitializer);
-	
+
 };
 
 inline UVoxelHierarchicalInstancedStaticMeshComponent::UVoxelHierarchicalInstancedStaticMeshComponent(const FObjectInitializer& ObjectInitializer)

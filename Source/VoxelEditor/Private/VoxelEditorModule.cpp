@@ -34,7 +34,7 @@
 #include "VoxelCreateStaticMeshFromProcMesh.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "VoxelNodes/VoxelOptimizationNodes.h"
-#include "VoxelSpawners/VoxelFoliage.h"
+#include "VoxelFoliage/VoxelFoliage.h"
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
 
@@ -42,6 +42,7 @@
 #include "AssetTools/AssetTypeActions_VoxelHeightmapAsset.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphGenerator.h"
 #include "AssetTools/AssetTypeActions_VoxelGraphMacro.h"
+#include "AssetTools/AssetTypeActions_VoxelFoliageBiomeType.h"
 
 #include "Thumbnails/VoxelGraphGeneratorThumbnailRenderer.h"
 #include "Thumbnails/VoxelDataAssetThumbnailRenderer.h"
@@ -520,6 +521,7 @@ private:
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelHeightmapAsset>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphGenerator>();
 		RegisterAssetTypeAction<FAssetTypeActions_VoxelGraphMacro>();
+		RegisterAssetTypeAction<FAssetTypeActions_VoxelFoliageBiomeType>();
 
 		const FColor Orange = FColor(255, 140, 0);
 		const FColor DarkGreen = FColor(0, 192, 0);
@@ -538,8 +540,8 @@ private:
 		RegisterAssetTypeAction<UVoxelFoliageCollection>(VOXEL_LOCTEXT("Voxel Foliage Collection"), LightGreen);
 		RegisterAssetTypeAction<UVoxelFoliage          >(VOXEL_LOCTEXT("Voxel Foliage"           ), LightGreen);
 		RegisterAssetTypeAction<AVoxelFoliageActor     >(VOXEL_LOCTEXT("Voxel Foliage Actor"     ), LightGreen);
+		RegisterAssetTypeAction<UVoxelFoliageBiome     >(VOXEL_LOCTEXT("Voxel Foliage Biome"     ), LightGreen);
 
-		RegisterAssetTypeAction<UVoxelGraphOutputsConfig >(VOXEL_LOCTEXT("Voxel Graph Outputs Config"  ), Blue);
 		RegisterAssetTypeAction<UVoxelGraphDataItemConfig>(VOXEL_LOCTEXT("Voxel Graph Data Item Config"), Blue);
 	}
 

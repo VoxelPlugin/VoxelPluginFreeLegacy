@@ -6,9 +6,8 @@
 #include "VoxelEnums.h"
 #include "VoxelTexture.h"
 #include "VoxelExposedNodes.h"
+#include "Engine/Texture2D.h"
 #include "VoxelTextureSamplerNode.generated.h"
-
-class UTexture2D;
 
 // Texture sampler. Inputs are in the texture dimension, not between 0 and 1
 UCLASS(DisplayName = "Texture Sampler", Category = "Texture", meta = (Keywords = "constant parameter"))
@@ -16,6 +15,7 @@ class VOXELGRAPH_API UVoxelNode_TextureSampler : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Texture)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Texture settings")
@@ -34,10 +34,6 @@ public:
 	virtual FText GetTitle() const override;
 	virtual void LogErrors(FVoxelGraphErrorReporter& ErrorReporter) override;
 	//~ End UVoxelNode Interface
-
-	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Texture); }
-	//~ End UVoxelExposedNode Interface
 };
 
 // Voxel Texture sampler. Inputs are in the texture dimension, not between 0 and 1
@@ -48,6 +44,7 @@ class VOXELGRAPH_API UVoxelNode_VoxelTextureSampler : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Texture)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Texture settings")
@@ -66,10 +63,6 @@ public:
 	virtual EVoxelPinCategory GetInputPinCategory(int32 PinIndex) const override;
 	virtual FText GetTitle() const override;
 	//~ End UVoxelNode Interface
-
-	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Texture); }
-	//~ End UVoxelExposedNode Interface
 	
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

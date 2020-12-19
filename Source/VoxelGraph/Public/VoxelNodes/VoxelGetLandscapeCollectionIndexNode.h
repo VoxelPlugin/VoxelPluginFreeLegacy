@@ -14,7 +14,9 @@ class VOXELGRAPH_API UVoxelNode_GetLandscapeCollectionIndex : public UVoxelExpos
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(LayerName)
 
+public:
 	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode))
 	FName LayerName = "Layer";
 
@@ -23,8 +25,4 @@ class VOXELGRAPH_API UVoxelNode_GetLandscapeCollectionIndex : public UVoxelExpos
 	//~ Begin UVoxelNode Interface
 	virtual FText GetTitle() const override;
 	//~ End UVoxelNode Interface
-
-	//~ Begin UVoxelAssetPickerNode Interface
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(LayerName); }
-	//~ End UVoxelAssetPickerNode Interface
 };

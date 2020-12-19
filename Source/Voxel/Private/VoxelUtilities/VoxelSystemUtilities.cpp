@@ -1,6 +1,8 @@
 // Copyright 2020 Phyronnaz
 
 #include "VoxelUtilities/VoxelSystemUtilities.h"
+#include "VoxelLogTable.h"
+
 #include "Containers/Ticker.h"
 #include "HAL/PlatformProcess.h"
 #include "Misc/Paths.h"
@@ -34,7 +36,7 @@ void FVoxelSystemUtilities::WriteTables(const FString& BaseName, const TArray<FT
     for (auto& It : Tables)
     {
 	    Lines.Add("<h1>" + It.Title + "</h1>");
-	    Lines.Append(It.Table.ToString(true));
+	    Lines.Append(It.Table->ToString(true));
     }
     
     Lines.Add(R"(</body>)");

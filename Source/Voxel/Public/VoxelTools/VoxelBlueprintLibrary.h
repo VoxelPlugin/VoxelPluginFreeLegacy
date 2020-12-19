@@ -11,8 +11,8 @@
 #include "VoxelTexture.h"
 #include "VoxelRender/VoxelToolRendering.h"
 #include "VoxelUtilities/VoxelMaterialUtilities.h"
-#include "VoxelSpawners/VoxelSpawnerSave.h"
-#include "VoxelSpawners/VoxelInstancedMeshSettings.h"
+#include "VoxelFoliage/VoxelSpawnerSave.h"
+#include "VoxelFoliage/VoxelInstancedMeshSettings.h"
 #include "VoxelBlueprintLibrary.generated.h"
 
 enum class EVoxelTaskType : uint8;
@@ -176,21 +176,6 @@ public:
 		const TArray<FTransform>& Transforms,
 		FVoxelInstancedMeshKey MeshKey,
 		FVector FloatingDetectionOffset = FVector(0, 0, -10));
-	
-	UFUNCTION(BlueprintPure, Category="Voxel|Foliage", meta=(Keywords="construct build", NativeMakeFunc))
-	static FVoxelInstancedMeshKey MakeInstancedMeshKey(
-		UStaticMesh* Mesh,
-		TSubclassOf<AVoxelFoliageActor> ActorClass,
-		TArray<UMaterialInterface*> Materials,
-		FVoxelInstancedMeshSettings InstanceSettings);
-	
-	UFUNCTION(BlueprintPure, Category="Voxel|Foliage", meta=(NativeBreakFunc))
-	static void BreakInstancedMeshKey(
-		FVoxelInstancedMeshKey Key,
-		UStaticMesh*& Mesh,
-		TSubclassOf<AVoxelFoliageActor>& ActorClass,
-		TArray<UMaterialInterface*>& Materials,
-		FVoxelInstancedMeshSettings& InstanceSettings);
 
 	
 public:

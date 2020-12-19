@@ -4,9 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelExposedNodes.h"
+#include "Engine/Texture2D.h"
 #include "VoxelBiomeMapNode.generated.h"
-
-class UTexture2D;
 
 USTRUCT()
 struct VOXELGRAPH_API FBiomeMapElement
@@ -26,6 +25,7 @@ class VOXELGRAPH_API UVoxelNode_BiomeMapSampler : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
+	GENERATED_EXPOSED_VOXELNODE_BODY(Texture)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Biomes")
@@ -51,5 +51,4 @@ public:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
-	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Texture); }
 };

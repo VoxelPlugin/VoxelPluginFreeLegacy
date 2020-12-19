@@ -6,6 +6,7 @@
 #include "VoxelGenerators/VoxelGeneratorInstanceWrapper.h"
 #include "VoxelMessages.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
+#include "VoxelFoliage/VoxelSpawnerManagerBase.h"
 
 DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelGeneratorCacheSubsystemProxy);
 
@@ -13,7 +14,8 @@ void FVoxelGeneratorCacheSubsystem::Create()
 {
 	Super::Create();
 
-	GeneratorCache = FVoxelGeneratorCache::Create(Settings.GetGeneratorInit());
+	// Not GetChecked because the subsystem won't be created in free
+	GeneratorCache = FVoxelGeneratorCache::Create(Settings.GetGeneratorInit(), GetSubsystem<IVoxelSpawnerManagerBase>());
 }
 
 void FVoxelGeneratorCacheSubsystem::PreDestructor()
@@ -27,12 +29,13 @@ void FVoxelGeneratorCacheSubsystem::PreDestructor()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorCache::Create(const FVoxelGeneratorInit& Init)
+TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorCache::Create(const FVoxelGeneratorInit& Init, TVoxelWeakPtr<IVoxelSpawnerManagerBase> SpawnerManager)
 {
 	ensure(!Init.GeneratorCache.IsValid());
 	const TVoxelSharedRef<FVoxelGeneratorCache> Result = MakeShareable(new FVoxelGeneratorCache());
 	Result->GeneratorInit = Init;
 	Result->GeneratorInit.GeneratorCache = Result;
+	Result->GeneratorInit.SpawnerManager = SpawnerManager;
 	OnGeneratorRecompiled.AddThreadSafeSP(Result, &FVoxelGeneratorCache::OnGeneratorRecompiledImpl);
 	return Result;
 }
