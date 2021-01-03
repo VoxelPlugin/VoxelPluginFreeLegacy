@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -139,7 +139,7 @@ public:
 	bool bIsFourWayBlend;
 
 	int32 HISMChunkSize;
-	int32 SpawnersCollisionDistanceInVoxel;
+	int32 FoliageCollisionDistanceInVoxel;
 	int64 MaxNumberOfFoliageInstances;
 	
 public:
@@ -185,7 +185,7 @@ public:
 	FVoxelGeneratorInit GetGeneratorInit() const;
 	
 	// TransformsOffset is used to reduce precision errors
-	FIntVector ComputeSpawnersTransformsOffset(const FVoxelIntBox& Bounds) const
+	FIntVector ComputeFoliageTransformsOffset(const FVoxelIntBox& Bounds) const
 	{
 		return FVoxelUtilities::DivideFloor(Bounds.Min, HISMChunkSize) * HISMChunkSize;
 	}

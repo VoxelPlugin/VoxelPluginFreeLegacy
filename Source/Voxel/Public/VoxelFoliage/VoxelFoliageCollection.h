@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -13,6 +13,6 @@ class VOXEL_API UVoxelFoliageCollection : public UObject
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config", Instanced)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
 	TArray<UVoxelFoliage*> Foliages;
 };

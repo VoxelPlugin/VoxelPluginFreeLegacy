@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -11,7 +11,7 @@
 #include "VoxelTexture.h"
 #include "VoxelRender/VoxelToolRendering.h"
 #include "VoxelUtilities/VoxelMaterialUtilities.h"
-#include "VoxelFoliage/VoxelSpawnerSave.h"
+#include "VoxelFoliage/VoxelFoliageSave.h"
 #include "VoxelFoliage/VoxelInstancedMeshSettings.h"
 #include "VoxelBlueprintLibrary.generated.h"
 
@@ -180,7 +180,7 @@ public:
 	
 public:
 	/**
-	 * IVoxelSpawnerManager helpers
+	 * IVoxelFoliageInterface helpers
 	 */
 
 	// Regenerate spawners in an aera
@@ -192,10 +192,10 @@ public:
 	static void MarkSpawnersDirty(AVoxelWorld* World, FVoxelIntBox Bounds);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
-	static FVoxelSpawnersSave GetSpawnersSave(AVoxelWorld* World);
+	static FVoxelFoliageSave GetSpawnersSave(AVoxelWorld* World);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Spawners", meta = (DefaultToSelf = "World"))
-	static void LoadFromSpawnersSave(AVoxelWorld* World, const FVoxelSpawnersSave& Save);
+	static void LoadFromSpawnersSave(AVoxelWorld* World, const FVoxelFoliageSave& Save);
 
 public:
 	/**

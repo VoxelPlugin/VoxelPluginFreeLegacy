@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "DataAssetEditor/SVoxelDataAssetEditorViewport.h"
 #include "DataAssetEditor/VoxelDataAssetEditorToolkit.h"

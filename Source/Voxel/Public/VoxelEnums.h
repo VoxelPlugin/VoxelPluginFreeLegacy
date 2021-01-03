@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -194,9 +194,9 @@ enum class EVoxelTaskType : uint8
 	VisibleCollisionsChunksMeshing,
 	// PhysX collision cooking, once the meshing task is done
 	CollisionCooking,
-	// Height spawners
+	// Foliage generation
 	FoliageBuild,
-	// Building of the instanced mesh components culling tree, used for spawners
+	// Building of the instanced mesh components culling tree, used for foliage
 	// The meshes are not updated until the build is done
 	HISMBuild,
 	// Async edit functions such as AddSphereAsync

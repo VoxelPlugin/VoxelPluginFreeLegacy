@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -13,6 +13,9 @@
 #ifndef VOXEL_DOUBLE_PRECISION
 #define VOXEL_DOUBLE_PRECISION 0
 #endif
+
+// Assert on non finite numbers. Used to track NaNs.
+#define VOXEL_ENABLE_NAN_DIAGNOSTIC 1
 
 // Enables slow voxel checks
 #ifndef VOXEL_DEBUG

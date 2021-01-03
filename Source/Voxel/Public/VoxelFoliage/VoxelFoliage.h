@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -8,7 +8,7 @@
 #include "VoxelFoliage/VoxelInstancedMeshSettings.h"
 #include "VoxelFoliage.generated.h"
 
-UENUM()
+UENUM(BlueprintType)
 enum class EVoxelFoliageRotation : uint8
 {
 	AlignToSurface,
@@ -16,7 +16,7 @@ enum class EVoxelFoliageRotation : uint8
 	RandomAlign
 };
 
-UENUM()
+UENUM(BlueprintType)
 enum class EVoxelFoliageScaling : uint8
 {
 	/** Instances will have uniform X, Y and Z scales */
@@ -48,15 +48,40 @@ struct VOXEL_API FVoxelFoliageScale
 	FVoxelFloatInterval ScaleZ = { 1.0f, 1.0f };
 };
 
-UCLASS(Blueprintable, EditInlineNew)
+USTRUCT(BlueprintType)
+struct VOXEL_API FVoxelFoliageMesh
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
+	UStaticMesh* Mesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
+	TArray<UMaterialInterface*> Materials;
+
+	// Relative to the other strength in this array - they will be normalized
+	// Has no impact if the array has only one element
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage", meta = (UIMin = 0, UIMax = 1))
+	float Strength = 1.f;
+};
+
+UCLASS(Blueprintable)
 class VOXEL_API UVoxelFoliage : public UObject
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage", meta = (ShowOnlyInnerProperties, DisplayName = "Mesh Settings"))
-	FVoxelInstancedMeshKey MeshKey;
+	// The meshes to use - if you use multiple ones, the hits will be split among them based on their strength
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
+	TArray<FVoxelFoliageMesh> Meshes;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
+	TSubclassOf<AVoxelFoliageActor> ActorClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
+	FVoxelInstancedMeshSettings InstanceSettings;
+
+public:
 	// Used to autocomplete generator output names
 	UPROPERTY(EditAnywhere, Category = "Voxel Foliage", meta = (DisplayName = "Generator (for autocomplete only)"))
 	FVoxelGeneratorPicker OutputPickerGenerator;

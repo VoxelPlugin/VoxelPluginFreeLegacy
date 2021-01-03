@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelRuntime.h"
 #include "VoxelRuntimeActor.h"
@@ -108,7 +108,7 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(FoliageWorldType);
 	SET(bIsFourWayBlend);
 	SET(HISMChunkSize);
-	SET(SpawnersCollisionDistanceInVoxel);
+	SET(FoliageCollisionDistanceInVoxel);
 	SET(MaxNumberOfFoliageInstances);
 
 	SET(bEnableCollisions);
@@ -209,7 +209,7 @@ void FVoxelRuntimeSettings::Fixup()
 	TexturePoolTextureSize = FMath::Clamp(TexturePoolTextureSize, 128, 16384);
 	EventsTickRate = FMath::Max(SMALL_NUMBER, EventsTickRate);
 	MultiplayerSyncRate = FMath::Max(SMALL_NUMBER, MultiplayerSyncRate);
-	SpawnersCollisionDistanceInVoxel = FMath::Max(0, SpawnersCollisionDistanceInVoxel);
+	FoliageCollisionDistanceInVoxel = FMath::Max(0, FoliageCollisionDistanceInVoxel);
 	HISMChunkSize = FMath::Max(32, HISMChunkSize);
 }
 

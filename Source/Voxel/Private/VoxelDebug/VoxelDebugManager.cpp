@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelDebug/VoxelDebugUtilities.h"
@@ -201,8 +201,8 @@ static FAutoConsoleCommandWithWorld ClearUnusedMaterialsCmd(
 		}));
 
 static FAutoConsoleCommandWithWorld RegenerateAllSpawnersCmd(
-	TEXT("voxel.spawners.RegenerateAll"),
-	TEXT("Regenerate all spawners that can be regenerated"),
+	TEXT("voxel.foliage.RegenerateAll"),
+	TEXT("Regenerate all foliage that can be regenerated"),
 	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World)
 		{
 			UVoxelBlueprintLibrary::RegenerateSpawners(&World, FVoxelIntBox::Infinite);

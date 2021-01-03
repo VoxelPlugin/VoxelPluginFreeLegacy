@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -44,7 +44,7 @@ class VOXEL_API FVoxelGeneratorCache : public FVoxelGCObject, public TVoxelShare
 public:
 	VOXEL_SUBSYSTEM_FWD(FVoxelGeneratorCacheSubsystem, GetCache);
 	
-	static TVoxelSharedRef<FVoxelGeneratorCache> Create(const FVoxelGeneratorInit& Init, TVoxelWeakPtr<IVoxelSpawnerManagerBase> SpawnerManager = nullptr);
+	static TVoxelSharedRef<FVoxelGeneratorCache> Create(const FVoxelGeneratorInit& Init, TVoxelWeakPtr<IVoxelFoliageInterface> FoliageInterface = nullptr);
 	
 public:
 	TVoxelSharedRef<FVoxelGeneratorInstance> MakeGeneratorInstance(FVoxelGeneratorPicker Picker);

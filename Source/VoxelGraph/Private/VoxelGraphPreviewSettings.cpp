@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelGraphPreviewSettings.h"
 #include "IVoxelGraphEditor.h"

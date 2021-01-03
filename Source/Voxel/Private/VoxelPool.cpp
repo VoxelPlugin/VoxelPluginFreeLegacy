@@ -1,9 +1,10 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelPool.h"
 #include "VoxelThreadPool.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 
+DEFINE_UNIQUE_VOXEL_ID(FVoxelPoolId);
 DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelPoolSubsystemProxy);
 
 void FVoxelPool::Create()

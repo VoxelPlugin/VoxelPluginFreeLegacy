@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelRender/PhysicsCooker/VoxelAsyncPhysicsCooker.h"
 #include "VoxelRender/PhysicsCooker/VoxelAsyncPhysicsCooker_PhysX.h"

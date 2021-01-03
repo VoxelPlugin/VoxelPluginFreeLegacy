@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -248,6 +248,13 @@ struct FVoxelVector
 		return FVoxelVector(FMath::Abs(X), FMath::Abs(Y), FMath::Abs(Z));
 	}
 
+	FORCEINLINE bool ContainsNaN() const
+	{
+		return !FMath::IsFinite(X)
+			|| !FMath::IsFinite(Y)
+			|| !FMath::IsFinite(Z);
+	}
+
 	FORCEINLINE v_flt Size() const
 	{
 		return std::sqrt(X * X + Y * Y + Z * Z);
@@ -294,6 +301,10 @@ struct FVoxelVector
 			Z * V.X - X * V.Z,
 			X * V.Y - Y * V.X
 		);
+	}
+	static FORCEINLINE FVoxelVector CrossProduct(const FVoxelVector& A, const FVoxelVector& B)
+	{
+		return A ^ B;
 	}
 
 	FORCEINLINE float operator|(const FVoxelVector& V) const

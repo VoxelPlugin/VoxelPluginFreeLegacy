@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -10,7 +10,7 @@
 class AVoxelWorld;
 class UVoxelMaterialCollectionBase;
 class FVoxelGeneratorCache;
-class IVoxelSpawnerManagerBase;
+class IVoxelFoliageInterface;
 
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelGeneratorInit
@@ -47,13 +47,12 @@ public:
 		const TWeakObjectPtr<const AVoxelWorld>& World);
 
 	TVoxelSharedRef<FVoxelGeneratorCache> GetGeneratorCache() const;
-	TVoxelSharedPtr<IVoxelSpawnerManagerBase> GetSpawnerManager() const;
 	
 	void AddReferencedObjects(FReferenceCollector& Collector);
 
 private:
 	TVoxelWeakPtr<FVoxelGeneratorCache> GeneratorCache;
-	TVoxelWeakPtr<IVoxelSpawnerManagerBase> SpawnerManager;
+	TVoxelWeakPtr<IVoxelFoliageInterface> FoliageInterface;
 
 	friend class FVoxelGeneratorCache;
 

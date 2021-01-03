@@ -1,12 +1,10 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/Blueprint.h"
 #include "Engine/StaticMesh.h"
 #include "VoxelFoliage/VoxelFoliage.h"
-#include "ThumbnailRendering/BlueprintThumbnailRenderer.h"
 #include "ThumbnailRendering/StaticMeshThumbnailRenderer.h"
 #include "VoxelFoliageThumbnailRenderer.generated.h"
 
@@ -18,53 +16,20 @@ class VOXELEDITOR_API UVoxelFoliageThumbnailRenderer : public UStaticMeshThumbna
 public:
 	virtual bool CanVisualizeAsset(UObject* Object) override
 	{
-		return GetMesh(Object) || GetMutableDefault<UBlueprintThumbnailRenderer>()->CanVisualizeAsset(Object);
+		return Object->IsA<UVoxelFoliage>();
 	}
 	virtual void GetThumbnailSize(UObject* Object, float Zoom, uint32& OutWidth, uint32& OutHeight) const override
 	{
-		if (auto* Mesh = GetMesh(Object))
-		{
-			return Super::GetThumbnailSize(Mesh, Zoom, OutWidth, OutHeight);
-		}
-		else
-		{
-			return GetMutableDefault<UBlueprintThumbnailRenderer>()->GetThumbnailSize(Object, Zoom, OutWidth, OutHeight);
-		}
+		return Super::GetThumbnailSize(GetMesh(CastChecked<UVoxelFoliage>(Object)), Zoom, OutWidth, OutHeight);
 	}
 	virtual void Draw(UObject* Object, int32 X, int32 Y, uint32 Width, uint32 Height, FRenderTarget* Target, FCanvas* Canvas ONLY_UE_25_AND_HIGHER(, bool bAdditionalViewFamily)) override
 	{
-		if (auto* Mesh = GetMesh(Object))
-		{
-			return Super::Draw(Mesh, X, Y, Width, Height, Target, Canvas ONLY_UE_25_AND_HIGHER(, bAdditionalViewFamily));
-		}
-		else
-		{
-			return GetMutableDefault<UBlueprintThumbnailRenderer>()->Draw(Object, X, Y, Width, Height, Target, Canvas ONLY_UE_25_AND_HIGHER(, bAdditionalViewFamily));
-		}
+		return Super::Draw(GetMesh(CastChecked<UVoxelFoliage>(Object)), X, Y, Width, Height, Target, Canvas ONLY_UE_25_AND_HIGHER(, bAdditionalViewFamily));
 	}
 
 private:
-	UStaticMesh* GetMesh(UObject* Object) const
+	static UStaticMesh* GetMesh(UVoxelFoliage* Foliage)
 	{
-		auto* Blueprint = Cast<UBlueprint>(Object);
-		if (!Blueprint)
-		{
-			return nullptr;
-		}
-
-		UClass* GeneratedClass = Blueprint->GeneratedClass;
-		if (!GeneratedClass ||
-			!GeneratedClass->IsChildOf(UVoxelFoliage::StaticClass()))
-		{
-			return nullptr;
-		}
-
-		UVoxelFoliage* CDO = GeneratedClass->GetDefaultObject<UVoxelFoliage>();
-		if (!CDO)
-		{
-			return nullptr;
-		}
-
-		return CDO->MeshKey.Mesh;
+		return Foliage->Meshes.Num() > 0 ? Foliage->Meshes[0].Mesh : nullptr;
 	}
 };

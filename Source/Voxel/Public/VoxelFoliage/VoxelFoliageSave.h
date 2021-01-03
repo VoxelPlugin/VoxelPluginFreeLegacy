@@ -1,12 +1,12 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelSaveStruct.h"
-#include "VoxelSpawnerSave.generated.h"
+#include "VoxelFoliageSave.generated.h"
 
-namespace FVoxelSpawnersSaveVersion
+namespace FVoxelFoliageSaveVersion
 {
 	enum Type : int32
 	{
@@ -33,9 +33,9 @@ namespace FVoxelSpawnersSaveVersion
 	};
 }
 
-struct VOXEL_API FVoxelSpawnersSaveImpl
+struct VOXEL_API FVoxelFoliageSaveImpl
 {	
-	FVoxelSpawnersSaveImpl() = default;
+	FVoxelFoliageSaveImpl() = default;
 
 	bool Serialize(FArchive& Ar)
 	{
@@ -43,7 +43,7 @@ struct VOXEL_API FVoxelSpawnersSaveImpl
 		{
 			if (Ar.IsSaving())
 			{
-				Version = FVoxelSpawnersSaveVersion::LatestVersion;
+				Version = FVoxelFoliageSaveVersion::LatestVersion;
 			}
 
 			Ar << Version;
@@ -54,27 +54,27 @@ struct VOXEL_API FVoxelSpawnersSaveImpl
 		return true;
 	}
 
-	bool operator==(const FVoxelSpawnersSaveImpl& Other) const
+	bool operator==(const FVoxelFoliageSaveImpl& Other) const
 	{
 		return Guid == Other.Guid;
 	}
 	
 private:
-	// Version of FVoxelSpawnerSave, not of the compressed data!
+	// Version of FVoxelFoliageSave, not of the compressed data!
 	int32 Version;
 	FGuid Guid;
 	TArray<uint8> CompressedData;
 
-	friend class FVoxelSpawnerManager;
+	friend class FVoxelFoliageSubsystem;
 };
 
 USTRUCT(BlueprintType, Category = Voxel)
-struct VOXEL_API FVoxelSpawnersSave
+struct VOXEL_API FVoxelFoliageSave
 #if CPP
-	: public TVoxelSaveStruct<FVoxelSpawnersSaveImpl>
+	: public TVoxelSaveStruct<FVoxelFoliageSaveImpl>
 #endif
 {	
 	GENERATED_BODY()
 };
 
-DEFINE_VOXEL_SAVE_STRUCT(FVoxelSpawnersSave)
+DEFINE_VOXEL_SAVE_STRUCT(FVoxelFoliageSave)

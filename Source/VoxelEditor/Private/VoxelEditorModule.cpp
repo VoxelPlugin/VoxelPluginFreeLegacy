@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelEditorModule.h"
 #include "VoxelMinimal.h"
@@ -277,11 +277,10 @@ public:
 		
 		// Thumbnails
 		auto& ThumbnailManager = UThumbnailManager::Get();
-		ThumbnailManager.UnregisterCustomRenderer(UBlueprint::StaticClass());
-		ThumbnailManager.RegisterCustomRenderer(UVoxelGraphGenerator  ::StaticClass(), UVoxelGraphGeneratorThumbnailRenderer  ::StaticClass());
-		ThumbnailManager.RegisterCustomRenderer(UVoxelDataAsset       ::StaticClass(), UVoxelDataAssetThumbnailRenderer       ::StaticClass());
-		ThumbnailManager.RegisterCustomRenderer(UVoxelHeightmapAsset  ::StaticClass(), UVoxelHeightmapAssetThumbnailRenderer  ::StaticClass());
-		ThumbnailManager.RegisterCustomRenderer(UBlueprint            ::StaticClass(), UVoxelFoliageThumbnailRenderer         ::StaticClass());
+		ThumbnailManager.RegisterCustomRenderer(UVoxelGraphGenerator::StaticClass(), UVoxelGraphGeneratorThumbnailRenderer::StaticClass());
+		ThumbnailManager.RegisterCustomRenderer(UVoxelDataAsset     ::StaticClass(), UVoxelDataAssetThumbnailRenderer     ::StaticClass());
+		ThumbnailManager.RegisterCustomRenderer(UVoxelHeightmapAsset::StaticClass(), UVoxelHeightmapAssetThumbnailRenderer::StaticClass());
+		ThumbnailManager.RegisterCustomRenderer(UVoxelFoliage       ::StaticClass(), UVoxelFoliageThumbnailRenderer       ::StaticClass());
 
 		// Icons
 		{
@@ -308,17 +307,7 @@ public:
 			StyleSet->Set("ClassIcon.VoxelLandscapeImporter"                 , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Import_16x.png"), Icon16x16));
 			StyleSet->Set("ClassThumbnail.VoxelMeshImporter"                 , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Import_64x.png"), Icon64x64));
 			StyleSet->Set("ClassIcon.VoxelMeshImporter"                      , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Import_16x.png"), Icon16x16));
-			
-			// Spawners
-			StyleSet->Set("ClassThumbnail.VoxelSpawnerConfig"                , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerConfig_64x.png"), Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelSpawnerConfig"                     , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerConfig_16x.png"), Icon16x16));
-			StyleSet->Set("ClassThumbnail.VoxelSpawner"                      , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Spawner_64x.png")  , Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelSpawner"                           , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/Spawner_16x.png")  , Icon16x16));
-			StyleSet->Set("ClassThumbnail.VoxelSpawnerGroup"                 , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerGroup_64x.png")  , Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelSpawnerGroup"                      , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerGroup_16x.png")  , Icon16x16));
-			StyleSet->Set("ClassThumbnail.VoxelMeshSpawnerGroup"             , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerGroup_64x.png")  , Icon64x64));
-			StyleSet->Set("ClassIcon.VoxelMeshSpawnerGroup"                  , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/SpawnerGroup_16x.png")  , Icon16x16));
-																		     
+					     
 			// Voxel Graph												     
 			StyleSet->Set("ClassThumbnail.VoxelGraphGenerator"               , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/VoxelGraph_64x.png"), Icon64x64));
 			StyleSet->Set("ClassIcon.VoxelGraphGenerator"                    , new FSlateImageBrush(ContentDir + TEXT("Editor/AssetIcons/VoxelGraph_16x.png"), Icon16x16));

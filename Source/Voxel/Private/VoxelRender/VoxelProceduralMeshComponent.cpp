@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/VoxelProceduralMeshSceneProxy.h"
@@ -29,6 +29,7 @@
 #include "Lightmass/LightmassImportanceVolume.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelPhysicsTriangleMeshesMemory);
+DEFINE_UNIQUE_VOXEL_ID(FVoxelProcMeshComponentId);
 
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Num Collision Cubes"), STAT_NumCollisionCubes, STATGROUP_VoxelCounters);
 	
@@ -109,7 +110,7 @@ void UVoxelProceduralMeshComponent::Init(
 	}
 	
 	bInit = true;
-	UniqueId = VOXEL_UNIQUE_ID();
+	UniqueId = FVoxelProcMeshComponentId::New();
 	LOD = InDebugLOD;
 	DebugChunkId = InDebugChunkId;
 	PriorityHandler = InPriorityHandler;

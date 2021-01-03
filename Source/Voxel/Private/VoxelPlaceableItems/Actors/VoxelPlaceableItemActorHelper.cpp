@@ -1,10 +1,11 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActorHelper.h"
 #include "VoxelPlaceableItems/Actors/VoxelDataItemActor.h"
 #include "VoxelWorld.h"
 #include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelRender/IVoxelLODManager.h"
+#include "VoxelFoliage/VoxelFoliageInterface.h"
 
 #include "EngineUtils.h"
 #include "TimerManager.h"

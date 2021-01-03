@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -323,30 +323,30 @@ public:
 	float BoundsExtension = 100;
 	
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Foliage", meta = (RecreateSpawners))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Foliage", meta = (RecreateFoliage))
 	TArray<UVoxelFoliageCollection*> FoliageCollections;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Foliage", meta = (RecreateSpawners))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Foliage", meta = (RecreateFoliage))
 	EVoxelFoliageWorldType FoliageWorldType = EVoxelFoliageWorldType::Flat;
 	
 	// If true, will ignore Alpha when reading material strength
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Foliage", meta = (RecreateSpawners))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Foliage", meta = (RecreateFoliage))
 	bool bIsFourWayBlend = false;
 	
 	// The chunk size, in voxels, of a single HISM component
 	// Lower = higher draw calls/object count
 	// Higher = more delay when building the occlusion tree
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Foliage", meta = (RecreateSpawners, DisplayName = "HISM Chunk Size"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Foliage", meta = (RecreateFoliage, DisplayName = "HISM Chunk Size"))
 	int32 HISMChunkSize = 2048;
 
 	// Only nearby instances have collisions
 	// Configure the distance using this
 	// In voxels!
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Foliage", meta = (RecreateSpawners, ClampMin = 0))
-	int32 SpawnersCollisionDistanceInVoxel = 64;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Foliage", meta = (RecreateFoliage, ClampMin = 0))
+	int32 FoliageCollisionDistanceInVoxel = 64;
 
 	// If more instances than this are spawned, they will not be displayed
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Foliage", meta = (RecreateSpawners, ClampMin = 0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Foliage", meta = (RecreateFoliage, ClampMin = 0))
 	int64 MaxNumberOfFoliageInstances = MAX_int32;
 	
 public:
