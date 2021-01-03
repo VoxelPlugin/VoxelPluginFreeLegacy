@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -15,6 +15,7 @@
 #include "VoxelRender/VoxelChunkMesh.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
+#include "VoxelFoliage/VoxelFoliageInterface.h"
 #include "VoxelFoliage/VoxelHierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelEvents/VoxelEventManager.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
@@ -435,13 +436,13 @@ void UVoxelBlueprintLibrary::MarkSpawnersDirty(AVoxelWorld* World, FVoxelIntBox 
 	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
 
-FVoxelSpawnersSave UVoxelBlueprintLibrary::GetSpawnersSave(AVoxelWorld* World)
+FVoxelFoliageSave UVoxelBlueprintLibrary::GetSpawnersSave(AVoxelWorld* World)
 {
 	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 	return {};
 }
 
-void UVoxelBlueprintLibrary::LoadFromSpawnersSave(AVoxelWorld* World, const FVoxelSpawnersSave& Save)
+void UVoxelBlueprintLibrary::LoadFromSpawnersSave(AVoxelWorld* World, const FVoxelFoliageSave& Save)
 {
 	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
@@ -843,7 +844,7 @@ void UVoxelBlueprintLibrary::RecreateSpawners(AVoxelWorld* World)
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	World->RecreateSpawners();
+	World->RecreateFoliage();
 }
 
 void UVoxelBlueprintLibrary::Recreate(AVoxelWorld* World, bool bSaveData)

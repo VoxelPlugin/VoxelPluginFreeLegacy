@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -93,16 +93,16 @@ struct FVoxelInstancedMeshKey
 {
 	GENERATED_BODY()
 		
-	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
 	UStaticMesh* Mesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
+	TArray<UMaterialInterface*> Materials;
 	
-	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
 	TSubclassOf<AVoxelFoliageActor> ActorClass;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
-	TArray<UMaterialInterface*> Materials;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel Foliage")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
 	FVoxelInstancedMeshSettings InstanceSettings;
 };
 

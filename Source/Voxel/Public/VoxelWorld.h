@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -333,7 +333,7 @@ public:
 	void ApplyCollisionSettingsToRoot() const;
 
 	void RecreateRender();
-	void RecreateSpawners();
+	void RecreateFoliage();
 	void RecreateAll(const FVoxelWorldCreateInfo& Info);
 
 	FVoxelRuntimeSettings GetRuntimeSettings() const;

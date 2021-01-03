@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 // Since Unreal is bundling openvdb 4.0, it doesn't have all the latest features of 7.0
 // To mitigate that we manually include more recent headers

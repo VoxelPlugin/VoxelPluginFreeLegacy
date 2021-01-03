@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -130,7 +130,7 @@ public:
 	EVoxelComputeDevice ComputeDevice = EVoxelComputeDevice::GPU;
 	
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
-	bool bRegenerateSpawners = true;
+	bool bRegenerateFoliage = true;
 	
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
 	bool bCheckForSingleValues = true;

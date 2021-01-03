@@ -1,9 +1,10 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelDefinitions.h"
 #include "VoxelLog.h"
 #include "VoxelStats.h"
 #include "VoxelFeedbackContext.h"
+#include "VoxelQuat.h"
 #include "VoxelIntBox.h"
 #include "VoxelItemStack.h"
 #include "VoxelEditorDelegates.h"
@@ -80,6 +81,8 @@ const FVoxelVector FVoxelVector::ForwardVector(1.0f, 0.0f, 0.0f);
 const FVoxelVector FVoxelVector::BackwardVector(-1.0f, 0.0f, 0.0f);
 const FVoxelVector FVoxelVector::RightVector(0.0f, 1.0f, 0.0f);
 const FVoxelVector FVoxelVector::LeftVector(0.0f, -1.0f, 0.0f);
+
+const FVoxelQuat FVoxelQuat::Identity(0, 0, 0, 1);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

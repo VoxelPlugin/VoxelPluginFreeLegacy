@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -61,7 +61,7 @@ class VOXEL_API FVoxelPool : public IVoxelSubsystem
 public:
 	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelPoolSubsystemProxy);
 
-	const FVoxelPoolId PoolId = VOXEL_UNIQUE_ID();
+	const FVoxelPoolId PoolId = FVoxelPoolId::New();
 	
 	//~ Begin IVoxelSubsystem Interface
 	virtual void Create() override;

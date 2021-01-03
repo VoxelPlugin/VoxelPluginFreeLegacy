@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelRender/Meshers/VoxelMesher.h"
 #include "VoxelRender/VoxelMesherAsyncWork.h"
@@ -188,7 +188,7 @@ struct FVoxelMesherStats
 		const double NormalTime = Print(LocalStats.NormalStats);
 		LOG_VOXEL(Log, TEXT("Transitions Chunks:"));
 		const double TransitionsTime = Print(LocalStats.TransitionsStats);
-		LOG_VOXEL(Log, TEXT("Geometry Chunks (Spawners):"));
+		LOG_VOXEL(Log, TEXT("Geometry Chunks (Foliage):"));
 		const double GeometryTime = Print(LocalStats.GeometryStats);
 		LOG_VOXEL(Log, TEXT("###############################################################################"));
 		LOG_VOXEL(Log, TEXT("################################### Summary ###################################"));

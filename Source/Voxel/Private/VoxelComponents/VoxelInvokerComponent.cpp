@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelComponents/VoxelInvokerComponent.h"
 #include "VoxelWorld.h"

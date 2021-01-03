@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelWorld.h"
 
@@ -31,6 +31,7 @@
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 
 #include "VoxelFoliage/VoxelFoliage.h"
+#include "VoxelFoliage/VoxelFoliageInterface.h"
 
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -735,9 +736,9 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 			}
 			MaterialsHardness.KeySort([](const FString& A, const FString& B) { return TCString<TCHAR>::Atoi(*A) < TCString<TCHAR>::Atoi(*B); });
 		}
-		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, SpawnersCollisionDistanceInVoxel))
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, FoliageCollisionDistanceInVoxel))
 		{
-			SpawnersCollisionDistanceInVoxel = FMath::CeilToInt(SpawnersCollisionDistanceInVoxel / 32.f) * 32;
+			FoliageCollisionDistanceInVoxel = FMath::CeilToInt(FoliageCollisionDistanceInVoxel / 32.f) * 32;
 		}
 		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, ChunksClustersSize))
 		{
@@ -784,9 +785,9 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 			{
 				RecreateRender();
 			}
-			else if (Property->HasMetaData("RecreateSpawners"))
+			else if (Property->HasMetaData("RecreateFoliage"))
 			{
-				RecreateSpawners();
+				RecreateFoliage();
 			}
 			else if (Property->HasMetaData("UpdateAll"))
 			{
@@ -1178,7 +1179,7 @@ void AVoxelWorld::RecreateRender()
 	DebugTextures.Reset();
 }
 
-void AVoxelWorld::RecreateSpawners()
+void AVoxelWorld::RecreateFoliage()
 {
 }
 

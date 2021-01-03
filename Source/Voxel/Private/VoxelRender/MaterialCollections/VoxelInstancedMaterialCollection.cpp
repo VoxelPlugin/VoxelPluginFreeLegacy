@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 #include "VoxelUtilities/VoxelMaterialUtilities.h"

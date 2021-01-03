@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -47,14 +47,15 @@ class VOXEL_API UVoxelTexturePoolSubsystemProxy : public UVoxelStaticSubsystemPr
 	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelTexturePool);
 };
 
+DECLARE_UNIQUE_VOXEL_ID(FVoxelTexturePoolEntryUniqueId);
+
 class VOXEL_API FVoxelTexturePool : public IVoxelSubsystem, public FVoxelGCObject
 {
 public:
 	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelTexturePoolSubsystemProxy);
 	DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FEntryId);
-	DECLARE_UNIQUE_VOXEL_ID(FEntryUniqueId);
+	using FEntryUniqueId = FVoxelTexturePoolEntryUniqueId;
 	
-
 public:
 	TVoxelSharedRef<FVoxelTexturePoolEntry> AddEntry(
 		const TVoxelSharedRef<FVoxelTexturePoolTextureData>& ColorData,
@@ -130,7 +131,7 @@ public:
 public:
 	struct FEntry
 	{
-		const FEntryUniqueId Id = VOXEL_UNIQUE_ID();
+		const FEntryUniqueId Id = FEntryUniqueId::New();
 		
 		const TVoxelSharedRef<FVoxelTexturePoolTextureData> ColorData;
 		const TVoxelWeakPtr<FVoxelMaterialInterface> MaterialInstance;

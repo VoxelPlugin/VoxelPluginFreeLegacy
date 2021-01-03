@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "/Engine/Public/Platform.ush"
 #include "/Engine/Generated/GeneratedUniformBuffers.ush"

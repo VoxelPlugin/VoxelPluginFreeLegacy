@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/VoxelMaterialInterface.h"
@@ -25,6 +25,7 @@ DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTexturePool_WastedData);
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelTexturePool_TextureData);
 
 DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelTexturePoolSubsystemProxy);
+DEFINE_UNIQUE_VOXEL_ID(FVoxelTexturePoolEntryUniqueId);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -120,18 +120,7 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-struct __FVoxelUniqueIdProxy
-{
-	uint64 Value;
-
-	explicit __FVoxelUniqueIdProxy(uint64 Value)
-		: Value(Value)
-	{
-	}
-
-	operator uint64() const { return Value; }
-};
-#define VOXEL_UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 __UniqueId = 0; return __FVoxelUniqueIdProxy(++__UniqueId); }()
+#define VOXEL_UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 __UniqueId = 0; return ++__UniqueId; }()
 
 // UniqueClass: to forbid copying ids from different classes
 template<typename UniqueClass>
@@ -139,11 +128,6 @@ class TVoxelUniqueId
 {
 public:
 	TVoxelUniqueId() = default;
-	TVoxelUniqueId(__FVoxelUniqueIdProxy Id)
-		: Id(Id)
-	{
-		ensureVoxelSlow(IsValid());
-	}
 
 	bool IsValid() const { return Id != 0; }
 
@@ -161,8 +145,27 @@ public:
 	    return uint32(InId.Id);
 	}
 
+	static TVoxelUniqueId New();
+
 private:
+	TVoxelUniqueId(uint64 Id)
+		: Id(Id)
+	{
+		ensureVoxelSlow(IsValid());
+	}
+	
 	uint64 Id = 0;
 };
 
-#define DECLARE_UNIQUE_VOXEL_ID(Name) using Name = TVoxelUniqueId<class __Name##_Unique>;
+#define DECLARE_UNIQUE_VOXEL_ID(Name) \
+	using Name = TVoxelUniqueId<class __ ## Name ##_Unique>; \
+	template<> \
+	Name TVoxelUniqueId<class __ ## Name ##_Unique>::New();
+
+#define DEFINE_UNIQUE_VOXEL_ID(Name) \
+	template<> \
+	Name TVoxelUniqueId<class __ ## Name ##_Unique>::New() \
+	{ \
+		static FThreadSafeCounter64 Counter; \
+		return Counter.Increment(); \
+	}

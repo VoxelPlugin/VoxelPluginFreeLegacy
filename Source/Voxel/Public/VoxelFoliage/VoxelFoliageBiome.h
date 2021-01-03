@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -61,7 +61,7 @@ struct VOXEL_API FVoxelFoliageBiomeEntry
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Biomes")
 	FName Name;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biomes", Instanced)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biomes")
 	UVoxelFoliage* Foliage = nullptr;
 };
 

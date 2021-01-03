@@ -1,11 +1,12 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelContext.h"
 #include "VoxelGenerators/VoxelGeneratorInit.h"
-#include "VoxelFoliage/VoxelSpawnerManagerBase.h"
+#include "VoxelFoliage/VoxelFoliageBiome.h"
+#include "VoxelFoliage/VoxelFoliageInterface.h"
 #include "VoxelUtilities/VoxelMaterialUtilities.h"
 
 namespace FVoxelFoliageNodeFunctions
@@ -34,7 +35,6 @@ namespace FVoxelFoliageNodeFunctions
 
 	inline int32 InitBiome(const FVoxelGeneratorInit& InitStruct, TWeakObjectPtr<UVoxelFoliageBiome> Biome)
 	{
-		const TVoxelSharedPtr<IVoxelSpawnerManagerBase> SpawnerManager = InitStruct.GetSpawnerManager();
-		return SpawnerManager ? SpawnerManager->RegisterBiome(Biome.Get()) : -1;
+		return -1;
 	}
 }

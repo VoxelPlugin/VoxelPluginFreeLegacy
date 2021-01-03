@@ -1,14 +1,15 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelRendererMixedMeshHandler.h"
 #include "VoxelRendererBasicMeshHandler.h"
 #include "VoxelRendererClusteredMeshHandler.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
+#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 FVoxelRendererMixedMeshHandler::FVoxelRendererMixedMeshHandler(IVoxelRenderer& Renderer)
 	: IVoxelRendererMeshHandler(Renderer)
-	, BasicMeshHandler(MakeVoxelShared<FVoxelRendererBasicMeshHandler>(Renderer))
-	, ClusteredMeshHandler(MakeVoxelShared<FVoxelRendererClusteredMeshHandler>(Renderer))
+	, BasicMeshHandler(FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRendererBasicMeshHandler>(Renderer))
+	, ClusteredMeshHandler(FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRendererClusteredMeshHandler>(Renderer))
 {
 	BasicMeshHandler->Init();
 	ClusteredMeshHandler->Init();

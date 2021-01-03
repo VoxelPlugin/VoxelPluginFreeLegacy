@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelGenerators/VoxelGeneratorCache.h"
 #include "VoxelGenerators/VoxelGeneratorTools.h"
@@ -6,7 +6,7 @@
 #include "VoxelGenerators/VoxelGeneratorInstanceWrapper.h"
 #include "VoxelMessages.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
-#include "VoxelFoliage/VoxelSpawnerManagerBase.h"
+#include "VoxelFoliage/VoxelFoliageInterface.h"
 
 DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelGeneratorCacheSubsystemProxy);
 
@@ -15,7 +15,7 @@ void FVoxelGeneratorCacheSubsystem::Create()
 	Super::Create();
 
 	// Not GetChecked because the subsystem won't be created in free
-	GeneratorCache = FVoxelGeneratorCache::Create(Settings.GetGeneratorInit(), GetSubsystem<IVoxelSpawnerManagerBase>());
+	GeneratorCache = FVoxelGeneratorCache::Create(Settings.GetGeneratorInit(), GetSubsystem<IVoxelFoliageInterface>());
 }
 
 void FVoxelGeneratorCacheSubsystem::PreDestructor()
@@ -29,13 +29,13 @@ void FVoxelGeneratorCacheSubsystem::PreDestructor()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorCache::Create(const FVoxelGeneratorInit& Init, TVoxelWeakPtr<IVoxelSpawnerManagerBase> SpawnerManager)
+TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorCache::Create(const FVoxelGeneratorInit& Init, TVoxelWeakPtr<IVoxelFoliageInterface> FoliageSubsystem)
 {
 	ensure(!Init.GeneratorCache.IsValid());
 	const TVoxelSharedRef<FVoxelGeneratorCache> Result = MakeShareable(new FVoxelGeneratorCache());
 	Result->GeneratorInit = Init;
 	Result->GeneratorInit.GeneratorCache = Result;
-	Result->GeneratorInit.SpawnerManager = SpawnerManager;
+	Result->GeneratorInit.FoliageInterface = FoliageSubsystem;
 	OnGeneratorRecompiled.AddThreadSafeSP(Result, &FVoxelGeneratorCache::OnGeneratorRecompiledImpl);
 	return Result;
 }

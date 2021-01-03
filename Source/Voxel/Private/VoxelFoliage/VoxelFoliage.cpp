@@ -1,8 +1,7 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelFoliage/VoxelFoliage.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
-#include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 
 void UVoxelFoliage::PostDuplicate(bool bDuplicateForPIE)
@@ -21,18 +20,25 @@ void UVoxelFoliage::PreEditChange(FProperty* PropertyAboutToChange)
 	Super::PreEditChange(PropertyAboutToChange);
 
 	if (PropertyAboutToChange && 
-		PropertyAboutToChange->GetFName() == GET_MEMBER_NAME_STATIC(FVoxelInstancedMeshKey, Mesh) && 
-		MeshKey.Mesh)
+		PropertyAboutToChange->GetFName() == "Mesh")
 	{
-		const TArray<FStaticMaterial>& StaticMaterials = MeshKey.Mesh->StaticMaterials;
-		TArray<UMaterialInterface*>& Materials = MeshKey.Materials;
-		
-		if (StaticMaterials.Num() >= Materials.Num())
+		for (FVoxelFoliageMesh& Mesh : Meshes)
 		{
-			bool bNoChange = true;
-			for (int32 Index = 0; Index < Materials.Num(); Index++)
+			if (!Mesh.Mesh)
 			{
-				if (Materials[Index] != StaticMaterials[Index].MaterialInterface)
+				continue;
+			}
+			
+			const TArray<FStaticMaterial>& StaticMaterials = Mesh.Mesh->StaticMaterials;
+			if (StaticMaterials.Num() < Mesh.Materials.Num())
+			{
+				continue;
+			}
+		
+			bool bNoChange = true;
+			for (int32 Index = 0; Index < Mesh.Materials.Num(); Index++)
+			{
+				if (Mesh.Materials[Index] != StaticMaterials[Index].MaterialInterface)
 				{
 					bNoChange = false;
 					break;
@@ -41,7 +47,7 @@ void UVoxelFoliage::PreEditChange(FProperty* PropertyAboutToChange)
 
 			if (bNoChange)
 			{
-				Materials.Reset();
+				Mesh.Materials.Reset();
 			}
 		}
 	}
@@ -51,19 +57,27 @@ void UVoxelFoliage::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	if (MeshKey.Mesh)
+	if (PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
-		const TArray<FStaticMaterial>& StaticMaterials = MeshKey.Mesh->StaticMaterials;
-		if (MeshKey.Materials.Num() < StaticMaterials.Num())
+		for (FVoxelFoliageMesh& Mesh : Meshes)
 		{
-			MeshKey.Materials.SetNum(StaticMaterials.Num());
-		}
-
-		for (int32 Index = 0; Index < StaticMaterials.Num(); Index++)
-		{
-			if (!MeshKey.Materials[Index])
+			if (!Mesh.Mesh)
 			{
-				MeshKey.Materials[Index] = StaticMaterials[Index].MaterialInterface;
+				continue;
+			}
+			
+			const TArray<FStaticMaterial>& StaticMaterials = Mesh.Mesh->StaticMaterials;
+			if (Mesh.Materials.Num() < StaticMaterials.Num())
+			{
+				Mesh.Materials.SetNum(StaticMaterials.Num());
+			}
+
+			for (int32 Index = 0; Index < StaticMaterials.Num(); Index++)
+			{
+				if (!Mesh.Materials[Index])
+				{
+					Mesh.Materials[Index] = StaticMaterials[Index].MaterialInterface;
+				}
 			}
 		}
 	}
@@ -74,10 +88,6 @@ void UVoxelFoliage::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 bool UVoxelFoliage::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent& PropertyChangedEvent) const
 {
 	if (Object == this)
-	{
-		return true;
-	}
-	if (MeshKey.Mesh == Object)
 	{
 		return true;
 	}

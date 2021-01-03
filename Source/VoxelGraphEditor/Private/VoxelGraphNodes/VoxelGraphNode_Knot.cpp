@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelGraphNode_Knot.h"
 #include "EdGraph/EdGraphPin.h"

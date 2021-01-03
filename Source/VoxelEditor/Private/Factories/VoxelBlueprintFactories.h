@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -13,7 +13,7 @@
 #include "VoxelBlueprintFactories.generated.h"
 
 UCLASS(Abstract)
-class UVoxelBlueprintFactory : public UVoxelFactory
+class UVoxelBlueprintFactoryBase : public UVoxelFactory
 {
 	GENERATED_BODY()
 
@@ -22,8 +22,6 @@ public:
 	TSubclassOf<UObject> ParentClass;
 
 public:
-	virtual void SetupCDO_Voxel(UObject* Object) {}
-	
 	//~ Begin UFactory Interface
 	virtual bool ConfigureProperties() override
 	{
@@ -49,6 +47,18 @@ public:
 
 		return bPressedOk;
 	}
+	//~ End UFactory Interface
+};
+
+UCLASS(Abstract)
+class UVoxelBlueprintClassFactory : public UVoxelBlueprintFactoryBase
+{
+	GENERATED_BODY()
+
+public:
+	virtual void SetupCDO_Voxel(UObject* Object) const {}
+	
+	//~ Begin UFactory Interface
 	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
 	{
 		if (!ParentClass)
@@ -81,21 +91,43 @@ public:
 	//~ End UFactory Interface
 };
 
+UCLASS(Abstract)
+class UVoxelBlueprintAssetFactory : public UVoxelBlueprintFactoryBase
+{
+	GENERATED_BODY()
+
+public:
+	//~ Begin UFactory Interface
+	virtual UObject* FactoryCreateNew(UClass* Class, UObject* InParent, FName Name, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override
+	{
+		if (!ParentClass)
+		{
+			return nullptr;
+		}
+		
+		UObject* Object = NewObject<UObject>(InParent, ParentClass, Name, Flags);
+		if (Object)
+		{
+			SetupObject_Voxel(Object);
+			Object->PostEditChange();
+		}
+		return Object;
+	}
+	//~ End UFactory Interface
+};
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 UCLASS()
-class UVoxelFoliageFactory : public UVoxelBlueprintFactory
+class UVoxelFoliageAssetFactory : public UVoxelBlueprintAssetFactory
 {
 	GENERATED_BODY()
 	GENERATED_VOXEL_FACTORY_BODY(UVoxelFoliage)
 
-	virtual void SetupCDO_Voxel(UObject* Object) override
+	virtual void SetupObject_Voxel(UObject* Object) const override
 	{
 		CastChecked<UVoxelFoliage>(Object)->Guid = FGuid::NewGuid();
 	}
-};
-
-UCLASS()
-class UVoxelFoliageActorFactory : public UVoxelBlueprintFactory
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_FACTORY_BODY(AVoxelFoliageActor)
 };

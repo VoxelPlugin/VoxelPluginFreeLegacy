@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -20,7 +20,7 @@ public:
 		template<typename T, typename U>
 		FRow& Add(const FString& Title, const T& Value, const U& SortValue, double Percent = 0)
 		{
-			Columns.Add({ Title, LexToString(Value), LexToString(SortValue), Percent});
+			Columns.Add({ Title, LexToString(Value), LexToString(SortValue), Percent });
 			return *this;
 		}
 		template<typename T>

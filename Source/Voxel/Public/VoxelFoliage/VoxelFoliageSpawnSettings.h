@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -13,7 +13,7 @@ enum class EVoxelFoliageSpawnType
 {
 	// Will line trace the voxel geometry to find spawning locations. Works with any kind of world/shapes
 	Ray,
-	// These spawners uses a height output from the generator to spawn, allowing for large spawn distance.
+	// This uses a height output from the generator to spawn, allowing for large spawn distance.
 	Height
 };
 

@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelThreadPool.h"
 #include "VoxelQueuedWork.h"
@@ -253,7 +253,7 @@ IVoxelQueuedWork* FVoxelThreadPool::ReturnToPoolOrGetNextJob(FVoxelThread* InQue
 		VOXEL_ASYNC_SCOPE_COUNTER("HeapPop");
 		FQueuedWorkInfo WorkInfo;
 		QueuedWorks.HeapPop(WorkInfo, false);
-		check(WorkInfo.Work);
+		WorkInfo.Work->CheckIsValidLowLevel();
 		return WorkInfo.Work;
 	}
 
@@ -272,12 +272,16 @@ void FVoxelThreadPool::RecomputePriorities_AssumeLocked()
 		for (int32 Index = 0; Index < QueuedWorks.Num(); Index++)
 		{
 			FQueuedWorkInfo& WorkInfo = QueuedWorks.GetData()[Index];
+			WorkInfo.Work->CheckIsValidLowLevel();
+			
 			if (WorkInfo.Work->ShouldAbandon())
 			{
 				AbandonWork(*WorkInfo.Work);
 				QueuedWorks.RemoveAtSwap(Index, 1, false);
 				Index--;
+				continue;
 			}
+			
 			if (WorkInfo.Work->Priority != IVoxelQueuedWork::EPriority::Null)
 			{
 				WorkInfo.RecomputePriority();

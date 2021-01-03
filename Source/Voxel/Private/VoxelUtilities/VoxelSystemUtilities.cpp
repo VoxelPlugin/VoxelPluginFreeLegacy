@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelUtilities/VoxelSystemUtilities.h"
 #include "VoxelLogTable.h"
@@ -42,7 +42,7 @@ void FVoxelSystemUtilities::WriteTables(const FString& BaseName, const TArray<FT
     Lines.Add(R"(</body>)");
     Lines.Add(R"(</html>)");
 
-	const FString BasePath = FPaths::ProjectSavedDir() / "Voxel";
+	const FString BasePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir()) / "Voxel";
 	const FString Path = BasePath / BaseName + "_" + FDateTime::Now().ToString() + ".html";
 	const FString SourcePath = GetPlugin().GetBaseDir() / "Source" / "Voxel" / "Private" / "VoxelUtilities";
 

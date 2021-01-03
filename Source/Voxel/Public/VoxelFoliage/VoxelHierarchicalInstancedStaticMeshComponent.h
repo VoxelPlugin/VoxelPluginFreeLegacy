@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #pragma once
 
@@ -10,8 +10,8 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelHierarchicalInstancedStaticMeshComponent.generated.h"
 
-struct FVoxelSpawnerTransform;
-struct FVoxelSpawnerTransforms;
+struct FVoxelFoliageTransform;
+struct FVoxelFoliageTransforms;
 struct FVoxelHISMBuiltData;
 class FVoxelPool;
 class FVoxelConstDataAccelerator;

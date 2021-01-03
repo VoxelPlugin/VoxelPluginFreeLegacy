@@ -1,4 +1,4 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "AssetTools/AssetTypeActions_VoxelHeightmapAsset.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"

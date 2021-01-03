@@ -1,8 +1,8 @@
-// Copyright 2020 Phyronnaz
+// Copyright 2021 Phyronnaz
 
 #include "VoxelGenerators/VoxelGeneratorInit.h"
 #include "VoxelGenerators/VoxelGeneratorCache.h"
-#include "VoxelFoliage/VoxelSpawnerManagerBase.h"
+#include "VoxelFoliage/VoxelFoliageInterface.h"
 
 FVoxelGeneratorInit::FVoxelGeneratorInit(
 	float VoxelSize, 
@@ -33,10 +33,6 @@ TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorInit::GetGeneratorCache() c
 	}
 }
 
-TVoxelSharedPtr<IVoxelSpawnerManagerBase> FVoxelGeneratorInit::GetSpawnerManager() const
-{
-	return SpawnerManager.Pin();
-}
 
 void FVoxelGeneratorInit::AddReferencedObjects(FReferenceCollector& Collector)
 {
