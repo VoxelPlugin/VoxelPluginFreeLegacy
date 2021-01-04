@@ -29,7 +29,7 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	World = InRuntime.GetWorld();
 	ComponentsOwner = const_cast<AVoxelRuntimeActor*>(&InRuntime);
 	RootComponent = Cast<UPrimitiveComponent>(InRuntime.GetRootComponent());
-	
+
 	Runtime = &InRuntime;
 	VoxelWorld = Cast<const AVoxelWorld>(&InRuntime);
 
@@ -42,7 +42,7 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(bCreateWorldAutomatically);
 	SET(bUseCameraIfNoInvokersFound);
 	SET(bEnableUndoRedo);
-	SET(bEnableCustomWorldRebasing);
+	SET(bUseAbsoluteTransforms);
 	SET(bMergeAssetActors);
 	SET(bMergeDisableEditsBoxes);
 	SET(bDisableOnScreenMessages);
@@ -250,6 +250,48 @@ FVoxelGeneratorInit FVoxelRuntimeSettings::GetGeneratorInit() const
 		MaterialConfig,
 		MaterialCollection.Get(),
 		VoxelWorld.Get());
+}
+
+void FVoxelRuntimeSettings::SetupComponent(USceneComponent& Component) const
+{
+	Component.SetupAttachment(RootComponent.Get(), NAME_None);
+	
+	Component.SetUsingAbsoluteLocation(bUseAbsoluteTransforms);
+	Component.SetUsingAbsoluteRotation(bUseAbsoluteTransforms);
+	Component.SetUsingAbsoluteScale(bUseAbsoluteTransforms);
+
+	Component.SetRelativeTransform(FTransform::Identity);
+}
+
+void FVoxelRuntimeSettings::SetComponentPosition(USceneComponent& Component, const FIntVector& Position, bool bScaleByVoxelSize) const
+{
+	const FVoxelVector RelativePosition = FVoxelVector(Position) * VoxelSize;
+	const FVoxelVector RelativeScale = bScaleByVoxelSize ? FVector(VoxelSize) : FVector::OneVector;
+
+	FVoxelTransform Transform;
+	if (bUseAbsoluteTransforms)
+	{
+		const AVoxelWorld* VoxelWorldPtr = VoxelWorld.Get();
+		if (!ensureVoxelSlow(VoxelWorldPtr))
+		{
+			return;
+		}
+
+		const FVoxelTransform LocalTransform(FVoxelQuat::Identity, RelativePosition, RelativeScale);
+		const FVoxelTransform LocalToGlobalTransform = VoxelWorldPtr->GetVoxelTransform();
+		const FVoxelTransform GlobalTransform = LocalTransform * LocalToGlobalTransform;
+
+		Transform = GlobalTransform.ToFloat();
+	}
+	else
+	{
+		Transform = FVoxelTransform(FVoxelQuat::Identity, RelativePosition, RelativeScale);
+	}
+
+	Component.SetRelativeLocation_Direct(Transform.GetTranslation());
+	Component.SetRelativeRotation_Direct(Transform.GetRotation().ToFloat().Rotator());
+	Component.SetRelativeScale3D_Direct(Transform.GetScale3D());
+	Component.UpdateComponentToWorld(EUpdateTransformFlags::None, ETeleportType::TeleportPhysics);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -48,7 +48,7 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 }
 
 void UVoxelDebugUtilities::DrawDebugIntBox(
-	const IVoxelWorldInterface& World,
+	const FVoxelCoordinatesProvider& World,
 	UVoxelLineBatchComponent& LineBatchComponent, 
 	FTransform Transform,
 	FVoxelIntBox Box, 

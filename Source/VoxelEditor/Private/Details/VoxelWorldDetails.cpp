@@ -135,7 +135,7 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bCreateWorldAutomatically));
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bUseCameraIfNoInvokersFound));
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bEnableUndoRedo));
-		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bEnableCustomWorldRebasing));
+		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bUseAbsoluteTransforms));
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bMergeAssetActors));
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bMergeDisableEditsBoxes));
 		HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, ProcMeshClass));

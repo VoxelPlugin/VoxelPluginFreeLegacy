@@ -10,7 +10,7 @@
 
 class FVoxelData;
 class AVoxelWorld;
-class IVoxelWorldInterface;
+class FVoxelCoordinatesProvider;
 class UVoxelLineBatchComponent;
 
 UCLASS()
@@ -36,7 +36,7 @@ public:
 		FLinearColor Color = FLinearColor::Red);
 
 	static void DrawDebugIntBox(
-		const IVoxelWorldInterface& World,
+		const FVoxelCoordinatesProvider& World,
 		UVoxelLineBatchComponent& LineBatchComponent,
 		FTransform Transform,
 		FVoxelIntBox Box,

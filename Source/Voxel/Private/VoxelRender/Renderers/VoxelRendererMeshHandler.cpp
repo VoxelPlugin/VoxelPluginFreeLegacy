@@ -16,12 +16,6 @@ TAutoConsoleVariable<int32> CVarLogActionQueue(
 	TEXT("If true, will log every queued action when processed"),
 	ECVF_Default);
 
-static TAutoConsoleVariable<int32> CVarLogMeshPositionsPrecisionsErrors(
-	TEXT("voxel.renderer.LogMeshPositionsPrecisionsErrors"),
-	0,
-	TEXT("If true, will log mesh positions precisions errors"),
-	ECVF_Default);
-
 IVoxelRendererMeshHandler::IVoxelRendererMeshHandler(IVoxelRenderer& Renderer)
 	: Renderer(Renderer)
 {
@@ -208,16 +202,17 @@ void IVoxelRendererMeshHandler::Tick(double MaxTime)
 	TickHandler();
 }
 
-void IVoxelRendererMeshHandler::RecomputeMeshPositions()
+void IVoxelRendererMeshHandler::RecomputeComponentPositions()
 {
 	VOXEL_FUNCTION_COUNTER();
 	ensure(!bIsDestroying);
 
 	for (auto& It : ActiveMeshes)
 	{
-		if (ensure(It.Key.IsValid()))
+		UVoxelProceduralMeshComponent* Component = It.Key.Get();
+		if (ensure(Component))
 		{
-			SetMeshPosition(*It.Key, It.Value);
+			Renderer.Settings.SetComponentPosition(*Component, It.Value, true);
 		}
 	}
 }
@@ -247,10 +242,13 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 	VOXEL_FUNCTION_COUNTER();
 	ensure(!bIsDestroying);
 
-	auto& Settings = Renderer.Settings;
+	const FVoxelRuntimeSettings& Settings = Renderer.Settings;
 
+	AActor* ComponentsOwner = Settings.ComponentsOwner.Get();
 	UPrimitiveComponent* RootComponent = Settings.RootComponent.Get();
-	if (!ensureVoxelSlow(RootComponent))
+	
+	if (!ensureVoxelSlow(ComponentsOwner) ||
+		!ensureVoxelSlow(RootComponent))
 	{
 		return nullptr;
 	}
@@ -266,9 +264,10 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 
 		if (!NewMesh)
 		{
-			NewMesh = NewObject<UVoxelProceduralMeshComponent>(RootComponent, Settings.ProcMeshClass, NAME_None, RF_Transient);
+			NewMesh = NewObject<UVoxelProceduralMeshComponent>(ComponentsOwner, Settings.ProcMeshClass, NAME_None, RF_Transient);
+			Settings.SetupComponent(*NewMesh);
+			
 			NewMesh->bCastFarShadow = Settings.bCastFarShadow;
-			NewMesh->SetupAttachment(RootComponent, NAME_None);
 
 			NewMesh->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&RootComponent->BodyInstance);
 			NewMesh->BodyInstance.SetObjectType(RootComponent->BodyInstance.GetObjectType());
@@ -280,7 +279,6 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 			NewMesh->VirtualTextureRenderPassType = RootComponent->VirtualTextureRenderPassType;
 
 			NewMesh->RegisterComponent();
-			NewMesh->SetRelativeScale3D(FVector::OneVector * Settings.VoxelSize);
 		}
 	}
 	check(NewMesh);
@@ -289,7 +287,7 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 
 	ensure(!ActiveMeshes.Contains(NewMesh));
 	ActiveMeshes.Add(NewMesh, Position);
-	SetMeshPosition(*NewMesh, Position);
+	Settings.SetComponentPosition(*NewMesh, Position, true);
 	
 	const FVoxelIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD);
 	const FVoxelPriorityHandler PriorityHandler(Bounds, Renderer);
@@ -326,11 +324,6 @@ void IVoxelRendererMeshHandler::RemoveMesh(UVoxelProceduralMeshComponent& Mesh)
 		Mesh.SetDistanceFieldData(nullptr);
 		Mesh.ClearSections(EVoxelProcMeshSectionUpdate::UpdateNow);
 		Mesh.ClearInit();
-
-		// Set world location to 0 to avoid precision issues, as SetRelativeLocation calls MoveComponent :(
-		Mesh.SetUsingAbsoluteLocation(true);
-		Mesh.SetWorldLocationAndRotationNoPhysics(FVector::ZeroVector, FRotator::ZeroRotator);
-		Mesh.SetUsingAbsoluteLocation(false);
 	}
 
 	if (UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen(Renderer.Settings.VoxelWorld.Get()))
@@ -418,39 +411,6 @@ void IVoxelRendererMeshHandler::Init()
 		FOnFreezeVoxelCollisionChanged::FDelegate::CreateThreadSafeSP(
 			this,
 			&IVoxelRendererMeshHandler::OnFreezeVoxelCollisionChanged));
-}
-
-void IVoxelRendererMeshHandler::SetMeshPosition(UVoxelProceduralMeshComponent& Mesh, const FIntVector& Position) const
-{
-	VOXEL_FUNCTION_COUNTER();
-	ensure(!bIsDestroying);
-
-	// TODO errors might add up when we rebase?
-	Mesh.SetRelativeLocationAndRotation(
-		Renderer.GetChunkRelativePosition(Position),
-		FRotator::ZeroRotator,
-		false,
-		nullptr,
-		ETeleportType::TeleportPhysics);
-
-	// If we don't do that the component does not update if Position = 0 0 0 :(
-	// Probably UE bug?
-	if (Position == FIntVector(0, 0, 0))
-	{
-		Mesh.UpdateComponentToWorld(EUpdateTransformFlags::None, ETeleportType::TeleportPhysics);
-	}
-
-	if (CVarLogMeshPositionsPrecisionsErrors.GetValueOnGameThread() != 0)
-	{
-		const auto A = Mesh.GetRelativeTransform().GetTranslation();
-		const auto B = Renderer.GetChunkRelativePosition(Position);
-		const float Error = FVector::Distance(A, B);
-		if (Error > 0)
-		{
-			LOG_VOXEL(Log, TEXT("Distance between theorical and actual mesh position: %6.6f voxels"), Error);
-			ensure(Error < 1);
-		}
-	}
 }
 
 void IVoxelRendererMeshHandler::OnFreezeVoxelCollisionChanged(bool bNewFreezeCollisions)

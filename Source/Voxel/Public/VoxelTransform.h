@@ -120,6 +120,18 @@ public:
 		DiagnosticCheckNaN_Scale3D();
 		return Scale3D;
 	}
+	
+	FORCEINLINE void SetTranslation(const FVoxelVector& NewTranslation)
+	{
+		Translation = NewTranslation;
+		DiagnosticCheckNaN_Translate();
+	}
+
+	FORCEINLINE void ScaleTranslation(float Scale)
+	{
+		Translation *= Scale;
+		DiagnosticCheckNaN_Translate();
+	}
 
 	FORCEINLINE FVoxelTransform operator*(const FVoxelTransform& Other) const
 	{
@@ -130,6 +142,17 @@ public:
 	FORCEINLINE void operator*=(const FVoxelTransform& Other)
 	{
 		Multiply(this, this, &Other);
+	}
+
+	FORCEINLINE bool operator==(const FVoxelTransform& Other) const
+	{
+		return Rotation == Other.Rotation
+			&& Translation == Other.Translation
+			&& Scale3D == Other.Scale3D;
+	}
+	FORCEINLINE bool operator!=(const FVoxelTransform& Other) const
+	{
+		return !(*this == Other);
 	}
 
 public:

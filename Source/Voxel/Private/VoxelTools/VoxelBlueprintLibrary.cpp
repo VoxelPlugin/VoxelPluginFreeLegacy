@@ -390,6 +390,14 @@ TArray<AVoxelWorld*> UVoxelBlueprintLibrary::GetAllVoxelWorldsOverlappingActor(A
 	return GetAllVoxelWorldsOverlappingBox(Actor, Actor->GetComponentsBoundingBox(true));
 }
 
+void UVoxelBlueprintLibrary::RecomputeComponentPositions(AVoxelWorld* World)
+{
+	VOXEL_FUNCTION_COUNTER();
+	CHECK_VOXELWORLD_IS_CREATED_VOID();
+	
+	World->GetRuntime().RuntimeData->OnRecomputeComponentPositions.Broadcast();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

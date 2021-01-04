@@ -15,7 +15,7 @@
 #include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
 #include "VoxelGenerators/VoxelGeneratorCache.h"
-#include "VoxelWorldInterface.h"
+#include "VoxelCoordinatesProvider.h"
 
 #include "SVoxelGraphPreview.h"
 #include "SVoxelGraphPreviewViewport.h"

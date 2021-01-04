@@ -74,6 +74,11 @@ struct FVoxelVector
 		return FVector(X, Y, Z);
 	}
 
+	operator FVector() const
+	{
+		return ToFloat();
+	}
+
 	FORCEINLINE FString ToString() const
 	{
 		return FString::Printf(TEXT("X=%3.3f Y=%3.3f Z=%3.3f"), X, Y, Z);
@@ -342,7 +347,15 @@ struct FVoxelVector
 	}
 };
 
-FORCEINLINE FVoxelVector operator*(v_flt Scale, const FVoxelVector& V)
+FORCEINLINE FVoxelVector operator*(float Scale, const FVoxelVector& V)
+{
+	return V.operator*(Scale);
+}
+FORCEINLINE FVoxelVector operator*(double Scale, const FVoxelVector& V)
+{
+	return V.operator*(Scale);
+}
+FORCEINLINE FVoxelVector operator*(int32 Scale, const FVoxelVector& V)
 {
 	return V.operator*(Scale);
 }

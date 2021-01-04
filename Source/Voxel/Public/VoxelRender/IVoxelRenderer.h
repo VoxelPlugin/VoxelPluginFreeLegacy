@@ -37,11 +37,6 @@ public:
 	//~ End IVoxelRenderer Interface
 
 public:
-	FVector GetChunkRelativePosition(const FIntVector& Position) const
-	{
-		return FVector(Position + RuntimeData->WorldOffset) * Settings.VoxelSize;
-	}
-
 	UMaterialInterface* GetVoxelMaterial(int32 LOD, const FVoxelMaterialIndices& MaterialIndices) const;
 	UMaterialInterface* GetVoxelMaterial(int32 LOD) const;
 

@@ -59,7 +59,7 @@ public:
 	virtual void Tick(double MaxTime);
 
 public:
-	virtual void RecomputeMeshPositions();
+	virtual void RecomputeComponentPositions();
 	virtual void ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda);
 	virtual void StartDestroying();
 
@@ -148,6 +148,5 @@ private:
 	TSet<FChunkId> ValidIndices;
 #endif
 	
-	void SetMeshPosition(UVoxelProceduralMeshComponent& Mesh, const FIntVector& Position) const;
 	void OnFreezeVoxelCollisionChanged(bool bNewFreezeCollisions);
 };
