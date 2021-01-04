@@ -5,35 +5,35 @@
 #include "CoreMinimal.h"
 #include "VoxelVector.h"
 
-struct FVoxelQuat 
+struct FVoxelDoubleQuat 
 {
 public:
-	v_flt X;
-	v_flt Y;
-	v_flt Z;
-	v_flt W;
+	double X;
+	double Y;
+	double Z;
+	double W;
 
 public:
-	static VOXEL_API const FVoxelQuat Identity;
+	static VOXEL_API const FVoxelDoubleQuat Identity;
 	
-	FORCEINLINE FVoxelQuat()
+	FORCEINLINE FVoxelDoubleQuat()
 	{
 	}
-	explicit FORCEINLINE FVoxelQuat(EForceInit ZeroOrNot)
+	explicit FORCEINLINE FVoxelDoubleQuat(EForceInit ZeroOrNot)
 		: X(0)
 		, Y(0)
 		, Z(0)
 		, W(ZeroOrNot == ForceInitToZero ? 0.0f : 1.0f)
 	{
 	}
-	FORCEINLINE FVoxelQuat(v_flt InX, v_flt InY, v_flt InZ, v_flt InW)
+	FORCEINLINE FVoxelDoubleQuat(double InX, double InY, double InZ, double InW)
 		: X(InX)
 		, Y(InY)
 		, Z(InZ)
 		, W(InW)
 	{
 	}
-	FORCEINLINE FVoxelQuat(const FQuat& Quat)
+	FORCEINLINE FVoxelDoubleQuat(const FQuat& Quat)
 		: X(Quat.X)
 		, Y(Quat.Y)
 		, Z(Quat.Z)
@@ -41,17 +41,26 @@ public:
 	{
 	}
 	
-	FORCEINLINE FQuat ToFloat() const
+	FORCEINLINE operator FQuat() const
 	{
 		return FQuat(X, Y, Z, W);
 	}
+	FORCEINLINE operator FRotator() const
+	{
+		return Rotator();
+	}
+	FORCEINLINE FRotator Rotator() const
+	{
+		const FQuat Quat = *this;
+		return FRotator(Quat);
+	}
 
-	FORCEINLINE FVoxelQuat Inverse() const
+	FORCEINLINE FVoxelDoubleQuat Inverse() const
 	{
 		checkVoxelSlow(IsNormalized());
-		return FVoxelQuat(-X, -Y, -Z, W);
+		return FVoxelDoubleQuat(-X, -Y, -Z, W);
 	}
-	FORCEINLINE FVoxelVector RotateVector(FVoxelVector V) const
+	FORCEINLINE FVoxelDoubleVector RotateVector(FVoxelDoubleVector V) const
 	{
 		// http://people.csail.mit.edu/bkph/articles/Quaternions.pdf
 		// V' = V + 2w(Q x V) + (2Q x (Q x V))
@@ -60,20 +69,20 @@ public:
 		// T = 2(Q x V);
 		// V' = V + w*(T) + (Q x T)
 
-		const FVoxelVector Q(X, Y, Z);
-		const FVoxelVector T = 2.f * FVoxelVector::CrossProduct(Q, V);
-		const FVoxelVector Result = V + (W * T) + FVoxelVector::CrossProduct(Q, T);
+		const FVoxelDoubleVector Q(X, Y, Z);
+		const FVoxelDoubleVector T = 2.f * FVoxelDoubleVector::CrossProduct(Q, V);
+		const FVoxelDoubleVector Result = V + (W * T) + FVoxelDoubleVector::CrossProduct(Q, T);
 		return Result;
 	}
-	FORCEINLINE FVoxelVector UnrotateVector(FVoxelVector V) const
+	FORCEINLINE FVoxelDoubleVector UnrotateVector(FVoxelDoubleVector V) const
 	{
-		const FVoxelVector Q(-X, -Y, -Z); // Inverse
-		const FVoxelVector T = 2.f * FVoxelVector::CrossProduct(Q, V);
-		const FVoxelVector Result = V + (W * T) + FVoxelVector::CrossProduct(Q, T);
+		const FVoxelDoubleVector Q(-X, -Y, -Z); // Inverse
+		const FVoxelDoubleVector T = 2.f * FVoxelDoubleVector::CrossProduct(Q, V);
+		const FVoxelDoubleVector Result = V + (W * T) + FVoxelDoubleVector::CrossProduct(Q, T);
 		return Result;
 	}
 
-	FORCEINLINE v_flt SizeSquared() const
+	FORCEINLINE double SizeSquared() const
 	{
 		return (X * X + Y * Y + Z * Z + W * W);
 	}
@@ -93,13 +102,13 @@ public:
 		return FString::Printf(TEXT("X=%.9f Y=%.9f Z=%.9f W=%.9f"), X, Y, Z, W);
 	}
 
-	FORCEINLINE FVoxelVector operator*(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector operator*(const FVoxelDoubleVector& V) const
 	{
 		return RotateVector(V);
 	}
-	FORCEINLINE FVoxelQuat operator*(const FVoxelQuat& Q) const
+	FORCEINLINE FVoxelDoubleQuat operator*(const FVoxelDoubleQuat& Q) const
 	{
-		FVoxelQuat Result;
+		FVoxelDoubleQuat Result;
 		VectorQuaternionMultiply(Result, *this, Q);
 
 		Result.DiagnosticCheckNaN();
@@ -107,7 +116,7 @@ public:
 		return Result;
 	}
 
-	FORCEINLINE bool operator==(const FVoxelQuat& Other) const
+	FORCEINLINE bool operator==(const FVoxelDoubleQuat& Other) const
 	{
 		return X == Other.X
 			&& Y == Other.Y
@@ -115,13 +124,13 @@ public:
 			&& W == Other.W;
 	}
 
-	static FORCEINLINE void VectorQuaternionMultiply(FVoxelQuat& R, const FVoxelQuat& A, const FVoxelQuat& B)
+	static FORCEINLINE void VectorQuaternionMultiply(FVoxelDoubleQuat& R, const FVoxelDoubleQuat& A, const FVoxelDoubleQuat& B)
 	{
 		// store intermediate results in temporaries
-		const v_flt TX = A.W * B.X + A.X * B.W + A.Y * B.Z - A.Z * B.Y;
-		const v_flt TY = A.W * B.Y - A.X * B.Z + A.Y * B.W + A.Z * B.X;
-		const v_flt TZ = A.W * B.Z + A.X * B.Y - A.Y * B.X + A.Z * B.W;
-		const v_flt TW = A.W * B.W - A.X * B.X - A.Y * B.Y - A.Z * B.Z;
+		const double TX = A.W * B.X + A.X * B.W + A.Y * B.Z - A.Z * B.Y;
+		const double TY = A.W * B.Y - A.X * B.Z + A.Y * B.W + A.Z * B.X;
+		const double TZ = A.W * B.Z + A.X * B.Y - A.Y * B.X + A.Z * B.W;
+		const double TW = A.W * B.W - A.X * B.X - A.Y * B.Y - A.Z * B.Z;
 
 		// copy intermediate result to *this
 		R.X = TX;
@@ -137,7 +146,7 @@ public:
 		if (ContainsNaN())
 		{
 			ensureMsgf(false, TEXT("FQuat contains NaN: %s"), *ToString());
-			*const_cast<FVoxelQuat*>(this) = FQuat::Identity;
+			*const_cast<FVoxelDoubleQuat*>(this) = FQuat::Identity;
 		}
 	}
 
@@ -146,7 +155,7 @@ public:
 		if (ContainsNaN())
 		{
 			ensureMsgf(false, TEXT("%s: FQuat contains NaN: %s"), Message, *ToString());
-			*const_cast<FVoxelQuat*>(this) = FQuat::Identity;
+			*const_cast<FVoxelDoubleQuat*>(this) = FQuat::Identity;
 		}
 	}
 #else
@@ -154,3 +163,9 @@ public:
 	FORCEINLINE void DiagnosticCheckNaN(const TCHAR* Message) const {}
 #endif
 };
+
+#if VOXEL_DOUBLE_PRECISION
+using FVoxelQuat = FVoxelDoubleQuat;
+#else
+using FVoxelQuat = FQuat;
+#endif

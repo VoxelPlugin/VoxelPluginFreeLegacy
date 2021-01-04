@@ -32,7 +32,7 @@ public:
 
 public:
 	//~ Begin FVoxelCoordinatesProvider Interface
-	virtual FVoxelTransform GetVoxelTransform() const = 0;
+	virtual FVoxelDoubleTransform GetVoxelTransform() const = 0;
 	virtual v_flt GetVoxelSize() const = 0;
 	//~ End FVoxelCoordinatesProvider Interface	
 };

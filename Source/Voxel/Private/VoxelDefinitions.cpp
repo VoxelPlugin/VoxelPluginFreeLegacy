@@ -73,16 +73,16 @@ const FVoxelPlaceableItemHolder EmptyVoxelPlaceableItemHolder;
 const FVoxelGeneratorQueryData FVoxelGeneratorQueryData::Empty;
 const FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(EmptyVoxelPlaceableItemHolder);
 
-const FVoxelVector FVoxelVector::ZeroVector(0.0f, 0.0f, 0.0f);
-const FVoxelVector FVoxelVector::OneVector(1.0f, 1.0f, 1.0f);
-const FVoxelVector FVoxelVector::UpVector(0.0f, 0.0f, 1.0f);
-const FVoxelVector FVoxelVector::DownVector(0.0f, 0.0f, -1.0f);
-const FVoxelVector FVoxelVector::ForwardVector(1.0f, 0.0f, 0.0f);
-const FVoxelVector FVoxelVector::BackwardVector(-1.0f, 0.0f, 0.0f);
-const FVoxelVector FVoxelVector::RightVector(0.0f, 1.0f, 0.0f);
-const FVoxelVector FVoxelVector::LeftVector(0.0f, -1.0f, 0.0f);
+const FVoxelDoubleVector FVoxelDoubleVector::ZeroVector(0.0f, 0.0f, 0.0f);
+const FVoxelDoubleVector FVoxelDoubleVector::OneVector(1.0f, 1.0f, 1.0f);
+const FVoxelDoubleVector FVoxelDoubleVector::UpVector(0.0f, 0.0f, 1.0f);
+const FVoxelDoubleVector FVoxelDoubleVector::DownVector(0.0f, 0.0f, -1.0f);
+const FVoxelDoubleVector FVoxelDoubleVector::ForwardVector(1.0f, 0.0f, 0.0f);
+const FVoxelDoubleVector FVoxelDoubleVector::BackwardVector(-1.0f, 0.0f, 0.0f);
+const FVoxelDoubleVector FVoxelDoubleVector::RightVector(0.0f, 1.0f, 0.0f);
+const FVoxelDoubleVector FVoxelDoubleVector::LeftVector(0.0f, -1.0f, 0.0f);
 
-const FVoxelQuat FVoxelQuat::Identity(0, 0, 0, 1);
+const FVoxelDoubleQuat FVoxelDoubleQuat::Identity(0, 0, 0, 1);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

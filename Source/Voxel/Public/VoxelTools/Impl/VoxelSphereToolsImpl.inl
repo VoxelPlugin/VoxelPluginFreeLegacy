@@ -629,7 +629,7 @@ void FVoxelSphereToolsImpl::TrimSphere(TData& Data, const FVoxelVector& Position
 	const float RelativeRadius = Radius * (1.f - Falloff);
 	const float RelativeFalloff = Radius * Falloff;
 	
-	const FPlane Plane(Position.ToFloat(), Normal);
+	const FPlane Plane(Position, Normal);
 	const float SquaredRadiusFalloff = FMath::Square(RelativeRadius + RelativeFalloff + 2);
 
 	Data.template Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)

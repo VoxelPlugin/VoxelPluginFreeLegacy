@@ -441,7 +441,7 @@ void AVoxelWorld::Tick(float DeltaTime)
 
 	if (IsCreated())
 	{
-		const FVoxelTransform NewTransform = GetVoxelTransform();
+		const FVoxelDoubleTransform NewTransform = GetVoxelTransform();
 		if (bUseAbsoluteTransforms && LastTransform != NewTransform)
 		{
 			LastTransform = NewTransform;

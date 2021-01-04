@@ -119,7 +119,7 @@ FTransform FVoxelToolHelpers::GetRealTransform(AVoxelWorld* World, FTransform Tr
 	FVoxelTransform NewTransform = Transform;
 	NewTransform *= World->GetVoxelTransform().Inverse();
 	NewTransform.ScaleTranslation(1.f / World->VoxelSize);
-	return NewTransform.ToFloat();
+	return NewTransform;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

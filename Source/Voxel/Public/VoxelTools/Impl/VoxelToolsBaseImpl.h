@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelEnums.h"
 #include "VoxelValue.h"
+#include "VoxelVector.h"
 #include "VoxelIntBox.h"
 #include "VoxelData/VoxelDataImpl.h"
 
@@ -12,7 +13,6 @@ class AVoxelWorld;
 class FVoxelData;
 
 struct FVoxelIntBox;
-struct FVoxelVector;
 struct FModifiedVoxelValue;
 struct FVoxelPaintMaterial;
 

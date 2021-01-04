@@ -6,40 +6,40 @@
 #include "VoxelQuat.h"
 
 // Double precision transform
-struct FVoxelTransform
+struct FVoxelDoubleTransform
 {
 public:
-	FVoxelTransform() = default;
+	FVoxelDoubleTransform() = default;
 
-	FORCEINLINE FVoxelTransform(const FVoxelQuat& InRotation, const FVoxelVector& InTranslation, const FVoxelVector& InScale3D = FVoxelVector::OneVector)
+	FORCEINLINE FVoxelDoubleTransform(const FVoxelDoubleQuat& InRotation, const FVoxelDoubleVector& InTranslation, const FVoxelDoubleVector& InScale3D = FVoxelDoubleVector::OneVector)
 		: Rotation(InRotation)
 		, Translation(InTranslation)
 		, Scale3D(InScale3D)
 	{
 		DiagnosticCheckNaN_All();
 	}
-	FORCEINLINE FVoxelTransform(const FTransform& Transform)
-		: FVoxelTransform(Transform.GetRotation(), Transform.GetTranslation(), Transform.GetScale3D())
+	FORCEINLINE FVoxelDoubleTransform(const FTransform& Transform)
+		: FVoxelDoubleTransform(Transform.GetRotation(), Transform.GetTranslation(), Transform.GetScale3D())
 	{
 	}
 
-	FTransform ToFloat() const
+	operator FTransform() const
 	{
-		return FTransform(GetRotation().ToFloat(), GetTranslation().ToFloat(), GetScale3D().ToFloat());
-	}
-
-public:
-	FORCEINLINE FVoxelTransform Inverse() const
-	{
-		const FVoxelQuat InvRotation = Rotation.Inverse();
-		const FVoxelVector InvScale3D = GetSafeScaleReciprocal(Scale3D);
-		const FVoxelVector InvTranslation = InvRotation * (InvScale3D * -Translation);
-
-		return FVoxelTransform(InvRotation, InvTranslation, InvScale3D);
+		return FTransform(GetRotation().Rotator(), GetTranslation(), GetScale3D());
 	}
 
 public:
-	static FORCEINLINE bool AnyHasNegativeScale(const FVoxelVector& InScale3D, const FVoxelVector& InOtherScale3D)
+	FORCEINLINE FVoxelDoubleTransform Inverse() const
+	{
+		const FVoxelDoubleQuat InvRotation = Rotation.Inverse();
+		const FVoxelDoubleVector InvScale3D = GetSafeScaleReciprocal(Scale3D);
+		const FVoxelDoubleVector InvTranslation = InvRotation * (InvScale3D * -Translation);
+
+		return FVoxelDoubleTransform(InvRotation, InvTranslation, InvScale3D);
+	}
+
+public:
+	static FORCEINLINE bool AnyHasNegativeScale(const FVoxelDoubleVector& InScale3D, const FVoxelDoubleVector& InOtherScale3D)
 	{
 		return
 			InScale3D.X < 0.f || 
@@ -49,7 +49,7 @@ public:
 			InOtherScale3D.Y < 0.f || 
 			InOtherScale3D.Z < 0.f;
 	}
-	static FORCEINLINE void Multiply(FVoxelTransform* OutTransform, const FVoxelTransform* A, const FVoxelTransform* B)
+	static FORCEINLINE void Multiply(FVoxelDoubleTransform* OutTransform, const FVoxelDoubleTransform* A, const FVoxelDoubleTransform* B)
 	{
 		A->DiagnosticCheckNaN_All();
 		B->DiagnosticCheckNaN_All();
@@ -75,7 +75,7 @@ public:
 		if (AnyHasNegativeScale(A->Scale3D, B->Scale3D))
 		{
 			ensureMsgf(false, TEXT("Negative scales are not supported"));
-			*OutTransform = A->ToFloat() * B->ToFloat();
+			*OutTransform = FTransform(*A) * FTransform(*B);
 		}
 		else
 		{
@@ -93,7 +93,7 @@ public:
 	*
 	* @return The rotation component
 	*/
-	FORCEINLINE FVoxelQuat GetRotation() const
+	FORCEINLINE FVoxelDoubleQuat GetRotation() const
 	{
 		DiagnosticCheckNaN_Rotate();
 		return Rotation;
@@ -104,7 +104,7 @@ public:
 	*
 	* @return The translation component
 	*/
-	FORCEINLINE FVoxelVector GetTranslation() const
+	FORCEINLINE FVoxelDoubleVector GetTranslation() const
 	{
 		DiagnosticCheckNaN_Translate();
 		return Translation;
@@ -115,13 +115,13 @@ public:
 	*
 	* @return The Scale3D component
 	*/
-	FORCEINLINE FVoxelVector GetScale3D() const
+	FORCEINLINE FVoxelDoubleVector GetScale3D() const
 	{
 		DiagnosticCheckNaN_Scale3D();
 		return Scale3D;
 	}
 	
-	FORCEINLINE void SetTranslation(const FVoxelVector& NewTranslation)
+	FORCEINLINE void SetTranslation(const FVoxelDoubleVector& NewTranslation)
 	{
 		Translation = NewTranslation;
 		DiagnosticCheckNaN_Translate();
@@ -133,24 +133,24 @@ public:
 		DiagnosticCheckNaN_Translate();
 	}
 
-	FORCEINLINE FVoxelTransform operator*(const FVoxelTransform& Other) const
+	FORCEINLINE FVoxelDoubleTransform operator*(const FVoxelDoubleTransform& Other) const
 	{
-		FVoxelTransform Output;
+		FVoxelDoubleTransform Output;
 		Multiply(&Output, this, &Other);
 		return Output;
 	}
-	FORCEINLINE void operator*=(const FVoxelTransform& Other)
+	FORCEINLINE void operator*=(const FVoxelDoubleTransform& Other)
 	{
 		Multiply(this, this, &Other);
 	}
 
-	FORCEINLINE bool operator==(const FVoxelTransform& Other) const
+	FORCEINLINE bool operator==(const FVoxelDoubleTransform& Other) const
 	{
 		return Rotation == Other.Rotation
 			&& Translation == Other.Translation
 			&& Scale3D == Other.Scale3D;
 	}
-	FORCEINLINE bool operator!=(const FVoxelTransform& Other) const
+	FORCEINLINE bool operator!=(const FVoxelDoubleTransform& Other) const
 	{
 		return !(*this == Other);
 	}
@@ -180,9 +180,9 @@ public:
 	}
 	FString ToHumanReadableString() const
 	{
-		const FRotator R(GetRotation().ToFloat());
-		const FVector T(GetTranslation().ToFloat());
-		const FVector S(GetScale3D().ToFloat());
+		const FRotator R = GetRotation();
+		const FVector T = GetTranslation();
+		const FVector S = GetScale3D();
 
 		FString Output = FString::Printf(TEXT("Rotation: Pitch %f Yaw %f Roll %f\r\n"), R.Pitch, R.Yaw, R.Roll);
 		Output += FString::Printf(TEXT("Translation: %f %f %f\r\n"), T.X, T.Y, T.Z);
@@ -196,8 +196,8 @@ public:
 	{
 		if (Scale3D.ContainsNaN())
 		{
-			ensureMsgf(false, TEXT("FVoxelTransform Scale3D contains NaN: %s"), *Scale3D.ToString());
-			const_cast<FVoxelTransform*>(this)->Scale3D = FVoxelVector::OneVector;
+			ensureMsgf(false, TEXT("FVoxelDoubleTransform Scale3D contains NaN: %s"), *Scale3D.ToString());
+			const_cast<FVoxelDoubleTransform*>(this)->Scale3D = FVoxelDoubleVector::OneVector;
 		}
 	}
 
@@ -205,8 +205,8 @@ public:
 	{
 		if (Translation.ContainsNaN())
 		{
-			ensureMsgf(false, TEXT("FVoxelTransform Translation contains NaN: %s"), *Translation.ToString());
-			const_cast<FVoxelTransform*>(this)->Translation = FVoxelVector::ZeroVector;
+			ensureMsgf(false, TEXT("FVoxelDoubleTransform Translation contains NaN: %s"), *Translation.ToString());
+			const_cast<FVoxelDoubleTransform*>(this)->Translation = FVoxelDoubleVector::ZeroVector;
 		}
 	}
 
@@ -214,8 +214,8 @@ public:
 	{
 		if (Rotation.ContainsNaN())
 		{
-			ensureMsgf(false, TEXT("FVoxelTransform Rotation contains NaN: %s"), *Rotation.ToString());
-			const_cast<FVoxelTransform*>(this)->Rotation = FVoxelQuat::Identity;
+			ensureMsgf(false, TEXT("FVoxelDoubleTransform Rotation contains NaN: %s"), *Rotation.ToString());
+			const_cast<FVoxelDoubleTransform*>(this)->Rotation = FVoxelDoubleQuat::Identity;
 		}
 	}
 
@@ -231,7 +231,7 @@ public:
 		DiagnosticCheckNaN_All();
 		if (!IsValid())
 		{
-			ensureMsgf(false, TEXT("FVoxelTransform transform is not valid: %s"), *ToHumanReadableString());
+			ensureMsgf(false, TEXT("FVoxelDoubleTransform transform is not valid: %s"), *ToHumanReadableString());
 		}
 	}
 #else
@@ -243,28 +243,28 @@ public:
 #endif
 
 public:
-	FORCEINLINE FVoxelVector TransformPosition(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector TransformPosition(const FVoxelDoubleVector& V) const
 	{
 		DiagnosticCheckNaN_All();
 		return Rotation.RotateVector(Scale3D * V) + Translation;
 	}
 
 
-	FORCEINLINE FVoxelVector TransformPositionNoScale(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector TransformPositionNoScale(const FVoxelDoubleVector& V) const
 	{
 		DiagnosticCheckNaN_All();
 		return Rotation.RotateVector(V) + Translation;
 	}
 
 
-	FORCEINLINE FVoxelVector TransformVector(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector TransformVector(const FVoxelDoubleVector& V) const
 	{
 		DiagnosticCheckNaN_All();
 		return Rotation.RotateVector(Scale3D * V);
 	}
 
 
-	FORCEINLINE FVoxelVector TransformVectorNoScale(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector TransformVectorNoScale(const FVoxelDoubleVector& V) const
 	{
 		DiagnosticCheckNaN_All();
 		return Rotation.RotateVector(V);
@@ -272,7 +272,7 @@ public:
 
 
 	// do backward operation when inverse, translation -> rotation -> scale
-	FORCEINLINE FVoxelVector InverseTransformPosition(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector InverseTransformPosition(const FVoxelDoubleVector& V) const
 	{
 		DiagnosticCheckNaN_All();
 		return (Rotation.UnrotateVector(V - Translation)) * GetSafeScaleReciprocal(Scale3D);
@@ -280,7 +280,7 @@ public:
 
 
 	// do backward operation when inverse, translation -> rotation
-	FORCEINLINE FVoxelVector InverseTransformPositionNoScale(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector InverseTransformPositionNoScale(const FVoxelDoubleVector& V) const
 	{
 		DiagnosticCheckNaN_All();
 		return (Rotation.UnrotateVector(V - Translation));
@@ -288,7 +288,7 @@ public:
 
 
 	// do backward operation when inverse, translation -> rotation -> scale
-	FORCEINLINE FVoxelVector InverseTransformVector(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector InverseTransformVector(const FVoxelDoubleVector& V) const
 	{
 		DiagnosticCheckNaN_All();
 		return (Rotation.UnrotateVector(V)) * GetSafeScaleReciprocal(Scale3D);
@@ -296,29 +296,29 @@ public:
 
 
 	// do backward operation when inverse, translation -> rotation
-	FORCEINLINE FVoxelVector InverseTransformVectorNoScale(const FVoxelVector& V) const
+	FORCEINLINE FVoxelDoubleVector InverseTransformVectorNoScale(const FVoxelDoubleVector& V) const
 	{
 		DiagnosticCheckNaN_All();
 		return (Rotation.UnrotateVector(V));
 	}
 
-	FORCEINLINE FVoxelQuat TransformRotation(const FVoxelQuat& Q) const
+	FORCEINLINE FVoxelDoubleQuat TransformRotation(const FVoxelDoubleQuat& Q) const
 	{
 		return GetRotation() * Q;
 	}
 
-	FORCEINLINE FVoxelQuat InverseTransformRotation(const FVoxelQuat& Q) const
+	FORCEINLINE FVoxelDoubleQuat InverseTransformRotation(const FVoxelDoubleQuat& Q) const
 	{
 		return GetRotation().Inverse() * Q;
 	}
 
 private:
 	/** Rotation of this transformation, as a quaternion. */
-	FVoxelQuat Rotation = FVoxelQuat::Identity;
+	FVoxelDoubleQuat Rotation = FVoxelDoubleQuat::Identity;
 	/** Translation of this transformation, as a vector. */
-	FVoxelVector Translation = FVoxelVector::ZeroVector;
+	FVoxelDoubleVector Translation = FVoxelDoubleVector::ZeroVector;
 	/** 3D scale (always applied in local space) as a vector. */
-	FVoxelVector Scale3D = FVoxelVector::OneVector;
+	FVoxelDoubleVector Scale3D = FVoxelDoubleVector::OneVector;
 
 	/**
 	 * mathematically if you have 0 scale, it should be infinite,
@@ -327,7 +327,7 @@ private:
 	 * also returning BIG_NUMBER causes sequential NaN issues by multiplying
 	 * so we hardcode as 0
 	 */
-	static FORCEINLINE FVoxelVector GetSafeScaleReciprocal(const FVoxelVector& InScale, v_flt Tolerance = SMALL_NUMBER)
+	static FORCEINLINE FVoxelDoubleVector GetSafeScaleReciprocal(const FVoxelDoubleVector& InScale, double Tolerance = SMALL_NUMBER)
 	{
 		FVector SafeReciprocalScale;
 		if (FMath::Abs(InScale.X) <= Tolerance)
@@ -360,3 +360,9 @@ private:
 		return SafeReciprocalScale;
 	}
 };
+
+#if VOXEL_DOUBLE_PRECISION
+using FVoxelTransform = FVoxelDoubleTransform;
+#else
+using FVoxelTransform = FTransform;
+#endif
