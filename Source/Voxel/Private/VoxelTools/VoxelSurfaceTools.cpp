@@ -506,7 +506,7 @@ FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyFlatten(
 {
 	CHECK_VOXELWORLD_FOR_CONVERT_TO_VOXEL_SPACE();
 	
-	PlanePoint = GET_VOXEL_TOOL_REAL(PlanePoint).ToFloat();
+	PlanePoint = GET_VOXEL_TOOL_REAL(PlanePoint);
 
 	if (bConvertToVoxelSpace)
 	{

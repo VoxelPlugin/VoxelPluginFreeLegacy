@@ -265,10 +265,10 @@ void FVoxelRuntimeSettings::SetupComponent(USceneComponent& Component) const
 
 void FVoxelRuntimeSettings::SetComponentPosition(USceneComponent& Component, const FIntVector& Position, bool bScaleByVoxelSize) const
 {
-	const FVoxelVector RelativePosition = FVoxelVector(Position) * VoxelSize;
-	const FVoxelVector RelativeScale = bScaleByVoxelSize ? FVector(VoxelSize) : FVector::OneVector;
+	const FVoxelDoubleVector RelativePosition = FVoxelDoubleVector(Position) * VoxelSize;
+	const FVoxelDoubleVector RelativeScale = bScaleByVoxelSize ? FVector(VoxelSize) : FVector::OneVector;
 
-	FVoxelTransform Transform;
+	FVoxelDoubleTransform Transform;
 	if (bUseAbsoluteTransforms)
 	{
 		const AVoxelWorld* VoxelWorldPtr = VoxelWorld.Get();
@@ -277,19 +277,19 @@ void FVoxelRuntimeSettings::SetComponentPosition(USceneComponent& Component, con
 			return;
 		}
 
-		const FVoxelTransform LocalTransform(FVoxelQuat::Identity, RelativePosition, RelativeScale);
-		const FVoxelTransform LocalToGlobalTransform = VoxelWorldPtr->GetVoxelTransform();
-		const FVoxelTransform GlobalTransform = LocalTransform * LocalToGlobalTransform;
+		const FVoxelDoubleTransform LocalTransform(FVoxelDoubleQuat::Identity, RelativePosition, RelativeScale);
+		const FVoxelDoubleTransform LocalToGlobalTransform = VoxelWorldPtr->GetVoxelTransform();
+		const FVoxelDoubleTransform GlobalTransform = LocalTransform * LocalToGlobalTransform;
 
-		Transform = GlobalTransform.ToFloat();
+		Transform = GlobalTransform;
 	}
 	else
 	{
-		Transform = FVoxelTransform(FVoxelQuat::Identity, RelativePosition, RelativeScale);
+		Transform = FVoxelDoubleTransform(FVoxelQuat::Identity, RelativePosition, RelativeScale);
 	}
 
 	Component.SetRelativeLocation_Direct(Transform.GetTranslation());
-	Component.SetRelativeRotation_Direct(Transform.GetRotation().ToFloat().Rotator());
+	Component.SetRelativeRotation_Direct(Transform.GetRotation());
 	Component.SetRelativeScale3D_Direct(Transform.GetScale3D());
 	Component.UpdateComponentToWorld(EUpdateTransformFlags::None, ETeleportType::TeleportPhysics);
 }

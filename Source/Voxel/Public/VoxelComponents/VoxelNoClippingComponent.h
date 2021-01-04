@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelVector.h"
 #include "Async/Future.h"
 #include "Components/SceneComponent.h"
 #include "VoxelNoClippingComponent.generated.h"
@@ -11,7 +12,6 @@
 class FVoxelData;
 class AVoxelWorld;
 class UCharacterMovementComponent;
-struct FVoxelVector;
 
 // Add this to your player to prevent it from falling through the voxel world when digging under its feet
 //

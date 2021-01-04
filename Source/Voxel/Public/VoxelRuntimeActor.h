@@ -53,7 +53,6 @@ public:
 
 	// If true, the voxel mesh components will have their transform stored in world space instead of relative to the actor transform
 	// Might add a one frame delay to transform updates, but will greatly reduce precision issues
-	// Does nothing if VOXEL_DOUBLE_PRECISION is 0 (which is the default)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General", meta = (RecreateRender))
 	bool bUseAbsoluteTransforms = false;
 

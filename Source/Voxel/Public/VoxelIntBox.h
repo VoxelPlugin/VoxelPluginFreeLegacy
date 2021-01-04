@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelVector.h"
 #include "VoxelUtilities/VoxelVectorUtilities.h"
 #include "VoxelUtilities/VoxelIntVectorUtilities.h"
 #include "Async/ParallelFor.h"
@@ -62,7 +63,7 @@ struct VOXEL_API FVoxelIntBox
 		: FVoxelIntBox(FVoxelUtilities::FloorToInt(Min), FVoxelUtilities::CeilToInt(Max) + 1)
 	{
 	}
-	explicit FVoxelIntBox(const FVoxelVector& Min, const FVoxelVector& Max)
+	explicit FVoxelIntBox(const FVoxelDoubleVector& Min, const FVoxelDoubleVector& Max)
 		: FVoxelIntBox(FVoxelUtilities::FloorToInt(Min), FVoxelUtilities::CeilToInt(Max) + 1)
 	{
 	}
@@ -71,7 +72,7 @@ struct VOXEL_API FVoxelIntBox
 		: FVoxelIntBox(Position, Position)
 	{
 	}
-	explicit FVoxelIntBox(const FVoxelVector& Position)
+	explicit FVoxelIntBox(const FVoxelDoubleVector& Position)
 		: FVoxelIntBox(Position, Position)
 	{
 	}
@@ -117,7 +118,7 @@ struct VOXEL_API FVoxelIntBox
 	{
 		FVoxelIntBox Box;
 		Box.Min = FVoxelUtilities::FloorToInt(FVoxelUtilities::ComponentMin(A, B));
-		Box.Max = FVoxelUtilities::CeilToInt(FVoxelUtilities::ComponentMax3(A, B, Box.Min + FIntVector(1, 1, 1)));
+		Box.Max = FVoxelUtilities::CeilToInt(FVoxelUtilities::ComponentMax3(A, B, FVoxelVector(Box.Min + FIntVector(1, 1, 1))));
 		return Box;
 	}
 
@@ -182,7 +183,7 @@ struct VOXEL_API FVoxelIntBox
 		return ((X >= Min.X) && (X < Max.X) && (Y >= Min.Y) && (Y < Max.Y) && (Z >= Min.Z) && (Z < Max.Z));
 	}
 	template<typename T>
-	FORCEINLINE typename TEnableIf<TOr<TIsSame<T, FVector>, TIsSame<T, FVoxelVector>, TIsSame<T, FIntVector>>::Value, bool>::Type ContainsTemplate(const T& V) const
+	FORCEINLINE typename TEnableIf<TOr<TIsSame<T, FVector>, TIsSame<T, FVoxelDoubleVector>, TIsSame<T, FIntVector>>::Value, bool>::Type ContainsTemplate(const T& V) const
 	{
 		return ContainsTemplate(V.X, V.Y, V.Z);
 	}
@@ -215,7 +216,7 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return ContainsTemplate(V);
 	}
-	FORCEINLINE bool ContainsFloat(const FVoxelVector& V) const
+	FORCEINLINE bool ContainsFloat(const FVoxelDoubleVector& V) const
 	{
 		return ContainsTemplate(V);
 	}
@@ -472,12 +473,12 @@ struct VOXEL_API FVoxelIntBox
 	{
 		FIntVector NewMin = Min;
 		FIntVector NewMax = Max;
-		if (FVoxelVector(GetCenter().ToInt()) != GetCenter())
+		if (FVoxelVector(FIntVector(GetCenter())) != GetCenter())
 		{
 			NewMax = NewMax + 1;
 		}
-		ensure(FVoxelVector(GetCenter().ToInt()) == GetCenter());
-		const FIntVector Offset = GetCenter().ToInt();
+		ensure(FVoxelVector(FIntVector(GetCenter())) == GetCenter());
+		const FIntVector Offset = FIntVector(GetCenter());
 		NewMin -= Offset;
 		NewMax -= Offset;
 		ensure(NewMin + NewMax == FIntVector(0));
@@ -619,7 +620,7 @@ struct VOXEL_API FVoxelIntBox
 			NewMin = FVoxelUtilities::ComponentMin(NewMin, P);
 			NewMax = FVoxelUtilities::ComponentMax(NewMax, P);
 		}
-		return FBox(NewMin.ToFloat(), NewMax.ToFloat() + MaxBorderSize);
+		return FBox(NewMin, NewMax + MaxBorderSize);
 	}
 };
 

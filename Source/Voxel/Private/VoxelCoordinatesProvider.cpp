@@ -15,7 +15,7 @@ FVoxelVector FVoxelCoordinatesProvider::LocalToGlobalFloat(const FVoxelVector& P
 
 FIntVector FVoxelCoordinatesProvider::GlobalToLocal(const FVoxelVector& Position, EVoxelWorldCoordinatesRounding Rounding) const
 {
-	const FVoxelVector LocalPosition = GlobalToLocalFloat(Position);
+	const FVoxelDoubleVector LocalPosition = GlobalToLocalFloat(Position);
 
 	switch (Rounding)
 	{

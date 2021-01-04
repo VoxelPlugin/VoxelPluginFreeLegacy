@@ -128,7 +128,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")
 	static FVector GetCenter(FVoxelIntBox Box)
 	{
-		return Box.GetCenter().ToFloat();
+		return Box.GetCenter();
 	}
 	
 	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")

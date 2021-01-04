@@ -199,7 +199,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "World Position to Voxel Float"))
 	FVector K2_GlobalToLocalFloat(const FVector& Position) const
 	{
-		return GlobalToLocalFloat(Position).ToFloat();
+		return GlobalToLocalFloat(Position);
 	}
 	
 	/**
@@ -210,13 +210,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "Voxel Position to World"))
 	FVector K2_LocalToGlobal(const FIntVector& Position) const
 	{
-		return LocalToGlobal(Position).ToFloat();
+		return LocalToGlobal(Position);
 	}
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "Voxel Position to World Float"))
 	FVector K2_LocalToGlobalFloat(const FVector& Position) const
 	{
-		return LocalToGlobalFloat(Position).ToFloat();
+		return LocalToGlobalFloat(Position);
 	}
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "Voxel Bounds to World"))
@@ -284,7 +284,7 @@ public:
 	//~ Begin FVoxelCoordinatesProvider Interface
 	// You can override this in a child class if you want to return a more precise transform than the actor transform
 	// eg, a planet rotation
-	virtual FVoxelTransform GetVoxelTransform() const override { return GetTransform(); }
+	virtual FVoxelDoubleTransform GetVoxelTransform() const override { return GetTransform(); }
 	virtual v_flt GetVoxelSize() const override { return VoxelSize; }
 	//~ End FVoxelCoordinatesProvider Interface	
 
@@ -313,7 +313,7 @@ private:
 	bool bSimulatePhysicsOnceLoaded = false;
 	EVoxelPlayType PlayType = EVoxelPlayType::Game;
 	double TimeOfCreation = 0;
-	FVoxelTransform LastTransform;
+	FVoxelDoubleTransform LastTransform;
 
 	bool bRegenerateFoliageOnNextFrame = false;
 
