@@ -140,6 +140,13 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Helpers", meta = (DefaultToSelf = "Actor"))
 	static TArray<AVoxelWorld*> GetAllVoxelWorldsOverlappingActor(AActor* Actor);
+
+public:
+	/**
+	 * Update the voxel component positions
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DefaultToSelf = "World"))
+	static void RecomputeComponentPositions(AVoxelWorld* World);
 	
 public:
 	/**

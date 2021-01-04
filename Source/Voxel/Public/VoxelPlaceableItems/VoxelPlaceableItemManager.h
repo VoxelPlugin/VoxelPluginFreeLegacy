@@ -10,7 +10,7 @@
 template<typename T>
 class TVoxelDataItemWrapper;
 
-class IVoxelWorldInterface;
+class FVoxelCoordinatesProvider;
 class UVoxelGeneratorCache;
 class UVoxelLineBatchComponent;
 class UVoxelGeneratorInstanceWrapper;
@@ -153,7 +153,7 @@ public:
 	const TArray<FDebugPoint>& GetDebugPoints() const { return DebugPoints; }
 	
 	void DrawDebug(
-		const IVoxelWorldInterface& VoxelWorldInterface, 
+		const FVoxelCoordinatesProvider& CoordinatesProvider, 
 		UVoxelLineBatchComponent& LineBatchComponent);
 	
 private:

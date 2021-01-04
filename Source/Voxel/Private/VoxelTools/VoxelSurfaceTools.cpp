@@ -510,7 +510,7 @@ FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyFlatten(
 
 	if (bConvertToVoxelSpace)
 	{
-		PlaneNormal = World->GetActorTransform().InverseTransformVector(PlaneNormal).GetSafeNormal();
+		PlaneNormal = World->GetVoxelTransform().InverseTransformVector(PlaneNormal).GetSafeNormal();
 	}
 	
 	return

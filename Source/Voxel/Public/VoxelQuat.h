@@ -107,6 +107,14 @@ public:
 		return Result;
 	}
 
+	FORCEINLINE bool operator==(const FVoxelQuat& Other) const
+	{
+		return X == Other.X
+			&& Y == Other.Y
+			&& Z == Other.Z
+			&& W == Other.W;
+	}
+
 	static FORCEINLINE void VectorQuaternionMultiply(FVoxelQuat& R, const FVoxelQuat& A, const FVoxelQuat& B)
 	{
 		// store intermediate results in temporaries

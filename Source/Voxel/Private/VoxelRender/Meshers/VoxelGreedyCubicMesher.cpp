@@ -566,7 +566,7 @@ FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 		Vertex.Position[XAxis] = Quad.StartX + Quad.SizeX * X;
 		Vertex.Position[YAxis] = Quad.StartY + Quad.SizeY * Y;
 		Vertex.Position[ZAxis] = Quad.Layer + bInverted;
-		Vertex.Position = Step * Vertex.Position - 0.5f;
+		Vertex.Position = float(Step) * Vertex.Position - 0.5f;
 	};
 	
 	SetPosition(0, 0);

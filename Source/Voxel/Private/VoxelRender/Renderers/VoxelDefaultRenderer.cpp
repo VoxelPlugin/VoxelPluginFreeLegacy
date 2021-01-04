@@ -64,7 +64,7 @@ void FVoxelDefaultRenderer::Create()
 	MeshHandler->Init();
 	
 	OnMaterialInstanceCreated.AddThreadSafeSP(Data.Generator, &FVoxelGeneratorInstance::SetupMaterialInstance);
-	RuntimeData->OnWorldOffsetChanged.AddThreadSafeSP(MeshHandler.Get(), &IVoxelRendererMeshHandler::RecomputeMeshPositions);
+	RuntimeData->OnRecomputeComponentPositions.AddThreadSafeSP(MeshHandler.Get(), &IVoxelRendererMeshHandler::RecomputeComponentPositions);
 }
 
 void FVoxelDefaultRenderer::Destroy()

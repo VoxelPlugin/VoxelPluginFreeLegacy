@@ -47,8 +47,9 @@ public:
 	// Used for errors
 	TWeakObjectPtr<UObject> Owner;
 	TWeakObjectPtr<UWorld> World;
-	// For actor components
+	// Actor components outer
 	TWeakObjectPtr<AActor> ComponentsOwner;
+	// The primitive component to copy properties from & to attach scene components to
 	TWeakObjectPtr<UPrimitiveComponent> RootComponent;
 	// Use the most abstract one
 	TWeakObjectPtr<const AVoxelRuntimeActor> Runtime;
@@ -67,7 +68,7 @@ public:
 	bool bCreateWorldAutomatically;
 	bool bUseCameraIfNoInvokersFound;
 	bool bEnableUndoRedo;
-	bool bEnableCustomWorldRebasing;
+	bool bUseAbsoluteTransforms;
 	bool bMergeAssetActors;
 	bool bMergeDisableEditsBoxes;
 	bool bDisableOnScreenMessages;
@@ -183,7 +184,10 @@ public:
 public:
 	FVoxelIntBox GetWorldBounds() const;
 	FVoxelGeneratorInit GetGeneratorInit() const;
-	
+
+	void SetupComponent(USceneComponent& Component) const;
+	void SetComponentPosition(USceneComponent& Component, const FIntVector& Position, bool bScaleByVoxelSize) const;
+
 	// TransformsOffset is used to reduce precision errors
 	FIntVector ComputeFoliageTransformsOffset(const FVoxelIntBox& Bounds) const
 	{
@@ -240,19 +244,8 @@ class VOXEL_API FVoxelRuntimeData
 public:
 	FSimpleMulticastDelegate OnWorldLoaded;
 	FSimpleMulticastDelegate OnMaxFoliageInstancesReached;
-	
-public:
-	FIntVector WorldOffset = FIntVector::ZeroValue;
-	FSimpleMulticastDelegate OnWorldOffsetChanged;
+	FSimpleMulticastDelegate OnRecomputeComponentPositions;
 
-	void SetWorldOffset(const FIntVector& NewWorldOffset)
-	{
-		check(IsInGameThread());
-		WorldOffset = NewWorldOffset;
-		OnWorldOffsetChanged.Broadcast();
-	}
-
-public:
 	FThreadSafeCounter64 CollisionMemory;
 	TVoxelSharedRef<FInvokerPositionsArray> InvokersPositionsForPriorities;
 

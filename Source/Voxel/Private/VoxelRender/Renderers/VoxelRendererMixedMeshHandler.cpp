@@ -133,14 +133,14 @@ void FVoxelRendererMixedMeshHandler::Tick(double MaxTime)
 	ClusteredMeshHandler->Tick(MaxTime);
 }
 
-void FVoxelRendererMixedMeshHandler::RecomputeMeshPositions()
+void FVoxelRendererMixedMeshHandler::RecomputeComponentPositions()
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	IVoxelRendererMeshHandler::RecomputeMeshPositions();
+	IVoxelRendererMeshHandler::RecomputeComponentPositions();
 
-	BasicMeshHandler->RecomputeMeshPositions();
-	ClusteredMeshHandler->RecomputeMeshPositions();
+	BasicMeshHandler->RecomputeComponentPositions();
+	ClusteredMeshHandler->RecomputeComponentPositions();
 }
 
 void FVoxelRendererMixedMeshHandler::ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda)

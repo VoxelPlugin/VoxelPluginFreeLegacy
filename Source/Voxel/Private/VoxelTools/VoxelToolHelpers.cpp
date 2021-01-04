@@ -111,12 +111,15 @@ FVoxelVector FVoxelToolHelpers::GetRealPosition(AVoxelWorld* World, const FVecto
 
 FTransform FVoxelToolHelpers::GetRealTransform(AVoxelWorld* World, FTransform Transform, bool bConvertToVoxelSpace)
 {
-	if (bConvertToVoxelSpace)
+	if (!bConvertToVoxelSpace)
 	{
-		Transform *= World->GetActorTransform().Inverse();
-		Transform.ScaleTranslation(1.f / World->VoxelSize);
+		return Transform;
 	}
-	return Transform;
+	
+	FVoxelTransform NewTransform = Transform;
+	NewTransform *= World->GetVoxelTransform().Inverse();
+	NewTransform.ScaleTranslation(1.f / World->VoxelSize);
+	return NewTransform.ToFloat();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -124,10 +124,10 @@ static FAutoConsoleCommandWithWorld UpdateAllCmd(
 	TEXT("Update all the chunks in all the voxel world in the scene"),
 	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World) { UVoxelBlueprintLibrary::UpdateBounds(&World, FVoxelIntBox::Infinite); }));
 
-static FAutoConsoleCommandWithWorld RecomputeMeshPositionsCmd(
-	TEXT("voxel.renderer.RecomputeMeshPositions"),
-	TEXT("Recompute the positions of all the meshes in all the voxel world in the scene"),
-	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World) { World.GetRuntime().RuntimeData->OnWorldOffsetChanged.Broadcast(); }));
+static FAutoConsoleCommandWithWorld RecomputeComponentPositionsCmd(
+	TEXT("voxel.RecomputeComponentPositions"),
+	TEXT("Recompute the positions of all the components in all the voxel world in the scene"),
+	FVoxelUtilities::CreateVoxelWorldCommand([](AVoxelWorld& World) { UVoxelBlueprintLibrary::RecomputeComponentPositions(&World); }));
 
 static FAutoConsoleCommandWithWorld ForceLODsUpdateCmd(
 	TEXT("voxel.renderer.ForceLODUpdate"),

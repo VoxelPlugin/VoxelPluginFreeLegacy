@@ -103,7 +103,7 @@ void UVoxelPlaceableItemManager::ResetGeneratorCache()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelPlaceableItemManager::DrawDebug(const IVoxelWorldInterface& VoxelWorldInterface, UVoxelLineBatchComponent& LineBatchComponent)
+void UVoxelPlaceableItemManager::DrawDebug(const FVoxelCoordinatesProvider& CoordinatesProvider, UVoxelLineBatchComponent& LineBatchComponent)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -116,7 +116,7 @@ void UVoxelPlaceableItemManager::DrawDebug(const IVoxelWorldInterface& VoxelWorl
 
 	const auto GetPosition = [&](const FVector& Position)
 	{
-		return LineBatchComponent.GetComponentTransform().InverseTransformPosition(VoxelWorldInterface.LocalToGlobalFloat(Position));
+		return LineBatchComponent.GetComponentTransform().InverseTransformPosition(CoordinatesProvider.LocalToGlobalFloat(Position));
 	};
 	
 	for (auto& Line : DebugLines)
@@ -145,7 +145,7 @@ void UVoxelPlaceableItemManager::DrawDebug(const IVoxelWorldInterface& VoxelWorl
 	{
 		for (auto& Info : DataItemInfos)
 		{
-			UVoxelDebugUtilities::DrawDebugIntBox(VoxelWorldInterface, LineBatchComponent, FTransform(), Info.Bounds, Lifetime);
+			UVoxelDebugUtilities::DrawDebugIntBox(CoordinatesProvider, LineBatchComponent, FTransform(), Info.Bounds, Lifetime);
 		}
 	}
 }

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelRuntime.h"
 #include "VoxelRuntimeActor.h"
-#include "VoxelWorldInterface.h"
+#include "VoxelCoordinatesProvider.h"
 #include "VoxelWorldCreateInfo.h"
 #include "VoxelEditorDelegatesInterface.h"
 #include "VoxelGenerators/VoxelGeneratorInit.h"
@@ -22,7 +22,7 @@ class UVoxelPlaceableItemActorHelper;
 UCLASS()
 class VOXEL_API AVoxelWorld
 	: public AVoxelRuntimeActor
-	, public IVoxelWorldInterface
+	, public FVoxelCoordinatesProvider
 	, public IVoxelEditorDelegatesInterface
 {
 	GENERATED_BODY()
@@ -68,10 +68,10 @@ public:
 
 protected:
 	UPROPERTY(Category = "Voxel", VisibleAnywhere, BlueprintReadOnly)
-	UVoxelWorldRootComponent* WorldRoot;
-
+	UVoxelWorldRootComponent* WorldRoot = nullptr;
+	
 	UPROPERTY()
-	UVoxelLineBatchComponent* LineBatchComponent;
+	UVoxelLineBatchComponent* LineBatchComponent = nullptr;
 
 public:
 	UVoxelWorldRootComponent& GetWorldRoot() const { check(WorldRoot); return *WorldRoot; }
@@ -145,7 +145,6 @@ public:
 	
 public:
 	FVoxelIntBox GetWorldBounds() const;
-	FIntVector GetWorldOffset() const;
 	const TVoxelSharedPtr<FGameThreadTasks>& GetGameThreadTasks() const { return GameThreadTasks; }
 	FVoxelRuntime& GetRuntime() const { return *Runtime; }
 	EVoxelPlayType GetPlayType() const { return PlayType; }
@@ -191,53 +190,54 @@ public:
 	 * @param	Rounding	How to round
 	 * @return	Position in voxel space
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "World Position to Voxel", AdvancedDisplay = "Rounding"))
-	virtual FIntVector GlobalToLocal(const FVector& Position, EVoxelWorldCoordinatesRounding Rounding = EVoxelWorldCoordinatesRounding::RoundToNearest) const override final;
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "World Position to Voxel", AdvancedDisplay = "Rounding"))
+	FIntVector K2_GlobalToLocal(FVector Position, EVoxelWorldCoordinatesRounding Rounding = EVoxelWorldCoordinatesRounding::RoundToNearest) const
+	{
+		return GlobalToLocal(Position, Rounding);
+	}
 
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "World Position to Voxel Float"))
-	FVector GlobalToLocalFloatBP(const FVector& Position) const;
-	virtual FVoxelVector GlobalToLocalFloat(const FVector& Position) const override final;
-
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "World Position to Voxel Float"))
+	FVector K2_GlobalToLocalFloat(const FVector& Position) const
+	{
+		return GlobalToLocalFloat(Position).ToFloat();
+	}
+	
 	/**
 	 * Convert position from voxel space to world space
 	 * @param	Position	Position in voxel space
 	 * @return	Position in world space
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "Voxel Position to World"))
-	virtual FVector LocalToGlobal(const FIntVector& Position) const override final;
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "Voxel Position to World Float"))
-	FVector LocalToGlobalFloatBP(const FVector& Position) const;
-	virtual FVector LocalToGlobalFloat(const FVoxelVector& Position) const override final;
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "Voxel Position to World"))
+	FVector K2_LocalToGlobal(const FIntVector& Position) const
+	{
+		return LocalToGlobal(Position).ToFloat();
+	}
 	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "Voxel Bounds to World"))
-	virtual FBox LocalToGlobalBounds(const FVoxelIntBox& Bounds) const override final;
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "Voxel Position to World Float"))
+	FVector K2_LocalToGlobalFloat(const FVector& Position) const
+	{
+		return LocalToGlobalFloat(Position).ToFloat();
+	}
 	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates", meta = (DisplayName = "World Bounds to Voxel"))
-	virtual FVoxelIntBox GlobalToLocalBounds(const FBox& Bounds) const override;
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "Voxel Bounds to World"))
+	FBox K2_LocalToGlobalBounds(const FVoxelIntBox& Bounds) const
+	{
+		return LocalToGlobalBounds(Bounds);
+	}
+	
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates", meta = (DisplayName = "World Bounds to Voxel"))
+	FVoxelIntBox K2_GlobalToLocalBounds(const FBox& Bounds) const
+	{
+		return GlobalToLocalBounds(Bounds);
+	}
 	
 	/**
 	 * Get the 8 neighbors in voxel space of GlobalPosition
 	 * @param	GlobalPosition	The position in world space
 	 * @return	The 8 neighbors in voxel space 
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General|Coordinates")
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Coordinates")
 	TArray<FIntVector> GetNeighboringPositions(const FVector& GlobalPosition) const;
-	
-	/**
-	 * Set the voxel world voxel offset
-	 * @param	OffsetInVoxels	Offset
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
-	void SetOffset(const FIntVector& OffsetInVoxels);
-	
-	/**
-	 * Add an offset to the world coordinate system (eg for rebasing)
-	 * @param	OffsetInVoxels	Offset
-	 * @param	bMoveActor		If false, the actor will keep its current position
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
-	void AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor = true);
 
 	// The generator cache allows to reuse generator objects
 	// This is required for DataItemActors to allow for smaller update when moving them
@@ -263,7 +263,6 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaTime) override;
-	virtual void ApplyWorldOffset(const FVector& InOffset, bool bWorldShift) override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void UnregisterAllComponents(bool bForReregister = false) override;
 #if WITH_EDITOR
@@ -282,8 +281,16 @@ public:
 #endif // WITH_EDITOR
 	//~ End UObject Interface
 
+	//~ Begin FVoxelCoordinatesProvider Interface
+	// You can override this in a child class if you want to return a more precise transform than the actor transform
+	// eg, a planet rotation
+	virtual FVoxelTransform GetVoxelTransform() const override { return GetTransform(); }
+	virtual v_flt GetVoxelSize() const override { return VoxelSize; }
+	//~ End FVoxelCoordinatesProvider Interface	
+
 	void UpdateCollisionProfile();
 
+	
 private:
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(Transient)
@@ -306,6 +313,7 @@ private:
 	bool bSimulatePhysicsOnceLoaded = false;
 	EVoxelPlayType PlayType = EVoxelPlayType::Game;
 	double TimeOfCreation = 0;
+	FVoxelTransform LastTransform;
 
 	bool bRegenerateFoliageOnNextFrame = false;
 

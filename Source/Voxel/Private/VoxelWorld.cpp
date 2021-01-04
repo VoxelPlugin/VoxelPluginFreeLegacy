@@ -304,11 +304,6 @@ FVoxelIntBox AVoxelWorld::GetWorldBounds() const
 	return FVoxelRuntimeSettings::GetWorldBounds(bUseCustomWorldBounds, CustomWorldBounds, RenderOctreeDepth);
 }
 
-FIntVector AVoxelWorld::GetWorldOffset() const
-{
-	return Runtime.IsValid() ? Runtime->RuntimeData->WorldOffset : FIntVector::ZeroValue;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -338,78 +333,6 @@ void AVoxelWorld::SetWorldSize(uint32 NewWorldSizeInVoxels)
 	SetRenderOctreeDepth(FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(NewWorldSizeInVoxels));
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-FIntVector AVoxelWorld::GlobalToLocal(const FVector& Position, EVoxelWorldCoordinatesRounding Rounding) const
-{
-	const FVector LocalPosition = GetTransform().InverseTransformPosition(Position) / VoxelSize;
-
-	FIntVector VoxelPosition;
-	switch (Rounding)
-	{
-	case EVoxelWorldCoordinatesRounding::RoundToNearest: VoxelPosition = FVoxelUtilities::RoundToInt(LocalPosition); break;
-	case EVoxelWorldCoordinatesRounding::RoundUp: VoxelPosition = FVoxelUtilities::CeilToInt(LocalPosition); break;
-	case EVoxelWorldCoordinatesRounding::RoundDown: VoxelPosition = FVoxelUtilities::FloorToInt(LocalPosition); break;
-	default: ensure(false);
-	}
-	return VoxelPosition - GetWorldOffset();
-}
-
-FVector AVoxelWorld::GlobalToLocalFloatBP(const FVector& Position) const
-{
-	return GlobalToLocalFloat(Position).ToFloat();
-}
-
-FVoxelVector AVoxelWorld::GlobalToLocalFloat(const FVector& Position) const
-{
-	return GetTransform().InverseTransformPosition(Position) / VoxelSize - FVoxelVector(GetWorldOffset());
-}
-
-FVector AVoxelWorld::LocalToGlobal(const FIntVector& Position) const
-{
-	return GetTransform().TransformPosition(VoxelSize * FVector(Position + GetWorldOffset()));
-}
-
-FVector AVoxelWorld::LocalToGlobalFloatBP(const FVector& Position) const
-{
-	return LocalToGlobalFloat(Position);
-}
-
-FVector AVoxelWorld::LocalToGlobalFloat(const FVoxelVector& Position) const
-{
-	return GetTransform().TransformPosition((VoxelSize * (Position + GetWorldOffset())).ToFloat());
-}
-
-FBox AVoxelWorld::LocalToGlobalBounds(const FVoxelIntBox& Bounds) const
-{
-	return Bounds.ApplyTransformFloatImpl([&](const FIntVector& Position) { return LocalToGlobal(Position); });
-}
-
-FVoxelIntBox AVoxelWorld::GlobalToLocalBounds(const FBox& Bounds) const
-{
-	FVoxelIntBoxWithValidity Result;
-	
-	FVector Vertices[8] = 
-	{
-		FVector(Bounds.Min),
-		FVector(Bounds.Min.X, Bounds.Min.Y, Bounds.Max.Z),
-		FVector(Bounds.Min.X, Bounds.Max.Y, Bounds.Min.Z),
-		FVector(Bounds.Max.X, Bounds.Min.Y, Bounds.Min.Z),
-		FVector(Bounds.Max.X, Bounds.Max.Y, Bounds.Min.Z),
-		FVector(Bounds.Max.X, Bounds.Min.Y, Bounds.Max.Z),
-		FVector(Bounds.Min.X, Bounds.Max.Y, Bounds.Max.Z),
-		FVector(Bounds.Max)
-	};
-	for (auto& Vertex : Vertices)
-	{
-		Result += GlobalToLocal(Vertex);
-	}
-
-	return Result.GetBox();
-}
-
 TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition) const
 {
 	return TArray<FIntVector>(FVoxelUtilities::GetNeighbors(GlobalToLocalFloat(GlobalPosition)));
@@ -418,27 +341,6 @@ TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPos
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-
-void AVoxelWorld::SetOffset(const FIntVector& OffsetInVoxels)
-{
-	VOXEL_FUNCTION_COUNTER();
-	CHECK_VOXELWORLD_IS_CREATED_IMPL(this,);
-
-	Runtime->RuntimeData->SetWorldOffset(OffsetInVoxels);
-}
-
-void AVoxelWorld::AddOffset(const FIntVector& OffsetInVoxels, bool bMoveActor)
-{
-	VOXEL_FUNCTION_COUNTER();
-	CHECK_VOXELWORLD_IS_CREATED_IMPL(this,);
-
-	if (bMoveActor)
-	{
-		SetActorLocation(GetTransform().TransformPosition(VoxelSize * FVector(OffsetInVoxels)));
-	}
-
-	SetOffset(GetWorldOffset() - OffsetInVoxels);
-}
 
 UVoxelGeneratorCache* AVoxelWorld::GetGeneratorCache() const
 {
@@ -539,6 +441,13 @@ void AVoxelWorld::Tick(float DeltaTime)
 
 	if (IsCreated())
 	{
+		const FVoxelTransform NewTransform = GetVoxelTransform();
+		if (bUseAbsoluteTransforms && LastTransform != NewTransform)
+		{
+			LastTransform = NewTransform;
+			UVoxelBlueprintLibrary::RecomputeComponentPositions(this);
+		}
+		
 		if (bRegenerateFoliageOnNextFrame)
 		{
 			UVoxelBlueprintLibrary::RecreateSpawners(this);
@@ -554,27 +463,6 @@ void AVoxelWorld::Tick(float DeltaTime)
 	}
 
 	bRegenerateFoliageOnNextFrame = false;
-}
-
-void AVoxelWorld::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
-{
-	VOXEL_FUNCTION_COUNTER();
-	
-	if (!IsCreated() || !bEnableCustomWorldRebasing)
-	{
-		Super::ApplyWorldOffset(InOffset, bWorldShift);
-	}
-	else
-	{
-		const FVector RelativeOffset = InOffset / VoxelSize;
-		const FIntVector IntegerOffset = FVoxelUtilities::RoundToInt(RelativeOffset);
-		const FVector GlobalIntegerOffset = FVector(IntegerOffset) * VoxelSize;
-		const FVector Diff = InOffset - GlobalIntegerOffset;
-
-		Super::ApplyWorldOffset(Diff, bWorldShift);
-
-		SetOffset(GetWorldOffset() + IntegerOffset);
-	}
 }
 
 void AVoxelWorld::OnConstruction(const FTransform& Transform)
@@ -879,6 +767,7 @@ void AVoxelWorld::CreateWorldInternal(const FVoxelWorldCreateInfo& Info)
 
 	bIsLoaded = false;
 	TimeOfCreation = FPlatformTime::Seconds();
+	LastTransform = GetVoxelTransform();
 
 	if (!Generator.IsValid())
 	{
@@ -1159,6 +1048,7 @@ void AVoxelWorld::ApplyCollisionSettingsToRoot() const
 	WorldRoot->BodyInstance.SetPhysMaterialOverride(PhysMaterialOverride);
 	WorldRoot->BodyInstance.bNotifyRigidBodyCollision = bNotifyRigidBodyCollision;
 	WorldRoot->BodyInstance.bUseCCD = bUseCCD;
+	WorldRoot->BodyInstance.COMNudge = CollisionPresets.COMNudge;
 	WorldRoot->RecreatePhysicsState();
 }
 
