@@ -2,7 +2,6 @@
 
 #include "VoxelGenerators/VoxelGeneratorInit.h"
 #include "VoxelGenerators/VoxelGeneratorCache.h"
-#include "VoxelFoliage/VoxelFoliageInterface.h"
 
 FVoxelGeneratorInit::FVoxelGeneratorInit(
 	float VoxelSize, 
@@ -20,6 +19,16 @@ FVoxelGeneratorInit::FVoxelGeneratorInit(
 {
 }
 
+void FVoxelGeneratorInit::AddReferencedObjects(FReferenceCollector& Collector)
+{
+	Collector.AddReferencedObject(MaterialCollection);
+}
+
+TVoxelSharedPtr<FVoxelRuntime> FVoxelGeneratorInit::GetRuntime() const
+{
+	return Runtime.Pin();
+}
+
 TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorInit::GetGeneratorCache() const
 {
 	const TVoxelSharedPtr<FVoxelGeneratorCache> Pinned = GeneratorCache.Pin();
@@ -29,12 +38,6 @@ TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorInit::GetGeneratorCache() c
 	}
 	else
 	{
-		return FVoxelGeneratorCache::Create(*this);
+		return FVoxelGeneratorCache::Create(*this, nullptr);
 	}
-}
-
-
-void FVoxelGeneratorInit::AddReferencedObjects(FReferenceCollector& Collector)
-{
-	Collector.AddReferencedObject(MaterialCollection);
 }
