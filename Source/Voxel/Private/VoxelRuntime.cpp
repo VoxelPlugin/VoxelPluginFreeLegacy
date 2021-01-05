@@ -70,7 +70,6 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(RGBHardness);
 	SET(MaterialsHardness);
 	SET(bHardColorTransitions);
-	SET(bOneMaterialPerCubeSide);
 	SET(HolesMaterials);
 	SET(MaterialsMeshConfigs);
 	SET(bHalfPrecisionCoordinates);
@@ -191,10 +190,6 @@ void FVoxelRuntimeSettings::Fixup()
 	if (MaterialConfig != EVoxelMaterialConfig::RGB)
 	{
 		bGreedyCubicMesher = false;
-	}
-	if (MaterialConfig != EVoxelMaterialConfig::SingleIndex)
-	{
-		bOneMaterialPerCubeSide = false;
 	}
 	if (!bGreedyCubicMesher)
 	{
@@ -366,11 +361,13 @@ void FVoxelRuntimeDynamicSettings::SetFromRuntime(const AVoxelRuntimeActor& Runt
 		// Set MaxMaterialIndices
 		if (auto* Collection = Settings.MaterialCollection.Get())
 		{
+			Settings.bEnableCubicFaces = Collection->EnableCubicFaces();
 			Settings.MaxMaterialIndices.Set(FMath::Max(Collection->GetMaxMaterialIndices(), 1));
 			MaterialCollectionsToInitialize.AddUnique(Collection);
 		}
 		else
 		{
+			Settings.bEnableCubicFaces = false;
 			Settings.MaxMaterialIndices.Set(1);
 		}
 	}

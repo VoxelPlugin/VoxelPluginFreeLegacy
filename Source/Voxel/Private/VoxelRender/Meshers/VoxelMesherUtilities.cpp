@@ -227,6 +227,42 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 			FVoxelMaterialIndices MaterialIndices;
 			MaterialIndices.NumIndices = 1;
 			MaterialIndices.SortedIndices[0] = MaterialIndexToUse;
+			
+			if (DynamicSettings.MaterialSettings[LOD].bEnableCubicFaces)
+			{
+				ensure(VertexA.Normal == VertexB.Normal);
+				ensure(VertexB.Normal == VertexC.Normal);
+
+				const FVector Normal = VertexA.Normal;
+				if (Normal == FVector(-1, 0, 0))
+				{
+					MaterialIndices.CubicFace = 0;
+				}
+				else if (Normal == FVector(1, 0, 0))
+				{
+					MaterialIndices.CubicFace = 1;
+				}
+				else if (Normal == FVector(0, -1, 0))
+				{
+					MaterialIndices.CubicFace = 2;
+				}
+				else if (Normal == FVector(0, 1, 0))
+				{
+					MaterialIndices.CubicFace = 3;
+				}
+				else if (Normal == FVector(0, 0, -1))
+				{
+					MaterialIndices.CubicFace = 4;
+				}
+				else if (Normal == FVector(0, 0, 1))
+				{
+					MaterialIndices.CubicFace = 5;
+				}
+				else
+				{
+					ensure(false);
+				}
+			}
 
 			bool bAdded;
 			FVoxelChunkMeshBuffers& Buffer = Chunk->FindOrAddBuffer(MaterialIndices, bAdded);

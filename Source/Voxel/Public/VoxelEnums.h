@@ -217,3 +217,20 @@ enum class EVoxelFoliageWorldType : uint8
 	Flat,
 	Planet
 };
+
+UENUM(BlueprintType)
+enum class EVoxelCubicFace : uint8
+{
+	// -X
+	Back,
+	// +X
+	Front,
+	// -Y
+	Left,
+	// +Y
+	Right,
+	// -Z
+	Bottom,
+	// +Z
+	Top
+};

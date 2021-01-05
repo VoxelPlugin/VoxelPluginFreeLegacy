@@ -197,6 +197,18 @@ FORCEINLINE void FVoxelData::Set(int32 X, int32 Y, int32 Z, const T& Value)
 	}
 }
 
+template<typename T, typename TLambda>
+void FVoxelData::Edit(int32 X, int32 Y, int32 Z, TLambda Lambda)
+{
+	if (IsInWorld(X, Y, Z))
+	{
+		auto Iterate = [&](auto InLambda) { InLambda(X, Y, Z); };
+		auto Apply = [&](int32, int32, int32, T& InValue) { Lambda(InValue); };
+		auto& Leaf = *FVoxelOctreeUtilities::GetLeaf<EVoxelOctreeLeafQuery::CreateIfNull>(GetOctree(), X, Y, Z);
+		FVoxelDataOctreeSetter::Set<T>(*this, Leaf, Iterate, Apply);
+	}
+}
+
 template<typename T>
 FORCEINLINE T FVoxelData::Get(int32 X, int32 Y, int32 Z, int32 LOD) const
 {

@@ -9,6 +9,7 @@
 #include "VoxelFoliage/VoxelFoliageBiome.h"
 #include "VoxelFoliage/VoxelFoliageCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelBasicMaterialCollection.h"
+#include "VoxelRender/MaterialCollections/VoxelBlueprintMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 #include "VoxelGraphDataItemConfig.h"
@@ -110,6 +111,13 @@ class UVoxelBasicMaterialCollectionFactory : public UVoxelFactory
 {
 	GENERATED_BODY()
 	GENERATED_VOXEL_FACTORY_BODY(UVoxelBasicMaterialCollection)
+};
+
+UCLASS()
+class UVoxelBlueprintMaterialCollectionFactory : public UVoxelFactory
+{
+	GENERATED_BODY()
+	GENERATED_VOXEL_FACTORY_BODY(UVoxelBlueprintMaterialCollection)
 };
 
 UCLASS()

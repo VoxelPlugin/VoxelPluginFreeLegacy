@@ -627,7 +627,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 			return false;
 		};
 		
-		for (auto& Material : MaterialsSet)
+		for (const FVoxelMaterialIndices& Material : MaterialsSet)
 		{
 			if (ShouldSkip(Material))
 			{

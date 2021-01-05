@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HAL/ThreadSafeBool.h"
 #include "Templates/SubclassOf.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "VoxelRender/VoxelMeshConfig.h"
@@ -99,7 +100,6 @@ public:
 	EVoxelRGBHardness RGBHardness;
 	TMap<FString, float> MaterialsHardness;
 	bool bHardColorTransitions;
-	bool bOneMaterialPerCubeSide;
 	TArray<uint8> HolesMaterials;
 	TMap<uint8, FVoxelMeshConfig> MaterialsMeshConfigs;
 	bool bHalfPrecisionCoordinates;
@@ -220,6 +220,7 @@ public:
 	{
 		TWeakObjectPtr<UMaterialInterface> Material;
 		TWeakObjectPtr<UVoxelMaterialCollectionBase> MaterialCollection;
+		FThreadSafeBool bEnableCubicFaces = false;
 		FThreadSafeCounter MaxMaterialIndices = 1;
 	};
 	TVoxelStaticArray<FLODMaterialSettings, 32> MaterialSettings{ ForceInit };

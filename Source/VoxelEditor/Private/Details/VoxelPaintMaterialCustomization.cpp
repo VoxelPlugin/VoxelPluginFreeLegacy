@@ -313,9 +313,9 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 	
 	const auto Thumbnail = MakeShared<FAssetThumbnail>(nullptr, 64, 64, CustomizationUtils.GetThumbnailPool());
 
-	const auto SelectedMaterial = MakeShared<UVoxelMaterialCollectionBase::FMaterialInfo>();
-	const auto AssetsToMaterials = MakeShared<TMap<TWeakObjectPtr<UObject>, UVoxelMaterialCollectionBase::FMaterialInfo>>();
-	const auto IndicesToMaterials = MakeShared<TMap<uint8, UVoxelMaterialCollectionBase::FMaterialInfo>>();
+	const auto SelectedMaterial = MakeShared<FVoxelMaterialCollectionMaterialInfo>();
+	const auto AssetsToMaterials = MakeShared<TMap<TWeakObjectPtr<UObject>, FVoxelMaterialCollectionMaterialInfo>>();
+	const auto IndicesToMaterials = MakeShared<TMap<uint8, FVoxelMaterialCollectionMaterialInfo>>();
 	
 	const auto OnChanged = FSimpleDelegate::CreateLambda([=]()
 	{
@@ -330,11 +330,6 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 		AssetsToMaterials->Reset();
 		for (auto& MaterialInfo : MaterialCollection->GetMaterials())
 		{
-			if (MaterialInfo.Material.IsValid() && MaterialInfo.Name.IsNone())
-			{
-				// Fixup name if needed
-				MaterialInfo.Name = MaterialInfo.Material->GetFName();
-			}
 			AssetsToMaterials->Add(MaterialInfo.Material, MaterialInfo);
 			IndicesToMaterials->Add(MaterialInfo.Index, MaterialInfo);
 		}
@@ -376,7 +371,7 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 					if (It.Key.IsValid())
 					{
 						FAssetData AssetData(It.Key.Get());
-						AssetData.AssetName = It.Value.Name;
+						AssetData.AssetName = It.Value.GetName();
 						AddedAssets.Add(AssetData);
 					}
 				}
@@ -414,7 +409,7 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 				.Font( FEditorStyle::GetFontStyle( "PropertyWindow.NormalFont" ) )
 				.Text_Lambda([=]()
 				{
-					return FText::FromName(SelectedMaterial->Name);
+					return FText::FromName(SelectedMaterial->GetName());
 				})
 			]
 		];

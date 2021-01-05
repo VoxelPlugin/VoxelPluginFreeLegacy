@@ -340,25 +340,6 @@ public:
 	}
 
 public:
-	FORCEINLINE void CopyFrom(const T& Other, uint32 Mask)
-	{
-		if (Mask & EVoxelMaterialMask::R) SetR(Other.GetR());
-		if (Mask & EVoxelMaterialMask::G) SetG(Other.GetG());
-		if (Mask & EVoxelMaterialMask::B) SetB(Other.GetB());
-		if (Mask & EVoxelMaterialMask::A) SetA(Other.GetA());
-
-		if (Mask & EVoxelMaterialMask::U0) SetU0(Other.GetU0());
-		if (Mask & EVoxelMaterialMask::U1) SetU1(Other.GetU1());
-		if (Mask & EVoxelMaterialMask::U2) SetU2(Other.GetU2());
-		if (Mask & EVoxelMaterialMask::U3) SetU3(Other.GetU3());
-
-		if (Mask & EVoxelMaterialMask::V0) SetV0(Other.GetV0());
-		if (Mask & EVoxelMaterialMask::V1) SetV1(Other.GetV1());
-		if (Mask & EVoxelMaterialMask::V2) SetV2(Other.GetV2());
-		if (Mask & EVoxelMaterialMask::V3) SetV3(Other.GetV3());
-	}
-
-public:
 	FORCEINLINE bool operator==(const T& Other) const
 	{
 		return
@@ -542,6 +523,17 @@ public:
 	FORCEINLINE T operator[](int32 Channel) const
 	{
 		return GetRaw(Channel);
+	}
+
+	FORCEINLINE void CopyFrom(const TVoxelMaterialStorage<T>& Other, uint32 Mask)
+	{
+		for (int32 Channel = 0; Channel < NumChannels; Channel++)
+		{
+			if (Mask & (1 << Channel))
+			{
+				GetRaw(Channel) = Other.GetRaw(Channel);
+			}
+		}
 	}
 
 public:
