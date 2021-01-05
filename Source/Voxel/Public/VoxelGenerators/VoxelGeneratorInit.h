@@ -7,10 +7,10 @@
 #include "VoxelMinimal.h"
 #include "VoxelGeneratorInit.generated.h"
 
+class FVoxelRuntime;
+class FVoxelGeneratorCache;
 class AVoxelWorld;
 class UVoxelMaterialCollectionBase;
-class FVoxelGeneratorCache;
-class IVoxelFoliageInterface;
 
 USTRUCT(BlueprintType)
 struct VOXEL_API FVoxelGeneratorInit
@@ -46,13 +46,14 @@ public:
 		const UVoxelMaterialCollectionBase* MaterialCollection,
 		const TWeakObjectPtr<const AVoxelWorld>& World);
 
-	TVoxelSharedRef<FVoxelGeneratorCache> GetGeneratorCache() const;
-	
 	void AddReferencedObjects(FReferenceCollector& Collector);
 
+	TVoxelSharedPtr<FVoxelRuntime> GetRuntime() const;
+	TVoxelSharedRef<FVoxelGeneratorCache> GetGeneratorCache() const;
+
 private:
+	TVoxelWeakPtr<FVoxelRuntime> Runtime;
 	TVoxelWeakPtr<FVoxelGeneratorCache> GeneratorCache;
-	TVoxelWeakPtr<IVoxelFoliageInterface> FoliageInterface;
 
 	friend class FVoxelGeneratorCache;
 

@@ -5,6 +5,8 @@
 
 void UVoxelBlueprintMaterialCollection::InitializeCollection()
 {
+	Super::InitializeCollection();
+	
 	if (!Instance)
 	{
 		return;

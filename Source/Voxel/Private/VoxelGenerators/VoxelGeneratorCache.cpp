@@ -15,7 +15,7 @@ void FVoxelGeneratorCacheSubsystem::Create()
 	Super::Create();
 
 	// Not GetChecked because the subsystem won't be created in free
-	GeneratorCache = FVoxelGeneratorCache::Create(Settings.GetGeneratorInit(), GetSubsystem<IVoxelFoliageInterface>());
+	GeneratorCache = FVoxelGeneratorCache::Create(Settings.GetGeneratorInit(), WeakRuntime);
 }
 
 void FVoxelGeneratorCacheSubsystem::PreDestructor()
@@ -29,13 +29,13 @@ void FVoxelGeneratorCacheSubsystem::PreDestructor()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorCache::Create(const FVoxelGeneratorInit& Init, TVoxelWeakPtr<IVoxelFoliageInterface> FoliageSubsystem)
+TVoxelSharedRef<FVoxelGeneratorCache> FVoxelGeneratorCache::Create(const FVoxelGeneratorInit& Init, TVoxelWeakPtr<FVoxelRuntime> Runtime)
 {
-	ensure(!Init.GeneratorCache.IsValid());
+	ensure(!Init.Runtime.IsValid());
 	const TVoxelSharedRef<FVoxelGeneratorCache> Result = MakeShareable(new FVoxelGeneratorCache());
 	Result->GeneratorInit = Init;
+	Result->GeneratorInit.Runtime = Runtime;
 	Result->GeneratorInit.GeneratorCache = Result;
-	Result->GeneratorInit.FoliageInterface = FoliageSubsystem;
 	OnGeneratorRecompiled.AddThreadSafeSP(Result, &FVoxelGeneratorCache::OnGeneratorRecompiledImpl);
 	return Result;
 }
