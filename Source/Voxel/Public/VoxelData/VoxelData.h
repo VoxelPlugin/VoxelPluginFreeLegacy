@@ -232,11 +232,18 @@ public:
 	// Set value or material at position depending on template argument (FVoxelValue or FVoxelMaterial)
 	template<typename T>
 	void Set(int32 X, int32 Y, int32 Z, const T& Value);
+	template<typename T, typename TLambda>
+	void Edit(int32 X, int32 Y, int32 Z, TLambda Lambda);
 
 	template<typename T>
 	FORCEINLINE void Set(const FIntVector& P, const T& Value)
 	{
 		Set<T>(P.X, P.Y, P.Z, Value);
+	}
+	template<typename T, typename TLambda>
+	FORCEINLINE void Edit(const FIntVector& P, TLambda Lambda)
+	{
+		Edit<T>(P.X, P.Y, P.Z, Lambda);
 	}
 
 	template<typename T>

@@ -580,6 +580,22 @@ public:
 	{
 		return Material.GetSingleIndex();
 	}
+	
+	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
+	static FVoxelMaterial MakeColorMaterial(FLinearColor Color)
+	{
+		FVoxelMaterial Material;
+		Material.SetColor(Color);
+		return Material;
+	}
+	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
+	static FVoxelMaterial MakeSingleIndexMaterial(uint8 Index)
+	{
+		FVoxelMaterial Material;
+		Material.SetSingleIndex(Index);
+		return Material;
+	}
+	
 	// If SortByStrength is true, Index 0 will have the highest strength, Index 1 the second highest etc
 	UFUNCTION(BlueprintPure, Category = "Voxel|Materials")
 	static void GetMultiIndex(

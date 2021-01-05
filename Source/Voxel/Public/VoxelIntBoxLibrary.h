@@ -92,6 +92,11 @@ public:
 	{
 		return IntBox.ToString();
 	}
+	UFUNCTION(BlueprintPure, meta=(DisplayName = "ToVoxelIntBox (IntVector)", CompactNodeTitle = "->", BlueprintAutocast), Category="Utilities|VoxelIntBox")
+	static FVoxelIntBox Conv_IntVectorToVoxelIntBox(FIntVector Vector)
+	{
+		return FVoxelIntBox(Vector);
+	}
 
 	// From -Radius(included) to Radius(excluded)
 	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")

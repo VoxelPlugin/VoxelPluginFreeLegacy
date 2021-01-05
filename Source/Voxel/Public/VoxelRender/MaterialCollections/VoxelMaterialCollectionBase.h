@@ -8,6 +8,24 @@
 struct FVoxelMaterialIndices;
 class UMaterialInterface;
 
+USTRUCT(BlueprintType)
+struct VOXEL_API FVoxelMaterialCollectionMaterialInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	uint8 Index = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	TWeakObjectPtr<UMaterialInterface> Material;
+
+	// If empty, will use the Material name
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
+	FName NameOverride;
+
+	FName GetName() const;
+};
+
 UCLASS(Abstract)
 class VOXEL_API UVoxelMaterialCollectionBase : public UObject
 {
@@ -15,6 +33,9 @@ class VOXEL_API UVoxelMaterialCollectionBase : public UObject
 
 public:
 	//~ Begin UVoxelMaterialCollectionBase Interface
+	// Called before the material collection is used (can be at runtime when dynamic renderer settings change)
+	virtual void InitializeCollection() {}
+	
 	// Max number of material indices this collection can handle
 	// eg if = 2, this collection can only blend between 2 indices at a time
 	virtual int32 GetMaxMaterialIndices() const
@@ -22,30 +43,25 @@ public:
 		unimplemented();
 		return 0;
 	}
+	virtual bool EnableCubicFaces() const
+	{
+		return false;
+	}
 	virtual UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const
 	{
 		unimplemented();
 		return nullptr;
 	}
+
+	// Used by paint material customization. Some materials might be null.
+	UFUNCTION(BlueprintPure, Category = "Voxel|Material Collection")
+	virtual TArray<FVoxelMaterialCollectionMaterialInfo> GetMaterials() const { return {}; }
 	
 	UFUNCTION(BlueprintPure, Category = "Voxel|Material Collection")
-	virtual UMaterialInterface* GetIndexMaterial(uint8 Index) const
-	{
-		return nullptr;
-	}
-
-	struct FMaterialInfo
-	{
-		uint8 Index = 0;
-		FName Name;
-		TWeakObjectPtr<UMaterialInterface> Material;
-	};
-	// Used by paint material customization. Some materials might be null.
-	virtual TArray<FMaterialInfo> GetMaterials() const { return {}; }
+	UMaterialInterface* GetIndexMaterial(uint8 Index) const;
 	
 	// Get the material index from a material or a layer name
-	virtual int32 GetMaterialIndex(FName Name) const { return -1; }
-	// Called before the material collection is used (can be at runtime when dynamic renderer settings change)
-	virtual void InitializeCollection() {}
+	UFUNCTION(BlueprintPure, Category = "Voxel|Material Collection")
+	int32 GetMaterialIndex(FName Name) const;
 	//~ End UVoxelMaterialCollectionBase Interface
 };

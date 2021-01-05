@@ -32,9 +32,13 @@ void UVoxelDataTools::GetMaterial(FVoxelMaterial& Material, AVoxelWorld* World, 
 	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, VOXEL_DATA_TOOL_PREFIX, Material = Data.GetMaterial(Position, 0));
 }
 
-void UVoxelDataTools::SetMaterial(AVoxelWorld* World, FIntVector Position, FVoxelMaterial Material)
+void UVoxelDataTools::SetMaterial(AVoxelWorld* World, FIntVector Position, FVoxelMaterial Material, int32 Mask)
 {
-	VOXEL_TOOL_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.SetMaterial(Position, Material));
+	const auto Lambda = [=](FVoxelMaterial& InMaterial)
+	{
+		InMaterial.CopyFrom(Material, Mask);
+	};
+	VOXEL_TOOL_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.Edit<FVoxelMaterial>(Position, Lambda));
 }
 
 void UVoxelDataTools::CacheValues(AVoxelWorld* World, FVoxelIntBox Bounds, bool bMultiThreaded)

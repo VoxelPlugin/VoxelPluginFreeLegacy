@@ -21,42 +21,17 @@ UMaterialInterface* UVoxelLandscapeMaterialCollection::GetVoxelMaterial(const FV
 	return FindOrAddPermutation(MakePermutation(Indices));
 }
 
-UMaterialInterface* UVoxelLandscapeMaterialCollection::GetIndexMaterial(uint8 Index) const
-{
-	for (auto& Layer : Layers)
-	{
-		if (Layer.Index == Index)
-		{
-			FVoxelLandscapeMaterialCollectionPermutation Permutation;
-			Permutation.Names[0] = Layer.Name;
-			return FindOrAddPermutation(Permutation);
-		}
-	}
-	return nullptr;
-}
 
-TArray<UVoxelMaterialCollectionBase::FMaterialInfo> UVoxelLandscapeMaterialCollection::GetMaterials() const
+TArray<FVoxelMaterialCollectionMaterialInfo> UVoxelLandscapeMaterialCollection::GetMaterials() const
 {
-	TArray<FMaterialInfo> Result;
+	TArray<FVoxelMaterialCollectionMaterialInfo> Result;
 	for (auto& Layer : Layers)
 	{
 		FVoxelLandscapeMaterialCollectionPermutation Permutation;
 		Permutation.Names[0] = Layer.Name;
-		Result.Add(FMaterialInfo{ Layer.Index,Layer.Name,  FindOrAddPermutation(Permutation) });
+		Result.Add(FVoxelMaterialCollectionMaterialInfo{ Layer.Index,  FindOrAddPermutation(Permutation), Layer.Name });
 	}
 	return Result;
-}
-
-int32 UVoxelLandscapeMaterialCollection::GetMaterialIndex(FName Name) const
-{
-	for (auto& Layer : Layers)
-	{
-		if (Layer.Name == Name)
-		{
-			return Layer.Index;
-		}
-	}
-	return -1;
 }
 
 void UVoxelLandscapeMaterialCollection::InitializeCollection()

@@ -521,6 +521,7 @@ private:
 		RegisterAssetTypeAction<UVoxelMagicaVoxScene >(VOXEL_LOCTEXT("Voxel Magica Vox Scene"), Orange);
 
 		RegisterAssetTypeAction<UVoxelBasicMaterialCollection             >(VOXEL_LOCTEXT("Voxel Basic Material Collection"              ), DarkGreen);
+		RegisterAssetTypeAction<UVoxelBlueprintMaterialCollection         >(VOXEL_LOCTEXT("Voxel Blueprint Material Collection"          ), DarkGreen);
 		RegisterAssetTypeAction<UVoxelInstancedMaterialCollectionTemplates>(VOXEL_LOCTEXT("Voxel Instanced Material Collection Templates"), DarkGreen);
 		RegisterAssetTypeAction<UVoxelInstancedMaterialCollection         >(VOXEL_LOCTEXT("Voxel Instanced Material Collection"          ), DarkGreen);
 		RegisterAssetTypeAction<UVoxelInstancedMaterialCollectionInstance >(VOXEL_LOCTEXT("Voxel Instanced Material Collection Instance" ), DarkGreen);

@@ -71,29 +71,6 @@ FORCEINLINE void AddFace(
 	int32 X, int32 Y, int32 Z, 
 	TArray<uint32>& Indices, TArray<TVertex>& Vertices)
 {
-	if (TVertex::bComputeMaterial && Mesher.Settings.bOneMaterialPerCubeSide)
-	{
-		uint8 Index = Material.GetSingleIndex();
-		
-		switch (Direction)
-		{
-		case EVoxelDirectionFlag::XMin:
-		case EVoxelDirectionFlag::XMax:
-		case EVoxelDirectionFlag::YMin:
-		case EVoxelDirectionFlag::YMax:
-			Index = 3 * Index + 1;
-			break;
-		case EVoxelDirectionFlag::ZMin:
-			Index = 3 * Index + 2;
-			break;
-		case EVoxelDirectionFlag::ZMax:
-			Index = 3 * Index + 0;
-			break;
-		}
-
-		Material.SetSingleIndex(Index);
-	}
-	
 	FVector Positions[4];
 	FVector Normal;
 	FVector Tangent;
