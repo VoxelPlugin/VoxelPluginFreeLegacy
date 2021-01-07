@@ -9,7 +9,7 @@
 
 DECLARE_UNIQUE_VOXEL_ID(FVoxelPoolId);
 
-#define ENABLE_VOXEL_QUEUED_WORK_CHECKS 1
+#define ENABLE_VOXEL_QUEUED_WORK_CHECKS 0
 
 class IVoxelQueuedWork : public IQueuedWork
 {
