@@ -5,6 +5,7 @@
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 #include "VoxelEditorDetailsIncludes.h"
 #include "VoxelEditorDetailsUtilities.h"
+#include "VoxelWorld.h"
 
 #include "ContentBrowserModule.h"
 #include "IContentBrowserSingleton.h"
@@ -19,29 +20,15 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 	const auto& MaterialConfigEnum = *StaticEnum<EVoxelMaterialConfig>();
 	
 	TypeHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, Type);
-	const auto RestrictTypeHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, bRestrictType);
-	const auto MaterialConfigToRestrictToHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, MaterialConfigToRestrictTo);
-
-	FString TypeString;
-	FString MaterialConfigToRestrictToString;
 	
-	EVoxelPaintMaterialType Type;
-	bool bRestrictType = false;
-	EVoxelMaterialConfig MaterialConfigToRestrictTo;
-	
+	FVoxelPaintMaterial* PaintMaterial = nullptr;
+	if (!ensure(FVoxelEditorUtilities::GetPropertyValue(PropertyHandle, PaintMaterial)))
 	{
-		if (!ensure(TypeHandle->GetValueAsFormattedString(TypeString) == FPropertyAccess::Success)) return;
-		if (!ensure(RestrictTypeHandle->GetValue(bRestrictType) == FPropertyAccess::Success)) return;
-		if (!ensure(MaterialConfigToRestrictToHandle->GetValueAsFormattedString(MaterialConfigToRestrictToString) == FPropertyAccess::Success)) return;
-
-		const int64 TypeValue = PaintMaterialEnum.GetValueByNameString(TypeString);
-		if (!ensure(TypeValue != -1)) return;
-		Type = EVoxelPaintMaterialType(TypeValue);
-
-		const int64 MaterialConfigValue = MaterialConfigEnum.GetValueByNameString(MaterialConfigToRestrictToString);
-		if (!ensure(MaterialConfigValue != -1)) return;
-		MaterialConfigToRestrictTo = EVoxelMaterialConfig(MaterialConfigValue);
+		return;
 	}
+
+	const bool bRestrictType = PaintMaterial->PreviewVoxelWorld.IsValid();
+	const EVoxelMaterialConfig MaterialConfigToRestrictTo = bRestrictType ? PaintMaterial->PreviewVoxelWorld->MaterialConfig : EVoxelMaterialConfig::RGB;
 	
 	TSharedPtr<SWidget> TypeWidget;
 	if (bRestrictType)
@@ -69,25 +56,23 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 			OptionsSource.Add(MakeShared<EVoxelPaintMaterialType>(EVoxelPaintMaterialType::UV));
 		}
 
-		const auto SearchTypePredicate = [&](auto& Ptr) { return *Ptr == Type; };
+		const auto SearchTypePredicate = [&](auto& Ptr) { return *Ptr == PaintMaterial->Type; };
 		
 		if (!OptionsSource.ContainsByPredicate(SearchTypePredicate))
 		{
 			switch (MaterialConfigToRestrictTo)
 			{
-			case EVoxelMaterialConfig::RGB: Type = EVoxelPaintMaterialType::FiveWayBlend; break;
-			case EVoxelMaterialConfig::SingleIndex: Type = EVoxelPaintMaterialType::SingleIndex; break;
-			case EVoxelMaterialConfig::MultiIndex: Type = EVoxelPaintMaterialType::MultiIndex; break;
+			case EVoxelMaterialConfig::RGB: PaintMaterial->Type = EVoxelPaintMaterialType::FiveWayBlend; break;
+			case EVoxelMaterialConfig::SingleIndex: PaintMaterial->Type = EVoxelPaintMaterialType::SingleIndex; break;
+			case EVoxelMaterialConfig::MultiIndex: PaintMaterial->Type = EVoxelPaintMaterialType::MultiIndex; break;
 			default: ensure(false);
 			}
-			
-			TypeHandle->SetValueFromFormattedString(PaintMaterialEnum.GetNameStringByValue(int64(Type)));
 		}
 		
 		auto* TypeOptionSourcePtr = OptionsSource.FindByPredicate(SearchTypePredicate);
 		check(TypeOptionSourcePtr);
 
-		ComboBoxText = FVoxelEditorUtilities::CreateText(PaintMaterialEnum.GetDisplayNameTextByValue(int64(Type)));
+		ComboBoxText = FVoxelEditorUtilities::CreateText(UEnum::GetDisplayValueAsText(PaintMaterial->Type));
 		
 		TypeWidget = SNew(SComboBox<TSharedPtr<EVoxelPaintMaterialType>>)
 		.IsEnabled_Lambda([TypeHandle = TWeakPtr<IPropertyHandle>(TypeHandle)](){ return TypeHandle.IsValid() && !TypeHandle.Pin()->IsEditConst(); })
@@ -158,7 +143,7 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 		}
 	};
 
-	if (Type == EVoxelPaintMaterialType::Color)
+	if (PaintMaterial->Type == EVoxelPaintMaterialType::Color)
 	{
 		const auto ColorHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, Color);
 		const auto UseLinearColorHandle = GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, bUseLinearColor);
@@ -197,7 +182,7 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 			GET_CHILD_PROPERTY(ColorHandle, FVoxelPaintMaterialColor, bPaintA)->SetValue(false);
 		}
 	}
-	else if (Type == EVoxelPaintMaterialType::FiveWayBlend)
+	else if (PaintMaterial->Type == EVoxelPaintMaterialType::FiveWayBlend)
 	{
 		const auto FiveWayBlendHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, FiveWayBlend);
 		
@@ -213,13 +198,13 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 			GET_CHILD_PROPERTY(FiveWayBlendHandle, FVoxelPaintMaterialFiveWayBlend, bFourWayBlend)->SetValue(true);
 		}
 	}
-	else if (Type == EVoxelPaintMaterialType::SingleIndex)
+	else if (PaintMaterial->Type == EVoxelPaintMaterialType::SingleIndex)
 	{
 		const auto SingleIndexHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, SingleIndex);
 		
 		auto& Channel = AddProperty(GET_CHILD_PROPERTY(SingleIndexHandle, FVoxelPaintMaterialSingleIndex, Channel));
 	}
-	else if (Type == EVoxelPaintMaterialType::MultiIndex)
+	else if (PaintMaterial->Type == EVoxelPaintMaterialType::MultiIndex)
 	{
 		const auto MultiIndexHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, MultiIndex);
 
@@ -227,13 +212,13 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 		auto& TargetValue = AddProperty(GET_CHILD_PROPERTY(MultiIndexHandle, FVoxelPaintMaterialMultiIndex, TargetValue));
 		auto& LockedChannels = AddProperty(GET_CHILD_PROPERTY(MultiIndexHandle, FVoxelPaintMaterialMultiIndex, LockedChannels));
 	}
-	else if (Type == EVoxelPaintMaterialType::MultiIndexWetness)
+	else if (PaintMaterial->Type == EVoxelPaintMaterialType::MultiIndexWetness)
 	{
 		const auto MultiIndexWetnessHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, MultiIndexWetness);
 		
 		auto& TargetValue = AddProperty(GET_CHILD_PROPERTY(MultiIndexWetnessHandle, FVoxelPaintMaterialMultiIndexWetness, TargetValue));
 	}
-	else if (Type == EVoxelPaintMaterialType::MultiIndexRaw)
+	else if (PaintMaterial->Type == EVoxelPaintMaterialType::MultiIndexRaw)
 	{
 		const auto MultiIndexRawHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, MultiIndexRaw);
 		
@@ -246,7 +231,7 @@ void FVoxelPaintMaterialCustomization::CustomizeChildren(TSharedRef<IPropertyHan
 		auto& Channel3 = AddProperty(GET_CHILD_PROPERTY(MultiIndexRawHandle, FVoxelPaintMaterialMultiIndexRaw, Channel3));
 		auto& Strength3 = AddProperty(GET_CHILD_PROPERTY(MultiIndexRawHandle, FVoxelPaintMaterialMultiIndexRaw, Strength3));
 	}
-	else if (Type == EVoxelPaintMaterialType::UV)
+	else if (PaintMaterial->Type == EVoxelPaintMaterialType::UV)
 	{
 		const auto UVHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial, UV);
 		auto& Channel = AddProperty(GET_CHILD_PROPERTY(UVHandle, FVoxelPaintMaterialUV, Channel));
@@ -295,20 +280,32 @@ void FVoxelPaintMaterialCustomization::HandleComboBoxSelectionChanged(TSharedPtr
 
 void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-	TSharedPtr<IPropertyHandle> CollectionHandle;
+	TSharedPtr<IPropertyHandle> ParentHandle = PropertyHandle;
 	{
-		auto ParentHandle = PropertyHandle;
-		while (!CollectionHandle.IsValid() && ensure(ParentHandle->GetParentHandle().IsValid()))
+		while (
+			ensure(ParentHandle->GetParentHandle().IsValid()) &&
+			!ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelPaintMaterial, PreviewVoxelWorld)))
 		{
 			ParentHandle = ParentHandle->GetParentHandle().ToSharedRef();
-			CollectionHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelPaintMaterial, PreviewMaterialCollection));
 		}
 	}
-	if (!ensure(CollectionHandle.IsValid()))
+	if (!ensure(ParentHandle.IsValid()))
+	{
+		return;
+	}
+	
+	FVoxelPaintMaterial* PaintMaterial = nullptr;
+	if (!ensure(FVoxelEditorUtilities::GetPropertyValue(ParentHandle, PaintMaterial)))
 	{
 		return;
 	}
 
+	const TWeakObjectPtr<AVoxelWorld> PreviewVoxelWorld = PaintMaterial->PreviewVoxelWorld;
+	if (!PreviewVoxelWorld.IsValid())
+	{
+		return;
+	}
+	
 	const auto ChannelHandle = GET_CHILD_PROPERTY(PropertyHandle, FVoxelPaintMaterial_MaterialCollectionChannel, Channel);
 	
 	const auto Thumbnail = MakeShared<FAssetThumbnail>(nullptr, 64, 64, CustomizationUtils.GetThumbnailPool());
@@ -319,29 +316,72 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 	
 	const auto OnChanged = FSimpleDelegate::CreateLambda([=]()
 	{
-		UObject* Collection;
-		CollectionHandle->GetValue(Collection);
-		UVoxelMaterialCollectionBase* MaterialCollection = Cast<UVoxelMaterialCollectionBase>(Collection);
-		if (!MaterialCollection)
+		AssetsToMaterials->Reset();
+		IndicesToMaterials->Reset();
+		
+		if (!PreviewVoxelWorld.IsValid() ||
+			PreviewVoxelWorld->MaterialConfig == EVoxelMaterialConfig::RGB)
 		{
 			return;
 		}
 
-		AssetsToMaterials->Reset();
-		for (auto& MaterialInfo : MaterialCollection->GetMaterials())
+		if (PreviewVoxelWorld->MaterialConfig == EVoxelMaterialConfig::SingleIndex && !PreviewVoxelWorld->bUseMaterialCollection)
 		{
-			AssetsToMaterials->Add(MaterialInfo.Material, MaterialInfo);
-			IndicesToMaterials->Add(MaterialInfo.Index, MaterialInfo);
+			if (PreviewVoxelWorld->VoxelMaterial)
+			{
+				UMaterialInstanceConstant*& MasterMaterial = PreviewVoxelWorld->SingleIndexPreviewMasterMaterial;
+				{
+					if (!MasterMaterial)
+					{
+						MasterMaterial = NewObject<UMaterialInstanceConstant>(PreviewVoxelWorld.Get(), NAME_None, RF_Public);
+					}
+					MasterMaterial->SetParentEditorOnly(PreviewVoxelWorld->VoxelMaterial);
+
+					FStaticSwitchParameter IsEditorPreviewParameter;
+					IsEditorPreviewParameter.ParameterInfo.Name = "IsEditorPreview";
+					IsEditorPreviewParameter.Value = true;
+					IsEditorPreviewParameter.bOverride = true;
+
+					FStaticParameterSet Parameters;
+					Parameters.StaticSwitchParameters.Add(IsEditorPreviewParameter);
+
+					MasterMaterial->UpdateStaticPermutation(Parameters);
+				}
+
+				PreviewVoxelWorld->SingleIndexPreviewMaterials.SetNum(256);
+				for (int32 Index = 0; Index < 255; Index++)
+				{
+					UMaterialInstanceDynamic*& Material = PreviewVoxelWorld->SingleIndexPreviewMaterials[Index];
+					if (!Material)
+					{
+						Material = UMaterialInstanceDynamic::Create(MasterMaterial, PreviewVoxelWorld.Get());
+						Material->SetFlags(RF_Public);
+					}
+
+					Material->SetScalarParameterValue("EditorPreviewSingleIndex", Index);
+
+					const FVoxelMaterialCollectionMaterialInfo MaterialInfo{ Index, Material, *FString::Printf(TEXT("Index %03d"), Index) };
+					AssetsToMaterials->Add(Material, MaterialInfo);
+					IndicesToMaterials->Add(Index, MaterialInfo);
+				}
+			}
 		}
-		
-		void* Data = nullptr;
-		if (PropertyHandle->GetValueData(Data) != FPropertyAccess::Success)
+		else if (PreviewVoxelWorld->MaterialCollection)
+		{
+			for (const FVoxelMaterialCollectionMaterialInfo& MaterialInfo : PreviewVoxelWorld->MaterialCollection->GetMaterials())
+			{
+				AssetsToMaterials->Add(MaterialInfo.Material, MaterialInfo);
+				IndicesToMaterials->Add(MaterialInfo.Index, MaterialInfo);
+			}
+		}
+
+		FVoxelPaintMaterial_MaterialCollectionChannel* Channel = nullptr;
+		if (!FVoxelEditorUtilities::GetPropertyValue(PropertyHandle, Channel))
 		{
 			return;
 		}
-		
-		auto& Channel = *static_cast<FVoxelPaintMaterial_MaterialCollectionChannel*>(Data);
-		*SelectedMaterial = IndicesToMaterials->FindRef(Channel);
+
+		*SelectedMaterial = IndicesToMaterials->FindRef(*Channel);
 		Thumbnail->SetAsset(SelectedMaterial->Material.Get());
 	});
 	OnChanged.Execute();

@@ -23,6 +23,27 @@
 namespace FVoxelEditorUtilities
 {
 	FSimpleDelegate MakeRefreshDelegate(const IPropertyTypeCustomizationUtils& CustomizationUtils);
+
+	template<typename T>
+	bool GetPropertyValue(const TSharedPtr<IPropertyHandle>& Handle, T*& OutValue)
+	{
+		OutValue = nullptr;
+		
+		if (!ensure(Handle))
+		{
+			return false;
+		}
+		
+		void* Address = nullptr;
+		if (!ensure(Handle->GetValueData(Address) == FPropertyAccess::Success) || !ensure(Address))
+		{
+			return false;
+		}
+
+		OutValue = static_cast<T*>(Address);
+
+		return true;
+	}
 }
 
 #define GET_CHILD_PROPERTY(PropertyHandle, Class, Property) PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(Class, Property)).ToSharedRef()

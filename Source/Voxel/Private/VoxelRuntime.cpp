@@ -91,6 +91,7 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(bUseStaticPath);
 	SET(bStaticWorld);
 	SET(bGreedyCubicMesher);
+	SET(bSingleIndexGreedy);
 	SET(TexturePoolTextureSize);
 	SET(bOptimizeIndices);
 	SET(bGenerateDistanceFields);

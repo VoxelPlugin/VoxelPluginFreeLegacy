@@ -14,6 +14,7 @@
 class UVoxelGeneratorCache;
 class UVoxelLineBatchComponent;
 class UVoxelWorldRootComponent;
+class UMaterialInstanceConstant;
 class UVoxelPlaceableItemActorHelper;
 
 /**
@@ -131,6 +132,15 @@ public:
 	VOXEL_DEPRECATED(1.2, "Seeds are now regular generator parameters")
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General", meta = (DisplayName = "Seeds (DEPRECATED)"))
 	TMap<FName, int32> Seeds;
+
+public:
+#if WITH_EDITORONLY_DATA
+	UPROPERTY()
+	UMaterialInstanceConstant* SingleIndexPreviewMasterMaterial = nullptr;
+	
+	UPROPERTY()
+	TArray<UMaterialInstanceDynamic*> SingleIndexPreviewMaterials;
+#endif
 	
 public:
 	AVoxelWorld();

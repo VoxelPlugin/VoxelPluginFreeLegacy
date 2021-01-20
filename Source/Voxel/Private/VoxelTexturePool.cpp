@@ -31,11 +31,23 @@ DEFINE_UNIQUE_VOXEL_ID(FVoxelTexturePoolEntryUniqueId);
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-TVoxelSharedRef<FVoxelTexturePoolEntry> FVoxelTexturePool::AddEntry(
+FVoxelTexturePool::FVoxelTexturePool(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings)
+	: Super(Runtime, Settings)
+	, Stride(Settings.GetTextureDataStride())
+{
+	
+}
+
+TVoxelSharedPtr<FVoxelTexturePoolEntry> FVoxelTexturePool::AddEntry(
 	const TVoxelSharedRef<FVoxelTexturePoolTextureData>& ColorData, 
 	const TVoxelSharedRef<FVoxelMaterialInterface>& MaterialInstance)
 {
 	VOXEL_FUNCTION_COUNTER();
+
+	if (!ensure(ColorData->GetStride() == Stride))
+	{
+		return nullptr;
+	}
 	
 	ensure(ColorData->Num() > 0);
 	ensure(MaterialInstance->IsMaterialInstance());
@@ -106,7 +118,8 @@ void FVoxelTexturePool::PreDestructor()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelTexturePool::FTextureInfo::FTextureInfo()
+FVoxelTexturePool::FTextureInfo::FTextureInfo(uint32 Stride)
+	: Stride(Stride)
 {
 	INC_DWORD_STAT(STAT_VoxelTexturePool_NumTextures);
 }
@@ -120,11 +133,11 @@ FVoxelTexturePool::FTextureInfo::~FTextureInfo()
 
 	for (auto& Slot : FreeSlots)
 	{
-		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, sizeof(FColor) * Slot.Num);
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, Stride * Slot.Num);
 	}
 	for (auto& Slot : UsedSlots)
 	{
-		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, sizeof(FColor) * Slot.Num);
+		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, Stride * Slot.Num);
 	}
 }
 
@@ -163,8 +176,8 @@ void FVoxelTexturePool::FTextureInfo::FreeSlot(FTextureSlotId SlotId, FEntryUniq
 	DEC_DWORD_STAT(STAT_VoxelTexturePool_UsedSlots);
 	ensure(UsedSlot.EntryId == EntryId);
 	
-	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, sizeof(FColor) * UsedSlot.Num);
-	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, sizeof(FColor) * UsedSlot.Num);
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, Stride * UsedSlot.Num);
+	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, Stride * UsedSlot.Num);
 
 	int32 Index;
 	for (Index = 0; Index < FreeSlots.Num(); Index++)
@@ -267,7 +280,7 @@ FVoxelTexturePool::FTextureSlotRef FVoxelTexturePool::AllocateSlot(int32 Size, F
 				UsedSlot.Num = FreeSlot.Num;
 				UsedSlot.EntryId = EntryId;
 
-				DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, sizeof(FColor) * FreeSlot.Num);
+				DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, Stride * FreeSlot.Num);
 				DEC_DWORD_STAT(STAT_VoxelTexturePool_FreeSlots);
 				FreeSlots.RemoveAt(Index);
 
@@ -275,7 +288,7 @@ FVoxelTexturePool::FTextureSlotRef FVoxelTexturePool::AllocateSlot(int32 Size, F
 				Ref.TextureInfo = TextureInfo;
 				Ref.SlotId = TextureInfo->UsedSlots.Add(UsedSlot);
 				INC_DWORD_STAT(STAT_VoxelTexturePool_UsedSlots);
-				INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, sizeof(FColor) * UsedSlot.Num);
+				INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, Stride * UsedSlot.Num);
 				return Ref;
 			}
 			else if (FreeSlot.Num > Size)
@@ -287,13 +300,13 @@ FVoxelTexturePool::FTextureSlotRef FVoxelTexturePool::AllocateSlot(int32 Size, F
 
 				FreeSlot.StartIndex += Size;
 				FreeSlot.Num -= Size;
-				DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, sizeof(FColor) * Size);
+				DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, Stride * Size);
 
 				FTextureSlotRef Ref;
 				Ref.TextureInfo = TextureInfo;
 				Ref.SlotId = TextureInfo->UsedSlots.Add(UsedSlot);
 				INC_DWORD_STAT(STAT_VoxelTexturePool_UsedSlots);
-				INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, sizeof(FColor) * UsedSlot.Num);
+				INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, Stride * UsedSlot.Num);
 				return Ref;
 			}
 		}
@@ -306,7 +319,7 @@ FVoxelTexturePool::FTextureSlotRef FVoxelTexturePool::AllocateSlot(int32 Size, F
 		return {};
 	}
 
-	const auto NewTextureInfo = MakeVoxelShared<FTextureInfo>();
+	const auto NewTextureInfo = MakeVoxelShared<FTextureInfo>(Stride);
 	NewTextureInfo->Texture = NewTexture;
 	TextureInfos.Add(NewTextureInfo);
 
@@ -318,7 +331,7 @@ FVoxelTexturePool::FTextureSlotRef FVoxelTexturePool::AllocateSlot(int32 Size, F
 		FreeSlot.Num = FMath::Square(Settings.TexturePoolTextureSize) - Size;
 		NewTextureInfo->FreeSlots.Add(FreeSlot);
 		INC_DWORD_STAT(STAT_VoxelTexturePool_FreeSlots);
-		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, sizeof(FColor) * FreeSlot.Num);
+		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_WastedData, Stride * FreeSlot.Num);
 	}
 
 	FUsedTextureSlot UsedSlot;
@@ -330,7 +343,7 @@ FVoxelTexturePool::FTextureSlotRef FVoxelTexturePool::AllocateSlot(int32 Size, F
 	Ref.TextureInfo = NewTextureInfo;
 	Ref.SlotId = NewTextureInfo->UsedSlots.Add(UsedSlot);
 	INC_DWORD_STAT(STAT_VoxelTexturePool_UsedSlots);
-	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, sizeof(FColor) * UsedSlot.Num);
+	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_UsedData, Stride * UsedSlot.Num);
 	return Ref;
 }
 
@@ -342,21 +355,24 @@ UTexture2D* FVoxelTexturePool::CreateTexture() const
 {
 	VOXEL_FUNCTION_COUNTER();
 	ensure(IsInGameThread());
+
+	const EPixelFormat PixelFormat = Settings.bSingleIndexGreedy ? PF_G8 : PF_B8G8R8A8;
+	const TextureCompressionSettings CompressionSettings = Settings.bSingleIndexGreedy ? TC_Grayscale : TC_VectorDisplacementmap;
 	
-	UTexture2D* Texture = UTexture2D::CreateTransient(Settings.TexturePoolTextureSize, Settings.TexturePoolTextureSize);
+	UTexture2D* Texture = UTexture2D::CreateTransient(Settings.TexturePoolTextureSize, Settings.TexturePoolTextureSize, PixelFormat);
 	if (!ensure(Texture))
 	{
 		return nullptr;
 	}
 
-	Texture->CompressionSettings = TC_VectorDisplacementmap;
+	Texture->CompressionSettings = CompressionSettings;
 	Texture->SRGB = false;
 	Texture->Filter = TF_Nearest;
 
 	FTexture2DMipMap& Mip = Texture->PlatformData->Mips[0];
 	{
 		void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
-		FMemory::Memzero(Data, sizeof(FColor) * FMath::Square(Settings.TexturePoolTextureSize));
+		FMemory::Memzero(Data, Stride * FMath::Square(Settings.TexturePoolTextureSize));
 		Mip.BulkData.Unlock();
 	}
 	Texture->UpdateResource();
@@ -410,7 +426,7 @@ void FVoxelTexturePool::FEntry::CopyDataToTexture(bool bJustClearData) const
 	}
 
 	INC_DWORD_STAT(STAT_VoxelTexturePool_NumTextureUpdates);
-	INC_DWORD_STAT_BY(STAT_VoxelTexturePool_TextureUpdatesSize, ColorData->Num() * sizeof(FColor));
+	INC_DWORD_STAT_BY(STAT_VoxelTexturePool_TextureUpdatesSize, ColorData->Num() * ColorData->GetStride());
 
 	if (ensure(Texture->Resource))
 	{
@@ -423,17 +439,17 @@ void FVoxelTexturePool::FEntry::CopyDataToTexture(bool bJustClearData) const
         {
 			VOXEL_RENDER_SCOPE_COUNTER("Update Region");
 			
-			const uint8* Data = reinterpret_cast<const uint8*>(ColorData->GetData());
+			const uint8* Data = ColorData->GetData();
 			TArray<uint8> EmptyData;
 			if (bJustClearData)
 			{
-				EmptyData.SetNumZeroed(Slot.Num * sizeof(FColor));
+				EmptyData.SetNumZeroed(Slot.Num * ColorData->GetStride());
 				Data = EmptyData.GetData();
 			}
 			
 			const int32 RowSize = Resource->GetSizeX();
 			const FTexture2DRHIRef TextureRHI = Resource->GetTexture2DRHI();
-			const uint8* const EndData = Data + Slot.Num * sizeof(FColor);
+			const uint8* const EndData = Data + Slot.Num * ColorData->GetStride();
 
 			if (!TextureRHI)
 			{
@@ -461,10 +477,10 @@ void FVoxelTexturePool::FEntry::CopyDataToTexture(bool bJustClearData) const
 				
 				VOXEL_RENDER_SCOPE_COUNTER("RHIUpdateTexture2D");
 				INC_DWORD_STAT(STAT_VoxelTexturePool_NumRHIUpdateTexture2D);
-				RHIUpdateTexture2D(TextureRHI, 0, Region, Num * sizeof(FColor), Data);
+				RHIUpdateTexture2D(TextureRHI, 0, Region, Num * ColorData->GetStride(), Data);
 
 				FirstIndex += Num;
-				Data += Region.Width * Region.Height * sizeof(FColor);
+				Data += Region.Width * Region.Height * ColorData->GetStride();
 				check(Data <= EndData);
 			}
 			
@@ -490,9 +506,9 @@ void FVoxelTexturePool::FEntry::CopyDataToTexture(bool bJustClearData) const
 				
 				VOXEL_RENDER_SCOPE_COUNTER("RHIUpdateTexture2D");
 				INC_DWORD_STAT(STAT_VoxelTexturePool_NumRHIUpdateTexture2D);
-				RHIUpdateTexture2D(TextureRHI, 0, Region, RowSize * sizeof(FColor), Data);
+				RHIUpdateTexture2D(TextureRHI, 0, Region, RowSize * ColorData->GetStride(), Data);
 
-				Data += Region.Width * Region.Height * sizeof(FColor);
+				Data += Region.Width * Region.Height * ColorData->GetStride();
 				check(Data <= EndData);
 			}
 
@@ -512,9 +528,9 @@ void FVoxelTexturePool::FEntry::CopyDataToTexture(bool bJustClearData) const
 				
 				VOXEL_RENDER_SCOPE_COUNTER("RHIUpdateTexture2D");
 				INC_DWORD_STAT(STAT_VoxelTexturePool_NumRHIUpdateTexture2D);
-				RHIUpdateTexture2D(TextureRHI, 0, Region, Num * sizeof(FColor), Data);
+				RHIUpdateTexture2D(TextureRHI, 0, Region, Num * ColorData->GetStride(), Data);
 				
-				Data += Region.Width * Region.Height * sizeof(FColor);
+				Data += Region.Width * Region.Height * ColorData->GetStride();
 			}
 			check(Data == EndData);
 		});
@@ -528,7 +544,7 @@ void FVoxelTexturePool::FEntry::CopyDataToTexture(bool bJustClearData) const
 			{
 				void* Dst = static_cast<FColor*>(Data) + Slot.StartIndex;
 				const void* Src = ColorData->GetData();
-				const int32 Count = ColorData->Num() * sizeof(FColor);
+				const int32 Count = ColorData->Num() * ColorData->GetStride();
 
 				if (bJustClearData)
 				{

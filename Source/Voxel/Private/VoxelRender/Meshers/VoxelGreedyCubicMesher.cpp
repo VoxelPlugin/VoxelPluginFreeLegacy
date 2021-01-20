@@ -22,7 +22,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelGreedyCubicMesher::CreateFullChunkImpl(FV
 	TArray<FVoxelMesherVertex> Vertices;
 	TArray<uint32> Indices;
 
-	TArray<FColor> TextureData;
+	TArray<uint8> TextureData;
 	TArray<FVoxelIntBox> CollisionCubes;
 	CreateGeometryTemplate(Times, Indices, Vertices, &TextureData, &CollisionCubes);
 
@@ -73,7 +73,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryImpl(FVoxelMesherTimes& Times, TArra
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices, TArray<FColor>* TextureData, TArray<FVoxelIntBox>* CollisionCubes)
+void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices, TArray<uint8>* TextureData, TArray<FVoxelIntBox>* CollisionCubes)
 {
 	if (TextureData)
 	{
@@ -453,7 +453,7 @@ FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 	int32 Step,
 	TArray<uint32>& Indices,
 	TArray<T>& Vertices,
-	TArray<FColor>* TextureData)
+	TArray<uint8>* TextureData)
 {
 	const int32 ZAxis = Direction / 2;
 	const bool bInverted = Direction & 0x1;
@@ -504,7 +504,16 @@ FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 
 			Position = Position * Step + ChunkPosition;
 
-			return MESHER_TIME_INLINE_MATERIALS(1, Accelerator->GetMaterial(Position, LOD));
+			FVoxelMaterial Material = MESHER_TIME_INLINE_MATERIALS(1, Accelerator->GetMaterial(Position, LOD));
+			if (Settings.bSingleIndexGreedy)
+			{
+				// We only store the single index, and we store it in the R channel
+				Material.SetR(Material.GetSingleIndex());
+				Material.SetG(0);
+				Material.SetB(0);
+				Material.SetA(0);
+			}
+			return Material;
 		};
 		
 		if (Quad.SizeX == 1 && Quad.SizeY == 1)
@@ -531,7 +540,9 @@ FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 						FirstMaterial = Material;
 						Vertex.Material = Material;
 						Vertex.Material.CubicColor_SetQuadWidth(Quad.SizeX);
-						Vertex.Material.CubicColor_SetTextureDataIndex(TextureData->Num());
+
+						ensure(TextureData->Num() % Settings.GetTextureDataStride() == 0);
+						Vertex.Material.CubicColor_SetTextureDataIndex(TextureData->Num() / Settings.GetTextureDataStride());
 					}
 					
 					if (Material.GetColor() != FirstMaterial.GetColor())
@@ -539,7 +550,19 @@ FORCEINLINE void FVoxelGreedyCubicMesher::AddFace(
 						bSingleColor = false;
 					}
 
-					TextureData->Add(Material.GetColor());
+					if (Settings.bSingleIndexGreedy)
+					{
+						TextureData->Add(Material.GetR());
+						ensureVoxelSlow(Material.GetG() == 0);
+						ensureVoxelSlow(Material.GetB() == 0);
+						ensureVoxelSlow(Material.GetA() == 0);
+					}
+					else
+					{
+						const FColor Color = Material.GetColor();
+						const int32 Index = TextureData->AddUninitialized(sizeof(FColor));
+						FMemory::Memcpy(&(*TextureData)[Index], &Color, sizeof(FColor));
+					}
 				}
 			}
 

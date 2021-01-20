@@ -113,19 +113,10 @@ void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData,
 	}
 
 #if WITH_EDITOR
-	if (VoxelWorld)
+	if (VoxelWorld && SharedConfig->PaintMaterial.PreviewVoxelWorld != VoxelWorld)
 	{
-		SharedConfig->PaintMaterial.bRestrictType = true;
-		if (SharedConfig->PaintMaterial.MaterialConfigToRestrictTo != VoxelWorld->MaterialConfig)
-		{
-			SharedConfig->PaintMaterial.MaterialConfigToRestrictTo = VoxelWorld->MaterialConfig;
-			SharedConfig->RefreshDetails.Broadcast();
-		}
-		if (SharedConfig->PaintMaterial.PreviewMaterialCollection != VoxelWorld->MaterialCollection)
-		{
-			SharedConfig->PaintMaterial.PreviewMaterialCollection = VoxelWorld->MaterialCollection;
-			SharedConfig->RefreshDetails.Broadcast();
-		}
+		SharedConfig->PaintMaterial.PreviewVoxelWorld = VoxelWorld;
+		SharedConfig->RefreshDetails.Broadcast();
 	}
 #endif
 	

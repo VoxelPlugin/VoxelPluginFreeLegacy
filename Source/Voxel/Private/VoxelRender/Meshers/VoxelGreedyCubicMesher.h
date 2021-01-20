@@ -25,7 +25,7 @@ private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
 	
 	template<typename T>
-	void CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices, TArray<FColor>* TextureData, TArray<FVoxelIntBox>* CollisionCubes);
+	void CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<uint32>& Indices, TArray<T>& Vertices, TArray<uint8>* TextureData, TArray<FVoxelIntBox>* CollisionCubes);
 	
 	struct FCubicQuad
 	{
@@ -51,5 +51,5 @@ public:
 		int32 Step,
 		TArray<uint32>& Indices,
 		TArray<T>& Vertices,
-		TArray<FColor>* TextureData);
+		TArray<uint8>* TextureData);
 };

@@ -122,6 +122,7 @@ public:
 	bool bUseStaticPath;
 	bool bStaticWorld;
 	bool bGreedyCubicMesher;
+	bool bSingleIndexGreedy;
 	int32 TexturePoolTextureSize;
 	bool bOptimizeIndices;
 	bool bGenerateDistanceFields;
@@ -194,7 +195,11 @@ public:
 	{
 		return FVoxelUtilities::DivideFloor(Bounds.Min, HISMChunkSize) * HISMChunkSize;
 	}
-	
+
+	uint32 GetTextureDataStride() const
+	{
+		return bSingleIndexGreedy ? sizeof(uint8) : sizeof(FColor);
+	}
 };
 
 class VOXEL_API FVoxelRuntimeDynamicSettings
