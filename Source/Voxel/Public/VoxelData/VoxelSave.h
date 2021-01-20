@@ -149,8 +149,8 @@ private:
 	int32 Depth = -1;
 	uint64 UserFlags = 0;
 	
-	TNoGrowArray64<FVoxelValue> ValueBuffers64;
-	TNoGrowArray64<FVoxelValue> SingleValues64;
+	FVoxelValueArray64 ValueBuffers64;
+	FVoxelValueArray64 SingleValues64;
 	
 	TNoGrowArray64<TVoxelMaterialStorage<uint32>> MaterialsIndices64;
 	TNoGrowArray64<uint8> MaterialBuffers64;

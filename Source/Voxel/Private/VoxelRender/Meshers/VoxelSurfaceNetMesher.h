@@ -28,7 +28,7 @@ protected:
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
 
-	FVoxelValue CachedValues[SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE];
+	TVoxelValueStaticArray<SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE> CachedValues;
 	float EdgeFactors[SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3]; // edge blending factors for each cell, X,Y,Z
 	uint32 VertexIndices[SN_CHUNK_SIZE * SN_CHUNK_SIZE * SN_CHUNK_SIZE]; // final vertex indices, per voxel. 65535 if no vertex
 	uint8 VertexSNCases[SN_CHUNK_SIZE * SN_CHUNK_SIZE * SN_CHUNK_SIZE]; // surface net voxel cases for each cell

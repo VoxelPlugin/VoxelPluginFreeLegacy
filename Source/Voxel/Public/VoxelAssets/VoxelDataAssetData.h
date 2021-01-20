@@ -40,7 +40,10 @@ namespace FVoxelDataAssetDataVersion
 
 struct VOXEL_API FVoxelDataAssetData
 {
-	FVoxelDataAssetData() = default;
+	FVoxelDataAssetData()
+	{
+		Values.Add(FVoxelValue::Empty());
+	}
 	~FVoxelDataAssetData()
 	{
 		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataAssetMemory, AllocatedSize);
@@ -84,13 +87,11 @@ public:
 
 	FORCEINLINE void SetValue(int32 X, int32 Y, int32 Z, const FVoxelValue& NewValue)
 	{
-		checkVoxelSlow(Values.IsValidIndex(GetIndex(X, Y, Z)));
-		Values.GetData()[GetIndex(X, Y, Z)] = NewValue;
+		FVoxelUtilities::Get(Values, GetIndex(X, Y, Z)) = NewValue;
 	}
 	FORCEINLINE void SetMaterial(int32 X, int32 Y, int32 Z, const FVoxelMaterial& NewMaterial)
 	{
-		checkVoxelSlow(Materials.IsValidIndex(GetIndex(X, Y, Z)));
-		Materials.GetData()[GetIndex(X, Y, Z)] = NewMaterial;
+		FVoxelUtilities::Get(Materials, GetIndex(X, Y, Z)) = NewMaterial;
 	}
 
 	template<typename T>
@@ -98,14 +99,14 @@ public:
 	{
 		static_assert(TIsSame<T, int32>::Value, "should be int32");
 		checkVoxelSlow(Values.IsValidIndex(GetIndex(X, Y, Z)));
-		return Values.GetData()[GetIndex(X, Y, Z)];
+		return FVoxelUtilities::Get(Values, GetIndex(X, Y, Z));
 	}
 	template<typename T>
 	FORCEINLINE FVoxelMaterial GetMaterialUnsafe(T X, T Y, T Z) const
 	{
 		static_assert(TIsSame<T, int32>::Value, "should be int32");
 		checkVoxelSlow(Materials.IsValidIndex(GetIndex(X, Y, Z)));
-		return Materials.GetData()[GetIndex(X, Y, Z)];
+		return FVoxelUtilities::Get(Materials, GetIndex(X, Y, Z));
 	}
 
 public:
@@ -124,7 +125,7 @@ public:
 	void Serialize(FArchive& Ar, uint32 ValueConfigFlag, uint32 MaterialConfigFlag, FVoxelDataAssetDataVersion::Type Version);
 
 public:
-	TNoGrowArray<FVoxelValue>& GetRawValues()
+	FVoxelValueArray& GetRawValues()
 	{
 		return Values;
 	}
@@ -132,7 +133,7 @@ public:
 	{
 		return Materials;
 	}
-	const TNoGrowArray<FVoxelValue>& GetRawValues() const
+	const FVoxelValueArray& GetRawValues() const
 	{
 		return Values;
 	}
@@ -150,7 +151,7 @@ public:
 private:
 	// Not 0 to avoid crashes if empty
 	FIntVector Size = FIntVector(1, 1, 1);
-	TNoGrowArray<FVoxelValue> Values = { FVoxelValue::Empty() };
+	FVoxelValueArray Values;
 	TNoGrowArray<FVoxelMaterial> Materials = { FVoxelMaterial::Default() };
 	mutable int64 AllocatedSize = 0;
 

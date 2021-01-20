@@ -125,7 +125,7 @@ void UVoxelDataAsset::SyncProperties()
 	// To access those properties without loading the asset
 	Size = Data->GetSize();
 	UncompressedSizeInMB =
-		Data->GetRawValues().Num() * sizeof(FVoxelValue) / double(1 << 20) +
+		Data->GetRawValues().Num() * Data->GetRawValues().GetTypeSize() / double(1 << 20) +
 		Data->GetRawMaterials().Num() * sizeof(FVoxelMaterial) / double(1 << 20);
 	CompressedSizeInMB = CompressedData.Num() / double(1 << 20);
 }

@@ -4,8 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
-#include "VoxelUtilities/VoxelBaseUtilities.h"
+#include "VoxelContainers/VoxelBitArray.h"
 #include "VoxelContainers/VoxelStaticArray.h"
+#include "VoxelUtilities/VoxelBaseUtilities.h"
 
 template<uint32 InSize>
 class TVoxelStaticBitArray
@@ -24,9 +25,13 @@ public:
 	{
 		Array.Memzero();
 	}
-	FORCEINLINE uint32* RESTRICT GetData()
+	FORCEINLINE uint32* RESTRICT GetWordData()
 	{
 		return Array.GetData();
+	}
+	static uint32 Num()
+	{
+		return Size;
 	}
 	
 	FORCEINLINE uint32 GetInternal(uint32 Index) const
@@ -56,6 +61,10 @@ public:
 
 		checkVoxelSlow(Test(Index) == bValue);
 	}
+	FORCEINLINE void SetAll(bool bValue)
+	{
+		FMemory::Memset(Array.GetData(), bValue ? 0xFF : 0x00, Array.Num() * Array.GetTypeSize());
+	}
 	FORCEINLINE bool Test(uint32 Index) const
 	{
 		checkVoxelSlow(Index < Size);
@@ -74,9 +83,13 @@ public:
 		checkVoxelSlow(!Test(Index));
 		return bResult;
 	}
-	FORCEINLINE bool operator[](uint32 Index) const
+	FORCEINLINE FVoxelBitReference operator[](uint32 Index)
 	{
-		return Test(Index);
+		return FVoxelBitReference(Array[Index / NumBitsPerWord], 1u << (Index % NumBitsPerWord));
+	}
+	FORCEINLINE FVoxelConstBitReference operator[](uint32 Index) const
+	{
+		return FVoxelConstBitReference(Array[Index / NumBitsPerWord], 1u << (Index % NumBitsPerWord));
 	}
 	
 	FORCEINLINE void SetRange(uint32 Index, uint32 Num, bool bValue)

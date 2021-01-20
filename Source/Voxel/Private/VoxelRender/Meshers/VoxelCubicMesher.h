@@ -23,7 +23,7 @@ protected:
 	
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
-	TVoxelStaticArray<FVoxelValue, CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS> CachedValues;
+	TVoxelValueStaticArray<CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS> CachedValues;
 
 private:
 	template<typename T>

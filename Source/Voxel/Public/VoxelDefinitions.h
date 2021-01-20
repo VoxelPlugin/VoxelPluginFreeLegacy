@@ -100,6 +100,11 @@
 #define EIGHT_BITS_VOXEL_VALUE 0
 #endif
 
+// Only store one bit per voxel - mainly useful for cubic
+#ifndef ONE_BIT_VOXEL_VALUE
+#define ONE_BIT_VOXEL_VALUE 0
+#endif
+
 // If true, Voxel Materials will default to R = G = B = A = 255
 // else to R = G = B = A = 0
 #ifndef VOXEL_MATERIAL_DEFAULT_IS_WHITE

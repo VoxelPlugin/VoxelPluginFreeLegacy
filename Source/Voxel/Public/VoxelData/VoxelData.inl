@@ -50,7 +50,7 @@ void FVoxelData::CacheBounds(const FVoxelIntBox& Bounds, bool bMultiThreaded)
 		FVoxelDataOctreeLeaf& Leaf = *Leaves[Index];
 		
 		auto& DataHolder = Leaf.GetData<T>();
-		DataHolder.CreateData(*this, [&](T* RESTRICT DataPtr)
+		DataHolder.CreateData(*this, [&](auto* DataPtr)
 		{
 			TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
 			Leaf.GetFromGeneratorAndAssets(*Generator, QueryZone, 0);
@@ -77,11 +77,11 @@ void FVoxelData::ClearCacheInBounds(const FVoxelIntBox& Bounds)
 }
 
 template<typename T>
-TArray<T> FVoxelData::Get(const FVoxelIntBox& Bounds) const
+TVoxelArrayFwd<T> FVoxelData::Get(const FVoxelIntBox& Bounds) const
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
-	TArray<T> Result;
+	TVoxelArrayFwd<T> Result;
 	Result.Empty(Bounds.Count());
 	Result.SetNumUninitialized(Bounds.Count());
 	TVoxelQueryZone<T> QueryZone(Bounds, Result);
@@ -90,11 +90,11 @@ TArray<T> FVoxelData::Get(const FVoxelIntBox& Bounds) const
 }
 
 template<typename T>
-TArray<T> FVoxelData::ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread) const
+TVoxelArrayFwd<T> FVoxelData::ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread) const
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
-	TArray<T> Result;
+	TVoxelArrayFwd<T> Result;
 	Result.SetNumUninitialized(Bounds.Count());
 	TVoxelQueryZone<T> QueryZone(Bounds, Result);
 
@@ -483,20 +483,20 @@ void FVoxelDataUtilities::MigrateLeafDataToNewGenerator(
 	// Revert to the old generator to query the old data
 	ApplyOldGenerator();
 	
-	TArray<T> OldGeneratorData;
+	TVoxelArrayFwd<T> OldGeneratorData;
 	OldGeneratorData.SetNumUninitialized(Bounds.Count());
 	{
-		TVoxelQueryZone<T> QueryZone(Bounds, OldGeneratorData.GetData());
+		TVoxelQueryZone<T> QueryZone(Bounds, OldGeneratorData);
 		Leaf.GetFromGeneratorAndAssets<T>(*Data.Generator, QueryZone, 0);
 	}
 
 	// Switch back to the new generator, and query the new data
 	ApplyNewGenerator();
 	
-	TArray<T> NewGeneratorData;
+	TVoxelArrayFwd<T> NewGeneratorData;
 	NewGeneratorData.SetNumUninitialized(Bounds.Count());
 	{
-		TVoxelQueryZone<T> QueryZone(Bounds, NewGeneratorData.GetData());
+		TVoxelQueryZone<T> QueryZone(Bounds, NewGeneratorData);
 		Leaf.GetFromGeneratorAndAssets<T>(*Data.Generator, QueryZone, 0);
 	}
 

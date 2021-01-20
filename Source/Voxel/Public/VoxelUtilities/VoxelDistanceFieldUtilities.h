@@ -41,7 +41,14 @@ public:
 	static void GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArrayView<float> OutDistances, TArrayView<FVector> OutSurfacePositions);
 	
 	static void GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArray<float>& OutDistances, TArray<FVector>& OutSurfacePositions);
-
+	static void GetSurfacePositionsFromDensities(const FIntVector& Size, const FVoxelValueArray& Densities, TArray<float>& OutDistances, TArray<FVector>& OutSurfacePositions)
+	{
+#if ONE_BIT_VOXEL_VALUE
+		GetSurfacePositionsFromDensities(Size, TArray<FVoxelValue>(Densities), OutDistances, OutSurfacePositions);
+#else
+		GetSurfacePositionsFromDensities(Size, TArrayView<const FVoxelValue>(Densities), OutDistances, OutSurfacePositions);
+#endif
+	}
 public:
 	// Must be called BEFORE JumpFlood
 	// bShrink: if true, will bias towards shrinking the distance field. If false, will bias towards growing it

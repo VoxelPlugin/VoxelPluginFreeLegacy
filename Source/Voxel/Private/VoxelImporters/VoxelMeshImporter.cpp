@@ -408,5 +408,5 @@ void AVoxelMeshImporter::UpdateSizes()
 	SizeZ = FMath::CeilToInt(SizeFloat.Z);
 	NumberOfVoxels = SizeX * SizeY * SizeZ;
 	const bool bHasMaterials = Settings.bImportColors || Settings.bImportUVs;
-	SizeInMB = double(NumberOfVoxels) * (sizeof(FVoxelValue) + (bHasMaterials ? sizeof(FVoxelMaterial) : 0)) / double(1 << 20);
+	SizeInMB = double(NumberOfVoxels) * ((ONE_BIT_VOXEL_VALUE ? 1 / 8. : sizeof(FVoxelValue)) + (bHasMaterials ? sizeof(FVoxelMaterial) : 0)) / double(1 << 20);
 }

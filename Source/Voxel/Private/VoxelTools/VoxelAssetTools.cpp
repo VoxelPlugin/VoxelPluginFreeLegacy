@@ -264,7 +264,7 @@ void ImportAssetImplImpl(
 	{
 		Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
 		{
-			const auto InstanceValue = GetInstanceValue(X, Y, Z);
+			const FVoxelValue InstanceValue = GetInstanceValue(X, Y, Z);
 			Value = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
 		});
 		break;
@@ -273,8 +273,8 @@ void ImportAssetImplImpl(
 	{
 		Data.Set<const FVoxelValue, FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, const FVoxelValue& Value, FVoxelMaterial& Material)
 		{
-			const auto InstanceValue = GetInstanceValue(X, Y, Z);
-			const auto NewValue = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
+			const FVoxelValue InstanceValue = GetInstanceValue(X, Y, Z);
+			const FVoxelValue NewValue = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
 			if (NewValue == InstanceValue)
 			{
 				Material = GetInstanceMaterialImpl(X, Y, Z, Material);
@@ -286,8 +286,8 @@ void ImportAssetImplImpl(
 	{
 		Data.Set<FVoxelValue, FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, FVoxelMaterial& Material)
 		{
-			const auto InstanceValue = GetInstanceValue(X, Y, Z);
-			const auto NewValue = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
+			const FVoxelValue InstanceValue = GetInstanceValue(X, Y, Z);
+			const FVoxelValue NewValue = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
 			Value = NewValue;
 			if (NewValue == InstanceValue)
 			{
@@ -362,7 +362,7 @@ void UVoxelAssetTools::ImportAssetImpl(
 	const auto Size = Bounds.Size();
 	check(FVoxelUtilities::CountIs32Bits(Size));
 
-	TArray<FVoxelValue> Values;
+	FVoxelValueArray Values;
 	if (bNeedValues)
 	{
 		Values.SetNumUninitialized(Size.X * Size.Y * Size.Z);
@@ -395,14 +395,14 @@ void UVoxelAssetTools::ImportAssetImpl(
 		checkVoxelSlow(bNeedValues);
 		const int32 Index = GetIndex(X, Y, Z);
 		checkVoxelSlow(Values.IsValidIndex(Index));
-		return Values.GetData()[Index];
+		return FVoxelUtilities::Get(Values, Index);
 	};
 	const auto GetInstanceMaterial = [&](int32 X, int32 Y, int32 Z)
 	{
 		checkVoxelSlow(bNeedMaterials);
 		const int32 Index = GetIndex(X, Y, Z);
 		checkVoxelSlow(Materials.IsValidIndex(Index));
-		return Materials.GetData()[Index];
+		return FVoxelUtilities::Get(Materials, Index);
 	};
 	
 	ImportAssetImplImpl(
@@ -606,16 +606,13 @@ void UVoxelAssetTools::InvertDataAssetImpl(const FVoxelDataAssetData& AssetData,
 
 	InvertedAssetData.SetSize(AssetData.GetSize(), AssetData.HasMaterials());
 	const int32 Num = AssetData.GetRawValues().Num();
-#if VOXEL_DEBUG
+
 	const auto& Src = AssetData.GetRawValues();
 	auto& Dst = InvertedAssetData.GetRawValues();
-#else
-	const auto* RESTRICT Src = AssetData.GetRawValues().GetData();
-	auto* RESTRICT Dst = InvertedAssetData.GetRawValues().GetData();
-#endif
+	
 	for (int32 Index = 0; Index < Num; Index++)
 	{
-		Dst[Index] = Src[Index].GetInverse();
+		FVoxelUtilities::Get(Dst, Index) =  FVoxelUtilities::GetAs<FVoxelValue>(Src, Index).GetInverse();
 	}
 
 	InvertedAssetData.GetRawMaterials() = AssetData.GetRawMaterials();

@@ -86,19 +86,25 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 	TVoxelStaticBitArray<NumVoxelsWithNeighbors> ValuesBitArray;
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("Query Data");
-		
-		TVoxelStaticArray<FVoxelValue, NumVoxelsWithNeighbors> Values;
 
+#if ONE_BIT_VOXEL_VALUE
+		TVoxelValueStaticArray<NumVoxelsWithNeighbors>& Values = ValuesBitArray;
+#else
+		TVoxelStaticArray<FVoxelValue, NumVoxelsWithNeighbors> Values;
+#endif
+		
 		TVoxelQueryZone<FVoxelValue> QueryZone(GetBoundsToCheckIsEmptyOn(), FIntVector(CUBIC_CHUNK_SIZE_WITH_NEIGHBORS), LOD, Values);
 		MESHER_TIME_INLINE_VALUES(NumVoxelsWithNeighbors, Data.Get<FVoxelValue>(QueryZone, LOD));
-
+		
+#if !ONE_BIT_VOXEL_VALUE
 		for (int32 Index = 0; Index < NumVoxelsWithNeighbors; Index++)
 		{
-			ValuesBitArray.Set(Index, !Values[Index].IsEmpty());
+			ValuesBitArray.Set(Index, Values[Index].IsEmpty());
 		}
+#endif
 	}
 	
-	const auto GetValue = [&](int32 X, int32 Y, int32 Z)
+	const auto IsEmpty = [&](int32 X, int32 Y, int32 Z)
 	{
 		checkVoxelSlow(-1 <= X && X < RENDER_CHUNK_SIZE + 1);
 		checkVoxelSlow(-1 <= Y && Y < RENDER_CHUNK_SIZE + 1);
@@ -124,17 +130,17 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 			{
 				for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
 				{
-					if (!GetValue(X, Y, Z))
+					if (IsEmpty(X, Y, Z))
 					{
 						continue;
 					}
 
-					if (!GetValue(X - 1, Y, Z)) FacesBitArrays[0].Set(GetFaceIndex(Y, Z, X), true);
-					if (!GetValue(X + 1, Y, Z)) FacesBitArrays[1].Set(GetFaceIndex(Y, Z, X), true);
-					if (!GetValue(X, Y - 1, Z)) FacesBitArrays[2].Set(GetFaceIndex(Z, X, Y), true);
-					if (!GetValue(X, Y + 1, Z)) FacesBitArrays[3].Set(GetFaceIndex(Z, X, Y), true);
-					if (!GetValue(X, Y, Z - 1)) FacesBitArrays[4].Set(GetFaceIndex(X, Y, Z), true);
-					if (!GetValue(X, Y, Z + 1)) FacesBitArrays[5].Set(GetFaceIndex(X, Y, Z), true);
+					if (IsEmpty(X - 1, Y, Z)) FacesBitArrays[0].Set(GetFaceIndex(Y, Z, X), true);
+					if (IsEmpty(X + 1, Y, Z)) FacesBitArrays[1].Set(GetFaceIndex(Y, Z, X), true);
+					if (IsEmpty(X, Y - 1, Z)) FacesBitArrays[2].Set(GetFaceIndex(Z, X, Y), true);
+					if (IsEmpty(X, Y + 1, Z)) FacesBitArrays[3].Set(GetFaceIndex(Z, X, Y), true);
+					if (IsEmpty(X, Y, Z - 1)) FacesBitArrays[4].Set(GetFaceIndex(X, Y, Z), true);
+					if (IsEmpty(X, Y, Z + 1)) FacesBitArrays[5].Set(GetFaceIndex(X, Y, Z), true);
 				}
 			}
 		}
@@ -174,21 +180,21 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 					{
 						for (int32 X = 0; X < CollisionChunkSize; X++)
 						{
-							bool bValue = false;
+							bool bIsEmpty = true;
 							for (int32 I = 0; I < CollisionDivider; I++)
 							{
 								for (int32 J = 0; J < CollisionDivider; J++)
 								{
 									for (int32 K = 0; K < CollisionDivider; K++)
 									{
-										bValue |= GetValue(I + CollisionDivider * X, J + CollisionDivider * Y, K + CollisionDivider * Z);
-										if (bValue) break;
+										bIsEmpty &= IsEmpty(I + CollisionDivider * X, J + CollisionDivider * Y, K + CollisionDivider * Z);
+										if (!bIsEmpty) break;
 									}
-									if (bValue) break;
+									if (!bIsEmpty) break;
 								}
-								if (bValue) break;
+								if (!bIsEmpty) break;
 							}
-							BitArray.Set(X + CollisionChunkSize * Y + CollisionChunkSize * CollisionChunkSize * Z, bValue);
+							BitArray.Set(X + CollisionChunkSize * Y + CollisionChunkSize * CollisionChunkSize * Z, !bIsEmpty);
 						}
 					}
 				}
@@ -210,7 +216,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 				{
 					for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
 					{
-						if (GetValue(X, Y, Z))
+						if (!IsEmpty(X, Y, Z))
 						{
 							CollisionBounds += FVoxelIntBox(FIntVector{ X, Y, Z });
 						}
@@ -238,7 +244,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 #if VOXEL_DEBUG
                 Cube.Iterate([&](int32 X, int32 Y, int32 Z)
                 {
-                    ensure(GetValue(X, Y, Z));
+                    ensure(!IsEmpty(X, Y, Z));
                 });
 #endif
 
@@ -246,8 +252,8 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
                 {
                     for (int32 Y = Cube.Min.Y; Y < Cube.Max.Y; Y++)
                     {
-                        if (!GetValue(X, Y, Cube.Min.Z - 1) ||
-                            !GetValue(X, Y, Cube.Max.Z))
+                        if (IsEmpty(X, Y, Cube.Min.Z - 1) ||
+                            IsEmpty(X, Y, Cube.Max.Z))
                         {
                             return false;
                         }
@@ -258,8 +264,8 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
                 {
                     for (int32 Z = Cube.Min.Z; Z < Cube.Max.Z; Z++)
                     {
-                        if (!GetValue(X, Cube.Min.Y - 1, Z) ||
-                            !GetValue(X, Cube.Max.Y, Z))
+                        if (IsEmpty(X, Cube.Min.Y - 1, Z) ||
+                            IsEmpty(X, Cube.Max.Y, Z))
                         {
                             return false;
                         }
@@ -270,8 +276,8 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
                 {
                     for (int32 Z = Cube.Min.Z; Z < Cube.Max.Z; Z++)
                     {
-                        if (!GetValue(Cube.Min.X - 1, Y, Z) ||
-                            !GetValue(Cube.Max.X, Y, Z))
+                        if (IsEmpty(Cube.Min.X - 1, Y, Z) ||
+                            IsEmpty(Cube.Max.X, Y, Z))
                         {
                             return false;
                         }
@@ -296,7 +302,7 @@ FORCEINLINE void FVoxelGreedyCubicMesher::GreedyMeshing2D(TVoxelStaticBitArray<G
 	for (uint32 Layer = 0; Layer < GridSize; Layer++)
 	{
 		static_assert(((GridSize * GridSize) % TVoxelStaticBitArray<GridSize * GridSize * GridSize>::NumBitsPerWord) == 0, "");
-        auto& Faces = reinterpret_cast<TVoxelStaticBitArray<GridSize * GridSize>&>(*(InFaces.GetData() + Layer * GridSize * GridSize / InFaces.NumBitsPerWord));
+        auto& Faces = reinterpret_cast<TVoxelStaticBitArray<GridSize * GridSize>&>(*(InFaces.GetWordData() + Layer * GridSize * GridSize / InFaces.NumBitsPerWord));
 		
 		const auto TestAndClear = [&](uint32 X, uint32 Y)
 		{

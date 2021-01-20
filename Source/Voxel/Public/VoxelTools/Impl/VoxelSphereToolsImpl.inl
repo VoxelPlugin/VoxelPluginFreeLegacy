@@ -308,6 +308,130 @@ void FVoxelSphereToolsImpl::ApplyMaterialKernelSphereImpl(
 		GetStrength);
 }
 
+template<typename T, typename TLambda>
+void FVoxelSphereToolsImpl::RevertSphereImpl(
+	FVoxelData& Data,
+	const FVoxelVector& Position,
+	float Radius,
+	int32 HistoryPosition, 
+	TLambda SetValue)
+{
+	VOXEL_SPHERE_TOOL_IMPL();
+
+	const float RadiusSquared = FMath::Square(Radius);
+
+	FVoxelOctreeUtilities::IterateTreeInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Chunk)
+	{
+		if (!Chunk.IsLeaf())
+		{
+			return;
+		}
+
+		ensureThreadSafe(Chunk.IsLockedForWrite());
+		auto& Leaf = Chunk.AsLeaf();
+			
+		if (!Leaf.GetData<T>().IsDirty() || !Leaf.UndoRedo.IsValid())
+		{
+			return;
+		}
+
+		TVoxelStaticArray<bool, VOXELS_PER_DATA_CHUNK> IsValueSet;
+		IsValueSet.Memzero();
+
+		TVoxelStaticArrayFwd<T, VOXELS_PER_DATA_CHUNK> Values;
+		Leaf.GetData<T>().CopyTo(Values);
+
+		const auto& Stack = Leaf.UndoRedo->GetFramesStack<EVoxelUndoRedo::Undo>();
+		for (int32 Index = Stack.Num() - 1; Index >= 0; --Index)
+		{
+			if (Stack[Index]->HistoryPosition < HistoryPosition) break;
+
+			for (auto& Value : FVoxelUtilities::TValuesMaterialsSelector<T>::Get(*Stack[Index]))
+			{
+				IsValueSet[Value.Index] = true;
+				Values[Value.Index] = Value.Value;
+			}
+		}
+
+		const FIntVector Min = Leaf.GetMin();
+
+		FVoxelDataOctreeSetter::Set<T>(Data, Leaf, [&](auto Lambda)
+		{
+			Leaf.GetBounds().Iterate(Lambda);
+		},
+		[&](int32 X, int32 Y, int32 Z, T& Value)
+		{
+			const float DistanceSquared = (FVector(X, Y, Z) - Position).SizeSquared();
+			if (DistanceSquared < RadiusSquared)
+			{
+				const uint32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
+				if (IsValueSet[Index])
+				{
+					SetValue(DistanceSquared, Value, Values[Index]);
+				}
+			}
+		});
+	});
+}
+
+template<typename T>
+void FVoxelSphereToolsImpl::RevertSphereToGeneratorImpl(
+	FVoxelData& Data, 
+	const FVoxelVector& Position, 
+	float Radius)
+{
+	VOXEL_SPHERE_TOOL_IMPL();
+
+	const float RadiusSquared = FMath::Square(Radius);
+	FVoxelOctreeUtilities::IterateTreeInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Chunk)
+	{
+		if (!Chunk.IsLeaf())
+		{
+			return;
+		}
+
+		ensureThreadSafe(Chunk.IsLockedForWrite());
+		auto& Leaf = Chunk.AsLeaf();
+
+		auto& DataHolder = Leaf.GetData<T>();
+		if (!DataHolder.IsDirty())
+		{
+			return;
+		}
+
+		TVoxelStaticArrayFwd<T, VOXELS_PER_DATA_CHUNK> Values;
+		TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), Values);
+		Leaf.GetFromGeneratorAndAssets<T>(*Data.Generator, QueryZone, 0);
+
+		const FIntVector Min = Leaf.GetMin();
+
+		bool bAllGeneratorValues = true;
+
+		FVoxelDataOctreeSetter::Set<T>(Data, Leaf, [&](auto Lambda)
+		{
+			Leaf.GetBounds().Iterate(Lambda);
+		},
+		[&](int32 X, int32 Y, int32 Z, T& Value)
+		{
+			const float DistanceSquared = (FVector(X, Y, Z) - Position).SizeSquared();
+			const int32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
+			if (DistanceSquared < RadiusSquared)
+			{
+				Value = Values[Index];
+			}
+			else
+			{
+				bAllGeneratorValues &= (Value == Values[Index]);
+			}
+		});
+
+		if (bAllGeneratorValues)
+		{
+			DataHolder.ClearData(Data);
+		}
+	});
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -659,154 +783,41 @@ void FVoxelSphereToolsImpl::RevertSphere(TData& InData, const FVoxelVector& Posi
 {
 	VOXEL_SPHERE_TOOL_IMPL();
 
-	auto& Data = GetActualData(InData);
-	const float RadiusSquared = FMath::Square(Radius);
-
-	FVoxelOctreeUtilities::IterateTreeInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Chunk)
+	FVoxelData& Data = GetActualData(InData);
+		
+	if (bRevertValues)
 	{
-		if (!Chunk.IsLeaf())
+		FVoxelSphereToolsImpl::RevertSphereImpl<FVoxelValue>(Data, Position, Radius, HistoryPosition,
+		[&](float DistanceSquared, FVoxelValue& Value, const FVoxelValue& NewValue)
 		{
-			return;
-		}
-
-		ensureThreadSafe(Chunk.IsLockedForWrite());
-		auto& Leaf = Chunk.AsLeaf();
-			
-		const auto ApplyForType = [&](auto TypeInst, auto SetValue)
+			//const float Alpha = FMath::Sqrt(DistanceSquared) / Radius;
+			const float Strength = 1; // TODO use Alpha
+			Value = FVoxelValue(FMath::Lerp(Value.ToFloat(), NewValue.ToFloat(), Strength));
+		});
+	}
+	if (bRevertMaterials)
+	{
+		FVoxelSphereToolsImpl::RevertSphereImpl<FVoxelMaterial>(Data, Position, Radius, HistoryPosition,
+		[&](float DistanceSquared, FVoxelMaterial& Value, const FVoxelMaterial& NewValue)
 		{
-			using Type = decltype(TypeInst);
-		
-			if (!Leaf.GetData<Type>().IsDirty() || !Leaf.UndoRedo.IsValid())
-			{
-				return;
-			}
-
-			TVoxelStaticArray<bool, VOXELS_PER_DATA_CHUNK> IsValueSet;
-			IsValueSet.Memzero();
-
-			TVoxelStaticArray<Type, VOXELS_PER_DATA_CHUNK> Values;
-			Leaf.GetData<Type>().CopyTo(Values.GetData());
-
-			const auto& Stack = Leaf.UndoRedo->GetFramesStack<EVoxelUndoRedo::Undo>();
-			for (int32 Index = Stack.Num() - 1; Index >= 0; --Index)
-			{
-				if (Stack[Index]->HistoryPosition < HistoryPosition) break;
-
-				for (auto& Value : FVoxelUtilities::TValuesMaterialsSelector<Type>::Get(*Stack[Index]))
-				{
-					IsValueSet[Value.Index] = true;
-					Values[Value.Index] = Value.Value;
-				}
-			}
-
-			const FIntVector Min = Leaf.GetMin();
-
-			FVoxelDataOctreeSetter::Set<Type>(Data, Leaf, [&](auto Lambda)
-			{
-				Leaf.GetBounds().Iterate(Lambda);
-			},
-			[&](int32 X, int32 Y, int32 Z, Type& Value)
-			{
-				const float DistanceSquared = (FVector(X, Y, Z) - Position).SizeSquared();
-				if (DistanceSquared < RadiusSquared)
-				{
-					const uint32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
-					if (IsValueSet[Index])
-					{
-						SetValue(DistanceSquared, Value, Values[Index]);
-					}
-				}
-			});
-		};
-		
-		if (bRevertValues)
-		{
-			ApplyForType(FVoxelValue(), [&](float DistanceSquared, FVoxelValue& Value, const FVoxelValue& NewValue)
-			{
-				//const float Alpha = FMath::Sqrt(DistanceSquared) / Radius;
-				const float Strength = 1; // TODO use Alpha
-				Value = FVoxelValue(FMath::Lerp(Value.ToFloat(), NewValue.ToFloat(), Strength));
-			});
-		}
-		if (bRevertMaterials)
-		{
-			ApplyForType(FVoxelMaterial(), [&](float DistanceSquared, FVoxelMaterial& Value, const FVoxelMaterial& NewValue)
-			{
-				Value = NewValue;
-			});
-		}
-	});
+			Value = NewValue;
+		});
+	}
 }
 
 template<typename TData>
 void FVoxelSphereToolsImpl::RevertSphereToGenerator(TData& InData, const FVoxelVector& Position, float Radius, bool bRevertValues, bool bRevertMaterials)
 {
-	VOXEL_SPHERE_TOOL_IMPL();
+	FVoxelData& Data = GetActualData(InData);
 	
-	auto& Data = GetActualData(InData);
-	const float RadiusSquared = FMath::Square(Radius);
-
-	FVoxelOctreeUtilities::IterateTreeInBounds(Data.GetOctree(), Bounds, [&](FVoxelDataOctreeBase& Chunk)
+	if (bRevertValues)
 	{
-		if (!Chunk.IsLeaf())
-		{
-			return;
-		}
-
-		ensureThreadSafe(Chunk.IsLockedForWrite());
-		auto& Leaf = Chunk.AsLeaf();
-
-		const auto ApplyForType = [&](auto TypeInst)
-		{
-			using Type = decltype(TypeInst);
-
-			auto& DataHolder = Leaf.GetData<Type>();
-			if (!DataHolder.IsDirty())
-			{
-				return;
-			}
-
-			TVoxelStaticArray<Type, VOXELS_PER_DATA_CHUNK> Values;
-			TVoxelQueryZone<Type> QueryZone(Leaf.GetBounds(), Values);
-			Leaf.GetFromGeneratorAndAssets<Type>(*Data.Generator, QueryZone, 0);
-
-			const FIntVector Min = Leaf.GetMin();
-
-			bool bAllGeneratorValues = true;
-			
-			FVoxelDataOctreeSetter::Set<Type>(Data, Leaf, [&](auto Lambda)
-			{
-				Leaf.GetBounds().Iterate(Lambda);
-			},
-			[&](int32 X, int32 Y, int32 Z, Type& Value)
-			{
-				const float DistanceSquared = (FVector(X, Y, Z) - Position).SizeSquared();
-				const int32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
-				if (DistanceSquared < RadiusSquared)
-				{
-					Value = Values[Index];
-				}
-				else
-				{
-					bAllGeneratorValues &= (Value == Values[Index]);
-				}
-			});
-
-			if (bAllGeneratorValues)
-			{
-				DataHolder.ClearData(Data);
-			}
-		};
-
-		if (bRevertValues)
-		{
-			ApplyForType(FVoxelValue());
-		}
-		if (bRevertMaterials)
-		{
-			ApplyForType(FVoxelMaterial());
-		}
-	});
+		RevertSphereToGeneratorImpl<FVoxelValue>(Data, Position, Radius);
+	}
+	if (bRevertMaterials)
+	{
+		RevertSphereToGeneratorImpl<FVoxelMaterial>(Data, Position, Radius);
+	}
 }
 
 template<typename TData>

@@ -93,7 +93,7 @@ void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOc
 		{
 			// Data was reverted to generator value
 			
-			DataHolder.CreateData(Data, [&](T* RESTRICT DataPtr)
+			DataHolder.CreateData(Data, [&](auto* DataPtr)
 			{
 				TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
 				Leaf.GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);
@@ -115,10 +115,9 @@ void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOc
 			checkVoxelSlow(NewFrameData.IsValidIndex(Index));
 
 			const auto ModifiedValue = FrameDataPtr[Index];
-			auto& ValueRef = DataHolder.GetRef(ModifiedValue.Index);
 			
-			NewFrameDataPtr[Index] = TModifiedValue<T>(ModifiedValue.Index, ValueRef);
-			ValueRef = ModifiedValue.Value;
+			NewFrameDataPtr[Index] = TModifiedValue<T>(ModifiedValue.Index, DataHolder.Get(ModifiedValue.Index));
+			DataHolder.Set(ModifiedValue.Index, ModifiedValue.Value);
 		}
 
 		if (TIsSame<T, FVoxelValue>::Value) DataHolder.SetIsDirty(Frame->bValuesDirty, Data);
