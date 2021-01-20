@@ -704,32 +704,6 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	bDisableComponentUnregister = false;
 }
-
-bool AVoxelWorld::CanEditChange(const FProperty* InProperty) const
-{
-	check(InProperty);
-	
-	const FName Name = InProperty->GetFName();
-	if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, bGreedyCubicMesher))
-	{
-		if (MaterialConfig != EVoxelMaterialConfig::RGB ||
-			RenderType != EVoxelRenderType::Cubic)
-		{
-			return false;
-		}
-	}
-	else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, UVConfig))
-	{
-		if (bGreedyCubicMesher &&
-			MaterialConfig == EVoxelMaterialConfig::RGB &&
-			RenderType == EVoxelRenderType::Cubic)
-		{
-			return false;
-		}
-	}
-
-	return Super::CanEditChange(InProperty);
-}
 #endif
 
 void AVoxelWorld::UpdateCollisionProfile()

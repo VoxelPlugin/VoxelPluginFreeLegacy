@@ -3,11 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelUserDefinitions.h"
-
-/**
- * To change a definition, add it to VoxelUserDefinitions.h
- */
 
 // Enable this to enable double precision in generators and voxel graphs
 #ifndef VOXEL_DOUBLE_PRECISION
@@ -99,6 +94,8 @@
 #define ENABLE_OPTIMIZE_INDICES PLATFORM_WINDOWS
 #endif
 
+// Use 8 bits voxel value
+// Lower quality (mainly visible when using smooth), but 2x smaller
 #ifndef EIGHT_BITS_VOXEL_VALUE
 #define EIGHT_BITS_VOXEL_VALUE 0
 #endif
@@ -111,7 +108,41 @@
 
 /**
  * Voxel material config: use those to reduce the size of a FVoxelMaterial
+ * Alpha is used to store the single index in that mode
  */
+
+// Quick way to disable all channels but the one used to store the single index
+// Useful for magica voxel if you use a palette
+#ifndef VOXEL_MATERIAL_SINGLE_INDEX_ONLY
+#define VOXEL_MATERIAL_SINGLE_INDEX_ONLY 0
+#endif
+
+#if VOXEL_MATERIAL_SINGLE_INDEX_ONLY
+#define VOXEL_MATERIAL_ENABLE_R 0
+#define VOXEL_MATERIAL_ENABLE_G 0
+#define VOXEL_MATERIAL_ENABLE_B 0
+#define VOXEL_MATERIAL_ENABLE_A 1
+#define VOXEL_MATERIAL_ENABLE_UV0 0
+#define VOXEL_MATERIAL_ENABLE_UV1 0
+#define VOXEL_MATERIAL_ENABLE_UV2 0
+#define VOXEL_MATERIAL_ENABLE_UV3 0
+#endif
+
+// Quick way to disable all channels but the ones used to store the color
+#ifndef VOXEL_MATERIAL_COLOR_ONLY
+#define VOXEL_MATERIAL_COLOR_ONLY 0
+#endif
+
+#if VOXEL_MATERIAL_COLOR_ONLY
+#define VOXEL_MATERIAL_ENABLE_R 1
+#define VOXEL_MATERIAL_ENABLE_G 1
+#define VOXEL_MATERIAL_ENABLE_B 1
+#define VOXEL_MATERIAL_ENABLE_A 1
+#define VOXEL_MATERIAL_ENABLE_UV0 0
+#define VOXEL_MATERIAL_ENABLE_UV1 0
+#define VOXEL_MATERIAL_ENABLE_UV2 0
+#define VOXEL_MATERIAL_ENABLE_UV3 0
+#endif
 
 #ifndef VOXEL_MATERIAL_ENABLE_R
 #define VOXEL_MATERIAL_ENABLE_R 1

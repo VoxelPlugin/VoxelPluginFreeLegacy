@@ -400,7 +400,12 @@ void AVoxelAssetActor::CreatePreview()
 	FVoxelRuntimeSettings Settings;
 	Settings.SetFromRuntime(*PreviewWorld);
 	Settings.ConfigurePreview();
+	Settings.Owner = this;
+	Settings.ComponentsOwner = this;
+	Settings.RootComponent = PrimitiveComponent;
 	Settings.DataOverride = Data;
+	Settings.bUseCustomWorldBounds = true;
+	Settings.CustomWorldBounds = Bounds;
 	Settings.bDisableDebugManager = true;
 	// Aggressive merge settings
 	Settings.bMergeChunks = true;

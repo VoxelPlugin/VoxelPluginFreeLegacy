@@ -1,6 +1,7 @@
 // Copyright 2021 Phyronnaz
 
 #include "VoxelTools/Gen/VoxelToolsBase.h"
+#include "VoxelWorld.h"
 
 template<typename T>
 FVoxelIntBox GetModifiedVoxelsBounds(const TArray<T>& ModifiedVoxels)
@@ -23,4 +24,9 @@ FVoxelIntBox UVoxelToolsBase::GetModifiedVoxelMaterialsBounds(const TArray<FModi
 {
 	VOXEL_FUNCTION_COUNTER();
 	return GetModifiedVoxelsBounds(ModifiedVoxels);
+}
+
+bool UVoxelToolsBase::IsSingleIndexWorld(AVoxelWorld* VoxelWorld)
+{
+	return ensure(VoxelWorld) && VoxelWorld->MaterialConfig == EVoxelMaterialConfig::SingleIndex;
 }

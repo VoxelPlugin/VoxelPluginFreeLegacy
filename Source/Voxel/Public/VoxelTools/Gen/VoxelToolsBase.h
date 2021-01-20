@@ -73,4 +73,7 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Base")
 	static FVoxelIntBox GetModifiedVoxelMaterialsBounds(const TArray<FModifiedVoxelMaterial>& ModifiedVoxels);
+
+public:
+	static bool IsSingleIndexWorld(AVoxelWorld* VoxelWorld);
 };

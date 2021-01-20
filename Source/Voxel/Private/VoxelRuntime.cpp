@@ -60,6 +60,7 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(bConstantLOD);
 
 	SET(MaterialConfig);
+	SET(bUseMaterialCollection);
 	SET(VoxelMaterial);
 	SET(MaterialCollection);
 	SET(LODMaterials);
@@ -187,7 +188,15 @@ void FVoxelRuntimeSettings::Fixup()
 	{
 		MaxDistanceFieldLOD = -1;
 	}
-	if (MaterialConfig != EVoxelMaterialConfig::RGB)
+	if (MaterialConfig == EVoxelMaterialConfig::RGB)
+	{
+		bUseMaterialCollection = false;
+	}
+	if (MaterialConfig == EVoxelMaterialConfig::MultiIndex)
+	{
+		bUseMaterialCollection = true;
+	}
+	if (bUseMaterialCollection)
 	{
 		bGreedyCubicMesher = false;
 	}

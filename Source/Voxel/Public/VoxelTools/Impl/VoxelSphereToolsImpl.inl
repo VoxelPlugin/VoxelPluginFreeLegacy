@@ -25,7 +25,7 @@ void FVoxelSphereToolsImpl::SphereEdit(TData& Data, const FVoxelVector& Position
 
 	Data.template Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
 	{
-		const float SquaredDistance = FVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
+		const float SquaredDistance = FVoxelVector(X - Position.X, Y - Position.Y, Z - Position.Z).SizeSquared();
 		if (SquaredDistance > SquaredRadiusPlus2) return;
 
 		if (SquaredDistance <= SquaredRadiusMinus2)
@@ -806,5 +806,27 @@ void FVoxelSphereToolsImpl::RevertSphereToGenerator(TData& InData, const FVoxelV
 		{
 			ApplyForType(FVoxelMaterial());
 		}
+	});
+}
+
+template<typename TData>
+void FVoxelSphereToolsImpl::RemoveSphereThresholded(TData& Data, const FVoxelVector& Position, float Radius, int32 Threshold)
+{
+	VOXEL_SPHERE_TOOL_IMPL();
+
+	Data.template Set<FVoxelValue, const FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, const FVoxelMaterial& Material)
+	{
+		if (Material.GetSingleIndex() > Threshold)
+		{
+			return;
+		}
+		
+		const float Distance = FVoxelVector(X - Position.X, Y - Position.Y, Z - Position.Z).Size();
+		if (Distance > Radius)
+		{
+			return;
+		}
+
+		Value = FVoxelValue::Empty();
 	});
 }

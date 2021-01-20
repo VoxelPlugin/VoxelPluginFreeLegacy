@@ -1130,3 +1130,121 @@ void UVoxelSphereTools::RevertSphereToGeneratorAsync(
 	
 	GENERATED_TOOL_CALL_ASYNC_CPP(Value, FVoxelSphereToolsImpl::RevertSphereToGenerator(Data, RealPosition, RealRadius, bRevertValues, bRevertMaterials));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+void UVoxelSphereTools::RemoveSphereThresholded(
+	TArray<FModifiedVoxelValue>& ModifiedValues,
+	FVoxelIntBox& EditedBounds,
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	int32 Threshold,
+	bool bMultiThreaded,
+	bool bRecordModifiedValues,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION(Value);
+	
+	if (!IsSingleIndexWorld(VoxelWorld))
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("RemoveSphereThresholded only works with the single index material config"));
+		return;
+	}
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL(Value, FVoxelSphereToolsImpl::RemoveSphereThresholded(Data, RealPosition, RealRadius, Threshold));
+}
+
+void UVoxelSphereTools::RemoveSphereThresholdedAsync(
+	UObject* WorldContextObject,
+	FLatentActionInfo LatentInfo,
+	TArray<FModifiedVoxelValue>& ModifiedValues,
+	FVoxelIntBox& EditedBounds,
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	int32 Threshold,
+	bool bMultiThreaded,
+	bool bRecordModifiedValues,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender,
+	bool bHideLatentWarnings)
+{
+	GENERATED_TOOL_FUNCTION_ASYNC(Value);
+	
+	if (!IsSingleIndexWorld(VoxelWorld))
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("RemoveSphereThresholded only works with the single index material config"));
+		return;
+	}
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_ASYNC(Value, FVoxelSphereToolsImpl::RemoveSphereThresholded(Data, RealPosition, RealRadius, Threshold));
+}
+
+void UVoxelSphereTools::RemoveSphereThresholded(
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	int32 Threshold,
+	TArray<FModifiedVoxelValue>* OutModifiedValues,
+	FVoxelIntBox* OutEditedBounds,
+	bool bMultiThreaded,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION_CPP(Value);
+	
+	if (!IsSingleIndexWorld(VoxelWorld))
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("RemoveSphereThresholded only works with the single index material config"));
+		return;
+	}
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_CPP(Value, FVoxelSphereToolsImpl::RemoveSphereThresholded(Data, RealPosition, RealRadius, Threshold));
+}
+
+void UVoxelSphereTools::RemoveSphereThresholdedAsync(
+	AVoxelWorld* VoxelWorld,
+	const FVector& Position,
+	float Radius,
+	int32 Threshold,
+	const FOnVoxelToolComplete_WithModifiedValues& Callback,
+	FVoxelIntBox* OutEditedBounds,
+	bool bMultiThreaded,
+	bool bRecordModifiedValues,
+	bool bConvertToVoxelSpace,
+	bool bUpdateRender)
+{
+	GENERATED_TOOL_FUNCTION_ASYNC_CPP(Value);
+	
+	if (!IsSingleIndexWorld(VoxelWorld))
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("RemoveSphereThresholded only works with the single index material config"));
+		return;
+	}
+	
+	const auto RealPosition = FVoxelToolHelpers::GetRealPosition(VoxelWorld, Position, bConvertToVoxelSpace);
+	const auto RealRadius = FVoxelToolHelpers::GetRealDistance(VoxelWorld, Radius, bConvertToVoxelSpace);
+	
+	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
+	
+	GENERATED_TOOL_CALL_ASYNC_CPP(Value, FVoxelSphereToolsImpl::RemoveSphereThresholded(Data, RealPosition, RealRadius, Threshold));
+}

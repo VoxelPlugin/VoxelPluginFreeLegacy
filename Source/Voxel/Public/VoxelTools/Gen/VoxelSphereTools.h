@@ -1435,4 +1435,119 @@ public:
 		bool bRecordModifiedValues = true,
 		bool bConvertToVoxelSpace = true,
 		bool bUpdateRender = true);
+	
+public:
+	/**
+	 * Removes all the voxels in a sphere, if their single index is lower or equal to Threshold
+	 * Mainly intended for the cubic mode
+	 * @see RemoveSphereThresholded, RemoveSphereThresholdedAsync and FVoxelSphereToolsImpl::RemoveSphereThresholded
+	 * @param	ModifiedValues       	Record the Values modified by this function. Useful to track the amount of edit done, for instance to give resources when digging
+	 * @param	EditedBounds         	Returns the bounds edited by this function
+	 * @param	VoxelWorld           	The voxel world to do the edit to
+	 * @param	Position             	The position of the center. In world space (unreal units) if bConvertToVoxelSpace is true. In voxel space if false.
+	 * @param	Radius               	The radius. In unreal units if bConvertToVoxelSpace is true. In voxels if false.
+	 * @param	Threshold            	Only voxels whose material single index is lower or equal to this will be removed. Should be between 0 and 255.
+	 * @param	bMultiThreaded       	If true, multiple threads will be used to make the edit faster.
+	 * @param	bRecordModifiedValues	If false, will not fill ModifiedValues, making the edit faster.
+	 * @param	bConvertToVoxelSpace 	If true, Position and Radius will be converted to voxel space. Else they will be used directly.
+	 * @param	bUpdateRender        	If false, will only edit the data and not update the render. Rarely needed.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Sphere Tools", meta = (DefaultToSelf = "VoxelWorld", AdvancedDisplay = "bMultiThreaded, bRecordModifiedValues, bConvertToVoxelSpace, bUpdateRender"))
+	static void RemoveSphereThresholded(
+		TArray<FModifiedVoxelValue>& ModifiedValues,
+		FVoxelIntBox& EditedBounds,
+		AVoxelWorld* VoxelWorld,
+		const FVector& Position,
+		float Radius,
+		int32 Threshold,
+		bool bMultiThreaded = true,
+		bool bRecordModifiedValues = true,
+		bool bConvertToVoxelSpace = true,
+		bool bUpdateRender = true);
+	
+	/**
+	 * Removes all the voxels in a sphere, if their single index is lower or equal to Threshold
+	 * Mainly intended for the cubic mode
+	 * Runs asynchronously in a background thread
+	 * @see RemoveSphereThresholded, RemoveSphereThresholdedAsync and FVoxelSphereToolsImpl::RemoveSphereThresholded
+	 * @param	ModifiedValues       	Record the Values modified by this function. Useful to track the amount of edit done, for instance to give resources when digging
+	 * @param	EditedBounds         	Returns the bounds edited by this function
+	 * @param	VoxelWorld           	The voxel world to do the edit to
+	 * @param	Position             	The position of the center. In world space (unreal units) if bConvertToVoxelSpace is true. In voxel space if false.
+	 * @param	Radius               	The radius. In unreal units if bConvertToVoxelSpace is true. In voxels if false.
+	 * @param	Threshold            	Only voxels whose material single index is lower or equal to this will be removed. Should be between 0 and 255.
+	 * @param	bMultiThreaded       	If true, multiple threads will be used to make the edit faster. Not recommended on async functions, as it might cause lag.
+	 * @param	bRecordModifiedValues	If false, will not fill ModifiedValues, making the edit faster.
+	 * @param	bConvertToVoxelSpace 	If true, Position and Radius will be converted to voxel space. Else they will be used directly.
+	 * @param	bUpdateRender        	If false, will only edit the data and not update the render. Rarely needed.
+	 * @param	bHideLatentWarnings  	Hide latent warnings caused by calling a node before its previous call completion.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Sphere Tools", meta = (DefaultToSelf = "VoxelWorld", AdvancedDisplay = "bMultiThreaded, bRecordModifiedValues, bConvertToVoxelSpace, bUpdateRender, bHideLatentWarnings", Latent, LatentInfo = "LatentInfo", WorldContext = "WorldContextObject"))
+	static void RemoveSphereThresholdedAsync(
+		UObject* WorldContextObject,
+		FLatentActionInfo LatentInfo,
+		TArray<FModifiedVoxelValue>& ModifiedValues,
+		FVoxelIntBox& EditedBounds,
+		AVoxelWorld* VoxelWorld,
+		const FVector& Position,
+		float Radius,
+		int32 Threshold,
+		bool bMultiThreaded = false,
+		bool bRecordModifiedValues = true,
+		bool bConvertToVoxelSpace = true,
+		bool bUpdateRender = true,
+		bool bHideLatentWarnings = false);
+	
+	/**
+	 * Removes all the voxels in a sphere, if their single index is lower or equal to Threshold
+	 * Mainly intended for the cubic mode
+	 * @see RemoveSphereThresholded, RemoveSphereThresholdedAsync and FVoxelSphereToolsImpl::RemoveSphereThresholded
+	 * @param	VoxelWorld          	The voxel world to do the edit to
+	 * @param	Position            	The position of the center. In world space (unreal units) if bConvertToVoxelSpace is true. In voxel space if false.
+	 * @param	Radius              	The radius. In unreal units if bConvertToVoxelSpace is true. In voxels if false.
+	 * @param	Threshold           	Only voxels whose material single index is lower or equal to this will be removed. Should be between 0 and 255.
+	 * @param	OutModifiedValues   	Optional. Record the Values modified by this function. Useful to track the amount of edit done, for instance to give resources when digging. Will append to existing values.
+	 * @param	OutEditedBounds     	Optional. Returns the bounds edited by this function
+	 * @param	bMultiThreaded      	If true, multiple threads will be used to make the edit faster.
+	 * @param	bConvertToVoxelSpace	If true, Position and Radius will be converted to voxel space. Else they will be used directly.
+	 * @param	bUpdateRender       	If false, will only edit the data and not update the render. Rarely needed.
+	*/
+	static void RemoveSphereThresholded(
+		AVoxelWorld* VoxelWorld,
+		const FVector& Position,
+		float Radius,
+		int32 Threshold,
+		TArray<FModifiedVoxelValue>* OutModifiedValues = nullptr,
+		FVoxelIntBox* OutEditedBounds = nullptr,
+		bool bMultiThreaded = true,
+		bool bConvertToVoxelSpace = true,
+		bool bUpdateRender = true);
+	
+	/**
+	 * Removes all the voxels in a sphere, if their single index is lower or equal to Threshold
+	 * Mainly intended for the cubic mode
+	 * Runs asynchronously in a background thread
+	 * @see RemoveSphereThresholded, RemoveSphereThresholdedAsync and FVoxelSphereToolsImpl::RemoveSphereThresholded
+	 * @param	VoxelWorld           	The voxel world to do the edit to
+	 * @param	Position             	The position of the center. In world space (unreal units) if bConvertToVoxelSpace is true. In voxel space if false.
+	 * @param	Radius               	The radius. In unreal units if bConvertToVoxelSpace is true. In voxels if false.
+	 * @param	Threshold            	Only voxels whose material single index is lower or equal to this will be removed. Should be between 0 and 255.
+	 * @param	Callback             	Called on the game thread when the function is completed. Will not be called if the async function completes after the voxel world is destroyed.
+	 * @param	OutEditedBounds      	Optional. Returns the bounds edited by this function
+	 * @param	bMultiThreaded       	If true, multiple threads will be used to make the edit faster. Not recommended on async functions, as it might cause lag.
+	 * @param	bRecordModifiedValues	If false, will not fill ModifiedValues, making the edit faster.
+	 * @param	bConvertToVoxelSpace 	If true, Position and Radius will be converted to voxel space. Else they will be used directly.
+	 * @param	bUpdateRender        	If false, will only edit the data and not update the render. Rarely needed.
+	*/
+	static void RemoveSphereThresholdedAsync(
+		AVoxelWorld* VoxelWorld,
+		const FVector& Position,
+		float Radius,
+		int32 Threshold,
+		const FOnVoxelToolComplete_WithModifiedValues& Callback = {},
+		FVoxelIntBox* OutEditedBounds = nullptr,
+		bool bMultiThreaded = false,
+		bool bRecordModifiedValues = true,
+		bool bConvertToVoxelSpace = true,
+		bool bUpdateRender = true);
 };

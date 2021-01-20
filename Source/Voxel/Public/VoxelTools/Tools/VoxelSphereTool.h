@@ -18,6 +18,15 @@ public:
 public:
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
 	bool bSculpt = true;
+
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (InlineEditConditionToggle))
+	bool bEnableIndexThreshold = false;
+
+	// Will only edit voxels with an index lower than this
+	// Only works in the single index edit mode, and only when removing voxels
+	// Mainly intended for the cubic mode
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bEnableIndexThreshold"))
+	int32 IndexThreshold = 0;
 	
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite)
 	bool bPaint = false;

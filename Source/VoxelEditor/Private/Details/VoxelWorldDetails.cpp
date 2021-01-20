@@ -83,6 +83,8 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		switch (World->MaterialConfig)
 		{
 		case EVoxelMaterialConfig::RGB:
+		{
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bUseMaterialCollection));
 			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, MaterialCollection));
 			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, LODMaterialCollections));
 			if (World->RGBHardness != EVoxelRGBHardness::FourWayBlend && World->RGBHardness != EVoxelRGBHardness::FiveWayBlend)
@@ -90,12 +92,30 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 				HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, MaterialsHardness));
 			}
 			break;
+		}
 		case EVoxelMaterialConfig::SingleIndex:
+		{
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, RGBHardness));
+			if (World->bUseMaterialCollection)
+			{
+				HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, VoxelMaterial));
+				HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, LODMaterials));
+			}
+			else
+			{
+				HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, MaterialCollection));
+				HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, LODMaterialCollections));
+			}
+			break;
+		}
 		case EVoxelMaterialConfig::MultiIndex:
+		{
+			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bUseMaterialCollection));
 			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, VoxelMaterial));
 			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, LODMaterials));
 			HideRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, RGBHardness));
 			break;
+		}
 		default:
 			ensure(false);
 			break;

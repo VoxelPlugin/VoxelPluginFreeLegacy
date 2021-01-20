@@ -53,50 +53,100 @@ namespace FVoxelUtilities
 		return int32(Int);
 	}
 
+	template<typename TVector, typename TResult = TVector>
+	using TEnableIfVector2 = typename TEnableIf<TOr<TIsSame<TVector, FVector2D>, TIsSame<TVector, FVoxelVector2D>>::Value, TResult>::Type;
+	template<typename TVector, typename TResult = TVector>
+	using TEnableIfVector3 = typename TEnableIf<TOr<TIsSame<TVector, FVector>, TIsSame<TVector, FVoxelVector>>::Value, TResult>::Type;
+	
 	template<typename TVector>
-	FORCEINLINE FIntVector RoundToInt(const TVector& Vector)
+	FORCEINLINE TEnableIfVector2<TVector, FIntPoint> RoundToInt(const TVector& Vector)
+	{
+		return FIntPoint(
+			RoundToInt32(Vector.X),
+			RoundToInt32(Vector.Y));
+	}
+	template<typename TVector>
+	FORCEINLINE TEnableIfVector3<TVector, FIntVector> RoundToInt(const TVector& Vector)
 	{
 		return FIntVector(
 			RoundToInt32(Vector.X),
 			RoundToInt32(Vector.Y),
 			RoundToInt32(Vector.Z));
 	}
+	
 	template<typename TVector>
-	FORCEINLINE FIntVector FloorToInt(const TVector& Vector)
+	FORCEINLINE TEnableIfVector2<TVector, FIntPoint> FloorToInt(const TVector& Vector)
+	{
+		return FIntPoint(
+			FloorToInt32(Vector.X),
+			FloorToInt32(Vector.Y));
+	}
+	template<typename TVector>
+	FORCEINLINE TEnableIfVector3<TVector, FIntVector> FloorToInt(const TVector& Vector)
 	{
 		return FIntVector(
 			FloorToInt32(Vector.X),
 			FloorToInt32(Vector.Y),
 			FloorToInt32(Vector.Z));
 	}
+	
 	template<typename TVector>
-	FORCEINLINE FIntVector CeilToInt(const TVector& Vector)
+	FORCEINLINE TEnableIfVector2<TVector, FIntPoint> CeilToInt(const TVector& Vector)
+	{
+		return FIntPoint(
+			CeilToInt32(Vector.X),
+			CeilToInt32(Vector.Y));
+	}
+	template<typename TVector>
+	FORCEINLINE TEnableIfVector3<TVector, FIntVector> CeilToInt(const TVector& Vector)
 	{
 		return FIntVector(
 			CeilToInt32(Vector.X),
 			CeilToInt32(Vector.Y),
 			CeilToInt32(Vector.Z));
 	}
-
+	
 	template<typename TVector>
-	FORCEINLINE TVector Abs(const TVector& Vector)
+	FORCEINLINE TEnableIfVector2<TVector> Abs(const TVector& Vector)
+	{
+		return TVector(
+			FMath::Abs(Vector.X),
+			FMath::Abs(Vector.Y));
+	}
+	template<typename TVector>
+	FORCEINLINE TEnableIfVector3<TVector> Abs(const TVector& Vector)
 	{
 		return TVector(
 			FMath::Abs(Vector.X),
 			FMath::Abs(Vector.Y),
 			FMath::Abs(Vector.Z));
 	}
-
+	
 	template<typename TVector>
-	FORCEINLINE TVector ComponentMax(const TVector& A, const TVector& B)
+	FORCEINLINE TEnableIfVector2<TVector> ComponentMax(const TVector& A, const TVector& B)
+	{
+		return TVector(
+			FMath::Max(A.X, B.X),
+			FMath::Max(A.Y, B.Y));
+	}
+	template<typename TVector>
+	FORCEINLINE TEnableIfVector3<TVector> ComponentMax(const TVector& A, const TVector& B)
 	{
 		return TVector(
 			FMath::Max(A.X, B.X),
 			FMath::Max(A.Y, B.Y),
 			FMath::Max(A.Z, B.Z));
 	}
+	
 	template<typename TVector>
-	FORCEINLINE TVector ComponentMin(const TVector& A, const TVector& B)
+	FORCEINLINE TEnableIfVector2<TVector> ComponentMin(const TVector& A, const TVector& B)
+	{
+		return TVector(
+			FMath::Min(A.X, B.X),
+			FMath::Min(A.Y, B.Y));
+	}
+	template<typename TVector>
+	FORCEINLINE TEnableIfVector3<TVector> ComponentMin(const TVector& A, const TVector& B)
 	{
 		return TVector(
 			FMath::Min(A.X, B.X),
