@@ -43,6 +43,7 @@ FORCEINLINE int32 AddVertexToBuffer(
 		}
 		else
 		{
+			check(!Color && !UV);
 			Buffer.Colors.Emplace(GetColor(Vertex.Material.GetColor()));
 			if (VOXEL_MATERIAL_ENABLE_UV0) Buffer.TextureCoordinates[1].Emplace(Vertex.Material.GetUV_AsFloat(0));
 			if (VOXEL_MATERIAL_ENABLE_UV1) Buffer.TextureCoordinates[2].Emplace(Vertex.Material.GetUV_AsFloat(1));
@@ -102,7 +103,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 
 	auto Chunk = MakeVoxelShared<FVoxelChunkMesh>();
 	
-	if (Settings.MaterialConfig == EVoxelMaterialConfig::RGB)
+	if (!Settings.bUseMaterialCollection)
 	{
 		if (Settings.bHardColorTransitions)
 		{
@@ -187,10 +188,10 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 
 		Buffers.Indices = MoveTemp(Indices);
 
-		ReserveBuffer(Buffers, Vertices.Num(), Settings, EVoxelMaterialConfig::RGB);
+		ReserveBuffer(Buffers, Vertices.Num(), Settings, Settings.MaterialConfig);
 		for (auto& Vertex : Vertices)
 		{
-			AddVertexToBuffer(Vertex, Buffers, Settings, EVoxelMaterialConfig::RGB);
+			AddVertexToBuffer(Vertex, Buffers, Settings, Settings.MaterialConfig);
 		}
 
 		if (TextureData)
@@ -228,7 +229,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 			MaterialIndices.NumIndices = 1;
 			MaterialIndices.SortedIndices[0] = MaterialIndexToUse;
 			
-			if (DynamicSettings.MaterialSettings[LOD].bEnableCubicFaces)
+			if (DynamicSettings.MaterialSettings[LOD].bEnableCubicFaces && Settings.RenderType == EVoxelRenderType::Cubic)
 			{
 				ensure(VertexA.Normal == VertexB.Normal);
 				ensure(VertexB.Normal == VertexC.Normal);
@@ -296,7 +297,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	else
 	{
 		ensure(!TextureData && !CollisionCubes);
-		check(Settings.MaterialConfig == EVoxelMaterialConfig::MultiIndex);
+		ensure(Settings.MaterialConfig == EVoxelMaterialConfig::MultiIndex);
 		Chunk->SetIsSingle(false);
 
 		const int32 MaxMaterialIndices = FMath::Clamp(DynamicSettings.GetLODMaterialSettings(LOD).MaxMaterialIndices.GetValue(), 1, 6);

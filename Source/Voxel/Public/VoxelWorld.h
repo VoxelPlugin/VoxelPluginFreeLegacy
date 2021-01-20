@@ -277,7 +277,6 @@ public:
 #if WITH_EDITOR
 	virtual void PreEditChange(FProperty* PropertyThatWillChange) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	virtual bool CanEditChange(const FProperty* InProperty) const override;
 #endif // WITH_EDITOR
 	//~ End UObject Interface
 

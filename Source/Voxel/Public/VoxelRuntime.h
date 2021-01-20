@@ -90,6 +90,7 @@ public:
 	
 public:
 	EVoxelMaterialConfig MaterialConfig;
+	bool bUseMaterialCollection;
 	TWeakObjectPtr<UMaterialInterface> VoxelMaterial;
 	TWeakObjectPtr<UVoxelMaterialCollectionBase> MaterialCollection;
 	TArray<FVoxelLODMaterials> LODMaterials; 

@@ -114,6 +114,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (Recreate /* also used by generator */))
 	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
 
+	// In single index mode, turn that off to use a single material for all indices instead of a collection
+	// This is useful for the cubic mode used with magica voxel assets, as it lets you do greedy meshing
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (RecreateRender))
+	bool bUseMaterialCollection = true;
+
 	// Only used if Material Config = RGB
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Materials", meta = (UpdateRenderer))
 	UMaterialInterface* VoxelMaterial = nullptr;
