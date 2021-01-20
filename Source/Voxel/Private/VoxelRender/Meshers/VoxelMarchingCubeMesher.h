@@ -37,17 +37,15 @@ public:
 	}
 
 private:
-	// Use LOD0 size as it's bigger
-	using FCachedValues = TVoxelStaticArray<FVoxelValue, CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS>;
 	using FCache = TVoxelStaticArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * EDGE_INDEX_COUNT>;
 
-	TUniquePtr<FCachedValues> CachedValuesStorage = MakeUnique<FCachedValues>();
 	TUniquePtr<FCache> CacheStorageA = MakeUnique<FCache>();
 	TUniquePtr<FCache> CacheStorageB = MakeUnique<FCache>();
 	
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
 
-	FVoxelValue* RESTRICT const CachedValues = CachedValuesStorage->GetData();
+	// Use LOD0 size as it's bigger
+	TVoxelValueStaticArray<CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS> CachedValues;
 
 	// Cache to get index of already created vertices
 	int32* RESTRICT CurrentCache = CacheStorageA->GetData();

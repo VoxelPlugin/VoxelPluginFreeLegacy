@@ -77,7 +77,14 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 			if (Chunk.Values->DataPtr)
 			{
 				NewChunk.ValuesIndex = OutSave.ValueBuffers64.AddUninitialized(VOXELS_PER_DATA_CHUNK);
-				FMemory::Memcpy(&OutSave.ValueBuffers64[NewChunk.ValuesIndex], Chunk.Values->DataPtr, sizeof(FVoxelValue) * VOXELS_PER_DATA_CHUNK);
+
+#if ONE_BIT_VOXEL_VALUE
+				static_assert(TVoxelStaticBitArray<VOXELS_PER_DATA_CHUNK>::NumBitsPerWord == 32, "");
+				check(NewChunk.ValuesIndex % 32 == 0);
+				FMemory::Memcpy(OutSave.ValueBuffers64.GetWordData() + NewChunk.ValuesIndex / 32, Chunk.Values->DataPtr->GetWordData(), sizeof(TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>));
+#else
+				FMemory::Memcpy(&OutSave.ValueBuffers64[NewChunk.ValuesIndex], Chunk.Values->DataPtr, sizeof(TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>));
+#endif
 			}
 			else
 			{
@@ -86,10 +93,6 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 				NewChunk.ValuesIndex = OutSave.SingleValues64.Add(Chunk.Values->SingleValue);
 				NewChunk.bSingleValue = true;
 			}
-		}
-		else
-		{
-			NewChunk.ValuesIndex = -1;
 		}
 		
 		if (Chunk.Materials->IsDirty())
@@ -136,23 +139,12 @@ void FVoxelSaveBuilder::Save(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FV
 			
 			NewChunk.MaterialsIndex = OutSave.MaterialsIndices64.Add(MaterialIndices); 
 		}
-		else
+
+		if (NewChunk.ValuesIndex != -1 || NewChunk.MaterialsIndex != -1)
 		{
-			NewChunk.MaterialsIndex = -1;
+			OutSave.Chunks64.Add(NewChunk);
 		}
-
-		OutSave.Chunks64.Add(NewChunk);
 	}
-
-	ensureVoxelSlow(OutSave.Chunks64.GetSlack() == 0);
-	
-	ensureVoxelSlow(OutSave.ValueBuffers64.GetSlack() == 0);
-	ensureVoxelSlow(OutSave.MaterialBuffers64.GetSlack() == 0);
-
-	ensureVoxelSlow(OutSave.SingleValues64.GetSlack() == 0);
-	ensureVoxelSlow(OutSave.SingleMaterials64.GetSlack() == 0);
-
-	ensureVoxelSlow(OutSave.MaterialsIndices64.GetSlack() == 0);
 
 	ChunksToSave.Empty();
 
@@ -198,10 +190,16 @@ void FVoxelSaveLoader::ExtractChunk(
 		}
 		else
 		{
-			OutValues.CreateData(Memory, [&](FVoxelValue* RESTRICT DataPtr)
+			OutValues.CreateData(Memory, [&](TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>* DataPtr)
 			{
 				check(Save.ValueBuffers64.Num() >= Chunk.ValuesIndex + VOXELS_PER_DATA_CHUNK);
-				FMemory::Memcpy(DataPtr, &Save.ValueBuffers64[Chunk.ValuesIndex], sizeof(FVoxelValue) * VOXELS_PER_DATA_CHUNK);
+#if ONE_BIT_VOXEL_VALUE
+				static_assert(TVoxelStaticBitArray<VOXELS_PER_DATA_CHUNK>::NumBitsPerWord == 32, "");
+				check(Chunk.ValuesIndex % 32 == 0);
+				FMemory::Memcpy(DataPtr->GetWordData(), Save.ValueBuffers64.GetWordData() + Chunk.ValuesIndex / 32, sizeof(TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>));
+#else
+				FMemory::Memcpy(DataPtr->GetData(), &Save.ValueBuffers64[Chunk.ValuesIndex], sizeof(TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>));
+#endif
 			});
 		}
 		OutValues.SetIsDirty(true, Memory);

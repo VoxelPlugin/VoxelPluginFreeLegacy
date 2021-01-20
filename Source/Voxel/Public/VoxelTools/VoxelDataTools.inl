@@ -29,7 +29,9 @@ void UVoxelDataTools::MergeDistanceFieldImpl(
 	FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions, EVoxelComputeDevice::GPU);
 	FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(Size, SurfacePositions, Distances);
 
+#if !ONE_BIT_VOXEL_VALUE
 	FVoxelDebug::Broadcast("Values", Bounds.Size(), Data.Get<FVoxelValue>(Bounds));
+#endif
 	FVoxelDebug::Broadcast("Distances", Bounds.Size(), Distances);
 	
 	const auto Set = [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, FVoxelMaterial& Material, auto bSetMaterials_Static)

@@ -15,7 +15,7 @@ struct FVoxelTestValues
 {
 	GENERATED_BODY()
 
-	TSharedRef<const TArray<FVoxelValue>> Values = MakeShared<TArray<FVoxelValue>>();
+	TSharedRef<const FVoxelValueArray> Values = MakeShared<FVoxelValueArray>();
 };
 
 UCLASS()

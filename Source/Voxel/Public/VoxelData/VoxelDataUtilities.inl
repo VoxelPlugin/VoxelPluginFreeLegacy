@@ -132,7 +132,7 @@ void FVoxelDataUtilities::SetEntireDataAsDirtyAndCopyFrom(const FVoxelData& Sour
 
 			const auto CopyFromGenerator = [&]()
 			{
-				DataHolder.CreateData(DestData, [&](T* RESTRICT DataPtr)
+				DataHolder.CreateData(DestData, [&](auto* DataPtr)
 				{
 					TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
 					SourceBottomNode.GetFromGeneratorAndAssets(*SourceData.Generator, QueryZone, 0); // Note: make sure to use the source generator!
@@ -189,12 +189,9 @@ void FVoxelDataUtilities::CopyDirtyChunksFrom(const FVoxelData& SourceData, FVox
 		{
 			DestDataHolder.SetSingleValue(SourceDataHolder.GetSingleValue());
 		}
-		else if (auto* SrcDataPtr = SourceDataHolder.GetDataPtr())
+		else if (SourceDataHolder.HasData())
 		{
-			DestDataHolder.CreateData(DestData, [&](T* RESTRICT DataPtr)
-			{
-				FMemory::Memcpy(DataPtr, SrcDataPtr, VOXELS_PER_DATA_CHUNK * sizeof(T));
-			});
+			DestDataHolder.CreateData(DestData, SourceDataHolder);
 		}
 	});
 }

@@ -594,7 +594,8 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxel
 	FVoxelOctreeUtilities::IterateAllLeaves(*Octree, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
 		TVoxelDataOctreeLeafData<FVoxelValue>* ValuesPtr = &Leaf.Values;
-		
+
+#if !ONE_BIT_VOXEL_VALUE
 		if (CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread() != 0)
 		{
 			VOXEL_ASYNC_SCOPE_COUNTER("Diffing with generator");
@@ -616,11 +617,11 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxel
 
 					if (GeneratorValue == Value)
 					{
-						UniquePtr->GetRef(Index) = FVoxelValue::Special();
+						UniquePtr->Set(Index, FVoxelValue::Special());
 					}
 					else
 					{
-						UniquePtr->GetRef(Index) = Value;
+						UniquePtr->Set(Index, Value);
 					}
 				});
 
@@ -629,6 +630,7 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxel
 				BuffersToDelete.Emplace(MoveTemp(UniquePtr));
 			}
 		}
+#endif
 		
 		Builder.AddChunk(Leaf.Position, *ValuesPtr, Leaf.Materials);
 	});
@@ -693,6 +695,7 @@ bool FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSaveImpl& Save, const
 			{
 				Loader.ExtractChunk(ChunkIndex, *this, Leaf.Values, Leaf.Materials);
 				
+#if !ONE_BIT_VOXEL_VALUE
 				if (CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread() != 0)
 				{
 					VOXEL_ASYNC_SCOPE_COUNTER("Loading generator values");
@@ -708,19 +711,19 @@ bool FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSaveImpl& Save, const
 						OctreeBounds.Iterate([&](int32 X, int32 Y, int32 Z)
 						{
 							const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(OctreeBounds.Min, X, Y, Z);
-							FVoxelValue& Value = Leaf.Values.GetRef(Index);
 
-							if (Value == FVoxelValue::Special())
+							if (Leaf.Values.Get(Index) == FVoxelValue::Special())
 							{
 								// Use the generator value, ignoring all assets and items as they are not loaded
 								// The same is done when checking on save
-								Value = Generator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
+								Leaf.Values.Set(Index, Generator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty));
 							}
 						});
 
 						Leaf.Values.TryCompressToSingleValue(*this);
 					}
 				}
+#endif
 
 				ChunkIndex++;
 				if (OutBoundsToUpdate)
@@ -1020,26 +1023,26 @@ void FVoxelDataUtilities::AddAssetItemToLeafData(
 	const FVoxelDataGeneratorInstance_AddAssetItem PtrGenerator(Data);
 	const FVoxelItemStack ItemStack(Leaf.GetItemHolder(), PtrGenerator, 0);
 
-	TArray<FVoxelValue> ValuesBuffer;
-	TArray<FVoxelMaterial> MaterialsBuffer;
+	TVoxelArrayFwd<FVoxelValue> ValuesBuffer;
+	TVoxelArrayFwd<FVoxelMaterial> MaterialsBuffer;
 
-	const auto WriteAssetDataToBuffer = [&](auto& Buffer)
+	const auto WriteAssetDataToBuffer = [&](auto& Buffer, auto TypeDecl)
 	{
-		using T = typename TDecay<decltype(Buffer)>::Type::ElementType;
+		using T = decltype(TypeDecl);
 
 		Buffer.SetNumUninitialized(BoundsToEdit.Count());
 
 		Leaf.GetData<T>().SetIsDirty(true, Data);
 		
-		TVoxelQueryZone<T> QueryZone(BoundsToEdit, Buffer.GetData());
+		TVoxelQueryZone<T> QueryZone(BoundsToEdit, Buffer);
 		Generator.Get_Transform<T>(
 			LocalToWorld,
 			QueryZone,
 			0,
 			ItemStack);
 	};
-	if (bModifyValues) WriteAssetDataToBuffer(ValuesBuffer);
-	if (bModifyMaterials) WriteAssetDataToBuffer(MaterialsBuffer);
+	if (bModifyValues) WriteAssetDataToBuffer(ValuesBuffer, FVoxelValue());
+	if (bModifyMaterials) WriteAssetDataToBuffer(MaterialsBuffer, FVoxelMaterial());
 
 	// Need to first write both of them, as the item stack is referencing the data
 

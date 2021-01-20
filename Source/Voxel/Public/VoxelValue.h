@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelContainers/VoxelBitArray.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
+#include "VoxelContainers/VoxelStaticBitArray.h"
 
 namespace ConstExprUtils
 {
@@ -38,15 +40,22 @@ namespace EVoxelValueConfigFlag
 {
 	enum Type : uint32
 	{
-		EightBitsValue   = 0x01,
-		SixteenBitsValue = 0x02
+		EightBitsValue   = 1 << 0,
+		SixteenBitsValue = 1 << 1,
+		OneBitValue      = 1 << 2
 	};
 }
-constexpr uint32 GVoxelValueConfigFlag = EIGHT_BITS_VOXEL_VALUE ? EVoxelValueConfigFlag::EightBitsValue : EVoxelValueConfigFlag::SixteenBitsValue;
+constexpr uint32 GVoxelValueConfigFlag = 
+	ONE_BIT_VOXEL_VALUE
+	? EVoxelValueConfigFlag::OneBitValue
+	: EIGHT_BITS_VOXEL_VALUE
+	? EVoxelValueConfigFlag::EightBitsValue
+	: EVoxelValueConfigFlag::SixteenBitsValue;
 
 template<typename T>
 struct TVoxelValueImpl
 {
+private:
 	static constexpr T MAX_VOXELVALUE = TNumericLimits<T>::Max();
 	static constexpr T MIN_VOXELVALUE = -TNumericLimits<T>::Max();
 	static constexpr T INVALID_VOXELVALUE = TNumericLimits<T>::Min();
@@ -67,11 +76,6 @@ public:
 	FORCEINLINE constexpr static TVoxelValueImpl Special()
 	{
 		return InternalConstructor(INVALID_VOXELVALUE);
-	}
-	// Precision of FVoxelValue used for comparisons
-	FORCEINLINE constexpr static TVoxelValueImpl Precision()
-	{
-		return InternalConstructor(1);
 	}
 
 public:
@@ -145,16 +149,130 @@ private:
 	T F;
 };
 
+struct FVoxelBitValue
+{
+public:
+	FORCEINLINE constexpr static FVoxelBitValue Full()
+	{
+		return InternalConstructor(false);
+	}
+	FORCEINLINE constexpr static FVoxelBitValue Empty()
+	{
+		return InternalConstructor(true);
+	}
+
+public:
+	FVoxelBitValue()
+	{
+	}
+	
+	FORCEINLINE explicit constexpr FVoxelBitValue(EForceInit)
+		: bIsEmpty(false)
+	{
+	}
+	FORCEINLINE explicit constexpr FVoxelBitValue(float InValue)
+		: bIsEmpty(InValue > 0)
+	{
+	}
+	FORCEINLINE explicit constexpr FVoxelBitValue(double InValue)
+		: bIsEmpty(InValue > 0)
+	{
+	}
+
+public:
+	// Implicit casts for convenience when using the bit array
+	FORCEINLINE FVoxelBitValue(bool bInIsEmpty)
+		: bIsEmpty(bInIsEmpty)
+	{
+	}
+	FORCEINLINE FVoxelBitValue(FVoxelBitReference bInIsEmpty)
+		: bIsEmpty(bInIsEmpty)
+	{
+	}
+	FORCEINLINE FVoxelBitValue(FVoxelConstBitReference bInIsEmpty)
+		: bIsEmpty(bInIsEmpty)
+	{
+	}
+	FORCEINLINE operator bool() const
+	{
+		return bIsEmpty;
+	}
+
+	template<typename T>
+	FVoxelBitValue(T) = delete;
+
+public:
+	FORCEINLINE constexpr bool IsNull() const { return false; }
+	FORCEINLINE constexpr bool IsEmpty() const { return bIsEmpty; }
+	FORCEINLINE constexpr bool IsTotallyEmpty() const { return bIsEmpty; }
+	FORCEINLINE constexpr bool IsTotallyFull() const { return !bIsEmpty; }
+
+	FORCEINLINE constexpr int32 Sign() const { return bIsEmpty ? 1 : -1; }
+
+	FORCEINLINE constexpr float ToFloat() const { return Sign(); }
+	FORCEINLINE constexpr FVoxelBitValue GetInverse() const { return InternalConstructor(!bIsEmpty); }
+
+	FString ToString() const { return LexToString(bIsEmpty); }
+
+public:
+	FORCEINLINE constexpr bool operator==(const FVoxelBitValue& Rhs) const { return GetStorage() == Rhs.GetStorage(); }
+	FORCEINLINE constexpr bool operator!=(const FVoxelBitValue& Rhs) const { return GetStorage() != Rhs.GetStorage(); }
+	FORCEINLINE constexpr bool operator<(const FVoxelBitValue& Rhs) const { return GetStorage() < Rhs.GetStorage(); }
+	FORCEINLINE constexpr bool operator>(const FVoxelBitValue& Rhs) const { return GetStorage() > Rhs.GetStorage(); }
+	FORCEINLINE constexpr bool operator<=(const FVoxelBitValue& Rhs) const { return GetStorage() <= Rhs.GetStorage(); }
+	FORCEINLINE constexpr bool operator>=(const FVoxelBitValue& Rhs) const { return GetStorage() >= Rhs.GetStorage(); }
+
+	FORCEINLINE constexpr FVoxelBitValue& operator-=(const FVoxelBitValue& Rhs) { if (Rhs.bIsEmpty) bIsEmpty = false; return *this; }
+	FORCEINLINE constexpr FVoxelBitValue& operator+=(const FVoxelBitValue& Rhs) { if (Rhs.bIsEmpty) bIsEmpty = true; return *this; }
+	FORCEINLINE constexpr FVoxelBitValue operator-(const FVoxelBitValue& Rhs) const { auto Copy = *this; return Copy -= Rhs; }
+	FORCEINLINE constexpr FVoxelBitValue operator+(const FVoxelBitValue& Rhs) const { auto Copy = *this; return Copy += Rhs; }
+	
+public:
+	FORCEINLINE constexpr bool& GetStorage()
+	{
+		return bIsEmpty;
+	}
+	FORCEINLINE constexpr bool GetStorage() const
+	{
+		return bIsEmpty;
+	}
+
+public:
+	FORCEINLINE static constexpr FVoxelBitValue InternalConstructor(bool bInIsEmpty)
+	{
+		FVoxelBitValue Value(ForceInit);
+		Value.bIsEmpty = bInIsEmpty;
+		return Value;
+	}
+
+private:
+	bool bIsEmpty;
+};
+
 using FVoxelValue8 = TVoxelValueImpl<int8>;
 using FVoxelValue16 = TVoxelValueImpl<int16>;
 
-#if EIGHT_BITS_VOXEL_VALUE
+#if ONE_BIT_VOXEL_VALUE
+using FVoxelValue = FVoxelBitValue;
+#elif EIGHT_BITS_VOXEL_VALUE
 using FVoxelValue = FVoxelValue8;
 #else
 using FVoxelValue = FVoxelValue16;
 #endif
 
-static_assert(FVoxelValue(0.f).IsNull(), "FVoxelValue error");
+#if ONE_BIT_VOXEL_VALUE
+using FVoxelValueArray = FVoxelBitArray32;
+using FVoxelValueArray64 = FVoxelBitArray64;
+template<uint32 Size>
+using TVoxelValueStaticArray = TVoxelStaticBitArray<Size>;
+#else
+using FVoxelValueArray = TArray<FVoxelValue>;
+using FVoxelValueArray64 = TArray64<FVoxelValue>;
+template<uint32 Size>
+using TVoxelValueStaticArray = TVoxelStaticArray<FVoxelValue, Size>;
+#endif
+
+static_assert(ONE_BIT_VOXEL_VALUE || FVoxelValue(0.f).IsNull(), "FVoxelValue error");
 static_assert(!FVoxelValue(0.f).IsEmpty(), "FVoxelValue error"); // 0 is inside
 static_assert(FVoxelValue::Empty().IsTotallyEmpty(), "FVoxelValue error");
 static_assert(FVoxelValue::Full().IsTotallyFull(), "FVoxelValue error");
@@ -162,7 +280,6 @@ static_assert(FVoxelValue::Empty().ToFloat() == 1.f, "FVoxelValue error");
 static_assert(FVoxelValue::Full().ToFloat() == -1.f, "FVoxelValue error");
 static_assert(FVoxelValue(1.f) == FVoxelValue::Empty(), "FVoxelValue error");
 static_assert(FVoxelValue(-1.f) == FVoxelValue::Full(), "FVoxelValue error");
-static_assert(FVoxelValue(FVoxelValue::Precision().ToFloat()) == FVoxelValue::Precision(), "FVoxelValue error");
 
 template <>
 struct TTypeTraits<FVoxelValue> : TTypeTraitsBase<FVoxelValue>
@@ -172,11 +289,10 @@ struct TTypeTraits<FVoxelValue> : TTypeTraitsBase<FVoxelValue>
 
 struct FVoxelValueConverter
 {
-	template<typename T, typename TEnableIf<!TIsSame<FVoxelValue, T>::Value && TIsSame<FVoxelValue8, T>::Value, int>::Type = 0>
-	FORCEINLINE static constexpr FVoxelValue ConvertValue(T Value)
+	FORCEINLINE static constexpr FVoxelValue16 Convert8To16(FVoxelValue8 Value)
 	{
-		// Need to make FVoxelValue16 a dependent type
-		typename TEnableIf<sizeof(T) != 0, FVoxelValue16>::Type Result(ForceInit);
+		FVoxelValue16 Result(ForceInit);
+		
 		// Make sure special cases are handled correctly
 		// eg FVoxelValue16::Empty() >> 8 == FVoxelValue16::Special() >> 8
 		if (Value == FVoxelValue8::Full())
@@ -198,11 +314,10 @@ struct FVoxelValueConverter
 		ensureVoxelSlowNoSideEffects(Result.IsEmpty() == Value.IsEmpty());
 		return Result;
 	}
-	template<typename T, typename TEnableIf<!TIsSame<FVoxelValue, T>::Value && TIsSame<FVoxelValue16, T>::Value, int>::Type = 0>
-	FORCEINLINE static constexpr FVoxelValue ConvertValue(T Value)
+	FORCEINLINE static constexpr FVoxelValue8 Convert16To8(FVoxelValue16 Value)
 	{
-		// Need to make FVoxelValue8 a dependent type
-		typename TEnableIf<sizeof(T) != 0, FVoxelValue8>::Type Result(ForceInit);
+		FVoxelValue8 Result(ForceInit);
+		
 		// Make sure special cases are handled correctly
 		// eg FVoxelValue16::Empty() >> 8 == FVoxelValue16::Special() >> 8
 		if (Value == FVoxelValue16::Full())
@@ -225,22 +340,40 @@ struct FVoxelValueConverter
 		ensureVoxelSlowNoSideEffects(Result.IsEmpty() == Value.IsEmpty());
 		return Result;
 	}
-	template<typename T, typename TEnableIf<TIsSame<FVoxelValue, T>::Value, int>::Type = 0>
-	FORCEINLINE static constexpr FVoxelValue ConvertValue(T Value)
+
+	FORCEINLINE static constexpr FVoxelValue ConvertValue(FVoxelBitValue Value)
 	{
+#if ONE_BIT_VOXEL_VALUE
 		return Value;
+#else
+		return Value.IsEmpty() ? FVoxelValue::Empty() : FVoxelValue::Full();
+#endif
 	}
-	
-	template<typename T, typename TEnableIf<TIsSame<FVoxelValue, T>::Value, int>::Type = 0>
-	FORCEINLINE static TArray<FVoxelValue> ConvertValues(TArray<T>&& Values)
+	FORCEINLINE static constexpr FVoxelValue ConvertValue(FVoxelValue8 Value)
 	{
-		return MoveTemp(Values);
+#if ONE_BIT_VOXEL_VALUE
+		return FVoxelValue::InternalConstructor(Value.IsEmpty());
+#elif EIGHT_BITS_VOXEL_VALUE
+		return Value;
+#else
+		return Convert8To16(Value);
+#endif
 	}
-	template<typename T, typename TEnableIf<!TIsSame<FVoxelValue, T>::Value, int>::Type = 0>
-	static TArray<FVoxelValue> ConvertValues(TArray<T>&& Values)
+	FORCEINLINE static constexpr FVoxelValue ConvertValue(FVoxelValue16 Value)
 	{
-		static_assert(!TIsSame<FVoxelValue, T>::Value, "");
-		TArray<FVoxelValue> Result;
+#if ONE_BIT_VOXEL_VALUE
+		return FVoxelValue::InternalConstructor(Value.IsEmpty());
+#elif EIGHT_BITS_VOXEL_VALUE
+		return Convert16To8(Value);
+#else
+		return Value;
+#endif
+	}
+
+	template<typename Array>
+	static FVoxelValueArray64 ConvertValuesImpl(const Array& Values)
+	{
+		FVoxelValueArray64 Result;
 		Result.Reserve(Values.Num());
 		for (auto& Value : Values)
 		{
@@ -248,6 +381,39 @@ struct FVoxelValueConverter
 		}
 		return Result;
 	}
+
+#if ONE_BIT_VOXEL_VALUE
+	static FVoxelValueArray64 ConvertValues(FVoxelBitArray64&& Values)
+	{
+		return MoveTemp(Values);
+	}
+	template<typename T>
+	static FVoxelValueArray64 ConvertValues(TArray64<T>&& Values)
+	{
+		return ConvertValuesImpl(Values);
+	}
+#else
+	static FVoxelValueArray64 ConvertValues(FVoxelBitArray64&& Values)
+	{
+		return ConvertValuesImpl(TArray<FVoxelBitValue>(Values));
+	}
+	static FVoxelValueArray64 ConvertValues(TArray64<FVoxelValue8>&& Values)
+	{
+#if EIGHT_BITS_VOXEL_VALUE
+		return MoveTemp(Values);
+#else
+		return ConvertValuesImpl(Values);
+#endif
+	}
+	static FVoxelValueArray64 ConvertValues(TArray64<FVoxelValue16>&& Values)
+	{
+#if EIGHT_BITS_VOXEL_VALUE
+		return ConvertValuesImpl(Values);
+#else
+		return MoveTemp(Values);
+#endif
+	}
+#endif
 };
 
 static_assert(FVoxelValueConverter::ConvertValue(FVoxelValue8::Full()) == FVoxelValueConverter::ConvertValue(FVoxelValue16::Full()), "FVoxelValue error");

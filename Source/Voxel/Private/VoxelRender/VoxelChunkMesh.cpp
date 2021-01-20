@@ -164,7 +164,7 @@ void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, 
 		const int32 ValuesSize = HighResSize + 2;
 		const int32 NumValues = ValuesSize * ValuesSize * ValuesSize;
 
-		TArray<FVoxelValue> Values;
+		FVoxelValueArray Values;
 		Values.Empty(NumValues);
 		Values.SetNumUninitialized(NumValues);
 		{

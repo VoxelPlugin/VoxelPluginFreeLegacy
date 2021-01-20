@@ -71,12 +71,12 @@ class TVoxelDataOctreeLeafData;
 template<>
 class TVoxelDataOctreeLeafData<FVoxelValue>
 {
-	FVoxelValue* RESTRICT DataPtr = nullptr;
+	TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>* DataPtr = nullptr;
 	FVoxelValue SingleValue;
 	bool bIsSingleValue = false;
 	bool bDirty = false;
 
-	static constexpr int32 MemorySize = VOXELS_PER_DATA_CHUNK * sizeof(FVoxelValue);
+	static constexpr int32 MemorySize = sizeof(*DataPtr);
 
 	friend class FVoxelSaveBuilder;
 	friend class FVoxelSaveLoader;
@@ -132,7 +132,7 @@ public:
 	{
 		CreateData(Memory);
 		check(DataPtr);
-		Init(static_cast<FVoxelValue* RESTRICT>(DataPtr));
+		Init(DataPtr);
 	}
 	void CreateData(const IVoxelDataOctreeMemory& Memory, const TVoxelDataOctreeLeafData<FVoxelValue>& Source)
 	{
@@ -149,7 +149,7 @@ public:
 			if (Source.DataPtr)
 			{
 				Allocate(Memory);
-				FMemory::Memcpy(DataPtr, Source.DataPtr, MemorySize);
+				*DataPtr = *Source.DataPtr;
 			}
 		}
 		CheckState();
@@ -200,8 +200,15 @@ public:
 		else
 		{
 			checkVoxelSlow(DataPtr);
-			return DataPtr[Index];
+			return (*DataPtr)[Index];
 		}
+	}
+	FORCEINLINE void Set(int32 Index, FVoxelValue Value)
+	{
+		checkVoxelSlow(DataPtr);
+		checkVoxelSlow(HasData());
+		CheckBounds(Index);
+		DataPtr->Set(Index, Value);
 	}
 
 public:
@@ -215,28 +222,21 @@ public:
 		}
 		CheckState();
 	}
-	FORCEINLINE FVoxelValue& GetRef(int32 Index)
-	{
-		checkVoxelSlow(DataPtr);
-		checkVoxelSlow(HasData());
-		CheckBounds(Index);
-		return DataPtr[Index];
-	}
 
 public:
-	FORCEINLINE void CopyTo(FVoxelValue* RESTRICT DestPtr) const
+	FORCEINLINE void CopyTo(TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>& Dest) const
 	{
 		checkVoxelSlow(HasData());
 		if (bIsSingleValue)
 		{
 			for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
 			{
-				DestPtr[Index] = SingleValue;
+				Dest.Set(Index, SingleValue);
 			}
 		}
 		else
 		{
-			FMemory::Memcpy(DestPtr, DataPtr, MemorySize);
+			Dest = *DataPtr;
 		}
 	}
 
@@ -266,10 +266,16 @@ public:
 
 		bIsSingleValue = false;
 		Allocate(Memory);
+
+#if ONE_BIT_VOXEL_VALUE
+		DataPtr->SetAll(SingleValue);
+#else
 		for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
 		{
-			DataPtr[Index] = SingleValue;
+			DataPtr->Set(Index, SingleValue);
 		}
+#endif
+		
 		CheckState();
 	}
 	void TryCompressToSingleValue(const IVoxelDataOctreeMemory& Memory)
@@ -282,10 +288,10 @@ public:
 			return;
 		}
 
-		const FVoxelValue NewSingleValue = DataPtr[0];
+		const FVoxelValue NewSingleValue = (*DataPtr)[0];
 		for (int32 Index = 1; Index < VOXELS_PER_DATA_CHUNK; Index++)
 		{
-			if (DataPtr[Index] != NewSingleValue) return;
+			if ((*DataPtr)[Index] != NewSingleValue) return;
 		}
 
 		Deallocate(Memory);
@@ -312,7 +318,7 @@ private:
 		VOXEL_SLOW_FUNCTION_COUNTER();
 
 		check(!DataPtr && !bIsSingleValue);
-		DataPtr = static_cast<FVoxelValue*>(FMemory::Malloc(MemorySize));
+		DataPtr = new TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>();
 		
 		TVoxelDataOctreeLeafMemoryUsage<FVoxelValue>::Increase(MemorySize, bDirty, Memory);
 	}
@@ -321,7 +327,7 @@ private:
 		VOXEL_SLOW_FUNCTION_COUNTER();
 
 		check(DataPtr);
-		FMemory::Free(DataPtr);
+		delete DataPtr;
 		DataPtr = nullptr;
 		
 		TVoxelDataOctreeLeafMemoryUsage<FVoxelValue>::Decrease(MemorySize, bDirty, Memory);
@@ -582,6 +588,12 @@ public:
 			return Main_DataPtr[Index];
 		}
 	}
+	FORCEINLINE void Set(int32 Index, FVoxelMaterial Material)
+	{
+		CheckBounds(Index);
+		checkVoxelSlow(Main_DataPtr);
+		Main_DataPtr[Index] = Material;
+	}
 
 public:
 	FORCEINLINE void PrepareForWrite(const IVoxelDataOctreeMemory& Memory)
@@ -614,12 +626,6 @@ public:
 		checkVoxelSlow(HasData());
 		CheckState();
 	}
-	FORCEINLINE FVoxelMaterial& GetRef(int32 Index)
-	{
-		CheckBounds(Index);
-		checkVoxelSlow(Main_DataPtr);
-		return Main_DataPtr[Index];
-	}
 	FORCEINLINE void SetSingleValue(FVoxelMaterial SingleValue)
 	{
 		CheckState();
@@ -649,6 +655,10 @@ public:
 			checkVoxelSlow(Main_DataPtr);
 			FMemory::Memcpy(DestPtr, Main_DataPtr, Main_MemorySize);
 		}
+	}
+	FORCEINLINE void CopyTo(TVoxelStaticArray<FVoxelMaterial, VOXELS_PER_DATA_CHUNK>& Dest) const
+	{
+		CopyTo(Dest.GetData());
 	}
 	
 private:

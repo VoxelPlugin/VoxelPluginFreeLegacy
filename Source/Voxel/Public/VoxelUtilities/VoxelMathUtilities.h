@@ -404,10 +404,15 @@ namespace FVoxelUtilities
 
 	// Skips expensive bound checks outside of debug
 	template<typename T>
-	FORCEINLINE auto& Get(T& Array, int32 Index)
+	FORCEINLINE decltype(auto) Get(T& Array, int32 Index)
 	{
 		checkVoxelSlow(0 <= Index && Index < GetNum(Array));
 		return GetData(Array)[Index];
+	}
+	template<typename T, typename ArrayType>
+	FORCEINLINE T GetAs(ArrayType& Array, int32 Index)
+	{
+		return Get(Array, Index);
 	}
 	
 	FORCEINLINE int32 Get3DIndex(const FIntVector& Size, int32 X, int32 Y, int32 Z, const FIntVector& Offset = FIntVector(0, 0, 0))

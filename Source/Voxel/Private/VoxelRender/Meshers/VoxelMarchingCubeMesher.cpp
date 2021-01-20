@@ -452,7 +452,7 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 		// Account for normals
 		BoundsToQuery = BoundsToQuery.Extend(1);
 	}
-	TVoxelQueryZone<FVoxelValue> QueryZone(BoundsToQuery, FIntVector(DataSize), LOD, CachedValues);
+	TVoxelQueryZone<FVoxelValue> QueryZone(BoundsToQuery, FIntVector(DataSize), LOD, CachedValues, true);
 	MESHER_TIME_INLINE_VALUES(DataSize * DataSize * DataSize, Data.Get<FVoxelValue>(QueryZone, LOD));
 	
 	Accelerator = MakeUnique<FVoxelConstDataAccelerator>(Data, GetBoundsToLock());
@@ -490,14 +490,14 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 					checkVoxelSlow(CubeIndices[7] < uint32(DataSize * DataSize * DataSize));
 
 					const uint32 CaseCode =
-						(CachedValues[CubeIndices[0]].IsEmpty() << 0) |
-						(CachedValues[CubeIndices[1]].IsEmpty() << 1) |
-						(CachedValues[CubeIndices[2]].IsEmpty() << 2) |
-						(CachedValues[CubeIndices[3]].IsEmpty() << 3) |
-						(CachedValues[CubeIndices[4]].IsEmpty() << 4) |
-						(CachedValues[CubeIndices[5]].IsEmpty() << 5) |
-						(CachedValues[CubeIndices[6]].IsEmpty() << 6) |
-						(CachedValues[CubeIndices[7]].IsEmpty() << 7);
+						(FVoxelValue(CachedValues[CubeIndices[0]]).IsEmpty() << 0) |
+						(FVoxelValue(CachedValues[CubeIndices[1]]).IsEmpty() << 1) |
+						(FVoxelValue(CachedValues[CubeIndices[2]]).IsEmpty() << 2) |
+						(FVoxelValue(CachedValues[CubeIndices[3]]).IsEmpty() << 3) |
+						(FVoxelValue(CachedValues[CubeIndices[4]]).IsEmpty() << 4) |
+						(FVoxelValue(CachedValues[CubeIndices[5]]).IsEmpty() << 5) |
+						(FVoxelValue(CachedValues[CubeIndices[6]]).IsEmpty() << 6) |
+						(FVoxelValue(CachedValues[CubeIndices[7]]).IsEmpty() << 7);
 
 					if (CaseCode != 0 && CaseCode != 255)
 					{

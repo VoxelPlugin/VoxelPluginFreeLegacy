@@ -93,6 +93,12 @@ public:
 		return TArrayView<const T>(GetData(), Num());
 	}
 
+	// To be API compatible with TVoxelStaticBitArray
+	FORCEINLINE void Set(int32 Index, const T& Value)
+	{
+		(*this)[Index] = Value;
+	}
+
 	FORCEINLINE T* begin() { return GetData(); }
 	FORCEINLINE T* end()   { return GetData() + Size; }
 	

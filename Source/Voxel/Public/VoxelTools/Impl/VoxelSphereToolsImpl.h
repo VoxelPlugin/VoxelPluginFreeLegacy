@@ -85,6 +85,20 @@ public:
 		int32 NumIterations,
 		uint32 Mask,
 		T GetStrength);
+
+	template<typename T, typename TLambda>
+	static void RevertSphereImpl(
+		FVoxelData& Data,
+		const FVoxelVector& Position,
+		float Radius,
+		int32 HistoryPosition, 
+		TLambda SetValue);
+	
+	template<typename T>
+	static void RevertSphereToGeneratorImpl(
+		FVoxelData& Data,
+		const FVoxelVector& Position,
+		float Radius);
 	
 public:
 	/**

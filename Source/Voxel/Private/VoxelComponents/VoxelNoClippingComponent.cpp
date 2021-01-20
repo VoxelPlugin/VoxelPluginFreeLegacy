@@ -321,7 +321,7 @@ UVoxelNoClippingComponent::FAsyncResult UVoxelNoClippingComponent::AsyncTask(con
 		{
 			for (int32 Z = 0; Z < Size.Z; Z++)
 			{
-				if (!Values[X + Size.X * Y + Size.X * Size.Y * Z].IsEmpty())
+				if (!FVoxelUtilities::GetAs<FVoxelValue>(Values, X + Size.X * Y + Size.X * Size.Y * Z).IsEmpty())
 				{
 					continue;
 				}

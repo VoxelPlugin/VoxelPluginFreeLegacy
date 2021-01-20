@@ -11,19 +11,20 @@ FORCEINLINE FArchive& operator<<(FArchive& Ar, TVoxelValueImpl<T>& Value)
 	return Ar;
 }
 
-template<typename TAllocator>
-void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, TArray<FVoxelValue, TAllocator>& Values, uint32 ValueConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion)
+template<typename Array>
+void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, Array& Values, uint32 ValueConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
-	using SizeType = typename TAllocator::SizeType;
+	using SizeType = typename TDecay<decltype(Values)>::Type::SizeType;
+	
 	if (Archive.IsLoading())
 	{
 		if (VoxelCustomVersion == FVoxelSerializationVersion::BeforeCustomVersionWasAdded)
 		{
 			TArray<FVoxelValue16> CompatValues;
 			Archive << CompatValues;
-			Values = FVoxelValueConverter::ConvertValues(MoveTemp(CompatValues));
+			Values = FVoxelValueConverter::ConvertValues(TArray64<FVoxelValue16>(CompatValues));
 		}
 		else if (VoxelCustomVersion < FVoxelSerializationVersion::RemoveEnableVoxelSpawnedActorsEnableVoxelGrass)
 		{
@@ -33,13 +34,13 @@ void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, TArray<FVo
 			{
 				Value.GetStorage() = FVoxelValue16::ClampToStorage(2 * Value.GetStorage());
 			}
-			Values = FVoxelValueConverter::ConvertValues(MoveTemp(CompatValues));
+			Values = FVoxelValueConverter::ConvertValues(TArray64<FVoxelValue16>(CompatValues));
 		}
 		else if (VoxelCustomVersion < FVoxelSerializationVersion::ValueConfigFlagAndSaveGUIDs)
 		{
 			TArray<FVoxelValue16> CompatValues;
 			CompatValues.BulkSerialize(Archive);
-			Values = FVoxelValueConverter::ConvertValues(MoveTemp(CompatValues));
+			Values = FVoxelValueConverter::ConvertValues(TArray64<FVoxelValue16>(CompatValues));
 		}
 		else
 		{
@@ -47,10 +48,20 @@ void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, TArray<FVo
 			Archive << ValuesSize;
 			
 			check(ValueConfigFlag);
-			if (ValueConfigFlag & EVoxelValueConfigFlag::EightBitsValue)
+			if (ValueConfigFlag & EVoxelValueConfigFlag::OneBitValue)
 			{
-				check(!(ValueConfigFlag & EVoxelValueConfigFlag::SixteenBitsValue));
-				TArray<FVoxelValue8> CompatValues;
+				check(ValueConfigFlag == EVoxelValueConfigFlag::OneBitValue);
+				
+				FVoxelBitArray64 CompatValues;
+				Archive << CompatValues;
+				ensure(CompatValues.Num() == ValuesSize);
+				Values = FVoxelValueConverter::ConvertValues(MoveTemp(CompatValues));
+			}
+			else if (ValueConfigFlag & EVoxelValueConfigFlag::EightBitsValue)
+			{
+				check(ValueConfigFlag == EVoxelValueConfigFlag::EightBitsValue);
+				
+				TArray64<FVoxelValue8> CompatValues;
 				CompatValues.Empty(ValuesSize);
 				CompatValues.SetNumUninitialized(ValuesSize);
 				Archive.Serialize(CompatValues.GetData(), ValuesSize * sizeof(FVoxelValue8));
@@ -59,7 +70,9 @@ void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, TArray<FVo
 			else
 			{
 				check(ValueConfigFlag & EVoxelValueConfigFlag::SixteenBitsValue);
-				TArray<FVoxelValue16> CompatValues;
+				check(ValueConfigFlag == EVoxelValueConfigFlag::SixteenBitsValue);
+				
+				TArray64<FVoxelValue16> CompatValues;
 				CompatValues.Empty(ValuesSize);
 				CompatValues.SetNumUninitialized(ValuesSize);
 				Archive.Serialize(CompatValues.GetData(), ValuesSize * sizeof(FVoxelValue16));
@@ -71,7 +84,14 @@ void FVoxelSerializationUtilities::SerializeValues(FArchive& Archive, TArray<FVo
 	{
 		SizeType ValuesSize = Values.Num();
 		Archive << ValuesSize;
+#if ONE_BIT_VOXEL_VALUE
+		const bool bIsCorrectType = TIsSame<FVoxelBitArray64, Array>::Value;
+		ensure(bIsCorrectType);
+		
+		Archive << Values;
+#else
 		Archive.Serialize(Values.GetData(), ValuesSize * sizeof(FVoxelValue));
+#endif
 	}
 }
 

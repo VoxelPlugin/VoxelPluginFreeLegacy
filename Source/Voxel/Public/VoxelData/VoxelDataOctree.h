@@ -141,7 +141,7 @@ public:
 		TVoxelDataOctreeLeafData<T>& DataHolder = GetData<T>();
 		if (!DataHolder.HasData())
 		{
-			DataHolder.CreateData(Data, [&](T* RESTRICT DataPtr)
+			DataHolder.CreateData(Data, [&](auto* DataPtr)
 			{
 				TVoxelQueryZone<T> QueryZone(GetBounds(), DataPtr);
 				GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);
@@ -233,13 +233,14 @@ struct FVoxelDataOctreeSetter
 				}
 
 				const uint32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
-				T& Ref = DataHolder.GetRef(Index);
-				T OldValue = Ref;
+				const T OldValue = DataHolder.Get(Index);
+				T NewValue = OldValue;
 
-				Apply(X, Y, Z, Ref);
+				Apply(X, Y, Z, NewValue);
 
-				if (OldValue != Ref)
+				if (OldValue != NewValue)
 				{
+					DataHolder.Set(Index, NewValue);
 					DataHolder.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<T>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValue);
@@ -286,21 +287,23 @@ struct FVoxelDataOctreeSetter
 				
 				const uint32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
 
-				TA& RefA = DataHolderA.GetRef(Index);
-				TB& RefB = DataHolderB.GetRef(Index);
-				TA OldValueA = RefA;
-				TB OldValueB = RefB;
+				const TA OldValueA = DataHolderA.Get(Index);
+				const TB OldValueB = DataHolderB.Get(Index);
+				TA NewValueA = OldValueA;
+				TB NewValueB = OldValueB;
 
-				Apply(X, Y, Z, RefA, RefB);
+				Apply(X, Y, Z, NewValueA, NewValueB);
 
-				if (OldValueA != RefA)
+				if (OldValueA != NewValueA)
 				{
+					DataHolderA.Set(Index, NewValueA);
 					DataHolderA.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<TA>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValueA);
 				}
-				if (OldValueB != RefB)
+				if (OldValueB != NewValueB)
 				{
+					DataHolderB.Set(Index, NewValueB);
 					DataHolderB.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<TB>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValueB);

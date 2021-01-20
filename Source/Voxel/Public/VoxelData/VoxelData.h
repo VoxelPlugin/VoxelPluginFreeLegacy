@@ -6,6 +6,7 @@
 #include "VoxelMinimal.h"
 #include "VoxelIntBox.h"
 #include "VoxelValue.h"
+#include "VoxelArray.h"
 #include "VoxelMaterial.h"
 #include "VoxelItemStack.h"
 #include "VoxelSharedMutex.h"
@@ -187,17 +188,17 @@ public:
 	void Get(TVoxelQueryZone<T>& QueryZone, int32 LOD) const;
 	
 	template<typename T>
-	TArray<T> Get(const FVoxelIntBox& Bounds) const;
+	TVoxelArrayFwd<T> Get(const FVoxelIntBox& Bounds) const;
 
 	// Will always use 8 threads
 	template<typename T>
-	TArray<T> ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread = false) const;
+	TVoxelArrayFwd<T> ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread = false) const;
 
-	TArray<FVoxelValue> GetValues(const FVoxelIntBox& Bounds) const
+	TVoxelArrayFwd<FVoxelValue> GetValues(const FVoxelIntBox& Bounds) const
 	{
 		return Get<FVoxelValue>(Bounds);
 	}
-	TArray<FVoxelMaterial> GetMaterials(const FVoxelIntBox& Bounds) const
+	TVoxelArrayFwd<FVoxelMaterial> GetMaterials(const FVoxelIntBox& Bounds) const
 	{
 		return Get<FVoxelMaterial>(Bounds);
 	}

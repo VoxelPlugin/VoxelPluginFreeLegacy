@@ -50,8 +50,8 @@ namespace EVoxelCompressionLevel
 struct VOXEL_API FVoxelSerializationUtilities
 {
 public:
-	template<typename TAllocator>
-	static void SerializeValues(FArchive& Archive, TArray<FVoxelValue, TAllocator>& Values, uint32 ValueConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion);
+	template<typename Array>
+	static void SerializeValues(FArchive& Archive, Array& Values, uint32 ValueConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion);
 	template<typename TAllocator>
 	static void SerializeMaterials(FArchive& Archive, TArray<FVoxelMaterial, TAllocator>& Materials, uint32 MaterialConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion);
 

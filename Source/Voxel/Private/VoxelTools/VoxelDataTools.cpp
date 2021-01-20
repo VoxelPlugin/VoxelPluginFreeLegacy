@@ -636,7 +636,7 @@ void UVoxelDataTools::CompressIntoHeightmapImpl(FVoxelData& Data, TVoxelHeightma
 			{
 				if (!DataHolder.HasData())
 				{
-					DataHolder.CreateData(Data, [&](FVoxelValue* RESTRICT DataPtr)
+					DataHolder.CreateData(Data, [&](auto* DataPtr)
 					{
 						TVoxelQueryZone<FVoxelValue> QueryZone(Leaf.GetBounds(), DataPtr);
 						Leaf.GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);

@@ -160,8 +160,8 @@ bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 		}
 		else
 		{
-			TNoGrowArray<FVoxelValue> ValueBuffers;
-			TNoGrowArray<FVoxelValue> SingleValues;
+			FVoxelValueArray ValueBuffers;
+			FVoxelValueArray SingleValues;
 
 			TNoGrowArray<TVoxelMaterialStorage<uint32>> MaterialsIndices;
 			TNoGrowArray<uint8> MaterialBuffers;
@@ -173,8 +173,8 @@ bool FVoxelUncompressedWorldSaveImpl::Serialize(FArchive& Ar)
 
 			ON_SCOPE_EXIT
 			{
-				ValueBuffers64 = MoveTemp(ValueBuffers);
-				SingleValues64 = MoveTemp(SingleValues);
+				ValueBuffers64 = ValueBuffers;
+				SingleValues64 = SingleValues;
 				
 				MaterialsIndices64 = MoveTemp(MaterialsIndices);
 				MaterialBuffers64 = MoveTemp(MaterialBuffers);
