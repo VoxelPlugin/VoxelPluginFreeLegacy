@@ -182,6 +182,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	const bool bShowMainChunks = CVarShowTransitions.GetValueOnAnyThread() == 0;
+	const uint32 TextureDataStride = RendererSettings.GetTextureDataStride();
 
 	auto ProcMeshBuffersPtr = MakeUnique<FVoxelProcMeshBuffers>();
 	auto& ProcMeshBuffers = *ProcMeshBuffersPtr;
@@ -244,7 +245,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	auto& IndexBuffer = ProcMeshBuffers.IndexBuffer;
 	auto& AdjacencyIndexBuffer = ProcMeshBuffers.AdjacencyIndexBuffer;
 	auto& CollisionCubes = ProcMeshBuffers.CollisionCubes;
-	TNoGrowArray<FColor> TextureData;
+	TNoGrowArray<uint8> TextureData;
 	
 	CHECK_CANCEL();
 
@@ -290,7 +291,9 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		if (Chunk.TextureData.Num() > 0)
 		{
 			VOXEL_ASYNC_SCOPE_COUNTER("CopyColorsAndTextureData");
-			const int32 Offset = TextureData.Num();
+			
+			ensure(TextureData.Num() % TextureDataStride == 0);
+			const int32 Offset = TextureData.Num() / TextureDataStride;
 			TextureData.Append(Chunk.TextureData);
 			
 			const int32 ChunkNumVertices = Chunk.GetNumVertices();
@@ -463,9 +466,9 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	}
 #endif
 
-	if (TextureData.Num() > 0)
+	if (TextureData.Num() > 0 && ensure(TextureData.Num() % TextureDataStride == 0))
 	{
-		ProcMeshBuffers.TextureData = MakeVoxelShared<FVoxelTexturePoolTextureData>(MoveTemp(FromNoGrowArray(TextureData)));
+		ProcMeshBuffers.TextureData = MakeVoxelShared<FVoxelTexturePoolTextureData>(TextureDataStride, MoveTemp(FromNoGrowArray(TextureData)));
 	}
 	ProcMeshBuffers.UpdateStats();
 	

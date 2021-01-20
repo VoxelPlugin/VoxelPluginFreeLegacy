@@ -22,9 +22,11 @@ DECLARE_VOXEL_MEMORY_STAT(TEXT("Texture Data"), STAT_VoxelTexturePool_TextureDat
 class FVoxelTexturePoolTextureData
 {
 public:
-	explicit FVoxelTexturePoolTextureData(TArray<FColor>&& InData)
-		: Data(MoveTemp(InData))
+	explicit FVoxelTexturePoolTextureData(uint32 Stride, TArray<uint8>&& InData)
+		: Stride(Stride)
+		, Data(MoveTemp(InData))
 	{
+		check(Data.Num() % Stride == 0);
 		ensure(Data.Num() > 0);
 		INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_TextureData, Data.GetAllocatedSize());
 	}
@@ -33,11 +35,13 @@ public:
 		DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelTexturePool_TextureData, Data.GetAllocatedSize());
 	}
 
-	const FColor* RESTRICT GetData() const { return Data.GetData(); }
-	int32 Num() const { return Data.Num(); }
+	uint32 GetStride() const { return Stride; }
+	const uint8* RESTRICT GetData() const { return Data.GetData(); }
+	int32 Num() const { return Data.Num() / Stride; }
 
 private:
-	const TArray<FColor> Data;
+	const uint32 Stride;
+	const TArray<uint8> Data;
 };
 
 UCLASS()
@@ -57,7 +61,9 @@ public:
 	using FEntryUniqueId = FVoxelTexturePoolEntryUniqueId;
 	
 public:
-	TVoxelSharedRef<FVoxelTexturePoolEntry> AddEntry(
+	FVoxelTexturePool(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings);
+	
+	TVoxelSharedPtr<FVoxelTexturePoolEntry> AddEntry(
 		const TVoxelSharedRef<FVoxelTexturePoolTextureData>& ColorData,
 		const TVoxelSharedRef<FVoxelMaterialInterface>& MaterialInstance);
 	
@@ -75,6 +81,9 @@ protected:
 	//~ Begin IVoxelSubsystem Interface
 	virtual void PreDestructor() override;
 	//~ End IVoxelSubsystem Interface
+
+private:
+	const uint32 Stride;
 	
 private:
 	struct FTextureSlot
@@ -94,12 +103,13 @@ private:
 	class FTextureInfo
 	{
 	public:
+		const uint32 Stride;
 		UTexture2D* Texture = nullptr;
 
 		TArray<FTextureSlot> FreeSlots;
 		TVoxelTypedSparseArray<FTextureSlotId, FUsedTextureSlot> UsedSlots;
 
-		FTextureInfo();
+		explicit FTextureInfo(uint32 Stride);
 		~FTextureInfo();
 		UE_NONCOPYABLE(FTextureInfo);
 		
@@ -111,7 +121,7 @@ private:
 	};
 	TArray<TVoxelSharedPtr<FTextureInfo>> TextureInfos;
 
-public:
+private:
 	struct FTextureSlotRef
 	{
 		TVoxelWeakPtr<FTextureInfo> TextureInfo;
@@ -128,7 +138,7 @@ public:
 
 	UTexture2D* CreateTexture() const;
 
-public:
+private:
 	struct FEntry
 	{
 		const FEntryUniqueId Id = FEntryUniqueId::New();

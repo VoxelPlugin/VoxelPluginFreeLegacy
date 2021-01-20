@@ -7,6 +7,7 @@
 #include "VoxelMaterial.h"
 #include "VoxelPaintMaterial.generated.h"
 
+class AVoxelWorld;
 class UMaterialInterface;
 class UVoxelMaterialCollectionBase;
 
@@ -178,13 +179,7 @@ public:
 public:
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
-	bool bRestrictType = false;
-
-	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
-	EVoxelMaterialConfig MaterialConfigToRestrictTo = EVoxelMaterialConfig::RGB;
-
-	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
-	UVoxelMaterialCollectionBase* PreviewMaterialCollection = nullptr;
+	TWeakObjectPtr<AVoxelWorld> PreviewVoxelWorld;
 #endif
 
 public:

@@ -25,7 +25,7 @@ struct VOXEL_API FVoxelChunkMeshBuffers
 	TArray<FColor> Colors;
 	TArray<TArray<FVector2D>> TextureCoordinates;
 
-	TArray<FColor> TextureData;
+	TArray<uint8> TextureData;
 	TArray<FBox> CollisionCubes;
 
 	FBox Bounds;

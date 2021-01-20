@@ -96,7 +96,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	int32 LOD,
 	TArray<uint32>&& Indices, 
 	TArray<FVoxelMesherVertex>&& Vertices,
-	TArray<FColor>* TextureData,
+	TArray<uint8>* TextureData,
 	TArray<FBox>* CollisionCubes)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();

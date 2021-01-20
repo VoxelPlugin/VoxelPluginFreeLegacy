@@ -110,7 +110,6 @@ public:
 	const TVoxelSharedRef<FVoxelRuntimeDynamicSettings> DynamicSettings;
 	const TVoxelWeakPtr<FVoxelRuntime> WeakRuntime;
 
-	// This constructor should only be used to use the subsystem as a placeholder/empty subsystem
 	IVoxelSubsystem(FVoxelRuntime& Runtime, const FVoxelRuntimeSettings& Settings);
 	virtual ~IVoxelSubsystem();
 	UE_NONCOPYABLE(IVoxelSubsystem);
