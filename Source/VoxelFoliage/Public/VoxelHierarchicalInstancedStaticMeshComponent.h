@@ -6,7 +6,7 @@
 #include "VoxelMinimal.h"
 #include "VoxelEnums.h"
 #include "VoxelIntBox.h"
-#include "VoxelFoliage/VoxelInstancedMeshSettings.h"
+#include "VoxelInstancedMeshSettings.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelHierarchicalInstancedStaticMeshComponent.generated.h"
 
@@ -17,7 +17,7 @@ class FVoxelPool;
 class FVoxelConstDataAccelerator;
 class FVoxelInstancedMeshManager;
 
-DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel HISM Memory"), STAT_VoxelHISMMemory, STATGROUP_VoxelMemory, VOXEL_API);
+DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel HISM Memory"), STAT_VoxelHISMMemory, STATGROUP_VoxelMemory, VOXELFOLIAGE_API);
 
 struct FVoxelInstancesSection
 {
@@ -30,7 +30,7 @@ struct FVoxelInstancesSection
 
 // Need to prefix names with Voxel to avoid collisions with normal HISM
 UCLASS()
-class VOXEL_API UVoxelHierarchicalInstancedStaticMeshComponent : public UHierarchicalInstancedStaticMeshComponent
+class VOXELFOLIAGE_API UVoxelHierarchicalInstancedStaticMeshComponent : public UHierarchicalInstancedStaticMeshComponent
 {
 	GENERATED_BODY()
 

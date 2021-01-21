@@ -1,7 +1,6 @@
 // Copyright 2021 Phyronnaz
 
 #include "VoxelNodes/VoxelFoliageNodes.h"
-#include "VoxelFoliage/VoxelFoliageBiome.h"
 #include "NodeFunctions/VoxelFoliageNodeFunctions.h"
 #include "VoxelGenerators/VoxelGeneratorInit.h"
 

@@ -1,6 +1,6 @@
 // Copyright 2021 Phyronnaz
 
-#include "VoxelFoliage/VoxelFoliage.h"
+#include "VoxelFoliage.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "Engine/StaticMesh.h"
 

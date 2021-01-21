@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AssetTypeActions_VoxelBase.h"
-#include "VoxelFoliage/VoxelFoliageBiome.h"
+#include "VoxelFoliageBiome.h"
 
 class FAssetTypeActions_VoxelFoliageBiomeType : public FAssetTypeActions_VoxelBase
 {

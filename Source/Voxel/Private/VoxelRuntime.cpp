@@ -6,12 +6,12 @@
 #include "VoxelWorld.h"
 #include "VoxelMessages.h"
 #include "VoxelPriorityHandler.h"
+#include "VoxelFoliageInterface.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelRender/LODManager/VoxelDefaultLODManager.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
-#include "VoxelFoliage/VoxelFoliageCollection.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 #include "UObject/UObjectHash.h"
 
@@ -506,6 +506,22 @@ void FVoxelRuntime::Destroy()
 		ensure(Subsystem->State == IVoxelSubsystem::EState::Before_Destroy);
 		Subsystem->Destroy();
 		ensure(Subsystem->State == IVoxelSubsystem::EState::Destroy);
+	}
+}
+
+void FVoxelRuntime::RecreateSubsystems(EVoxelSubsystemFlags Flags, const FVoxelRuntimeSettings& Settings)
+{
+	VOXEL_FUNCTION_COUNTER();
+	check(IsInGameThread());
+	// No need to lock anything when on the game thread
+
+	const auto AllSubsystemsCopy = AllSubsystems;
+	for (const TVoxelSharedPtr<IVoxelSubsystem>& Subsystem : AllSubsystemsCopy)
+	{
+		if (EnumHasAnyFlags(Subsystem->GetFlags(), Flags))
+		{
+			RecreateSubsystem(Subsystem, Settings);
+		}
 	}
 }
 

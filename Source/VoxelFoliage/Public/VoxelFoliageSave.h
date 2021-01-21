@@ -33,7 +33,7 @@ namespace FVoxelFoliageSaveVersion
 	};
 }
 
-struct VOXEL_API FVoxelFoliageSaveImpl
+struct VOXELFOLIAGE_API FVoxelFoliageSaveImpl
 {	
 	FVoxelFoliageSaveImpl() = default;
 
@@ -69,7 +69,7 @@ private:
 };
 
 USTRUCT(BlueprintType, Category = Voxel)
-struct VOXEL_API FVoxelFoliageSave
+struct VOXELFOLIAGE_API FVoxelFoliageSave
 #if CPP
 	: public TVoxelSaveStruct<FVoxelFoliageSaveImpl>
 #endif

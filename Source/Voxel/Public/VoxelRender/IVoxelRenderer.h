@@ -18,6 +18,10 @@ class VOXEL_API IVoxelRenderer : public IVoxelSubsystem
 public:
 	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelRendererSubsystemProxy);
 
+	//~ Begin IVoxelSubsystem Interface
+	virtual EVoxelSubsystemFlags GetFlags() const override { return EVoxelSubsystemFlags::RecreateRender; }
+	//~ End IVoxelSubsystem Interface
+
 	FVoxelOnMaterialInstanceCreated OnMaterialInstanceCreated;
 
 	//~ Begin IVoxelRenderer Interface

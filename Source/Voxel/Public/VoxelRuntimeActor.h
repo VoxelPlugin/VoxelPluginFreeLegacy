@@ -18,7 +18,7 @@ class UVoxelLODSubsystemProxy;
 class UVoxelRendererSubsystemProxy;
 
 class UVoxelFoliageBiomeType;
-class UVoxelFoliageCollection;
+class UVoxelFoliageCollectionBase;
 class UVoxelMultiplayerInterface;
 class UVoxelPlaceableItemManager;
 class UVoxelProceduralMeshComponent;
@@ -334,7 +334,7 @@ public:
 	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Foliage", meta = (RecreateFoliage))
-	TArray<UVoxelFoliageCollection*> FoliageCollections;
+	TArray<UVoxelFoliageCollectionBase*> FoliageCollections;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Foliage", meta = (RecreateFoliage))
 	EVoxelFoliageWorldType FoliageWorldType = EVoxelFoliageWorldType::Flat;

@@ -1,7 +1,7 @@
 // Copyright 2021 Phyronnaz
 
 #include "Details/VoxelGeneratorOutputPickerCustomization.h"
-#include "VoxelFoliage/VoxelFoliage.h"
+#include "VoxelFoliage.h"
 #include "VoxelEditorDetailsIncludes.h"
 #include "VoxelEditorDetailsUtilities.h"
 

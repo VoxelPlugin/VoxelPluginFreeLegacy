@@ -1,6 +1,6 @@
 // Copyright 2021 Phyronnaz
 
-#include "VoxelFoliage/VoxelFoliageActor.h"
+#include "VoxelFoliageActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "VoxelComponents/VoxelPhysicsRelevancyComponent.h"
 #include "UObject/ConstructorHelpers.h"

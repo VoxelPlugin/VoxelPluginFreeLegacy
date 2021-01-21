@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/StaticMesh.h"
-#include "VoxelFoliage/VoxelFoliage.h"
+#include "VoxelFoliage.h"
 #include "ThumbnailRendering/StaticMeshThumbnailRenderer.h"
 #include "VoxelFoliageThumbnailRenderer.generated.h"
 

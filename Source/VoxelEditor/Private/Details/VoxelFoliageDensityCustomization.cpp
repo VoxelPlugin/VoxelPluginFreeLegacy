@@ -1,7 +1,7 @@
 // Copyright 2021 Phyronnaz
 
 #include "Details/VoxelFoliageDensityCustomization.h"
-#include "VoxelFoliage/VoxelFoliageDensity.h"
+#include "VoxelFoliageDensity.h"
 #include "VoxelEditorDetailsIncludes.h"
 
 void FVoxelFoliageDensityCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)

@@ -6,7 +6,7 @@
 #include "VoxelNodes/VoxelExposedNodes.h"
 #include "VoxelNodes/VoxelNodeHelper.h"
 #include "VoxelNodes/VoxelNodeHelperMacros.h"
-#include "VoxelFoliage/VoxelFoliageBiome.h"
+#include "VoxelFoliageInterface.h"
 #include "VoxelFoliageNodes.generated.h"
 
 class UMaterialInterface;
@@ -31,7 +31,7 @@ class VOXELGRAPH_API UVoxelNode_GetBiomeIndex : public UVoxelExposedNode
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (NonNull))
-	UVoxelFoliageBiome* Biome;
+	UVoxelFoliageBiomeBase* Biome;
 
 	UVoxelNode_GetBiomeIndex();
 

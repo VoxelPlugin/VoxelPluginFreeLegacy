@@ -5,8 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelContext.h"
 #include "VoxelGenerators/VoxelGeneratorInit.h"
-#include "VoxelFoliage/VoxelFoliageBiome.h"
-#include "VoxelFoliage/VoxelFoliageInterface.h"
+#include "VoxelFoliageInterface.h"
 #include "VoxelUtilities/VoxelMaterialUtilities.h"
 
 namespace FVoxelFoliageNodeFunctions
@@ -33,7 +32,7 @@ namespace FVoxelFoliageNodeFunctions
 		return { 0, 1 };
 	}
 
-	inline int32 InitBiome(const FVoxelGeneratorInit& InitStruct, TWeakObjectPtr<UVoxelFoliageBiome> Biome)
+	inline int32 InitBiome(const FVoxelGeneratorInit& InitStruct, TWeakObjectPtr<UVoxelFoliageBiomeBase> Biome)
 	{
 		return -1;
 	}

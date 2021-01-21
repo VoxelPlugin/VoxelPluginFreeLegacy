@@ -1,8 +1,8 @@
 // Copyright 2021 Phyronnaz
 
-#include "VoxelFoliage/VoxelFoliageBiome.h"
+#include "VoxelFoliageBiome.h"
 
-#include "VoxelFoliage/VoxelFoliage.h"
+#include "VoxelFoliage.h"
 
 #if WITH_EDITOR
 void UVoxelFoliageBiomeType::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

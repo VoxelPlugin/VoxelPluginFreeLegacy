@@ -30,8 +30,7 @@
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 #include "VoxelRender/MaterialCollections/VoxelMaterialCollectionBase.h"
 
-#include "VoxelFoliage/VoxelFoliage.h"
-#include "VoxelFoliage/VoxelFoliageInterface.h"
+#include "VoxelFoliageInterface.h"
 
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -1032,19 +1031,16 @@ void AVoxelWorld::RecreateRender()
 	check(IsCreated());
 
 	Runtime->DynamicSettings->SetFromRuntime(*this);
-	const FVoxelRuntimeSettings RuntimeSettings = GetRuntimeSettings();
 
+	Runtime->RecreateSubsystems(EVoxelSubsystemFlags::RecreateRender | EVoxelSubsystemFlags::RecreateFoliage, GetRuntimeSettings());
 	
-	Runtime->RecreateSubsystem<IVoxelLODManager>(RuntimeSettings);
-	Runtime->RecreateSubsystem<IVoxelRenderer>(RuntimeSettings);
-	Runtime->RecreateSubsystem<FVoxelTexturePool>(RuntimeSettings);
-
 	DestroyVoxelComponents();
 	DebugTextures.Reset();
 }
 
 void AVoxelWorld::RecreateFoliage()
 {
+	Runtime->RecreateSubsystems(EVoxelSubsystemFlags::RecreateFoliage, GetRuntimeSettings());
 }
 
 void AVoxelWorld::RecreateAll(const FVoxelWorldCreateInfo& Info)
