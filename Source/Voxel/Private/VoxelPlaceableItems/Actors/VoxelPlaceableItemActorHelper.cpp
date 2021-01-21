@@ -5,7 +5,7 @@
 #include "VoxelWorld.h"
 #include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelRender/IVoxelLODManager.h"
-#include "VoxelFoliage/VoxelFoliageInterface.h"
+#include "VoxelFoliageInterface.h"
 
 #include "EngineUtils.h"
 #include "TimerManager.h"

@@ -34,7 +34,7 @@
 #include "VoxelCreateStaticMeshFromProcMesh.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "VoxelNodes/VoxelOptimizationNodes.h"
-#include "VoxelFoliage/VoxelFoliage.h"
+#include "VoxelFoliage.h"
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelPlaceableItems/Actors/VoxelDisableEditsBox.h"
 

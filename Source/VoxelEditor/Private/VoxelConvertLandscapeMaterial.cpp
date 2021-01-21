@@ -4,8 +4,8 @@
 
 #include "AssetRegistryModule.h"
 #include "VoxelMinimal.h"
-#include "VoxelFoliage/VoxelFoliage.h"
-#include "VoxelFoliage/VoxelFoliageCollection.h"
+#include "VoxelFoliage.h"
+#include "VoxelFoliageCollection.h"
 #include "VoxelRender/VoxelMaterialExpressions.h"
 #include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
 

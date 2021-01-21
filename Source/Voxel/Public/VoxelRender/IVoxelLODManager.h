@@ -13,6 +13,10 @@ class VOXEL_API IVoxelLODManager : public IVoxelSubsystem
 {
 public:
 	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelLODSubsystemProxy);
+
+	//~ Begin IVoxelSubsystem Interface
+	virtual EVoxelSubsystemFlags GetFlags() const override { return EVoxelSubsystemFlags::RecreateRender; }
+	//~ End IVoxelSubsystem Interface
 	
 	FVoxelOnChunkUpdate OnChunkUpdate;
 

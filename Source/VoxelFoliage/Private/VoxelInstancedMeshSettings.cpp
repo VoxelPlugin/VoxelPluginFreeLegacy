@@ -1,7 +1,7 @@
 // Copyright 2021 Phyronnaz
 
-#include "VoxelFoliage/VoxelInstancedMeshSettings.h"
-#include "VoxelFoliage/VoxelHierarchicalInstancedStaticMeshComponent.h"
+#include "VoxelInstancedMeshSettings.h"
+#include "VoxelHierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 #include "Engine/CollisionProfile.h"
 

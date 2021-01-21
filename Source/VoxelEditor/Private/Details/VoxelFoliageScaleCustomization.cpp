@@ -1,7 +1,7 @@
 // Copyright 2021 Phyronnaz
 
 #include "VoxelFoliageScaleCustomization.h"
-#include "VoxelFoliage/VoxelFoliage.h"
+#include "VoxelFoliage.h"
 #include "VoxelEditorDetailsIncludes.h"
 
 void FVoxelFoliageScaleCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)

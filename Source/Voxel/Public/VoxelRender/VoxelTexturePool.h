@@ -80,6 +80,7 @@ protected:
 
 	//~ Begin IVoxelSubsystem Interface
 	virtual void PreDestructor() override;
+	virtual EVoxelSubsystemFlags GetFlags() const override { return EVoxelSubsystemFlags::RecreateRender; }
 	//~ End IVoxelSubsystem Interface
 
 private:

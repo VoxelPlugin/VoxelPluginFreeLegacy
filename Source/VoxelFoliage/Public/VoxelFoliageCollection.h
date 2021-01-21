@@ -3,12 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelFoliageInterface.h"
 #include "VoxelFoliageCollection.generated.h"
 
 class UVoxelFoliage;
 
 UCLASS(BlueprintType)
-class VOXEL_API UVoxelFoliageCollection : public UObject
+class VOXELFOLIAGE_API UVoxelFoliageCollection : public UVoxelFoliageCollectionBase
 {
 	GENERATED_BODY()
 

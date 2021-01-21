@@ -34,19 +34,16 @@ void FVoxelModule::StartupModule()
 	
 	ApplyCVarSettingsFromIni(TEXT("/Script/Voxel.VoxelSettings"), *GEngineIni, ECVF_SetByProjectSetting);
 	
-	{
-		IPlugin& Plugin = FVoxelSystemUtilities::GetPlugin();
+	IPlugin& Plugin = FVoxelSystemUtilities::GetPlugin();
 
-		// This is needed to correctly share content across Pro and Free
-		FPackageName::UnRegisterMountPoint(TEXT("/") VOXEL_PLUGIN_NAME TEXT("/"), Plugin.GetContentDir());
-		FPackageName::RegisterMountPoint("/Voxel/", Plugin.GetContentDir());
+	// This is needed to correctly share content across Pro and Free
+	FPackageName::UnRegisterMountPoint(TEXT("/") VOXEL_PLUGIN_NAME TEXT("/"), Plugin.GetContentDir());
+	FPackageName::RegisterMountPoint("/Voxel/", Plugin.GetContentDir());
 
-		const FString PluginBaseDir = FPaths::ConvertRelativePathToFull(Plugin.GetBaseDir());
+	const FString PluginBaseDir = FPaths::ConvertRelativePathToFull(Plugin.GetBaseDir());
 
-		const FString PluginShaderDir = FPaths::Combine(PluginBaseDir, TEXT("Shaders"));
-		AddShaderSourceDirectoryMapping(TEXT("/Plugin/Voxel"), PluginShaderDir);
-
-	}
+	const FString PluginShaderDir = FPaths::Combine(PluginBaseDir, TEXT("Shaders"));
+	AddShaderSourceDirectoryMapping(TEXT("/Plugin/Voxel"), PluginShaderDir);
 }
 
 void FVoxelModule::ShutdownModule()

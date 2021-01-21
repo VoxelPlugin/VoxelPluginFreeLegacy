@@ -15,8 +15,7 @@
 #include "VoxelRender/VoxelChunkMesh.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
-#include "VoxelFoliage/VoxelFoliageInterface.h"
-#include "VoxelFoliage/VoxelHierarchicalInstancedStaticMeshComponent.h"
+#include "VoxelFoliageInterface.h"
 #include "VoxelEvents/VoxelEventManager.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
 #include "VoxelAssets/VoxelHeightmapAssetData.h"
@@ -402,55 +401,12 @@ void UVoxelBlueprintLibrary::RecomputeComponentPositions(AVoxelWorld* World)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorsInArea(
-	TArray<AVoxelFoliageActor*>& OutActors, 
-	AVoxelWorld* World,
-	FVoxelIntBox Bounds, 
-	EVoxelSpawnerActorSpawnType SpawnType)
-{
-	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
-}
-
-AVoxelFoliageActor* UVoxelBlueprintLibrary::SpawnVoxelSpawnerActorByInstanceIndex(
-	AVoxelWorld* World, 
-	UVoxelHierarchicalInstancedStaticMeshComponent* Component, 
-	int32 InstanceIndex)
-{
-	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
-	return nullptr;
-}
-
-void UVoxelBlueprintLibrary::AddInstances(
-	AVoxelWorld* World,
-	UStaticMesh* Mesh,
-	const TArray<FTransform>& Transforms,
-	FVoxelInstancedMeshKey MeshKey,
-	FVector FloatingDetectionOffset)
-{
-	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
 void UVoxelBlueprintLibrary::RegenerateSpawners(AVoxelWorld* World, FVoxelIntBox Bounds)
 {
 	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }
 
 void UVoxelBlueprintLibrary::MarkSpawnersDirty(AVoxelWorld* World, FVoxelIntBox Bounds)
-{
-	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
-}
-
-FVoxelFoliageSave UVoxelBlueprintLibrary::GetSpawnersSave(AVoxelWorld* World)
-{
-	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
-	return {};
-}
-
-void UVoxelBlueprintLibrary::LoadFromSpawnersSave(AVoxelWorld* World, const FVoxelFoliageSave& Save)
 {
 	FVoxelMessages::Info(FUNCTION_ERROR("Voxel Spawners require Voxel Plugin Pro"));
 }

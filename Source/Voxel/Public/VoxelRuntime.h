@@ -11,6 +11,7 @@
 #include "VoxelGenerators/VoxelGeneratorPicker.h"
 
 enum class EVoxelPlayType;
+enum class EVoxelSubsystemFlags;
 enum class EVoxelUVConfig : uint8;
 enum class EVoxelTaskType : uint8;
 enum class EVoxelRenderType : uint8;
@@ -30,7 +31,7 @@ class AVoxelRuntimeActor;
 
 class UMaterialInterface;
 class UVoxelFoliageBiomeType;
-class UVoxelFoliageCollection;
+class UVoxelFoliageCollectionBase;
 class UVoxelPlaceableItemManager;
 class UVoxelMultiplayerInterface;
 class UVoxelProceduralMeshComponent;
@@ -137,7 +138,7 @@ public:
 	float BoundsExtension;
 	
 public:
-	TArray<TWeakObjectPtr<UVoxelFoliageCollection>> FoliageCollections;
+	TArray<TWeakObjectPtr<UVoxelFoliageCollectionBase>> FoliageCollections;
 	EVoxelFoliageWorldType FoliageWorldType;
 	bool bIsFourWayBlend;
 
@@ -271,6 +272,7 @@ public:
 	~FVoxelRuntime();
 
 	void Destroy();
+	void RecreateSubsystems(EVoxelSubsystemFlags Flags, const FVoxelRuntimeSettings& Settings);
 	
 	template<typename T>
 	TVoxelSharedPtr<T> GetSubsystem() const

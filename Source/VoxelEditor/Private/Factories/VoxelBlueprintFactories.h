@@ -8,8 +8,8 @@
 #include "KismetCompilerModule.h"
 #include "Modules/ModuleManager.h"
 #include "Kismet2/SClassPickerDialog.h"
-#include "VoxelFoliage/VoxelFoliage.h"
-#include "VoxelFoliage/VoxelFoliageActor.h"
+#include "VoxelFoliage.h"
+#include "VoxelFoliageActor.h"
 #include "VoxelBlueprintFactories.generated.h"
 
 UCLASS(Abstract)

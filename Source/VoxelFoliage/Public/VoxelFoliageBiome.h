@@ -3,15 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelFoliageInterface.h"
+#include "VoxelFoliageSpawnSettings.h"
 #include "VoxelGenerators/VoxelGeneratorPicker.h"
 #include "VoxelGenerators/VoxelGeneratorOutputPicker.h"
-#include "VoxelFoliage/VoxelFoliageSpawnSettings.h"
 #include "VoxelFoliageBiome.generated.h"
 
 class UVoxelFoliage;
 
 USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelFoliageBiomeTypeEntry
+struct VOXELFOLIAGE_API FVoxelFoliageBiomeTypeEntry
 {
 	GENERATED_BODY()
 	
@@ -27,7 +28,7 @@ struct VOXEL_API FVoxelFoliageBiomeTypeEntry
 };
 
 UCLASS(BlueprintType)
-class VOXEL_API UVoxelFoliageBiomeType : public UObject
+class VOXELFOLIAGE_API UVoxelFoliageBiomeType : public UObject
 {
 	GENERATED_BODY()
 
@@ -54,7 +55,7 @@ public:
 };
 
 USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelFoliageBiomeEntry
+struct VOXELFOLIAGE_API FVoxelFoliageBiomeEntry
 {
 	GENERATED_BODY()
 	
@@ -66,7 +67,7 @@ struct VOXEL_API FVoxelFoliageBiomeEntry
 };
 
 UCLASS(BlueprintType)
-class VOXEL_API UVoxelFoliageBiome : public UObject
+class VOXELFOLIAGE_API UVoxelFoliageBiome : public UVoxelFoliageBiomeBase
 {
 	GENERATED_BODY()
 

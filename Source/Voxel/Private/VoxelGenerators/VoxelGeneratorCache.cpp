@@ -6,7 +6,7 @@
 #include "VoxelGenerators/VoxelGeneratorInstanceWrapper.h"
 #include "VoxelMessages.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
-#include "VoxelFoliage/VoxelFoliageInterface.h"
+#include "VoxelFoliageInterface.h"
 
 DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelGeneratorCacheSubsystemProxy);
 

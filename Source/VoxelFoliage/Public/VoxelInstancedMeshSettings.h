@@ -8,14 +8,14 @@
 #include "Engine/StaticMesh.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "Components/PrimitiveComponent.h"
-#include "VoxelFoliage/VoxelFoliageActor.h"
+#include "VoxelFoliageActor.h"
 #include "VoxelInstancedMeshSettings.generated.h"
 
 class UStaticMesh;
 class UVoxelHierarchicalInstancedStaticMeshComponent;
 
 USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelInstancedMeshSettings
+struct VOXELFOLIAGE_API FVoxelInstancedMeshSettings
 {
 	GENERATED_BODY()
 
@@ -135,5 +135,5 @@ struct FVoxelInstancedMeshWeakKey
 	}
 };
 
-VOXEL_API bool operator==(const FVoxelInstancedMeshWeakKey& A, const FVoxelInstancedMeshWeakKey& B);
-VOXEL_API uint32 GetTypeHash(const FVoxelInstancedMeshWeakKey& Settings);
+VOXELFOLIAGE_API bool operator==(const FVoxelInstancedMeshWeakKey& A, const FVoxelInstancedMeshWeakKey& B);
+VOXELFOLIAGE_API uint32 GetTypeHash(const FVoxelInstancedMeshWeakKey& Settings);

@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelFoliage/VoxelFoliageDensity.h"
-#include "VoxelFoliage/VoxelFoliageSpawnSettings.h"
-#include "VoxelFoliage/VoxelInstancedMeshSettings.h"
+#include "VoxelFoliageDensity.h"
+#include "VoxelFoliageSpawnSettings.h"
+#include "VoxelInstancedMeshSettings.h"
 #include "VoxelFoliage.generated.h"
 
 UENUM(BlueprintType)
@@ -28,7 +28,7 @@ enum class EVoxelFoliageScaling : uint8
 };
 
 USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelFoliageScale
+struct VOXELFOLIAGE_API FVoxelFoliageScale
 {
 	GENERATED_BODY()
 
@@ -49,7 +49,7 @@ struct VOXEL_API FVoxelFoliageScale
 };
 
 USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelFoliageMesh
+struct VOXELFOLIAGE_API FVoxelFoliageMesh
 {
 	GENERATED_BODY()
 
@@ -66,7 +66,7 @@ struct VOXEL_API FVoxelFoliageMesh
 };
 
 UCLASS(Blueprintable)
-class VOXEL_API UVoxelFoliage : public UObject
+class VOXELFOLIAGE_API UVoxelFoliage : public UObject
 {
 	GENERATED_BODY()
 

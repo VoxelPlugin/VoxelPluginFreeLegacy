@@ -101,6 +101,14 @@ class VOXEL_API UVoxelLODSubsystemProxy : public UVoxelDynamicSubsystemProxy
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+enum class EVoxelSubsystemFlags
+{
+	None = 0,
+	RecreateRender  = 1 << 0,
+	RecreateFoliage = 1 << 1,
+};
+ENUM_CLASS_FLAGS(EVoxelSubsystemFlags);
+
 // Subsystems will always be deleted on the game thread
 class VOXEL_API IVoxelSubsystem : public TVoxelSharedFromThis<IVoxelSubsystem>
 {
@@ -146,6 +154,7 @@ protected:
 	virtual void PreDestructor();
 	
 	virtual UClass* GetProxyClass() const = 0;
+	virtual EVoxelSubsystemFlags GetFlags() const { return EVoxelSubsystemFlags::None; }
 	//~ End IVoxelSubsystem Interface
 
 private:
