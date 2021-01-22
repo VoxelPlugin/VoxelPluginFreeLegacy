@@ -34,6 +34,7 @@ class UVoxelFoliageBiomeType;
 class UVoxelFoliageCollectionBase;
 class UVoxelPlaceableItemManager;
 class UVoxelMultiplayerInterface;
+class UVoxelWorldRootComponent;
 class UVoxelProceduralMeshComponent;
 class UVoxelMaterialCollectionBase;
 
@@ -51,8 +52,10 @@ public:
 	TWeakObjectPtr<UWorld> World;
 	// Actor components outer
 	TWeakObjectPtr<AActor> ComponentsOwner;
-	// The primitive component to copy properties from & to attach scene components to
-	TWeakObjectPtr<UPrimitiveComponent> RootComponent;
+	// The scene component used to attach scene components to
+	TWeakObjectPtr<USceneComponent> AttachRootComponent;
+	// The primitive component to copy properties from & attach physics primitives to
+	TWeakObjectPtr<UVoxelWorldRootComponent> VoxelRootComponent;
 	// Use the most abstract one
 	TWeakObjectPtr<const AVoxelRuntimeActor> Runtime;
 	TWeakObjectPtr<const AVoxelWorld> VoxelWorld;
@@ -266,13 +269,13 @@ public:
 	const TVoxelSharedRef<FVoxelRuntimeData> RuntimeData = MakeVoxelShared<FVoxelRuntimeData>();
 	const TVoxelSharedRef<FVoxelRuntimeDynamicSettings> DynamicSettings = MakeVoxelShared<FVoxelRuntimeDynamicSettings>();
 
-	static TVoxelSharedRef<FVoxelRuntime> Create(const FVoxelRuntimeSettings& Settings);
+	static TVoxelSharedRef<FVoxelRuntime> Create(FVoxelRuntimeSettings Settings);
 	
 	FVoxelRuntime() = default;
 	~FVoxelRuntime();
 
 	void Destroy();
-	void RecreateSubsystems(EVoxelSubsystemFlags Flags, const FVoxelRuntimeSettings& Settings);
+	void RecreateSubsystems(EVoxelSubsystemFlags Flags, FVoxelRuntimeSettings Settings);
 	
 	template<typename T>
 	TVoxelSharedPtr<T> GetSubsystem() const
@@ -294,8 +297,9 @@ public:
 	}
 	
 	template<typename T>
-	void RecreateSubsystem(const FVoxelRuntimeSettings& Settings)
+	void RecreateSubsystem(FVoxelRuntimeSettings Settings)
 	{
+		Settings.Fixup();
 		RecreateSubsystem(GetSubsystemImpl<T>(), Settings);
 	}
 

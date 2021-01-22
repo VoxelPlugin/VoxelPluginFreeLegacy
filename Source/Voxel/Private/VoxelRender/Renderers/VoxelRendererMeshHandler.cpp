@@ -5,6 +5,7 @@
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
+#include "VoxelWorldRootComponent.h"
 
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Pool"), STAT_VoxelProcMeshPool, STATGROUP_VoxelCounters);
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Frozen Pool"), STAT_VoxelProcMeshFrozenPool, STATGROUP_VoxelCounters);
@@ -245,10 +246,10 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 	const FVoxelRuntimeSettings& Settings = Renderer.Settings;
 
 	AActor* ComponentsOwner = Settings.ComponentsOwner.Get();
-	UPrimitiveComponent* RootComponent = Settings.RootComponent.Get();
+	UVoxelWorldRootComponent* VoxelRootComponent = Settings.VoxelRootComponent.Get();
 	
 	if (!ensureVoxelSlow(ComponentsOwner) ||
-		!ensureVoxelSlow(RootComponent))
+		!ensureVoxelSlow(VoxelRootComponent))
 	{
 		return nullptr;
 	}
@@ -269,14 +270,14 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 			
 			NewMesh->bCastFarShadow = Settings.bCastFarShadow;
 
-			NewMesh->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&RootComponent->BodyInstance);
-			NewMesh->BodyInstance.SetObjectType(RootComponent->BodyInstance.GetObjectType());
-			NewMesh->SetGenerateOverlapEvents(RootComponent->GetGenerateOverlapEvents());
-			NewMesh->RuntimeVirtualTextures = RootComponent->RuntimeVirtualTextures;
-			NewMesh->VirtualTextureLodBias = RootComponent->VirtualTextureLodBias;
-			NewMesh->VirtualTextureCullMips = RootComponent->VirtualTextureCullMips;
-			NewMesh->VirtualTextureMinCoverage = RootComponent->VirtualTextureMinCoverage;
-			NewMesh->VirtualTextureRenderPassType = RootComponent->VirtualTextureRenderPassType;
+			NewMesh->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&VoxelRootComponent->BodyInstance);
+			NewMesh->BodyInstance.SetObjectType(VoxelRootComponent->BodyInstance.GetObjectType());
+			NewMesh->SetGenerateOverlapEvents(VoxelRootComponent->GetGenerateOverlapEvents());
+			NewMesh->RuntimeVirtualTextures = VoxelRootComponent->RuntimeVirtualTextures;
+			NewMesh->VirtualTextureLodBias = VoxelRootComponent->VirtualTextureLodBias;
+			NewMesh->VirtualTextureCullMips = VoxelRootComponent->VirtualTextureCullMips;
+			NewMesh->VirtualTextureMinCoverage = VoxelRootComponent->VirtualTextureMinCoverage;
+			NewMesh->VirtualTextureRenderPassType = VoxelRootComponent->VirtualTextureRenderPassType;
 
 			NewMesh->RegisterComponent();
 		}
