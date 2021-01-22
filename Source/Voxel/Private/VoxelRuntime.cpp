@@ -7,6 +7,7 @@
 #include "VoxelMessages.h"
 #include "VoxelPriorityHandler.h"
 #include "VoxelFoliageInterface.h"
+#include "VoxelWorldRootComponent.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
@@ -28,8 +29,10 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	Owner = const_cast<AVoxelRuntimeActor*>(&InRuntime);
 	World = InRuntime.GetWorld();
 	ComponentsOwner = const_cast<AVoxelRuntimeActor*>(&InRuntime);
-	RootComponent = Cast<UPrimitiveComponent>(InRuntime.GetRootComponent());
-
+	AttachRootComponent = InRuntime.GetRootComponent();
+	VoxelRootComponent = Cast<UVoxelWorldRootComponent>(InRuntime.GetRootComponent());
+	ensure(InRuntime.HasAnyFlags(RF_ClassDefaultObject) || (AttachRootComponent.IsValid() && VoxelRootComponent.IsValid()));
+	
 	Runtime = &InRuntime;
 	VoxelWorld = Cast<const AVoxelWorld>(&InRuntime);
 
@@ -201,7 +204,8 @@ void FVoxelRuntimeSettings::Fixup()
 	{
 		bGreedyCubicMesher = false;
 	}
-	if (!bGreedyCubicMesher)
+	if (!bGreedyCubicMesher || 
+		CollisionTraceFlag == CTF_UseComplexAsSimple) // Not needed when using only complex
 	{
 		bSimpleCubicCollision = false;
 	}
@@ -259,7 +263,7 @@ FVoxelGeneratorInit FVoxelRuntimeSettings::GetGeneratorInit() const
 
 void FVoxelRuntimeSettings::SetupComponent(USceneComponent& Component) const
 {
-	Component.SetupAttachment(RootComponent.Get(), NAME_None);
+	Component.SetupAttachment(AttachRootComponent.Get(), NAME_None);
 	
 	Component.SetUsingAbsoluteLocation(bUseAbsoluteTransforms);
 	Component.SetUsingAbsoluteRotation(bUseAbsoluteTransforms);
@@ -425,10 +429,12 @@ FVoxelRuntimeData::FVoxelRuntimeData()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-TVoxelSharedRef<FVoxelRuntime> FVoxelRuntime::Create(const FVoxelRuntimeSettings& Settings)
+TVoxelSharedRef<FVoxelRuntime> FVoxelRuntime::Create(FVoxelRuntimeSettings Settings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
+
+	Settings.Fixup();
 	
 	const auto Runtime = FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRuntime>();
 	{
@@ -509,11 +515,13 @@ void FVoxelRuntime::Destroy()
 	}
 }
 
-void FVoxelRuntime::RecreateSubsystems(EVoxelSubsystemFlags Flags, const FVoxelRuntimeSettings& Settings)
+void FVoxelRuntime::RecreateSubsystems(EVoxelSubsystemFlags Flags, FVoxelRuntimeSettings Settings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(IsInGameThread());
 	// No need to lock anything when on the game thread
+	
+	Settings.Fixup();
 
 	const auto AllSubsystemsCopy = AllSubsystems;
 	for (const TVoxelSharedPtr<IVoxelSubsystem>& Subsystem : AllSubsystemsCopy)

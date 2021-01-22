@@ -11,6 +11,7 @@
 #include "Components/ModelComponent.h"
 #include "VoxelProceduralMeshComponent.generated.h"
 
+class UVoxelWorldRootComponent;
 class IVoxelRenderer;
 class FVoxelRuntimeData;
 struct FKConvexElem;
@@ -75,6 +76,8 @@ private:
 	bool bInit = false;
 	// Used for convex collisions
 	FVoxelProcMeshComponentId UniqueId;
+	// Used for collisions
+	TWeakObjectPtr<UVoxelWorldRootComponent> VoxelRootComponent;
 	// Used to show LOD color in the mesh LOD visualization & for convex collision cooking
 	int32 LOD = 0;
 	// For debug

@@ -471,6 +471,7 @@ void AVoxelWorld::OnConstruction(const FTransform& Transform)
 #if WITH_EDITOR
 	if (bIsToggled &&
 		!IsCreated() &&
+		!HasAnyFlags(RF_ClassDefaultObject) &&
 		!GetDefault<UVoxelSettings>()->bDisableAutoPreview &&
 		(GetWorld()->WorldType == EWorldType::EditorPreview ||
 			GetWorld()->WorldType == EWorldType::Editor ||

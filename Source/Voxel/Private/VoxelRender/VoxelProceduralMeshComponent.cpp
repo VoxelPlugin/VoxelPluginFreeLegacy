@@ -111,6 +111,7 @@ void UVoxelProceduralMeshComponent::Init(
 	
 	bInit = true;
 	UniqueId = FVoxelProcMeshComponentId::New();
+	VoxelRootComponent = Renderer.Settings.VoxelRootComponent;
 	LOD = InDebugLOD;
 	DebugChunkId = InDebugChunkId;
 	PriorityHandler = InPriorityHandler;
@@ -508,7 +509,10 @@ FPrimitiveSceneProxy* UVoxelProceduralMeshComponent::CreateSceneProxy()
 
 	for (auto& Section : ProcMeshSections)
 	{
-		if (Section.Settings.bSectionVisible || FVoxelDebugManager::ShowCollisionAndNavmeshDebug())
+		if (Section.Settings.bSectionVisible || 
+			FVoxelDebugManager::ShowCollisionAndNavmeshDebug() ||
+			// For debug collision views
+			(!UE_BUILD_SHIPPING && !UE_BUILD_TEST))
 		{
 			return new FVoxelProceduralMeshSceneProxy(this);
 		}
@@ -866,12 +870,8 @@ void UVoxelProceduralMeshComponent::UpdateSimpleCollision(FVoxelSimpleCollisionD
 		ensure(SimpleCollisionData.ConvexElems.Num() == 0);
 		return;
 	}
-
-	auto* Owner = GetOwner();
-	ensure(Owner || bCanFail);
-	if (!Owner) return;
 	
-	auto* Root = Cast<UVoxelWorldRootComponent>(Owner->GetRootComponent());
+	auto* Root = VoxelRootComponent.Get();
 	ensure(Root || bCanFail);
 	if (!Root) return;
 

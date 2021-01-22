@@ -397,21 +397,28 @@ void AVoxelAssetActor::CreatePreview()
 		MergeMode = RealMergeMode;
 	}
 
+	// Needed for some reason to place stuff
+	PrimitiveComponent->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&PreviewWorld->GetWorldRoot().BodyInstance);
+	PrimitiveComponent->BodyInstance.SetObjectType(PreviewWorld->GetWorldRoot().BodyInstance.GetObjectType());
+
 	FVoxelRuntimeSettings Settings;
 	Settings.SetFromRuntime(*PreviewWorld);
 	Settings.ConfigurePreview();
 	Settings.Owner = this;
 	Settings.ComponentsOwner = this;
-	Settings.RootComponent = PrimitiveComponent;
+	Settings.AttachRootComponent = PrimitiveComponent;
 	Settings.DataOverride = Data;
 	Settings.bUseCustomWorldBounds = true;
 	Settings.CustomWorldBounds = Bounds;
 	Settings.bDisableDebugManager = true;
+
 	// Aggressive merge settings
 	Settings.bMergeChunks = true;
 	Settings.ChunksClustersSize = 256;
+
 	// We do want collision to be able to place items on top of asset actors, but only complex one is needed
 	Settings.CollisionTraceFlag = CTF_UseComplexAsSimple;
+	
 	Settings.LODSubsystem = FVoxelFixedResolutionLODManager::StaticClass();
 	
 	Runtime = FVoxelRuntime::Create(Settings);
