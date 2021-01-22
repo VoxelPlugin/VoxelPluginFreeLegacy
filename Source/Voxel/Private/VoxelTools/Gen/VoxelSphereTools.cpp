@@ -1135,13 +1135,13 @@ void UVoxelSphereTools::RevertSphereToGeneratorAsync(
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-void UVoxelSphereTools::RemoveSphereThresholded(
+void UVoxelSphereTools::RemoveSphereWithDurability(
 	TArray<FModifiedVoxelValue>& ModifiedValues,
 	FVoxelIntBox& EditedBounds,
 	AVoxelWorld* VoxelWorld,
 	const FVector& Position,
 	float Radius,
-	int32 Threshold,
+	FVoxelInt32Interval Interval,
 	bool bMultiThreaded,
 	bool bRecordModifiedValues,
 	bool bConvertToVoxelSpace,
@@ -1160,10 +1160,10 @@ void UVoxelSphereTools::RemoveSphereThresholded(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL(Value, FVoxelSphereToolsImpl::RemoveSphereThresholded(Data, RealPosition, RealRadius, Threshold));
+	GENERATED_TOOL_CALL(Value, FVoxelSphereToolsImpl::RemoveSphereWithDurability(Data, RealPosition, RealRadius, Interval));
 }
 
-void UVoxelSphereTools::RemoveSphereThresholdedAsync(
+void UVoxelSphereTools::RemoveSphereWithDurabilityAsync(
 	UObject* WorldContextObject,
 	FLatentActionInfo LatentInfo,
 	TArray<FModifiedVoxelValue>& ModifiedValues,
@@ -1171,7 +1171,7 @@ void UVoxelSphereTools::RemoveSphereThresholdedAsync(
 	AVoxelWorld* VoxelWorld,
 	const FVector& Position,
 	float Radius,
-	int32 Threshold,
+	FVoxelInt32Interval Interval,
 	bool bMultiThreaded,
 	bool bRecordModifiedValues,
 	bool bConvertToVoxelSpace,
@@ -1191,14 +1191,14 @@ void UVoxelSphereTools::RemoveSphereThresholdedAsync(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_ASYNC(Value, FVoxelSphereToolsImpl::RemoveSphereThresholded(Data, RealPosition, RealRadius, Threshold));
+	GENERATED_TOOL_CALL_ASYNC(Value, FVoxelSphereToolsImpl::RemoveSphereWithDurability(Data, RealPosition, RealRadius, Interval));
 }
 
-void UVoxelSphereTools::RemoveSphereThresholded(
+void UVoxelSphereTools::RemoveSphereWithDurability(
 	AVoxelWorld* VoxelWorld,
 	const FVector& Position,
 	float Radius,
-	int32 Threshold,
+	FVoxelInt32Interval Interval,
 	TArray<FModifiedVoxelValue>* OutModifiedValues,
 	FVoxelIntBox* OutEditedBounds,
 	bool bMultiThreaded,
@@ -1218,14 +1218,14 @@ void UVoxelSphereTools::RemoveSphereThresholded(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_CPP(Value, FVoxelSphereToolsImpl::RemoveSphereThresholded(Data, RealPosition, RealRadius, Threshold));
+	GENERATED_TOOL_CALL_CPP(Value, FVoxelSphereToolsImpl::RemoveSphereWithDurability(Data, RealPosition, RealRadius, Interval));
 }
 
-void UVoxelSphereTools::RemoveSphereThresholdedAsync(
+void UVoxelSphereTools::RemoveSphereWithDurabilityAsync(
 	AVoxelWorld* VoxelWorld,
 	const FVector& Position,
 	float Radius,
-	int32 Threshold,
+	FVoxelInt32Interval Interval,
 	const FOnVoxelToolComplete_WithModifiedValues& Callback,
 	FVoxelIntBox* OutEditedBounds,
 	bool bMultiThreaded,
@@ -1246,5 +1246,5 @@ void UVoxelSphereTools::RemoveSphereThresholdedAsync(
 	
 	const FVoxelIntBox Bounds = FVoxelSphereToolsImpl::GetBounds(RealPosition, RealRadius);
 	
-	GENERATED_TOOL_CALL_ASYNC_CPP(Value, FVoxelSphereToolsImpl::RemoveSphereThresholded(Data, RealPosition, RealRadius, Threshold));
+	GENERATED_TOOL_CALL_ASYNC_CPP(Value, FVoxelSphereToolsImpl::RemoveSphereWithDurability(Data, RealPosition, RealRadius, Interval));
 }

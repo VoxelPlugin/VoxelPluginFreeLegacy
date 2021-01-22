@@ -169,6 +169,7 @@ protected:
 
 // Voxel Invokers are used to configure the voxel world LOD, collisions and navmesh
 // Will find the camera and use it to set its position
+// This is probably NOT what you want: use a UVoxelSimpleInvoker instead!
 UCLASS(ClassGroup = Voxel, meta = (BlueprintSpawnableComponent))
 class VOXEL_API UVoxelInvokerAutoCameraComponent : public UVoxelSimpleInvokerComponent
 {

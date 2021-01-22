@@ -141,6 +141,8 @@ void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 				Properties.Pin()->ForceRefresh();
 			}
 		});
+		
+		GetRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, bUseMaterialCollection))->SetOnPropertyValueChanged(RefreshDelegate);
 		GetRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, MaterialConfig))->SetOnPropertyValueChanged(RefreshDelegate);
 		GetRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, UVConfig))->SetOnPropertyValueChanged(RefreshDelegate);
 		GetRuntimeProperty(GET_MEMBER_NAME_STATIC(AVoxelRuntimeActor, RGBHardness))->SetOnPropertyValueChanged(RefreshDelegate);

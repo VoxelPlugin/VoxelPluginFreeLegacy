@@ -821,13 +821,13 @@ void FVoxelSphereToolsImpl::RevertSphereToGenerator(TData& InData, const FVoxelV
 }
 
 template<typename TData>
-void FVoxelSphereToolsImpl::RemoveSphereThresholded(TData& Data, const FVoxelVector& Position, float Radius, int32 Threshold)
+void FVoxelSphereToolsImpl::RemoveSphereWithDurability(TData& Data, const FVoxelVector& Position, float Radius, FVoxelInt32Interval Interval)
 {
 	VOXEL_SPHERE_TOOL_IMPL();
 
 	Data.template Set<FVoxelValue, const FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, const FVoxelMaterial& Material)
 	{
-		if (Material.GetSingleIndex() > Threshold)
+		if (!Interval.Contains(Material.GetSingleIndex()))
 		{
 			return;
 		}
