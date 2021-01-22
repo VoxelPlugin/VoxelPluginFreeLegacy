@@ -205,12 +205,13 @@ EReimportResult::Type UVoxelDataAssetFromMagicaVoxFactory::Reimport(UObject* Obj
 		return EReimportResult::Failed;
 	}
 
-	const FVoxelDataAssetImportSettings_MagicaVox& ImportSettings = Asset->ImportSettings_MagicaVox;
+	FVoxelDataAssetImportSettings_MagicaVox& ImportSettings = Asset->ImportSettings_MagicaVox;
 	bUsePalette = ImportSettings.bUsePalette;
 	ConfigureProperties();
+	ImportSettings.bUsePalette = bUsePalette;
 		
 	const auto Data = MakeVoxelShared<FVoxelDataAssetData>();
-	if (!Scene->ImportModel(*Data, ImportSettings.ModelIndex, bUsePalette))
+	if (!Scene->ImportModel(*Data, ImportSettings.ModelIndex, ImportSettings.bUsePalette))
 	{
 		return EReimportResult::Failed;
 	}

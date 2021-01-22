@@ -6,6 +6,7 @@
 #include "Templates/SubclassOf.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
+#include "VoxelInterval.h"
 #include "VoxelIntBox.h"
 #include "VoxelPaintMaterial.h"
 #include "VoxelTexture.h"
@@ -746,6 +747,23 @@ public:
 	static bool IsVoxelColorTextureValid(FVoxelFloatTexture Texture)
 	{
 		return FMath::Max(Texture->GetSizeX(), Texture->GetSizeY()) > 1;
+	}
+
+public:
+	/**
+	 * FVoxelInterval helpers
+	 */
+	
+public:
+	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Interval", meta = (DisplayName = "Contains"))
+	static bool IntervalContains_Int32(FVoxelInt32Interval Interval, int32 Value)
+	{
+		return Interval.Contains(Value);
+	}
+	UFUNCTION(BlueprintPure, Category = "Voxel|Voxel Interval", meta = (DisplayName = "Contains"))
+	static bool IntervalContains_Float(FVoxelFloatInterval Interval, float Value)
+	{
+		return Interval.Contains(Value);
 	}
 	
 public:
