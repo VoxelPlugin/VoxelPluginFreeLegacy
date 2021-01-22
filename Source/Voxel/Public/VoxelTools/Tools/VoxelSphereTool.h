@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelInterval.h"
 #include "VoxelTools/Tools/VoxelSphereToolBase.h"
 #include "VoxelSphereTool.generated.h"
 
@@ -20,13 +21,13 @@ public:
 	bool bSculpt = true;
 
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (InlineEditConditionToggle))
-	bool bEnableIndexThreshold = false;
+	bool bEnableIndexInterval = false;
 
-	// Will only edit voxels with an index lower than this
+	// Will only edit voxels with an index contained in this interval
 	// Only works in the single index edit mode, and only when removing voxels
 	// Mainly intended for the cubic mode
-	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bEnableIndexThreshold"))
-	int32 IndexThreshold = 0;
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bEnableIndexInterval"))
+	FVoxelInt32Interval IndexInterval = { 0, 10 };
 	
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite)
 	bool bPaint = false;

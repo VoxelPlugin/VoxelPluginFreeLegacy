@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
+#include "VoxelInterval.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"

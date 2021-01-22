@@ -349,7 +349,7 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 				}
 
 				PreviewVoxelWorld->SingleIndexPreviewMaterials.SetNum(256);
-				for (int32 Index = 0; Index < 255; Index++)
+				for (int32 Index = 0; Index < 256; Index++)
 				{
 					UMaterialInstanceDynamic*& Material = PreviewVoxelWorld->SingleIndexPreviewMaterials[Index];
 					if (!Material)
@@ -395,15 +395,15 @@ void FVoxelPaintMaterial_MaterialCollectionChannelCustomization::CustomizeHeader
 		{
 			FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 
-			FSetARFilterDelegate FilterDelegate;
-
 			FAssetPickerConfig PickerConfig;
 			PickerConfig.SelectionMode = ESelectionMode::Single;
 			PickerConfig.bAllowDragging = false;
 			PickerConfig.bAllowNullSelection = false;
 			PickerConfig.InitialAssetViewType = EAssetViewType::Tile;
 			PickerConfig.InitialAssetSelection = SelectedMaterial->Material.Get();
-			PickerConfig.Filter.ObjectPaths.Add("FAKE"); // Remove all real results, we add our own assets below
+			// Remove all real results, we add our own assets below
+			PickerConfig.Filter.ObjectPaths.Add("FAKE");
+			PickerConfig.Filter.ClassNames.Add("FAKE");
 			PickerConfig.OnGetCustomSourceAssets = FOnGetCustomSourceAssets::CreateLambda([=](const FARFilter& SourceFilter, TArray<FAssetData>& AddedAssets)
 			{
 				for (auto& It : *AssetsToMaterials)

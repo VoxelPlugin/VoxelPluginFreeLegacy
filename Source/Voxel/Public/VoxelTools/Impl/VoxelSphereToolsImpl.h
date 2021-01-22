@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelInterval.h"
 #include "VoxelUtilities/VoxelLambdaUtilities.h"
 #include "VoxelTools/Impl/VoxelToolsBaseImpl.h"
 
@@ -319,18 +320,18 @@ public:
 		bool bRevertMaterials);
 	
 	/**
-	 * Removes all the voxels in a sphere, if their single index is lower or equal to Threshold
+	 * Removes all the voxels in a sphere, if their single index is contained in Internal (Min <= Index <= Max)
 	 * Mainly intended for the cubic mode
 	 * @param	Position				The position of the center @VoxelPosition @GetBounds
 	 * @param	Radius					The radius @VoxelDistance @GetBounds
-	 * @param	Threshold				Only voxels whose material single index is lower or equal to this will be removed. Should be between 0 and 255.
+	 * @param	Interval				Only voxels whose material single index is in this this will be removed (Min <= Index <= Max). Index between 0 and 255.
 	 * @check	IsSingleIndexWorld(VoxelWorld)	RemoveSphereThresholded only works with the single index material config
 	 * @ExportSetValue
 	 */
 	template<typename TData>
-	static void RemoveSphereThresholded(
+	static void RemoveSphereWithDurability(
 		TData& Data,
 		const FVoxelVector& Position,
 		float Radius,
-		int32 Threshold);
+		FVoxelInt32Interval Interval);
 };

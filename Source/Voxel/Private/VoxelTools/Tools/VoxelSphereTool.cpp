@@ -64,13 +64,13 @@ FVoxelIntBoxWithValidity UVoxelSphereTool::DoEdit()
 	{
 		if (GetTickData().IsAlternativeMode())
 		{
-			if (bEnableIndexThreshold && World.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
+			if (bEnableIndexInterval && World.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
 			{
-				FVoxelSphereToolsImpl::RemoveSphereThresholded(
+				FVoxelSphereToolsImpl::RemoveSphereWithDurability(
 					DataImpl,
 					VoxelPosition,
 					VoxelRadius,
-					IndexThreshold);
+					IndexInterval);
 			}
 			else
 			{
