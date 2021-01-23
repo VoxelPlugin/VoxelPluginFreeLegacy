@@ -105,6 +105,7 @@ public:
 	EVoxelRGBHardness RGBHardness;
 	TMap<FString, float> MaterialsHardness;
 	bool bHardColorTransitions;
+	bool bSplitSingleIndexTriangles;
 	TArray<uint8> HolesMaterials;
 	TMap<uint8, FVoxelMeshConfig> MaterialsMeshConfigs;
 	bool bHalfPrecisionCoordinates;

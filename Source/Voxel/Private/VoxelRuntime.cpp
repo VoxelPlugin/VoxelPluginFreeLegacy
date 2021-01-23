@@ -74,6 +74,7 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(RGBHardness);
 	SET(MaterialsHardness);
 	SET(bHardColorTransitions);
+	SET(bSplitSingleIndexTriangles);
 	SET(HolesMaterials);
 	SET(MaterialsMeshConfigs);
 	SET(bHalfPrecisionCoordinates);

@@ -223,6 +223,179 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 			const uint8 MaterialIndexB = VertexB.Material.GetSingleIndex();
 			const uint8 MaterialIndexC = VertexC.Material.GetSingleIndex();
 
+			if (Settings.bSplitSingleIndexTriangles && (MaterialIndexA != MaterialIndexB || MaterialIndexA != MaterialIndexC))
+			{
+				// Split the triangles, to render all indices
+				
+				const auto CreateVertex = [](const FVoxelMesherVertex& VertexX, const FVoxelMesherVertex& VertexY)
+				{
+					FVoxelMesherVertex Result;
+					Result.Position = (VertexX.Position + VertexY.Position) / 2;
+					Result.Normal = (VertexX.Normal + VertexY.Normal).GetSafeNormal();
+					Result.Tangent.bFlipTangentY = VertexX.Tangent.bFlipTangentY;
+					Result.Tangent.TangentX = (VertexX.Tangent.TangentX + VertexY.Tangent.TangentX).GetSafeNormal();
+					Result.TextureCoordinate = (VertexX.TextureCoordinate + VertexY.TextureCoordinate) / 2;
+					return Result;
+				};
+				
+				const auto Case1 = [&](const int32 IndexU, const int32 IndexV, const int32 IndexW)
+				{
+					// Case 1:
+					//      U
+					//    /   \
+					//   X --- Y
+					//  / ____/ \
+					// W ------- V
+					//
+					// Generate U Y X, Y V W, X Y W
+
+					const FVoxelMesherVertex& VertexU = Vertices[IndexU];
+					const FVoxelMesherVertex& VertexV = Vertices[IndexV];
+					const FVoxelMesherVertex& VertexW = Vertices[IndexW];
+
+					FVoxelMesherVertex VertexX = CreateVertex(VertexU, VertexW);
+					FVoxelMesherVertex VertexY = CreateVertex(VertexU, VertexV);
+
+					// U Y X
+					{
+						VertexX.Material = VertexU.Material;
+						VertexY.Material = VertexU.Material;
+
+						const int32 IndexX = Vertices.Add(VertexX);
+						const int32 IndexY = Vertices.Add(VertexY);
+
+						// Reuse current triangle indices
+						Indices[I + 0] = IndexU;
+						Indices[I + 1] = IndexY;
+						Indices[I + 2] = IndexX;
+
+						I -= 3;
+					}
+
+					VertexX.Material = VertexW.Material;
+					VertexY.Material = VertexV.Material;
+
+					const int32 IndexX = Vertices.Add(VertexX);
+					const int32 IndexY = Vertices.Add(VertexY);
+
+					// Y V W
+					Indices.Add(IndexY);
+					Indices.Add(IndexV);
+					Indices.Add(IndexW);
+
+					// X Y W
+					Indices.Add(IndexX);
+					Indices.Add(IndexY);
+					Indices.Add(IndexW);
+				};
+				
+				if (MaterialIndexB == MaterialIndexC)
+				{
+					Case1(IndexA, IndexB, IndexC);
+					continue;
+				}
+				if (MaterialIndexC == MaterialIndexA)
+				{
+					Case1(IndexB, IndexC, IndexA);
+					continue;
+				}
+				if (MaterialIndexA == MaterialIndexB)
+				{
+					Case1(IndexC, IndexA, IndexB);
+					continue;
+				}
+				
+				// Case 2:
+				//      A
+				//    /   \
+				//   X --- Y
+				//  /  \  / \
+				// C -- Z -- B
+				//
+				// Generate A Y X, Y B Z, X Z C, X Y Z
+				
+				FVoxelMesherVertex VertexX = CreateVertex(VertexA, VertexC);
+				FVoxelMesherVertex VertexY = CreateVertex(VertexA, VertexB);
+				FVoxelMesherVertex VertexZ = CreateVertex(VertexB, VertexC);
+				
+				// A Y X
+				{
+					VertexX.Material = VertexA.Material;
+					VertexY.Material = VertexA.Material;
+
+					const int32 IndexX = Vertices.Add(VertexX);
+					const int32 IndexY = Vertices.Add(VertexY);
+
+					// Reuse current triangle indices
+					Indices[I + 0] = IndexA;
+					Indices[I + 1] = IndexY;
+					Indices[I + 2] = IndexX;
+
+					I -= 3;
+				}
+				
+				// Y B Z
+				{
+					VertexY.Material = VertexB.Material;
+					VertexZ.Material = VertexB.Material;
+
+					const int32 IndexY = Vertices.Add(VertexY);
+					const int32 IndexZ = Vertices.Add(VertexZ);
+					
+					Indices.Add(IndexY);
+					Indices.Add(IndexB);
+					Indices.Add(IndexZ);
+				}
+				
+				// X Z C
+				{
+					VertexX.Material = VertexC.Material;
+					VertexZ.Material = VertexC.Material;
+
+					const int32 IndexX = Vertices.Add(VertexX);
+					const int32 IndexZ = Vertices.Add(VertexZ);
+					
+					Indices.Add(IndexX);
+					Indices.Add(IndexZ);
+					Indices.Add(IndexC);
+				}
+				
+				// X Y Z
+				{
+					const uint8 MaterialIndexToUse = FMath::Min3(MaterialIndexA, MaterialIndexB, MaterialIndexC);
+
+					if (MaterialIndexToUse == MaterialIndexA)
+					{
+						VertexX.Material = VertexA.Material;
+						VertexY.Material = VertexA.Material;
+						VertexZ.Material = VertexA.Material;
+					}
+					else if (MaterialIndexToUse == MaterialIndexB)
+					{
+						VertexX.Material = VertexB.Material;
+						VertexY.Material = VertexB.Material;
+						VertexZ.Material = VertexB.Material;
+					}
+					else
+					{
+						checkVoxelSlow(MaterialIndexToUse == MaterialIndexC);
+						VertexX.Material = VertexC.Material;
+						VertexY.Material = VertexC.Material;
+						VertexZ.Material = VertexC.Material;
+					}
+
+					const int32 IndexX = Vertices.Add(VertexX);
+					const int32 IndexY = Vertices.Add(VertexY);
+					const int32 IndexZ = Vertices.Add(VertexZ);
+					
+					Indices.Add(IndexX);
+					Indices.Add(IndexY);
+					Indices.Add(IndexZ);
+				}
+
+				continue;
+			}
+
 			const uint8 MaterialIndexToUse = FMath::Min3(MaterialIndexA, MaterialIndexB, MaterialIndexC);
 			
 			FVoxelMaterialIndices MaterialIndices;
