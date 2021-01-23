@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "IPhysXCooking.h"
-#include "VoxelWorldRootComponent.h"
 #include "VoxelAsyncPhysicsCooker.h"
 
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
@@ -20,7 +19,10 @@ public:
 
 private:
 	//~ Begin IVoxelAsyncPhysicsCooker Interface
-	virtual bool Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage) override;
+	virtual bool Finalize(
+		UBodySetup& BodySetup,
+		TVoxelSharedPtr<FVoxelSimpleCollisionData>& OutSimpleCollisionData,
+		FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage) override;
 	virtual void CookMesh() override;
 	//~ End IVoxelAsyncPhysicsCooker Interface
 	
@@ -34,7 +36,7 @@ private:
 
 	struct FCookResult
 	{
-		FVoxelSimpleCollisionData SimpleCollisionData;
+		TVoxelSharedPtr<FVoxelSimpleCollisionData> SimpleCollisionData;
 
 	    TArray<physx::PxTriangleMesh*> TriangleMeshes;
 		uint64 TriangleMeshesMemoryUsage = 0;

@@ -16,7 +16,10 @@ FVoxelAsyncPhysicsCooker_Chaos::FVoxelAsyncPhysicsCooker_Chaos(UVoxelProceduralM
 {
 }
 
-bool FVoxelAsyncPhysicsCooker_Chaos::Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage)
+bool FVoxelAsyncPhysicsCooker_Chaos::Finalize(
+	UBodySetup& BodySetup,
+	TVoxelSharedPtr<FVoxelSimpleCollisionData>& OutSimpleCollisionData,
+	FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage)
 {
 #if TRACK_CHAOS_GEOMETRY
 	for (auto& TriMesh : TriMeshes)

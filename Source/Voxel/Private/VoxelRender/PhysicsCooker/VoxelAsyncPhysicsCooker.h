@@ -10,6 +10,7 @@
 #include "UObject/WeakObjectPtrTemplates.h"
 
 struct FVoxelProcMeshBuffers;
+struct FVoxelSimpleCollisionData;
 struct FVoxelProceduralMeshComponentMemoryUsage;
 class UBodySetup;
 class UVoxelProceduralMeshComponent;
@@ -36,7 +37,10 @@ public:
 	
 public:
 	//~ Begin IVoxelAsyncPhysicsCooker Interface
-	virtual bool Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage) = 0;
+	virtual bool Finalize(
+		UBodySetup& BodySetup,
+		TVoxelSharedPtr<FVoxelSimpleCollisionData>& OutSimpleCollisionData,
+		FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage) = 0;
 protected:
 	virtual void CookMesh() = 0;
 	//~ End IVoxelAsyncPhysicsCooker Interface

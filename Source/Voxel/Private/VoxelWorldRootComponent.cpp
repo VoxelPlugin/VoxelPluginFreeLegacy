@@ -18,6 +18,41 @@ static TAutoConsoleVariable<int32> CVarShowWireframeCollision(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+FVoxelSimpleCollisionHandle::FVoxelSimpleCollisionHandle(TWeakObjectPtr<UVoxelWorldRootComponent> Component)
+	: Component(Component)
+{
+}
+
+FVoxelSimpleCollisionHandle::~FVoxelSimpleCollisionHandle()
+{
+	SetCollisionData(nullptr);
+}
+
+void FVoxelSimpleCollisionHandle::SetCollisionData(TVoxelSharedPtr<FVoxelSimpleCollisionData> NewData)
+{
+	if (NewData && NewData->IsEmpty())
+	{
+		NewData = nullptr;
+	}
+
+	if (Data == NewData)
+	{
+		return;
+	}
+
+	Data = NewData;
+	
+	UVoxelWorldRootComponent* ComponentPtr = Component.Get();
+	if (ComponentPtr)
+	{
+		ComponentPtr->bRebuildQueued = true;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 UVoxelWorldRootComponent::UVoxelWorldRootComponent()
 {
 	// Tricky: the voxel world will hack to skip registering components when they have bAllowReregistration = false
@@ -28,9 +63,11 @@ UVoxelWorldRootComponent::UVoxelWorldRootComponent()
 
 UVoxelWorldRootComponent::~UVoxelWorldRootComponent()
 {
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	ensure(ProcMeshesSimpleCollision.Num() == 0);
-#endif
+	SimpleCollisionHandles.RemoveAllSwap([](auto& Ptr)
+	{
+		return !Ptr.IsValid();
+	});
+	ensure(SimpleCollisionHandles.Num() == 0);
 }
 
 UBodySetup* UVoxelWorldRootComponent::GetBodySetup()
@@ -62,22 +99,18 @@ void UVoxelWorldRootComponent::OnDestroyPhysicsState()
 {
 	Super::OnDestroyPhysicsState();
 	
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	ProcMeshesSimpleCollision.Reset();
-#endif
+	SimpleCollisionHandles.Reset();
 }
 
 void UVoxelWorldRootComponent::TickWorldRoot()
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	if (bRebuildQueued)
 	{
 		bRebuildQueued = false;
 		RebuildConvexCollision();
 	}
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -119,35 +152,44 @@ void UVoxelWorldRootComponent::PostEditChangeProperty(FPropertyChangedEvent& Pro
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-void UVoxelWorldRootComponent::UpdateSimpleCollision(FVoxelProcMeshComponentId Id, FVoxelSimpleCollisionData&& SimpleCollision)
+TVoxelSharedRef<FVoxelSimpleCollisionHandle> UVoxelWorldRootComponent::CreateHandle()
 {
-	ensure(CollisionTraceFlag != CTF_UseComplexAsSimple);
-
-	if (SimpleCollision.BoxElems.Num() == 0 && SimpleCollision.ConvexElems.Num() == 0)
-	{
-		if (ProcMeshesSimpleCollision.Remove(Id) == 1)
-		{
-			bRebuildQueued = true;
-		}
-		return;
-	}
-
-	ProcMeshesSimpleCollision.Add(Id, MakeUnique<FVoxelSimpleCollisionData>(MoveTemp(SimpleCollision)));
-	bRebuildQueued = true;
+	const TVoxelSharedRef<FVoxelSimpleCollisionHandle> Handle = MakeShareable(new FVoxelSimpleCollisionHandle(this));
+	SimpleCollisionHandles.Add(Handle);
+	return Handle;
 }
 
 void UVoxelWorldRootComponent::RebuildConvexCollision()
 {	
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	VOXEL_FUNCTION_COUNTER();
 	ensure(CollisionTraceFlag != CTF_UseComplexAsSimple);
+
+	TArray<TVoxelSharedRef<FVoxelSimpleCollisionData>> SimpleCollisionDatas;
+	for (int32 Index = 0; Index < SimpleCollisionHandles.Num(); Index++)
+	{
+		const TVoxelSharedPtr<FVoxelSimpleCollisionHandle> Handle = SimpleCollisionHandles[Index].Pin();
+
+		if (Handle)
+		{
+			if (Handle->Data && ensure(!Handle->Data->IsEmpty()))
+			{
+				SimpleCollisionDatas.Add(Handle->Data.ToSharedRef());
+			}
+		}
+		else
+		{
+			SimpleCollisionHandles.RemoveAtSwap(Index);
+			Index--;
+		}
+	}
 
 	{
 		VOXEL_SCOPE_COUNTER("Update bounds");
 		FBox LocalBox(ForceInit);
-		for (auto& It : ProcMeshesSimpleCollision)
+		for (const TVoxelSharedRef<FVoxelSimpleCollisionData>& Data : SimpleCollisionDatas)
 		{
-			LocalBox += It.Value->Bounds;
+			LocalBox += Data->Bounds;
 		}
 		LocalBounds = LocalBox.IsValid ? FBoxSphereBounds(LocalBox) : FBoxSphereBounds(ForceInit); // fallback to reset box sphere bounds
 		UpdateBounds();
@@ -165,17 +207,25 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
 	int32 NumConvexElements = 0;
     {
         VOXEL_SCOPE_COUNTER("Count");
-        for (auto& It : ProcMeshesSimpleCollision)
+        for (const TVoxelSharedRef<FVoxelSimpleCollisionData>& Data : SimpleCollisionDatas)
         {
-            const FVoxelSimpleCollisionData& Data = *It.Value;
-            NumBoxElements += Data.BoxElems.Num();
-            NumConvexElements += Data.ConvexElems.Num();
+            NumBoxElements += Data->BoxElems.Num();
+            NumConvexElements += Data->ConvexElems.Num();
         }
     }
 
-    if (NumBoxElements == 0 && NumConvexElements == 0) 
-    {
-        return;
+	if (NumBoxElements == 0 && NumConvexElements == 0)
+	{
+		if (BoxElems.Num() > 0 || ConvexElems.Num() > 0)
+		{
+			VOXEL_SCOPE_COUNTER("RemoveSimpleCollision");
+			BodySetup->RemoveSimpleCollision();
+			if (BodyInstance.IsValidBodyInstance())
+			{
+				BodyInstance.TermBody();
+			}
+		}
+		return;
 	}
 
 	{
@@ -193,18 +243,16 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
 	
 	{
         VOXEL_SCOPE_COUNTER("Create");
-        for (auto& It : ProcMeshesSimpleCollision)
+        for (const TVoxelSharedRef<FVoxelSimpleCollisionData>& Data : SimpleCollisionDatas)
         {
-            const FVoxelSimpleCollisionData& Data = *It.Value;
+			BoxElems.Append(Data->BoxElems);
 
-			BoxElems.Append(Data.BoxElems);
-
-            for (int32 Index = 0; Index < Data.ConvexMeshes.Num(); Index++)
+            for (int32 Index = 0; Index < Data->ConvexMeshes.Num(); Index++)
             {
                 FKConvexElem& NewElement = ConvexElems.Emplace_GetRef();
                 // No need to copy the vertices
-                NewElement.ElemBox = Data.ConvexElems[Index].ElemBox;
-                NewElement.SetConvexMesh(Data.ConvexMeshes[Index].Get());
+                NewElement.ElemBox = Data->ConvexElems[Index].ElemBox;
+                NewElement.SetConvexMesh(Data->ConvexMeshes[Index].Get());
             }
         }
     }
@@ -245,8 +293,10 @@ void UVoxelWorldRootComponent::RebuildConvexCollision()
 			FPhysicsInterface::SetAngularVelocity_AssumesLocked(Actor, AngularVelocity);
 		});
 	}
+#endif
 }
 
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 class UMRMeshComponent
 {
 public:

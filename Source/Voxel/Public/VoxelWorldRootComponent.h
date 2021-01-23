@@ -5,54 +5,43 @@
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
 #include "PhysXIncludes.h"
+#include "VoxelPhysXRef.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "Components/PrimitiveComponent.h"
 #include "VoxelWorldRootComponent.generated.h"
 
-DECLARE_UNIQUE_VOXEL_ID(FVoxelProcMeshComponentId);
-
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-template<typename T>
-class TVoxelPhysXRef
-{
-public:
-	TVoxelPhysXRef() = default;
-	TVoxelPhysXRef(T* Ptr)
-	{
-		if (Ptr)
-		{
-			Impl = MakeVoxelShared<FImpl>(*Ptr);
-		}
-	}
-
-	T* Get() const { return Impl ? &Impl->Ptr : nullptr; }
-
-private:
-	struct FImpl
-	{
-		T& Ptr;
-		
-		FImpl(T& Ptr)
-			: Ptr(Ptr)
-		{
-			Ptr.acquireReference();
-		}
-		~FImpl()
-		{
-			Ptr.release();
-		}
-	};
-	TVoxelSharedPtr<FImpl> Impl;
-};
+class UVoxelWorldRootComponent;
 
 struct FVoxelSimpleCollisionData
 {
 	FBox Bounds;
 	TArray<FKBoxElem> BoxElems;
 	TArray<FKConvexElem> ConvexElems;
+#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	TArray<TVoxelPhysXRef<PxConvexMesh>> ConvexMeshes;
-};
 #endif
+
+	bool IsEmpty() const
+	{
+		return BoxElems.Num() == 0 && ConvexElems.Num() == 0;
+	}
+};
+
+class FVoxelSimpleCollisionHandle
+{
+public:
+	~FVoxelSimpleCollisionHandle();
+	
+	void SetCollisionData(TVoxelSharedPtr<FVoxelSimpleCollisionData> NewData);
+
+private:
+	const TWeakObjectPtr<UVoxelWorldRootComponent> Component;
+	TVoxelSharedPtr<FVoxelSimpleCollisionData> Data;
+
+	explicit FVoxelSimpleCollisionHandle(TWeakObjectPtr<UVoxelWorldRootComponent> Component);
+
+	friend class UVoxelWorldRootComponent;
+};
 
 UCLASS(editinlinenew, ShowCategories = (VirtualTexture))
 class VOXEL_API UVoxelWorldRootComponent : public UPrimitiveComponent
@@ -82,8 +71,8 @@ public:
 #endif
 
 public:
+	TVoxelSharedRef<FVoxelSimpleCollisionHandle> CreateHandle();
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	void UpdateSimpleCollision(FVoxelProcMeshComponentId Id, FVoxelSimpleCollisionData&& SimpleCollision);
 	void SetCookedTriMeshes(const TArray<physx::PxTriangleMesh*>& TriMeshes);
 #endif
 
@@ -96,13 +85,11 @@ private:
 	// For debug draw
 	FCriticalSection BodySetupLock;
 	
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	TMap<FVoxelProcMeshComponentId, TUniquePtr<FVoxelSimpleCollisionData>> ProcMeshesSimpleCollision;
-
 	bool bRebuildQueued = false;
+	TArray<TVoxelWeakPtr<FVoxelSimpleCollisionHandle>> SimpleCollisionHandles;
 	
 	void RebuildConvexCollision();
-#endif
 
+	friend class FVoxelSimpleCollisionHandle;
 	friend class FVoxelRenderSimpleCollisionSceneProxy;
 };

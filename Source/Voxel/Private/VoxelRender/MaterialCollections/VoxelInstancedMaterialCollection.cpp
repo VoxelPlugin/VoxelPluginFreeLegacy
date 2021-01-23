@@ -138,6 +138,18 @@ int32 UVoxelInstancedMaterialCollection::GetMaxMaterialIndices() const
 	return MaxMaterialsToBlendAtOnce;
 }
 
+TArray<FVoxelMaterialCollectionMaterialInfo> UVoxelInstancedMaterialCollection::GetMaterials() const
+{
+	TArray<FVoxelMaterialCollectionMaterialInfo> Infos;
+
+	for (const FVoxelInstancedMaterialCollectionLayer& Layer : Layers)
+	{
+		Infos.Add({Layer.LayerIndex, Layer.LayerMaterialInstance });
+	}
+
+	return Infos;
+}
+
 UMaterialInterface* UVoxelInstancedMaterialCollection::GetVoxelMaterial_NotCached(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const
 {
 	VOXEL_FUNCTION_COUNTER();
