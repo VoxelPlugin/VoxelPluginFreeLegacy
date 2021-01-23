@@ -10,7 +10,6 @@ void FVoxelGeneratorOutputPickerCustomization::CustomizeHeader(
 	FDetailWidgetRow& HeaderRow, 
 	IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-	const bool bIsDensityOutput = PropertyHandle->HasMetaData(STATIC_FNAME("DensityOutput"));
 	NameHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelGeneratorOutputPicker, Name)).ToSharedRef();
 	
 	const auto SetupDefault = [&]()
@@ -36,8 +35,8 @@ void FVoxelGeneratorOutputPickerCustomization::CustomizeHeader(
 		TSharedPtr<IPropertyHandle> ParentHandle = PropertyHandle;
 		while (ParentHandle.IsValid())
 		{
-			const auto UseMainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelFoliageDensity, bUseMainGenerator));
-			if (bIsDensityOutput && UseMainGeneratorHandle)
+			const auto UseMainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(FVoxelFoliageDensity, bUseMainGenerator), false);
+			if (UseMainGeneratorHandle)
 			{
 				UseMainGeneratorHandle->SetOnPropertyValueChanged(FVoxelEditorUtilities::MakeRefreshDelegate(CustomizationUtils));
 
@@ -51,7 +50,7 @@ void FVoxelGeneratorOutputPickerCustomization::CustomizeHeader(
 					}
 				}
 			}
-			const auto MainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelFoliage, OutputPickerGenerator));
+			const auto MainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelFoliage, OutputPickerGenerator), false);
 			if (MainGeneratorHandle)
 			{
 				GeneratorHandle = MainGeneratorHandle;
@@ -88,10 +87,17 @@ void FVoxelGeneratorOutputPickerCustomization::CustomizeHeader(
 	{
 		OutputType = "float";
 	}
-	ensure(OutputType == "int" || OutputType == "float");
+	ensure(OutputType == "int" || OutputType == "float" || OutputType == "color");
 	
 	const auto Outputs = Picker.GetGenerator()->GetGeneratorOutputs();
-	const TArray<FName> ValidOutputNames = OutputType == "int" ? Outputs.IntOutputs : Outputs.FloatOutputs;
+	const TArray<FName> ValidOutputNames =
+		OutputType == "int"
+		? Outputs.IntOutputs
+		: OutputType == "float"
+		? Outputs.FloatOutputs
+		: OutputType == "color"
+		? Outputs.ColorOutputs
+		: TArray<FName>();
 
 	FName Value;
 	if (!ensure(NameHandle->GetValue(Value) == FPropertyAccess::Success))

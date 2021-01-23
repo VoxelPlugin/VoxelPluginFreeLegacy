@@ -104,6 +104,14 @@ bool UVoxelFoliage::NeedsToRebuild(UObject* Object, const FPropertyChangedEvent&
 		}
 	}
 
+	for (const FVoxelFoliageCustomData& CustomData : CustomDatas)
+	{
+		if (CustomData.NeedsToRebuild(Object, PropertyChangedEvent))
+		{
+			return true;
+		}
+	}
+
 	return false;
 }
 #endif

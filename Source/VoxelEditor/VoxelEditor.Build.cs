@@ -26,16 +26,19 @@ public class VoxelEditor : ModuleRules
                 "AssetRegistry",
             });
 
-        PrivateDependencyModuleNames.AddRange(
+        PublicDependencyModuleNames.AddRange(
             new string[] {
                 "Core",
                 "CoreUObject",
                 "Engine",
+            });
+
+        PrivateDependencyModuleNames.AddRange(
+            new string[] {
                 "Voxel",
                 "VoxelGraph",
                 "VoxelFoliage",
                 "VoxelEditorDefault",
-                "Engine",
                 "Landscape",
                 "LandscapeEditor",
                 "PlacementMode",

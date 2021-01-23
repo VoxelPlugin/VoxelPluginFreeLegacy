@@ -212,6 +212,10 @@ FVoxelGeneratorOutputs UVoxelGraphGenerator::GetGeneratorOutputs() const
 		{
 			GeneratorOutputs.IntOutputs.Add(Output.Name);
 		}
+		else if (Output.Category == EVoxelDataPinCategory::Color)
+		{
+			GeneratorOutputs.ColorOutputs.Add(Output.Name);
+		}
 	}
 	
 	return GeneratorOutputs;

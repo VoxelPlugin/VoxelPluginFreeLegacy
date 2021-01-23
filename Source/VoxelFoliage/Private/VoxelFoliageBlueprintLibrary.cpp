@@ -25,8 +25,8 @@ AVoxelFoliageActor* UVoxelFoliageBlueprintLibrary::SpawnVoxelSpawnerActorByInsta
 
 void UVoxelFoliageBlueprintLibrary::AddInstances(
 	AVoxelWorld* World,
-	UStaticMesh* Mesh,
 	const TArray<FTransform>& Transforms,
+	const TArray<float>& CustomData,
 	FVoxelInstancedMeshKey MeshKey,
 	FVector FloatingDetectionOffset)
 {

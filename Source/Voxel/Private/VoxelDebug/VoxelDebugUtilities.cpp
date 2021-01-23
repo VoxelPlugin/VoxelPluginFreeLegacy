@@ -58,8 +58,6 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 {
 	VOXEL_FUNCTION_COUNTER();
 	
-	const float LineLifeTime = (Lifetime > 0.f) ? Lifetime : LineBatchComponent.DefaultLifeTime;
-	
 	// Put it in local voxel world space
 	const FVector Min = LineBatchComponent.GetComponentTransform().InverseTransformPosition(World.LocalToGlobal(Box.Min));
 	const FVector Max = LineBatchComponent.GetComponentTransform().InverseTransformPosition(World.LocalToGlobal(Box.Max));
@@ -67,8 +65,21 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 	const float BorderOffset = Thickness / 2;
 
 	const FBox DebugBox(Min + BorderOffset, Max - BorderOffset);
-	const FVector Extent = DebugBox.GetExtent();
-	const FVector Center = DebugBox.GetCenter();
+	DrawDebugBox(LineBatchComponent, Transform, DebugBox, Lifetime, Thickness, Color);
+}
+
+void UVoxelDebugUtilities::DrawDebugBox(
+	UVoxelLineBatchComponent& LineBatchComponent, 
+	FTransform Transform, 
+	FBox Box, 
+	float Lifetime, 
+	float Thickness, 
+	FLinearColor Color)
+{
+	const float LineLifeTime = (Lifetime > 0.f) ? Lifetime : LineBatchComponent.DefaultLifeTime;
+	
+	const FVector Extent = Box.GetExtent();
+	const FVector Center = Box.GetCenter();
 	const uint8 DepthPriority = 0;
 
 	Transform = LineBatchComponent.GetComponentTransform() * Transform;

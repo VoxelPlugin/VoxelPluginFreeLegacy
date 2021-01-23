@@ -27,13 +27,6 @@ enum class EVoxelFoliageDensityType : uint8
 	MultiIndex
 };
 
-UENUM(BlueprintType)
-enum class EVoxelFoliageDensityUVAxis : uint8
-{
-	U,
-	V
-};
-
 USTRUCT(BlueprintType)
 struct FVoxelFoliageDensity
 {
@@ -53,17 +46,17 @@ struct FVoxelFoliageDensity
 	FVoxelGeneratorPicker CustomGenerator;
 	
 	// Your generator needs to have a float output named like this
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DensityOutput))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (OutputType = Float))
 	FVoxelGeneratorOutputPicker GeneratorOutputName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisplayName = "RGBA Channel"))
-	EVoxelRGBA RGBAChannel;
+	EVoxelRGBA RGBAChannel = {};
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisplayName = "UV Channel", ClampMin = 0, ClampMax = 3))
-	int32 UVChannel;
+	int32 UVChannel = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisplayName = "UV Axis"))
-	EVoxelFoliageDensityUVAxis UVAxis;
+	EVoxelUVAxis UVAxis = {};
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 4))
 	int32 FiveWayBlendChannel = 0;
@@ -79,7 +72,7 @@ struct FVoxelFoliageDensity
 	bool bInvertDensity = false;
 
 public:
-	// Only set if bUseMainGenerator = false
+	// Only set if bUseMainGenerator = false and Type = GeneratorOutput
 	TVoxelSharedPtr<FVoxelGeneratorInstance> GeneratorInstance;
 	
 #if WITH_EDITOR
