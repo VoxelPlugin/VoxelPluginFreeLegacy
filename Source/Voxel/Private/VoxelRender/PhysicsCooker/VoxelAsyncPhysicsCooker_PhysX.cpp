@@ -335,6 +335,19 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
             ConvexElems[ConvexElems.Num() - 2].VertexData.Append(ConvexElems.Last().VertexData);
             ConvexElems.Pop();
         }
+		
+        // Transform from component space to root component space, as the root is going to hold the convex meshes,
+		// and update bounds
+        for (auto& Element : ConvexElems)
+        {
+            ensure(Element.VertexData.Num() >= 4);
+            for (auto& Vertex : Element.VertexData)
+            {
+                Vertex = LocalToRoot.TransformPosition(Vertex);
+            }
+            Element.UpdateElemBox();
+            SimpleCollisionData.Bounds += Element.ElemBox;
+        }
 
 		// Finally, create the physx data
 	    for (FKConvexElem& Element : ConvexElems)
@@ -363,19 +376,6 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
 
 	    	SimpleCollisionData.ConvexMeshes.Add(Mesh);
 	    }
-
-		// And update bounds
-        for (auto& Element : ConvexElems)
-        {
-            ensure(Element.VertexData.Num() >= 4);
-            for (auto& Vertex : Element.VertexData)
-            {
-                // Transform from component space to root component space, as the root is going to hold the convex meshes
-                Vertex = LocalToRoot.TransformPosition(Vertex);
-            }
-            Element.UpdateElemBox();
-            SimpleCollisionData.Bounds += Element.ElemBox;
-        }
     }
 }
 

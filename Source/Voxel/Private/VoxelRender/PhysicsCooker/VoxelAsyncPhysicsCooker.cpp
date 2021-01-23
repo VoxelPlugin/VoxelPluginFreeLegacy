@@ -8,6 +8,7 @@
 #include "VoxelRender/IVoxelProceduralMeshComponent_PhysicsCallbackHandler.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 #include "PhysicsEngine/PhysicsSettings.h"
+#include "VoxelWorldRootComponent.h"
 
 double GTotalVoxelCollisionCookingTime = 0;
 
@@ -38,6 +39,20 @@ static FAutoConsoleCommand CmdClearTotalCollisionCookingTime(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+inline FTransform GetLocalToVoxelRoot(UVoxelProceduralMeshComponent* Component, UVoxelWorldRootComponent* VoxelRoot)
+{
+	if (!ensure(VoxelRoot))
+	{
+		return FTransform::Identity;
+	}
+
+	// Components might be in world space
+	const FTransform ComponentToWorld = Component->GetComponentTransform();
+	const FTransform VoxelRootToWorld = VoxelRoot->GetComponentTransform();
+
+	return ComponentToWorld * VoxelRootToWorld.Inverse();
+}
+
 IVoxelAsyncPhysicsCooker::IVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent* Component)
 	: FVoxelAsyncWork(STATIC_FNAME("AsyncPhysicsCooker"), EVoxelTaskType::CollisionCooking, EPriority::InvokersDistance)
 	, UniqueId(VOXEL_UNIQUE_ID())
@@ -64,7 +79,7 @@ IVoxelAsyncPhysicsCooker::IVoxelAsyncPhysicsCooker(UVoxelProceduralMeshComponent
 			}
 			return TmpBuffers;
 		}())
-	, LocalToRoot(Component->GetRelativeTransform())
+	, LocalToRoot(GetLocalToVoxelRoot(Component, Component->VoxelRootComponent.Get()))
 {
 	check(IsInGameThread());
 	ensure(CollisionTraceFlag != ECollisionTraceFlag::CTF_UseDefault);

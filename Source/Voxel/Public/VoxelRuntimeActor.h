@@ -159,6 +159,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender))
 	bool bHardColorTransitions = false;
 
+	// If true, in single index mode the triangles with more than one index will be split so that all indices are rendered
+	// Will generate additional vertices
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender))
+	bool bSplitSingleIndexTriangles = false;
+	
 	// These materials won't be rendered nor have any collision
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Materials", meta = (RecreateRender))
 	TArray<uint8> HolesMaterials;
@@ -274,7 +279,7 @@ public:
 	// The size of the textures in the pool used by the greedy cubic mesher to store the colors
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (EditCondition = "bGreedyCubicMesher", RecreateRender, ClampMin = 64, UIMin = 128, UIMax = 2048))
 	int32 TexturePoolTextureSize = 1024;
-	
+
 	// If true, the mesh indices will be sorted to improve GPU cache performance. Adds a cost to the async mesh building. If you don't see any perf difference, leave it off
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bOptimizeIndices = false;
