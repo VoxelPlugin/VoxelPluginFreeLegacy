@@ -4,6 +4,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelPhysXHelpers.h"
+#include "VoxelWorldRootComponent.h"
 
 #include "IPhysXCookingModule.h"
 
@@ -43,7 +44,10 @@ public:
 	}
 };
 
-bool FVoxelAsyncPhysicsCooker_PhysX::Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage)
+bool FVoxelAsyncPhysicsCooker_PhysX::Finalize(
+	UBodySetup& BodySetup,
+	TVoxelSharedPtr<FVoxelSimpleCollisionData>& OutSimpleCollisionData,
+	FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -56,10 +60,8 @@ bool FVoxelAsyncPhysicsCooker_PhysX::Finalize(UBodySetup& BodySetup, FVoxelProce
 		VOXEL_SCOPE_COUNTER("FinishCreatingPhysicsMeshes");
 		UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetup, {}, {}, CookResult.TriangleMeshes);
 	}
-	
-	// TODO a bit hacky?
-	Component->UpdateSimpleCollision(MoveTemp(CookResult.SimpleCollisionData));
-	
+
+	OutSimpleCollisionData = CookResult.SimpleCollisionData;
 	OutMemoryUsage.TriangleMeshes = CookResult.TriangleMeshesMemoryUsage;
 
 	return true;
@@ -219,19 +221,22 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	if (Buffers.Num() == 1 && Buffers[0]->GetNumVertices() < 4) return;
-	
-	CookResult.SimpleCollisionData.Bounds = FBox(ForceInit);
+
+	CookResult.SimpleCollisionData = MakeVoxelShared<FVoxelSimpleCollisionData>();
+
+	FVoxelSimpleCollisionData& SimpleCollisionData = *CookResult.SimpleCollisionData;
+	SimpleCollisionData.Bounds = FBox(ForceInit);
 
 	if (bSimpleCubicCollision)
 	{
 	    VOXEL_ASYNC_SCOPE_COUNTER("BoxElems");
-        TArray<FKBoxElem>& BoxElems = CookResult.SimpleCollisionData.BoxElems;
+        TArray<FKBoxElem>& BoxElems = SimpleCollisionData.BoxElems;
         for (auto& Buffer : Buffers)
         {
             for (FBox Cube : Buffer->CollisionCubes)
             {
                 Cube = Cube.TransformBy(LocalToRoot);
-                CookResult.SimpleCollisionData.Bounds += Cube;
+                SimpleCollisionData.Bounds += Cube;
 
                 FKBoxElem& BoxElem = BoxElems.Emplace_GetRef();
 
@@ -245,7 +250,7 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
 	else
     {
 		VOXEL_ASYNC_SCOPE_COUNTER("ConvexElems");
-        TArray<FKConvexElem>& ConvexElems = CookResult.SimpleCollisionData.ConvexElems;
+        TArray<FKConvexElem>& ConvexElems = SimpleCollisionData.ConvexElems;
 
         FBox Box(ForceInit);
         for (auto& Buffer : Buffers)
@@ -356,7 +361,7 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
 		    default: ensure(false);
 		    }
 
-	    	CookResult.SimpleCollisionData.ConvexMeshes.Add(Mesh);
+	    	SimpleCollisionData.ConvexMeshes.Add(Mesh);
 	    }
 
 		// And update bounds
@@ -369,7 +374,7 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
                 Vertex = LocalToRoot.TransformPosition(Vertex);
             }
             Element.UpdateElemBox();
-            CookResult.SimpleCollisionData.Bounds += Element.ElemBox;
+            SimpleCollisionData.Bounds += Element.ElemBox;
         }
     }
 }

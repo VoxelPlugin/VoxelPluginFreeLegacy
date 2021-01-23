@@ -89,6 +89,7 @@ public:
 	
 	//~ Begin UVoxelMaterialCollectionBase Interface
 	virtual int32 GetMaxMaterialIndices() const override;
+	virtual TArray<FVoxelMaterialCollectionMaterialInfo> GetMaterials() const override;
 	//~ End UVoxelMaterialCollectionBase Interface
 
 	//~ Begin UVoxelCachedMaterialCollection Interface

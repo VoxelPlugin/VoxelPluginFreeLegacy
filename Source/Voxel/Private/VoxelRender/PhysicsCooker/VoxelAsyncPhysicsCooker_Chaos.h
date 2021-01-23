@@ -22,7 +22,10 @@ public:
 
 protected:
 	//~ Begin IVoxelAsyncPhysicsCooker Interface
-	virtual bool Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage) override;
+	virtual bool Finalize(
+		UBodySetup& BodySetup,
+		TVoxelSharedPtr<FVoxelSimpleCollisionData>& OutSimpleCollisionData,
+		FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage) override;
 	virtual void CookMesh() override;
 	//~ End IVoxelAsyncPhysicsCooker Interface
 	

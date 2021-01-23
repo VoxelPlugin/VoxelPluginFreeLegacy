@@ -11,23 +11,25 @@
 #include "Components/ModelComponent.h"
 #include "VoxelProceduralMeshComponent.generated.h"
 
-class UVoxelWorldRootComponent;
-class IVoxelRenderer;
-class FVoxelRuntimeData;
 struct FKConvexElem;
 struct FVoxelProcMeshBuffers;
 struct FMaterialRelevance;
 struct FVoxelSimpleCollisionData;
+
+class FVoxelPool;
 class FVoxelTexturePool;
+class FVoxelRuntimeData;
 class FVoxelTexturePoolEntry;
-class FVoxelToolRenderingManager;
 class FDistanceFieldVolumeData;
 class IVoxelAsyncPhysicsCooker;
+class FVoxelToolRenderingManager;
+class FVoxelSimpleCollisionHandle;
 class UBodySetup;
 class UMaterialInterface;
+class UVoxelWorldRootComponent;
 class UVoxelProceduralMeshComponent;
 class AVoxelWorld;
-class FVoxelPool;
+class IVoxelRenderer;
 class IVoxelProceduralMeshComponent_PhysicsCallbackHandler;
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Physics Triangle Meshes Memory"), STAT_VoxelPhysicsTriangleMeshesMemory, STATGROUP_VoxelMemory, VOXEL_API);
@@ -43,7 +45,6 @@ enum class EVoxelProcMeshSectionUpdate : uint8
 	DelayUpdate
 };
 
-DECLARE_UNIQUE_VOXEL_ID(FVoxelProcMeshComponentId);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnFreezeVoxelCollisionChanged, bool);
 
 UCLASS(BlueprintType, Blueprintable, ClassGroup = (Voxel), meta = (BlueprintSpawnableComponent))
@@ -74,8 +75,6 @@ public:
 	
 private:
 	bool bInit = false;
-	// Used for convex collisions
-	FVoxelProcMeshComponentId UniqueId;
 	// Used for collisions
 	TWeakObjectPtr<UVoxelWorldRootComponent> VoxelRootComponent;
 	// Used to show LOD color in the mesh LOD visualization & for convex collision cooking
@@ -189,10 +188,6 @@ private:
 	void UpdateCollision();
 	void FinishCollisionUpdate();
 	
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	void UpdateSimpleCollision(FVoxelSimpleCollisionData&& SimpleCollisionData, bool bCanFail = false);
-#endif
-
 private:
 	void PhysicsCookerCallback(uint64 CookerId);
 
@@ -218,6 +213,7 @@ private:
 	bool bNeedToRebuildStaticMesh = false;
 	
 	IVoxelAsyncPhysicsCooker* AsyncCooker = nullptr;
+	TVoxelSharedPtr<FVoxelSimpleCollisionHandle> SimpleCollisionHandle;
 	FVoxelProceduralMeshComponentMemoryUsage MemoryUsage;
 	
 	struct FVoxelProcMeshSection

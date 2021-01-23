@@ -29,7 +29,6 @@
 #include "Lightmass/LightmassImportanceVolume.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelPhysicsTriangleMeshesMemory);
-DEFINE_UNIQUE_VOXEL_ID(FVoxelProcMeshComponentId);
 
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Num Collision Cubes"), STAT_NumCollisionCubes, STATGROUP_VoxelCounters);
 	
@@ -99,18 +98,11 @@ void UVoxelProceduralMeshComponent::Init(
 	const TVoxelWeakPtr<IVoxelProceduralMeshComponent_PhysicsCallbackHandler>& InPhysicsCallbackHandler,
 	const IVoxelRenderer& Renderer)
 {
+	ensure(!bInit);
 	ensure(InPhysicsCallbackHandler.IsValid());
-
-	if (UniqueId.IsValid())
-	{
-		// Make sure we don't have any convex collision left
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-		UpdateSimpleCollision({});
-#endif
-	}
+	ensure(!SimpleCollisionHandle.IsValid());
 	
 	bInit = true;
-	UniqueId = FVoxelProcMeshComponentId::New();
 	VoxelRootComponent = Renderer.Settings.VoxelRootComponent;
 	LOD = InDebugLOD;
 	DebugChunkId = InDebugChunkId;
@@ -132,7 +124,9 @@ void UVoxelProceduralMeshComponent::Init(
 
 void UVoxelProceduralMeshComponent::ClearInit()
 {
+	ensure(bInit);
 	ensure(ProcMeshSections.Num() == 0);
+	ensure(!SimpleCollisionHandle.IsValid());
 	bInit = false;
 }
 
@@ -708,20 +702,15 @@ void UVoxelProceduralMeshComponent::OnComponentDestroyed(bool bDestroyingHierarc
 {
 	UPrimitiveComponent::OnComponentDestroyed(bDestroyingHierarchy);
 
-	if (bInit)
-	{
-		// Clear convex collisions
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-		UpdateSimpleCollision({}, true);
-#endif
-	}
-	
 	// Destroy async cooker
 	if (AsyncCooker)
 	{
 		AsyncCooker->CancelAndAutodelete();
 		AsyncCooker = nullptr;
 	}
+
+	// Destroy simple collisions
+	SimpleCollisionHandle.Reset();
 	
 	// Clear memory
 	ProcMeshSections.Reset();
@@ -826,9 +815,7 @@ void UVoxelProceduralMeshComponent::UpdateCollision()
 	}
 	else
 	{
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-		UpdateSimpleCollision({}, true);
-#endif
+		SimpleCollisionHandle.Reset();
 		FinishCollisionUpdate();
 	}
 
@@ -857,30 +844,6 @@ void UVoxelProceduralMeshComponent::FinishCollisionUpdate()
 	}
 }
 
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-void UVoxelProceduralMeshComponent::UpdateSimpleCollision(FVoxelSimpleCollisionData&& SimpleCollisionData, bool bCanFail)
-{
-	VOXEL_FUNCTION_COUNTER();
-
-	ensure(UniqueId.IsValid());
-	ensure(SimpleCollisionData.ConvexElems.Num() == SimpleCollisionData.ConvexMeshes.Num());
-	
-	if (CollisionTraceFlag == ECollisionTraceFlag::CTF_UseComplexAsSimple)
-	{
-		ensure(SimpleCollisionData.ConvexElems.Num() == 0);
-		return;
-	}
-	
-	auto* Root = VoxelRootComponent.Get();
-	ensure(Root || bCanFail);
-	if (!Root) return;
-
-	ensure(Root->CollisionTraceFlag == CollisionTraceFlag);
-
-	Root->UpdateSimpleCollision(UniqueId, MoveTemp(SimpleCollisionData));
-}
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -903,8 +866,9 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 	// Might not be needed?
 	VOXEL_INLINE_COUNTER("ClearPhysicsMeshes", BodySetupBeingCooked->ClearPhysicsMeshes());
 
+	TVoxelSharedPtr<FVoxelSimpleCollisionData> SimpleCollisionData;
 	FVoxelProceduralMeshComponentMemoryUsage NewMemoryUsage;
-	if (!AsyncCooker->Finalize(*BodySetupBeingCooked, NewMemoryUsage))
+	if (!AsyncCooker->Finalize(*BodySetupBeingCooked, SimpleCollisionData, NewMemoryUsage))
 	{
 		return;
 	}
@@ -915,6 +879,23 @@ void UVoxelProceduralMeshComponent::PhysicsCookerCallback(uint64 CookerId)
 
 	AsyncCooker->CancelAndAutodelete();
 	AsyncCooker = nullptr;
+
+	if (SimpleCollisionData && !SimpleCollisionData->IsEmpty() && !SimpleCollisionHandle)
+	{
+		ensure(CollisionTraceFlag != CTF_UseComplexAsSimple);
+
+		UVoxelWorldRootComponent* Root = VoxelRootComponent.Get();
+		if (ensure(Root))
+		{
+			ensure(Root->CollisionTraceFlag == CollisionTraceFlag);
+			SimpleCollisionHandle = Root->CreateHandle();
+		}
+	}
+
+	if (SimpleCollisionHandle)
+	{
+		SimpleCollisionHandle->SetCollisionData(SimpleCollisionData);
+	}
 	
 	FinishCollisionUpdate();
 }
