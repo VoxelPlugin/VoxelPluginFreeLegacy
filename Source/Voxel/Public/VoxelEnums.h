@@ -136,6 +136,13 @@ enum class EVoxelAxis : uint8
 	Z
 };
 
+UENUM(BlueprintType)
+enum class EVoxelUVAxis : uint8
+{
+	U,
+	V
+};
+
 UENUM(BlueprintType, DisplayName = "Voxel 32 bit Mask", meta = (Bitflags))
 enum class EVoxel32BitMask : uint8
 {

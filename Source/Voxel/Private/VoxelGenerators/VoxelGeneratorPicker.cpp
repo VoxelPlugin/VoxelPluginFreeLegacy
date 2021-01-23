@@ -12,13 +12,31 @@ inline void CheckOutputs(const UVoxelGenerator& Generator, const FVoxelGenerator
 	VOXEL_FUNCTION_COUNTER();
 
 	FVoxelGeneratorOutputs Outputs = Generator.GetGeneratorOutputs();
-	const auto Order = [](FName A, FName B) {return A.FastLess(B); };
+	const auto Order = [](FName A, FName B) { return A.FastLess(B); };
 
-	TArray<FName> FloatOutputs;
-	Instance.GetOutputsPtrMap<v_flt>().GenerateKeyArray(FloatOutputs);
-	FloatOutputs.Sort(Order);
-	Outputs.FloatOutputs.Sort(Order);
-	ensure(FloatOutputs == Outputs.FloatOutputs); // Will fail if a graph failed to compile
+	{
+		TArray<FName> FloatOutputs;
+		Instance.GetOutputsPtrMap<v_flt>().GenerateKeyArray(FloatOutputs);
+		FloatOutputs.Sort(Order);
+		Outputs.FloatOutputs.Sort(Order);
+		ensure(FloatOutputs == Outputs.FloatOutputs); // Will fail if a graph failed to compile
+	}
+
+	{
+		TArray<FName> IntOutputs;
+		Instance.GetOutputsPtrMap<int32>().GenerateKeyArray(IntOutputs);
+		IntOutputs.Sort(Order);
+		Outputs.IntOutputs.Sort(Order);
+		ensure(IntOutputs == Outputs.IntOutputs); // Will fail if a graph failed to compile
+	}
+
+	{
+		TArray<FName> ColorOutputs;
+		Instance.GetOutputsPtrMap<FColor>().GenerateKeyArray(ColorOutputs);
+		ColorOutputs.Sort(Order);
+		Outputs.ColorOutputs.Sort(Order);
+		ensure(ColorOutputs == Outputs.ColorOutputs); // Will fail if a graph failed to compile
+	}
 #endif
 }
 

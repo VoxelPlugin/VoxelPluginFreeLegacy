@@ -104,6 +104,9 @@ struct FVoxelInstancedMeshKey
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
 	FVoxelInstancedMeshSettings InstanceSettings;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Foliage")
+	int32 NumCustomDataChannels = 0;
 };
 
 struct FVoxelInstancedMeshWeakKey
@@ -112,6 +115,7 @@ struct FVoxelInstancedMeshWeakKey
 	TSubclassOf<AVoxelFoliageActor> ActorClass;
 	TArray<TWeakObjectPtr<UMaterialInterface>> Materials;
 	FVoxelInstancedMeshSettings InstanceSettings;
+	int32 NumCustomDataChannels = 0;
 
 	FVoxelInstancedMeshWeakKey() = default;
 	FVoxelInstancedMeshWeakKey(const FVoxelInstancedMeshKey& Key)
@@ -119,6 +123,7 @@ struct FVoxelInstancedMeshWeakKey
 		, ActorClass(Key.ActorClass)
 		, Materials(Key.Materials)
 		, InstanceSettings(Key.InstanceSettings)
+		, NumCustomDataChannels(Key.NumCustomDataChannels)
 	{
 	}
 	operator FVoxelInstancedMeshKey() const
@@ -131,6 +136,7 @@ struct FVoxelInstancedMeshWeakKey
 			Result.Materials.Add(Material.Get());
 		}
 		Result.InstanceSettings = InstanceSettings;
+		Result.NumCustomDataChannels = NumCustomDataChannels;
 		return Result;
 	}
 };

@@ -15,6 +15,7 @@ struct FVoxelGeneratorOutputs
 {
 	TArray<FName> IntOutputs;
 	TArray<FName> FloatOutputs;
+	TArray<FName> ColorOutputs;
 };
 
 /**

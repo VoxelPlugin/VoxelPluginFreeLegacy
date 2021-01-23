@@ -142,3 +142,4 @@ VOXEL_API FString VoxelStats_RemoveLambdaFromFunctionName(const FString& Functio
 FVoxelEditorDelegates::FFixVoxelLandscapeMaterial FVoxelEditorDelegates::FixVoxelLandscapeMaterial;
 FVoxelEditorDelegates::FCreateStaticMeshFromProcMesh FVoxelEditorDelegates::CreateStaticMeshFromProcMesh;
 FVoxelEditorDelegates::FOnVoxelGraphUpdated FVoxelEditorDelegates::OnVoxelGraphUpdated;
+FVoxelEditorDelegates::FOnMigrateLegacySpawners FVoxelEditorDelegates::OnMigrateLegacySpawners;

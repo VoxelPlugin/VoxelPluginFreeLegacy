@@ -94,10 +94,11 @@ inline bool operator==(const FVoxelInstancedMeshSettings& A, const FVoxelInstanc
 bool operator==(const FVoxelInstancedMeshWeakKey& A, const FVoxelInstancedMeshWeakKey& B)
 {
 	return
-		A.Mesh               == B.Mesh               &&
-		A.ActorClass	     == B.ActorClass	     &&
-		A.Materials			 == B.Materials			 &&
-		A.InstanceSettings   == B.InstanceSettings;
+		A.Mesh                  == B.Mesh               &&
+		A.ActorClass	        == B.ActorClass	        &&
+		A.Materials			    == B.Materials			&&
+		A.InstanceSettings      == B.InstanceSettings   &&
+		A.NumCustomDataChannels == B.NumCustomDataChannels;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -133,6 +134,7 @@ uint32 GetTypeHash(const FVoxelInstancedMeshWeakKey& Settings)
 		HASH(ActorClass)
 		HASH(Materials)
 		HASH(InstanceSettings)
+		HASH(NumCustomDataChannels)
 		0;
 }
 #undef HASH

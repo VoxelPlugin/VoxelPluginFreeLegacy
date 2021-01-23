@@ -16,7 +16,7 @@ void FVoxelFoliageDensityCustomization::CustomizeChildren(TSharedRef<IPropertyHa
 	GET_CHILD_PROPERTY(PropertyHandle, FVoxelFoliageDensity, Type)->SetOnPropertyValueChanged(FVoxelEditorUtilities::MakeRefreshDelegate(CustomizationUtils));
 	GET_CHILD_PROPERTY(PropertyHandle, FVoxelFoliageDensity, bUseMainGenerator)->SetOnPropertyValueChanged(FVoxelEditorUtilities::MakeRefreshDelegate(CustomizationUtils));
 
-	IDetailGroup* Group = &ChildBuilder.AddGroup(TEXT("Spawner Density Type"), PropertyHandle->GetPropertyDisplayName());
+	IDetailGroup* Group = &ChildBuilder.AddGroup(TEXT("Foliage Density Type"), PropertyHandle->GetPropertyDisplayName());
 	Group->HeaderRow()
 	.NameContent()
 	[
@@ -29,7 +29,6 @@ void FVoxelFoliageDensityCustomization::CustomizeChildren(TSharedRef<IPropertyHa
 
 	switch (Density.Type)
 	{
-	default: ensure(false);
 	case EVoxelFoliageDensityType::Constant:
 	{
 		Group->AddPropertyRow(GET_CHILD_PROPERTY(PropertyHandle, FVoxelFoliageDensity, Constant));
@@ -71,6 +70,7 @@ void FVoxelFoliageDensityCustomization::CustomizeChildren(TSharedRef<IPropertyHa
 		Group->AddPropertyRow(GET_CHILD_PROPERTY(PropertyHandle, FVoxelFoliageDensity, MultiIndexChannels));
 		break;
 	}
+	default: ensure(false);
 	}
 	Group->AddPropertyRow(GET_CHILD_PROPERTY(PropertyHandle, FVoxelFoliageDensity, bInvertDensity));
 }

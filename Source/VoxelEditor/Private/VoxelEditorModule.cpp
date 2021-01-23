@@ -72,6 +72,7 @@
 #include "Details/VoxelBoolVectorCustomization.h"
 #include "Details/VoxelLandscapeCollectionDetails.h"
 #include "Details/VoxelDistanceCustomization.h"
+#include "Details/VoxelFoliageCustomDataCustomization.h"
 
 #include "VoxelImporters/VoxelMeshImporter.h"
 #include "VoxelImporters/VoxelLandscapeImporter.h"
@@ -208,6 +209,33 @@ class FVoxelEditorModule : public IVoxelEditorModule
 public:
 	virtual void StartupModule() override
 	{
+#if 0
+		FVoxelSystemUtilities::DelayedCall([]()
+		{
+			FString String;
+			for (TObjectIterator<UField> ClassIt; ClassIt; ++ClassIt)
+			{
+				UField* Field = *ClassIt;
+				if (Field->GetOuter()->GetName() == "/Script/VoxelLegacySpawners")
+				{
+					const FString Prefix =
+						Cast<UScriptStruct>(Field)
+						? "StructRedirects"
+						: Cast<UClass>(Field)
+						? "ClassRedirects"
+						: Cast<UEnum>(Field)
+						? "EnumRedirects"
+						: "";
+					if (!Prefix.IsEmpty())
+					{
+						String += FString::Printf(TEXT("+%s=(OldName=\"/Script/Voxel.%s\", NewName=\"/Script/VoxelLegacySpawners.%s\")\n"), *Prefix, *Field->GetName(), *Field->GetName());
+					}
+				}
+			}
+			UE_DEBUG_BREAK();
+		});
+#endif
+		
 		UVoxelOpenAssetsOnStartup::Init();
 		FVoxelConvertLandscapeMaterial::Init();
 		FVoxelCreateStaticMeshFromProcMesh::Init();
@@ -460,6 +488,7 @@ private:
 		RegisterCustomPropertyLayout<FVoxelDistanceCustomization                               , FVoxelDistance                               >();
 		RegisterCustomPropertyLayout<FVoxelGeneratorOutputPickerCustomization                  , FVoxelGeneratorOutputPicker                  >();
 		RegisterCustomPropertyLayout<FVoxelFoliageDensityCustomization                         , FVoxelFoliageDensity                         >();
+		RegisterCustomPropertyLayout<FVoxelFoliageCustomDataCustomization                      , FVoxelFoliageCustomData                      >();
 		RegisterCustomPropertyLayout<FVoxelGraphOutputCustomization                            , FVoxelGraphOutput                            >();
 		RegisterCustomPropertyLayout<FVoxelIntervalCustomization                               , FVoxelInt32Interval                          >();
 		RegisterCustomPropertyLayout<FVoxelIntervalCustomization                               , FVoxelFloatInterval                          >();

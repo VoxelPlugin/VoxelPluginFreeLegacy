@@ -129,6 +129,9 @@ public:
 	UPROPERTY()
 	int32 NumberOfThreads_DEPRECATED;
 
+	UPROPERTY()
+	UObject* SpawnerConfig_DEPRECATED;
+
 	VOXEL_DEPRECATED(1.2, "Seeds are now regular generator parameters")
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - General", meta = (DisplayName = "Seeds (DEPRECATED)"))
 	TMap<FName, int32> Seeds;

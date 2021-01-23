@@ -44,6 +44,14 @@ public:
 		float Thickness = 0,
 		FLinearColor Color = FLinearColor::Red);
 
+	static void DrawDebugBox(
+		UVoxelLineBatchComponent& LineBatchComponent,
+		FTransform Transform,
+		FBox Box,
+		float Lifetime = 1,
+		float Thickness = 0,
+		FLinearColor Color = FLinearColor::Red);
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Debug", meta = (DefaultToSelf = "World"))
 	static void DebugVoxelsInsideBounds(
 		AVoxelWorld* World,

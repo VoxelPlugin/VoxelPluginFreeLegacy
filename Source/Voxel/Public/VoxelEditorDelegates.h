@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 class UMaterial;
+class AVoxelWorld;
 class UVoxelGenerator;
 class UVoxelProceduralMeshComponent;
 
@@ -25,4 +26,7 @@ struct VOXEL_API FVoxelEditorDelegates
 	
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnVoxelGraphUpdated, UVoxelGenerator*);
 	static FOnVoxelGraphUpdated OnVoxelGraphUpdated;
+	
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnMigrateLegacySpawners, AVoxelWorld*);
+	static FOnMigrateLegacySpawners OnMigrateLegacySpawners;
 };

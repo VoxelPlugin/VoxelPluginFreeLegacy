@@ -226,16 +226,6 @@ public:
 #undef DEFINE_FORWARD
 
 public:
-	FORCEINLINE uint32 GetPackedColor() const
-	{
-		return
-			(uint32(GetR()) <<  0) |
-			(uint32(GetG()) <<  8) |
-			(uint32(GetB()) << 16) |
-			(uint32(GetA()) << 24);
-	}
-
-public:
 	FORCEINLINE void SetColor(const FColor& Color)
 	{
 		SetR(Color.R);

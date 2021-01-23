@@ -8,6 +8,7 @@
 #include "VoxelFoliageCollection.h"
 #include "VoxelRender/VoxelMaterialExpressions.h"
 #include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
+#include "VoxelEditorUtilities.h"
 
 #include "Editor.h"
 #include "Materials/Material.h"

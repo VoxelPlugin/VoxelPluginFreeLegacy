@@ -38,6 +38,7 @@ public class Voxel : ModuleRules
                 "RenderCore",
                 "Landscape",
                 "PhysX",
+                "Projects",
 #if UE_4_26_OR_LATER
                 "DeveloperSettings",
                 "TraceLog",

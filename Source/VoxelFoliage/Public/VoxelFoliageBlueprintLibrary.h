@@ -35,16 +35,16 @@ public:
 	/**
 	 * Add instances to a voxel world foliage system
 	 * @param World						The voxel world
-	 * @param Mesh						The mesh to use
 	 * @param Transforms				The transforms, relative to the voxel world (but not in voxel space!)
-	 * @param Colors					The colors to send to the instance material (use GetVoxelMaterialFromPerInstanceRandom to get it)
+	 * @param CustomData				The custom data to pass to the material. Num = Transforms.Num() * NumCustomDataChannels.
+	 *									If NumCustomDataChannels = 3, data would be: Instance0_Data0, Instance0_Data1, Instance0_Data2, Instance1_Data0, Instance1_Data1, ...
 	 * @param FloatingDetectionOffset	Increase this if your foliage is enabling physics too soon
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Foliage", meta = (DefaultToSelf = "World", AdvancedDisplay = "FloatingDetectionOffset"))
 	static void AddInstances(
 		AVoxelWorld* World,
-		UStaticMesh* Mesh,
 		const TArray<FTransform>& Transforms,
+		const TArray<float>& CustomData,
 		FVoxelInstancedMeshKey MeshKey,
 		FVector FloatingDetectionOffset = FVector(0, 0, -10));
 	

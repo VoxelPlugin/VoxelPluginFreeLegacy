@@ -527,4 +527,9 @@ namespace FVoxelUtilities
 		}
 		}
 	}
+
+	FORCEINLINE float PackIntIntoFloat(uint32 Int)
+	{
+		return *reinterpret_cast<float*>(&Int);
+	}
 }

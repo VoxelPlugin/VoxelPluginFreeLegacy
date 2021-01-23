@@ -100,6 +100,7 @@ FVoxelGeneratorOutputs UVoxelGenerator::GetGeneratorOutputs() const
 	const auto Instance = const_cast<UVoxelGenerator*>(this)->GetInstance();
 	Instance->GetOutputsPtrMap<int32>().GenerateKeyArray(Outputs.IntOutputs);
 	Instance->GetOutputsPtrMap<v_flt>().GenerateKeyArray(Outputs.FloatOutputs);
+	Instance->GetOutputsPtrMap<FColor>().GenerateKeyArray(Outputs.ColorOutputs);
 
 	return Outputs;
 }

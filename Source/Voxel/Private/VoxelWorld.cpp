@@ -552,6 +552,10 @@ void AVoxelWorld::PostLoad()
 				"NumberOfThreads is now set globally in the project settings instead of per voxel world. "
 				"The value on the voxel world (%d) will be ignored."), NumberOfThreads_DEPRECATED), this);
 	}
+	if (SpawnerConfig_DEPRECATED)
+	{
+		FVoxelEditorDelegates::OnMigrateLegacySpawners.Broadcast(this);
+	}
 }
 
 #if WITH_EDITOR

@@ -14,9 +14,11 @@ struct FVoxelFoliageTransform;
 struct FVoxelFoliageTransforms;
 struct FVoxelHISMBuiltData;
 class FVoxelPool;
+class FVoxelRuntimeSettings;
 class FVoxelConstDataAccelerator;
 class FVoxelInstancedMeshManager;
 
+DECLARE_UNIQUE_VOXEL_ID(FVoxelHISMBuildTaskId);
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel HISM Memory"), STAT_VoxelHISMMemory, STATGROUP_VoxelMemory, VOXELFOLIAGE_API);
 
 struct FVoxelInstancesSection

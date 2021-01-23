@@ -59,15 +59,15 @@ struct FVoxelFoliageSpawnSettings
 	bool bInfiniteGenerationDistance = false;
 
 	// The name of the custom graph output used to determine the height
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn|Height", meta = (DisplayName = "Height Graph Output Name (height only)"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (DisplayName = "Height Graph Output Name (height only)"))
 	FVoxelGeneratorOutputPicker HeightGraphOutputName_HeightOnly = "Height";
 
 	// If true, will not spawn height instances if they are now floating due to user edits or additional 3D noise in the generator
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Spawn|Height", meta = (DisplayName = "Check If Floating (height only)"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Spawn", meta = (DisplayName = "Check If Floating (height only)"))
 	bool bCheckIfFloating_HeightOnly = true;
 
 	// If true, will not spawn height instances if they are now covered due to user edits or additional 3D noise in the generator
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Spawn|Height", meta = (DisplayName = "Check If Covered (height only)"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Spawn", meta = (DisplayName = "Check If Covered (height only)"))
 	bool bCheckIfCovered_HeightOnly = true;
 
 public:

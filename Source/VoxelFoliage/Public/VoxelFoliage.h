@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelFoliageDensity.h"
+#include "VoxelFoliageCustomData.h"
 #include "VoxelFoliageSpawnSettings.h"
 #include "VoxelInstancedMeshSettings.h"
 #include "VoxelFoliage.generated.h"
@@ -93,6 +94,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (ShowOnlyInnerProperties))
 	FVoxelFoliageSpawnSettings SpawnSettings;
+
+public:
+	// Per Instance Data that will be sent to the material
+	// Use the PerInstanceCustomData node to read it
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rendering")
+	TArray<FVoxelFoliageCustomData> CustomDatas;
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Placement - Slope", meta = (InlineEditConditionToggle))
