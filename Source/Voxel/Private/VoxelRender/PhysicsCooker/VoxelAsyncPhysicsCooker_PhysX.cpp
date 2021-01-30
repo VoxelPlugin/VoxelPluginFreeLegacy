@@ -262,7 +262,7 @@ void FVoxelAsyncPhysicsCooker_PhysX::CreateSimpleCollision()
             }
         }
 
-        const int32 ChunkSize = RENDER_CHUNK_SIZE << LOD;
+        const int32 ChunkSize = MESHER_CHUNK_SIZE << LOD;
         const FIntVector Size =
             FVoxelUtilities::ComponentMax(
                 FIntVector(1),

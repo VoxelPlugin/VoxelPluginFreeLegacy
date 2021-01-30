@@ -300,7 +300,7 @@ void AVoxelWorld::DestroyWorld()
 
 FVoxelIntBox AVoxelWorld::GetWorldBounds() const
 {
-	return FVoxelRuntimeSettings::GetWorldBounds(bUseCustomWorldBounds, CustomWorldBounds, RenderOctreeDepth);
+	return FVoxelRuntimeSettings::GetWorldBounds(bUseCustomWorldBounds, CustomWorldBounds, RenderOctreeChunkSize, RenderOctreeDepth);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -319,17 +319,28 @@ void AVoxelWorld::SetGeneratorClass(TSubclassOf<UVoxelGenerator> NewGeneratorCla
 
 void AVoxelWorld::SetRenderOctreeDepth(int32 NewDepth)
 {
-	RenderOctreeDepth = FMath::Max(1, FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(NewDepth));
-	WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(RenderOctreeDepth);
+	FVoxelUtilities::FixupChunkSize(RenderOctreeChunkSize,  MESHER_CHUNK_SIZE);
+	
+	RenderOctreeDepth = FMath::Max(1, FVoxelUtilities::ClampDepth(RenderOctreeChunkSize, NewDepth));
+	WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth(RenderOctreeChunkSize, RenderOctreeDepth);
 }
 
-void AVoxelWorld::SetWorldSize(int32 NewWorldSizeInVoxels)
+void AVoxelWorld::SetRenderOctreeChunkSize(int32 NewChunkSize)
 {
-	SetWorldSize(uint32(FMath::Max(0, NewWorldSizeInVoxels)));
+	RenderOctreeChunkSize = NewChunkSize;
+	RenderOctreeChunkSize = FMath::Min(WorldSizeInVoxel / 2, RenderOctreeChunkSize);
+	FVoxelUtilities::FixupChunkSize(RenderOctreeChunkSize,  MESHER_CHUNK_SIZE);
+
+	// Update depth
+	SetWorldSize(WorldSizeInVoxel);
 }
-void AVoxelWorld::SetWorldSize(uint32 NewWorldSizeInVoxels)
+
+void AVoxelWorld::SetWorldSize(int32 NewWorldSizeInVoxel)
 {
-	SetRenderOctreeDepth(FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(NewWorldSizeInVoxels));
+	FVoxelUtilities::FixupChunkSize(RenderOctreeChunkSize,  MESHER_CHUNK_SIZE);
+	
+	WorldSizeInVoxel = FMath::Max(0, NewWorldSizeInVoxel);
+	SetRenderOctreeDepth(FVoxelUtilities::GetDepthFromSize(RenderOctreeChunkSize, NewWorldSizeInVoxel));
 }
 
 TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition) const
@@ -359,9 +370,14 @@ UVoxelGeneratorCache* AVoxelWorld::GetGeneratorCache() const
 
 FVoxelGeneratorInit AVoxelWorld::GetGeneratorInit() const
 {
+	// See FVoxelRuntimeSettings::GetGeneratorInit
+
+	int32 ChunkSize = RenderOctreeChunkSize;
+	FVoxelUtilities::FixupChunkSize(ChunkSize, MESHER_CHUNK_SIZE);
+	
 	return FVoxelGeneratorInit(
 		VoxelSize,
-		FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(RenderOctreeDepth),
+		FVoxelUtilities::GetSizeFromDepth(ChunkSize, RenderOctreeDepth),
 		RenderType,
 		MaterialConfig,
 		MaterialCollection,
@@ -608,6 +624,10 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 		{
 			SetRenderOctreeDepth(RenderOctreeDepth);
 		}
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, RenderOctreeChunkSize))
+		{
+			SetRenderOctreeChunkSize(RenderOctreeChunkSize);
+		}
 		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, WorldSizeInVoxel))
 		{
 			SetWorldSize(WorldSizeInVoxel);
@@ -632,12 +652,9 @@ void AVoxelWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedE
 		{
 			FoliageCollisionDistanceInVoxel = FMath::CeilToInt(FoliageCollisionDistanceInVoxel / 32.f) * 32;
 		}
-		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, ChunksClustersSize))
+		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, MergedChunksClusterSize))
 		{
-			ChunksClustersSize = FMath::Max(ChunksClustersSize, RENDER_CHUNK_SIZE);
-			const int32 PowerOf2 = FMath::RoundToInt(FMath::Log2(ChunksClustersSize));
-			ChunksClustersSize = 1 << PowerOf2;
-			ChunksClustersSize = FMath::Max(ChunksClustersSize, RENDER_CHUNK_SIZE);
+			MergedChunksClusterSize = FMath::RoundUpToPowerOfTwo(FMath::Max(MergedChunksClusterSize, 2));
 		}
 		else if (Name == GET_MEMBER_NAME_STATIC(AVoxelWorld, PriorityCategories))
 		{

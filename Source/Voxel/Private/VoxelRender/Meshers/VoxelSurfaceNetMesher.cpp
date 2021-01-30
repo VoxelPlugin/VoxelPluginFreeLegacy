@@ -466,11 +466,11 @@ void FVoxelSurfaceNetMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TA
 		VOXEL_ASYNC_SCOPE_COUNTER("Generate Mesh");
 
 		// generate the mesh indices
-		for (uint32 LZ = 0; LZ < RENDER_CHUNK_SIZE; LZ++)
+		for (uint32 LZ = 0; LZ < MESHER_CHUNK_SIZE; LZ++)
 		{
-			for (uint32 LY = 0; LY < RENDER_CHUNK_SIZE; LY++)
+			for (uint32 LY = 0; LY < MESHER_CHUNK_SIZE; LY++)
 			{
-				for (uint32 LX = 0; LX < RENDER_CHUNK_SIZE; LX++)
+				for (uint32 LX = 0; LX < MESHER_CHUNK_SIZE; LX++)
 				{
 					const uint32 VoxelIndex = LX + LY * SN_CHUNK_SIZE + LZ * SN_CHUNK_SIZE * SN_CHUNK_SIZE;
 					const uint8 SurfaceNetCase = VertexSNCases[VoxelIndex];

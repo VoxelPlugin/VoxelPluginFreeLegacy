@@ -282,11 +282,11 @@ void FVoxelCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<
 	
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("Iteration");
-		for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
+		for (int32 X = 0; X < MESHER_CHUNK_SIZE; X++)
 		{
-			for (int32 Y = 0; Y < RENDER_CHUNK_SIZE; Y++)
+			for (int32 Y = 0; Y < MESHER_CHUNK_SIZE; Y++)
 			{
-				for (int32 Z = 0; Z < RENDER_CHUNK_SIZE; Z++)
+				for (int32 Z = 0; Z < MESHER_CHUNK_SIZE; Z++)
 				{
 					const FVoxelValue Value = GetValue(X, Y, Z);
 					if (Value.IsEmpty()) continue;
@@ -331,9 +331,9 @@ FORCEINLINE FVoxelValue FVoxelCubicMesher::GetValue(int32 X, int32 Y, int32 Z) c
 		-1 <= X &&
 		-1 <= Y &&
 		-1 <= Z &&
-		X <= RENDER_CHUNK_SIZE &&
-		Y <= RENDER_CHUNK_SIZE &&
-		Z <= RENDER_CHUNK_SIZE);
+		X <= MESHER_CHUNK_SIZE &&
+		Y <= MESHER_CHUNK_SIZE &&
+		Z <= MESHER_CHUNK_SIZE);
 	const int32 Index =
 			(X + 1) +
 			(Y + 1) * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS +
@@ -409,9 +409,9 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 {
 	if (!(TransitionsMask & Direction)) return;
 
-	for (int32 LX = 0; LX < RENDER_CHUNK_SIZE; LX++)
+	for (int32 LX = 0; LX < MESHER_CHUNK_SIZE; LX++)
 	{
-		for (int32 LY = 0; LY < RENDER_CHUNK_SIZE; LY++)
+		for (int32 LY = 0; LY < MESHER_CHUNK_SIZE; LY++)
 		{
 			// "Big" denotes the low resolution LOD voxels
 			// "Small" denotes the high resolution LOD voxels
@@ -533,14 +533,14 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 template<EVoxelDirectionFlag::Type Direction>
 FORCEINLINE FVoxelValue FVoxelCubicTransitionsMesher::GetValue(int32 InStep, int32 X, int32 Y, int32 Z) const
 {
-	const FIntVector Position = Local2DToGlobal<Direction>(RENDER_CHUNK_SIZE * Step - InStep, X, Y, Z);
+	const FIntVector Position = Local2DToGlobal<Direction>(MESHER_CHUNK_SIZE * Step - InStep, X, Y, Z);
 	return Accelerator->GetValue(ChunkPosition + Position, LOD);
 }
 
 template<EVoxelDirectionFlag::Type Direction>
 FORCEINLINE FVoxelMaterial FVoxelCubicTransitionsMesher::GetMaterial(int32 InStep, int32 X, int32 Y, int32 Z) const
 {
-	const FIntVector Position = Local2DToGlobal<Direction>(RENDER_CHUNK_SIZE * Step - InStep, X, Y, Z);
+	const FIntVector Position = Local2DToGlobal<Direction>(MESHER_CHUNK_SIZE * Step - InStep, X, Y, Z);
 	return Accelerator->GetMaterial(ChunkPosition + Position, LOD);
 }
 
@@ -561,7 +561,7 @@ void FVoxelCubicTransitionsMesher::Add2DFace(
 		? IsDirectionMax<Direction>() ? 1 : -1
 		: 0;
 
-	const FIntVector P = Local2DToGlobal<Direction>(Step / InStep * RENDER_CHUNK_SIZE, LX, LY, LZ);
+	const FIntVector P = Local2DToGlobal<Direction>(Step / InStep * MESHER_CHUNK_SIZE, LX, LY, LZ);
 	AddFace<FaceDirection>(*this, InStep, Material, P.X, P.Y, P.Z, Indices, Vertices);
 }
 

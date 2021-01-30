@@ -191,7 +191,7 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 	const FIntVector Min = Data->WorldBounds.Min;
 	const FIntVector Max = Data->WorldBounds.Max;
 	
-	const FIntVector NumChunksPerAxis = (Max - Min) / RENDER_CHUNK_SIZE;
+	const FIntVector NumChunksPerAxis = (Max - Min) / MESHER_CHUNK_SIZE;
 	const int64 TotalNumChunks = int64(NumChunksPerAxis.X) * int64(NumChunksPerAxis.Y) * int64(NumChunksPerAxis.Z);
 
 	if (TotalNumChunks > MAX_int32)
@@ -208,11 +208,11 @@ FVoxelCookedData UVoxelCookingLibrary::CookVoxelDataImpl(const FVoxelCookingSett
 #if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
 	FVoxelCookingTaskData TaskData(*Renderer, CookedData.Mutable(), TotalNumChunks, Settings);
 
-	for (int32 X = Min.X; X < Max.X; X += RENDER_CHUNK_SIZE)
+	for (int32 X = Min.X; X < Max.X; X += MESHER_CHUNK_SIZE)
 	{
-		for (int32 Y = Min.Y; Y < Max.Y; Y += RENDER_CHUNK_SIZE)
+		for (int32 Y = Min.Y; Y < Max.Y; Y += MESHER_CHUNK_SIZE)
 		{
-			for (int32 Z = Min.Z; Z < Max.Z; Z += RENDER_CHUNK_SIZE)
+			for (int32 Z = Min.Z; Z < Max.Z; Z += MESHER_CHUNK_SIZE)
 			{
 				const FIntVector ChunkPosition = FIntVector(X, Y, Z);
 				auto* Task = new FVoxelCookingTask(ChunkPosition, TaskData);

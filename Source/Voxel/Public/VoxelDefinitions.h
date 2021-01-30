@@ -39,12 +39,16 @@
 #define DO_THREADSAFE_CHECKS VOXEL_DEBUG
 #endif
 
-// Size of a render chunk
-// Bigger = less draw calls
-// Smaller = faster edits
+// Size of a chunk processed by the mesher
 // Must be a power of 2
-#ifndef RENDER_CHUNK_SIZE
-#define RENDER_CHUNK_SIZE 32
+// Bigger = larger rebuilds when editing, but potentially faster meshing
+#ifndef MESHER_CHUNK_SIZE
+#define MESHER_CHUNK_SIZE 32
+#endif
+
+// Base foliage chunk size, for LOD = 0
+#ifndef FOLIAGE_CHUNK_SIZE
+#define FOLIAGE_CHUNK_SIZE 32
 #endif
 
 // Size of a data chunk

@@ -80,7 +80,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 		Accelerator = MakeUnique<FVoxelConstDataAccelerator>(Data, GetBoundsToLock());
 	}
 	
-	constexpr int32 NumVoxels = RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE;
+	constexpr int32 NumVoxels = MESHER_CHUNK_SIZE * MESHER_CHUNK_SIZE * MESHER_CHUNK_SIZE;
 	constexpr int32 NumVoxelsWithNeighbors = CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS;
 
 	TVoxelStaticBitArray<NumVoxelsWithNeighbors> ValuesBitArray;
@@ -106,10 +106,10 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 	
 	const auto IsEmpty = [&](int32 X, int32 Y, int32 Z)
 	{
-		checkVoxelSlow(-1 <= X && X < RENDER_CHUNK_SIZE + 1);
-		checkVoxelSlow(-1 <= Y && Y < RENDER_CHUNK_SIZE + 1);
-		checkVoxelSlow(-1 <= Z && Z < RENDER_CHUNK_SIZE + 1);
-		return ValuesBitArray.Test((X + 1) + (Y + 1) * (RENDER_CHUNK_SIZE + 2) + (Z + 1) * (RENDER_CHUNK_SIZE + 2) * (RENDER_CHUNK_SIZE + 2));
+		checkVoxelSlow(-1 <= X && X < MESHER_CHUNK_SIZE + 1);
+		checkVoxelSlow(-1 <= Y && Y < MESHER_CHUNK_SIZE + 1);
+		checkVoxelSlow(-1 <= Z && Z < MESHER_CHUNK_SIZE + 1);
+		return ValuesBitArray.Test((X + 1) + (Y + 1) * (MESHER_CHUNK_SIZE + 2) + (Z + 1) * (MESHER_CHUNK_SIZE + 2) * (MESHER_CHUNK_SIZE + 2));
 	};
 
 	TVoxelStaticArray<TVoxelStaticBitArray<NumVoxels>, 6> FacesBitArrays;
@@ -121,14 +121,14 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 
 		const auto GetFaceIndex = [&](int32 X, int32 Y, int32 Z)
 		{
-			return X + Y * RENDER_CHUNK_SIZE + Z * RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE;
+			return X + Y * MESHER_CHUNK_SIZE + Z * MESHER_CHUNK_SIZE * MESHER_CHUNK_SIZE;
 		};
 		
-		for (int32 Z = 0; Z < RENDER_CHUNK_SIZE; Z++)
+		for (int32 Z = 0; Z < MESHER_CHUNK_SIZE; Z++)
 		{
-			for (int32 Y = 0; Y < RENDER_CHUNK_SIZE; Y++)
+			for (int32 Y = 0; Y < MESHER_CHUNK_SIZE; Y++)
 			{
-				for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
+				for (int32 X = 0; X < MESHER_CHUNK_SIZE; X++)
 				{
 					if (IsEmpty(X, Y, Z))
 					{
@@ -149,7 +149,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 	for (int32 Direction = 0; Direction < 6; Direction++)
 	{
 		TArray<FCubicQuad, TFixedAllocator<NumVoxels>> Quads;
-		MESHER_TIME_INLINE(GreedyMeshing, GreedyMeshing2D<RENDER_CHUNK_SIZE>(FacesBitArrays[Direction], Quads));
+		MESHER_TIME_INLINE(GreedyMeshing, GreedyMeshing2D<MESHER_CHUNK_SIZE>(FacesBitArrays[Direction], Quads));
 		
 		VOXEL_ASYNC_SCOPE_COUNTER("Add faces");
 		MESHER_TIME_SCOPE(AddFaces);
@@ -168,7 +168,7 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 		FVoxelUtilities::TStaticSwitch<5>::Switch(Settings.SimpleCubicCollisionLODBias, [&](auto SimpleCubicCollisionLODBias)
 		{
 			constexpr int32 CollisionDivider = 1 << SimpleCubicCollisionLODBias;
-			constexpr int32 CollisionChunkSize = RENDER_CHUNK_SIZE / CollisionDivider;
+			constexpr int32 CollisionChunkSize = MESHER_CHUNK_SIZE / CollisionDivider;
 			constexpr int32 CollisionNumVoxels = CollisionChunkSize * CollisionChunkSize * CollisionChunkSize;
 		
 			TVoxelStaticBitArray<CollisionNumVoxels> BitArray;
@@ -210,11 +210,11 @@ void FVoxelGreedyCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, T
 			VOXEL_ASYNC_SCOPE_COUNTER("Bounds");
 
 			FVoxelIntBoxWithValidity CollisionBounds;
-			for (int32 Z = 0; Z < RENDER_CHUNK_SIZE; Z++)
+			for (int32 Z = 0; Z < MESHER_CHUNK_SIZE; Z++)
 			{
-				for (int32 Y = 0; Y < RENDER_CHUNK_SIZE; Y++)
+				for (int32 Y = 0; Y < MESHER_CHUNK_SIZE; Y++)
 				{
-					for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
+					for (int32 X = 0; X < MESHER_CHUNK_SIZE; X++)
 					{
 						if (!IsEmpty(X, Y, Z))
 						{

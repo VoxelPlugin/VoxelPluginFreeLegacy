@@ -9,10 +9,10 @@ struct FVoxelTestsImpl
 {
 	static void TestMaterials()
 	{
-		check((32 << (FVoxelUtilities::GetDepthFromSize<32>(1023) - 1)) < 1023);
-		check((32 << FVoxelUtilities::GetDepthFromSize<32>(1023)) >= 1023);
-		check((32 << (FVoxelUtilities::GetDepthFromSize<32>(1025) - 1)) < 1025);
-		check((32 << FVoxelUtilities::GetDepthFromSize<32>(1025)) >= 1025);
+		check((32 << (FVoxelUtilities::GetDepthFromSize(32, 1023) - 1)) < 1023);
+		check((32 << FVoxelUtilities::GetDepthFromSize(32, 1023)) >= 1023);
+		check((32 << (FVoxelUtilities::GetDepthFromSize(32, 1025) - 1)) < 1025);
+		check((32 << FVoxelUtilities::GetDepthFromSize(32, 1025)) >= 1025);
 		
 		FVoxelMaterial Material(ForceInit);
 		const auto CheckUV = [&](int32 Tex)

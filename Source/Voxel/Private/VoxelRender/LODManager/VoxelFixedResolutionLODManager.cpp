@@ -17,7 +17,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(
 {
 	TArray<FVoxelChunkUpdate> ChunkUpdates;
 	
-	const int32 ChunkSize = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(ChunkLOD);
+	const int32 ChunkSize = FVoxelUtilities::GetSizeFromDepth(Settings.RenderOctreeChunkSize, ChunkLOD);
 	const FVoxelIntBox WorldBounds = Settings.GetWorldBounds();
 
 	const FIntVector Min = FVoxelUtilities::FloorToInt(FVector(WorldBounds.Min) / ChunkSize) * ChunkSize;
@@ -39,7 +39,7 @@ bool FVoxelFixedResolutionLODManager::Initialize(
 			for (int32 Z = Min.Z; Z < Max.Z; Z += ChunkSize)
 			{
 				const FIntVector Position = FIntVector(X, Y, Z);
-				const FVoxelIntBox ChunkBounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, ChunkLOD);
+				const FVoxelIntBox ChunkBounds = FVoxelUtilities::GetBoundsFromPositionAndDepth(Settings.RenderOctreeChunkSize, Position, ChunkLOD);
 				if (WorldBounds.Intersect(ChunkBounds))
 				{
 					ChunkUpdates.Emplace(

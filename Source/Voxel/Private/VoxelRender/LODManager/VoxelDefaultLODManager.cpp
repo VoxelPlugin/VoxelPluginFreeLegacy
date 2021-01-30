@@ -319,10 +319,17 @@ void FVoxelDefaultLODManager::UpdateLODs()
 	VOXEL_FUNCTION_COUNTER();
 	
 	LOG_VOXEL(Verbose, TEXT("Starting LOD Update"));
-
+	
+	const auto ClampDepth = [&](int32& Depth)
+	{
+		// 2x: Bounds.Size() needs to fit in a int32, not just Bounds.Min or Bounds.Max
+		return FVoxelUtilities::ClampDepth(2 * Settings.RenderOctreeChunkSize, Depth);
+	};
+	
 	FVoxelRenderOctreeSettings OctreeSettings;
-	OctreeSettings.MinLOD = DynamicSettings->MinLOD;
-	OctreeSettings.MaxLOD = DynamicSettings->MaxLOD;
+	OctreeSettings.ChunkSize = Settings.RenderOctreeChunkSize;
+	OctreeSettings.MinLOD = ClampDepth(DynamicSettings->MinLOD);
+	OctreeSettings.MaxLOD = ClampDepth(DynamicSettings->MaxLOD);
 	OctreeSettings.WorldBounds = Settings.GetWorldBounds();
 
 	OctreeSettings.Invokers.Reserve(InvokerComponentsInfos.Num());

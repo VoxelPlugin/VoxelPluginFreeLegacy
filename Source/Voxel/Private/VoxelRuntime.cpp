@@ -52,7 +52,7 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(bDisableDebugManager);
 
 	SET(RenderOctreeDepth);
-	SET(WorldSizeInVoxel);
+	SET(RenderOctreeChunkSize);
 	SET(bUseCustomWorldBounds);
 	SET(CustomWorldBounds);
 
@@ -105,7 +105,7 @@ void FVoxelRuntimeSettings::SetFromRuntime(const AVoxelRuntimeActor& InRuntime)
 	SET(DistanceFieldSelfShadowBias);
 	SET(bEnableTransitions);
 	SET(bMergeChunks);
-	SET(ChunksClustersSize);
+	SET(MergedChunksClusterSize);
 	SET(bDoNotMergeCollisionsAndNavmesh);
 	SET(BoundsExtension);
 
@@ -211,11 +211,13 @@ void FVoxelRuntimeSettings::Fixup()
 		bSimpleCubicCollision = false;
 	}
 
+	FVoxelUtilities::FixupChunkSize(RenderOctreeChunkSize, MESHER_CHUNK_SIZE);
+	RenderOctreeDepth = FMath::Max(1, FVoxelUtilities::ClampDepth(RenderOctreeChunkSize, RenderOctreeDepth));
+	
 	MeshUpdatesBudget = FMath::Max(0.001f, MeshUpdatesBudget);
 	RenderSharpness = FMath::Max(0, RenderSharpness);
-	ChunksClustersSize = FMath::Max(RENDER_CHUNK_SIZE, ChunksClustersSize);
+	MergedChunksClusterSize = FMath::RoundUpToPowerOfTwo(FMath::Max(MergedChunksClusterSize, 2));
 	SimpleCubicCollisionLODBias = FMath::Clamp(SimpleCubicCollisionLODBias, 0, 4);
-	RenderOctreeDepth = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(FMath::Max(1, RenderOctreeDepth));
 	TexturePoolTextureSize = FMath::Clamp(TexturePoolTextureSize, 128, 16384);
 	EventsTickRate = FMath::Max(SMALL_NUMBER, EventsTickRate);
 	MultiplayerSyncRate = FMath::Max(SMALL_NUMBER, MultiplayerSyncRate);
@@ -227,18 +229,19 @@ void FVoxelRuntimeSettings::Fixup()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelIntBox FVoxelRuntimeSettings::GetWorldBounds(bool bUseCustomWorldBounds, const FVoxelIntBox& CustomWorldBounds, int32 RenderOctreeDepth)
+FVoxelIntBox FVoxelRuntimeSettings::GetWorldBounds(bool bUseCustomWorldBounds, const FVoxelIntBox& CustomWorldBounds, int32 RenderOctreeChunkSize, int32 RenderOctreeDepth)
 {
 	if (bUseCustomWorldBounds)
 	{
 		return
-			FVoxelUtilities::GetCustomBoundsForDepth<RENDER_CHUNK_SIZE>(
+			FVoxelUtilities::GetCustomBoundsForDepth(
+				RenderOctreeChunkSize,
 				FVoxelIntBox::SafeConstruct(CustomWorldBounds.Min, CustomWorldBounds.Max),
 				RenderOctreeDepth);
 	}
 	else
 	{
-		return FVoxelUtilities::GetBoundsFromDepth<RENDER_CHUNK_SIZE>(RenderOctreeDepth);
+		return FVoxelUtilities::GetBoundsFromDepth(RenderOctreeChunkSize, RenderOctreeDepth);
 	}
 }
 
@@ -248,14 +251,16 @@ FVoxelIntBox FVoxelRuntimeSettings::GetWorldBounds(bool bUseCustomWorldBounds, c
 
 FVoxelIntBox FVoxelRuntimeSettings::GetWorldBounds() const
 {
-	return GetWorldBounds(bUseCustomWorldBounds, CustomWorldBounds, RenderOctreeDepth);
+	return GetWorldBounds(bUseCustomWorldBounds, CustomWorldBounds, RenderOctreeChunkSize, RenderOctreeDepth);
 }
 
 FVoxelGeneratorInit FVoxelRuntimeSettings::GetGeneratorInit() const
 {
+	// See AVoxelWorld::GetGeneratorInit
+	
 	return FVoxelGeneratorInit(
 		VoxelSize,
-		FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(RenderOctreeDepth),
+		FVoxelUtilities::GetSizeFromDepth(RenderOctreeChunkSize, RenderOctreeDepth),
 		RenderType,
 		MaterialConfig,
 		MaterialCollection.Get(),
@@ -409,12 +414,12 @@ void FVoxelRuntimeDynamicSettings::ConfigurePreview()
 
 void FVoxelRuntimeDynamicSettings::Fixup()
 {
-	MinLOD = FVoxelUtilities::ClampMesherDepth(MinLOD);
-	MaxLOD = FVoxelUtilities::ClampMesherDepth(MaxLOD);
+	MinLOD = FVoxelUtilities::ClampDepth(MinLOD);
+	MaxLOD = FVoxelUtilities::ClampDepth(MaxLOD);
 	
-	ChunksCullingLOD = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(ChunksCullingLOD);
-	VisibleChunksCollisionsMaxLOD = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(VisibleChunksCollisionsMaxLOD);
-	VisibleChunksNavmeshMaxLOD = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(VisibleChunksNavmeshMaxLOD);
+	ChunksCullingLOD = FVoxelUtilities::ClampDepth(ChunksCullingLOD);
+	VisibleChunksCollisionsMaxLOD = FVoxelUtilities::ClampDepth(VisibleChunksCollisionsMaxLOD);
+	VisibleChunksNavmeshMaxLOD = FVoxelUtilities::ClampDepth(VisibleChunksNavmeshMaxLOD);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

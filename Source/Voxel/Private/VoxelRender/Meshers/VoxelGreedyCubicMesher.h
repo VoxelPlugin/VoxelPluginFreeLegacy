@@ -6,7 +6,7 @@
 #include "VoxelContainers/VoxelStaticBitArray.h"
 #include "VoxelRender/Meshers/VoxelMesher.h"
 
-#define CUBIC_CHUNK_SIZE_WITH_NEIGHBORS (RENDER_CHUNK_SIZE + 2)
+#define CUBIC_CHUNK_SIZE_WITH_NEIGHBORS (MESHER_CHUNK_SIZE + 2)
 
 class FVoxelConstDataAccelerator;
 

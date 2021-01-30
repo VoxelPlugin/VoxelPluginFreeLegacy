@@ -14,11 +14,11 @@ struct FVoxelLODMaterialsBase
 	GENERATED_BODY()
 
 	// Inclusive
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32))
 	int32 StartLOD = 0;
 
 	// Inclusive
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32))
 	int32 EndLOD = 0;
 };
 

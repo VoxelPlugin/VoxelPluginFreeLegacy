@@ -73,11 +73,11 @@ struct FVoxelFoliageSpawnSettings
 public:
 	int32 GetLOD() const
 	{
-		return FMath::Max(0, FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(ChunkSize));
+		return FMath::Max(0, FVoxelUtilities::GetDepthFromSize(FOLIAGE_CHUNK_SIZE, ChunkSize));
 	}
 	int32 GetChunkSize() const
 	{
-		return RENDER_CHUNK_SIZE << GetLOD();
+		return FOLIAGE_CHUNK_SIZE << GetLOD();
 	}
 	int32 GetGenerationDistanceInChunks(float VoxelSize) const
 	{

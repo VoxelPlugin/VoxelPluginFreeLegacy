@@ -268,7 +268,7 @@ void FVoxelLegacySpawnersModule::Convert_UVoxelSpawnerConfig_UVoxelFoliageCollec
 		}
 		
 		SpawnSettings.HeightGraphOutputName_HeightOnly.Name = Spawner.HeightGraphOutputName_HeightOnly.Name;
-		SpawnSettings.ChunkSize = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(Spawner.LOD);
+		SpawnSettings.ChunkSize = FVoxelUtilities::GetSizeFromDepth(32, Spawner.LOD);
 		SpawnSettings.GenerationDistance = FVoxelDistance::Voxels(Spawner.GenerationDistanceInChunks * SpawnSettings.ChunkSize);
 		SpawnSettings.bInfiniteGenerationDistance = Spawner.bInfiniteGenerationDistance;
 		Foliage->bSave = Spawner.bSave;

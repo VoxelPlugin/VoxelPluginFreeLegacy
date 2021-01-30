@@ -81,7 +81,7 @@ public:
 	
 public:
 	int32 RenderOctreeDepth;
-	uint32 WorldSizeInVoxel;
+	int32 RenderOctreeChunkSize;
 	bool bUseCustomWorldBounds;
 	FVoxelIntBox CustomWorldBounds;
 	
@@ -137,7 +137,7 @@ public:
 	float DistanceFieldSelfShadowBias;
 	bool bEnableTransitions;
 	bool bMergeChunks;
-	int32 ChunksClustersSize;
+	int32 MergedChunksClusterSize;
 	bool bDoNotMergeCollisionsAndNavmesh;
 	float BoundsExtension;
 	
@@ -186,7 +186,7 @@ public:
 	void Fixup();
 
 public:
-	static FVoxelIntBox GetWorldBounds(bool bUseCustomWorldBounds, const FVoxelIntBox& CustomWorldBounds, int32 RenderOctreeDepth);
+	static FVoxelIntBox GetWorldBounds(bool bUseCustomWorldBounds, const FVoxelIntBox& CustomWorldBounds, int32 RenderOctreeChunkSize, int32 RenderOctreeDepth);
 
 public:
 	FVoxelIntBox GetWorldBounds() const;

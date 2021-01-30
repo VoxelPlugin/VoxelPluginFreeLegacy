@@ -48,7 +48,7 @@ inline auto CreateGenerator(const AVoxelWorld* World)
 
 inline int32 ClampDataDepth(int32 Depth)
 {
-	return FMath::Max(1, FVoxelUtilities::ClampDepth<DATA_CHUNK_SIZE>(Depth));
+	return FMath::Max(1, FVoxelUtilities::ClampDepth(DATA_CHUNK_SIZE, Depth));
 }
 
 FVoxelDataSettings::FVoxelDataSettings(
@@ -57,7 +57,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 	bool bEnableMultiplayer,
 	bool bEnableUndoRedo)
 	: Depth(ClampDataDepth(Depth))
-	, WorldBounds(FVoxelUtilities::GetBoundsFromDepth<DATA_CHUNK_SIZE>(this->Depth))
+	, WorldBounds(FVoxelUtilities::GetBoundsFromDepth(DATA_CHUNK_SIZE, this->Depth))
 	, Generator(Generator)
 	, bEnableMultiplayer(bEnableMultiplayer)
 	, bEnableUndoRedo(bEnableUndoRedo)
@@ -70,7 +70,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 	const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator, 
 	bool bEnableMultiplayer, 
 	bool bEnableUndoRedo)
-	: Depth(ClampDataDepth(FVoxelUtilities::GetOctreeDepthContainingBounds<DATA_CHUNK_SIZE>(WorldBounds)))
+	: Depth(ClampDataDepth(FVoxelUtilities::GetOctreeDepthContainingBounds(DATA_CHUNK_SIZE, WorldBounds)))
 	, WorldBounds(WorldBounds)
 	, Generator(Generator)
 	, bEnableMultiplayer(bEnableMultiplayer)

@@ -94,10 +94,10 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 	
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("Cloning octree");
-		NewOctree = OldOctree.IsValid() ? MakeVoxelShared<FVoxelRenderOctree>(&*OldOctree) : MakeVoxelShared<FVoxelRenderOctree>(OctreeDepth);
+		NewOctree = OldOctree.IsValid() ? MakeVoxelShared<FVoxelRenderOctree>(*OldOctree) : MakeVoxelShared<FVoxelRenderOctree>(OctreeSettings.ChunkSize, OctreeDepth);
 		LOG_TIME("Cloning octree");
 	}
-	
+
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("ResetDivisionType");
 		NewOctree->ResetDivisionType();
@@ -191,8 +191,8 @@ void FVoxelRenderOctreeAsyncBuilder::DoWork()
 #define CHECK_MAX_CHUNKS_COUNT() CHECK_MAX_CHUNKS_COUNT_IMPL(;)
 #define CHECK_MAX_CHUNKS_COUNT_BOOL() CHECK_MAX_CHUNKS_COUNT_IMPL(false)
 
-FVoxelRenderOctree::FVoxelRenderOctree(uint8 LOD)
-	: TSimpleVoxelOctree(LOD)
+FVoxelRenderOctree::FVoxelRenderOctree(uint32 ChunkSize, uint8 LOD)
+	: TSimpleVoxelOctree(ChunkSize, LOD)
 	, Root(this)
 	, ChunkId(GetId())
 	, OctreeBounds(GetBounds())
@@ -205,20 +205,20 @@ FVoxelRenderOctree::FVoxelRenderOctree(uint8 LOD)
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderOctreesMemory, sizeof(FVoxelRenderOctree));
 }
 
-FVoxelRenderOctree::FVoxelRenderOctree(const FVoxelRenderOctree* Source)
-	: TSimpleVoxelOctree(Source->Height)
-	, RootIdCounter(Source->RootIdCounter)
+FVoxelRenderOctree::FVoxelRenderOctree(const FVoxelRenderOctree& Source)
+	: TSimpleVoxelOctree(Source.ChunkSize, Source.Height)
+	, RootIdCounter(Source.RootIdCounter)
 	, Root(this)
-	, ChunkId(Source->ChunkId)
+	, ChunkId(Source.ChunkId)
 	, OctreeBounds(GetBounds())
-	, UpdateIndex(Source->UpdateIndex)
+	, UpdateIndex(Source.UpdateIndex)
 {
 	check(ChunkId <= Root->RootIdCounter);
 	Root->CurrentChunksCount++;
-	ChunkSettings = Source->ChunkSettings;
-	if (Source->HasChildren())
+	ChunkSettings = Source.ChunkSettings;
+	if (Source.HasChildren())
 	{
-		CreateChildren(Source->GetChildren());
+		CreateChildren(Source.GetChildren());
 	}
 
 	INC_DWORD_STAT_BY(STAT_VoxelRenderOctreesCount, 1);
@@ -729,6 +729,7 @@ const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDire
 	FIntVector P;
 	switch (Direction)
 	{
+	default: check(false);
 	case EVoxelDirectionFlag::XMin:
 		P = Position + FIntVector(-S, X, Y);
 		break;
@@ -747,9 +748,6 @@ const FVoxelRenderOctree* FVoxelRenderOctree::GetVisibleAdjacentChunk(EVoxelDire
 	case EVoxelDirectionFlag::ZMax:
 		P = Position + FIntVector(X, Y, S);
 		break;
-	default:
-		check(false);
-		P = FIntVector::ZeroValue;
 	}
 
 	if (Root->OctreeBounds.Contains(P))

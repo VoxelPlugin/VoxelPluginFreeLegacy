@@ -7,8 +7,8 @@
 #include "VoxelData/VoxelDataAccelerator.h"
 #include "VoxelRender/Meshers/VoxelMesher.h"
 
-#define CHUNK_SIZE_WITH_END_EDGE (RENDER_CHUNK_SIZE + 1)
-#define CHUNK_SIZE_WITH_NORMALS (RENDER_CHUNK_SIZE + 3)
+#define CHUNK_SIZE_WITH_END_EDGE (MESHER_CHUNK_SIZE + 1)
+#define CHUNK_SIZE_WITH_NORMALS (MESHER_CHUNK_SIZE + 3)
 
 #define EDGE_INDEX_COUNT 4
 
@@ -37,7 +37,7 @@ public:
 	}
 
 private:
-	using FCache = TVoxelStaticArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * EDGE_INDEX_COUNT>;
+	using FCache = TVoxelStaticArray<int32, MESHER_CHUNK_SIZE * MESHER_CHUNK_SIZE * EDGE_INDEX_COUNT>;
 
 	TUniquePtr<FCache> CacheStorageA = MakeUnique<FCache>();
 	TUniquePtr<FCache> CacheStorageB = MakeUnique<FCache>();
@@ -76,7 +76,7 @@ protected:
 
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
-	TVoxelStaticArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * TRANSITION_EDGE_INDEX_COUNT> Cache2D;
+	TVoxelStaticArray<int32, MESHER_CHUNK_SIZE * MESHER_CHUNK_SIZE * TRANSITION_EDGE_INDEX_COUNT> Cache2D;
 
 private:
 	// T: will be created as T(IntersectionPoint, MaterialPosition, bNeedToTranslate)

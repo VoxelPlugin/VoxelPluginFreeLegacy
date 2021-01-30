@@ -22,6 +22,7 @@ DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Render Octrees Memory"), STAT_VoxelRenderO
 
 struct FVoxelRenderOctreeSettings
 {
+	int32 ChunkSize;
 	int32 MinLOD;
 	int32 MaxLOD;
 	FVoxelIntBox WorldBounds;
@@ -79,7 +80,7 @@ private:
 	int32 NumberOfChunks = 0;
 };
 
-class FVoxelRenderOctree : public TSimpleVoxelOctree<RENDER_CHUNK_SIZE, FVoxelRenderOctree>
+class FVoxelRenderOctree : public TSimpleVoxelOctree<FVoxelRenderOctree>
 {
 private:
 	// Important: must be the first variable to be initialized, else GetId does the wrong thing for the root!
@@ -110,8 +111,8 @@ public:
 
 	inline const FVoxelChunkSettings& GetSettings() const { return ChunkSettings.Settings; }
 
-	FVoxelRenderOctree(uint8 LOD);
-	FVoxelRenderOctree(const FVoxelRenderOctree* Source);
+	FVoxelRenderOctree(uint32 ChunkSize, uint8 LOD);
+	explicit FVoxelRenderOctree(const FVoxelRenderOctree& Source);
 
 	FVoxelRenderOctree(const FVoxelRenderOctree& Parent, uint8 ChildIndex);
 	FVoxelRenderOctree(const FVoxelRenderOctree& Parent, uint8 ChildIndex, const ChildrenArray& SourceChildren);

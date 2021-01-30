@@ -841,7 +841,7 @@ void UVoxelDataTools::CompressIntoHeightmap(
 		{
 			bCheckAllLeaves = true;
 
-			const int32 Size = FVoxelUtilities::GetSizeFromDepth<DATA_CHUNK_SIZE>(Data.Depth);
+			const int32 Size = FVoxelUtilities::GetSizeFromDepth(DATA_CHUNK_SIZE, Data.Depth);
 			if (Size > 20000)
 			{
 				FVoxelMessages::Error(FUNCTION_ERROR("Heightmap size would be too large!"));

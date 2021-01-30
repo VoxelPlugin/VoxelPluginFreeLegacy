@@ -35,10 +35,10 @@ namespace FVoxelMesherUtilities
 	inline FVector GetTranslatedTransvoxel(const FVector& Vertex, const FVector& Normal, uint8 TransitionsMask, uint8 LOD)
 	{
 		const int32 Step = 1 << LOD;
-		const int32 Size = RENDER_CHUNK_SIZE << LOD;
+		const int32 Size = MESHER_CHUNK_SIZE << LOD;
 		
 		const float LowerBound = Step;
-		const float UpperBound = (RENDER_CHUNK_SIZE - 1) * Step;
+		const float UpperBound = (MESHER_CHUNK_SIZE - 1) * Step;
 		
 		if ((LowerBound <= Vertex.X && Vertex.X <= UpperBound) &&
 			(LowerBound <= Vertex.Y && Vertex.Y <= UpperBound) &&
