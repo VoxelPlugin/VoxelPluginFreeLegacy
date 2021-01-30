@@ -17,6 +17,7 @@ class UEdGraph;
 class UVoxelNode;
 class UTexture2D;
 class UVoxelExposedNode;
+class FVoxelGraphContext;
 class UVoxelGraphOutputsConfig;
 class UVoxelGraphPreviewSettings;
 class FVoxelGraphGeneratorInstance;
@@ -152,9 +153,6 @@ public:
 	
 	UPROPERTY()
 	UVoxelGraphPreviewSettings* PreviewSettings;
-
-public:
-	TMap<FName, FString> TransientParameters;
 
 public:
 

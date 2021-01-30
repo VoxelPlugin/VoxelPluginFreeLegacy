@@ -36,7 +36,3 @@ void UVoxelNode_HeightmapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 	}
 }
 
-UVoxelHeightmapAsset* UVoxelNode_HeightmapSampler::GetParameter() const
-{
-	return GetParameterInternal<UVoxelHeightmapAsset>();
-}

@@ -44,8 +44,5 @@ public:
 
 	//~ Begin UVoxelExposedNode Interface
 	virtual FName GetParameterPropertyNameInternal() const override { return bFloatHeightmap ? GET_OWN_MEMBER_NAME(HeightmapFloat) : GET_OWN_MEMBER_NAME(HeightmapUINT16); }
-
-	virtual UVoxelHeightmapAsset* GetParameter() const;
-
 	//~ End UVoxelExposedNode Interface
 };

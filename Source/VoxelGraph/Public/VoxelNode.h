@@ -14,6 +14,7 @@ class UVoxelGraphGenerator;
 class FVoxelComputeNode;
 class FVoxelCompilationNode;
 class FVoxelGraphErrorReporter;
+class FVoxelGraphContext;
 struct FVoxelGeneratorParameter;
 
 UCLASS(Abstract)

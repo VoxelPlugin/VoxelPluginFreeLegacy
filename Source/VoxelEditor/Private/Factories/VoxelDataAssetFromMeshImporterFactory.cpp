@@ -5,6 +5,7 @@
 #include "VoxelAssets/VoxelDataAssetData.h"
 #include "VoxelFeedbackContext.h"
 #include "VoxelImporters/VoxelMeshImporter.h"
+#include "VoxelMessages.h"
 
 #include "Engine/StaticMesh.h"
 #include "Framework/Notifications/NotificationManager.h"
