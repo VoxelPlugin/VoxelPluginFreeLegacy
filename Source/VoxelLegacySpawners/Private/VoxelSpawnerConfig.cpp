@@ -75,7 +75,7 @@ void UVoxelSpawnerConfig::PostLoad()
 			NewSpawner.Density = Spawner.Density;
 			NewSpawner.DensityMultiplier_RayOnly = {};
 			NewSpawner.HeightGraphOutputName_HeightOnly = Group.HeightGraphOutputName;
-			NewSpawner.LOD = FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(Group.ChunkSize);
+			NewSpawner.LOD = FVoxelUtilities::GetDepthFromSize(32, Group.ChunkSize);
 			NewSpawner.GenerationDistanceInChunks = Group.GenerationDistanceInChunks;
 			
 			NewSpawner.bSave = Spawner.Advanced.bSave;

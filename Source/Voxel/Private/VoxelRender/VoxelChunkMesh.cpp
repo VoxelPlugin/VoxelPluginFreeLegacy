@@ -153,7 +153,7 @@ void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, 
 
 	// Need to overlap distance fields to avoid glitches
 	const int32 Extension = Settings.DistanceFieldBoundsExtension;
-	const int32 HighResSize = RENDER_CHUNK_SIZE + 1 + 2 * Extension;
+	const int32 HighResSize = MESHER_CHUNK_SIZE + 1 + 2 * Extension;
 	const int32 Step = 1 << LOD;
 		
 	const int32 Divisor = FMath::Clamp(Settings.DistanceFieldResolutionDivisor, 1, HighResSize);

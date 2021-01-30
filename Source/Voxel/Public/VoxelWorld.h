@@ -179,13 +179,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|General")
 	void SetGeneratorClass(TSubclassOf<UVoxelGenerator> NewGeneratorClass);
 
-	// Set the render octree depth
 	UFUNCTION(BlueprintCallable, Category = "Voxel|World Size")
 	void SetRenderOctreeDepth(int32 NewDepth);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel|World Size")
+	void SetRenderOctreeChunkSize(int32 NewChunkSize);
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|World Size")
-	void SetWorldSize(int32 NewWorldSizeInVoxels);
-	void SetWorldSize(uint32 NewWorldSizeInVoxels);
+	void SetWorldSize(int32 NewWorldSizeInVoxel);
 
 public:
 	// Is this world created?

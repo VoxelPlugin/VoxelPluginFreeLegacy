@@ -73,13 +73,16 @@ public:
 	bool bDisableDebugManager = false;
 	
 public:
-	// WorldSizeInVoxel = RENDER_CHUNK_SIZE * 2^DataOctreeDepth.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, AdvancedDisplay, Category = "Voxel - World Size", meta = (Recreate, ClampMin = 1, ClampMax = 26, UIMin = 1, UIMax = 26))
+	// WorldSizeInVoxel = RenderOctreeChunkSize * 2 ^ RenderOctreeDepth.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, AdvancedDisplay, Category = "Voxel - World Size", meta = (Recreate, ClampMin = 1, ClampMax = 32, UIMin = 1, UIMax = 32))
 	int32 RenderOctreeDepth = 10;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, AdvancedDisplay, Category = "Voxel - World Size", meta = (Recreate, UIMin = 32, UIMax = 1024))
+	int32 RenderOctreeChunkSize = 32;
 
 	// Size of an edge of the world
 	UPROPERTY(EditAnywhere, Category = "Voxel - World Size", meta = (Recreate, ClampMin = 1, DisplayName = "World Size (in voxel)"))
-	uint32 WorldSizeInVoxel = FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(10);
+	int32 WorldSizeInVoxel = 32 << 10;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - World Size", meta = (Recreate, InlineEditConditionToggle))
 	bool bUseCustomWorldBounds = false;
@@ -89,11 +92,11 @@ public:
 	
 public:
 	// Chunks can't have a LOD strictly higher than this. Useful is background has a too low resolution.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - LOD Settings", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
-	int32 MaxLOD = FVoxelUtilities::ClampMesherDepth(32);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - LOD Settings", meta = (UpdateLODs, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32))
+	int32 MaxLOD = 32;
 	
 	// Chunks can't have a LOD strictly lower than this. Useful when in space for instance, combined with a manual BP call to ApplyLODSettings
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - LOD Settings", meta = (UpdateLODs, ClampMin = 0, ClampMax = 25, UIMin = 0, UIMax = 25))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - LOD Settings", meta = (UpdateLODs, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32))
 	int32 MinLOD = 0;
 	
 	// In world space. If invokers move by less than this distance LODs won't be updated
@@ -236,8 +239,8 @@ public:
 	TSubclassOf<UVoxelProceduralMeshComponent> ProcMeshClass;
 
 	// Chunks with a LOD strictly higher than this won't be rendered
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (UpdateLODs, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26))
-	int32 ChunksCullingLOD = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(32);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (UpdateLODs, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32))
+	int32 ChunksCullingLOD = 32;
 
 	// Whether to render the world, or to just use it for collisions/navmesh
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (Recreate))
@@ -293,7 +296,7 @@ public:
 
 	// Chunks with LOD <= this will have distance fields
 	// Be careful when increasing because of the memory usage caused by distance fields
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, EditCondition = "bGenerateDistanceFields"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32, EditCondition = "bGenerateDistanceFields"))
 	int32 MaxDistanceFieldLOD = 4;
 
 	// By how many voxels to extend the chunks distance fields (on every side)
@@ -323,9 +326,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	bool bMergeChunks = false;
 
-	// Size in voxels of the clusters. Scales with LOD (eg if 64, for LOD 3 it will be 64 * 2 * 2 * 2 = 512)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, EditCondition = "bMergeChunks"))
-	int32 ChunksClustersSize = 64;
+	// Size in CHUNKS of the clusters.
+	// eg, if 8, clusters will merge 8 x 8 x 8 chunks
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 2, UIMin = 2, UIMax = 32, EditCondition = "bMergeChunks"))
+	int32 MergedChunksClusterSize = 2;
 
 	// If true, additional meshes with the normal chunk size will be spawned only for collisions & navmesh
 	// Recommended, as cooking collision for merged chunks takes forever
@@ -405,7 +409,7 @@ public:
 	bool bComputeVisibleChunksCollisions = true;
 
 	// Max LOD to compute collisions on. Inclusive. If not 0 collisions won't be precise. Does not affect invokers
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions|Visible Chunks", meta = (UpdateLODs, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, EditCondition = "bComputeVisibleChunksCollisions && bEnableCollisions"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Collisions|Visible Chunks", meta = (UpdateLODs, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32, EditCondition = "bComputeVisibleChunksCollisions && bEnableCollisions"))
 	int32 VisibleChunksCollisionsMaxLOD = 5;
 	
 	/**	Allows you to override the PhysicalMaterial to use for simple collision on this body. */
@@ -447,7 +451,7 @@ public:
 	bool bComputeVisibleChunksNavmesh = true;
 
 	// Max LOD to compute navmesh on. Inclusive. Does not affect invokers
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Navmesh", meta = (UpdateLODs, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, EditCondition = "bEnableNavmesh && bComputeVisibleChunksNavmesh"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Navmesh", meta = (UpdateLODs, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32, EditCondition = "bEnableNavmesh && bComputeVisibleChunksNavmesh"))
 	int32 VisibleChunksNavmeshMaxLOD = 0;
 	
 public:

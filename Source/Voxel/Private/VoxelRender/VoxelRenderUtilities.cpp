@@ -51,7 +51,7 @@ void FVoxelRenderUtilities::InitializeMaterialInstance(
 	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("LOD"), LOD);
 	MaterialInstance->SetVectorParameterValue(STATIC_FNAME("ChunkPosition"), FVector(Position));
 	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("VoxelSize"), Settings.VoxelSize);
-	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("ChunkSize"), RENDER_CHUNK_SIZE);
+	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("ChunkSize"), MESHER_CHUNK_SIZE);
 	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("FadeDuration"), Settings.ChunksDitheringDuration);
 }
 
@@ -553,7 +553,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 				LOD,
 				Position,
 				Settings);
-			Renderer.OnMaterialInstanceCreated.Broadcast(LOD, FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD), MaterialInstanceObject);
+			Renderer.OnMaterialInstanceCreated.Broadcast(LOD, FVoxelUtilities::GetBoundsFromPositionAndDepth(Settings.RenderOctreeChunkSize, Position, LOD), MaterialInstanceObject);
 			if (DitheringInfo.bIsValid)
 			{
 				SetMaterialDithering(*MaterialInstanceObject, Settings, DitheringInfo);

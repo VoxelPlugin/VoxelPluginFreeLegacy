@@ -11,8 +11,8 @@
  * You can check out his website here: https://dexyfex.com/
  */
 
-#define SN_CHUNK_SIZE (RENDER_CHUNK_SIZE + 1) /* +1 since SN vertices are within cells */
-#define SN_EXTENDED_CHUNK_SIZE (RENDER_CHUNK_SIZE + 3) /* +3 to get parent's outer edge */
+#define SN_CHUNK_SIZE (MESHER_CHUNK_SIZE + 1) /* +1 since SN vertices are within cells */
+#define SN_EXTENDED_CHUNK_SIZE (MESHER_CHUNK_SIZE + 3) /* +3 to get parent's outer edge */
 
 class FVoxelSurfaceNetMesher : public FVoxelMesher
 {

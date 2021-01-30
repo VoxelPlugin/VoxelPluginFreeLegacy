@@ -290,7 +290,7 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 	ActiveMeshes.Add(NewMesh, Position);
 	Settings.SetComponentPosition(*NewMesh, Position, true);
 	
-	const FVoxelIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD);
+	const FVoxelIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth(Settings.RenderOctreeChunkSize, Position, LOD);
 	const FVoxelPriorityHandler PriorityHandler(Bounds, Renderer);
 
 	// Set mesh variables

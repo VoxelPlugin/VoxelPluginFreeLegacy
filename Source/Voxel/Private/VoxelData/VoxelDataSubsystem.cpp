@@ -19,7 +19,7 @@ void FVoxelDataSubsystem::Create()
 	else
 	{
 		FVoxelDataSettings DataSettings;
-		DataSettings.Depth = FVoxelUtilities::ConvertDepth<RENDER_CHUNK_SIZE, DATA_CHUNK_SIZE>(Settings.RenderOctreeDepth);
+		DataSettings.Depth = FVoxelUtilities::ConvertDepth(Settings.RenderOctreeChunkSize, DATA_CHUNK_SIZE, Settings.RenderOctreeDepth);
 		DataSettings.WorldBounds = Settings.GetWorldBounds();
 
 		DataSettings.Generator = GetSubsystemChecked<FVoxelGeneratorCache>().MakeGeneratorInstance(Settings.Generator);

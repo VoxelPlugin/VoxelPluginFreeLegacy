@@ -225,7 +225,8 @@ void AVoxelAssetActor::BeginPlay()
 
 		// Setup LOD
 		const FVoxelIntBox ItemBounds = AddItemToData(VoxelWorld, nullptr);
-		VoxelWorld->SetRenderOctreeDepth(FVoxelUtilities::GetOctreeDepthContainingBounds<RENDER_CHUNK_SIZE>(ItemBounds));
+		// TODO Set RenderOctreeChunkSize?
+		VoxelWorld->SetRenderOctreeDepth(FVoxelUtilities::GetOctreeDepthContainingBounds(MESHER_CHUNK_SIZE, ItemBounds));
 		VoxelWorld->MaxLOD = 0;
 		VoxelWorld->bConstantLOD = true;
 
@@ -414,7 +415,7 @@ void AVoxelAssetActor::CreatePreview()
 
 	// Aggressive merge settings
 	Settings.bMergeChunks = true;
-	Settings.ChunksClustersSize = 256;
+	Settings.MergedChunksClusterSize = 8;
 
 	// We do want collision to be able to place items on top of asset actors, but only complex one is needed
 	Settings.CollisionTraceFlag = CTF_UseComplexAsSimple;
@@ -427,7 +428,7 @@ void AVoxelAssetActor::CreatePreview()
 
 	auto& LODManager = Runtime->GetSubsystemChecked<FVoxelFixedResolutionLODManager>();
 	while (ensure(PreviewLOD < 24) && !LODManager.Initialize(
-		FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD),
+		FVoxelUtilities::ClampDepth(Settings.RenderOctreeChunkSize, PreviewLOD),
 		MaxPreviewChunks,
 		true,
 		true,

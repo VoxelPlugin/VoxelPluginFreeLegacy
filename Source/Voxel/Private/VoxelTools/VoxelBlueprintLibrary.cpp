@@ -997,9 +997,11 @@ FVoxelIntBox UVoxelBlueprintLibrary::GetRenderBoundsOverlappingDataBounds(AVoxel
 	CHECK_VOXELWORLD_IS_CREATED();
 	CHECK_BOUNDS_ARE_VALID();
 
-	LOD = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(LOD);
+	const int32 ChunkSize = World->GetSubsystemChecked<IVoxelRenderer>().Settings.RenderOctreeChunkSize;
+	
+	LOD = FVoxelUtilities::ClampDepth(ChunkSize, LOD);
 
-	Bounds = Bounds.MakeMultipleOfBigger(RENDER_CHUNK_SIZE << LOD);
+	Bounds = Bounds.MakeMultipleOfBigger(ChunkSize << LOD);
 
 	return Bounds.Extend(2 << LOD); // Account for the normals reads
 }

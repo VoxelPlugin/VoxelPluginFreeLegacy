@@ -104,7 +104,7 @@ public:
 	bool bUseForLOD = true;
 
 	// You should leave this to 0
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker|LOD", meta = (DisplayName = "LOD to Set", EditCondition = bUseForLOD, ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel Invoker|LOD", meta = (DisplayName = "LOD to Set", EditCondition = bUseForLOD, ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32))
 	int32 LODToSet = 0;
 
 	// In cm. Will set LODToSet around the invoker on this distance

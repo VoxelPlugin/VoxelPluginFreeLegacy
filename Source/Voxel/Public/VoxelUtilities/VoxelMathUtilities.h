@@ -11,19 +11,19 @@
 
 namespace FVoxelUtilities
 {
-#define CHECK_CHUNK_SIZE() static_assert(FVoxelUtilities::IsPowerOfTwo(ChunkSize), "ChunkSize must be a power of 2")
+#define CHECK_CHUNK_SIZE() checkfVoxelSlow(FVoxelUtilities::IsPowerOfTwo(ChunkSize), TEXT("ChunkSize must be a power of 2"))
 	// Get required depth such that ChunkSize << Depth >= Size
-	template<uint32 ChunkSize>
-	inline int32 GetDepthFromSize(uint32 Size)
+	FORCEINLINE int32 GetDepthFromSize(uint32 ChunkSize, uint32 Size)
 	{
 		CHECK_CHUNK_SIZE();
+		
 		if (Size <= 0)
 		{
 			return 0;
 		}
 		else
 		{
-			const int32 Depth = 31 - FPlatformMath::CountLeadingZeros(Size / ChunkSize);
+			const int32 Depth = IntLog2(Size / ChunkSize);
 			if (ChunkSize << Depth == Size)
 			{
 				return Depth;
@@ -35,52 +35,46 @@ namespace FVoxelUtilities
 		}
 	}
 	
-	template<uint32 ChunkSize>
-	inline constexpr uint32 GetSizeFromDepth(int32 Depth)
+	FORCEINLINE constexpr uint32 GetSizeFromDepth(uint32 ChunkSize, int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
 		return ChunkSize << Depth;
 	}
 
-	template<uint32 ChunkSize>
-	inline FVoxelIntBox GetBoundsFromDepth(int32 Depth)
+	FORCEINLINE FVoxelIntBox GetBoundsFromDepth(uint32 ChunkSize, int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
 		const FIntVector Size = FIntVector((ChunkSize << Depth) / 2);
 		return FVoxelIntBox(-Size, Size);
 	}
 	
-	template<uint32 ChunkSize>
-	inline FVoxelIntBox GetCustomBoundsForDepth(FVoxelIntBox Bounds, int32 Depth)
+	FORCEINLINE FVoxelIntBox GetCustomBoundsForDepth(uint32 ChunkSize, FVoxelIntBox Bounds, int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
 		Bounds = Bounds.MakeMultipleOfBigger(ChunkSize);
-		Bounds = FVoxelUtilities::GetBoundsFromDepth<ChunkSize>(Depth).Overlap(Bounds);
+		Bounds = FVoxelUtilities::GetBoundsFromDepth(ChunkSize, Depth).Overlap(Bounds);
 		check(Bounds.IsMultipleOf(ChunkSize));
 		return Bounds;
 	}
 
-	template<uint32 ChunkSize>
-	inline FVoxelIntBox GetBoundsFromPositionAndDepth(const FIntVector& Position, int32 Depth)
+	FORCEINLINE FVoxelIntBox GetBoundsFromPositionAndDepth(uint32 ChunkSize, const FIntVector& Position, int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
 		return FVoxelIntBox(Position, Position + FIntVector(ChunkSize << Depth));
 	}
 
 	// Valid only to compute the depth of the root node (or of the entire tree_
-	template<uint32 ChunkSize>
-	inline int32 GetOctreeDepthContainingBounds(const FVoxelIntBox& Bounds)
+	FORCEINLINE int32 GetOctreeDepthContainingBounds(uint32 ChunkSize, const FVoxelIntBox& Bounds)
 	{
 		CHECK_CHUNK_SIZE();
 		const uint32 Max = FMath::Max(FVoxelUtilities::Abs(Bounds.Min).GetMax(), FVoxelUtilities::Abs(Bounds.Max).GetMax());
-		return GetDepthFromSize<ChunkSize>(2 * Max); // 2x: octree doesn't start at 0 0 0
+		return GetDepthFromSize(ChunkSize, 2 * Max); // 2x: octree doesn't start at 0 0 0
 	}
 
-	template<uint32 FromChunkSize, uint32 ToChunkSize>
-	inline constexpr int32 ConvertDepth(int32 Depth)
+	FORCEINLINE constexpr int32 ConvertDepth(uint32 FromChunkSize, uint32 ToChunkSize, int32 Depth)
 	{
-		static_assert(IsPowerOfTwo(FromChunkSize), "FromChunkSize must be a power of 2");
-		static_assert(IsPowerOfTwo(ToChunkSize), "ToChunkSize must be a power of 2");
+		checkfVoxelSlow(IsPowerOfTwo(FromChunkSize), TEXT("FromChunkSize must be a power of 2"));
+		checkfVoxelSlow(IsPowerOfTwo(ToChunkSize), TEXT("ToChunkSize must be a power of 2"));
 		
 		if (FromChunkSize == ToChunkSize)
 		{
@@ -99,25 +93,30 @@ namespace FVoxelUtilities
 		}
 	}
 
-	template<uint32 ChunkSize>
-	inline int32 ClampDepth(int32 Depth)
+	FORCEINLINE int32 ClampDepth(uint32 ChunkSize, int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
-		constexpr int32 ChunkSizeDepth = IntLog2(ChunkSize);
+		const int32 ChunkSizeDepth = IntLog2(ChunkSize);
 		// In theory MaxDepth could be 31
 		// To avoid overflows when doing math we use 30
-		constexpr int32 MaxDepth = 30;
+		const int32 MaxDepth = 30;
 		// ChunkSizeDepth + Depth <= MaxDepth
 		// Depth <= MaxDepth - ChunkSizeDepth
 		return FMath::Clamp(Depth, 0, MaxDepth - ChunkSizeDepth);
 	}
-#undef CHECK_CHUNK_SIZE
-	
-	inline int32 ClampMesherDepth(int32 Depth)
+
+	// Outer bounds of depth values
+	FORCEINLINE int32 ClampDepth(int32 Depth)
 	{
-		// 2x: Bounds.Size() needs to fit in a int32 for Meshers
-		return ClampDepth<2 * RENDER_CHUNK_SIZE>(Depth);
+		return FMath::Clamp(Depth, 0, 31);
 	}
+
+	FORCEINLINE void FixupChunkSize(int32& ChunkSize, int32 MinSize)
+	{
+		ChunkSize = FMath::Max(ChunkSize, MinSize);
+		ChunkSize = FMath::RoundUpToPowerOfTwo(ChunkSize);
+	}
+#undef CHECK_CHUNK_SIZE
 	
 	template<typename T>
 	inline T MergeAsset(T A, T B, bool bSubtractiveAsset)

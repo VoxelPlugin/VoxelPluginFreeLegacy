@@ -52,15 +52,9 @@ namespace FVoxelUtilities
 		}
 	}
 
-	FORCEINLINE constexpr int32 IntLog2(int32 X)
+	FORCEINLINE int32 IntLog2(int32 X)
 	{
-		int32 Exp = -1;
-		while (X)
-		{
-			X >>= 1;
-			++Exp;
-		}
-		return Exp;
+		return 31 - FPlatformMath::CountLeadingZeros(X);
 	}
 
 	FORCEINLINE uint8 CastToUINT8(int32 Value)

@@ -304,7 +304,7 @@ void AVoxelMagicaVoxSceneActor::SetScene(UVoxelMagicaVoxScene* Scene)
 		VoxelWorld->RenderType = EVoxelRenderType::Cubic;
 		VoxelWorld->bGreedyCubicMesher = true;
 		VoxelWorld->bMergeChunks = true;
-		VoxelWorld->ChunksClustersSize = 256;
+		VoxelWorld->MergedChunksClusterSize = 8;
 		VoxelWorld->VoxelMaterial = FVoxelExampleUtilities::LoadExampleObject<UMaterialInterface>(TEXT("/Voxel/Examples/Materials/RGB/M_VoxelMaterial_Colors_Greedy"));
 		VoxelWorld->Generator = UVoxelEmptyGenerator::StaticClass();
 		VoxelWorld->FinishSpawning({}, true);
@@ -341,8 +341,9 @@ void AVoxelMagicaVoxSceneActor::SetScene(UVoxelMagicaVoxScene* Scene)
 
 	if (SceneBounds.IsValid())
 	{
-		VoxelWorld->SetRenderOctreeDepth(FVoxelUtilities::GetOctreeDepthContainingBounds<RENDER_CHUNK_SIZE>(SceneBounds.GetBox()));
-		if (FVoxelUtilities::GetSizeFromDepth<RENDER_CHUNK_SIZE>(VoxelWorld->RenderOctreeDepth) <= 2048)
+		// TODO Set RenderOctreeChunkSize?
+		VoxelWorld->SetRenderOctreeDepth(FVoxelUtilities::GetOctreeDepthContainingBounds(VoxelWorld->RenderOctreeChunkSize, SceneBounds.GetBox()));
+		if (FVoxelUtilities::GetSizeFromDepth(VoxelWorld->RenderOctreeChunkSize, VoxelWorld->RenderOctreeDepth) <= 2048)
 		{
 			VoxelWorld->MaxLOD = 0;
 			VoxelWorld->bConstantLOD = true;

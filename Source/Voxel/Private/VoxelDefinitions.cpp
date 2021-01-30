@@ -13,7 +13,7 @@
 #include "Logging/LogMacros.h"
 #include "Serialization/CustomVersion.h"
 
-static_assert(FVoxelUtilities::IsPowerOfTwo(RENDER_CHUNK_SIZE), "RENDER_CHUNK_SIZE must be a power of 2");
+static_assert(FVoxelUtilities::IsPowerOfTwo(MESHER_CHUNK_SIZE), "MESHER_CHUNK_SIZE must be a power of 2");
 static_assert(FVoxelUtilities::IsPowerOfTwo(DATA_CHUNK_SIZE), "DATA_CHUNK_SIZE must be a power of 2");
 
 #if VOXEL_MATERIAL_ENABLE_UV1 && !VOXEL_MATERIAL_ENABLE_UV0
