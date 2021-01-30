@@ -162,12 +162,6 @@ namespace FVoxelUtilities
 	{
 		return MurmurHash32(*reinterpret_cast<uint32*>(&Hash));
 	}
-	// Slow!
-	template<typename T, typename... TArgs>
-	FORCEINLINE uint32 MurmurHash32(T A, TArgs... Args)
-	{
-		return MurmurHash32(MurmurHash32(A) ^ MurmurHash32(Args...));
-	}
 
 	FORCEINLINE constexpr uint64 MurmurHash64(uint64 Hash)
 	{

@@ -56,11 +56,6 @@ public:
 	//~ End UVoxelNode Interface
 
 public:
-	template<typename T>
-	auto GetParameterInternal() const
-	{
-		return FVoxelGeneratorParametersUtilities::GetParameter<T>(GetParameterProperty(), this, GetParameterOverride());
-	}
 
 protected:
 	//~ Begin UObject Interface
@@ -70,6 +65,7 @@ protected:
 	virtual void PostEditImport() override;
 	virtual void PostLoad() override;
 	//~ End UObject Interface
+	
 
 private:
 	// Only allow renaming on creation, else the name is wrong (GetTitle never called)
@@ -79,14 +75,13 @@ private:
 	void MakeNameUnique();
 	
 	FProperty& GetParameterProperty() const;
-	const FString* GetParameterOverride() const;
+	
 };
 
-#define GENERATED_EXPOSED_VOXELNODE_BODY(Parameter) \
+#define GENERATED_EXPOSED_VOXELNODE_BODY_IMPL(Parameter) \
 	public: \
-	virtual FName GetParameterPropertyNameInternal() const override { return GET_OWN_MEMBER_NAME(Parameter); } \
-	auto GetParameter() const \
-	{ \
-		return GetParameterInternal<TRemovePointer<TDecay<decltype(Parameter)>::Type>::Type>(); \
-	} \
+	virtual FName GetParameterPropertyNameInternal() const override { return GET_OWN_MEMBER_NAME(Parameter); }
+	
+#define GENERATED_EXPOSED_VOXELNODE_BODY(Parameter) \
+	GENERATED_EXPOSED_VOXELNODE_BODY_IMPL(Parameter) \
 	private:

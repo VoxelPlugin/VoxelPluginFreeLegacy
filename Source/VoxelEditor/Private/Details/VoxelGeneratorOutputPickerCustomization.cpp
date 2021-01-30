@@ -50,7 +50,7 @@ void FVoxelGeneratorOutputPickerCustomization::CustomizeHeader(
 					}
 				}
 			}
-			const auto MainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelFoliage, OutputPickerGenerator), false);
+			const auto MainGeneratorHandle = ParentHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(UVoxelFoliage, OutputPickerGenerator));
 			if (MainGeneratorHandle)
 			{
 				GeneratorHandle = MainGeneratorHandle;

@@ -1,7 +1,7 @@
 ﻿{
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "Free-Beta-d8d4f9bb-2021-01-23",
+	"VersionName": "Free-Beta-49f21497-2021-01-30",
 	"FriendlyName": "Voxel Plugin Free",
 	"Description": "Create fully volumetric, entirely destructible & infinite worlds",
 	"Category": "Terrain",
@@ -29,6 +29,17 @@
 		},
 		{
 			"Name": "VoxelGraph",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Linux",
+				"Android",
+				"Mac"
+			]
+		},
+		{
+			"Name": "VoxelFoliage",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"WhitelistPlatforms": [
@@ -113,7 +124,16 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android",
+				"Android"
+			]
+		},
+		{
+			"Name": "VoxelLegacySpawners",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Linux",
 				"Mac"
 			]
 		}

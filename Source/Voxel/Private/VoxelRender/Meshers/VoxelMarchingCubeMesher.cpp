@@ -132,6 +132,13 @@ public:
 				Vertex.Tangent.TangentX = FVector(FMath::FRandRange(-1, 1), FMath::FRandRange(-1, 1), FMath::FRandRange(-1, 1)).GetSafeNormal();
 			}
 		}
+		else
+		{
+			for (auto& Vertex : MesherVertices)
+			{
+				Vertex.Tangent.TangentX = FVector::RightVector;
+			}
+		}
 	}
 	
 	static void ComputeFlatNormals(TArray<FVoxelMesherVertex>& Vertices, TArray<uint32>& Indices)

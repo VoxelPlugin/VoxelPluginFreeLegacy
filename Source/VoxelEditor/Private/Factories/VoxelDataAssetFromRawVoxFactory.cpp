@@ -3,6 +3,7 @@
 #include "Factories/VoxelDataAssetFromRawVoxFactory.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
+#include "VoxelMessages.h"
 
 #include "Misc/Paths.h"
 
