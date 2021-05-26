@@ -620,7 +620,7 @@ void FVoxelGraphEditorToolkit::SelectNodesAndZoomToFit(const TArray<UEdGraphNode
 
 void FVoxelGraphEditorToolkit::RefreshNodesMessages()
 {
-	for (auto* Node : Generator->VoxelGraph->Nodes)
+	for (auto Node : Generator->VoxelGraph->Nodes)
 	{
 		if (Node->IsA<UVoxelGraphNode>() && !Node->IsA<UVoxelGraphNode_Knot>())
 		{

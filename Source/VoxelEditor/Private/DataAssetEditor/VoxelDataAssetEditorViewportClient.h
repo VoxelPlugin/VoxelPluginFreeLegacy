@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 #include "EditorViewportClient.h"
 
 class AVoxelWorld;
@@ -32,7 +33,6 @@ public:
 	virtual void SetCameraSpeedSetting(int32 SpeedSetting) override;
 	virtual void MouseMove(FViewport* Viewport, int32 x, int32 y) override;
 	virtual void UpdateMouseDelta() override;
-	virtual FWidget::EWidgetMode GetWidgetMode() const override { return FWidget::WM_Max; }
 	//~ End FEditorViewportClient interface
 
 	bool IsShowGridToggled();

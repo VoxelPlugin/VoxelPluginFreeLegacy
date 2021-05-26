@@ -41,7 +41,7 @@ TArray<FVoxelGeneratorParameter> UVoxelGenerator::GetParameters() const
 		Category = Property->GetMetaDataText(TEXT("Category")).ToString();
 		ToolTip = Property->GetToolTipText().ToString();
 
-#if ENGINE_MINOR_VERSION < 25
+#if VOXEL_ENGINE_VERSION  < 425
 		{
 			UPackage* Package = Property->GetOutermost();
 			check(Package);

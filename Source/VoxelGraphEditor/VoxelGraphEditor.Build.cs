@@ -50,6 +50,9 @@ public class VoxelGraphEditor : ModuleRules
                 "PropertyEditor",
                 "Landscape",
                 "SettingsEditor",
+#if UE_5_0_OR_LATER
+                "EditorFramework",
+#endif
 #if UE_4_24_OR_LATER
                 "ToolMenus"
 #endif

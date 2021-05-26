@@ -18,6 +18,7 @@ void FVoxelCreateStaticMeshFromProcMesh::Init()
 
 UStaticMesh* FVoxelCreateStaticMeshFromProcMesh::Create(UVoxelProceduralMeshComponent* Component, TFunction<UStaticMesh*()> CreateObject, bool bRecomputeNormals, bool bAllowTransientMaterials)
 {
+#if VOXEL_ENGINE_VERSION < 500
 	// Raw mesh data we are filling in
 	FRawMesh RawMesh;
 	// Materials to apply to new mesh
@@ -140,6 +141,9 @@ UStaticMesh* FVoxelCreateStaticMeshFromProcMesh::Create(UVoxelProceduralMeshComp
 	StaticMesh->PostEditChange();
 
 	return StaticMesh;
+#else
+	return nullptr;
+#endif
 }
 
 void FVoxelCreateStaticMeshFromProcMesh::OnLightingBuildStarted()

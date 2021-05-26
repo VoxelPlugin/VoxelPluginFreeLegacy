@@ -35,7 +35,7 @@ namespace FVoxelUtilities
 		// it'll get assigned the same ptr (as the memory allocator will have a request of the exact same size, so will reuse freshly deleted ptr)
 		// This set of ptr is only valid one frame. To bypass this bug, we are postponing the tickable deletion for 1s
 		// Fixed by https://github.com/EpicGames/UnrealEngine/commit/70d70e56f2df9ba6941b91d9893ba6c6e99efc4c
-		if (ENGINE_MINOR_VERSION < 25)
+		if (VOXEL_ENGINE_VERSION  < 425)
 		{
 			FVoxelSystemUtilities::DelayedCall([=]()
 			{

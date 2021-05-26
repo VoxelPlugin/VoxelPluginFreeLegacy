@@ -19,6 +19,9 @@
 #include "EngineUtils.h"
 #include "ImageUtils.h"
 #include "TimerManager.h"
+#if VOXEL_ENGINE_VERSION >= 500
+#include "UnrealWidget.h"
+#endif
 
 TSharedRef<FVoxelDataAssetEditorViewportClient> FVoxelDataAssetEditorViewportClient::Create(
 	AVoxelWorld& VoxelWorld, 

@@ -168,7 +168,7 @@ void FVoxelRawStaticIndexBuffer::InitRHI()
 	if (SizeInBytes > 0)
 	{
 		// Create the index buffer.
-		FRHIResourceCreateInfo CreateInfo(&IndexStorage);
+		FRHIResourceCreateInfo CreateInfo(UE_5_ONLY(TEXT("VoxelIndex"),) &IndexStorage);
 		IndexBufferRHI = RHICreateIndexBuffer(IndexStride,SizeInBytes,BUF_Static,CreateInfo);
 	}    
 }

@@ -19,7 +19,6 @@
 #include "Engine/Font.h"
 #include "ScopedTransaction.h"
 #include "Editor/EditorEngine.h"
-#include "Toolkits/AssetEditorManager.h"
 #include "Framework/Commands/GenericCommands.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Launch/Resources/Version.h"

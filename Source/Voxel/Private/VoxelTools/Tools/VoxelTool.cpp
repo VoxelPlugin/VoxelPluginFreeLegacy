@@ -106,7 +106,7 @@ void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData,
 	FHitResult HitResult;
 	World->GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, TickData.CollisionChannel);
 	
-	AVoxelWorld* VoxelWorld = Cast<AVoxelWorld>(HitResult.Actor);
+	AVoxelWorld* VoxelWorld = Cast<AVoxelWorld>(HitResult.UE_5_SWITCH(Actor, GetActor()));
 	if (!CanEditWorld(VoxelWorld))
 	{
 		VoxelWorld = nullptr;
@@ -180,7 +180,7 @@ void UVoxelTool::SimpleTick(
 		return;
 	}
 
-	auto* ViewportClient = LocalPlayer->ViewportClient;
+	auto ViewportClient = LocalPlayer->ViewportClient;
 	if (!ViewportClient)
 	{
 		FVoxelMessages::Warning(FUNCTION_ERROR("Invalid ViewportClient!"));

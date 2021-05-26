@@ -9,6 +9,10 @@
 #include "Slate/SceneViewport.h"
 #include "AssetViewerSettings.h"
 
+#if VOXEL_ENGINE_VERSION >= 500
+#include "UnrealWidget.h"
+#endif
+
 /** Viewport Client for the preview viewport */
 class FVoxelGraphEditorViewportClient : public FEditorViewportClient
 {

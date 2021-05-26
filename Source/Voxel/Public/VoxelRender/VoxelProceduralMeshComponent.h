@@ -280,7 +280,7 @@ public:
 	{
 		return UPrimitiveComponent::GetStaticLightingType();
 	}
-#if ENGINE_MINOR_VERSION > 22
+#if VOXEL_ENGINE_VERSION  > 422
 	virtual void GetStreamingRenderAssetInfo(FStreamingTextureLevelContext& LevelContext, TArray<FStreamingRenderAssetPrimitiveInfo>& OutStreamingRenderAssets) const override
 	{
 		UPrimitiveComponent::GetStreamingRenderAssetInfo(LevelContext, OutStreamingRenderAssets);

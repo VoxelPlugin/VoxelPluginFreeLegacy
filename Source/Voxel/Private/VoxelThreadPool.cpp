@@ -194,13 +194,13 @@ void FVoxelThreadPool::AbandonAllTasks()
 
 TUniquePtr<FVoxelThread> FVoxelThreadPool::CreateThread()
 {
-#if ENGINE_MINOR_VERSION < 26
+#if VOXEL_ENGINE_VERSION < 426
 	TRACE_THREAD_GROUP_SCOPE("VoxelThreadPool");
 #else
-	Trace::ThreadGroupBegin(TEXT("VoxelThreadPool"));
+	UE_5_ONLY(UE::)Trace::ThreadGroupBegin(TEXT("VoxelThreadPool"));
 	ON_SCOPE_EXIT
 	{
-		Trace::ThreadGroupEnd();
+		UE_5_ONLY(UE::)Trace::ThreadGroupEnd();
 	};
 #endif
 

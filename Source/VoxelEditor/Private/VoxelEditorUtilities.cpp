@@ -15,7 +15,7 @@ UObject* FVoxelEditorUtilities::CreateAsset(FString AssetName, FString FolderPat
 	FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
 	AssetToolsModule.Get().CreateUniqueAssetName(PackageName, Suffix, PackageName, AssetName);
 
-#if ENGINE_MINOR_VERSION < 26
+#if VOXEL_ENGINE_VERSION < 426
 	UPackage* Package = CreatePackage(nullptr, *PackageName);
 #else
 	UPackage* Package = CreatePackage(*PackageName);

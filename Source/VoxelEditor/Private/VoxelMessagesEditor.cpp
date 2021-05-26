@@ -65,7 +65,7 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 		}
 	};
 
-#if ENGINE_MINOR_VERSION < 26
+#if VOXEL_ENGINE_VERSION < 426
 	FBlueprintExceptionTracker& BlueprintExceptionTracker = FBlueprintExceptionTracker::Get();
 	auto& ScriptStack =BlueprintExceptionTracker.ScriptStack;
 #else

@@ -167,7 +167,7 @@ public:
 		return Compiler->MaterialBakingWorldPosition();
 	}
 
-#if ENGINE_MINOR_VERSION >= 26
+#if VOXEL_ENGINE_VERSION >= 426
 	virtual int32 PreSkinVertexOffset() override
 	{
 		return Compiler->PreSkinVertexOffset();

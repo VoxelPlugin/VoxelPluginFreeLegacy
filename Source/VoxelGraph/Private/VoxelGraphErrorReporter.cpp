@@ -189,7 +189,7 @@ void FVoxelGraphErrorReporter::ClearNodesMessages(const UVoxelGraphGenerator* Gr
 	Stack.Add(Graph);
 
 	TSet<UVoxelGraphMacro*> Macros;
-	for (auto* Node : Graph->VoxelGraph->Nodes)
+	for (auto Node : Graph->VoxelGraph->Nodes)
 	{
 		if (auto* Interface = Cast<UVoxelGraphNodeInterface>(Node))
 		{
