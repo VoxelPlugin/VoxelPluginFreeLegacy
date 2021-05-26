@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 #include "SEditorViewport.h"
 #include "SCommonEditorViewportToolbarBase.h"
 

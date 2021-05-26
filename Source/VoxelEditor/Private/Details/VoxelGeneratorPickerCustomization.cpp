@@ -355,7 +355,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 			}
 		}
 
-		Handle->NotifyPostChange();
+		Handle->NotifyPostChange(EPropertyChangeType::Unspecified);
 	}));
 	
 	{

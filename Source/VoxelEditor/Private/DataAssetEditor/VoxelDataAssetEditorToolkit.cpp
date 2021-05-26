@@ -200,7 +200,6 @@ void FVoxelDataAssetEditorToolkit::CreateInternalWidgets()
 		Args.bHideSelectionTip = true;
 		Args.NotifyHook = nullptr;
 		Args.bShowOptions = false;
-		Args.bShowActorLabel = false;
 
 		PreviewSettings = PropertyModule.CreateDetailView(Args);
 		PreviewSettings->RegisterInstancedCustomPropertyLayout(
@@ -224,7 +223,6 @@ void FVoxelDataAssetEditorToolkit::CreateInternalWidgets()
 		Args.bHideSelectionTip = true;
 		Args.NotifyHook = this;
 		Args.bShowOptions = false;
-		Args.bShowActorLabel = false;
 		Details = PropertyModule.CreateDetailView(Args);
 		Details->SetObject(DataAsset);
 	}

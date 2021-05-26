@@ -62,6 +62,9 @@ public class VoxelEditor : ModuleRules
                 "ApplicationCore",
                 "EngineSettings",
                 "ToolMenus",
+#if UE_5_0_OR_LATER
+                "EditorFramework",
+#endif
 #if UE_4_26_OR_LATER
                 "DeveloperSettings",
 #endif

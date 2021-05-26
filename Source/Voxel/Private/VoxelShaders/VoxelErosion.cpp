@@ -233,7 +233,7 @@ void UVoxelErosion::Init_RenderThread()
 {
 	check(IsInRenderingThread());
 
-	FRHIResourceCreateInfo CreateInfo;
+	FRHIResourceCreateInfo CreateInfo UE_5_ONLY((TEXT("CreateInfo")));
 	const UE_26_SWITCH(uint32, ETextureCreateFlags) Flags = TexCreate_ShaderResource | TexCreate_UAV;
 
 #define CREATE_TEXTURE(Name, SizeX) \

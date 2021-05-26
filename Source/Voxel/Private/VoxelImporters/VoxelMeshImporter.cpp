@@ -25,10 +25,11 @@ static void GetMergedSectionFromStaticMesh(
 	TArray<FVector2D>& UVs)
 {
 	VOXEL_FUNCTION_COUNTER();
+	
+	FStaticMeshRenderData* RenderData = UE_5_SWITCH(InMesh->RenderData.Get(), InMesh->GetRenderData());
+	if (!ensure(RenderData) || !ensure(RenderData->LODResources.IsValidIndex(LODIndex))) return;
 
-	if (!ensure(InMesh->RenderData) || !ensure(InMesh->RenderData->LODResources.IsValidIndex(LODIndex))) return;
-
-	const FStaticMeshLODResources& LODResources = InMesh->RenderData->LODResources[LODIndex];
+	const FStaticMeshLODResources& LODResources = RenderData->LODResources[LODIndex];
 	const FRawStaticIndexBuffer& IndexBuffer = LODResources.IndexBuffer;
 	const FPositionVertexBuffer& PositionVertexBuffer = LODResources.VertexBuffers.PositionVertexBuffer;
 	const FStaticMeshVertexBuffer& StaticMeshVertexBuffer = LODResources.VertexBuffers.StaticMeshVertexBuffer;

@@ -8,7 +8,7 @@
 
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#if ENGINE_MINOR_VERSION >= 26
+#if VOXEL_ENGINE_VERSION >= 426
 #include "Rendering/Texture2DResource.h"
 #endif
 

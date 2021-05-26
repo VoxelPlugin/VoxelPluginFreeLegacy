@@ -144,6 +144,7 @@ void FVoxelChunkMeshBuffers::UpdateStats()
 
 void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, const FVoxelData& Data, const FVoxelRuntimeSettings& Settings)
 {
+#if VOXEL_ENGINE_VERSION < 500
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	if (IsEmpty())
@@ -280,4 +281,5 @@ void FVoxelChunkMesh::BuildDistanceField(int32 LOD, const FIntVector& Position, 
 	{
 		CompressedDistanceFieldVolume = QuantizedDistanceFieldVolume;
 	}
+#endif
 }

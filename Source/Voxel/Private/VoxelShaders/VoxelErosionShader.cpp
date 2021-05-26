@@ -29,7 +29,7 @@ void FVoxelErosionCS::ModifyCompilationEnvironment(const FGlobalShaderPermutatio
 	//OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
 }
 
-#if ENGINE_MINOR_VERSION < 25
+#if VOXEL_ENGINE_VERSION  < 425
 bool FVoxelErosionCS::Serialize(FArchive& Ar)
 {
 	const bool bShaderHasOutdatedParams = FGlobalShader::Serialize(Ar);

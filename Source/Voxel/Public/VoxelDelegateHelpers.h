@@ -10,7 +10,7 @@
  * Delegate impl for weak lambda on shared pointers
  */
 
-#if ENGINE_MINOR_VERSION < 26
+#if VOXEL_ENGINE_VERSION < 426
 template <class UserClass, ESPMode SPMode, typename FuncType, typename FunctorType, typename... VarTypes>
 class TBaseSPFunctorDelegateInstance;
 
@@ -361,7 +361,7 @@ struct TDelegateFromLambda<TReturnType(TClass::*)(TArgs...) const> : TDelegateFr
 template<typename TReturnType, typename TClass, typename... TArgs>
 struct TDelegateFromLambda<TReturnType(TClass::*)(TArgs...)>
 {
-#if ENGINE_MINOR_VERSION < 26
+#if VOXEL_ENGINE_VERSION < 426
 	using Type = TBaseDelegate<TReturnType, TArgs...>;
 #else
 	using Type = TDelegate<TReturnType(TArgs...)>;

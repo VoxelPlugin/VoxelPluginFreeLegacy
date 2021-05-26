@@ -8,7 +8,7 @@
 struct VOXEL_API FVoxelDebug
 {
 	template<typename T>
-#if ENGINE_MINOR_VERSION < 26
+#if VOXEL_ENGINE_VERSION < 426
 	using TDelegate = TMulticastDelegate<void, FName, const FIntVector&, TArrayView<const T>>;
 #else
 	using TDelegate = TMulticastDelegate<void(FName, const FIntVector&, TArrayView<const T>)>;

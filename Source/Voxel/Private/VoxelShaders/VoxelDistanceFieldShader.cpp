@@ -20,7 +20,7 @@ void FVoxelDistanceFieldBaseCS::ModifyCompilationEnvironment(const FGlobalShader
 	OutEnvironment.SetDefine(TEXT("NUM_THREADS_CS"), VOXEL_DISTANCE_FIELD_NUM_THREADS_CS);
 }
 
-#if ENGINE_MINOR_VERSION < 25
+#if VOXEL_ENGINE_VERSION  < 425
 bool FVoxelDistanceFieldBaseCS::Serialize(FArchive& Ar)
 {
 	const bool bShaderHasOutdatedParams = FGlobalShader::Serialize(Ar);
@@ -101,8 +101,8 @@ void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 		
 		AllocatedSize = Size;
 		
-		SrcBuffer.Initialize(sizeof(float), 3 * Num, PF_R32_FLOAT);
-		DstBuffer.Initialize(sizeof(float), 3 * Num, PF_R32_FLOAT);
+		SrcBuffer.Initialize(UE_5_ONLY(TEXT("SrcBuffer"),) sizeof(float), 3 * Num, PF_R32_FLOAT);
+		DstBuffer.Initialize(UE_5_ONLY(TEXT("DstBuffer"),) sizeof(float), 3 * Num, PF_R32_FLOAT);
 	}
 	
 	{
@@ -126,7 +126,7 @@ void FVoxelDistanceFieldShaderHelper::Compute_RenderThread(
 	}
 
 	// To copy data
-#if ENGINE_MINOR_VERSION < 26
+#if VOXEL_ENGINE_VERSION < 426
 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, DstBuffer.UAV);
 #else
 	RHICmdList.Transition(FRHITransitionInfo(DstBuffer.UAV, ERHIAccess::Unknown, ERHIAccess::UAVCompute)); // TODO not unknown?
@@ -169,7 +169,7 @@ void FVoxelDistanceFieldShaderHelper::ApplyComputeShader(
 	const FIntVector NumThreads = FVoxelUtilities::DivideCeil(Size, VOXEL_DISTANCE_FIELD_NUM_THREADS_CS);
 	check(NumThreads.X > 0 && NumThreads.Y > 0 && NumThreads.Z > 0);
 	
-#if ENGINE_MINOR_VERSION < 26
+#if VOXEL_ENGINE_VERSION < 426
 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, SrcBuffer.UAV);
 	RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, DstBuffer.UAV);
 #else

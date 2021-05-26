@@ -59,7 +59,7 @@
 
 // No tessellation support on some platforms
 #ifndef ENABLE_TESSELLATION
-#define ENABLE_TESSELLATION (!PLATFORM_ANDROID && !PLATFORM_SWITCH)
+#define ENABLE_TESSELLATION (!PLATFORM_ANDROID && !PLATFORM_SWITCH && ENGINE_MAJOR_VERSION < 5)
 #endif
 
 // Make UVoxelProceduralMeshComponent inherit from UModelComponent instead of UPrimitiveComponent

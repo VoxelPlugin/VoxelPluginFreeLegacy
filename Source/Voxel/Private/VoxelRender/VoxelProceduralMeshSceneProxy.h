@@ -75,7 +75,8 @@ public:
 	virtual uint32 GetMemoryFootprint() const override;
 	virtual SIZE_T GetTypeHash() const override;
 	uint32 GetAllocatedSize() const;
-	
+
+#if VOXEL_ENGINE_VERSION < 500
 	virtual void GetDistancefieldAtlasData(
 		FBox& LocalVolumeBounds,
 		FVector2D& OutDistanceMinMax,
@@ -88,6 +89,7 @@ public:
 		bool& bOutThrottled) const override;
 	virtual void GetDistanceFieldInstanceInfo(int32& NumInstances, float& BoundsSurfaceArea) const override;
 	virtual bool HasDistanceFieldRepresentation() const override;
+#endif
 	virtual bool HasDynamicIndirectShadowCasterRepresentation() const override;
 	//~ End FPrimitiveSceneProxy Interface
 

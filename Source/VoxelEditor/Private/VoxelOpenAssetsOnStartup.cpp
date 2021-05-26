@@ -9,7 +9,6 @@
 #include "Engine/World.h"
 #include "GameMapsSettings.h"
 #include "ContentBrowserModule.h"
-#include "Toolkits/AssetEditorManager.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 
 void UVoxelOpenAssetsOnStartup::Init()

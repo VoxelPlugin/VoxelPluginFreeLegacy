@@ -24,7 +24,7 @@
 #include "Editor.h"
 #include "EditorViewportClient.h"
 #include "DetailLayoutBuilder.h"
-#if ENGINE_MINOR_VERSION >= 25
+#if VOXEL_ENGINE_VERSION  >= 425
 #include "VariablePrecisionNumericInterface.h"
 #endif
 #include "Modules/ModuleManager.h"
@@ -320,7 +320,7 @@ void FVoxelEditorToolsPanel::CustomizeToolbar(FToolBarBuilder& ToolBarBuilder)
 {
 	const auto& Commands = FVoxelToolsCommands::Get();
 	
-#if ENGINE_MINOR_VERSION >= 25
+#if VOXEL_ENGINE_VERSION  >= 425
 	ToolBarBuilder.AddToolBarButton(Commands.SurfaceTool);
 	ToolBarBuilder.AddToolBarButton(Commands.SmoothTool);
 	ToolBarBuilder.AddToolBarButton(Commands.MeshTool);
