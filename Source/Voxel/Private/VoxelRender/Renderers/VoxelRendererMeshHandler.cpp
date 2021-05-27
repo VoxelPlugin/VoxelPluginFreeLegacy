@@ -213,7 +213,7 @@ void IVoxelRendererMeshHandler::RecomputeComponentPositions()
 		UVoxelProceduralMeshComponent* Component = It.Key.Get();
 		if (ensure(Component))
 		{
-			Renderer.Settings.SetComponentPosition(*Component, It.Value, true);
+			Renderer.Settings.SetComponentPosition(*Component, It.Value, false);
 		}
 	}
 }
@@ -288,7 +288,7 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 
 	ensure(!ActiveMeshes.Contains(NewMesh));
 	ActiveMeshes.Add(NewMesh, Position);
-	Settings.SetComponentPosition(*NewMesh, Position, true);
+	Settings.SetComponentPosition(*NewMesh, Position, false);
 	
 	const FVoxelIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth(Settings.RenderOctreeChunkSize, Position, LOD);
 	const FVoxelPriorityHandler PriorityHandler(Bounds, Renderer);

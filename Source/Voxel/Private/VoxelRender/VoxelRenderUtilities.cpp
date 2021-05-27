@@ -448,9 +448,15 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	check(AdjacencyIndicesOffset == NumAdjacencyIndices);
 	
 	CHECK_CANCEL();
-
-	// Bounds extension is in world space, and we're in local (voxel) space
-	ProcMeshBuffers.LocalBounds = ProcMeshBuffers.LocalBounds.ExpandBy(RendererSettings.BoundsExtension / RendererSettings.VoxelSize);
+	
+	// Multiply by the voxel size here
+	// FTriangleMeshImplicitObject::GJKContactPointImp doesn't handle thickness well with highly scaled objects
+	for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
+	{
+		PositionBuffer.VertexPosition(Index) *= RendererSettings.VoxelSize;
+	}
+	
+	ProcMeshBuffers.LocalBounds = ProcMeshBuffers.LocalBounds.TransformBy(FScaleMatrix(RendererSettings.VoxelSize)).ExpandBy(RendererSettings.BoundsExtension);
 
 #if VOXEL_DEBUG
 	{
