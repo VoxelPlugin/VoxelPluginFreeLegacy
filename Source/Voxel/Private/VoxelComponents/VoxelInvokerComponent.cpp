@@ -178,7 +178,7 @@ FVector UVoxelInvokerWithPredictionComponent::GetInvokerGlobalPosition_Implement
 
 FVector UVoxelInvokerAutoCameraComponent::GetInvokerGlobalPosition_Implementation() const
 {
-	APlayerCameraManager* CameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+	APlayerCameraManager* CameraManager = UGameplayStatics::GetPlayerCameraManager(this, 0);
 	if (ensure(CameraManager))
 	{
 		return CameraManager->GetCameraLocation();
