@@ -986,9 +986,15 @@ void UVoxelBlueprintLibrary::CompactVoxelTexturePool(AVoxelWorld* World)
 FVoxelIntBox UVoxelBlueprintLibrary::MakeIntBoxFromGlobalPositionAndRadius(AVoxelWorld* World, FVector GlobalPosition, float Radius)
 {
 	CHECK_VOXELWORLD_IS_CREATED();
+
+	const FVoxelVector VoxelPosition = World->GlobalToLocalFloat(GlobalPosition);
+	const float VoxelRadius = Radius / World->VoxelSize;
+	const FIntVector BoundsMin = FVoxelUtilities::FloorToInt(VoxelPosition - VoxelRadius);
+	const FIntVector BoundsMax = FVoxelUtilities::CeilToInt(VoxelPosition + VoxelRadius);
+
 	return FVoxelIntBox::SafeConstruct(
-		World->GlobalToLocal(GlobalPosition - Radius, EVoxelWorldCoordinatesRounding::RoundDown),
-		World->GlobalToLocal(GlobalPosition + Radius, EVoxelWorldCoordinatesRounding::RoundUp)
+		BoundsMin,
+		BoundsMax
 	);
 }
 
