@@ -173,7 +173,7 @@ void UVoxelErosion::CopyTextureToRHI(const TVoxelTexture<float>& Texture, const 
 		ThisPtr->CopyTextureToRHI_RenderThread(Texture, RHITexture);
 	});
 
-	FlushRenderingCommands(false);
+	FlushRenderingCommands(UE_5_SWITCH(false,));
 }
 
 void UVoxelErosion::CopyRHIToTexture(const FTexture2DRHIRef& RHITexture, TVoxelSharedRef<TVoxelTexture<float>::FTextureData>& Texture)
@@ -184,7 +184,7 @@ void UVoxelErosion::CopyRHIToTexture(const FTexture2DRHIRef& RHITexture, TVoxelS
 		ThisPtr->CopyRHIToTexture_RenderThread(RHITexture, *Texture);
 	});
 
-	FlushRenderingCommands(false);
+	FlushRenderingCommands(UE_5_SWITCH(false,));
 }
 
 void UVoxelErosion::CopyTextureToRHI_RenderThread(const TVoxelTexture<float>& Texture, const FTexture2DRHIRef& RHITexture)

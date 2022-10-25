@@ -53,9 +53,11 @@
 #if VOXEL_ENGINE_VERSION >= 500
 #define UE_5_SWITCH(Before, AfterOrEqual) AfterOrEqual
 #define UE_5_ONLY(...) __VA_ARGS__
+#define UE_5_CONVERT(Type, ...) Type(__VA_ARGS__)
 #else
 #define UE_5_SWITCH(Before, AfterOrEqual) Before
 #define UE_5_ONLY(...)
+#define UE_5_CONVERT(Type, ...) __VA_ARGS__
 #endif
 
 #if VOXEL_ENGINE_VERSION < 425

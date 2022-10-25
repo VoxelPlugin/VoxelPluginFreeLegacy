@@ -22,13 +22,14 @@ public:
 	};
 
 	template<typename ElementType>
-	class ForElementType : public T::template ForAnyElementType<ElementType>
+	class ForElementType 
+		UE_5_SWITCH( : public T::template ForAnyElementType<ElementType>, : public T::template ForAnyElementType)
 	{
 	public:
 		FORCEINLINE typename T::SizeType CalculateSlackGrow(typename T::SizeType NumElements, typename T::SizeType NumAllocatedElements, SIZE_T NumBytesPerElement) const
 		{
 			ensure(false);
-			return T::template ForAnyElementType<ElementType>::CalculateSlackGrow(NumElements, NumAllocatedElements, NumBytesPerElement);
+			return UE_5_SWITCH(T::template ForAnyElementType<ElementType>, T::template ForAnyElementType)::CalculateSlackGrow(NumElements, NumAllocatedElements, NumBytesPerElement);
 		}
 	};
 };

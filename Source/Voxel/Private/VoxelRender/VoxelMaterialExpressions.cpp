@@ -63,7 +63,7 @@ public:
 			{
 				VoxelIndices.Add(WeightmapIndex);
 				
-				if (Parameter.ParameterInfo.Name == ParameterName)
+				if (Parameter.UE_5_SWITCH(ParameterInfo.Name, ParameterInfo_DEPRECATED.Name) == ParameterName)
 				{
 					ParameterVoxelIndex = WeightmapIndex;
 				}
@@ -167,7 +167,7 @@ public:
 		return Compiler->MaterialBakingWorldPosition();
 	}
 
-#if VOXEL_ENGINE_VERSION >= 426
+#if VOXEL_ENGINE_VERSION >= 426 && VOXEL_ENGINE_VERSION < 500
 	virtual int32 PreSkinVertexOffset() override
 	{
 		return Compiler->PreSkinVertexOffset();

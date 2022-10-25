@@ -277,7 +277,8 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		const int32 ChunkNumVertices = Chunk.GetNumVertices();
 		for (int32 Index = 0; Index < ChunkNumVertices; Index++)
 		{
-			PositionBuffer.VertexPosition(VerticesOffset + Index) = FVoxelUtilities::Get(Chunk.Positions, Index) + Offset;
+			const auto NewPos = FVoxelUtilities::Get(Chunk.Positions, Index) + Offset;
+			PositionBuffer.VertexPosition(VerticesOffset + Index) = UE_5_CONVERT(FVector3f, NewPos);
 		}
 	};
 	const auto CopyColorsAndTextureData = [&](const FVoxelChunkMeshBuffers& Chunk)
@@ -334,13 +335,17 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 			{
 				auto& Tangent = FVoxelUtilities::Get(Chunk.Tangents, Index);
 				auto& Normal = FVoxelUtilities::Get(Chunk.Normals, Index);
-				StaticMeshBuffer.SetVertexTangents(VerticesOffset + Index, Tangent.TangentX, Tangent.GetY(Normal), Normal);
+				StaticMeshBuffer.SetVertexTangents(
+					VerticesOffset + Index,
+					UE_5_CONVERT(FVector3f, Tangent.TangentX),
+					UE_5_CONVERT(FVector3f, Tangent.GetY(Normal)),
+					UE_5_CONVERT(FVector3f, Normal));
 			}
 			check(Chunk.TextureCoordinates.Num() == NumTextureCoordinates);
 			for (int32 Tex = 0; Tex < NumTextureCoordinates; Tex++)
 			{
 				auto& TextureCoordinate = FVoxelUtilities::Get(Chunk.TextureCoordinates[Tex], Index);
-				StaticMeshBuffer.SetVertexUV(VerticesOffset + Index, Tex, TextureCoordinate);
+				StaticMeshBuffer.SetVertexUV(VerticesOffset + Index, Tex, UE_5_CONVERT(FVector2f, TextureCoordinate));
 			}
 		}
 	};
@@ -393,11 +398,12 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 				VOXEL_ASYNC_SCOPE_COUNTER("TranslateVertices");
 				for (int32 Index = 0; Index < MainChunk.GetNumVertices(); Index++)
 				{
-					PositionBuffer.VertexPosition(VerticesOffset + Index) = FVoxelMesherUtilities::GetTranslatedTransvoxel(
+					const auto NewPos = FVoxelMesherUtilities::GetTranslatedTransvoxel(
 						FVoxelUtilities::Get(MainChunk.Positions, Index),
 						FVoxelUtilities::Get(MainChunk.Normals, Index),
 						Chunk.TransitionsMask,
 						Chunk.LOD) + PositionOffset;
+					PositionBuffer.VertexPosition(VerticesOffset + Index) = UE_5_CONVERT(FVector3f, NewPos);
 				}
 			}
 			else

@@ -100,7 +100,7 @@ void UVoxelGraphNode::RemoveInputPin(UEdGraphPin* InGraphPin)
 	{
 		if (InGraphPin == InputPin)
 		{
-			InGraphPin->MarkPendingKill();
+			InGraphPin->UE_5_SWITCH(MarkPendingKill(), MarkAsGarbage());
 			Pins.Remove(InGraphPin);
 
 			const int32 Increment = VoxelNode->GetInputPinsIncrement();

@@ -53,7 +53,7 @@ static void GetMergedSectionFromStaticMesh(
 			Vertices.SetNumUninitialized(PositionVertexBuffer.GetNumVertices());
 			for (uint32 Index = 0; Index < PositionVertexBuffer.GetNumVertices(); Index++)
 			{
-				Get(Vertices, Index) = PositionVertexBuffer.VertexPosition(Index);
+				Get(Vertices, Index) = UE_5_CONVERT(FVector, PositionVertexBuffer.VertexPosition(Index));
 			}
 		}
 		{
@@ -70,7 +70,7 @@ static void GetMergedSectionFromStaticMesh(
 			UVs.SetNumUninitialized(StaticMeshVertexBuffer.GetNumVertices());
 			for (uint32 Index = 0; Index < StaticMeshVertexBuffer.GetNumVertices(); Index++)
 			{
-				Get(UVs, Index) = StaticMeshVertexBuffer.GetVertexUV(Index, 0);
+				Get(UVs, Index) = UE_5_CONVERT(FVector2D, StaticMeshVertexBuffer.GetVertexUV(Index, 0));
 			}
 		}
 	}
