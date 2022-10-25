@@ -674,7 +674,7 @@ bool UVoxelProceduralMeshComponent::DoCustomNavigableGeometryExport(FNavigableGe
 				Vertices.SetNumUninitialized(PositionBuffer.GetNumVertices());
 				for (int32 Index = 0; Index < Vertices.Num(); Index++)
 				{
-					Vertices[Index] = PositionBuffer.VertexPosition(Index);
+					Vertices[Index] = UE_5_CONVERT(FVector, PositionBuffer.VertexPosition(Index));
 				}
 			}
 			TArray<int32> Indices;

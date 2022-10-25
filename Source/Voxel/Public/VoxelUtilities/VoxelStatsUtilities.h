@@ -28,7 +28,7 @@ namespace FVoxelUtilities
 	};
 
 #define VOXEL_SCOPE_COUNTER_FORMAT(Format, ...) \
-	FCpuProfilerTrace::FEventScope PREPROCESSOR_JOIN(CpuProfilerEventScope, __LINE__)(FVoxelUtilities::GetStatsIdFromStringFormat([](){}, TEXT(Format), ##__VA_ARGS__) ONLY_UE_25_AND_HIGHER(, CpuChannel));
+	FCpuProfilerTrace::FEventScope PREPROCESSOR_JOIN(CpuProfilerEventScope, __LINE__)(FVoxelUtilities::GetStatsIdFromStringFormat([](){}, TEXT(Format), ##__VA_ARGS__) ONLY_UE_25_AND_HIGHER(, CpuChannel) UE_5_ONLY(, true));
 #else
 #define VOXEL_SCOPE_COUNTER_FORMAT(Format, ...) VOXEL_ASYNC_SCOPE_COUNTER(Format)
 #endif

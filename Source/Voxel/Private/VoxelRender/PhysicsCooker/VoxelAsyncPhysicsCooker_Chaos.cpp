@@ -70,7 +70,7 @@ void FVoxelAsyncPhysicsCooker_Chaos::CreateTriMesh()
 
 	const auto Process = [&](auto& Triangles)
 	{
-		Chaos::TParticles<Chaos::FReal, 3> Particles;
+		Chaos::FTriangleMeshImplicitObject::ParticlesType Particles;
 
 		{
 			VOXEL_ASYNC_SCOPE_COUNTER("Copy data from buffers");
@@ -152,12 +152,12 @@ void FVoxelAsyncPhysicsCooker_Chaos::CreateTriMesh()
 	
 	if (NumVertices < TNumericLimits<uint16>::Max())
 	{
-		TArray<Chaos::TVector<uint16, 3>> TrianglesSmallIdx;
+		TArray<Chaos::TVec3<uint16>> TrianglesSmallIdx;
 		Process(TrianglesSmallIdx);
 	}
 	else
 	{
-		TArray<Chaos::TVector<int32, 3>> TrianglesLargeIdx;
+		TArray<Chaos::TVec3<int32>> TrianglesLargeIdx;
 		Process(TrianglesLargeIdx);
 	}
 }

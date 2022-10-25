@@ -890,7 +890,7 @@ namespace FVoxelNodeFunctions
 		if (Context.bHasCustomTransform)
 		{
 			const FVector Scale = Context.LocalToWorld.GetScale3D();
-			const TVoxelRange<v_flt> ScaleRange{ Scale.GetMin(), Scale.GetMax() };
+			const TVoxelRange<v_flt> ScaleRange{ static_cast<v_flt>(Scale.GetMin()), static_cast<v_flt>(Scale.GetMax()) };
 			const auto Result = TVoxelRange<v_flt>::Union(InX * ScaleRange, InY * ScaleRange, InZ * ScaleRange);
 			
 			OutX = Result;
@@ -911,7 +911,7 @@ namespace FVoxelNodeFunctions
 		if (Context.bHasCustomTransform)
 		{
 			const FVector Scale = FVector(1.f) / Context.LocalToWorld.GetScale3D();
-			const TVoxelRange<v_flt> ScaleRange{ Scale.GetMin(), Scale.GetMax() };
+			const TVoxelRange<v_flt> ScaleRange{ static_cast<v_flt>(Scale.GetMin()), static_cast<v_flt>(Scale.GetMax()) };
 			const auto Result = TVoxelRange<v_flt>::Union(InX * ScaleRange, InY * ScaleRange, InZ * ScaleRange);
 			
 			OutX = Result;

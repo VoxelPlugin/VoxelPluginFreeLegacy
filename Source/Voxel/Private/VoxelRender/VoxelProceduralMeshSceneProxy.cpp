@@ -630,7 +630,7 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingMa
 
 				RayTracingInstance.Materials.Add(MeshBatch);
 
-				RayTracingInstance.BuildInstanceMaskAndFlags();
+				RayTracingInstance.BuildInstanceMaskAndFlags(UE_5_ONLY(ERHIFeatureLevel::Type::SM6));
 				OutRayTracingInstances.Add(RayTracingInstance);
 			}
 		}

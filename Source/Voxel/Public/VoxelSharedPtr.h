@@ -31,7 +31,7 @@ inline TVoxelWeakPtr<T> MakeVoxelWeakPtr(T* Ptr)
 }
 
 template<typename T, template<class, ESPMode> class TPtr>
-inline TWeakPtr<T> MakeWeakPtr(const TPtr<T, ESPMode::Fast>& Ptr)
+inline TWeakPtr<T> MakeWeakPtr(const TPtr<T, UE_5_SWITCH(ESPMode::Fast, ESPMode::ThreadSafe)>& Ptr)
 {
 	return TWeakPtr<T>(Ptr);
 }
