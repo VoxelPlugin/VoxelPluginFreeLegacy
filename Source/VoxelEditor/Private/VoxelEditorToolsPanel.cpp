@@ -374,6 +374,11 @@ void FVoxelEditorToolsPanel::CustomizeToolbar(FToolBarBuilder& ToolBarBuilder)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+FString FVoxelEditorToolsPanel::GetReferencerName() const
+{
+	return TEXT("FVoxelEditorToolsPanel");;
+}
+
 void FVoxelEditorToolsPanel::AddReferencedObjects(FReferenceCollector& Collector)
 {
 	Collector.AddReferencedObject(ToolManager);
