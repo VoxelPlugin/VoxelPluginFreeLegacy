@@ -474,7 +474,7 @@ namespace FVoxelUtilities
 	FORCEINLINE float SmoothFalloff(float Distance, float Radius, float Falloff)
 	{
 		const float X = LinearFalloff(Distance, Radius, Falloff);
-		return FMath::SmoothStep(0, 1, X);
+		return FMath::SmoothStep(0.f, 1.f, X);
 	}
 	FORCEINLINE float SphericalFalloff(float Distance, float Radius, float Falloff)
 	{

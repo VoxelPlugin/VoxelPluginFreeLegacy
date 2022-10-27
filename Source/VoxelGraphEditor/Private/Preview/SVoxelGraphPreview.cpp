@@ -120,7 +120,7 @@ FReply SVoxelGraphPreview::OnMouseButtonDown(const FGeometry& MyGeometry, const 
 		const FVector2D RelativePosition = LocalClickPosition / Size;
 
 		const FVoxelGraphPreviewSettingsWrapper Wrapper(*PreviewSettings);
-		PreviewSettings->PreviewedVoxel = Wrapper.Start + FVoxelUtilities::RoundToInt(Wrapper.GetRelativePosition(RelativePosition.X, 1 - RelativePosition.Y) * FVector(Wrapper.Size * Wrapper.Step));
+		PreviewSettings->PreviewedVoxel = Wrapper.Start + FVoxelUtilities::RoundToInt(Wrapper.GetRelativePosition(static_cast<float>(RelativePosition.X), 1.f - RelativePosition.Y) * FVector(Wrapper.Size * Wrapper.Step));
 
 		if (!PreviewSettings->bShowStats && !PreviewSettings->bShowValues)
 		{
@@ -147,7 +147,7 @@ FReply SVoxelGraphPreview::OnMouseButtonUp(const FGeometry& MyGeometry, const FP
 		const FVector2D RelativePosition = Position / Size;
 		
 		const FVoxelGraphPreviewSettingsWrapper Wrapper(*PreviewSettings);
-		PreviewSettings->Center -= FVoxelUtilities::RoundToInt(Wrapper.GetRelativePosition(RelativePosition.X, -RelativePosition.Y) * FVector(Wrapper.Size * Wrapper.Step));
+		PreviewSettings->Center -= FVoxelUtilities::RoundToInt(Wrapper.GetRelativePosition(static_cast<float>(RelativePosition.X), static_cast<float>(- RelativePosition.Y)) * FVector(Wrapper.Size * Wrapper.Step));
 
 		FPropertyChangedEvent PropertyChangedEvent(UVoxelGraphPreviewSettings::StaticClass()->FindPropertyByName(GET_MEMBER_NAME_CHECKED(UVoxelGraphPreviewSettings, Center)));
 		PreviewSettings->PostEditChangeProperty(PropertyChangedEvent);

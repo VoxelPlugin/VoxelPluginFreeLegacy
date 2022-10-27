@@ -229,7 +229,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	.AutoHeight()
 	[
 		SNew(SBorder)
-		.BorderImage(FEditorStyle::GetBrush("DetailsView.AdvancedDropdownBorder"))
+		UE_5_SWITCH(.BorderImage(FEditorStyle::GetBrush("DetailsView.AdvancedDropdownBorder")),)
 		.Padding(FMargin(0.0f, 3.0f, 16.f, 0.0f))
 		[
 			SAssignNew(ExpanderButton, SButton)
@@ -263,6 +263,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 		]
 	];
 
+#if VOXEL_ENGINE_VERSION < 500
 	CustomToolBarsVerticalBox->AddSlot()
 	.AutoHeight()
 	[
@@ -274,6 +275,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 			.Image(FEditorStyle::GetBrush("DetailsView.AdvancedDropdownBorder.Open"))
 		]
 	];
+#endif
 	
 	for (auto& ToolBarBuilder : CustomToolBarBuilders)
 	{
@@ -320,7 +322,7 @@ void FVoxelEditorToolsPanel::CustomizeToolbar(FToolBarBuilder& ToolBarBuilder)
 {
 	const auto& Commands = FVoxelToolsCommands::Get();
 	
-#if VOXEL_ENGINE_VERSION  >= 425
+#if VOXEL_ENGINE_VERSION  >= 425 && VOXEL_ENGINE_VERSION < 500
 	ToolBarBuilder.AddToolBarButton(Commands.SurfaceTool);
 	ToolBarBuilder.AddToolBarButton(Commands.SmoothTool);
 	ToolBarBuilder.AddToolBarButton(Commands.MeshTool);
@@ -373,6 +375,11 @@ void FVoxelEditorToolsPanel::CustomizeToolbar(FToolBarBuilder& ToolBarBuilder)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
+FString FVoxelEditorToolsPanel::GetReferencerName() const
+{
+	return TEXT("FVoxelEditorToolsPanel");;
+}
 
 void FVoxelEditorToolsPanel::AddReferencedObjects(FReferenceCollector& Collector)
 {

@@ -6,7 +6,7 @@ using UnrealBuildTool;
 public class VoxelVDB : ModuleRules
 {
     public VoxelVDB(ReadOnlyTargetRules Target) : base(Target)
-{
+    {
         // OpenVDB/boost requires to have both of these on
         // RTTI is a global setting in packaged games: as such, this module is editor only by default
         // Set it to Runtime in Voxel.uplugin if you wish to use VDB at runtime
@@ -35,5 +35,10 @@ public class VoxelVDB : ModuleRules
                 "Engine"
             }
         );
+
+#if UE_5_0_OR_LATER
+        // Needed to use OpenVDB, else include problems from it
+        AddEngineThirdPartyPrivateStaticDependencies(Target, "IntelTBB");
+#endif
     }
 }

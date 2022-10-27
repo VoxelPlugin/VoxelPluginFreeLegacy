@@ -37,6 +37,7 @@ public:
 
 public:
 	//~ Begin FGCObject Interface
+	virtual FString GetReferencerName() const override;
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 	//~ End FGCObject Interface
 
