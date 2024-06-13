@@ -1,42 +1,38 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelVector.h"
 #include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 
 namespace FVoxelUtilities
 {
-	template<typename T>
-	FORCEINLINE int64 FloorToInt64(T Value)
+	FORCEINLINE int64 FloorToInt64(v_flt Value)
 	{
 		return int64(std::floor(Value));
 	}
-	template<typename T>
-	FORCEINLINE int64 FloorToInt32(T Value)
+	FORCEINLINE int64 FloorToInt32(v_flt Value)
 	{
 		const int64 Int = FloorToInt64(Value);
 		ensure(MIN_int32 <= Int && Int <= MAX_int32);
 		return int32(Int);
 	}
 	
-	template<typename T>
-	FORCEINLINE int64 CeilToInt64(T Value)
+	FORCEINLINE int64 CeilToInt64(v_flt Value)
 	{
 		return int64(std::ceil(Value));
 	}
-	template<typename T>
-	FORCEINLINE int64 CeilToInt32(T Value)
+	FORCEINLINE int64 CeilToInt32(v_flt Value)
 	{
 		const int64 Int = CeilToInt64(Value);
 		ensure(MIN_int32 <= Int && Int <= MAX_int32);
 		return int32(Int);
 	}
 	
-	template<typename T>
-	FORCEINLINE int64 RoundToInt64(T Value)
+	FORCEINLINE int64 RoundToInt64(v_flt Value)
 	{
 #if PLATFORM_ANDROID
 		// Android NDK doesn't have std::round :(
@@ -45,128 +41,68 @@ namespace FVoxelUtilities
 		return int64(std::round(Value));
 #endif
 	}
-	template<typename T>
-	FORCEINLINE int64 RoundToInt32(T Value)
+	FORCEINLINE int64 RoundToInt32(v_flt Value)
 	{
 		const int64 Int = RoundToInt64(Value);
 		ensure(MIN_int32 <= Int && Int <= MAX_int32);
 		return int32(Int);
 	}
-
-	template<typename TVector, typename TResult = TVector>
-	using TEnableIfVector2 = typename TEnableIf<TOr<TIsSame<TVector, FVector2D>, TIsSame<TVector, FVoxelVector2D>>::Value, TResult>::Type;
-	template<typename TVector, typename TResult = TVector>
-	using TEnableIfVector3 = typename TEnableIf<TOr<TIsSame<TVector, FVector>, TIsSame<TVector, FVoxelVector>>::Value, TResult>::Type;
 	
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector2<TVector, FIntPoint> RoundToInt(const TVector& Vector)
-	{
-		return FIntPoint(
-			RoundToInt32(Vector.X),
-			RoundToInt32(Vector.Y));
-	}
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector3<TVector, FIntVector> RoundToInt(const TVector& Vector)
+	FORCEINLINE FIntVector RoundToInt(const FVoxelVector& Vector)
 	{
 		return FIntVector(
 			RoundToInt32(Vector.X),
 			RoundToInt32(Vector.Y),
 			RoundToInt32(Vector.Z));
 	}
-	
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector2<TVector, FIntPoint> FloorToInt(const TVector& Vector)
-	{
-		return FIntPoint(
-			FloorToInt32(Vector.X),
-			FloorToInt32(Vector.Y));
-	}
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector3<TVector, FIntVector> FloorToInt(const TVector& Vector)
+	FORCEINLINE FIntVector FloorToInt(const FVoxelVector& Vector)
 	{
 		return FIntVector(
 			FloorToInt32(Vector.X),
 			FloorToInt32(Vector.Y),
 			FloorToInt32(Vector.Z));
 	}
-	
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector2<TVector, FIntPoint> CeilToInt(const TVector& Vector)
-	{
-		return FIntPoint(
-			CeilToInt32(Vector.X),
-			CeilToInt32(Vector.Y));
-	}
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector3<TVector, FIntVector> CeilToInt(const TVector& Vector)
+	FORCEINLINE FIntVector CeilToInt(const FVoxelVector& Vector)
 	{
 		return FIntVector(
 			CeilToInt32(Vector.X),
 			CeilToInt32(Vector.Y),
 			CeilToInt32(Vector.Z));
 	}
-	
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector2<TVector> Abs(const TVector& Vector)
+
+	FORCEINLINE FVoxelVector Abs(const FVoxelVector& Vector)
 	{
-		return TVector(
-			FMath::Abs(Vector.X),
-			FMath::Abs(Vector.Y));
-	}
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector3<TVector> Abs(const TVector& Vector)
-	{
-		return TVector(
+		return FVoxelVector(
 			FMath::Abs(Vector.X),
 			FMath::Abs(Vector.Y),
 			FMath::Abs(Vector.Z));
 	}
-	
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector2<TVector> ComponentMax(const TVector& A, const TVector& B)
+
+	FORCEINLINE FVoxelVector ComponentMax(const FVoxelVector& A, const FVoxelVector& B)
 	{
-		return TVector(
-			FMath::Max(A.X, B.X),
-			FMath::Max(A.Y, B.Y));
-	}
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector3<TVector> ComponentMax(const TVector& A, const TVector& B)
-	{
-		return TVector(
+		return FVoxelVector(
 			FMath::Max(A.X, B.X),
 			FMath::Max(A.Y, B.Y),
 			FMath::Max(A.Z, B.Z));
 	}
-	
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector2<TVector> ComponentMin(const TVector& A, const TVector& B)
+	FORCEINLINE FVoxelVector ComponentMin(const FVoxelVector& A, const FVoxelVector& B)
 	{
-		return TVector(
-			FMath::Min(A.X, B.X),
-			FMath::Min(A.Y, B.Y));
-	}
-	template<typename TVector>
-	FORCEINLINE TEnableIfVector3<TVector> ComponentMin(const TVector& A, const TVector& B)
-	{
-		return TVector(
+		return FVoxelVector(
 			FMath::Min(A.X, B.X),
 			FMath::Min(A.Y, B.Y),
 			FMath::Min(A.Z, B.Z));
 	}
 
-	template<typename TVector>
-	FORCEINLINE TVector ComponentMin3(const TVector& A, const TVector& B, const TVector& C)
+	FORCEINLINE FVoxelVector ComponentMin3(const FVoxelVector& A, const FVoxelVector& B, const FVoxelVector& C)
 	{
 		return ComponentMin(A, ComponentMin(B, C));
 	}
-	template<typename TVector>
-	FORCEINLINE TVector ComponentMax3(const TVector& A, const TVector& B, const TVector& C)
+	FORCEINLINE FVoxelVector ComponentMax3(const FVoxelVector& A, const FVoxelVector& B, const FVoxelVector& C)
 	{
 		return ComponentMax(A, ComponentMax(B, C));
 	}
 
-	template<typename TVector>
-	FORCEINLINE TVoxelStaticArray<FIntVector, 8> GetNeighbors(const TVector& P)
+	FORCEINLINE TVoxelStaticArray<FIntVector, 8> GetNeighbors(const FVoxelVector& P)
 	{
 		const int32 MinX = FloorToInt32(P.X);
 		const int32 MinY = FloorToInt32(P.Y);

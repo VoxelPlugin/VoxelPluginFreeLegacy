@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -14,7 +14,6 @@ class UVoxelGraphGenerator;
 class FVoxelComputeNode;
 class FVoxelCompilationNode;
 class FVoxelGraphErrorReporter;
-class FVoxelGraphContext;
 struct FVoxelGeneratorParameter;
 
 UCLASS(Abstract)
@@ -54,7 +53,7 @@ struct FVoxelPin
 	EVoxelPinCategory PinCategory = EVoxelPinCategory::Exec;
 
 	UPROPERTY()
-	TArray<UVoxelNode*> OtherNodes;
+	TArray<TObjectPtr<UVoxelNode>> OtherNodes;
 
 	UPROPERTY()
 	TArray<FGuid> OtherPinIds;
@@ -91,11 +90,11 @@ public:
 	TArray<FVoxelPin> OutputPins;
 
 	UPROPERTY()
-	UVoxelGraphGenerator* Graph;
+	TObjectPtr<UVoxelGraphGenerator> Graph;
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
-	UVoxelGraphNodeInterface* GraphNode;
+	TObjectPtr<UVoxelGraphNodeInterface> GraphNode;
 #endif
 
 	UPROPERTY()

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "MaterialExpressionBlendMaterialAttributesBarycentric.h"
 #include "MaterialCompiler.h"
@@ -58,6 +58,18 @@ void UMaterialExpressionBlendMaterialAttributesBarycentric::GetCaption(TArray<FS
 	OutCaptions.Add(TEXT("BlendMaterialAttributesBarycentric"));
 }
 
+#if VOXEL_ENGINE_VERSION >= 503
+TArrayView<FExpressionInput*> UMaterialExpressionBlendMaterialAttributesBarycentric::GetInputsView()
+{
+	CachedInputs.Reset();
+	CachedInputs.Add(&A);
+	CachedInputs.Add(&B);
+	CachedInputs.Add(&C);
+	CachedInputs.Add(&AlphaA);
+	CachedInputs.Add(&AlphaB);
+	return CachedInputs;
+}
+#else
 const TArray<FExpressionInput*> UMaterialExpressionBlendMaterialAttributesBarycentric::GetInputs()
 {
 	TArray<FExpressionInput*> Result;
@@ -68,6 +80,7 @@ const TArray<FExpressionInput*> UMaterialExpressionBlendMaterialAttributesBaryce
 	Result.Add(&AlphaB);
 	return Result;
 }
+#endif
 
 FExpressionInput* UMaterialExpressionBlendMaterialAttributesBarycentric::GetInput(int32 InputIndex)
 {

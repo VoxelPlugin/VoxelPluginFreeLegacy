@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelGeneratorSamplerNodes.h"
 #include "CppTranslation/VoxelVariables.h"
@@ -6,7 +6,6 @@
 #include "VoxelGraphGenerator.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.inl"
 #include "NodeFunctions/VoxelNodeFunctions.h"
-#include "NodeFunctions/VoxelGeneratorVariableHelper.h"
 
 
 ///////////////////////////////////////////////////////////////////////////////

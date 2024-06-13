@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -64,24 +64,15 @@ struct FVoxelPriorityHandler
 		, InvokersPositions(InvokersPositions)
 	{
 	}
-	template<typename T>
-	FVoxelPriorityHandler(const FVoxelIntBox& Bounds, const T& Subsystem)
-		: Bounds(Bounds)
-		, InvokersPositions(Subsystem.RuntimeData->InvokersPositionsForPriorities)
-	{
-	}
 
-	uint32 GetPriority() const
+	inline uint32 GetPriority() const
 	{
-		FInvokerPositionsArray* Positions = InvokersPositions.Get();
-		checkVoxelSlow(Positions);
-		
 		uint64 Distance = MAX_uint64;
-		for (int32 Index = 0; Index < Positions->GetNum(); Index++)
+		for (int32 Index = 0; Index < InvokersPositions->GetNum(); Index++)
 		{
-			const FIntVector Position = Positions->Get(Index);
+			const FIntVector Position = InvokersPositions->Get(Index);
 			Distance = FMath::Min(Distance, Bounds.ComputeSquaredDistanceFromBoxToPoint(Position));
 		}
-		return MAX_uint32 - uint32(FMath::Sqrt(Distance));
+		return MAX_uint32 - uint32(FMath::Sqrt(float(Distance)));
 	}
 };

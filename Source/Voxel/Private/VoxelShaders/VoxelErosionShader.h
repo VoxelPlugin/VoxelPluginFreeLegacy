@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -52,10 +52,6 @@ public:
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-#if VOXEL_ENGINE_VERSION  < 425
-	virtual bool Serialize(FArchive& Ar) override;
-#endif
 
 	void SetSurfaces(
 		FRHICommandList& RHICmdList,

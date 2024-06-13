@@ -1,11 +1,11 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "K2Node_AddDataItem.h"
 
 #include "VoxelGenerators/VoxelGeneratorInstanceWrapper.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
 
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "KismetCompiler.h"
 #include "BlueprintActionDatabaseRegistrar.h"
 #include "BlueprintNodeSpawner.h"
@@ -50,7 +50,7 @@ void UK2Node_AddDataItem::AllocateDefaultPins()
 	if (DataItemConfig->HasAnyFlags(RF_NeedLoad))
 	{
 		// Preload to get correct pins
-		PreloadObject(const_cast<UVoxelGraphDataItemConfig*>(DataItemConfig));
+		PreloadObject(const_cast<UVoxelGraphDataItemConfig*>(DataItemConfig.Get()));
 	}
 	
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Object, UVoxelPlaceableItemManager::StaticClass(), UEdGraphSchema_K2::PSC_Self);
@@ -61,7 +61,7 @@ void UK2Node_AddDataItem::AllocateDefaultPins()
 	
 	for (auto& Parameter : DataItemConfig->Parameters)
 	{
-	    CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Float, Parameter);
+	    CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Real, Parameter);
 	}
 }
 
@@ -175,7 +175,7 @@ void UK2Node_AddDataItem::GetMenuActions(FBlueprintActionDatabaseRegistrar& Acti
 		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 		
 		FARFilter Filter;
-		Filter.ClassNames.Add(UVoxelGraphDataItemConfig::StaticClass()->GetFName());
+      Filter.ClassPaths.Add( UVoxelGraphDataItemConfig::StaticClass()->GetClassPathName() );
 		Filter.bRecursiveClasses = true;
 
 		TArray<FAssetData> Assets;

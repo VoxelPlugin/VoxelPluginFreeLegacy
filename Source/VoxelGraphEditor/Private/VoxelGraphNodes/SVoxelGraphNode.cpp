@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "SVoxelGraphNode.h"
 #include "VoxelGraphNode_Base.h"
@@ -23,6 +23,7 @@
 #include "Engine/Engine.h"
 #include "PropertyCustomizationHelpers.h"
 #include "LevelEditor.h"
+#include "ThumbnailRendering/ThumbnailManager.h"
 
 void SVoxelGraphNode::Construct(const FArguments& InArgs, class UVoxelGraphNode_Base* InNode)
 {
@@ -93,7 +94,7 @@ FReply SVoxelGraphNode::OnAddPin()
 TSharedRef<SWidget> SVoxelGraphNode::CreateTitleWidget(TSharedPtr<SNodeTitle> NodeTitle)
 {
 	SAssignNew(InlineEditableText, SInlineEditableTextBlock)
-		.Style(FEditorStyle::Get(), "Graph.Node.NodeTitleInlineEditableText")
+		.Style(FAppStyle::Get(), "Graph.Node.NodeTitleInlineEditableText")
 		.Text(NodeTitle.Get(), &SNodeTitle::GetHeadTitle)
 		.OnVerifyTextChanged(this, &SVoxelGraphNode::OnVerifyNameTextChanged)
 		.OnTextCommitted(this, &SVoxelGraphNode::OnNameTextCommited)
@@ -142,7 +143,7 @@ void SVoxelGraphNode::UpdateStandardNode()
 		+SOverlay::Slot()
 		[
 			SNew(SImage)
-			.Image( FEditorStyle::GetBrush("Graph.Node.TitleGloss") )
+			.Image( FAppStyle::GetBrush("Graph.Node.TitleGloss") )
 			.ColorAndOpacity( this, &SGraphNode::GetNodeTitleIconColor )
 		]
 		+SOverlay::Slot()
@@ -150,7 +151,7 @@ void SVoxelGraphNode::UpdateStandardNode()
 		.VAlign(VAlign_Center)
 		[
 			SNew(SBorder)
-			.BorderImage( FEditorStyle::GetBrush("Graph.Node.ColorSpill") )
+			.BorderImage( FAppStyle::GetBrush("Graph.Node.ColorSpill") )
 			// The extra margin on the right
 			// is for making the color spill stretch well past the node title
 			.Padding( FMargin(10,5,30,3) )
@@ -187,7 +188,7 @@ void SVoxelGraphNode::UpdateStandardNode()
 		[
 			SNew(SBorder)
 			.Visibility(EVisibility::HitTestInvisible)			
-			.BorderImage( FEditorStyle::GetBrush( "Graph.Node.TitleHighlight" ) )
+			.BorderImage( FAppStyle::GetBrush( "Graph.Node.TitleHighlight" ) )
 			.BorderBackgroundColor( this, &SGraphNode::GetNodeTitleIconColor )
 			[
 				SNew(SSpacer)
@@ -203,7 +204,7 @@ void SVoxelGraphNode::UpdateStandardNode()
 		.LowDetail()
 		[
 			SNew(SBorder)
-			.BorderImage( FEditorStyle::GetBrush("Graph.Node.ColorSpill") )
+			.BorderImage( FAppStyle::GetBrush("Graph.Node.ColorSpill") )
 			.Padding( FMargin(75.0f, 22.0f) ) // Saving enough space for a 'typical' title so the transition isn't quite so abrupt
 			.BorderBackgroundColor( this, &SGraphNode::GetNodeTitleColor )
 		]
@@ -260,7 +261,7 @@ void SVoxelGraphNode::UpdateStandardNode()
 			.Padding(FMargin(2, 0))
 			[
 				SNew(SBorder)
-				.BorderImage(FEditorStyle::GetBrush(bDevelopmentOnly ? "Graph.Node.DevelopmentBanner" : "Graph.Node.DisabledBanner"))
+				.BorderImage(FAppStyle::GetBrush(bDevelopmentOnly ? "Graph.Node.DevelopmentBanner" : "Graph.Node.DisabledBanner"))
 				.HAlign(HAlign_Fill)
 				.VAlign(VAlign_Fill)
 				[
@@ -310,7 +311,7 @@ void SVoxelGraphNode::UpdateStandardNode()
 				.Padding(Settings->GetNonPinNodeBodyPadding())
 				[
 					SNew(SImage)
-					.Image(FEditorStyle::GetBrush("Graph.Node.Body"))
+					.Image(FAppStyle::GetBrush("Graph.Node.Body"))
 					.ColorAndOpacity(this, &SVoxelGraphNode::GetNodeBodyColor)
 				]
 				+SOverlay::Slot()
@@ -408,7 +409,7 @@ void SVoxelGraphNode::UpdateCompactNode()
 		.AutoHeight()
 		[
 			SNew(STextBlock)
-			.TextStyle(FEditorStyle::Get(), "Graph.CompactNode.Title")
+			.TextStyle(FAppStyle::Get(), "Graph.CompactNode.Title")
 		.Text(NodeTitle.Get(), &SNodeTitle::GetHeadTitle)
 		.WrapTextAt(128.0f)
 		]
@@ -459,13 +460,13 @@ void SVoxelGraphNode::UpdateCompactNode()
 			+ SOverlay::Slot()
 		[
 			SNew(SImage)
-			.Image(FEditorStyle::GetBrush("Graph.VarNode.Body"))
+			.Image(FAppStyle::GetBrush("Graph.VarNode.Body"))
 			.ColorAndOpacity(this, &SVoxelGraphNode::GetNodeBodyColor)
 		]
 	+ SOverlay::Slot()
 		[
 			SNew(SImage)
-			.Image(FEditorStyle::GetBrush("Graph.VarNode.Gloss"))
+			.Image(FAppStyle::GetBrush("Graph.VarNode.Gloss"))
 			.ColorAndOpacity(this, &SVoxelGraphNode::GetNodeBodyColor)
 		]
 	+ SOverlay::Slot()
@@ -595,9 +596,9 @@ void SVoxelGraphNode::SetupErrorReporting()
 
 void SVoxelGraphNode::UpdateErrorInfo()
 {
-	InfoColor = FEditorStyle::GetColor("InfoReporting.BackgroundColor");
-	WarningColor = FEditorStyle::GetColor("ErrorReporting.WarningBackgroundColor");
-	ErrorColor = FEditorStyle::GetColor("ErrorReporting.BackgroundColor");
+	InfoColor = FAppStyle::GetColor("InfoReporting.BackgroundColor");
+	WarningColor = FAppStyle::GetColor("ErrorReporting.WarningBackgroundColor");
+	ErrorColor = FAppStyle::GetColor("ErrorReporting.BackgroundColor");
 
 	InfoMsg = VoxelNode->InfoMsg;
 	WarningMsg = VoxelNode->WarningMsg;
@@ -645,7 +646,7 @@ void SVoxelColorGraphNode::CreateBelowPinControls(TSharedPtr<SVerticalBox> MainB
 			[
 				SNew(SBorder)
 				.Padding(CentralPadding)
-				.BorderImage( FEditorStyle::GetBrush("NoBorder") )
+				.BorderImage( FAppStyle::GetBrush("NoBorder") )
 				[
 					SAssignNew(DefaultValueWidget, SColorBlock)
 					.Color(this, &SVoxelColorGraphNode::GetParameterColor)
@@ -681,7 +682,9 @@ FReply SVoxelColorGraphNode::OnColorBoxClicked(const FGeometry& MyGeometry, cons
 		PickerArgs.bIsModal = true;
 		PickerArgs.ParentWidget = DefaultValueWidget;
 		PickerArgs.DisplayGamma = TAttribute<float>::Create(TAttribute<float>::FGetter::CreateUObject(GEngine, &UEngine::GetDisplayGamma));
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		PickerArgs.LinearColorArray = &LinearColorArray;
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		PickerArgs.OnColorCommitted = FOnLinearColorValueChanged::CreateSP(this, &SVoxelColorGraphNode::SetParameterColor);
 		PickerArgs.bUseAlpha = true;
 
@@ -714,8 +717,7 @@ void SVoxelAssetPickerGraphNode::CreateBelowPinControls(TSharedPtr<SVerticalBox>
 		
 		const float CentralPadding = 0.0f;
 		
-		FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
-		TSharedPtr<FAssetThumbnailPool> ThumbnailPool = LevelEditorModule.GetFirstLevelEditor()->GetThumbnailPool();
+		TSharedPtr<FAssetThumbnailPool> ThumbnailPool = UThumbnailManager::Get().GetSharedThumbnailPool();
 		
 		LeftNodeBox->AddSlot()
 		.Padding(FMargin(NegativeHPad + ExtraPad, 0.0f, 0.0f, 0.0f))
@@ -725,7 +727,7 @@ void SVoxelAssetPickerGraphNode::CreateBelowPinControls(TSharedPtr<SVerticalBox>
 			[
 				SNew(SBorder)
 				.Padding(CentralPadding)
-				.BorderImage( FEditorStyle::GetBrush("NoBorder") )
+				.BorderImage( FAppStyle::GetBrush("NoBorder") )
 				[
 					SAssignNew(DefaultValueWidget, SObjectPropertyEntryBox)
 					.IsEnabled(true)

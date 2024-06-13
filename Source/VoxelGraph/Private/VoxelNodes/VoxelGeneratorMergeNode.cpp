@@ -1,13 +1,30 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelGeneratorMergeNode.h"
 #include "VoxelGraphGenerator.h"
 #include "VoxelGraphErrorReporter.h"
 #include "VoxelGenerators/VoxelGeneratorInit.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.h"
+#include "VoxelGraphOutputsConfig.h"
 #include "NodeFunctions/VoxelNodeFunctions.h"
 
 constexpr int32 NumDefaultInputPins_WGMN = 3 + 2 * 4;
+
+inline TArray<FName> GetFloatOutputs(UVoxelGraphOutputsConfig* Config)
+{
+	TArray<FName> Result;
+	if (Config)
+	{
+		for (auto& Output : Config->Outputs)
+		{
+			if (Output.Category == EVoxelDataPinCategory::Float)
+			{
+				Result.Add(Output.Name);
+			}
+		}
+	}
+	return Result;
+}
 
 
 UVoxelNode_GeneratorMerge::UVoxelNode_GeneratorMerge()
@@ -34,7 +51,7 @@ FText UVoxelNode_GeneratorMerge::GetTitle() const
 
 int32 UVoxelNode_GeneratorMerge::GetOutputPinsCount() const
 {
-	return 2 + Outputs.Num() + 1;
+	return 2 + GetFloatOutputs(Outputs).Num() + 1;
 }
 
 FName UVoxelNode_GeneratorMerge::GetOutputPinName(int32 PinIndex) const
@@ -52,9 +69,10 @@ FName UVoxelNode_GeneratorMerge::GetOutputPinName(int32 PinIndex) const
 		return "Num Queried Generators";
 	}
 	PinIndex -= 2;
-	if (Outputs.IsValidIndex(PinIndex))
+	auto FloatOutputs = GetFloatOutputs(Outputs);
+	if (FloatOutputs.IsValidIndex(PinIndex))
 	{
-		return Outputs[PinIndex];
+		return FloatOutputs[PinIndex];
 	}
 	return "Error";
 }

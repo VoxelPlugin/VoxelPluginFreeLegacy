@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -15,7 +15,7 @@ struct FVoxelBasicMaterialCollectionLayer
 	uint8 LayerIndex = 0;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
-	UMaterialInterface* LayerMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> LayerMaterial = nullptr;
 
 	inline bool operator==(int32 Other) const
 	{
@@ -36,7 +36,9 @@ public:
 	//~ Begin UVoxelMaterialCollectionBase Interface
 	virtual int32 GetMaxMaterialIndices() const override;
 	virtual UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const override;
-	virtual TArray<FVoxelMaterialCollectionMaterialInfo> GetMaterials() const override;
+	virtual UMaterialInterface* GetIndexMaterial(uint8 Index) const override;
+	virtual TArray<FMaterialInfo> GetMaterials() const override;
+	virtual int32 GetMaterialIndex(FName Name) const override;
 	//~ End UVoxelMaterialCollectionBase Interface
 
 #if WITH_EDITOR

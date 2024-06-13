@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -23,7 +23,6 @@ public:
 #if WITH_EDITOR
 	virtual bool ShouldTickIfViewportsOnly() const override final { return true; }
 	virtual bool IsEditorOnly() const override final { return true; }
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 	//~ End AActor interface
 
@@ -33,7 +32,7 @@ public:
 	FVector LocationOverride;
 
 	UPROPERTY(VisibleAnywhere, Category = "Voxel")
-	UVoxelInvokerEditorComponent* Invoker;
+	TObjectPtr<UVoxelInvokerEditorComponent> Invoker;
 };
 
 UCLASS(NotPlaceable)
@@ -43,4 +42,8 @@ class VOXELEDITOR_API UVoxelInvokerEditorComponent : public UVoxelSimpleInvokerC
 
 public:
 	UVoxelInvokerEditorComponent();
+	
+	//~ Begin UActorComponent Interface
+	virtual void OnRegister() override;
+	//~ End UActorComponent Interface
 };

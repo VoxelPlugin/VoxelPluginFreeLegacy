@@ -1,16 +1,37 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Runtime/Launch/Resources/Version.h"
+#include "VoxelUserDefinitions.h"
+
+#define VOXEL_ENGINE_VERSION (ENGINE_MAJOR_VERSION * 100 + ENGINE_MINOR_VERSION)
+
+#if VOXEL_ENGINE_VERSION >= 503
+#define UE_503_SWITCH(Before, AfterOrEqual) AfterOrEqual
+#define UE_503_ONLY(...) __VA_ARGS__
+#else
+#define UE_503_SWITCH(Before, AfterOrEqual) Before
+#define UE_503_ONLY(...)
+#endif
+
+#if VOXEL_ENGINE_VERSION >= 504
+#define UE_504_SWITCH(Before, AfterOrEqual) AfterOrEqual
+#define UE_504_ONLY(...) __VA_ARGS__
+#else
+#define UE_504_SWITCH(Before, AfterOrEqual) Before
+#define UE_504_ONLY(...)
+#endif
+
+/**
+ * To change a definition, add it to VoxelUserDefinitions.h
+ */
 
 // Enable this to enable double precision in generators and voxel graphs
 #ifndef VOXEL_DOUBLE_PRECISION
-#define VOXEL_DOUBLE_PRECISION 0
+#define VOXEL_DOUBLE_PRECISION 1
 #endif
-
-// Assert on non finite numbers. Used to track NaNs.
-#define VOXEL_ENABLE_NAN_DIAGNOSTIC 1
 
 // Enables slow voxel checks
 #ifndef VOXEL_DEBUG
@@ -39,16 +60,12 @@
 #define DO_THREADSAFE_CHECKS VOXEL_DEBUG
 #endif
 
-// Size of a chunk processed by the mesher
+// Size of a render chunk
+// Bigger = less draw calls
+// Smaller = faster edits
 // Must be a power of 2
-// Bigger = larger rebuilds when editing, but potentially faster meshing
-#ifndef MESHER_CHUNK_SIZE
-#define MESHER_CHUNK_SIZE 32
-#endif
-
-// Base foliage chunk size, for LOD = 0
-#ifndef FOLIAGE_CHUNK_SIZE
-#define FOLIAGE_CHUNK_SIZE 32
+#ifndef RENDER_CHUNK_SIZE
+#define RENDER_CHUNK_SIZE 32
 #endif
 
 // Size of a data chunk
@@ -59,14 +76,7 @@
 
 // No tessellation support on some platforms
 #ifndef ENABLE_TESSELLATION
-#define ENABLE_TESSELLATION (!PLATFORM_ANDROID && !PLATFORM_SWITCH && ENGINE_MAJOR_VERSION < 5)
-#endif
-
-// Make UVoxelProceduralMeshComponent inherit from UModelComponent instead of UPrimitiveComponent
-// to make unreal foliage painting in editor work.
-// Huge hack, should disable if you don't use unreal in-editor foliage painting
-#ifndef VOXEL_ENABLE_FOLIAGE_PAINT_HACK
-#define VOXEL_ENABLE_FOLIAGE_PAINT_HACK 1
+#define ENABLE_TESSELLATION 0
 #endif
 
 // Enables recording detailed mesher stats (eg profiles every GetValue call)
@@ -98,15 +108,8 @@
 #define ENABLE_OPTIMIZE_INDICES PLATFORM_WINDOWS
 #endif
 
-// Use 8 bits voxel value
-// Lower quality (mainly visible when using smooth), but 2x smaller
 #ifndef EIGHT_BITS_VOXEL_VALUE
 #define EIGHT_BITS_VOXEL_VALUE 0
-#endif
-
-// Only store one bit per voxel - mainly useful for cubic
-#ifndef ONE_BIT_VOXEL_VALUE
-#define ONE_BIT_VOXEL_VALUE 0
 #endif
 
 // If true, Voxel Materials will default to R = G = B = A = 255
@@ -117,41 +120,7 @@
 
 /**
  * Voxel material config: use those to reduce the size of a FVoxelMaterial
- * Alpha is used to store the single index in that mode
  */
-
-// Quick way to disable all channels but the one used to store the single index
-// Useful for magica voxel if you use a palette
-#ifndef VOXEL_MATERIAL_SINGLE_INDEX_ONLY
-#define VOXEL_MATERIAL_SINGLE_INDEX_ONLY 0
-#endif
-
-#if VOXEL_MATERIAL_SINGLE_INDEX_ONLY
-#define VOXEL_MATERIAL_ENABLE_R 0
-#define VOXEL_MATERIAL_ENABLE_G 0
-#define VOXEL_MATERIAL_ENABLE_B 0
-#define VOXEL_MATERIAL_ENABLE_A 1
-#define VOXEL_MATERIAL_ENABLE_UV0 0
-#define VOXEL_MATERIAL_ENABLE_UV1 0
-#define VOXEL_MATERIAL_ENABLE_UV2 0
-#define VOXEL_MATERIAL_ENABLE_UV3 0
-#endif
-
-// Quick way to disable all channels but the ones used to store the color
-#ifndef VOXEL_MATERIAL_COLOR_ONLY
-#define VOXEL_MATERIAL_COLOR_ONLY 0
-#endif
-
-#if VOXEL_MATERIAL_COLOR_ONLY
-#define VOXEL_MATERIAL_ENABLE_R 1
-#define VOXEL_MATERIAL_ENABLE_G 1
-#define VOXEL_MATERIAL_ENABLE_B 1
-#define VOXEL_MATERIAL_ENABLE_A 1
-#define VOXEL_MATERIAL_ENABLE_UV0 0
-#define VOXEL_MATERIAL_ENABLE_UV1 0
-#define VOXEL_MATERIAL_ENABLE_UV2 0
-#define VOXEL_MATERIAL_ENABLE_UV3 0
-#endif
 
 #ifndef VOXEL_MATERIAL_ENABLE_R
 #define VOXEL_MATERIAL_ENABLE_R 1

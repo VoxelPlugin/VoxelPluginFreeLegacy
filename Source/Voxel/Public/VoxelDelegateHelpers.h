@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -6,217 +6,46 @@
 #include "VoxelSharedPtr.h"
 #include "VoxelEngineVersionHelpers.h"
 
+#if VOXEL_ENGINE_VERSION >= 503
+struct FVoxelDelegateUtilities
+	: public TDelegateBase<FThreadSafeDelegateMode>
+	, public TDelegateBase<FNotThreadSafeDelegateMode>
+	, public TDelegateBase<FNotThreadSafeNotCheckedDelegateMode>
+{
+	template<typename Mode>
+	struct THack : TDelegateBase<Mode>
+	{
+		using TDelegateBase<Mode>::CreateDelegateInstance;
+	};
+
+	template<typename Mode, typename DelegateInstanceType>
+	static void CreateDelegateInstance(TDelegateBase<Mode>& Base, DelegateInstanceType& DelegateInstance)
+	{
+		static_cast<THack<Mode>&>(Base).template CreateDelegateInstance<DelegateInstanceType>(DelegateInstance);
+	}
+	template<typename DelegateInstanceType, typename Mode, typename... DelegateInstanceParams>
+	static void CreateDelegateInstance(TDelegateBase<Mode>& Base, DelegateInstanceParams&&... Params)
+	{
+		static_cast<THack<Mode>&>(Base).template CreateDelegateInstance<DelegateInstanceType>(Forward<DelegateInstanceParams>(Params)...);
+	}
+};
+#endif
+
 /**
  * Delegate impl for weak lambda on shared pointers
  */
 
-#if VOXEL_ENGINE_VERSION < 426
-template <class UserClass, ESPMode SPMode, typename FuncType, typename FunctorType, typename... VarTypes>
-class TBaseSPFunctorDelegateInstance;
-
-template <class UserClass, ESPMode SPMode, typename WrappedRetValType, typename... ParamTypes, typename FunctorType, typename... VarTypes>
-class TBaseSPFunctorDelegateInstance<UserClass, SPMode, WrappedRetValType (ParamTypes...), FunctorType, VarTypes...> : public IBaseDelegateInstance<typename TUnwrapType<WrappedRetValType>::Type (ParamTypes...)>
-{
-public:
-	typedef typename TUnwrapType<WrappedRetValType>::Type RetValType;
-
-private:
-	typedef IBaseDelegateInstance<RetValType (ParamTypes...)> Super;
-	typedef TBaseSPFunctorDelegateInstance<UserClass, SPMode, RetValType (ParamTypes...), FunctorType, VarTypes...> UnwrappedThisType;
-
-public:
-	TBaseSPFunctorDelegateInstance(const TSharedPtr<UserClass, SPMode>& InUserObject, FunctorType&& InFunctor)
-		: UserObject(InUserObject)
-		, Functor(MoveTemp(InFunctor))
-		, Handle(FDelegateHandle::GenerateNewHandle)
-	{
-		// NOTE: Shared pointer delegates are allowed to have a null incoming object pointer.  Weak pointers can expire,
-		//       an it is possible for a copy of a delegate instance to end up with a null pointer.
-	}
-
-	// IDelegateInstance interface
-
-#if USE_DELEGATE_TRYGETBOUNDFUNCTIONNAME
-	virtual FName TryGetBoundFunctionName() const override final
-	{
-		return {};
-	}
-#endif
-	virtual UObject* GetUObject() const override final
-	{
-		return nullptr;
-	}
-
-	virtual const void* GetObjectForTimerManager() const override final
-	{
-		return UserObject.Pin().Get();
-	}
-
-	virtual uint64 GetBoundProgramCounterForTimerManager() const override final
-	{
-		return 0;
-	}
-
-	// Deprecated
-	virtual bool HasSameObject(const void* InUserObject) const override final
-	{
-		return UserObject.HasSameObject(InUserObject);
-	}
-
-	virtual bool IsSafeToExecute() const override final
-	{
-		return UserObject.IsValid();
-	}
-
-public:
-
-	// IBaseDelegateInstance interface
-
-	virtual void CreateCopy(FDelegateBase& Base) override final
-	{
-		new (Base) UnwrappedThisType(*(UnwrappedThisType*)this);
-	}
-
-	virtual RetValType Execute(ParamTypes... Params) const override final
-	{
-		typedef typename TRemoveConst<UserClass>::Type MutableUserClass;
-
-		// Verify that the user object is still valid.  We only have a weak reference to it.
-		auto SharedUserObject = UserObject.Pin();
-		check(SharedUserObject.IsValid());
-
-		return Functor(Forward<ParamTypes>(Params)...);
-	}
-
-	virtual FDelegateHandle GetHandle() const override final
-	{
-		return Handle;
-	}
-
-public:
-
-	/**
-	 * Creates a new shared pointer delegate binding for the given user object and lambda.
-	 *
-	 * @param InUserObjectRef Shared reference to the user's object that contains the class method.
-	 * @param InFunc  Lambda
-	 * @return The new delegate.
-	 */
-	FORCEINLINE static void Create(FDelegateBase& Base, const TSharedPtr<UserClass, SPMode>& InUserObjectRef, FunctorType&& InFunc)
-	{
-		new (Base) UnwrappedThisType(InUserObjectRef, MoveTemp(InFunc));
-	}
-
-	/**
-	 * Creates a new shared pointer delegate binding for the given user object and lambda.
-	 *
-	 * This overload requires that the supplied object derives from TSharedFromThis.
-	 *
-	 * @param InUserObject  The user's object that contains the class method.  Must derive from TSharedFromThis.
-	 * @param InFunc  Lambda
-	 * @return The new delegate.
-	 */
-	FORCEINLINE static void Create(FDelegateBase& Base, UserClass* InUserObject, FunctorType&& InFunc)
-	{
-		// We expect the incoming InUserObject to derived from TSharedFromThis.
-		auto UserObjectRef = StaticCastSharedRef<UserClass>(InUserObject->AsShared());
-		Create(Base, UserObjectRef, MoveTemp(InFunc));
-	}
-
-protected:
-
-	// Weak reference to an instance of the user's class which contains a method we would like to call.
-	TWeakPtr<UserClass, SPMode> UserObject;
-
-	// Functor
-	FunctorType Functor;
-
-	// The handle of this delegate
-	FDelegateHandle Handle;
-
-	struct FThreadChecker
-	{
-		uint32 ThreadId = 0;
-		
-		FThreadChecker()
-		{
-			ThreadId = FPlatformTLS::GetCurrentThreadId();
-		}
-		~FThreadChecker()
-		{
-			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
-		}
-
-		FThreadChecker(const FThreadChecker& Other)
-			: ThreadId(Other.ThreadId)
-		{
-			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
-		}
-		FThreadChecker(FThreadChecker&& Other)
-			: ThreadId(Other.ThreadId)
-		{
-			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
-		}
-
-		FThreadChecker& operator=(const FThreadChecker& Other)
-		{
-			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
-			ensure(ThreadId == Other.ThreadId);
-			
-			ThreadId = Other.ThreadId;
-			return *this;
-		}
-		FThreadChecker& operator=(FThreadChecker&& Other)
-		{
-			ensure(ThreadId == FPlatformTLS::GetCurrentThreadId());
-			ensure(ThreadId == Other.ThreadId);
-			
-			ThreadId = Other.ThreadId;
-			return *this;
-		}
-	};
-	typename TChooseClass<SPMode == ESPMode::NotThreadSafe, FThreadChecker, bool>::Result ThreadChecker;
-};
-
-template <class UserClass, ESPMode SPMode, typename... ParamTypes, typename FunctorType, typename... VarTypes>
-class TBaseSPFunctorDelegateInstance<UserClass, SPMode, void (ParamTypes...), FunctorType, VarTypes...> : public TBaseSPFunctorDelegateInstance<UserClass, SPMode, TTypeWrapper<void> (ParamTypes...), FunctorType, VarTypes...>
-{
-	typedef TBaseSPFunctorDelegateInstance<UserClass, SPMode, TTypeWrapper<void> (ParamTypes...), FunctorType, VarTypes...> Super;
-
-public:
-	TBaseSPFunctorDelegateInstance(const TSharedPtr<UserClass, SPMode>& InUserObject, FunctorType&& InFunctor)
-		: Super(InUserObject, MoveTemp(InFunctor))
-	{
-	}
-	
-	virtual bool ExecuteIfSafe(ParamTypes... Params) const override final
-	{
-		// Verify that the user object is still valid.  We only have a weak reference to it.
-		auto SharedUserObject = Super::UserObject.Pin();
-		if (SharedUserObject.IsValid())
-		{
-			Super::Execute(Params...);
-
-			return true;
-		}
-
-		return false;
-	}
-};
-#else
-
 template <typename UserClass, ESPMode SPMode, typename FuncType, typename UserPolicy, typename FunctorType>
 class TBaseSPFunctorDelegateInstance;
 
-template <typename UserClass, ESPMode SPMode, typename WrappedRetValType, typename... ParamTypes, typename UserPolicy, typename FunctorType>
-class TBaseSPFunctorDelegateInstance<UserClass, SPMode, WrappedRetValType(ParamTypes...), UserPolicy, FunctorType> : public TCommonDelegateInstanceState<WrappedRetValType(ParamTypes...), UserPolicy>
+template <typename UserClass, ESPMode SPMode, typename RetValType, typename... ParamTypes, typename UserPolicy, typename FunctorType>
+class TBaseSPFunctorDelegateInstance<UserClass, SPMode, RetValType(ParamTypes...), UserPolicy, FunctorType> : public TCommonDelegateInstanceState<RetValType(ParamTypes...), UserPolicy>
 {
 private:
-	static_assert(TAreTypesEqual<FunctorType, typename TRemoveReference<FunctorType>::Type>::Value, "FunctorType cannot be a reference");
+	static_assert(std::is_same_v<FunctorType, typename TRemoveReference<FunctorType>::Type>, "FunctorType cannot be a reference");
 
-	using Super             = TCommonDelegateInstanceState<WrappedRetValType(ParamTypes...), UserPolicy>;
-	using RetValType        = typename Super::RetValType;
-	using UnwrappedThisType = TBaseSPFunctorDelegateInstance<UserClass, SPMode, RetValType(ParamTypes...), UserPolicy, FunctorType>;
+	using Super = TCommonDelegateInstanceState<RetValType(ParamTypes...), UserPolicy>;
+	using ThisType = TBaseSPFunctorDelegateInstance<UserClass, SPMode, RetValType(ParamTypes...), UserPolicy, FunctorType>;
 
 public:
 	TBaseSPFunctorDelegateInstance(const TSharedPtr<UserClass, SPMode>& InUserObject, const FunctorType& InFunctor)
@@ -272,14 +101,29 @@ public:
 
 public:
 	// IBaseDelegateInstance interface
-	void CreateCopy(FDelegateBase& Base) final
+#if VOXEL_ENGINE_VERSION >= 503
+	virtual void CreateCopy(TDelegateBase<FThreadSafeDelegateMode>& Base) const final override
 	{
-		new (Base) UnwrappedThisType(*(UnwrappedThisType*)this);
+		FVoxelDelegateUtilities::CreateDelegateInstance(Base, *this);
 	}
-
-	virtual RetValType Execute(ParamTypes... Params) const override final
+	virtual void CreateCopy(TDelegateBase<FNotThreadSafeDelegateMode>& Base) const override
 	{
-		typedef typename TRemoveConst<UserClass>::Type MutableUserClass;
+		FVoxelDelegateUtilities::CreateDelegateInstance(Base, *this);
+	}
+	virtual void CreateCopy(TDelegateBase<FNotThreadSafeNotCheckedDelegateMode>& Base) const override
+	{
+		FVoxelDelegateUtilities::CreateDelegateInstance(Base, *this);
+	}
+#else
+	virtual void CreateCopy(FDelegateBase& Base) const final override
+	{
+		new (Base) ThisType(*(ThisType*)this);
+	}
+#endif
+
+	virtual RetValType Execute(ParamTypes... Params) const final override
+	{
+		typedef typename UE_503_SWITCH(TRemoveConst<UserClass>::Type, std::remove_const_t<UserClass>) MutableUserClass;
 
 		// Verify that the user object is still valid.  We only have a weak reference to it.
 		auto SharedUserObject = UserObject.Pin();
@@ -288,7 +132,7 @@ public:
 		return Functor(Forward<ParamTypes>(Params)...);
 	}
 	
-	virtual bool ExecuteIfSafe(ParamTypes... Params) const override final
+	virtual bool ExecuteIfSafe(ParamTypes... Params) const final override
 	{
 		// Verify that the user object is still valid.  We only have a weak reference to it.
 		if (TSharedPtr<UserClass, SPMode> SharedUserObject = this->UserObject.Pin())
@@ -309,9 +153,13 @@ public:
 	 * @param InFunc  Lambda
 	 * @return The new delegate.
 	 */
-	FORCEINLINE static void Create(FDelegateBase& Base, const TSharedPtr<UserClass, SPMode>& InUserObjectRef, FunctorType&& InFunc)
+	FORCEINLINE static void Create(UE_503_SWITCH(FDelegateBase, TDelegateBase<FDefaultDelegateUserPolicy::FThreadSafetyMode>)& Base, const TSharedPtr<UserClass, SPMode>& InUserObjectRef, FunctorType&& InFunc)
 	{
-		new (Base) UnwrappedThisType(InUserObjectRef, MoveTemp(InFunc));
+#if VOXEL_ENGINE_VERSION >= 503
+		FVoxelDelegateUtilities::CreateDelegateInstance<ThisType>(Base, InUserObjectRef, MoveTemp(InFunc));
+#else
+		new (Base) ThisType(InUserObjectRef, MoveTemp(InFunc));
+#endif
 	}
 
 	/**
@@ -323,7 +171,7 @@ public:
 	 * @param InFunc  Lambda
 	 * @return The new delegate.
 	 */
-	FORCEINLINE static void Create(FDelegateBase& Base, UserClass* InUserObject, FunctorType&& InFunc)
+	FORCEINLINE static void Create(UE_503_SWITCH(FDelegateBase, TDelegateBase<FDefaultDelegateUserPolicy::FThreadSafetyMode>)& Base, UserClass* InUserObject, FunctorType&& InFunc)
 	{
 		// We expect the incoming InUserObject to derived from TSharedFromThis.
 		auto UserObjectRef = StaticCastSharedRef<UserClass>(InUserObject->AsShared());
@@ -338,10 +186,8 @@ private:
 	// We make this mutable to allow mutable lambdas to be bound and executed.  We don't really want to
 	// model the Functor as being a direct subobject of the delegate (which would maintain transivity of
 	// const - because the binding doesn't affect the substitutability of a copied delegate.
-	mutable typename TRemoveConst<FunctorType>::Type Functor;
+	mutable typename UE_503_SWITCH(TRemoveConst<FunctorType>::Type, std::remove_const_t<FunctorType>) Functor;
 };
-
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -361,30 +207,26 @@ struct TDelegateFromLambda<TReturnType(TClass::*)(TArgs...) const> : TDelegateFr
 template<typename TReturnType, typename TClass, typename... TArgs>
 struct TDelegateFromLambda<TReturnType(TClass::*)(TArgs...)>
 {
-#if VOXEL_ENGINE_VERSION < 426
-	using Type = TBaseDelegate<TReturnType, TArgs...>;
-#else
 	using Type = TDelegate<TReturnType(TArgs...)>;
-#endif
 	
 	template<typename UserClass, ESPMode Mode, typename TFunctor>
-	using TDelegateImpl = TBaseSPFunctorDelegateInstance<UserClass, Mode, TReturnType(TArgs...), UE_26_ONLY(FDefaultDelegateUserPolicy,) TFunctor>;
+	using TDelegateImpl = TBaseSPFunctorDelegateInstance<UserClass, Mode, TReturnType(TArgs...), FDefaultDelegateUserPolicy, TFunctor>;
 };
 
 template<typename TLambda>
-inline auto MakeLambdaDelegate(TLambda Lambda)
+auto MakeLambdaDelegate(TLambda Lambda)
 {
 	return TDelegateFromLambda<TLambda>::Type::CreateLambda(MoveTemp(Lambda));
 }
 
 template<typename T, typename TLambda>
-inline auto MakeWeakObjectPtrDelegate(T* Ptr, TLambda Lambda)
+auto MakeWeakObjectPtrDelegate(T* Ptr, TLambda Lambda)
 {
-	return TDelegateFromLambda<TLambda>::Type::CreateWeakLambda(const_cast<typename TRemoveConst<T>::Type*>(Ptr), MoveTemp(Lambda));
+	return TDelegateFromLambda<TLambda>::Type::CreateWeakLambda(VOXEL_CONST_CAST(Ptr), MoveTemp(Lambda));
 }
 
 template<typename TClass, ESPMode Mode, typename TLambda>
-inline auto MakeWeakPtrDelegate(const TSharedPtr<TClass, Mode>& Object, TLambda Lambda)
+auto MakeWeakPtrDelegate(const TSharedPtr<TClass, Mode>& Object, TLambda Lambda)
 {
 	typename TDelegateFromLambda<TLambda>::Type Delegate;
 	TDelegateFromLambda<TLambda>::template TDelegateImpl<TClass, Mode, TLambda>::Create(Delegate, Object, MoveTemp(Lambda));
@@ -392,7 +234,7 @@ inline auto MakeWeakPtrDelegate(const TSharedPtr<TClass, Mode>& Object, TLambda 
 }
 
 template<typename TClass, ESPMode Mode, typename TLambda>
-inline auto MakeWeakPtrDelegate(const TSharedRef<TClass, Mode>& Object, TLambda Lambda)
+auto MakeWeakPtrDelegate(const TSharedRef<TClass, Mode>& Object, TLambda Lambda)
 {
 	typename TDelegateFromLambda<TLambda>::Type Delegate;
 	TDelegateFromLambda<TLambda>::template TDelegateImpl<TClass, Mode, TLambda>::Create(Delegate, Object, MoveTemp(Lambda));
@@ -400,62 +242,47 @@ inline auto MakeWeakPtrDelegate(const TSharedRef<TClass, Mode>& Object, TLambda 
 }
 
 template<typename TClass, typename TLambda>
-inline auto MakeWeakPtrDelegate(TClass* Object, TLambda Lambda)
-{
-	typename TDelegateFromLambda<TLambda>::Type Delegate;
-	TDelegateFromLambda<TLambda>::template TDelegateImpl<TClass, ESPMode::Fast, TLambda>::Create(Delegate, Object, MoveTemp(Lambda));
-	return Delegate;
-}
-
-template<typename TClass, typename TLambda>
-inline auto MakeVoxelWeakPtrDelegate(TClass* Object, TLambda Lambda)
+auto MakeWeakPtrDelegate(TClass* Object, TLambda Lambda)
 {
 	typename TDelegateFromLambda<TLambda>::Type Delegate;
 	TDelegateFromLambda<TLambda>::template TDelegateImpl<TClass, ESPMode::ThreadSafe, TLambda>::Create(Delegate, Object, MoveTemp(Lambda));
 	return Delegate;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-template<class Lambda>
-struct TLambdaConditionalForward : TLambdaConditionalForward<decltype(&Lambda::operator())>
+template<typename DelegateType, typename TClass, typename TLambda>
+DelegateType MakeWeakPtrTypedDelegate(TClass* Object, TLambda Lambda)
 {
-};
+	using DelegateImpl = TBaseSPFunctorDelegateInstance<TClass, ESPMode::ThreadSafe, typename DelegateType::TFuncType, FDefaultDelegateUserPolicy, TLambda>;
 
-template<typename TReturnType, typename TClass, typename... TArgs>
-struct TLambdaConditionalForward<TReturnType(TClass::*)(TArgs...) const> : TLambdaConditionalForward<TReturnType(TClass::*)(TArgs...)>
-{
-
-};
-
-template<typename TReturnType, typename TClass, typename... TArgs>
-struct TLambdaConditionalForward<TReturnType(TClass::*)(TArgs...)>
-{
-	template<typename TLambda, typename TGetCondition, typename TCheckCondition>
-	static auto Create(TLambda Lambda, TGetCondition GetCondition, TCheckCondition CheckCondition)
-	{
-		return [=](TArgs... Args)
-		{
-			// Could be a shared pointer, or a bool
-			auto&& Condition = GetCondition();
-			if (CheckCondition(Condition))
-			{
-				Lambda(Forward<TArgs>(Args)...);
-			}
-		};
-	}
-};
-
-template<typename T, typename TLambda>
-inline auto MakeWeakPtrLambda(const T& Ptr, TLambda Lambda)
-{
-	return TLambdaConditionalForward<TLambda>::Create(Lambda, [WeakPtr = MakeWeakPtr(Ptr)]() { return WeakPtr.Pin(); }, [](const auto& InPtr) { return InPtr.IsValid(); });
+	DelegateType Delegate;
+	DelegateImpl::Create(Delegate, Object, MoveTemp(Lambda));
+	return Delegate;
 }
 
-template<typename T, typename TLambda>
-inline auto MakeVoxelWeakPtrLambda(const T& Ptr, TLambda Lambda)
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+template<typename T, typename LambdaType>
+auto MakeWeakPtrLambda(const T& Ptr, LambdaType Lambda)
 {
-	return TLambdaConditionalForward<TLambda>::Create(Lambda, [WeakPtr = MakeVoxelWeakPtr(Ptr)]() { return WeakPtr.Pin(); }, [](const auto& InPtr) { return InPtr.IsValid(); });
+	return [WeakPtr = MakeWeakPtr(Ptr), Lambda = MoveTemp(Lambda)](auto&&... Args)
+	{
+		if (const auto Pinned = WeakPtr.Pin())
+		{
+			Lambda(Forward<decltype(Args)>(Args)...);
+		}
+	};
+}
+
+template<typename T, typename LambdaType>
+auto MakeWeakObjectPtrLambda(const T& Ptr, LambdaType Lambda)
+{
+	return [WeakPtr = MakeWeakObjectPtr(Ptr), Lambda = MoveTemp(Lambda)](auto&&... Args)
+	{
+		if (WeakPtr.IsValid())
+		{
+			Lambda(Forward<decltype(Args)>(Args)...);
+		}
+	};
 }

@@ -1,8 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 #include "VoxelData/VoxelDataImpl.h"
 #include "VoxelTools/Tools/VoxelTool.h"
 #include "VoxelContainers/VoxelSparseArray.h"
@@ -13,7 +13,7 @@ class UStaticMesh;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 
-DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
+DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
 
 UENUM(BlueprintType)
 enum class EVoxelToolAlignment : uint8
@@ -35,10 +35,10 @@ struct FVoxelToolBaseConfig
 
 public:
 	UPROPERTY(Category = "Materials", EditAnywhere, BlueprintReadWrite)
-	UMaterialInterface* OverlayMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> OverlayMaterial = nullptr;
 
 	UPROPERTY(Category = "Materials", EditAnywhere, BlueprintReadWrite)
-	UMaterialInterface* MeshMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> MeshMaterial = nullptr;
 
 public:
 	// Set to 0 to disable
@@ -212,7 +212,7 @@ protected:
 	
 private:
 	UPROPERTY(Transient)
-	AVoxelWorld* VoxelWorld = nullptr;
+	TObjectPtr<AVoxelWorld> VoxelWorld = nullptr;
 
 	FVoxelToolBaseConfig ToolBaseConfig;
 
@@ -255,11 +255,11 @@ private:
 	TMap<FName, TWeakObjectPtr<AStaticMeshActor>> StaticMeshActors;
 	
 	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* ToolOverlayMaterialInstance = nullptr;
+	TObjectPtr<UMaterialInstanceDynamic> ToolOverlayMaterialInstance = nullptr;
 	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* ToolMeshMaterialInstance = nullptr;
+	TObjectPtr<UMaterialInstanceDynamic> ToolMeshMaterialInstance = nullptr;
 	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* PlaneMeshMaterialInstance = nullptr;
+	TObjectPtr<UMaterialInstanceDynamic> PlaneMeshMaterialInstance = nullptr;
 
 	void ClearVoxelWorld();
 	void ApplyPendingFrameBounds();

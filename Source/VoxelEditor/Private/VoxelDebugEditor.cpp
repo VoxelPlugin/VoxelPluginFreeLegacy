@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelDebugEditor.h"
 #include "VoxelDebug.h"
@@ -61,7 +61,9 @@ public:
 		}));
 		
 		FPropertyEditorModule& PropertyEditorModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-		FDetailsViewArgs DetailsViewArgs(false, false, false, FDetailsViewArgs::HideNameArea);
+		FDetailsViewArgs DetailsViewArgs;
+		DetailsViewArgs.bAllowSearch = false;
+		DetailsViewArgs.NameAreaSettings = FDetailsViewArgs::HideNameArea;
 		DetailsViewArgs.DefaultsOnlyVisibility = EEditDefaultsOnlyNodeVisibility::Automatic;
 
 		Details = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
@@ -165,7 +167,7 @@ public:
 
 			FIntVector Size = FIntVector::ZeroValue;
 
-			TArray<FVector> SurfacePositions;
+			TArray<FVector3f> SurfacePositions;
 			TArray<float> Distances;
 
 			if (Parameters.bUseMesh)
@@ -195,7 +197,6 @@ public:
 					Size,
 					PositionOffset,
 					NumLeaks,
-					Parameters.bUseCPU ? EVoxelComputeDevice::CPU : EVoxelComputeDevice::GPU,
 					Parameters.bMultiThreaded,
 					Parameters.Passes);
 
@@ -216,16 +217,16 @@ public:
 					{
 						for (int32 Z = 0; Z < Size.Z; Z++)
 						{
-							FVector Position;
+							FVector3f Position;
 							float Distance;
-							if (FVector(X - Size.X / 2.f, Y - Size.Y / 2.f, Z - Size.Z / 2.f).Size() < 16)
+							if (FVector3f(X - Size.X / 2.f, Y - Size.Y / 2.f, Z - Size.Z / 2.f).Size() < 16)
 							{
-								Position = FVector(X, Y, Z);
+								Position = FVector3f(X, Y, Z);
 								Distance = 0.f;
 							}
 							else
 							{
-								Position = FVector(1e9);
+								Position = FVector3f(1e9);
 								Distance = 1e9;
 							}
 
@@ -239,7 +240,7 @@ public:
 				const double StartTime = FPlatformTime::Seconds();
 
 				FVoxelDistanceFieldUtilities::DownSample(Size, Distances, SurfacePositions, Parameters.Divisor, Parameters.bShrink);
-				FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions, Parameters.bUseCPU ? EVoxelComputeDevice::CPU : EVoxelComputeDevice::GPU, Parameters.bMultiThreaded, Parameters.Passes);
+				FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions, Parameters.bMultiThreaded, Parameters.Passes);
 				FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(Size, SurfacePositions, Distances);
 
 				const double EndTime = FPlatformTime::Seconds();
@@ -262,7 +263,7 @@ public:
 					const int32 ColorIndex = GetColorIndex(TextureSize, X, Y);
 
 					const int32 Index = GetSliceIndex(Parameters, X, Y, Size);
-					const FVector Position = SurfacePositions[Index];
+					const FVector3f Position = SurfacePositions[Index];
 					const float Distance = Distances[Index];
 
 					if (Position.X >= 1e9)
@@ -397,7 +398,7 @@ public:
 
 	void SetColors(const TArray<FColor>& Colors, const FIntPoint& Size)
 	{
-		auto* Texture = TexturePtr.Get();
+		TObjectPtr<UTexture2D> Texture = TexturePtr.Get();
 		if (Size.X == 0 || Size.Y == 0)
 		{
 			FVoxelTextureUtilities::UpdateColorTexture(Texture, { 1, 1 }, { FColor::Black });
@@ -468,11 +469,11 @@ void UVoxelDebugParameters_CustomData::PostEditChangeProperty(FPropertyChangedEv
 
 TSharedRef<SDockTab> FVoxelDebugEditor::CreateTab(const FSpawnTabArgs& Args)
 {
-	return
-		SNew(SDockTab)
-		.Icon(FSlateStyleRegistry::FindSlateStyle("VoxelStyle")->GetBrush("VoxelIcon"))
+	auto Tab = SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
 			SNew(SVoxelDebug)
 		];
+	Tab->SetTabIcon(FSlateStyleRegistry::FindSlateStyle("VoxelStyle")->GetBrush("VoxelIcon"));
+	return Tab;
 }

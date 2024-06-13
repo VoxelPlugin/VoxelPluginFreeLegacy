@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGraphConnectionDrawingPolicy.h"
 #include "VoxelGraphSchema.h"
@@ -27,7 +27,7 @@ FVoxelGraphConnectionDrawingPolicy::FVoxelGraphConnectionDrawingPolicy(int32 InB
 	// But we do want to draw midpoint arrowheads
 	if (GetDefault<UBlueprintEditorSettings>()->bDrawMidpointArrowsInBlueprints)
 	{
-		MidpointImage = FEditorStyle::GetBrush(TEXT("Graph.Arrow"));
+		MidpointImage = FAppStyle::GetBrush(TEXT("Graph.Arrow"));
 		MidpointRadius = MidpointImage->ImageSize * ZoomFactor * 0.5f;
 	}
 
@@ -84,11 +84,11 @@ void FVoxelGraphConnectionDrawingPolicy::DetermineWiringStyle(UEdGraphPin* Outpu
 		Params.WireThickness = DefaultExecutionWireThickness;
 	}
 
-	if (OutputPin->bIsDiffing)
-	{
-		Params.WireThickness *= 5.f;
-		Params.bDrawBubbles = true;
-	}
+	//if (OutputPin->bIsDiffing)
+	//{
+	//	Params.WireThickness *= 5.f;
+	//	Params.bDrawBubbles = true;
+	//}
 
 	const bool bDeemphasizeUnhoveredPins = HoveredPins.Num() > 0;
 

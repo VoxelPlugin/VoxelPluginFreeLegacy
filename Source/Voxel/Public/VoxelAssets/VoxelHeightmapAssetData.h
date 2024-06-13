@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -217,8 +217,6 @@ private:
 		}
 	};
 	TArray<FHeightRangeMip, TInlineAllocator<16>> HeightRangeMips;
-
-	static constexpr uint32 MipChunkSize = 32;
 	
 private:
 	int64 AllocatedSize = 0;

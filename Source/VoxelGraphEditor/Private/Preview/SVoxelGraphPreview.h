@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -61,5 +61,5 @@ private:
 	};
 	TArray<FPoint> DebugPoints;
 
-	const float Size = 100.f;
+	static constexpr float Size = 100.f;
 };

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRendererBasicMeshHandler.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
@@ -9,7 +9,7 @@
 #include "VoxelRender/VoxelProcMeshBuffers.h"
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
-#include "VoxelPool.h"
+#include "IVoxelPool.h"
 #include "VoxelAsyncWork.h"
 
 #include "Async/Async.h"
@@ -35,7 +35,7 @@ public:
 private:
 	const FVoxelRendererBasicMeshHandler::FChunkInfoRef ChunkInfoRef;
 	const FIntVector Position;
-	const FVoxelRuntimeSettings Settings;
+	const FVoxelRendererSettingsBase RendererSettings;
 	const TVoxelWeakPtr<FVoxelRendererBasicMeshHandler> Handler;
 
 	const FVoxelChunkMeshesToBuild MeshesToBuild;
@@ -48,11 +48,11 @@ private:
 		FVoxelRendererBasicMeshHandler& Handler,
 		const TVoxelSharedRef<FThreadSafeCounter>& UpdateIndexPtr,
 		FVoxelChunkMeshesToBuild&& MeshesToBuild)
-		: FVoxelAsyncWork(STATIC_FNAME("FVoxelBasicMeshMergeWork"), EVoxelTaskType::MeshMerge, EPriority::Null, true)
+		: FVoxelAsyncWork(STATIC_FNAME("FVoxelBasicMeshMergeWork"), 1e9, true)
 		, ChunkInfoRef(Ref)
 		, Position(Position)
-		, Settings(Handler.Renderer.Settings)
-		, Handler(StaticCastSharedRef<FVoxelRendererBasicMeshHandler>(Handler.AsShared()))
+		, RendererSettings(static_cast<const FVoxelRendererSettingsBase&>(Handler.Renderer.Settings))
+		, Handler(StaticCastVoxelSharedRef<FVoxelRendererBasicMeshHandler>(Handler.AsShared()))
 		, MeshesToBuild(MoveTemp(MeshesToBuild))
 		, UpdateIndexPtr(UpdateIndexPtr)
 		, UpdateIndex(UpdateIndexPtr->GetValue())
@@ -60,6 +60,10 @@ private:
 	}
 	~FVoxelBasicMeshMergeWork() = default;
 
+	virtual uint32 GetPriority() const override
+	{
+		return 0;
+	}
 	virtual void DoWork() override
 	{
 		if (UpdateIndexPtr->GetValue() > UpdateIndex)
@@ -67,7 +71,7 @@ private:
 			// Canceled
 			return;
 		}
-		auto BuiltMeshes = FVoxelRenderUtilities::BuildMeshes_AnyThread(MeshesToBuild, Settings, Position, *UpdateIndexPtr, UpdateIndex);
+		auto BuiltMeshes = FVoxelRenderUtilities::BuildMeshes_AnyThread(MeshesToBuild, RendererSettings, Position, *UpdateIndexPtr, UpdateIndex);
 		if (!BuiltMeshes.IsValid())
 		{
 			// Canceled
@@ -78,6 +82,7 @@ private:
 		{
 			// Queue callback
 			HandlerPinned->MeshMergeCallback(ChunkInfoRef, UpdateIndex, MoveTemp(BuiltMeshes));
+			FVoxelUtilities::DeleteOnGameThread_AnyThread(HandlerPinned);
 		}
 	}
 };
@@ -129,16 +134,17 @@ void FVoxelRendererBasicMeshHandler::ApplyAction(const FAction& Action)
 		FVoxelChunkMeshesToBuild MeshesToBuild = FVoxelRenderUtilities::GetMeshesToBuild(
 			ChunkInfo.LOD,
 			ChunkInfo.Position,
-			Renderer,
+			Renderer.Settings,
 			Action.UpdateChunk().InitialCall.ChunkSettings,
 			*ChunkInfo.Materials,
 			MainChunk,
 			TransitionChunk,
+			Renderer.OnMaterialInstanceCreated,
 			ChunkInfo.DitheringInfo);
 
 		// Start a task to asynchronously build them
 		auto* Task = FVoxelBasicMeshMergeWork::Create(*this, { Action.ChunkId, ChunkInfo.UniqueId }, MoveTemp(MeshesToBuild));
-		Renderer.GetSubsystemChecked<FVoxelPool>().QueueTask(Task);
+		Renderer.Settings.Pool->QueueTask(EVoxelTaskType::MeshMerge, Task);
 
 		FAction NewAction;
 		NewAction.Action = EAction::UpdateChunk;
@@ -187,7 +193,7 @@ void FVoxelRendererBasicMeshHandler::Tick(double MaxTime)
 	FlushBuiltDataQueue();
 	FlushActionQueue(MaxTime);
 
-	Renderer.GetSubsystemChecked<FVoxelDebugManager>().ReportMeshActionQueueNum(ActionQueue.Num());
+	Renderer.Settings.DebugManager->ReportMeshActionQueueNum(ActionQueue.Num());
 }
 
 void FVoxelRendererBasicMeshHandler::FlushBuiltDataQueue()

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -47,7 +47,7 @@ public:
 		bool bEnableRangeAnalysis)
 		: TVoxelTransformableGeneratorInstanceHelper<TChild, UWorldObject>(nullptr, CustomFunctionPtrs, CustomFunctionPtrs_Transform)
 		, bEnableRangeAnalysis(bEnableRangeAnalysis)
-		, CustomOutputsNames(FName())
+		, CustomOutputsNames(InPlace, FName())
 	{
 		auto& Array = const_cast<TStaticArray<FName, MAX_VOXELGRAPH_OUTPUTS>&>(CustomOutputsNames);
 		for (auto& It : FloatOutputs)
@@ -78,7 +78,7 @@ public:
 		UWorldObject& Object)
 		: TVoxelTransformableGeneratorInstanceHelper<TChild, UWorldObject>(&Object, CustomFunctionPtrs, CustomFunctionPtrs_Transform)
 		, bEnableRangeAnalysis(Object.bEnableRangeAnalysis)
-		, CustomOutputsNames(FName())
+		, CustomOutputsNames(InPlace, FName())
 	{
 		auto& Array = const_cast<TStaticArray<FName, MAX_VOXELGRAPH_OUTPUTS>&>(CustomOutputsNames);
 		for (auto& It : FloatOutputs)

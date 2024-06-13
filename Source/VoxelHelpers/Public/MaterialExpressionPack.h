@@ -1,8 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelDefinitions.h"
+#include "MaterialValueType.h"
 #include "Materials/MaterialExpression.h"
 #include "MaterialExpressionPack.generated.h"
 
@@ -39,13 +41,22 @@ public:
 	//~ Begin UMaterialExpression Interface
 	virtual int32 Compile(FMaterialCompiler* Compiler, int32 OutputIndex) override;
 	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
+#if VOXEL_ENGINE_VERSION >= 503
+	virtual TArrayView<FExpressionInput*> GetInputsView() override;
+#else
 	virtual const TArray<FExpressionInput*> GetInputs() override;
+#endif
 	virtual FExpressionInput* GetInput(int32 InputIndex) override;
 	virtual FName GetInputName(int32 InputIndex) const override;
 	virtual uint32 GetInputType(int32 InputIndex) override { return MCT_Unknown; }
 	virtual uint32 GetOutputType(int32 OutputIndex) override { return MCT_Unknown; }
 	virtual bool IsResultMaterialAttributes(int32 OutputIndex) override { return true; }
 	//~ End UMaterialExpression Interface
+#endif
+
+private:
+#if VOXEL_ENGINE_VERSION >= 503
+	TArray<FExpressionInput*> CachedInputs;
 #endif
 };
 

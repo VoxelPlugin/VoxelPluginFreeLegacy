@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelTextureTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -12,9 +12,9 @@ enum class EMinMax : uint8
 template<EMinMax MinMax>
 FVoxelFloatTexture MinMaxImpl(const FVoxelFloatTexture& Texture, const float Radius)
 {
-	VOXEL_TOOL_FUNCTION_COUNTER(Texture->GetSizeX() * Texture->GetSizeY());
+	VOXEL_TOOL_FUNCTION_COUNTER(Texture.Texture.GetSizeX() * Texture.Texture.GetSizeY());
 	
-	auto& Data = *Texture;
+	auto& Data = Texture.Texture;
 	const int32 SizeX = Data.GetSizeX();
 	const int32 SizeY = Data.GetSizeY();
 	

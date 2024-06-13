@@ -1,8 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "VoxelMinimal.h"
 #include "VoxelMaterial.h"
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"

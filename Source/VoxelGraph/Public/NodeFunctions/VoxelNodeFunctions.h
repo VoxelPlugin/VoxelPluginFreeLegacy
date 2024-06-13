@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -141,7 +141,7 @@ namespace FVoxelNodeFunctions
 	}
 	inline TVoxelRange<int32> RoundToInt(const TVoxelRange<v_flt>& Value)
 	{
-		return { FMath::FloorToInt(Value.Min), FMath::CeilToInt(Value.Max) };
+		return { int32(FMath::FloorToInt(Value.Min)), int32(FMath::CeilToInt(Value.Max)) };
 	}
 
 	inline v_flt Lerp(v_flt A, v_flt B, v_flt Alpha)
@@ -282,7 +282,7 @@ namespace FVoxelNodeFunctions
 	}
 	inline TVoxelRange<int32> CeilToInt(const TVoxelRange<v_flt>& A)
 	{
-		return { FMath::CeilToInt(A.Min), FMath::CeilToInt(A.Max) };
+		return { int32(FMath::CeilToInt(A.Min)), int32(FMath::CeilToInt(A.Max)) };
 	}
 
 	inline int32 FloorToInt(v_flt A)
@@ -291,12 +291,12 @@ namespace FVoxelNodeFunctions
 	}
 	inline TVoxelRange<int32> FloorToInt(const TVoxelRange<v_flt>& A)
 	{
-		return { FMath::FloorToInt(A.Min), FMath::FloorToInt(A.Max) };
+		return { int32(FMath::FloorToInt(A.Min)), int32(FMath::FloorToInt(A.Max)) };
 	}
 
 	inline v_flt Fractional(v_flt A)
 	{
-		if (TIsSame<v_flt, float>::Value)
+		if (std::is_same_v<v_flt, float>)
 		{
 			return FMath::Fractional(A);
 		}
@@ -340,7 +340,7 @@ namespace FVoxelNodeFunctions
 		}
 		else
 		{
-			if (TIsSame<v_flt, float>::Value)
+			if (std::is_same_v<v_flt, float>)
 			{
 				return FMath::InvSqrt(A);
 			}
@@ -539,7 +539,7 @@ namespace FVoxelNodeFunctions
 	}
 	inline TVoxelRange<v_flt> Atan2(const TVoxelRange<v_flt>& Y, const TVoxelRange<v_flt>& X)
 	{
-		return { -PI, PI };
+		return { -PI / 2, PI / 2 };
 	}
 
 	template<typename T>
@@ -890,7 +890,7 @@ namespace FVoxelNodeFunctions
 		if (Context.bHasCustomTransform)
 		{
 			const FVector Scale = Context.LocalToWorld.GetScale3D();
-			const TVoxelRange<v_flt> ScaleRange{ static_cast<v_flt>(Scale.GetMin()), static_cast<v_flt>(Scale.GetMax()) };
+			const TVoxelRange<v_flt> ScaleRange{ Scale.GetMin(), Scale.GetMax() };
 			const auto Result = TVoxelRange<v_flt>::Union(InX * ScaleRange, InY * ScaleRange, InZ * ScaleRange);
 			
 			OutX = Result;
@@ -911,7 +911,7 @@ namespace FVoxelNodeFunctions
 		if (Context.bHasCustomTransform)
 		{
 			const FVector Scale = FVector(1.f) / Context.LocalToWorld.GetScale3D();
-			const TVoxelRange<v_flt> ScaleRange{ static_cast<v_flt>(Scale.GetMin()), static_cast<v_flt>(Scale.GetMax()) };
+			const TVoxelRange<v_flt> ScaleRange{ Scale.GetMin(), Scale.GetMax() };
 			const auto Result = TVoxelRange<v_flt>::Union(InX * ScaleRange, InY * ScaleRange, InZ * ScaleRange);
 			
 			OutX = Result;
@@ -1001,7 +1001,7 @@ namespace FVoxelNodeFunctions
 		{
 			return 0.;
 		}
-		if (TIsSame<v_flt, float>::Value)
+		if (std::is_same_v<v_flt, float>)
 		{
 			return FMath::Fmod(X, Y);
 		}

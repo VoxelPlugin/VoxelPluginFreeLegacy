@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -11,12 +11,9 @@
 #include "VoxelSharedMutex.h"
 #include "VoxelUtilities/VoxelMiscUtilities.h"
 #include "VoxelData/VoxelDataOctreeLeafData.h"
-#include "VoxelData/VoxelDataOctreeLeafCustomChannels.h"
 #include "VoxelData/VoxelDataOctreeLeafUndoRedo.h"
 #include "VoxelData/VoxelDataOctreeLeafMultiplayer.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItem.h"
-
-class FVoxelGeneratorQueryData;
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Data Octrees Memory"), STAT_VoxelDataOctreesMemory, STATGROUP_VoxelMemory, VOXEL_API);
 DECLARE_DWORD_ACCUMULATOR_STAT_EXTERN(TEXT("Voxel Data Octrees Count"), STAT_VoxelDataOctreesCount, STATGROUP_VoxelCounters, VOXEL_API);
@@ -72,13 +69,7 @@ public:
 	template<typename T>
 	T Get(const FVoxelGeneratorInstance& Generator, int32 X, int32 Y, int32 Z, int32 LOD) const;
 	template<typename T>
-	T GetCustomOutput(
-		const FVoxelGeneratorInstance& Generator,
-		T DefaultValue,
-		FName Name,
-		v_flt X, v_flt Y, v_flt Z,
-		int32 LOD,
-		const FVoxelGeneratorQueryData& QueryData) const;
+	T GetCustomOutput(const FVoxelGeneratorInstance& Generator, T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
 	template<typename T, typename U = int32>
 	T GetFromGeneratorAndAssets(const FVoxelGeneratorInstance& Generator, U X, U Y, U Z, int32 LOD) const;
 	template<typename T>
@@ -126,22 +117,20 @@ public:
 
 	TVoxelDataOctreeLeafData<FVoxelValue> Values;
 	TVoxelDataOctreeLeafData<FVoxelMaterial> Materials;
-	
+
 	TUniquePtr<FVoxelDataOctreeLeafUndoRedo> UndoRedo;
 	TUniquePtr<FVoxelDataOctreeLeafMultiplayer> Multiplayer;
-
-	FVoxelDataOctreeLeafCustomChannels CustomChannels;
 
 public:
 	template<typename TIn>
 	FORCEINLINE void InitForEdit(const IVoxelData& Data)
 	{
-		using T = typename TRemoveConst<TIn>::Type;
+		using T = typename UE_503_SWITCH(TRemoveConst<TIn>::Type, std::remove_const_t<TIn>);
 		
 		TVoxelDataOctreeLeafData<T>& DataHolder = GetData<T>();
 		if (!DataHolder.HasData())
 		{
-			DataHolder.CreateData(Data, [&](auto* DataPtr)
+			DataHolder.CreateData(Data, [&](T* RESTRICT DataPtr)
 			{
 				TVoxelQueryZone<T> QueryZone(GetBounds(), DataPtr);
 				GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);
@@ -233,14 +222,13 @@ struct FVoxelDataOctreeSetter
 				}
 
 				const uint32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
-				const T OldValue = DataHolder.Get(Index);
-				T NewValue = OldValue;
+				T& Ref = DataHolder.GetRef(Index);
+				T OldValue = Ref;
 
-				Apply(X, Y, Z, NewValue);
+				Apply(X, Y, Z, Ref);
 
-				if (OldValue != NewValue)
+				if (OldValue != Ref)
 				{
-					DataHolder.Set(Index, NewValue);
 					DataHolder.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<T>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValue);
@@ -287,23 +275,21 @@ struct FVoxelDataOctreeSetter
 				
 				const uint32 Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(Min, X, Y, Z);
 
-				const TA OldValueA = DataHolderA.Get(Index);
-				const TB OldValueB = DataHolderB.Get(Index);
-				TA NewValueA = OldValueA;
-				TB NewValueB = OldValueB;
+				TA& RefA = DataHolderA.GetRef(Index);
+				TB& RefB = DataHolderB.GetRef(Index);
+				TA OldValueA = RefA;
+				TB OldValueB = RefB;
 
-				Apply(X, Y, Z, NewValueA, NewValueB);
+				Apply(X, Y, Z, RefA, RefB);
 
-				if (OldValueA != NewValueA)
+				if (OldValueA != RefA)
 				{
-					DataHolderA.Set(Index, NewValueA);
 					DataHolderA.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<TA>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValueA);
 				}
-				if (OldValueB != NewValueB)
+				if (OldValueB != RefB)
 				{
-					DataHolderB.Set(Index, NewValueB);
 					DataHolderB.SetIsDirty(true, Data);
 					if (EnableMultiplayer) Leaf.Multiplayer->MarkIndexDirty<TB>(Index);
 					if (EnableUndoRedo) Leaf.UndoRedo->SavePreviousValue(Index, OldValueB);

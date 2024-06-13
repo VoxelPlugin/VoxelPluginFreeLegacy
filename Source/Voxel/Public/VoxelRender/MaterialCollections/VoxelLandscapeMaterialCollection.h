@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -73,23 +73,21 @@ public:
 	int32 MaxMaterialsToBlendAtOnce = 6;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
-	UMaterialInterface* Material = nullptr;
+	TObjectPtr<UMaterialInterface> Material = nullptr;
 
-	// Add elements to this to reduce permutations
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Layers")
-	TMap<FName, bool> LayersToIgnore;
-	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Layers")
 	TArray<FVoxelLandscapeMaterialCollectionLayer> Layers;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cache")
-	mutable TMap<FVoxelLandscapeMaterialCollectionPermutation, UMaterialInstanceConstant*> MaterialCache;
+	mutable TMap<FVoxelLandscapeMaterialCollectionPermutation, TObjectPtr<UMaterialInstanceConstant>> MaterialCache;
 
 public:
 	//~ Begin UVoxelMaterialCollectionBase Interface
-	virtual int32 GetMaxMaterialIndices() const override { return FMath::ClampAngle(MaxMaterialsToBlendAtOnce, 1, 6); }
+	virtual int32 GetMaxMaterialIndices() const override { return FMath::Clamp(MaxMaterialsToBlendAtOnce, 1, 6); }
 	virtual UMaterialInterface* GetVoxelMaterial(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const override;
-	virtual TArray<FVoxelMaterialCollectionMaterialInfo> GetMaterials() const override;
+	virtual UMaterialInterface* GetIndexMaterial(uint8 Index) const override;
+	virtual TArray<FMaterialInfo> GetMaterials() const override;
+	virtual int32 GetMaterialIndex(FName Name) const override;
 	virtual void InitializeCollection() override;
 	//~ End UVoxelMaterialCollectionBase Interface
 
@@ -98,18 +96,13 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 	// End UObject Interface
-	
-#if WITH_EDITOR
-	void BuildAllPermutations();
-#endif
 
 private:
-	FVoxelLandscapeMaterialCollectionPermutation MakePermutation(const FVoxelMaterialIndices& Indices) const;
 	UMaterialInstanceConstant* FindOrAddPermutation(const FVoxelLandscapeMaterialCollectionPermutation& Permutation) const;
 	
 #if WITH_EDITOR
 	UMaterialInstanceConstant* CreateInstanceForPermutation(const FVoxelLandscapeMaterialCollectionPermutation& Permutation) const;
-	void ForeachMaterialParameter(TFunctionRef<void(const FMaterialParameterInfo&, const FGuid&)> Lambda) const;
+	void ForeachMaterialParameterName(TFunctionRef<void(FName)> Lambda) const;
 	bool NeedsToBeConvertedToVoxel() const;
 	void FixupLayers();
 	void CleanupCache() const;

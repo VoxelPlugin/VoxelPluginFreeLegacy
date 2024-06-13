@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -10,9 +10,9 @@ namespace FVoxelSDFNodeFunctions
 {
 #define DEFINE_SDF_FUNCTION_EX(Name, Prefix, Args, sdArgs) \
 	template<typename T> \
-	FORCEINLINE typename TEnableIf<TIsSame<T, v_flt>::Value, T>::Type Name Args { return FVoxelSDFUtilities::Prefix##Name sdArgs; } \
+	FORCEINLINE typename TEnableIf<std::is_same_v<T, v_flt>, T>::Type Name Args { return FVoxelSDFUtilities::Prefix##Name sdArgs; } \
 	template<typename T> \
-	FORCEINLINE typename TEnableIf<TIsSame<T, TVoxelRange<v_flt>>::Value, T>::Type Name Args { return FVoxelSDFRangeUtilities::Prefix##Name sdArgs; }
+	FORCEINLINE typename TEnableIf<std::is_same_v<T, TVoxelRange<v_flt>>, T>::Type Name Args { return FVoxelSDFRangeUtilities::Prefix##Name sdArgs; }
 
 #define DEFINE_SDF_FUNCTION(Name, Args, sdArgs) DEFINE_SDF_FUNCTION_EX(Name, sd, Args, sdArgs)
 

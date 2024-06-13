@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,5 +8,5 @@ class UTexture2D;
 
 namespace FVoxelTextureUtilities
 {
-	VOXEL_API void UpdateColorTexture(UTexture2D*& Texture, const FIntPoint& Size, const TArray<FColor>& Colors);
+	VOXEL_API void UpdateColorTexture(TObjectPtr<UTexture2D>& Texture, const FIntPoint& Size, const TArray<FColor>& Colors);
 }

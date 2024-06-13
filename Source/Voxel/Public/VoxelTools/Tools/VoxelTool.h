@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -25,7 +25,7 @@ struct FVoxelToolAxes
 	static constexpr const TCHAR* Strength = TEXT("Strength");
 };
 
-USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelTool.MakeVoxelToolTickData"))
+USTRUCT(BlueprintType)
 struct FVoxelToolTickData
 {
 	GENERATED_BODY()
@@ -117,7 +117,7 @@ public:
 
 	// If empty, allow editing all worlds
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Transient, meta = (HideInPanel))
-	TArray<AVoxelWorld*> WorldsToEdit;
+	TArray<TObjectPtr<AVoxelWorld>> WorldsToEdit;
 	
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
 	bool bCacheData = true;
@@ -125,12 +125,8 @@ public:
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
 	bool bMultiThreaded = true;
 
-	// Which compute device to use when there's a choice
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
-	EVoxelComputeDevice ComputeDevice = EVoxelComputeDevice::GPU;
-	
-	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
-	bool bRegenerateFoliage = true;
+	bool bRegenerateSpawners = true;
 	
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, AdvancedDisplay)
 	bool bCheckForSingleValues = true;
@@ -147,17 +143,10 @@ public:
 	float FixedDeltaTime = 1.f / 60.f;
 	
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UStaticMesh* PlaneMesh = nullptr;
+	TObjectPtr<UStaticMesh> PlaneMesh = nullptr;
 
 	UPROPERTY(Category = "Shared Config", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UMaterialInterface* PlaneMaterial = nullptr;
-
-public:
-	EVoxelComputeDevice GetComputeDevice() const
-	{
-		// Dedicated servers can't use the GPU
-		return IsRunningDedicatedServer() ? EVoxelComputeDevice::CPU : ComputeDevice;
-	}
+	TObjectPtr<UMaterialInterface> PlaneMaterial = nullptr;
 
 public:
 	UPROPERTY(BlueprintAssignable)
@@ -194,7 +183,7 @@ public:
 	// Shared config allows to share some values across several tools, like the brush size or the paint material
 	// If not set, it will be created in EnableTool
 	UPROPERTY(BlueprintReadOnly, Category = "Voxel")
-	UVoxelToolSharedConfig* SharedConfig = nullptr;
+	TObjectPtr<UVoxelToolSharedConfig> SharedConfig = nullptr;
 	
 public:
 	// Call this to do some initial setup
@@ -214,8 +203,8 @@ public:
 	DECLARE_DYNAMIC_DELEGATE_TwoParams(FDoEditDynamicOverride, FVector, Position, FVector, Normal);
 	DECLARE_DELEGATE_TwoParams(FDoEditOverride, FVector /* Position */, FVector /* Normal */);
 	
-	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", DisplayName = "AdvancedTick", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "DoEditOverride", WorldContext = "WorldContextObject"))
-	void K2_AdvancedTick(UObject* WorldContextObject, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride);
+	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", DisplayName = "AdvancedTick", meta = (AdvancedDisplay = "DoEditOverride", AutoCreateRefTerm = "DoEditOverride"))
+	void K2_AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride);
 	void AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditOverride& DoEditOverride = {});
 
 	/**
@@ -264,16 +253,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (DeterminesOutputType = "ToolClass"))
 	static UVoxelTool* MakeVoxelTool(TSubclassOf<UVoxelTool> ToolClass);
-	
-	UFUNCTION(BlueprintPure, Category = "Voxel|Tools", meta=(Keywords="construct build", NativeMakeFunc))
-	static FVoxelToolTickData MakeVoxelToolTickData(
-		APlayerController* PlayerController, 
-		bool bEdit,
-		const TMap<FName, bool>& Keys,
-		const TMap<FName, float>& Axes,
-		FVector2D MousePosition = FVector2D(500, 500),
-		FVector CameraDirection = FVector::ForwardVector,
-		ECollisionChannel CollisionChannel = ECC_Visibility);
 
 public:
 	UFUNCTION(BlueprintPure, Category = "Voxel|Tools|Tick Data")

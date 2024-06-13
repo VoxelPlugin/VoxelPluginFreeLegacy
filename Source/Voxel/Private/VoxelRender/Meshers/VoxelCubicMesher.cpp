@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/Meshers/VoxelCubicMesher.h"
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
@@ -71,6 +71,29 @@ FORCEINLINE void AddFace(
 	int32 X, int32 Y, int32 Z, 
 	TArray<uint32>& Indices, TArray<TVertex>& Vertices)
 {
+	if (TVertex::bComputeMaterial && Mesher.Settings.bOneMaterialPerCubeSide)
+	{
+		uint8 Index = Material.GetSingleIndex();
+		
+		switch (Direction)
+		{
+		case EVoxelDirectionFlag::XMin:
+		case EVoxelDirectionFlag::XMax:
+		case EVoxelDirectionFlag::YMin:
+		case EVoxelDirectionFlag::YMax:
+			Index = 3 * Index + 1;
+			break;
+		case EVoxelDirectionFlag::ZMin:
+			Index = 3 * Index + 2;
+			break;
+		case EVoxelDirectionFlag::ZMax:
+			Index = 3 * Index + 0;
+			break;
+		}
+
+		Material.SetSingleIndex(Index);
+	}
+	
 	FVector Positions[4];
 	FVector Normal;
 	FVector Tangent;
@@ -250,9 +273,8 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicMesher::CreateFullChunkImpl(FVoxelMe
 
 	UnlockData();
 	
-	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
+	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
-		DynamicSettings,
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(reinterpret_cast<TArray<FVoxelMesherVertex>&>(Vertices))));
@@ -278,15 +300,15 @@ void FVoxelCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<
 	}
 
 	TVoxelQueryZone<FVoxelValue> QueryZone(GetBoundsToCheckIsEmptyOn(), FIntVector(CUBIC_CHUNK_SIZE_WITH_NEIGHBORS), LOD, CachedValues);
-	MESHER_TIME_INLINE_VALUES(CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS, Data.Get<FVoxelValue>(QueryZone, LOD));
+	MESHER_TIME_VALUES(CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS, Data.Get<FVoxelValue>(QueryZone, LOD));
 	
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("Iteration");
-		for (int32 X = 0; X < MESHER_CHUNK_SIZE; X++)
+		for (int32 X = 0; X < RENDER_CHUNK_SIZE; X++)
 		{
-			for (int32 Y = 0; Y < MESHER_CHUNK_SIZE; Y++)
+			for (int32 Y = 0; Y < RENDER_CHUNK_SIZE; Y++)
 			{
-				for (int32 Z = 0; Z < MESHER_CHUNK_SIZE; Z++)
+				for (int32 Z = 0; Z < RENDER_CHUNK_SIZE; Z++)
 				{
 					const FVoxelValue Value = GetValue(X, Y, Z);
 					if (Value.IsEmpty()) continue;
@@ -304,7 +326,7 @@ void FVoxelCubicMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, TArray<
 					FVoxelMaterial Material;
 					if (T::bComputeMaterial)
 					{
-						Material = MESHER_TIME_INLINE_MATERIALS(1, Accelerator->GetMaterial(
+						Material = MESHER_TIME_RETURN_MATERIALS(1, Accelerator->GetMaterial(
 							X + ChunkPosition.X,
 							Y + ChunkPosition.Y,
 							Z + ChunkPosition.Z,
@@ -331,9 +353,9 @@ FORCEINLINE FVoxelValue FVoxelCubicMesher::GetValue(int32 X, int32 Y, int32 Z) c
 		-1 <= X &&
 		-1 <= Y &&
 		-1 <= Z &&
-		X <= MESHER_CHUNK_SIZE &&
-		Y <= MESHER_CHUNK_SIZE &&
-		Z <= MESHER_CHUNK_SIZE);
+		X <= RENDER_CHUNK_SIZE &&
+		Y <= RENDER_CHUNK_SIZE &&
+		Z <= RENDER_CHUNK_SIZE);
 	const int32 Index =
 			(X + 1) +
 			(Y + 1) * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS +
@@ -371,9 +393,8 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelCubicTransitionsMesher::CreateFullChunkIm
 
 	UnlockData();
 
-	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
+	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
-		DynamicSettings,
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(reinterpret_cast<TArray<FVoxelMesherVertex>&>(Vertices))));
@@ -409,21 +430,21 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 {
 	if (!(TransitionsMask & Direction)) return;
 
-	for (int32 LX = 0; LX < MESHER_CHUNK_SIZE; LX++)
+	for (int32 LX = 0; LX < RENDER_CHUNK_SIZE; LX++)
 	{
-		for (int32 LY = 0; LY < MESHER_CHUNK_SIZE; LY++)
+		for (int32 LY = 0; LY < RENDER_CHUNK_SIZE; LY++)
 		{
 			// "Big" denotes the low resolution LOD voxels
 			// "Small" denotes the high resolution LOD voxels
 			// "Other Side" is the name of neighbor we are creating transitions for
 			// "Other Side" neighbor has a higher resolution than us (their LOD = our LOD - 1)
 			
-			const FVoxelValue BigValue = MESHER_TIME_INLINE_VALUES(1, GetValue<Direction>(Step, LX * Step, LY * Step, 0));
+			const FVoxelValue BigValue = MESHER_TIME_RETURN_VALUES(1, GetValue<Direction>(Step, LX * Step, LY * Step, 0));
 			if (!BigValue.IsEmpty())
 			{
 				// First case: the big voxel is full
 				
-				const FVoxelValue BigOtherSideValue = MESHER_TIME_INLINE_VALUES(1, GetValue<Direction>(Step, LX * Step, LY * Step, -Step));
+				const FVoxelValue BigOtherSideValue = MESHER_TIME_RETURN_VALUES(1, GetValue<Direction>(Step, LX * Step, LY * Step, -Step));
 				// Face is already created by low res normal mesher
 				if (BigOtherSideValue.IsEmpty())
 				{
@@ -456,11 +477,7 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 				// The new faces are facing outwards, same direction as the transitions
 				constexpr EVoxelDirectionFlag::Type FaceDirection = Direction;
 				
-				FVoxelMaterial Material = MESHER_TIME_INLINE_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, 0));
-				if (Settings.bGreedyCubicMesher)
-				{
-					Material.CubicColor_SetUseTextureFalse();
-				}
+				const auto Material = MESHER_TIME_RETURN_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, 0));
 				Add2DFace<Direction, FaceDirection>(Step, Material, LX, LY, Vertices, Indices);
 			}
 			else
@@ -508,7 +525,7 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 				// which is low res to high res (ie us to other)
 				constexpr EVoxelDirectionFlag::Type FaceDirection = InverseVoxelDirection<Direction>();
 				
-				const auto Material = MESHER_TIME_INLINE_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, -HalfStep));
+				const auto Material = MESHER_TIME_RETURN_MATERIALS(1, GetMaterial<Direction>(Step, LX * Step, LY * Step, -HalfStep));
 				if (AreBothFull & 0x1)
 				{
 					Add2DFace<Direction, FaceDirection>(HalfStep, Material, 2 * LX + 0, 2 * LY + 0, Vertices, Indices);
@@ -533,14 +550,14 @@ void FVoxelCubicTransitionsMesher::CreateTransitionsForDirection(FVoxelMesherTim
 template<EVoxelDirectionFlag::Type Direction>
 FORCEINLINE FVoxelValue FVoxelCubicTransitionsMesher::GetValue(int32 InStep, int32 X, int32 Y, int32 Z) const
 {
-	const FIntVector Position = Local2DToGlobal<Direction>(MESHER_CHUNK_SIZE * Step - InStep, X, Y, Z);
+	const FIntVector Position = Local2DToGlobal<Direction>(RENDER_CHUNK_SIZE * Step - InStep, X, Y, Z);
 	return Accelerator->GetValue(ChunkPosition + Position, LOD);
 }
 
 template<EVoxelDirectionFlag::Type Direction>
 FORCEINLINE FVoxelMaterial FVoxelCubicTransitionsMesher::GetMaterial(int32 InStep, int32 X, int32 Y, int32 Z) const
 {
-	const FIntVector Position = Local2DToGlobal<Direction>(MESHER_CHUNK_SIZE * Step - InStep, X, Y, Z);
+	const FIntVector Position = Local2DToGlobal<Direction>(RENDER_CHUNK_SIZE * Step - InStep, X, Y, Z);
 	return Accelerator->GetMaterial(ChunkPosition + Position, LOD);
 }
 
@@ -561,7 +578,7 @@ void FVoxelCubicTransitionsMesher::Add2DFace(
 		? IsDirectionMax<Direction>() ? 1 : -1
 		: 0;
 
-	const FIntVector P = Local2DToGlobal<Direction>(Step / InStep * MESHER_CHUNK_SIZE, LX, LY, LZ);
+	const FIntVector P = Local2DToGlobal<Direction>(Step / InStep * RENDER_CHUNK_SIZE, LX, LY, LZ);
 	AddFace<FaceDirection>(*this, InStep, Material, P.X, P.Y, P.Z, Indices, Vertices);
 }
 

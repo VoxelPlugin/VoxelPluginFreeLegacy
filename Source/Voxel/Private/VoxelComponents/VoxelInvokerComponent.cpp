@@ -1,27 +1,21 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelComponents/VoxelInvokerComponent.h"
-#include "VoxelWorld.h"
+#include "VoxelWorldInterface.h"
 #include "VoxelMessages.h"
-
 #include "GameFramework/Pawn.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/BrushComponent.h"
 
-bool UVoxelInvokerComponentBase::ShouldUseInvoker(const AVoxelWorld* VoxelWorld) const
+FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition(const AVoxelWorldInterface* VoxelWorld) const
 {
-	return ShouldUseInvoker(const_cast<AVoxelWorld*>(VoxelWorld));
+	return GetInvokerVoxelPosition(const_cast<AVoxelWorldInterface*>(VoxelWorld));
 }
 
-FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition(const AVoxelWorld* VoxelWorld) const
+FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings(const AVoxelWorldInterface* VoxelWorld) const
 {
-	return GetInvokerVoxelPosition(const_cast<AVoxelWorld*>(VoxelWorld));
-}
-
-FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings(const AVoxelWorld* VoxelWorld) const
-{
-	return GetInvokerSettings(const_cast<AVoxelWorld*>(VoxelWorld));
+	return GetInvokerSettings(const_cast<AVoxelWorldInterface*>(VoxelWorld));
 }
 
 bool UVoxelInvokerComponentBase::IsLocalInvoker_Implementation() const
@@ -30,19 +24,54 @@ bool UVoxelInvokerComponentBase::IsLocalInvoker_Implementation() const
 	return !Owner || Owner->IsLocallyControlled();
 }
 
-bool UVoxelInvokerComponentBase::ShouldUseInvoker_Implementation(AVoxelWorld* VoxelWorld) const
-{
-	return true;
-}
-
-FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const
+FIntVector UVoxelInvokerComponentBase::GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
 	return FIntVector(0);
 }
 
-FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const
+FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
 	return {};
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+void UVoxelInvokerComponentBase::EnableInvoker()
+{
+	if (bIsInvokerEnabled)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invoker already enabled"), this);
+		return;
+	}
+	bIsInvokerEnabled = true;
+	
+	auto& Array = Components.FindOrAdd(GetWorld());
+	Array.AddUnique(MakeWeakObjectPtr(this));
+	Array.RemoveAllSwap([](auto& X) { return !X.IsValid(); });
+
+	LOG_VOXEL(Log, TEXT("Voxel Invoker enabled; Name: %s; Owner: %s"), *GetName(), *GetOwner()->GetName());
+}
+
+void UVoxelInvokerComponentBase::DisableInvoker()
+{
+	if (!bIsInvokerEnabled)
+	{
+		FVoxelMessages::Error(FUNCTION_ERROR("Invoker already disabled"), this);
+		return;
+	}
+	bIsInvokerEnabled = false;
+	
+	auto& Array = Components.FindOrAdd(GetWorld());
+	Array.RemoveAllSwap([this](auto& X) { return !X.IsValid() || X == this; });
+
+	LOG_VOXEL(Log, TEXT("Voxel Invoker disabled; Name: %s"), *GetName());
+}
+
+bool UVoxelInvokerComponentBase::IsInvokerEnabled() const
+{
+	return bIsInvokerEnabled;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -52,29 +81,20 @@ FVoxelInvokerSettings UVoxelInvokerComponentBase::GetInvokerSettings_Implementat
 void UVoxelInvokerComponentBase::OnRegister()
 {
 	Super::OnRegister();
-	
-	auto& Array = Components.FindOrAdd(GetWorld());
-	Array.AddUnique(MakeWeakObjectPtr(this));
-
-	LOG_VOXEL(Log, TEXT("Voxel Invoker registered; Name: %s; Owner: %s"), *GetName(), *GetOwner()->GetName());
+	if (bStartsEnabled && ensure(!bIsInvokerEnabled))
+	{
+		EnableInvoker();
+	}
 }
 
 void UVoxelInvokerComponentBase::OnUnregister()
 {
 	Super::OnUnregister();
-	
-	auto& Array = Components.FindOrAdd(GetWorld());
-	Array.RemoveAllSwap([this](TWeakObjectPtr<UVoxelInvokerComponentBase> X) { return !X.IsValid() || X == this; });
+	if (bIsInvokerEnabled)
+	{
+		DisableInvoker();
+	}
 }
-
-#if WITH_EDITOR
-void UVoxelInvokerComponentBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	RefreshAllVoxelInvokers();
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -86,32 +106,10 @@ void UVoxelInvokerComponentBase::RefreshAllVoxelInvokers()
 	OnForceRefreshInvokers.Broadcast();
 }
 
-TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> UVoxelInvokerComponentBase::GetInvokers(const AVoxelWorld* VoxelWorld)
+const TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>>& UVoxelInvokerComponentBase::GetInvokers(UWorld* World)
 {
-	if (!ensure(VoxelWorld))
-	{
-		return {};
-	}
-
-	auto* World = VoxelWorld->GetWorld();
-	if (!ensure(World))
-	{
-		return {};
-	}
-	
-	const bool bIsEditorWorld =
-		World->WorldType == EWorldType::Editor ||
-		World->WorldType == EWorldType::EditorPreview;;
-	
-	auto Result = Components.FindOrAdd(World);
-	Result.RemoveAllSwap([&](TWeakObjectPtr<UVoxelInvokerComponentBase> Invoker)
-	{
-		return
-			!Invoker.IsValid() ||
-			!Invoker->bIsInvokerEnabled ||
-			(Invoker->bEditorOnlyInvoker && !bIsEditorWorld) ||
-			!Invoker->ShouldUseInvoker(VoxelWorld);
-	});
+	auto& Result = Components.FindOrAdd(World);
+	Result.RemoveAllSwap([](auto& X) { return !X.IsValid(); });
 	return Result;
 }
 
@@ -122,12 +120,12 @@ TMap<TWeakObjectPtr<UWorld>, TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>>>
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FIntVector UVoxelSimpleInvokerComponent::GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const
+FIntVector UVoxelSimpleInvokerComponent::GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
 	return VoxelWorld->GlobalToLocal(GetInvokerGlobalPosition());
 }
 
-FVoxelInvokerSettings UVoxelSimpleInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const
+FVoxelInvokerSettings UVoxelSimpleInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
 	const FVector InvokerGlobalPosition = GetInvokerGlobalPosition();
 	const auto GetVoxelBounds = [&](float Distance)
@@ -193,31 +191,26 @@ FVector UVoxelInvokerAutoCameraComponent::GetInvokerGlobalPosition_Implementatio
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-UVoxelVolumeInvokerComponent::UVoxelVolumeInvokerComponent()
+UVoxelLODVolumeInvokerComponent::UVoxelLODVolumeInvokerComponent()
 {
 	bUseForEvents = false;
 	bUseForPriorities = false;
 }
 
-bool UVoxelVolumeInvokerComponent::IsLocalInvoker_Implementation() const
+bool UVoxelLODVolumeInvokerComponent::IsLocalInvoker_Implementation() const
 {
 	// Always true for a volume
 	return true;
 }
 
-FIntVector UVoxelVolumeInvokerComponent::GetInvokerVoxelPosition_Implementation(AVoxelWorld* VoxelWorld) const
+FIntVector UVoxelLODVolumeInvokerComponent::GetInvokerVoxelPosition_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
 	return VoxelWorld->GlobalToLocal(GetComponentLocation());
 }
 
-FVoxelInvokerSettings UVoxelVolumeInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorld* VoxelWorld) const
+FVoxelInvokerSettings UVoxelLODVolumeInvokerComponent::GetInvokerSettings_Implementation(AVoxelWorldInterface* VoxelWorld) const
 {
-	auto* Volume = Cast<AVolume>(GetOwner());
-	if (!Volume)
-	{
-		return {};
-	}
-	
+	auto* Volume = CastChecked<AVoxelLODVolume>(GetOwner());
 	const FBox VolumeWorldBounds = Volume->GetBounds().GetBox();
 	const FVoxelIntBox VolumeBounds = FVoxelIntBox::SafeConstruct(
 		VoxelWorld->GlobalToLocal(VolumeWorldBounds.Min, EVoxelWorldCoordinatesRounding::RoundDown),
@@ -247,7 +240,7 @@ AVoxelLODVolume::AVoxelLODVolume()
 	GetBrushComponent()->bAlwaysCreatePhysicsState = true;
 	GetBrushComponent()->SetMobility(EComponentMobility::Movable);
 
-	InvokerComponent = CreateDefaultSubobject<UVoxelVolumeInvokerComponent>("Invoker Component");
+	InvokerComponent = CreateDefaultSubobject<UVoxelLODVolumeInvokerComponent>("Invoker Component");
 	InvokerComponent->SetupAttachment(RootComponent);
 }
 

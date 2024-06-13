@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -11,19 +11,19 @@
 
 namespace FVoxelUtilities
 {
-#define CHECK_CHUNK_SIZE() checkfVoxelSlow(FVoxelUtilities::IsPowerOfTwo(ChunkSize), TEXT("ChunkSize must be a power of 2"))
+#define CHECK_CHUNK_SIZE() static_assert(FVoxelUtilities::IsPowerOfTwo(ChunkSize), "ChunkSize must be a power of 2")
 	// Get required depth such that ChunkSize << Depth >= Size
-	FORCEINLINE int32 GetDepthFromSize(uint32 ChunkSize, uint32 Size)
+	template<uint32 ChunkSize>
+	inline int32 GetDepthFromSize(uint32 Size)
 	{
 		CHECK_CHUNK_SIZE();
-		
 		if (Size <= 0)
 		{
 			return 0;
 		}
 		else
 		{
-			const int32 Depth = IntLog2(Size / ChunkSize);
+			const int32 Depth = 31 - FPlatformMath::CountLeadingZeros(Size / ChunkSize);
 			if (ChunkSize << Depth == Size)
 			{
 				return Depth;
@@ -35,46 +35,59 @@ namespace FVoxelUtilities
 		}
 	}
 	
-	FORCEINLINE constexpr uint32 GetSizeFromDepth(uint32 ChunkSize, int32 Depth)
+	template<uint32 ChunkSize>
+	inline constexpr uint32 GetSizeFromDepth(int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
 		return ChunkSize << Depth;
 	}
 
-	FORCEINLINE FVoxelIntBox GetBoundsFromDepth(uint32 ChunkSize, int32 Depth)
+	template<uint32 ChunkSize>
+	inline int32 GetDepthFromBounds(const FVoxelIntBox& Bounds)
+	{
+		CHECK_CHUNK_SIZE();
+		return GetDepthFromSize<ChunkSize>(Bounds.Size().GetMax());
+	}
+
+	template<uint32 ChunkSize>
+	inline FVoxelIntBox GetBoundsFromDepth(int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
 		const FIntVector Size = FIntVector((ChunkSize << Depth) / 2);
 		return FVoxelIntBox(-Size, Size);
 	}
 	
-	FORCEINLINE FVoxelIntBox GetCustomBoundsForDepth(uint32 ChunkSize, FVoxelIntBox Bounds, int32 Depth)
+	template<uint32 ChunkSize>
+	inline FVoxelIntBox GetCustomBoundsForDepth(FVoxelIntBox Bounds, int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
 		Bounds = Bounds.MakeMultipleOfBigger(ChunkSize);
-		Bounds = FVoxelUtilities::GetBoundsFromDepth(ChunkSize, Depth).Overlap(Bounds);
+		Bounds = FVoxelUtilities::GetBoundsFromDepth<ChunkSize>(Depth).Overlap(Bounds);
 		check(Bounds.IsMultipleOf(ChunkSize));
 		return Bounds;
 	}
 
-	FORCEINLINE FVoxelIntBox GetBoundsFromPositionAndDepth(uint32 ChunkSize, const FIntVector& Position, int32 Depth)
+	template<uint32 ChunkSize>
+	inline FVoxelIntBox GetBoundsFromPositionAndDepth(const FIntVector& Position, int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
 		return FVoxelIntBox(Position, Position + FIntVector(ChunkSize << Depth));
 	}
 
-	// Valid only to compute the depth of the root node (or of the entire tree_
-	FORCEINLINE int32 GetOctreeDepthContainingBounds(uint32 ChunkSize, const FVoxelIntBox& Bounds)
+	// Valid for root node only
+	template<uint32 ChunkSize>
+	inline int32 GetOctreeDepthContainingBounds(const FVoxelIntBox& Bounds)
 	{
 		CHECK_CHUNK_SIZE();
 		const uint32 Max = FMath::Max(FVoxelUtilities::Abs(Bounds.Min).GetMax(), FVoxelUtilities::Abs(Bounds.Max).GetMax());
-		return GetDepthFromSize(ChunkSize, 2 * Max); // 2x: octree doesn't start at 0 0 0
+		return GetDepthFromSize<ChunkSize>(2 * Max); // 2x: octree doesn't start at 0 0 0
 	}
 
-	FORCEINLINE constexpr int32 ConvertDepth(uint32 FromChunkSize, uint32 ToChunkSize, int32 Depth)
+	template<uint32 FromChunkSize, uint32 ToChunkSize>
+	inline constexpr int32 ConvertDepth(int32 Depth)
 	{
-		checkfVoxelSlow(IsPowerOfTwo(FromChunkSize), TEXT("FromChunkSize must be a power of 2"));
-		checkfVoxelSlow(IsPowerOfTwo(ToChunkSize), TEXT("ToChunkSize must be a power of 2"));
+		static_assert(IsPowerOfTwo(FromChunkSize), "FromChunkSize must be a power of 2");
+		static_assert(IsPowerOfTwo(ToChunkSize), "ToChunkSize must be a power of 2");
 		
 		if (FromChunkSize == ToChunkSize)
 		{
@@ -93,30 +106,25 @@ namespace FVoxelUtilities
 		}
 	}
 
-	FORCEINLINE int32 ClampDepth(uint32 ChunkSize, int32 Depth)
+	template<uint32 ChunkSize>
+	inline int32 ClampDepth(int32 Depth)
 	{
 		CHECK_CHUNK_SIZE();
-		const int32 ChunkSizeDepth = IntLog2(ChunkSize);
+		constexpr int32 ChunkSizeDepth = IntLog2(ChunkSize);
 		// In theory MaxDepth could be 31
 		// To avoid overflows when doing math we use 30
-		const int32 MaxDepth = 30;
+		constexpr int32 MaxDepth = 30;
 		// ChunkSizeDepth + Depth <= MaxDepth
 		// Depth <= MaxDepth - ChunkSizeDepth
 		return FMath::Clamp(Depth, 0, MaxDepth - ChunkSizeDepth);
 	}
-
-	// Outer bounds of depth values
-	FORCEINLINE int32 ClampDepth(int32 Depth)
-	{
-		return FMath::Clamp(Depth, 0, 31);
-	}
-
-	FORCEINLINE void FixupChunkSize(int32& ChunkSize, int32 MinSize)
-	{
-		ChunkSize = FMath::Max(ChunkSize, MinSize);
-		ChunkSize = FMath::RoundUpToPowerOfTwo(ChunkSize);
-	}
 #undef CHECK_CHUNK_SIZE
+	
+	inline int32 ClampMesherDepth(int32 Depth)
+	{
+		// 2x: Bounds.Size() needs to fit in a int32 for Meshers
+		return ClampDepth<2 * RENDER_CHUNK_SIZE>(Depth);
+	}
 	
 	template<typename T>
 	inline T MergeAsset(T A, T B, bool bSubtractiveAsset)
@@ -161,7 +169,7 @@ namespace FVoxelUtilities
 			}
 		}
 
-#if VOXEL_DEBUG && 0 // Happens pretty often
+#if VOXEL_DEBUG
 		float Sum = 0.f;
 		for (int32 Index = 0; Index < NumChannels; Index++)
 		{
@@ -256,7 +264,7 @@ namespace FVoxelUtilities
 			}
 		}
 
-#if VOXEL_DEBUG && 0 // Raised pretty often
+#if VOXEL_DEBUG
 		float Sum = 0.f;
 		for (int32 Index = 0; Index < NumChannels; Index++)
 		{
@@ -403,15 +411,10 @@ namespace FVoxelUtilities
 
 	// Skips expensive bound checks outside of debug
 	template<typename T>
-	FORCEINLINE decltype(auto) Get(T& Array, int32 Index)
+	FORCEINLINE auto& Get(T& Array, int32 Index)
 	{
 		checkVoxelSlow(0 <= Index && Index < GetNum(Array));
 		return GetData(Array)[Index];
-	}
-	template<typename T, typename ArrayType>
-	FORCEINLINE T GetAs(ArrayType& Array, int32 Index)
-	{
-		return Get(Array, Index);
 	}
 	
 	FORCEINLINE int32 Get3DIndex(const FIntVector& Size, int32 X, int32 Y, int32 Z, const FIntVector& Offset = FIntVector(0, 0, 0))
@@ -474,7 +477,7 @@ namespace FVoxelUtilities
 	FORCEINLINE float SmoothFalloff(float Distance, float Radius, float Falloff)
 	{
 		const float X = LinearFalloff(Distance, Radius, Falloff);
-		return FMath::SmoothStep(0.f, 1.f, X);
+		return FMath::SmoothStep<float>(0, 1, X);
 	}
 	FORCEINLINE float SphericalFalloff(float Distance, float Radius, float Falloff)
 	{
@@ -525,10 +528,5 @@ namespace FVoxelUtilities
 			return Lambda([=](float Distance) { return TipFalloff(Distance, RelativeRadius, RelativeFalloff); });
 		}
 		}
-	}
-
-	FORCEINLINE float PackIntIntoFloat(uint32 Int)
-	{
-		return *reinterpret_cast<float*>(&Int);
 	}
 }

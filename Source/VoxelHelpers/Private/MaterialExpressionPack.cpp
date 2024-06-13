@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "MaterialExpressionPack.h"
 #include "MaterialCompiler.h"
@@ -70,6 +70,17 @@ void UMaterialExpressionPack::GetCaption(TArray<FString>& OutCaptions) const
 	OutCaptions.Add(TEXT("Pack"));
 }
 
+#if VOXEL_ENGINE_VERSION >= 503
+TArrayView<FExpressionInput*> UMaterialExpressionPack::GetInputsView()
+{
+	CachedInputs.Reset();
+	for (auto& Input : Inputs)
+	{
+		CachedInputs.Add(&Input.Input);
+	}
+	return CachedInputs;
+}
+#else
 const TArray<FExpressionInput*> UMaterialExpressionPack::GetInputs()
 {
 	TArray<FExpressionInput*> Result;
@@ -79,6 +90,7 @@ const TArray<FExpressionInput*> UMaterialExpressionPack::GetInputs()
 	}
 	return Result;
 }
+#endif
 
 FExpressionInput* UMaterialExpressionPack::GetInput(int32 InputIndex)
 {

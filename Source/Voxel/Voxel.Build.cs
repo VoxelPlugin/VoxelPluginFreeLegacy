@@ -1,4 +1,6 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
+
+#define VOXEL_PLUGIN_PRO
 
 using System.IO;
 using UnrealBuildTool;
@@ -8,11 +10,17 @@ public class Voxel : ModuleRules
     public Voxel(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
+#if UE_5_4_OR_LATER
+        CppStandard = CppStandardVersion.Cpp20;
+#else
+		CppStandard = CppStandardVersion.Cpp17;
+#endif
 
 #if UE_4_24_OR_LATER
+        bUseUnity = true;
 #else
+        bFasterWithoutUnity = false;
 #endif
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
@@ -22,6 +30,11 @@ public class Voxel : ModuleRules
         PrivateIncludePaths.Add(EngineDirectory + "/Shaders/Shared");
         // For HLSL translator
         PrivateIncludePaths.Add(EngineDirectory + "/Source/Runtime/Engine/Private");
+
+        if (Target.Platform == UnrealTargetPlatform.Linux)
+        {
+	        PrivateIncludePaths.Add(EngineDirectory + "/Source/Runtime/Renderer/Private");
+        }
 
         PublicDependencyModuleNames.AddRange(
             new string[]
@@ -37,8 +50,6 @@ public class Voxel : ModuleRules
 #endif
                 "RenderCore",
                 "Landscape",
-                "PhysX",
-                "Projects",
 #if UE_4_26_OR_LATER
                 "DeveloperSettings",
                 "TraceLog",

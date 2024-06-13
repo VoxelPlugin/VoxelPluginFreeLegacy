@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -123,7 +123,7 @@ FN_FORCEINLINE_MATH v_flt FVoxelFastNoiseLUT::GradCoord4D(uint8 offset, int32 x,
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FN_FORCEINLINE_MATH VectorRegister FVoxelFastNoiseLUT::ValCoord2DFast(VectorRegisterInt offset, VectorRegisterInt x, VectorRegisterInt y) const
+FN_FORCEINLINE_MATH VectorRegister FVoxelFastNoiseLUT::ValCoord2DFast(VectorRegister4Int offset, VectorRegister4Int x, VectorRegister4Int y) const
 {
 	x = VectorIntAnd(x, MakeVectorRegisterInt(0xFF, 0xFF, 0xFF, 0xFF));
 	y = VectorIntAnd(y, MakeVectorRegisterInt(0xFF, 0xFF, 0xFF, 0xFF));
@@ -182,9 +182,9 @@ FN_FORCEINLINE_MATH v_flt FVoxelFastNoiseLUT::ValCoord4D(int32 seed, int32 x, in
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FN_FORCEINLINE_MATH VectorRegister FVoxelFastNoiseLUT::ValCoord2D(VectorRegisterInt seed, VectorRegisterInt x, VectorRegisterInt y)
+FN_FORCEINLINE_MATH VectorRegister FVoxelFastNoiseLUT::ValCoord2D(VectorRegister4Int seed, VectorRegister4Int x, VectorRegister4Int y)
 {
-	VectorRegisterInt hash = seed;
+	VectorRegister4Int hash = seed;
 
 	// Note: can be removed
 	x = VectorIntMultiply(x, MakeVectorRegisterInt(X_PRIME, X_PRIME, X_PRIME, X_PRIME));

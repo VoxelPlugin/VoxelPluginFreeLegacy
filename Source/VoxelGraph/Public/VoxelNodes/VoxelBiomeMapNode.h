@@ -1,11 +1,12 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelExposedNodes.h"
-#include "Engine/Texture2D.h"
 #include "VoxelBiomeMapNode.generated.h"
+
+class UTexture2D;
 
 USTRUCT()
 struct VOXELGRAPH_API FBiomeMapElement
@@ -13,7 +14,7 @@ struct VOXELGRAPH_API FBiomeMapElement
 	GENERATED_BODY()
 		
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-	FColor Color;
+	FColor Color = FColor::White;
 	
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	FString Name;
@@ -25,11 +26,10 @@ class VOXELGRAPH_API UVoxelNode_BiomeMapSampler : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
-	GENERATED_EXPOSED_VOXELNODE_BODY(Texture)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Biomes")
-	UTexture2D* Texture;
+	TObjectPtr<UTexture2D> Texture;
 
 	// Distance = Max(Abs(ColorA - ColorB)). Values with a distance below or equal to this will be set to 1, value strictly above to 0
 	UPROPERTY(EditAnywhere, Category = "Biomes", meta = (ClampMin = 0, ClampMax = 255, UIMin = 0, UIMax = 255))
@@ -51,4 +51,5 @@ public:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(Texture); }
 };

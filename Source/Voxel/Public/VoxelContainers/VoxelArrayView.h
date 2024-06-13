@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -16,7 +16,7 @@ struct TVoxelArrayView
 	{
 	}
 	template<typename = typename TEnableIf<TIsConst<T>::Value>::Type>
-	TVoxelArrayView(const TArray<typename TRemoveConst<T>::Type>& Other)
+	TVoxelArrayView(const TArray<typename UE_503_SWITCH(TRemoveConst<T>::Type, std::remove_const_t<T>)>& Other)
 		: DataPtr(Other.GetData())
 		, ArrayNum(Other.Num())
 	{

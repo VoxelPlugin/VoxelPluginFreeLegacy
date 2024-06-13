@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -39,16 +39,16 @@ struct VOXEL_API FVoxelMeshImporterRenderTargetCache
 	GENERATED_BODY()
 
 	UPROPERTY(Category = "Cache", BlueprintReadOnly, VisibleAnywhere, Transient)
-	UTextureRenderTarget2D* ColorsRenderTarget = nullptr;
+	TObjectPtr<UTextureRenderTarget2D> ColorsRenderTarget = nullptr;
 
 	UPROPERTY(Category = "Cache", BlueprintReadOnly, VisibleAnywhere, Transient)
-	UTextureRenderTarget2D* UVsRenderTarget = nullptr;
+	TObjectPtr<UTextureRenderTarget2D> UVsRenderTarget = nullptr;
 	
 	UPROPERTY(Category = "Cache", BlueprintReadOnly, VisibleAnywhere, Transient)
-	UMaterialInterface* LastRenderedColorsMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> LastRenderedColorsMaterial = nullptr;
 	
 	UPROPERTY(Category = "Cache", BlueprintReadOnly, VisibleAnywhere, Transient)
-	UMaterialInterface* LastRenderedUVsMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> LastRenderedUVsMaterial = nullptr;
 	
 	UPROPERTY(Category = "Cache", BlueprintReadOnly, VisibleAnywhere, Transient)
 	int32 LastRenderedRenderTargetSize = 0;
@@ -121,7 +121,7 @@ struct VOXEL_API FVoxelMeshImporterSettings : public FVoxelMeshImporterSettingsB
 	bool bImportColors = true;
 	
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bPaintColors"))
-	UMaterialInterface* ColorsMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> ColorsMaterial = nullptr;
 
 	// Will sample UVChannelsMaterial at the mesh UVs to get the voxel UVs
 	// RG will go in first UV channel, BA in second
@@ -129,7 +129,7 @@ struct VOXEL_API FVoxelMeshImporterSettings : public FVoxelMeshImporterSettingsB
 	bool bImportUVs = true;
 	
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, meta = (EditCondition = bPaintUVs))
-	UMaterialInterface* UVsMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> UVsMaterial = nullptr;
 
 	UPROPERTY(Category = "Import Configuration", BlueprintReadWrite, EditAnywhere, AdvancedDisplay)
 	int32 RenderTargetSize = 4096;
@@ -175,11 +175,10 @@ public:
 		// Needed if we want a smooth import, in voxels
 		float BoxExtension,
 		TArray<float>& OutDistanceField,
-		TArray<FVector>& OutSurfacePositions,
+		TArray<FVector3f>& OutSurfacePositions,
 		FIntVector& OutSize,
 		FIntVector& OutOffset,
 		int32& OutNumLeaks,
-		EVoxelComputeDevice Device = EVoxelComputeDevice::GPU,
 		bool bMultiThreaded = true,
 		int32 MaxPasses_Debug = -1);
 	
@@ -226,7 +225,7 @@ class VOXEL_API AVoxelMeshImporter : public AActor
 public:
 	// The static mesh to import from
 	UPROPERTY(EditAnywhere, Category = "Import Configuration")
-	UStaticMesh* StaticMesh;
+	TObjectPtr<UStaticMesh> StaticMesh;
 
 	UPROPERTY(EditAnywhere, Category = "Import Configuration", meta = (ShowOnlyInnerProperties))
 	FVoxelMeshImporterSettings Settings;
@@ -257,16 +256,16 @@ protected:
 
 private:
 	UPROPERTY()
-	UStaticMeshComponent* MeshComponent;
+	TObjectPtr<UStaticMeshComponent> MeshComponent;
 
 	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* MaterialInstance;
+	TObjectPtr<UMaterialInstanceDynamic> MaterialInstance;
 
 	UPROPERTY(Transient)
 	FBox CachedBox;
 
 	UPROPERTY(Transient)
-	UStaticMesh* CachedStaticMesh;
+	TObjectPtr<UStaticMesh> CachedStaticMesh;
 
 	UPROPERTY(Transient)
 	TArray<FVector> CachedVertices;

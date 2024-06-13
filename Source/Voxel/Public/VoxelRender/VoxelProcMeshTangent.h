@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -6,10 +6,15 @@
 
 struct FVoxelProcMeshTangent
 {
-	FVector TangentX;
-	bool bFlipTangentY;
+	FVector TangentX = FVector::RightVector;
+	bool bFlipTangentY = false;
 
 	FVoxelProcMeshTangent() = default;
+	FVoxelProcMeshTangent(float X, float Y, float Z)
+		: TangentX(X, Y, Z)
+		, bFlipTangentY(false)
+	{
+	}
 	FVoxelProcMeshTangent(FVector InTangentX, bool bInFlipTangentY)
 		: TangentX(InTangentX)
 		, bFlipTangentY(bInFlipTangentY)

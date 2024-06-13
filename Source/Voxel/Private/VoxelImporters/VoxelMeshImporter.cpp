@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelImporters/VoxelMeshImporter.h"
 
@@ -25,11 +25,10 @@ static void GetMergedSectionFromStaticMesh(
 	TArray<FVector2D>& UVs)
 {
 	VOXEL_FUNCTION_COUNTER();
-	
-	FStaticMeshRenderData* RenderData = UE_5_SWITCH(InMesh->RenderData.Get(), InMesh->GetRenderData());
-	if (!ensure(RenderData) || !ensure(RenderData->LODResources.IsValidIndex(LODIndex))) return;
 
-	const FStaticMeshLODResources& LODResources = RenderData->LODResources[LODIndex];
+	if (!ensure(InMesh->GetRenderData()) || !ensure(InMesh->GetRenderData()->LODResources.IsValidIndex(LODIndex))) return;
+
+	const FStaticMeshLODResources& LODResources = InMesh->GetRenderData()->LODResources[LODIndex];
 	const FRawStaticIndexBuffer& IndexBuffer = LODResources.IndexBuffer;
 	const FPositionVertexBuffer& PositionVertexBuffer = LODResources.VertexBuffers.PositionVertexBuffer;
 	const FStaticMeshVertexBuffer& StaticMeshVertexBuffer = LODResources.VertexBuffers.StaticMeshVertexBuffer;
@@ -53,7 +52,7 @@ static void GetMergedSectionFromStaticMesh(
 			Vertices.SetNumUninitialized(PositionVertexBuffer.GetNumVertices());
 			for (uint32 Index = 0; Index < PositionVertexBuffer.GetNumVertices(); Index++)
 			{
-				Get(Vertices, Index) = UE_5_CONVERT(FVector, PositionVertexBuffer.VertexPosition(Index));
+				Get(Vertices, Index) = FVector(PositionVertexBuffer.VertexPosition(Index));
 			}
 		}
 		{
@@ -70,7 +69,7 @@ static void GetMergedSectionFromStaticMesh(
 			UVs.SetNumUninitialized(StaticMeshVertexBuffer.GetNumVertices());
 			for (uint32 Index = 0; Index < StaticMeshVertexBuffer.GetNumVertices(); Index++)
 			{
-				Get(UVs, Index) = UE_5_CONVERT(FVector2D, StaticMeshVertexBuffer.GetVertexUV(Index, 0));
+				Get(UVs, Index) = FVector2D(StaticMeshVertexBuffer.GetVertexUV(Index, 0));
 			}
 		}
 	}
@@ -85,9 +84,9 @@ static void GetMergedSectionFromStaticMesh(
 				Vertices.SetNumUninitialized(PositionVertexBuffer.GetNumVertices());
 				const int32 NumBytes = PositionVertexBuffer.GetNumVertices() * PositionVertexBuffer.GetStride();
 				
-				void* BufferData = RHICmdList.LockVertexBuffer(PositionVertexBuffer.VertexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
+				void* BufferData = RHICmdList.LockBuffer(PositionVertexBuffer.VertexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
 				FMemory::Memcpy(Vertices.GetData(), BufferData, NumBytes);
-				RHICmdList.UnlockVertexBuffer(PositionVertexBuffer.VertexBufferRHI);
+				RHICmdList.UnlockBuffer(PositionVertexBuffer.VertexBufferRHI);
 			}
 			{
 				VOXEL_SCOPE_COUNTER("Copy Triangles from GPU");
@@ -96,7 +95,7 @@ static void GetMergedSectionFromStaticMesh(
 				const bool bIs32Bit = IndexBuffer.Is32Bit();
 				const int32 NumBytes = IndexBuffer.GetNumIndices() * (bIs32Bit ? sizeof(uint32) : sizeof(uint16));
 				
-				void* BufferData = RHICmdList.LockIndexBuffer(IndexBuffer.IndexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
+				void* BufferData = RHICmdList.LockBuffer(IndexBuffer.IndexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
 				if (bIs32Bit)
 				{
 					FMemory::Memcpy(Indices.GetData(), BufferData, NumBytes);
@@ -111,7 +110,7 @@ static void GetMergedSectionFromStaticMesh(
 						Get(Indices, Index) = Get(Indices16, Index);
 					}
 				}
-				RHICmdList.UnlockIndexBuffer(IndexBuffer.IndexBufferRHI);
+				RHICmdList.UnlockBuffer(IndexBuffer.IndexBufferRHI);
 			}
 			if (NumTextureCoordinates > 0)
 			{
@@ -121,7 +120,7 @@ static void GetMergedSectionFromStaticMesh(
 				const bool bFullPrecision = StaticMeshVertexBuffer.GetUseFullPrecisionUVs();
 				const int32 NumBytes = StaticMeshVertexBuffer.GetNumVertices() * (bFullPrecision ? sizeof(FVector2D) : sizeof(FVector2DHalf));
 				
-				void* BufferData = RHICmdList.LockVertexBuffer(StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
+				void* BufferData = RHICmdList.LockBuffer(StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI, 0, NumBytes, EResourceLockMode::RLM_ReadOnly);
 				if (bFullPrecision)
 				{
 					FMemory::Memcpy(UVs.GetData(), BufferData, NumBytes);
@@ -136,7 +135,7 @@ static void GetMergedSectionFromStaticMesh(
 						Get(UVs, Index) = Get(UVsHalf, Index);
 					}
 				}
-				RHICmdList.UnlockVertexBuffer(StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI);
+				RHICmdList.UnlockBuffer(StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI);
 			}
 		});
 		
@@ -227,11 +226,10 @@ void UVoxelMeshImporterLibrary::ConvertMeshToDistanceField(
 	const FVoxelMeshImporterSettingsBase& Settings,
 	float BoxExtension,
 	TArray<float>& OutDistanceField,
-	TArray<FVector>& OutSurfacePositions,
+	TArray<FVector3f>& OutSurfacePositions,
 	FIntVector& OutSize,
 	FIntVector& OutOffset,
 	int32& OutNumLeaks,
-	EVoxelComputeDevice Device,
 	bool bMultiThreaded,
 	int32 MaxPasses_Debug)
 {
@@ -409,5 +407,5 @@ void AVoxelMeshImporter::UpdateSizes()
 	SizeZ = FMath::CeilToInt(SizeFloat.Z);
 	NumberOfVoxels = SizeX * SizeY * SizeZ;
 	const bool bHasMaterials = Settings.bImportColors || Settings.bImportUVs;
-	SizeInMB = double(NumberOfVoxels) * ((ONE_BIT_VOXEL_VALUE ? 1 / 8. : sizeof(FVoxelValue)) + (bHasMaterials ? sizeof(FVoxelMaterial) : 0)) / double(1 << 20);
+	SizeInMB = double(NumberOfVoxels) * (sizeof(FVoxelValue) + (bHasMaterials ? sizeof(FVoxelMaterial) : 0)) / double(1 << 20);
 }

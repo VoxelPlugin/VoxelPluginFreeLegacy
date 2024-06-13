@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -16,7 +16,7 @@ struct FVoxelGraphMacroPin
 	FString Name;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-	EVoxelPinCategory Category;
+	EVoxelPinCategory Category = {};
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	FString ToolTip;
@@ -47,7 +47,7 @@ public:
 	TArray<FVoxelGraphMacroPin> Pins;
 
 	UPROPERTY()
-	class UVoxelGraphMacro* Macro;
+	TObjectPtr<UVoxelGraphMacro> Macro;
 
 	virtual FLinearColor GetColor() const override;
 	virtual bool CanUserDeleteNode() const override;
@@ -115,10 +115,10 @@ public:
 	bool bVectorOnlyNode = false;	
 
 	UPROPERTY()
-	UVoxelGraphMacroInputNode* InputNode;
+	TObjectPtr<UVoxelGraphMacroInputNode> InputNode;
 
 	UPROPERTY()
-	UVoxelGraphMacroOutputNode* OutputNode;
+	TObjectPtr<UVoxelGraphMacroOutputNode> OutputNode;
 
 	FText GetMacroName() const;
 	FText GetMacroCategory() const;
@@ -131,7 +131,7 @@ class VOXELGRAPH_API UVoxelGraphMacroNode : public UVoxelNode
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ReconstructNode))
-	UVoxelGraphMacro* Macro;
+	TObjectPtr<UVoxelGraphMacro> Macro;
 
 
 	virtual FText GetTitle() const override;

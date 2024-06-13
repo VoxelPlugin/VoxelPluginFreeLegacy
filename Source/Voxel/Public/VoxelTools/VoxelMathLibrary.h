@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -6,7 +6,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "VoxelMathLibrary.generated.h"
 
-USTRUCT(BlueprintType, meta = (HasNativeMake = "Voxel.VoxelMathLibrary.MakeHaltonStream"))
+USTRUCT(BlueprintType, meta = (HasNativeMake = "/Script/Voxel.VoxelMathLibrary:MakeHaltonStream"))
 struct FVoxelHaltonStream
 {
 	GENERATED_BODY()

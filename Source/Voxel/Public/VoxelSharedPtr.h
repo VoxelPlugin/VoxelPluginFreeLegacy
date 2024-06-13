@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -12,6 +12,18 @@ template<typename T>
 using TVoxelWeakPtr = TWeakPtr<T, ESPMode::ThreadSafe>;
 template<typename T>
 using TVoxelSharedFromThis = TSharedFromThis<T, ESPMode::ThreadSafe>;
+
+template<typename CastToType, typename CastFromType>
+inline TVoxelSharedRef<CastToType> StaticCastVoxelSharedRef(const TVoxelSharedRef<CastFromType>& InSharedRef)
+{
+	return StaticCastSharedRef<CastToType, CastFromType, ESPMode::ThreadSafe>(InSharedRef);
+}
+
+template<typename CastToType, typename CastFromType>
+inline TVoxelSharedPtr<CastToType> StaticCastVoxelSharedPtr(const TVoxelSharedPtr<CastFromType>& InSharedPtr)
+{
+	return StaticCastSharedPtr<CastToType, CastFromType, ESPMode::ThreadSafe>(InSharedPtr);
+}
 
 template<typename T, typename... InArgTypes>
 inline TVoxelSharedRef<T> MakeVoxelShared(InArgTypes&&... Args)
@@ -27,11 +39,11 @@ inline TVoxelWeakPtr<T> MakeVoxelWeakPtr(const TPtr<T, ESPMode::ThreadSafe>& Ptr
 template<typename T>
 inline TVoxelWeakPtr<T> MakeVoxelWeakPtr(T* Ptr)
 {
-	return TVoxelWeakPtr<T>(StaticCastSharedRef<T>(Ptr->AsShared()));
+	return TVoxelWeakPtr<T>(StaticCastVoxelSharedRef<T>(Ptr->AsShared()));
 }
 
 template<typename T, template<class, ESPMode> class TPtr>
-inline TWeakPtr<T> MakeWeakPtr(const TPtr<T, UE_5_SWITCH(ESPMode::Fast, ESPMode::ThreadSafe)>& Ptr)
+inline TWeakPtr<T> MakeWeakPtr(const TPtr<T, ESPMode::ThreadSafe>& Ptr)
 {
 	return TWeakPtr<T>(Ptr);
 }

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -26,7 +26,7 @@ private:
 	FVoxelIntBox GetBox(AVoxelWorld* World) const;
 
 	UPROPERTY()
-	UBoxComponent* Box;
+	TObjectPtr<UBoxComponent> Box;
 
 #if WITH_EDITOR
 protected:

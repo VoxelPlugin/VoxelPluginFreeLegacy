@@ -1,10 +1,9 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelAssetActorDetails.h"
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
 #include "VoxelWorld.h"
-#include "VoxelData/VoxelData.h"
 #include "VoxelEditorDetailsUtilities.h"
 #include "VoxelScopedTransaction.h"
 
@@ -61,7 +60,7 @@ void FVoxelAssetActorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayou
 			FVoxelScopedTransaction Transaction(AssetActor->PreviewWorld, STATIC_FNAME("Stamp"), EVoxelChangeType::Edit);
 			const auto Bounds = AssetActor->AddItemToData(
 				AssetActor->PreviewWorld,
-				&AssetActor->PreviewWorld->GetSubsystemChecked<FVoxelData>());
+				&AssetActor->PreviewWorld->GetData());
 			UVoxelBlueprintLibrary::UpdateBounds(AssetActor->PreviewWorld, Bounds);
 			UVoxelBlueprintLibrary::SaveFrame(AssetActor->PreviewWorld);
 			return FReply::Handled();

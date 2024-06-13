@@ -1,8 +1,7 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "VoxelAssetTools.h"
-#include "VoxelAssets/VoxelDataAssetData.inl"
 #include "VoxelTools/VoxelToolHelpers.h"
 

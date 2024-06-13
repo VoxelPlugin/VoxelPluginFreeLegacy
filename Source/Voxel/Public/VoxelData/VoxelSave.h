@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -32,7 +32,6 @@ namespace FVoxelSaveVersion
 		SHARED_StoreSpawnerMatricesRelativeToComponent,
 		StoreMaterialChannelsIndividuallyAndRemoveFoliage,
 		ProperlySerializePlaceableItemsObjects,
-		Use64BitArrays,
 		
 		// -----<new versions can be added above this line>-------------------------------------------------
 		VersionPlusOne,
@@ -63,11 +62,11 @@ public:
 
 	bool HasValues() const
 	{
-		return ValueBuffers64.Num() > 0;
+		return ValueBuffers.Num() > 0;
 	}
 	bool HasMaterials() const
 	{
-		return MaterialBuffers64.Num() > 0;
+		return MaterialBuffers.Num() > 0;
 	}
 
 	/**
@@ -92,7 +91,7 @@ public:
 	template<typename T>
 	void ApplyCustomFixes(T Lambda)
 	{
-		Lambda(UserFlags, ValueBuffers64, MaterialBuffers64);
+		Lambda(UserFlags, ValueBuffers, MaterialBuffers);
 	}
 	void SetUserFlags(uint64 InUserFlags)
 	{
@@ -149,16 +148,16 @@ private:
 	int32 Depth = -1;
 	uint64 UserFlags = 0;
 	
-	FVoxelValueArray64 ValueBuffers64;
-	FVoxelValueArray64 SingleValues64;
+	TNoGrowArray<FVoxelValue> ValueBuffers;
+	TNoGrowArray<FVoxelValue> SingleValues;
 	
-	TNoGrowArray64<TVoxelMaterialStorage<uint32>> MaterialsIndices64;
-	TNoGrowArray64<uint8> MaterialBuffers64;
-	TNoGrowArray64<uint8> SingleMaterials64;
+	TNoGrowArray<TVoxelMaterialStorage<uint32>> MaterialsIndices;
+	TNoGrowArray<uint8> MaterialBuffers;
+	TNoGrowArray<uint8> SingleMaterials;
 	
-	TNoGrowArray64<FVoxelChunkSave> Chunks64;
+	TNoGrowArray<FVoxelChunkSave> Chunks;
 	
-	TArray64<uint8> PlaceableItems64;
+	TArray<uint8> PlaceableItems;
 
 	mutable int64 AllocatedSize = 0;
 

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelMessagesEditor.h"
 #include "VoxelSettings.h"
@@ -65,12 +65,7 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 		}
 	};
 
-#if VOXEL_ENGINE_VERSION < 426
-	FBlueprintExceptionTracker& BlueprintExceptionTracker = FBlueprintExceptionTracker::Get();
-	auto& ScriptStack =BlueprintExceptionTracker.ScriptStack;
-#else
-	const TArray<const FFrame*>& ScriptStack = FBlueprintContextTracker::Get().GetScriptStack();
-#endif
+	const TArrayView<const FFrame* const>& ScriptStack = FBlueprintContextTracker::Get().GetCurrentScriptStack();
 	
 	TArray<TSharedPtr<IMessageToken>> ReversedTokens;
 	if (ScriptStack.Num() > 0)

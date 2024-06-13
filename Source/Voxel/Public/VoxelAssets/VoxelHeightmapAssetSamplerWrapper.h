@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -39,7 +39,7 @@ struct TVoxelHeightmapAssetSamplerWrapper
 		Height -= HeightOffset;
 		Height /= HeightScale;
 		Height = FMath::Clamp<float>(Height, TNumericLimits<T>::Lowest(), TNumericLimits<T>::Max());
-		if (TIsSame<T, float>::Value)
+		if (std::is_same_v<T, float>)
 		{
 			Data->SetHeight(X, Y, Height);
 		}

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -114,7 +114,7 @@ public:
 	
 	// The declaration this node is linked to
 	UPROPERTY()
-	UVoxelLocalVariableDeclaration* Declaration;
+	TObjectPtr<UVoxelLocalVariableDeclaration> Declaration;
 	
 	// The variable GUID, to support copy across graphs
 	UPROPERTY()

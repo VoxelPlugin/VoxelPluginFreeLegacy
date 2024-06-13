@@ -1,11 +1,11 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/MaterialCollections/VoxelCachedMaterialCollection.h"
 
 UMaterialInterface* UVoxelCachedMaterialCollection::GetVoxelMaterial(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const
 {
 	const FVoxelMaterialIndices Key{ Indices };
-	auto*& Material = CachedMaterials.FindOrAdd(Key);
+	TObjectPtr<UMaterialInterface>& Material = CachedMaterials.FindOrAdd(Key);
 	if (!Material)
 	{
 		// Note: if this errors out and return nullptr, we want to call it again next time

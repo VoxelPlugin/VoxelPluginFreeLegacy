@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -10,7 +10,8 @@
 
 class FVoxelData;
 class AVoxelWorld;
-class FVoxelCoordinatesProvider;
+class AVoxelWorldInterface;
+class IVoxelWorldInterface;
 class UVoxelLineBatchComponent;
 
 UCLASS()
@@ -29,25 +30,17 @@ public:
 		FLinearColor Color = FLinearColor::Red);
 
 	static void DrawDebugIntBox(
-		const AVoxelWorld* World,
+		const AVoxelWorldInterface* World,
 		FVoxelIntBox Box,
 		float Lifetime = 1,
 		float Thickness = 0,
 		FLinearColor Color = FLinearColor::Red);
 
 	static void DrawDebugIntBox(
-		const FVoxelCoordinatesProvider& World,
+		const IVoxelWorldInterface& World,
 		UVoxelLineBatchComponent& LineBatchComponent,
 		FTransform Transform,
 		FVoxelIntBox Box,
-		float Lifetime = 1,
-		float Thickness = 0,
-		FLinearColor Color = FLinearColor::Red);
-
-	static void DrawDebugBox(
-		UVoxelLineBatchComponent& LineBatchComponent,
-		FTransform Transform,
-		FBox Box,
 		float Lifetime = 1,
 		float Thickness = 0,
 		FLinearColor Color = FLinearColor::Red);
@@ -64,7 +57,7 @@ public:
 
 	struct FDrawDataOctreeSettings
 	{
-		const AVoxelWorld* World = nullptr;
+		AVoxelWorld* World = nullptr;
 		float Lifetime = 0;
 		bool bShowSingle = false;
 		bool bShowCached = false;

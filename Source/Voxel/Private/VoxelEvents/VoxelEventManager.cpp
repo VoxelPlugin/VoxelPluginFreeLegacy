@@ -1,9 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelEvents/VoxelEventManager.h"
 #include "VoxelComponents/VoxelInvokerComponent.h"
 #include "VoxelDebug/VoxelDebugUtilities.h"
-#include "VoxelUtilities/VoxelThreadingUtilities.h"
 #include "VoxelWorld.h"
 #include "VoxelMinimal.h"
 
@@ -22,20 +21,34 @@ static TAutoConsoleVariable<int32> CVarShowEventsBounds(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelEventSubsystemProxy);
-
-void FVoxelEventManager::Create()
+FVoxelEventManagerSettings::FVoxelEventManagerSettings(const AVoxelWorld* InWorld, EVoxelPlayType PlayType)
+	: UpdateRate(FMath::Max(SMALL_NUMBER, InWorld->EventsTickRate))
+	, VoxelWorldInterface(InWorld)
+	, World(InWorld->GetWorld())
+	, WorldBounds(InWorld->GetWorldBounds())
 {
-	Super::Create();
-	
-	UVoxelInvokerComponentBase::OnForceRefreshInvokers.AddThreadSafeSP(this, &FVoxelEventManager::ClearOldInvokerComponents);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+TVoxelSharedRef<FVoxelEventManager> FVoxelEventManager::Create(const FVoxelEventManagerSettings& Settings)
+{
+	TVoxelSharedRef<FVoxelEventManager> Manager = MakeShareable(new FVoxelEventManager(Settings));
+	UVoxelInvokerComponentBase::OnForceRefreshInvokers.AddThreadSafeSP(Manager, &FVoxelEventManager::ClearOldInvokerComponents);
+	return Manager;
 }
 
 void FVoxelEventManager::Destroy()
 {
-	Super::Destroy();
-	
 	StopTicking();
+}
+
+FVoxelEventManager::FVoxelEventManager(const FVoxelEventManagerSettings& Settings)
+	: Settings(Settings)
+{
+
 }
 
 FVoxelEventManager::~FVoxelEventManager()
@@ -144,7 +157,7 @@ void FVoxelEventManager::Tick(float DeltaTime)
 	VOXEL_FUNCTION_COUNTER();
 
 	const double Time = FPlatformTime::Seconds();
-	if (Time - LastUpdateTime > 1. / Settings.EventsTickRate)
+	if (Time - LastUpdateTime > 1. / Settings.UpdateRate)
 	{
 		LastUpdateTime = Time;
 		Update();
@@ -159,15 +172,15 @@ void FVoxelEventManager::Update()
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	if (!Settings.VoxelWorld.IsValid()) return;
+	if (!Settings.VoxelWorldInterface.IsValid()) return;
 
-	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> NewInvokerComponents = UVoxelInvokerComponentBase::GetInvokers(Settings.VoxelWorld.Get());
+	TArray<TWeakObjectPtr<UVoxelInvokerComponentBase>> NewInvokerComponents = UVoxelInvokerComponentBase::GetInvokers(Settings.World.Get());
 	NewInvokerComponents.RemoveAllSwap([](auto& Invoker) { return !Invoker->bUseForEvents; });
 	NewInvokerComponents.Sort([](auto& A, auto& B) { return A.Get() < B.Get(); });
 
 	if (NewInvokerComponents.Num() == 0) return;
 
-	const auto GetInvokerPosition = [&](auto& Invoker) { return Invoker->GetInvokerVoxelPosition(Settings.VoxelWorld.Get()); };
+	const auto GetInvokerPosition = [&](auto& Invoker) { return Invoker->GetInvokerVoxelPosition(Settings.VoxelWorldInterface.Get()); };
 
 	TArray<TPair<FEventKey, TArray<FIntVector>>> InvokersToUpdate;
 	if (NewInvokerComponents != OldInvokerComponents)
@@ -263,7 +276,6 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 		TSet<FIntVector> NewActiveChunks;
 		{
 			VOXEL_SCOPE_COUNTER("Find NewActiveChunks");
-			const auto WorldBounds = Settings.GetWorldBounds();
 
 			// NOTE: This part could be multi threaded
 			
@@ -274,7 +286,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 				// Max is exclusive, since this is the coordinate of the Bounds.Min of the chunk
 				const FIntVector MaxChunkPosition = FVoxelUtilities::DivideCeil(InvokerPosition + EventInfo.ChunkSize * EventInfo.DistanceInChunks, EventInfo.ChunkSize);
 
-				if (!WorldBounds.Intersect(FVoxelIntBox(MinChunkPosition, MaxChunkPosition)))
+				if (!Settings.WorldBounds.Intersect(FVoxelIntBox(MinChunkPosition, MaxChunkPosition)))
 				{
 					continue;
 				}
@@ -291,7 +303,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 							const FVoxelIntBox ChunkBounds = GetChunkBounds(Chunk);
 							
 							if (ChunkBounds.ComputeSquaredDistanceFromBoxToPoint(InvokerPosition) <= SquaredDistanceInVoxels &&
-								ChunkBounds.Intersect(WorldBounds))
+								ChunkBounds.Intersect(Settings.WorldBounds))
 							{
 								NewActiveChunks.Add(Chunk);
 							}
@@ -321,7 +333,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 
 							if (bDebug)
 							{
-								UVoxelDebugUtilities::DrawDebugIntBox(Settings.VoxelWorld.Get(), Bounds, 1.f, 0, FColor::Yellow);
+								UVoxelDebugUtilities::DrawDebugIntBox(Settings.VoxelWorldInterface.Get(), Bounds, 1.f, 0, FColor::Yellow);
 							}
 						}
 					}
@@ -341,7 +353,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 
 							if (bDebug)
 							{
-								UVoxelDebugUtilities::DrawDebugIntBox(Settings.VoxelWorld.Get(), Bounds, 1.f, 0, FColor::Blue);
+								UVoxelDebugUtilities::DrawDebugIntBox(Settings.VoxelWorldInterface.Get(), Bounds, 1.f, 0, FColor::Blue);
 							}
 						}
 					}
@@ -357,7 +369,7 @@ void FVoxelEventManager::UpdateInvokers(const TArray<TPair<FEventKey, TArray<FIn
 
 							if (bDebug)
 							{
-								UVoxelDebugUtilities::DrawDebugIntBox(Settings.VoxelWorld.Get(), Bounds, 1.f, 0, FColor::Red);
+								UVoxelDebugUtilities::DrawDebugIntBox(Settings.VoxelWorldInterface.Get(), Bounds, 1.f, 0, FColor::Red);
 							}
 						}
 					}

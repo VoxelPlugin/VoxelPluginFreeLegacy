@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -37,10 +37,6 @@ public:
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-#if VOXEL_ENGINE_VERSION  < 425
-	virtual bool Serialize(FArchive& Ar) override;
-#endif
 	
 	void SetBuffers(
 		FRHICommandList& RHICmdList,
@@ -52,8 +48,10 @@ public:
 		const FVoxelDistanceFieldParameters& Parameters) const;
 
 private:
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	LAYOUT_FIELD(FRWShaderParameter, Src);
 	LAYOUT_FIELD(FRWShaderParameter, Dst);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -81,13 +79,13 @@ public:
 
 	void StartCompute(
         const FIntVector& Size,
-        const TVoxelSharedRef<TArray<FVector>>& InOutData, 
+        const TVoxelSharedRef<TArray<FVector3f>>& InOutData, 
 		int32 MaxPasses_Debug = -1);
 
 	void Compute_RenderThread(
         FRHICommandListImmediate& RHICmdList,
         const FIntVector& Size,
-        FVector* RESTRICT Data,
+        FVector3f* RESTRICT Data,
 		int32 Num,
 		int32 MaxPasses_Debug = -1);
 

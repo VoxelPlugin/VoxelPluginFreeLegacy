@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -13,7 +13,6 @@ class UStaticMesh;
 class UMaterialInterface;
 class FVoxelData;
 class AVoxelWorld;
-struct FVoxelFloatingPart;
 
 USTRUCT(BlueprintType)
 struct FVoxelPositionValueMaterial

@@ -1,10 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelUtilities/VoxelTextureUtilities.h"
 #include "VoxelMinimal.h"
 #include "Engine/Texture2D.h"
 
-void FVoxelTextureUtilities::UpdateColorTexture(UTexture2D*& Texture, const FIntPoint& Size, const TArray<FColor>& Colors)
+void FVoxelTextureUtilities::UpdateColorTexture(TObjectPtr<UTexture2D>& Texture, const FIntPoint& Size, const TArray<FColor>& Colors)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -17,18 +17,14 @@ void FVoxelTextureUtilities::UpdateColorTexture(UTexture2D*& Texture, const FInt
 		{
 			return;
 		}
-		// TODO why not TC_VectorDisplacementmap
 		Texture->CompressionSettings = TC_HDR;
 		Texture->SRGB = false;
 	}
-	FTexture2DMipMap& Mip = Texture->PlatformData->Mips[0];
+	FTexture2DMipMap& Mip = Texture->GetPlatformData()->Mips[0];
 	{
 		void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
-		if (ensure(Data))
-		{
-			FMemory::Memcpy(Data, Colors.GetData(), Colors.Num() * sizeof(FColor));
-		}
-		Mip.BulkData.Unlock();
+		FMemory::Memcpy(Data, Colors.GetData(), Colors.Num() * sizeof(FColor));
 	}
+	Mip.BulkData.Unlock();
 	Texture->UpdateResource();
 }

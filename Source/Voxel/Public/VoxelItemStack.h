@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,48 +8,30 @@
 class FVoxelPlaceableItemHolder;
 class FVoxelGeneratorInstance;
 
-class VOXEL_API FVoxelGeneratorQueryData
-{
-public:
-	static const FVoxelGeneratorQueryData Empty;
-	
-	FVoxelGeneratorQueryData() = default;
-	UE_NONCOPYABLE(FVoxelGeneratorQueryData);
-
-public:
-	// The list of data item parameters
-	TArrayView<const v_flt> DataItemParameters;
-	// Used for foliage
-	TFunction<FVoxelMaterial()> GetMaterial;
-};
-
 struct VOXEL_API FVoxelItemStack
 {
 public:
 	const FVoxelPlaceableItemHolder& ItemHolder;
 	const FVoxelGeneratorInstance* const Generator;
 	const int32 Depth; // Index in VoxelAssetItem array, -1 if generator
-	const FVoxelGeneratorQueryData& QueryData;
+	const TArray<v_flt>* const CustomData; // Use this to send custom data to a generator
 
-	explicit FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const FVoxelGeneratorQueryData& QueryData = FVoxelGeneratorQueryData::Empty)
+	explicit FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const TArray<v_flt>* CustomData = nullptr)
 		: ItemHolder(ItemHolder)
 		, Generator(nullptr)
 		, Depth(-1)
-		, QueryData(QueryData)
+		, CustomData(CustomData)
 	{
 	}
-	FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const FVoxelGeneratorInstance& Generator, int32 Depth, const FVoxelGeneratorQueryData& QueryData = FVoxelGeneratorQueryData::Empty)
+	FVoxelItemStack(const FVoxelPlaceableItemHolder& ItemHolder, const FVoxelGeneratorInstance& Generator, int32 Depth, const TArray<v_flt>* CustomData = nullptr)
 		: ItemHolder(ItemHolder)
 		, Generator(&Generator)
 		, Depth(Depth)
-		, QueryData(QueryData)
+		, CustomData(CustomData)
 	{
 	}
 
-	static const FVoxelItemStack Empty;
-
-	VOXEL_DEPRECATED(1.3, "Use QueryData instead")
-	static constexpr const TArray<v_flt>* CustomData = nullptr;
+	static FVoxelItemStack Empty;
 
 	template<typename T>
 	T Get(v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
@@ -63,11 +45,11 @@ public:
 	template<typename ...TArgs>
 	FORCEINLINE FVoxelItemStack GetNextStack(TArgs... Args) const
 	{
-		return { ItemHolder, *Generator, GetNextDepth(Args...), QueryData };
+		return { ItemHolder, *Generator, GetNextDepth(Args...), CustomData };
 	}
-	FORCEINLINE FVoxelItemStack WithQueryData(const FVoxelGeneratorQueryData& InQueryData) const
+	FORCEINLINE FVoxelItemStack WithCustomData(const TArray<v_flt>* InCustomData) const
 	{
-		return { ItemHolder, *Generator, Depth, InQueryData };
+		return { ItemHolder, *Generator, Depth, InCustomData };
 	}
 	FORCEINLINE bool IsEmpty() const
 	{

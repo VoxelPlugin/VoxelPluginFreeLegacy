@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -63,11 +63,11 @@ public:
 public:
 	int32 NumChunks() const
 	{
-		return Save.Chunks64.Num();
+		return Save.Chunks.Num();
 	}
 	FIntVector GetChunkPosition(int32 ChunkIndex) const
 	{
-		return Save.Chunks64[ChunkIndex].Position;
+		return Save.Chunks[ChunkIndex].Position;
 	}
 	bool GetError() const
 	{

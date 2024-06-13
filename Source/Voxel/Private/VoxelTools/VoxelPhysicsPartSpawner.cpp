@@ -1,7 +1,6 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelPhysicsPartSpawner.h"
-#include "VoxelTools/VoxelPhysics.h"
 #include "VoxelData/VoxelDataUtilities.h"
 #include "VoxelWorld.h"
 #include "VoxelWorldRootComponent.h"

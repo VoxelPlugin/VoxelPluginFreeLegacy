@@ -1,8 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelDefaultRenderer.h"
 #include "VoxelMessages.h"
-#include "VoxelPool.h"
+#include "IVoxelPool.h"
 #include "VoxelRender/VoxelMesherAsyncWork.h"
 #include "VoxelRender/Renderers/VoxelRendererMeshHandler.h"
 #include "VoxelRender/Renderers/VoxelRendererBasicMeshHandler.h"
@@ -14,7 +14,6 @@
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelData/VoxelData.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.h"
-#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 DEFINE_VOXEL_MEMORY_STAT(STAT_VoxelRenderer);
 
@@ -24,15 +23,28 @@ static TAutoConsoleVariable<int32> CVarFreezeRenderer(
 	TEXT("Stops renderer tick"),
 	ECVF_Default);
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
+FVoxelDefaultRenderer::FVoxelDefaultRenderer(const FVoxelRendererSettings& Settings)
+	: IVoxelRenderer(Settings)
+	, MeshHandler(Settings.bMergeChunks ? Settings.bDoNotMergeCollisionsAndNavmesh
+		? StaticCastVoxelSharedRef<IVoxelRendererMeshHandler>(MakeVoxelShared<FVoxelRendererMixedMeshHandler>(*this))
+		: StaticCastVoxelSharedRef<IVoxelRendererMeshHandler>(MakeVoxelShared<FVoxelRendererClusteredMeshHandler>(*this))
+		: StaticCastVoxelSharedRef<IVoxelRendererMeshHandler>(MakeVoxelShared<FVoxelRendererBasicMeshHandler>(*this)))
+{
+	MeshHandler->Init();
+}
 
-DEFINE_VOXEL_SUBSYSTEM_PROXY(UVoxelDefaultRendererSubsystemProxy);
+TVoxelSharedRef<FVoxelDefaultRenderer> FVoxelDefaultRenderer::Create(const FVoxelRendererSettings& Settings)
+{
+	TVoxelSharedRef<FVoxelDefaultRenderer> Renderer = MakeShareable(new FVoxelDefaultRenderer(Settings));
+	Renderer->OnMaterialInstanceCreated.AddThreadSafeSP(Settings.Data->Generator, &FVoxelGeneratorInstance::SetupMaterialInstance);
+	return Renderer;
+}
 
 FVoxelDefaultRenderer::~FVoxelDefaultRenderer()
 {
 	check(IsInGameThread());
+	VOXEL_FUNCTION_COUNTER();
+
 	DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderer, AllocatedSize);
 }
 
@@ -40,37 +52,8 @@ FVoxelDefaultRenderer::~FVoxelDefaultRenderer()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDefaultRenderer::Create()
-{
-	Super::Create();
-	
-	auto& Data = GetSubsystemChecked<FVoxelData>();
-	
-	if (Settings.bMergeChunks)
-	{
-		if (Settings.bDoNotMergeCollisionsAndNavmesh)
-		{
-			MeshHandler = FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRendererMixedMeshHandler>(*this);
-		}
-		else
-		{
-			MeshHandler = FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRendererClusteredMeshHandler>(*this);
-		}
-	}
-	else
-	{
-		MeshHandler = FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRendererBasicMeshHandler>(*this);
-	}
-	MeshHandler->Init();
-	
-	OnMaterialInstanceCreated.AddThreadSafeSP(Data.Generator, &FVoxelGeneratorInstance::SetupMaterialInstance);
-	RuntimeData->OnRecomputeComponentPositions.AddThreadSafeSP(MeshHandler.Get(), &IVoxelRendererMeshHandler::RecomputeComponentPositions);
-}
-
 void FVoxelDefaultRenderer::Destroy()
 {
-	Super::Destroy();
-	
 	// This function is needed because the async tasks can keep the renderer alive while the voxel world is destroyed
 	
 	StopTicking();
@@ -167,7 +150,7 @@ int32 FVoxelDefaultRenderer::UpdateChunks(
 		}
 	}
 
-	GetSubsystemChecked<FVoxelDebugManager>().ReportUpdatedChunks([&]()
+	Settings.DebugManager->ReportUpdatedChunks([&]()
 		{
 			TArray<FVoxelIntBox> UpdatedChunks;
 			UpdatedChunks.Reserve(ChunksToUpdate.Num());
@@ -629,7 +612,7 @@ void FVoxelDefaultRenderer::UpdateLODs(const uint64 InUpdateIndex, const TArray<
 		}
 	}
 
-	GetSubsystemChecked<FVoxelDebugManager>().ReportRenderChunks([&]()
+	Settings.DebugManager->ReportRenderChunks([&]()
 		{
 			TArray<FVoxelIntBox> Result;
 			Result.Reserve(ChunksMap.Num());
@@ -652,14 +635,16 @@ int32 FVoxelDefaultRenderer::GetTaskCount() const
 	return UpdateIndex > 0 ? TaskCount.GetValue() : -1;
 }
 
-bool FVoxelDefaultRenderer::AreChunksDithering() const
-{
-	return ChunksToShow.Num() > 0 || ChunksToRemove.Num() > 0;
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
+void FVoxelDefaultRenderer::RecomputeMeshPositions()
+{
+	VOXEL_FUNCTION_COUNTER();
+
+	MeshHandler->RecomputeMeshPositions();
+}
 
 void FVoxelDefaultRenderer::ApplyNewMaterials()
 {
@@ -671,7 +656,7 @@ void FVoxelDefaultRenderer::ApplyNewMaterials()
 		return;
 	}
 
-	OnMaterialsChanged();
+	Settings.OnMaterialsChanged();
 
 	MeshHandler->ClearChunkMaterials();
 
@@ -707,13 +692,7 @@ void FVoxelDefaultRenderer::CreateGeometry_AnyThread(
 	TArray<uint32>& OutIndices,
 	TArray<FVector>& OutVertices) const
 {
-	const auto Data = GetSubsystem<FVoxelData>();
-	if (!ensure(Data))
-	{
-		return;
-	}
-	
-	FVoxelMesherAsyncWork::CreateGeometry_AnyThread(ChunkPosition, *this, *Data, LOD, OutIndices, OutVertices);
+	FVoxelMesherAsyncWork::CreateGeometry_AnyThread(*this, LOD, ChunkPosition, OutIndices, OutVertices);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -743,13 +722,14 @@ void FVoxelDefaultRenderer::Tick(float)
 
 	if (!OnWorldLoadedFired && UpdateIndex > 0 && TaskCount.GetValue() == 0 && TasksCallbacksQueue.IsEmpty())
 	{
-		RuntimeData->OnWorldLoaded.Broadcast();
+		OnWorldLoaded.Broadcast();
 		OnWorldLoadedFired = true;
 	}
 
 	UpdateAllocatedSize();
-
-	GetSubsystemChecked<FVoxelDebugManager>().ReportMeshTasksCallbacksQueueNum(TasksCallbacksQueue.Num());
+	
+	Settings.DebugManager->ReportMeshTaskCount(TaskCount.GetValue());
+	Settings.DebugManager->ReportMeshTasksCallbacksQueueNum(TasksCallbacksQueue.Num());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -812,24 +792,14 @@ void FVoxelDefaultRenderer::StartTask(FChunk& Chunk)
 			return;
 		}
 	}
-	
-	const auto TaskType =
-		Chunk.Settings.bVisible
-		? Chunk.Settings.bEnableCollisions
-		? EVoxelTaskType::VisibleCollisionsChunksMeshing
-		: EVoxelTaskType::VisibleChunksMeshing
-		: Chunk.Settings.bEnableCollisions
-		? EVoxelTaskType::CollisionsChunksMeshing
-		: EVoxelTaskType::ChunksMeshing;
-	
-	Task = MakeVoxelAsyncWork<FVoxelMesherAsyncWork>(
+
+	Task = TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>>(new FVoxelMesherAsyncWork(
 		*this,
 		Chunk.Id,
 		Chunk.LOD,
 		Chunk.Bounds,
 		MainOrTransitions == EMainOrTransitions::Transitions,
-		MainOrTransitions == EMainOrTransitions::Transitions ? Chunk.Settings.TransitionsMask : 0,
-		TaskType);
+		MainOrTransitions == EMainOrTransitions::Transitions ? Chunk.Settings.TransitionsMask : 0));
 	QueuedTasks[Chunk.Settings.bVisible][Chunk.Settings.bEnableCollisions].Emplace(Task.Get());
 }
 
@@ -1319,7 +1289,7 @@ void FVoxelDefaultRenderer::FlushQueuedTasks()
 				: bHasCollisions
 				? EVoxelTaskType::CollisionsChunksMeshing
 				: EVoxelTaskType::ChunksMeshing;
-			GetSubsystemChecked<FVoxelPool>().QueueTasks(TaskType, Tasks);
+			Settings.Pool->QueueTasks(TaskType, Tasks);
 			Tasks.Reset();
 		}
 	};
@@ -1364,14 +1334,14 @@ void FVoxelDefaultRenderer::UpdateAllocatedSize()
 	INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelRenderer, AllocatedSize);
 }
 
-void FVoxelDefaultRenderer::CancelTask(TVoxelAsyncWorkPtr<FVoxelMesherAsyncWork>& Task)
+void FVoxelDefaultRenderer::CancelTask(TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>>& Task)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
 	check(Task.IsValid());
 	
 	const bool bIsDone = Task->CancelAndAutodelete();
-	Task.Release();
+	(void)Task.Release();
 	if (!bIsDone)
 	{
 		// If IsDone, QueueChunkCallback_AnyThread was called

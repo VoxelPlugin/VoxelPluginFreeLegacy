@@ -1,14 +1,12 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActorHelper.h"
 #include "VoxelPlaceableItems/Actors/VoxelDataItemActor.h"
 #include "VoxelWorld.h"
 #include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelRender/IVoxelLODManager.h"
-#include "VoxelFoliageInterface.h"
 
 #include "EngineUtils.h"
-#include "TimerManager.h"
 
 void UVoxelPlaceableItemActorHelper::Initialize()
 {
@@ -17,32 +15,7 @@ void UVoxelPlaceableItemActorHelper::Initialize()
 		AddActor(**ActorItr);
 	}
 
-	GetWorld()->AddOnActorSpawnedHandler(MakeWeakObjectPtrDelegate(this, [=](AActor* Actor)
-	{
-		auto* DataItemActor = Cast<AVoxelDataItemActor>(Actor);
-		if (!DataItemActor)
-		{
-			return;
-		}
-	
-		if (Actor->GetWorld()->IsGameWorld())
-		{
-			// In games, delay by one frame so that BeginPlay/the construction script have time to run
-			Actor->GetWorld()->GetTimerManager().SetTimerForNextTick(MakeWeakObjectPtrDelegate(this, [this, WeakDataItemActor = MakeWeakObjectPtr(DataItemActor)]()
-			{
-				if (AVoxelDataItemActor* Object = WeakDataItemActor.Get())
-				{
-					AddActor(*Object);
-				}
-			}));
-		}
-		else
-		{
-			// In the editor, just handle the actor now
-			AddActor(*DataItemActor);
-		}
-	}));
-	FWorldDelegates::LevelAddedToWorld.Add(FWorldDelegates::FOnLevelChanged::FDelegate::CreateUObject(this, &UVoxelPlaceableItemActorHelper::OnLevelAddedToWorld));
+	GetWorld()->AddOnActorSpawnedHandler(FOnActorSpawned::FDelegate::CreateUObject(this, &UVoxelPlaceableItemActorHelper::OnActorSpawned));
 }
 
 AVoxelWorld& UVoxelPlaceableItemActorHelper::GetVoxelWorld() const
@@ -56,33 +29,28 @@ AVoxelWorld& UVoxelPlaceableItemActorHelper::GetVoxelWorld() const
 
 void UVoxelPlaceableItemActorHelper::AddActor(AVoxelDataItemActor& Actor)
 {
-	ensure(!ActorsData.Contains(&Actor));
-	ActorsData.Add(&Actor);
+	AVoxelWorld& VoxelWorld = GetVoxelWorld();
+	if (!ensure(VoxelWorld.IsCreated())) return;
+
+	if (!ensure(VoxelWorld.PlaceableItemManager)) return;
+	UVoxelPlaceableItemManager& PlaceableItemManager = *VoxelWorld.PlaceableItemManager;
+
+	FActorData& ActorData = ActorsData.FindOrAdd(&Actor);
+
+	PlaceableItemManager.Clear();
+	Actor.CallAddItemToWorld(&VoxelWorld);
+
+	PlaceableItemManager.ApplyToData(VoxelWorld.GetData(), &ActorData.Items);
+	PlaceableItemManager.DrawDebug(VoxelWorld, VoxelWorld.GetLineBatchComponent());
 
 	Actor.OnRefresh.AddUObject(this, &UVoxelPlaceableItemActorHelper::OnActorUpdated, MakeWeakObjectPtr(&Actor));
-
-	OnActorUpdated(&Actor);
 }
 
-// When the engine streams levels in, the order of initialization of actors is not deterministic, and no spawn nor construct events are
-// broadcast for the new actors. Therefore, if a data item actor and a voxel world are in the same streaming level but the
-// data item actor is created after the voxel world, both Initialize() and AddOnActorSpawnedHandler() will miss the item actor
-// When a new level is streamed in, we need to reparse actors to find the new ones
-void UVoxelPlaceableItemActorHelper::OnLevelAddedToWorld(ULevel* InLevel, UWorld* InWorld)
+void UVoxelPlaceableItemActorHelper::OnActorSpawned(AActor* Actor)
 {
-	// Maybe we should filter for actors in our same level, but this is consistent with Initialize()
-	if (InWorld != GetWorld())
+	if (auto* DataItemActor = Cast<AVoxelDataItemActor>(Actor))
 	{
-		return;
-	}
-	
-	for (TActorIterator<AVoxelDataItemActor> ActorItr(GetWorld()); ActorItr; ++ActorItr)
-	{
-		auto* Actor = *ActorItr;
-		if (!ActorsData.Contains(Actor))
-		{
-			AddActor(*Actor);
-		}
+		AddActor(*DataItemActor);
 	}
 }
 
@@ -101,7 +69,7 @@ void UVoxelPlaceableItemActorHelper::OnActorUpdated(TWeakObjectPtr<AVoxelDataIte
 	if (!ensure(VoxelWorld.PlaceableItemManager)) return;
 	UVoxelPlaceableItemManager& PlaceableItemManager = *VoxelWorld.PlaceableItemManager;
 
-	FVoxelData& Data = VoxelWorld.GetSubsystemChecked<FVoxelData>();
+	FVoxelData& Data = VoxelWorld.GetData();
 
 	TArray<FVoxelIntBox> BoundsToUpdate;
 	{
@@ -173,9 +141,9 @@ void UVoxelPlaceableItemActorHelper::OnActorUpdated(TWeakObjectPtr<AVoxelDataIte
 
 	if (BoundsToUpdate.Num() > 0)
 	{
-		VoxelWorld.GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(BoundsToUpdate);
+		VoxelWorld.GetLODManager().UpdateBounds(BoundsToUpdate);
 
-		if (Data.bEnableUndoRedo && !Data.IsCurrentFrameEmpty())
+		if (!Data.IsCurrentFrameEmpty())
 		{
 			// Save the frame for the eventual asset item merge/remove edits
 			// Dummy frame, doesn't really store anything interesting

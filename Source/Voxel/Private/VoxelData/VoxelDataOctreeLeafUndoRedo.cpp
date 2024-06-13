@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelData/VoxelDataOctreeLeafUndoRedo.h"
 #include "VoxelData/VoxelDataOctree.h"
@@ -93,7 +93,7 @@ void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOc
 		{
 			// Data was reverted to generator value
 			
-			DataHolder.CreateData(Data, [&](auto* DataPtr)
+			DataHolder.CreateData(Data, [&](T* RESTRICT DataPtr)
 			{
 				TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
 				Leaf.GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);
@@ -115,13 +115,14 @@ void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOc
 			checkVoxelSlow(NewFrameData.IsValidIndex(Index));
 
 			const auto ModifiedValue = FrameDataPtr[Index];
+			auto& ValueRef = DataHolder.GetRef(ModifiedValue.Index);
 			
-			NewFrameDataPtr[Index] = TModifiedValue<T>(ModifiedValue.Index, DataHolder.Get(ModifiedValue.Index));
-			DataHolder.Set(ModifiedValue.Index, ModifiedValue.Value);
+			NewFrameDataPtr[Index] = TModifiedValue<T>(ModifiedValue.Index, ValueRef);
+			ValueRef = ModifiedValue.Value;
 		}
 
-		if (TIsSame<T, FVoxelValue>::Value) DataHolder.SetIsDirty(Frame->bValuesDirty, Data);
-		if (TIsSame<T, FVoxelMaterial>::Value) DataHolder.SetIsDirty(Frame->bMaterialsDirty, Data);
+		if (std::is_same_v<T, FVoxelValue>) DataHolder.SetIsDirty(Frame->bValuesDirty, Data);
+		if (std::is_same_v<T, FVoxelMaterial>) DataHolder.SetIsDirty(Frame->bMaterialsDirty, Data);
 	};
 
 	Apply(FVoxelValue());

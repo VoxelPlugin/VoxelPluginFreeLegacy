@@ -1,11 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "VoxelInterval.h"
 #include "VoxelTools/VoxelPaintMaterial.h"
 #include "Engine/LatentActionManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
@@ -74,7 +73,4 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Base")
 	static FVoxelIntBox GetModifiedVoxelMaterialsBounds(const TArray<FModifiedVoxelMaterial>& ModifiedVoxels);
-
-public:
-	static bool IsSingleIndexWorld(AVoxelWorld* VoxelWorld);
 };

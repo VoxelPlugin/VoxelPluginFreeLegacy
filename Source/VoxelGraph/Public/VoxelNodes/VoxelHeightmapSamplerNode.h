@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -7,7 +7,6 @@
 #include "VoxelEnums.h"
 #include "VoxelHeightmapSamplerNode.generated.h"
 
-class UVoxelHeightmapAsset;
 class UVoxelHeightmapAssetFloat;
 class UVoxelHeightmapAssetUINT16;
 
@@ -23,10 +22,10 @@ public:
 	bool bFloatHeightmap = false;
 
 	UPROPERTY(EditAnywhere, Category = "Heightmap settings", meta = (DisplayName = "Heightmap (float)", EditCondition = "bFloatHeightmap"))
-	UVoxelHeightmapAssetFloat* HeightmapFloat;
+	TObjectPtr<UVoxelHeightmapAssetFloat> HeightmapFloat;
 
 	UPROPERTY(EditAnywhere, Category = "Heightmap settings", meta = (DisplayName = "Heightmap (uint16)", EditCondition = "!bFloatHeightmap"))
-	UVoxelHeightmapAssetUINT16* HeightmapUINT16;
+	TObjectPtr<UVoxelHeightmapAssetUINT16> HeightmapUINT16;
 	
 	UPROPERTY(EditAnywhere, Category = "Heightmap settings")
 	EVoxelSamplerMode SamplerType = EVoxelSamplerMode::Tile;
@@ -43,6 +42,6 @@ public:
 	//~ End UVoxelNode Interface
 
 	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyNameInternal() const override { return bFloatHeightmap ? GET_OWN_MEMBER_NAME(HeightmapFloat) : GET_OWN_MEMBER_NAME(HeightmapUINT16); }
+	virtual FName GetParameterPropertyName() const override { return bFloatHeightmap ? GET_OWN_MEMBER_NAME(HeightmapFloat) : GET_OWN_MEMBER_NAME(HeightmapUINT16); }
 	//~ End UVoxelExposedNode Interface
 };

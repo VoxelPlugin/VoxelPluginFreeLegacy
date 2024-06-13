@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelAsyncWork.h"
 #include "VoxelMinimal.h"
@@ -97,7 +97,6 @@ bool FVoxelAsyncWork::CancelAndAutodelete()
 	}
 	else
 	{
-		bShouldAbandon = true;
 		DoneSection.Unlock();
 		return false;
 	}
@@ -115,8 +114,8 @@ void FVoxelAsyncWork::WaitForDoThreadedWorkToExit()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelAsyncWorkWithWait::FVoxelAsyncWorkWithWait(FName Name, EVoxelTaskType TaskType, EPriority Priority, bool bAutoDelete)
-	: FVoxelAsyncWork(Name, TaskType, Priority, bAutoDelete)
+FVoxelAsyncWorkWithWait::FVoxelAsyncWorkWithWait(FName Name, double PriorityDuration, bool bAutoDelete)
+	: FVoxelAsyncWork(Name, PriorityDuration, bAutoDelete)
 {
 	DoneEvent = FPlatformProcess::GetSynchEventFromPool(true);
 	DoneEvent->Reset();

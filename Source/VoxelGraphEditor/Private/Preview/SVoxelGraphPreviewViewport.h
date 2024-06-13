@@ -1,9 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelMinimal.h"
 #include "SEditorViewport.h"
 #include "SCommonEditorViewportToolbarBase.h"
 

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -7,7 +7,6 @@
 #include "VoxelMaterial.h"
 #include "VoxelPaintMaterial.generated.h"
 
-class AVoxelWorld;
 class UMaterialInterface;
 class UVoxelMaterialCollectionBase;
 
@@ -179,7 +178,13 @@ public:
 public:
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
-	TWeakObjectPtr<AVoxelWorld> PreviewVoxelWorld;
+	bool bRestrictType = false;
+
+	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
+	EVoxelMaterialConfig MaterialConfigToRestrictTo = EVoxelMaterialConfig::RGB;
+
+	UPROPERTY(Transient, EditAnywhere, Category = "Voxel")
+	TObjectPtr<UVoxelMaterialCollectionBase> PreviewMaterialCollection = nullptr;
 #endif
 
 public:

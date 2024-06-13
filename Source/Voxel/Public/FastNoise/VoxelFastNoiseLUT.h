@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -37,7 +37,7 @@ protected:
 	v_flt GradCoord4D(uint8 offset, int32 x, int32 y, int32 z, int32 w, v_flt xd, v_flt yd, v_flt zd, v_flt wd) const;
 
 protected:
-	VectorRegister ValCoord2DFast(VectorRegisterInt offset, VectorRegisterInt x, VectorRegisterInt y) const;
+	VectorRegister ValCoord2DFast(VectorRegister4Int offset, VectorRegister4Int x, VectorRegister4Int y) const;
 
 protected:
 	// Hashing
@@ -51,7 +51,7 @@ protected:
 	static v_flt ValCoord4D(int32 seed, int32 x, int32 y, int32 z, int32 w);
 	
 protected:
-	static VectorRegister ValCoord2D(VectorRegisterInt seed, VectorRegisterInt x, VectorRegisterInt y);
+	static VectorRegister ValCoord2D(VectorRegister4Int seed, VectorRegister4Int x, VectorRegister4Int y);
 	
 protected:
 #if VOXEL_DEBUG || PLATFORM_MAC // Remove this if you're working on OSX, this is just to work on the epic build servers

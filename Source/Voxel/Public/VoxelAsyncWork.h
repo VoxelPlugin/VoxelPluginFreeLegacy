@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,8 +8,8 @@
 class VOXEL_API FVoxelAsyncWork : public IVoxelQueuedWork
 {
 public:
-	FORCEINLINE FVoxelAsyncWork(FName Name, EVoxelTaskType TaskType, EPriority Priority, bool bAutoDelete = false)
-		: IVoxelQueuedWork(Name, TaskType, Priority)
+	FORCEINLINE FVoxelAsyncWork(FName Name, double PriorityDuration, bool bAutoDelete = false)
+		: IVoxelQueuedWork(Name, PriorityDuration)
 		, bAutodelete(bAutoDelete)
 	{
 	}
@@ -92,27 +92,10 @@ struct TVoxelAsyncWorkDelete
 	}
 };
 
-template<typename T>
-using TVoxelAsyncWorkPtr = TUniquePtr<T, TVoxelAsyncWorkDelete<T>>;
-
-#define GENERATED_VOXEL_ASYNC_WORK_BODY(Type) \
-	protected: \
-		void __Dummy##Type(const Type&); \
-		~Type() = default; \
-		\
-		template<typename T> \
-		friend struct TVoxelAsyncWorkDelete; \
-
-template<typename T, typename... TArgs>
-TVoxelAsyncWorkPtr<T> MakeVoxelAsyncWork(TArgs&&... Args)
-{
-	return TVoxelAsyncWorkPtr<T>(new T(Forward<TArgs>(Args)...));
-}
-
 class VOXEL_API FVoxelAsyncWorkWithWait : public FVoxelAsyncWork
 {
 public:
-	FVoxelAsyncWorkWithWait(FName Name, EVoxelTaskType TaskType, EPriority Priority, bool bAutoDelete = false);
+	FVoxelAsyncWorkWithWait(FName Name, double PriorityDuration, bool bAutoDelete = false);
 
 	//~ Begin IVoxelQueuedWork Interface
 	virtual void PostDoWork() override final;

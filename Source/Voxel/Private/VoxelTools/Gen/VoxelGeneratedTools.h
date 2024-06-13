@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -54,7 +54,7 @@
 #define GENERATED_TOOL_CALL(Type, ...) \
 	GENERATED_TOOL_PREFIX(Type) \
 	EditedBounds = Bounds; \
-	auto& WorldData = VoxelWorld->GetSubsystemChecked<FVoxelData>(); \
+	auto& WorldData = VoxelWorld->GetData(); \
 	{ \
 		FVoxelWriteScopeLock Lock(WorldData, Bounds, FUNCTION_FNAME); \
 		auto Data = TVoxelDataImpl<FModifiedVoxel##Type>(WorldData, bMultiThreaded, bRecordModified##Type##s); \
@@ -93,7 +93,7 @@
 #define GENERATED_TOOL_CALL_CPP(Type, ...) \
 	GENERATED_TOOL_PREFIX(Type) \
 	if (OutEditedBounds) *OutEditedBounds = Bounds; \
-	auto& WorldData = VoxelWorld->GetSubsystemChecked<FVoxelData>(); \
+	auto& WorldData = VoxelWorld->GetData(); \
 	{ \
 		FVoxelWriteScopeLock Lock(WorldData, Bounds, FUNCTION_FNAME); \
 		auto Data = TVoxelDataImpl<FModifiedVoxel##Type>(WorldData, bMultiThreaded, OutModified##Type##s != nullptr); \
@@ -143,13 +143,17 @@ public:
 	const TFunction<void(FVoxelData&)> Function;
 	
 	explicit FVoxelToolAsyncWork(FName Name, AVoxelWorld& World, TFunction<void(FVoxelData&)>&& Function)
-		: FVoxelAsyncWork(Name, EVoxelTaskType::AsyncEditFunctions, EPriority::Null, true)
-		, Data(World.GetSubsystemChecked<FVoxelData>().AsShared())
+		: FVoxelAsyncWork(Name, 1e9, true)
+		, Data(World.GetDataSharedPtr())
 		, Function(MoveTemp(Function))
 	{
 	}
 
 	//~ Begin IVoxelQueuedWork Interface
+	virtual uint32 GetPriority() const override
+	{
+		return 0;
+	}
 	virtual void DoWork() override
 	{
 		const auto PinnedData = Data.Pin();

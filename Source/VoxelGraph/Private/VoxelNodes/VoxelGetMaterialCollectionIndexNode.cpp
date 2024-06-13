@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelGetMaterialCollectionIndexNode.h"
 #include "CppTranslation/VoxelVariables.h"
@@ -10,7 +10,7 @@
 #include "Logging/MessageLog.h"
 #include "Misc/UObjectToken.h"
 #include "UObject/Package.h"
-#include "AssetData.h"
+#include "AssetRegistry/AssetData.h"
 #include "VoxelGraphPreviewSettings.h"
 #include "Materials/MaterialFunction.h"
 #include "Materials/MaterialInstanceConstant.h"

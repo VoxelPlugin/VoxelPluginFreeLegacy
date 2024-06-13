@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -21,9 +21,8 @@ enum class EVoxelGeneratorParameterPropertyType : uint8
 	Float,
 	Int,
 	Bool,
-	Name,
 	Object,
-	Struct
+	Struct,
 };
 
 USTRUCT(BlueprintType)

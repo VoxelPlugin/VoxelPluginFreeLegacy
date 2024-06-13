@@ -1,54 +1,71 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
-#include "VoxelStatHelpers.h"
+#include "VoxelMinimal.h"
 
+struct FVoxelRendererSettings;
 struct FVoxelChunkMesh;
 class FVoxelData;
-class IVoxelRenderer;
 class FVoxelDataLockInfo;
-class FVoxelRuntimeSettings;
-class FVoxelRuntimeDynamicSettings;
 
 #if ENABLE_MESHER_STATS
-#define MESHER_TIME_SCOPE(Time) VOXEL_SCOPED_STAT(Times.Time, 1)
-#define MESHER_TIME_INLINE(Time, Expr) VOXEL_INLINE_STAT(Times.Time, 1, Expr)
+struct FVoxelScopedMesherTime
+{
+	const uint64 StartCycle = FPlatformTime::Cycles64();
+	uint64& Cycles;
 
-#define MESHER_TIME_SCOPE_VALUES(Count) VOXEL_SCOPED_STAT(Times.Values, Count)
-#define MESHER_TIME_INLINE_VALUES(Count, Expr) VOXEL_INLINE_STAT(Times.Values, Count, Expr)
+	FORCEINLINE explicit FVoxelScopedMesherTime(uint64& Cycles)
+		: Cycles(Cycles)
+	{
+	}
+	FORCEINLINE ~FVoxelScopedMesherTime()
+	{
+		Cycles += FPlatformTime::Cycles64() - StartCycle;
+	}
+};
 
-#define MESHER_TIME_SCOPE_MATERIALS(Count) VOXEL_SCOPED_STAT(Times.Materials, Count)
-#define MESHER_TIME_INLINE_MATERIALS(Count, Expr) VOXEL_INLINE_STAT(Times.Materials, Count, Expr)
+#define MESHER_TIME_SCOPE(Time) FVoxelScopedMesherTime LocalScope(Times.Time);
+#define MESHER_TIME(Time, X) { FVoxelScopedMesherTime LocalScope(Times.Time); X; }
+#define MESHER_TIME_RETURN(Time, X) [&]() { FVoxelScopedMesherTime LocalScope(Times.Time); return X; }()
+
+#define MESHER_TIME_SCOPE_VALUES(Count) FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count;
+#define MESHER_TIME_VALUES(Count, X) { FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count; X; }
+#define MESHER_TIME_RETURN_VALUES(Count, X) [&]() { FVoxelScopedMesherTime LocalScope(Times._Values); Times._ValuesAccesses += Count; return X; }()
+
+#define MESHER_TIME_SCOPE_MATERIALS(Count) FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count;
+#define MESHER_TIME_MATERIALS(Count, X) { FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count; X; }
+#define MESHER_TIME_RETURN_MATERIALS(Count, X) [&]() { FVoxelScopedMesherTime LocalScope(Times._Materials); Times._MaterialsAccesses += Count; return X; }()
 #else
 #define MESHER_TIME_SCOPE(Time)
-#define MESHER_TIME_INLINE(Time, Expr) Expr
+#define MESHER_TIME(Time, X) X
+#define MESHER_TIME_RETURN(Time, X) X
 
 #define MESHER_TIME_SCOPE_VALUES(Count)
-#define MESHER_TIME_INLINE_VALUES(Count, Expr) Expr
+#define MESHER_TIME_VALUES(Count, X) X
+#define MESHER_TIME_RETURN_VALUES(Count, X) X
 
 #define MESHER_TIME_SCOPE_MATERIALS(Count)
-#define MESHER_TIME_INLINE_MATERIALS(Count, Expr) Expr
+#define MESHER_TIME_MATERIALS(Count, X) X
+#define MESHER_TIME_RETURN_MATERIALS(Count, X) X
 #endif
 
+// All times are in cycles
 struct FVoxelMesherTimes
 {
-	FVoxelStatEntry Values;
-	FVoxelStatEntry Materials;
+	uint64 _Values = 0;
+	uint64 _Materials = 0;
+	uint64 _ValuesAccesses = 0;
+	uint64 _MaterialsAccesses = 0;
 
-	FVoxelStatEntry Normals;
-	FVoxelStatEntry UVs;
-	FVoxelStatEntry CreateChunk;
-
-	FVoxelStatEntry FindFaces;
-	FVoxelStatEntry AddFaces;
-	FVoxelStatEntry GreedyMeshing;
-	FVoxelStatEntry CollisionCubes;
+	uint64 Normals = 0;
+	uint64 UVs = 0;
+	uint64 CreateChunk = 0;
 	
-	FVoxelStatEntry FinishCreatingChunk;
-	FVoxelStatEntry DistanceField;
+	uint64 FinishCreatingChunk = 0;
+	uint64 DistanceField = 0;
 };
 
 class FVoxelMesherBase
@@ -58,17 +75,14 @@ public:
 	const int32 Step;
 	const int32 Size;
 	const FIntVector ChunkPosition;
-	const FVoxelRuntimeSettings& Settings;
-	const FVoxelRuntimeDynamicSettings& DynamicSettings;
+	const FVoxelRendererSettings& Settings;
 	const FVoxelData& Data;
-	const IVoxelRenderer& Renderer;
 	const bool bIsTransitions;
 
 	FVoxelMesherBase(
 		int32 LOD,
 		const FIntVector& ChunkPosition,
-		const IVoxelRenderer& Renderer,
-		const FVoxelData& Data,
+		const FVoxelRendererSettings& Settings,
 		bool bIsTransitions);
 	virtual ~FVoxelMesherBase();
 
@@ -76,7 +90,6 @@ public:
 	virtual void CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vertices) = 0;
 	
 	TVoxelSharedPtr<FVoxelChunkMesh> CreateEmptyChunk() const;
-	void FinishCreatingChunk(FVoxelChunkMesh& Chunk) const;
 
 protected:
 	virtual FVoxelIntBox GetBoundsToCheckIsEmptyOn() const = 0;
@@ -89,6 +102,7 @@ private:
 
 	void LockData();
 	bool IsEmpty() const;
+	void FinishCreatingChunk(FVoxelChunkMesh& Chunk) const;
 
 	friend class FVoxelMesher;
 	friend class FVoxelTransitionsMesher;
@@ -100,8 +114,7 @@ public:
 	FVoxelMesher(
 		int32 LOD,
 		const FIntVector& ChunkPosition,
-		const IVoxelRenderer& Renderer,
-		const FVoxelData& Data);
+		const FVoxelRendererSettings& Settings);
 
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunk() override final;
 	virtual void CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vertices) override final;
@@ -123,8 +136,7 @@ public:
 	FVoxelTransitionsMesher(
 		int32 LOD,
 		const FIntVector& ChunkPosition,
-		const IVoxelRenderer& Renderer,
-		const FVoxelData& Data,
+		const FVoxelRendererSettings& Settings,
 		uint8 TransitionsMask);
 
 	virtual TVoxelSharedPtr<FVoxelChunkMesh> CreateFullChunk() override final;

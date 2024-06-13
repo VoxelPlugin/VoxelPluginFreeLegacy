@@ -1,8 +1,7 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelDebug/VoxelLineBatchComponent.h"
 #include "VoxelMinimal.h"
-#include "VoxelWorld.h"
 
 #include "PrimitiveViewRelevance.h"
 #include "PrimitiveSceneProxy.h"
@@ -45,7 +44,7 @@ void UVoxelLineBatchComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			if (Line.RemainingLifeTime <= 0.0f)
 			{
 				// The line has expired, remove it.
-				BatchedLines.RemoveAtSwap(LineIndex--, 1, false);
+				BatchedLines.RemoveAtSwap(LineIndex--);
 				bDirty = true;
 			}
 		}
@@ -61,7 +60,7 @@ void UVoxelLineBatchComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			if (Pt.RemainingLifeTime <= 0.0f)
 			{
 				// The point has expired, remove it.
-				BatchedPoints.RemoveAtSwap(PtIndex--, 1, false);
+				BatchedPoints.RemoveAtSwap(PtIndex--);
 				bDirty = true;
 			}
 		}
@@ -77,7 +76,7 @@ void UVoxelLineBatchComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 			if (Mesh.RemainingLifeTime <= 0.0f)
 			{
 				// The mesh has expired, remove it.
-				BatchedMeshes.RemoveAtSwap(MeshIndex--, 1, false);
+				BatchedMeshes.RemoveAtSwap(MeshIndex--);
 				bDirty = true;
 			}
 		}
@@ -142,15 +141,8 @@ FBoxSphereBounds UVoxelLineBatchComponent::CalcBounds(const FTransform& LocalToW
 
 	if (!bCalculateAccurateBounds)
 	{
-		if (auto* VoxelWorld = Cast<AVoxelWorld>(GetOwner()))
-		{
-			return VoxelWorld->LocalToGlobalBounds(VoxelWorld->GetWorldBounds());
-		}
-		else
-		{
-			const FVector BoxExtent(HALF_WORLD_MAX);
-			return FBoxSphereBounds(FVector::ZeroVector, BoxExtent, BoxExtent.Size());
-		}
+		const FVector BoxExtent(HALF_WORLD_MAX);
+		return FBoxSphereBounds(FVector::ZeroVector, BoxExtent, BoxExtent.Size());
 	}
 
 	FBox BBox(ForceInit);
@@ -258,22 +250,16 @@ void FVoxelLineBatcherSceneProxy::GetDynamicMeshElements(const TArray<const FSce
 
 			for (auto& Mesh : Meshes)
 			{
-				static FVector const PosX(1.f, 0, 0);
-				static FVector const PosY(0, 1.f, 0);
-				static FVector const PosZ(0, 0, 1.f);
+				static FVector3f const PosX(1.f, 0, 0);
+				static FVector3f const PosY(0, 1.f, 0);
+				static FVector3f const PosZ(0, 0, 1.f);
 
 				// this seems far from optimal in terms of perf, but it's for debugging
 				FDynamicMeshBuilder MeshBuilder(View->GetFeatureLevel());
 
 				for (int32 VertIdx = 0; VertIdx < Mesh.MeshVerts.Num(); ++VertIdx)
 				{
-					MeshBuilder.AddVertex(
-						UE_5_CONVERT(FVector3f, Mesh.MeshVerts[VertIdx]),
-						UE_5_SWITCH(FVector2D::ZeroVector, FVector2f::ZeroVector),
-						UE_5_CONVERT(FVector3f, PosX),
-						UE_5_CONVERT(FVector3f, PosY),
-						UE_5_CONVERT(FVector3f, PosZ),
-						FColor::White);
+					MeshBuilder.AddVertex(FVector3f(Mesh.MeshVerts[VertIdx]), FVector2f::ZeroVector, PosX, PosY, PosZ, FColor::White);
 				}
 				for (int32 Idx = 0; Idx < Mesh.MeshIndices.Num(); Idx += 3)
 				{
@@ -294,8 +280,8 @@ FPrimitiveViewRelevance FVoxelLineBatcherSceneProxy::GetViewRelevance(const FSce
 	ViewRelevance.bDrawRelevance = IsShown(View);
 	ViewRelevance.bDynamicRelevance = true;
 	// ideally the TranslucencyRelevance should be filled out by the material, here we do it conservative
-	ViewRelevance.UE_25_SWITCH(bSeparateTranslucencyRelevance, bSeparateTranslucency) = true;
-	ViewRelevance.UE_25_SWITCH(bNormalTranslucencyRelevance, bNormalTranslucency) = true;
+	ViewRelevance.bSeparateTranslucency = true;
+	ViewRelevance.bNormalTranslucency = true;
 	return ViewRelevance;
 }
 

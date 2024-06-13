@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -26,7 +26,7 @@ protected:
 	v_flt SingleValue_3D(uint8 offset, v_flt x, v_flt y, v_flt z) const;
 	v_flt SingleValue_3D_Deriv(uint8 offset, v_flt x, v_flt y, v_flt z, v_flt& outDx, v_flt& outDy, v_flt& outDz) const;
 	
-	VectorRegister SingleValue_2D(VectorRegisterInt offset, VectorRegister x, VectorRegister y) const;
+	VectorRegister SingleValue_2D(VectorRegister4Int offset, VectorRegister x, VectorRegister y) const;
 	
 public:
 	v_flt IQNoise_2D(v_flt x, v_flt y, v_flt frequency, int32 octaves) const;

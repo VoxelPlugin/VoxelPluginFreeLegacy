@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelDebug/VoxelDebugUtilities.h"
 #include "VoxelDebug/VoxelLineBatchComponent.h"
@@ -38,17 +38,17 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 }
 
 void UVoxelDebugUtilities::DrawDebugIntBox(
-	const AVoxelWorld* World,
+	const AVoxelWorldInterface* World,
 	FVoxelIntBox Box,
 	float Lifetime,
 	float Thickness,
 	FLinearColor Color)
 {
-	DrawDebugIntBox(const_cast<AVoxelWorld*>(World), Box, FTransform(), Lifetime, Thickness, Color);
+	DrawDebugIntBox(Cast<AVoxelWorld>(const_cast<AVoxelWorldInterface*>(World)), Box, FTransform(), Lifetime, Thickness, Color);
 }
 
 void UVoxelDebugUtilities::DrawDebugIntBox(
-	const FVoxelCoordinatesProvider& World,
+	const IVoxelWorldInterface& World,
 	UVoxelLineBatchComponent& LineBatchComponent, 
 	FTransform Transform,
 	FVoxelIntBox Box, 
@@ -58,6 +58,8 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 {
 	VOXEL_FUNCTION_COUNTER();
 	
+	const float LineLifeTime = (Lifetime > 0.f) ? Lifetime : LineBatchComponent.DefaultLifeTime;
+	
 	// Put it in local voxel world space
 	const FVector Min = LineBatchComponent.GetComponentTransform().InverseTransformPosition(World.LocalToGlobal(Box.Min));
 	const FVector Max = LineBatchComponent.GetComponentTransform().InverseTransformPosition(World.LocalToGlobal(Box.Max));
@@ -65,21 +67,8 @@ void UVoxelDebugUtilities::DrawDebugIntBox(
 	const float BorderOffset = Thickness / 2;
 
 	const FBox DebugBox(Min + BorderOffset, Max - BorderOffset);
-	DrawDebugBox(LineBatchComponent, Transform, DebugBox, Lifetime, Thickness, Color);
-}
-
-void UVoxelDebugUtilities::DrawDebugBox(
-	UVoxelLineBatchComponent& LineBatchComponent, 
-	FTransform Transform, 
-	FBox Box, 
-	float Lifetime, 
-	float Thickness, 
-	FLinearColor Color)
-{
-	const float LineLifeTime = (Lifetime > 0.f) ? Lifetime : LineBatchComponent.DefaultLifeTime;
-	
-	const FVector Extent = Box.GetExtent();
-	const FVector Center = Box.GetCenter();
+	const FVector Extent = DebugBox.GetExtent();
+	const FVector Center = DebugBox.GetCenter();
 	const uint8 DepthPriority = 0;
 
 	Transform = LineBatchComponent.GetComponentTransform() * Transform;
@@ -169,7 +158,7 @@ void UVoxelDebugUtilities::DebugVoxelsInsideBounds(
 
 				if (bDebugDensities)
 				{
-					auto& Data = World->GetSubsystemChecked<FVoxelData>();
+					auto& Data = World->GetData();
 					FVoxelReadScopeLock Lock(Data, FVoxelIntBox(X, Y, Z), "DebugVoxelsInsideBox");
 					float Value = Data.GetValue(X, Y, Z, 0).ToFloat();
 					DrawDebugString(World->GetWorld(), World->LocalToGlobal(FIntVector(X, Y, Z)), LexToString(Value), nullptr, TextColor.ToFColor(false), Lifetime);
@@ -256,7 +245,7 @@ void UVoxelDebugUtilities::DrawDataOctree(
 		DirtyColor
 	};
 
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 
 	FVoxelReadScopeLock Lock(Data, FVoxelIntBox::Infinite, FUNCTION_FNAME);
 

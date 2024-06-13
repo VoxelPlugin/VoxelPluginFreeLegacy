@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/Tools/VoxelSurfaceTool.h"
 #include "VoxelWorld.h"
@@ -118,7 +118,7 @@ FVoxelIntBoxWithValidity UVoxelSurfaceTool::DoEdit()
 	// Don't cache the entire column
 	const auto BoundsToCache = GetBoundsToCache(BoundsToDoEditsIn);
 
-	FVoxelData& Data = GetVoxelWorld()->GetSubsystemChecked<FVoxelData>();
+	FVoxelData& Data = GetVoxelWorld()->GetData();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsWhereEditsHappen.Union(BoundsToCache), FUNCTION_FNAME);
@@ -133,7 +133,7 @@ FVoxelIntBoxWithValidity UVoxelSurfaceTool::DoEdit()
 	{
 		if (bSculpt)
 		{
-			Voxels = UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, BoundsToDoEditsIn, SharedConfig->bMultiThreaded, SharedConfig->GetComputeDevice());
+			Voxels = UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, BoundsToDoEditsIn, SharedConfig->bMultiThreaded);
 		}
 		else
 		{

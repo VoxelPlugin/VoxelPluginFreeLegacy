@@ -1,12 +1,11 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Misc/ScopeLock.h"
-#include "VoxelSubsystem.h"
+#include "VoxelMinimal.h"
 #include "VoxelContainers/VoxelSparseArray.h"
-#include "VoxelToolRendering.generated.h"
+#include "Misc/ScopeLock.h"
 
 class FVoxelMaterialInterface;
 
@@ -17,28 +16,49 @@ struct FVoxelToolRendering
 	TVoxelSharedPtr<FVoxelMaterialInterface> Material;
 };
 
-DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
+DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FVoxelToolRenderingId);
 
-UCLASS()
-class VOXEL_API UVoxelToolRenderingSubsystemProxy : public UVoxelStaticSubsystemProxy
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelToolRenderingManager);
-};
-
-class FVoxelToolRenderingManager : public IVoxelSubsystem
+class FVoxelToolRenderingManager : public TVoxelSharedFromThis<FVoxelToolRenderingManager>
 {
 public:
-	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelToolRenderingSubsystemProxy);
+	FVoxelToolRenderingManager() = default;
+	~FVoxelToolRenderingManager() = default;
 
-	FVoxelToolRenderingId CreateTool(bool bEnabled = false);
-	void RemoveTool(FVoxelToolRenderingId Id);
-	bool IsValidTool(FVoxelToolRenderingId Id) const;
-	void EditTool(FVoxelToolRenderingId Id, TFunctionRef<void(FVoxelToolRendering&)> Lambda);
-
-	void IterateTools(TFunctionRef<void(const FVoxelToolRendering&)> Lambda) const;
-
-	const TArray<TVoxelSharedPtr<const FVoxelMaterialInterface>>& GetToolsMaterials() const
+	inline FVoxelToolRenderingId CreateTool(bool bEnabled = false)
+	{
+		FScopeLock Lock(&Section);
+		return Tools.Add({ bEnabled });
+	}
+	inline void RemoveTool(FVoxelToolRenderingId Id)
+	{
+		FScopeLock Lock(&Section);
+		if (!ensure(Tools.IsValidIndex(Id))) return;
+		Tools.RemoveAt(Id);
+		RecomputeToolsMaterials();
+	}
+	template<typename T>
+	inline void EditTool(FVoxelToolRenderingId Id, T Lambda)
+	{
+		FScopeLock Lock(&Section);
+		if (!ensure(Tools.IsValidIndex(Id))) return;
+		Lambda(Tools[Id]);
+		RecomputeToolsMaterials();
+	}
+	inline bool IsValidTool(FVoxelToolRenderingId Id) const
+	{
+		FScopeLock Lock(&Section);
+		return Tools.IsValidIndex(Id);
+	}
+	template<typename T>
+	inline void IterateTools(T Lambda) const
+	{
+		FScopeLock Lock(&Section);
+		for (auto& Tool : Tools)
+		{
+			Lambda(Tool);
+		}
+	}
+	inline const TArray<TVoxelSharedPtr<const FVoxelMaterialInterface>>& GetToolsMaterials() const
 	{
 		check(IsInGameThread());
 		return ToolsMaterials;
@@ -49,5 +69,16 @@ private:
 	TVoxelTypedSparseArray<FVoxelToolRenderingId, FVoxelToolRendering> Tools;
 	TArray<TVoxelSharedPtr<const FVoxelMaterialInterface>> ToolsMaterials;
 
-	void RecomputeToolsMaterials_AssumeLocked();
+	inline void RecomputeToolsMaterials()
+	{
+		check(IsInGameThread());
+		ToolsMaterials.Reset();
+		for (auto& Tool : Tools)
+		{
+			if (Tool.Material.IsValid())
+			{
+				ToolsMaterials.Add(Tool.Material);
+			}
+		}
+	}
 };

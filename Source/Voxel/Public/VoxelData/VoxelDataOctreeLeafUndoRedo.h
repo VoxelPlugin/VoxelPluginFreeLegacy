@@ -1,11 +1,11 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "VoxelContainers/VoxelStaticBitArray.h"
+#include "VoxelContainers/VoxelStaticArray.h"
 #include "VoxelUtilities/VoxelMiscUtilities.h"
 
 class IVoxelData;
@@ -64,7 +64,7 @@ public:
 		auto& AlreadyModifiedT = FVoxelUtilities::TValuesMaterialsSelector<T>::Get(AlreadyModified);
 		if (!AlreadyModifiedT.Test(Index))
 		{
-			AlreadyModifiedT.Set(Index, true);
+			AlreadyModifiedT.Set(Index);
 			FVoxelUtilities::TValuesMaterialsSelector<T>::Get(*CurrentFrame).Emplace(Index, Value);
 		}
 	}

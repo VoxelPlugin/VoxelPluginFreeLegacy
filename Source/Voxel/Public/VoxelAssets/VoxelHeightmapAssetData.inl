@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -139,10 +139,10 @@ TVoxelRange<T> TVoxelHeightmapAssetData<T>::GetHeightRange(TVoxelRange<int64> X,
 
 	const int64 MaxSize = FMath::Max(SizeX, SizeY);
 
-	int64 Mip = FVoxelUtilities::GetDepthFromSize(MipChunkSize, MaxSize);
+	int64 Mip = FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(MaxSize);
 	Mip = FMath::Clamp<int64>(Mip, 0, GetNumHeightRangeMips() - 1);
 
-	const int64 MipPixelSize = MipChunkSize << Mip;
+	const int64 MipPixelSize = RENDER_CHUNK_SIZE << Mip;
 
 	const int64 LocalMinX = FVoxelUtilities::DivideFloor(MinX, MipPixelSize);
 	const int64 LocalMinY = FVoxelUtilities::DivideFloor(MinY, MipPixelSize);
@@ -197,7 +197,7 @@ FORCEINLINE void TVoxelHeightmapAssetData<T>::GetHeightRangeLocalCoordinates(int
 	checkVoxelSlow(IsValidIndex(X, Y));
 	checkVoxelSlow(HeightRangeMips.IsValidIndex(Mip));
 
-	const int64 BaseMipDepth = FVoxelUtilities::IntLog2(MipChunkSize);
+	constexpr int64 BaseMipDepth = FVoxelUtilities::IntLog2(RENDER_CHUNK_SIZE);
 	const int64 MipDepth = BaseMipDepth + Mip;
 
 	// Find the mip coordinates by dividing and flooring
@@ -229,13 +229,13 @@ void TVoxelHeightmapAssetData<T>::FixHeightRangeLocalCoordinates(int64 Mip, int6
 template<typename T>
 void TVoxelHeightmapAssetData<T>::InitializeHeightRangeMips()
 {
-	const int64 NumHeightRangeMips = 1 + FVoxelUtilities::GetDepthFromSize(MipChunkSize, FMath::Max(Width, Height));
+	const int64 NumHeightRangeMips = 1 + FVoxelUtilities::GetDepthFromSize<RENDER_CHUNK_SIZE>(FMath::Max(Width, Height));
 	check(NumHeightRangeMips >= 1);
 
 	HeightRangeMips.Empty();
 	for (int64 MipIndex = 0; MipIndex < NumHeightRangeMips; MipIndex++)
 	{
-		const int64 MipPixelSize = MipChunkSize << MipIndex;
+		const int64 MipPixelSize = RENDER_CHUNK_SIZE << MipIndex;
 
 		TVoxelRange<T> Range;
 		Range.Min = PositiveInfinity<T>();

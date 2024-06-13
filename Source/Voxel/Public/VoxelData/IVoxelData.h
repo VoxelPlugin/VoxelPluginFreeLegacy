@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -21,16 +21,13 @@ public:
 
 	const FDataOctreeMemory& GetCachedMemory() const { return CachedMemory; }
 	const FDataOctreeMemory& GetDirtyMemory() const { return DirtyMemory; }
-	int64 GetCustomChannelsMemory() const { return CustomChannelsMemory.GetValue(); }
 	
 private:
 	mutable FDataOctreeMemory CachedMemory{};
 	mutable FDataOctreeMemory DirtyMemory{};
-	mutable FThreadSafeCounter64 CustomChannelsMemory;
 	
 	template<typename>
 	friend struct TVoxelDataOctreeLeafMemoryUsage;
-	friend class FVoxelDataOctreeLeafCustomChannels;
 };
 
 class IVoxelData : public IVoxelDataOctreeMemory

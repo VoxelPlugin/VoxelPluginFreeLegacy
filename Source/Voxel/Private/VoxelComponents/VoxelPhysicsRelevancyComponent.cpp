@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelComponents/VoxelPhysicsRelevancyComponent.h"
 #include "VoxelRender/IVoxelLODManager.h"
@@ -57,8 +57,8 @@ void UVoxelPhysicsRelevancyComponent::TickComponent(float DeltaTime, ELevelTick 
 		if (World->IsCreated())
 		{
 			auto LocalPosition = World->GlobalToLocal(Position);
-			auto& LODManager = World->GetSubsystemChecked<IVoxelLODManager>();
-			if (LODManager.Settings.GetWorldBounds().Contains(LocalPosition))
+			auto& LODManager = World->GetLODManager();
+			if (LODManager.Settings.WorldBounds.Contains(LocalPosition))
 			{
 				uint8 LOD;
 				if (LODManager.AreCollisionsEnabled(LocalPosition, LOD) && LOD <= MaxVoxelChunksLODForPhysics)

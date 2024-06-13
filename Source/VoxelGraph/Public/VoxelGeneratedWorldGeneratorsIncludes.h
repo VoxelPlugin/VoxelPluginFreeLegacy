@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -18,10 +18,8 @@
 #include "NodeFunctions/VoxelNodeFunctions.h"
 #include "NodeFunctions/VoxelSDFNodeFunctions.h"
 #include "NodeFunctions/VoxelMathNodeFunctions.h"
-#include "NodeFunctions/VoxelFoliageNodeFunctions.h"
 #include "NodeFunctions/VoxelDeprecatedNodeFunctions.h"
 #include "NodeFunctions/VoxelPlaceableItemsNodeFunctions.h"
-#include "NodeFunctions/VoxelGeneratorVariableHelper.h"
 
 #include "VoxelContext.h"
 #include "VoxelMessages.h"

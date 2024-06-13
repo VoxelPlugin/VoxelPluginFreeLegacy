@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 using System.IO;
 using UnrealBuildTool;
@@ -8,10 +8,11 @@ public class VoxelEditor : ModuleRules
     public VoxelEditor(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
+		CppStandard = CppStandardVersion.Cpp17;
 
 #if UE_4_24_OR_LATER
+        bUseUnity = true;
 #else
 #endif
 
@@ -26,19 +27,15 @@ public class VoxelEditor : ModuleRules
                 "AssetRegistry",
             });
 
-        PublicDependencyModuleNames.AddRange(
+        PrivateDependencyModuleNames.AddRange(
             new string[] {
                 "Core",
                 "CoreUObject",
                 "Engine",
-            });
-
-        PrivateDependencyModuleNames.AddRange(
-            new string[] {
                 "Voxel",
                 "VoxelGraph",
-                "VoxelFoliage",
                 "VoxelEditorDefault",
+                "Engine",
                 "Landscape",
                 "LandscapeEditor",
                 "PlacementMode",
@@ -61,10 +58,7 @@ public class VoxelEditor : ModuleRules
                 "KismetCompiler",
                 "ApplicationCore",
                 "EngineSettings",
-                "ToolMenus",
-#if UE_5_0_OR_LATER
                 "EditorFramework",
-#endif
 #if UE_4_26_OR_LATER
                 "DeveloperSettings",
 #endif

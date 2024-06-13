@@ -1,18 +1,15 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
-#include "VoxelRange.h"
 #include "VoxelValue.h"
 #include "VoxelMaterial.h"
-#include "VoxelItemStack.h"
 
 class FVoxelData;
 class FVoxelDataOctreeLeaf;
 class FVoxelDataOctreeBase;
-class FVoxelGeneratorInstance;
 
 namespace FVoxelDataAcceleratorParameters
 {
@@ -44,19 +41,7 @@ public:
 
 public:
 	template<typename T>
-	T GetCustomOutput(
-		T DefaultValue,
-		FName Name,
-		v_flt X, v_flt Y, v_flt Z,
-		int32 LOD,
-		const FVoxelGeneratorQueryData& QueryData = FVoxelGeneratorQueryData::Empty,
-		const FVoxelGeneratorInstance* GeneratorOverride = nullptr) const;
-
-	template<typename T>
-	FORCEINLINE v_flt GetCustomOutput(T DefaultValue, FName Name, const FVoxelVector& P, int32 LOD) const
-	{
-		return GetCustomOutput(DefaultValue, Name, P.X, P.Y, P.Z, LOD);
-	}
+	T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
 
 public:
 	v_flt GetFloatValue(v_flt X, v_flt Y, v_flt Z, int32 LOD, bool* bIsGeneratorValue = nullptr) const;
@@ -154,7 +139,11 @@ private:
 #endif
 
 	using FAcceleratorMap = TMap<FIntVector, FVoxelDataOctreeLeaf*>;
+#if VOXEL_ENGINE_VERSION >= 504
+	using FConstAcceleratorMap = typename std::conditional_t<bIsConst, const FAcceleratorMap, FAcceleratorMap>;
+#else
 	using FConstAcceleratorMap = typename TChooseClass<bIsConst, const FAcceleratorMap, FAcceleratorMap>::Result;
+#endif
 	
 	// Map from Leaf.GetMin() to &Leaf
 	const TVoxelSharedPtr<FConstAcceleratorMap> AcceleratorMap;

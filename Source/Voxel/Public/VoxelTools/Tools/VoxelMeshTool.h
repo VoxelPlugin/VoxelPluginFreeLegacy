@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -17,11 +17,11 @@ class VOXEL_API UVoxelMeshTool : public UVoxelToolWithAlignment
 
 public:
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UMaterialInterface* ToolMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> ToolMaterial = nullptr;
 	
 public:
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
-	UStaticMesh* Mesh = nullptr;
+	TObjectPtr<UStaticMesh> Mesh = nullptr;
 
 	// Relative to the radius
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (UIMin=0, UIMax=1))
@@ -60,7 +60,7 @@ public:
 	bool bPaint = true;
 
 	// Use to restrict editing on some channels
-	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint", Bitmask, BitmaskEnum = EVoxelMaterialMask_BP))
+	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint", Bitmask, BitmaskEnum = "/Script/Voxel.EVoxelMaterialMask_BP"))
 	int32 PaintMask = EVoxelMaterialMask::All;
 	
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint", ShowForMaterialConfigs = "RGB, SingleIndex"))
@@ -72,7 +72,7 @@ public:
 	bool bImportColorsFromMesh = true;
 	
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp && bPaintColors && bImportColorsFromMesh", ShowForMaterialConfigs = "RGB, SingleIndex"))
-	UMaterialInterface* ColorsMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> ColorsMaterial = nullptr;
 
 	// Used if bImportColorsFromMesh = false
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && bPaintColors", ShowForMaterialConfigs = "RGB, SingleIndex"))
@@ -87,7 +87,7 @@ public:
 	bool bImportUVsFromMesh = true;
 	
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp && bPaintUVs", ShowForMaterialConfigs = "RGB, SingleIndex"))
-	UMaterialInterface* UVsMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> UVsMaterial = nullptr;
 
 	// Used if bImportUVsFromMesh = false
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && bPaintUVs", ShowForMaterialConfigs = "RGB, SingleIndex"))
@@ -105,11 +105,11 @@ public:
 
 	// For debug
 	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, VisibleAnywhere, BlueprintReadOnly, Transient, meta = (ShowForMaterialConfigs = "RGB, SingleIndex"))
-	UTextureRenderTarget2D* UVsRenderTarget = nullptr;
+	TObjectPtr<UTextureRenderTarget2D> UVsRenderTarget = nullptr;
 
 	// For debug
 	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, VisibleAnywhere, BlueprintReadOnly, Transient, meta = (ShowForMaterialConfigs = "RGB, SingleIndex"))
-	UTextureRenderTarget2D* ColorsRenderTarget = nullptr;
+	TObjectPtr<UTextureRenderTarget2D> ColorsRenderTarget = nullptr;
 
 	UPROPERTY(Category = "Paint Settings", AdvancedDisplay, EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint && !bSmoothImport && !bProgressiveStamp"), meta = (ShowForMaterialConfigs = "RGB, SingleIndex"))
 	int32 RenderTargetSize = 4096;
@@ -176,7 +176,7 @@ private:
 		FVoxelMeshImporterSettingsBase ImporterSettings;
 		
 		TArray<float> Data;
-		TArray<FVector> SurfacePositions;
+		TArray<FVector3f> SurfacePositions;
 		FIntVector Size;
 		FIntVector PositionOffset = FIntVector::ZeroValue;
 	};

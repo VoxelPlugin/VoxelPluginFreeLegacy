@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGenerators/VoxelGeneratorTools.h"
 #include "VoxelGenerators/VoxelGenerator.h"
@@ -20,7 +20,7 @@ UVoxelGeneratorInstanceWrapper* UVoxelGeneratorTools::MakeGeneratorInstance(FVox
 	}
 
 	auto* Instance = NewObject<UVoxelGeneratorInstanceWrapper>();
-	Instance->Instance = GeneratorPicker.GetInstance();
+	Instance->Instance = GeneratorPicker.GetInstance(true);
 	Instance->Instance->Init(GeneratorInit);
 	return Instance;
 }
@@ -34,7 +34,7 @@ UVoxelTransformableGeneratorInstanceWrapper* UVoxelGeneratorTools::MakeTransform
 	}
 
 	auto* Instance = NewObject<UVoxelTransformableGeneratorInstanceWrapper>();
-	Instance->Instance = GeneratorPicker.GetInstance();
+	Instance->Instance = GeneratorPicker.GetInstance(true);
 	Instance->Instance->Init(GeneratorInit);
 	return Instance;
 }
@@ -43,7 +43,7 @@ UVoxelTransformableGeneratorInstanceWrapper* UVoxelGeneratorTools::MakeTransform
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-bool UVoxelGeneratorTools::SetGeneratorParameterImpl(FVoxelGeneratorPicker& Picker, FName Name, FProperty& Property, void* Data, const FString& FunctionName)
+bool UVoxelGeneratorTools::SetGeneratorParameterImpl(TVoxelGeneratorPicker<UVoxelGenerator>& Picker, FName Name, FProperty& Property, void* Data, const FString& FunctionName)
 {
 	if (!CheckIsValidParameterName(Picker, Name, Property, FunctionName))
 	{
@@ -51,14 +51,14 @@ bool UVoxelGeneratorTools::SetGeneratorParameterImpl(FVoxelGeneratorPicker& Pick
 	}
 
 	FString Result;
-	Property.ExportTextItem(Result, Data, nullptr, nullptr, PPF_None);
+	Property.ExportTextItem_Direct(Result, Data, nullptr, nullptr, PPF_None);
 	Picker.Parameters.Add(Name, Result);
 	
 	return true;
 }
 
 bool UVoxelGeneratorTools::CheckIsValidParameterName(
-	FVoxelGeneratorPicker GeneratorPicker,
+	TVoxelGeneratorPicker<UVoxelGenerator> GeneratorPicker,
 	FName Name,
 	FProperty& Property,
 	const FString& FunctionName)
@@ -69,7 +69,8 @@ bool UVoxelGeneratorTools::CheckIsValidParameterName(
 		return false;
 	}
 
-	const TArray<FVoxelGeneratorParameter> Parameters = GeneratorPicker.GetGenerator()->GetParameters();
+	TArray<FVoxelGeneratorParameter> Parameters;
+	GeneratorPicker.GetGenerator()->GetParameters(Parameters);
 
 	const FVoxelGeneratorParameterType Type(Property);
 	for (auto& It : Parameters)
@@ -124,7 +125,11 @@ TVoxelTexture<T> UVoxelGeneratorTools::CreateTextureFromGeneratorImpl(
 	VOXEL_TOOL_FUNCTION_COUNTER(Size.X * Size.Y);
 	check(Size.X > 0 && Size.Y > 0);
 
-	using TGeneratorType = typename TChooseClass<TIsSame<T, float>::Value, v_flt, T>::Result;
+#if VOXEL_ENGINE_VERSION >= 504
+	using TGeneratorType = typename std::conditional_t<std::is_same_v<T, float>, v_flt, T>;
+#else
+	using TGeneratorType = typename TChooseClass<std::is_same_v<T, float>, v_flt, T>::Result;
+#endif
 	
 	const auto FunctionPtr = Generator.GetOutputsPtrMap<TGeneratorType>().FindRef(OutputName);
 	if (!ensure(FunctionPtr)) return {};
@@ -181,7 +186,11 @@ TVoxelSharedPtr<FVoxelGeneratorInstance> SetupGenerator(
 		return {};
 	}
 
-	using TGeneratorType = typename TChooseClass<TIsSame<T, float>::Value, v_flt, T>::Result;
+#if VOXEL_ENGINE_VERSION >= 504
+	using TGeneratorType = typename std::conditional_t<std::is_same_v<T, float>, v_flt, T>;
+#else
+	using TGeneratorType = typename TChooseClass<std::is_same_v<T, float>, v_flt, T>::Result;
+#endif
 
 	if (!Generator->Instance->GetOutputsPtrMap<TGeneratorType>().Contains(OutputName))
 	{
@@ -211,7 +220,7 @@ void UVoxelGeneratorTools::CreateFloatTextureFromGenerator(
 	const auto Instance = SetupGenerator<float>(__FUNCTION__, Generator, OutputName, SizeX, SizeY);
 	if (!Instance) return;
 
-	OutTexture = CreateTextureFromGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+	OutTexture.Texture = CreateTextureFromGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 }
 
 void UVoxelGeneratorTools::CreateFloatTextureFromGeneratorAsync(
@@ -240,7 +249,7 @@ void UVoxelGeneratorTools::CreateFloatTextureFromGeneratorAsync(
 		OutTexture,
 		[=](FVoxelFloatTexture& Texture)
 		{
-			Texture = CreateTextureFromGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+			Texture.Texture = CreateTextureFromGeneratorImpl<float>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 		});
 }
 
@@ -263,7 +272,7 @@ void UVoxelGeneratorTools::CreateColorTextureFromGenerator(
 	const auto Instance = SetupGenerator<FColor>(__FUNCTION__, Generator, OutputName, SizeX, SizeY);
 	if (!Instance) return;
 
-	OutTexture = CreateTextureFromGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+	OutTexture.Texture = CreateTextureFromGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 }
 
 void UVoxelGeneratorTools::CreateColorTextureFromGeneratorAsync(
@@ -292,6 +301,6 @@ void UVoxelGeneratorTools::CreateColorTextureFromGeneratorAsync(
 		OutTexture,
 		[=](FVoxelColorTexture& Texture)
 		{
-			Texture = CreateTextureFromGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
+			Texture.Texture = CreateTextureFromGeneratorImpl<FColor>(*Instance, OutputName, FIntPoint(StartX, StartY), FIntPoint(SizeX, SizeY), Scale);
 		});
 }

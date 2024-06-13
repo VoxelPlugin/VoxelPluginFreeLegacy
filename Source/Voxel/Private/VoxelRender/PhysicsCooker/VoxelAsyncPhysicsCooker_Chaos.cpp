@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/PhysicsCooker/VoxelAsyncPhysicsCooker_Chaos.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
@@ -6,7 +6,6 @@
 
 #include "PhysicsEngine/BodySetup.h"
 
-#if WITH_CHAOS
 #include "Chaos/ImplicitObject.h"
 #include "Chaos/CollisionConvexMesh.h"
 #include "Chaos/TriangleMeshImplicitObject.h"
@@ -16,10 +15,7 @@ FVoxelAsyncPhysicsCooker_Chaos::FVoxelAsyncPhysicsCooker_Chaos(UVoxelProceduralM
 {
 }
 
-bool FVoxelAsyncPhysicsCooker_Chaos::Finalize(
-	UBodySetup& BodySetup,
-	TVoxelSharedPtr<FVoxelSimpleCollisionData>& OutSimpleCollisionData,
-	FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage)
+bool FVoxelAsyncPhysicsCooker_Chaos::Finalize(UBodySetup& BodySetup, FVoxelProceduralMeshComponentMemoryUsage& OutMemoryUsage)
 {
 #if TRACK_CHAOS_GEOMETRY
 	for (auto& TriMesh : TriMeshes)
@@ -33,8 +29,12 @@ bool FVoxelAsyncPhysicsCooker_Chaos::Finalize(
 	{
 		TriMesh->SetDoCollide(false);
 	}
-	
+
+#if VOXEL_ENGINE_VERSION >= 504
+	BodySetup.TriMeshGeometries = MoveTemp(TriMeshes);
+#else
 	BodySetup.ChaosTriMeshes = MoveTemp(TriMeshes);
+#endif
 	BodySetup.bCreatedPhysicsMeshes = true;
 
 	return true;
@@ -70,7 +70,7 @@ void FVoxelAsyncPhysicsCooker_Chaos::CreateTriMesh()
 
 	const auto Process = [&](auto& Triangles)
 	{
-		Chaos::FTriangleMeshImplicitObject::ParticlesType Particles;
+		Chaos::TParticles<Chaos::FRealSingle, 3> Particles;
 
 		{
 			VOXEL_ASYNC_SCOPE_COUNTER("Copy data from buffers");
@@ -96,7 +96,11 @@ void FVoxelAsyncPhysicsCooker_Chaos::CreateTriMesh()
 					auto& PositionBuffer = Buffer.VertexBuffers.PositionVertexBuffer;
 					for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
 					{
+#if VOXEL_ENGINE_VERSION >= 504
+						Particles.SetX(VertexIndex++, PositionBuffer.VertexPosition(Index));
+#else
 						Particles.X(VertexIndex++) = PositionBuffer.VertexPosition(Index);
+#endif
 					}
 				}
 
@@ -122,12 +126,19 @@ void FVoxelAsyncPhysicsCooker_Chaos::CreateTriMesh()
 
 							FVoxelUtilities::Get(Triangles, IndexIndex++) = Triangle;
 
-	#if VOXEL_DEBUG
+#if VOXEL_DEBUG
+#if VOXEL_ENGINE_VERSION >= 504
+							const auto A = Particles.GetX(Triangle.X);
+							const auto B = Particles.GetX(Triangle.Y);
+							const auto C = Particles.GetX(Triangle.Z);
+#else
+
 							const auto A = Particles.X(Triangle.X);
 							const auto B = Particles.X(Triangle.Y);
 							const auto C = Particles.X(Triangle.Z);
+#endif
 							ensure(Chaos::FConvexBuilder::IsValidTriangle(A, B, C));
-	#endif
+#endif
 						}
 					};
 					if (IndexBuffer.Is32Bit())
@@ -152,13 +163,12 @@ void FVoxelAsyncPhysicsCooker_Chaos::CreateTriMesh()
 	
 	if (NumVertices < TNumericLimits<uint16>::Max())
 	{
-		TArray<Chaos::TVec3<uint16>> TrianglesSmallIdx;
+		TArray<Chaos::TVector<uint16, 3>> TrianglesSmallIdx;
 		Process(TrianglesSmallIdx);
 	}
 	else
 	{
-		TArray<Chaos::TVec3<int32>> TrianglesLargeIdx;
+		TArray<Chaos::TVector<int32, 3>> TrianglesLargeIdx;
 		Process(TrianglesLargeIdx);
 	}
 }
-#endif

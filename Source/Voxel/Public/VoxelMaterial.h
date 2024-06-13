@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -146,8 +146,8 @@ public:
 	template<typename X> \
 	FORCEINLINE void Set##Name(X New##Name) \
 	{ \
-		static_assert(!TIsSame<X, float>::Value, PREPROCESSOR_TO_STRING(Set##Name) ": need to use " PREPROCESSOR_TO_STRING(Set##Name##_AsFloat)); \
-		static_assert(TIsSame<X, float>::Value, PREPROCESSOR_TO_STRING(Set##Name) ": need to cast to float, uint8 or int32"); \
+		static_assert(!std::is_same_v<X, float>, PREPROCESSOR_TO_STRING(Set##Name) ": need to use " PREPROCESSOR_TO_STRING(Set##Name##_AsFloat)); \
+		static_assert(std::is_same_v<X, float>, PREPROCESSOR_TO_STRING(Set##Name) ": need to cast to float, uint8 or int32"); \
 	} \
 	FORCEINLINE uint8 Get##Name() const { return static_cast<const T&>(*this).Impl_Get##Name(); } \
 	FORCEINLINE float Get##Name##_AsFloat() const { return FVoxelUtilities::UINT8ToFloat(static_cast<const T&>(*this).Impl_Get##Name()); }
@@ -207,8 +207,8 @@ public:
 	template<typename X> \
 	FORCEINLINE void Set##Name(X New##Name) \
 	{ \
-		static_assert(!TIsSame<X, float>::Value, PREPROCESSOR_TO_STRING(Set##Name) ": need to use " PREPROCESSOR_TO_STRING(Set##Name##_AsFloat)); \
-		static_assert(TIsSame<X, float>::Value, PREPROCESSOR_TO_STRING(Set##Name) ": need to cast to float, uint8 or int32"); \
+		static_assert(!std::is_same_v<X, float>, PREPROCESSOR_TO_STRING(Set##Name) ": need to use " PREPROCESSOR_TO_STRING(Set##Name##_AsFloat)); \
+		static_assert(std::is_same_v<X, float>, PREPROCESSOR_TO_STRING(Set##Name) ": need to cast to float, uint8 or int32"); \
 	} \
 	FORCEINLINE uint8 Get##Name() const { return Get##Forward(); } \
 	FORCEINLINE float Get##Name##_AsFloat() const { return Get##Forward##_AsFloat(); }
@@ -224,6 +224,16 @@ public:
 	DEFINE_FORWARD(MultiIndex_Index2, U1)
 	DEFINE_FORWARD(MultiIndex_Index3, V1)
 #undef DEFINE_FORWARD
+
+public:
+	FORCEINLINE uint32 GetPackedColor() const
+	{
+		return
+			(uint32(GetR()) <<  0) |
+			(uint32(GetG()) <<  8) |
+			(uint32(GetB()) << 16) |
+			(uint32(GetA()) << 24);
+	}
 
 public:
 	FORCEINLINE void SetColor(const FColor& Color)
@@ -279,43 +289,6 @@ public:
 	}
 
 public:
-	FORCEINLINE bool CubicColor_IsUsingTexture() const
-	{
-		// A = 255 is used as a flag to not use texture data
-		return GetA() != 255;
-	}
-	FORCEINLINE void CubicColor_SetUseTextureFalse()
-	{
-		SetA(255);
-	}
-	
-	FORCEINLINE int32 CubicColor_GetTextureDataIndex() const
-	{
-		return
-			(uint32(GetR()) << 0) |
-			(uint32(GetG()) << 8) |
-			(uint32(GetB()) << 16);
-	}
-	FORCEINLINE void CubicColor_SetTextureDataIndex(int32 Index)
-	{
-		SetR((Index >> 0) & 0xFF);
-		SetG((Index >> 8) & 0xFF);
-		SetB((Index >> 16) & 0xFF);
-		ensureVoxelSlow(CubicColor_GetTextureDataIndex() == Index);
-	}
-	
-	FORCEINLINE int32 CubicColor_GetQuadWidth() const
-	{
-		ensureVoxelSlow(GetA() != 255);
-		return GetA();
-	}
-	FORCEINLINE void CubicColor_SetQuadWidth(int32 Index)
-	{
-		SetA(FVoxelUtilities::ClampToUINT8(Index));
-		ensureVoxelSlow(CubicColor_GetQuadWidth() == Index);
-	}
-
-public:
 	FORCEINLINE static T CreateFromColor(const FLinearColor& Color)
 	{
 		T Material(ForceInit);
@@ -327,6 +300,25 @@ public:
 		T Material(ForceInit);
 		Material.SetColor(Color);
 		return Material;
+	}
+
+public:
+	FORCEINLINE void CopyFrom(const T& Other, uint32 Mask)
+	{
+		if (Mask & EVoxelMaterialMask::R) SetR(Other.GetR());
+		if (Mask & EVoxelMaterialMask::G) SetG(Other.GetG());
+		if (Mask & EVoxelMaterialMask::B) SetB(Other.GetB());
+		if (Mask & EVoxelMaterialMask::A) SetA(Other.GetA());
+
+		if (Mask & EVoxelMaterialMask::U0) SetU0(Other.GetU0());
+		if (Mask & EVoxelMaterialMask::U1) SetU1(Other.GetU1());
+		if (Mask & EVoxelMaterialMask::U2) SetU2(Other.GetU2());
+		if (Mask & EVoxelMaterialMask::U3) SetU3(Other.GetU3());
+
+		if (Mask & EVoxelMaterialMask::V0) SetV0(Other.GetV0());
+		if (Mask & EVoxelMaterialMask::V1) SetV1(Other.GetV1());
+		if (Mask & EVoxelMaterialMask::V2) SetV2(Other.GetV2());
+		if (Mask & EVoxelMaterialMask::V3) SetV3(Other.GetV3());
 	}
 
 public:
@@ -513,17 +505,6 @@ public:
 	FORCEINLINE T operator[](int32 Channel) const
 	{
 		return GetRaw(Channel);
-	}
-
-	FORCEINLINE void CopyFrom(const TVoxelMaterialStorage<T>& Other, uint32 Mask)
-	{
-		for (int32 Channel = 0; Channel < NumChannels; Channel++)
-		{
-			if (Mask & (1 << Channel))
-			{
-				GetRaw(Channel) = Other.GetRaw(Channel);
-			}
-		}
 	}
 
 public:

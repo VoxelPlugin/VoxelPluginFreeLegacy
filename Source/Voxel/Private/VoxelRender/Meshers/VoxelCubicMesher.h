@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,7 +8,7 @@
 #include "VoxelData/VoxelDataAccelerator.h"
 #include "VoxelRender/Meshers/VoxelMesher.h"
 
-#define CUBIC_CHUNK_SIZE_WITH_NEIGHBORS (MESHER_CHUNK_SIZE + 2)
+#define CUBIC_CHUNK_SIZE_WITH_NEIGHBORS (RENDER_CHUNK_SIZE + 2)
 
 class FVoxelCubicMesher : public FVoxelMesher
 {
@@ -23,7 +23,7 @@ protected:
 	
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
-	TVoxelValueStaticArray<CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS> CachedValues;
+	TVoxelStaticArray<FVoxelValue, CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS * CUBIC_CHUNK_SIZE_WITH_NEIGHBORS> CachedValues;
 
 private:
 	template<typename T>

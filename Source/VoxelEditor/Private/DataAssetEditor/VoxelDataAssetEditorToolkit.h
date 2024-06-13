@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -52,6 +52,7 @@ public:
 
 	//~ Begin FGCObject interface
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
+	virtual FString GetReferencerName() const override { return "FVoxelDataAssetEditorToolkit"; }
 	//~ End FGCObject interface
 	
 	//~ Begin FNotifyHook interface
@@ -77,7 +78,7 @@ private:
 
 private:
 	// The Voxel asset being inspected
-	UVoxelDataAsset* DataAsset = nullptr;
+	TObjectPtr<UVoxelDataAsset> DataAsset = nullptr;
 	
 	// Manager, handles the voxel world
 	TUniquePtr<FVoxelDataAssetEditorManager> Manager;

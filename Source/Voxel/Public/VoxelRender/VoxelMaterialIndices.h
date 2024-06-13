@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -12,12 +12,11 @@ struct FVoxelMaterialIndices
 	GENERATED_BODY()
 	
 	uint8 NumIndices = 0;
-	uint8 CubicFace = 0;
 	TVoxelStaticArray<uint8, 6> SortedIndices;
 
 	FVoxelMaterialIndices() = default;
 
-	FString ToString() const
+	inline FString ToString() const
 	{
 		FString Result;
 		for (int32 Index = 0; Index < NumIndices; Index++)
@@ -27,15 +26,10 @@ struct FVoxelMaterialIndices
 		}
 		return Result;
 	}
-	TArray<uint8> ToArray() const
-	{
-		return TArray<uint8>(SortedIndices.GetData(), NumIndices);
-	}
 
-	bool operator==(const FVoxelMaterialIndices& Other) const
+	inline bool operator==(const FVoxelMaterialIndices& Other) const
 	{
 		if (NumIndices != Other.NumIndices) return false;
-		if (CubicFace != Other.CubicFace) return false;
 		for (int32 Index = 0; Index < NumIndices; Index++)
 		{
 			if (SortedIndices[Index] != Other.SortedIndices[Index]) return false;
@@ -46,7 +40,7 @@ struct FVoxelMaterialIndices
 
 inline uint32 GetTypeHash(const FVoxelMaterialIndices& Indices)
 {
-	uint32 Hash = HashCombine(GetTypeHash(Indices.NumIndices), GetTypeHash(Indices.CubicFace));
+	uint32 Hash = GetTypeHash(Indices.NumIndices);
 	for (int32 Index = 0; Index < Indices.NumIndices; Index++)
 	{
 		Hash = HashCombine(Hash, GetTypeHash(Indices.SortedIndices[Index]));

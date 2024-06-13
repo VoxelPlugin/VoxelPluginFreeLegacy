@@ -1,8 +1,9 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "VoxelMinimal.h"
+#include "PrimitiveSceneProxy.h"
 #include "Components/LineBatchComponent.h"
 #include "VoxelLineBatchComponent.generated.h"
 
@@ -13,11 +14,11 @@ class VOXEL_API UVoxelLineBatchComponent : public UPrimitiveComponent
 
 public:
 	// Buffer of lines to draw. No support for depth priority
-	TArray<FBatchedLine> BatchedLines;
+	TArray<struct FBatchedLine> BatchedLines;
 	// Buffer or points to draw
-	TArray<FBatchedPoint> BatchedPoints;
+	TArray<struct FBatchedPoint> BatchedPoints;
 	// Buffer of simple meshes to draw
-	TArray<FBatchedMesh> BatchedMeshes;
+	TArray<struct FBatchedMesh> BatchedMeshes;
 	
 	// Default time that lines/points will draw for
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
@@ -29,18 +30,15 @@ public:
 
 	UVoxelLineBatchComponent();
 
-	//~ Begin UPrimitiveComponent Interface
+	//~ Begin UPrimitiveComponent Interface.
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
-#if WITH_EDITOR
-	virtual bool IgnoreBoundsForEditorFocus() const override { return true; }
-#endif
-	//~ End UPrimitiveComponent Interface
+	//~ End UPrimitiveComponent Interface.
 
-	//~ Begin UActorComponent Interface
+	//~ Begin UActorComponent Interface.
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void ApplyWorldOffset(const FVector& InOffset, bool bWorldShift) override;
-	//~ End UActorComponent Interface
+	//~ End UActorComponent Interface.
 
 	// Clear all batched lines, points and meshes
 	void Flush();

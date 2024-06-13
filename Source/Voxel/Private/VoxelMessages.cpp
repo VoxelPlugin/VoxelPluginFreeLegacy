@@ -1,8 +1,6 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelMessages.h"
-#include "VoxelMinimal.h"
-
 #include "Logging/MessageLog.h"
 #include "Misc/UObjectToken.h"
 #include "Misc/MessageDialog.h"
@@ -47,12 +45,4 @@ void FVoxelMessages::ShowNotification(const FNotification& Notification)
 	{
 		ShowNotificationDelegate.Broadcast(Notification);
 	}
-}
-
-void FVoxelMessages::ShowNotification(const FString& Text)
-{
-	FNotification Notification;
-	Notification.UniqueId = VOXEL_UNIQUE_ID();
-	Notification.Message = Text;
-	ShowNotification(Notification);
 }

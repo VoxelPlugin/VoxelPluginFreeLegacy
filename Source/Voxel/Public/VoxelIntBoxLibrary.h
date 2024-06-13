@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -92,11 +92,6 @@ public:
 	{
 		return IntBox.ToString();
 	}
-	UFUNCTION(BlueprintPure, meta=(DisplayName = "ToVoxelIntBox (IntVector)", CompactNodeTitle = "->", BlueprintAutocast), Category="Utilities|VoxelIntBox")
-	static FVoxelIntBox Conv_IntVectorToVoxelIntBox(FIntVector Vector)
-	{
-		return FVoxelIntBox(Vector);
-	}
 
 	// From -Radius(included) to Radius(excluded)
 	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")
@@ -133,7 +128,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")
 	static FVector GetCenter(FVoxelIntBox Box)
 	{
-		return Box.GetCenter();
+		return Box.GetCenter().ToFloat();
 	}
 	
 	UFUNCTION(BlueprintPure, Category = "Math|VoxelIntBox")

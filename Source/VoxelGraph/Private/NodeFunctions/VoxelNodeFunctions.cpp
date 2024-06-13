@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "NodeFunctions/VoxelNodeFunctions.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.h"
@@ -420,7 +420,7 @@ TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>> FVoxelNodeFunctions::CreateGene
 	TArray<TVoxelSharedPtr<FVoxelGeneratorInstance>> Result;
 	for (auto& Picker : Generators)
 	{
-		Result.Add(Picker.GetInstance());
+		Result.Add(Picker.GetInstance(true));
 	}
 	if (Result.Num() == 0)
 	{

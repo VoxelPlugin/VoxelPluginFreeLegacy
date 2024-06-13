@@ -1,10 +1,9 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelAssets/VoxelDataAsset.h"
-#include "VoxelAssets/VoxelDataAssetData.inl"
 #include "VoxelGenerators/VoxelGeneratorHelpers.h"
 
 class FVoxelDataAssetInstance : public TVoxelGeneratorInstanceHelper<FVoxelDataAssetInstance, UVoxelDataAsset>
@@ -72,28 +71,7 @@ public:
 			return bSubtractiveAsset ? -1 : 1;
 		}
 	}
-
-	virtual void GetValues(TVoxelQueryZone<FVoxelValue>& QueryZone, int32 LOD, const FVoxelItemStack& Items) const override
-	{
-		for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, X))
-		{
-			for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Y))
-			{
-				for (VOXEL_QUERY_ZONE_ITERATE(QueryZone, Z))
-				{
-					const FVoxelValue Value = Data->GetValue(
-						X - PositionOffset.X,
-						Y - PositionOffset.Y,
-						Z - PositionOffset.Z,
-						bSubtractiveAsset ? FVoxelValue::Full() : FVoxelValue::Empty());
-
-					QueryZone.Set(X, Y, Z, Value);
-				}
-			}
-		}
-	}
-	
-	virtual FVector GetUpVector(v_flt X, v_flt Y, v_flt Z) const override final
+	FVector GetUpVector(v_flt X, v_flt Y, v_flt Z) const override final
 	{
 		return FVector::UpVector;
 	}

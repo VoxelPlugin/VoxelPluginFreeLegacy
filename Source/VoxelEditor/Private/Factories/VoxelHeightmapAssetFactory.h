@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -28,7 +28,7 @@ public:
 	TArray<FVoxelLandscapeImporterLayerInfo> LayerInfos;
 	
 	UPROPERTY()
-	TArray<ULandscapeComponent*> Components;
+	TArray<TObjectPtr<ULandscapeComponent>> Components;
 	
 	UPROPERTY()
 	FVector ActorLocation;

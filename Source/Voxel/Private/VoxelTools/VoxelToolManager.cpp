@@ -1,11 +1,11 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelToolManager.h"
 #include "VoxelTools/Tools/VoxelTool.h"
 
 #include "Engine/Blueprint.h"
 #include "UObject/UObjectHash.h"
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 
 UVoxelToolManager::UVoxelToolManager()
 {
@@ -27,7 +27,7 @@ void UVoxelToolManager::CreateDefaultTools(bool bLoadBlueprints)
 		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 		
 		FARFilter Filter;
-		Filter.ClassNames.Add(UBlueprint::StaticClass()->GetFName());
+		Filter.ClassPaths.Add(UBlueprint::StaticClass()->GetClassPathName());
 
 		for (auto* Class : ToolClasses)
 		{
@@ -97,7 +97,7 @@ void UVoxelToolManager::SetActiveToolByClass(TSubclassOf<UVoxelTool> NewActiveTo
 		return;
 	}
 	
-	for (auto* Tool : Tools)
+	for (UVoxelTool* Tool : Tools)
 	{
 		if (Tool->GetClass() == NewActiveTool)
 		{
@@ -109,7 +109,7 @@ void UVoxelToolManager::SetActiveToolByClass(TSubclassOf<UVoxelTool> NewActiveTo
 
 void UVoxelToolManager::SetActiveToolByName(FName NewActiveTool)
 {
-	for (auto* Tool : Tools)
+	for (UVoxelTool* Tool : Tools)
 	{
 		if (Tool->ToolName == NewActiveTool)
 		{

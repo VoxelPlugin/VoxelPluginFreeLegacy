@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
 
@@ -40,6 +40,16 @@ void UVoxelPlaceableItemManager::DrawDebugPoint(FVector Position, FLinearColor C
 	DebugPoints.Add({ Position, Color });
 }
 
+UVoxelGeneratorCache* UVoxelPlaceableItemManager::GetGeneratorCache() const
+{
+	if (!GeneratorCache)
+	{
+		auto* This = const_cast<UVoxelPlaceableItemManager*>(this);
+		This->GeneratorCache = NewObject<UVoxelGeneratorCache>(This);
+	}
+	return GeneratorCache;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -54,6 +64,12 @@ void UVoxelPlaceableItemManager::Clear()
 	DataItemInfos.Reset();
 	DebugLines.Reset();
 	DebugPoints.Reset();
+
+	if (GeneratorCache && GeneratorCache->GetOuter() == this)
+	{
+		// Only clear if it's our own cache
+		GeneratorCache->ClearCache();
+	}
 
 	OnClear();
 }
@@ -82,28 +98,11 @@ void UVoxelPlaceableItemManager::ApplyToData(
 	}
 }
 
-void UVoxelPlaceableItemManager::SetGeneratorCache(const TVoxelSharedRef<FVoxelGeneratorCache>& NewGeneratorCache)
-{
-	if (!GeneratorCache)
-	{
-		GeneratorCache = NewObject<UVoxelGeneratorCache>(this);
-	}
-	GeneratorCache->GeneratorCache = NewGeneratorCache;
-}
-
-void UVoxelPlaceableItemManager::ResetGeneratorCache()
-{
-	if (GeneratorCache)
-	{
-		GeneratorCache->GeneratorCache = nullptr;
-	}
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelPlaceableItemManager::DrawDebug(const FVoxelCoordinatesProvider& CoordinatesProvider, UVoxelLineBatchComponent& LineBatchComponent)
+void UVoxelPlaceableItemManager::DrawDebug(const IVoxelWorldInterface& VoxelWorldInterface, UVoxelLineBatchComponent& LineBatchComponent)
 {
 	VOXEL_FUNCTION_COUNTER();
 	
@@ -116,7 +115,7 @@ void UVoxelPlaceableItemManager::DrawDebug(const FVoxelCoordinatesProvider& Coor
 
 	const auto GetPosition = [&](const FVector& Position)
 	{
-		return LineBatchComponent.GetComponentTransform().InverseTransformPosition(CoordinatesProvider.LocalToGlobalFloat(Position));
+		return LineBatchComponent.GetComponentTransform().InverseTransformPosition(VoxelWorldInterface.LocalToGlobalFloat(Position));
 	};
 	
 	for (auto& Line : DebugLines)
@@ -145,7 +144,7 @@ void UVoxelPlaceableItemManager::DrawDebug(const FVoxelCoordinatesProvider& Coor
 	{
 		for (auto& Info : DataItemInfos)
 		{
-			UVoxelDebugUtilities::DrawDebugIntBox(CoordinatesProvider, LineBatchComponent, FTransform(), Info.Bounds, Lifetime);
+			UVoxelDebugUtilities::DrawDebugIntBox(VoxelWorldInterface, LineBatchComponent, FTransform(), Info.Bounds, Lifetime);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/Tools/VoxelFlattenTool.h"
 
@@ -115,13 +115,13 @@ FVoxelIntBoxWithValidity UVoxelFlattenTool::DoEdit()
 		LastClickFlattenNormal = FlattenNormal;
 	}
 
-	auto& Data = GetVoxelWorld()->GetSubsystemChecked<FVoxelData>();
+	auto& Data = GetVoxelWorld()->GetData();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
 	CacheData<FVoxelValue>(Data, BoundsToCache);
 	
-	const FVoxelSurfaceEditsVoxels Voxels = UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, SharedConfig->bMultiThreaded, SharedConfig->GetComputeDevice());
+	const FVoxelSurfaceEditsVoxels Voxels = UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, SharedConfig->bMultiThreaded);
 
 	FVoxelSurfaceEditsStack Stack;
 

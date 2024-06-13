@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -14,11 +14,11 @@ struct FVoxelLODMaterialsBase
 	GENERATED_BODY()
 
 	// Inclusive
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26))
 	int32 StartLOD = 0;
 
 	// Inclusive
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 32, UIMin = 0, UIMax = 32))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel", meta = (ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26))
 	int32 EndLOD = 0;
 };
 
@@ -28,7 +28,7 @@ struct FVoxelLODMaterials : public FVoxelLODMaterialsBase
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	UMaterialInterface* Material = nullptr;
+	TObjectPtr<UMaterialInterface> Material = nullptr;
 };
 
 USTRUCT(BlueprintType)
@@ -37,5 +37,5 @@ struct FVoxelLODMaterialCollections : public FVoxelLODMaterialsBase
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	UVoxelMaterialCollectionBase* MaterialCollection = nullptr;
+	TObjectPtr<UVoxelMaterialCollectionBase> MaterialCollection = nullptr;
 };

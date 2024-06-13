@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -11,8 +11,8 @@
  * You can check out his website here: https://dexyfex.com/
  */
 
-#define SN_CHUNK_SIZE (MESHER_CHUNK_SIZE + 1) /* +1 since SN vertices are within cells */
-#define SN_EXTENDED_CHUNK_SIZE (MESHER_CHUNK_SIZE + 3) /* +3 to get parent's outer edge */
+#define SN_CHUNK_SIZE (RENDER_CHUNK_SIZE + 1) /* +1 since SN vertices are within cells */
+#define SN_EXTENDED_CHUNK_SIZE (RENDER_CHUNK_SIZE + 3) /* +3 to get parent's outer edge */
 
 class FVoxelSurfaceNetMesher : public FVoxelMesher
 {
@@ -28,7 +28,7 @@ protected:
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
 
-	TVoxelValueStaticArray<SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE> CachedValues;
+	FVoxelValue CachedValues[SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE];
 	float EdgeFactors[SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * SN_EXTENDED_CHUNK_SIZE * 3]; // edge blending factors for each cell, X,Y,Z
 	uint32 VertexIndices[SN_CHUNK_SIZE * SN_CHUNK_SIZE * SN_CHUNK_SIZE]; // final vertex indices, per voxel. 65535 if no vertex
 	uint8 VertexSNCases[SN_CHUNK_SIZE * SN_CHUNK_SIZE * SN_CHUNK_SIZE]; // surface net voxel cases for each cell

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -96,7 +96,7 @@ public:
 	// This function is only called when a chunk material is edited for the first time. Fine to leave as default
 	virtual void GetMaterials(TVoxelQueryZone<FVoxelMaterial>& QueryZone, int32 LOD, const FVoxelItemStack& Items) const = 0;
 
-	// World up vector at position (must be normalized). Used for foliage
+	// World up vector at position (must be normalized). Used for spawners
 	virtual FVector GetUpVector(v_flt X, v_flt Y, v_flt Z) const = 0;
 	//~ End FVoxelGeneratorInstance Interface
 	

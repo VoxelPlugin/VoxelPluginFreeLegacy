@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -19,7 +19,7 @@ public:
 
 private:
 	UPROPERTY()
-	UVoxelToolSharedConfig* SharedConfig = nullptr;
+	TObjectPtr<UVoxelToolSharedConfig> SharedConfig = nullptr;
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools", meta = (DisplayName = "Get Shared Config"))
@@ -76,8 +76,8 @@ public:
 	
 private:
 	UPROPERTY(Transient)
-	UVoxelTool* ActiveTool = nullptr;
+	TObjectPtr<UVoxelTool> ActiveTool = nullptr;
 
 	UPROPERTY(Transient)
-	TArray<UVoxelTool*> Tools;
+	TArray<TObjectPtr<UVoxelTool>> Tools;
 };

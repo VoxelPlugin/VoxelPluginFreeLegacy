@@ -1,10 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelData/VoxelData.h"
-#include "VoxelData/VoxelDataOctree.inl"
+#include "VoxelData/VoxelDataOctree.h"
 #include "VoxelUtilities/VoxelOctreeUtilities.h"
 #include "VoxelGenerators/VoxelGeneratorInstance.inl"
 
@@ -50,7 +50,7 @@ void FVoxelData::CacheBounds(const FVoxelIntBox& Bounds, bool bMultiThreaded)
 		FVoxelDataOctreeLeaf& Leaf = *Leaves[Index];
 		
 		auto& DataHolder = Leaf.GetData<T>();
-		DataHolder.CreateData(*this, [&](auto* DataPtr)
+		DataHolder.CreateData(*this, [&](T* RESTRICT DataPtr)
 		{
 			TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
 			Leaf.GetFromGeneratorAndAssets(*Generator, QueryZone, 0);
@@ -77,11 +77,11 @@ void FVoxelData::ClearCacheInBounds(const FVoxelIntBox& Bounds)
 }
 
 template<typename T>
-TVoxelArrayFwd<T> FVoxelData::Get(const FVoxelIntBox& Bounds) const
+TArray<T> FVoxelData::Get(const FVoxelIntBox& Bounds) const
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
-	TVoxelArrayFwd<T> Result;
+	TArray<T> Result;
 	Result.Empty(Bounds.Count());
 	Result.SetNumUninitialized(Bounds.Count());
 	TVoxelQueryZone<T> QueryZone(Bounds, Result);
@@ -90,11 +90,11 @@ TVoxelArrayFwd<T> FVoxelData::Get(const FVoxelIntBox& Bounds) const
 }
 
 template<typename T>
-TVoxelArrayFwd<T> FVoxelData::ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread) const
+TArray<T> FVoxelData::ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread) const
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
-	TVoxelArrayFwd<T> Result;
+	TArray<T> Result;
 	Result.SetNumUninitialized(Bounds.Count());
 	TVoxelQueryZone<T> QueryZone(Bounds, Result);
 
@@ -114,13 +114,13 @@ FORCEINLINE bool FVoxelData::IsEmpty(const FVoxelIntBox& Bounds, int32 LOD) cons
 }
 
 template<typename T>
-FORCEINLINE T FVoxelData::GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelGeneratorQueryData& QueryData) const
+FORCEINLINE T FVoxelData::GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const
 {
 	// Clamp to world, to avoid un-editable border
 	ClampToWorld(X, Y, Z);
 
 	auto& Node = FVoxelOctreeUtilities::GetBottomNode(GetOctree(), int32(X), int32(Y), int32(Z));
-	return Node.GetCustomOutput<T>(*Generator, DefaultValue, Name, X, Y, Z, LOD, QueryData);
+	return Node.GetCustomOutput<T>(*Generator, DefaultValue, Name, X, Y, Z, LOD);
 }
 
 template<typename ... TArgs, typename F>
@@ -197,18 +197,6 @@ FORCEINLINE void FVoxelData::Set(int32 X, int32 Y, int32 Z, const T& Value)
 	}
 }
 
-template<typename T, typename TLambda>
-void FVoxelData::Edit(int32 X, int32 Y, int32 Z, TLambda Lambda)
-{
-	if (IsInWorld(X, Y, Z))
-	{
-		auto Iterate = [&](auto InLambda) { InLambda(X, Y, Z); };
-		auto Apply = [&](int32, int32, int32, T& InValue) { Lambda(InValue); };
-		auto& Leaf = *FVoxelOctreeUtilities::GetLeaf<EVoxelOctreeLeafQuery::CreateIfNull>(GetOctree(), X, Y, Z);
-		FVoxelDataOctreeSetter::Set<T>(*this, Leaf, Iterate, Apply);
-	}
-}
-
 template<typename T>
 FORCEINLINE T FVoxelData::Get(int32 X, int32 Y, int32 Z, int32 LOD) const
 {
@@ -240,7 +228,7 @@ namespace FVoxelDataItemsUtilities
 		FVoxelDataOctreeLeaf& Leaf,
 		const T& Item)
 	{
-		if (!TIsSame<T, FVoxelAssetItem>::Value && !TIsSame<T, FVoxelDataItem>::Value)
+		if (!std::is_same_v<T, FVoxelAssetItem> && !std::is_same_v<T, FVoxelDataItem>)
 		{
 			return;
 		}
@@ -363,9 +351,9 @@ TVoxelWeakPtr<const TVoxelDataItemWrapper<T>> FVoxelData::AddItem(TArgs&&... Arg
 		}
 	});
 	
-	if (TIsSame<T, FVoxelAssetItem>::Value) { INC_DWORD_STAT(STAT_NumVoxelAssetItems); }
-	if (TIsSame<T, FVoxelDisableEditsBoxItem>::Value) { INC_DWORD_STAT(STAT_NumVoxelDisableEditsItems); }
-	if (TIsSame<T, FVoxelDataItem>::Value) { INC_DWORD_STAT(STAT_NumVoxelDataItems); }
+	if (std::is_same_v<T, FVoxelAssetItem>) { INC_DWORD_STAT(STAT_NumVoxelAssetItems); }
+	if (std::is_same_v<T, FVoxelDisableEditsBoxItem>) { INC_DWORD_STAT(STAT_NumVoxelDisableEditsItems); }
+	if (std::is_same_v<T, FVoxelDataItem>) { INC_DWORD_STAT(STAT_NumVoxelDataItems); }
 
 	TItemData<T>& ItemsData = GetItemsData<T>();
 	
@@ -420,9 +408,9 @@ bool FVoxelData::RemoveItem(TVoxelWeakPtr<const TVoxelDataItemWrapper<T>>& InIte
 		}
 	});
 	
-	if (TIsSame<T, FVoxelAssetItem>::Value) { DEC_DWORD_STAT(STAT_NumVoxelAssetItems); }
-	if (TIsSame<T, FVoxelDisableEditsBoxItem>::Value) { DEC_DWORD_STAT(STAT_NumVoxelDisableEditsItems); }
-	if (TIsSame<T, FVoxelDataItem>::Value) { DEC_DWORD_STAT(STAT_NumVoxelDataItems); }
+	if (std::is_same_v<T, FVoxelAssetItem>) { DEC_DWORD_STAT(STAT_NumVoxelAssetItems); }
+	if (std::is_same_v<T, FVoxelDisableEditsBoxItem>) { DEC_DWORD_STAT(STAT_NumVoxelDisableEditsItems); }
+	if (std::is_same_v<T, FVoxelDataItem>) { DEC_DWORD_STAT(STAT_NumVoxelDataItems); }
 	
 	FScopeLock Lock(&ItemsData.Section);
 	// Make sure our item is the last one
@@ -483,20 +471,20 @@ void FVoxelDataUtilities::MigrateLeafDataToNewGenerator(
 	// Revert to the old generator to query the old data
 	ApplyOldGenerator();
 	
-	TVoxelArrayFwd<T> OldGeneratorData;
+	TArray<T> OldGeneratorData;
 	OldGeneratorData.SetNumUninitialized(Bounds.Count());
 	{
-		TVoxelQueryZone<T> QueryZone(Bounds, OldGeneratorData);
+		TVoxelQueryZone<T> QueryZone(Bounds, OldGeneratorData.GetData());
 		Leaf.GetFromGeneratorAndAssets<T>(*Data.Generator, QueryZone, 0);
 	}
 
 	// Switch back to the new generator, and query the new data
 	ApplyNewGenerator();
 	
-	TVoxelArrayFwd<T> NewGeneratorData;
+	TArray<T> NewGeneratorData;
 	NewGeneratorData.SetNumUninitialized(Bounds.Count());
 	{
-		TVoxelQueryZone<T> QueryZone(Bounds, NewGeneratorData);
+		TVoxelQueryZone<T> QueryZone(Bounds, NewGeneratorData.GetData());
 		Leaf.GetFromGeneratorAndAssets<T>(*Data.Generator, QueryZone, 0);
 	}
 

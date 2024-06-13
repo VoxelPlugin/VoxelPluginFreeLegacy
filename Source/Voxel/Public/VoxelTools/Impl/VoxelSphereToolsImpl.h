@@ -1,9 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelInterval.h"
 #include "VoxelUtilities/VoxelLambdaUtilities.h"
 #include "VoxelTools/Impl/VoxelToolsBaseImpl.h"
 
@@ -86,20 +85,6 @@ public:
 		int32 NumIterations,
 		uint32 Mask,
 		T GetStrength);
-
-	template<typename T, typename TLambda>
-	static void RevertSphereImpl(
-		FVoxelData& Data,
-		const FVoxelVector& Position,
-		float Radius,
-		int32 HistoryPosition, 
-		TLambda SetValue);
-	
-	template<typename T>
-	static void RevertSphereToGeneratorImpl(
-		FVoxelData& Data,
-		const FVoxelVector& Position,
-		float Radius);
 	
 public:
 	/**
@@ -318,20 +303,4 @@ public:
 		float Radius,
 		bool bRevertValues,
 		bool bRevertMaterials);
-	
-	/**
-	 * Removes all the voxels in a sphere, if their single index is contained in Internal (Min <= Index <= Max)
-	 * Mainly intended for the cubic mode
-	 * @param	Position				The position of the center @VoxelPosition @GetBounds
-	 * @param	Radius					The radius @VoxelDistance @GetBounds
-	 * @param	Interval				Only voxels whose material single index is in this this will be removed (Min <= Index <= Max). Index between 0 and 255.
-	 * @check	IsSingleIndexWorld(VoxelWorld)	RemoveSphereThresholded only works with the single index material config
-	 * @ExportSetValue
-	 */
-	template<typename TData>
-	static void RemoveSphereWithDurability(
-		TData& Data,
-		const FVoxelVector& Position,
-		float Radius,
-		FVoxelInt32Interval Interval);
 };

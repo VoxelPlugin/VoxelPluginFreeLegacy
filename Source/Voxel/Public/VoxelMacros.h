@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -37,11 +37,7 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #define ENGINE_API
 #undef VOXEL_DEBUG
 #define VOXEL_DEBUG 1
-// This is defined in the generated.h. It lets you use GetOuterASomeOuter. Resharper/intellisense are confused when it's used, so define it for them
-#define INTELLISENSE_DECLARE_WITHIN(Name) DECLARE_WITHIN(Name)
 #error "Compiler defined as parser"
-#else
-#define INTELLISENSE_DECLARE_WITHIN(Name)
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -86,6 +82,10 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 #define STATIC_FSTRING(String) ([]() -> const FString& { static const FString StaticString = String; return StaticString; }())
 #endif
 
+#ifndef UNIQUE_ID
+#define UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 Id = 0; return ++Id; }()
+#endif
+
 #ifndef OBJECT_LINE_ID
 #define OBJECT_LINE_ID() ((uint64)this + __LINE__)
 #endif
@@ -112,60 +112,34 @@ static_assert(VOXELS_PER_DATA_CHUNK < TNumericLimits<FVoxelCellIndex>::Max(), "C
 
 #define VOXEL_DEPRECATED(Version, Message) UE_DEPRECATED(0, Message " If this is a C++ voxel graph, you should compile it to C++ again.")
 
-#define VOXEL_THIS_TYPE TDecay<decltype(*this)>::Type
-// This is needed in classes, where just doing class Name would fwd declare it in the class scope
-#define VOXEL_FWD_DECLARE_CLASS(Name) void PREPROCESSOR_JOIN(__VoxelDeclareDummy_, __LINE__)(class Name);
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#define VOXEL_UNIQUE_ID() []() { ensureVoxelSlowNoSideEffects(IsInGameThread()); static uint64 __UniqueId = 0; return ++__UniqueId; }()
-
-// UniqueClass: to forbid copying ids from different classes
-template<typename UniqueClass>
-class TVoxelUniqueId
+template<typename T>
+struct TVoxelRemoveConst
 {
-public:
-	TVoxelUniqueId() = default;
-
-	bool IsValid() const { return Id != 0; }
-
-	bool operator==(const TVoxelUniqueId& Other) const { return Id == Other.Id; }
-	bool operator!=(const TVoxelUniqueId& Other) const { return Id != Other.Id; }
-
-	bool operator<(const TVoxelUniqueId& Other) const { return Id < Other.Id; }
-	bool operator>(const TVoxelUniqueId& Other) const { return Id > Other.Id; }
-
-	bool operator<=(const TVoxelUniqueId& Other) const { return Id <= Other.Id; }
-	bool operator>=(const TVoxelUniqueId& Other) const { return Id >= Other.Id; }
-
-	friend uint32 GetTypeHash(TVoxelUniqueId InId)
-	{
-	    return uint32(InId.Id);
-	}
-
-	static TVoxelUniqueId New();
-
-private:
-	TVoxelUniqueId(uint64 Id)
-		: Id(Id)
-	{
-		ensureVoxelSlow(IsValid());
-	}
-	
-	uint64 Id = 0;
+	using Type = T&;
+};
+template<typename T>
+struct TVoxelRemoveConst<const T>
+{
+	using Type = T&;
+};
+template<typename T>
+struct TVoxelRemoveConst<const T*>
+{
+	using Type = T*;
+};
+template<typename T>
+struct TVoxelRemoveConst<const T*&>
+{
+	using Type = T*&;
+};
+template<typename T>
+struct TVoxelRemoveConst<const T&>
+{
+	using Type = T&;
 };
 
-#define DECLARE_UNIQUE_VOXEL_ID(Name) \
-	using Name = TVoxelUniqueId<class __ ## Name ##_Unique>; \
-	template<> \
-	Name TVoxelUniqueId<class __ ## Name ##_Unique>::New();
-
-#define DEFINE_UNIQUE_VOXEL_ID(Name) \
-	template<> \
-	Name TVoxelUniqueId<class __ ## Name ##_Unique>::New() \
-	{ \
-		static FThreadSafeCounter64 Counter; \
-		return Counter.Increment(); \
-	}
+#define VOXEL_CONST_CAST(X) const_cast<typename TVoxelRemoveConst<decltype(X)>::Type>(X)

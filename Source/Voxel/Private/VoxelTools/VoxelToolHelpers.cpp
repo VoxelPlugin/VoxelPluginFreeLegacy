@@ -1,15 +1,20 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelToolHelpers.h"
 #include "VoxelRender/IVoxelLODManager.h"
-#include "VoxelPool.h"
+#include "IVoxelPool.h"
 
 #include "Engine/Engine.h"
 #include "Async/Async.h"
 
 FVoxelLatentActionAsyncWork::FVoxelLatentActionAsyncWork(FName Name)
-	: FVoxelAsyncWorkWithWait(Name, EVoxelTaskType::AsyncEditFunctions, EPriority::Null)
+	: FVoxelAsyncWorkWithWait(Name, 1e9)
 {
+}
+
+uint32 FVoxelLatentActionAsyncWork::GetPriority() const
+{
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -22,7 +27,7 @@ FVoxelLatentActionAsyncWork_WithWorld::FVoxelLatentActionAsyncWork_WithWorld(
 	TFunction<void(FVoxelData&)> Function)
 	: FVoxelLatentActionAsyncWork(Name)
 	, World(World)
-	, Data(World->GetSubsystemChecked<FVoxelData>().AsShared())
+	, Data(World->GetDataSharedPtr())
 	, Function(MoveTemp(Function))
 {
 }
@@ -69,14 +74,14 @@ bool FVoxelLatentActionAsyncWork_WithoutWorld::IsValid() const
 void FVoxelToolHelpers::UpdateWorld(AVoxelWorld* World, const FVoxelIntBox& Bounds)
 {
 	check(World);
-	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(Bounds);
+	World->GetLODManager().UpdateBounds(Bounds);
 }
 
 void FVoxelToolHelpers::StartAsyncEditTask(AVoxelWorld* World, IVoxelQueuedWork* Work)
 {
 	if (World)
 	{
-		World->GetSubsystemChecked<FVoxelPool>().QueueTask(Work);
+		World->GetPool().QueueTask(EVoxelTaskType::AsyncEditFunctions, Work);
 	}
 	else
 	{
@@ -111,15 +116,12 @@ FVoxelVector FVoxelToolHelpers::GetRealPosition(AVoxelWorld* World, const FVecto
 
 FTransform FVoxelToolHelpers::GetRealTransform(AVoxelWorld* World, FTransform Transform, bool bConvertToVoxelSpace)
 {
-	if (!bConvertToVoxelSpace)
+	if (bConvertToVoxelSpace)
 	{
-		return Transform;
+		Transform *= World->GetActorTransform().Inverse();
+		Transform.ScaleTranslation(1.f / World->VoxelSize);
 	}
-	
-	FVoxelTransform NewTransform = Transform;
-	NewTransform *= World->GetVoxelTransform().Inverse();
-	NewTransform.ScaleTranslation(1.f / World->VoxelSize);
-	return NewTransform;
+	return Transform;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

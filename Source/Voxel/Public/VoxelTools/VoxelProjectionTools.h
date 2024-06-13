@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -11,7 +11,7 @@
 
 class AVoxelWorld;
 
-USTRUCT(BlueprintType, meta = (HasNativeMake="Voxel.VoxelProjectionTools.MakeVoxelLineTraceParameters"))
+USTRUCT(BlueprintType, meta = (HasNativeMake="/Script/Voxel.VoxelProjectionTools:MakeVoxelLineTraceParameters"))
 struct FVoxelLineTraceParameters
 {
 	GENERATED_BODY()
@@ -23,7 +23,7 @@ struct FVoxelLineTraceParameters
 	TArray<TEnumAsByte<ECollisionChannel>> CollisionChannelsToIgnore;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	TArray<AActor*> ActorsToIgnore;
+	TArray<TObjectPtr<AActor>> ActorsToIgnore;
 	
 	UPROPERTY(EditAnywhere, AdvancedDisplay, BlueprintReadWrite, Category = "Voxel")
 	TEnumAsByte<EDrawDebugTrace::Type> DrawDebugType = EDrawDebugTrace::None;

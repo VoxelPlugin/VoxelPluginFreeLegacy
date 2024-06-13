@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelNoiseNodes.h"
 #include "VoxelGraphGenerator.h"
@@ -245,7 +245,7 @@ void UVoxelNode_NoiseNodeFractal::PostEditChangeProperty(FPropertyChangedEvent& 
 		{
 			if (!It.Key.IsEmpty())
 			{
-				const int32 Int = FVoxelUtilities::ClampDepth(TCString<TCHAR>::Atoi(*It.Key));
+				const int32 Int = FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(TCString<TCHAR>::Atoi(*It.Key));
 				MaxInt = FMath::Max(MaxInt, Int);
 				It.Key = FString::FromInt(Int);
 			}

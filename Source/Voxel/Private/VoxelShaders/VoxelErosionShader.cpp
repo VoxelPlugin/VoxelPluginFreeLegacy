@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelShaders/VoxelErosionShader.h"
 #include "ShaderParameterUtils.h"
@@ -29,24 +29,6 @@ void FVoxelErosionCS::ModifyCompilationEnvironment(const FGlobalShaderPermutatio
 	//OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
 }
 
-#if VOXEL_ENGINE_VERSION  < 425
-bool FVoxelErosionCS::Serialize(FArchive& Ar)
-{
-	const bool bShaderHasOutdatedParams = FGlobalShader::Serialize(Ar);
-	Ar << RainMap;
-	Ar << TerrainHeight;
-	Ar << TerrainHeight1;
-	Ar << WaterHeight;
-	Ar << WaterHeight1;
-	Ar << WaterHeight2;
-	Ar << Sediment;
-	Ar << Sediment1;
-	Ar << Outflow;
-	Ar << Velocity;
-	return bShaderHasOutdatedParams;
-}
-#endif
-
 void FVoxelErosionCS::SetSurfaces(
 	FRHICommandList& RHICmdList,
 	FUnorderedAccessViewRHIRef RainMapUAV,
@@ -60,7 +42,11 @@ void FVoxelErosionCS::SetSurfaces(
 	FUnorderedAccessViewRHIRef OutflowUAV,
 	FUnorderedAccessViewRHIRef VelocityUAV)
 {
-#define PROCESS_SURFACE(Name) SetUAVParameter(RHICmdList, UE_25_SWITCH(GetComputeShader(), RHICmdList.GetBoundComputeShader()), Name, Name##UAV);
+#if VOXEL_ENGINE_VERSION >= 503
+#define PROCESS_SURFACE(Name) SetUAVParameter(RHICmdList.GetScratchShaderParameters(), Name, Name##UAV);
+#else
+#define PROCESS_SURFACE(Name) SetUAVParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), Name, Name##UAV);
+#endif
 	PROCESS_SURFACE(RainMap);
 	PROCESS_SURFACE(TerrainHeight);
 	PROCESS_SURFACE(TerrainHeight1);
@@ -77,13 +63,21 @@ void FVoxelErosionCS::SetSurfaces(
 void FVoxelErosionCS::SetUniformBuffers(FRHICommandList& RHICmdList, const FVoxelErosionParameters& Parameters)
 {
 	const FVoxelErosionParametersRef ParametersBuffer = FVoxelErosionParametersRef::CreateUniformBufferImmediate(Parameters, UniformBuffer_MultiFrame);
-	SetUniformBufferParameter(RHICmdList, UE_25_SWITCH(GetComputeShader(), RHICmdList.GetBoundComputeShader()), GetUniformBufferParameter<FVoxelErosionParameters>(), ParametersBuffer);
+#if VOXEL_ENGINE_VERSION >= 503
+	SetUniformBufferParameter(RHICmdList.GetScratchShaderParameters(), GetUniformBufferParameter<FVoxelErosionParameters>(), ParametersBuffer);
+#else
+	SetUniformBufferParameter(RHICmdList, RHICmdList.GetBoundComputeShader(), GetUniformBufferParameter<FVoxelErosionParameters>(), ParametersBuffer);
+#endif
 }
 
 /* Unbinds buffers that will be used elsewhere */
 void FVoxelErosionCS::UnbindBuffers(FRHICommandList& RHICmdList)
 {
-#define PROCESS_SURFACE(Name) RHICmdList.SetUAVParameter(UE_25_SWITCH(GetComputeShader(), RHICmdList.GetBoundComputeShader()), Name.GetBaseIndex(), FUnorderedAccessViewRHIRef());
+#if VOXEL_ENGINE_VERSION >= 503
+#define PROCESS_SURFACE(Name) SetUAVParameter(RHICmdList.GetScratchShaderParameters(), Name, FUnorderedAccessViewRHIRef());
+#else
+#define PROCESS_SURFACE(Name) RHICmdList.SetUAVParameter(RHICmdList.GetBoundComputeShader(), Name.GetBaseIndex(), FUnorderedAccessViewRHIRef());
+#endif
 	PROCESS_SURFACE(RainMap);
 	PROCESS_SURFACE(TerrainHeight);
 	PROCESS_SURFACE(TerrainHeight1);

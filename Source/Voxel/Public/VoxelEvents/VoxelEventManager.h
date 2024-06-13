@@ -1,21 +1,33 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelEnums.h"
+#include "VoxelIntBox.h"
+#include "VoxelMinimal.h"
 #include "VoxelTickable.h"
-#include "VoxelSubsystem.h"
-#include "VoxelEventManager.generated.h"
 
 struct FVoxelChunkMesh;
 class AVoxelWorld;
+class AVoxelWorldInterface;
 class UVoxelInvokerComponentBase;
 
-DECLARE_DELEGATE_OneParam(FChunkDelegate, const FVoxelIntBox&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FChunkMulticastDelegate, const FVoxelIntBox&);
+DECLARE_DELEGATE_OneParam(FChunkDelegate, FVoxelIntBox);
+DECLARE_MULTICAST_DELEGATE_OneParam(FChunkMulticastDelegate, FVoxelIntBox);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnMeshCreatedDelegate, int32, const FVoxelIntBox&, const FVoxelChunkMesh&);
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Events Memory"), STAT_VoxelEventsMemory, STATGROUP_VoxelMemory, VOXEL_API);
+
+struct VOXEL_API FVoxelEventManagerSettings
+{
+	const float UpdateRate;
+	const TWeakObjectPtr<const AVoxelWorldInterface> VoxelWorldInterface;
+	const TWeakObjectPtr<UWorld> World;
+	const FVoxelIntBox WorldBounds;
+
+	FVoxelEventManagerSettings(const AVoxelWorld* World, EVoxelPlayType PlayType);
+};
 
 struct FVoxelEventHandle
 {
@@ -42,24 +54,18 @@ namespace EVoxelEventFlags
 	};
 }
 
-UCLASS()
-class VOXEL_API UVoxelEventSubsystemProxy : public UVoxelStaticSubsystemProxy
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelEventManager);
-};
-
-class VOXEL_API FVoxelEventManager : public IVoxelSubsystem, public FVoxelTickable
+class VOXEL_API FVoxelEventManager : public FVoxelTickable, public TVoxelSharedFromThis<FVoxelEventManager>
 {
 public:
-	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelEventSubsystemProxy);
+	FVoxelEventManagerSettings Settings;
 
+	static TVoxelSharedRef<FVoxelEventManager> Create(const FVoxelEventManagerSettings& Settings);
+	void Destroy();
 	~FVoxelEventManager();
 
-	//~ Begin IVoxelSubsystem Interface
-	virtual void Create() override;
-	virtual void Destroy() override;
-	//~ End IVoxelSubsystem Interface
+private:
+	explicit FVoxelEventManager(const FVoxelEventManagerSettings& Settings);
+	UE_NONCOPYABLE(FVoxelEventManager);
 	
 public:
 	FVoxelEventHandle BindEvent(
@@ -96,6 +102,7 @@ public:
 protected:
 	//~ Begin FVoxelTickable Interface
 	virtual void Tick(float DeltaTime) override;
+	virtual bool IsTickableInEditor() const override { return true; }
 	//~ End FVoxelTickable Interface
 	
 private:

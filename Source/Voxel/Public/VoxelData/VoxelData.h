@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -6,13 +6,10 @@
 #include "VoxelMinimal.h"
 #include "VoxelIntBox.h"
 #include "VoxelValue.h"
-#include "VoxelArray.h"
 #include "VoxelMaterial.h"
-#include "VoxelItemStack.h"
 #include "VoxelSharedMutex.h"
-#include "HAL/ConsoleManager.h"
 #include "VoxelData/IVoxelData.h"
-#include "VoxelData/VoxelDataSubsystem.h"
+#include "HAL/ConsoleManager.h"
 
 class AVoxelWorld;
 class FVoxelData;
@@ -76,13 +73,13 @@ private:
 
 struct VOXEL_API FVoxelDataSettings
 {
-	int32 Depth = -1;
-	FVoxelIntBox WorldBounds;
-	TVoxelSharedPtr<FVoxelGeneratorInstance> Generator;
-	bool bEnableMultiplayer = false;
-	bool bEnableUndoRedo = false;
+	const int32 Depth;
+	const FVoxelIntBox WorldBounds;
+	const TVoxelSharedRef<FVoxelGeneratorInstance> Generator;
+	const bool bEnableMultiplayer;
+	const bool bEnableUndoRedo;
 
-	FVoxelDataSettings() = default;
+	FVoxelDataSettings(const AVoxelWorld* World, EVoxelPlayType PlayType);
 	FVoxelDataSettings(
 		int32 Depth,
 		const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator,
@@ -104,8 +101,6 @@ private:
 	explicit FVoxelData(const FVoxelDataSettings& Settings);
 
 public:
-	VOXEL_SUBSYSTEM_FWD(FVoxelDataSubsystem, GetData);
-	
 	static TVoxelSharedRef<FVoxelData> Create(const FVoxelDataSettings& Settings, int32 DataOctreeInitialSubdivisionDepth = 0);
 	// Clone without keeping the voxel data
 	TVoxelSharedRef<FVoxelData> Clone() const;
@@ -188,17 +183,17 @@ public:
 	void Get(TVoxelQueryZone<T>& QueryZone, int32 LOD) const;
 	
 	template<typename T>
-	TVoxelArrayFwd<T> Get(const FVoxelIntBox& Bounds) const;
+	TArray<T> Get(const FVoxelIntBox& Bounds) const;
 
 	// Will always use 8 threads
 	template<typename T>
-	TVoxelArrayFwd<T> ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread = false) const;
+	TArray<T> ParallelGet(const FVoxelIntBox& Bounds, bool bForceSingleThread = false) const;
 
-	TVoxelArrayFwd<FVoxelValue> GetValues(const FVoxelIntBox& Bounds) const
+	TArray<FVoxelValue> GetValues(const FVoxelIntBox& Bounds) const
 	{
 		return Get<FVoxelValue>(Bounds);
 	}
-	TVoxelArrayFwd<FVoxelMaterial> GetMaterials(const FVoxelIntBox& Bounds) const
+	TArray<FVoxelMaterial> GetMaterials(const FVoxelIntBox& Bounds) const
 	{
 		return Get<FVoxelMaterial>(Bounds);
 	}
@@ -209,7 +204,7 @@ public:
 	bool IsEmpty(const FVoxelIntBox& Bounds, int32 LOD) const;
 
 	template<typename T>
-	T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD, const FVoxelGeneratorQueryData& QueryData = FVoxelGeneratorQueryData::Empty) const;
+	T GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const;
 
 	template<typename T, typename U>
 	FORCEINLINE T GetCustomOutput(T DefaultValue, FName Name, const U& P, int32 LOD) const
@@ -233,18 +228,11 @@ public:
 	// Set value or material at position depending on template argument (FVoxelValue or FVoxelMaterial)
 	template<typename T>
 	void Set(int32 X, int32 Y, int32 Z, const T& Value);
-	template<typename T, typename TLambda>
-	void Edit(int32 X, int32 Y, int32 Z, TLambda Lambda);
 
 	template<typename T>
 	FORCEINLINE void Set(const FIntVector& P, const T& Value)
 	{
 		Set<T>(P.X, P.Y, P.Z, Value);
-	}
-	template<typename T, typename TLambda>
-	FORCEINLINE void Edit(const FIntVector& P, TLambda Lambda)
-	{
-		Edit<T>(P.X, P.Y, P.Z, Lambda);
 	}
 
 	template<typename T>

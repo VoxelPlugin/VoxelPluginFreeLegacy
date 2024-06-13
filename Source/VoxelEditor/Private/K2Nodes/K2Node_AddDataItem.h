@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -15,7 +15,7 @@ class VOXELEDITOR_API UK2Node_AddDataItem : public UK2Node
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Config")
-	const UVoxelGraphDataItemConfig* DataItemConfig;
+	TObjectPtr<const UVoxelGraphDataItemConfig> DataItemConfig;
 
 public:
 	//~ Begin UEdGraphNode Interface

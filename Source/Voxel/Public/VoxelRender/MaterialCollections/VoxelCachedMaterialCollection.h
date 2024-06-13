@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -28,5 +28,5 @@ public:
 
 private:
 	UPROPERTY(Transient)
-	mutable TMap<FVoxelMaterialIndices, UMaterialInterface*> CachedMaterials;
+	mutable TMap<FVoxelMaterialIndices, TObjectPtr<UMaterialInterface>> CachedMaterials;
 };

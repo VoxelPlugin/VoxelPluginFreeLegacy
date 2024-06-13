@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGenerators/VoxelGeneratorParameters.h"
 #include "UObject/Package.h"
@@ -11,7 +11,6 @@ FString FVoxelGeneratorParameterTerminalType::ToString_Terminal() const
 	case EVoxelGeneratorParameterPropertyType::Float: return TEXT("float");
 	case EVoxelGeneratorParameterPropertyType::Int: return TEXT("int");
 	case EVoxelGeneratorParameterPropertyType::Bool: return TEXT("bool");
-	case EVoxelGeneratorParameterPropertyType::Name: return TEXT("name");
 	case EVoxelGeneratorParameterPropertyType::Object: return FString::Printf(TEXT("%s (object)"), *PropertyClass.ToString());
 	case EVoxelGeneratorParameterPropertyType::Struct: return FString::Printf(TEXT("%s (struct)"), *PropertyClass.ToString());
 	}
@@ -47,22 +46,16 @@ bool FVoxelGeneratorParameterTerminalType::CanBeAssignedFrom_Terminal(const FVox
 		default: return false;
 		}
 	}
-	case EVoxelGeneratorParameterPropertyType::Name:
-	{
-		switch (Other.PropertyType)
-		{
-		case EVoxelGeneratorParameterPropertyType::Name: return true;
-		default: return false;
-		}
-	}
 	case EVoxelGeneratorParameterPropertyType::Object:
 	{
 		switch (Other.PropertyType)
 		{
 		case EVoxelGeneratorParameterPropertyType::Object:
 		{
-			auto* ThisClass = FindObject<UClass>(ANY_PACKAGE, *PropertyClass.ToString());
-			auto* OtherClass = FindObject<UClass>(ANY_PACKAGE, *Other.PropertyClass.ToString());
+			PRAGMA_DISABLE_DEPRECATION_WARNINGS
+			auto* ThisClass = FindObject<UClass>(nullptr, *PropertyClass.ToString());
+			auto* OtherClass = FindObject<UClass>(nullptr, *Other.PropertyClass.ToString());
+			PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 			if (!ThisClass || !OtherClass)
 			{
@@ -81,8 +74,8 @@ bool FVoxelGeneratorParameterTerminalType::CanBeAssignedFrom_Terminal(const FVox
 		{
 		case EVoxelGeneratorParameterPropertyType::Struct:
 		{
-			auto* ThisStruct = FindObject<UScriptStruct>(ANY_PACKAGE, *PropertyClass.ToString());
-			auto* OtherStruct = FindObject<UScriptStruct>(ANY_PACKAGE, *Other.PropertyClass.ToString());
+			auto* ThisStruct = FindObject<UScriptStruct>(nullptr, *PropertyClass.ToString());
+			auto* OtherStruct = FindObject<UScriptStruct>(nullptr, *Other.PropertyClass.ToString());
 
 			if (!ThisStruct || !OtherStruct)
 			{
@@ -116,30 +109,26 @@ FVoxelGeneratorParameterType::FVoxelGeneratorParameterType(FProperty& Property)
 	{
 		PropertyType = EVoxelGeneratorParameterPropertyType::Bool;
 	}
-	else if (Property.IsA<FNameProperty>())
-	{
-		PropertyType = EVoxelGeneratorParameterPropertyType::Name;
-	}
 	else if (Property.IsA<FObjectProperty>())
 	{
 		PropertyType = EVoxelGeneratorParameterPropertyType::Object;
 
 		auto* ObjectProperty = CastField<FObjectProperty>(&Property);
-		PropertyClass = ObjectProperty->PropertyClass->GetFName();
+		PropertyClass = FName(ObjectProperty->PropertyClass->GetPathName());
 	}
 	else if (Property.IsA<FSoftObjectProperty>())
 	{
 		PropertyType = EVoxelGeneratorParameterPropertyType::Object;
 
 		auto* ObjectProperty = CastField<FSoftObjectProperty>(&Property);
-		PropertyClass = ObjectProperty->PropertyClass->GetFName();
+		PropertyClass = FName(ObjectProperty->PropertyClass->GetPathName());
 	}
 	else if (Property.IsA<FStructProperty>())
 	{
 		PropertyType = EVoxelGeneratorParameterPropertyType::Struct;
 
 		auto* ObjectProperty = CastField<FStructProperty>(&Property);
-		PropertyClass = ObjectProperty->Struct->GetFName();
+		PropertyClass = FName(ObjectProperty->Struct->GetPathName());
 	}
 	else if (Property.IsA<FArrayProperty>())
 	{

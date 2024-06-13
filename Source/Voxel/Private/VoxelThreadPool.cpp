@@ -1,136 +1,163 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelThreadPool.h"
 #include "VoxelQueuedWork.h"
 #include "VoxelMinimal.h"
+#include "IVoxelPool.h"
 
+#include "HAL/Event.h"
+#include "HAL/Runnable.h"
 #include "HAL/RunnableThread.h"
 #include "Misc/ScopeLock.h"
 #include "Misc/ScopeExit.h"
 #include "Async/TaskGraphInterfaces.h"
 
+DECLARE_DWORD_COUNTER_STAT(TEXT("VoxelThreadPoolDummyCounter"), STAT_VoxelThreadPoolDummyCounter, STATGROUP_ThreadPoolAsyncTasks);
 DECLARE_DWORD_COUNTER_STAT(TEXT("Recomputed Voxel Tasks Priorities"), STAT_RecomputedVoxelTasksPriorities, STATGROUP_VoxelCounters);
 
-FVoxelThreadPool* GVoxelThreadPool = nullptr;
-
-TAutoConsoleVariable<float> CVarVoxelThreadingPriorityDuration(
-	TEXT("voxel.threading.PriorityDuration"),
-	0.5,
-	TEXT("Task priorities will be recomputed with the new invoker position every PriorityDuration seconds"),
-	ECVF_Default);
-
-TAutoConsoleVariable<int32> CVarVoxelThreadingNumThreads(
-	TEXT("voxel.threading.NumThreads"),
-	2,
-	TEXT("The number of threads to use to process voxel tasks"),
-	ECVF_Default);
-
-TAutoConsoleVariable<int32> CVarVoxelThreadingThreadPriority(
-	TEXT("voxel.threading.ThreadPriority"),
-	2,
-	TEXT(
-		"0: Normal"
-		"1: AboveNormal"
-		"2: BelowNormal"
-		"3: Highest"
-		"4: Lowest"
-		"5: SlightlyBelowNormal"
-		"6: TimeCritical"),
-	ECVF_Default);
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-static FAutoConsoleCommand CmdAbandonAllTasks(
-    TEXT("voxel.threading.AbandonAllTasks"),
-    TEXT("Will abandon all active tasks"),
-	FConsoleCommandDelegate::CreateLambda([](){ GVoxelThreadPool->AbandonAllTasks(); }));
-
-static FAutoConsoleCommand CmdLogThreadPoolStats(
-    TEXT("voxel.threading.LogStats"),
-    TEXT(""),
-	FConsoleCommandDelegate::CreateLambda([](){ GVoxelThreadPool->LogTimes(); }));
-
-static FAutoConsoleCommand CmdClearThreadPoolStats(
-    TEXT("voxel.threading.ClearStats"),
-    TEXT(""),
-	FConsoleCommandDelegate::CreateLambda([](){ GVoxelThreadPool->ClearTimes(); }));
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-FVoxelThread::FVoxelThread(FVoxelThreadPool& Pool, const FString& ThreadName, uint32 StackSize, EThreadPriority ThreadPriority)
-	: ThreadName(ThreadName)
-	, ThreadPool(Pool)
-	, Event(*FPlatformProcess::GetSynchEventFromPool())
-	, TimeToDie(false)
-	// NOTE: make sure to create Thread last, so that everything is setup when Run is called
-	, Thread(FRunnableThread::Create(this, *ThreadName, StackSize, ThreadPriority, FPlatformAffinity::GetPoolThreadMask()))
+FVoxelQueuedThreadPoolStats& FVoxelQueuedThreadPoolStats::Get()
 {
-	check(Thread);
+	static FVoxelQueuedThreadPoolStats Stats;
+	return Stats;
 }
 
-FVoxelThread::~FVoxelThread()
+void FVoxelQueuedThreadPoolStats::Report(FName Name, double Time)
+{
+	FScopeLock Lock(&Section);
+	Times.FindOrAdd(Name) += Time;
+}
+
+void FVoxelQueuedThreadPoolStats::LogTimes() const
+{
+	FScopeLock Lock(&Section);
+	LOG_VOXEL(Log, TEXT("#############################################"));
+	LOG_VOXEL(Log, TEXT("########## Voxel Thread Pool Stats ##########"));
+	LOG_VOXEL(Log, TEXT("#############################################"));
+	for (const auto& It : Times)
+	{
+		LOG_VOXEL(Log, TEXT("%s: %fs"), *It.Key.ToString(), It.Value);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+class FScopeLockWithStats
+{
+public:
+	FScopeLockWithStats(FCriticalSection& InSynchObject)
+		: SynchObject(InSynchObject)
+	{
+		VOXEL_ASYNC_SCOPE_COUNTER("Lock");
+		SynchObject.Lock();
+	}
+	~FScopeLockWithStats()
+	{
+		VOXEL_ASYNC_SCOPE_COUNTER("Unlock");
+		SynchObject.Unlock();
+	}
+
+private:
+	FCriticalSection& SynchObject;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+class VOXEL_API FVoxelQueuedThread : public FRunnable
+{
+public:
+	const FString ThreadName;
+	FVoxelQueuedThreadPool* const ThreadPool;
+	/** The event that tells the thread there is work to do. */
+	FEvent* const DoWorkEvent;
+
+	FVoxelQueuedThread(FVoxelQueuedThreadPool* Pool, const FString& ThreadName, uint32 StackSize, EThreadPriority ThreadPriority);
+	~FVoxelQueuedThread();
+
+	//~ Begin FRunnable Interface
+	virtual uint32 Run() override;
+	//~ End FRunnable Interface
+
+private:
+	/** If true, the thread should exit. */
+	FThreadSafeBool TimeToDie;
+	/** The work this thread is doing. */
+	TAtomic<IVoxelQueuedWork*> QueuedWork;
+
+	const TUniquePtr<FRunnableThread> Thread;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+FVoxelQueuedThread::FVoxelQueuedThread(FVoxelQueuedThreadPool* Pool, const FString& ThreadName, uint32 StackSize, EThreadPriority ThreadPriority)
+	: ThreadName(ThreadName)
+	, ThreadPool(Pool)
+	, DoWorkEvent(FPlatformProcess::GetSynchEventFromPool()) // Create event BEFORE thread
+	, TimeToDie(false) // BEFORE creating thread
+	, QueuedWork(nullptr)
+	, Thread(FRunnableThread::Create(this, *ThreadName, StackSize, ThreadPriority, FPlatformAffinity::GetPoolThreadMask()))
+{
+	check(Thread.IsValid());
+}
+
+FVoxelQueuedThread::~FVoxelQueuedThread()
 {
 	// Tell the thread it needs to die
 	TimeToDie = true;
 	// Trigger the thread so that it will come out of the wait state if
 	// it isn't actively doing work
-	Event.Trigger();
-	// Kill (but wait for thread to finish)
-	Thread->Kill(true);
+	DoWorkEvent->Trigger();
+	// If waiting was specified, wait the amount of time. If that fails,
+	// brute force kill that thread. Very bad as that might leak.
+	Thread->WaitForCompletion();
 	// Clean up the event
-	FPlatformProcess::ReturnSynchEventToPool(&Event);
+	FPlatformProcess::ReturnSynchEventToPool(DoWorkEvent);
 }
 
-uint32 FVoxelThread::Run()
+uint32 FVoxelQueuedThread::Run()
 {
 	while (!TimeToDie)
 	{
+		// This will force sending the stats packet from the previous frame.
+		SET_DWORD_STAT(STAT_VoxelThreadPoolDummyCounter, 0);
 		// We need to wait for shorter amount of time
 		bool bContinueWaiting = true;
 		while (bContinueWaiting)
 		{
-			VOXEL_ASYNC_VERBOSE_SCOPE_COUNTER("WaitForWork");
+			VOXEL_ASYNC_VERBOSE_SCOPE_COUNTER("FVoxelQueuedThread::Run.WaitForWork");
 			
 			// Wait for some work to do
-			bContinueWaiting = !Event.Wait(10);
+			bContinueWaiting = !DoWorkEvent->Wait(10);
 		}
 
-		if (TimeToDie)
+		if (!TimeToDie)
 		{
-			break;
-		}
-		
-		IVoxelQueuedWork* LocalQueuedWork = ThreadPool.ReturnToPoolOrGetNextJob(this);
+			IVoxelQueuedWork* LocalQueuedWork = ThreadPool->ReturnToPoolOrGetNextJob(this);
 
-		while (LocalQueuedWork)
-		{
-			const FName Name = LocalQueuedWork->Name;
-			const EVoxelTaskType Type = LocalQueuedWork->TaskType;
-			const FVoxelPoolId PoolId = LocalQueuedWork->PoolId;
-
-			const double StartTime = FPlatformTime::Seconds();
-
-			LocalQueuedWork->DoThreadedWork();
-			// IMPORTANT: LocalQueuedWork should be considered as deleted after this line
-
-			const double EndTime = FPlatformTime::Seconds();
-
+			while (LocalQueuedWork)
 			{
-				FScopeLock Lock(&ThreadPool.CountersSection);
-				ThreadPool.GlobalCounters.Decrement(Type);
-				ThreadPool.PoolsCounters[PoolId].Decrement(Type);
-			}
+				const FName Name = LocalQueuedWork->Name;
+				
+				const double StartTime = FPlatformTime::Seconds();
+				
+				LocalQueuedWork->DoThreadedWork();
+				// IMPORTANT: LocalQueuedWork should be considered as deleted after this line
+				
+				const double EndTime = FPlatformTime::Seconds();
 
-			{
-				FScopeLock Lock(&ThreadPool.StatsSection);
-				ThreadPool.Stats.FindOrAdd(Name) += EndTime - StartTime;
+				FVoxelQueuedThreadPoolStats::Get().Report(Name, EndTime - StartTime);
+				
+				LocalQueuedWork = ThreadPool->ReturnToPoolOrGetNextJob(this);
 			}
-
-			LocalQueuedWork = ThreadPool.ReturnToPoolOrGetNextJob(this);
 		}
 	}
 	return 0;
@@ -140,179 +167,286 @@ uint32 FVoxelThread::Run()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelThreadPool::FVoxelThreadPool()
+FVoxelQueuedThreadPoolSettings::FVoxelQueuedThreadPoolSettings(
+	const FString& PoolName, 
+	uint32 NumThreads, 
+	uint32 StackSize, 
+	EThreadPriority ThreadPriority, 
+	bool bConstantPriorities)
+	: PoolName(PoolName)
+	, NumThreads(NumThreads)
+	, StackSize(StackSize)
+	, ThreadPriority(ThreadPriority)
+	, bConstantPriorities(bConstantPriorities)
 {
-	TFunction<void()> ShutdownCallback = [WeakIsAlive = MakeVoxelWeakPtr(IsAlive), this]()
+}
+
+inline TArray<TUniquePtr<FVoxelQueuedThread>> CreateThreads(FVoxelQueuedThreadPool* Pool)
+{
+	UE::Trace::ThreadGroupBegin(TEXT("VoxelThreadPool"));
+	ON_SCOPE_EXIT
 	{
-		if (WeakIsAlive.IsValid())
+		UE::Trace::ThreadGroupEnd();
+	};
+	
+	auto& Settings = Pool->Settings;
+	const uint32 NumThreads = Settings.NumThreads;
+	
+	TArray<TUniquePtr<FVoxelQueuedThread>> Threads;
+	Threads.Reserve(NumThreads);
+	for (uint32 ThreadIndex = 0; ThreadIndex < NumThreads; ThreadIndex++)
+	{
+		const FString Name = FString::Printf(TEXT("%s Thread %d"), *Settings.PoolName, ThreadIndex);
+		Threads.Add(MakeUnique<FVoxelQueuedThread>(Pool, Name, Settings.StackSize, Settings.ThreadPriority));
+	}
+	return Threads;
+}
+
+FVoxelQueuedThreadPool::FVoxelQueuedThreadPool(const FVoxelQueuedThreadPoolSettings& Settings)
+	: Settings(Settings)
+	, AllThreads(CreateThreads(this))
+{
+	QueuedThreads.Reserve(Settings.NumThreads);
+	for (auto& Thread : AllThreads) 
+	{
+		QueuedThreads.Add(Thread.Get());
+	}
+}
+
+TVoxelSharedRef<FVoxelQueuedThreadPool> FVoxelQueuedThreadPool::Create(const FVoxelQueuedThreadPoolSettings& Settings)
+{
+	const auto Pool = TVoxelSharedRef<FVoxelQueuedThreadPool>(new FVoxelQueuedThreadPool(Settings));
+
+	TFunction<void()> ShutdownCallback = [WeakPool = MakeVoxelWeakPtr(Pool)]()
+	{
+		auto PoolPtr = WeakPool.Pin();
+		if (PoolPtr.IsValid())
 		{
-			AbandonAllTasks();
+			PoolPtr->AbandonAllTasks();
 		}
 	};
 	FTaskGraphInterface::Get().AddShutdownCallback(ShutdownCallback);
+
+	return Pool;
 }
 
-FVoxelThreadPool::~FVoxelThreadPool()
+FVoxelQueuedThreadPool::~FVoxelQueuedThreadPool()
 {
-	AbandonAllTasks();
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelThreadPool::AbandonAllTasks()
-{
-	VOXEL_ASYNC_FUNCTION_COUNTER();
-
-	check(!IsAbandoningAllTasks);
-	IsAbandoningAllTasks = true;
+	if (!TimeToDie)
 	{
-		// It's safe to lock because we have IsAbandoningAllTasks set to true, so threads can't lock
-		FVoxelScopeLockWithStats Lock(CriticalSection);
+		AbandonAllTasks();
+	}
+}
 
-		// Clean up all queued objects
-		for (auto& WorkInfo : QueuedWorks)
+inline uint32 AddPriorityOffset(uint32 Priority, int32 PriorityOffset)
+{
+	return FMath::Clamp<int64>(int64(Priority) + PriorityOffset, MIN_uint32, MAX_uint32);
+}
+
+FORCEINLINE void FVoxelQueuedThreadPool::FQueuedWorkInfo::RecomputePriority(double Time)
+{
+	Priority = AddPriorityOffset(Work->GetPriority(), PriorityOffset);
+	NextPriorityUpdateTime = Time + Work->PriorityDuration;
+}
+
+void FVoxelQueuedThreadPool::AddQueuedWork(IVoxelQueuedWork* InQueuedWork, uint32 PriorityCategory, int32 PriorityOffset)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	check(IsInGameThread());
+	check(InQueuedWork);
+
+	if (TimeToDie)
+	{
+		InQueuedWork->Abandon();
+		return;
+	}
+
+	FQueuedWorkInfo WorkInfo;
+	{
+		VOXEL_SCOPE_COUNTER("Compute Priority");
+		WorkInfo = FQueuedWorkInfo(InQueuedWork, PriorityCategory, PriorityOffset);
+	}
+
+	{
+		VOXEL_SCOPE_COUNTER("Lock");
+		Section.Lock();
+	}
+	{
+		VOXEL_SCOPE_COUNTER("Add Work");
+		if (Settings.bConstantPriorities)
 		{
-			AbandonWork(*WorkInfo.Work);
+			WorkInfo.RecomputePriority(FPlatformTime::Seconds());
+			StaticQueuedWorks.push(WorkInfo);
 		}
-		QueuedWorks.Reset();
+		else
+		{
+			QueuedWorks.Add(WorkInfo);
+		}
+	}
+
+	{
+		VOXEL_SCOPE_COUNTER("Wake up threads");
+		for (auto* QueuedThread : QueuedThreads)
+		{
+			QueuedThread->DoWorkEvent->Trigger();
+		}
 		QueuedThreads.Reset();
-
-		// Wait for all threads to finish up
-		// Safe because the thread destructor will wait on the runnable
-		// Due to IsAbandoningAllTasks, they can't pick another job either
-		AllThreads.Reset();
-	}
-	check(IsAbandoningAllTasks);
-	IsAbandoningAllTasks = false;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-TUniquePtr<FVoxelThread> FVoxelThreadPool::CreateThread()
-{
-#if VOXEL_ENGINE_VERSION < 426
-	TRACE_THREAD_GROUP_SCOPE("VoxelThreadPool");
-#else
-	UE_5_ONLY(UE::)Trace::ThreadGroupBegin(TEXT("VoxelThreadPool"));
-	ON_SCOPE_EXIT
-	{
-		UE_5_ONLY(UE::)Trace::ThreadGroupEnd();
-	};
-#endif
-
-	static int32 ThreadIndex = 0;
-	const FString Name = FString::Printf(TEXT("Voxel Thread %d"), ThreadIndex++);
-	return MakeUnique<FVoxelThread>(*this, Name, 1024 * 1024, EThreadPriority(FMath::Clamp(CVarVoxelThreadingThreadPriority.GetValueOnGameThread(), 0, 6)));
-}
-
-void FVoxelThreadPool::AbandonWork(IVoxelQueuedWork& Work)
-{
-	{
-		FScopeLock Lock(&CountersSection);
-		GlobalCounters.Decrement(Work.TaskType);
-		PoolsCounters[Work.PoolId].Decrement(Work.TaskType);
-	}
-
-	Work.Abandon();
-}
-
-IVoxelQueuedWork* FVoxelThreadPool::ReturnToPoolOrGetNextJob(FVoxelThread* InQueuedThread)
-{
-	VOXEL_ASYNC_FUNCTION_COUNTER();
-	check(InQueuedThread);
-
-	if (IsAbandoningAllTasks)
-	{
-		// Just exit now, to avoid deadlock
-		return nullptr;
 	}
 	
-	const double StartTime = FPlatformTime::Seconds();
-	ON_SCOPE_EXIT
 	{
-		const double EndTime = FPlatformTime::Seconds();
-		FScopeLock Lock(&StatsSection);
-		Stats.FindOrAdd(STATIC_FNAME("Find Work")) += EndTime - StartTime;
-	};
-
-	FVoxelScopeLockWithStats Lock(CriticalSection);
-
-	const double Time = FPlatformTime::Seconds();
-	if (Time > LastPriorityComputeTime + CVarVoxelThreadingPriorityDuration.GetValueOnAnyThread())
-	{
-		LastPriorityComputeTime = Time;
-		RecomputePriorities_AssumeLocked();
+		VOXEL_SCOPE_COUNTER("Unlock");
+		Section.Unlock();
 	}
+}
+
+void FVoxelQueuedThreadPool::AddQueuedWorks(const TArray<IVoxelQueuedWork*>& InQueuedWorks, uint32 PriorityCategory, int32 PriorityOffset)
+{
+	VOXEL_FUNCTION_COUNTER();
+	
+	check(IsInGameThread());
+
+	if (TimeToDie)
+	{
+		for (auto* InQueuedWork : InQueuedWorks)
+		{
+			InQueuedWork->Abandon();
+		}
+		return;
+	}
+
+	{
+		VOXEL_SCOPE_COUNTER("Lock");
+		Section.Lock();
+	}
+
+	{
+		if (!Settings.bConstantPriorities)
+		{
+			VOXEL_SCOPE_COUNTER("Reserve");
+			QueuedWorks.Reserve(QueuedWorks.Num() + InQueuedWorks.Num());
+		}
+		VOXEL_SCOPE_COUNTER("Add Works");
+		for (auto* InQueuedWork : InQueuedWorks)
+		{
+			FQueuedWorkInfo WorkInfo(InQueuedWork, PriorityCategory, PriorityOffset);
+
+			if (Settings.bConstantPriorities)
+			{
+				WorkInfo.RecomputePriority(FPlatformTime::Seconds());
+				StaticQueuedWorks.push(WorkInfo);
+			}
+			else
+			{
+				QueuedWorks.Add(WorkInfo);
+			}
+		}
+	}
+
+	{
+		VOXEL_SCOPE_COUNTER("Wake up threads");
+		for (auto* QueuedThread : QueuedThreads)
+		{
+			QueuedThread->DoWorkEvent->Trigger();
+		}
+		QueuedThreads.Reset();
+	}
+
+	{
+		VOXEL_SCOPE_COUNTER("Unlock");
+		Section.Unlock();
+	}
+}
+
+IVoxelQueuedWork* FVoxelQueuedThreadPool::ReturnToPoolOrGetNextJob(FVoxelQueuedThread* InQueuedThread)
+{
+	VOXEL_ASYNC_FUNCTION_COUNTER();
+
+	check(InQueuedThread);
+
+	FScopeLockWithStats Lock(Section);
 
 	if (QueuedWorks.Num() > 0)
 	{
-		VOXEL_ASYNC_SCOPE_COUNTER("HeapPop");
-		FQueuedWorkInfo WorkInfo;
-		QueuedWorks.HeapPop(WorkInfo, false);
-		WorkInfo.Work->CheckIsValidLowLevel();
-		return WorkInfo.Work;
-	}
+		check(!Settings.bConstantPriorities);
+		check(!TimeToDie);
 
-	// Sleep thread
-	QueuedThreads.Add(InQueuedThread);
-	return nullptr;
-}
+		VOXEL_ASYNC_SCOPE_COUNTER("Voxel Thread Pool Recompute Priorities");
 
-void FVoxelThreadPool::RecomputePriorities_AssumeLocked()
-{
-	VOXEL_ASYNC_FUNCTION_COUNTER();
-
-	{
-		VOXEL_ASYNC_SCOPE_COUNTER("Recompute priorities");
-
+		// Find best work. We recompute every priorities as the priorities can change (eg, the camera might have moved)
+		int32 BestIndex = -1;
+		uint64 BestPriority = 0;
+		int32 NumRecomputed = 0;
+		const double Time = FPlatformTime::Seconds();
 		for (int32 Index = 0; Index < QueuedWorks.Num(); Index++)
 		{
-			FQueuedWorkInfo& WorkInfo = QueuedWorks.GetData()[Index];
-			WorkInfo.Work->CheckIsValidLowLevel();
-			
-			if (WorkInfo.Work->ShouldAbandon())
+			auto& WorkInfo = QueuedWorks.GetData()[Index];
+			if (WorkInfo.NextPriorityUpdateTime < Time)
 			{
-				AbandonWork(*WorkInfo.Work);
-				QueuedWorks.RemoveAtSwap(Index, 1, false);
-				Index--;
-				continue;
+				NumRecomputed++;
+				WorkInfo.RecomputePriority(Time);
 			}
-			
-			if (WorkInfo.Work->Priority != IVoxelQueuedWork::EPriority::Null)
+			const uint64 Priority = WorkInfo.GetPriority();
+			if (Priority >= BestPriority)
 			{
-				WorkInfo.RecomputePriority();
+				BestPriority = Priority;
+				BestIndex = Index;
 			}
 		}
-	}
 
+		INC_DWORD_STAT_BY(STAT_RecomputedVoxelTasksPriorities, NumRecomputed);
+
+		auto* Work = QueuedWorks[BestIndex].Work;
+		QueuedWorks.RemoveAtSwap(BestIndex);
+		check(Work);
+		return Work;
+	}
+	else if (!StaticQueuedWorks.empty())
 	{
-		VOXEL_ASYNC_SCOPE_COUNTER("Heapify");
-		QueuedWorks.Heapify();
+		check(Settings.bConstantPriorities);
+		auto* Work = StaticQueuedWorks.top().Work;
+		StaticQueuedWorks.pop();
+		check(Work);
+		return Work;
+	}
+	else
+	{
+		QueuedThreads.Add(InQueuedThread);
+		return nullptr;
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-void FVoxelThreadPool::LogTimes() const
+void FVoxelQueuedThreadPool::AbandonAllTasks()
 {
-	FScopeLock Lock(&StatsSection);
-	LOG_VOXEL(Log, TEXT("#############################################"));
-	LOG_VOXEL(Log, TEXT("########## Voxel Thread Pool Stats ##########"));
-	LOG_VOXEL(Log, TEXT("#############################################"));
-	for (const auto& It : Stats)
+	VOXEL_ASYNC_FUNCTION_COUNTER();
+	
+	ensure(!TimeToDie);
+	
 	{
-		LOG_VOXEL(Log, TEXT("%s: %fs"), *It.Key.ToString(), It.Value);
+		FScopeLockWithStats Lock(Section);
+		TimeToDie = true;
+		// Clean up all queued objects
+		for (auto& WorkInfo : QueuedWorks)
+		{
+			WorkInfo.Work->Abandon();
+		}
+		QueuedWorks.Reset();
+		while (!StaticQueuedWorks.empty())
+		{
+			StaticQueuedWorks.top().Work->Abandon();
+			StaticQueuedWorks.pop();
+		}
 	}
-}
-
-void FVoxelThreadPool::ClearTimes()
-{
-	FScopeLock Lock(&StatsSection);
-	Stats.Reset();
+	// Wait for all threads to finish up
+	while (true)
+	{
+		{
+			FScopeLockWithStats Lock(Section);
+			if (AllThreads.Num() == QueuedThreads.Num())
+			{
+				break;
+			}
+		}
+		FPlatformProcess::Sleep(0.0f);
+	}
 }

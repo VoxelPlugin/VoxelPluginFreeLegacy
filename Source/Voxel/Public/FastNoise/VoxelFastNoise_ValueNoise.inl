@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -166,16 +166,16 @@ FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_ValueNoise<T>::SingleValue_3D_Deriv(
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-VectorRegister TVoxelFastNoise_ValueNoise<T>::SingleValue_2D(VectorRegisterInt offset, VectorRegister x, VectorRegister y) const
+VectorRegister TVoxelFastNoise_ValueNoise<T>::SingleValue_2D(VectorRegister4Int offset, VectorRegister x, VectorRegister y) const
 {
 	const VectorRegister x0f = VectorFloor(x);
 	const VectorRegister y0f = VectorFloor(y);
 
-	const VectorRegisterInt x0 = VectorFloatToInt(x0f);
-	const VectorRegisterInt y0 = VectorFloatToInt(y0f);
+	const VectorRegister4Int x0 = VectorFloatToInt(x0f);
+	const VectorRegister4Int y0 = VectorFloatToInt(y0f);
 
-	const VectorRegisterInt x1 = VectorIntAdd(x0, GlobalVectorConstants::IntOne);
-	const VectorRegisterInt y1 = VectorIntAdd(y0, GlobalVectorConstants::IntOne);
+	const VectorRegister4Int x1 = VectorIntAdd(x0, GlobalVectorConstants::IntOne);
+	const VectorRegister4Int y1 = VectorIntAdd(y0, GlobalVectorConstants::IntOne);
 
 	const VectorRegister fx = VectorSubtract(x, x0f);
 	const VectorRegister fy = VectorSubtract(y, y0f);
@@ -220,7 +220,7 @@ FN_FORCEINLINE v_flt TVoxelFastNoise_ValueNoise<T>::IQNoise_2D_Deriv(v_flt x, v_
 	{
 		x *= This().Lacunarity;
 		y *= This().Lacunarity;
-		const FVector2D P = This().Matrix2.TransformPoint({ float(x), float(y) });
+		const FVector2D P = This().Matrix2.TransformPoint(FVector2D{ double(x), double(y) });
 		x = P.X;
 		y = P.Y;
 

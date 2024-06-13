@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelProjectionTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -162,7 +162,7 @@ public:
 		FHitResult OutHit;
 		for (auto& Hit : TraceData.OutHits)
 		{
-			if (Hit.UE_5_SWITCH(Actor, GetActor()) == VoxelWorld)
+			if (Hit.GetActor() == VoxelWorld)
 			{
 				bHit = true;
 				OutHit = Hit;
@@ -242,7 +242,7 @@ FVoxelLineTraceParameters UVoxelProjectionTools::MakeVoxelLineTraceParameters(
 	{
 		CollisionChannel,
 		CollisionChannelsToIgnore,
-		ActorsToIgnore,
+		TArray<TObjectPtr<AActor>>(ActorsToIgnore),
 		DrawDebugType,
 		TraceColor,
 		TraceHitColor,
@@ -446,7 +446,7 @@ FVoxelSurfaceEditsVoxels UVoxelProjectionTools::CreateSurfaceVoxelsFromHitsWithE
 		Bounds = Bounds + Hits[Index].VoxelPosition;
 	}
 
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 	FVoxelReadScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
 	const FVoxelConstDataAccelerator Accelerator(Data, Bounds);
 

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelDataTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -32,13 +32,9 @@ void UVoxelDataTools::GetMaterial(FVoxelMaterial& Material, AVoxelWorld* World, 
 	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, VOXEL_DATA_TOOL_PREFIX, Material = Data.GetMaterial(Position, 0));
 }
 
-void UVoxelDataTools::SetMaterial(AVoxelWorld* World, FIntVector Position, FVoxelMaterial Material, int32 Mask)
+void UVoxelDataTools::SetMaterial(AVoxelWorld* World, FIntVector Position, FVoxelMaterial Material)
 {
-	const auto Lambda = [=](FVoxelMaterial& InMaterial)
-	{
-		InMaterial.CopyFrom(Material, Mask);
-	};
-	VOXEL_TOOL_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.Edit<FVoxelMaterial>(Position, Lambda));
+	VOXEL_TOOL_HELPER(Write, UpdateRender, VOXEL_DATA_TOOL_PREFIX, Data.SetMaterial(Position, Material));
 }
 
 void UVoxelDataTools::CacheValues(AVoxelWorld* World, FVoxelIntBox Bounds, bool bMultiThreaded)
@@ -131,13 +127,13 @@ inline bool CheckSave(const FVoxelData& Data, const T& Save)
 	}
 	if (Save.GetDepth() > Data.Depth)
 	{
-		LOG_VOXEL(Warning, TEXT("LoadFromSave: Save depth is bigger than world depth, the save data outside world bounds will be ignored"));
+		FVoxelMessages::Warning("LoadFromSave: Save depth is bigger than world depth, the save data outside world bounds will be ignored");
 	}
 	return true;
 }
 
 #define CHECK_SAVE() \
-if (!CheckSave(World->GetSubsystemChecked<FVoxelData>(), Save)) \
+if (!CheckSave(World->GetData(), Save)) \
 { \
 	return false; \
 }
@@ -150,7 +146,7 @@ void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSave& O
 void UVoxelDataTools::GetSave(AVoxelWorld* World, FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxelObjectArchiveEntry>& OutObjects)
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
-	World->GetSubsystemChecked<FVoxelData>().GetSave(OutSave, OutObjects);
+	World->GetData().GetSave(OutSave, OutObjects);
 }
 
 void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorldSave& OutSave)
@@ -162,7 +158,7 @@ void UVoxelDataTools::GetCompressedSave(AVoxelWorld* World, FVoxelCompressedWorl
 {
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 	FVoxelUncompressedWorldSaveImpl Save;
-	World->GetSubsystemChecked<FVoxelData>().GetSave(Save, OutObjects);
+	World->GetData().GetSave(Save, OutObjects);
 	UVoxelSaveUtilities::CompressVoxelSave(Save, OutSave);
 }
 
@@ -227,14 +223,14 @@ bool UVoxelDataTools::LoadFromSave(const AVoxelWorld* World, const FVoxelUncompr
 	CHECK_SAVE();
 
 	TArray<FVoxelIntBox> BoundsToUpdate;
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 	
 	const FVoxelGeneratorInit WorldInit = World->GetGeneratorInit();
 	const FVoxelPlaceableItemLoadInfo LoadInfo{ &WorldInit, &Objects };
 
 	const bool bSuccess = Data.LoadFromSave(Save, LoadInfo, &BoundsToUpdate);
 
-	World->GetSubsystemChecked<IVoxelLODManager>().UpdateBounds(BoundsToUpdate);
+	World->GetLODManager().UpdateBounds(BoundsToUpdate);
 
 	return bSuccess;
 }
@@ -494,7 +490,7 @@ FVoxelDataMemoryUsageInMB UVoxelDataTools::GetDataMemoryUsageInMB(AVoxelWorld* W
 
 	constexpr double OneMB = double(1 << 20);
 
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 
 	FVoxelDataMemoryUsageInMB MemoryUsage;
 
@@ -636,7 +632,7 @@ void UVoxelDataTools::CompressIntoHeightmapImpl(FVoxelData& Data, TVoxelHeightma
 			{
 				if (!DataHolder.HasData())
 				{
-					DataHolder.CreateData(Data, [&](auto* DataPtr)
+					DataHolder.CreateData(Data, [&](FVoxelValue* RESTRICT DataPtr)
 					{
 						TVoxelQueryZone<FVoxelValue> QueryZone(Leaf.GetBounds(), DataPtr);
 						Leaf.GetFromGeneratorAndAssets(*Data.Generator, QueryZone, 0);
@@ -824,7 +820,7 @@ void UVoxelDataTools::CompressIntoHeightmap(
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED_VOID();
 
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 	FVoxelWriteScopeLock Lock(Data, FVoxelIntBox::Infinite, "");
 
 	bool bCheckAllLeaves = false;
@@ -841,7 +837,7 @@ void UVoxelDataTools::CompressIntoHeightmap(
 		{
 			bCheckAllLeaves = true;
 
-			const int32 Size = FVoxelUtilities::GetSizeFromDepth(DATA_CHUNK_SIZE, Data.Depth);
+			const int32 Size = FVoxelUtilities::GetSizeFromDepth<DATA_CHUNK_SIZE>(Data.Depth);
 			if (Size > 20000)
 			{
 				FVoxelMessages::Error(FUNCTION_ERROR("Heightmap size would be too large!"));

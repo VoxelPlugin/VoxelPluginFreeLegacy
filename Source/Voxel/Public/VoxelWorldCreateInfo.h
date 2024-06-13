@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -29,7 +29,7 @@ public:
 	bool bOverrideData = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	AVoxelWorld* DataOverride = nullptr;
+	TObjectPtr<AVoxelWorld> DataOverride = nullptr;
 	
 	TVoxelSharedPtr<FVoxelData> DataOverride_Raw;
 };

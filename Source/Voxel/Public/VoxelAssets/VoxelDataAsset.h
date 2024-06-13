@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -30,9 +30,6 @@ struct FVoxelDataAssetImportSettings_MagicaVox
 
 	UPROPERTY(VisibleAnywhere, Category = "Import")
 	bool bUsePalette = false;
-
-	UPROPERTY(VisibleAnywhere, Category = "Import")
-	int32 ModelIndex = 0;
 };
 
 /**
@@ -134,7 +131,7 @@ private:
 	TArray<FColor> ThumbnailSave;
 
 	UPROPERTY(Transient)
-	UTexture2D* ThumbnailTexture;
+	TObjectPtr<UTexture2D> ThumbnailTexture;
 #endif
 
 public:
@@ -150,6 +147,6 @@ public:
 	bool bUseSettingsAsDefault = true;
 	
 	UPROPERTY()
-	AVoxelWorld* VoxelWorldTemplate;
+	TObjectPtr<AVoxelWorld> VoxelWorldTemplate;
 #endif
 };

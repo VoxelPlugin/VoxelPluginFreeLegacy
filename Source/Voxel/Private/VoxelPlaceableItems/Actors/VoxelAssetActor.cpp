@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelPlaceableItems/Actors/VoxelAssetActor.h"
 #include "VoxelAssets/VoxelDataAsset.h"
@@ -7,14 +7,12 @@
 #include "VoxelDebug/VoxelDebugManager.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/IVoxelLODManager.h"
-#include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/LODManager/VoxelFixedResolutionLODManager.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/Renderers/VoxelDefaultRenderer.h"
 #include "VoxelGenerators/VoxelEmptyGenerator.h"
 #include "VoxelWorld.h"
-#include "VoxelWorldRootComponent.h"
-#include "VoxelPool.h"
+#include "VoxelDefaultPool.h"
 #include "VoxelMessages.h"
 #include "VoxelUtilities/VoxelThreadingUtilities.h"
 
@@ -43,10 +41,6 @@ void AVoxelAssetActor::AddItemToWorld(AVoxelWorld* World)
 {
 	check(World);
 
-	if (bSpawnNewVoxelWorld)
-	{
-		return;
-	}
 	if (World->GetPlayType() != EVoxelPlayType::Game)
 	{
 		return;
@@ -57,7 +51,7 @@ void AVoxelAssetActor::AddItemToWorld(AVoxelWorld* World)
 		return;
 	}
 
-	AddItemToData(World, &World->GetSubsystemChecked<FVoxelData>());
+	AddItemToData(World, &World->GetData());
 }
 
 int32 AVoxelAssetActor::GetPriority() const
@@ -104,7 +98,7 @@ FVoxelIntBox AVoxelAssetActor::AddItemToData(
 		return WorldBounds;
 	}
 
-	auto AssetInstance = Generator.GetInstance();
+	auto AssetInstance = Generator.GetInstance(false);
 	AssetInstance->Init(VoxelWorld->GetGeneratorInit());
 	
 	if (bImportAsReference)
@@ -141,46 +135,6 @@ FVoxelIntBox AVoxelAssetActor::AddItemToData(
 	return WorldBounds;
 }
 
-void AVoxelAssetActor::ClampTransform()
-{
-	const bool bForceRound = PreviewWorld->RenderType == EVoxelRenderType::Cubic;
-	
-	if (bRoundAssetPosition || bForceRound)
-	{
-		const FVector WorldLocation = PreviewWorld->GetActorLocation();
-		const float VoxelSize = PreviewWorld->VoxelSize;
-
-		FVector Position = GetActorLocation();
-		Position -= WorldLocation;
-		Position /= VoxelSize;
-
-		Position.X = FMath::RoundToInt(Position.X);
-		Position.Y = FMath::RoundToInt(Position.Y);
-		Position.Z = FMath::RoundToInt(Position.Z);
-
-		Position *= VoxelSize;
-		Position += WorldLocation;
-
-		SetActorLocation(Position);
-	}
-	
-	if (bRoundAssetRotation || bForceRound)
-	{
-		const FRotator WorldRotation = PreviewWorld->GetActorRotation();
-		FRotator Rotation = GetActorRotation();
-
-		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation).Inverse()).Rotator();
-
-		Rotation.Pitch = FMath::RoundToInt(Rotation.Pitch / 90) * 90;
-		Rotation.Yaw = FMath::RoundToInt(Rotation.Yaw / 90) * 90;
-		Rotation.Roll = FMath::RoundToInt(Rotation.Roll / 90) * 90;
-		
-		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation)).Rotator();
-		
-		SetActorRotation(Rotation);
-	}
-}
-
 #if WITH_EDITOR
 void AVoxelAssetActor::UpdatePreview()
 {
@@ -199,53 +153,16 @@ void AVoxelAssetActor::UpdatePreview()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+#if WITH_EDITOR
 void AVoxelAssetActor::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (bSpawnNewVoxelWorld && PreviewWorld)
-	{
-		FActorSpawnParameters SpawnParameters;
-		SpawnParameters.Owner = this;
-		SpawnParameters.bDeferConstruction = true;
-		SpawnParameters.Template = PreviewWorld;
-		auto* VoxelWorld = GetWorld()->SpawnActor<AVoxelWorld>(PreviewWorld->GetClass(), SpawnParameters);
-		if (!ensure(VoxelWorld)) return;
-		
-		// Attach to ourselves
-		VoxelWorld->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
-		VoxelWorld->SetActorRelativeTransform(FTransform::Identity);
-
-		// Setup physics
-		VoxelWorld->GetWorldRoot().BodyInstance.SetInstanceSimulatePhysics(bSimulatePhysics);
-		if (bSimulatePhysics && VoxelWorld->CollisionTraceFlag == CTF_UseComplexAsSimple)
-		{
-			VoxelWorld->CollisionTraceFlag = CTF_UseSimpleAndComplex;
-		}
-
-		// Setup LOD
-		const FVoxelIntBox ItemBounds = AddItemToData(VoxelWorld, nullptr);
-		// TODO Set RenderOctreeChunkSize?
-		VoxelWorld->SetRenderOctreeDepth(FVoxelUtilities::GetOctreeDepthContainingBounds(MESHER_CHUNK_SIZE, ItemBounds));
-		VoxelWorld->MaxLOD = 0;
-		VoxelWorld->bConstantLOD = true;
-
-		// Finish spawning & create world
-		VoxelWorld->bCreateWorldAutomatically = false;
-		VoxelWorld->FinishSpawning({}, true);
-		VoxelWorld->CreateWorld();
-
-		AddItemToData(VoxelWorld, &VoxelWorld->GetSubsystemChecked<FVoxelData>());
-	}
-
-#if WITH_EDITOR
+	
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	PrimaryActorTick.SetTickFunctionEnable(false);
-#endif
 }
 
-#if WITH_EDITOR
 void AVoxelAssetActor::BeginDestroy()
 {
 	Super::BeginDestroy();
@@ -355,7 +272,7 @@ bool AVoxelAssetActor::CanEditChange(const FProperty* InProperty) const
 #if WITH_EDITOR
 bool AVoxelAssetActor::IsPreviewCreated() const
 {
-	return Runtime.IsValid();
+	return Data.IsValid();
 }
 
 void AVoxelAssetActor::CreatePreview()
@@ -366,10 +283,17 @@ void AVoxelAssetActor::CreatePreview()
 	if (!ensure(Generator.IsValid())) return;
 	if (!ensure(!IsPreviewCreated())) return;
 
+	// Do that now as sometimes this is called before AVoxelWorld::BeginPlay
+	PreviewWorld->UpdateDynamicRendererSettings();
+
+	if (!StaticPool.IsValid())
+	{
+		StaticPool = FVoxelDefaultPool::Create(8, true, {}, {});
+	}
+
 	PrimitiveComponent->SetWorldTransform(PreviewWorld->GetTransform());
 	const FVoxelIntBox Bounds = AddItemToData(PreviewWorld, nullptr);
 
-	TVoxelSharedPtr<FVoxelData> Data;
 	{
 		bool bIsGeneratorSubtractive = bSubtractiveAsset;
 		if (bImportAsReference)
@@ -397,42 +321,32 @@ void AVoxelAssetActor::CreatePreview()
 		AddItemToData(PreviewWorld, Data.Get());
 		MergeMode = RealMergeMode;
 	}
-
-	// Needed for some reason to place stuff
-	PrimitiveComponent->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&PreviewWorld->GetWorldRoot().BodyInstance);
-	PrimitiveComponent->BodyInstance.SetObjectType(PreviewWorld->GetWorldRoot().BodyInstance.GetObjectType());
-
-	FVoxelRuntimeSettings Settings;
-	Settings.SetFromRuntime(*PreviewWorld);
-	Settings.ConfigurePreview();
-	Settings.Owner = this;
-	Settings.ComponentsOwner = this;
-	Settings.AttachRootComponent = PrimitiveComponent;
-	Settings.DataOverride = Data;
-	Settings.bUseCustomWorldBounds = true;
-	Settings.CustomWorldBounds = Bounds;
-	Settings.bDisableDebugManager = true;
-
-	// Aggressive merge settings
-	Settings.bMergeChunks = true;
-	Settings.MergedChunksClusterSize = 8;
-
-	// We do want collision to be able to place items on top of asset actors, but only complex one is needed
-	Settings.CollisionTraceFlag = CTF_UseComplexAsSimple;
 	
-	Settings.LODSubsystem = FVoxelFixedResolutionLODManager::StaticClass();
-	
-	Runtime = FVoxelRuntime::Create(Settings);
-	Runtime->DynamicSettings->SetFromRuntime(*PreviewWorld);
-	Runtime->DynamicSettings->ConfigurePreview();
+	DebugManager = FVoxelDebugManager::Create(FVoxelDebugManagerSettings(
+		PreviewWorld,
+		EVoxelPlayType::Preview,
+		StaticPool.ToSharedRef(),
+		Data.ToSharedRef(),
+		true));
 
-	auto& LODManager = Runtime->GetSubsystemChecked<FVoxelFixedResolutionLODManager>();
-	while (ensure(PreviewLOD < 24) && !LODManager.Initialize(
-		FVoxelUtilities::ClampDepth(Settings.RenderOctreeChunkSize, PreviewLOD),
-		MaxPreviewChunks,
-		true,
-		true,
-		false))
+	Renderer = FVoxelDefaultRenderer::Create(FVoxelRendererSettings(
+		PreviewWorld,
+		EVoxelPlayType::Preview,
+		PrimitiveComponent,
+		Data.ToSharedRef(),
+		StaticPool.ToSharedRef(),
+		nullptr,
+		DebugManager.ToSharedRef(),
+		true));
+	
+	LODManager = FVoxelFixedResolutionLODManager::Create(
+		FVoxelLODSettings(PreviewWorld,
+			EVoxelPlayType::Preview,
+			Renderer.ToSharedRef(),
+			StaticPool.ToSharedRef(),
+			Data.Get()));
+
+	while (!LODManager->Initialize(FVoxelUtilities::ClampDepth<RENDER_CHUNK_SIZE>(PreviewLOD), MaxPreviewChunks) && ensure(PreviewLOD < 24))
 	{
 		PreviewLOD++;
 	}
@@ -441,9 +355,17 @@ void AVoxelAssetActor::CreatePreview()
 void AVoxelAssetActor::DestroyPreview()
 {
 	if (!ensure(IsPreviewCreated())) return;
+	
+	Data.Reset();
 
-	Runtime->Destroy();
-	Runtime.Reset();
+	DebugManager->Destroy();
+	FVoxelUtilities::DeleteTickable(GetWorld(), DebugManager);
+
+	Renderer->Destroy();
+	FVoxelUtilities::DeleteTickable(GetWorld(), Renderer);
+
+	LODManager->Destroy();
+	FVoxelUtilities::DeleteTickable(GetWorld(), LODManager);
 
 	auto Components = GetComponents(); // need a copy as we are modifying it when destroying comps
 	for (auto& Component : Components)
@@ -467,6 +389,46 @@ void AVoxelAssetActor::UpdateBox()
 	Box->SetBoxExtent(FVector(Bounds.Size()) / 2 * PreviewWorld->VoxelSize * PreviewWorld->GetActorScale3D());
 	Box->SetWorldLocation(PreviewWorld->LocalToGlobalFloat(Bounds.GetCenter()));
 }
+
+void AVoxelAssetActor::ClampTransform()
+{
+	const bool bForceRound = PreviewWorld->RenderType == EVoxelRenderType::Cubic;
+	
+	if (bRoundAssetPosition || bForceRound)
+	{
+		const FVector WorldLocation = PreviewWorld->GetActorLocation();
+		const float VoxelSize = PreviewWorld->VoxelSize;
+
+		FVector Position = GetActorLocation();
+		Position -= WorldLocation;
+		Position /= VoxelSize;
+
+		Position.X = FMath::RoundToInt(Position.X);
+		Position.Y = FMath::RoundToInt(Position.Y);
+		Position.Z = FMath::RoundToInt(Position.Z);
+
+		Position *= VoxelSize;
+		Position += WorldLocation;
+
+		SetActorLocation(Position);
+	}
+	
+	if (bRoundAssetRotation || bForceRound)
+	{
+		const FRotator WorldRotation = PreviewWorld->GetActorRotation();
+		FRotator Rotation = GetActorRotation();
+
+		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation).Inverse()).Rotator();
+
+		Rotation.Pitch = FMath::RoundToInt(Rotation.Pitch / 90) * 90;
+		Rotation.Yaw = FMath::RoundToInt(Rotation.Yaw / 90) * 90;
+		Rotation.Roll = FMath::RoundToInt(Rotation.Roll / 90) * 90;
+		
+		Rotation = (FRotationMatrix(Rotation) * FRotationMatrix(WorldRotation)).Rotator();
+		
+		SetActorRotation(Rotation);
+	}
+}
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -478,4 +440,8 @@ void AVoxelAssetActor::OnPrepareToCleanseEditorObject(UObject* Object)
 {
 	DestroyPreview();
 }
+#endif
+
+#if WITH_EDITOR
+TVoxelSharedPtr<IVoxelPool> AVoxelAssetActor::StaticPool;
 #endif

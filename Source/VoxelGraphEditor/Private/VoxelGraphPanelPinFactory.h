@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -41,7 +41,7 @@ class FVoxelGraphPanelPinFactory : public FGraphPanelPinFactory
 			case EVoxelPinCategory::Wildcard:
 				return SNew(SGraphPin, InPin);
 			case EVoxelPinCategory::Vector:
-				return SNew(SGraphPinVector, InPin);
+				return SNew(SGraphPinVector<float>, InPin);
 			default:
 				check(false);
 				return nullptr;

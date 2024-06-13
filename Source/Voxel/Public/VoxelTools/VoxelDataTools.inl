@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -24,14 +24,12 @@ void UVoxelDataTools::MergeDistanceFieldImpl(
 	const TArray<FVoxelValue> Values = Data.ParallelGet<FVoxelValue>(Bounds.Extend(1) /* See GetSurfacePositionsFromDensities */, !bMultiThreaded);
 
 	TArray<float> Distances;
-	TArray<FVector> SurfacePositions;
+	TArray<FVector3f> SurfacePositions;
 	FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(Size, Values, Distances, SurfacePositions);
-	FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions, EVoxelComputeDevice::GPU);
+	FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions);
 	FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(Size, SurfacePositions, Distances);
 
-#if !ONE_BIT_VOXEL_VALUE
 	FVoxelDebug::Broadcast("Values", Bounds.Size(), Data.Get<FVoxelValue>(Bounds));
-#endif
 	FVoxelDebug::Broadcast("Distances", Bounds.Size(), Distances);
 	
 	const auto Set = [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, FVoxelMaterial& Material, auto bSetMaterials_Static)
@@ -63,8 +61,8 @@ void UVoxelDataTools::MergeDistanceFieldImpl(
 		// TODO check surface position is in bounds
 		Data.ParallelSet<FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelMaterial& Material)
 		{
-			const FVector SurfacePosition = FVoxelUtilities::Get3D(SurfacePositions, Size, X, Y, Z, Bounds.Min);
-			const auto Result = FindClosestNonEmptyVoxelImpl(Data, FVoxelVector(Bounds.Min) + SurfacePosition, true);
+			const FVector3f SurfacePosition = FVoxelUtilities::Get3D(SurfacePositions, Size, X, Y, Z, Bounds.Min);
+			const auto Result = FindClosestNonEmptyVoxelImpl(Data, FVoxelVector(Bounds.Min) + FVector(SurfacePosition), true);
 
 			if (Result.bSuccess)
 			{

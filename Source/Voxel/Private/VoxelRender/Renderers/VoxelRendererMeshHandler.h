@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -25,7 +25,7 @@ extern TAutoConsoleVariable<int32> CVarLogActionQueue;
 class IVoxelRendererMeshHandler : public IVoxelProceduralMeshComponent_PhysicsCallbackHandler
 {
 public:
-	DECLARE_TYPED_VOXEL_SPARSE_ARRAY_ID(FChunkId);
+	DEFINE_TYPED_VOXEL_SPARSE_ARRAY_ID(FChunkId);
 	
 	IVoxelRenderer& Renderer;
 
@@ -59,7 +59,7 @@ public:
 	virtual void Tick(double MaxTime);
 
 public:
-	virtual void RecomputeComponentPositions();
+	virtual void RecomputeMeshPositions();
 	virtual void ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda);
 	virtual void StartDestroying();
 
@@ -148,5 +148,6 @@ private:
 	TSet<FChunkId> ValidIndices;
 #endif
 	
+	void SetMeshPosition(UVoxelProceduralMeshComponent& Mesh, const FIntVector& Position) const;
 	void OnFreezeVoxelCollisionChanged(bool bNewFreezeCollisions);
 };

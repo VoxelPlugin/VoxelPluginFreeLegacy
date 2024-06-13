@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,29 +8,8 @@
 class FVoxelCancelCounter
 {
 public:
-	FVoxelCancelCounter() = default;
-
-	void Cancel() const
-	{
-		Counter->Increment();
-	}
-	
-private:
-	TVoxelSharedRef<FThreadSafeCounter> Counter = MakeVoxelShared<FThreadSafeCounter>();
-
-	friend class FVoxelCancelTracker;
-};
-
-class FVoxelCancelTracker
-{
-public:
-	FVoxelCancelTracker()
-		: Counter(MakeVoxelShared<FThreadSafeCounter>())
-		, Threshold(-1)
-	{
-	}
-	FVoxelCancelTracker(const FVoxelCancelCounter& InCounter)
-		: Counter(InCounter.Counter)
+	explicit FVoxelCancelCounter(const TVoxelSharedRef<FThreadSafeCounter64>& Counter)
+		: Counter(Counter)
 		, Threshold(Counter->GetValue())
 	{
 	}
@@ -41,32 +20,6 @@ public:
 	}
 
 private:
-	TVoxelSharedRef<FThreadSafeCounter> Counter;
-	int64 Threshold;
-};
-
-class FVoxelCancelTrackerGroup
-{
-public:
-	FVoxelCancelTrackerGroup() = default;
-
-	void AddTracker(const FVoxelCancelTracker& Tracker)
-	{
-		Trackers.Add(Tracker);
-	}
-	
-	bool IsCanceled() const
-	{
-		for (const FVoxelCancelTracker& Tracker : Trackers)
-		{
-			if (!Tracker.IsCanceled())
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-
-private:
-	TArray<FVoxelCancelTracker> Trackers;
+	const TVoxelSharedRef<FThreadSafeCounter64> Counter;
+	const int64 Threshold;
 };

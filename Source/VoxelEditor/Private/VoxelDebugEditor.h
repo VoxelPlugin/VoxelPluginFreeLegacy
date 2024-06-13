@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -52,7 +52,7 @@ public:
 	int32 TextureSize = 32;
 
 	UPROPERTY(EditAnywhere, Category = "Source|Mesh", meta = (EditCondition = "bUseMesh"))
-	UStaticMesh* Mesh = nullptr;
+	TObjectPtr<UStaticMesh> Mesh = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Source|Mesh", meta = (EditCondition = "bUseMesh"))
 	FVoxelMeshImporterSettingsBase MeshImporterSettings;

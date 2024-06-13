@@ -1,11 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelEnums.h"
 #include "VoxelValue.h"
-#include "VoxelVector.h"
 #include "VoxelIntBox.h"
 #include "VoxelData/VoxelDataImpl.h"
 
@@ -13,6 +12,7 @@ class AVoxelWorld;
 class FVoxelData;
 
 struct FVoxelIntBox;
+struct FVoxelVector;
 struct FModifiedVoxelValue;
 struct FVoxelPaintMaterial;
 

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/MaterialCollections/VoxelBasicMaterialCollection.h"
 #include "VoxelRender/VoxelMaterialIndices.h"
@@ -35,14 +35,38 @@ UMaterialInterface* UVoxelBasicMaterialCollection::GetVoxelMaterial(const FVoxel
 	return MaterialInterface;
 }
 
-TArray<FVoxelMaterialCollectionMaterialInfo> UVoxelBasicMaterialCollection::GetMaterials() const
+UMaterialInterface* UVoxelBasicMaterialCollection::GetIndexMaterial(uint8 Index) const
 {
-	TArray<FVoxelMaterialCollectionMaterialInfo> Result;
 	for (const auto& Layer : Layers)
 	{
-		Result.Add(FVoxelMaterialCollectionMaterialInfo{ Layer.LayerIndex, Layer.LayerMaterial });
+		if (Layer.LayerIndex == Index)
+		{
+			return Layer.LayerMaterial;
+		}
+	}
+	return nullptr;
+}
+
+TArray<UVoxelMaterialCollectionBase::FMaterialInfo> UVoxelBasicMaterialCollection::GetMaterials() const
+{
+	TArray<FMaterialInfo> Result;
+	for (const auto& Layer : Layers)
+	{
+		Result.Add(FMaterialInfo{ Layer.LayerIndex, FName(), Layer.LayerMaterial });
 	}
 	return Result;
+}
+
+int32 UVoxelBasicMaterialCollection::GetMaterialIndex(FName Name) const
+{
+	for (auto& Layer : Layers)
+	{
+		if (Layer.LayerMaterial && Layer.LayerMaterial->GetFName() == Name)
+		{
+			return Layer.LayerIndex;
+		}
+	}
+	return -1;
 }
 
 #if WITH_EDITOR

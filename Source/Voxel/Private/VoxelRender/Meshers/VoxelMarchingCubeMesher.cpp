@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/Meshers/VoxelMarchingCubeMesher.h"
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
@@ -129,14 +129,7 @@ public:
 		{
 			for (auto& Vertex : MesherVertices)
 			{
-				Vertex.Tangent.TangentX = FVector(FMath::FRandRange(-1, 1), FMath::FRandRange(-1, 1), FMath::FRandRange(-1, 1)).GetSafeNormal();
-			}
-		}
-		else
-		{
-			for (auto& Vertex : MesherVertices)
-			{
-				Vertex.Tangent.TangentX = FVector::RightVector;
+				Vertex.Tangent.TangentX = FVector(FMath::FRandRange(-1., 1.), FMath::FRandRange(-1., 1.), FMath::FRandRange(-1., 1.)).GetSafeNormal();
 			}
 		}
 	}
@@ -234,9 +227,9 @@ public:
 				if (Vertex.Position.X < Mesher.Step ||
 					Vertex.Position.Y < Mesher.Step ||
 					Vertex.Position.Z < Mesher.Step ||
-					Vertex.Position.X > (MESHER_CHUNK_SIZE - 1) * Mesher.Step ||
-					Vertex.Position.Y > (MESHER_CHUNK_SIZE - 1) * Mesher.Step ||
-					Vertex.Position.Z > (MESHER_CHUNK_SIZE - 1) * Mesher.Step)
+					Vertex.Position.X > (RENDER_CHUNK_SIZE - 1) * Mesher.Step ||
+					Vertex.Position.Y > (RENDER_CHUNK_SIZE - 1) * Mesher.Step ||
+					Vertex.Position.Z > (RENDER_CHUNK_SIZE - 1) * Mesher.Step)
 				{
 					// Can't use mesh normals on edges, as it looks like crap because of the missing neighbor vertices
 					Vertex.Normal = GetGradient(Vertex.Position);
@@ -346,12 +339,12 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(F
 
 	TArray<FVoxelMesherVertex> MesherVertices = FMarchingCubeHelpers::CreateMesherVertices(Vertices);
 
-	MESHER_TIME_INLINE_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
-	MESHER_TIME_INLINE(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
+	MESHER_TIME_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
+	MESHER_TIME(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
 
 	UnlockData();
 
-	MESHER_TIME_INLINE(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
+	MESHER_TIME(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
 
 	if (CVarEnableUniqueUVs.GetValueOnAnyThread() != 0)
 	{
@@ -373,7 +366,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(F
 		
 		const int32 NumTriangles = Indices.Num() / 3;
 		const int32 NumSquares = FVoxelUtilities::DivideCeil(NumTriangles, 2);
-		const int32 NumSquaresPerRow = FMath::CeilToInt(FMath::Sqrt(NumSquares));
+		const int32 NumSquaresPerRow = FMath::CeilToInt(FMath::Sqrt(double(NumSquares)));
 		check(NumSquares <= NumSquaresPerRow * NumSquaresPerRow);
 
 		const int32 TextureUVSize = 1;
@@ -418,9 +411,8 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeMesher::CreateFullChunkImpl(F
 		}
 	}
 
-	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
+	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(
 		Settings,
-		DynamicSettings,
 		LOD,
 		MoveTemp(Indices),
 		MoveTemp(MesherVertices)));
@@ -459,20 +451,20 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 		// Account for normals
 		BoundsToQuery = BoundsToQuery.Extend(1);
 	}
-	TVoxelQueryZone<FVoxelValue> QueryZone(BoundsToQuery, FIntVector(DataSize), LOD, CachedValues, true);
-	MESHER_TIME_INLINE_VALUES(DataSize * DataSize * DataSize, Data.Get<FVoxelValue>(QueryZone, LOD));
+	TVoxelQueryZone<FVoxelValue> QueryZone(BoundsToQuery, FIntVector(DataSize), LOD, CachedValues);
+	MESHER_TIME_VALUES(DataSize * DataSize * DataSize, Data.Get<FVoxelValue>(QueryZone, LOD));
 	
 	Accelerator = MakeUnique<FVoxelConstDataAccelerator>(Data, GetBoundsToLock());
 
 	uint32 VoxelIndex = 0;
 	if (LOD == 0) VoxelIndex += DataSize * DataSize; // Additional voxel for normals
-	for (int32 LZ = 0; LZ < MESHER_CHUNK_SIZE; LZ++)
+	for (int32 LZ = 0; LZ < RENDER_CHUNK_SIZE; LZ++)
 	{
 		if (LOD == 0) VoxelIndex += DataSize; // Additional voxel for normals
-		for (int32 LY = 0; LY < MESHER_CHUNK_SIZE; LY++)
+		for (int32 LY = 0; LY < RENDER_CHUNK_SIZE; LY++)
 		{
 			if (LOD == 0) VoxelIndex += 1; // Additional voxel for normals
-			for (int32 LX = 0; LX < MESHER_CHUNK_SIZE; LX++)
+			for (int32 LX = 0; LX < RENDER_CHUNK_SIZE; LX++)
 			{
 				{
 					CurrentCache[GetCacheIndex(0, LX, LY)] = -1; // Set EdgeIndex 0 to -1 if the cell isn't voxelized, eg all corners = 0
@@ -497,14 +489,14 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 					checkVoxelSlow(CubeIndices[7] < uint32(DataSize * DataSize * DataSize));
 
 					const uint32 CaseCode =
-						(FVoxelValue(CachedValues[CubeIndices[0]]).IsEmpty() << 0) |
-						(FVoxelValue(CachedValues[CubeIndices[1]]).IsEmpty() << 1) |
-						(FVoxelValue(CachedValues[CubeIndices[2]]).IsEmpty() << 2) |
-						(FVoxelValue(CachedValues[CubeIndices[3]]).IsEmpty() << 3) |
-						(FVoxelValue(CachedValues[CubeIndices[4]]).IsEmpty() << 4) |
-						(FVoxelValue(CachedValues[CubeIndices[5]]).IsEmpty() << 5) |
-						(FVoxelValue(CachedValues[CubeIndices[6]]).IsEmpty() << 6) |
-						(FVoxelValue(CachedValues[CubeIndices[7]]).IsEmpty() << 7);
+						(CachedValues[CubeIndices[0]].IsEmpty() << 0) |
+						(CachedValues[CubeIndices[1]].IsEmpty() << 1) |
+						(CachedValues[CubeIndices[2]].IsEmpty() << 2) |
+						(CachedValues[CubeIndices[3]].IsEmpty() << 3) |
+						(CachedValues[CubeIndices[4]].IsEmpty() << 4) |
+						(CachedValues[CubeIndices[5]].IsEmpty() << 5) |
+						(CachedValues[CubeIndices[6]].IsEmpty() << 6) |
+						(CachedValues[CubeIndices[7]].IsEmpty() << 7);
 
 					if (CaseCode != 0 && CaseCode != 255)
 					{
@@ -648,7 +640,7 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 										checkError((Max + Min) % 2 == 0);
 										const int32 Middle = (Max + Min) / 2;
 
-										FVoxelValue ValueAtMiddle = MESHER_TIME_INLINE_VALUES(1, Accelerator->Get<FVoxelValue>(
+										FVoxelValue ValueAtMiddle = MESHER_TIME_RETURN_VALUES(1, Accelerator->Get<FVoxelValue>(
 											(bIsAlongX ? Middle : PositionA.X) + ChunkPosition.X,
 											(bIsAlongY ? Middle : PositionA.Y) + ChunkPosition.Y,
 											(bIsAlongZ ? Middle : PositionA.Z) + ChunkPosition.Z, LOD));
@@ -752,10 +744,10 @@ bool FVoxelMarchingCubeMesher::CreateGeometryTemplate(FVoxelMesherTimes& Times, 
 
 FORCEINLINE int32 FVoxelMarchingCubeMesher::GetCacheIndex(int32 EdgeIndex, int32 LX, int32 LY)
 {
-	checkVoxelSlow(0 <= LX && LX < MESHER_CHUNK_SIZE);
-	checkVoxelSlow(0 <= LY && LY < MESHER_CHUNK_SIZE);
+	checkVoxelSlow(0 <= LX && LX < RENDER_CHUNK_SIZE);
+	checkVoxelSlow(0 <= LY && LY < RENDER_CHUNK_SIZE);
 	checkVoxelSlow(0 <= EdgeIndex && EdgeIndex < EDGE_INDEX_COUNT);
-	return EdgeIndex + LX * EDGE_INDEX_COUNT + LY * EDGE_INDEX_COUNT * MESHER_CHUNK_SIZE;
+	return EdgeIndex + LX * EDGE_INDEX_COUNT + LY * EDGE_INDEX_COUNT * RENDER_CHUNK_SIZE;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -805,9 +797,9 @@ bool FVoxelMarchingCubeTransitionsMesher::CreateGeometryForDirection(FVoxelMeshe
 	}
 #endif
 
-	for (int32 LX = 0; LX < MESHER_CHUNK_SIZE; LX++)
+	for (int32 LX = 0; LX < RENDER_CHUNK_SIZE; LX++)
 	{
-		for (int32 LY = 0; LY < MESHER_CHUNK_SIZE; LY++)
+		for (int32 LY = 0; LY < RENDER_CHUNK_SIZE; LY++)
 		{
 			// Set EdgeIndex 0, 1, 2 and 7 to -1 for when the cell aren't polygonized (0 on all corners)
 			Cache2D[GetCacheIndex(0, LX, LY)] = -1;
@@ -993,7 +985,7 @@ bool FVoxelMarchingCubeTransitionsMesher::CreateGeometryForDirection(FVoxelMeshe
 								checkError((Max + Min) % 2 == 0);
 								const int32 Middle = (Max + Min) / 2;
 
-								FVoxelValue ValueAtMiddle = MESHER_TIME_INLINE_VALUES(1, GetValue<Direction>(
+								FVoxelValue ValueAtMiddle = MESHER_TIME_RETURN_VALUES(1, GetValue<Direction>(
 									bIsAlongX ? Middle : PositionA.X,
 									bIsAlongY ? Middle : PositionA.Y,
 									bIsLowResChunk ? LOD : HalfLOD));
@@ -1111,12 +1103,12 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 
 	TArray<FVoxelMesherVertex> MesherVertices = FMarchingCubeHelpers::CreateMesherVertices(Vertices);
 
-	MESHER_TIME_INLINE_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
-	MESHER_TIME_INLINE(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
+	MESHER_TIME_MATERIALS(MesherVertices.Num(), FMarchingCubeHelpers::ComputeMaterials(*this, MesherVertices, Vertices));
+	MESHER_TIME(Normals, FMarchingCubeHelpers::ComputeNormals(*this, MesherVertices, Indices));
 
 	UnlockData();
 
-	MESHER_TIME_INLINE(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
+	MESHER_TIME(UVs, FMarchingCubeHelpers::ComputeUVs(*this, MesherVertices));
 
 	// Can't translate if we don't have valid normals
 	if (Settings.NormalConfig != EVoxelNormalConfig::FlatNormal &&
@@ -1136,7 +1128,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 	// Important: sanitize AFTER translating!
 	FVoxelMesherUtilities::SanitizeMesh(Indices, MesherVertices);
 
-	return MESHER_TIME_INLINE(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(Settings, DynamicSettings, LOD, MoveTemp(Indices), MoveTemp(MesherVertices)));
+	return MESHER_TIME_RETURN(CreateChunk, FVoxelMesherUtilities::CreateChunkFromVertices(Settings, LOD, MoveTemp(Indices), MoveTemp(MesherVertices)));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1145,10 +1137,10 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMarchingCubeTransitionsMesher::CreateFull
 
 FORCEINLINE int32 FVoxelMarchingCubeTransitionsMesher::GetCacheIndex(int32 EdgeIndex, int32 LX, int32 LY)
 {
-	checkVoxelSlow(0 <= LX && LX < MESHER_CHUNK_SIZE);
-	checkVoxelSlow(0 <= LY && LY < MESHER_CHUNK_SIZE);
+	checkVoxelSlow(0 <= LX && LX < RENDER_CHUNK_SIZE);
+	checkVoxelSlow(0 <= LY && LY < RENDER_CHUNK_SIZE);
 	checkVoxelSlow(0 <= EdgeIndex && EdgeIndex < TRANSITION_EDGE_INDEX_COUNT);
-	return EdgeIndex + LX * TRANSITION_EDGE_INDEX_COUNT + LY * TRANSITION_EDGE_INDEX_COUNT * MESHER_CHUNK_SIZE;
+	return EdgeIndex + LX * TRANSITION_EDGE_INDEX_COUNT + LY * TRANSITION_EDGE_INDEX_COUNT * RENDER_CHUNK_SIZE;
 }
 
 template<uint8 Direction>

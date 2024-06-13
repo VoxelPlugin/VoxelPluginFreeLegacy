@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -11,13 +11,6 @@ class FVoxelGeneratorInstance;
 class FVoxelTransformableGeneratorInstance;
 struct FVoxelGeneratorParameter;
 
-struct FVoxelGeneratorOutputs
-{
-	TArray<FName> IntOutputs;
-	TArray<FName> FloatOutputs;
-	TArray<FName> ColorOutputs;
-};
-
 /**
  * A UVoxelGenerator is used to create a FVoxelGeneratorInstance
  */
@@ -29,12 +22,10 @@ class VOXEL_API UVoxelGenerator : public UObject
 public:
 	//~ Begin UVoxelGenerator Interface
 	virtual void ApplyParameters(const TMap<FName, FString>& Parameters);
-	virtual TArray<FVoxelGeneratorParameter> GetParameters() const;
+	virtual void GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const;
 	
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance(const TMap<FName, FString>& Parameters);
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance();
-
-	virtual FVoxelGeneratorOutputs GetGeneratorOutputs() const;
 	//~ End UVoxelGenerator Interface
 
 protected:

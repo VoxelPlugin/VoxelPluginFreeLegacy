@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelSurfaceTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -162,8 +162,7 @@ template VOXEL_API FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxel
 FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldImpl(
 	FVoxelData& Data,
 	const FVoxelIntBox& Bounds,
-	const bool bMultiThreaded,
-	const EVoxelComputeDevice ComputeDevice)
+	const bool bMultiThreaded)
 {
 	VOXEL_TOOL_FUNCTION_COUNTER(Bounds.Count());
 	
@@ -178,9 +177,9 @@ FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldI
 	const TArray<FVoxelValue> Values = Data.ParallelGet<FVoxelValue>(Bounds.Extend(1), !bMultiThreaded);
 
 	TArray<float> Distances;
-	TArray<FVector> SurfacePositions;
+	TArray<FVector3f> SurfacePositions;
 	FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(Size, Values, Distances, SurfacePositions);
-	FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions, ComputeDevice);
+	FVoxelDistanceFieldUtilities::JumpFlood(Size, SurfacePositions);
 	FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(Size, SurfacePositions, Distances);
 	
 	VOXEL_ASYNC_SCOPE_COUNTER("Create OutVoxels");
@@ -200,7 +199,7 @@ FVoxelSurfaceEditsVoxels UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceFieldI
 				Voxel.Position = Bounds.Min + FIntVector(X, Y, Z);
 				Voxel.Normal = FVector(ForceInit);
 				Voxel.Value = FVoxelUtilities::Get(Distances, Index);
-				Voxel.SurfacePosition = FVector(Bounds.Min) + FVoxelUtilities::Get(SurfacePositions, Index);
+				Voxel.SurfacePosition = FVector(Bounds.Min) + FVector(FVoxelUtilities::Get(SurfacePositions, Index));
 				
 				FVoxelUtilities::Get(OutVoxels, Index) = Voxel;
 			}
@@ -288,11 +287,10 @@ void UVoxelSurfaceTools::FindSurfaceVoxelsFromDistanceField(
 	FVoxelSurfaceEditsVoxels& Voxels,
 	AVoxelWorld* World,
 	FVoxelIntBox Bounds,
-	bool bMultiThreaded,
-	EVoxelComputeDevice ComputeDevice)
+	bool bMultiThreaded)
 {
 	// TODO compute normals
-	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, Voxels = FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, bMultiThreaded, ComputeDevice));
+	VOXEL_TOOL_HELPER(Read, DoNotUpdateRender, NO_PREFIX, Voxels = FindSurfaceVoxelsFromDistanceFieldImpl(Data, Bounds, bMultiThreaded));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -506,11 +504,11 @@ FVoxelSurfaceEditsStackElement UVoxelSurfaceTools::ApplyFlatten(
 {
 	CHECK_VOXELWORLD_FOR_CONVERT_TO_VOXEL_SPACE();
 	
-	PlanePoint = GET_VOXEL_TOOL_REAL(PlanePoint);
+	PlanePoint = GET_VOXEL_TOOL_REAL(PlanePoint).ToFloat();
 
 	if (bConvertToVoxelSpace)
 	{
-		PlaneNormal = World->GetVoxelTransform().InverseTransformVector(PlaneNormal).GetSafeNormal();
+		PlaneNormal = World->GetActorTransform().InverseTransformVector(PlaneNormal).GetSafeNormal();
 	}
 	
 	return

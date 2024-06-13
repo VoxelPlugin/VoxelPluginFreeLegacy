@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -31,7 +31,11 @@ template<EVoxelLockType LockType>
 class TVoxelScopeLock
 {
 public:
+#if VOXEL_ENGINE_VERSION >= 504
+	using TData = typename std::conditional_t<LockType == EVoxelLockType::Read, const FVoxelData, FVoxelData>;
+#else
 	using TData = typename TChooseClass<LockType == EVoxelLockType::Read, const FVoxelData, FVoxelData>::Result;
+#endif
 	
 	TVoxelScopeLock(TData& InData, const FVoxelIntBox& Bounds, const FName& Name, bool bCondition = true)
 		: Data(InData)

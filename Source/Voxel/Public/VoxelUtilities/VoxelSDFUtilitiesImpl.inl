@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #if defined(__INTELLISENSE__) || defined(__RSCPP_VERSION)
 #include "CoreMinimal.h"
@@ -36,7 +36,7 @@ struct vec2
 	vec2() = default;
 	FORCEINLINE vec2(flt v) : x(v), y(v) {}
 	FORCEINLINE vec2(flt x, flt y) : x(x), y(y) {}
-	template<typename T, typename = typename TEnableIf<TOr<TIsSame<T, FVector2D>, TIsSame<T, FVoxelVector2D>, TIsSame<T, FIntPoint>>::Value>::Type>
+	template<typename T, typename = typename TEnableIf<std::is_same_v<T, FVector2D> || std::is_same_v<T, FVoxelVector2D> || std::is_same_v<T, FIntPoint>>::Type>
 	FORCEINLINE vec2(T Vector) : x(Vector.X), y(Vector.Y) {}
 	
 #define SWIZZLE(a, b) FORCEINLINE const vec2 a##b() const { return { a, b }; }
@@ -62,7 +62,7 @@ struct vec3
 	vec3() = default;
 	FORCEINLINE vec3(flt v) : x(v), y(v), z(v) {}
 	FORCEINLINE vec3(flt x, flt y, flt z) : x(x), y(y), z(z) {}
-	template<typename T, typename = typename TEnableIf<TOr<TIsSame<T, FVector>, TIsSame<T, FVoxelVector>, TIsSame<T, FIntVector>>::Value>::Type>
+	template<typename T, typename = typename TEnableIf<std::is_same_v<T, FVector> || std::is_same_v<T, FVoxelVector> || std::is_same_v<T, FIntVector>>::Type>
 	FORCEINLINE vec3(T Vector) : x(Vector.X), y(Vector.Y), z(Vector.Z) {}
 
 #define SWIZZLE(a, b) \

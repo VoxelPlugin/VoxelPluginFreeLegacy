@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -22,7 +22,6 @@ DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Render Octrees Memory"), STAT_VoxelRenderO
 
 struct FVoxelRenderOctreeSettings
 {
-	int32 ChunkSize;
 	int32 MinLOD;
 	int32 MaxLOD;
 	FVoxelIntBox WorldBounds;
@@ -46,8 +45,6 @@ struct FVoxelRenderOctreeSettings
 
 class FVoxelRenderOctreeAsyncBuilder : public FVoxelAsyncWork
 {
-	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelRenderOctreeAsyncBuilder)
-
 public:
 	TArray<FVoxelChunkUpdate> ChunkUpdates;
 
@@ -59,6 +56,12 @@ public:
 
 	FVoxelRenderOctreeAsyncBuilder(uint8 OctreeDepth, const FVoxelIntBox& WorldBounds);
 
+private:
+	~FVoxelRenderOctreeAsyncBuilder() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
+
 public:
 	void Init(const FVoxelRenderOctreeSettings& OctreeSettings, TVoxelSharedPtr<FVoxelRenderOctree> Octree);
 	void ReportBuildTime();
@@ -66,6 +69,7 @@ public:
 private:
 	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override;
+	virtual uint32 GetPriority() const override;
 	//~ End FVoxelAsyncWork Interface
 
 private:
@@ -80,7 +84,7 @@ private:
 	int32 NumberOfChunks = 0;
 };
 
-class FVoxelRenderOctree : public TSimpleVoxelOctree<FVoxelRenderOctree>
+class FVoxelRenderOctree : public TSimpleVoxelOctree<RENDER_CHUNK_SIZE, FVoxelRenderOctree>
 {
 private:
 	// Important: must be the first variable to be initialized, else GetId does the wrong thing for the root!
@@ -111,8 +115,8 @@ public:
 
 	inline const FVoxelChunkSettings& GetSettings() const { return ChunkSettings.Settings; }
 
-	FVoxelRenderOctree(uint32 ChunkSize, uint8 LOD);
-	explicit FVoxelRenderOctree(const FVoxelRenderOctree& Source);
+	FVoxelRenderOctree(uint8 LOD);
+	FVoxelRenderOctree(const FVoxelRenderOctree* Source);
 
 	FVoxelRenderOctree(const FVoxelRenderOctree& Parent, uint8 ChildIndex);
 	FVoxelRenderOctree(const FVoxelRenderOctree& Parent, uint8 ChildIndex, const ChildrenArray& SourceChildren);

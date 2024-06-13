@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGraphPreviewSettings.h"
 #include "IVoxelGraphEditor.h"
@@ -59,7 +59,7 @@ void UVoxelGraphPreviewSettings::PostEditChangeProperty(FPropertyChangedEvent& P
 	// Don't let the previewed voxel go out of the bounds
 	PreviewedVoxel = Wrapper.Bounds.Clamp(PreviewedVoxel);
 
-	if (PropertyChangedEvent.MemberProperty)
+	if (Graph && PropertyChangedEvent.MemberProperty)
 	{
 		const bool bAutomatic = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("Automatic"));
 		const bool bUpdateItems = PropertyChangedEvent.MemberProperty->HasMetaData(STATIC_FNAME("UpdateItems"));
@@ -82,7 +82,7 @@ void UVoxelGraphPreviewSettings::PostEditChangeProperty(FPropertyChangedEvent& P
 				Flags |= EVoxelGraphPreviewFlags::UpdatePlaceableItems;
 			}
 
-			IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(GetOuterUVoxelGraphGenerator(), Flags);
+			IVoxelGraphEditor::GetVoxelGraphEditor()->UpdatePreview(Graph, Flags);
 		}
 	}
 }

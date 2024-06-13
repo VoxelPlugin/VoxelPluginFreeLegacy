@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -14,7 +14,7 @@ class VOXEL_API UVoxelSmoothTool : public UVoxelToolBase
 
 public:
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UMaterialInterface* ToolMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> ToolMaterial = nullptr;
 
 public:
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
@@ -26,7 +26,7 @@ public:
 
 	// Which channels to smooth
 	// In Single Index Alpha will be automatically disabled
-	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint", Bitmask, BitmaskEnum = EVoxelMaterialMask_BP))
+	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bPaint", Bitmask, BitmaskEnum = "/Script/Voxel.EVoxelMaterialMask_BP"))
 	int32 PaintMask = EVoxelMaterialMask::All;
 
 	// NumIterations also affects strength

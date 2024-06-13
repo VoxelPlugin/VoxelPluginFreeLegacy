@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -42,10 +42,7 @@ namespace FVoxelUtilities
 		};
 		const auto GetItemDistance = [&](const FVoxelDataItem& Item)
 		{
-			FVoxelGeneratorQueryData QueryData;
-			QueryData.DataItemParameters = Item.Data;
-			
-			const auto Stack = FVoxelItemStack::Empty.WithQueryData(QueryData);
+			const auto Stack = FVoxelItemStack::Empty.WithCustomData(&Item.Data);
 			return Item.Generator->GetValue(X, Y, Z, 0, Stack) * (bInvertDataItemDistances ? -1 : 1);
 		};
 		
@@ -123,10 +120,7 @@ namespace FVoxelUtilities
 		};
 		const auto GetItemDistance = [&](const FVoxelDataItem& Item)
 		{
-			FVoxelGeneratorQueryData QueryData;
-			QueryData.DataItemParameters = Item.Data;
-			
-			const auto Stack = FVoxelItemStack::Empty.WithQueryData(QueryData);
+			const auto Stack = FVoxelItemStack::Empty.WithCustomData(&Item.Data);
 			auto Range = Item.Generator->GetValueRange(Bounds, 0, Stack);
 			if (bInvertDataItemDistances)
 			{

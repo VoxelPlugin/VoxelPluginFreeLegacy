@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelData.inl"
@@ -41,14 +41,23 @@ DEFINE_STAT(STAT_NumVoxelDataItems);
 
 inline auto CreateGenerator(const AVoxelWorld* World)
 {
-	auto GeneratorInstance = World->Generator.GetInstance();
+	auto GeneratorInstance = World->Generator.GetInstance(true);
 	GeneratorInstance->Init(World->GetGeneratorInit());
 	return GeneratorInstance;
 }
 
 inline int32 ClampDataDepth(int32 Depth)
 {
-	return FMath::Max(1, FVoxelUtilities::ClampDepth(DATA_CHUNK_SIZE, Depth));
+	return FMath::Max(1, FVoxelUtilities::ClampDepth<DATA_CHUNK_SIZE>(Depth));
+}
+
+FVoxelDataSettings::FVoxelDataSettings(const AVoxelWorld* World, EVoxelPlayType PlayType)
+	: Depth(ClampDataDepth(FVoxelUtilities::ConvertDepth<RENDER_CHUNK_SIZE, DATA_CHUNK_SIZE>(World->RenderOctreeDepth)))
+	, WorldBounds(World->GetWorldBounds())
+	, Generator(CreateGenerator(World))
+	, bEnableMultiplayer(false)
+	, bEnableUndoRedo(PlayType == EVoxelPlayType::Game ? World->bEnableUndoRedo : true)
+{
 }
 
 FVoxelDataSettings::FVoxelDataSettings(
@@ -57,7 +66,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 	bool bEnableMultiplayer,
 	bool bEnableUndoRedo)
 	: Depth(ClampDataDepth(Depth))
-	, WorldBounds(FVoxelUtilities::GetBoundsFromDepth(DATA_CHUNK_SIZE, this->Depth))
+	, WorldBounds(FVoxelUtilities::GetBoundsFromDepth<DATA_CHUNK_SIZE>(this->Depth))
 	, Generator(Generator)
 	, bEnableMultiplayer(bEnableMultiplayer)
 	, bEnableUndoRedo(bEnableUndoRedo)
@@ -70,7 +79,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 	const TVoxelSharedRef<FVoxelGeneratorInstance>& Generator, 
 	bool bEnableMultiplayer, 
 	bool bEnableUndoRedo)
-	: Depth(ClampDataDepth(FVoxelUtilities::GetOctreeDepthContainingBounds(DATA_CHUNK_SIZE, WorldBounds)))
+	: Depth(ClampDataDepth(FVoxelUtilities::GetOctreeDepthContainingBounds<DATA_CHUNK_SIZE>(WorldBounds)))
 	, WorldBounds(WorldBounds)
 	, Generator(Generator)
 	, bEnableMultiplayer(bEnableMultiplayer)
@@ -84,7 +93,7 @@ FVoxelDataSettings::FVoxelDataSettings(
 ///////////////////////////////////////////////////////////////////////////////
 
 FVoxelData::FVoxelData(const FVoxelDataSettings& Settings)
-	: IVoxelData(Settings.Depth, Settings.WorldBounds, Settings.bEnableMultiplayer, Settings.bEnableUndoRedo, Settings.Generator.ToSharedRef())
+	: IVoxelData(Settings.Depth, Settings.WorldBounds, Settings.bEnableMultiplayer, Settings.bEnableUndoRedo, Settings.Generator)
 	, Octree(MakeUnique<FVoxelDataOctreeParent>(Depth))
 {
 	check(Depth > 0);
@@ -292,7 +301,6 @@ void FVoxelData::ClearData()
 		{
 			Leaf.GetData<FVoxelValue>().ClearData(*this);
 			Leaf.GetData<FVoxelMaterial>().ClearData(*this);
-			Leaf.CustomChannels.ClearData(*this);
 		});
 
 		ensure(GetDirtyMemory().Values.GetValue() == 0);
@@ -594,8 +602,7 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxel
 	FVoxelOctreeUtilities::IterateAllLeaves(*Octree, [&](FVoxelDataOctreeLeaf& Leaf)
 	{
 		TVoxelDataOctreeLeafData<FVoxelValue>* ValuesPtr = &Leaf.Values;
-
-#if !ONE_BIT_VOXEL_VALUE
+		
 		if (CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread() != 0)
 		{
 			VOXEL_ASYNC_SCOPE_COUNTER("Diffing with generator");
@@ -617,11 +624,11 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxel
 
 					if (GeneratorValue == Value)
 					{
-						UniquePtr->Set(Index, FVoxelValue::Special());
+						UniquePtr->GetRef(Index) = FVoxelValue::Special();
 					}
 					else
 					{
-						UniquePtr->Set(Index, Value);
+						UniquePtr->GetRef(Index) = Value;
 					}
 				});
 
@@ -630,7 +637,6 @@ void FVoxelData::GetSave(FVoxelUncompressedWorldSaveImpl& OutSave, TArray<FVoxel
 				BuffersToDelete.Emplace(MoveTemp(UniquePtr));
 			}
 		}
-#endif
 		
 		Builder.AddChunk(Leaf.Position, *ValuesPtr, Leaf.Materials);
 	});
@@ -695,7 +701,6 @@ bool FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSaveImpl& Save, const
 			{
 				Loader.ExtractChunk(ChunkIndex, *this, Leaf.Values, Leaf.Materials);
 				
-#if !ONE_BIT_VOXEL_VALUE
 				if (CVarStoreSpecialValueForGeneratorValuesInSaves.GetValueOnGameThread() != 0)
 				{
 					VOXEL_ASYNC_SCOPE_COUNTER("Loading generator values");
@@ -711,19 +716,19 @@ bool FVoxelData::LoadFromSave(const FVoxelUncompressedWorldSaveImpl& Save, const
 						OctreeBounds.Iterate([&](int32 X, int32 Y, int32 Z)
 						{
 							const FVoxelCellIndex Index = FVoxelDataOctreeUtilities::IndexFromGlobalCoordinates(OctreeBounds.Min, X, Y, Z);
+							FVoxelValue& Value = Leaf.Values.GetRef(Index);
 
-							if (Leaf.Values.Get(Index) == FVoxelValue::Special())
+							if (Value == FVoxelValue::Special())
 							{
 								// Use the generator value, ignoring all assets and items as they are not loaded
 								// The same is done when checking on save
-								Leaf.Values.Set(Index, Generator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty));
+								Value = Generator->Get<FVoxelValue>(X, Y, Z, 0, FVoxelItemStack::Empty);
 							}
 						});
 
 						Leaf.Values.TryCompressToSingleValue(*this);
 					}
 				}
-#endif
 
 				ChunkIndex++;
 				if (OutBoundsToUpdate)
@@ -1023,26 +1028,26 @@ void FVoxelDataUtilities::AddAssetItemToLeafData(
 	const FVoxelDataGeneratorInstance_AddAssetItem PtrGenerator(Data);
 	const FVoxelItemStack ItemStack(Leaf.GetItemHolder(), PtrGenerator, 0);
 
-	TVoxelArrayFwd<FVoxelValue> ValuesBuffer;
-	TVoxelArrayFwd<FVoxelMaterial> MaterialsBuffer;
+	TArray<FVoxelValue> ValuesBuffer;
+	TArray<FVoxelMaterial> MaterialsBuffer;
 
-	const auto WriteAssetDataToBuffer = [&](auto& Buffer, auto TypeDecl)
+	const auto WriteAssetDataToBuffer = [&](auto& Buffer)
 	{
-		using T = decltype(TypeDecl);
+		using T = typename TDecay<decltype(Buffer)>::Type::ElementType;
 
 		Buffer.SetNumUninitialized(BoundsToEdit.Count());
 
 		Leaf.GetData<T>().SetIsDirty(true, Data);
 		
-		TVoxelQueryZone<T> QueryZone(BoundsToEdit, Buffer);
+		TVoxelQueryZone<T> QueryZone(BoundsToEdit, Buffer.GetData());
 		Generator.Get_Transform<T>(
 			LocalToWorld,
 			QueryZone,
 			0,
 			ItemStack);
 	};
-	if (bModifyValues) WriteAssetDataToBuffer(ValuesBuffer, FVoxelValue());
-	if (bModifyMaterials) WriteAssetDataToBuffer(MaterialsBuffer, FVoxelMaterial());
+	if (bModifyValues) WriteAssetDataToBuffer(ValuesBuffer);
+	if (bModifyMaterials) WriteAssetDataToBuffer(MaterialsBuffer);
 
 	// Need to first write both of them, as the item stack is referencing the data
 

@@ -1,9 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelDataAssetEditorManager.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelMinimal.h"
 #include "VoxelWorld.h"
+#include "VoxelData/VoxelDataLock.h"
 #include "VoxelDebug/VoxelDebugUtilities.h"
 #include "VoxelData/VoxelDataIncludes.h"
 #include "VoxelTools/VoxelDataTools.h"
@@ -47,7 +48,7 @@ FVoxelDataAssetEditorManager::FVoxelDataAssetEditorManager(UVoxelDataAsset* Data
 
 FVoxelDataAssetEditorManager::~FVoxelDataAssetEditorManager()
 {
-	World->GetSubsystemChecked<FVoxelData>().ClearDirtyFlag(); // Avoid annoying save popup from the voxel world
+	World->GetData().ClearDirtyFlag(); // Avoid annoying save popup from the voxel world
 	World->DestroyWorld();
 
 	check(DataAsset->VoxelWorldTemplate);
@@ -70,7 +71,7 @@ void FVoxelDataAssetEditorManager::Save(bool bShowDebug)
 {
 	FVoxelScopedSlowTask Progress(6);
 
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 	
 	Progress.EnterProgressFrame(1, VOXEL_LOCTEXT("Rounding voxels"));
 	if (GetDefault<UVoxelSettings>()->bRoundBeforeSaving)
@@ -173,7 +174,7 @@ void FVoxelDataAssetEditorManager::RecreateWorld()
 
 bool FVoxelDataAssetEditorManager::IsDirty() const
 {
-	return ensure(World->IsCreated()) && World->GetSubsystemChecked<FVoxelData>().IsDirty();
+	return ensure(World->IsCreated()) && World->GetData().IsDirty();
 }
 
 void FVoxelDataAssetEditorManager::CreateWorld()

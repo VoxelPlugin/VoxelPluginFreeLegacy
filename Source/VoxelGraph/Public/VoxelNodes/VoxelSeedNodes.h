@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -23,16 +23,19 @@ class VOXELGRAPH_API UVoxelNode_Seed : public UVoxelExposedNode
 {
 	GENERATED_BODY()
 	GENERATED_VOXELNODE_BODY()
-	GENERATED_EXPOSED_VOXELNODE_BODY(DefaultValue)
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	int32 DefaultValue = 1443;
 
 	UPROPERTY()
-	FName Name_DEPRECATED;
+	FName Name_DEPRECATED = "SeedName";
 
 	UVoxelNode_Seed();
+
+	//~ Begin UVoxelExposedNode Interface
+	virtual FName GetParameterPropertyName() const override { return GET_OWN_MEMBER_NAME(DefaultValue); }
+	//~ End UVoxelExposedNode Interface
 
 	//~ Begin UObject Interface
 	virtual void PostLoad() override;

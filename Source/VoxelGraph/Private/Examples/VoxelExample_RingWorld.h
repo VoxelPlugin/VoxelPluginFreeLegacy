@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -35,25 +35,25 @@ public:
 	float RiverWidth = 1.0;
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="BeachColor"))
-	FLinearColor BeachColor = FLinearColor(0.989583, 0.833626, 0.282215, 1.000000);
+	FColor BeachColor = FColor(253, 213, 72, 255);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="MountainsColorHigh"))
-	FLinearColor MountainsColorHigh = FLinearColor(1.000000, 1.000000, 1.000000, 1.000000);
+	FColor MountainsColorHigh = FColor(255, 255, 255, 255);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="MountainsColorLowHigh"))
-	FLinearColor MountainsColorLowHigh = FLinearColor(0.129469, 0.136312, 0.140625, 1.000000);
+	FColor MountainsColorLowHigh = FColor(33, 34, 35, 255);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="MountainsColorLowLow"))
-	FLinearColor MountainsColorLowLow = FLinearColor(0.036458, 0.023406, 0.017120, 1.000000);
+	FColor MountainsColorLowLow = FColor(9, 5, 4, 255);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Curves", meta=(DisplayName="MoutainsMaskCurve"))
 	TSoftObjectPtr<UCurveFloat> MoutainsMaskCurve = TSoftObjectPtr<UCurveFloat>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/RingWorld/MoutainsMaskCurve.MoutainsMaskCurve"));
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="PlainsColorHigh"))
-	FLinearColor PlainsColorHigh = FLinearColor(0.104616, 0.184475, 0.042311, 1.000000);
+	FColor PlainsColorHigh = FColor(26, 47, 10, 255);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="PlainsColorLow"))
-	FLinearColor PlainsColorLow = FLinearColor(0.041351, 0.072917, 0.016724, 1.000000);
+	FColor PlainsColorLow = FColor(10, 18, 4, 255);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="", meta=(DisplayName="PlainsNoiseFrequency"))
 	float PlainsNoiseFrequency = 0.2;
@@ -68,10 +68,10 @@ public:
 	TSoftObjectPtr<UCurveFloat> RingMainShapeCurve = TSoftObjectPtr<UCurveFloat>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/RingWorld/RingMainShapeCurve.RingMainShapeCurve"));
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="RingOuterColor"))
-	FLinearColor RingOuterColor = FLinearColor(0.005208, 0.000000, 0.000099, 1.000000);
+	FColor RingOuterColor = FColor(1, 0, 0, 255);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Colors", meta=(DisplayName="RiverColor"))
-	FLinearColor RiverColor = FLinearColor(0.000000, 0.000000, 1.000000, 1.000000);
+	FColor RiverColor = FColor(0, 0, 255, 255);
 	// 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Curves", meta=(DisplayName="RiverDepthCurve"))
 	TSoftObjectPtr<UCurveFloat> RiverDepthCurve = TSoftObjectPtr<UCurveFloat>(FSoftObjectPath("/Voxel/Examples/VoxelGraphs/RingWorld/RiverDepthCurve.RiverDepthCurve"));

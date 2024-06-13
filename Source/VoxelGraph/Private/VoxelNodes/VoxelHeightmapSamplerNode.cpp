@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelHeightmapSamplerNode.h"
 #include "VoxelAssets/VoxelHeightmapAsset.h"
@@ -35,4 +35,3 @@ void UVoxelNode_HeightmapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorRepor
 		ErrorReporter.AddMessageToNode(this, "invalid heightmap", EVoxelGraphNodeMessageType::Error);
 	}
 }
-

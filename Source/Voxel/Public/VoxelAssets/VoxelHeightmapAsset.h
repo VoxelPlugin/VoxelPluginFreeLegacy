@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -110,7 +110,7 @@ private:
 	TArray<FColor> ThumbnailSave;
 
 	UPROPERTY(Transient)
-	UTexture2D* ThumbnailTexture;
+	TObjectPtr<UTexture2D> ThumbnailTexture;
 #endif
 
 #if WITH_EDITOR

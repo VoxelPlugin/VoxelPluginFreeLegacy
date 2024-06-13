@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelBiomeMapNode.h"
 #include "VoxelNodes/VoxelTextureSamplerNode.h"
@@ -52,7 +52,7 @@ void UVoxelNode_BiomeMapSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReport
 	Super::LogErrors(ErrorReporter);
 	
 	FString Error;
-	if (!FVoxelTextureHelpers::CanCreateFromTexture(Texture, Error))
+	if (!FVoxelTextureUtilities::CanCreateFromTexture(Texture, Error))
 	{
 		ErrorReporter.AddMessageToNode(this, Error, EVoxelGraphNodeMessageType::Error);
 	}

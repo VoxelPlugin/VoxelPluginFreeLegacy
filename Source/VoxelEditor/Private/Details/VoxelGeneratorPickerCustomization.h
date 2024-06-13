@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -21,16 +21,16 @@ class UVoxelGeneratorPickerEditorData : public UObject
 
 public:
 	UPROPERTY()
-	UObject* GeneratorObject = nullptr;
+	TObjectPtr<UObject> GeneratorObject = nullptr;
 	
 	UPROPERTY()
 	TArray<FVoxelGeneratorParameter> Parameters;
 
 	UPROPERTY()
-	UBlueprint* Blueprint = nullptr;
+	TObjectPtr<UBlueprint> Blueprint = nullptr;
 
 	UPROPERTY()
-	UObject* BlueprintInstance = nullptr;
+	TObjectPtr<UObject> BlueprintInstance = nullptr;
 };
 
 UCLASS()
@@ -40,7 +40,7 @@ class UVoxelGeneratorPickerBlueprintPool : public UObject
 
 public:
 	UPROPERTY()
-	TArray<UBlueprint*> Blueprints;
+	TArray<TObjectPtr<UBlueprint>> Blueprints;
 };
 
 class FVoxelGeneratorPickerCustomization : public IPropertyTypeCustomization

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -294,7 +294,7 @@ FORCEINLINE TVoxelRange<v_flt> FVoxelItemStack::GetValueRange(const FVoxelIntBox
 				*this);
 		}
 		
-		const auto NextStack = FVoxelItemStack(ItemHolder, *Generator, Depth - 1, QueryData);
+		const auto NextStack = FVoxelItemStack(ItemHolder, *Generator, Depth - 1, CustomData);
 		for (auto& SubBounds : Bounds.Difference(Asset.Bounds))
 		{
 			const auto NextRange = NextStack.GetValueRange(SubBounds, LOD);

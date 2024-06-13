@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -11,7 +11,7 @@ void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(
 	const FIntVector& Size,
 	TArrayView<const T> Densities,
 	TArrayView<float> OutDistances,
-	TArrayView<FVector> OutSurfacePositions,
+	TArrayView<FVector3f> OutSurfacePositions,
 	TLambda GetFloatFromT)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
@@ -43,7 +43,7 @@ void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(
 					// Only consider positive values, so that there's a surface between us
 					// By symmetry, take the min value negative if Value is positive
 					float MaxNeighborValue = 0.f;
-					FIntVector MaxNeighborPosition;
+					FIntVector MaxNeighborPosition = FIntVector(ForceInit);
 
 #define	CheckNeighbor(DX, DY, DZ) \
 					{ \
@@ -73,7 +73,7 @@ void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(
 					else
 					{
 						const float Alpha = Value / (Value - MaxNeighborValue);
-						FVoxelUtilities::Get(OutSurfacePositions, Index) = FMath::Lerp(FVector(Position), FVector(MaxNeighborPosition), Alpha);
+						FVoxelUtilities::Get(OutSurfacePositions, Index) = FMath::Lerp(FVector3f(Position), FVector3f(MaxNeighborPosition), Alpha);
 					}
 				};
 				

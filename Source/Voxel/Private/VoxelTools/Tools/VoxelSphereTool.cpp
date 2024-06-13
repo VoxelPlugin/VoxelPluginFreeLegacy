@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/Tools/VoxelSphereTool.h"
 #include "VoxelTools/Tools/VoxelToolLibary.h"
@@ -54,7 +54,7 @@ FVoxelIntBoxWithValidity UVoxelSphereTool::DoEdit()
 	}
 	const auto BoundsToCache = GetBoundsToCache(Bounds);
 
-	FVoxelData& Data = World.GetSubsystemChecked<FVoxelData>();
+	FVoxelData& Data = World.GetData();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);
@@ -64,21 +64,10 @@ FVoxelIntBoxWithValidity UVoxelSphereTool::DoEdit()
 	{
 		if (GetTickData().IsAlternativeMode())
 		{
-			if (bEnableIndexInterval && World.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
-			{
-				FVoxelSphereToolsImpl::RemoveSphereWithDurability(
-					DataImpl,
-					VoxelPosition,
-					VoxelRadius,
-					IndexInterval);
-			}
-			else
-			{
-				FVoxelSphereToolsImpl::RemoveSphere(
-					DataImpl,
-					VoxelPosition,
-					VoxelRadius);
-			}
+			FVoxelSphereToolsImpl::RemoveSphere(
+				DataImpl,
+				VoxelPosition,
+				VoxelRadius);
 		}
 		else
 		{

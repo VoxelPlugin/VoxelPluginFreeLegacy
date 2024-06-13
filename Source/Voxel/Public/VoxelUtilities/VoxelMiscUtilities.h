@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -169,7 +169,6 @@ namespace FVoxelUtilities
 	};
 
 	VOXEL_STATIC_SWITCH(4);
-	VOXEL_STATIC_SWITCH(5);
 	VOXEL_STATIC_SWITCH(6);
 	VOXEL_STATIC_SWITCH(8);
 	VOXEL_STATIC_SWITCH(12);

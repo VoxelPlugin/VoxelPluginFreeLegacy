@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGraphPreview.h"
 #include "VoxelValue.h"
@@ -15,7 +15,7 @@
 #include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
 #include "VoxelPlaceableItems/VoxelPlaceableItemManager.h"
 #include "VoxelGenerators/VoxelGeneratorCache.h"
-#include "VoxelCoordinatesProvider.h"
+#include "VoxelWorldInterface.h"
 
 #include "SVoxelGraphPreview.h"
 #include "SVoxelGraphPreviewViewport.h"
@@ -24,6 +24,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Components/StaticMeshComponent.h"
 #include "AdvancedPreviewScene.h"
+#include "Engine/Texture2D.h"
 #include "Kismet/KismetMathLibrary.h"
 
 FVoxelGraphPreview::FVoxelGraphPreview(

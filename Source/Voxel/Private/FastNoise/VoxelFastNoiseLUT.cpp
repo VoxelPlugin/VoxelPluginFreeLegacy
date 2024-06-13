@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "FastNoise/VoxelFastNoiseLUT.h"
 #include "FastNoise/CrossPlatformSTD.h"

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -10,9 +10,11 @@
 #include "VoxelUtilities/VoxelBaseUtilities.h"
 #include "VoxelRange.generated.h"
 
-class FVoxelRangeFailStatus : public TThreadSingleton<FVoxelRangeFailStatus>
+class VOXEL_API FVoxelRangeFailStatus : private TThreadSingleton<FVoxelRangeFailStatus>
 {
 public:
+	static FVoxelRangeFailStatus& Get();
+
 	bool HasFailed() const { return bHasFailed; }
 	bool HasWarning() const { return bHasWarning; }
 	const TCHAR* GetMessage() const { return Message; }
@@ -47,9 +49,6 @@ private:
 	bool bHasWarning = false;
 
 	const TCHAR* Message = nullptr;
-	
-	// Not inline, else it's messed up across modules
-	static VOXEL_API uint32& GetTlsSlot();
 
 	friend TThreadSingleton<FVoxelRangeFailStatus>;
 };
@@ -370,6 +369,13 @@ public:
 		ensure(IsSingleSign());
 		return Min == 0 ? FMath::Sign(Max) : FMath::Sign(Min);
 	}
+	T GetSign_NotZero() const
+	{
+		ensureVoxelSlow(IsSingleSign());
+		ensureVoxelSlow(Min != 0 && Max != 0);
+		ensureVoxelSlow((Min < 0) == (Max < 0));
+		return Min < 0 ? -1 : 1;
+	}
 	TVoxelRange<T> ExtendToInfinity() const
 	{
 		TVoxelRange<T> New = *this;
@@ -531,10 +537,10 @@ public:
 		{
 			if (Other.IsInfinity())
 			{
-				ensureVoxelSlowNoSideEffects(Other.IsSingleSign()); // Does not contain 0
-				ensureVoxelSlowNoSideEffects(Other.GetSign() != 0); // Else wouldn't be infinity, and does not contain 0
+				ensureVoxelSlow(Other.IsSingleSign()); // Does not contain 0
+				ensureVoxelSlow(Other.GetSign() != 0); // Else wouldn't be infinity, and does not contain 0
 				const auto Inf = ExtendToInfinity();
-				return TVoxelRange::FromList(Inf.Min / Other.GetSign(), Inf.Max / Other.GetSign());
+				return TVoxelRange::FromList(Inf.Min / Other.GetSign_NotZero(), Inf.Max / Other.GetSign_NotZero());
 			}
 			return TVoxelRange::FromList(Min / Other.Min, Min / Other.Max, Max / Other.Min, Max / Other.Max);
 		}
@@ -542,9 +548,9 @@ public:
 		{
 			if (Other.IsSingleSign())
 			{
-				ensureVoxelSlowNoSideEffects(Other.GetSign() != 0); // Else would be a single value
+				ensureVoxelSlow(Other.GetSign() != 0); // Else would be a single value
 				const auto Inf = ExtendToInfinity();
-				return TVoxelRange::FromList(Inf.Min / Other.GetSign(), Inf.Max / Other.GetSign());
+				return TVoxelRange::FromList(Inf.Min / Other.GetSign_NotZero(), Inf.Max / Other.GetSign_NotZero());
 			}
 			return Infinite();
 		}

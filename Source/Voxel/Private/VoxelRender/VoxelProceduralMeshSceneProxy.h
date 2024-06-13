@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -59,10 +59,9 @@ public:
 	~FVoxelProceduralMeshSceneProxy();
 
 	//~ Begin FPrimitiveSceneProxy Interface
-	virtual void CreateRenderThreadResources() override;
+	virtual void CreateRenderThreadResources(UE_504_ONLY(FRHICommandListBase& RHICmdList)) override;
 	virtual void DestroyRenderThreadResources() override;
-
-	virtual void DrawStaticElements(FStaticPrimitiveDrawInterface* PDI) override;
+	
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override;
 
 #if RHI_RAYTRACING
@@ -75,22 +74,6 @@ public:
 	virtual uint32 GetMemoryFootprint() const override;
 	virtual SIZE_T GetTypeHash() const override;
 	uint32 GetAllocatedSize() const;
-
-#if VOXEL_ENGINE_VERSION < 500
-	virtual void GetDistancefieldAtlasData(
-		FBox& LocalVolumeBounds,
-		FVector2D& OutDistanceMinMax,
-		FIntVector& OutBlockMin,
-		FIntVector& OutBlockSize,
-		bool& bOutBuiltAsIfTwoSided,
-		bool& bMeshWasPlane,
-		float& SelfShadowBias,
-		TArray<FMatrix>& ObjectLocalToWorldTransforms,
-		bool& bOutThrottled) const override;
-	virtual void GetDistanceFieldInstanceInfo(int32& NumInstances, float& BoundsSurfaceArea) const override;
-	virtual bool HasDistanceFieldRepresentation() const override;
-#endif
-	virtual bool HasDynamicIndirectShadowCasterRepresentation() const override;
 	//~ End FPrimitiveSceneProxy Interface
 
 private:
@@ -99,7 +82,6 @@ private:
 	const int32 LOD;
 	const uint32 DebugChunkId;
 	const TVoxelWeakPtr<const FVoxelToolRenderingManager> WeakToolRenderingManager;
-	const bool bUseStaticPath;
 	
 	const FCollisionResponseContainer CollisionResponse;
 	const ECollisionTraceFlag CollisionTraceFlag;
@@ -111,8 +93,8 @@ private:
 	double CreateSceneProxyTime = 0;
 	mutable bool bLoggedTime = false;
 
-	void DrawSection(
-		FMeshBatch& Mesh,
+	FMeshBatch& DrawSection(
+		FMeshElementCollector& Collector,
 		const FVoxelProcMeshProxySection& Section, 
 		const FMaterialRenderProxy* MaterialRenderProxy,
 		bool bEnableTessellation,

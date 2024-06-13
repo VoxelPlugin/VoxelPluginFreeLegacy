@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -15,7 +15,7 @@ class UVoxelGraphNode : public UVoxelGraphNode_Base
 
 public:
 	UPROPERTY()
-	UVoxelNode* VoxelNode;
+	TObjectPtr<UVoxelNode> VoxelNode;
 
 	/** Set the VoxelNode this represents (also assigns this to the VoxelNode in Editor)*/
 	void SetVoxelNode(UVoxelNode* InVoxelNode);

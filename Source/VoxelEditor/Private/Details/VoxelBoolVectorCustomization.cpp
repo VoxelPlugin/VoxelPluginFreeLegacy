@@ -1,9 +1,14 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "Details/VoxelBoolVectorCustomization.h"
 #include "VoxelMinimal.h"
 #include "VoxelBoolVector.h"
-#include "VoxelEditorDetailsIncludes.h"
+
+#include "DetailWidgetRow.h"
+#include "DetailLayoutBuilder.h"
+#include "Widgets/Text/STextBlock.h"
+
+#define GET_CHILD_PROPERTY(PropertyHandle, Class, Property) PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STATIC(Class, Property)).ToSharedRef()
 
 void FVoxelBoolVectorCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> PropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
@@ -81,3 +86,5 @@ void FVoxelBoolVectorCustomization::CustomizeChildren(TSharedRef<IPropertyHandle
 {
 	
 }
+
+#undef GET_CHILD_PROPERTY

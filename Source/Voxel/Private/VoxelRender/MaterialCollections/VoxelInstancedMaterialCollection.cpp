@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/MaterialCollections/VoxelInstancedMaterialCollection.h"
 #include "VoxelUtilities/VoxelMaterialUtilities.h"
@@ -28,7 +28,7 @@ void UVoxelInstancedMaterialCollectionTemplates::PostEditChangeProperty(FPropert
 				const auto SetStaticParameter = [&](FName Name, bool bValue)
 				{
 					bool bFound = false;
-					for (auto& StaticSwitchParameter : StaticParameters.StaticSwitchParameters)
+					for (auto& StaticSwitchParameter : StaticParameters.EditorOnly.StaticSwitchParameters_DEPRECATED)
 					{
 						if (StaticSwitchParameter.ParameterInfo.Name == Name)
 						{
@@ -138,16 +138,38 @@ int32 UVoxelInstancedMaterialCollection::GetMaxMaterialIndices() const
 	return MaxMaterialsToBlendAtOnce;
 }
 
-TArray<FVoxelMaterialCollectionMaterialInfo> UVoxelInstancedMaterialCollection::GetMaterials() const
+int32 UVoxelInstancedMaterialCollection::GetMaterialIndex(FName Name) const
 {
-	TArray<FVoxelMaterialCollectionMaterialInfo> Infos;
-
-	for (const FVoxelInstancedMaterialCollectionLayer& Layer : Layers)
+	for (auto& Layer : Layers)
 	{
-		Infos.Add({Layer.LayerIndex, Layer.LayerMaterialInstance });
+		if (Layer.LayerMaterialInstance && Layer.LayerMaterialInstance->GetFName() == Name)
+		{
+			return Layer.LayerIndex;
+		}
 	}
+	return -1;
+}
 
-	return Infos;
+TArray<UVoxelMaterialCollectionBase::FMaterialInfo> UVoxelInstancedMaterialCollection::GetMaterials() const
+{
+	TArray<FMaterialInfo> Result;
+	for (const auto& Layer : Layers)
+	{
+		Result.Add(FMaterialInfo{ Layer.LayerIndex, FName(), Layer.LayerMaterialInstance });
+	}
+	return Result;
+}
+
+UMaterialInterface* UVoxelInstancedMaterialCollection::GetIndexMaterial(uint8 Index) const
+{
+	for (const auto& Layer : Layers)
+	{
+		if (Layer.LayerIndex == Index)
+		{
+			return Layer.LayerMaterialInstance;
+		}
+	}
+	return nullptr;
 }
 
 UMaterialInterface* UVoxelInstancedMaterialCollection::GetVoxelMaterial_NotCached(const FVoxelMaterialIndices& Indices, uint64 UniqueIdForErrors) const
@@ -275,7 +297,7 @@ UMaterialInterface* UVoxelInstancedMaterialCollection::GetVoxelMaterial_NotCache
 
 	for (int32 Index = 0; Index < Indices.NumIndices; Index++)
 	{
-		auto* Instance = Layers.FindByKey(Indices.SortedIndices[Index])->LayerMaterialInstance;
+		UMaterialInstance* Instance = Layers.FindByKey(Indices.SortedIndices[Index])->LayerMaterialInstance;
 		SetParameters(Instance, ParametersPrefix + FString::Printf(TEXT("%d:"), Index));
 	}
 

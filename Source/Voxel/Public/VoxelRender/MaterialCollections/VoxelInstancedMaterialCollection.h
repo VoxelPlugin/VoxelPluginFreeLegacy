@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -15,26 +15,26 @@ class VOXEL_API UVoxelInstancedMaterialCollectionTemplates : public UObject
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Template")
-	UMaterialInterface* Template = nullptr;
+	TObjectPtr<UMaterialInterface> Template = nullptr;
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Generated Templates")
-	UMaterialInterface* Template1x = nullptr;
+	TObjectPtr<UMaterialInterface> Template1x = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Generated Templates")
-	UMaterialInterface* Template2x = nullptr;
+	TObjectPtr<UMaterialInterface> Template2x = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Generated Templates")
-	UMaterialInterface* Template3x = nullptr;
+	TObjectPtr<UMaterialInterface> Template3x = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Generated Templates")
-	UMaterialInterface* Template4x = nullptr;
+	TObjectPtr<UMaterialInterface> Template4x = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Generated Templates")
-	UMaterialInterface* Template5x = nullptr;
+	TObjectPtr<UMaterialInterface> Template5x = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Generated Templates")
-	UMaterialInterface* Template6x = nullptr;
+	TObjectPtr<UMaterialInterface> Template6x = nullptr;
 
 public:
 #if WITH_EDITOR
@@ -53,7 +53,7 @@ struct FVoxelInstancedMaterialCollectionLayer
 	uint8 LayerIndex = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	UMaterialInstance* LayerMaterialInstance = nullptr;
+	TObjectPtr<UMaterialInstance> LayerMaterialInstance = nullptr;
 
 	inline bool operator==(int32 Other) const
 	{
@@ -79,7 +79,7 @@ public:
 	FString ParametersPrefix = "VOXELPARAM_";
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Templates")
-	UVoxelInstancedMaterialCollectionTemplates* Templates = nullptr;
+	TObjectPtr<UVoxelInstancedMaterialCollectionTemplates> Templates = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Layers")
 	TArray<FVoxelInstancedMaterialCollectionLayer> Layers;
@@ -89,7 +89,9 @@ public:
 	
 	//~ Begin UVoxelMaterialCollectionBase Interface
 	virtual int32 GetMaxMaterialIndices() const override;
-	virtual TArray<FVoxelMaterialCollectionMaterialInfo> GetMaterials() const override;
+	virtual int32 GetMaterialIndex(FName Name) const override;
+	virtual TArray<FMaterialInfo> GetMaterials() const override;
+	virtual UMaterialInterface* GetIndexMaterial(uint8 Index) const override;
 	//~ End UVoxelMaterialCollectionBase Interface
 
 	//~ Begin UVoxelCachedMaterialCollection Interface
@@ -112,7 +114,7 @@ class VOXEL_API UVoxelInstancedMaterialCollectionInstance : public UVoxelInstanc
 public:
 	// The layers will be copied from this collection
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Instance")
-	UVoxelInstancedMaterialCollection* LayersSource;
+	TObjectPtr<UVoxelInstancedMaterialCollection> LayersSource;
 
 public:
 	//~ Begin UVoxelMaterialCollectionBase Interface

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -64,11 +64,10 @@ enum class EVoxelGraphMaterialPreviewType : uint8
 	UV3
 };
 
-UCLASS(Within=VoxelGraphGenerator)
+UCLASS()
 class VOXELGRAPH_API UVoxelGraphPreviewSettings : public UObject
 {
 	GENERATED_BODY()
-	INTELLISENSE_DECLARE_WITHIN(UVoxelGraphGenerator);
 
 public:
 	UVoxelGraphPreviewSettings();
@@ -123,11 +122,11 @@ public:
 
 	// Use to preview Get Index from Material Collection
 	UPROPERTY(EditAnywhere, Category = "Voxel World Settings")
-	UVoxelMaterialCollectionBase* MaterialCollection = nullptr;
+	TObjectPtr<UVoxelMaterialCollectionBase> MaterialCollection = nullptr;
 
 	// Used to preview placeable items
 	UPROPERTY(EditAnywhere, Category = "Voxel World Settings", Instanced, meta = (Automatic, UpdateItems))
-	UVoxelPlaceableItemManager* PlaceableItemManager = nullptr;
+	TObjectPtr<UVoxelPlaceableItemManager> PlaceableItemManager = nullptr;
 
 	// Value returned by the Voxel Size node
 	UPROPERTY(EditAnywhere, Category = "Voxel World Settings", AdvancedDisplay)
@@ -196,13 +195,13 @@ public:
 
 public:
 	UPROPERTY()
-	UStaticMesh* Mesh = nullptr;
+	TObjectPtr<UStaticMesh> Mesh = nullptr;
 
 	UPROPERTY()
-	UMaterialInterface* HeightmapMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> HeightmapMaterial = nullptr;
 
 	UPROPERTY()
-	UMaterialInterface* SliceMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> SliceMaterial = nullptr;
 	
 public:
 	// Will set black to the lowest value in the image, and white to the highest
@@ -220,6 +219,10 @@ public:
 	// Simulate querying a chunk at a specific LOD, eg to check fractal noise settings
 	UPROPERTY(EditAnywhere, Category = "Misc", meta = (ClampMin = 0, ClampMax = 26, UIMin = 0, UIMax = 26, DisplayName = "LOD to preview"))
 	int32 LODToPreview = 0;
+	
+public:
+	UPROPERTY()
+	TObjectPtr<class UVoxelGraphGenerator> Graph;
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -267,7 +270,7 @@ public:
 		GetAxis(Position, BottomToTop) = Y;
 		return Position;
 	}
-	FVector GetRelativePosition(float X, float Y) const
+	FVector GetRelativePosition(double X, double Y) const
 	{
 		FVector Position(0, 0, 0);
 		GetAxis(Position, LeftToRight) = X;

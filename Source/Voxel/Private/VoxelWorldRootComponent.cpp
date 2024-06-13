@@ -1,53 +1,13 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelWorldRootComponent.h"
 #include "VoxelMinimal.h"
-#include "VoxelWorld.h"
-
+#if VOXEL_ENGINE_VERSION < 504
+#include "PhysXIncludes.h"
+#endif
 #include "PrimitiveSceneProxy.h"
 #include "Engine/Engine.h"
 #include "Materials/Material.h"
-
-static TAutoConsoleVariable<int32> CVarShowWireframeCollision(
-	TEXT("voxel.collision.DrawWireframe"),
-	0,
-	TEXT("If true, will show the collision as wireframe in the player collision view"),
-	ECVF_Default);
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-FVoxelSimpleCollisionHandle::FVoxelSimpleCollisionHandle(TWeakObjectPtr<UVoxelWorldRootComponent> Component)
-	: Component(Component)
-{
-}
-
-FVoxelSimpleCollisionHandle::~FVoxelSimpleCollisionHandle()
-{
-	SetCollisionData(nullptr);
-}
-
-void FVoxelSimpleCollisionHandle::SetCollisionData(TVoxelSharedPtr<FVoxelSimpleCollisionData> NewData)
-{
-	if (NewData && NewData->IsEmpty())
-	{
-		NewData = nullptr;
-	}
-
-	if (Data == NewData)
-	{
-		return;
-	}
-
-	Data = NewData;
-	
-	UVoxelWorldRootComponent* ComponentPtr = Component.Get();
-	if (ComponentPtr)
-	{
-		ComponentPtr->bRebuildQueued = true;
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -63,11 +23,6 @@ UVoxelWorldRootComponent::UVoxelWorldRootComponent()
 
 UVoxelWorldRootComponent::~UVoxelWorldRootComponent()
 {
-	SimpleCollisionHandles.RemoveAllSwap([](auto& Ptr)
-	{
-		return !Ptr.IsValid();
-	});
-	ensure(SimpleCollisionHandles.Num() == 0);
 }
 
 UBodySetup* UVoxelWorldRootComponent::GetBodySetup()
@@ -88,234 +43,10 @@ FBoxSphereBounds UVoxelWorldRootComponent::CalcBounds(const FTransform& LocalToW
 	return LocalBounds.TransformBy(LocalToWorld);
 }
 
-TArray<URuntimeVirtualTexture*> const& UVoxelWorldRootComponent::GetRuntimeVirtualTextures() const
-{
-	// Disable RVT support on that component
-	static TArray<URuntimeVirtualTexture*> Textures;
-	return Textures;
-}
-
-void UVoxelWorldRootComponent::OnDestroyPhysicsState()
-{
-	Super::OnDestroyPhysicsState();
-	
-	SimpleCollisionHandles.Reset();
-}
-
 void UVoxelWorldRootComponent::TickWorldRoot()
 {
 	VOXEL_FUNCTION_COUNTER();
-	
-	if (bRebuildQueued)
-	{
-		bRebuildQueued = false;
-		RebuildConvexCollision();
-	}
 }
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-#if WITH_EDITOR
-void UVoxelWorldRootComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	auto* VoxelWorld = Cast<AVoxelWorld>(GetOwner());
-	if (!VoxelWorld || 
-		!VoxelWorld->IsCreated() || 
-		!PropertyChangedEvent.Property)
-	{
-		return;
-	}
-
-	const FName PropertyName = PropertyChangedEvent.Property->GetFName();
-
-	static TArray<FName> RecreateRenderProperties =
-	{
-		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, RuntimeVirtualTextures),
-		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, VirtualTextureLodBias),
-		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, VirtualTextureCullMips),
-		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, VirtualTextureMinCoverage),
-		GET_MEMBER_NAME_CHECKED(UVoxelWorldRootComponent, VirtualTextureRenderPassType),
-	};
-
-	if (RecreateRenderProperties.Contains(PropertyName))
-	{
-		VoxelWorld->RecreateRender();
-	}
-}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-TVoxelSharedRef<FVoxelSimpleCollisionHandle> UVoxelWorldRootComponent::CreateHandle()
-{
-	const TVoxelSharedRef<FVoxelSimpleCollisionHandle> Handle = MakeShareable(new FVoxelSimpleCollisionHandle(this));
-	SimpleCollisionHandles.Add(Handle);
-	return Handle;
-}
-
-void UVoxelWorldRootComponent::RebuildConvexCollision()
-{	
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-	VOXEL_FUNCTION_COUNTER();
-	ensure(CollisionTraceFlag != CTF_UseComplexAsSimple);
-
-	TArray<TVoxelSharedRef<FVoxelSimpleCollisionData>> SimpleCollisionDatas;
-	for (int32 Index = 0; Index < SimpleCollisionHandles.Num(); Index++)
-	{
-		const TVoxelSharedPtr<FVoxelSimpleCollisionHandle> Handle = SimpleCollisionHandles[Index].Pin();
-
-		if (Handle)
-		{
-			if (Handle->Data && ensure(!Handle->Data->IsEmpty()))
-			{
-				SimpleCollisionDatas.Add(Handle->Data.ToSharedRef());
-			}
-		}
-		else
-		{
-			SimpleCollisionHandles.RemoveAtSwap(Index);
-			Index--;
-		}
-	}
-
-	{
-		VOXEL_SCOPE_COUNTER("Update bounds");
-		FBox LocalBox(ForceInit);
-		for (const TVoxelSharedRef<FVoxelSimpleCollisionData>& Data : SimpleCollisionDatas)
-		{
-			LocalBox += Data->Bounds;
-		}
-		LocalBounds = LocalBox.IsValid ? FBoxSphereBounds(LocalBox) : FBoxSphereBounds(ForceInit); // fallback to reset box sphere bounds
-		UpdateBounds();
-	}
-	
-	// Create body setup
-	GetBodySetup();
-
-	// Note: we do not need to call ClearPhysicsMeshes, as we are setting the convex meshes manually & handling the ref count ourselves
-
-    TArray<FKBoxElem>& BoxElems = BodySetup->AggGeom.BoxElems;
-    TArray<FKConvexElem>& ConvexElems = BodySetup->AggGeom.ConvexElems;
-
-	int32 NumBoxElements = 0;
-	int32 NumConvexElements = 0;
-    {
-        VOXEL_SCOPE_COUNTER("Count");
-        for (const TVoxelSharedRef<FVoxelSimpleCollisionData>& Data : SimpleCollisionDatas)
-        {
-            NumBoxElements += Data->BoxElems.Num();
-            NumConvexElements += Data->ConvexElems.Num();
-        }
-    }
-
-	if (NumBoxElements == 0 && NumConvexElements == 0)
-	{
-		if (BoxElems.Num() > 0 || ConvexElems.Num() > 0)
-		{
-			VOXEL_SCOPE_COUNTER("RemoveSimpleCollision");
-			BodySetup->RemoveSimpleCollision();
-			if (BodyInstance.IsValidBodyInstance())
-			{
-				BodyInstance.TermBody();
-			}
-		}
-		return;
-	}
-
-	{
-		VOXEL_SCOPE_COUNTER("Lock");
-		BodySetupLock.Lock();
-	}
-
-	BoxElems.Reset();
-	ConvexElems.Reset();
-	{
-		VOXEL_SCOPE_COUNTER("Reserve");
-		BoxElems.Reserve(NumBoxElements);
-		ConvexElems.Reserve(NumConvexElements);
-	}
-	
-	{
-        VOXEL_SCOPE_COUNTER("Create");
-        for (const TVoxelSharedRef<FVoxelSimpleCollisionData>& Data : SimpleCollisionDatas)
-        {
-			BoxElems.Append(Data->BoxElems);
-
-            for (int32 Index = 0; Index < Data->ConvexMeshes.Num(); Index++)
-            {
-                FKConvexElem& NewElement = ConvexElems.Emplace_GetRef();
-                // No need to copy the vertices
-                NewElement.ElemBox = Data->ConvexElems[Index].ElemBox;
-                NewElement.SetConvexMesh(Data->ConvexMeshes[Index].Get());
-            }
-        }
-    }
-	{
-		VOXEL_SCOPE_COUNTER("Unlock");
-		BodySetupLock.Unlock();
-	}
-	
-	{
-		// Must not be locked!
-		VOXEL_SCOPE_COUNTER("FreeRenderInfo");
-		BodySetup->AggGeom.FreeRenderInfo();
-	}
-
-	BodySetup->bCreatedPhysicsMeshes = true;
-
-	bool bHasVelocity = false;
-	FVector Velocity;
-	FVector AngularVelocity;
-	if (BodyInstance.IsValidBodyInstance())
-	{
-		bHasVelocity = FPhysicsCommand::ExecuteRead(BodyInstance.ActorHandle, [&](const FPhysicsActorHandle& Actor)
-		{
-			Velocity = FPhysicsInterface::GetLinearVelocity_AssumesLocked(Actor);
-			AngularVelocity = FPhysicsInterface::GetAngularVelocity_AssumesLocked(Actor);
-		});
-		BodyInstance.TermBody();
-	}
-	
-	BodyInstance.InitBody(BodySetup, GetComponentTransform(), this, GetWorld()->GetPhysicsScene());
-	
-	if (bHasVelocity)
-	{
-		// Restore velocity
-		FPhysicsCommand::ExecuteWrite(BodyInstance.ActorHandle, [&](const FPhysicsActorHandle& Actor)
-		{
-			FPhysicsInterface::SetLinearVelocity_AssumesLocked(Actor, Velocity);
-			FPhysicsInterface::SetAngularVelocity_AssumesLocked(Actor, AngularVelocity);
-		});
-	}
-#endif
-}
-
-#if WITH_PHYSX && PHYSICS_INTERFACE_PHYSX
-class UMRMeshComponent
-{
-public:
-	static void FinishCreatingPhysicsMeshes(UBodySetup* Body, const TArray<physx::PxConvexMesh*>& ConvexMeshes, const TArray<physx::PxConvexMesh*>& ConvexMeshesNegX, const TArray<physx::PxTriangleMesh*>& TriMeshes)
-	{
-		Body->FinishCreatingPhysicsMeshes_PhysX(ConvexMeshes, ConvexMeshesNegX, TriMeshes);
-	}
-};
-
-void UVoxelWorldRootComponent::SetCookedTriMeshes(const TArray<physx::PxTriangleMesh*>& TriMeshes)
-{
-	VOXEL_FUNCTION_COUNTER();
-
-	// Create body setup
-	GetBodySetup();
-
-	UMRMeshComponent::FinishCreatingPhysicsMeshes(BodySetup, {}, {}, TriMeshes);
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -368,8 +99,6 @@ public:
 
 		const FTransform GeomTransform(GetLocalToWorld());
 
-		const bool bDrawSolid = CVarShowWireframeCollision.GetValueOnRenderThread() == 0;
-
 		FScopeLock Lock(&Component->BodySetupLock);
 		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 		{
@@ -379,7 +108,7 @@ public:
 				SimpleCollisionColor,
 				SolidMaterialInstance,
 				true,
-				bDrawSolid,
+				true,
 				DrawsVelocity(),
 				ViewIndex,
 				Collector);

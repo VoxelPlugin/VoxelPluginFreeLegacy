@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,9 +8,6 @@
 #include "VoxelGenerators/VoxelGenerator.h"
 #include "VoxelGeneratorPicker.generated.h"
 
-class UVoxelGeneratorInstanceWrapper;
-class UVoxelTransformableGeneratorInstanceWrapper;
-
 UENUM(BlueprintType)
 enum class EVoxelGeneratorPickerType : uint8
 {
@@ -18,20 +15,17 @@ enum class EVoxelGeneratorPickerType : uint8
 	Object
 };
 
-template<typename TGenerator, bool bWeakPtr>
+template<typename TGenerator>
 struct TVoxelGeneratorPicker
 {
 public:
-	static constexpr bool bIsTransformable = TIsSame<TGenerator, UVoxelTransformableGenerator>::Value;
-	
 	using UGenerator = TGenerator;
-	using FInstance = typename TChooseClass<bIsTransformable, FVoxelTransformableGeneratorInstance, FVoxelGeneratorInstance>::Result;
-	using UWrapper = typename TChooseClass<bIsTransformable, UVoxelTransformableGeneratorInstanceWrapper, UVoxelGeneratorInstanceWrapper>::Result;
-
-	template<typename T>
-	using TPtr = typename TChooseClass<bWeakPtr, TWeakObjectPtr<T>, T*>::Result;
-
-public:
+#if VOXEL_ENGINE_VERSION >= 504
+	using FGeneratorInstance = typename std::conditional_t<std::is_same_v<UGenerator, UVoxelGenerator>, FVoxelGeneratorInstance, FVoxelTransformableGeneratorInstance>;
+#else
+	using FGeneratorInstance = typename TChooseClass<std::is_same_v<UGenerator, UVoxelGenerator>, FVoxelGeneratorInstance, FVoxelTransformableGeneratorInstance>::Result;
+#endif
+	
 	TVoxelGeneratorPicker() = default;
 	TVoxelGeneratorPicker(TYPE_OF_NULLPTR) {}
 	TVoxelGeneratorPicker(UClass* InClass)
@@ -56,29 +50,22 @@ public:
 		: TVoxelGeneratorPicker(InObject.LoadSynchronous())
 	{
 	}
-	
-public:
-	template<typename TOther, bool bOtherWeakPtr>
-	TVoxelGeneratorPicker(const TVoxelGeneratorPicker<TOther, bOtherWeakPtr>& Picker)
+
+	template<typename TOther>
+	TVoxelGeneratorPicker(TVoxelGeneratorPicker<TOther> Picker)
 	{
-		// TWeakObjectPtr casts: so we support bWeakPtr being false or true
-		
 		Type = Picker.Type;
 		Class = Picker.Class.Get();
-		Object = Cast<UGenerator>(TWeakObjectPtr<TOther>(Picker.Object).Get());
-		Parameters = Picker.Parameters;
-#if WITH_EDITORONLY_DATA
-		EditorData = TWeakObjectPtr<UObject>(Picker.EditorData).Get();
-#endif
+		Object = Cast<UGenerator>(Picker.Object);
 	}
 	
 public:
 	EVoxelGeneratorPickerType Type = EVoxelGeneratorPickerType::Class;
 	TSubclassOf<UGenerator> Class;
-	TPtr<UGenerator> Object = nullptr;
+	TObjectPtr<UGenerator> Object = nullptr;
 	TMap<FName, FString> Parameters;
 #if WITH_EDITORONLY_DATA
-	TPtr<UObject> EditorData = nullptr;
+	TObjectPtr<UObject> EditorData = nullptr;
 #endif
 	
 	// Might return nullptr!
@@ -109,7 +96,7 @@ public:
 	bool IsClass() const { return Type == EVoxelGeneratorPickerType::Class; }
 	bool IsObject() const { return Type == EVoxelGeneratorPickerType::Object; }
 
-	bool operator==(const TVoxelGeneratorPicker& Other) const
+	bool operator==(const TVoxelGeneratorPicker<UGenerator>& Other) const
 	{
 		// We ignore editor data here
 		return
@@ -119,34 +106,24 @@ public:
 	}
 };
 
-template<typename TGenerator, bool bWeakPtr>
-uint32 GetTypeHash(const TVoxelGeneratorPicker<TGenerator, bWeakPtr>& Key)
+template<typename TGenerator>
+uint32 GetTypeHash(const TVoxelGeneratorPicker<TGenerator>& Key)
 {
 	return HashCombine(GetTypeHash(Key.GetObject()), GetTypeHash(Key.Parameters.Num()));
 }
 
-struct FVoxelWeakGeneratorPicker : TVoxelGeneratorPicker<UVoxelGenerator, true>
-{
-	using TVoxelGeneratorPicker<UVoxelGenerator, true>::TVoxelGeneratorPicker;
-};
-
-struct FVoxelWeakTransformableGeneratorPicker : TVoxelGeneratorPicker<UVoxelTransformableGenerator, true>
-{
-	using TVoxelGeneratorPicker<UVoxelTransformableGenerator, true>::TVoxelGeneratorPicker;
-};
-
-USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelGeneratorTools.MakeGeneratorPickerFromObject"))
+USTRUCT(BlueprintType, meta=(HasNativeMake="/Script/Voxel.VoxelGeneratorTools:MakeGeneratorPickerFromObject"))
 struct VOXEL_API FVoxelGeneratorPicker
 #if CPP
-	: TVoxelGeneratorPicker<UVoxelGenerator, false>
+	: TVoxelGeneratorPicker<UVoxelGenerator>
 #endif
 {
 	GENERATED_BODY()
 	
-	using TVoxelGeneratorPicker<UVoxelGenerator, false>::TVoxelGeneratorPicker;
+	using TVoxelGeneratorPicker<UVoxelGenerator>::TVoxelGeneratorPicker;
 	
 	// Will default to EmptyGenerator if null
-	TVoxelSharedRef<FInstance> GetInstance() const;
+	TVoxelSharedRef<FGeneratorInstance> GetInstance(bool bSilent) const;
 	
 #if !CPP
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
@@ -155,31 +132,31 @@ struct VOXEL_API FVoxelGeneratorPicker
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	TSubclassOf<UVoxelGenerator> Class;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisallowedClasses = "VoxelGraphMacro"))
-	UVoxelGenerator* Object = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisallowedClasses = "/Script/VoxelGraph.VoxelGraphMacro"))
+	TObjectPtr<UVoxelGenerator> Object = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	TMap<FName, FString> Parameters;
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(Transient)
-	UObject* EditorData = nullptr;
+	TObjectPtr<UObject> EditorData = nullptr;
 #endif
 #endif
 };
 
-USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelGeneratorTools.MakeTransformableGeneratorPickerFromObject"))
+USTRUCT(BlueprintType, meta=(HasNativeMake="/Script/Voxel.VoxelGeneratorTools:MakeTransformableGeneratorPickerFromObject"))
 struct FVoxelTransformableGeneratorPicker
 #if CPP
-	: TVoxelGeneratorPicker<UVoxelTransformableGenerator, false>
+	: TVoxelGeneratorPicker<UVoxelTransformableGenerator>
 #endif
 {
 	GENERATED_BODY()
 	
-	using TVoxelGeneratorPicker<UVoxelTransformableGenerator, false>::TVoxelGeneratorPicker;
+	using TVoxelGeneratorPicker<UVoxelTransformableGenerator>::TVoxelGeneratorPicker;
 	
 	// Will default to EmptyGenerator if null
-	TVoxelSharedRef<FInstance> GetInstance() const;
+	TVoxelSharedRef<FGeneratorInstance> GetInstance(bool bSilent) const;
 
 #if !CPP
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
@@ -188,15 +165,15 @@ struct FVoxelTransformableGeneratorPicker
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	TSubclassOf<UVoxelTransformableGenerator> Class;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisallowedClasses = "VoxelGraphMacro"))
-	UVoxelTransformableGenerator* Object = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (DisallowedClasses = "/Script/VoxelGraph.VoxelGraphMacro"))
+	TObjectPtr<UVoxelTransformableGenerator> Object = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	TMap<FName, FString> Parameters;
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(Transient)
-	UObject* EditorData = nullptr;
+	TObjectPtr<UObject> EditorData = nullptr;
 #endif
 #endif
 };

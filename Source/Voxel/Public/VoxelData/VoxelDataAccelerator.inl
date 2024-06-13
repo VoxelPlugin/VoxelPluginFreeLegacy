@@ -1,9 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelData/VoxelDataAccelerator.h"
+#include "VoxelData/VoxelData.h"
 #include "VoxelData/VoxelData.inl"
 #include "VoxelData/VoxelDataUtilities.h"
 
@@ -67,13 +68,7 @@ TVoxelDataAccelerator<TData>::~TVoxelDataAccelerator()
 
 template<typename TData>
 template<typename T>
-FORCEINLINE T TVoxelDataAccelerator<TData>::GetCustomOutput(
-	T DefaultValue,
-	FName Name,
-	v_flt X, v_flt Y, v_flt Z,
-	int32 LOD,
-	const FVoxelGeneratorQueryData& QueryData,
-	const FVoxelGeneratorInstance* GeneratorOverride) const
+FORCEINLINE T TVoxelDataAccelerator<TData>::GetCustomOutput(T DefaultValue, FName Name, v_flt X, v_flt Y, v_flt Z, int32 LOD) const
 {
 	// Clamp to world, to avoid un-editable border
 	Data.ClampToWorld(X, Y, Z);
@@ -81,7 +76,7 @@ FORCEINLINE T TVoxelDataAccelerator<TData>::GetCustomOutput(
 	return GetImpl(X, Y, Z,
 	               [&](const FVoxelDataOctreeBase& Octree)
 	               {
-		               return Octree.GetCustomOutput<T>(GeneratorOverride ? *GeneratorOverride : *Data.Generator, DefaultValue, Name, X, Y, Z, LOD, QueryData);
+		               return Octree.GetCustomOutput<T>(*Data.Generator, DefaultValue, Name, X, Y, Z, LOD);
 	               });
 }
 
@@ -134,7 +129,9 @@ auto TVoxelDataAccelerator<TData>::GetImpl(int32 X, int32 Y, int32 Z, T UseOctre
 	// Each caller should clamp the coordinates
 	ensureVoxelSlow(Data.IsInWorld(X, Y, Z));
 
-	ensureMsgfVoxelSlowNoSideEffects(!bUseAcceleratorMap || Bounds.Contains(X, Y, Z), TEXT("(%d, %d, %d) is not in %s!"), X, Y, Z, *Bounds.ToString());
+#if VOXEL_DEBUG
+	ensureMsgf(!bUseAcceleratorMap || Bounds.Contains(X, Y, Z), TEXT("(%d, %d, %d) is not in %s!"), X, Y, Z, *Bounds.ToString());
+#endif
 
 	FVoxelDataOctreeBase* Octree = GetOctreeFromCache_CheckTopOnly(X, Y, Z);
 

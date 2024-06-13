@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -12,7 +12,7 @@ public:
 	{
 		return SingleValue_2D(offset, x, y);
 	}
-	FORCENOINLINE VectorRegister SingleValue_2D_NoInline(VectorRegisterInt offset, VectorRegister x, VectorRegister y) const
+	FORCENOINLINE VectorRegister SingleValue_2D_NoInline(VectorRegister4Int offset, VectorRegister x, VectorRegister y) const
 	{
 		return SingleValue_2D(offset, x, y);
 	}

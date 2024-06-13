@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "SVoxelGraphPreviewViewport.h"
 #include "IVoxelGraphEditorToolkit.h"
@@ -8,10 +8,7 @@
 #include "AdvancedPreviewScene.h"
 #include "Slate/SceneViewport.h"
 #include "AssetViewerSettings.h"
-
-#if VOXEL_ENGINE_VERSION >= 500
 #include "UnrealWidget.h"
-#endif
 
 /** Viewport Client for the preview viewport */
 class FVoxelGraphEditorViewportClient : public FEditorViewportClient
@@ -20,7 +17,7 @@ public:
 	FVoxelGraphEditorViewportClient(FAdvancedPreviewScene* InPreviewScene, const TSharedRef<SVoxelGraphPreviewViewport>& InVoxelGraphEditorViewport);
 
 	// FEditorViewportClient interface
-	virtual bool InputKey(FViewport* InViewport, int32 ControllerId, FKey Key, EInputEvent Event, float AmountDepressed = 1.f, bool bGamepad = false) override;
+	virtual bool InputKey(const FInputKeyEventArgs& EventArgs) override;
 	virtual bool InputAxis(FViewport* InViewport, int32 ControllerId, FKey Key, float Delta, float DeltaTime, int32 NumSamples/* =1 */, bool bGamepad/* =false */) override;
 	virtual FLinearColor GetBackgroundColor() const override;
 	virtual void Tick(float DeltaSeconds) override;
@@ -84,14 +81,14 @@ bool FVoxelGraphEditorViewportClient::ShouldOrbitCamera() const
 	return true;
 }
 
-bool FVoxelGraphEditorViewportClient::InputKey(FViewport* InViewport, int32 ControllerId, FKey Key, EInputEvent Event, float AmountDepressed, bool bGamepad)
+bool FVoxelGraphEditorViewportClient::InputKey(const FInputKeyEventArgs& EventArgs)
 {
-	bool bHandled = FEditorViewportClient::InputKey(InViewport, ControllerId, Key, Event, AmountDepressed, false);
+	bool bHandled = FEditorViewportClient::InputKey(EventArgs);
 
 	// Handle viewport screenshot.
-	bHandled |= InputTakeScreenshot(InViewport, Key, Event);
+	bHandled |= InputTakeScreenshot(EventArgs.Viewport, EventArgs.Key, EventArgs.Event);
 
-	bHandled |= AdvancedPreviewScene->HandleInputKey(InViewport, ControllerId, Key, Event, AmountDepressed, bGamepad);
+	bHandled |= AdvancedPreviewScene->HandleInputKey(EventArgs);
 
 	return bHandled;
 }
@@ -102,6 +99,7 @@ bool FVoxelGraphEditorViewportClient::InputAxis(FViewport* InViewport, int32 Con
 
 	if (!bDisableInput)
 	{
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		bResult = AdvancedPreviewScene->HandleViewportInput(InViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
 		if (bResult)
 		{
@@ -111,6 +109,7 @@ bool FVoxelGraphEditorViewportClient::InputAxis(FViewport* InViewport, int32 Con
 		{
 			bResult = FEditorViewportClient::InputAxis(InViewport, ControllerId, Key, Delta, DeltaTime, NumSamples, bGamepad);
 		}
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	}
 
 	return bResult;

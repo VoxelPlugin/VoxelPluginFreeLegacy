@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/Meshers/VoxelMesher.h"
 #include "VoxelRender/VoxelMesherAsyncWork.h"
@@ -76,11 +76,6 @@ struct FVoxelMesherStats
 
 		double TotalDistanceFieldsTime = 0;
 		
-		double TotalFindFacesTime = 0;
-		double TotalGreedyMeshingTime = 0;
-		double TotalAddFacesTime = 0;
-		double TotalCollisionCubesTime = 0;
-		
 		const auto Print = [&](const TArray<FChunkStats>& Stats)
 		{
 			struct FMean
@@ -109,23 +104,18 @@ struct FVoxelMesherStats
 				Mean.TotalTime += Stat.Time;
 				Mean.Count++;
 
-				Mean.ValuesTime += Stat.Times.Values.Seconds();
-				Mean.MaterialsTime += Stat.Times.Materials.Seconds();
+				Mean.ValuesTime += FPlatformTime::ToSeconds64(Stat.Times._Values);
+				Mean.MaterialsTime += FPlatformTime::ToSeconds64(Stat.Times._Materials);
 
-				Mean.NormalsTime += Stat.Times.Normals.Seconds();
-				Mean.UVsTime += Stat.Times.UVs.Seconds();
-				Mean.CreateChunkTime += Stat.Times.CreateChunk.Seconds();
+				Mean.NormalsTime += FPlatformTime::ToSeconds64(Stat.Times.Normals);
+				Mean.UVsTime += FPlatformTime::ToSeconds64(Stat.Times.UVs);
+				Mean.CreateChunkTime += FPlatformTime::ToSeconds64(Stat.Times.CreateChunk);
 				
-				Mean.FinishCreatingChunkTime += Stat.Times.FinishCreatingChunk.Seconds();
-				Mean.DistanceFieldTime += Stat.Times.DistanceField.Seconds();
+				Mean.FinishCreatingChunkTime += FPlatformTime::ToSeconds64(Stat.Times.FinishCreatingChunk);
+				Mean.DistanceFieldTime += FPlatformTime::ToSeconds64(Stat.Times.DistanceField);
 
-				Mean.ValuesAccesses += Stat.Times.Values.Count;
-				Mean.MaterialsAccesses += Stat.Times.Materials.Count;
-
-				TotalFindFacesTime += Stat.Times.FindFaces.Seconds();
-				TotalGreedyMeshingTime += Stat.Times.GreedyMeshing.Seconds();
-				TotalAddFacesTime += Stat.Times.AddFaces.Seconds();
-				TotalCollisionCubesTime += Stat.Times.CollisionCubes.Seconds();
+				Mean.ValuesAccesses += Stat.Times._ValuesAccesses;
+				Mean.MaterialsAccesses += Stat.Times._MaterialsAccesses;
 				
 				GlobalTotalTime += Stat.Time;
 			}
@@ -188,7 +178,7 @@ struct FVoxelMesherStats
 		const double NormalTime = Print(LocalStats.NormalStats);
 		LOG_VOXEL(Log, TEXT("Transitions Chunks:"));
 		const double TransitionsTime = Print(LocalStats.TransitionsStats);
-		LOG_VOXEL(Log, TEXT("Geometry Chunks (Foliage):"));
+		LOG_VOXEL(Log, TEXT("Geometry Chunks (Spawners):"));
 		const double GeometryTime = Print(LocalStats.GeometryStats);
 		LOG_VOXEL(Log, TEXT("###############################################################################"));
 		LOG_VOXEL(Log, TEXT("################################### Summary ###################################"));
@@ -205,21 +195,6 @@ struct FVoxelMesherStats
 		LOG_VOXEL(Log, TEXT("------------------------------"));
 		LOG_VOXEL(Log, TEXT("Values: %llu reads in %fs, avg %.1fns/voxel"), TotalValuesAccesses, TotalValuesTime, TotalValuesTime / TotalValuesAccesses * 1e9);
 		LOG_VOXEL(Log, TEXT("Materials: %llu reads in %fs, avg %.1fns/voxel"), TotalMaterialsAccesses, TotalMaterialsTime, TotalMaterialsTime / TotalMaterialsAccesses * 1e9);
-
-		if (TotalFindFacesTime != 0 ||
-			TotalAddFacesTime != 0 ||
-			TotalCollisionCubesTime != 0)
-		{
-			LOG_VOXEL(Log, TEXT("###############################################################################"));
-			LOG_VOXEL(Log, TEXT("################################# Cubic Stats #################################"));
-			LOG_VOXEL(Log, TEXT("###############################################################################"));
-			LOG_VOXEL(Log, TEXT("Values Time: %fs (%3.2f%% of total time)"), TotalValuesTime, 100 * TotalValuesTime / TotalTime);
-			LOG_VOXEL(Log, TEXT("Materials Time: %fs (%3.2f%% of total time)"), TotalMaterialsTime, 100 * TotalMaterialsTime / TotalTime);
-			LOG_VOXEL(Log, TEXT("Find Faces Time: %fs (%3.2f%% of total time)"), TotalFindFacesTime, 100 * TotalFindFacesTime / TotalTime);
-			LOG_VOXEL(Log, TEXT("Greedy Meshing Time: %fs (%3.2f%% of total time)"), TotalGreedyMeshingTime, 100 * TotalGreedyMeshingTime / TotalTime);
-			LOG_VOXEL(Log, TEXT("Add Faces Time: %fs (%3.2f%% of total time)"), TotalAddFacesTime, 100 * TotalAddFacesTime / TotalTime);
-			LOG_VOXEL(Log, TEXT("Collision Cubes Time: %fs (%3.2f%% of total time)"), TotalCollisionCubesTime, 100 * TotalCollisionCubesTime / TotalTime);
-		}
 	}
 };
 
@@ -242,17 +217,14 @@ FVoxelMesherStats FVoxelMesherStats::Singleton;
 FVoxelMesherBase::FVoxelMesherBase(
 	int32 LOD,
 	const FIntVector& ChunkPosition,
-	const IVoxelRenderer& Renderer,
-	const FVoxelData& Data,
+	const FVoxelRendererSettings& Settings,
 	bool bIsTransitions)
 	: LOD(LOD)
 	, Step(1 << LOD)
-	, Size(MESHER_CHUNK_SIZE << LOD)
+	, Size(RENDER_CHUNK_SIZE << LOD)
 	, ChunkPosition(ChunkPosition)
-	, Settings(Renderer.Settings)
-	, DynamicSettings(*Renderer.DynamicSettings)
-	, Data(Data)
-	, Renderer(Renderer)
+	, Settings(Settings)
+	, Data(*Settings.Data)
 	, bIsTransitions(bIsTransitions)
 {
 }
@@ -280,7 +252,7 @@ bool FVoxelMesherBase::IsEmpty() const
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("DebugIsEmpty");
 		const FVoxelIntBox BoundsCopy(Bounds.Min, Bounds.Max - FIntVector(Step));
-		AsyncTask(ENamedThreads::GameThread, [WeakDebug = MakeVoxelWeakPtr(Renderer.GetSubsystem<FVoxelDebugManager>()), BoundsCopy, bIsEmpty]
+		AsyncTask(ENamedThreads::GameThread, [WeakDebug = MakeVoxelWeakPtr(Settings.DebugManager), BoundsCopy, bIsEmpty]
 			{
 				auto Debug = WeakDebug.Pin();
 				if (Debug.IsValid())
@@ -328,9 +300,8 @@ void FVoxelMesherBase::FinishCreatingChunk(FVoxelChunkMesh& Chunk) const
 FVoxelMesher::FVoxelMesher(
 	int32 LOD,
 	const FIntVector& ChunkPosition,
-	const IVoxelRenderer& Renderer,
-	const FVoxelData& Data)
-	: FVoxelMesherBase(LOD, ChunkPosition, Renderer, Data, false)
+	const FVoxelRendererSettings& Settings)
+	: FVoxelMesherBase(LOD, ChunkPosition, Settings, false)
 {
 }
 
@@ -340,7 +311,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesher::CreateFullChunk()
 
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("InitArea");
-		Data.Generator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * MESHER_CHUNK_SIZE), LOD);
+		Data.Generator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
 	}
 
 	LockData();
@@ -363,19 +334,19 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesher::CreateFullChunk()
 		if (Chunk.IsValid())
 		{
 			{
-				MESHER_TIME_SCOPE(FinishCreatingChunk);
+				MESHER_TIME_SCOPE(FinishCreatingChunk)
 				FinishCreatingChunk(*Chunk);
 			}
 
 			if (LOD <= Settings.MaxDistanceFieldLOD)
 			{
-				MESHER_TIME_SCOPE(DistanceField);
+				MESHER_TIME_SCOPE(DistanceField)
 				Chunk->BuildDistanceField(LOD, ChunkPosition, Data, Settings);
 			}
 		}
 
 		const double EndTime = FPlatformTime::Seconds();
-		FVoxelMesherStats::Report(Settings.World.Get(), LOD, EndTime - StartTime, Times, false, false);
+		FVoxelMesherStats::Report(Settings.World, LOD, EndTime - StartTime, Times, false, false);
 	}
 	
 	return Chunk;
@@ -387,7 +358,7 @@ void FVoxelMesher::CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vert
 
 	{
 		VOXEL_ASYNC_SCOPE_COUNTER("InitArea");
-		Data.Generator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * MESHER_CHUNK_SIZE), LOD);
+		Data.Generator->InitArea(FVoxelIntBox(ChunkPosition, ChunkPosition + Step * RENDER_CHUNK_SIZE), LOD);
 	}
 
 	LockData();
@@ -414,10 +385,9 @@ void FVoxelMesher::CreateGeometry(TArray<uint32>& Indices, TArray<FVector>& Vert
 FVoxelTransitionsMesher::FVoxelTransitionsMesher(
 	int32 LOD,
 	const FIntVector& ChunkPosition,
-	const IVoxelRenderer& Renderer,
-	const FVoxelData& Data,
+	const FVoxelRendererSettings& Settings,
 	uint8 TransitionsMask)
-	: FVoxelMesherBase(LOD, ChunkPosition, Renderer, Data, true)
+	: FVoxelMesherBase(LOD, ChunkPosition, Settings, true)
 	, TransitionsMask(TransitionsMask)
 	, HalfLOD(LOD - 1)
 	, HalfStep(Step / 2)
@@ -449,7 +419,7 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelTransitionsMesher::CreateFullChunk()
 
 		if (Chunk.IsValid())
 		{
-			MESHER_TIME_SCOPE(FinishCreatingChunk);
+			MESHER_TIME_SCOPE(FinishCreatingChunk)
 			FinishCreatingChunk(*Chunk);
 		}
 		

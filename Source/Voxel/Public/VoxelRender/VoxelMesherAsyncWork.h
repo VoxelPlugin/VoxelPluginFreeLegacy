@@ -1,25 +1,22 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelIntBox.h"
 #include "VoxelMinimal.h"
+#include "VoxelPriorityHandler.h"
 #include "VoxelAsyncWork.h"
 
-class FVoxelData;
-class IVoxelRenderer;
-class FVoxelMesherBase;
-class FVoxelDefaultRenderer;
-class FVoxelRuntimeSettings;
+struct FVoxelRendererSettings;
 struct FVoxelChunkMesh;
+class FVoxelDefaultRenderer;
+class FVoxelMesherBase;
 
 class VOXEL_API FVoxelMesherAsyncWork : public FVoxelAsyncWork
 {
-	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelMesherAsyncWork)
-	
 public:
-	const uint64 TaskId = VOXEL_UNIQUE_ID();
+	const uint64 TaskId = UNIQUE_ID();
 	
 	const uint64 ChunkId;
 	const int32 LOD;
@@ -37,30 +34,36 @@ public:
 		int32 LOD,
 		const FVoxelIntBox& Bounds,
 		bool bIsTransitionTask,
-		uint8 TransitionsMask,
-		EVoxelTaskType TaskType);
+		uint8 TransitionsMask);
 
 	static void CreateGeometry_AnyThread(
-		const FIntVector& ChunkPosition,
-		const IVoxelRenderer& Renderer,
-		const FVoxelData& Data,
+		const FVoxelDefaultRenderer& Renderer,
 		int32 LOD,
+		const FIntVector& ChunkPosition,
 		TArray<uint32>& OutIndices,
 		TArray<FVector>& OutVertices);
 
 private:
+	// Important: do not allow public delete
+	virtual ~FVoxelMesherAsyncWork() override;
+	
 	//~ Begin FVoxelAsyncWork Interface
 	virtual void DoWork() override final;
 	virtual void PostDoWork() override final;
+	virtual uint32 GetPriority() const override final;
 	//~ End FVoxelAsyncWork Interface
 
 	static TUniquePtr<FVoxelMesherBase> GetMesher(
-		const FIntVector& ChunkPosition,
-		const IVoxelRenderer& Renderer,
-		const FVoxelData& Data,
+		const FVoxelRendererSettings& Settings,
 		int32 LOD,
+		const FIntVector& ChunkPosition,
 		bool bIsTransitionTask,
 		uint8 TransitionsMask);
 	
+	
 	const TVoxelWeakPtr<FVoxelDefaultRenderer> Renderer;
+	const FVoxelPriorityHandler PriorityHandler;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };

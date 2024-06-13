@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -27,7 +27,7 @@ struct FVoxelSurfaceToolMask
 
 public:
 	UPROPERTY(Category = "Mask|Texture", EditAnywhere, BlueprintReadWrite)
-	UTexture2D* Texture = nullptr;
+	TObjectPtr<UTexture2D> Texture = nullptr;
 
 	UPROPERTY(Category = "Mask|Texture", EditAnywhere, BlueprintReadWrite)
 	EVoxelRGBA Channel = EVoxelRGBA::R;
@@ -43,7 +43,7 @@ public:
 	bool bScaleWithBrushSize = true;
 	
 	UPROPERTY(Category = "Mask|Generator", VisibleAnywhere, BlueprintReadOnly, AdvancedDisplay, Transient)
-	UTexture2D* GeneratorDebugTexture = nullptr;
+	TObjectPtr<UTexture2D> GeneratorDebugTexture = nullptr;
 	
 public:
 	UPROPERTY(Category = "Mask", EditAnywhere, BlueprintReadWrite, meta = (UIMin = 0.01, UIMax = 10))
@@ -72,7 +72,7 @@ class VOXEL_API UVoxelSurfaceTool : public UVoxelToolBase
 
 public:
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UMaterialInterface* ToolMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> ToolMaterial = nullptr;
 	
 public:
 	UPROPERTY(Category = "Sculpt Settings", EditAnywhere, BlueprintReadWrite)
@@ -159,7 +159,7 @@ private:
 	FMaskGeneratorCache MaskGeneratorCache;
 
 	UPROPERTY(Transient)
-	UTexture2D* MaskGeneratorCache_RenderTexture = nullptr;
+	TObjectPtr<UTexture2D> MaskGeneratorCache_RenderTexture = nullptr;
 
 	bool ShouldUseMask() const;
 

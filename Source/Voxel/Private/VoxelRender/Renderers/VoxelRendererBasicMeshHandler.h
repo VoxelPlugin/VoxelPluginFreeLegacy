@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -52,7 +52,7 @@ private:
 			int32 LOD,
 			const FIntVector& Position)
 		{
-			return FChunkInfo(VOXEL_UNIQUE_ID(), LOD, Position);
+			return FChunkInfo(UNIQUE_ID(), LOD, Position);
 		}
 
 	private:

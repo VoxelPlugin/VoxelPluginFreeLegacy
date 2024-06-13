@@ -1,8 +1,9 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "RHI.h"
 #include "RenderResource.h"
 #include "RawIndexBuffer.h"
 #include "VoxelMinimal.h"
@@ -156,7 +157,7 @@ public:
     void Discard();
     
 	// FRenderResource interface.
-	virtual void InitRHI() override;
+	virtual void InitRHI(UE_503_ONLY(FRHICommandListBase& RHICmdList)) override;
 
 	inline bool Is32Bit() const { return b32Bit; }
 

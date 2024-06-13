@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -32,21 +32,27 @@ enum class EVoxelUpdateRender
 
 class VOXEL_API FVoxelLatentActionAsyncWork : public FVoxelAsyncWorkWithWait
 {
-	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelLatentActionAsyncWork)
-	
 public:
 	explicit FVoxelLatentActionAsyncWork(FName Name);
+
+	//~ Begin IVoxelQueuedWork Interface
+	virtual uint32 GetPriority() const override;
+	//~ End IVoxelQueuedWork Interface
 
 	//~ Begin FVoxelLatentActionAsyncWork Interface
 	// Called on the game thread
 	virtual bool IsValid() const = 0;
 	//~ End FVoxelLatentActionAsyncWork Interface
+
+protected:
+	~FVoxelLatentActionAsyncWork() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 class VOXEL_API FVoxelLatentActionAsyncWork_WithWorld : public FVoxelLatentActionAsyncWork
 {
-	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelLatentActionAsyncWork_WithWorld)
-	
 public:
 	const TWeakObjectPtr<AVoxelWorld> World;
 	const TVoxelWeakPtr<FVoxelData> Data;
@@ -58,12 +64,16 @@ public:
 	virtual void DoWork() override;
 	virtual bool IsValid() const override;
 	//~ End FVoxelLatentActionAsyncWork Interface
+
+protected:
+	~FVoxelLatentActionAsyncWork_WithWorld() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 class VOXEL_API FVoxelLatentActionAsyncWork_WithoutWorld : public FVoxelLatentActionAsyncWork
 {
-	GENERATED_VOXEL_ASYNC_WORK_BODY(FVoxelLatentActionAsyncWork_WithoutWorld)
-	
 public:
 	const TFunction<void()> Function;
 	// Called on the game thread
@@ -75,13 +85,17 @@ public:
 	virtual void DoWork() override;
 	virtual bool IsValid() const override;
 	//~ End FVoxelLatentActionAsyncWork Interface
+
+protected:
+	~FVoxelLatentActionAsyncWork_WithoutWorld() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 template<typename TValue>
 class TVoxelLatentActionAsyncWork_WithWorld_WithValue : public FVoxelLatentActionAsyncWork_WithWorld
 {
-	GENERATED_VOXEL_ASYNC_WORK_BODY(TVoxelLatentActionAsyncWork_WithWorld_WithValue)
-	
 public:
 	TValue Value;
 	
@@ -89,13 +103,17 @@ public:
 		: FVoxelLatentActionAsyncWork_WithWorld(Name, World, [InFunction, this](FVoxelData& InData) { InFunction(InData, this->Value); })
 	{
 	}
+
+protected:
+	~TVoxelLatentActionAsyncWork_WithWorld_WithValue() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 template<typename TValue>
 class TVoxelLatentActionAsyncWork_WithoutWorld_WithValue : public FVoxelLatentActionAsyncWork_WithoutWorld
 {
-	GENERATED_VOXEL_ASYNC_WORK_BODY(TVoxelLatentActionAsyncWork_WithoutWorld_WithValue)
-	
 public:
 	TValue Value;
 	
@@ -103,6 +121,12 @@ public:
 		: FVoxelLatentActionAsyncWork_WithoutWorld(Name, [InFunction, this]() { InFunction(this->Value); }, MoveTemp(IsValidLambda))
 	{
 	}
+
+protected:
+	~TVoxelLatentActionAsyncWork_WithoutWorld_WithValue() = default;
+
+	template<typename T>
+	friend struct TVoxelAsyncWorkDelete;
 };
 
 template<typename TWork>
@@ -113,7 +137,7 @@ public:
 	const int32 OutputLink;
 	const FWeakObjectPtr CallbackTarget;
 	
-	const TVoxelAsyncWorkPtr<TWork> Work;
+	const TUniquePtr<TWork, TVoxelAsyncWorkDelete<TWork>> Work;
 	const TFunction<void(TWork&)> GameThreadCallback;
 	const FName Name;
 
@@ -392,7 +416,7 @@ if (!FVoxelUtilities::CountIs32Bits(Bounds.Size())) \
 ///////////////////////////////////////////////////////////////////////////////
 
 #define VOXEL_TOOL_HELPER_BODY(InLockType, InUpdateRender, ...) \
-	auto& Data = World->GetSubsystemChecked<FVoxelData>(); \
+	auto& Data = World->GetData(); \
 	{ \
 		TVoxelScopeLock<EVoxelLockType::InLockType> Lock(Data, Bounds, FUNCTION_FNAME); \
 		__VA_ARGS__; \

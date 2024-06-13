@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,11 +8,7 @@
 struct VOXEL_API FVoxelDebug
 {
 	template<typename T>
-#if VOXEL_ENGINE_VERSION < 426
-	using TDelegate = TMulticastDelegate<void, FName, const FIntVector&, TArrayView<const T>>;
-#else
 	using TDelegate = TMulticastDelegate<void(FName, const FIntVector&, TArrayView<const T>)>;
-#endif
 	
 	template<typename T>
 	static TDelegate<T>& GetDelegate();
@@ -20,7 +16,7 @@ struct VOXEL_API FVoxelDebug
 	template<typename T>
 	static void Broadcast(FName Name, const FIntVector& Size, TArrayView<T> Data)
 	{
-		GetDelegate<typename TRemoveConst<T>::Type>().Broadcast(Name, Size, Data);
+		GetDelegate<typename UE_503_SWITCH(TRemoveConst<T>::Type, std::remove_const_t<T>)>().Broadcast(Name, Size, Data);
 	}
 	template<typename T>
 	static void Broadcast(FName Name, const FIntVector& Size, const TArray<T>& Data)

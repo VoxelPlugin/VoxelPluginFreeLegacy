@@ -1,10 +1,167 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/VoxelMaterialExpressions.h"
 #include "VoxelContainers/VoxelStaticArray.h"
 
+#if VOXEL_ENGINE_VERSION >= 504
+#include "LandscapeUtils.h"
+#include "MaterialHLSLTree.h"
+#include "MaterialHLSLGenerator.h"
+#endif
+
 #include "MaterialCompiler.h"
+#include "Materials/MaterialFunction.h"
 #include "Materials/HLSLMaterialTranslator.h"
+
+#if VOXEL_ENGINE_VERSION >= 505
+#error "Check implementation"
+#elif VOXEL_ENGINE_VERSION >= 504
+#if WITH_EDITOR
+namespace UE::Landscape
+{
+	bool IsMobileWeightmapTextureArrayEnabled()
+	{
+		static const auto CVar = IConsoleManager::Get().FindConsoleVariable(TEXT("landscape.MobileWeightTextureArray"));
+		return CVar->GetInt() != 0;	
+	}
+}
+
+bool UMaterialExpressionLandscapeLayerBlend::GenerateHLSLExpression(FMaterialHLSLGenerator& Generator, UE::HLSLTree::FScope& Scope, int32 OutputIndex, UE::HLSLTree::FExpression const*& OutExpression) const
+{
+	using namespace UE::HLSLTree;
+
+	bool bNeedsRenormalize = false;
+	FTree& Tree = Generator.GetTree();
+	const FExpression* ConstantOne = Tree.NewConstant(1.f);
+	const FExpression* WeightSumExpression = Tree.NewConstant(0.f);
+	TArray<const FExpression*> WeightExpressions;
+
+	WeightExpressions.Empty(Layers.Num());
+
+	for (int32 LayerIdx = 0; LayerIdx < Layers.Num(); LayerIdx++)
+	{
+		WeightExpressions.Add(nullptr);
+
+		const FLayerBlendInput& Layer = Layers[LayerIdx];
+
+		// LB_AlphaBlend layers are blended last
+		if (Layer.BlendType != LB_AlphaBlend)
+		{
+			const FExpression* WeightExpression = nullptr;
+			const bool bTextureArrayEnabled = UE::Landscape::IsMobileWeightmapTextureArrayEnabled();
+			verify(GenerateStaticTerrainLayerWeightExpression(Layer.LayerName, Layer.PreviewWeight, bTextureArrayEnabled, Generator, WeightExpression));
+
+			if (WeightExpression)
+			{
+				switch (Layer.BlendType)
+				{
+				case LB_WeightBlend:
+				{
+					// Store the weight plus accumulate the sum of all weights so far
+					WeightExpressions[LayerIdx] = WeightExpression;
+					WeightSumExpression = Tree.NewAdd(WeightSumExpression, WeightExpression);
+				}
+				break;
+				case LB_HeightBlend:
+				{
+					bNeedsRenormalize = true;
+
+					// Modify weight with height
+					const FExpression* HeightExpression = Layer.HeightInput.AcquireHLSLExpressionOrConstant(Generator, Scope, Layer.ConstHeightInput);
+					const FExpression* ModifiedWeight = Tree.NewLerp(Tree.NewConstant(-1.f), ConstantOne, WeightExpression);
+					ModifiedWeight = Tree.NewAdd(ModifiedWeight, HeightExpression);
+					ModifiedWeight = Tree.NewMin(Tree.NewMax(ModifiedWeight, Tree.NewConstant(0.0001f)), ConstantOne);
+
+					// Store the final weight plus accumulate the sum of all weights so far
+					WeightExpressions[LayerIdx] = ModifiedWeight;
+					WeightSumExpression = Tree.NewAdd(WeightSumExpression, ModifiedWeight);
+				}
+				break;
+				}
+			}
+		}
+	}
+
+	const FExpression* InvWeightSumExpression = Tree.NewDiv(ConstantOne, WeightSumExpression);
+	OutExpression = Tree.NewConstant(0.f);
+
+	for (int32 LayerIdx = 0; LayerIdx < Layers.Num(); LayerIdx++)
+	{
+		const FLayerBlendInput& Layer = Layers[LayerIdx];
+
+		if (WeightExpressions[LayerIdx])
+		{
+			const FExpression* LayerExpression = Layer.LayerInput.AcquireHLSLExpressionOrConstant(Generator, Scope, FVector3f(Layer.ConstLayerInput));
+
+			if (bNeedsRenormalize)
+			{
+				// Renormalize the weights as our height modification has made them non-uniform
+				OutExpression = Tree.NewAdd(OutExpression, Tree.NewMul(LayerExpression, Tree.NewMul(InvWeightSumExpression, WeightExpressions[LayerIdx])));
+			}
+			else
+			{
+				// No renormalization is necessary, so just add the weights
+				OutExpression = Tree.NewAdd(OutExpression, Tree.NewMul(LayerExpression, WeightExpressions[LayerIdx]));
+			}
+		}
+	}
+
+	// Blend in LB_AlphaBlend layers
+	for (const FLayerBlendInput& Layer : Layers)
+	{
+		if (Layer.BlendType == LB_AlphaBlend)
+		{
+			const FExpression* WeightExpression = nullptr;
+			const bool bTextureArrayEnabled = UE::Landscape::IsMobileWeightmapTextureArrayEnabled();
+			verify(GenerateStaticTerrainLayerWeightExpression(Layer.LayerName, Layer.PreviewWeight, bTextureArrayEnabled, Generator, WeightExpression));
+
+			if (WeightExpression)
+			{
+				const FExpression* LayerExpression = Layer.LayerInput.AcquireHLSLExpressionOrConstant(Generator, Scope, FVector3f(Layer.ConstLayerInput));
+
+				// Blend in the layer using the alpha value
+				OutExpression = Tree.NewLerp(OutExpression, LayerExpression, WeightExpression);
+			}
+		}
+	}
+
+	return true;
+}
+
+bool UMaterialExpressionLandscapeLayerSample::GenerateHLSLExpression(FMaterialHLSLGenerator& Generator, UE::HLSLTree::FScope& Scope, int32 OutputIndex, UE::HLSLTree::FExpression const*& OutExpression) const
+{
+	const bool bTextureArrayEnabled = UE::Landscape::IsMobileWeightmapTextureArrayEnabled();
+	return GenerateStaticTerrainLayerWeightExpression(ParameterName, PreviewWeight, bTextureArrayEnabled, Generator, OutExpression);
+}
+
+bool UMaterialExpressionLandscapeLayerSwitch::GenerateHLSLExpression(FMaterialHLSLGenerator& Generator, UE::HLSLTree::FScope& Scope, int32 OutputIndex, UE::HLSLTree::FExpression const*& OutExpression) const
+{
+	using namespace UE::HLSLTree;
+
+	const FExpression* Inputs[] = {
+		LayerNotUsed.TryAcquireHLSLExpression(Generator, Scope),
+		LayerUsed.TryAcquireHLSLExpression(Generator, Scope)
+	};
+
+	OutExpression = Generator.GetTree().NewExpression<Material::FExpressionLandscapeLayerSwitch>(Inputs, ParameterName, PreviewUsed!=0);
+	return OutExpression != nullptr;
+}
+
+bool UMaterialExpressionLandscapeVisibilityMask::GenerateHLSLExpression(FMaterialHLSLGenerator& Generator, UE::HLSLTree::FScope& Scope, int32 OutputIndex, UE::HLSLTree::FExpression const*& OutExpression) const
+{
+	using namespace UE::HLSLTree;
+
+	const FExpression* MaskLayerExpression = nullptr;
+	const bool bTextureArrayEnabled = UE::Landscape::IsMobileWeightmapTextureArrayEnabled();
+	verify(GenerateStaticTerrainLayerWeightExpression(ParameterName, 0.f, bTextureArrayEnabled, Generator, MaskLayerExpression));
+
+	FTree& Tree = Generator.GetTree();
+	const FExpression* ConstantOne = Tree.NewConstant(1.f);
+	OutExpression = MaskLayerExpression ? Tree.NewSub(ConstantOne, MaskLayerExpression) : ConstantOne;
+	return true;
+}
+#endif
+#endif
 
 #if WITH_EDITOR
 class FHLSLCompilerChild : public FHLSLMaterialTranslator
@@ -49,10 +206,10 @@ public:
 		}
 	}
 
-	virtual int32 StaticTerrainLayerWeight(FName ParameterName, int32 Default) override
+	virtual int32 StaticTerrainLayerWeight(FName ParameterName, int32 Default UE_504_ONLY(, bool bTextureArray = false)) override
 	{
 		FHLSLCompilerChild* HLSLCompiler = static_cast<FHLSLCompilerChild*>(GetBaseCompiler());
-		auto& TerrainLayerWeightParameters = HLSLCompiler->GetStaticParameters().TerrainLayerWeightParameters;
+		auto& TerrainLayerWeightParameters = HLSLCompiler->GetStaticParameters().EditorOnly.TerrainLayerWeightParameters;
 
 		TArray<int32> VoxelIndices;
 		int32 ParameterVoxelIndex = -1;
@@ -63,7 +220,7 @@ public:
 			{
 				VoxelIndices.Add(WeightmapIndex);
 				
-				if (Parameter.UE_5_SWITCH(ParameterInfo.Name, ParameterInfo_DEPRECATED.Name) == ParameterName)
+				if (Parameter.LayerName == ParameterName)
 				{
 					ParameterVoxelIndex = WeightmapIndex;
 				}
@@ -82,7 +239,9 @@ public:
 			return INDEX_NONE;
 		}
 		
-		if (!ensure(ParameterVoxelIndex != -1))
+      // DDW - This ensure breaks builds
+		// if (!ensureVoxelSlow(ParameterVoxelIndex != -1))
+      if ( !( ParameterVoxelIndex != -1 ) )
 		{
 			// We should have all the parameters overriden
 			return INDEX_NONE;
@@ -93,7 +252,7 @@ public:
 			// Make sure to return 0 to avoid inconsistencies
 			return Constant(0.f);
 		}
-		if (!ensure(ParameterVoxelIndex >= 0 && ParameterVoxelIndex < 6))
+		if (!ensureVoxelSlow(ParameterVoxelIndex >= 0 && ParameterVoxelIndex < 6))
 		{
 			// Invalid index
 			return INDEX_NONE;
@@ -166,15 +325,10 @@ public:
 	{
 		return Compiler->MaterialBakingWorldPosition();
 	}
-
-#if VOXEL_ENGINE_VERSION >= 426 && VOXEL_ENGINE_VERSION < 500
-	virtual int32 PreSkinVertexOffset() override
+#if VOXEL_ENGINE_VERSION >= 503
+	virtual int32 ParticleSpriteRotation() override
 	{
-		return Compiler->PreSkinVertexOffset();
-	}
-	virtual int32 PostSkinVertexOffset() override
-	{
-		return Compiler->PostSkinVertexOffset();
+		return Compiler->ParticleSpriteRotation();
 	}
 #endif
 };
@@ -214,7 +368,7 @@ bool NeedsToBeConvertedToVoxelImp(const TArray<UMaterialExpression*>& Expression
 			if (Function && !VisitedFunctions.Contains(Function))
 			{
 				VisitedFunctions.Add(Function);
-				if (NeedsToBeConvertedToVoxelImp(Function->FunctionExpressions, VisitedFunctions))
+				if (NeedsToBeConvertedToVoxelImp(Function->GetEditorOnlyData()->ExpressionCollection.Expressions, VisitedFunctions))
 				{
 					return true;
 				}

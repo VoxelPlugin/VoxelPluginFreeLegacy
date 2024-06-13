@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -85,6 +85,8 @@ inline FVoxelMaterial FVoxelDataAssetData::GetInterpolatedMaterial(float X, floa
 	Y = FMath::Clamp<float>(Y, 0, Size.Y - 1);
 	Z = FMath::Clamp<float>(Z, 0, Size.Z - 1);
 
+	auto* RESTRICT const ValuesPtr = Values.GetData();
+	auto* RESTRICT const MaterialsPtr = Materials.GetData();
 	const int32 MinX = FMath::FloorToInt(X);
 	const int32 MinY = FMath::FloorToInt(Y);
 	const int32 MinZ = FMath::FloorToInt(Z);
@@ -97,11 +99,14 @@ inline FVoxelMaterial FVoxelDataAssetData::GetInterpolatedMaterial(float X, floa
 		{
 			for (int32 ItZ = MinZ; ItZ <= MaxZ; ItZ++)
 			{
+				checkVoxelSlow(IsValidIndex(ItX, ItY, ItZ));
 				const int32 Index = GetIndex(ItX, ItY, ItZ);
-				if (FVoxelUtilities::GetAs<FVoxelValue>(Values, Index).IsEmpty()) continue;
-				return FVoxelUtilities::Get(Materials, Index);
+				checkVoxelSlow(Values.IsValidIndex(Index));
+				checkVoxelSlow(Materials.IsValidIndex(Index));
+				if (ValuesPtr[Index].IsEmpty()) continue;
+				return MaterialsPtr[Index];
 			}
 		}
 	}
-	return FVoxelUtilities::Get(Materials, GetIndex(MinX, MinY, MinZ));
+	return MaterialsPtr[GetIndex(MinX, MinY, MinZ)];
 }

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelGraphAssetNodes.h"
 #include "VoxelNodes/VoxelGeneratorSamplerNodes.h"

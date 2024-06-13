@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 using System.IO;
 using UnrealBuildTool;
@@ -8,10 +8,15 @@ public class VoxelGraph : ModuleRules
     public VoxelGraph(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
+#if UE_5_4_OR_LATER
+		CppStandard = CppStandardVersion.Cpp20;
+#else
+		CppStandard = CppStandardVersion.Cpp17;
+#endif
 
 #if UE_4_24_OR_LATER
+        bUseUnity = true;
 #else
 #endif
 

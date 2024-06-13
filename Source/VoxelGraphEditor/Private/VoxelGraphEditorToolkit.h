@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -78,6 +78,7 @@ public:
 
 	//~ Begin FGCObject interface
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
+	virtual FString GetReferencerName() const override { return "FVoxelGraphEditorToolkit"; }
 	//~ End FGCObject interface
 
 	//~ Begin FEditorUndoClient Interface
@@ -204,7 +205,7 @@ public:
 
 private:
 	// The Voxel asset being inspected
-	UVoxelGraphGenerator* Generator = nullptr;
+	TObjectPtr<UVoxelGraphGenerator> Generator = nullptr;
 
 	// Command list for this editor
 	TSharedPtr<FUICommandList> GraphEditorCommands;

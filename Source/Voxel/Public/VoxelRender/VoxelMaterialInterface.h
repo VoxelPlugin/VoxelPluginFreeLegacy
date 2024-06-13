@@ -1,20 +1,18 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
-#include "VoxelGCObject.h"
 #include "Containers/Queue.h"
-
+#include "UObject/GCObject.h"
+#include "UObject/WeakObjectPtr.h"
 
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class FVoxelMaterialInterface;
 
-// This code is a bit complex to handle material reinstancing when they are recompiled
-// Reinstancing reconstructs the object in-place, invaliding any weak pointer to it, but keeping the raw pointer the same
-class VOXEL_API FVoxelMaterialInterfaceManager : public FVoxelGCObject
+class VOXEL_API FVoxelMaterialInterfaceManager : public FGCObject
 {
 public:
 	static FVoxelMaterialInterfaceManager& Get()
@@ -34,14 +32,13 @@ public:
 	
 	TVoxelSharedRef<FVoxelMaterialInterface> DefaultMaterial() const;
 	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterial(UMaterialInterface* MaterialInterface);
-	// Will handle Parent being an instance
 	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterialInstance(UMaterialInterface* Parent);
 
 protected:
-	//~ Begin FVoxelGCObject Interface
+	//~ Begin FGCObject Interface
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
 	virtual FString GetReferencerName() const override { return "FVoxelMaterialInterfaceManager"; }
-	//~ End FVoxelGCObject Interface
+	//~ End FGCObject Interface
 	
 private:
 	TVoxelSharedPtr<FVoxelMaterialInterface> DefaultMaterialPtr;
@@ -58,7 +55,7 @@ private:
 	};
 	struct FMaterialInfo
 	{
-		UMaterialInterface* Material = nullptr;
+		TObjectPtr<UMaterialInterface> Material = nullptr;
 		bool bIsInstance = false;
 		int32 ReferenceCount = 0;
 	};
@@ -85,7 +82,7 @@ private:
 	TVoxelSharedRef<FVoxelMaterialInterface> CreateMaterialImpl(UMaterialInterface* MaterialInterface, bool bIsInstance);
 
 private:
-	TArray<UMaterialInstanceDynamic*> InstancePool;
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> InstancePool;
 	
 	UMaterialInstanceDynamic* GetInstanceFromPool();
 	void ReturnInstanceToPool(UMaterialInstanceDynamic* Instance);
@@ -103,14 +100,11 @@ public:
 
 	// Will be null if the asset is force deleted
 	UMaterialInterface* GetMaterial() const;
-	// If true, it's a material instance the plugin created & we can set parameters on it
-	bool IsMaterialInstance() const { return bIsInstance; }
-	
+
 private:
 	const FVoxelMaterialInterfaceManager::FMaterialReference Reference;
-	const bool bIsInstance;
-	
-	FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference, bool bIsInstance);
+
+	explicit FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference);
 
 	friend class FVoxelMaterialInterfaceManager;
 };

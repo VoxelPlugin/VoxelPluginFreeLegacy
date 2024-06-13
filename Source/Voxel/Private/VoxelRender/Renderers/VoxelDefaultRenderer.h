@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -9,39 +9,30 @@
 #include "VoxelRendererMeshHandler.h"
 #include "VoxelTickable.h"
 #include "VoxelQueueWithNum.h"
-#include "VoxelDefaultRenderer.generated.h"
 
 struct FVoxelChunkMesh;
 
 DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Renderer"), STAT_VoxelRenderer, STATGROUP_VoxelMemory, VOXEL_API);
 
-UCLASS()
-class VOXEL_API UVoxelDefaultRendererSubsystemProxy : public UVoxelRendererSubsystemProxy
-{
-	GENERATED_BODY()
-	GENERATED_VOXEL_SUBSYSTEM_PROXY_BODY(FVoxelDefaultRenderer);
-};
-
-class FVoxelDefaultRenderer : public IVoxelRenderer, public FVoxelTickable
+class FVoxelDefaultRenderer : public IVoxelRenderer, public FVoxelTickable, public TVoxelSharedFromThis<FVoxelDefaultRenderer>
 {
 public:
-	GENERATED_VOXEL_SUBSYSTEM_BODY(UVoxelDefaultRendererSubsystemProxy);
-
+	static TVoxelSharedRef<FVoxelDefaultRenderer> Create(const FVoxelRendererSettings& Settings);
 	virtual ~FVoxelDefaultRenderer() override;
 
+private:
+	explicit FVoxelDefaultRenderer(const FVoxelRendererSettings& Settings);
+
 public:
-	//~ Begin IVoxelSubsystem Interface
-	virtual void Create() override;
+	//~ Begin IVoxelRender Interface
 	virtual void Destroy() override;
-	//~ End IVoxelSubsystem Interface
 	
-	//~ Begin IVoxelRenderer Interface
 	virtual int32 UpdateChunks(const FVoxelIntBox& Bounds, const TArray<uint64>& ChunksToUpdate, const FVoxelOnChunkUpdateFinished& FinishDelegate) override;
 	virtual void UpdateLODs(uint64 InUpdateIndex, const TArray<FVoxelChunkUpdate>& ChunkUpdates) override;
 
 	virtual int32 GetTaskCount() const override;
-	virtual bool AreChunksDithering() const override;
 	
+	virtual void RecomputeMeshPositions() override;
 	virtual void ApplyNewMaterials() override;
 	virtual void ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda) override;
 	
@@ -50,10 +41,11 @@ public:
 		const FIntVector& ChunkPosition,
 		TArray<uint32>& OutIndices,
 		TArray<FVector>& OutVertices) const override;
-	//~ End IVoxelRenderer Interface
+	//~ End IVoxelRender Interface
 
 	//~ Begin FVoxelTickable Interface
 	virtual void Tick(float DeltaTime) override;
+	virtual bool IsTickableInEditor() const override { return true; }
 	//~ End FVoxelTickable Interface
 
 private:
@@ -113,8 +105,8 @@ private:
 	public:
 		struct FChunkTasks
 		{
-			TVoxelAsyncWorkPtr<FVoxelMesherAsyncWork> MainTask;
-			TVoxelAsyncWorkPtr<FVoxelMesherAsyncWork> TransitionsTask;
+			TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>> MainTask;
+			TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>> TransitionsTask;
 		};
 		FChunkTasks Tasks;
 
@@ -224,5 +216,5 @@ private:
 	};
 	TVoxelQueueWithNum<FVoxelTaskCallback, EQueueMode::Mpsc> TasksCallbacksQueue;
 
-	void CancelTask(TVoxelAsyncWorkPtr<FVoxelMesherAsyncWork>& Task);
+	void CancelTask(TUniquePtr<FVoxelMesherAsyncWork, TVoxelAsyncWorkDelete<FVoxelMesherAsyncWork>>& Task);
 };

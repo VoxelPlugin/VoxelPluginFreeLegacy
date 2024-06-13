@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -17,7 +17,7 @@ DECLARE_VOXEL_MEMORY_STAT(TEXT("Voxel Cached Materials Memory"), STAT_VoxelDataO
 template<typename T>
 struct TVoxelDataOctreeLeafMemoryUsage
 {
-	static_assert(TIsSame<T, FVoxelValue>::Value || TIsSame<T, FVoxelMaterial>::Value, "");
+	static_assert(std::is_same_v<T, FVoxelValue> || std::is_same_v<T, FVoxelMaterial>, "");
 	
 	static void Increase(int32 MemorySize, bool bDirty, const IVoxelDataOctreeMemory& Memory)
 	{
@@ -25,15 +25,15 @@ struct TVoxelDataOctreeLeafMemoryUsage
 		{
 			FVoxelUtilities::TValuesMaterialsSelector<T>::Get(Memory.DirtyMemory).Add(MemorySize);
 			
-			if (TIsSame<T, FVoxelValue   >::Value) { INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeDirtyValuesMemory   , MemorySize); }
-			if (TIsSame<T, FVoxelMaterial>::Value) { INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeDirtyMaterialsMemory, MemorySize); }
+			if (std::is_same_v<T, FVoxelValue   >) { INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeDirtyValuesMemory   , MemorySize); }
+			if (std::is_same_v<T, FVoxelMaterial>) { INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeDirtyMaterialsMemory, MemorySize); }
 		}
 		else
 		{
 			FVoxelUtilities::TValuesMaterialsSelector<T>::Get(Memory.CachedMemory).Add(MemorySize);
 
-			if (TIsSame<T, FVoxelValue   >::Value) { INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeCachedValuesMemory   , MemorySize); }
-			if (TIsSame<T, FVoxelMaterial>::Value) { INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeCachedMaterialsMemory, MemorySize); }
+			if (std::is_same_v<T, FVoxelValue   >) { INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeCachedValuesMemory   , MemorySize); }
+			if (std::is_same_v<T, FVoxelMaterial>) { INC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeCachedMaterialsMemory, MemorySize); }
 		}
 	}
 	static void Decrease(int32 MemorySize, bool bDirty, const IVoxelDataOctreeMemory& Memory)
@@ -43,16 +43,16 @@ struct TVoxelDataOctreeLeafMemoryUsage
 			FVoxelUtilities::TValuesMaterialsSelector<T>::Get(Memory.DirtyMemory).Subtract(MemorySize);
 			ensureVoxelSlowNoSideEffects(FVoxelUtilities::TValuesMaterialsSelector<T>::Get(Memory.DirtyMemory).GetValue() >= 0);
 			
-			if (TIsSame<T, FVoxelValue   >::Value) { DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeDirtyValuesMemory   , MemorySize); }
-			if (TIsSame<T, FVoxelMaterial>::Value) { DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeDirtyMaterialsMemory, MemorySize); }
+			if (std::is_same_v<T, FVoxelValue   >) { DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeDirtyValuesMemory   , MemorySize); }
+			if (std::is_same_v<T, FVoxelMaterial>) { DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeDirtyMaterialsMemory, MemorySize); }
 		}
 		else
 		{
 			FVoxelUtilities::TValuesMaterialsSelector<T>::Get(Memory.CachedMemory).Subtract(MemorySize);
 			ensureVoxelSlowNoSideEffects(FVoxelUtilities::TValuesMaterialsSelector<T>::Get(Memory.CachedMemory).GetValue() >= 0);
 			
-			if (TIsSame<T, FVoxelValue   >::Value) { DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeCachedValuesMemory   , MemorySize); }
-			if (TIsSame<T, FVoxelMaterial>::Value) { DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeCachedMaterialsMemory, MemorySize); }
+			if (std::is_same_v<T, FVoxelValue   >) { DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeCachedValuesMemory   , MemorySize); }
+			if (std::is_same_v<T, FVoxelMaterial>) { DEC_VOXEL_MEMORY_STAT_BY(STAT_VoxelDataOctreeCachedMaterialsMemory, MemorySize); }
 		}
 	}
 };
@@ -71,12 +71,12 @@ class TVoxelDataOctreeLeafData;
 template<>
 class TVoxelDataOctreeLeafData<FVoxelValue>
 {
-	TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>* DataPtr = nullptr;
+	FVoxelValue* RESTRICT DataPtr = nullptr;
 	FVoxelValue SingleValue;
 	bool bIsSingleValue = false;
 	bool bDirty = false;
 
-	static constexpr int32 MemorySize = sizeof(*DataPtr);
+	static constexpr int32 MemorySize = VOXELS_PER_DATA_CHUNK * sizeof(FVoxelValue);
 
 	friend class FVoxelSaveBuilder;
 	friend class FVoxelSaveLoader;
@@ -132,7 +132,7 @@ public:
 	{
 		CreateData(Memory);
 		check(DataPtr);
-		Init(DataPtr);
+		Init(static_cast<FVoxelValue* RESTRICT>(DataPtr));
 	}
 	void CreateData(const IVoxelDataOctreeMemory& Memory, const TVoxelDataOctreeLeafData<FVoxelValue>& Source)
 	{
@@ -149,7 +149,7 @@ public:
 			if (Source.DataPtr)
 			{
 				Allocate(Memory);
-				*DataPtr = *Source.DataPtr;
+				FMemory::Memcpy(DataPtr, Source.DataPtr, MemorySize);
 			}
 		}
 		CheckState();
@@ -200,15 +200,8 @@ public:
 		else
 		{
 			checkVoxelSlow(DataPtr);
-			return (*DataPtr)[Index];
+			return DataPtr[Index];
 		}
-	}
-	FORCEINLINE void Set(int32 Index, FVoxelValue Value)
-	{
-		checkVoxelSlow(DataPtr);
-		checkVoxelSlow(HasData());
-		CheckBounds(Index);
-		DataPtr->Set(Index, Value);
 	}
 
 public:
@@ -222,21 +215,28 @@ public:
 		}
 		CheckState();
 	}
+	FORCEINLINE FVoxelValue& GetRef(int32 Index)
+	{
+		checkVoxelSlow(DataPtr);
+		checkVoxelSlow(HasData());
+		CheckBounds(Index);
+		return DataPtr[Index];
+	}
 
 public:
-	FORCEINLINE void CopyTo(TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>& Dest) const
+	FORCEINLINE void CopyTo(FVoxelValue* RESTRICT DestPtr) const
 	{
 		checkVoxelSlow(HasData());
 		if (bIsSingleValue)
 		{
 			for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
 			{
-				Dest.Set(Index, SingleValue);
+				DestPtr[Index] = SingleValue;
 			}
 		}
 		else
 		{
-			Dest = *DataPtr;
+			FMemory::Memcpy(DestPtr, DataPtr, MemorySize);
 		}
 	}
 
@@ -266,16 +266,10 @@ public:
 
 		bIsSingleValue = false;
 		Allocate(Memory);
-
-#if ONE_BIT_VOXEL_VALUE
-		DataPtr->SetAll(SingleValue);
-#else
 		for (int32 Index = 0; Index < VOXELS_PER_DATA_CHUNK; Index++)
 		{
-			DataPtr->Set(Index, SingleValue);
+			DataPtr[Index] = SingleValue;
 		}
-#endif
-		
 		CheckState();
 	}
 	void TryCompressToSingleValue(const IVoxelDataOctreeMemory& Memory)
@@ -288,10 +282,10 @@ public:
 			return;
 		}
 
-		const FVoxelValue NewSingleValue = (*DataPtr)[0];
+		const FVoxelValue NewSingleValue = DataPtr[0];
 		for (int32 Index = 1; Index < VOXELS_PER_DATA_CHUNK; Index++)
 		{
-			if ((*DataPtr)[Index] != NewSingleValue) return;
+			if (DataPtr[Index] != NewSingleValue) return;
 		}
 
 		Deallocate(Memory);
@@ -318,7 +312,7 @@ private:
 		VOXEL_SLOW_FUNCTION_COUNTER();
 
 		check(!DataPtr && !bIsSingleValue);
-		DataPtr = new TVoxelValueStaticArray<VOXELS_PER_DATA_CHUNK>();
+		DataPtr = static_cast<FVoxelValue*>(FMemory::Malloc(MemorySize));
 		
 		TVoxelDataOctreeLeafMemoryUsage<FVoxelValue>::Increase(MemorySize, bDirty, Memory);
 	}
@@ -327,7 +321,7 @@ private:
 		VOXEL_SLOW_FUNCTION_COUNTER();
 
 		check(DataPtr);
-		delete DataPtr;
+		FMemory::Free(DataPtr);
 		DataPtr = nullptr;
 		
 		TVoxelDataOctreeLeafMemoryUsage<FVoxelValue>::Decrease(MemorySize, bDirty, Memory);
@@ -452,7 +446,6 @@ public:
 		{
 			if (Source.Main_DataPtr)
 			{
-				Main_Allocate(Memory);
 				FMemory::Memcpy(Main_DataPtr, Source.Main_DataPtr, Main_MemorySize);
 			}
 		}
@@ -588,12 +581,6 @@ public:
 			return Main_DataPtr[Index];
 		}
 	}
-	FORCEINLINE void Set(int32 Index, FVoxelMaterial Material)
-	{
-		CheckBounds(Index);
-		checkVoxelSlow(Main_DataPtr);
-		Main_DataPtr[Index] = Material;
-	}
 
 public:
 	FORCEINLINE void PrepareForWrite(const IVoxelDataOctreeMemory& Memory)
@@ -626,6 +613,12 @@ public:
 		checkVoxelSlow(HasData());
 		CheckState();
 	}
+	FORCEINLINE FVoxelMaterial& GetRef(int32 Index)
+	{
+		CheckBounds(Index);
+		checkVoxelSlow(Main_DataPtr);
+		return Main_DataPtr[Index];
+	}
 	FORCEINLINE void SetSingleValue(FVoxelMaterial SingleValue)
 	{
 		CheckState();
@@ -655,10 +648,6 @@ public:
 			checkVoxelSlow(Main_DataPtr);
 			FMemory::Memcpy(DestPtr, Main_DataPtr, Main_MemorySize);
 		}
-	}
-	FORCEINLINE void CopyTo(TVoxelStaticArray<FVoxelMaterial, VOXELS_PER_DATA_CHUNK>& Dest) const
-	{
-		CopyTo(Dest.GetData());
 	}
 	
 private:

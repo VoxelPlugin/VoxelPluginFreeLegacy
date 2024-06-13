@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelPinCategory.h"
 #include "Runtime/VoxelNodeType.h"
@@ -47,7 +47,7 @@ EVoxelPinCategory FVoxelPinCategory::FromString(const FName& String)
 	{
 		return EVoxelPinCategory::Int;
 	}
-	else if (String == PC_Float)
+	else if (String == PC_Float || String == "real")
 	{
 		return EVoxelPinCategory::Float;
 	}

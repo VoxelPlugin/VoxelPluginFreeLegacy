@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/Tools/VoxelLevelTool.h"
 #include "VoxelTools/Impl/VoxelLevelToolsImpl.inl"
@@ -80,7 +80,7 @@ FVoxelIntBoxWithValidity UVoxelLevelTool::DoEdit()
 	}
 	const auto BoundsToCache = GetBoundsToCache(Bounds);
 
-	auto& Data = World.GetSubsystemChecked<FVoxelData>();
+	auto& Data = World.GetData();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);

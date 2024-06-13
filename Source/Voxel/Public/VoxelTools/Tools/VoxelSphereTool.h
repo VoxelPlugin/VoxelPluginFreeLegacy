@@ -1,9 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelInterval.h"
 #include "VoxelTools/Tools/VoxelSphereToolBase.h"
 #include "VoxelSphereTool.generated.h"
 
@@ -14,20 +13,11 @@ class VOXEL_API UVoxelSphereTool : public UVoxelSphereToolBase
 
 public:
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UMaterialInterface* OverlayMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> OverlayMaterial = nullptr;
 
 public:
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite)
 	bool bSculpt = true;
-
-	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (InlineEditConditionToggle))
-	bool bEnableIndexInterval = false;
-
-	// Will only edit voxels with an index contained in this interval
-	// Only works in the single index edit mode, and only when removing voxels
-	// Mainly intended for the cubic mode
-	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bEnableIndexInterval"))
-	FVoxelInt32Interval IndexInterval = { 0, 10 };
 	
 	UPROPERTY(Category = "Paint Settings", EditAnywhere, BlueprintReadWrite)
 	bool bPaint = false;

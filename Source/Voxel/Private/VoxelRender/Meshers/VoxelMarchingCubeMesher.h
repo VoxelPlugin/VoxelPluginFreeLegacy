@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -7,8 +7,8 @@
 #include "VoxelData/VoxelDataAccelerator.h"
 #include "VoxelRender/Meshers/VoxelMesher.h"
 
-#define CHUNK_SIZE_WITH_END_EDGE (MESHER_CHUNK_SIZE + 1)
-#define CHUNK_SIZE_WITH_NORMALS (MESHER_CHUNK_SIZE + 3)
+#define CHUNK_SIZE_WITH_END_EDGE (RENDER_CHUNK_SIZE + 1)
+#define CHUNK_SIZE_WITH_NORMALS (RENDER_CHUNK_SIZE + 3)
 
 #define EDGE_INDEX_COUNT 4
 
@@ -37,15 +37,17 @@ public:
 	}
 
 private:
-	using FCache = TVoxelStaticArray<int32, MESHER_CHUNK_SIZE * MESHER_CHUNK_SIZE * EDGE_INDEX_COUNT>;
+	// Use LOD0 size as it's bigger
+	using FCachedValues = TVoxelStaticArray<FVoxelValue, CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS>;
+	using FCache = TVoxelStaticArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * EDGE_INDEX_COUNT>;
 
+	TUniquePtr<FCachedValues> CachedValuesStorage = MakeUnique<FCachedValues>();
 	TUniquePtr<FCache> CacheStorageA = MakeUnique<FCache>();
 	TUniquePtr<FCache> CacheStorageB = MakeUnique<FCache>();
 	
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
 
-	// Use LOD0 size as it's bigger
-	TVoxelValueStaticArray<CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS * CHUNK_SIZE_WITH_NORMALS> CachedValues;
+	FVoxelValue* RESTRICT const CachedValues = CachedValuesStorage->GetData();
 
 	// Cache to get index of already created vertices
 	int32* RESTRICT CurrentCache = CacheStorageA->GetData();
@@ -76,7 +78,7 @@ protected:
 
 private:
 	TUniquePtr<FVoxelConstDataAccelerator> Accelerator;
-	TVoxelStaticArray<int32, MESHER_CHUNK_SIZE * MESHER_CHUNK_SIZE * TRANSITION_EDGE_INDEX_COUNT> Cache2D;
+	TVoxelStaticArray<int32, RENDER_CHUNK_SIZE * RENDER_CHUNK_SIZE * TRANSITION_EDGE_INDEX_COUNT> Cache2D;
 
 private:
 	// T: will be created as T(IntersectionPoint, MaterialPosition, bNeedToTranslate)

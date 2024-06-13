@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -15,7 +15,7 @@ struct FVoxelTestValues
 {
 	GENERATED_BODY()
 
-	TSharedRef<const FVoxelValueArray> Values = MakeShared<FVoxelValueArray>();
+	TSharedRef<const TArray<FVoxelValue>> Values = MakeShared<TArray<FVoxelValue>>();
 };
 
 UCLASS()

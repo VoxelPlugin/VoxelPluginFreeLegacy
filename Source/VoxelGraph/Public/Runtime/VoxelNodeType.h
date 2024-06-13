@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -19,14 +19,14 @@ struct FVoxelNodeType
 	FORCEINLINE T& Get()
 	{
 		static_assert(sizeof(T) <= VoxelNodeTypeSize, "");
-		static_assert(TOr<TIsSame<T, v_flt>, TIsSame<T, int32>, TIsSame<T, bool>, TIsSame<T, FVoxelMaterial>, TIsSame<T, FColor>>::Value, "");
+		static_assert(std::is_same_v<T, v_flt> || std::is_same_v<T, int32> || std::is_same_v<T, bool> || std::is_same_v<T, FVoxelMaterial> || std::is_same_v<T, FColor>, "");
 		return *reinterpret_cast<T*>(Data);
 	}
 	template<typename T>
 	FORCEINLINE const T& Get() const
 	{
 		static_assert(sizeof(T) <= VoxelNodeTypeSize, "");
-		static_assert(TOr<TIsSame<T, v_flt>, TIsSame<T, int32>, TIsSame<T, bool>, TIsSame<T, FVoxelMaterial>, TIsSame<T, FColor>>::Value, "");
+		static_assert(std::is_same_v<T, v_flt> || std::is_same_v<T, int32> || std::is_same_v<T, bool> || std::is_same_v<T, FVoxelMaterial> || std::is_same_v<T, FColor>, "");
 		return *reinterpret_cast<const T*>(Data);
 	}
 

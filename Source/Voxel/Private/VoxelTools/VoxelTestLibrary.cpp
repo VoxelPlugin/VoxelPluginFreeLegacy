@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelTestLibrary.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -9,7 +9,7 @@ FVoxelTestValues UVoxelTestLibrary::ReadValues(AVoxelWorld* World, FVoxelIntBox 
 	VOXEL_FUNCTION_COUNTER();
 	CHECK_VOXELWORLD_IS_CREATED();
 
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 	
 	FVoxelReadScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
 	return { MakeSharedCopy(Data.GetValues(Bounds)) };

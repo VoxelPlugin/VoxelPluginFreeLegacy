@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
 #include "VoxelRender/IVoxelRenderer.h"
@@ -7,7 +7,7 @@
 FORCEINLINE int32 AddVertexToBuffer(
 	const FVoxelMesherVertex& Vertex,
 	FVoxelChunkMeshBuffers& Buffer, 
-	const FVoxelRuntimeSettings& Settings,
+	const FVoxelRendererSettings& Settings,
 	EVoxelMaterialConfig MaterialConfig,
 	const FColor* Color = nullptr,
 	const FVector2D* UV = nullptr)
@@ -43,7 +43,6 @@ FORCEINLINE int32 AddVertexToBuffer(
 		}
 		else
 		{
-			check(!Color && !UV);
 			Buffer.Colors.Emplace(GetColor(Vertex.Material.GetColor()));
 			if (VOXEL_MATERIAL_ENABLE_UV0) Buffer.TextureCoordinates[1].Emplace(Vertex.Material.GetUV_AsFloat(0));
 			if (VOXEL_MATERIAL_ENABLE_UV1) Buffer.TextureCoordinates[2].Emplace(Vertex.Material.GetUV_AsFloat(1));
@@ -57,7 +56,7 @@ FORCEINLINE int32 AddVertexToBuffer(
 inline void ReserveBuffer(
 	FVoxelChunkMeshBuffers& Buffer,
 	int32 Num,
-	const FVoxelRuntimeSettings& Settings,
+	const FVoxelRendererSettings& Settings,
 	EVoxelMaterialConfig MaterialConfig)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
@@ -91,23 +90,19 @@ inline void ReserveBuffer(
 }
 
 TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
-	const FVoxelRuntimeSettings& Settings, 
-	const FVoxelRuntimeDynamicSettings& DynamicSettings,
+	const FVoxelRendererSettings& Settings, 
 	int32 LOD,
 	TArray<uint32>&& Indices, 
-	TArray<FVoxelMesherVertex>&& Vertices,
-	TArray<uint8>* TextureData,
-	TArray<FBox>* CollisionCubes)
+	TArray<FVoxelMesherVertex>&& Vertices)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	auto Chunk = MakeVoxelShared<FVoxelChunkMesh>();
 	
-	if (!Settings.bUseMaterialCollection)
+	if (Settings.MaterialConfig == EVoxelMaterialConfig::RGB)
 	{
 		if (Settings.bHardColorTransitions)
 		{
-			ensure(!TextureData);
 			VOXEL_ASYNC_SCOPE_COUNTER("Hard Color Transitions");
 			
 			// Add new vertices as needed
@@ -188,24 +183,14 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 
 		Buffers.Indices = MoveTemp(Indices);
 
-		ReserveBuffer(Buffers, Vertices.Num(), Settings, Settings.MaterialConfig);
+		ReserveBuffer(Buffers, Vertices.Num(), Settings, EVoxelMaterialConfig::RGB);
 		for (auto& Vertex : Vertices)
 		{
-			AddVertexToBuffer(Vertex, Buffers, Settings, Settings.MaterialConfig);
-		}
-
-		if (TextureData)
-		{
-			Buffers.TextureData = MoveTemp(*TextureData);
-		}
-		if (CollisionCubes)
-		{
-			Buffers.CollisionCubes = MoveTemp(*CollisionCubes);
+			AddVertexToBuffer(Vertex, Buffers, Settings, EVoxelMaterialConfig::RGB);
 		}
 	}
 	else if (Settings.MaterialConfig == EVoxelMaterialConfig::SingleIndex)
 	{
-		ensure(!TextureData && !CollisionCubes);
 		Chunk->SetIsSingle(false);
 
 		TVoxelStaticArray<TMap<int32, int32>, 256> IndicesMaps{ ForceInit };
@@ -223,220 +208,11 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 			const uint8 MaterialIndexB = VertexB.Material.GetSingleIndex();
 			const uint8 MaterialIndexC = VertexC.Material.GetSingleIndex();
 
-			if (Settings.bSplitSingleIndexTriangles && (MaterialIndexA != MaterialIndexB || MaterialIndexA != MaterialIndexC))
-			{
-				// Split the triangles, to render all indices
-				
-				const auto CreateVertex = [](const FVoxelMesherVertex& VertexX, const FVoxelMesherVertex& VertexY)
-				{
-					FVoxelMesherVertex Result;
-					Result.Position = (VertexX.Position + VertexY.Position) / 2;
-					Result.Normal = (VertexX.Normal + VertexY.Normal).GetSafeNormal();
-					Result.Tangent.bFlipTangentY = VertexX.Tangent.bFlipTangentY;
-					Result.Tangent.TangentX = (VertexX.Tangent.TangentX + VertexY.Tangent.TangentX).GetSafeNormal();
-					Result.TextureCoordinate = (VertexX.TextureCoordinate + VertexY.TextureCoordinate) / 2;
-					return Result;
-				};
-				
-				const auto Case1 = [&](const int32 IndexU, const int32 IndexV, const int32 IndexW)
-				{
-					// Case 1:
-					//      U
-					//    /   \
-					//   X --- Y
-					//  / ____/ \
-					// W ------- V
-					//
-					// Generate U Y X, Y V W, X Y W
-
-					const FVoxelMesherVertex& VertexU = Vertices[IndexU];
-					const FVoxelMesherVertex& VertexV = Vertices[IndexV];
-					const FVoxelMesherVertex& VertexW = Vertices[IndexW];
-
-					FVoxelMesherVertex VertexX = CreateVertex(VertexU, VertexW);
-					FVoxelMesherVertex VertexY = CreateVertex(VertexU, VertexV);
-
-					// U Y X
-					{
-						VertexX.Material = VertexU.Material;
-						VertexY.Material = VertexU.Material;
-
-						const int32 IndexX = Vertices.Add(VertexX);
-						const int32 IndexY = Vertices.Add(VertexY);
-
-						// Reuse current triangle indices
-						Indices[I + 0] = IndexU;
-						Indices[I + 1] = IndexY;
-						Indices[I + 2] = IndexX;
-
-						I -= 3;
-					}
-
-					VertexX.Material = VertexW.Material;
-					VertexY.Material = VertexV.Material;
-
-					const int32 IndexX = Vertices.Add(VertexX);
-					const int32 IndexY = Vertices.Add(VertexY);
-
-					// Y V W
-					Indices.Add(IndexY);
-					Indices.Add(IndexV);
-					Indices.Add(IndexW);
-
-					// X Y W
-					Indices.Add(IndexX);
-					Indices.Add(IndexY);
-					Indices.Add(IndexW);
-				};
-				
-				if (MaterialIndexB == MaterialIndexC)
-				{
-					Case1(IndexA, IndexB, IndexC);
-					continue;
-				}
-				if (MaterialIndexC == MaterialIndexA)
-				{
-					Case1(IndexB, IndexC, IndexA);
-					continue;
-				}
-				if (MaterialIndexA == MaterialIndexB)
-				{
-					Case1(IndexC, IndexA, IndexB);
-					continue;
-				}
-				
-				// Case 2:
-				//      A
-				//    /   \
-				//   X --- Y
-				//  /  \  / \
-				// C -- Z -- B
-				//
-				// Generate A Y X, Y B Z, X Z C, X Y Z
-				
-				FVoxelMesherVertex VertexX = CreateVertex(VertexA, VertexC);
-				FVoxelMesherVertex VertexY = CreateVertex(VertexA, VertexB);
-				FVoxelMesherVertex VertexZ = CreateVertex(VertexB, VertexC);
-				
-				// A Y X
-				{
-					VertexX.Material = VertexA.Material;
-					VertexY.Material = VertexA.Material;
-
-					const int32 IndexX = Vertices.Add(VertexX);
-					const int32 IndexY = Vertices.Add(VertexY);
-
-					// Reuse current triangle indices
-					Indices[I + 0] = IndexA;
-					Indices[I + 1] = IndexY;
-					Indices[I + 2] = IndexX;
-
-					I -= 3;
-				}
-				
-				// Y B Z
-				{
-					VertexY.Material = VertexB.Material;
-					VertexZ.Material = VertexB.Material;
-
-					const int32 IndexY = Vertices.Add(VertexY);
-					const int32 IndexZ = Vertices.Add(VertexZ);
-					
-					Indices.Add(IndexY);
-					Indices.Add(IndexB);
-					Indices.Add(IndexZ);
-				}
-				
-				// X Z C
-				{
-					VertexX.Material = VertexC.Material;
-					VertexZ.Material = VertexC.Material;
-
-					const int32 IndexX = Vertices.Add(VertexX);
-					const int32 IndexZ = Vertices.Add(VertexZ);
-					
-					Indices.Add(IndexX);
-					Indices.Add(IndexZ);
-					Indices.Add(IndexC);
-				}
-				
-				// X Y Z
-				{
-					const uint8 MaterialIndexToUse = FMath::Min3(MaterialIndexA, MaterialIndexB, MaterialIndexC);
-
-					if (MaterialIndexToUse == MaterialIndexA)
-					{
-						VertexX.Material = VertexA.Material;
-						VertexY.Material = VertexA.Material;
-						VertexZ.Material = VertexA.Material;
-					}
-					else if (MaterialIndexToUse == MaterialIndexB)
-					{
-						VertexX.Material = VertexB.Material;
-						VertexY.Material = VertexB.Material;
-						VertexZ.Material = VertexB.Material;
-					}
-					else
-					{
-						checkVoxelSlow(MaterialIndexToUse == MaterialIndexC);
-						VertexX.Material = VertexC.Material;
-						VertexY.Material = VertexC.Material;
-						VertexZ.Material = VertexC.Material;
-					}
-
-					const int32 IndexX = Vertices.Add(VertexX);
-					const int32 IndexY = Vertices.Add(VertexY);
-					const int32 IndexZ = Vertices.Add(VertexZ);
-					
-					Indices.Add(IndexX);
-					Indices.Add(IndexY);
-					Indices.Add(IndexZ);
-				}
-
-				continue;
-			}
-
 			const uint8 MaterialIndexToUse = FMath::Min3(MaterialIndexA, MaterialIndexB, MaterialIndexC);
 			
 			FVoxelMaterialIndices MaterialIndices;
 			MaterialIndices.NumIndices = 1;
 			MaterialIndices.SortedIndices[0] = MaterialIndexToUse;
-			
-			if (DynamicSettings.MaterialSettings[LOD].bEnableCubicFaces && Settings.RenderType == EVoxelRenderType::Cubic)
-			{
-				ensure(VertexA.Normal == VertexB.Normal);
-				ensure(VertexB.Normal == VertexC.Normal);
-
-				const FVector Normal = VertexA.Normal;
-				if (Normal == FVector(-1, 0, 0))
-				{
-					MaterialIndices.CubicFace = 0;
-				}
-				else if (Normal == FVector(1, 0, 0))
-				{
-					MaterialIndices.CubicFace = 1;
-				}
-				else if (Normal == FVector(0, -1, 0))
-				{
-					MaterialIndices.CubicFace = 2;
-				}
-				else if (Normal == FVector(0, 1, 0))
-				{
-					MaterialIndices.CubicFace = 3;
-				}
-				else if (Normal == FVector(0, 0, -1))
-				{
-					MaterialIndices.CubicFace = 4;
-				}
-				else if (Normal == FVector(0, 0, 1))
-				{
-					MaterialIndices.CubicFace = 5;
-				}
-				else
-				{
-					ensure(false);
-				}
-			}
 
 			bool bAdded;
 			FVoxelChunkMeshBuffers& Buffer = Chunk->FindOrAddBuffer(MaterialIndices, bAdded);
@@ -469,11 +245,10 @@ TVoxelSharedPtr<FVoxelChunkMesh> FVoxelMesherUtilities::CreateChunkFromVertices(
 	}
 	else
 	{
-		ensure(!TextureData && !CollisionCubes);
-		ensure(Settings.MaterialConfig == EVoxelMaterialConfig::MultiIndex);
+		check(Settings.MaterialConfig == EVoxelMaterialConfig::MultiIndex);
 		Chunk->SetIsSingle(false);
 
-		const int32 MaxMaterialIndices = FMath::Clamp(DynamicSettings.GetLODMaterialSettings(LOD).MaxMaterialIndices.GetValue(), 1, 6);
+		const int32 MaxMaterialIndices = FMath::Clamp(Settings.DynamicSettings->LODData[LOD].MaxMaterialIndices.GetValue(), 1, 6);
 
 		constexpr int32 StaticMaxMaterialIndices = 6;
 		

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -7,17 +7,17 @@
 #include "VoxelMinimal.h"
 #include "VoxelGeneratorInit.generated.h"
 
-class FVoxelRuntime;
-class FVoxelGeneratorCache;
 class AVoxelWorld;
 class UVoxelMaterialCollectionBase;
 
 USTRUCT(BlueprintType)
-struct VOXEL_API FVoxelGeneratorInit
+struct FVoxelGeneratorInit
 {
 	GENERATED_BODY()
 
-public:
+	VOXEL_DEPRECATED(1.2, "Seeds are now regular generator parameters")
+	TMap<FName, int32> Seeds;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
 	float VoxelSize = 100;
 
@@ -31,11 +31,10 @@ public:
 	EVoxelMaterialConfig MaterialConfig = EVoxelMaterialConfig::RGB;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
-	const UVoxelMaterialCollectionBase* MaterialCollection = nullptr;
+	TObjectPtr<const UVoxelMaterialCollectionBase> MaterialCollection = nullptr;
 
-	// Can be null. Needs to be a weak pointer, else the GC freaks out when exiting the map with an alive generator cache pointing to this 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Init")
-	TWeakObjectPtr<const AVoxelWorld> World;
+	TObjectPtr<const AVoxelWorld> World = nullptr; // Can be null
 
 	FVoxelGeneratorInit() = default;
 	FVoxelGeneratorInit(
@@ -44,22 +43,15 @@ public:
 		EVoxelRenderType RenderType,
 		EVoxelMaterialConfig MaterialConfig,
 		const UVoxelMaterialCollectionBase* MaterialCollection,
-		const TWeakObjectPtr<const AVoxelWorld>& World);
-
-	void AddReferencedObjects(FReferenceCollector& Collector);
-
-	TVoxelSharedPtr<FVoxelRuntime> GetRuntime() const;
-	TVoxelSharedRef<FVoxelGeneratorCache> GetGeneratorCache() const;
-
-private:
-	TVoxelWeakPtr<FVoxelRuntime> Runtime;
-	TVoxelWeakPtr<FVoxelGeneratorCache> GeneratorCache;
-
-	friend class FVoxelGeneratorCache;
-
-public:
-	VOXEL_DEPRECATED(1.2, "Seeds are now regular generator parameters")
-	TMap<FName, int32> Seeds;
+		const AVoxelWorld* World)
+		: VoxelSize(VoxelSize)
+		, WorldSize(WorldSize)
+		, RenderType(RenderType)
+		, MaterialConfig(MaterialConfig)
+		, MaterialCollection(MaterialCollection)
+		, World(World)
+	{
+	}
 };
 
 VOXEL_DEPRECATED(1.2, "Use FVoxelGeneratorInit instead of FVoxelWorldGeneratorInit.")

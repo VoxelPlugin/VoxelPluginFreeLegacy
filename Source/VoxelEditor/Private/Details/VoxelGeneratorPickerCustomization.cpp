@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGeneratorPickerCustomization.h"
 
@@ -7,6 +7,7 @@
 #include "VoxelEditorDetailsIncludes.h"
 
 #include "EdGraphSchema_K2.h"
+#include "Widgets/Input/SButton.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 
@@ -128,7 +129,7 @@ public:
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString(Name))
-			.Font(FEditorStyle::GetFontStyle(PropertyEditorConstants::CategoryFontStyle))
+			.Font(FAppStyle::GetFontStyle(STATIC_FNAME("DetailsView.CategoryFontStyle"))) // PropertyEditorConstants::CategoryFontStyle
 		];
 	}
 	virtual void GenerateChildContent(IDetailChildrenBuilder& ChildrenBuilder) override
@@ -164,7 +165,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 	TArray<FVoxelGeneratorParameter> Parameters;
 	if (auto* Generator = Picker.GetGenerator())
 	{
-		Parameters = Generator->GetParameters();
+		Generator->GetParameters(Parameters);
 	}
 
 	TMap<FName, FVoxelGeneratorParameter> NameToParameter;
@@ -219,7 +220,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 			}
 			if (EditorData->BlueprintInstance) 
 			{
-				EditorData->BlueprintInstance->MarkPendingKill();
+				EditorData->BlueprintInstance->MarkAsGarbage();
 			}
 			
 			EditorData->GeneratorObject = nullptr;
@@ -256,6 +257,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 
 			for (auto& Variable : Blueprint->NewVariables)
 			{
+				Variable.PropertyFlags &= ~CPF_DisableEditOnInstance;
 				auto* Parameter = NameToParameter.Find(Variable.VarName);
 				if (!ensure(Parameter)) continue;
 
@@ -287,7 +289,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 				if (!ensure(Parameter)) continue;
 
 				auto* CDO = Blueprint->GeneratedClass->GetDefaultObject();
-				Property->ImportText(*Parameter->DefaultValue, It->ContainerPtrToValuePtr<void>(CDO), PPF_None, CDO);
+				Property->ImportText_Direct(*Parameter->DefaultValue, It->ContainerPtrToValuePtr<void>(CDO), CDO, PPF_None);
 			}
 		}
 
@@ -297,7 +299,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 		EditorData->BlueprintInstance = NewObject<UObject>(GetTransientPackage(), Blueprint->GeneratedClass, NAME_None, RF_Transient | RF_Transactional);
 	}
 
-	auto* BlueprintInstance = EditorData->BlueprintInstance;
+	UObject* BlueprintInstance = EditorData->BlueprintInstance;
 	
 	// Apply the overrides
 	for (TFieldIterator<FProperty> It(BlueprintInstance->GetClass()); It; ++It)
@@ -307,7 +309,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 		auto* Value = Picker.Parameters.Find(Property->GetFName());
 		if (!Value) continue;
 
-		Property->ImportText(**Value, It->ContainerPtrToValuePtr<void>(BlueprintInstance), PPF_None, BlueprintInstance);
+		Property->ImportText_Direct(**Value, It->ContainerPtrToValuePtr<void>(BlueprintInstance), BlueprintInstance, PPF_None);
 	}
 	
 	FCoreUObjectDelegates::OnObjectPropertyChanged.Add(MakeWeakPtrDelegate(PropertyHandle, 
@@ -343,7 +345,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeChildren(TSharedRef<IPropertyH
 			if (!ensure(Parameter)) continue;
 
 			FString Value;
-			Property->ExportTextItem(Value, It->ContainerPtrToValuePtr<void>(BlueprintInstance), nullptr, BlueprintInstance, PPF_None);
+			Property->ExportText_Direct(Value, It->ContainerPtrToValuePtr<void>(BlueprintInstance), nullptr, BlueprintInstance, PPF_None);
 
 			if (Parameter->DefaultValue == Value)
 			{
@@ -555,7 +557,7 @@ FEdGraphTerminalType FVoxelGeneratorPickerCustomization::GetParameterTerminalPin
 	default: ensure(false); return FEdGraphTerminalType();
 	case EVoxelGeneratorParameterPropertyType::Float:
 	{
-		return Make(UEdGraphSchema_K2::PC_Float, NAME_None, nullptr);
+		return Make(UEdGraphSchema_K2::PC_Real, UEdGraphSchema_K2::PC_Float, nullptr);
 	}
 	case EVoxelGeneratorParameterPropertyType::Int:
 	{
@@ -565,21 +567,17 @@ FEdGraphTerminalType FVoxelGeneratorPickerCustomization::GetParameterTerminalPin
 	{
 		return Make(UEdGraphSchema_K2::PC_Boolean, NAME_None, nullptr);
 	}
-	case EVoxelGeneratorParameterPropertyType::Name:
-	{
-		return Make(UEdGraphSchema_K2::PC_Name, NAME_None, nullptr);
-	}
 	case EVoxelGeneratorParameterPropertyType::Object:
 	{
-		auto* Class = FindObject<UClass>(ANY_PACKAGE, *ParameterType.PropertyClass.ToString());
+		auto* Class = FindObject<UClass>(nullptr, *ParameterType.PropertyClass.ToString());
 		ensure(Class);
-		return Make(UEdGraphSchema_K2::PC_Object, ParameterType.PropertyClass, Class);
+		return Make(UEdGraphSchema_K2::PC_Object, Class->GetFName(), Class);
 	}
 	case EVoxelGeneratorParameterPropertyType::Struct:
 	{
-		auto* Struct = FindObject<UScriptStruct>(ANY_PACKAGE, *ParameterType.PropertyClass.ToString());
+		auto* Struct = FindObject<UScriptStruct>(nullptr, *ParameterType.PropertyClass.ToString());
 		ensure(Struct);
-		return Make(UEdGraphSchema_K2::PC_Struct, ParameterType.PropertyClass, Struct);
+		return Make(UEdGraphSchema_K2::PC_Struct, Struct->GetFName(), Struct);
 	}
 	}
 }

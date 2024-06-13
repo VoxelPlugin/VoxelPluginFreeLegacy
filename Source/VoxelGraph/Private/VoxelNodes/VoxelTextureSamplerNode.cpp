@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelTextureSamplerNode.h"
 #include "VoxelGraphGenerator.h"
@@ -34,7 +34,7 @@ void UVoxelNode_TextureSampler::LogErrors(FVoxelGraphErrorReporter& ErrorReporte
 	Super::LogErrors(ErrorReporter);
 	
 	FString Error;
-	if (!FVoxelTextureHelpers::CanCreateFromTexture(Texture, Error))
+	if (!FVoxelTextureUtilities::CanCreateFromTexture(Texture, Error))
 	{
 		ErrorReporter.AddMessageToNode(this, Error, EVoxelGraphNodeMessageType::Error);
 	}

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,33 +8,33 @@
 // We use std functions here as they support both float and doubles
 #include <cmath>
 
-// Double precision vector
-struct FVoxelDoubleVector
+// Vector that optionally has double precision
+struct FVoxelVector
 {
-	double X;
-	double Y;
-	double Z;
+	v_flt X;
+	v_flt Y;
+	v_flt Z;
 
-	FVoxelDoubleVector() = default;
-	FVoxelDoubleVector(double X, double Y, double Z)
+	FVoxelVector() = default;
+	FVoxelVector(v_flt X, v_flt Y, v_flt Z)
 		: X(X)
 		, Y(Y)
 		, Z(Z)
 	{
 	}
-	explicit FVoxelDoubleVector(EForceInit)
+	explicit FVoxelVector(EForceInit)
 		: X(0.0f)
 		, Y(0.0f)
 		, Z(0.0f)
 	{
 	}
-	FVoxelDoubleVector(const FVector& Vector)
+	FVoxelVector(const FVector& Vector)
 		: X(Vector.X)
 		, Y(Vector.Y)
 		, Z(Vector.Z)
 	{
 	}
-	FVoxelDoubleVector(const FIntVector& Vector)
+	FVoxelVector(const FIntVector& Vector)
 		: X(Vector.X)
 		, Y(Vector.Y)
 		, Z(Vector.Z)
@@ -42,30 +42,34 @@ struct FVoxelDoubleVector
 	}
 	
 	/** A zero vector (0,0,0) */
-	static VOXEL_API const FVoxelDoubleVector ZeroVector;
+	static VOXEL_API const FVoxelVector ZeroVector;
 
 	/** One vector (1,1,1) */
-	static VOXEL_API const FVoxelDoubleVector OneVector;
+	static VOXEL_API const FVoxelVector OneVector;
 
 	/** Unreal up vector (0,0,1) */
-	static VOXEL_API const FVoxelDoubleVector UpVector;
+	static VOXEL_API const FVoxelVector UpVector;
 
 	/** Unreal down vector (0,0,-1) */
-	static VOXEL_API const FVoxelDoubleVector DownVector;
+	static VOXEL_API const FVoxelVector DownVector;
 
 	/** Unreal forward vector (1,0,0) */
-	static VOXEL_API const FVoxelDoubleVector ForwardVector;
+	static VOXEL_API const FVoxelVector ForwardVector;
 
 	/** Unreal backward vector (-1,0,0) */
-	static VOXEL_API const FVoxelDoubleVector BackwardVector;
+	static VOXEL_API const FVoxelVector BackwardVector;
 
 	/** Unreal right vector (0,1,0) */
-	static VOXEL_API const FVoxelDoubleVector RightVector;
+	static VOXEL_API const FVoxelVector RightVector;
 
 	/** Unreal left vector (0,-1,0) */
-	static VOXEL_API const FVoxelDoubleVector LeftVector;
+	static VOXEL_API const FVoxelVector LeftVector;
 
-	operator FVector() const
+	FORCEINLINE FIntVector ToInt() const
+	{
+		return FIntVector(X, Y, Z);
+	}
+	FORCEINLINE FVector ToFloat() const
 	{
 		return FVector(X, Y, Z);
 	}
@@ -75,186 +79,188 @@ struct FVoxelDoubleVector
 		return FString::Printf(TEXT("X=%3.3f Y=%3.3f Z=%3.3f"), X, Y, Z);
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator+(const FVoxelDoubleVector& V) const
+	static FORCEINLINE FIntVector ToInt(const FVoxelVector& V)
 	{
-		return FVoxelDoubleVector(X + V.X, Y + V.Y, Z + V.Z);
+		return V.ToInt();
 	}
-	FORCEINLINE FVoxelDoubleVector operator+(const FIntVector& V) const
+	static FORCEINLINE FVector ToFloat(const FVoxelVector& V)
 	{
-		return FVoxelDoubleVector(X + V.X, Y + V.Y, Z + V.Z);
-	}
-
-	FORCEINLINE FVoxelDoubleVector operator-(const FVoxelDoubleVector& V) const
-	{
-		return FVoxelDoubleVector(X - V.X, Y - V.Y, Z - V.Z);
-	}
-	FORCEINLINE FVoxelDoubleVector operator-(const FIntVector& V) const
-	{
-		return FVoxelDoubleVector(X - V.X, Y - V.Y, Z - V.Z);
+		return V.ToFloat();
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator-(double Bias) const
+	FORCEINLINE FVoxelVector operator+(const FVoxelVector& V) const
 	{
-		return FVoxelDoubleVector(X - Bias, Y - Bias, Z - Bias);
+		return FVoxelVector(X + V.X, Y + V.Y, Z + V.Z);
+	}
+	FORCEINLINE FVoxelVector operator+(const FIntVector& V) const
+	{
+		return FVoxelVector(X + V.X, Y + V.Y, Z + V.Z);
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator+(double Bias) const
+	FORCEINLINE FVoxelVector operator-(const FVoxelVector& V) const
 	{
-		return FVoxelDoubleVector(X + Bias, Y + Bias, Z + Bias);
+		return FVoxelVector(X - V.X, Y - V.Y, Z - V.Z);
+	}
+	FORCEINLINE FVoxelVector operator-(const FIntVector& V) const
+	{
+		return FVoxelVector(X - V.X, Y - V.Y, Z - V.Z);
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator*(double Scale) const
+	FORCEINLINE FVoxelVector operator-(v_flt Bias) const
 	{
-		return FVoxelDoubleVector(X * Scale, Y * Scale, Z * Scale);
+		return FVoxelVector(X - Bias, Y - Bias, Z - Bias);
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator/(double Scale) const
+	FORCEINLINE FVoxelVector operator+(v_flt Bias) const
 	{
-		const double RScale = 1.f / Scale;
-		return FVoxelDoubleVector(X * RScale, Y * RScale, Z * RScale);
+		return FVoxelVector(X + Bias, Y + Bias, Z + Bias);
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator*(const FVoxelDoubleVector& V) const
+	FORCEINLINE FVoxelVector operator*(v_flt Scale) const
 	{
-		return FVoxelDoubleVector(X * V.X, Y * V.Y, Z * V.Z);
+		return FVoxelVector(X * Scale, Y * Scale, Z * Scale);
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator/(const FVoxelDoubleVector& V) const
+	FORCEINLINE FVoxelVector operator/(v_flt Scale) const
 	{
-		return FVoxelDoubleVector(X / V.X, Y / V.Y, Z / V.Z);
+		const v_flt RScale = 1.f / Scale;
+		return FVoxelVector(X * RScale, Y * RScale, Z * RScale);
 	}
 
-	FORCEINLINE bool operator==(const FVoxelDoubleVector& V) const
+	FORCEINLINE FVoxelVector operator*(const FVoxelVector& V) const
+	{
+		return FVoxelVector(X * V.X, Y * V.Y, Z * V.Z);
+	}
+
+	FORCEINLINE FVoxelVector operator/(const FVoxelVector& V) const
+	{
+		return FVoxelVector(X / V.X, Y / V.Y, Z / V.Z);
+	}
+
+	FORCEINLINE bool operator==(const FVoxelVector& V) const
 	{
 		return X == V.X && Y == V.Y && Z == V.Z;
 	}
 
-	FORCEINLINE bool operator!=(const FVoxelDoubleVector& V) const
+	FORCEINLINE bool operator!=(const FVoxelVector& V) const
 	{
 		return X != V.X || Y != V.Y || Z != V.Z;
 	}
 
-	FORCEINLINE bool Equals(const FVoxelDoubleVector& V, double Tolerance) const
+	FORCEINLINE bool Equals(const FVoxelVector& V, v_flt Tolerance) const
 	{
 		return FMath::Abs(X - V.X) <= Tolerance && FMath::Abs(Y - V.Y) <= Tolerance && FMath::Abs(Z - V.Z) <= Tolerance;
 	}
 
-	FORCEINLINE bool AllComponentsEqual(double Tolerance) const
+	FORCEINLINE bool AllComponentsEqual(v_flt Tolerance) const
 	{
 		return FMath::Abs(X - Y) <= Tolerance && FMath::Abs(X - Z) <= Tolerance && FMath::Abs(Y - Z) <= Tolerance;
 	}
 
 
-	FORCEINLINE FVoxelDoubleVector operator-() const
+	FORCEINLINE FVoxelVector operator-() const
 	{
-		return FVoxelDoubleVector(-X, -Y, -Z);
+		return FVoxelVector(-X, -Y, -Z);
 	}
 
 
-	FORCEINLINE FVoxelDoubleVector operator+=(const FVoxelDoubleVector& V)
+	FORCEINLINE FVoxelVector operator+=(const FVoxelVector& V)
 	{
 		X += V.X; Y += V.Y; Z += V.Z;
 		return *this;
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator-=(const FVoxelDoubleVector& V)
+	FORCEINLINE FVoxelVector operator-=(const FVoxelVector& V)
 	{
 		X -= V.X; Y -= V.Y; Z -= V.Z;
 		return *this;
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator*=(double Scale)
+	FORCEINLINE FVoxelVector operator*=(v_flt Scale)
 	{
 		X *= Scale; Y *= Scale; Z *= Scale;
 		return *this;
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator/=(double V)
+	FORCEINLINE FVoxelVector operator/=(v_flt V)
 	{
-		const double RV = 1.f / V;
+		const v_flt RV = 1.f / V;
 		X *= RV; Y *= RV; Z *= RV;
 		return *this;
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator*=(const FVoxelDoubleVector& V)
+	FORCEINLINE FVoxelVector operator*=(const FVoxelVector& V)
 	{
 		X *= V.X; Y *= V.Y; Z *= V.Z;
 		return *this;
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator/=(const FVoxelDoubleVector& V)
+	FORCEINLINE FVoxelVector operator/=(const FVoxelVector& V)
 	{
 		X /= V.X; Y /= V.Y; Z /= V.Z;
 		return *this;
 	}
 
-	FORCEINLINE double& operator[](int32 Index)
+	FORCEINLINE v_flt& operator[](int32 Index)
 	{
 		check(Index >= 0 && Index < 3);
 		return (&X)[Index];
 	}
 
-	FORCEINLINE double operator[](int32 Index)const
+	FORCEINLINE v_flt operator[](int32 Index)const
 	{
 		check(Index >= 0 && Index < 3);
 		return (&X)[Index];
 	}
 	
-	FORCEINLINE double GetMax() const
+	FORCEINLINE v_flt GetMax() const
 	{
 		return FMath::Max(FMath::Max(X, Y), Z);
 	}
 
-	FORCEINLINE double GetAbsMax() const
+	FORCEINLINE v_flt GetAbsMax() const
 	{
 		return FMath::Max(FMath::Max(FMath::Abs(X), FMath::Abs(Y)), FMath::Abs(Z));
 	}
 
-	FORCEINLINE double GetMin() const
+	FORCEINLINE v_flt GetMin() const
 	{
 		return FMath::Min(FMath::Min(X, Y), Z);
 	}
 
-	FORCEINLINE double GetAbsMin() const
+	FORCEINLINE v_flt GetAbsMin() const
 	{
 		return FMath::Min(FMath::Min(FMath::Abs(X), FMath::Abs(Y)), FMath::Abs(Z));
 	}
 
-	FORCEINLINE FVoxelDoubleVector ComponentMin(const FVoxelDoubleVector& Other) const
+	FORCEINLINE FVoxelVector ComponentMin(const FVoxelVector& Other) const
 	{
-		return FVoxelDoubleVector(FMath::Min(X, Other.X), FMath::Min(Y, Other.Y), FMath::Min(Z, Other.Z));
+		return FVoxelVector(FMath::Min(X, Other.X), FMath::Min(Y, Other.Y), FMath::Min(Z, Other.Z));
 	}
 
-	FORCEINLINE FVoxelDoubleVector ComponentMax(const FVoxelDoubleVector& Other) const
+	FORCEINLINE FVoxelVector ComponentMax(const FVoxelVector& Other) const
 	{
-		return FVoxelDoubleVector(FMath::Max(X, Other.X), FMath::Max(Y, Other.Y), FMath::Max(Z, Other.Z));
+		return FVoxelVector(FMath::Max(X, Other.X), FMath::Max(Y, Other.Y), FMath::Max(Z, Other.Z));
 	}
 
-	FORCEINLINE FVoxelDoubleVector GetAbs() const
+	FORCEINLINE FVoxelVector GetAbs() const
 	{
-		return FVoxelDoubleVector(FMath::Abs(X), FMath::Abs(Y), FMath::Abs(Z));
+		return FVoxelVector(FMath::Abs(X), FMath::Abs(Y), FMath::Abs(Z));
 	}
 
-	FORCEINLINE bool ContainsNaN() const
-	{
-		return !FMath::IsFinite(X)
-			|| !FMath::IsFinite(Y)
-			|| !FMath::IsFinite(Z);
-	}
-
-	FORCEINLINE double Size() const
+	FORCEINLINE v_flt Size() const
 	{
 		return std::sqrt(X * X + Y * Y + Z * Z);
 	}
 
-	FORCEINLINE double SizeSquared() const
+	FORCEINLINE v_flt SizeSquared() const
 	{
 		return X * X + Y * Y + Z * Z;
 	}
 
-	FORCEINLINE FVoxelDoubleVector GetSafeNormal(double Tolerance = SMALL_NUMBER) const
+	FORCEINLINE FVoxelVector GetSafeNormal(v_flt Tolerance = SMALL_NUMBER) const
 	{
-		const double SquareSum = X * X + Y * Y + Z * Z;
+		const v_flt SquareSum = X * X + Y * Y + Z * Z;
 
 		// Not sure if it's safe to add tolerance in there. Might introduce too many errors
 		if (SquareSum == 1.f)
@@ -263,15 +269,15 @@ struct FVoxelDoubleVector
 		}
 		else if (SquareSum < Tolerance)
 		{
-			return FVoxelDoubleVector(0, 0, 0);
+			return FVoxelVector(0, 0, 0);
 		}
 
 		return *this / std::sqrt(SquareSum);
 	}
 
-	FORCEINLINE bool Normalize(double Tolerance = SMALL_NUMBER)
+	FORCEINLINE bool Normalize(v_flt Tolerance = SMALL_NUMBER)
 	{
-		const double SquareSum = X * X + Y * Y + Z * Z;
+		const v_flt SquareSum = X * X + Y * Y + Z * Z;
 		if (SquareSum > Tolerance)
 		{
 			*this /= std::sqrt(SquareSum);
@@ -280,160 +286,118 @@ struct FVoxelDoubleVector
 		return false;
 	}
 
-	FORCEINLINE FVoxelDoubleVector operator^(const FVoxelDoubleVector& V) const
+	FORCEINLINE FVoxelVector operator^(const FVoxelVector& V) const
 	{
-		return FVoxelDoubleVector
+		return FVoxelVector
 		(
 			Y * V.Z - Z * V.Y,
 			Z * V.X - X * V.Z,
 			X * V.Y - Y * V.X
 		);
 	}
-	static FORCEINLINE FVoxelDoubleVector CrossProduct(const FVoxelDoubleVector& A, const FVoxelDoubleVector& B)
-	{
-		return A ^ B;
-	}
 
-	FORCEINLINE float operator|(const FVoxelDoubleVector& V) const
+	FORCEINLINE float operator|(const FVoxelVector& V) const
 	{
 		return X * V.X + Y * V.Y + Z * V.Z;
 	}
 
-	static FORCEINLINE float DotProduct(const FVoxelDoubleVector& A, const FVoxelDoubleVector& B)
+	static FORCEINLINE float DotProduct(const FVoxelVector& A, const FVoxelVector& B)
 	{
 		return A | B;
 	}
 	
-	static FORCEINLINE float Dist(const FVoxelDoubleVector& V1, const FVoxelDoubleVector& V2)
+	static FORCEINLINE float Dist(const FVoxelVector& V1, const FVoxelVector& V2)
 	{
 		return FMath::Sqrt(DistSquared(V1, V2));
 	}
-	static FORCEINLINE float Distance(const FVoxelDoubleVector& V1, const FVoxelDoubleVector& V2)
+	static FORCEINLINE float Distance(const FVoxelVector& V1, const FVoxelVector& V2)
 	{
 		return Dist(V1, V2);
 	}
 
-	static FORCEINLINE float DistXY(const FVoxelDoubleVector& V1, const FVoxelDoubleVector& V2)
+	static FORCEINLINE float DistXY(const FVoxelVector& V1, const FVoxelVector& V2)
 	{
 		return FMath::Sqrt(DistSquaredXY(V1, V2));
 	}
 
-	static FORCEINLINE float DistSquared(const FVoxelDoubleVector& V1, const FVoxelDoubleVector& V2)
+	static FORCEINLINE float DistSquared(const FVoxelVector& V1, const FVoxelVector& V2)
 	{
 		return FMath::Square(V2.X - V1.X) + FMath::Square(V2.Y - V1.Y) + FMath::Square(V2.Z - V1.Z);
 	}
 
-	static FORCEINLINE float DistSquaredXY(const FVoxelDoubleVector& V1, const FVoxelDoubleVector& V2)
+	static FORCEINLINE float DistSquaredXY(const FVoxelVector& V1, const FVoxelVector& V2)
 	{
 		return FMath::Square(V2.X - V1.X) + FMath::Square(V2.Y - V1.Y);
 	}
 };
 
-FORCEINLINE FVoxelDoubleVector operator*(float Scale, const FVoxelDoubleVector& V)
-{
-	return V.operator*(Scale);
-}
-FORCEINLINE FVoxelDoubleVector operator*(double Scale, const FVoxelDoubleVector& V)
-{
-	return V.operator*(Scale);
-}
-FORCEINLINE FVoxelDoubleVector operator*(int32 Scale, const FVoxelDoubleVector& V)
+FORCEINLINE FVoxelVector operator*(v_flt Scale, const FVoxelVector& V)
 {
 	return V.operator*(Scale);
 }
 
-FORCEINLINE FVoxelDoubleVector operator-(const FVector& A, const FVoxelDoubleVector& B)
+FORCEINLINE FVoxelVector operator-(const FVector& A, const FVoxelVector& B)
 {
-	return FVoxelDoubleVector(A) - B;
+	return FVoxelVector(A) - B;
 }
-FORCEINLINE FVoxelDoubleVector operator-(const FIntVector& A, const FVoxelDoubleVector& B)
+FORCEINLINE FVoxelVector operator-(const FIntVector& A, const FVoxelVector& B)
 {
-	return FVoxelDoubleVector(A) - B;
-}
-
-FORCEINLINE FVoxelDoubleVector operator+(const FVector& A, const FVoxelDoubleVector& B)
-{
-	return FVoxelDoubleVector(A) + B;
-}
-FORCEINLINE FVoxelDoubleVector operator+(const FIntVector& A, const FVoxelDoubleVector& B)
-{
-	return FVoxelDoubleVector(A) + B;
+	return FVoxelVector(A) - B;
 }
 
-FORCEINLINE FVector operator-(const FIntVector& A, const FVector& B)
+FORCEINLINE FVoxelVector operator+(const FVector& A, const FVoxelVector& B)
 {
-	return FVector(A) - B;
+	return FVoxelVector(A) + B;
 }
-FORCEINLINE FVector operator-(const FVector& A, const FIntVector& B)
+FORCEINLINE FVoxelVector operator+(const FIntVector& A, const FVoxelVector& B)
 {
-	return A - FVector(B);
-}
-
-FORCEINLINE FVector operator+(const FIntVector& A, const FVector& B)
-{
-	return FVector(A) + B;
-}
-FORCEINLINE FVector operator+(const FVector& A, const FIntVector& B)
-{
-	return A + FVector(B);
-}
-FORCEINLINE FVector operator+=(FVector& A, const FIntVector& B)
-{
-	return A += FVector(B);
+	return FVoxelVector(A) + B;
 }
 
-struct FVoxelDoubleVector2D
+struct FVoxelVector2D
 {
-	double X;
-	double Y;
+	v_flt X;
+	v_flt Y;
 
-	FVoxelDoubleVector2D() = default;
-	FVoxelDoubleVector2D(double X, double Y)
+	FVoxelVector2D() = default;
+	FVoxelVector2D(v_flt X, v_flt Y)
 		: X(X)
 		, Y(Y)
 	{
 	}
-	explicit FVoxelDoubleVector2D(EForceInit)
+	explicit FVoxelVector2D(EForceInit)
 		: X(0.0f)
 		, Y(0.0f)
 	{
 	}
-	FVoxelDoubleVector2D(const FVector2D& Vector)
+	FVoxelVector2D(const FVector2D& Vector)
 		: X(Vector.X)
 		, Y(Vector.Y)
 	{
 	}
-	FVoxelDoubleVector2D(const FIntPoint& Vector)
+	FVoxelVector2D(const FIntPoint& Vector)
 		: X(Vector.X)
 		, Y(Vector.Y)
 	{
 	}
 
-	FORCEINLINE double Size() const
+	FORCEINLINE v_flt Size() const
 	{
 		return std::sqrt(X * X + Y * Y);
 	}
 
-	FORCEINLINE double operator^(const FVoxelDoubleVector2D& V) const
+	FORCEINLINE v_flt operator^(const FVoxelVector2D& V) const
 	{
 		return X * V.Y - Y * V.X;
 	}
 
-	FORCEINLINE float operator|(const FVoxelDoubleVector2D& V) const
+	FORCEINLINE float operator|(const FVoxelVector2D& V) const
 	{
 		return X * V.X + Y * V.Y;
 	}
 
-	static FORCEINLINE float DotProduct(const FVoxelDoubleVector2D& A, const FVoxelDoubleVector2D& B)
+	static FORCEINLINE float DotProduct(const FVoxelVector2D& A, const FVoxelVector2D& B)
 	{
 		return A | B;
 	}
 };
-
-#if VOXEL_DOUBLE_PRECISION
-using FVoxelVector = FVoxelDoubleVector;
-using FVoxelVector2D = FVoxelDoubleVector2D;
-#else
-using FVoxelVector = FVector;
-using FVoxelVector2D = FVector2D;
-#endif

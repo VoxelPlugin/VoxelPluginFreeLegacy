@@ -1,9 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelVector.h"
 #include "VoxelUtilities/VoxelVectorUtilities.h"
 #include "VoxelUtilities/VoxelIntVectorUtilities.h"
 #include "Async/ParallelFor.h"
@@ -18,7 +17,7 @@ enum class EInverseTransform : uint8
 /**
  * A Box with int32 coordinates
  */
-USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelIntBoxLibrary.MakeIntBox", HasNativeBreak="Voxel.VoxelIntBoxLibrary.BreakIntBox"))
+USTRUCT(BlueprintType, meta=(HasNativeMake="/Script/Voxel.VoxelIntBoxLibrary:MakeIntBox", HasNativeBreak="/Script/Voxel.VoxelIntBoxLibrary:BreakIntBox"))
 struct VOXEL_API FVoxelIntBox
 {
 	GENERATED_BODY()
@@ -63,7 +62,7 @@ struct VOXEL_API FVoxelIntBox
 		: FVoxelIntBox(FVoxelUtilities::FloorToInt(Min), FVoxelUtilities::CeilToInt(Max) + 1)
 	{
 	}
-	explicit FVoxelIntBox(const FVoxelDoubleVector& Min, const FVoxelDoubleVector& Max)
+	explicit FVoxelIntBox(const FVoxelVector& Min, const FVoxelVector& Max)
 		: FVoxelIntBox(FVoxelUtilities::FloorToInt(Min), FVoxelUtilities::CeilToInt(Max) + 1)
 	{
 	}
@@ -72,7 +71,7 @@ struct VOXEL_API FVoxelIntBox
 		: FVoxelIntBox(Position, Position)
 	{
 	}
-	explicit FVoxelIntBox(const FVoxelDoubleVector& Position)
+	explicit FVoxelIntBox(const FVoxelVector& Position)
 		: FVoxelIntBox(Position, Position)
 	{
 	}
@@ -118,7 +117,7 @@ struct VOXEL_API FVoxelIntBox
 	{
 		FVoxelIntBox Box;
 		Box.Min = FVoxelUtilities::FloorToInt(FVoxelUtilities::ComponentMin(A, B));
-		Box.Max = FVoxelUtilities::CeilToInt(FVoxelUtilities::ComponentMax3(A, B, FVoxelVector(Box.Min + FIntVector(1, 1, 1))));
+		Box.Max = FVoxelUtilities::CeilToInt(FVoxelUtilities::ComponentMax3(A, B, Box.Min + FIntVector(1, 1, 1)));
 		return Box;
 	}
 
@@ -146,7 +145,7 @@ struct VOXEL_API FVoxelIntBox
 			int64(Max.Y) - int64(Min.Y) < MAX_int32 &&
 			int64(Max.Z) - int64(Min.Z) < MAX_int32;
 	}
- 
+	
 	/**
 	 * Get the corners that are inside the box (max - 1)
 	 */
@@ -167,28 +166,24 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return FString::Printf(TEXT("(%d/%d, %d/%d, %d/%d)"), Min.X, Max.X, Min.Y, Max.Y, Min.Z, Max.Z);
 	}
-	FBox ToFBox() const
-	{
-		return FBox(FVector(Min), FVector(Max));
-	}
 
 	FORCEINLINE bool IsValid() const
 	{
 		return Min.X < Max.X && Min.Y < Max.Y && Min.Z < Max.Z;
 	}
- 
+	
 	template<typename T>
 	FORCEINLINE bool ContainsTemplate(T X, T Y, T Z) const
 	{
 		return ((X >= Min.X) && (X < Max.X) && (Y >= Min.Y) && (Y < Max.Y) && (Z >= Min.Z) && (Z < Max.Z));
 	}
 	template<typename T>
-	FORCEINLINE typename TEnableIf<TOr<TIsSame<T, FVector>, TIsSame<T, FVoxelDoubleVector>, TIsSame<T, FIntVector>>::Value, bool>::Type ContainsTemplate(const T& V) const
+	FORCEINLINE typename TEnableIf<std::is_same_v<T, FVector> || std::is_same_v<T, FVoxelVector> || std::is_same_v<T, FIntVector>, bool>::Type ContainsTemplate(const T& V) const
 	{
 		return ContainsTemplate(V.X, V.Y, V.Z);
 	}
 	template<typename T>
-	FORCEINLINE typename TEnableIf<TOr<TIsSame<T, FBox>, TIsSame<T, FVoxelIntBox>>::Value, bool>::Type ContainsTemplate(const T& Other) const
+	FORCEINLINE typename TEnableIf<std::is_same_v<T, FBox> || std::is_same_v<T, FVoxelIntBox>, bool>::Type ContainsTemplate(const T& Other) const
 	{
 		return Min.X <= Other.Min.X && Min.Y <= Other.Min.Y && Min.Z <= Other.Min.Z &&
 			   Max.X >= Other.Max.X && Max.Y >= Other.Max.Y && Max.Z >= Other.Max.Z;
@@ -216,7 +211,7 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return ContainsTemplate(V);
 	}
-	FORCEINLINE bool ContainsFloat(const FVoxelDoubleVector& V) const
+	FORCEINLINE bool ContainsFloat(const FVoxelVector& V) const
 	{
 		return ContainsTemplate(V);
 	}
@@ -224,10 +219,10 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return ContainsTemplate(Other);
 	}
- 
+	
 	template<typename T>
 	bool Contains(T X, T Y, T Z) const = delete;
- 
+	
 	template<typename T>
 	FORCEINLINE FIntVector Clamp(T P) const
 	{
@@ -343,7 +338,56 @@ struct VOXEL_API FVoxelIntBox
 	}
 
 	// union(return value, Other) = this
-	TArray<FVoxelIntBox, TFixedAllocator<6>> Difference(const FVoxelIntBox& Other) const;
+	TArray<FVoxelIntBox, TFixedAllocator<6>> Difference(const FVoxelIntBox& Other) const
+	{
+		if (!Intersect(Other))
+		{
+			return { *this };
+		}
+
+		TArray<FVoxelIntBox, TFixedAllocator<6>> OutBoxes;
+		
+		if (Min.Z < Other.Min.Z)
+		{
+			// Add bottom
+			OutBoxes.Emplace(Min, FIntVector(Max.X, Max.Y, Other.Min.Z));
+		}
+		if (Other.Max.Z < Max.Z)
+		{
+			// Add top
+			OutBoxes.Emplace(FIntVector(Min.X, Min.Y, Other.Max.Z), Max);
+		}
+
+		const int32 MinZ = FMath::Max(Min.Z, Other.Min.Z);
+		const int32 MaxZ = FMath::Min(Max.Z, Other.Max.Z);
+
+		if (Min.X < Other.Min.X)
+		{
+			// Add X min
+			OutBoxes.Emplace(FIntVector(Min.X, Min.Y, MinZ), FIntVector(Other.Min.X, Max.Y, MaxZ));
+		}
+		if (Other.Max.X < Max.X)
+		{
+			// Add X max
+			OutBoxes.Emplace(FIntVector(Other.Max.X, Min.Y, MinZ), FIntVector(Max.X, Max.Y, MaxZ));
+		}
+		
+		const int32 MinX = FMath::Max(Min.X, Other.Min.X);
+		const int32 MaxX = FMath::Min(Max.X, Other.Max.X);
+
+		if (Min.Y < Other.Min.Y)
+		{
+			// Add Y min
+			OutBoxes.Emplace(FIntVector(MinX, Min.Y, MinZ), FIntVector(MaxX, Other.Min.Y, MaxZ));
+		}
+		if (Other.Max.Y < Max.Y)
+		{
+			// Add Y max
+			OutBoxes.Emplace(FIntVector(MinX, Other.Max.Y, MinZ), FIntVector(MaxX, Max.Y, MaxZ));
+		}
+
+		return OutBoxes;
+	}
 
 	FORCEINLINE uint64 ComputeSquaredDistanceFromBoxToPoint(const FIntVector& Point) const
 	{
@@ -438,10 +482,6 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return { FVoxelUtilities::FloorToInt(FVoxelVector(Min) * S), FVoxelUtilities::CeilToInt(FVoxelVector(Max) * S) };
 	}
-	FORCEINLINE FVoxelIntBox Scale(int32 S) const
-	{
-		return { Min * S, Max * S };
-	}
 	FORCEINLINE FVoxelIntBox Scale(const FVoxelVector& S) const
 	{
 		return SafeConstruct(FVoxelVector(Min) * S, FVoxelVector(Max) * S);
@@ -459,10 +499,6 @@ struct VOXEL_API FVoxelIntBox
 	{
 		return FVoxelIntBox(Min + Position, Max + Position);
 	}
-	FORCEINLINE FVoxelIntBox ShiftBy(const FIntVector& Offset) const
-	{
-		return Translate(Offset);
-	}
 	
 	FORCEINLINE FVoxelIntBox RemoveTranslation() const
 	{
@@ -473,12 +509,12 @@ struct VOXEL_API FVoxelIntBox
 	{
 		FIntVector NewMin = Min;
 		FIntVector NewMax = Max;
-		if (FVoxelVector(FIntVector(GetCenter())) != GetCenter())
+		if (FVoxelVector(GetCenter().ToInt()) != GetCenter())
 		{
 			NewMax = NewMax + 1;
 		}
-		ensure(FVoxelVector(FIntVector(GetCenter())) == GetCenter());
-		const FIntVector Offset = FIntVector(GetCenter());
+		ensure(FVoxelVector(GetCenter().ToInt()) == GetCenter());
+		const FIntVector Offset = GetCenter().ToInt();
 		NewMin -= Offset;
 		NewMax -= Offset;
 		ensure(NewMin + NewMax == FIntVector(0));
@@ -535,16 +571,7 @@ struct VOXEL_API FVoxelIntBox
 			}
 		}
 	}
-
-	template<typename T>
-	FORCEINLINE void IterateBorders(T Lambda) const
-	{
-		IterateBorders_TrueForAll([&](int32 X, int32 Y, int32 Z) { Lambda(X, Y, Z); return true; });
-	}
-
-	template<typename T>
-	bool IterateBorders_TrueForAll(T Lambda) const;
-
+	
 	template<typename T>
 	FORCEINLINE void ParallelSplit(T Lambda, bool bForceSingleThread = false) const
 	{
@@ -585,42 +612,20 @@ struct VOXEL_API FVoxelIntBox
 	template<EInverseTransform Inverse = EInverseTransform::False>
 	FVoxelIntBox ApplyTransform(const FTransform& Transform, int32 MaxBorderSize = 1) const
 	{
-		return ApplyTransformImpl([&](const FIntVector& Position)
-		{
-			return Inverse == EInverseTransform::True
-				? Transform.InverseTransformPosition(FVector(Position))
-				: Transform.TransformPosition(FVector(Position));
-		}, MaxBorderSize);
-	}
-	template<typename T>
-	FVoxelIntBox ApplyTransformImpl(T GetNewPosition, int32 MaxBorderSize = 1) const
-	{
 		const auto Corners = GetCorners(MaxBorderSize);
 
 		FIntVector NewMin(MAX_int32);
 		FIntVector NewMax(MIN_int32);
 		for (int32 Index = 0; Index < 8; Index++)
 		{
-			const FVoxelVector P = GetNewPosition(Corners[Index]);
+			const FVector P = 
+				Inverse == EInverseTransform::True 
+				? Transform.InverseTransformPosition(FVector(Corners[Index])) 
+				: Transform.TransformPosition(FVector(Corners[Index]));
 			NewMin = FVoxelUtilities::ComponentMin(NewMin, FVoxelUtilities::FloorToInt(P));
 			NewMax = FVoxelUtilities::ComponentMax(NewMax, FVoxelUtilities::CeilToInt(P));
 		}
 		return FVoxelIntBox(NewMin, NewMax + MaxBorderSize);
-	}
-	template<typename T>
-	FBox ApplyTransformFloatImpl(T GetNewPosition, int32 MaxBorderSize = 1) const
-	{
-		const auto Corners = GetCorners(MaxBorderSize);
-		
-		FVoxelVector NewMin = GetNewPosition(Corners[0]);
-		FVoxelVector NewMax = NewMin;
-		for (int32 Index = 1; Index < 8; Index++)
-		{
-			const FVoxelVector P = GetNewPosition(Corners[Index]);
-			NewMin = FVoxelUtilities::ComponentMin(NewMin, P);
-			NewMax = FVoxelUtilities::ComponentMax(NewMax, P);
-		}
-		return FBox(NewMin, NewMax + MaxBorderSize);
 	}
 };
 
@@ -668,7 +673,7 @@ FORCEINLINE FArchive& operator<<(FArchive& Ar, FVoxelIntBox& Box)
 }
 
 // Voxel Int Box with a IsValid flag
-USTRUCT(BlueprintType, meta=(HasNativeMake="Voxel.VoxelIntBoxLibrary.MakeIntBoxWithValidity", HasNativeBreak="Voxel.VoxelIntBoxLibrary.BreakIntBoxWithValidity"))
+USTRUCT(BlueprintType, meta=(HasNativeMake="/Script/Voxel.VoxelIntBoxLibrary:MakeIntBoxWithValidity", HasNativeBreak="/Script/Voxel.VoxelIntBoxLibrary:BreakIntBoxWithValidity"))
 struct FVoxelIntBoxWithValidity
 {
 	GENERATED_BODY()

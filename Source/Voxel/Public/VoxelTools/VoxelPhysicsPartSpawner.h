@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -22,7 +22,7 @@ class VOXEL_API UVoxelPhysicsPartSpawnerResult_VoxelWorlds : public UObject, pub
 public:
 	// The voxel world representing this part
 	UPROPERTY(BlueprintReadOnly, Category = "Voxel")
-	AVoxelWorld* VoxelWorld;
+	TObjectPtr<AVoxelWorld> VoxelWorld;
 };
 
 // Will spawn a voxel world per part
@@ -57,7 +57,7 @@ class VOXEL_API UVoxelPhysicsPartSpawnerResult_Cubes : public UObject, public IV
 public:
 	// The cubes for this part
 	UPROPERTY(BlueprintReadOnly, Category = "Voxel")
-	TArray<AStaticMeshActor*> Cubes;
+	TArray<TObjectPtr<AStaticMeshActor>> Cubes;
 };
 
 // Will spawn a cube actor for each floating voxel
@@ -73,10 +73,10 @@ public:
 	
 	// Same material as the voxel world, but instead of a vertex color input use a vector parameter named VertexColor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	UMaterialInterface* Material;
+	TObjectPtr<UMaterialInterface> Material;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	UStaticMesh* CubeMesh;
+	TObjectPtr<UStaticMesh> CubeMesh;
 
 	// Spawn probability for each cube. Use this to reduce the amount of cubes spawned.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")

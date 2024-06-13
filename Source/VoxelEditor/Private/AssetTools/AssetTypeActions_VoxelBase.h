@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -9,7 +9,7 @@
 class FAssetTypeActions_VoxelBase : public FAssetTypeActions_Base
 {
 public:
-	explicit FAssetTypeActions_VoxelBase(EAssetTypeCategories::Type AssetCategory)
+	FAssetTypeActions_VoxelBase(EAssetTypeCategories::Type AssetCategory)
 		: AssetCategory(AssetCategory)
 	{
 	}
@@ -20,22 +20,3 @@ private:
 	EAssetTypeCategories::Type AssetCategory;
 };
 
-class FAssetTypeActions_Voxel : public FAssetTypeActions_VoxelBase
-{
-public:
-	const FText Name;
-	const FColor Color;
-	UClass* const SupportedClass;
-
-	FAssetTypeActions_Voxel(EAssetTypeCategories::Type AssetCategory, const FText& Name, FColor Color, UClass* SupportedClass)
-		: FAssetTypeActions_VoxelBase(AssetCategory)
-		, Name(Name)
-		, Color(Color)
-		, SupportedClass(SupportedClass)
-	{
-	}
-
-	virtual FText GetName() const override { return Name; }
-	virtual FColor GetTypeColor() const override { return Color; }
-	virtual UClass* GetSupportedClass() const override { return SupportedClass; }
-};

@@ -1,11 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRendererMeshHandler.h"
 #include "VoxelUtilities/VoxelMathUtilities.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/VoxelRenderUtilities.h"
-#include "VoxelWorldRootComponent.h"
 
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Pool"), STAT_VoxelProcMeshPool, STATGROUP_VoxelCounters);
 DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Voxel Proc Mesh Frozen Pool"), STAT_VoxelProcMeshFrozenPool, STATGROUP_VoxelCounters);
@@ -17,6 +16,12 @@ TAutoConsoleVariable<int32> CVarLogActionQueue(
 	TEXT("If true, will log every queued action when processed"),
 	ECVF_Default);
 
+static TAutoConsoleVariable<int32> CVarLogMeshPositionsPrecisionsErrors(
+	TEXT("voxel.renderer.LogMeshPositionsPrecisionsErrors"),
+	0,
+	TEXT("If true, will log mesh positions precisions errors"),
+	ECVF_Default);
+
 IVoxelRendererMeshHandler::IVoxelRendererMeshHandler(IVoxelRenderer& Renderer)
 	: Renderer(Renderer)
 {
@@ -26,7 +31,6 @@ IVoxelRendererMeshHandler::~IVoxelRendererMeshHandler()
 {
 	VOXEL_FUNCTION_COUNTER();
 	check(bIsInit);
-	check(IsInGameThread());
 	ensure(bIsDestroying);
 	
 	// Avoid crashes
@@ -203,17 +207,16 @@ void IVoxelRendererMeshHandler::Tick(double MaxTime)
 	TickHandler();
 }
 
-void IVoxelRendererMeshHandler::RecomputeComponentPositions()
+void IVoxelRendererMeshHandler::RecomputeMeshPositions()
 {
 	VOXEL_FUNCTION_COUNTER();
 	ensure(!bIsDestroying);
 
 	for (auto& It : ActiveMeshes)
 	{
-		UVoxelProceduralMeshComponent* Component = It.Key.Get();
-		if (ensure(Component))
+		if (ensure(It.Key.IsValid()))
 		{
-			Renderer.Settings.SetComponentPosition(*Component, It.Value, false);
+			SetMeshPosition(*It.Key, It.Value);
 		}
 	}
 }
@@ -243,13 +246,10 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 	VOXEL_FUNCTION_COUNTER();
 	ensure(!bIsDestroying);
 
-	const FVoxelRuntimeSettings& Settings = Renderer.Settings;
-
-	AActor* ComponentsOwner = Settings.ComponentsOwner.Get();
-	UVoxelWorldRootComponent* VoxelRootComponent = Settings.VoxelRootComponent.Get();
+	auto& Settings = Renderer.Settings;
 	
-	if (!ensureVoxelSlow(ComponentsOwner) ||
-		!ensureVoxelSlow(VoxelRootComponent))
+	auto* const RootComponent = Settings.RootComponent.Get();
+	if (!ensureVoxelSlow(RootComponent))
 	{
 		return nullptr;
 	}
@@ -265,21 +265,18 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 
 		if (!NewMesh)
 		{
-			NewMesh = NewObject<UVoxelProceduralMeshComponent>(ComponentsOwner, Settings.ProcMeshClass, NAME_None, RF_Transient);
-			Settings.SetupComponent(*NewMesh);
-			
+			NewMesh = NewObject<UVoxelProceduralMeshComponent>(RootComponent, Settings.ProcMeshClass, NAME_None, RF_Transient);
 			NewMesh->bCastFarShadow = Settings.bCastFarShadow;
-
-			NewMesh->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&VoxelRootComponent->BodyInstance);
-			NewMesh->BodyInstance.SetObjectType(VoxelRootComponent->BodyInstance.GetObjectType());
-			NewMesh->SetGenerateOverlapEvents(VoxelRootComponent->GetGenerateOverlapEvents());
-			NewMesh->RuntimeVirtualTextures = VoxelRootComponent->RuntimeVirtualTextures;
-			NewMesh->VirtualTextureLodBias = VoxelRootComponent->VirtualTextureLodBias;
-			NewMesh->VirtualTextureCullMips = VoxelRootComponent->VirtualTextureCullMips;
-			NewMesh->VirtualTextureMinCoverage = VoxelRootComponent->VirtualTextureMinCoverage;
-			NewMesh->VirtualTextureRenderPassType = VoxelRootComponent->VirtualTextureRenderPassType;
-
+			NewMesh->SetupAttachment(RootComponent, NAME_None);
+			auto* Root = Cast<UPrimitiveComponent>(RootComponent);
+			if (ensure(Root))
+			{
+				NewMesh->BodyInstance.CopyRuntimeBodyInstancePropertiesFrom(&Root->BodyInstance);
+				NewMesh->BodyInstance.SetObjectType(Root->BodyInstance.GetObjectType());
+				NewMesh->SetGenerateOverlapEvents(Root->GetGenerateOverlapEvents());
+			}
 			NewMesh->RegisterComponent();
+			NewMesh->SetRelativeScale3D(FVector::OneVector * Settings.VoxelSize);
 		}
 	}
 	check(NewMesh);
@@ -288,10 +285,10 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 
 	ensure(!ActiveMeshes.Contains(NewMesh));
 	ActiveMeshes.Add(NewMesh, Position);
-	Settings.SetComponentPosition(*NewMesh, Position, false);
+	SetMeshPosition(*NewMesh, Position);
 	
-	const FVoxelIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth(Settings.RenderOctreeChunkSize, Position, LOD);
-	const FVoxelPriorityHandler PriorityHandler(Bounds, Renderer);
+	const FVoxelIntBox Bounds = FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD);
+	const FVoxelPriorityHandler PriorityHandler(Bounds, Renderer.GetInvokersPositionsForPriorities());
 
 	// Set mesh variables
 	NewMesh->Init(
@@ -299,7 +296,7 @@ UVoxelProceduralMeshComponent* IVoxelRendererMeshHandler::GetNewMesh(FChunkId Ch
 		ChunkId.GetDebugValue(),
 		PriorityHandler,
 		AsShared(),
-		Renderer);
+		Settings);
 
 	if (Settings.PlayType == EVoxelPlayType::Game)
 	{
@@ -325,9 +322,14 @@ void IVoxelRendererMeshHandler::RemoveMesh(UVoxelProceduralMeshComponent& Mesh)
 		Mesh.SetDistanceFieldData(nullptr);
 		Mesh.ClearSections(EVoxelProcMeshSectionUpdate::UpdateNow);
 		Mesh.ClearInit();
+
+		// Set world location to 0 to avoid precision issues, as SetRelativeLocation calls MoveComponent :(
+		Mesh.SetUsingAbsoluteLocation(true);
+		Mesh.SetWorldLocationAndRotationNoPhysics(FVector::ZeroVector, FRotator::ZeroRotator);
+		Mesh.SetUsingAbsoluteLocation(false);
 	}
 
-	if (UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen(Renderer.Settings.VoxelWorld.Get()))
+	if (UVoxelProceduralMeshComponent::AreVoxelCollisionsFrozen())
 	{
 		FrozenMeshPool.Add(&Mesh);
 		INC_DWORD_STAT(STAT_VoxelProcMeshFrozenPool);
@@ -407,11 +409,42 @@ void IVoxelRendererMeshHandler::Init()
 	check(!bIsInit);
 	bIsInit = true;
 
-	UVoxelProceduralMeshComponent::AddOnFreezeVoxelCollisionChanged(
-		Renderer.Settings.VoxelWorld.Get(),
-		FOnFreezeVoxelCollisionChanged::FDelegate::CreateThreadSafeSP(
-			this,
-			&IVoxelRendererMeshHandler::OnFreezeVoxelCollisionChanged));
+	UVoxelProceduralMeshComponent::AddOnFreezeVoxelCollisionChanged(FOnFreezeVoxelCollisionChanged::FDelegate::CreateThreadSafeSP(
+		this,
+		&IVoxelRendererMeshHandler::OnFreezeVoxelCollisionChanged));
+}
+
+void IVoxelRendererMeshHandler::SetMeshPosition(UVoxelProceduralMeshComponent& Mesh, const FIntVector& Position) const
+{
+	VOXEL_FUNCTION_COUNTER();
+	ensure(!bIsDestroying);
+
+	// TODO errors might add up when we rebase?
+	Mesh.SetRelativeLocationAndRotation(
+		Renderer.Settings.GetChunkRelativePosition(Position),
+		FRotator::ZeroRotator,
+		false,
+		nullptr,
+		ETeleportType::TeleportPhysics);
+
+	// If we don't do that the component does not update if Position = 0 0 0 :(
+	// Probably UE bug?
+	if (Position == FIntVector(0, 0, 0))
+	{
+		Mesh.UpdateComponentToWorld(EUpdateTransformFlags::None, ETeleportType::TeleportPhysics);
+	}
+
+	if (CVarLogMeshPositionsPrecisionsErrors.GetValueOnGameThread() != 0)
+	{
+		const auto A = Mesh.GetRelativeTransform().GetTranslation();
+		const auto B = Renderer.Settings.GetChunkRelativePosition(Position);
+		const float Error = FVector::Distance(A, B);
+		if (Error > 0)
+		{
+			LOG_VOXEL(Log, TEXT("Distance between theorical and actual mesh position: %6.6f voxels"), Error);
+			ensure(Error < 1);
+		}
+	}
 }
 
 void IVoxelRendererMeshHandler::OnFreezeVoxelCollisionChanged(bool bNewFreezeCollisions)

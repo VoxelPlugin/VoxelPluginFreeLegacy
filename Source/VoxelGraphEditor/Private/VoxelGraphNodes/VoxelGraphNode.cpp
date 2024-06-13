@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGraphNode.h"
 #include "VoxelGraphGenerator.h"
@@ -21,7 +21,6 @@
 #include "Editor/EditorEngine.h"
 #include "Framework/Commands/GenericCommands.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
-#include "Launch/Resources/Version.h"
 
 void UVoxelGraphNode::SetVoxelNode(UVoxelNode* InNode)
 {
@@ -100,7 +99,7 @@ void UVoxelGraphNode::RemoveInputPin(UEdGraphPin* InGraphPin)
 	{
 		if (InGraphPin == InputPin)
 		{
-			InGraphPin->UE_5_SWITCH(MarkPendingKill(), MarkAsGarbage());
+			InGraphPin->MarkAsGarbage();
 			Pins.Remove(InGraphPin);
 
 			const int32 Increment = VoxelNode->GetInputPinsIncrement();
@@ -415,10 +414,12 @@ FLinearColor UVoxelGraphNode::GetNodeBodyColor() const
 	{
 		for (auto& Pin : Pins)
 		{
+			PRAGMA_DISABLE_DEPRECATION_WARNINGS
 			if (Pin->bIsDiffing)
 			{
 				return FLinearColor(0.f, 0.f, 1.0f, 1.f);
 			}
+			PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		}
 		return VoxelNode->GetNodeBodyColor();
 	}

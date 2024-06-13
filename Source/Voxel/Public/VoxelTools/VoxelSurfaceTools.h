@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -48,8 +48,7 @@ public:
 	static FVoxelSurfaceEditsVoxels FindSurfaceVoxelsFromDistanceFieldImpl(
 		FVoxelData& Data,
 		const FVoxelIntBox& Bounds,
-		bool bMultiThreaded,
-		EVoxelComputeDevice ComputeDevice);
+		bool bMultiThreaded);
 
 	static FVoxelSurfaceEditsVoxels FindSurfaceVoxels2DImpl(
 		FVoxelData& Data,
@@ -97,8 +96,7 @@ public:
 		FVoxelSurfaceEditsVoxels& Voxels,
 		AVoxelWorld* World,
 		FVoxelIntBox Bounds,
-		bool bMultiThreaded = false,
-		EVoxelComputeDevice ComputeDevice = EVoxelComputeDevice::GPU);
+		bool bMultiThreaded = false);
 	
 	/**
 	 * Find voxels that are on the surface. Only keep the one with the surface right above them that are facing up. If 2 surface voxels have the same X Y, will only keep the one with the higher Z

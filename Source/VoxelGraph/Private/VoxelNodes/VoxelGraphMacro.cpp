@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelGraphMacro.h"
 #include "VoxelNodes/VoxelNodeColors.h"
@@ -241,9 +241,6 @@ void UVoxelGraphMacroNode::GetParameters(TArray<FVoxelGeneratorParameter>& OutPa
 {
 	if (Macro)
 	{
-		for (auto* Node : Macro->AllNodes)
-		{
-			Node->GetParameters(OutParameters);
-		}
+		Macro->GetParameters(OutParameters);
 	}
 }

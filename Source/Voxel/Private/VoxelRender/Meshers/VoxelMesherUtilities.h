@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -8,9 +8,8 @@
 #include "VoxelDirection.h"
 #include "VoxelRender/VoxelProcMeshTangent.h"
 
+struct FVoxelRendererSettings;
 struct FVoxelChunkMesh;
-class FVoxelRuntimeSettings;
-class FVoxelRuntimeDynamicSettings;
 
 struct FVoxelMesherVertex
 {
@@ -24,21 +23,18 @@ struct FVoxelMesherVertex
 namespace FVoxelMesherUtilities
 {
 	TVoxelSharedPtr<FVoxelChunkMesh> CreateChunkFromVertices(
-		const FVoxelRuntimeSettings& Settings,
-		const FVoxelRuntimeDynamicSettings& DynamicSettings,
+		const FVoxelRendererSettings& Settings,
 		int32 LOD,
 		TArray<uint32>&& Indices,
-		TArray<FVoxelMesherVertex>&& Vertices,
-		TArray<uint8>* TextureData = nullptr,
-		TArray<FBox>* CollisionCubes = nullptr);
+		TArray<FVoxelMesherVertex>&& Vertices);
 
 	inline FVector GetTranslatedTransvoxel(const FVector& Vertex, const FVector& Normal, uint8 TransitionsMask, uint8 LOD)
 	{
 		const int32 Step = 1 << LOD;
-		const int32 Size = MESHER_CHUNK_SIZE << LOD;
+		const int32 Size = RENDER_CHUNK_SIZE << LOD;
 		
 		const float LowerBound = Step;
-		const float UpperBound = (MESHER_CHUNK_SIZE - 1) * Step;
+		const float UpperBound = (RENDER_CHUNK_SIZE - 1) * Step;
 		
 		if ((LowerBound <= Vertex.X && Vertex.X <= UpperBound) &&
 			(LowerBound <= Vertex.Y && Vertex.Y <= UpperBound) &&

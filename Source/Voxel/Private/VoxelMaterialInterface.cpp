@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/VoxelMaterialInterface.h"
 #include "Materials/Material.h"
@@ -60,16 +60,8 @@ TVoxelSharedRef<FVoxelMaterialInterface> FVoxelMaterialInterfaceManager::CreateM
 
 	UMaterialInstanceDynamic* Instance = GetInstanceFromPool();
 	check(Instance);
-
-	if (auto* ParentInstance = Cast<UMaterialInstanceDynamic>(Parent))
-	{
-		FMaterialInstanceResource::SetParent(*Instance, ParentInstance->Parent);
-		Instance->CopyParameterOverrides(ParentInstance);
-	}
-	else
-	{
-		FMaterialInstanceResource::SetParent(*Instance, Parent);
-	}
+	
+	FMaterialInstanceResource::SetParent(*Instance, Parent);
 
 	return CreateMaterialImpl(Instance, true);
 }
@@ -221,7 +213,7 @@ TVoxelSharedRef<FVoxelMaterialInterface> FVoxelMaterialInterfaceManager::CreateM
 
 	MaterialInfo->ReferenceCount++;
 	
-	return TVoxelSharedRef<FVoxelMaterialInterface>(new FVoxelMaterialInterface(Reference, bIsInstance));
+	return TVoxelSharedRef<FVoxelMaterialInterface>(new FVoxelMaterialInterface(Reference));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -281,9 +273,8 @@ void FVoxelMaterialInterfaceManager::ClearInstancePool()
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelMaterialInterface::FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference, bool bIsInstance)
+FVoxelMaterialInterface::FVoxelMaterialInterface(FVoxelMaterialInterfaceManager::FMaterialReference Reference)
 	: Reference(Reference)
-	, bIsInstance(bIsInstance)
 {
 }
 

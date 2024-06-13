@@ -1,7 +1,8 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGenerators/VoxelGenerator.h"
-#include "VoxelGenerators/VoxelGeneratorInstance.inl"
+
+#include "VoxelGenerators/VoxelGeneratorInstance.h"
 #include "VoxelGenerators/VoxelGeneratorParameters.h"
 #include "VoxelMessages.h"
 
@@ -14,12 +15,11 @@ void UVoxelGenerator::ApplyParameters(const TMap<FName, FString>& Parameters)
 	ApplyParametersInternal(Parameters);
 }
 
-TArray<FVoxelGeneratorParameter> UVoxelGenerator::GetParameters() const
+void UVoxelGenerator::GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const
 {
 	VOXEL_FUNCTION_COUNTER();
 
 	TSet<FName> AllIds;
-	TArray<FVoxelGeneratorParameter> Parameters;
 	
 	int32 Priority = 0;
 	for (TFieldIterator<FProperty> It(GetClass()); It; ++It)
@@ -41,22 +41,10 @@ TArray<FVoxelGeneratorParameter> UVoxelGenerator::GetParameters() const
 		Category = Property->GetMetaDataText(TEXT("Category")).ToString();
 		ToolTip = Property->GetToolTipText().ToString();
 
-#if VOXEL_ENGINE_VERSION  < 425
-		{
-			UPackage* Package = Property->GetOutermost();
-			check(Package);
-
-			UMetaData* PackageMetaData = Package->GetMetaData();
-			check(PackageMetaData);
-
-			MetaData = PackageMetaData->ObjectMetaDataMap.FindRef(Property);
-		}
-#else
 		if (Property->GetMetaDataMap())
 		{
 			MetaData = *Property->GetMetaDataMap();
 		}
-#endif
 #else
 		Name = Property->GetName();
 #endif
@@ -64,16 +52,14 @@ TArray<FVoxelGeneratorParameter> UVoxelGenerator::GetParameters() const
 		const auto Type = FVoxelGeneratorParameterType(*Property);
 		
 		FString DefaultValue;
-		Property->ExportTextItem(DefaultValue, Property->ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
+		Property->ExportText_Direct(DefaultValue, Property->ContainerPtrToValuePtr<void>(this), nullptr, nullptr, PPF_None);
 		
-		Parameters.Add(FVoxelGeneratorParameter(Id, Type, Name, Category, ToolTip, Priority++, MetaData, DefaultValue));
+		OutParameters.Add(FVoxelGeneratorParameter(Id, Type, Name, Category, ToolTip, Priority++, MetaData, DefaultValue));
 
 		bool bIsInSet = false;
 		AllIds.Add(Id, &bIsInSet);
 		ensureMsgf(!bIsInSet, TEXT("%s"), *Id.ToString());
 	}
-
-	return Parameters;
 }
 
 TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelGenerator::GetInstance(const TMap<FName, FString>& Parameters)
@@ -90,28 +76,13 @@ TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelGenerator::GetInstance()
 	return TVoxelSharedPtr<FVoxelGeneratorInstance>().ToSharedRef();
 }
 
-FVoxelGeneratorOutputs UVoxelGenerator::GetGeneratorOutputs() const
-{
-	VOXEL_FUNCTION_COUNTER();
-
-	FVoxelGeneratorOutputs Outputs;
-
-	// Kinda slow
-	const auto Instance = const_cast<UVoxelGenerator*>(this)->GetInstance();
-	Instance->GetOutputsPtrMap<int32>().GenerateKeyArray(Outputs.IntOutputs);
-	Instance->GetOutputsPtrMap<v_flt>().GenerateKeyArray(Outputs.FloatOutputs);
-	Instance->GetOutputsPtrMap<FColor>().GenerateKeyArray(Outputs.ColorOutputs);
-
-	return Outputs;
-}
-
 TMap<FName, FString> UVoxelGenerator::ApplyParametersInternal(const TMap<FName, FString>& Parameters)
 {
 	TMap<FName, FString> ParametersBackup;
 	
 	for (auto& It : Parameters)
 	{
-		auto* Property = UE_25_SWITCH(FindField, FindFProperty) < FProperty > (GetClass(), It.Key);
+		auto* Property = FindFProperty<FProperty> (GetClass(), It.Key);
 		if (!Property)
 		{
 			continue;
@@ -119,9 +90,9 @@ TMap<FName, FString> UVoxelGenerator::ApplyParametersInternal(const TMap<FName, 
 
 		void* PropertyData = Property->ContainerPtrToValuePtr<void>(this);
 		// Export backup
-		Property->ExportTextItem(ParametersBackup.Add(It.Key), PropertyData, nullptr, nullptr, PPF_None);
+		Property->ExportTextItem_Direct(ParametersBackup.Add(It.Key), PropertyData, nullptr, nullptr, PPF_None);
 		// Import new value
-		Property->ImportText(*It.Value, PropertyData, PPF_None, this);
+		Property->ImportText_Direct(*It.Value, PropertyData, this, PPF_None);
 	}
 	
 	return ParametersBackup;

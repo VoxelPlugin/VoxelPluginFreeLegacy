@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/VoxelRawStaticIndexBuffer.h"
 
@@ -159,7 +159,7 @@ FIndexArrayView FVoxelRawStaticIndexBuffer::GetArrayView() const
 	return FIndexArrayView(IndexStorage.GetData(), NumIndices, b32Bit);
 }
 
-void FVoxelRawStaticIndexBuffer::InitRHI()
+void FVoxelRawStaticIndexBuffer::InitRHI(UE_503_ONLY(FRHICommandListBase& RHICmdList))
 {
 	const uint32 IndexStride = b32Bit ? sizeof(uint32) : sizeof(uint16);
 	const uint32 SizeInBytes = IndexStorage.Num();
@@ -168,8 +168,12 @@ void FVoxelRawStaticIndexBuffer::InitRHI()
 	if (SizeInBytes > 0)
 	{
 		// Create the index buffer.
-		FRHIResourceCreateInfo CreateInfo(UE_5_ONLY(TEXT("VoxelIndex"),) &IndexStorage);
+		FRHIResourceCreateInfo CreateInfo(TEXT("INDEX"), &IndexStorage);
+#if VOXEL_ENGINE_VERSION >= 503
+		IndexBufferRHI = RHICmdList.CreateIndexBuffer(IndexStride,SizeInBytes,BUF_Static,CreateInfo);
+#else
 		IndexBufferRHI = RHICreateIndexBuffer(IndexStride,SizeInBytes,BUF_Static,CreateInfo);
+#endif
 	}    
 }
 
@@ -177,7 +181,7 @@ void FVoxelRawStaticIndexBuffer::Serialize(FArchive& Ar, bool bNeedsCPUAccess)
 {
 	IndexStorage.SetAllowCPUAccess(bNeedsCPUAccess);
 
-	if (Ar.UE4Ver() < VER_UE4_SUPPORT_32BIT_STATIC_MESH_INDICES)
+	if (Ar.UEVer() < VER_UE4_SUPPORT_32BIT_STATIC_MESH_INDICES)
 	{
 		TResourceArray<uint16,INDEXBUFFER_ALIGNMENT> LegacyIndices;
 

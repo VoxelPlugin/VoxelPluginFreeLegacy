@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 using System.IO;
 using UnrealBuildTool;
@@ -8,10 +8,11 @@ public class VoxelGraphEditor : ModuleRules
     public VoxelGraphEditor(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
+		CppStandard = CppStandardVersion.Cpp17;
 
 #if UE_4_24_OR_LATER
+        bUseUnity = true;
 #else
 #endif
 
@@ -29,7 +30,6 @@ public class VoxelGraphEditor : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "Voxel",
-                "VoxelEditor",
                 "VoxelGraph",
                 "KismetWidgets",
                 "AdvancedPreviewScene",
@@ -48,14 +48,15 @@ public class VoxelGraphEditor : ModuleRules
                 "MessageLog",
                 "AppFramework",
                 "PropertyEditor",
-                "Landscape",
-                "SettingsEditor",
-#if UE_5_0_OR_LATER
                 "EditorFramework",
-#endif
 #if UE_4_24_OR_LATER
                 "ToolMenus"
 #endif
+            });
+
+        PrivateIncludePathModuleNames.AddRange(
+            new string[] {
+                "VoxelEditor"
             });
     }
 }

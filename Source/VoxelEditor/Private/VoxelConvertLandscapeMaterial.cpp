@@ -1,27 +1,20 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelConvertLandscapeMaterial.h"
-
-#include "AssetRegistryModule.h"
 #include "VoxelMinimal.h"
-#include "VoxelFoliage.h"
-#include "VoxelFoliageCollection.h"
+#include "VoxelUtilities/VoxelConfigUtilities.h"
 #include "VoxelRender/VoxelMaterialExpressions.h"
-#include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
-#include "VoxelEditorUtilities.h"
 
 #include "Editor.h"
 #include "Materials/Material.h"
+#include "Containers/Ticker.h"
 #include "ContentBrowserModule.h"
-#include "IContentBrowserSingleton.h"
-#include "KismetCompilerModule.h"
 #include "ScopedTransaction.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Framework/Notifications/NotificationManager.h"
-#include "Kismet2/KismetEditorUtilities.h"
-#include "Misc/MessageDialog.h"
-#include "Subsystems/AssetEditorSubsystem.h"
+#include "Materials/MaterialFunction.h"
+#include "Materials/MaterialExpressionMaterialFunctionCall.h"
 
 void FVoxelConvertLandscapeMaterial::Init()
 {
@@ -63,7 +56,6 @@ void FVoxelConvertLandscapeMaterial::Init()
 
 		return Extender;
 	}));
-
 }
 
 void FVoxelConvertLandscapeMaterial::ConvertMaterial(UMaterial* Material)
@@ -71,7 +63,7 @@ void FVoxelConvertLandscapeMaterial::ConvertMaterial(UMaterial* Material)
 	FScopedTransaction Transaction(TEXT("ConvertMaterial"), VOXEL_LOCTEXT("Convert landscape material to voxel"), Material);
 
 	TSet<UMaterialFunction*> VisitedFunctions;
-	const int32 NumReplaced = ConvertExpressions(Material, Material->Expressions, VisitedFunctions);
+	const int32 NumReplaced = ConvertExpressions(Material, Material->GetEditorOnlyData()->ExpressionCollection.Expressions, VisitedFunctions);
 
 	const FText Text = FText::Format(VOXEL_LOCTEXT("{0} expressions replaced in {1}"), NumReplaced, FText::FromName(Material->GetFName()));
 	LOG_VOXEL(Log, TEXT("%s"), *Text.ToString());
@@ -101,7 +93,7 @@ int32 FVoxelConvertLandscapeMaterial::ConvertExpressions(UObject* Owner, const T
 			if (Function && !VisitedFunctions.Contains(Function))
 			{
 				VisitedFunctions.Add(Function);
-				NumReplaced += ConvertExpressions(Function, Function->FunctionExpressions, VisitedFunctions);
+				NumReplaced += ConvertExpressions(Function, Function->GetEditorOnlyData()->ExpressionCollection.Expressions, VisitedFunctions);
 			}
 		}
 	}
@@ -119,7 +111,7 @@ void FVoxelConvertLandscapeMaterial::ConvertExpression(UObject* Owner, UMaterial
 	Expression->Modify();
 	NewExpression->Modify();
 
-	auto& Expressions = Owner->IsA<UMaterial>() ? CastChecked<UMaterial>(Owner)->Expressions : CastChecked<UMaterialFunction>(Owner)->FunctionExpressions;
+	auto& Expressions = Owner->IsA<UMaterial>() ? CastChecked<UMaterial>(Owner)->GetEditorOnlyData()->ExpressionCollection.Expressions : CastChecked<UMaterialFunction>(Owner)->GetEditorOnlyData()->ExpressionCollection.Expressions;
 	ensure(Expressions.Remove(Expression) == 1);
 	Expressions.Add(NewExpression);
 
@@ -138,7 +130,7 @@ void FVoxelConvertLandscapeMaterial::ConvertExpression(UObject* Owner, UMaterial
 	{
 		if (OtherExpression != Expression)
 		{
-			for (FExpressionInput* Input : OtherExpression->GetInputs())
+			for (FExpressionInput* Input : OtherExpression->UE_503_SWITCH(GetInputs(), GetInputsView()))
 			{
 				if (Input->Expression == Expression)
 				{

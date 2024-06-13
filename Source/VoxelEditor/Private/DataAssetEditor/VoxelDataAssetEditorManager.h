@@ -1,9 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "UObject/GCObject.h"
+#include "UObject/ObjectPtr.h"
 
 class AVoxelWorld;
 class UVoxelDataAsset;
@@ -17,6 +18,7 @@ public:
 
 	//~ Begin FGCObject Interface
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
+	virtual FString GetReferencerName() const override { return "FVoxelDataAssetEditorManager"; }
 	//~ End FGCObject Interface
 
 public:
@@ -30,7 +32,7 @@ public:
 
 private:
 	UVoxelDataAsset* const DataAsset;
-	AVoxelWorld* World;
+	TObjectPtr<AVoxelWorld> World;
 
 	void CreateWorld();
 };

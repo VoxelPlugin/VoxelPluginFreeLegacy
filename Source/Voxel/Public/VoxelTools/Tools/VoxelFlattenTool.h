@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -13,7 +13,7 @@ class VOXEL_API UVoxelFlattenTool : public UVoxelToolBase
 
 public:
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UMaterialInterface* ToolMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> ToolMaterial = nullptr;
 
 public:
 	UPROPERTY(Category = "Tool Settings", EditAnywhere, BlueprintReadWrite, meta = (UIMin = "0", UIMax = "1"))

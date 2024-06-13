@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 using System.IO;
 using UnrealBuildTool;
@@ -8,10 +8,11 @@ public class VoxelHelpers : ModuleRules
     public VoxelHelpers(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        bEnforceIWYU = true;
         bLegacyPublicIncludePaths = false;
+		CppStandard = CppStandardVersion.Cpp17;
 
 #if UE_4_24_OR_LATER
+        bUseUnity = true;
 #else
 #endif
 
@@ -27,7 +28,8 @@ public class VoxelHelpers : ModuleRules
                 "UMG",
                 "Slate",
                 "SlateCore",
-                "ProceduralMeshComponent"
+                "ProceduralMeshComponent",
+                "Voxel"
             }
         );
     }

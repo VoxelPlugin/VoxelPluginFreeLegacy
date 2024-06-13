@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelUtilities/VoxelDistanceFieldUtilities.h"
 #include "VoxelUtilities/VoxelDistanceFieldUtilities.inl"
@@ -14,7 +14,7 @@ FColor FVoxelDistanceFieldUtilities::GetDistanceFieldColor(float Value)
 	FLinearColor Color = FLinearColor::White - FMath::Sign(Value) * FLinearColor(0.1, 0.4, 0.7, 0.f);
 	Color *= 1.0 - FMath::Exp(-3.0 * FMath::Abs(Value));
 	Color *= 0.8 + 0.2 * FMath::Cos(150.0 * Value);
-	Color = FMath::Lerp(Color, FLinearColor::White, 1.0 - FMath::SmoothStep(0.0, 0.01, FMath::Abs(Value)));
+	Color = FMath::Lerp(Color, FLinearColor::White, 1.0 - FMath::SmoothStep(0.0, 0.01, FMath::Abs<double>(Value)));
 	Color.A = 1.f;
 	return FLinearColor(Color.ToFColor(false)).ToFColor(false);
 }
@@ -23,15 +23,15 @@ FColor FVoxelDistanceFieldUtilities::GetDistanceFieldColor(float Value)
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDistanceFieldUtilities::JumpFlood(const FIntVector& Size, TArray<FVector>& InOutSurfacePositions, EVoxelComputeDevice Device, bool bMultiThreaded, int32 MaxPasses_Debug)
+void FVoxelDistanceFieldUtilities::JumpFlood(const FIntVector& Size, TArray<FVector3f>& InOutSurfacePositions, bool bMultiThreaded, int32 MaxPasses_Debug)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
 	check(InOutSurfacePositions.Num() == Size.X * Size.Y * Size.Z);
 	
-	if (Device == EVoxelComputeDevice::GPU)
+	if (false)
 	{
-		const auto DataPtr = MakeVoxelShared<TArray<FVector>>(MoveTemp(InOutSurfacePositions));
+		const auto DataPtr = MakeVoxelShared<TArray<FVector3f>>(MoveTemp(InOutSurfacePositions));
 
 		const auto Helper = MakeVoxelShared<FVoxelDistanceFieldShaderHelper>();
 		Helper->StartCompute(Size, DataPtr, MaxPasses_Debug);
@@ -43,7 +43,7 @@ void FVoxelDistanceFieldUtilities::JumpFlood(const FIntVector& Size, TArray<FVec
 	{
 		bool bUseTempAsSrc = false;
 		
-		TArray<FVector> Temp;
+		TArray<FVector3f> Temp;
 		Temp.Empty(InOutSurfacePositions.Num());
 		Temp.SetNumUninitialized(InOutSurfacePositions.Num());
 		
@@ -74,7 +74,7 @@ void FVoxelDistanceFieldUtilities::JumpFlood(const FIntVector& Size, TArray<FVec
 	}
 }
 
-void FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(const FIntVector& Size, TArrayView<const FVector> SurfacePositions, TArrayView<float> InOutDistances)
+void FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(const FIntVector& Size, TArrayView<const FVector3f> SurfacePositions, TArrayView<float> InOutDistances)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 	
@@ -89,11 +89,11 @@ void FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(const FIntVe
 			{
 				float& Distance = FVoxelUtilities::Get3D(InOutDistances, Size, X, Y, Z);
 
-				const FVector SurfacePosition = FVoxelUtilities::Get3D(SurfacePositions, Size, X, Y, Z);
+				const FVector3f SurfacePosition = FVoxelUtilities::Get3D(SurfacePositions, Size, X, Y, Z);
 				ensureVoxelSlow(IsSurfacePositionValid(SurfacePosition));
 				
 				// Keep sign
-				Distance = FVector::Distance(FVector(X, Y, Z), SurfacePosition) * FMath::Sign(Distance);
+				Distance = FVector3f::Distance(FVector3f(X, Y, Z), SurfacePosition) * FMath::Sign(Distance);
 				ensureVoxelSlow(FMath::Abs(Distance) < Size.Size() * 2);
 			}
 		}
@@ -104,24 +104,24 @@ void FVoxelDistanceFieldUtilities::GetDistancesFromSurfacePositions(const FIntVe
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const float> Densities, TArrayView<float> OutDistances, TArrayView<FVector> OutSurfacePositions)
+void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const float> Densities, TArrayView<float> OutDistances, TArrayView<FVector3f> OutSurfacePositions)
 {
 	GetSurfacePositionsFromDensities(Size, Densities, OutDistances, OutSurfacePositions, [](float F) { return F; });
 }
 
-void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArrayView<float> OutDistances, TArrayView<FVector> OutSurfacePositions)
+void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArrayView<float> OutDistances, TArrayView<FVector3f> OutSurfacePositions)
 {
 	GetSurfacePositionsFromDensities(Size, Densities, OutDistances, OutSurfacePositions, [](FVoxelValue F) { return F.ToFloat(); });
 }
 
-void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArray<float>& OutDistances, TArray<FVector>& OutSurfacePositions)
+void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(const FIntVector& Size, TArrayView<const FVoxelValue> Densities, TArray<float>& OutDistances, TArray<FVector3f>& OutSurfacePositions)
 {
 	const int32 Num = Size.X * Size.Y * Size.Z;
 	OutDistances.Empty(Num);
 	OutDistances.SetNumUninitialized(Num);
 	OutSurfacePositions.Empty(Num);
 	OutSurfacePositions.SetNumUninitialized(Num);
-	GetSurfacePositionsFromDensities(Size, Densities, TArrayView<float>(OutDistances), TArrayView<FVector>(OutSurfacePositions));
+	GetSurfacePositionsFromDensities(Size, Densities, TArrayView<float>(OutDistances), TArrayView<FVector3f>(OutSurfacePositions));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -131,9 +131,9 @@ void FVoxelDistanceFieldUtilities::GetSurfacePositionsFromDensities(const FIntVe
 void FVoxelDistanceFieldUtilities::DownSample(
 	const FIntVector& Size, 
 	TArrayView<const float> InDistances, 
-	TArrayView<const FVector> InSurfacePositions, 
+	TArrayView<const FVector3f> InSurfacePositions, 
 	TArrayView<float> OutDistances, 
-	TArrayView<FVector> OutSurfacePositions, 
+	TArrayView<FVector3f> OutSurfacePositions, 
 	int32 Divisor,
 	bool bShrink)
 {
@@ -152,7 +152,7 @@ void FVoxelDistanceFieldUtilities::DownSample(
 			for (int32 LowZ = 0; LowZ < LowSize.Z; LowZ++)
 			{
 				float BestDistance = MAX_flt;
-				FVector BestSurfacePosition = MakeInvalidSurfacePosition();
+				FVector3f BestSurfacePosition = MakeInvalidSurfacePosition();
 				float Sign = FVoxelUtilities::Get3D(InDistances, Size, LowX * Divisor, LowY * Divisor, LowZ * Divisor);
 				
 				for (int32 HighX = LowX * Divisor; HighX < FMath::Min(Size.X, (LowX + 1) * Divisor); HighX++)
@@ -161,13 +161,13 @@ void FVoxelDistanceFieldUtilities::DownSample(
 					{
 						for (int32 HighZ = LowZ * Divisor; HighZ < FMath::Min(Size.Z, (LowZ + 1) * Divisor); HighZ++)
 						{
-							FVector NeighborSurfacePosition = FVoxelUtilities::Get3D(InSurfacePositions, Size, HighX, HighY, HighZ);
+							FVector3f NeighborSurfacePosition = FVoxelUtilities::Get3D(InSurfacePositions, Size, HighX, HighY, HighZ);
 							
 							if (IsSurfacePositionValid(NeighborSurfacePosition))
 							{
 								// Make sure to / Divisor AFTER IsSurfacePositionValid
 								NeighborSurfacePosition /= Divisor;
-								const float Distance = (NeighborSurfacePosition - FVector(LowX, LowY, LowZ)).SizeSquared();
+								const float Distance = (NeighborSurfacePosition - FVector3f(LowX, LowY, LowZ)).SizeSquared();
 								if (Distance < BestDistance)
 								{
 									BestDistance = Distance;
@@ -189,7 +189,7 @@ void FVoxelDistanceFieldUtilities::DownSample(
 void FVoxelDistanceFieldUtilities::DownSample(
 	FIntVector& Size,
 	TArray<float>& Distances,
-	TArray<FVector>& SurfacePositions,
+	TArray<FVector3f>& SurfacePositions,
 	int32 Divisor,
 	bool bShrink)
 {
@@ -204,7 +204,7 @@ void FVoxelDistanceFieldUtilities::DownSample(
 	const int32 NewSize = LowSize.X * LowSize.Y * LowSize.Z;
 	
 	TArray<float> NewDistances;
-	TArray<FVector> NewSurfacePositions;
+	TArray<FVector3f> NewSurfacePositions;
 	NewDistances.Empty(NewSize);
 	NewDistances.SetNumUninitialized(NewSize);
 	NewSurfacePositions.Empty(NewSize);
@@ -221,7 +221,7 @@ void FVoxelDistanceFieldUtilities::DownSample(
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-void FVoxelDistanceFieldUtilities::JumpFloodStep_CPU(const FIntVector& Size, TArrayView<const FVector> InData, TArrayView<FVector> OutData, int32 Step, bool bMultiThreaded)
+void FVoxelDistanceFieldUtilities::JumpFloodStep_CPU(const FIntVector& Size, TArrayView<const FVector3f> InData, TArrayView<FVector3f> OutData, int32 Step, bool bMultiThreaded)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
@@ -237,7 +237,7 @@ void FVoxelDistanceFieldUtilities::JumpFloodStep_CPU(const FIntVector& Size, TAr
 				const FIntVector Position(X, Y, Z);
 
 				float BestDistance = MAX_flt;
-				FVector BestSurfacePosition = MakeInvalidSurfacePosition();
+				FVector3f BestSurfacePosition = MakeInvalidSurfacePosition();
 
 				for (int32 DX = -1; DX <= 1; ++DX)
 				{
@@ -257,11 +257,11 @@ void FVoxelDistanceFieldUtilities::JumpFloodStep_CPU(const FIntVector& Size, TAr
 								continue;
 							}
 
-							const FVector NeighborSurfacePosition = FVoxelUtilities::Get3D(InData, Size, NeighborPosition);
+							const FVector3f NeighborSurfacePosition = FVoxelUtilities::Get3D(InData, Size, NeighborPosition);
 
 							if (IsSurfacePositionValid(NeighborSurfacePosition))
 							{
-								const float Distance = (NeighborSurfacePosition - FVector(Position)).SizeSquared();
+								const float Distance = (NeighborSurfacePosition - FVector3f(Position)).SizeSquared();
 								if (Distance < BestDistance)
 								{
 									BestDistance = Distance;

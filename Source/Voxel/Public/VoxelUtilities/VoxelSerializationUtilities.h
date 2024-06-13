@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -47,16 +47,13 @@ namespace EVoxelCompressionLevel
 	};
 }
 
-struct VOXEL_API FVoxelSerializationUtilities
+namespace FVoxelSerializationUtilities
 {
-public:
-	template<typename Array>
-	static void SerializeValues(FArchive& Archive, Array& Values, uint32 ValueConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion);
-	template<typename TAllocator>
-	static void SerializeMaterials(FArchive& Archive, TArray<FVoxelMaterial, TAllocator>& Materials, uint32 MaterialConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion);
+	VOXEL_API void SerializeValues(FArchive& Archive, TNoGrowArray<FVoxelValue>& Values, uint32 ValueConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion);
+	VOXEL_API void SerializeMaterials(FArchive& Archive, TNoGrowArray<FVoxelMaterial>& Materials, uint32 MaterialConfigFlag, FVoxelSerializationVersion::Type VoxelCustomVersion);
 
-	template<typename T, typename TAllocator>
-	static void SerializeMaterials(FArchive& Archive, TArray<TVoxelMaterialStorage<T>, TAllocator>& Materials, uint32 MaterialConfigFlag)
+	template<typename T>
+	void SerializeMaterials(FArchive& Archive, TNoGrowArray<TVoxelMaterialStorage<T>>& Materials, uint32 MaterialConfigFlag)
 	{
 		VOXEL_ASYNC_FUNCTION_COUNTER();
 
@@ -92,18 +89,19 @@ public:
 		}
 	}
 
-public:
-	static void CompressData(
+	//////////////////////////////////////////////////////////////////////////////
+
+	VOXEL_API void CompressData(
 		const uint8* UncompressedData,
 		int64 UncompressedDataNum, 
 		TArray<uint8>& OutCompressedData,
 		EVoxelCompressionLevel::Type CompressionLevel = EVoxelCompressionLevel::VoxelDefault);
-	static void CompressData(
+	VOXEL_API void CompressData(
 		FLargeMemoryWriter& UncompressedData,
 		TArray<uint8>& CompressedData,
 		EVoxelCompressionLevel::Type CompressionLevel = EVoxelCompressionLevel::VoxelDefault);
 	
-	static void CompressData(
+	inline void CompressData(
 		const TArray<uint8>& UncompressedData, 
 		TArray<uint8>& CompressedData,
 		EVoxelCompressionLevel::Type CompressionLevel = EVoxelCompressionLevel::VoxelDefault)
@@ -111,29 +109,7 @@ public:
 		CompressData(UncompressedData.GetData(), UncompressedData.Num(), CompressedData, CompressionLevel);
 	}
 
-	static bool DecompressData(const TArray<uint8>& CompressedData, TArray64<uint8>& UncompressedData);
-	static void TestCompression(int64 Size, EVoxelCompressionLevel::Type CompressionLevel);
+	VOXEL_API bool DecompressData(const TArray<uint8>& CompressedData, TArray64<uint8>& UncompressedData);
 
-private:
-	static constexpr int64 MaxChunkSize = MAX_int32; // Could be uint32, but let's not take any risk of overflow
-	static constexpr int64 MaxNumChunks = 16; // That's 32GB
-	
-	struct FHeader
-	{
-		// Need to store a special flag to tell DecompressData this is a 64 bit archive following the new format
-		const int32 LegacyFlag = -1;
-		// Sanity check
-		const uint32 Magic = 0xDEADBEEF;
-		
-		// Sanity check
-		int64 CompressedSize = 0;
-		// To pre-allocate buffer
-		int64 UncompressedSize = 0;
-		
-		uint32 Flags = 0;
-		uint32 NumChunks = 0;
-		
-		TVoxelStaticArray<uint32, MaxNumChunks> ChunksCompressedSize{ ForceInit };
-	};
-	static_assert(sizeof(FHeader) == 4 + 4 + 8 + 8 + 4 + 4 + MaxNumChunks * 4, "");
-};
+	VOXEL_API void TestCompression(int64 Size, EVoxelCompressionLevel::Type CompressionLevel);
+}

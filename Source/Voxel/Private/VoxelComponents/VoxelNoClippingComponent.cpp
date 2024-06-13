@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelComponents/VoxelNoClippingComponent.h"
 #include "VoxelData/VoxelDataIncludes.h"
@@ -167,7 +167,7 @@ void UVoxelNoClippingComponent::StartAsyncTask()
 		const auto Location = VoxelWorld->GlobalToLocalFloat(GetComponentLocation());
 		if (VoxelWorld->GetWorldBounds().ContainsFloat(Location))
 		{
-			VoxelWorldInfos.Add(FVoxelWorldInfo{ VoxelWorld, VoxelWorld->GetSubsystemChecked<FVoxelData>().AsShared(), Location });
+			VoxelWorldInfos.Add(FVoxelWorldInfo{ VoxelWorld, VoxelWorld->GetDataSharedPtr(), Location });
 		}
 	}
 
@@ -321,7 +321,7 @@ UVoxelNoClippingComponent::FAsyncResult UVoxelNoClippingComponent::AsyncTask(con
 		{
 			for (int32 Z = 0; Z < Size.Z; Z++)
 			{
-				if (!FVoxelUtilities::GetAs<FVoxelValue>(Values, X + Size.X * Y + Size.X * Size.Y * Z).IsEmpty())
+				if (!Values[X + Size.X * Y + Size.X * Size.Y * Z].IsEmpty())
 				{
 					continue;
 				}

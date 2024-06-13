@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -121,14 +121,12 @@ public:
 	 * @param	World			The voxel world
 	 * @param	Position		The voxel position (use the World Position to Voxel function of the VoxelWorld to get it)
 	 * @param	Material		Material to set
-	 * @param	Mask			Only the selected channels will be set
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Tools|Data", meta = (DefaultToSelf = "World"))
 	static void SetMaterial(
 		AVoxelWorld* World, 
 		FIntVector Position, 
-		FVoxelMaterial Material,
-		UPARAM(meta = (Bitmask, BitmaskEnum = EVoxelMaterialMask_BP)) int32 Mask = -1);
+		FVoxelMaterial Material);
 
 	// Cache the values in the bounds
 	UFUNCTION(BlueprintCallable, Category = "Voxel|Data|Cache", meta = (DefaultToSelf = "World"))

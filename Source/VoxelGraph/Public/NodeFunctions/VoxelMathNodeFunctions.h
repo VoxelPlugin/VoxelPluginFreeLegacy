@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -15,8 +15,8 @@ namespace FVoxelMathNodeFunctions
 		v_flt X, v_flt Y, v_flt Z,
 		v_flt& OutX, v_flt& OutY, v_flt& OutZ)
 	{
-		const FVector BaseX = FVoxelVector(X_X, X_Y, X_Z).GetSafeNormal();
-        FVector BaseZ = FVoxelVector(Z_X, Z_Y, Z_Z).GetSafeNormal();
+		const FVector BaseX = FVoxelVector(X_X, X_Y, X_Z).GetSafeNormal().ToFloat();
+        FVector BaseZ = FVoxelVector(Z_X, Z_Y, Z_Z).GetSafeNormal().ToFloat();
         const FVector BaseY = BaseZ ^ BaseX;
         BaseZ = BaseX ^ BaseY;
 
@@ -33,7 +33,7 @@ namespace FVoxelMathNodeFunctions
 		FMatrix InvertedMatrix;
 		VectorMatrixInverse(&InvertedMatrix, &Matrix);
 
-		const FVector Result = InvertedMatrix.TransformPosition(FVoxelVector(X, Y, Z));
+		const FVector Result = InvertedMatrix.TransformPosition(FVoxelVector(X, Y, Z).ToFloat());
 		
 		OutX = Result.X;
 		OutY = Result.Y;
@@ -55,8 +55,8 @@ namespace FVoxelMathNodeFunctions
 			return;
 		}
 
-		const FVector BaseX = FVoxelVector(X_X.GetSingleValue(), X_Y.GetSingleValue(), X_Z.GetSingleValue()).GetSafeNormal();
-        FVector BaseZ = FVoxelVector(Z_X.GetSingleValue(), Z_Y.GetSingleValue(), Z_Z.GetSingleValue()).GetSafeNormal();
+		const FVector BaseX = FVoxelVector(X_X.GetSingleValue(), X_Y.GetSingleValue(), X_Z.GetSingleValue()).GetSafeNormal().ToFloat();
+        FVector BaseZ = FVoxelVector(Z_X.GetSingleValue(), Z_Y.GetSingleValue(), Z_Z.GetSingleValue()).GetSafeNormal().ToFloat();
         const FVector BaseY = BaseZ ^ BaseX;
         BaseZ = BaseX ^ BaseY;
 
@@ -77,7 +77,7 @@ namespace FVoxelMathNodeFunctions
 
 		const auto Check = [&](v_flt InX, v_flt InY, v_flt InZ)
 		{
-			const FVector Result = InvertedMatrix.TransformPosition(FVoxelVector(InX, InY, InZ));
+			const FVector Result = InvertedMatrix.TransformPosition(FVoxelVector(InX, InY, InZ).ToFloat());
 
 			if (bOutSet)
 			{

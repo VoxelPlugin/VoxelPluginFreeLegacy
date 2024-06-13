@@ -1,13 +1,11 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/MaterialCollections/VoxelLandscapeMaterialCollection.h"
 #include "VoxelRender/VoxelMaterialIndices.h"
 #include "VoxelRender/VoxelMaterialExpressions.h"
 #include "VoxelMessages.h"
 #include "VoxelEditorDelegates.h"
-#include "VoxelFeedbackContext.h"
 
-#include "Misc/MessageDialog.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceConstant.h"
 
@@ -18,20 +16,51 @@ UMaterialInterface* UVoxelLandscapeMaterialCollection::GetVoxelMaterial(const FV
 		return nullptr;
 	}
 
-	return FindOrAddPermutation(MakePermutation(Indices));
+	FVoxelLandscapeMaterialCollectionPermutation Permutation;
+	for (int32 Index = 0; Index < Indices.NumIndices; Index++)
+	{
+		Permutation.Names[Index] = IndicesToLayers.FindRef(Indices.SortedIndices[Index]).Name;
+	}
+	
+	return FindOrAddPermutation(Permutation);
 }
 
-
-TArray<FVoxelMaterialCollectionMaterialInfo> UVoxelLandscapeMaterialCollection::GetMaterials() const
+UMaterialInterface* UVoxelLandscapeMaterialCollection::GetIndexMaterial(uint8 Index) const
 {
-	TArray<FVoxelMaterialCollectionMaterialInfo> Result;
+	for (auto& Layer : Layers)
+	{
+		if (Layer.Index == Index)
+		{
+			FVoxelLandscapeMaterialCollectionPermutation Permutation;
+			Permutation.Names[0] = Layer.Name;
+			return FindOrAddPermutation(Permutation);
+		}
+	}
+	return nullptr;
+}
+
+TArray<UVoxelMaterialCollectionBase::FMaterialInfo> UVoxelLandscapeMaterialCollection::GetMaterials() const
+{
+	TArray<FMaterialInfo> Result;
 	for (auto& Layer : Layers)
 	{
 		FVoxelLandscapeMaterialCollectionPermutation Permutation;
 		Permutation.Names[0] = Layer.Name;
-		Result.Add(FVoxelMaterialCollectionMaterialInfo{ Layer.Index,  FindOrAddPermutation(Permutation), Layer.Name });
+		Result.Add(FMaterialInfo{ Layer.Index,Layer.Name,  FindOrAddPermutation(Permutation) });
 	}
 	return Result;
+}
+
+int32 UVoxelLandscapeMaterialCollection::GetMaterialIndex(FName Name) const
+{
+	for (auto& Layer : Layers)
+	{
+		if (Layer.Name == Name)
+		{
+			return Layer.Index;
+		}
+	}
+	return -1;
 }
 
 void UVoxelLandscapeMaterialCollection::InitializeCollection()
@@ -75,7 +104,7 @@ void UVoxelLandscapeMaterialCollection::PostEditChangeProperty(FPropertyChangedE
 		auto& Button = Notification.Buttons.Emplace_GetRef();
 		Button.Text = "Fix Now";
 		Button.Tooltip = "Fix the material";
-		Button.OnClick = FSimpleDelegate::CreateWeakLambda(Material, [Material = Material, This = MakeWeakObjectPtr(this)]()
+		Button.OnClick = FSimpleDelegate::CreateWeakLambda(Material.Get(), [Material = Material, This = MakeWeakObjectPtr(this)]()
 		{
 			FVoxelEditorDelegates::FixVoxelLandscapeMaterial.Broadcast(Material->GetMaterial());
 
@@ -98,144 +127,9 @@ void UVoxelLandscapeMaterialCollection::PostEditChangeProperty(FPropertyChangedE
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-#if WITH_EDITOR
-void UVoxelLandscapeMaterialCollection::BuildAllPermutations()
-{
-	CleanupCache();
-	InitializeCollection();
-	
-	TArray<int32> LayerIndices;
-	for (auto& Layer : Layers)
-	{
-		LayerIndices.AddUnique(Layer.Index);
-	}
-	LayerIndices.Sort();
-	
-	TArray<FVoxelLandscapeMaterialCollectionPermutation> PermutationsToBuild;
-	for (int32 NumIndices = 1; NumIndices <= MaxMaterialsToBlendAtOnce; NumIndices++)
-	{
-		FVoxelMaterialIndices Indices;
-		Indices.NumIndices = NumIndices;
-
-		const auto Add = [&]()
-		{
-			for (int32 Index = 1; Index < NumIndices; Index++)
-			{
-				ensure(Indices.SortedIndices[Index - 1] < Indices.SortedIndices[Index]);
-			}
-
-			const auto Permutation = MakePermutation(Indices);
-			if (!MaterialCache.Contains(Permutation))
-			{
-				PermutationsToBuild.Add(Permutation);
-			}
-		};
-
-		for (int32 Index0 = 0; Index0 < LayerIndices.Num(); Index0++)
-		{
-			Indices.SortedIndices[0] = LayerIndices[Index0];
-			if (NumIndices == 1) 
-			{
-				Add();
-				continue;
-			}
-
-			for (int32 Index1 = Index0 + 1; Index1 < LayerIndices.Num(); Index1++)
-			{
-				Indices.SortedIndices[1] = LayerIndices[Index1];
-				if (NumIndices == 2)
-				{
-					Add();
-					continue;
-				}
-
-				for (int32 Index2 = Index1 + 1; Index2 < LayerIndices.Num(); Index2++)
-				{
-					Indices.SortedIndices[2] = LayerIndices[Index2];
-					if (NumIndices == 3)
-					{
-						Add();
-						continue;
-					}
-
-					for (int32 Index3 = Index2 + 1; Index3 < LayerIndices.Num(); Index3++)
-					{
-						Indices.SortedIndices[3] = LayerIndices[Index3];
-						if (NumIndices == 4)
-						{
-							Add();
-							continue;
-						}
-
-						for (int32 Index4 = Index3 + 1; Index4 < LayerIndices.Num(); Index4++)
-						{
-							Indices.SortedIndices[4] = LayerIndices[Index4];
-							if (NumIndices == 5)
-							{
-								Add();
-								continue;
-							}
-
-							for (int32 Index5 = Index4 + 1; Index5 < LayerIndices.Num(); Index5++)
-							{
-								Indices.SortedIndices[5] = LayerIndices[Index5];
-								Add();
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if (PermutationsToBuild.Num() == 0)
-	{
-		FVoxelMessages::ShowNotification("No permutation to build");
-		return;
-	}
-	
-	const EAppReturnType::Type Result = FMessageDialog::Open(
-		EAppMsgType::YesNo,
-		FText::Format(VOXEL_LOCTEXT("This will create {0} new materials. Do you want to continue?\n\n To reduce permutations, decrease MaxMaterialsToBlendAtOnce or add layers to LayersToIgnore"), PermutationsToBuild.Num()));
-
-	if (Result == EAppReturnType::No)
-	{
-		return;
-	}
-
-	FVoxelScopedSlowTask SlowTask(PermutationsToBuild.Num(), VOXEL_LOCTEXT("Creating materials"));
-	SlowTask.MakeDialog(true);
-
-	for (auto& Permutation : PermutationsToBuild)
-	{
-		SlowTask.EnterProgressFrame();
-		if (SlowTask.ShouldCancel())
-		{
-			break;
-		}
-		
-		FindOrAddPermutation(Permutation);
-	}
-}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-FVoxelLandscapeMaterialCollectionPermutation UVoxelLandscapeMaterialCollection::MakePermutation(const FVoxelMaterialIndices& Indices) const
-{
-	FVoxelLandscapeMaterialCollectionPermutation Permutation;
-	for (int32 Index = 0; Index < Indices.NumIndices; Index++)
-	{
-		Permutation.Names[Index] = IndicesToLayers.FindRef(Indices.SortedIndices[Index]).Name;
-	}
-	return Permutation;
-}
-
 UMaterialInstanceConstant* UVoxelLandscapeMaterialCollection::FindOrAddPermutation(const FVoxelLandscapeMaterialCollectionPermutation& Permutation) const
 {
-	auto* CachedMaterial = MaterialCache.FindRef(Permutation);
+	UMaterialInstanceConstant* CachedMaterial = MaterialCache.FindRef(Permutation);
 	if (CachedMaterial && CachedMaterial->Parent == Material)
 	{
 		return CachedMaterial;
@@ -280,41 +174,27 @@ UMaterialInstanceConstant* UVoxelLandscapeMaterialCollection::CreateInstanceForP
 	MaterialCache.Add(Permutation, Instance);
 	// Make sure we're saving the new instance
 	MarkPackageDirty();
-	
+
 	Instance->SetParentEditorOnly(Material, false);
 	
 	FStaticParameterSet StaticParameters;
 	{
-		struct FInfoAndGuid
-		{
-			FMaterialParameterInfo Info;
-			FGuid Guid;
-		};
-		TMap<FName, FInfoAndGuid> NameToInfo;
-		ForeachMaterialParameter([&](const FMaterialParameterInfo& Info, const FGuid& Guid)
-		{
-			ensure(!NameToInfo.Contains(Info.Name));
-			NameToInfo.Add(Info.Name, { Info, Guid });
-		});
-
 		TSet<FName> AddedLayers;
 		for (int32 Index = 0; Index < 6; Index++)
 		{
 			const auto Name = Permutation.Names[Index];
-			if (Name.IsNone() || !ensure(NameToInfo.Contains(Name)))
+			if (Name.IsNone())
 			{
 				continue;
 			}
 			AddedLayers.Add(Name);
 
 			FStaticTerrainLayerWeightParameter Parameter;
-			Parameter.UE_5_SWITCH(ParameterInfo, ParameterInfo_DEPRECATED) = NameToInfo[Name].Info;
-			Parameter.UE_5_SWITCH(bOverride, bOverride_DEPRECATED) = true;
-			Parameter.UE_5_SWITCH(ExpressionGUID, ExpressionGUID_DEPRECATED) = NameToInfo[Name].Guid;
+			Parameter.LayerName = Name;
 			// Pass the layer to use to the voxel expression
 			// Add 1 000 000 to detect voxel vs landscape indices
 			Parameter.WeightmapIndex = 1000000 + Index;
-			StaticParameters.TerrainLayerWeightParameters.Add(Parameter);
+			StaticParameters.EditorOnly.TerrainLayerWeightParameters.Add(Parameter);
 		}
 
 		for (auto& Layer : Layers)
@@ -323,18 +203,12 @@ UMaterialInstanceConstant* UVoxelLandscapeMaterialCollection::CreateInstanceForP
 			{
 				continue;
 			}
-			if (!ensure(NameToInfo.Contains(Layer.Name)))
-			{
-				continue;
-			}
 			
 			FStaticTerrainLayerWeightParameter Parameter;
-			Parameter.UE_5_SWITCH(ParameterInfo, ParameterInfo_DEPRECATED) = NameToInfo[Layer.Name].Info;
-			Parameter.UE_5_SWITCH(bOverride, bOverride_DEPRECATED) = true;
-			Parameter.UE_5_SWITCH(ExpressionGUID, ExpressionGUID_DEPRECATED) = NameToInfo[Layer.Name].Guid;
+			Parameter.LayerName = Layer.Name;
 			// 1 000 006 is used to set Default
 			Parameter.WeightmapIndex = 1000006;
-			StaticParameters.TerrainLayerWeightParameters.Add(Parameter);
+			StaticParameters.EditorOnly.TerrainLayerWeightParameters.Add(Parameter);
 		}
 	}
 	
@@ -344,7 +218,7 @@ UMaterialInstanceConstant* UVoxelLandscapeMaterialCollection::CreateInstanceForP
 	return Instance;
 }
 
-void UVoxelLandscapeMaterialCollection::ForeachMaterialParameter(TFunctionRef<void(const FMaterialParameterInfo&, const FGuid&)> Lambda) const
+void UVoxelLandscapeMaterialCollection::ForeachMaterialParameterName(TFunctionRef<void(FName)> Lambda) const
 {
 	if (!ensure(Material))
 	{
@@ -362,31 +236,36 @@ void UVoxelLandscapeMaterialCollection::ForeachMaterialParameter(TFunctionRef<vo
 		return;
 	}
 
-	TArray<FMaterialParameterInfo> ParameterInfos;
-	TArray<FGuid> Guids;
+	TSet<FName> Names;
+	for (const TObjectPtr<UMaterialExpression>& Expression : ActualMaterial->GetExpressions())
+	{
+		if (const UMaterialExpressionLandscapeLayerWeight* Weight = Cast<UMaterialExpressionLandscapeLayerWeight>(Expression))
+		{
+			Names.Add(Weight->ParameterName);
+		}
+		if (const UMaterialExpressionLandscapeLayerSwitch* Switch = Cast<UMaterialExpressionLandscapeLayerSwitch>(Expression))
+		{
+			Names.Add(Switch->ParameterName);
+		}
+		if (const UMaterialExpressionLandscapeLayerSample* Sample = Cast<UMaterialExpressionLandscapeLayerSample>(Expression))
+		{
+			Names.Add(Sample->ParameterName);
+		}
+		if (const UMaterialExpressionLandscapeLayerBlend* Blend = Cast<UMaterialExpressionLandscapeLayerBlend>(Expression))
+		{
+			for (const FLayerBlendInput& Layer : Blend->Layers)
+			{
+				Names.Add(Layer.LayerName);
+			}
+		}
 
-#if VOXEL_ENGINE_VERSION < 500
-	ActualMaterial->GetAllParameterInfo<UMaterialExpressionLandscapeLayerWeight>(ParameterInfos, Guids);
-	ActualMaterial->GetAllParameterInfo<UMaterialExpressionLandscapeLayerSwitch>(ParameterInfos, Guids);
-	ActualMaterial->GetAllParameterInfo<UMaterialExpressionLandscapeLayerSample>(ParameterInfos, Guids);
-	ActualMaterial->GetAllParameterInfo<UMaterialExpressionLandscapeLayerBlend>(ParameterInfos, Guids);
-	// Note: don't query landscape visibility parameter name, it just returns __LANDSCAPE_VISIBILITY__
-#else
-	for (int32 ParameterTypeIndex = 0; ParameterTypeIndex < NumMaterialParameterTypes; ++ParameterTypeIndex)
-	{
-		const EMaterialParameterType ParameterType = static_cast<EMaterialParameterType>(ParameterTypeIndex);
-		ActualMaterial->GetAllParameterInfoOfType(ParameterType, ParameterInfos, Guids);
+		// Note: don't check landscape visibility parameter name, it just returns __LANDSCAPE_VISIBILITY__
 	}
-#endif
 
-	if (!ensure(ParameterInfos.Num() == Guids.Num()))
+	// Make sure names are unique before iterating
+	for (const FName Name : Names)
 	{
-		return;
-	}
-	
-	for (int32 Index = 0; Index < ParameterInfos.Num(); Index++)
-	{
-		Lambda(ParameterInfos[Index], Guids[Index]);
+		Lambda(Name);
 	}
 }
 
@@ -403,22 +282,13 @@ bool UVoxelLandscapeMaterialCollection::NeedsToBeConvertedToVoxel() const
 		return false;
 	}
 
-	return FVoxelMaterialExpressionUtilities::NeedsToBeConvertedToVoxel(ActualMaterial->Expressions);
+	return FVoxelMaterialExpressionUtilities::NeedsToBeConvertedToVoxel(ActualMaterial->GetEditorOnlyData()->ExpressionCollection.Expressions);
 }
 
 void UVoxelLandscapeMaterialCollection::FixupLayers()
 {
 	VOXEL_FUNCTION_COUNTER();
-
-	// LayersToIgnore
-	{
-		const TMap<FName, bool> CurrentLayersToIgnore = MoveTemp(LayersToIgnore);
-		ForeachMaterialParameter([&](const FMaterialParameterInfo& Info, const FGuid& Guid)
-		{
-			LayersToIgnore.Add(Info.Name, CurrentLayersToIgnore.FindRef(Info.Name));
-		});
-	}
-		
+	
 	TSet<uint8> UsedIndices;
 	TMap<FName, uint8> ExistingIndices;
 
@@ -439,17 +309,12 @@ void UVoxelLandscapeMaterialCollection::FixupLayers()
 	}
 
 	Layers.Reset();
-	ForeachMaterialParameter([&](const FMaterialParameterInfo& Info, const FGuid& Guid)
+	ForeachMaterialParameterName([&](FName Name)
 	{
-		if (LayersToIgnore.FindRef(Info.Name))
-		{
-			return;
-		}
-		
-		auto* ExistingIndex = ExistingIndices.Find(Info.Name);
+		auto* ExistingIndex = ExistingIndices.Find(Name);
 		const uint8 Index = ExistingIndex ? *ExistingIndex : GetUniqueIndex(0);
 		
-		Layers.Add(FVoxelLandscapeMaterialCollectionLayer{ Info.Name, Index });
+		Layers.Add(FVoxelLandscapeMaterialCollectionLayer{ Name, Index });
 	});
 }
 

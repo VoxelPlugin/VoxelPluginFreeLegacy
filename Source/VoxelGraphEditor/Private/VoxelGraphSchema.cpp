@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGraphSchema.h"
 #include "VoxelEdGraph.h"
@@ -24,6 +24,7 @@
 #include "VoxelGraphNodes/VoxelGraphNode.h"
 #include "VoxelGraphNodes/VoxelGraphNode_Root.h"
 
+#include "Engine/Texture2D.h"
 #include "ScopedTransaction.h"
 #include "EdGraphNode_Comment.h"
 #include "GraphEditorSettings.h"
@@ -32,7 +33,7 @@
 #include "Framework/Commands/GenericCommands.h"
 #include "UObject/UObjectIterator.h"
 #include "GraphEditorActions.h"
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Modules/ModuleManager.h"
 #include "Engine/StreamableManager.h"
 #include "Curves/CurveFloat.h"
@@ -254,7 +255,7 @@ bool UVoxelGraphSchema::ConnectionCausesLoop(const UEdGraphPin* InputPin, const 
 				{
 					continue;
 				}
-				for (auto* OtherNode : Declaration->Graph->AllNodes)
+				for (UVoxelNode* OtherNode : Declaration->Graph->AllNodes)
 				{
 					auto* Usage = Cast<UVoxelLocalVariableUsage>(OtherNode);
 					if (Usage && Usage->Declaration == Declaration)
@@ -334,7 +335,11 @@ bool UVoxelGraphSchema::TryCreateConnection(UEdGraphPin* A, UEdGraphPin* B) cons
 	return bModified;
 }
 
-void UVoxelGraphSchema::TrySetDefaultValue(UEdGraphPin& Pin, const FString& NewDefaultValue, bool bMarkAsModified) const
+void UVoxelGraphSchema::TrySetDefaultValue(
+	UEdGraphPin& Pin,
+	const FString& NewDefaultValue, 
+	bool bMarkAsModified
+) const
 {
 	FString DefaultValue = NewDefaultValue;
 
@@ -516,7 +521,7 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 
 		if (auto* Node = Cast<UVoxelGraphNode>(InGraphNode))
 		{
-			if (auto* VoxelNode = Node->VoxelNode)
+			if (UVoxelNode* VoxelNode = Node->VoxelNode)
 			{
 				// If on an input that can be deleted, show option
 				if (InGraphPin->Direction == EGPD_Input)
@@ -561,7 +566,7 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 
 		if (auto* Node = Cast<UVoxelGraphNode>(InGraphNode))
 		{
-			if (auto* VoxelNode = Node->VoxelNode)
+			if (UVoxelNode* VoxelNode = Node->VoxelNode)
 			{
 				// Add local variables selection & conversion to reroute nodes
 				if (VoxelNode->IsA(UVoxelLocalVariableBase::StaticClass()))
@@ -621,8 +626,7 @@ void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, c
 	FStreamableManager AssetLoader;
 	for(auto& AssetData : Assets)
 	{
-		FStringAssetReference AssetRef(AssetData.ObjectPath.ToString());
-		UObject* Asset = AssetLoader.LoadSynchronous(AssetRef);
+		UObject* Asset = AssetLoader.LoadSynchronous(AssetData.GetSoftObjectPath());
 		if (Asset->IsA<UVoxelHeightmapAsset>())
 		{
 			auto* Node = Generator->ConstructNewNode<UVoxelNode_HeightmapSampler>(GraphPosition);
@@ -684,8 +688,7 @@ void UVoxelGraphSchema::GetAssetsGraphHoverMessage(const TArray<FAssetData>& Ass
 	FStreamableManager AssetLoader;
 	for(auto& AssetData : Assets)
 	{
-		FStringAssetReference AssetRef(AssetData.ObjectPath.ToString());
-		UObject* Asset = AssetLoader.LoadSynchronous(AssetRef);
+		UObject* Asset = AssetLoader.LoadSynchronous(AssetData.GetSoftObjectPath());
 		if (Asset->IsA<UVoxelHeightmapAsset>())
 		{
 			OutOkIcon = true;
@@ -909,13 +912,12 @@ void UVoxelGraphSchema::GetAllVoxelNodeActions(FGraphActionMenuBuilder& ActionMe
 
 		// Collect a full list of assets with the specified class
 		TArray<FAssetData> AssetDataList;
-		AssetRegistryModule.Get().GetAssetsByClass(UVoxelGraphMacro::StaticClass()->GetFName(), AssetDataList);
+		AssetRegistryModule.Get().GetAssetsByClass(UVoxelGraphMacro::StaticClass()->GetClassPathName(), AssetDataList);
 
 		for (const FAssetData& AssetData : AssetDataList)
 		{
 			FStreamableManager AssetLoader;
-			FStringAssetReference AssetRef(AssetData.ObjectPath.ToString());
-			UVoxelGraphMacro* Macro = Cast<UVoxelGraphMacro>(AssetLoader.LoadSynchronous(AssetRef));
+			UVoxelGraphMacro* Macro = Cast<UVoxelGraphMacro>(AssetLoader.LoadSynchronous(AssetData.GetSoftObjectPath()));
 
 			if (!Macro || !Macro->InputNode || !Macro->OutputNode || !Macro->bShowInContextMenu)
 			{

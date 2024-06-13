@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "ActorFactoryVoxelPlaceableItems.h"
 #include "VoxelPlaceableItems/Actors/VoxelPlaceableItemActor.h"
@@ -49,11 +49,13 @@ void UActorFactoryVoxelAssetActor::PostSpawnActor(UObject* Asset, AActor* NewAct
 	InitActor(Asset, NewActor);
 }
 
+#if VOXEL_ENGINE_VERSION < 504
 void UActorFactoryVoxelAssetActor::PostCreateBlueprint(UObject* Asset, AActor* CDO)
 {
 	Super::PostCreateBlueprint(Asset, CDO);
 	InitActor(Asset, CDO);
 }
+#endif
 
 bool UActorFactoryVoxelAssetActor::CanCreateActorFrom(const FAssetData& AssetData, FText& OutErrorMsg)
 {

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "AssetTypeActions_VoxelGraphGenerator.h"
 #include "Misc/PackageName.h"

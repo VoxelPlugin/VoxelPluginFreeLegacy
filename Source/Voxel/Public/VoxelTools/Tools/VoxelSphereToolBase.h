@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -13,10 +13,10 @@ class VOXEL_API UVoxelSphereToolBase : public UVoxelToolWithAlignment
 
 public:
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UMaterialInterface* ToolMaterial = nullptr;
+	TObjectPtr<UMaterialInterface> ToolMaterial = nullptr;
 
 	UPROPERTY(Category = "Tool Preview Settings", EditAnywhere, BlueprintReadWrite, meta = (HideInPanel))
-	UStaticMesh* SphereMesh = nullptr;
+	TObjectPtr<UStaticMesh> SphereMesh = nullptr;
 
 public:
 	UVoxelSphereToolBase();

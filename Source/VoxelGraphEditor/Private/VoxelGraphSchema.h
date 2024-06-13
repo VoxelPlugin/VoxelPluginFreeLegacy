@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -19,7 +19,7 @@ struct FVoxelGraphSchemaAction_NewNode : public FEdGraphSchemaAction
 public:
 	/** Class of node we want to create */
 	UPROPERTY()
-	UClass* VoxelNodeClass = nullptr;
+	TObjectPtr<UClass> VoxelNodeClass = nullptr;
 	
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
 	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
@@ -32,7 +32,7 @@ struct FVoxelGraphSchemaAction_NewMacroNode : public FEdGraphSchemaAction
 
 public:
 	UPROPERTY()
-	UVoxelGraphMacro* Macro = nullptr;
+	TObjectPtr<UVoxelGraphMacro> Macro = nullptr;
 
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
 	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
@@ -61,7 +61,7 @@ struct FVoxelGraphSchemaAction_NewLocalVariableUsage : public FEdGraphSchemaActi
 
 public:
 	UPROPERTY()
-	UVoxelLocalVariableDeclaration* Declaration = nullptr;
+	TObjectPtr<UVoxelLocalVariableDeclaration> Declaration = nullptr;
 	
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
 	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
@@ -128,7 +128,11 @@ public:
 	virtual void GetGraphContextActions(FGraphContextMenuBuilder& ContextMenuBuilder) const override;
 	virtual const FPinConnectionResponse CanCreateConnection(const UEdGraphPin* A, const UEdGraphPin* B) const override;
 	virtual bool TryCreateConnection(UEdGraphPin* A, UEdGraphPin* B) const override;
-	virtual void TrySetDefaultValue(UEdGraphPin& Pin, const FString& NewDefaultValue, bool bMarkAsModified) const override;
+	virtual void TrySetDefaultValue(
+		UEdGraphPin& Pin,
+		const FString& NewDefaultValue, 
+		bool bMarkAsModified
+	) const override;
 	virtual bool CreateAutomaticConversionNodeAndConnections(UEdGraphPin* A, UEdGraphPin* B) const override;
 	virtual void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
 	virtual void BreakNodeLinks(UEdGraphNode& TargetNode) const override;

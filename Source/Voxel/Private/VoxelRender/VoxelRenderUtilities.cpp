@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRender/VoxelRenderUtilities.h"
 #include "VoxelRender/VoxelProceduralMeshComponent.h"
@@ -7,7 +7,6 @@
 #include "VoxelRender/VoxelChunkMaterials.h"
 #include "VoxelRender/VoxelChunkMesh.h"
 #include "VoxelRender/VoxelChunkToUpdate.h"
-#include "VoxelRender/VoxelTexturePool.h"
 #include "VoxelRender/IVoxelRenderer.h"
 #include "VoxelRender/Meshers/VoxelMesherUtilities.h"
 #include "VoxelUtilities/VoxelMaterialUtilities.h"
@@ -44,14 +43,14 @@ void FVoxelRenderUtilities::InitializeMaterialInstance(
 	UMaterialInstanceDynamic* MaterialInstance,
 	int32 LOD,
 	const FIntVector& Position,
-	const FVoxelRuntimeSettings& Settings)
+	const FVoxelRendererSettingsBase& Settings)
 {
 	VOXEL_FUNCTION_COUNTER();
 
 	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("LOD"), LOD);
 	MaterialInstance->SetVectorParameterValue(STATIC_FNAME("ChunkPosition"), FVector(Position));
 	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("VoxelSize"), Settings.VoxelSize);
-	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("ChunkSize"), MESHER_CHUNK_SIZE);
+	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("ChunkSize"), RENDER_CHUNK_SIZE);
 	MaterialInstance->SetScalarParameterValue(STATIC_FNAME("FadeDuration"), Settings.ChunksDitheringDuration);
 }
 
@@ -71,7 +70,7 @@ inline void IterateDynamicMaterials(UVoxelProceduralMeshComponent& Mesh, T Lambd
 
 inline void SetMaterialDithering(
 	UMaterialInstanceDynamic& Material,
-	const FVoxelRuntimeSettings& Settings,
+	const FVoxelRendererSettingsBase& Settings,
 	const FVoxelRenderUtilities::FDitheringInfo& DitheringInfo)
 {
 	if (Settings.RenderType == EVoxelRenderType::SurfaceNets)
@@ -102,7 +101,7 @@ inline void SetMaterialDithering(
 
 void FVoxelRenderUtilities::StartMeshDithering(
 	UVoxelProceduralMeshComponent& Mesh, 
-	const FVoxelRuntimeSettings& Settings, 
+	const FVoxelRendererSettingsBase& Settings, 
 	const FDitheringInfo& DitheringInfo)
 {
 	VOXEL_FUNCTION_COUNTER();
@@ -112,7 +111,7 @@ void FVoxelRenderUtilities::StartMeshDithering(
 	});
 }
 
-void FVoxelRenderUtilities::ResetDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRuntimeSettings& Settings)
+void FVoxelRenderUtilities::ResetDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRendererSettingsBase& Settings)
 {
 	VOXEL_FUNCTION_COUNTER();
 	IterateDynamicMaterials(Mesh, [&](UMaterialInstanceDynamic& Material)
@@ -173,7 +172,7 @@ void FVoxelRenderUtilities::ShowMesh(UVoxelProceduralMeshComponent& Mesh)
 #define CHECK_CANCEL() if (CancelCounter.GetValue() > CancelThreshold) return {};
 
 TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread(
-	const FVoxelRuntimeSettings& RendererSettings,
+	const FVoxelRendererSettingsBase& RendererSettings,
 	const TArray<FVoxelChunkMeshSection>& Sections,
 	const FIntVector& CenterPosition,
 	const FThreadSafeCounter& CancelCounter, 
@@ -182,7 +181,6 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	VOXEL_ASYNC_FUNCTION_COUNTER();
 
 	const bool bShowMainChunks = CVarShowTransitions.GetValueOnAnyThread() == 0;
-	const uint32 TextureDataStride = RendererSettings.GetTextureDataStride();
 
 	auto ProcMeshBuffersPtr = MakeUnique<FVoxelProcMeshBuffers>();
 	auto& ProcMeshBuffers = *ProcMeshBuffersPtr;
@@ -191,8 +189,6 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	int32 NumIndices = 0;
 	int32 NumAdjacencyIndices = 0;
 	int32 NumTextureCoordinates = -1;
-	int32 NumTextureData = 0;
-	int32 NumCollisionCubes = 0;
 	for (auto& Section : Sections)
 	{
 		CHECK_CANCEL();
@@ -221,9 +217,6 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 			{
 				NumTextureCoordinates = -2;
 			}
-
-			NumTextureData += ChunkBuffers.TextureData.Num();
-			NumCollisionCubes += ChunkBuffers.CollisionCubes.Num();
 		};
 
 		if (Section.MainChunk.IsValid() && bShowMainChunks)
@@ -244,32 +237,35 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	auto& ColorBuffer = ProcMeshBuffers.VertexBuffers.ColorVertexBuffer;
 	auto& IndexBuffer = ProcMeshBuffers.IndexBuffer;
 	auto& AdjacencyIndexBuffer = ProcMeshBuffers.AdjacencyIndexBuffer;
-	auto& CollisionCubes = ProcMeshBuffers.CollisionCubes;
-	TNoGrowArray<uint8> TextureData;
 	
 	CHECK_CANCEL();
-
+	PositionBuffer.Init(NumVertices, FVoxelProcMeshBuffers::bNeedsCPUAccess);
+	CHECK_CANCEL();
+	if (RendererSettings.bRenderWorld)
 	{
-		VOXEL_ASYNC_SCOPE_COUNTER("Init");
-		
-		PositionBuffer.Init(NumVertices, FVoxelProcMeshBuffers::bNeedsCPUAccess);
-		if (RendererSettings.bRenderWorld)
-		{
-			StaticMeshBuffer.SetUseFullPrecisionUVs(!RendererSettings.bHalfPrecisionCoordinates);
-			StaticMeshBuffer.Init(NumVertices, NumTextureCoordinates, FVoxelProcMeshBuffers::bNeedsCPUAccess);
-			ColorBuffer.Init(NumVertices, FVoxelProcMeshBuffers::bNeedsCPUAccess);
-			TextureData.Reserve(NumTextureData);
-		}
-		IndexBuffer.AllocateData(NumIndices);
-		AdjacencyIndexBuffer.AllocateData(NumAdjacencyIndices);
-		CollisionCubes.Reserve(NumCollisionCubes);
+		StaticMeshBuffer.SetUseFullPrecisionUVs(!RendererSettings.bHalfPrecisionCoordinates);
+		StaticMeshBuffer.Init(NumVertices, NumTextureCoordinates, FVoxelProcMeshBuffers::bNeedsCPUAccess);
+		CHECK_CANCEL();
+		ColorBuffer.Init(NumVertices, FVoxelProcMeshBuffers::bNeedsCPUAccess);
 	}
-
+	CHECK_CANCEL();
+	IndexBuffer.AllocateData(NumIndices);
+	CHECK_CANCEL();
+	AdjacencyIndexBuffer.AllocateData(NumAdjacencyIndices);
 	CHECK_CANCEL();
 
 	int32 VerticesOffset = 0;
 	int32 IndicesOffset = 0;
 	int32 AdjacencyIndicesOffset = 0;
+
+	const auto Get = [](auto& Array, int32 Index) -> const auto&
+	{
+#if VOXEL_DEBUG
+		return Array[Index];
+#else
+		return Array.GetData()[Index];
+#endif
+	};
 
 	const auto CopyPositions = [&](const FVoxelChunkMeshBuffers& Chunk, const FVector& Offset)
 	{
@@ -277,45 +273,22 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		const int32 ChunkNumVertices = Chunk.GetNumVertices();
 		for (int32 Index = 0; Index < ChunkNumVertices; Index++)
 		{
-			const auto NewPos = FVoxelUtilities::Get(Chunk.Positions, Index) + Offset;
-			PositionBuffer.VertexPosition(VerticesOffset + Index) = UE_5_CONVERT(FVector3f, NewPos);
+			PositionBuffer.VertexPosition(VerticesOffset + Index) = FVector3f(Get(Chunk.Positions, Index) + Offset);
 		}
 	};
-	const auto CopyColorsAndTextureData = [&](const FVoxelChunkMeshBuffers& Chunk)
+	const auto CopyColors = [&](const FVoxelChunkMeshBuffers& Chunk)
 	{
 		if (!RendererSettings.bRenderWorld)
 		{
 			ensure(Chunk.Colors.Num() == 0);
 			return;
 		}
-
-		if (Chunk.TextureData.Num() > 0)
+		
+		VOXEL_ASYNC_SCOPE_COUNTER("CopyColors");
+		const int32 ChunkNumVertices = Chunk.GetNumVertices();
+		for (int32 Index = 0; Index < ChunkNumVertices; Index++)
 		{
-			VOXEL_ASYNC_SCOPE_COUNTER("CopyColorsAndTextureData");
-			
-			ensure(TextureData.Num() % TextureDataStride == 0);
-			const int32 Offset = TextureData.Num() / TextureDataStride;
-			TextureData.Append(Chunk.TextureData);
-			
-			const int32 ChunkNumVertices = Chunk.GetNumVertices();
-			for (int32 Index = 0; Index < ChunkNumVertices; Index++)
-			{
-				FVoxelMaterial Material = FVoxelMaterial::CreateFromColor(FVoxelUtilities::Get(Chunk.Colors, Index));
-				if (Material.CubicColor_IsUsingTexture())
-				{
-					Material.CubicColor_SetTextureDataIndex(Material.CubicColor_GetTextureDataIndex() + Offset);
-				}
-				ColorBuffer.VertexColor(VerticesOffset + Index) = Material.GetColor();
-			}
-		}
-		else
-		{
-			VOXEL_ASYNC_SCOPE_COUNTER("CopyColors");
-			const int32 ChunkNumVertices = Chunk.GetNumVertices();
-			for (int32 Index = 0; Index < ChunkNumVertices; Index++)
-			{
-				ColorBuffer.VertexColor(VerticesOffset + Index) = FVoxelUtilities::Get(Chunk.Colors, Index);
-			}
+			ColorBuffer.VertexColor(VerticesOffset + Index) = Get(Chunk.Colors, Index);
 		}
 	};
 	const auto CopyStaticMesh = [&](const FVoxelChunkMeshBuffers& Chunk)
@@ -333,19 +306,15 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		for (int32 Index = 0; Index < ChunkNumVertices; Index++)
 		{
 			{
-				auto& Tangent = FVoxelUtilities::Get(Chunk.Tangents, Index);
-				auto& Normal = FVoxelUtilities::Get(Chunk.Normals, Index);
-				StaticMeshBuffer.SetVertexTangents(
-					VerticesOffset + Index,
-					UE_5_CONVERT(FVector3f, Tangent.TangentX),
-					UE_5_CONVERT(FVector3f, Tangent.GetY(Normal)),
-					UE_5_CONVERT(FVector3f, Normal));
+				auto& Tangent = Get(Chunk.Tangents, Index);
+				auto& Normal = Get(Chunk.Normals, Index);
+				StaticMeshBuffer.SetVertexTangents(VerticesOffset + Index, FVector3f(Tangent.TangentX), FVector3f(Tangent.GetY(Normal)), FVector3f(Normal));
 			}
 			check(Chunk.TextureCoordinates.Num() == NumTextureCoordinates);
 			for (int32 Tex = 0; Tex < NumTextureCoordinates; Tex++)
 			{
-				auto& TextureCoordinate = FVoxelUtilities::Get(Chunk.TextureCoordinates[Tex], Index);
-				StaticMeshBuffer.SetVertexUV(VerticesOffset + Index, Tex, UE_5_CONVERT(FVector2f, TextureCoordinate));
+				auto& TextureCoordinate = Get(Chunk.TextureCoordinates[Tex], Index);
+				StaticMeshBuffer.SetVertexUV(VerticesOffset + Index, Tex, FVector2f(TextureCoordinate));
 			}
 		}
 	};
@@ -354,7 +323,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		VOXEL_ASYNC_SCOPE_COUNTER("CopyIndices");
 		for (int32 Index = 0; Index < Chunk.Indices.Num(); Index++)
 		{
-			IndexBuffer.SetIndex(IndicesOffset + Index, VerticesOffset + FVoxelUtilities::Get(Chunk.Indices, Index));
+			IndexBuffer.SetIndex(IndicesOffset + Index, VerticesOffset + Get(Chunk.Indices, Index));
 		}
 	};
 	const auto CopyAdjacencyIndices = [&](const FVoxelChunkMeshBuffers& Chunk)
@@ -366,17 +335,9 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 		VOXEL_ASYNC_SCOPE_COUNTER("CopyAdjacencyIndices");
 		for (int32 Index = 0; Index < AdjacencyIndices.Num(); Index++)
 		{
-			AdjacencyIndexBuffer.SetIndex(AdjacencyIndicesOffset + Index, VerticesOffset + FVoxelUtilities::Get(AdjacencyIndices, Index));
+			AdjacencyIndexBuffer.SetIndex(AdjacencyIndicesOffset + Index, VerticesOffset + Get(AdjacencyIndices, Index));
 		}
 		return AdjacencyIndices.Num();
-	};
-	const auto CopyCollisionCubes = [&](const FVoxelChunkMeshBuffers& Chunk, const FVector& Offset)
-	{
-		VOXEL_ASYNC_SCOPE_COUNTER("CopyCollisionCubes");
-		for (auto& Cube : Chunk.CollisionCubes)
-		{
-			ToNoGrowArray(CollisionCubes).Add(Cube.ShiftBy(Offset));
-		}
 	};
 	
 	for (const FVoxelChunkMeshSection& Chunk : Sections)
@@ -398,28 +359,29 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 				VOXEL_ASYNC_SCOPE_COUNTER("TranslateVertices");
 				for (int32 Index = 0; Index < MainChunk.GetNumVertices(); Index++)
 				{
-					const auto NewPos = FVoxelMesherUtilities::GetTranslatedTransvoxel(
-						FVoxelUtilities::Get(MainChunk.Positions, Index),
-						FVoxelUtilities::Get(MainChunk.Normals, Index),
+					PositionBuffer.VertexPosition(VerticesOffset + Index) = FVector3f(FVoxelMesherUtilities::GetTranslatedTransvoxel(
+						Get(MainChunk.Positions, Index),
+						Get(MainChunk.Normals, Index),
 						Chunk.TransitionsMask,
-						Chunk.LOD) + PositionOffset;
-					PositionBuffer.VertexPosition(VerticesOffset + Index) = UE_5_CONVERT(FVector3f, NewPos);
+						Chunk.LOD) + PositionOffset);
 				}
 			}
 			else
 			{
 				CopyPositions(MainChunk, PositionOffset);
 			}
-			
-			CopyColorsAndTextureData(MainChunk);
+			CHECK_CANCEL();
+			CopyColors(MainChunk);
+			CHECK_CANCEL();
 			CopyStaticMesh(MainChunk);
+			CHECK_CANCEL();
 			CopyIndices(MainChunk);
-			CopyCollisionCubes(MainChunk, PositionOffset);
-
+			CHECK_CANCEL();
 			if (Chunk.bEnableTessellation)
 			{
 				AdjacencyIndicesOffset += CopyAdjacencyIndices(MainChunk);
 			}
+			CHECK_CANCEL();
 			
 			VerticesOffset += MainChunk.GetNumVertices();
 			IndicesOffset += MainChunk.Indices.Num();
@@ -433,16 +395,21 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 			// Copy bounds
 			ProcMeshBuffers.LocalBounds += TransitionChunk.Bounds.ShiftBy(PositionOffset);
 			
+			CHECK_CANCEL();
 			CopyPositions(TransitionChunk, PositionOffset);
-			CopyColorsAndTextureData(TransitionChunk);
+			CHECK_CANCEL();
+			CopyColors(TransitionChunk);
+			CHECK_CANCEL();
 			CopyStaticMesh(TransitionChunk);
+			CHECK_CANCEL();
 			CopyIndices(TransitionChunk);
-			CopyCollisionCubes(TransitionChunk, PositionOffset);
+			CHECK_CANCEL();
 
 			if (Chunk.bEnableTessellation)
 			{
 				AdjacencyIndicesOffset += CopyAdjacencyIndices(TransitionChunk);
 			}
+			CHECK_CANCEL();
 			
 			VerticesOffset += TransitionChunk.GetNumVertices();
 			IndicesOffset += TransitionChunk.Indices.Num();
@@ -454,15 +421,9 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	check(AdjacencyIndicesOffset == NumAdjacencyIndices);
 	
 	CHECK_CANCEL();
-	
-	// Multiply by the voxel size here
-	// FTriangleMeshImplicitObject::GJKContactPointImp doesn't handle thickness well with highly scaled objects
-	for (uint32 Index = 0; Index < PositionBuffer.GetNumVertices(); Index++)
-	{
-		PositionBuffer.VertexPosition(Index) *= RendererSettings.VoxelSize;
-	}
-	
-	ProcMeshBuffers.LocalBounds = ProcMeshBuffers.LocalBounds.TransformBy(FScaleMatrix(RendererSettings.VoxelSize)).ExpandBy(RendererSettings.BoundsExtension);
+
+	// Bounds extension is in world space, and we're in local (voxel) space
+	ProcMeshBuffers.LocalBounds = ProcMeshBuffers.LocalBounds.ExpandBy(RendererSettings.BoundsExtension / RendererSettings.VoxelSize);
 
 #if VOXEL_DEBUG
 	{
@@ -478,10 +439,6 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 	}
 #endif
 
-	if (TextureData.Num() > 0 && ensure(TextureData.Num() % TextureDataStride == 0))
-	{
-		ProcMeshBuffers.TextureData = MakeVoxelShared<FVoxelTexturePoolTextureData>(TextureDataStride, MoveTemp(FromNoGrowArray(TextureData)));
-	}
 	ProcMeshBuffers.UpdateStats();
 	
 	CHECK_CANCEL();
@@ -491,7 +448,7 @@ TUniquePtr<FVoxelProcMeshBuffers> FVoxelRenderUtilities::MergeSections_AnyThread
 
 TUniquePtr<FVoxelBuiltChunkMeshes> FVoxelRenderUtilities::BuildMeshes_AnyThread(
 	const FVoxelChunkMeshesToBuild& ChunkMeshesToBuild,
-	const FVoxelRuntimeSettings& RendererSettings,
+	const FVoxelRendererSettingsBase& RendererSettings,
 	const FIntVector& Position,
 	const FThreadSafeCounter& CancelCounter,
 	int32 CancelThreshold)
@@ -522,16 +479,15 @@ TUniquePtr<FVoxelBuiltChunkMeshes> FVoxelRenderUtilities::BuildMeshes_AnyThread(
 FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 	int32 LOD,
 	const FIntVector& Position,
-	const IVoxelRenderer& Renderer, 
+	const FVoxelRendererSettingsBase& RendererSettings,
 	const FVoxelChunkSettings& ChunkSettings,
 	FVoxelChunkMaterials& ChunkMaterials,
 	const FVoxelChunkMesh& MainChunk,
 	const FVoxelChunkMesh* TransitionChunk,
+	const FVoxelOnMaterialInstanceCreated& OnMaterialInstanceCreated,
 	const FDitheringInfo& DitheringInfo)
 {
 	VOXEL_FUNCTION_COUNTER();
-
-	const FVoxelRuntimeSettings& Settings = Renderer.Settings;
 	
 	FVoxelChunkMeshesToBuild Meshes;
 
@@ -540,35 +496,40 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 			LOD,
 			Position,
 			false, // Set below
-			Settings.RenderType == EVoxelRenderType::MarchingCubes && 
+			RendererSettings.RenderType == EVoxelRenderType::MarchingCubes && 
 			// Don't translate if the transition chunk isn't built 
 			TransitionChunk && 
 			// No valid normals for these, so can't translate
-			Settings.NormalConfig != EVoxelNormalConfig::FlatNormal && 
-			Settings.NormalConfig != EVoxelNormalConfig::NoNormal,
+			RendererSettings.NormalConfig != EVoxelNormalConfig::FlatNormal && 
+			RendererSettings.NormalConfig != EVoxelNormalConfig::NoNormal,
 			ChunkSettings.TransitionsMask);
-	const auto DefaultMeshConfig = FVoxelMeshConfig().CopyFrom(*Settings.ProcMeshClass->GetDefaultObject<UVoxelProceduralMeshComponent>());
+	const auto DefaultMeshConfig = FVoxelMeshConfig().CopyFrom(*RendererSettings.ProcMeshClass->GetDefaultObject<UVoxelProceduralMeshComponent>());
 
 	const auto CreateMaterialInstance = [&](UMaterialInterface* Interface) -> TVoxelSharedRef<FVoxelMaterialInterface>
 	{
-		if (!Settings.bCreateMaterialInstances)
+		if (!RendererSettings.bCreateMaterialInstances)
 		{
 			return FVoxelMaterialInterfaceManager::Get().CreateMaterial(Interface);
 		}
 
-		const auto MaterialInstance = FVoxelMaterialInterfaceManager::Get().CreateMaterialInstance(Interface);
+		auto* ParentInstance = Cast<UMaterialInstanceDynamic>(Interface);
+		const auto MaterialInstance = FVoxelMaterialInterfaceManager::Get().CreateMaterialInstance(ParentInstance ? ParentInstance->Parent.Get() : Interface);
 		auto* MaterialInstanceObject = Cast<UMaterialInstanceDynamic>(MaterialInstance->GetMaterial());
 		if (ensure(MaterialInstanceObject))
 		{
+			if (ParentInstance)
+			{
+				MaterialInstanceObject->CopyParameterOverrides(ParentInstance);
+			}
 			InitializeMaterialInstance(
 				MaterialInstanceObject,
 				LOD,
 				Position,
-				Settings);
-			Renderer.OnMaterialInstanceCreated.Broadcast(LOD, FVoxelUtilities::GetBoundsFromPositionAndDepth(Settings.RenderOctreeChunkSize, Position, LOD), MaterialInstanceObject);
+				RendererSettings);
+			OnMaterialInstanceCreated.Broadcast(LOD, FVoxelUtilities::GetBoundsFromPositionAndDepth<RENDER_CHUNK_SIZE>(Position, LOD), MaterialInstanceObject);
 			if (DitheringInfo.bIsValid)
 			{
-				SetMaterialDithering(*MaterialInstanceObject, Settings, DitheringInfo);
+				SetMaterialDithering(*MaterialInstanceObject, RendererSettings, DitheringInfo);
 			}
 		}
 
@@ -579,7 +540,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 	{
 		const auto CreateMaterial = [&]()
 		{
-			return CreateMaterialInstance(Renderer.GetVoxelMaterial(LOD));
+			return CreateMaterialInstance(RendererSettings.GetVoxelMaterial(LOD));
 		};
 		const auto MaterialInstance = ChunkMaterials.FindOrAddSingle(CreateMaterial);
 
@@ -629,7 +590,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 
 		const auto ShouldSkip = [&](const FVoxelMaterialIndices& Indices)
 		{
-			for (uint8 HoleMaterial : Settings.HolesMaterials)
+			for (uint8 HoleMaterial : RendererSettings.HolesMaterials)
 			{
 				for (int32 Index = 0; Index < Indices.NumIndices; Index++)
 				{
@@ -642,7 +603,7 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 			return false;
 		};
 		
-		for (const FVoxelMaterialIndices& Material : MaterialsSet)
+		for (auto& Material : MaterialsSet)
 		{
 			if (ShouldSkip(Material))
 			{
@@ -651,13 +612,13 @@ FVoxelChunkMeshesToBuild FVoxelRenderUtilities::GetMeshesToBuild(
 
 			const auto CreateMaterial = [&]()
 			{
-				return CreateMaterialInstance(Renderer.GetVoxelMaterial(LOD, Material));
+				return CreateMaterialInstance(RendererSettings.GetVoxelMaterial(LOD, Material));
 			};
 			const auto MaterialInstance = ChunkMaterials.FindOrAddMultiple(Material, CreateMaterial);
 
 			// Note: we only use the first index to determine the mesh settings to use
 			// This might lead to unwanted behavior in blendings
-			auto* MaterialMeshConfig = Settings.MaterialsMeshConfigs.Find(Material.SortedIndices[0]);
+			auto* MaterialMeshConfig = RendererSettings.MaterialsMeshConfigs.Find(Material.SortedIndices[0]);
 			auto& MeshConfig = MaterialMeshConfig ? *MaterialMeshConfig : DefaultMeshConfig;
 			auto& SectionMap = Meshes.FindOrAdd(MeshConfig);
 

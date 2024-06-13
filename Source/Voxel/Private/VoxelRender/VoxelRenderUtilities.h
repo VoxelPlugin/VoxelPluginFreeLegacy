@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -13,8 +13,7 @@ struct FVoxelChunkMeshBuffers;
 struct FVoxelChunkMaterials;
 struct FVoxelChunkSettings;
 struct FVoxelProcMeshBuffers;
-class IVoxelRenderer;
-class FVoxelRuntimeSettings;
+struct FVoxelRendererSettingsBase;
 class UMaterialInstanceDynamic;
 class UVoxelProceduralMeshComponent;
 
@@ -77,10 +76,10 @@ namespace FVoxelRenderUtilities
 		UMaterialInstanceDynamic* MaterialInstance,
 		int32 LOD,
 		const FIntVector& Position,
-		const FVoxelRuntimeSettings& Settings);
+		const FVoxelRendererSettingsBase& Settings);
 	
-	void StartMeshDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRuntimeSettings& Settings, const FDitheringInfo& DitheringInfo);
-	void ResetDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRuntimeSettings& Settings);
+	void StartMeshDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRendererSettingsBase& Settings, const FDitheringInfo& DitheringInfo);
+	void ResetDithering(UVoxelProceduralMeshComponent& Mesh, const FVoxelRendererSettingsBase& Settings);
 
 	// For surface nets
 	void SetMeshTransitionsMask(UVoxelProceduralMeshComponent& Mesh, uint8 TransitionMask);
@@ -89,14 +88,14 @@ namespace FVoxelRenderUtilities
 	void ShowMesh(UVoxelProceduralMeshComponent& Mesh);
 
 	TUniquePtr<FVoxelProcMeshBuffers> MergeSections_AnyThread(
-		const FVoxelRuntimeSettings& RendererSettings,
+		const FVoxelRendererSettingsBase& RendererSettings,
 		const TArray<FVoxelChunkMeshSection>& Sections, 
 		const FIntVector& CenterPosition,
 		const FThreadSafeCounter& CancelCounter = FThreadSafeCounter(),
 		int32 CancelThreshold = 0);
 	TUniquePtr<FVoxelBuiltChunkMeshes> BuildMeshes_AnyThread(
 		const FVoxelChunkMeshesToBuild& ChunkMeshesToBuild,
-		const FVoxelRuntimeSettings& RendererSettings,
+		const FVoxelRendererSettingsBase& RendererSettings,
 		const FIntVector& Position,
 		const FThreadSafeCounter& CancelCounter = FThreadSafeCounter(),
 		int32 CancelThreshold = 0);
@@ -104,10 +103,11 @@ namespace FVoxelRenderUtilities
 	FVoxelChunkMeshesToBuild GetMeshesToBuild(
 		int32 LOD, 
 		const FIntVector& Position,
-		const IVoxelRenderer& Renderer, 
+		const FVoxelRendererSettingsBase& RendererSettings, 
 		const FVoxelChunkSettings& ChunkSettings,
 		FVoxelChunkMaterials& ChunkMaterials, 
 		const FVoxelChunkMesh& MainChunk, 
 		const FVoxelChunkMesh* TransitionChunk,
+		const FVoxelOnMaterialInstanceCreated& OnMaterialInstanceCreated,
 		const FDitheringInfo& DitheringInfo); // DitheringInfo to apply to newly spawned materials
 };

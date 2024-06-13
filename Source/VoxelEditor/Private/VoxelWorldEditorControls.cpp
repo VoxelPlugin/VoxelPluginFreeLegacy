@@ -1,7 +1,6 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelWorldEditorControls.h"
-#include "VoxelUtilities/VoxelConfigUtilities.h"
 
 #include "LevelEditorViewport.h"
 #include "Editor.h"
@@ -10,13 +9,7 @@ AVoxelWorldEditorControls::AVoxelWorldEditorControls()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	Invoker = CreateDefaultSubobject<UVoxelInvokerEditorComponent>(FName("Editor Invoker"));
-	RootComponent = Invoker;
-
-	if (!HasAnyFlags(RF_ClassDefaultObject))
-	{
-		FVoxelConfigUtilities::LoadConfig(Invoker, "VoxelWorldEditorControls");
-	}
+	RootComponent = Invoker = CreateDefaultSubobject<UVoxelInvokerEditorComponent>(FName("Editor Invoker"));
 }
 
 void AVoxelWorldEditorControls::Tick(float DeltaTime)
@@ -57,30 +50,27 @@ void AVoxelWorldEditorControls::Tick(float DeltaTime)
 	}
 }
 
-#if WITH_EDITOR
-void AVoxelWorldEditorControls::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
-	{
-		FVoxelConfigUtilities::SaveConfig(Invoker, "VoxelWorldEditorControls");
-	}
-}
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 UVoxelInvokerEditorComponent::UVoxelInvokerEditorComponent()
 {
-	bEditorOnlyInvoker = true;
-	
 	bUseForLOD = true;
 	LODToSet = 0;
 	LODRange = 10000;
 
 	bUseForCollisions = false;
 	bUseForNavmesh = false;
+}
+
+void UVoxelInvokerEditorComponent::OnRegister()
+{
+	Super::OnRegister();
+
+	if (GetWorld()->WorldType != EWorldType::Editor &&
+		GetWorld()->WorldType != EWorldType::EditorPreview)
+	{
+		DisableInvoker();
+	}
 }

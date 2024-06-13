@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -37,8 +37,8 @@ public:
 
 public:
 	//~ Begin FGCObject Interface
-	virtual FString GetReferencerName() const override;
 	virtual void AddReferencedObjects(FReferenceCollector& Collector) override;
+	virtual FString GetReferencerName() const override { return "FVoxelEditorToolsPanel"; }
 	//~ End FGCObject Interface
 
 public:
@@ -63,7 +63,7 @@ public:
 	}
 
 private:
-	UVoxelToolManager* ToolManager = nullptr;
+	TObjectPtr<UVoxelToolManager> ToolManager = nullptr;
 
 	TSharedPtr<IDetailsView> SharedConfigDetailsPanel;
 	TSharedPtr<IDetailsView> ToolDetailsPanel;

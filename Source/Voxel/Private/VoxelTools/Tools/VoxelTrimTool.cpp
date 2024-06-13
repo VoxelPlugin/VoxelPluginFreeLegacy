@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/Tools/VoxelTrimTool.h"
 #include "VoxelTools/Impl/VoxelSphereToolsImpl.h"
@@ -91,7 +91,7 @@ FVoxelIntBoxWithValidity UVoxelTrimTool::DoEdit()
 	}
 	const auto BoundsToCache = GetBoundsToCache(Bounds);
 
-	auto& Data = World.GetSubsystemChecked<FVoxelData>();
+	auto& Data = World.GetData();
 	auto DataImpl = GetDataImpl(Data);
 
 	FVoxelWriteScopeLock Lock(Data, BoundsToCache, FUNCTION_FNAME);

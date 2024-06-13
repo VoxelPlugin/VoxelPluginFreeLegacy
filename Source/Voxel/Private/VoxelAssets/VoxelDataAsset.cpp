@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelAssets/VoxelDataAsset.h"
 #include "VoxelAssets/VoxelDataAssetData.h"
@@ -125,7 +125,7 @@ void UVoxelDataAsset::SyncProperties()
 	// To access those properties without loading the asset
 	Size = Data->GetSize();
 	UncompressedSizeInMB =
-		Data->GetRawValues().Num() * Data->GetRawValues().GetTypeSize() / double(1 << 20) +
+		Data->GetRawValues().Num() * sizeof(FVoxelValue) / double(1 << 20) +
 		Data->GetRawMaterials().Num() * sizeof(FVoxelMaterial) / double(1 << 20);
 	CompressedSizeInMB = CompressedData.Num() / double(1 << 20);
 }
@@ -192,7 +192,7 @@ UTexture2D* UVoxelDataAsset::GetThumbnail()
 
 		ThumbnailSave.SetNumZeroed(DATA_ASSET_THUMBNAIL_RES * DATA_ASSET_THUMBNAIL_RES);
 
-		FTexture2DMipMap& Mip = ThumbnailTexture->PlatformData->Mips[0];
+		FTexture2DMipMap& Mip = ThumbnailTexture->GetPlatformData()->Mips[0];
 
 		void* TextureData = Mip.BulkData.Lock(LOCK_READ_WRITE);
 		FMemory::Memcpy(TextureData, ThumbnailSave.GetData(), ThumbnailSave.Num() * sizeof(FColor));

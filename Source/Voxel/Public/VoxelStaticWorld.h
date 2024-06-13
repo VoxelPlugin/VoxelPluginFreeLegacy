@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -18,10 +18,10 @@ public:
 	AVoxelStaticWorld();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Voxel")
-	UStaticMeshComponent* BaseMesh;
+	TObjectPtr<UStaticMeshComponent> BaseMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Voxel")
-	TArray<UStaticMeshComponent*> Meshes;
+	TArray<TObjectPtr<UStaticMeshComponent>> Meshes;
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

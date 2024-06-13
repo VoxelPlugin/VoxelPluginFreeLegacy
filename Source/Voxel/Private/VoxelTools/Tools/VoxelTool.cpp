@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/Tools/VoxelTool.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -6,6 +6,7 @@
 
 #include "Engine/StaticMesh.h"
 #include "Engine/LocalPlayer.h"
+#include "Engine/GameViewportClient.h"
 #include "Materials/MaterialInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
@@ -64,20 +65,14 @@ void UVoxelTool::DisableTool()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void UVoxelTool::K2_AdvancedTick(UObject* WorldContextObject, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride)
+void UVoxelTool::K2_AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditDynamicOverride& DoEditOverride)
 {
-	if (!WorldContextObject)
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("Invalid WorldContextObject!"));
-		return;
-	}
-	
 	FDoEditOverride DoEditOverrideCpp;
 	if (DoEditOverride.IsBound())
 	{
 		DoEditOverrideCpp.BindLambda([&](FVector Position, FVector Normal) { DoEditOverride.Execute(Position, Normal); });
 	}
-	AdvancedTick(WorldContextObject->GetWorld(), TickData, DoEditOverrideCpp);
+	AdvancedTick(World, TickData, DoEditOverrideCpp);
 }
 
 void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData, const FDoEditOverride& DoEditOverride)
@@ -106,17 +101,26 @@ void UVoxelTool::AdvancedTick(UWorld* World, const FVoxelToolTickData& TickData,
 	FHitResult HitResult;
 	World->GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, TickData.CollisionChannel);
 	
-	AVoxelWorld* VoxelWorld = Cast<AVoxelWorld>(HitResult.UE_5_SWITCH(Actor, GetActor()));
+	AVoxelWorld* VoxelWorld = Cast<AVoxelWorld>(HitResult.GetActor());
 	if (!CanEditWorld(VoxelWorld))
 	{
 		VoxelWorld = nullptr;
 	}
 
 #if WITH_EDITOR
-	if (VoxelWorld && SharedConfig->PaintMaterial.PreviewVoxelWorld != VoxelWorld)
+	if (VoxelWorld)
 	{
-		SharedConfig->PaintMaterial.PreviewVoxelWorld = VoxelWorld;
-		SharedConfig->RefreshDetails.Broadcast();
+		SharedConfig->PaintMaterial.bRestrictType = true;
+		if (SharedConfig->PaintMaterial.MaterialConfigToRestrictTo != VoxelWorld->MaterialConfig)
+		{
+			SharedConfig->PaintMaterial.MaterialConfigToRestrictTo = VoxelWorld->MaterialConfig;
+			SharedConfig->RefreshDetails.Broadcast();
+		}
+		if (SharedConfig->PaintMaterial.PreviewMaterialCollection != VoxelWorld->MaterialCollection)
+		{
+			SharedConfig->PaintMaterial.PreviewMaterialCollection = VoxelWorld->MaterialCollection;
+			SharedConfig->RefreshDetails.Broadcast();
+		}
 	}
 #endif
 	
@@ -180,7 +184,7 @@ void UVoxelTool::SimpleTick(
 		return;
 	}
 
-	auto ViewportClient = LocalPlayer->ViewportClient;
+	UGameViewportClient* ViewportClient = LocalPlayer->ViewportClient.Get();
 	if (!ViewportClient)
 	{
 		FVoxelMessages::Warning(FUNCTION_ERROR("Invalid ViewportClient!"));
@@ -206,14 +210,22 @@ void UVoxelTool::SimpleTick(
 		return;
 	}
 
-	const auto TickData = MakeVoxelToolTickData(
-		PlayerController,
-		bEdit,
-		Keys,
-		Axes,
-		ScreenPosition,
-		PlayerCameraManager->GetCameraRotation().Vector(),
-		CollisionChannel);
+	FVoxelToolTickData TickData;
+	TickData.MousePosition = ScreenPosition;
+	TickData.CameraViewDirection = PlayerCameraManager->GetCameraRotation().Vector();
+	TickData.bEdit = bEdit;
+	TickData.Keys = Keys;
+	TickData.Axes = Axes;
+	TickData.CollisionChannel = CollisionChannel;
+
+	const auto Deproject = [PlayerController = MakeWeakObjectPtr(PlayerController)](
+		const FVector2D& InScreenPosition,
+		FVector& OutWorldPosition,
+		FVector& OutWorldDirection)
+	{
+		return UGameplayStatics::DeprojectScreenToWorld(PlayerController.Get(), InScreenPosition, OutWorldPosition, OutWorldDirection);
+	};
+	TickData.Init(Deproject);
 
 	AdvancedTick(PlayerController->GetWorld(), TickData, DoEditOverride);
 }
@@ -309,41 +321,6 @@ UVoxelTool* UVoxelTool::MakeVoxelTool(TSubclassOf<UVoxelTool> ToolClass)
 
 	Tool->SharedConfig = NewObject<UVoxelToolSharedConfig>(Tool);
 	return Tool;
-}
-
-FVoxelToolTickData UVoxelTool::MakeVoxelToolTickData(
-	APlayerController* PlayerController, 
-	bool bEdit, 
-	const TMap<FName, bool>& Keys, 
-	const TMap<FName, float>& Axes, 
-	FVector2D MousePosition, 
-	FVector CameraDirection,
-	ECollisionChannel CollisionChannel)
-{
-	if (!PlayerController)
-	{
-		FVoxelMessages::Error(FUNCTION_ERROR("PlayerController is null"));
-		return {};
-	}
-
-	FVoxelToolTickData TickData;
-	TickData.MousePosition = MousePosition;
-	TickData.CameraViewDirection = CameraDirection;
-	TickData.bEdit = bEdit;
-	TickData.Keys = Keys;
-	TickData.Axes = Axes;
-	TickData.CollisionChannel = CollisionChannel;
-
-	const auto Deproject = [PlayerController = MakeWeakObjectPtr(PlayerController)](
-		const FVector2D& InScreenPosition,
-		FVector& OutWorldPosition,
-		FVector& OutWorldDirection)
-	{
-		return UGameplayStatics::DeprojectScreenToWorld(PlayerController.Get(), InScreenPosition, OutWorldPosition, OutWorldDirection);
-	};
-	TickData.Init(Deproject);
-
-	return TickData;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VDI_Example_Crater_Graph.h"
 
@@ -149,17 +149,17 @@ public:
 			BufferX.Variable_9 = Context.GetLocalX();
 			
 			// Data Item Parameters
-			if (Context.Items.QueryData.DataItemParameters.Num() == 9)
+			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 9)
 			{
-				BufferX.Variable_0 = Context.Items.QueryData.DataItemParameters.GetData()[0];
-				BufferX.Variable_1 = Context.Items.QueryData.DataItemParameters.GetData()[1];
-				BufferX.Variable_2 = Context.Items.QueryData.DataItemParameters.GetData()[2];
-				BufferX.Variable_3 = Context.Items.QueryData.DataItemParameters.GetData()[3];
-				BufferX.Variable_4 = Context.Items.QueryData.DataItemParameters.GetData()[4];
-				BufferX.Variable_5 = Context.Items.QueryData.DataItemParameters.GetData()[5];
-				BufferX.Variable_6 = Context.Items.QueryData.DataItemParameters.GetData()[6];
-				BufferX.Variable_7 = Context.Items.QueryData.DataItemParameters.GetData()[7];
-				BufferX.Variable_8 = Context.Items.QueryData.DataItemParameters.GetData()[8];
+				BufferX.Variable_0 = (*Context.Items.CustomData).GetData()[0];
+				BufferX.Variable_1 = (*Context.Items.CustomData).GetData()[1];
+				BufferX.Variable_2 = (*Context.Items.CustomData).GetData()[2];
+				BufferX.Variable_3 = (*Context.Items.CustomData).GetData()[3];
+				BufferX.Variable_4 = (*Context.Items.CustomData).GetData()[4];
+				BufferX.Variable_5 = (*Context.Items.CustomData).GetData()[5];
+				BufferX.Variable_6 = (*Context.Items.CustomData).GetData()[6];
+				BufferX.Variable_7 = (*Context.Items.CustomData).GetData()[7];
+				BufferX.Variable_8 = (*Context.Items.CustomData).GetData()[8];
 			}
 			else
 			{
@@ -195,17 +195,17 @@ public:
 			BufferX.Variable_9 = Context.GetLocalX();
 			
 			// Data Item Parameters
-			if (Context.Items.QueryData.DataItemParameters.Num() == 9)
+			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 9)
 			{
-				BufferX.Variable_0 = Context.Items.QueryData.DataItemParameters.GetData()[0];
-				BufferX.Variable_1 = Context.Items.QueryData.DataItemParameters.GetData()[1];
-				BufferX.Variable_2 = Context.Items.QueryData.DataItemParameters.GetData()[2];
-				BufferX.Variable_3 = Context.Items.QueryData.DataItemParameters.GetData()[3];
-				BufferX.Variable_4 = Context.Items.QueryData.DataItemParameters.GetData()[4];
-				BufferX.Variable_5 = Context.Items.QueryData.DataItemParameters.GetData()[5];
-				BufferX.Variable_6 = Context.Items.QueryData.DataItemParameters.GetData()[6];
-				BufferX.Variable_7 = Context.Items.QueryData.DataItemParameters.GetData()[7];
-				BufferX.Variable_8 = Context.Items.QueryData.DataItemParameters.GetData()[8];
+				BufferX.Variable_0 = (*Context.Items.CustomData).GetData()[0];
+				BufferX.Variable_1 = (*Context.Items.CustomData).GetData()[1];
+				BufferX.Variable_2 = (*Context.Items.CustomData).GetData()[2];
+				BufferX.Variable_3 = (*Context.Items.CustomData).GetData()[3];
+				BufferX.Variable_4 = (*Context.Items.CustomData).GetData()[4];
+				BufferX.Variable_5 = (*Context.Items.CustomData).GetData()[5];
+				BufferX.Variable_6 = (*Context.Items.CustomData).GetData()[6];
+				BufferX.Variable_7 = (*Context.Items.CustomData).GetData()[7];
+				BufferX.Variable_8 = (*Context.Items.CustomData).GetData()[8];
 			}
 			else
 			{
@@ -342,17 +342,17 @@ public:
 			v_flt Variable_6; // Data Item Parameters output 6
 			v_flt Variable_7; // Data Item Parameters output 7
 			v_flt Variable_8; // Data Item Parameters output 8
-			if (Context.Items.QueryData.DataItemParameters.Num() == 9)
+			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 9)
 			{
-				Variable_0 = Context.Items.QueryData.DataItemParameters.GetData()[0];
-				Variable_1 = Context.Items.QueryData.DataItemParameters.GetData()[1];
-				Variable_2 = Context.Items.QueryData.DataItemParameters.GetData()[2];
-				Variable_3 = Context.Items.QueryData.DataItemParameters.GetData()[3];
-				Variable_4 = Context.Items.QueryData.DataItemParameters.GetData()[4];
-				Variable_5 = Context.Items.QueryData.DataItemParameters.GetData()[5];
-				Variable_6 = Context.Items.QueryData.DataItemParameters.GetData()[6];
-				Variable_7 = Context.Items.QueryData.DataItemParameters.GetData()[7];
-				Variable_8 = Context.Items.QueryData.DataItemParameters.GetData()[8];
+				Variable_0 = (*Context.Items.CustomData).GetData()[0];
+				Variable_1 = (*Context.Items.CustomData).GetData()[1];
+				Variable_2 = (*Context.Items.CustomData).GetData()[2];
+				Variable_3 = (*Context.Items.CustomData).GetData()[3];
+				Variable_4 = (*Context.Items.CustomData).GetData()[4];
+				Variable_5 = (*Context.Items.CustomData).GetData()[5];
+				Variable_6 = (*Context.Items.CustomData).GetData()[6];
+				Variable_7 = (*Context.Items.CustomData).GetData()[7];
+				Variable_8 = (*Context.Items.CustomData).GetData()[8];
 			}
 			else
 			{
@@ -856,17 +856,17 @@ public:
 			TVoxelRange<v_flt> Variable_6; // Data Item Parameters output 6
 			TVoxelRange<v_flt> Variable_7; // Data Item Parameters output 7
 			TVoxelRange<v_flt> Variable_8; // Data Item Parameters output 8
-			if (Context.Items.QueryData.DataItemParameters.Num() == 9)
+			if (Context.Items.CustomData && Context.Items.CustomData->Num() == 9)
 			{
-				Variable_0 = Context.Items.QueryData.DataItemParameters.GetData()[0];
-				Variable_1 = Context.Items.QueryData.DataItemParameters.GetData()[1];
-				Variable_2 = Context.Items.QueryData.DataItemParameters.GetData()[2];
-				Variable_3 = Context.Items.QueryData.DataItemParameters.GetData()[3];
-				Variable_4 = Context.Items.QueryData.DataItemParameters.GetData()[4];
-				Variable_5 = Context.Items.QueryData.DataItemParameters.GetData()[5];
-				Variable_6 = Context.Items.QueryData.DataItemParameters.GetData()[6];
-				Variable_7 = Context.Items.QueryData.DataItemParameters.GetData()[7];
-				Variable_8 = Context.Items.QueryData.DataItemParameters.GetData()[8];
+				Variable_0 = (*Context.Items.CustomData).GetData()[0];
+				Variable_1 = (*Context.Items.CustomData).GetData()[1];
+				Variable_2 = (*Context.Items.CustomData).GetData()[2];
+				Variable_3 = (*Context.Items.CustomData).GetData()[3];
+				Variable_4 = (*Context.Items.CustomData).GetData()[4];
+				Variable_5 = (*Context.Items.CustomData).GetData()[5];
+				Variable_6 = (*Context.Items.CustomData).GetData()[6];
+				Variable_7 = (*Context.Items.CustomData).GetData()[7];
+				Variable_8 = (*Context.Items.CustomData).GetData()[8];
 			}
 			else
 			{

@@ -1,8 +1,9 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelDefinitions.h"
 #include "ActorFactories/ActorFactory.h"
 #include "ActorFactoryVoxelPlaceableItems.generated.h"
 
@@ -38,7 +39,9 @@ public:
 
 	//~ Begin UActorFactory Interface
 	virtual void PostSpawnActor(UObject* Asset, AActor* NewActor) override;
+#if VOXEL_ENGINE_VERSION < 504
 	virtual void PostCreateBlueprint(UObject* Asset, AActor* CDO) override;
+#endif
 	virtual bool CanCreateActorFrom(const FAssetData& AssetData, FText& OutErrorMsg) override;
 	virtual UObject* GetAssetFromActorInstance(AActor* ActorInstance) override;
 	//~ End UActorFactory Interface

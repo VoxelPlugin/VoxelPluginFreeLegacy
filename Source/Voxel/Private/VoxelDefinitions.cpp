@@ -1,10 +1,9 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelDefinitions.h"
 #include "VoxelLog.h"
 #include "VoxelStats.h"
 #include "VoxelFeedbackContext.h"
-#include "VoxelQuat.h"
 #include "VoxelIntBox.h"
 #include "VoxelItemStack.h"
 #include "VoxelEditorDelegates.h"
@@ -13,7 +12,7 @@
 #include "Logging/LogMacros.h"
 #include "Serialization/CustomVersion.h"
 
-static_assert(FVoxelUtilities::IsPowerOfTwo(MESHER_CHUNK_SIZE), "MESHER_CHUNK_SIZE must be a power of 2");
+static_assert(FVoxelUtilities::IsPowerOfTwo(RENDER_CHUNK_SIZE), "RENDER_CHUNK_SIZE must be a power of 2");
 static_assert(FVoxelUtilities::IsPowerOfTwo(DATA_CHUNK_SIZE), "DATA_CHUNK_SIZE must be a power of 2");
 
 #if VOXEL_MATERIAL_ENABLE_UV1 && !VOXEL_MATERIAL_ENABLE_UV0
@@ -37,9 +36,9 @@ DEFINE_LOG_CATEGORY(LogVoxel);
 ///////////////////////////////////////////////////////////////////////////////
 
 #if ENABLE_VOXEL_MEMORY_STATS
-TMap<const TCHAR*, FVoxelMemoryCounterRef>& GetVoxelMemoryCounters()
+TMap<const TCHAR*, FVoxelMemoryCounterRef UE_503_ONLY(, FDefaultSetAllocator, TStringPointerMapKeyFuncs_DEPRECATED<const TCHAR*, FVoxelMemoryCounterRef>)>& GetVoxelMemoryCounters()
 {
-	static TMap<const TCHAR*, FVoxelMemoryCounterRef> GVoxelMemoryCounters;
+	static TMap<const TCHAR*, FVoxelMemoryCounterRef UE_503_ONLY(, FDefaultSetAllocator, TStringPointerMapKeyFuncs_DEPRECATED<const TCHAR*, FVoxelMemoryCounterRef>)> GVoxelMemoryCounters;
 	return GVoxelMemoryCounters;
 }
 
@@ -48,6 +47,8 @@ FVoxelMemoryCounterStaticRef::FVoxelMemoryCounterStaticRef(const TCHAR* Name, co
 	GetVoxelMemoryCounters().Add(Name, Ref);
 }
 #endif
+
+DEFINE_VOXEL_MEMORY_STAT(STAT_TotalVoxelMemory);
 
 static FFeedbackContext* GVoxelFeedbackContext = nullptr;
 
@@ -70,19 +71,16 @@ FVoxelScopedSlowTask::FVoxelScopedSlowTask(float InAmountOfWork, const FText& In
 FVoxelIntBox const FVoxelIntBox::Infinite = FVoxelIntBox(FIntVector(MIN_int32 + 1024), FIntVector(MAX_int32 - 1024));
 
 const FVoxelPlaceableItemHolder EmptyVoxelPlaceableItemHolder;
-const FVoxelGeneratorQueryData FVoxelGeneratorQueryData::Empty;
-const FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(EmptyVoxelPlaceableItemHolder);
+FVoxelItemStack FVoxelItemStack::Empty = FVoxelItemStack(EmptyVoxelPlaceableItemHolder);
 
-const FVoxelDoubleVector FVoxelDoubleVector::ZeroVector(0.0f, 0.0f, 0.0f);
-const FVoxelDoubleVector FVoxelDoubleVector::OneVector(1.0f, 1.0f, 1.0f);
-const FVoxelDoubleVector FVoxelDoubleVector::UpVector(0.0f, 0.0f, 1.0f);
-const FVoxelDoubleVector FVoxelDoubleVector::DownVector(0.0f, 0.0f, -1.0f);
-const FVoxelDoubleVector FVoxelDoubleVector::ForwardVector(1.0f, 0.0f, 0.0f);
-const FVoxelDoubleVector FVoxelDoubleVector::BackwardVector(-1.0f, 0.0f, 0.0f);
-const FVoxelDoubleVector FVoxelDoubleVector::RightVector(0.0f, 1.0f, 0.0f);
-const FVoxelDoubleVector FVoxelDoubleVector::LeftVector(0.0f, -1.0f, 0.0f);
-
-const FVoxelDoubleQuat FVoxelDoubleQuat::Identity(0, 0, 0, 1);
+const FVoxelVector FVoxelVector::ZeroVector(0.0f, 0.0f, 0.0f);
+const FVoxelVector FVoxelVector::OneVector(1.0f, 1.0f, 1.0f);
+const FVoxelVector FVoxelVector::UpVector(0.0f, 0.0f, 1.0f);
+const FVoxelVector FVoxelVector::DownVector(0.0f, 0.0f, -1.0f);
+const FVoxelVector FVoxelVector::ForwardVector(1.0f, 0.0f, 0.0f);
+const FVoxelVector FVoxelVector::BackwardVector(-1.0f, 0.0f, 0.0f);
+const FVoxelVector FVoxelVector::RightVector(0.0f, 1.0f, 0.0f);
+const FVoxelVector FVoxelVector::LeftVector(0.0f, -1.0f, 0.0f);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -105,11 +103,9 @@ VOXEL_DEBUG_DELEGATE(float);
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-uint32& FVoxelRangeFailStatus::GetTlsSlot()
+FVoxelRangeFailStatus& FVoxelRangeFailStatus::Get()
 {
-	// Not inline, else it's messed up across modules
-	static uint32 TlsSlot = 0xFFFFFFFF;
-	return TlsSlot;
+	return TThreadSingleton<FVoxelRangeFailStatus>::Get();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -140,6 +136,3 @@ VOXEL_API FString VoxelStats_RemoveLambdaFromFunctionName(const FString& Functio
 ///////////////////////////////////////////////////////////////////////////////
 
 FVoxelEditorDelegates::FFixVoxelLandscapeMaterial FVoxelEditorDelegates::FixVoxelLandscapeMaterial;
-FVoxelEditorDelegates::FCreateStaticMeshFromProcMesh FVoxelEditorDelegates::CreateStaticMeshFromProcMesh;
-FVoxelEditorDelegates::FOnVoxelGraphUpdated FVoxelEditorDelegates::OnVoxelGraphUpdated;
-FVoxelEditorDelegates::FOnMigrateLegacySpawners FVoxelEditorDelegates::OnMigrateLegacySpawners;

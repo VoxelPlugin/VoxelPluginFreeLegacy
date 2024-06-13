@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "AssetTypeActions_VoxelDataAsset.h"
 #include "VoxelEditorModule.h"
@@ -30,7 +30,7 @@ void FAssetTypeActions_VoxelDataAsset::GetActions(const TArray<UObject*>& InObje
 	MenuBuilder.AddMenuEntry(
 		VOXEL_LOCTEXT("Reimport"),
 		VOXEL_LOCTEXT("Reimport the selected asset(s)."),
-		FSlateIcon(FEditorStyle::GetStyleSetName(), "ContentBrowser.AssetActions.ReimportAsset"),
+		FSlateIcon(FAppStyle::GetAppStyleSetName(), "ContentBrowser.AssetActions.ReimportAsset"),
 		FUIAction(
 			FExecuteAction::CreateSP(this, &FAssetTypeActions_VoxelDataAsset::ExecuteReimport, Assets),
 			FCanExecuteAction::CreateSP(this, &FAssetTypeActions_VoxelDataAsset::CanExecuteReimport, Assets)

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelShaders/VoxelErosion.h"
 #include "VoxelShaders/VoxelErosionShader.h"
@@ -27,35 +27,35 @@ void UVoxelErosion::Initialize()
 
 	FlushRenderingCommands();
 
-	if (RainMapInit->GetSizeX() == RealSize &&
-		RainMapInit->GetSizeY() == RealSize)
+	if (RainMapInit.Texture.GetSizeX() == RealSize &&
+		RainMapInit.Texture.GetSizeY() == RealSize)
 	{
-		CopyTextureToRHI(*RainMapInit, RainMap);
+		CopyTextureToRHI(RainMapInit.Texture, RainMap);
 	}
 	else
 	{
 		FVoxelMessages::Error(
 			FString::Printf(
 				TEXT("Voxel Erosion Init: RainMapInit has size (%d, %d), but should have size (%d, %d)"),
-				RainMapInit->GetSizeX(),
-				RainMapInit->GetSizeY(),
+				RainMapInit.Texture.GetSizeX(),
+				RainMapInit.Texture.GetSizeY(),
 				RealSize,
 				RealSize),
 			this);
 	}
 	
-	if (HeightmapInit->GetSizeX() == RealSize &&
-		HeightmapInit->GetSizeY() == RealSize)
+	if (HeightmapInit.Texture.GetSizeX() == RealSize &&
+		HeightmapInit.Texture.GetSizeY() == RealSize)
 	{
-		CopyTextureToRHI(*HeightmapInit, TerrainHeight);
+		CopyTextureToRHI(HeightmapInit.Texture, TerrainHeight);
 	}
 	else
 	{
 		FVoxelMessages::Error(
 			FString::Printf(
 				TEXT("Voxel Erosion Init: HeightmapInit has size (%d, %d), but should have size (%d, %d)"),
-				HeightmapInit->GetSizeX(),
-				HeightmapInit->GetSizeY(),
+				HeightmapInit.Texture.GetSizeX(),
+				HeightmapInit.Texture.GetSizeY(),
 				RealSize,
 				RealSize),
 			this);
@@ -145,7 +145,7 @@ void UVoxelErosion::RunShader(const FVoxelErosionParameters& Parameters)
 	FRHICommandListImmediate& RHICmdList = GRHICommandList.GetImmediateCommandList();
 	
 	TShaderMapRef<T> ComputeShader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-	RHICmdList.SetComputeShader(UE_25_SWITCH(ComputeShader->GetComputeShader(), ComputeShader.GetComputeShader()));
+	SetComputePipelineState(RHICmdList, ComputeShader.GetComputeShader());
 
 	ComputeShader->SetSurfaces(
 		RHICmdList, 
@@ -173,7 +173,7 @@ void UVoxelErosion::CopyTextureToRHI(const TVoxelTexture<float>& Texture, const 
 		ThisPtr->CopyTextureToRHI_RenderThread(Texture, RHITexture);
 	});
 
-	FlushRenderingCommands(UE_5_SWITCH(false,));
+	FlushRenderingCommands();
 }
 
 void UVoxelErosion::CopyRHIToTexture(const FTexture2DRHIRef& RHITexture, TVoxelSharedRef<TVoxelTexture<float>::FTextureData>& Texture)
@@ -184,7 +184,7 @@ void UVoxelErosion::CopyRHIToTexture(const FTexture2DRHIRef& RHITexture, TVoxelS
 		ThisPtr->CopyRHIToTexture_RenderThread(RHITexture, *Texture);
 	});
 
-	FlushRenderingCommands(UE_5_SWITCH(false,));
+	FlushRenderingCommands();
 }
 
 void UVoxelErosion::CopyTextureToRHI_RenderThread(const TVoxelTexture<float>& Texture, const FTexture2DRHIRef& RHITexture)
@@ -233,8 +233,10 @@ void UVoxelErosion::Init_RenderThread()
 {
 	check(IsInRenderingThread());
 
-	FRHIResourceCreateInfo CreateInfo UE_5_ONLY((TEXT("CreateInfo")));
-	const UE_26_SWITCH(uint32, ETextureCreateFlags) Flags = TexCreate_ShaderResource | TexCreate_UAV;
+	FRHIResourceCreateInfo CreateInfo(TEXT("Name"));
+	const ETextureCreateFlags Flags = TexCreate_ShaderResource | TexCreate_UAV;
+
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
 #define CREATE_TEXTURE(Name, SizeX) \
 	Name = RHICreateTexture2D(SizeX * RealSize, RealSize, PF_R32_FLOAT, 1, 1, Flags, CreateInfo); \
@@ -252,6 +254,8 @@ void UVoxelErosion::Init_RenderThread()
 	CREATE_TEXTURE(Velocity, 2);
 
 #undef CREATE_TEXTURE
+
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
 

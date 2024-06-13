@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -32,6 +32,6 @@ private:
 	
 	void AddActor(AVoxelDataItemActor& Actor);
 	
+	void OnActorSpawned(AActor* Actor);
 	void OnActorUpdated(TWeakObjectPtr<AVoxelDataItemActor> Actor);
-	void OnLevelAddedToWorld(ULevel* InLevel, UWorld* InWorld);
 };

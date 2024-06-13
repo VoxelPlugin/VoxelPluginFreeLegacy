@@ -1,22 +1,24 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelOpenAssetsOnStartup.h"
 #include "VoxelMinimal.h"
 #include "VoxelUtilities/VoxelConfigUtilities.h"
-#include "VoxelUtilities/VoxelSystemUtilities.h"
 
 #include "Editor.h"
 #include "Engine/World.h"
 #include "GameMapsSettings.h"
+#include "Containers/Ticker.h"
 #include "ContentBrowserModule.h"
+#include "Subsystems/AssetEditorSubsystem.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 
 void UVoxelOpenAssetsOnStartup::Init()
 {
-	FVoxelSystemUtilities::DelayedCall([]()
+	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=](float)
 	{
 		GetMutableDefault<UVoxelOpenAssetsOnStartup>()->ActualInit();
-	});
+		return false;
+	}));
 }
 
 void UVoxelOpenAssetsOnStartup::ActualInit()
@@ -90,7 +92,7 @@ void UVoxelOpenAssetsOnStartup::ActualInit()
 						auto* Settings = GetMutableDefault<UGameMapsSettings>();
 						Settings->EditorStartupMap = SelectedAssets[0].ToSoftObjectPath();
 
-						auto* Property = UE_25_SWITCH(FindField, FindFProperty)<FProperty>(UGameMapsSettings::StaticClass(), GET_MEMBER_NAME_CHECKED(UGameMapsSettings, EditorStartupMap));
+						auto* Property = FindFProperty<FProperty>(UGameMapsSettings::StaticClass(), GET_MEMBER_NAME_CHECKED(UGameMapsSettings, EditorStartupMap));
 						Settings->UpdateSinglePropertyInConfigFile(Property, Settings->GetDefaultConfigFilename());
 					})));
 				}));

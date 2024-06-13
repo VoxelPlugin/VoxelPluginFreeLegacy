@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -9,6 +9,9 @@
 #include "VoxelTexture.h"
 #include "VoxelGenerators/VoxelGeneratorInit.h"
 #include "VoxelGenerators/VoxelGeneratorPicker.h"
+#if VOXEL_ENGINE_VERSION >= 504
+#include "Blueprint/BlueprintExceptionInfo.h"
+#endif
 #include "VoxelGeneratorTools.generated.h"
 
 class AVoxelWorld;
@@ -70,13 +73,13 @@ public:
 
 public:
 	static bool SetGeneratorParameterImpl(
-		FVoxelGeneratorPicker& Picker,
+		TVoxelGeneratorPicker<UVoxelGenerator>& Picker,
 		FName Name,
 		FProperty& Property,
 		void* Data,
 		const FString& FunctionName);
 	static bool CheckIsValidParameterName(
-		FVoxelGeneratorPicker GeneratorPicker,
+		TVoxelGeneratorPicker<UVoxelGenerator> GeneratorPicker,
 		FName Name,
 		FProperty& Property,
 		const FString& FunctionName);
@@ -116,7 +119,7 @@ private:
 	
 	DECLARE_FUNCTION(execSetGeneratorParameterImpl)
 	{
-        P_GET_STRUCT_REF(FVoxelGeneratorPicker, Picker);
+        P_GET_STRUCT_REF(TVoxelGeneratorPicker<UVoxelGenerator>, Picker);
         P_GET_STRUCT(FName, Name);
         
         Stack.StepCompiledIn<FStructProperty>(nullptr);

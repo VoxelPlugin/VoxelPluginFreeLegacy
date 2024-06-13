@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelTools/VoxelAssetTools.h"
 #include "VoxelTools/VoxelToolHelpers.h"
@@ -55,7 +55,7 @@ void UVoxelAssetTools::ImportAssetAsReference(
 	const auto AssetInstance = ImportAssetHelper(__FUNCTION__, World, Asset, Transform, Bounds, bConvertToVoxelSpace);
 	if (!AssetInstance) return;
 
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 
 	{
 		FVoxelWriteScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
@@ -166,7 +166,7 @@ void UVoxelAssetTools::ImportModifierAsset(
 	CHECK_BOUNDS_ARE_VALID_VOID();
 	CHECK_BOUNDS_ARE_32BITS_VOID();
 
-	auto& Data = World->GetSubsystemChecked<FVoxelData>();
+	auto& Data = World->GetData();
 	{
 		FVoxelWriteScopeLock Lock(Data, bLockEntireWorld ? FVoxelIntBox::Infinite : Bounds, FUNCTION_FNAME);
 		ImportModifierAssetImpl(Data, Bounds, Transform, *AssetInstance, bModifyValues, bModifyMaterials);
@@ -264,7 +264,7 @@ void ImportAssetImplImpl(
 	{
 		Data.Set<FVoxelValue>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value)
 		{
-			const FVoxelValue InstanceValue = GetInstanceValue(X, Y, Z);
+			const auto InstanceValue = GetInstanceValue(X, Y, Z);
 			Value = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
 		});
 		break;
@@ -273,8 +273,8 @@ void ImportAssetImplImpl(
 	{
 		Data.Set<const FVoxelValue, FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, const FVoxelValue& Value, FVoxelMaterial& Material)
 		{
-			const FVoxelValue InstanceValue = GetInstanceValue(X, Y, Z);
-			const FVoxelValue NewValue = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
+			const auto InstanceValue = GetInstanceValue(X, Y, Z);
+			const auto NewValue = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
 			if (NewValue == InstanceValue)
 			{
 				Material = GetInstanceMaterialImpl(X, Y, Z, Material);
@@ -286,8 +286,8 @@ void ImportAssetImplImpl(
 	{
 		Data.Set<FVoxelValue, FVoxelMaterial>(Bounds, [&](int32 X, int32 Y, int32 Z, FVoxelValue& Value, FVoxelMaterial& Material)
 		{
-			const FVoxelValue InstanceValue = GetInstanceValue(X, Y, Z);
-			const FVoxelValue NewValue = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
+			const auto InstanceValue = GetInstanceValue(X, Y, Z);
+			const auto NewValue = FVoxelUtilities::MergeAsset(Value, InstanceValue, bSubtractive);
 			Value = NewValue;
 			if (NewValue == InstanceValue)
 			{
@@ -362,7 +362,7 @@ void UVoxelAssetTools::ImportAssetImpl(
 	const auto Size = Bounds.Size();
 	check(FVoxelUtilities::CountIs32Bits(Size));
 
-	FVoxelValueArray Values;
+	TArray<FVoxelValue> Values;
 	if (bNeedValues)
 	{
 		Values.SetNumUninitialized(Size.X * Size.Y * Size.Z);
@@ -395,14 +395,14 @@ void UVoxelAssetTools::ImportAssetImpl(
 		checkVoxelSlow(bNeedValues);
 		const int32 Index = GetIndex(X, Y, Z);
 		checkVoxelSlow(Values.IsValidIndex(Index));
-		return FVoxelUtilities::Get(Values, Index);
+		return Values.GetData()[Index];
 	};
 	const auto GetInstanceMaterial = [&](int32 X, int32 Y, int32 Z)
 	{
 		checkVoxelSlow(bNeedMaterials);
 		const int32 Index = GetIndex(X, Y, Z);
 		checkVoxelSlow(Materials.IsValidIndex(Index));
-		return FVoxelUtilities::Get(Materials, Index);
+		return Materials.GetData()[Index];
 	};
 	
 	ImportAssetImplImpl(
@@ -606,13 +606,16 @@ void UVoxelAssetTools::InvertDataAssetImpl(const FVoxelDataAssetData& AssetData,
 
 	InvertedAssetData.SetSize(AssetData.GetSize(), AssetData.HasMaterials());
 	const int32 Num = AssetData.GetRawValues().Num();
-
+#if VOXEL_DEBUG
 	const auto& Src = AssetData.GetRawValues();
 	auto& Dst = InvertedAssetData.GetRawValues();
-	
+#else
+	const auto* RESTRICT Src = AssetData.GetRawValues().GetData();
+	auto* RESTRICT Dst = InvertedAssetData.GetRawValues().GetData();
+#endif
 	for (int32 Index = 0; Index < Num; Index++)
 	{
-		FVoxelUtilities::Get(Dst, Index) =  FVoxelUtilities::GetAs<FVoxelValue>(Src, Index).GetInverse();
+		Dst[Index] = Src[Index].GetInverse();
 	}
 
 	InvertedAssetData.GetRawMaterials() = AssetData.GetRawMaterials();

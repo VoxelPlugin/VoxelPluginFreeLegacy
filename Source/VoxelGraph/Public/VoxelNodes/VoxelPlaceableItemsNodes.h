@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -20,7 +20,7 @@ public:
 	UVoxelNode_DataItemSample();
 	
 	// Only items matching the channels ticked here will be sampled (only the items matching (Mask & Item.Mask) != 0)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config", meta = (Bitmask, BitmaskEnum = EVoxel32BitMask))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config", meta = (Bitmask, BitmaskEnum = "/Script/Voxel.EVoxel32BitMask"))
 	int32 Mask = 1;
 	
 	UPROPERTY(EditAnywhere, Category = "Config")
@@ -36,7 +36,7 @@ class VOXELGRAPH_API UVoxelNode_DataItemParameters : public UVoxelNodeWithContex
 	
 public:
 	UPROPERTY(EditAnywhere, Category = "Config", meta = (ReconstructNode, NonNull))
-	UVoxelGraphDataItemConfig* Config;
+	TObjectPtr<UVoxelGraphDataItemConfig> Config;
 
 	// If no parameters are provided these will be used
 	UPROPERTY(EditAnywhere, Category = "Preview")

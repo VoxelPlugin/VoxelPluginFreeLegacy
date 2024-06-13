@@ -1,19 +1,18 @@
 ﻿{
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "Free-Beta-415230fff-2021-06-08",
-	"FriendlyName": "Voxel Plugin Free",
+	"VersionName": "Unknown",
+	"FriendlyName": "Voxel Plugin Free Legacy",
 	"Description": "Create fully volumetric, entirely destructible & infinite worlds",
 	"Category": "Terrain",
 	"CreatedBy": "voxelplugin.com",
 	"CreatedByURL": "https://voxelplugin.com",
 	"DocsURL": "https://wiki.voxelplugin.com/",
-	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/c61d1941c8664436be42d649404a10e0",
+	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/b08e5581837e4bbca486b61cdf2751bb",
 	"SupportURL": "https://discord.voxelplugin.com",
-	"EngineVersion":  "ANY_VERSION",
 	"EnabledByDefault": true,
 	"CanContainContent": true,
-	"IsBetaVersion": true,
+	"IsBetaVersion": false,
 	"Installed": false,
 	"Modules": [
 		{
@@ -23,7 +22,6 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android",
 				"Mac"
 			]
 		},
@@ -34,18 +32,6 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android",
-				"Mac"
-			]
-		},
-		{
-			"Name": "VoxelFoliage",
-			"Type": "Runtime",
-			"LoadingPhase": "Default",
-			"WhitelistPlatforms": [
-				"Win64",
-				"Linux",
-				"Android",
 				"Mac"
 			]
 		},
@@ -56,34 +42,6 @@
 			"WhitelistPlatforms": [
 				"Win64",
 				"Linux",
-				"Android",
-				"Mac"
-			]
-		},
-		{
-			"Name": "VoxelVDB",
-			"Type": "Editor",
-			"LoadingPhase": "Default",
-			"WhitelistPlatforms": [
-				"Win64"
-			]
-		},
-		{
-			"Name": "VoxelVDBEditor",
-			"Type": "Editor",
-			"LoadingPhase": "Default",
-			"WhitelistPlatforms": [
-				"Win64"
-			]
-		},
-		{
-			"Name": "VoxelNiagara",
-			"Type": "Runtime",
-			"LoadingPhase": "Default",
-			"WhitelistPlatforms": [
-				"Win64",
-				"Linux",
-				"Android",
 				"Mac"
 			]
 		},
@@ -123,18 +81,7 @@
 			"LoadingPhase": "Default",
 			"WhitelistPlatforms": [
 				"Win64",
-				"Linux",
-				"Android"
-			]
-		},
-		{
-			"Name": "VoxelLegacySpawners",
-			"Type": "Editor",
-			"LoadingPhase": "Default",
-			"WhitelistPlatforms": [
-				"Win64",
-				"Linux",
-				"Mac"
+				"Linux"
 			]
 		}
 	],

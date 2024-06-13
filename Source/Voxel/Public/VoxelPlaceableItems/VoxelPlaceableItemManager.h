@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -7,17 +7,18 @@
 #include "VoxelIntBox.h"
 #include "VoxelPlaceableItemManager.generated.h"
 
+struct FVoxelDataItem;
+
 template<typename T>
 class TVoxelDataItemWrapper;
 
-class FVoxelCoordinatesProvider;
+class IVoxelWorldInterface;
+
 class UVoxelGeneratorCache;
 class UVoxelLineBatchComponent;
 class UVoxelGeneratorInstanceWrapper;
 
 class FVoxelData;
-class FVoxelGeneratorCache;
-struct FVoxelDataItem;
 
 USTRUCT(BlueprintType)
 struct FVoxelDataItemConstructionInfo
@@ -25,7 +26,7 @@ struct FVoxelDataItemConstructionInfo
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
-	UVoxelGeneratorInstanceWrapper* Generator = nullptr;
+	TObjectPtr<UVoxelGeneratorInstanceWrapper> Generator = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	FVoxelIntBox Bounds;
@@ -33,7 +34,7 @@ struct FVoxelDataItemConstructionInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel")
 	TArray<float> Parameters;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (Bitmask, BitmaskEnum = EVoxel32BitMask))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel", meta = (Bitmask, BitmaskEnum = "/Script/Voxel.EVoxel32BitMask"))
 	int32 Mask = uint32(-1);
 
 	bool operator==(const FVoxelDataItemConstructionInfo& Other) const
@@ -98,11 +99,7 @@ public:
 		FLinearColor Color = FLinearColor::Green);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel Placeable Item Manager")
-	UVoxelGeneratorCache* GetGeneratorCache() const
-	{
-		ensure(GeneratorCache); // SetGeneratorCache should have been called
-		return GeneratorCache;
-	}
+	UVoxelGeneratorCache* GetGeneratorCache() const;
 
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Voxel Placeable Item Manager")
@@ -125,16 +122,18 @@ public:
 
 	const TArray<FVoxelDataItemConstructionInfo>& GetDataItemInfos() const { return DataItemInfos; }
 
-	void SetGeneratorCache(const TVoxelSharedRef<FVoxelGeneratorCache>& NewGeneratorCache);
-	void ResetGeneratorCache();
-	
+	void SetExternalGeneratorCache(UVoxelGeneratorCache* NewCache)
+	{
+		GeneratorCache = NewCache;
+	}
+
 private:
 	// Transient as otherwise it's serialized in the graph preview settings	
 	UPROPERTY(Transient)
 	TArray<FVoxelDataItemConstructionInfo> DataItemInfos;
 
 	UPROPERTY(Transient)
-	UVoxelGeneratorCache* GeneratorCache = nullptr;
+	TObjectPtr<UVoxelGeneratorCache> GeneratorCache = nullptr;
 
 public:
 	struct FDebugLine
@@ -153,7 +152,7 @@ public:
 	const TArray<FDebugPoint>& GetDebugPoints() const { return DebugPoints; }
 	
 	void DrawDebug(
-		const FVoxelCoordinatesProvider& CoordinatesProvider, 
+		const IVoxelWorldInterface& VoxelWorldInterface, 
 		UVoxelLineBatchComponent& LineBatchComponent);
 	
 private:

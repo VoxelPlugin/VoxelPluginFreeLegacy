@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -132,7 +132,7 @@ void FVoxelDataUtilities::SetEntireDataAsDirtyAndCopyFrom(const FVoxelData& Sour
 
 			const auto CopyFromGenerator = [&]()
 			{
-				DataHolder.CreateData(DestData, [&](auto* DataPtr)
+				DataHolder.CreateData(DestData, [&](T* RESTRICT DataPtr)
 				{
 					TVoxelQueryZone<T> QueryZone(Leaf.GetBounds(), DataPtr);
 					SourceBottomNode.GetFromGeneratorAndAssets(*SourceData.Generator, QueryZone, 0); // Note: make sure to use the source generator!
@@ -189,9 +189,12 @@ void FVoxelDataUtilities::CopyDirtyChunksFrom(const FVoxelData& SourceData, FVox
 		{
 			DestDataHolder.SetSingleValue(SourceDataHolder.GetSingleValue());
 		}
-		else if (SourceDataHolder.HasData())
+		else if (auto* SrcDataPtr = SourceDataHolder.GetDataPtr())
 		{
-			DestDataHolder.CreateData(DestData, SourceDataHolder);
+			DestDataHolder.CreateData(DestData, [&](T* RESTRICT DataPtr)
+			{
+				FMemory::Memcpy(DataPtr, SrcDataPtr, VOXELS_PER_DATA_CHUNK * sizeof(T));
+			});
 		}
 	});
 }

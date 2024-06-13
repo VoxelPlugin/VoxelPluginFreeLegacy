@@ -1,10 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelScopedTransaction.h"
 #include "VoxelTools/VoxelBlueprintLibrary.h"
-#include "VoxelData/VoxelData.h"
 #include "VoxelWorld.h"
 #include "Editor.h"
+#include "Misc/ITransaction.h"
 
 FVoxelChangeBase::FVoxelChangeBase(FName Name)
 {
@@ -31,7 +31,7 @@ TUniquePtr<FChange> FVoxelEditChange::Execute(UObject* Object)
 	auto* VoxelWorld = Cast<AVoxelWorld>(Object);
 
 	// Check that the world wasn't recreated since
-	if (ensure(VoxelWorld) && VoxelWorld->GetSubsystem<FVoxelData>() == DataWeakPtr.Pin())
+	if (ensure(VoxelWorld) && VoxelWorld->GetDataSharedPtr() == DataWeakPtr.Pin())
 	{
 		TArray<FVoxelIntBox> UpdatedBounds;
 		if (bIsUndo)
@@ -60,12 +60,12 @@ FVoxelDataSwapChange::FVoxelDataSwapChange(const TVoxelSharedRef<FVoxelData>& Da
 TUniquePtr<FChange> FVoxelDataSwapChange::Execute(UObject* Object)
 {
 	auto* VoxelWorld = Cast<AVoxelWorld>(Object);
-	if (!ensure(VoxelWorld) || !ensure(VoxelWorld->IsCreated()))
+	if (!ensure(VoxelWorld))
 	{
 		return nullptr;
 	}
 
-	const auto NewData = VoxelWorld->GetSubsystemChecked<FVoxelData>().AsShared();
+	const auto NewData = VoxelWorld->GetDataSharedPtr();
 
 	VoxelWorld->DestroyWorld();
 	
@@ -74,7 +74,14 @@ TUniquePtr<FChange> FVoxelDataSwapChange::Execute(UObject* Object)
 	Info.DataOverride_Raw = Data;
 	VoxelWorld->CreateWorld(Info);
 	
-	return MakeUnique<FVoxelDataSwapChange>(NewData, Name);
+	if (!ensure(NewData.IsValid()))
+	{
+		return nullptr;
+	}
+	else
+	{
+		return MakeUnique<FVoxelDataSwapChange>(NewData.ToSharedRef(), Name);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -91,12 +98,12 @@ FVoxelScopedTransaction::FVoxelScopedTransaction(AVoxelWorld* World, FName Name,
 
 		if (ChangeType == EVoxelChangeType::Edit)
 		{
-			GUndo->StoreUndo(World, MakeUnique<FVoxelEditChange>(World->GetSubsystemChecked<FVoxelData>().AsShared(), Name, true));
+			GUndo->StoreUndo(World, MakeUnique<FVoxelEditChange>(World->GetDataSharedPtr(), Name, true));
 		}
 		else
 		{
 			check(ChangeType == EVoxelChangeType::DataSwap);
-			GUndo->StoreUndo(World, MakeUnique<FVoxelDataSwapChange>(World->GetSubsystemChecked<FVoxelData>().AsShared(), Name));
+			GUndo->StoreUndo(World, MakeUnique<FVoxelDataSwapChange>(World->GetDataSharedPtr().ToSharedRef(), Name));
 		}
 	}
 }

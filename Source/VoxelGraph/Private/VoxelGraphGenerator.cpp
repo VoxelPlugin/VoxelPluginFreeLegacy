@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGraphGenerator.h"
 #include "IVoxelGraphEditor.h"
@@ -7,15 +7,12 @@
 #include "VoxelGraphOutputsConfig.h"
 #include "VoxelGraphConstants.h"
 #include "VoxelGraphErrorReporter.h"
-#include "VoxelEditorDelegates.h"
 
-#include "CppTranslation/VoxelVariables.h"
 #include "VoxelNodes/VoxelExecNodes.h"
 #include "VoxelNodes/VoxelSeedNodes.h"
 
 #include "VoxelMessages.h"
 #include "VoxelNode.h"
-#include "VoxelGenerators/VoxelGeneratorCache.h"
 #include "VoxelGenerators/VoxelEmptyGenerator.h"
 #include "VoxelGenerators/VoxelGeneratorParameters.h"
 
@@ -48,12 +45,14 @@ TMap<uint32, FVoxelGraphOutput> UVoxelGraphGenerator::GetOutputs() const
 	{
 		Result.Add(Index, FVoxelGraphOutput::DefaultOutputs[Index]);
 	}
-
-	for (int32 Index = 0; Index < CustomOutputs.Num(); Index++)
+	if (Outputs)
 	{
-		Result.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index, CustomOutputs[Index]);
+		const auto& AdditionalOutputs = Outputs->Outputs;
+		for (int32 Index = 0; Index < AdditionalOutputs.Num(); Index++)
+		{
+			Result.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index, AdditionalOutputs[Index]);
+		}
 	}
-	
 	for (auto& It : Result)
 	{
 		It.Value.Index = It.Key;
@@ -65,22 +64,24 @@ TArray<FVoxelGraphPermutationArray> UVoxelGraphGenerator::GetPermutations() cons
 {
 	TArray<FVoxelGraphPermutationArray> Result;
 	Result.Append(FVoxelGraphOutput::DefaultOutputsPermutations);
-
-	for (int32 Index = 0; Index < CustomOutputs.Num(); Index++)
+	if (Outputs)
 	{
-		FVoxelGraphPermutationArray NewElement;
-		NewElement.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index);
-		Result.Add(NewElement);
-
-		if (CustomOutputs[Index].Category == EVoxelDataPinCategory::Float)
+		const auto& GraphOutputs = Outputs->Outputs;
+		for (int32 Index = 0; Index < GraphOutputs.Num(); Index++)
 		{
-			FVoxelGraphPermutationArray NewRangeElement;
-			NewRangeElement.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index);
-			NewRangeElement.Add(FVoxelGraphOutputsIndices::RangeAnalysisIndex);
-			Result.Add(NewRangeElement);
+			FVoxelGraphPermutationArray NewElement;
+			NewElement.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index);
+			Result.Add(NewElement);
+
+			if (GraphOutputs[Index].Category == EVoxelDataPinCategory::Float)
+			{
+				FVoxelGraphPermutationArray NewRangeElement;
+				NewRangeElement.Add(FVoxelGraphOutputsIndices::DefaultOutputsMax + Index);
+				NewRangeElement.Add(FVoxelGraphOutputsIndices::RangeAnalysisIndex);
+				Result.Add(NewRangeElement);
+			}
 		}
 	}
-	
 	return Result;
 }
 
@@ -97,8 +98,8 @@ UTexture2D* UVoxelGraphGenerator::GetPreviewTexture()
 
 		PreviewTextureSave.SetNumZeroed(VOXEL_GRAPH_THUMBNAIL_RES * VOXEL_GRAPH_THUMBNAIL_RES);
 
-		FTexture2DMipMap& Mip = PreviewTexture->PlatformData->Mips[0];
-
+		FTexture2DMipMap& Mip = PreviewTexture->GetPlatformData()->Mips[0];
+		
 		void* Data = Mip.BulkData.Lock(LOCK_READ_WRITE);
 		FMemory::Memcpy(Data, PreviewTextureSave.GetData(), PreviewTextureSave.Num() * sizeof(FColor));
 
@@ -126,22 +127,21 @@ void UVoxelGraphGenerator::SetPreviewTexture(const TArray<FColor>& Colors, int32
 
 void UVoxelGraphGenerator::ApplyParameters(const TMap<FName, FString>& Parameters)
 {
-	for (auto* Node : AllNodes)
+	for (UVoxelNode* Node : AllNodes)
 	{
 		Node->ApplyParameters(Parameters);
 	}
 }
 
-TArray<FVoxelGeneratorParameter> UVoxelGraphGenerator::GetParameters() const
+void UVoxelGraphGenerator::GetParameters(TArray<FVoxelGeneratorParameter>& OutParameters) const
 {
-	TArray<FVoxelGeneratorParameter> Parameters;
-	for (auto* Node : AllNodes)
+	for (UVoxelNode* Node : AllNodes)
 	{
-		Node->GetParameters(Parameters);
+		Node->GetParameters(OutParameters);
 	}
 	
 	TMap<FName, FVoxelGeneratorParameter> NamesToParameters;
-	for (auto& Parameter : Parameters)
+	for (auto& Parameter : OutParameters)
 	{
 		auto* ExistingParameter = NamesToParameters.Find(Parameter.Id);
 		if (!ExistingParameter)
@@ -167,10 +167,6 @@ TArray<FVoxelGeneratorParameter> UVoxelGraphGenerator::GetParameters() const
 				*Parameter.Id.ToString()));
 		}
 	}
-
-	TArray<FVoxelGeneratorParameter> UniqueParameters;
-	NamesToParameters.GenerateValueArray(UniqueParameters);
-	return UniqueParameters;
 }
 
 TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance()
@@ -180,45 +176,8 @@ TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetT
 
 TVoxelSharedRef<FVoxelTransformableGeneratorInstance> UVoxelGraphGenerator::GetTransformableInstance(const TMap<FName, FString>& Parameters)
 {
-	if (bUseCppClassInsteadOfGraph)
-	{
-		auto* Class = GeneratedCppClass.Get();
-		if (Class && Class->GetDefaultObject<UVoxelTransformableGenerator>())
-		{
-			return Class->GetDefaultObject<UVoxelTransformableGenerator>()->GetTransformableInstance(Parameters);
-		}
-		else
-		{
-			FVoxelMessages::Error("'Use C++ class instead of graph' is true, but 'Generated C++ class' is invalid!");
-		}
-	}
-	
-	FVoxelMessages::Info("Running Voxel Graphs require Voxel Plugin Pro. If the graph was compiled to C++, enable 'Use C++ class instead of graph' in the graph settings to use it");
+	FVoxelMessages::Info("Running Voxel Graphs require Voxel Plugin Pro");
 	return MakeVoxelShared<FVoxelTransformableEmptyGeneratorInstance>();
-}
-
-FVoxelGeneratorOutputs UVoxelGraphGenerator::GetGeneratorOutputs() const
-{
-	FVoxelGeneratorOutputs GeneratorOutputs;
-	GeneratorOutputs.FloatOutputs.Add(STATIC_FNAME("Value"));
-	
-	for (const FVoxelGraphOutput& Output : CustomOutputs)
-	{
-		if (Output.Category == EVoxelDataPinCategory::Float)
-		{
-			GeneratorOutputs.FloatOutputs.Add(Output.Name);
-		}
-		else if (Output.Category == EVoxelDataPinCategory::Int)
-		{
-			GeneratorOutputs.IntOutputs.Add(Output.Name);
-		}
-		else if (Output.Category == EVoxelDataPinCategory::Color)
-		{
-			GeneratorOutputs.ColorOutputs.Add(Output.Name);
-		}
-	}
-	
-	return GeneratorOutputs;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -239,69 +198,30 @@ void UVoxelGraphGenerator::PostLoad()
 {
 	Super::PostLoad();
 
-	if (Outputs_DEPRECATED)
-	{
-		ensure(CustomOutputs.Num() == 0);
-		CustomOutputs.Append(Outputs_DEPRECATED->Outputs);
-	}
-
-	for (auto& Output : CustomOutputs)
-	{
-		if (!Output.GUID.IsValid())
-		{
-			Output.GUID = FGuid::NewGuid();
-		}
-	}
-	
 	CreateGraphs();
+	BindUpdateSetterNodes();
 }
 
 void UVoxelGraphGenerator::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	if (!PropertyChangedEvent.MemberProperty || 
-		PropertyChangedEvent.ChangeType == EPropertyChangeType::Interactive)
+	if (PropertyChangedEvent.MemberProperty && PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
-		return;
-	}
-
-	if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphGenerator, CustomOutputs))
-	{
-		TSet<FGuid> UsedGuids;
-		TSet<FName> UsedNames;
-
-		// Make sure there's no overlap with the default ones
-		for (const FVoxelGraphOutput& Output : FVoxelGraphOutput::DefaultOutputs)
+		if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphGenerator, SaveLocation))
 		{
-			UsedGuids.Add(Output.GUID);
-			UsedNames.Add(Output.Name);
+			if (!SaveLocation.FilePath.IsEmpty())
+			{
+				SaveLocation.FilePath = FPaths::ConvertRelativePathToFull(SaveLocation.FilePath);
+				FPaths::MakePathRelativeTo(SaveLocation.FilePath, *FPaths::ProjectDir());
+			}
 		}
-		
-		for (FVoxelGraphOutput& Output : CustomOutputs)
+		if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(UVoxelGraphGenerator, Outputs))
 		{
-			if (!Output.GUID.IsValid() || UsedGuids.Contains(Output.GUID))
-			{
-				Output.GUID = FGuid::NewGuid();
-			}
-			UsedGuids.Add(Output.GUID);
-
-			if (Output.Name.IsNone())
-			{
-				Output.Name = "CustomOutput";
-			}
-			Output.Name = *FVoxelVariable::SanitizeName(Output.Name.ToString());
-
-			while (UsedNames.Contains(Output.Name))
-			{
-				Output.Name.SetNumber(Output.Name.GetNumber() + 1);
-			}
-			UsedNames.Add(Output.Name);
+			BindUpdateSetterNodes();
+			UpdateSetterNodes();
 		}
-
-		UpdateSetterNodes();
 	}
-	
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -372,6 +292,14 @@ void UVoxelGraphGenerator::UpdateSetterNodes()
 				SetNode->UpdateSetterNode();
 			}
 		}
+	}
+}
+
+void UVoxelGraphGenerator::BindUpdateSetterNodes()
+{
+	if (Outputs && !Outputs->OnPropertyChanged.IsBoundToObject(this))
+	{
+		Outputs->OnPropertyChanged.AddUObject(this, &UVoxelGraphGenerator::UpdateSetterNodes);
 	}
 }
 

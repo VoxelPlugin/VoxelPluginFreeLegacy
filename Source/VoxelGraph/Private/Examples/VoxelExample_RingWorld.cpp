@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelExample_RingWorld.h"
 
@@ -2951,19 +2951,19 @@ public:
 			Object.Width_in_Degrees,
 			Object.RiverDepth,
 			Object.RiverWidth,
-			Object.BeachColor.ToFColor(false),
-			Object.MountainsColorHigh.ToFColor(false),
-			Object.MountainsColorLowHigh.ToFColor(false),
-			Object.MountainsColorLowLow.ToFColor(false),
+			Object.BeachColor,
+			Object.MountainsColorHigh,
+			Object.MountainsColorLowHigh,
+			Object.MountainsColorLowLow,
 			FVoxelRichCurve(Object.MoutainsMaskCurve.LoadSynchronous()),
-			Object.PlainsColorHigh.ToFColor(false),
-			Object.PlainsColorLow.ToFColor(false),
+			Object.PlainsColorHigh,
+			Object.PlainsColorLow,
 			Object.PlainsNoiseFrequency,
 			Object.PlainsNoiseHeight,
 			FVoxelRichCurve(Object.PlainsNoiseStrengthCurve.LoadSynchronous()),
 			FVoxelRichCurve(Object.RingMainShapeCurve.LoadSynchronous()),
-			Object.RingOuterColor.ToFColor(false),
-			Object.RiverColor.ToFColor(false),
+			Object.RingOuterColor,
+			Object.RiverColor,
 			FVoxelRichCurve(Object.RiverDepthCurve.LoadSynchronous()),
 			Object.MountainsNoiseFrequency,
 			Object.MountainsNoiseHeight,

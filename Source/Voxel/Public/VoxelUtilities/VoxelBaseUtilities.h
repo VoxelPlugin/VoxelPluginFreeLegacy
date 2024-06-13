@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -52,14 +52,22 @@ namespace FVoxelUtilities
 		}
 	}
 
-	FORCEINLINE int32 IntLog2(int32 X)
+	FORCEINLINE constexpr int32 IntLog2(int32 X)
 	{
-		return 31 - FPlatformMath::CountLeadingZeros(X);
+		int32 Exp = -1;
+		while (X)
+		{
+			X >>= 1;
+			++Exp;
+		}
+		return Exp;
 	}
 
 	FORCEINLINE uint8 CastToUINT8(int32 Value)
 	{
-		ensureMsgfVoxelSlowNoSideEffects(0 <= Value && Value < 256, TEXT("Invalid uint8 value: %d"), Value);
+#if VOXEL_DEBUG
+		ensureMsgf(0 <= Value && Value < 256, TEXT("Invalid uint8 value: %d"), Value);
+#endif
 		return Value;
 	}
 
@@ -155,6 +163,12 @@ namespace FVoxelUtilities
 	FORCEINLINE uint32 MurmurHash32(int32 Hash)
 	{
 		return MurmurHash32(*reinterpret_cast<uint32*>(&Hash));
+	}
+	// Slow!
+	template<typename T, typename... TArgs>
+	FORCEINLINE uint32 MurmurHash32(T A, TArgs... Args)
+	{
+		return MurmurHash32(MurmurHash32(A) ^ MurmurHash32(Args...));
 	}
 
 	FORCEINLINE constexpr uint64 MurmurHash64(uint64 Hash)

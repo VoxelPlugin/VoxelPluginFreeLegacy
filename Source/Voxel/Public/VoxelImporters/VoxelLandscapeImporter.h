@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -17,7 +17,7 @@ struct VOXEL_API FVoxelLandscapeImporterLayerInfo
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
-	ULandscapeLayerInfoObject* LayerInfo = nullptr;
+	TObjectPtr<ULandscapeLayerInfoObject> LayerInfo = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 	EVoxelRGBA Layer = EVoxelRGBA::R;
@@ -33,7 +33,7 @@ class VOXEL_API AVoxelLandscapeImporter : public AActor
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Import configuration")
-	ALandscape* Landscape = nullptr;
+	TObjectPtr<ALandscape> Landscape = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Import configuration")
 	EVoxelHeightmapImporterMaterialConfig MaterialConfig = EVoxelHeightmapImporterMaterialConfig::RGB;

@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelDataAssetEditorToolkit.h"
 #include "VoxelEditorToolsPanel.h"
@@ -59,7 +59,11 @@ FVoxelDataAssetEditorToolkit::FVoxelDataAssetEditorToolkit()
 	{
 		It->DispatchBeginPlay();
 	}
+#if VOXEL_ENGINE_VERSION >= 504
+	PreviewWorld->SetBegunPlay(true);
+#else
 	PreviewWorld->bBegunPlay = true;
+#endif
 }
 
 FVoxelDataAssetEditorToolkit::~FVoxelDataAssetEditorToolkit()
@@ -80,27 +84,27 @@ void FVoxelDataAssetEditorToolkit::RegisterTabSpawners(const TSharedRef<class FT
 	InTabManager->RegisterTabSpawner(EditToolsTabId, FOnSpawnTab::CreateSP(this, &FVoxelDataAssetEditorToolkit::SpawnTab_EditTools))
 		.SetDisplayName(VOXEL_LOCTEXT("Edit Tools"))
 		.SetGroup(WorkspaceMenuCategoryRef)
-		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tabs.Details"));
+		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Details"));
 
 	InTabManager->RegisterTabSpawner(PreviewSettingsTabId, FOnSpawnTab::CreateSP(this, &FVoxelDataAssetEditorToolkit::SpawnTab_PreviewSettings))
 		.SetDisplayName(VOXEL_LOCTEXT("Preview Settings"))
 		.SetGroup(WorkspaceMenuCategoryRef)
-		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tabs.Details"));
+		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Details"));
 
 	InTabManager->RegisterTabSpawner(DetailsTabId, FOnSpawnTab::CreateSP(this, &FVoxelDataAssetEditorToolkit::SpawnTab_Details))
 		.SetDisplayName(VOXEL_LOCTEXT("Details"))
 		.SetGroup(WorkspaceMenuCategoryRef)
-		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tabs.Details"));
+		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Details"));
 
 	InTabManager->RegisterTabSpawner(AdvancedPreviewSettingsTabId, FOnSpawnTab::CreateSP(this, &FVoxelDataAssetEditorToolkit::SpawnTab_AdvancedPreviewSettings))
 		.SetDisplayName(VOXEL_LOCTEXT("Advanced Preview Settings"))
 		.SetGroup(WorkspaceMenuCategoryRef)
-		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tabs.Details"));
+		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Details"));
 
 	InTabManager->RegisterTabSpawner(PreviewTabId, FOnSpawnTab::CreateSP(this, &FVoxelDataAssetEditorToolkit::SpawnTab_Preview))
 		.SetDisplayName(VOXEL_LOCTEXT("Preview"))
 		.SetGroup(WorkspaceMenuCategoryRef)
-		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tabs.Viewports"));
+		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Viewports"));
 }
 
 void FVoxelDataAssetEditorToolkit::UnregisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager)
@@ -137,13 +141,6 @@ void FVoxelDataAssetEditorToolkit::InitVoxelEditor(const EToolkitMode::Type Mode
 	->AddArea
 	(
 		FTabManager::NewPrimaryArea() ->SetOrientation(Orient_Vertical)
-		->Split
-		(
-			FTabManager::NewStack()
-			->SetSizeCoefficient(0.1f)
-			->SetHideTabWell( true )
-			->AddTab(GetToolbarTabId(), ETabState::OpenedTab)
-		)
 		->Split
 		(
 			FTabManager::NewSplitter() ->SetOrientation(Orient_Horizontal) ->SetSizeCoefficient(0.9f)
@@ -200,6 +197,7 @@ void FVoxelDataAssetEditorToolkit::CreateInternalWidgets()
 		Args.bHideSelectionTip = true;
 		Args.NotifyHook = nullptr;
 		Args.bShowOptions = false;
+		Args.bShowObjectLabel = false;
 
 		PreviewSettings = PropertyModule.CreateDetailView(Args);
 		PreviewSettings->RegisterInstancedCustomPropertyLayout(
@@ -223,6 +221,7 @@ void FVoxelDataAssetEditorToolkit::CreateInternalWidgets()
 		Args.bHideSelectionTip = true;
 		Args.NotifyHook = this;
 		Args.bShowOptions = false;
+		Args.bShowObjectLabel = false;
 		Details = PropertyModule.CreateDetailView(Args);
 		Details->SetObject(DataAsset);
 	}
@@ -418,11 +417,11 @@ TSharedRef<SDockTab> FVoxelDataAssetEditorToolkit::SpawnTab_EditTools(const FSpa
 
 	auto Tab =
 		 SNew(SDockTab)
-		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Details"))
 		.Label(VOXEL_LOCTEXT("Edit Tools"))
 		[
 			ToolsPanel->GetWidget()
 		];
+	Tab->SetTabIcon(FAppStyle::GetBrush("LevelEditor.Tabs.Details"));
 	return Tab;
 }
 
@@ -432,11 +431,11 @@ TSharedRef<SDockTab> FVoxelDataAssetEditorToolkit::SpawnTab_PreviewSettings(cons
 
 	auto Tab =
 		 SNew(SDockTab)
-		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Details"))
 		.Label(VOXEL_LOCTEXT("Preview Settings"))
 		[
 			PreviewSettings.ToSharedRef()
 		];
+	Tab->SetTabIcon(FAppStyle::GetBrush("LevelEditor.Tabs.Details"));
 	return Tab;
 }
 
@@ -446,11 +445,11 @@ TSharedRef<SDockTab> FVoxelDataAssetEditorToolkit::SpawnTab_Details(const FSpawn
 
 	auto Tab =
 		 SNew(SDockTab)
-		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Details"))
 		.Label(VOXEL_LOCTEXT("Details"))
 		[
 			Details.ToSharedRef()
 		];
+	Tab->SetTabIcon(FAppStyle::GetBrush("LevelEditor.Tabs.Details"));
 	return Tab;
 }
 
@@ -460,11 +459,11 @@ TSharedRef<SDockTab> FVoxelDataAssetEditorToolkit::SpawnTab_AdvancedPreviewSetti
 
 	auto Tab =
 		 SNew(SDockTab)
-		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Details"))
 		.Label(VOXEL_LOCTEXT("Advanced Preview Settings"))
 		[
 			AdvancedPreviewSettingsWidget.ToSharedRef()
 		];
+	Tab->SetTabIcon(FAppStyle::GetBrush("LevelEditor.Tabs.Details"));
 	return Tab;
 }
 
@@ -474,11 +473,11 @@ TSharedRef<SDockTab> FVoxelDataAssetEditorToolkit::SpawnTab_Preview(const FSpawn
 
 	auto Tab =
 		 SNew(SDockTab)
-		.Icon(FEditorStyle::GetBrush("LevelEditor.Tabs.Viewports"))
 		.Label(VOXEL_LOCTEXT("Preview"))
 		[
 			Preview.ToSharedRef()
 		];
+	Tab->SetTabIcon(FAppStyle::GetBrush("LevelEditor.Tabs.Viewports"));
 	return Tab;
 }
 

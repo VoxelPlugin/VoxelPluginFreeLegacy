@@ -1,9 +1,9 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelMeshImporterDetails.h"
 #include "VoxelImporters/VoxelMeshImporter.h"
 
-#include "Factories/VoxelDataAssetFromMeshImporterFactory.h"
+#include "Factories/VoxelDataAssetFactory.h"
 #include "VoxelAssets/VoxelDataAsset.h"
 
 #include "VoxelEditorDetailsUtilities.h"

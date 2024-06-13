@@ -1,15 +1,14 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelRendererMixedMeshHandler.h"
 #include "VoxelRendererBasicMeshHandler.h"
 #include "VoxelRendererClusteredMeshHandler.h"
 #include "VoxelRender/VoxelProcMeshBuffers.h"
-#include "VoxelUtilities/VoxelThreadingUtilities.h"
 
 FVoxelRendererMixedMeshHandler::FVoxelRendererMixedMeshHandler(IVoxelRenderer& Renderer)
 	: IVoxelRendererMeshHandler(Renderer)
-	, BasicMeshHandler(FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRendererBasicMeshHandler>(Renderer))
-	, ClusteredMeshHandler(FVoxelUtilities::MakeGameThreadDeleterPtr<FVoxelRendererClusteredMeshHandler>(Renderer))
+	, BasicMeshHandler(MakeVoxelShared<FVoxelRendererBasicMeshHandler>(Renderer))
+	, ClusteredMeshHandler(MakeVoxelShared<FVoxelRendererClusteredMeshHandler>(Renderer))
 {
 	BasicMeshHandler->Init();
 	ClusteredMeshHandler->Init();
@@ -133,14 +132,14 @@ void FVoxelRendererMixedMeshHandler::Tick(double MaxTime)
 	ClusteredMeshHandler->Tick(MaxTime);
 }
 
-void FVoxelRendererMixedMeshHandler::RecomputeComponentPositions()
+void FVoxelRendererMixedMeshHandler::RecomputeMeshPositions()
 {
 	VOXEL_FUNCTION_COUNTER();
 
-	IVoxelRendererMeshHandler::RecomputeComponentPositions();
+	IVoxelRendererMeshHandler::RecomputeMeshPositions();
 
-	BasicMeshHandler->RecomputeComponentPositions();
-	ClusteredMeshHandler->RecomputeComponentPositions();
+	BasicMeshHandler->RecomputeMeshPositions();
+	ClusteredMeshHandler->RecomputeMeshPositions();
 }
 
 void FVoxelRendererMixedMeshHandler::ApplyToAllMeshes(TFunctionRef<void(UVoxelProceduralMeshComponent&)> Lambda)

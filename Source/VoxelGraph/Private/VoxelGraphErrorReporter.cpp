@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelGraphErrorReporter.h"
 #include "VoxelNode.h"
@@ -99,7 +99,7 @@ void FVoxelGraphErrorReporter::AddMessageToNode(
 	}
 
 #if WITH_EDITORONLY_DATA
-	if (auto* GraphNode = Node->GraphNode)
+	if (UVoxelGraphNodeInterface* GraphNode = Node->GraphNode)
 	{
 		AddMessageToNodeInternal(Node, MessageWithPrefix, Severity);
 		GraphsToRefresh.Add(GraphNode->GetGraph());
@@ -205,7 +205,7 @@ void FVoxelGraphErrorReporter::ClearNodesMessages(const UVoxelGraphGenerator* Gr
 			{
 				if (auto* MacroNode = Cast<UVoxelGraphMacroNode>(Interface->GetVoxelNode()))
 				{
-					auto* Macro = MacroNode->Macro;
+					UVoxelGraphMacro* Macro = MacroNode->Macro;
 					if (!Macros.Contains(Macro) && Macro)
 					{
 						Macros.Add(Macro);
@@ -239,7 +239,7 @@ void FVoxelGraphErrorReporter::AddMessageToNodeInternal(
 	EVoxelGraphNodeMessageType Severity)
 {
 #if WITH_EDITOR
-	if (auto* GraphNode = Node->GraphNode)
+	if (UVoxelGraphNodeInterface* GraphNode = Node->GraphNode)
 	{
 		FString& Text = GetErrorString(GraphNode, Severity);
 		if (!Text.IsEmpty())

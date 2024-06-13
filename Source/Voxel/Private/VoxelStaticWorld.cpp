@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelStaticWorld.h"
 #include "VoxelMinimal.h"
@@ -17,9 +17,9 @@ void AVoxelStaticWorld::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 		PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_STATIC(AVoxelStaticWorld, BaseMesh) &&
 		PropertyChangedEvent.ChangeType != EPropertyChangeType::Interactive)
 	{
-		for (auto* Mesh : Meshes)
+		for (UStaticMeshComponent* Mesh : Meshes)
 		{
-			UE_5_SWITCH(auto*, auto) StaticMesh = Mesh->GetStaticMesh();
+			auto* StaticMesh = Mesh->GetStaticMesh().Get();
 			auto RelativeTransform = Mesh->GetRelativeTransform();
 			Mesh->ReinitializeProperties(BaseMesh);
 			Mesh->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);

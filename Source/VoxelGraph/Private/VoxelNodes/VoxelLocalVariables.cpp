@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #include "VoxelNodes/VoxelLocalVariables.h"
 #include "VoxelGraphGenerator.h"
@@ -126,7 +126,7 @@ void UVoxelLocalVariableDeclaration::PostEditChangeProperty(FPropertyChangedEven
 			if (Graph && GraphNode)
 			{
 				GraphNode->ReconstructNode();
-				for (auto* Node : Graph->AllNodes)
+				for (UVoxelNode* Node : Graph->AllNodes)
 				{
 					auto* Usage = Cast<UVoxelLocalVariableUsage>(Node);
 					if (Usage && Usage->Declaration == this && Usage->GraphNode)
@@ -323,5 +323,5 @@ void UVoxelLocalVariableUsage::PostCopyNode(const TArray<UVoxelNode*>& CopiedNod
 bool UVoxelLocalVariableUsage::IsDeclarationValid() const
 {
 	// Deleted expressions are marked as pending kill (see FVoxelGraphEditorToolkit::DeleteSelectedNodes)
-	return Declaration && !Declaration->IsPendingKill();
+	return IsValid(Declaration);
 }

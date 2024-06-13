@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -34,22 +34,22 @@ public:
 	void AddReferencedObjects(FReferenceCollector& Collector);
 
 private:
-	UVoxelGraphGenerator* const Generator;
+	TObjectPtr<UVoxelGraphGenerator> const Generator;
 	TSharedPtr<SVoxelGraphPreview> const Preview;
 	TSharedPtr<SVoxelGraphPreviewViewport> const PreviewViewport;
 	TSharedPtr<FAdvancedPreviewScene> const PreviewScene;
 	
 	TVoxelSharedPtr<FVoxelData> Data;
 
-	UStaticMeshComponent* PreviewSceneFloor = nullptr;
-	UVoxelLineBatchComponent* LineBatchComponent = nullptr;
+	TObjectPtr<UStaticMeshComponent> PreviewSceneFloor = nullptr;
+	TObjectPtr<UVoxelLineBatchComponent> LineBatchComponent = nullptr;
 	
-	UMaterialInstanceDynamic* HeightmapMaterial = nullptr;
-	UMaterialInstanceDynamic* SliceMaterial = nullptr;
+	TObjectPtr<UMaterialInstanceDynamic> HeightmapMaterial = nullptr;
+	TObjectPtr<UMaterialInstanceDynamic> SliceMaterial = nullptr;
 
-	UTexture2D* DensitiesTexture = nullptr;
-	UTexture2D* MaterialsTexture = nullptr;
-	UTexture2D* MaterialsTextureWithCrossAndNoAlpha = nullptr;
+	TObjectPtr<UTexture2D> DensitiesTexture = nullptr;
+	TObjectPtr<UTexture2D> MaterialsTexture = nullptr;
+	TObjectPtr<UTexture2D> MaterialsTextureWithCrossAndNoAlpha = nullptr;
 	
 	void UpdateTextures(EVoxelGraphPreviewFlags Flags);
 	void UpdateMaterialParameters();

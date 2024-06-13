@@ -1,9 +1,10 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "VoxelMinimal.h"
+#include "VoxelUtilities/VoxelBaseUtilities.h"
 
 template<typename T, uint32 Size, uint32 Alignment = alignof(T)>
 class alignas(Alignment) TVoxelStaticArray
@@ -26,6 +27,16 @@ public:
 	{
 		static_assert(sizeof...(Args) == Size, "");
 		SetFromVariadicArgs(Args...);
+	}
+	FORCEINLINE ~TVoxelStaticArray()
+	{
+		if (!TIsTriviallyDestructible<T>::Value)
+		{
+			for (auto& Element : *this)
+			{
+				Element.~T();
+			}
+		}
 	}
 
 	FORCEINLINE static constexpr uint32 Num()
@@ -93,12 +104,6 @@ public:
 		return TArrayView<const T>(GetData(), Num());
 	}
 
-	// To be API compatible with TVoxelStaticBitArray
-	FORCEINLINE void Set(int32 Index, const T& Value)
-	{
-		(*this)[Index] = Value;
-	}
-
 	FORCEINLINE T* begin() { return GetData(); }
 	FORCEINLINE T* end()   { return GetData() + Size; }
 	
@@ -113,7 +118,7 @@ public:
 		(*this)[Index] = Arg;
 		SetFromVariadicArgs<Index + 1>(Args...);
 	}
-	template<int32 Index = 0>
+	template<int32 Index>
 	FORCEINLINE void SetFromVariadicArgs(T Arg)
 	{
 		static_assert(Index == Size - 1, "");
@@ -128,4 +133,39 @@ template<typename T, uint32 Size, uint32 Alignment>
 struct TIsContiguousContainer<TVoxelStaticArray<T, Size, Alignment>>
 {
 	enum { Value = true };
+};
+
+template<uint32 Size>
+class TVoxelStaticBitArray
+{
+public:
+	TVoxelStaticBitArray() = default;
+	TVoxelStaticBitArray(EForceInit)
+	{
+		Clear();
+	}
+
+	void Clear()
+	{
+		Array.Memzero();
+	}
+
+	FORCEINLINE void Set(uint32 Index)
+	{
+		checkVoxelSlow(Index < Size);
+		Array[Index / 32] |= (1u << (Index % 32));
+	}
+	FORCEINLINE void Clear(uint32 Index)
+	{
+		checkVoxelSlow(Index < Size);
+		Array[Index / 32] &= ~(1u << (Index % 32));
+	}
+	FORCEINLINE bool Test(uint32 Index) const
+	{
+		checkVoxelSlow(Index < Size);
+		return Array[Index / 32] & (1u << (Index % 32));
+	}
+
+private:
+	TVoxelStaticArray<uint32, FVoxelUtilities::DivideCeil(Size, 32)> Array;
 };

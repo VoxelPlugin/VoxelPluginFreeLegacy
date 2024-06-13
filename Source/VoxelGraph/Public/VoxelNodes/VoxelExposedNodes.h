@@ -1,4 +1,4 @@
-// Copyright 2021 Phyronnaz
+// Copyright Voxel Plugin SAS. All Rights Reserved.
 
 #pragma once
 
@@ -6,7 +6,6 @@
 #include "VoxelMinimal.h"
 #include "VoxelNodeHelper.h"
 #include "VoxelNodeHelperMacros.h"
-#include "VoxelGenerators/VoxelGeneratorParametersUtilities.h"
 #include "VoxelExposedNodes.generated.h"
 
 UCLASS(Abstract, Category = "Parameters")
@@ -41,7 +40,7 @@ public:
 	TMap<FName, FString> CustomMetaData;
 
 	//~ Begin UVoxelExposedNode Interface
-	virtual FName GetParameterPropertyNameInternal() const { ensure(false); return {}; }
+	virtual FName GetParameterPropertyName() const { ensure(false); return {}; }
 	virtual TMap<FName, FString> GetMetaData() const;
 	//~ End UVoxelExposedNode Interface
 
@@ -56,6 +55,24 @@ public:
 	//~ End UVoxelNode Interface
 
 public:
+	struct FDummy
+	{
+		static UScriptStruct* Get() { return nullptr; }
+	};
+	
+	template<typename T>
+	T GetParameter() const
+	{
+		T Temp{};
+#if VOXEL_ENGINE_VERSION >= 504
+		const void* Result = GetParameterInternal(static_cast<void*>(&Temp), std::conditional_t<TOr<TIsFundamentalType<T>, TIsPointer<T>>::Value, FDummy, TBaseStructure<T>>::Get());
+#else
+		const void* Result = GetParameterInternal(static_cast<void*>(&Temp), TChooseClass<TOr<TIsFundamentalType<T>, TIsPointer<T>>::Value, FDummy, TBaseStructure<T>>::Result::Get());
+#endif
+		check(Result);
+		
+		return *static_cast<const T*>(Result);
+	}
 
 protected:
 	//~ Begin UObject Interface
@@ -65,7 +82,6 @@ protected:
 	virtual void PostEditImport() override;
 	virtual void PostLoad() override;
 	//~ End UObject Interface
-	
 
 private:
 	// Only allow renaming on creation, else the name is wrong (GetTitle never called)
@@ -73,15 +89,5 @@ private:
 	bool bCanBeRenamed = true;
 
 	void MakeNameUnique();
-	
-	FProperty& GetParameterProperty() const;
-	
+	const void* GetParameterInternal(void* Temp, UScriptStruct* Struct) const;
 };
-
-#define GENERATED_EXPOSED_VOXELNODE_BODY_IMPL(Parameter) \
-	public: \
-	virtual FName GetParameterPropertyNameInternal() const override { return GET_OWN_MEMBER_NAME(Parameter); }
-	
-#define GENERATED_EXPOSED_VOXELNODE_BODY(Parameter) \
-	GENERATED_EXPOSED_VOXELNODE_BODY_IMPL(Parameter) \
-	private:
