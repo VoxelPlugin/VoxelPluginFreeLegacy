@@ -212,7 +212,6 @@ template<typename T>
 template<EVoxelCellularDistanceFunction CellularDistance>
 FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_CellularNoise<T>::SingleCellular2Edge_2D(v_flt x, v_flt y) const
 {
-	// TODO expose?
 	constexpr int32 m_cellularDistanceIndex0 = 0;
 	constexpr int32 m_cellularDistanceIndex1 = 1;
 	static_assert(m_cellularDistanceIndex1 > m_cellularDistanceIndex0, "");
@@ -259,7 +258,6 @@ template<typename T>
 template<EVoxelCellularDistanceFunction CellularDistance>
 FN_FORCEINLINE_SINGLE v_flt TVoxelFastNoise_CellularNoise<T>::SingleCellular2Edge_3D(v_flt x, v_flt y, v_flt z) const
 {
-	// TODO expose?
 	constexpr int32 m_cellularDistanceIndex0 = 0;
 	constexpr int32 m_cellularDistanceIndex1 = 1;
 	static_assert(m_cellularDistanceIndex1 > m_cellularDistanceIndex0, "");
