@@ -99,7 +99,7 @@ void UK2Node_AddDataItem::ExpandNode(class FKismetCompilerContext& CompilerConte
 		TArray<FName> InputPinsName;
 		for (auto& Pin : Pins)
 		{
-			if (Pin->Direction == EGPD_Input && Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Float)
+			if (Pin->Direction == EGPD_Input && (Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Float || Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Real))
 			{
 				ParameterInputPins.Add(Pin);
 				InputPinsName.Add(Pin->GetFName());
