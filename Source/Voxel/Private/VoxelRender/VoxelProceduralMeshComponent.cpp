@@ -81,6 +81,7 @@ void UVoxelProceduralMeshComponent::Init(
 	bCleanCollisionMesh = RendererSettings.bCleanCollisionMeshes;
 	bClearProcMeshBuffersOnFinishUpdate = RendererSettings.bStaticWorld && !RendererSettings.bRenderWorld; // We still need the buffers if we are rendering!
 	DistanceFieldSelfShadowBias = RendererSettings.DistanceFieldSelfShadowBias;
+	RendererSettings.PrimitiveSettings.ApplyToComponent(*this);
 }
 
 void UVoxelProceduralMeshComponent::ClearInit()

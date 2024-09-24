@@ -335,7 +335,8 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 				{
 					if (!(VisibilityMap & (1 << ViewIndex))) continue;
 
-					FMeshBatch& Mesh = DrawSection(Collector, Section, MaterialProxy, false, EngineShowFlags.Wireframe);
+					FMeshBatch& Mesh = Collector.AllocateMesh();
+					DrawSection(Mesh, Section, MaterialProxy, false, EngineShowFlags.Wireframe);
 					Collector.AddMesh(ViewIndex, Mesh);
 				}
 			}
@@ -364,7 +365,8 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 			{
 				if (!(VisibilityMap & (1 << ViewIndex))) continue;
 
-				FMeshBatch& Mesh = DrawSection(Collector, Section, MaterialProxy, false, EngineShowFlags.Wireframe);
+				FMeshBatch& Mesh = Collector.AllocateMesh();
+				DrawSection(Mesh, Section, MaterialProxy, false, EngineShowFlags.Wireframe);
 				Mesh.bCanApplyViewModeOverrides = false;
 				Collector.AddMesh(ViewIndex, Mesh);
 			}
@@ -408,7 +410,8 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 			{
 				if (!(VisibilityMap & (1 << ViewIndex))) continue;
 
-				FMeshBatch& Mesh = DrawSection(Collector, Section, MaterialProxy, !bForceDisableTessellation, EngineShowFlags.Wireframe);
+				FMeshBatch& Mesh = Collector.AllocateMesh();
+				DrawSection(Mesh, Section, MaterialProxy, !bForceDisableTessellation, EngineShowFlags.Wireframe);
 
 				{
 					VOXEL_SLOW_SCOPE_COUNTER("Collector.AddMesh");
@@ -470,7 +473,8 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 					{
 						if (!(VisibilityMap & (1 << ViewIndex))) continue;
 
-						FMeshBatch& Mesh = DrawSection(Collector, Section, MaterialProxy, !bForceDisableTessellation, EngineShowFlags.Wireframe);
+						FMeshBatch& Mesh = Collector.AllocateMesh();
+						DrawSection(Mesh, Section, MaterialProxy, !bForceDisableTessellation, EngineShowFlags.Wireframe);
 						Collector.AddMesh(ViewIndex, Mesh);
 
 						INC_DWORD_STAT(STAT_NumVoxelDrawCallsForTools);
@@ -478,6 +482,47 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 					}
 				}
 			}
+		}
+	}
+}
+
+void FVoxelProceduralMeshSceneProxy::DrawStaticElements(FStaticPrimitiveDrawInterface* PDI)
+{
+	if (RuntimeVirtualTextureMaterialTypes.Num() == 0)
+	{
+		return;
+	}
+
+	for (const auto& Section : Sections)
+	{
+		auto* Material = Section.Material->GetMaterial();
+		if (!Material)
+		{
+			// Will happen in force delete
+			continue;
+		}
+			
+		auto* MaterialProxy = Material->GetRenderProxy();
+
+		FMeshBatch MeshBatch;
+		DrawSection(MeshBatch, Section, MaterialProxy, false, false);
+
+		// Else the virtual texture check fails in RuntimeVirtualTextureRender.cpp:338
+		// and the static mesh isn't rendered at all
+		MeshBatch.LODIndex = 0;
+
+		// Runtime virtual texture mesh elements.
+		MeshBatch.CastShadow = 0;
+		MeshBatch.bUseAsOccluder = 0;
+		MeshBatch.bUseForDepthPass = 0;
+		MeshBatch.bUseForMaterial = 0;
+		MeshBatch.bDitheredLODTransition = 0;
+		MeshBatch.bRenderToVirtualTexture = 1;
+
+		for (ERuntimeVirtualTextureMaterialType MaterialType : RuntimeVirtualTextureMaterialTypes)
+		{
+			MeshBatch.RuntimeVirtualTextureMaterialType = uint32(MaterialType);
+			PDI->DrawMesh(MeshBatch, FLT_MAX);
 		}
 	}
 }
@@ -575,8 +620,8 @@ uint32 FVoxelProceduralMeshSceneProxy::GetAllocatedSize() const
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-FMeshBatch& FVoxelProceduralMeshSceneProxy::DrawSection(
-	FMeshElementCollector& Collector,
+void FVoxelProceduralMeshSceneProxy::DrawSection(
+	FMeshBatch& Mesh,
 	const FVoxelProcMeshProxySection& Section,
 	const FMaterialRenderProxy* MaterialRenderProxy,
 	bool bEnableTessellation,
@@ -587,8 +632,6 @@ FMeshBatch& FVoxelProceduralMeshSceneProxy::DrawSection(
 	check(MaterialRenderProxy);
 	check(Section.RenderData.IsValid());
 
-	FMeshBatch& Mesh = Collector.AllocateMesh();
-	
 	Mesh.VertexFactory = &Section.RenderData->VertexFactory;
 	Mesh.MaterialRenderProxy = MaterialRenderProxy;
 	Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
@@ -623,8 +666,6 @@ FMeshBatch& FVoxelProceduralMeshSceneProxy::DrawSection(
 		}
 	}
 #endif
-
-	return Mesh;
 }
 
 bool FVoxelProceduralMeshSceneProxy::ShouldDrawComplexCollisions(const FEngineShowFlags& EngineShowFlags) const

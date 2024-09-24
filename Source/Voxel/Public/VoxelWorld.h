@@ -18,6 +18,7 @@
 #include "VoxelRender/VoxelMeshConfig.h"
 #include "VoxelRender/VoxelLODMaterials.h"
 #include "VoxelWorldCreateInfo.h"
+#include "VoxelRender/VoxelPrimitiveComponentSettings.h"
 #include "VoxelWorld.generated.h"
 
 class UVoxelSpawnerConfig;
@@ -350,10 +351,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender, ClampMin = 0, EditCondition = bDitherChunks))
 	float ChunksDitheringDuration = 1;
 
-	// When enabled, the component will be rendering into the far shadow cascades (only for directional lights).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
-	bool bCastFarShadow = false;
-	
 	// Custom procedural mesh class to use
 	// Use this to override specific rendering settings such as cast shadows, render custom depth...
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
@@ -429,7 +426,10 @@ public:
 	// Setting it to 0 can cause issues on flat worlds
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
 	float BoundsExtension = 100;
-	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "Voxel - Rendering", meta = (RecreateRender))
+	FVoxelPrimitiveComponentSettings PrimitiveSettings;
+
 	//////////////////////////////////////////////////////////////////////////////
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Spawners", meta = (RecreateSpawners))

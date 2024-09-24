@@ -64,6 +64,8 @@ public:
 	
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override;
 
+	virtual void DrawStaticElements(FStaticPrimitiveDrawInterface* PDI) override;
+
 #if RHI_RAYTRACING
 	virtual bool IsRayTracingRelevant() const override { return true; }
 	virtual void GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext& Context, TArray<FRayTracingInstance>& OutRayTracingInstances) override;
@@ -93,8 +95,8 @@ private:
 	double CreateSceneProxyTime = 0;
 	mutable bool bLoggedTime = false;
 
-	FMeshBatch& DrawSection(
-		FMeshElementCollector& Collector,
+	void DrawSection(
+		FMeshBatch& Mesh,
 		const FVoxelProcMeshProxySection& Section, 
 		const FMaterialRenderProxy* MaterialRenderProxy,
 		bool bEnableTessellation,

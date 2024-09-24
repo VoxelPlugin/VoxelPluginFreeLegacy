@@ -8,6 +8,7 @@
 #include "VoxelEnums.h"
 #include "VoxelIntBox.h"
 #include "VoxelRender/VoxelMeshConfig.h"
+#include "VoxelPrimitiveComponentSettings.h"
 #include "VoxelContainers/VoxelStaticArray.h"
 
 struct FVoxelMaterialIndices;
@@ -48,7 +49,6 @@ struct FVoxelRendererSettingsBase
 
 	// Always valid
 	UClass* const ProcMeshClass;
-	const bool bCastFarShadow;
 
 	const EVoxelPlayType PlayType;
 
@@ -78,7 +78,9 @@ struct FVoxelRendererSettingsBase
 	const int32 DistanceFieldBoundsExtension;
 	const int32 DistanceFieldResolutionDivisor;
 	const float DistanceFieldSelfShadowBias;
-	
+
+	const FVoxelPrimitiveComponentSettings PrimitiveSettings;
+
 	const bool bOneMaterialPerCubeSide;
 	const bool bHalfPrecisionCoordinates;
 	const bool bInterpolateColors;

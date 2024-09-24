@@ -25,7 +25,6 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, ProcMeshClass(InPlayType == EVoxelPlayType::Game && InWorld->ProcMeshClass 
 		? InWorld->ProcMeshClass.Get() 
 		: UVoxelProceduralMeshComponent::StaticClass())
-	, bCastFarShadow(InWorld->bCastFarShadow)
 
 	, PlayType(InPlayType)
 
@@ -58,6 +57,8 @@ FVoxelRendererSettingsBase::FVoxelRendererSettingsBase(
 	, DistanceFieldBoundsExtension(InWorld->DistanceFieldBoundsExtension)
 	, DistanceFieldResolutionDivisor(InWorld->DistanceFieldResolutionDivisor)
 	, DistanceFieldSelfShadowBias(InWorld->DistanceFieldSelfShadowBias)
+
+	, PrimitiveSettings(InWorld->PrimitiveSettings)
 
 	, bOneMaterialPerCubeSide(InWorld->MaterialConfig == EVoxelMaterialConfig::SingleIndex && InWorld->bOneMaterialPerCubeSide)
 	, bHalfPrecisionCoordinates(InWorld->bHalfPrecisionCoordinates)
