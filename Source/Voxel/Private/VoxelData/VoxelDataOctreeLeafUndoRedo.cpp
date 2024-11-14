@@ -70,7 +70,7 @@ void FVoxelDataOctreeLeafUndoRedo::UndoRedo(const IVoxelData& Data, FVoxelDataOc
 	check(CurrentFrame->IsEmpty());
 	check(CanUndoRedo<Type>(HistoryPosition));
 
-	const TUniquePtr<const FFrame> Frame = GetFramesStack<Type>().Pop(false);
+	const TUniquePtr<const FFrame> Frame = GetFramesStack<Type>().Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 	check(Frame->HistoryPosition == HistoryPosition);
 	
 	TUniquePtr<FFrame> NewFrame = MakeUnique<FFrame>(Leaf);

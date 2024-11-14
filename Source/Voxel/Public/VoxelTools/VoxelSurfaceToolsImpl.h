@@ -37,7 +37,7 @@ public:
 			}
 		}
 		check(Num <= Voxels.Num());
-		Voxels.SetNum(Num, false);
+		Voxels.SetNum(Num, UE_505_SWITCH(false, EAllowShrinking::No));
 	}
 	template<typename T>
 	static void ApplyDistanceStrengthFunctionImpl(
@@ -125,7 +125,7 @@ public:
 			Voxels[NewNum++] = NewVoxel;
 		}
 		check(NewNum <= Voxels.Num());
-		Voxels.SetNum(NewNum, false);
+		Voxels.SetNum(NewNum, UE_505_SWITCH(false, EAllowShrinking::No));
 	}
 	static void ApplyFlattenImpl(
 		const FVoxelSurfaceEditsVoxelsInfo& Info,

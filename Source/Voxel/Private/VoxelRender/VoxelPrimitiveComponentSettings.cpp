@@ -9,7 +9,11 @@ void FVoxelPrimitiveComponentSettings::ApplyToComponent(UPrimitiveComponent& Com
 
 	Component.CastShadow = bCastShadow;
 	COPY(IndirectLightingCacheQuality);
-	COPY(LightmapType);
+#if VOXEL_ENGINE_VERSION >= 505
+	Component.SetLightmapType(LightmapType);
+#else
+	Component.LightmapType = LightmapType;
+#endif
 	COPY(bEmissiveLightSource);
 	COPY(bAffectDynamicIndirectLighting);
 	COPY(bAffectIndirectLightingWhileHidden);

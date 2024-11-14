@@ -48,10 +48,15 @@ public:
 		const FVoxelDistanceFieldParameters& Parameters) const;
 
 private:
+#if VOXEL_ENGINE_VERSION >= 503
+	LAYOUT_FIELD(FShaderResourceParameter, Src);
+	LAYOUT_FIELD(FShaderResourceParameter, Dst);
+#else
 	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	LAYOUT_FIELD(FRWShaderParameter, Src);
 	LAYOUT_FIELD(FRWShaderParameter, Dst);
 	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -48,7 +48,7 @@ public:
 public:
 	FVoxelGeneratorInstance(
 		TSubclassOf<UVoxelGenerator> Class,
-		const UVoxelGenerator* Object,
+		UVoxelGenerator* Object,
 		const FBaseFunctionPtrs& BasePtrs,
 		const FCustomFunctionPtrs& CustomPtrs)
 		: Class(Class)
@@ -150,7 +150,7 @@ public:
 public:
 	FVoxelTransformableGeneratorInstance(
 		TSubclassOf<UVoxelTransformableGenerator> Class,
-		const UVoxelTransformableGenerator* Object,
+		UVoxelTransformableGenerator* Object,
 		const FBaseFunctionPtrs& BasePtrs,
 		const FCustomFunctionPtrs& CustomPtrs,
 		const FBaseFunctionPtrs_Transform& BasePtrs_Transform,

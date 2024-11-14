@@ -69,7 +69,7 @@ public:
 		Details = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 		const auto BaseDetails = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 
-		const auto Lambda = [=](const FPropertyChangedEvent& PropertyChangedEvent)
+		const auto Lambda = [this](const FPropertyChangedEvent& PropertyChangedEvent)
 		{
 			UpdateTexture();
 		};

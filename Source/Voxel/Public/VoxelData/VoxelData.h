@@ -338,11 +338,11 @@ public:
 	 *	@param	bDoNotModifyExistingDataChunks	Used when loading from a save
 	 */
 	template<typename T, bool bDoNotModifyExistingDataChunks = false, typename... TArgs>
-	TVoxelWeakPtr<const TVoxelDataItemWrapper<T>> AddItem(TArgs&&... Args);
+	TVoxelWeakPtr<TVoxelDataItemWrapper<T>> AddItem(TArgs&&... Args);
 
 	// Requires write lock on item bounds
 	template<typename T>
-	bool RemoveItem(TVoxelWeakPtr<const TVoxelDataItemWrapper<T>>& Item, FString& OutError);
+	bool RemoveItem(TVoxelWeakPtr<TVoxelDataItemWrapper<T>>& Item, FString& OutError);
 
 private:
 	template<typename T>

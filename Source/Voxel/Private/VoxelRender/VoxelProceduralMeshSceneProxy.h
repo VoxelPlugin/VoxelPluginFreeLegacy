@@ -68,7 +68,11 @@ public:
 
 #if RHI_RAYTRACING
 	virtual bool IsRayTracingRelevant() const override { return true; }
+#if VOXEL_ENGINE_VERSION >= 505
+	virtual void GetDynamicRayTracingInstances(FRayTracingInstanceCollector& Collector) override;
+#else
 	virtual void GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext& Context, TArray<FRayTracingInstance>& OutRayTracingInstances) override;
+#endif
 #endif
 	
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override;

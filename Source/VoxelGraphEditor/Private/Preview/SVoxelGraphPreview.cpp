@@ -27,7 +27,7 @@ void SVoxelGraphPreview::Construct(const FArguments& Args)
 			SNew(SCanvas)
 			+ SCanvas::Slot()
 			.Size(FVector2D(Size, Size))
-			.Position(TAttribute<FVector2D>::Create(TAttribute<FVector2D>::FGetter::CreateLambda([=]() { return Position; })))
+			.Position(TAttribute<FVector2D>::Create(TAttribute<FVector2D>::FGetter::CreateLambda([this]() { return Position; })))
 			[
 				SNew(SImage)
 				.Image(&TextureBrush)

@@ -22,7 +22,7 @@ public:
 
 private:
 	using FItemInfo = FVoxelDataItemConstructionInfo;
-	using FItemPtr = TVoxelWeakPtr<const TVoxelDataItemWrapper<FVoxelDataItem>>;
+	using FItemPtr = TVoxelWeakPtr<TVoxelDataItemWrapper<FVoxelDataItem>>;
 	
 	struct FActorData
 	{

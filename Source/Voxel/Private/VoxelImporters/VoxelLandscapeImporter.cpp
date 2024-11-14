@@ -15,10 +15,10 @@ void AVoxelLandscapeImporter::PostEditChangeProperty(FPropertyChangedEvent& Prop
 		Landscape &&
 		LayerInfos.Num() == 0)
 	{
-		for (auto& Layer : Landscape->EditorLayerSettings)
+		for (auto& Layer : Landscape->UE_505_SWITCH(EditorLayerSettings, GetTargetLayers()))
 		{
 			FVoxelLandscapeImporterLayerInfo LayerInfo;
-			LayerInfo.LayerInfo = Layer.LayerInfoObj;
+			LayerInfo.LayerInfo = UE_505_SWITCH(Layer.LayerInfoObj, Layer.Value.LayerInfoObj);
 			LayerInfo.Layer = EVoxelRGBA(LayerInfos.Num() % 4);
 			LayerInfo.Index = LayerInfos.Num();
 			LayerInfos.Add(LayerInfo);

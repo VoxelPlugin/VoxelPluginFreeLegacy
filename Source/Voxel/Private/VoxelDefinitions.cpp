@@ -121,9 +121,9 @@ VOXEL_API FString VoxelStats_RemoveLambdaFromFunctionName(const FString& Functio
 	FunctionName.ParseIntoArray(Array, TEXT("::"));
 
 	// operator()
-	if (ensure(Array.Num() > 1)) Array.Pop(false);
+	if (ensure(Array.Num() > 1)) Array.Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 	// <lambda XXXXXXX>
-	if (ensure(Array.Num() > 1)) Array.Pop(false);
+	if (ensure(Array.Num() > 1)) Array.Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 
 	return FString::Join(Array, TEXT("::"));
 #else

@@ -40,7 +40,7 @@ public:
 
 	using UStaticClass = UWorldObject; 
 
-	explicit TVoxelGeneratorInstanceHelper(const UWorldObject* Object, const FCustomFunctionPtrs& CustomFunctionPtrs = {})
+	explicit TVoxelGeneratorInstanceHelper(UWorldObject* Object, const FCustomFunctionPtrs& CustomFunctionPtrs = {})
 		: TParent(
 			UWorldObject::StaticClass(),
 			Object,
@@ -135,7 +135,7 @@ public:
 	using UStaticClass = UWorldObject;
 
 	explicit TVoxelTransformableGeneratorInstanceHelper(
-		const UWorldObject* Object,
+		UWorldObject* Object,
 		const FCustomFunctionPtrs& CustomFunctionPtrs = {},
 		const FCustomFunctionPtrs_Transform& CustomFunctionPtrs_Transform = {})
 		: TParent(

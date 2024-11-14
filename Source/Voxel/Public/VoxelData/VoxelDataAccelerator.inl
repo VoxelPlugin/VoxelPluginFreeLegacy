@@ -325,7 +325,7 @@ void TVoxelDataAccelerator<TData>::StoreOctreeInCache(FVoxelDataOctreeBase& Octr
 	if (CacheEntries.Num() == CacheSize)
 	{
 		// Limit cache size
-		CacheEntries.Pop(false);
+		CacheEntries.Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 	}
 	CacheEntries.Insert(CacheEntry, 0);
 }

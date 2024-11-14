@@ -240,7 +240,7 @@ bool UVoxelGraphSchema::ConnectionCausesLoop(const UEdGraphPin* InputPin, const 
 
 	while (NodesToProcess.Num() > 0)
 	{
-		UEdGraphNode* Node = NodesToProcess.Pop(false);
+		UEdGraphNode* Node = NodesToProcess.Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 		if (ProcessedNodes.Contains(Node))
 		{
 			continue;

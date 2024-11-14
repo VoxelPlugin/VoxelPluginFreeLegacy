@@ -178,7 +178,7 @@ namespace FVoxelMesherUtilities
 		}
 		
 		check(WriteIndex <= Vertices.Num());
-		Vertices.SetNum(WriteIndex, false);
+		Vertices.SetNum(WriteIndex, UE_505_SWITCH(false, EAllowShrinking::No));
 
 		for (uint32& Index : Indices)
 		{

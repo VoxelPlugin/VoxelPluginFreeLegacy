@@ -10,10 +10,8 @@ IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FVoxelDistanceFieldParameters, "VoxelDi
 FVoxelDistanceFieldBaseCS::FVoxelDistanceFieldBaseCS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
 	: FGlobalShader(Initializer)
 {
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	Src.Bind(Initializer.ParameterMap, TEXT("Src"));
 	Dst.Bind(Initializer.ParameterMap, TEXT("Dst"));
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }
 
 void FVoxelDistanceFieldBaseCS::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
@@ -27,10 +25,14 @@ void FVoxelDistanceFieldBaseCS::SetBuffers(
 		const FRWBuffer& SrcBuffer,
 		const FRWBuffer& DstBuffer) const
 {
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+#if VOXEL_ENGINE_VERSION >= 503
+	FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
+	SetUAVParameter(BatchedParameters, Src, SrcBuffer.UAV);
+	SetUAVParameter(BatchedParameters, Dst, DstBuffer.UAV);
+#else
 	Src.SetBuffer(RHICmdList, RHICmdList.GetBoundComputeShader(), SrcBuffer);
 	Dst.SetBuffer(RHICmdList, RHICmdList.GetBoundComputeShader(), DstBuffer);
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+#endif
 }
 
 void FVoxelDistanceFieldBaseCS::SetUniformBuffers(FRHICommandList& RHICmdList, const FVoxelDistanceFieldParameters& Parameters) const

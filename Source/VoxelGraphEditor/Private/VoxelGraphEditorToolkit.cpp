@@ -402,23 +402,23 @@ void FVoxelGraphEditorToolkit::BindGraphCommands()
 
 	ToolkitCommands->MapAction(
 		Commands.ShowStats,
-		FExecuteAction::CreateWeakLambda(Generator.Get(), [=]()
+		FExecuteAction::CreateWeakLambda(Generator.Get(), [this]()
 		{
 			Generator->PreviewSettings->bShowStats = !Generator->PreviewSettings->bShowStats;
 			UpdatePreview(EVoxelGraphPreviewFlags::UpdateTextures);
 		}),
 		FCanExecuteAction(),
-		FIsActionChecked::CreateWeakLambda(Generator.Get(), [=]() { return Generator->PreviewSettings->bShowStats; }));
+		FIsActionChecked::CreateWeakLambda(Generator.Get(), [this]() { return Generator->PreviewSettings->bShowStats; }));
 
 	ToolkitCommands->MapAction(
 		Commands.ShowValues,
-		FExecuteAction::CreateWeakLambda(Generator.Get(), [=]()
+		FExecuteAction::CreateWeakLambda(Generator.Get(), [this]()
 		{
 			Generator->PreviewSettings->bShowValues = !Generator->PreviewSettings->bShowValues;
 			UpdatePreview(EVoxelGraphPreviewFlags::UpdateTextures);
 		}),
 		FCanExecuteAction(),
-		FIsActionChecked::CreateWeakLambda(Generator.Get(), [=]() { return Generator->PreviewSettings->bShowValues; }));
+		FIsActionChecked::CreateWeakLambda(Generator.Get(), [this]() { return Generator->PreviewSettings->bShowValues; }));
 
 	ToolkitCommands->MapAction(
 		FGenericCommands::Get().Undo,

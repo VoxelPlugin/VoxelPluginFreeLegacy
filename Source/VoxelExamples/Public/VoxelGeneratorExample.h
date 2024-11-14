@@ -31,7 +31,7 @@ class FVoxelGeneratorExampleInstance : public TVoxelGeneratorInstanceHelper<FVox
 public:
     using Super = TVoxelGeneratorInstanceHelper<FVoxelGeneratorExampleInstance, UVoxelGeneratorExample>;
 
-	explicit FVoxelGeneratorExampleInstance(const UVoxelGeneratorExample& MyGenerator);
+	explicit FVoxelGeneratorExampleInstance(UVoxelGeneratorExample& MyGenerator);
 
 	//~ Begin FVoxelGeneratorInstance Interface
 	virtual void Init(const FVoxelGeneratorInit& InitStruct) override;

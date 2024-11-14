@@ -56,12 +56,12 @@ void FVoxelGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IPropertyHan
 				SNew(SComboBox<TSharedPtr<EVoxelGeneratorPickerType>>)
 				.IsEnabled(!TypeHandle->IsEditConst())
 				.OptionsSource(&ComboBoxArray)
-				.OnSelectionChanged_Lambda([=](TSharedPtr<EVoxelGeneratorPickerType> Value, ESelectInfo::Type)
+				.OnSelectionChanged_Lambda([this, TypeHandle](TSharedPtr<EVoxelGeneratorPickerType> Value, ESelectInfo::Type)
 				{
 					PickerType = *Value;
 					TypeHandle->SetValueFromFormattedString(UEnum::GetDisplayValueAsText(PickerType).ToString());
 				})
-				.OnGenerateWidget_Lambda([=](TSharedPtr<EVoxelGeneratorPickerType> Value)
+				.OnGenerateWidget_Lambda([](TSharedPtr<EVoxelGeneratorPickerType> Value)
 				{
 					return
 						SNew(STextBlock)
@@ -72,7 +72,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IPropertyHan
 				[
 					SNew(STextBlock)
 					.Font(IDetailLayoutBuilder::GetDetailFont())
-					.Text_Lambda([=]()
+					.Text_Lambda([this]()
 					{
 						return UEnum::GetDisplayValueAsText(PickerType);
 					})
@@ -84,7 +84,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IPropertyHan
 		[
 			SNew(SBox)
 			.HAlign(HAlign_Left)
-			.Visibility_Lambda([=]()
+			.Visibility_Lambda([this]()
 			{
 				return PickerType == EVoxelGeneratorPickerType::Class ? EVisibility::Visible : EVisibility::Collapsed;
 			})
@@ -97,7 +97,7 @@ void FVoxelGeneratorPickerCustomization::CustomizeHeader(TSharedRef<IPropertyHan
 		[
 			SNew(SBox)
 			.HAlign(HAlign_Left)
-			.Visibility_Lambda([=]()
+			.Visibility_Lambda([this]()
 			{
 				return PickerType == EVoxelGeneratorPickerType::Object ? EVisibility::Visible : EVisibility::Collapsed;
 			})

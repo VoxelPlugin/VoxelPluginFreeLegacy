@@ -25,8 +25,8 @@ void FRangeAnalysisDebuggerDetails::CustomizeDetails(IDetailLayoutBuilder& Detai
 		.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked_Lambda([=]() { if (Node.IsValid()) { Node->Reset(); } return FReply::Handled(); })
-		.IsEnabled_Lambda([=]() { return Node.IsValid() && Node->Bins->bMinMaxInit; })
+		.OnClicked_Lambda([this]() { if (Node.IsValid()) { Node->Reset(); } return FReply::Handled(); })
+		.IsEnabled_Lambda([this]() { return Node.IsValid() && Node->Bins->bMinMaxInit; })
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())
@@ -37,7 +37,7 @@ void FRangeAnalysisDebuggerDetails::CustomizeDetails(IDetailLayoutBuilder& Detai
 		.ContentPadding(2)
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
-		.OnClicked_Lambda([=]() { if (Node.IsValid()) { Node->UpdateGraph(); } return FReply::Handled(); })
+		.OnClicked_Lambda([this]() { if (Node.IsValid()) { Node->UpdateGraph(); } return FReply::Handled(); })
 		[
 			SNew(STextBlock)
 			.Font(IDetailLayoutBuilder::GetDetailFont())

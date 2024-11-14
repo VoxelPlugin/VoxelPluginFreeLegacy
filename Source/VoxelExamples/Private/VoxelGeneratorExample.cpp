@@ -13,7 +13,7 @@ TVoxelSharedRef<FVoxelGeneratorInstance> UVoxelGeneratorExample::GetInstance()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-FVoxelGeneratorExampleInstance::FVoxelGeneratorExampleInstance(const UVoxelGeneratorExample& MyGenerator)
+FVoxelGeneratorExampleInstance::FVoxelGeneratorExampleInstance(UVoxelGeneratorExample& MyGenerator)
 	: Super(&MyGenerator)
 	, NoiseHeight(MyGenerator.NoiseHeight)
 	, Seed(MyGenerator.Seed)

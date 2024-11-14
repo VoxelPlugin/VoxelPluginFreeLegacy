@@ -9,7 +9,11 @@ public class VoxelExamples : ModuleRules
 {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         bLegacyPublicIncludePaths = false;
+#if UE_5_5_OR_LATER
+        CppStandard = CppStandardVersion.Cpp20;
+#else
 		CppStandard = CppStandardVersion.Cpp17;
+#endif
 
 #if UE_4_24_OR_LATER
         bUseUnity = true;

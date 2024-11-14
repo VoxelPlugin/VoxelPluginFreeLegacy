@@ -532,7 +532,11 @@ void FVoxelProceduralMeshSceneProxy::DrawStaticElements(FStaticPrimitiveDrawInte
 ///////////////////////////////////////////////////////////////////////////////
 
 #if RHI_RAYTRACING
+#if VOXEL_ENGINE_VERSION >= 505
+void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingInstanceCollector& Collector)
+#else
 void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext& Context, TArray<FRayTracingInstance>& OutRayTracingInstances)
+#endif
 {
 	VOXEL_RENDER_FUNCTION_COUNTER();
 
@@ -541,7 +545,11 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingMa
 		if (Section.bSectionVisible && ensure(Section.Material->GetMaterial()->IsValidLowLevel()))
 		{
 			auto& RenderData = *Section.RenderData;
+#if VOXEL_ENGINE_VERSION >= 505
+			if (RenderData.RayTracingGeometry.GetRHI())
+#else
 			if (RenderData.RayTracingGeometry.RayTracingGeometryRHI.IsValid())
+#endif
 			{
 				check(RenderData.RayTracingGeometry.Initializer.IndexBuffer.IsValid());
 
@@ -569,7 +577,11 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingMa
 
 				RayTracingInstance.Materials.Add(MeshBatch);
 
+#if VOXEL_ENGINE_VERSION >= 505
+				Collector.AddRayTracingInstance(RayTracingInstance);
+#else
 				OutRayTracingInstances.Add(RayTracingInstance);
+#endif
 			}
 		}
 	}

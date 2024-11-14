@@ -30,7 +30,11 @@ public:
 	}
 	FORCEINLINE ~TVoxelStaticArray()
 	{
+#if VOXEL_ENGINE_VERSION >= 505
+		if (!std::is_trivially_destructible_v<T>)
+#else
 		if (!TIsTriviallyDestructible<T>::Value)
+#endif
 		{
 			for (auto& Element : *this)
 			{

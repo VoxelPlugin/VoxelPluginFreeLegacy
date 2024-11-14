@@ -13,7 +13,7 @@
 #include "Materials/MaterialFunction.h"
 #include "Materials/HLSLMaterialTranslator.h"
 
-#if VOXEL_ENGINE_VERSION >= 505
+#if VOXEL_ENGINE_VERSION >= 506
 #error "Check implementation"
 #elif VOXEL_ENGINE_VERSION >= 504
 #if WITH_EDITOR

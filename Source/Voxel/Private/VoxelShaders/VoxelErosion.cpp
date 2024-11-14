@@ -22,7 +22,7 @@ void UVoxelErosion::Initialize()
 	ENQUEUE_RENDER_COMMAND(Step)(
 		[ThisPtr = this](FRHICommandList& RHICmdList) 
 	{
-		ThisPtr->Init_RenderThread();
+		ThisPtr->Init_RenderThread(RHICmdList);
 	});
 
 	FlushRenderingCommands();
@@ -166,7 +166,7 @@ void UVoxelErosion::RunShader(const FVoxelErosionParameters& Parameters)
 	ComputeShader->UnbindBuffers(RHICmdList);
 }
 
-void UVoxelErosion::CopyTextureToRHI(const TVoxelTexture<float>& Texture, const FTexture2DRHIRef& RHITexture)
+void UVoxelErosion::CopyTextureToRHI(const TVoxelTexture<float>& Texture, const UE_505_SWITCH(FTexture2DRHIRef, FTextureRHIRef)& RHITexture)
 {
 	ENQUEUE_RENDER_COMMAND(CopyTextureToRHI)([Texture, RHITexture, ThisPtr = this](FRHICommandList& RHICmdList)
 	{
@@ -176,7 +176,7 @@ void UVoxelErosion::CopyTextureToRHI(const TVoxelTexture<float>& Texture, const 
 	FlushRenderingCommands();
 }
 
-void UVoxelErosion::CopyRHIToTexture(const FTexture2DRHIRef& RHITexture, TVoxelSharedRef<TVoxelTexture<float>::FTextureData>& Texture)
+void UVoxelErosion::CopyRHIToTexture(const UE_505_SWITCH(FTexture2DRHIRef, FTextureRHIRef)& RHITexture, TVoxelSharedRef<TVoxelTexture<float>::FTextureData>& Texture)
 {
 	ENQUEUE_RENDER_COMMAND(CopyRHIToTexture)(
 		[RHITexture, Texture, ThisPtr = this](FRHICommandList& RHICmdList)
@@ -187,7 +187,7 @@ void UVoxelErosion::CopyRHIToTexture(const FTexture2DRHIRef& RHITexture, TVoxelS
 	FlushRenderingCommands();
 }
 
-void UVoxelErosion::CopyTextureToRHI_RenderThread(const TVoxelTexture<float>& Texture, const FTexture2DRHIRef& RHITexture)
+void UVoxelErosion::CopyTextureToRHI_RenderThread(const TVoxelTexture<float>& Texture, const UE_505_SWITCH(FTexture2DRHIRef, FTextureRHIRef)& RHITexture)
 {
 	check(IsInRenderingThread());
 
@@ -208,7 +208,7 @@ void UVoxelErosion::CopyTextureToRHI_RenderThread(const TVoxelTexture<float>& Te
 }
 
 
-void UVoxelErosion::CopyRHIToTexture_RenderThread(const FTexture2DRHIRef& RHITexture, TVoxelTexture<float>::FTextureData& Texture)
+void UVoxelErosion::CopyRHIToTexture_RenderThread(const UE_505_SWITCH(FTexture2DRHIRef, FTextureRHIRef)& RHITexture, TVoxelTexture<float>::FTextureData& Texture)
 {
 	check(IsInRenderingThread());
 
@@ -229,7 +229,7 @@ void UVoxelErosion::CopyRHIToTexture_RenderThread(const FTexture2DRHIRef& RHITex
 	RHIUnlockTexture2D(RHITexture, 0, false);
 }
 
-void UVoxelErosion::Init_RenderThread()
+void UVoxelErosion::Init_RenderThread(FRHICommandList& RHICmdList)
 {
 	check(IsInRenderingThread());
 
@@ -238,9 +238,15 @@ void UVoxelErosion::Init_RenderThread()
 
 	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
+#if VOXEL_ENGINE_VERSION >= 505
+#define CREATE_UAV(Name) RHICmdList.CreateUnorderedAccessView(Name)
+#else
+#define CREATE_UAV(Name) RHICreateUnorderedAccessView(Name)
+#endif
+
 #define CREATE_TEXTURE(Name, SizeX) \
 	Name = RHICreateTexture2D(SizeX * RealSize, RealSize, PF_R32_FLOAT, 1, 1, Flags, CreateInfo); \
-	Name##UAV = RHICreateUnorderedAccessView(Name); \
+	Name##UAV = CREATE_UAV(Name); \
 
 	CREATE_TEXTURE(RainMap, 1);
 	CREATE_TEXTURE(TerrainHeight, 1);
@@ -254,6 +260,7 @@ void UVoxelErosion::Init_RenderThread()
 	CREATE_TEXTURE(Velocity, 2);
 
 #undef CREATE_TEXTURE
+#undef CREATE_UAV
 
 	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 }

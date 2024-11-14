@@ -24,6 +24,14 @@
 #define UE_504_ONLY(...)
 #endif
 
+#if VOXEL_ENGINE_VERSION >= 505
+#define UE_505_SWITCH(Before, AfterOrEqual) AfterOrEqual
+#define UE_505_ONLY(...) __VA_ARGS__
+#else
+#define UE_505_SWITCH(Before, AfterOrEqual) Before
+#define UE_505_ONLY(...)
+#endif
+
 /**
  * To change a definition, add it to VoxelUserDefinitions.h
  */

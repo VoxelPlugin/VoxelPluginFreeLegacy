@@ -89,7 +89,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	}
 	FVoxelConfigUtilities::LoadConfig(&ToolManager->GetSharedConfig(), ToolConfigSectionName);
 
-	const auto IsPropertyVisibleDelegate = MakeWeakPtrDelegate(this, [=](const FPropertyAndParent& PropertyAndParent)
+	const auto IsPropertyVisibleDelegate = MakeWeakPtrDelegate(this, [this](const FPropertyAndParent& PropertyAndParent)
 		{
 			const auto& ParentProperties = PropertyAndParent.ParentProperties;
 			return IsPropertyVisible(PropertyAndParent.Property, ParentProperties);
@@ -98,7 +98,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	SharedConfigDetailsPanel = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 	SharedConfigDetailsPanel->SetObject(&ToolManager->GetSharedConfig());
 	SharedConfigDetailsPanel->SetIsPropertyVisibleDelegate(IsPropertyVisibleDelegate);
-	SharedConfigDetailsPanel->OnFinishedChangingProperties().AddWeakLambda(ToolManager.Get(), [=](auto&)
+	SharedConfigDetailsPanel->OnFinishedChangingProperties().AddWeakLambda(ToolManager.Get(), [this](auto&)
 	{
 		FVoxelConfigUtilities::SaveConfig(&ToolManager->GetSharedConfig(), ToolConfigSectionName);
 	});
@@ -106,7 +106,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	ToolDetailsPanel = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 	ToolDetailsPanel->SetObject(ToolManager->GetActiveTool());
 	ToolDetailsPanel->SetIsPropertyVisibleDelegate(IsPropertyVisibleDelegate);
-	ToolDetailsPanel->OnFinishedChangingProperties().AddWeakLambda(ToolManager.Get(), [=](auto&)
+	ToolDetailsPanel->OnFinishedChangingProperties().AddWeakLambda(ToolManager.Get(), [this](auto&)
 	{
 		if (auto* Tool = ToolManager->GetActiveTool())
 		{
@@ -169,7 +169,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 		[
 			SNew(SButton)
 			.Text(VOXEL_LOCTEXT("Browse to tool BP"))
-			.Visibility_Lambda([=]()
+			.Visibility_Lambda([this]()
 			{
 				if (ToolManager->GetActiveTool() && !ToolManager->GetActiveTool()->GetClass()->HasAnyClassFlags(CLASS_Native))
 				{
@@ -180,7 +180,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 					return EVisibility::Collapsed;
 				}
 			})
-			.OnClicked_Lambda([=]()
+			.OnClicked_Lambda([this]()
 			{
 				TArray<UObject*> Objects = { ToolManager->GetActiveTool()->GetClass() };
 				GEditor->SyncBrowserToObjects(Objects);
@@ -218,7 +218,7 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 	.AutoHeight()
 	[
 		SAssignNew(CustomToolBarsVerticalBox, SVerticalBox)
-		.Visibility_Lambda([=]()
+		.Visibility_Lambda([this]()
 		{
 			return bShowCustomTools ? EVisibility::Visible : EVisibility::Collapsed;
 		})
@@ -237,19 +237,19 @@ void FVoxelEditorToolsPanel::Init(const TSharedPtr<FUICommandList>& CommandListO
 			.ButtonStyle(FAppStyle::Get(), "NoBorder")
 			.HAlign(HAlign_Center)
 			.ContentPadding(2)
-			.OnClicked_Lambda([=]()
+			.OnClicked_Lambda([this]()
 			{
 				bShowCustomTools = !bShowCustomTools;
 				GConfig->SetBool(TEXT("VoxelEditorToolsPanel"), TEXT("ShowCustomTools"), bShowCustomTools, GEditorPerProjectIni);
 				return FReply::Handled();
 			})
-			.ToolTipText_Lambda([=]()
+			.ToolTipText_Lambda([this]()
 			{
 				return bShowCustomTools ? VOXEL_LOCTEXT("Hide custom tools") : VOXEL_LOCTEXT("Show custom tools");	
 			})
 			[
 				SNew(SImage)
-				.Image_Lambda([=]()
+				.Image_Lambda([this]()
 				{
 					if (ExpanderButton->IsHovered())
 					{

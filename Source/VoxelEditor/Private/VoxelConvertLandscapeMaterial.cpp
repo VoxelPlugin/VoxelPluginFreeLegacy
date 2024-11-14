@@ -130,8 +130,14 @@ void FVoxelConvertLandscapeMaterial::ConvertExpression(UObject* Owner, UMaterial
 	{
 		if (OtherExpression != Expression)
 		{
+#if VOXEL_ENGINE_VERSION >= 505
+			for (int32 InputIndex = 0; InputIndex < OtherExpression->CountInputs(); InputIndex++)
+			{
+				FExpressionInput* Input = OtherExpression->GetInput(InputIndex);
+#else
 			for (FExpressionInput* Input : OtherExpression->UE_503_SWITCH(GetInputs(), GetInputsView()))
 			{
+#endif
 				if (Input->Expression == Expression)
 				{
 					OtherExpression->Modify();

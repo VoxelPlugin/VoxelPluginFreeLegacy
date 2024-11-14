@@ -794,7 +794,7 @@ bool FVoxelData::Undo(TArray<FVoxelIntBox>& OutBoundsToUpdate)
 	UndoRedo.HistoryPosition--;
 
 	UndoRedo.RedoUniqueIds.Add(UndoRedo.CurrentFrameUniqueId);
-	UndoRedo.CurrentFrameUniqueId = UndoRedo.UndoUniqueIds.Pop(false);
+	UndoRedo.CurrentFrameUniqueId = UndoRedo.UndoUniqueIds.Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 		
 	const auto Bounds = UndoRedo.UndoFramesBounds.Pop();
 	UndoRedo.RedoFramesBounds.Add(Bounds);
@@ -839,13 +839,13 @@ bool FVoxelData::Redo(TArray<FVoxelIntBox>& OutBoundsToUpdate)
 	UndoRedo.HistoryPosition++;
 
 	UndoRedo.UndoUniqueIds.Add(UndoRedo.CurrentFrameUniqueId);
-	UndoRedo.CurrentFrameUniqueId = UndoRedo.RedoUniqueIds.Pop(false);
+	UndoRedo.CurrentFrameUniqueId = UndoRedo.RedoUniqueIds.Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 	
 	const auto Bounds = UndoRedo.RedoFramesBounds.Pop();
 	UndoRedo.UndoFramesBounds.Add(Bounds);
 
 	// We are redoing: pop redo stacks added by the last undo
-	if (ensure(UndoRedo.LeavesWithRedoStackStack.Num() > 0)) UndoRedo.LeavesWithRedoStackStack.Pop(false);
+	if (ensure(UndoRedo.LeavesWithRedoStackStack.Num() > 0)) UndoRedo.LeavesWithRedoStackStack.Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 	
 	FVoxelWriteScopeLock Lock(*this, Bounds, FUNCTION_FNAME);
 	FVoxelOctreeUtilities::IterateLeavesInBounds(GetOctree(), Bounds, [&](FVoxelDataOctreeLeaf& Leaf)

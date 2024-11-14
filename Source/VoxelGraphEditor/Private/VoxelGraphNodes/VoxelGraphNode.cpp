@@ -283,7 +283,7 @@ bool UVoxelGraphNode::TryCombinePin(UEdGraphPin& Pin, bool bOnlyCheck)
 	}
 
 	auto* ParentPin = CreatePin(Pin.Direction, FVoxelPinCategory::GetName(EVoxelPinCategory::Vector), FName(), nullptr, *ParentPinName);
-	Pins.Pop(false);
+	Pins.Pop(UE_505_SWITCH(false, EAllowShrinking::No));
 
 	FVector DefaultValue;
 	for (int32 Index = 0; Index < 3; Index++)

@@ -475,13 +475,13 @@ bool FVoxelSerializationUtilities::DecompressData(const TArray<uint8>& Compresse
 		ECompressionFlags NewCompressionFlags = (ECompressionFlags)(CompressionFlags & COMPRESS_OptionsFlagsMask);
 		switch (CompressionFlags & COMPRESS_DeprecatedFormatFlagsMask)
 		{
-		case COMPRESS_ZLIB:
+		case UE_505_SWITCH(COMPRESS_ZLIB, COMPRESS_ZLIB_DEPRECATED):
 			bSuccess = FCompression::UncompressMemory(NAME_Zlib, UncompressedData.GetData(), UncompressedSize, CompressionStart, CompressionSize, NewCompressionFlags);
 			break;
-		case COMPRESS_GZIP:
+		case UE_505_SWITCH(COMPRESS_GZIP, COMPRESS_GZIP_DEPRECATED):
 			bSuccess = FCompression::UncompressMemory(NAME_Gzip, UncompressedData.GetData(), UncompressedSize, CompressionStart, CompressionSize, NewCompressionFlags);
 			break;
-		case COMPRESS_Custom:
+		case UE_505_SWITCH(COMPRESS_Custom, COMPRESS_Custom_DEPRECATED):
 			bSuccess = FCompression::UncompressMemory(TEXT("Oodle"), UncompressedData.GetData(), UncompressedSize, CompressionStart, CompressionSize, NewCompressionFlags);
 			break;
 		default:
