@@ -138,6 +138,13 @@ void FVoxelGraphEditor::CompileVoxelNodesFromGraphNodes(UVoxelGraphGenerator* Ge
 					}
 				}
 
+				// If objects outer is not generator or macro, it will not work in packaged project, rename, to assign proper outer
+				if (VoxelNode->GetOuter() &&
+					!VoxelNode->GetOuter()->GetClass()->IsChildOf<UVoxelGraphGenerator>())
+				{
+					VoxelNode->Rename(nullptr, Generator);
+				}
+
 				VoxelNode->SetFlags(RF_Transactional);
 				VoxelNode->Modify();
 				VoxelNode->InputPins = InputPins;

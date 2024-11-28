@@ -605,6 +605,8 @@ float UVoxelBlueprintLibrary::GetFloatOutput(AVoxelWorld* World, FName Name, flo
 		return 0;
 	}
 
+	const FIntVector Position(X, Y, Z);
+	FVoxelReadScopeLock Lock(Data, FVoxelIntBox(Position - FIntVector(1), Position + FIntVector(2)), FUNCTION_FNAME);
 	return Data.GetCustomOutput<v_flt>(DefaultValue, Name, X, Y, Z, 0);
 }
 
@@ -621,6 +623,8 @@ int32 UVoxelBlueprintLibrary::GetIntOutput(AVoxelWorld* World, FName Name, float
 		return 0;
 	}
 
+	const FIntVector Position(X, Y, Z);
+	FVoxelReadScopeLock Lock(Data, FVoxelIntBox(Position - FIntVector(1), Position + FIntVector(2)), FUNCTION_FNAME);
 	return Data.GetCustomOutput<int32>(DefaultValue, Name, X, Y, Z, 0);
 }
 

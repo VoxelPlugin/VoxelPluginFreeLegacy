@@ -185,6 +185,12 @@ bool UVoxelNode::IsOutdated() const
 	{
 		return true;
 	}
+
+	if (GetOuter() &&
+		!GetOuter()->GetClass()->IsChildOf<UVoxelGraphGenerator>())
+	{
+		return true;
+	}
 #endif
 
 	return false;
