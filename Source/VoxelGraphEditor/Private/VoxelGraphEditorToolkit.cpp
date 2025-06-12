@@ -567,7 +567,11 @@ TSharedRef<SGraphEditor> FVoxelGraphEditorToolkit::CreateGraphEditorWidget(bool 
 		InEvents.OnSelectionChanged = SGraphEditor::FOnSelectionChanged::CreateSP(this, &FVoxelGraphEditorToolkit::OnSelectedNodesChanged);
 		InEvents.OnTextCommitted = FOnNodeTextCommitted::CreateSP(this, &FVoxelGraphEditorToolkit::OnNodeTitleCommitted);
 		InEvents.OnNodeDoubleClicked = FSingleNodeEvent::CreateSP(this, &FVoxelGraphEditorToolkit::OnNodeDoubleClicked);
+#if VOXEL_ENGINE_VERSION >= 506
+		InEvents.OnSpawnNodeByShortcutAtLocation = SGraphEditor::FOnSpawnNodeByShortcutAtLocation::CreateSP(this, &FVoxelGraphEditorToolkit::OnSpawnGraphNodeByShortcut);
+#else
 		InEvents.OnSpawnNodeByShortcut = SGraphEditor::FOnSpawnNodeByShortcut::CreateSP(this, &FVoxelGraphEditorToolkit::OnSpawnGraphNodeByShortcut);
+#endif
 
 		return SNew(SGraphEditor)
 			.AdditionalCommands(GraphEditorCommands)
@@ -946,7 +950,7 @@ void FVoxelGraphEditorToolkit::OnNodeDoubleClicked(UEdGraphNode* Node)
 	}
 }
 
-FReply FVoxelGraphEditorToolkit::OnSpawnGraphNodeByShortcut(FInputChord InChord, const FVector2D& InPosition)
+FReply FVoxelGraphEditorToolkit::OnSpawnGraphNodeByShortcut(FInputChord InChord, const UE_506_SWITCH(FVector2D, FVector2f)& InPosition)
 {
 	auto* Ptr = GetDefault<UVoxelGraphShortcuts>()->Shortcuts.FindByPredicate([&](auto& Key) { return Key.IsSameAs(InChord); });
 	UClass* ClassToSpawn = Ptr ? Ptr->Class : nullptr;
@@ -1003,7 +1007,11 @@ bool FVoxelGraphEditorToolkit::CanDeleteInput() const
 void FVoxelGraphEditorToolkit::OnCreateComment()
 {
 	FVoxelGraphSchemaAction_NewComment CommentAction;
+#if VOXEL_ENGINE_VERSION >= 506
+	CommentAction.PerformAction(Generator->VoxelGraph, NULL, VoxelGraphEditor->GetPasteLocation2f());
+#else
 	CommentAction.PerformAction(Generator->VoxelGraph, NULL, VoxelGraphEditor->GetPasteLocation());
+#endif
 }
 
 void FVoxelGraphEditorToolkit::OnTogglePinPreview()
@@ -1013,24 +1021,15 @@ void FVoxelGraphEditorToolkit::OnTogglePinPreview()
 	UVoxelGraphNode* GraphNodeToPreview = Cast<UVoxelGraphNode>(SelectedNode);
 	if (GraphNodeToPreview && GraphNodeToPreview->VoxelNode)
 	{
-		PRAGMA_DISABLE_DEPRECATION_WARNINGS
-		const bool bIsPreviewing = SelectedPin->bIsDiffing;
-
-		if (Generator->PreviewedPin.Get())
+		const UEdGraphPin* TargetPin = Generator->PreviewedPin.Get();
+		if (TargetPin == SelectedPin)
 		{
-			ensure(!bIsPreviewing || SelectedPin == Generator->PreviewedPin.Get());
-			ensure(Generator->PreviewedPin.Get()->bIsDiffing);
-			Generator->PreviewedPin.Get()->bIsDiffing = false;
 			Generator->PreviewedPin.SetPin(nullptr);
 		}
-
-		ensure(!SelectedPin->bIsDiffing);
-		if (!bIsPreviewing)
+		else
 		{
-			SelectedPin->bIsDiffing = true;
 			Generator->PreviewedPin.SetPin(SelectedPin);
 		}
-		PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 		VoxelGraphEditor->NotifyGraphChanged();
 	}
@@ -1086,10 +1085,6 @@ void FVoxelGraphEditorToolkit::DeleteSelectedNodes()
 				{
 					// Clear previewed pin if we delete the owning node
 					Generator->PreviewedPin = {};
-					// Clear since we're not previewing it anymore
-					PRAGMA_DISABLE_DEPRECATION_WARNINGS
-					PreviewedPin->bIsDiffing = false;
-					PRAGMA_ENABLE_DEPRECATION_WARNINGS
 				}
 
 				FBlueprintEditorUtils::RemoveNode(NULL, VoxelGraphNode, true);
@@ -1230,7 +1225,11 @@ bool FVoxelGraphEditorToolkit::CanCopyNodes() const
 
 void FVoxelGraphEditorToolkit::PasteNodes()
 {
+#if VOXEL_ENGINE_VERSION >= 506
+	PasteNodesHere(VoxelGraphEditor->GetPasteLocation2f());
+#else
 	PasteNodesHere(VoxelGraphEditor->GetPasteLocation());
+#endif
 }
 
 void FVoxelGraphEditorToolkit::PasteNodesHere(const FVector2D& Location)

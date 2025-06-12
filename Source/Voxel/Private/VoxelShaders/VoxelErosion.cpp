@@ -233,7 +233,6 @@ void UVoxelErosion::Init_RenderThread(FRHICommandList& RHICmdList)
 {
 	check(IsInRenderingThread());
 
-	FRHIResourceCreateInfo CreateInfo(TEXT("Name"));
 	const ETextureCreateFlags Flags = TexCreate_ShaderResource | TexCreate_UAV;
 
 	PRAGMA_DISABLE_DEPRECATION_WARNINGS
@@ -244,9 +243,24 @@ void UVoxelErosion::Init_RenderThread(FRHICommandList& RHICmdList)
 #define CREATE_UAV(Name) RHICreateUnorderedAccessView(Name)
 #endif
 
+#if VOXEL_ENGINE_VERSION >= 506
+#define CREATE_TEXTURE(Name, SizeX) \
+	Name = RHICreateTexture( \
+			FRHITextureCreateDesc::Create2D(TEXT("Name")) \
+				.SetExtent(int32(SizeX * RealSize), (int32)RealSize) \
+				.SetFormat(PF_R32_FLOAT) \
+				.SetNumMips(1) \
+				.SetNumSamples(1) \
+				.SetFlags(Flags) \
+				.SetInitialState(ERHIAccess::Unknown)); \
+	Name##UAV = CREATE_UAV(Name);
+#else
+	FRHIResourceCreateInfo CreateInfo(TEXT("Name"));
+
 #define CREATE_TEXTURE(Name, SizeX) \
 	Name = RHICreateTexture2D(SizeX * RealSize, RealSize, PF_R32_FLOAT, 1, 1, Flags, CreateInfo); \
-	Name##UAV = CREATE_UAV(Name); \
+	Name##UAV = CREATE_UAV(Name);
+#endif
 
 	CREATE_TEXTURE(RainMap, 1);
 	CREATE_TEXTURE(TerrainHeight, 1);

@@ -338,8 +338,13 @@ void SVoxelGraphNode::UpdateStandardNode()
 	.IsGraphNodeHovered( this, &SGraphNode::IsHovered );
 
 	GetOrAddSlot( ENodeZone::TopCenter )
+#if VOXEL_ENGINE_VERSION >= 506
+	.SlotOffset2f( TAttribute<FVector2f>( CommentBubble.Get(), &SCommentBubble::GetOffset2f ))
+	.SlotSize2f( TAttribute<FVector2f>( CommentBubble.Get(), &SCommentBubble::GetSize2f ))
+#else
 	.SlotOffset( TAttribute<FVector2D>( CommentBubble.Get(), &SCommentBubble::GetOffset ))
 	.SlotSize( TAttribute<FVector2D>( CommentBubble.Get(), &SCommentBubble::GetSize ))
+#endif
 	.AllowScaling( TAttribute<bool>( CommentBubble.Get(), &SCommentBubble::IsScalingAllowed ))
 	.VAlign( VAlign_Top )
 	[
@@ -530,8 +535,13 @@ void SVoxelGraphNode::UpdateCompactNode()
 		.IsGraphNodeHovered(this, &SVoxelGraphNode::IsHovered);
 
 	GetOrAddSlot(ENodeZone::TopCenter)
-		.SlotOffset(TAttribute<FVector2D>(CommentBubble.Get(), &SCommentBubble::GetOffset))
-		.SlotSize(TAttribute<FVector2D>(CommentBubble.Get(), &SCommentBubble::GetSize))
+#if VOXEL_ENGINE_VERSION >= 506
+		.SlotOffset2f( TAttribute<FVector2f>( CommentBubble.Get(), &SCommentBubble::GetOffset2f ))
+		.SlotSize2f( TAttribute<FVector2f>( CommentBubble.Get(), &SCommentBubble::GetSize2f ))
+#else
+		.SlotOffset( TAttribute<FVector2D>( CommentBubble.Get(), &SCommentBubble::GetOffset ))
+		.SlotSize( TAttribute<FVector2D>( CommentBubble.Get(), &SCommentBubble::GetSize ))
+#endif
 		.AllowScaling(TAttribute<bool>(CommentBubble.Get(), &SCommentBubble::IsScalingAllowed))
 		.VAlign(VAlign_Top)
 		[

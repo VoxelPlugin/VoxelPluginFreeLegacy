@@ -71,7 +71,7 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 	if (ScriptStack.Num() > 0)
 	{
 		const FFrame& StackFrame = *ScriptStack.Last();
-		UClass* ClassContainingCode = FKismetDebugUtilities::FindClassForNode(nullptr, StackFrame.Node);
+		const UClass* ClassContainingCode = FKismetDebugUtilities::FindClassForNode(nullptr, StackFrame.Node);
 		UBlueprint* BlueprintObj = (ClassContainingCode ? Cast<UBlueprint>(ClassContainingCode->ClassGeneratedBy) : NULL);
 		if (BlueprintObj)
 		{
@@ -89,7 +89,7 @@ void FVoxelMessagesEditor::LogMessage(const TSharedRef<FTokenizedMessage>& Messa
 			ReversedTokens.Add(FTextToken::Create(VOXEL_LOCTEXT("Function: ")));
 
 #if WITH_EDITORONLY_DATA // to protect access to GeneratedClass->DebugData
-			UBlueprintGeneratedClass* GeneratedClass = Cast<UBlueprintGeneratedClass>(ClassContainingCode);
+			const UBlueprintGeneratedClass* GeneratedClass = Cast<UBlueprintGeneratedClass>(ClassContainingCode);
 			if ((GeneratedClass != NULL) && GeneratedClass->DebugData.IsValid())
 			{
 				UEdGraphNode* BlueprintNode = GeneratedClass->DebugData.FindSourceNodeFromCodeLocation(StackFrame.Node, BreakpointOffset, true);

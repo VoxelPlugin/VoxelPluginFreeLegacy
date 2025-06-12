@@ -31,10 +31,15 @@ public class Voxel : ModuleRules
         // For HLSL translator
         PrivateIncludePaths.Add(EngineDirectory + "/Source/Runtime/Engine/Private");
 
+#if UE_5_6_OR_LATER
+	    PrivateIncludePaths.Add(EngineDirectory + "/Source/Runtime/Renderer/Private");
+	    PrivateIncludePaths.Add(EngineDirectory + "/Source/Runtime/Renderer/Internal");
+#else
         if (Target.Platform == UnrealTargetPlatform.Linux)
         {
 	        PrivateIncludePaths.Add(EngineDirectory + "/Source/Runtime/Renderer/Private");
         }
+#endif
 
         PublicDependencyModuleNames.AddRange(
             new string[]

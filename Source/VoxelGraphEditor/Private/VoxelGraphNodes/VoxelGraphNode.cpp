@@ -412,14 +412,21 @@ FLinearColor UVoxelGraphNode::GetNodeBodyColor() const
 	}
 	if (VoxelNode)
 	{
-		for (auto& Pin : Pins)
+		if (const UVoxelEdGraph* Graph = Cast<UVoxelEdGraph>(GetGraph()))
 		{
-			PRAGMA_DISABLE_DEPRECATION_WARNINGS
-			if (Pin->bIsDiffing)
+			if (const UVoxelGraphGenerator* Generator = Graph->GetGenerator())
 			{
-				return FLinearColor(0.f, 0.f, 1.0f, 1.f);
+				if (const UEdGraphPin* PreviewedPin = Generator->PreviewedPin.Get())
+				{
+					for (auto& Pin : Pins)
+					{
+						if (Pin == PreviewedPin)
+						{
+							return FLinearColor(0.f, 0.f, 1.0f, 1.f);
+						}
+					}
+				}
 			}
-			PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		}
 		return VoxelNode->GetNodeBodyColor();
 	}

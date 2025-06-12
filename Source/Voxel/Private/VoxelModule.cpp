@@ -106,7 +106,7 @@ void FVoxelModule::StartupModule()
 			}
 		};
 
-		constexpr int32 LatestVoxelPluginVersion = 2;
+		/*constexpr int32 LatestVoxelPluginVersion = 2;
 		if (VoxelPluginVersion < LatestVoxelPluginVersion)
 		{
 			const auto Close = [LatestVoxelPluginVersion]()
@@ -130,7 +130,7 @@ void FVoxelModule::StartupModule()
 			});
 			
 			FVoxelMessages::ShowNotification(Notification);
-		}
+		}*/
 
 		{
 			FVoxelMessages::FNotification Notification;

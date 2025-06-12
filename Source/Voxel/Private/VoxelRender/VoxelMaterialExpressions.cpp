@@ -3,19 +3,15 @@
 #include "VoxelRender/VoxelMaterialExpressions.h"
 #include "VoxelContainers/VoxelStaticArray.h"
 
-#if VOXEL_ENGINE_VERSION >= 504
-#include "LandscapeUtils.h"
-#include "MaterialHLSLTree.h"
-#include "MaterialHLSLGenerator.h"
-#endif
-
 #include "MaterialCompiler.h"
 #include "Materials/MaterialFunction.h"
 #include "Materials/HLSLMaterialTranslator.h"
 
-#if VOXEL_ENGINE_VERSION >= 506
-#error "Check implementation"
-#elif VOXEL_ENGINE_VERSION >= 504
+#if VOXEL_ENGINE_VERSION >= 504 && VOXEL_ENGINE_VERSION < 506
+#include "LandscapeUtils.h"
+#include "MaterialHLSLTree.h"
+#include "MaterialHLSLGenerator.h"
+
 #if WITH_EDITOR
 namespace UE::Landscape
 {

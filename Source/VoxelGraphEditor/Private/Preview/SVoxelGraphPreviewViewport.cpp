@@ -2,6 +2,7 @@
 
 #include "SVoxelGraphPreviewViewport.h"
 #include "IVoxelGraphEditorToolkit.h"
+#include "VoxelDefinitions.h"
 
 #include "EditorViewportClient.h"
 #include "SEditorViewport.h"
@@ -18,7 +19,11 @@ public:
 
 	// FEditorViewportClient interface
 	virtual bool InputKey(const FInputKeyEventArgs& EventArgs) override;
+#if VOXEL_ENGINE_VERSION >= 506
+	virtual bool InputAxis(const FInputKeyEventArgs& Args) override;
+#else
 	virtual bool InputAxis(FViewport* InViewport, int32 ControllerId, FKey Key, float Delta, float DeltaTime, int32 NumSamples/* =1 */, bool bGamepad/* =false */) override;
+#endif
 	virtual FLinearColor GetBackgroundColor() const override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void Draw(FViewport* Viewport, FCanvas* Canvas) override;
@@ -93,6 +98,29 @@ bool FVoxelGraphEditorViewportClient::InputKey(const FInputKeyEventArgs& EventAr
 	return bHandled;
 }
 
+#if VOXEL_ENGINE_VERSION >= 506
+bool FVoxelGraphEditorViewportClient::InputAxis(const FInputKeyEventArgs& Args)
+{
+	bool bResult = true;
+
+	if (!bDisableInput)
+	{
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
+		bResult = AdvancedPreviewScene->HandleViewportInput(Args.Viewport, Args.InputDevice, Args.Key, Args.AmountDepressed, Args.DeltaTime, Args.NumSamples, Args.IsGamepad());
+		if (bResult)
+		{
+			Invalidate();
+		}
+		else
+		{
+			bResult = FEditorViewportClient::InputAxis(Args);
+		}
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	}
+
+	return bResult;
+}
+#else
 bool FVoxelGraphEditorViewportClient::InputAxis(FViewport* InViewport, int32 ControllerId, FKey Key, float Delta, float DeltaTime, int32 NumSamples/* =1 */, bool bGamepad/* =false */)
 {
 	bool bResult = true;
@@ -114,6 +142,7 @@ bool FVoxelGraphEditorViewportClient::InputAxis(FViewport* InViewport, int32 Con
 
 	return bResult;
 }
+#endif
 
 FLinearColor FVoxelGraphEditorViewportClient::GetBackgroundColor() const
 {

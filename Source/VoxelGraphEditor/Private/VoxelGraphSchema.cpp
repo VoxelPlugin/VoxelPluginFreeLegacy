@@ -42,14 +42,14 @@
 #include "ToolMenu.h"
 #include "ToolMenuSection.h"
 
-UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode)
 {
 	check(VoxelNodeClass);
 	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New voxel node"));
 
-	UVoxelNode* NewNode = Generator->ConstructNewNode(VoxelNodeClass, Location, bSelectNewNode);
+	UVoxelNode* NewNode = Generator->ConstructNewNode(VoxelNodeClass, FVector2D(Location), bSelectNewNode);
 	NewNode->GraphNode->ReconstructNode();
 
 	// Autowire before combining if not vector
@@ -78,14 +78,14 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewNode::PerformAction(UEdGraph* ParentGra
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UEdGraphNode* FVoxelGraphSchemaAction_NewMacroNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FVoxelGraphSchemaAction_NewMacroNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode)
 {
 	check(Macro);
 	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New macro node"));
 
-	UVoxelGraphMacroNode* NewNode = Generator->ConstructNewNode<UVoxelGraphMacroNode>(Location, bSelectNewNode);
+	UVoxelGraphMacroNode* NewNode = Generator->ConstructNewNode<UVoxelGraphMacroNode>(FVector2D(Location), bSelectNewNode);
 	NewNode->Macro = Macro;
 	NewNode->GraphNode->ReconstructNode();
 
@@ -115,13 +115,13 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewMacroNode::PerformAction(UEdGraph* Pare
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableDeclaration::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableDeclaration::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode)
 {
 	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New local variable declaration"));
 
-	UVoxelLocalVariableDeclaration* Declaration = Generator->ConstructNewNode<UVoxelLocalVariableDeclaration>(Location, bSelectNewNode);
+	UVoxelLocalVariableDeclaration* Declaration = Generator->ConstructNewNode<UVoxelLocalVariableDeclaration>(FVector2D(Location), bSelectNewNode);
 	Declaration->SetCategory(PinCategory);
 
 	if (!DefaultName.IsNone())
@@ -140,14 +140,14 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableDeclaration::PerformAction
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableUsage::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableUsage::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode)
 {
 	check(Declaration);
 	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New local variable usage"));
 
-	UVoxelLocalVariableUsage* Usage = Generator->ConstructNewNode<UVoxelLocalVariableUsage>(Location, bSelectNewNode);
+	UVoxelLocalVariableUsage* Usage = Generator->ConstructNewNode<UVoxelLocalVariableUsage>(FVector2D(Location), bSelectNewNode);
 	Usage->Declaration = Declaration;
 	Usage->DeclarationGuid = Declaration->VariableGuid;
 
@@ -162,13 +162,13 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewLocalVariableUsage::PerformAction(UEdGr
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UEdGraphNode* FVoxelGraphSchemaAction_NewSetterNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FVoxelGraphSchemaAction_NewSetterNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode)
 {
 	UVoxelGraphGenerator* Generator = CastChecked<UVoxelEdGraph>(ParentGraph)->GetGenerator();
 
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New setter node"));
 
-	UVoxelNode_SetNode* NewNode = Generator->ConstructNewNode<UVoxelNode_SetNode>(Location, bSelectNewNode);
+	UVoxelNode_SetNode* NewNode = Generator->ConstructNewNode<UVoxelNode_SetNode>(FVector2D(Location), bSelectNewNode);
 	NewNode->SetIndex(Index);
 	NewNode->GraphNode->ReconstructNode();
 	NewNode->GraphNode->AutowireNewNode(FromPin);
@@ -181,7 +181,7 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewSetterNode::PerformAction(UEdGraph* Par
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UEdGraphNode* FVoxelGraphSchemaAction_NewKnotNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FVoxelGraphSchemaAction_NewKnotNode::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode)
 {
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("New reroute node"));
 	ParentGraph->Modify();
@@ -201,12 +201,12 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewKnotNode::PerformAction(UEdGraph* Paren
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UEdGraphNode* FVoxelGraphSchemaAction_NewComment::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FVoxelGraphSchemaAction_NewComment::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode)
 {
 	// Add menu item for creating comment boxes
 	UEdGraphNode_Comment* CommentTemplate = NewObject<UEdGraphNode_Comment>();
 
-	FVector2D SpawnLocation = Location;
+	FVector2D SpawnLocation(Location);
 
 	FSlateRect Bounds;
 	if (FVoxelGraphEditorUtilities::GetBoundsForSelectedNodes(ParentGraph, Bounds, 50.0f))
@@ -221,9 +221,9 @@ UEdGraphNode* FVoxelGraphSchemaAction_NewComment::PerformAction(UEdGraph* Parent
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UEdGraphNode* FVoxelGraphSchemaAction_Paste::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode)
+UEdGraphNode* FVoxelGraphSchemaAction_Paste::PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode)
 {
-	FVoxelGraphEditorUtilities::PasteNodesHere(ParentGraph, Location);
+	FVoxelGraphEditorUtilities::PasteNodesHere(ParentGraph, FVector2D(Location));
 	return NULL;
 }
 
@@ -620,7 +620,7 @@ void UVoxelGraphSchema::GetContextMenuActions(UToolMenu* Menu, UGraphNodeContext
 	}
 }
 
-void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, const FVector2D& GraphPosition, UEdGraph* Graph) const
+void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, const UE_506_SWITCH(FVector2D, FVector2f)& GraphPosition, UEdGraph* Graph) const
 {
 	auto* Generator = CastChecked<UVoxelEdGraph>(Graph)->GetGenerator();
 	FStreamableManager AssetLoader;
@@ -629,7 +629,7 @@ void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, c
 		UObject* Asset = AssetLoader.LoadSynchronous(AssetData.GetSoftObjectPath());
 		if (Asset->IsA<UVoxelHeightmapAsset>())
 		{
-			auto* Node = Generator->ConstructNewNode<UVoxelNode_HeightmapSampler>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_HeightmapSampler>(FVector2D(GraphPosition));
 			if (Asset->IsA<UVoxelHeightmapAssetFloat>())
 			{
 				Node->bFloatHeightmap = true;
@@ -644,38 +644,38 @@ void UVoxelGraphSchema::DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, c
 		}
 		else if (Asset->IsA<UVoxelDataAsset>())
 		{
-			auto* Node = Generator->ConstructNewNode<UVoxelNode_DataAssetSampler>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_DataAssetSampler>(FVector2D(GraphPosition));
 			Node->Asset = CastChecked<UVoxelDataAsset>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UTexture2D>())
 		{
-			auto* Node = Generator->ConstructNewNode<UVoxelNode_TextureSampler>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_TextureSampler>(FVector2D(GraphPosition));
 			Node->Texture = CastChecked<UTexture2D>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UCurveFloat>())
 		{
-			auto* Node = Generator->ConstructNewNode<UVoxelNode_Curve>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_Curve>(FVector2D(GraphPosition));
 			Node->Curve = CastChecked<UCurveFloat>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UCurveLinearColor>())
 		{
-			auto* Node = Generator->ConstructNewNode<UVoxelNode_CurveColor>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_CurveColor>(FVector2D(GraphPosition));
 			Node->Curve = CastChecked<UCurveLinearColor>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UVoxelGraphMacro>())
 		{
-			auto* Node = Generator->ConstructNewNode<UVoxelGraphMacroNode>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelGraphMacroNode>(FVector2D(GraphPosition));
 			Node->Macro = CastChecked<UVoxelGraphMacro>(Asset);
 			Node->GraphNode->ReconstructNode();
 			Node->SetEditableName(Asset->GetName());
 		}
 		else if (Asset->IsA<UVoxelGenerator>())
 		{
-			auto* Node = Generator->ConstructNewNode<UVoxelNode_GetGeneratorValue>(GraphPosition);
+			auto* Node = Generator->ConstructNewNode<UVoxelNode_GetGeneratorValue>(FVector2D(GraphPosition));
 			Node->Generator = CastChecked<UVoxelGenerator>(Asset);
 			Node->SetEditableName(Asset->GetName());
 		}
@@ -780,12 +780,12 @@ void UVoxelGraphSchema::BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNot
 	}
 }
 
-void UVoxelGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2D& GraphPosition) const
+void UVoxelGraphSchema::OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const UE_506_SWITCH(FVector2D, FVector2f)& GraphPosition) const
 {
 	const FScopedTransaction Transaction(VOXEL_LOCTEXT("Create Reroute Node"));
 
-	const FVector2D NodeSpacerSize(42.0f, 24.0f);
-	const FVector2D KnotTopLeft = GraphPosition - (NodeSpacerSize * 0.5f);
+	const UE_506_SWITCH(FVector2D, FVector2f) NodeSpacerSize(42.0f, 24.0f);
+	const UE_506_SWITCH(FVector2D, FVector2f) KnotTopLeft = GraphPosition - (NodeSpacerSize * 0.5f);
 
 	// Create a new knot
 	UEdGraph* ParentGraph = PinA->GetOwningNode()->GetGraph();

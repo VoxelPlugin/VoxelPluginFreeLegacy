@@ -119,7 +119,7 @@ private:
 
 	void OnNodeDoubleClicked(UEdGraphNode* Node);
 
-	FReply OnSpawnGraphNodeByShortcut(FInputChord InChord, const FVector2D& InPosition);
+	FReply OnSpawnGraphNodeByShortcut(FInputChord InChord, const UE_506_SWITCH(FVector2D, FVector2f)& InPosition);
 
 public:
 	/**

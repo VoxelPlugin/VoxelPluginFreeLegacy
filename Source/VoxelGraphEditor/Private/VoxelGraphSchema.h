@@ -22,7 +22,7 @@ public:
 	TObjectPtr<UClass> VoxelNodeClass = nullptr;
 	
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
-	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode = true) override;
 };
 
 USTRUCT()
@@ -35,7 +35,7 @@ public:
 	TObjectPtr<UVoxelGraphMacro> Macro = nullptr;
 
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
-	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode = true) override;
 };
 
 USTRUCT()
@@ -51,7 +51,7 @@ public:
 	EVoxelPinCategory PinCategory;
 	
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
-	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode = true) override;
 };
 
 USTRUCT()
@@ -64,7 +64,7 @@ public:
 	TObjectPtr<UVoxelLocalVariableDeclaration> Declaration = nullptr;
 	
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
-	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode = true) override;
 };
 
 USTRUCT()
@@ -77,7 +77,7 @@ public:
 	uint32 Index = 0;
 	
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
-	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode = true) override;
 };
 
 USTRUCT()
@@ -87,7 +87,7 @@ struct FVoxelGraphSchemaAction_NewKnotNode : public FEdGraphSchemaAction
 
 public:
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
-	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode = true) override;
 };
 
 /** Action to create new comment */
@@ -98,7 +98,7 @@ struct FVoxelGraphSchemaAction_NewComment : public FEdGraphSchemaAction
 
 public:
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
-	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode = true) override;
 };
 
 /** Action to paste clipboard contents into the graph */
@@ -109,7 +109,7 @@ struct FVoxelGraphSchemaAction_Paste : public FEdGraphSchemaAction
 
 public:
 	using FEdGraphSchemaAction::FEdGraphSchemaAction;
-	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const FVector2D Location, bool bSelectNewNode = true) override;
+	virtual UEdGraphNode* PerformAction(UEdGraph* ParentGraph, UEdGraphPin* FromPin, const UE_506_SWITCH(FVector2D, FVector2f&) Location, bool bSelectNewNode = true) override;
 };
 
 
@@ -137,12 +137,12 @@ public:
 	virtual void CreateDefaultNodesForGraph(UEdGraph& Graph) const override;
 	virtual void BreakNodeLinks(UEdGraphNode& TargetNode) const override;
 	virtual void BreakPinLinks(UEdGraphPin& TargetPin, bool bSendsNodeNotifcation) const override;
-	virtual void OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const FVector2D& GraphPosition) const override;
+	virtual void OnPinConnectionDoubleCicked(UEdGraphPin* PinA, UEdGraphPin* PinB, const UE_506_SWITCH(FVector2D, FVector2f)& GraphPosition) const override;
 	virtual FLinearColor GetPinTypeColor(const FEdGraphPinType& PinType) const override;
 	virtual TSharedPtr<FEdGraphSchemaAction> GetCreateCommentAction() const override;
 	virtual int32 GetNodeSelectionCount(const UEdGraph* Graph) const override;
 	virtual void GetContextMenuActions(UToolMenu* Menu, UGraphNodeContextMenuContext* Context) const override;
-	virtual void DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, const FVector2D& GraphPosition, UEdGraph* Graph) const override;
+	virtual void DroppedAssetsOnGraph(const TArray<FAssetData>& Assets, const UE_506_SWITCH(FVector2D, FVector2f)& GraphPosition, UEdGraph* Graph) const override;
 	virtual void GetAssetsGraphHoverMessage(const TArray<FAssetData>& Assets, const UEdGraph* HoverGraph, FString& OutTooltipText, bool& OutOkIcon) const override;
 	//~ End UEdGraphSchema Interface
 

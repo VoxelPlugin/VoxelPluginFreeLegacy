@@ -160,10 +160,17 @@ bool FVoxelDataAssetEditorViewportClient::InputKey(const FInputKeyEventArgs& Eve
 	return bHandled;
 }
 
+#if VOXEL_ENGINE_VERSION >= 506
+bool FVoxelDataAssetEditorViewportClient::InputAxis(const FInputKeyEventArgs& Args)
+{
+	return Panel.InputAxis(this, Args.Viewport, Args.Key, Args.AmountDepressed, Args.DeltaTime) || FEditorViewportClient::InputAxis(Args);
+}
+#else
 bool FVoxelDataAssetEditorViewportClient::InputAxis(FViewport* InViewport, FInputDeviceId DeviceID, FKey Key, float Delta, float DeltaTime, int32 NumSamples, bool bGamepad)
 {
 	return Panel.InputAxis(this, InViewport, Key, Delta, DeltaTime) || FEditorViewportClient::InputAxis(InViewport, DeviceID, Key, Delta, DeltaTime, NumSamples, bGamepad);
 }
+#endif
 
 void FVoxelDataAssetEditorViewportClient::ProcessClick(class FSceneView& View, class HHitProxy* HitProxy, FKey Key, EInputEvent Event, uint32 HitX, uint32 HitY)
 {

@@ -5,6 +5,8 @@
 #include "VoxelPinCategory.h"
 
 #include "BlueprintEditorSettings.h"
+#include "VoxelEdGraph.h"
+#include "VoxelGraphGenerator.h"
 #include "EdGraph/EdGraph.h"
 
 FConnectionDrawingPolicy* FVoxelGraphConnectionDrawingPolicyFactory::CreateConnectionPolicy(const UEdGraphSchema* Schema, int32 InBackLayerID, int32 InFrontLayerID, float ZoomFactor, const FSlateRect& InClippingRect, FSlateWindowElementList& InDrawElements, UEdGraph* InGraphObj) const
@@ -84,11 +86,20 @@ void FVoxelGraphConnectionDrawingPolicy::DetermineWiringStyle(UEdGraphPin* Outpu
 		Params.WireThickness = DefaultExecutionWireThickness;
 	}
 
-	//if (OutputPin->bIsDiffing)
-	//{
-	//	Params.WireThickness *= 5.f;
-	//	Params.bDrawBubbles = true;
-	//}
+	if (const UVoxelEdGraph* Graph = Cast<UVoxelEdGraph>(GraphObj))
+	{
+		if (const UVoxelGraphGenerator* Generator = Graph->GetGenerator())
+		{
+			if (const UEdGraphPin* PreviewedPin = Generator->PreviewedPin.Get())
+			{
+				if (OutputPin == PreviewedPin)
+				{
+					Params.WireThickness *= 5.f;
+					Params.bDrawBubbles = true;
+				}
+			}
+		}
+	}
 
 	const bool bDeemphasizeUnhoveredPins = HoveredPins.Num() > 0;
 

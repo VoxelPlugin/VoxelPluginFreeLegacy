@@ -161,17 +161,34 @@ FIndexArrayView FVoxelRawStaticIndexBuffer::GetArrayView() const
 
 void FVoxelRawStaticIndexBuffer::InitRHI(UE_503_ONLY(FRHICommandListBase& RHICmdList))
 {
-	const uint32 IndexStride = b32Bit ? sizeof(uint32) : sizeof(uint16);
 	const uint32 SizeInBytes = IndexStorage.Num();
 	check(NumIndices == (b32Bit ? (IndexStorage.Num() / 4) : (IndexStorage.Num() / 2)));
 
 	if (SizeInBytes > 0)
 	{
 		// Create the index buffer.
+#if VOXEL_ENGINE_VERSION >= 506
+		if (b32Bit)
+		{
+			IndexBufferRHI = RHICmdList.CreateBuffer(
+				FRHIBufferCreateDesc::CreateIndex<uint32>(TEXT("INDEX"), NumIndices)
+				.AddUsage(BUF_Static)
+				.SetInitActionResourceArray(&IndexStorage));
+		}
+		else
+		{
+			IndexBufferRHI = RHICmdList.CreateBuffer(
+				FRHIBufferCreateDesc::CreateIndex<uint16>(TEXT("INDEX"), NumIndices)
+				.AddUsage(BUF_Static)
+				.SetInitActionResourceArray(&IndexStorage));
+		}
+#elif VOXEL_ENGINE_VERSION >= 503
+		const uint32 IndexStride = b32Bit ? sizeof(uint32) : sizeof(uint16);
 		FRHIResourceCreateInfo CreateInfo(TEXT("INDEX"), &IndexStorage);
-#if VOXEL_ENGINE_VERSION >= 503
 		IndexBufferRHI = RHICmdList.CreateIndexBuffer(IndexStride,SizeInBytes,BUF_Static,CreateInfo);
 #else
+		const uint32 IndexStride = b32Bit ? sizeof(uint32) : sizeof(uint16);
+		FRHIResourceCreateInfo CreateInfo(TEXT("INDEX"), &IndexStorage);
 		IndexBufferRHI = RHICreateIndexBuffer(IndexStride,SizeInBytes,BUF_Static,CreateInfo);
 #endif
 	}    
