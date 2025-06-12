@@ -5,6 +5,7 @@
 #if VOXEL_ENGINE_VERSION < 504
 #include "PhysXIncludes.h"
 #endif
+#include "SceneView.h"
 #include "PrimitiveSceneProxy.h"
 #include "Engine/Engine.h"
 #include "Materials/Material.h"

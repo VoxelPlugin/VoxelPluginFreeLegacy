@@ -3,6 +3,7 @@
 #include "VoxelDebug/VoxelLineBatchComponent.h"
 #include "VoxelMinimal.h"
 
+#include "SceneView.h"
 #include "PrimitiveViewRelevance.h"
 #include "PrimitiveSceneProxy.h"
 #include "Engine/Engine.h"
