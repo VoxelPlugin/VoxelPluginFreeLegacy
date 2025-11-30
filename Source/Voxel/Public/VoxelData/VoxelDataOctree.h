@@ -138,7 +138,7 @@ public:
 		}
 		DataHolder.PrepareForWrite(Data);
 		
-		if (!TIsConst<TIn>::Value)
+		if (!std::is_const_v<TIn>)
 		{
 			if (Data.bEnableMultiplayer && !Multiplayer.IsValid())
 			{

@@ -173,14 +173,16 @@ void FVoxelRawStaticIndexBuffer::InitRHI(UE_503_ONLY(FRHICommandListBase& RHICmd
 			IndexBufferRHI = RHICmdList.CreateBuffer(
 				FRHIBufferCreateDesc::CreateIndex<uint32>(TEXT("INDEX"), NumIndices)
 				.AddUsage(BUF_Static)
-				.SetInitActionResourceArray(&IndexStorage));
+				.SetInitActionResourceArray(&IndexStorage)
+				.DetermineInitialState());
 		}
 		else
 		{
 			IndexBufferRHI = RHICmdList.CreateBuffer(
 				FRHIBufferCreateDesc::CreateIndex<uint16>(TEXT("INDEX"), NumIndices)
 				.AddUsage(BUF_Static)
-				.SetInitActionResourceArray(&IndexStorage));
+				.SetInitActionResourceArray(&IndexStorage)
+				.DetermineInitialState());
 		}
 #elif VOXEL_ENGINE_VERSION >= 503
 		const uint32 IndexStride = b32Bit ? sizeof(uint32) : sizeof(uint16);

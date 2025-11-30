@@ -27,7 +27,7 @@ public:
 	const int32 CacheSize;
 	const bool bUseAcceleratorMap;
 
-	static constexpr bool bIsConst = TIsConst<TData>::Value;
+	static constexpr bool bIsConst = std::is_const_v<TData>;
 
 	// Will not build an accelerator map. Access can be done anywhere
 	explicit TVoxelDataAccelerator(TData& Data, int32 CacheSize = FVoxelDataAcceleratorParameters::GetDefaultCacheSize());

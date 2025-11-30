@@ -452,7 +452,7 @@ if (!FVoxelUtilities::CountIs32Bits(Bounds.Size())) \
 		[=](FVoxelData& Data, decltype(InValue) In ## InValue) \
 		{ \
 			static_assert(TIsReferenceType<decltype(InValue)>::Value, "Value is not a reference!"); \
-			static_assert(!TIsConst<decltype(InValue)>::Value, "Value is const!"); \
+			static_assert(!std::is_const_v<decltype(InValue)>, "Value is const!"); \
 			TVoxelScopeLock<EVoxelLockType::InLockType> Lock(Data, Bounds, FUNCTION_FNAME); \
 			__VA_ARGS__; \
 		}, \

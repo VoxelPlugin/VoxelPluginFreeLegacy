@@ -33,8 +33,10 @@ public:
 	virtual bool InputAxis(FViewport* Viewport, FInputDeviceId DeviceID, FKey Key, float Delta, float DeltaTime, int32 NumSamples, bool bGamepad) override;
 #endif
 	virtual void ProcessClick(class FSceneView& View, class HHitProxy* HitProxy, FKey Key, EInputEvent Event, uint32 HitX, uint32 HitY) override;
+#if VOXEL_ENGINE_VERSION < 507
 	virtual int32 GetCameraSpeedSetting() const override;
 	virtual void SetCameraSpeedSetting(int32 SpeedSetting) override;
+#endif
 	virtual void MouseMove(FViewport* Viewport, int32 x, int32 y) override;
 	virtual void UpdateMouseDelta() override;
 	virtual UE::Widget::EWidgetMode GetWidgetMode() const override { return UE::Widget::EWidgetMode::WM_Max; }

@@ -42,7 +42,7 @@ public:
 	template<typename T>
 	FVoxelObjectArchive& operator<<(T& Object)
 	{
-		static_assert(!TIsConst<T>::Value, "");
+		static_assert(!std::is_const_v<T>, "");
 		Ar << Object;
 		return *this;
 	}

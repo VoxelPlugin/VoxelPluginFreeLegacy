@@ -440,6 +440,9 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 					}
 				});
 
+#if VOXEL_ENGINE_VERSION >= 507
+			EShaderPlatform ShaderPlatform = GetFeatureLevelShaderPlatform_Checked(GetScene().GetFeatureLevel());
+#endif
 			for (auto& Tool : Tools)
 			{
 				UMaterialInterface* Material = nullptr;
@@ -458,7 +461,7 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicMeshElements(const TArray<const F
 				auto* MaterialProxy = Material->GetRenderProxy();
 
 				// Hack to fix translucent rendering when the tool material was changed but the mesh wasn't updated
-				const_cast<FMaterialRelevance&>(MaterialRelevance) |= Material->GetMaterial()->GetRelevance_Concurrent(GetScene().GetFeatureLevel());
+				const_cast<FMaterialRelevance&>(MaterialRelevance) |= Material->GetMaterial()->GetRelevance_Concurrent(UE_507_SWITCH(GetScene().GetFeatureLevel(), ShaderPlatform));
 
 				if (CVarShowToolRendering.GetValueOnRenderThread() != 0)
 				{
@@ -577,7 +580,20 @@ void FVoxelProceduralMeshSceneProxy::GetDynamicRayTracingInstances(FRayTracingMa
 
 				RayTracingInstance.Materials.Add(MeshBatch);
 
-#if VOXEL_ENGINE_VERSION >= 505
+#if VOXEL_ENGINE_VERSION >= 507
+				TConstArrayView<const FSceneView*> Views = Collector.GetViews();
+				const uint32 VisibilityMap = Collector.GetVisibilityMap();
+				
+				for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
+				{
+					if ((VisibilityMap & (1 << ViewIndex)) == 0)
+					{
+						continue;
+					}
+
+					Collector.AddRayTracingInstance(ViewIndex, RayTracingInstance);
+				}
+#elif VOXEL_ENGINE_VERSION >= 505
 				Collector.AddRayTracingInstance(RayTracingInstance);
 #else
 				OutRayTracingInstances.Add(RayTracingInstance);

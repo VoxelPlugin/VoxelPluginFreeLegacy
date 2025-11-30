@@ -179,6 +179,7 @@ void FVoxelDataAssetEditorViewportClient::ProcessClick(class FSceneView& View, c
 	Panel.HandleClick(this, HitProxy, Click);
 }
 
+#if VOXEL_ENGINE_VERSION < 507
 int32 FVoxelDataAssetEditorViewportClient::GetCameraSpeedSetting() const
 {
 	return GetDefault<UEditorPerProjectUserSettings>()->SCSViewportCameraSpeed;
@@ -188,6 +189,7 @@ void FVoxelDataAssetEditorViewportClient::SetCameraSpeedSetting(int32 SpeedSetti
 {
 	GetMutableDefault<UEditorPerProjectUserSettings>()->SCSViewportCameraSpeed = SpeedSetting;
 }
+#endif
 
 void FVoxelDataAssetEditorViewportClient::MouseMove(FViewport* InViewport, int32 x, int32 y)
 {
