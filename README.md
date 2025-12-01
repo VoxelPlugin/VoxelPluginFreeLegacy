@@ -1,5 +1,6 @@
-This code should compile on 5.5 and 5.6
+This code should compile on 5.6 and 5.7
 
-Binaries can be downloaded [here](https://api.voxelplugin.com/external/67b6631747ea7aa878e3e9a07694822d/VoxelFree-429-d0ed0d56e-5.6-Binaries.zip).
+Binaries can be downloaded [here](https://api.voxelplugin.com/external/4368a96f4ae853427dc501bfeac0f00f/VoxelFree-431-73a948fa1-5.7-Binaries.zip).
 
 See the [marketplace page](https://free.voxelplugin.com/)
+
