@@ -25,7 +25,7 @@ FORCEINLINE FArchive& operator<<(FArchive &Ar, TVoxelDiff<T>& ValueDiff)
 }
 
 template<>
-FORCEINLINE FArchive& operator<<<FVoxelValue>(FArchive &Ar, TVoxelDiff<FVoxelValue>& ValueDiff)
+FORCEINLINE FArchive& operator<<(FArchive &Ar, TVoxelDiff<FVoxelValue>& ValueDiff)
 {
 	Ar << ValueDiff.Index;
 	Ar << ValueDiff.Value.GetStorage();

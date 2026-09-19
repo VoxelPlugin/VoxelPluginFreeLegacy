@@ -315,7 +315,7 @@ namespace FVoxelUtilities
 		return Alphas;
 	}
 	// Avoid mistakes with ChannelsToKeepIntact not being a mask
-	template<int32 NumChannels, typename T>
+	template<int32 NumChannels, typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, uint32>>>
 	void XWayBlend_StrengthsToAlphas_Static(const TVoxelStaticArray<float, NumChannels>&, T) = delete;
 
 	//////////////////////////////////////////////////////////////////////////////

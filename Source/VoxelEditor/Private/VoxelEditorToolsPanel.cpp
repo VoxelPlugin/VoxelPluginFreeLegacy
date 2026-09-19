@@ -491,7 +491,8 @@ EVisibility FVoxelEditorToolsPanel::GetAddVoxelWorldVisibility() const
 		return EVisibility::Collapsed;
 	}
 	
-	for (auto* VoxelWorld : TActorRange<AVoxelWorld>(LastWorld.Get()))
+	TActorRange<AVoxelWorld> Range(LastWorld.Get());
+	if (begin(Range) != end(Range))
 	{
 		return EVisibility::Collapsed;
 	}

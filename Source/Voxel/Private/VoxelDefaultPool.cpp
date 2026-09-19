@@ -6,23 +6,33 @@
 #include "Misc/QueuedThreadPool.h"
 #include "VoxelMinimal.h"
 
+namespace
+{
+	TStaticArray<uint32, 256> MakeVoxelPriorityArray(const TMap<EVoxelTaskType, int32>& Values)
+	{
+		TStaticArray<uint32, 256> Array;
+		for (int32 Index = 0; Index < 256; Index++)
+		{
+			Array[Index] = Values.FindRef(EVoxelTaskType(Index));
+		}
+		return Array;
+	}
+}
+
 FVoxelDefaultPool::FVoxelDefaultPool(
 	int32 ThreadCount,
 	bool bConstantPriorities,
 	const TMap<EVoxelTaskType, int32>& InPriorityCategories,
 	const TMap<EVoxelTaskType, int32>& InPriorityOffsets)
-	: Pool(FVoxelQueuedThreadPool::Create(FVoxelQueuedThreadPoolSettings(
-		FString::Printf(TEXT("Voxel Pool %llu"), UNIQUE_ID()),
-		ThreadCount,
-		1024 * 1024,
-		EThreadPriority::TPri_Normal,
-		bConstantPriorities)))
+: Pool(FVoxelQueuedThreadPool::Create(FVoxelQueuedThreadPoolSettings(
+	FString::Printf(TEXT("Voxel Pool %llu"), UNIQUE_ID()),
+																	 ThreadCount,
+																	 1024 * 1024,
+																	 EThreadPriority::TPri_Normal,
+																	 bConstantPriorities)))
+, PriorityCategories(MakeVoxelPriorityArray(InPriorityCategories))
+, PriorityOffsets(MakeVoxelPriorityArray(InPriorityOffsets))
 {
-	for (int32 Index = 0; Index < 256; Index++)
-	{
-		const_cast<TStaticArray<uint32, 256>&>(PriorityCategories)[Index] = InPriorityCategories.FindRef(EVoxelTaskType(Index));
-		const_cast<TStaticArray<uint32, 256>&>(PriorityOffsets)[Index] = InPriorityOffsets.FindRef(EVoxelTaskType(Index));
-	}
 }
 
 FVoxelDefaultPool::~FVoxelDefaultPool()

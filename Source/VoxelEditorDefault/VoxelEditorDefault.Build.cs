@@ -8,6 +8,7 @@ public class VoxelEditorDefault : ModuleRules
     public VoxelEditorDefault(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        bWarningsAsErrors = false;
         bLegacyPublicIncludePaths = false;
 #if UE_5_5_OR_LATER
         CppStandard = CppStandardVersion.Cpp20;
