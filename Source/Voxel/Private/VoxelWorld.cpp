@@ -1357,10 +1357,10 @@ void AVoxelWorld::CreateInEditor(const FVoxelWorldCreateInfo& Info)
 		if (VoxelWorldEditorClass)
 		{
 			// Create/Find VoxelWorldEditor
-			for (TActorIterator<AActor> It(GetWorld(), VoxelWorldEditorClass); It; ++It)
+			TActorIterator<AActor> It(GetWorld(), VoxelWorldEditorClass);
+			if (It)
 			{
 				VoxelWorldEditor = *It;
-				break;
 			}
 			if (!VoxelWorldEditor)
 			{

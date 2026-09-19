@@ -20,10 +20,10 @@ void UActorFactoryVoxelPlaceableItem::PostSpawnActor(UObject* Asset, AActor* New
 
 	AVoxelPlaceableItemActor* ItemActor = CastChecked<AVoxelPlaceableItemActor>(NewActor);
 	
-	for (TActorIterator<AVoxelWorld> ActorItr(ItemActor->GetWorld()); ActorItr; ++ActorItr)
+	TActorIterator<AVoxelWorld> ActorItr(ItemActor->GetWorld());
+	if (ActorItr)
 	{
 		ItemActor->PreviewWorld = *ActorItr;
-		break;
 	}
 }
 

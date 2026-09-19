@@ -10,6 +10,7 @@ public class Voxel : ModuleRules
     public Voxel(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        bWarningsAsErrors = false;
         bLegacyPublicIncludePaths = false;
 #if UE_5_4_OR_LATER
         CppStandard = CppStandardVersion.Cpp20;
